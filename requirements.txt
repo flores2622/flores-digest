@@ -1,0 +1,5 @@
+requests
+playwright
+pdfplumber
+sherpa-onnx
+numpy
