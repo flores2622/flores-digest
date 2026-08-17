@@ -57,11 +57,15 @@ def build_funnel(m, day_label):
     P = ["Crystal Mango", "Lorena Gonzalez", "Mike Olvera"]
     cards = []
 
-    vol = [(p, m[p]["call_volume"], str(m[p]["call_volume"]),
+    vol = [(p, m[p]["call_volume"],
+            f'{m[p]["call_volume"]}'
+            f'<span class="sq">{m[p].get("total_dials", 0)} dials</span>',
             cfg.tier("call_volume", m[p]["call_volume"])) for p in P]
     tv = sum(m[p]["call_volume"] for p in P)
+    td = sum(m[p].get("total_dials", 0) for p in P)
     cards.append(funnel_card(
-        "Call Volume", f"New-business dials &mdash; {day_label}", vol, str(tv),
+        "Call Volume", f"Distinct new-business dials &mdash; {day_label}", vol,
+        f'{tv}<span class="sq">{td} dials</span>',
         cfg.tier("call_volume", tv / cfg.TEAM_SCALE)))
 
     talk = [(p, m[p]["avg_talk"], hhmm(m[p]["avg_talk"]),
