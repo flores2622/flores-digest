@@ -226,7 +226,13 @@ def build_metrics(day):
             arr = qs.get("quotes") if isinstance(qs, dict) else qs
             tot += sum(float(q.get("premium") or 0) for q in (arr or []))
         n_sold, prem = real.get(who, (0, 0.0))
-        M[who] = {"call_volume": len(counted), "live": len(live),
+        # Call volume is DISTINCT numbers; total_dials is every attempt on those
+        # same numbers, so a producer working a number three times shows 1 vs 3.
+        # Scoped to counted numbers, so service/renewal exclusions stay excluded.
+        total_dials = sum(len(dials.get(who, {}).get(r["number"], []) or [])
+                          for r in counted)
+        M[who] = {"call_volume": len(counted), "total_dials": total_dials,
+                  "live": len(live),
                   "contact_rate": round(len(live) / len(counted) * 100, 1) if counted else 0,
                   "avg_talk": round(talk / len(live)) if live else 0,
                   "outcomes": dict(b),
