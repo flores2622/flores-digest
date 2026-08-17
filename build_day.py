@@ -61,9 +61,8 @@ def build(day, template=TEMPLATE):
     assert_div_balance(src, h, "final")
 
     out = f"out/Ops_Report_{day}.html"
+    pathlib.Path(out).parent.mkdir(exist_ok=True)
     pathlib.Path(out).write_text(h)
-    return out, h
-
 
 if __name__ == "__main__":
     day = sys.argv[1] if len(sys.argv) > 1 else "2026-08-13"
