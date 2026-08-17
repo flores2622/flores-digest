@@ -42,8 +42,10 @@ def recontact_detail(day, M, template):
     head = head.replace("Wednesday, August 12, 2026",
                         f"{WEEKDAY[d.weekday()]}, {d.strftime('%B %-d, %Y')}")
     rc = M["recontact"]
-    ar = sorted(rc["at_risk"], key=lambda r: -r["business_days"])
-    lo = sorted(rc["lost"], key=lambda r: -(r["calls"] or 0))
+    ar = sorted(rc["at_risk"],
+                key=lambda r: (r["producer"], r["stage"], -r["business_days"]))
+    lo = sorted(rc["lost"],
+                key=lambda r: (r["producer"], r["stage"], -(r["calls"] or 0)))
 
     def rowA(r):
         return ('<tr><td class="name-cell"><span class="dot ' + DOT[r["producer"]]
