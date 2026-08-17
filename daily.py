@@ -179,15 +179,20 @@ def build_metrics(day):
                 hh[w].add(l["id"])
     for f in (ROOT / "data/notes").glob("*.json"):
         for n in json.loads(f.read_text()):
-            if n.get("type") != "MOVE_STAGE":
-                continue
             if not str(n.get("createDate") or "").startswith(day):
                 continue
             if n.get("createdBy") not in PRODUCERS:
                 continue
-            mv, _ = lc._move_stage_parts(lc._text(n.get("body")))
-            dest = mv.split(" to ")[-1] if " to " in mv else mv
-            if QS.search(dest):
+            if n.get("type") == "MOVE_STAGE":
+                mv, _ = lc._move_stage_parts(lc._text(n.get("body")))
+                dest = mv.split(" to ")[-1] if " to " in mv else mv
+                # Match the STAGE only, not the pipeline. "1-2 Leads Not Quoted"
+                # is the pipeline leads are recycled into when they were never
+                # quoted, so matching the full path counted those as quoted.
+                dest = dest.split("|")[-1]
+                if QS.search(dest):
+                    hh[n["createdBy"]].add(int(f.stem))
+            elif quote_presented(lc._text(n.get("body"))):
                 hh[n["createdBy"]].add(int(f.stem))
 
     real = cfg.real_sales(day, pol, smap, azid)
@@ -248,7 +253,27 @@ def build_metrics(day):
     (ROOT / f"data/metrics_{day}.json").write_text(json.dumps(out, indent=1, default=str))
     return out
 
+# A note counts as a quote ONLY when the quote is delivered in that message.
+# The team's outreach is saturated with the word "quote" -- solicitation
+# ("are you interested in a quote?", "called to offer new quote, no answer")
+# and follow-ups on quotes sent earlier ("the quote I sent you", "I sent you a
+# quote over a week ago"). Counting either would credit a day with work that
+# did not happen on it, and the follow-up templates repeat daily until the
+# customer replies, so one quote would be recounted every day it is chased.
+# Frank confirmed this reading against the 2026-08-14 notes.
+_PRESENTED = re.compile(
+    r"this is (?:a|an|the|your)[^.!?]{0,40}\bquote\b"
+    r"|here (?:is|are) (?:a|the|your)[^.!?]{0,40}\bquote\b"
+    r"|(?:your |the )?quote is attached"
+    r"|attach(?:ed|ing)[^.!?]{0,25}\bquote\b", re.I)
+_PAST = re.compile(
+    r"sent you|i sent|week ago|haven'?t heard back|chance to review", re.I)
 
+
+def quote_presented(body):
+    """True when the note delivers a quote rather than asking for or chasing one."""
+    b = re.sub(r"\s+", " ", re.sub(r"<[^>]+>", " ", str(body or "")))
+    return bool(_PRESENTED.search(b)) and not _PAST.search(b)
 def speed_to_dial(day, leads, dials):
     from az_corpus import e164
     from digest_config import PRODUCERS
