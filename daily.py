@@ -314,6 +314,7 @@ def main():
     # Both emails go out together at 6:30 PM Arizona and report TODAY.
     day = a.day or dt.datetime.now(AZ).date().isoformat()
     os.chdir(ROOT)
+    (ROOT / "out").mkdir(exist_ok=True)
     log(f"building {day}")
 
     ensure_model()
