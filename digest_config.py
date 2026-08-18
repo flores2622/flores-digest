@@ -136,6 +136,22 @@ LICENSED_NOT_TRACKED = {"Francisco Flores"}
 # Leads assigned to these people are TEST/TRAINING leads. Excluded from every
 # lead-derived metric: recontact struggle, households quoted, premium quoted.
 # Their DIALS still count where the producer is counted.
+# Test and dummy records seeded by vendors (Mav AI) or typed by hand. They are
+# real leads in AgencyZoom with real dials against them, so nothing upstream
+# filters them -- Frank spotted "John Doe" sitting in Call Detail as a live
+# contact (2026-08-18). Matched on name, not lead source: the Mav AI test rows
+# and the hand-typed ones share nothing but the name.
+TEST_LEAD_RE = re.compile(
+    r"^\s*(john|jane)\s+doe\s*$|(^|\s)test(\s|$)|^test\b|\btest$"
+    r"|do not call|^asdf|^xxx", re.I)
+
+
+def is_test_lead(lead):
+    name = (f"{(lead.get('firstname') or '').strip()} "
+            f"{(lead.get('lastname') or '').strip()}").strip()
+    return bool(name) and bool(TEST_LEAD_RE.search(name))
+
+
 TRAINING_LEAD_OWNERS = {82589,   # Frank Flores
                         185440,  # Coral Barwick
                         185441,  # Sarahi Chin

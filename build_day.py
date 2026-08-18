@@ -52,6 +52,11 @@ def build(day, template=TEMPLATE):
         ("Speed to Dial", panels.speed_table(s2d, team_s2d)),
         ("Coaching &amp; Call Quality", panels.coach_cards(M["coach"])),
         ("Call Detail &nbsp;", panels.call_detail(P, day)),
+        # Was static template HTML until 2026-08-18 -- see task_audit.
+        # "&middot;" pins this to the panel's own h2 -- the bare phrase also
+        # appears in the document title and matches there first.
+        ("Task Completion Audit &middot;",
+         panels.task_audit_tables(M["task_audit"], label)),
     ]:
         before = h
         h = rr.swap_panel(h, heading, new)

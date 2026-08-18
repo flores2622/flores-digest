@@ -61,6 +61,35 @@ def pull_sources(day):
         f.write_text(json.dumps(recs))
     log(f"  {len(json.loads(f.read_text()))} call records")
 
+    # Recontact counts dials from the stage-entry date (up to MAX_STAGE_AGE days
+    # back) through today, so the day's log alone cannot answer it -- every
+    # "calls since" collapsed to today's dials and read 0. Frank, 2026-08-17:
+    # Pamela Rice showed 0 against three real dials on 8/12, 8/13 and 8/14.
+    # Day metrics keep using rc_raw_{day}; only recontact reads this window.
+    # Fetched ONE DAY AT A TIME on purpose. A single call-log request spanning
+    # the whole window comes back capped at 1000 records with totalPages=1, so
+    # a 31-day query silently returned only the most recent ~5 days.
+    import recontact
+    wf = ROOT / f"data/rc_window_{day}.json"
+    if not wf.exists():
+        rc_api = RingCentral()
+        span = recontact.MAX_STAGE_AGE + 1
+        start = dt.date.fromisoformat(day) - dt.timedelta(days=span)
+        log(f"RingCentral call log {start} -> {day} (recontact window, "
+            f"{span + 1} daily chunks)...")
+        recs, seen = [], set()
+        for i in range(span + 1):
+            d0 = (start + dt.timedelta(days=i)).isoformat()
+            d1 = (start + dt.timedelta(days=i + 1)).isoformat()
+            for r in rc_api.call_log(f"{d0}T00:00:00-07:00", f"{d1}T00:00:00-07:00"):
+                if r.get("id") not in seen:
+                    seen.add(r.get("id"))
+                    recs.append(r)
+        wf.write_text(json.dumps(recs))
+    _w = json.loads(wf.read_text())
+    log(f"  {len(_w)} window call records over "
+        f"{len({r['startTime'][:10] for r in _w if r.get('startTime')})} days")
+
     az = AgencyZoom()
     for name, fn in [("az_leads_all", lambda: az_corpus.fetch()),
                      ("az_customers_all",
@@ -110,7 +139,8 @@ def transcribe_day(day):
         transcribe.download(todo, RingCentral().token(), per_minute=12, log=log)
         log("transcribing...")
         for i, r in enumerate(todo):
-            txt = transcribe.transcribe_file(f"data/audio/{r['id']}.mp3")
+            txt = transcribe.transcribe_file(f"data/audio/{r['id']}.mp3",
+                                             duration=r.get("duration", 0))
             cls, why = transcribe.classify(txt, r.get("duration", 0))
             done[r["id"]] = {"producer": names[owner_ext_id(r)],
                              "to": (r.get("to") or {}).get("phoneNumber"),
@@ -143,7 +173,7 @@ def build_metrics(day):
              json.loads((ROOT / "data/az_stages.json").read_text()).items()}
     tx = json.loads((ROOT / f"data/transcripts_{day}.json").read_text())
 
-    bynum, txt = {}, {}
+    bynum, txt, all_txt = {}, {}, {}
     for v in tx.values():
         n = v.get("to")
         if not n:
@@ -152,6 +182,8 @@ def build_metrics(day):
             bynum[n] = v["class"]
         if v["class"] == "live" and v.get("text"):
             txt.setdefault(n, v["text"])
+        if v.get("text"):
+            all_txt[n] = (all_txt.get(n, "") + " " + v["text"]).strip()
 
     rows = day_calls.classify(day)
     dials = day_calls.producer_dials(day)
@@ -202,19 +234,35 @@ def build_metrics(day):
         live, b, detail = [], collections.Counter(), []
         for r in counted:
             ev = (lc.evidence(r["lead_id"], day, who) if r["lead_id"] else
-                  {"written": [], "stage_moves": [], "call_notes": [], "negative": False})
+                  {"written": [], "stage_moves": [], "call_notes": [],
+                   "negative": False, "screener": False})
             tc = bynum.get(r["number"])
             ok, basis = lc.is_live(ev, r["talk_seconds"], tc)
+            # Screener is checked ahead of the transcript class on purpose. An
+            # AI attendant reads as a machine greeting, so Elsa Aguilera --
+            # "call dropped after AI transferred me" -- was being filed as
+            # Voicemail and the Screener bucket never filled (Frank,
+            # 2026-08-18). A screener is a distinct outcome: the call reached
+            # something, just never the prospect.
+            screened = ev.get("screener") or bool(
+                lc.SCREENER.search(all_txt.get(r["number"], "")))
             b["Live Contact" if ok else
-              ("Voicemail" if tc == "voicemail" else
-               ("No Answer" if tc == "no answer" else lc.outcome_bucket(ev, ok)))] += 1
+              ("Screener" if screened else
+               ("Voicemail" if tc == "voicemail" else
+                ("No Answer" if tc == "no answer"
+                 else lc.outcome_bucket(ev, ok))))] += 1
             if ok:
                 live.append(r)
                 detail.append({"lead": r["lead_name"], "lead_id": r["lead_id"],
                                "number": r["number"], "seconds": r["talk_seconds"],
                                "basis": basis,
-                               "note": (ev["written"][0][:280] if ev["written"]
-                                        else txt.get(r["number"], "")[:280]),
+                               # Kept apart so the report can say which is
+                               # which. Merging them printed Mike's typed
+                               # notes as "From the call recording" (Frank,
+                               # 2026-08-17, Lazaro Rueda).
+                               "note_producer": (ev["written"][0][:280]
+                                                 if ev["written"] else ""),
+                               "note_recording": txt.get(r["number"], "")[:280],
                                "moves": [m["move"] for m in ev["stage_moves"]]})
         talk = sum(r["talk_seconds"] for r in live)
         tot = 0
@@ -243,14 +291,21 @@ def build_metrics(day):
 
     util, weighted, _ = iu.pull(day)
     tasks = az_tasks.audit(json.loads((ROOT / f"data/az_tasks_{day}.json").read_text()))
-    rc = recontact.build(day, leads, stage, dials)
+    # Window dials, not day dials: recontact counts back to the stage-entry date.
+    rc = recontact.build(day, leads, stage, day_calls.window_dials(day))
+    import task_audit
+    t_audit = task_audit.build(
+        day, json.loads((ROOT / f"data/az_tasks_{day}.json").read_text()),
+        dials, leads,
+        json.loads((ROOT / "data/az_customers_all.json").read_text()))
     coach = coach_from_gmail(day)
     s2d = speed_to_dial(day, leads, dials)
 
     out = {"day": day, "producers": M, "utilization": util,
            "util_weighted": weighted,
            "placeholder_sales": cfg.placeholder_sales(day, pol, smap),
-           "tasks": tasks, "coach": coach, "speed_to_dial": s2d,
+           "tasks": tasks, "task_audit": t_audit, "coach": coach,
+           "speed_to_dial": s2d,
            "recontact": {k: [{**{kk: vv for kk, vv in x.items() if kk != "lead"},
                               "lead_id": x["lead"].get("id"),
                               "lead_name": f"{x['lead'].get('firstname','')} "

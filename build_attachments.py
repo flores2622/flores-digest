@@ -46,6 +46,8 @@ def recontact_detail(day, M, template):
                 key=lambda r: (r["producer"], r["stage"], -r["business_days"]))
     lo = sorted(rc["lost"],
                 key=lambda r: (r["producer"], r["stage"], -(r["calls"] or 0)))
+    pa = sorted(rc.get("paused", []),
+                key=lambda r: (r["returns_in"], r["producer"]))
 
     def rowA(r):
         return ('<tr><td class="name-cell"><span class="dot ' + DOT[r["producer"]]
@@ -69,21 +71,45 @@ def recontact_detail(day, M, template):
                 '<td class="num">' + str(r["days"]) + '</td>'
                 '<td class="num">' + str(r["calls"]) + '</td></tr>')
 
+    def rowP(r):
+        return ('<tr><td class="name-cell"><span class="dot ' + DOT[r["producer"]]
+                + '"></span>' + SHORT[r["producer"]] + '</td><td>'
+                + _link(r["lead_id"], r["lead_name"]) + '</td>'
+                '<td style="font-size:11px">' + r["stage"] + '</td>'
+                '<td class="nowrap-cell">' + _d(r["entered"]) + '</td>'
+                '<td class="nowrap-cell">' + _d(r["returns"]) + '</td>'
+                '<td class="num">' + str(r["returns_in"]) + '</td>'
+                '<td class="num">' + str(r["calls"]) + '</td></tr>')
+
     body = ('<div class="panel"><h2>Recontact Detail &nbsp;&middot;&nbsp; '
-            'at risk, lost and won</h2>'
+            'at risk, paused, lost and won</h2>'
             '<div class="section-title">At risk of going cold &mdash; '
             + str(len(ar)) + '</div>'
             '<div class="panel-subtitle">In a post-contact stage with more than 3 '
             'business days since the last stage move, or more than 3 dials since '
-            'entering it, and no outcome yet. Ranked by days stalled.</div>'
+            'entering it without the lead moving. Ranked by days stalled. '
+            '<b>not worked</b> = 0-1 calls since entering the stage; '
+            '<b>under-worked</b> = 2-3; <b>no traction</b> = 4 or more and '
+            'still not moving.</div>'
             + _table(ar, [("Rep", 0), ("Lead", 0), ("Stage", 0), ("Entered", 0),
                           ("Business days", 1), ("Calls since", 1), ("Flag", 0)], rowA)
             + '<div class="section-title">Lost &mdash; ' + str(len(lo)) + '</div>'
-            '<div class="panel-subtitle">Moved to Dead or Smart-Cycle on this day. '
-            'Ranked by calls invested before the loss.</div>'
+            '<div class="panel-subtitle">Moved to Dead, or smart-cycled with the '
+            'cycle 30+ days out, on this day. A cycle returning within 29 days is '
+            'a pause and is listed separately below. Ranked by calls invested '
+            'before the loss.</div>'
             + _table(lo, [("Rep", 0), ("Lead", 0), ("Stage they were in", 0),
                           ("Entered", 0), ("Outcome", 0), ("Outcome date", 0),
                           ("Days", 1), ("Calls between", 1)], rowL)
+            + '<div class="section-title">On pause &mdash; ' + str(len(pa))
+            + '</div>'
+            '<div class="panel-subtitle">Smart-cycled on this day with the cycle '
+            'returning within 29 days &mdash; parked for a week or two, or waiting '
+            'for automation to restart. Not counted as a loss. The return date is '
+            'the Smart-Cycle date shown on the lead in AgencyZoom.</div>'
+            + _table(pa, [("Rep", 0), ("Lead", 0), ("Stage they were in", 0),
+                          ("Entered", 0), ("Returns", 0), ("Days out", 1),
+                          ("Calls", 1)], rowP)
             + '<div class="section-title">Won &mdash; '
             + (str(len(rc["won"])) if rc["won"] else "none") + '</div>'
             '<div class="empty-row">Sold on this day.</div>'

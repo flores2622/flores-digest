@@ -23,15 +23,14 @@ import pathlib
 from az_client import AgencyZoom
 from az_corpus import e164, fetch, phone_index
 from az_tasks import service_reason
-from digest_config import PRODUCERS, TRAINING_LEAD_OWNERS
+from digest_config import PRODUCERS, TRAINING_LEAD_OWNERS, is_test_lead
 from rc_client import owner_ext_id
 
 NOTE_CACHE = pathlib.Path("data/notes")
 
 
-def producer_dials(day):
+def dials_from(recs):
     """{producer: {number: [call records]}} -- outbound only."""
-    recs = json.load(open(f"data/rc_raw_{day}.json"))
     names = {v["rc_id"]: k for k, v in PRODUCERS.items()}
     out = collections.defaultdict(lambda: collections.defaultdict(list))
     for r in recs:
@@ -42,6 +41,21 @@ def producer_dials(day):
         if num:
             out[who][num].append(r)
     return out
+
+
+def producer_dials(day):
+    """Dials made on `day` -- the basis for call volume and contact rate."""
+    return dials_from(json.load(open(f"data/rc_raw_{day}.json")))
+
+
+def window_dials(day):
+    """Dials over the trailing recontact window (see daily.pull_sources).
+
+    Recontact asks "how many dials since this lead entered its stage", which
+    reaches back weeks. Answering that from the single-day log reported 0 for
+    every lead not dialled today.
+    """
+    return dials_from(json.load(open(f"data/rc_window_{day}.json")))
 
 
 def build_context(day):
@@ -93,6 +107,8 @@ def classify(day):
                 excluded = "customer record only (service/renewal)"
             elif any(c["id"] in svc_customers.get(who, set()) for c in custs):
                 excluded = "service/renewal task due today for this producer"
+            elif lead and is_test_lead(lead):
+                excluded = "test/dummy lead record"
             rows.append({
                 "number": num,
                 "lead_id": lead.get("id") if lead else None,
