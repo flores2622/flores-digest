@@ -149,7 +149,10 @@ def notes_and_methodology(day, M, template):
            "conversation, a voicemail or a no-answer from what was actually said. "
            f"On this day {sum(c.values())} calls were recorded: "
            f"{c.get('voicemail', 0)} voicemail, {c.get('no answer', 0)} no-answer, "
-           f"{c.get('live', 0)} live. Duration is not used and cannot be &mdash; a "
+           f"{c.get('live', 0)} live"
+           + (f", {c['unclear']} with speech but no sign of a second person "
+              "(counted as no contact)" if c.get('unclear') else "")
+           + ". Duration is not used and cannot be &mdash; a "
            "two-second pickup is a live contact, while a 77-second voicemail "
            "greeting is not. Where a call has no recording the producer&rsquo;s own "
            "AgencyZoom note decides, and an explicit &ldquo;never answered&rdquo; "

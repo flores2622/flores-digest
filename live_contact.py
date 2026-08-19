@@ -309,6 +309,12 @@ def is_live(ev, talk_seconds=None, transcript_class=None):
         return True, "recording"
     if transcript_class in ("voicemail", "no answer"):
         return False, f"recording ({transcript_class})"
+    # We read the audio and found no sign of a second person. Duration must not
+    # rescue it: a 53-second voicemail is 53 seconds long (Maria Rodriguez,
+    # 2026-08-18). Distinct from "unknown", which means the audio was
+    # unreadable and where the duration fallback below still applies.
+    if transcript_class == "unclear":
+        return False, "recording (no contact evidence)"
     longest = max([c["seconds"] for c in ev["call_notes"]] + [talk_seconds or 0])
     if longest >= DURATION_FALLBACK_SECONDS:
         return True, "duration only"

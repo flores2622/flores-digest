@@ -193,13 +193,21 @@ end-of-day email. Ops send is therefore **01:30 UTC the following day**.
 
 **All of these should be rotated — they have been pasted in plaintext chat.**
 
+> **2026-08-19 — REDACTED.** The live values were sitting in this
+> file in plaintext, and this file is tracked in git, so they went to GitHub
+> with commit `e5806ea`. They have been replaced with placeholders here, but
+> **redacting the working copy does not un-publish them** — they remain in
+> the repository history and must be rotated at the source (RingCentral,
+> AgencyZoom, Insightful, Resend). Real values live only in `secrets/all.env`,
+> which is gitignored.
+
 ### RingCentral (server-side JWT app, Production) — CONFIRMED WORKING 2026-08-14
 
 ```
-RC_CLIENT_ID=69K1APV0Vy4dOuJ4kqYBwb
-RC_CLIENT_SECRET=e8Ds57GnDW1dezL3dljhUzVqVHKIMVnNdepkzzZkQb6w
+RC_CLIENT_ID=<RC_CLIENT_ID — see secrets/all.env>
+RC_CLIENT_SECRET=<RC_CLIENT_SECRET — see secrets/all.env>
 RC_SERVER_URL=https://platform.ringcentral.com
-RC_JWT=eyJraWQiOiI4NzYyZjU5OGQwNTk0NGRiODZiZjVjYTk3ODA0NzYwOCIsInR5cCI6IkpXVCIsImFsZyI6IlJTMjU2In0.eyJhdWQiOiJodHRwczovL3BsYXRmb3JtLnJpbmdjZW50cmFsLmNvbS9yZXN0YXBpL29hdXRoL3Rva2VuIiwic3ViIjoiMTczNDQyMDUyIiwiaXNzIjoiaHR0cHM6Ly9wbGF0Zm9ybS5yaW5nY2VudHJhbC5jb20iLCJleHAiOjM5MzMyNzM3MzMsImlhdCI6MTc4NTc5MDA4NiwianRpIjoieVY2TS1oQ0dTaGFCZjJJdWZmckpRUSJ9.N41x7IHb6qFvUvusx7YOjk2fhh5ycK93mqB6IWBWiMGZsUV6zEuvlCTBSoxS64qi-MrCRBLr3sRrhfaq6AAtbssHFw4nZ7CL0Bdqk3-HBmsFeqyWgectaiSwtcLb0onxcEvA1NQt4EKAj1vaaCmTbLNbneLj5EYag5BgF_9X5I3M2bOF8kzHsUVxtu35dLx4WjU6_dx8d44wmj-Hihp8KviREGCkWJLZTtaxqFgdz791aEyic8MHbp_72mhryfmMH6WLnqqFbJzKYQokx6t9SuzL6jyXiEi1FEnz2dQKHnZkpNx7YyuT_phTErJMLWPMqOzwVW5HMMxl_Y8Lo8vV8g
+RC_JWT=<RC_JWT — see secrets/all.env>
 ```
 
 Auth: `POST /restapi/oauth/token`, HTTP Basic `clientId:clientSecret`, form body
@@ -210,8 +218,8 @@ Access token lives 3600s. Scopes: `ReadAccounts RingSense ReadCallLog ReadCallRe
 ### AgencyZoom — CONFIRMED WORKING 2026-08-14
 
 ```
-AZ_USERNAME=frank.automation@floresinsuranceagency.com
-AZ_PASSWORD=Automation2026!
+AZ_USERNAME=<AZ_USERNAME — see secrets/all.env>
+AZ_PASSWORD=<AZ_PASSWORD — see secrets/all.env>
 ```
 
 `POST https://app.agencyzoom.com/v1/api/auth/login` with `{"username","password"}` →

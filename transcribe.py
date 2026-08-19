@@ -72,7 +72,30 @@ MACHINE = re.compile(
     r"|please give me a call|give me a call back|call me back at"
     r"|feel free to (call|reach|text) (me|us)"
     # Auto-attendants and carrier number read-backs.
-    r"|thank you for calling|telephone number \\d|^telephone number",
+    r"|thank you for calling|telephone number \\d|^telephone number"
+    # SCREENERS / answering services (Albert Collier, 2026-08-18). Two dials
+    # 24s apart recorded the same message; Whisper wrote "To record your name"
+    # on one and "He records your name" on the other, and the strict
+    # "record your name" matched only the first. The second fell through to the
+    # live default. Tolerate the verb inflection and match the rest of the
+    # script, which is stable even when the opening verb is not.
+    r"|records? your (name|message)|record (your|the) (name|reason)"
+    r"|(see|check) if (this|that) person is (available|there)"
+    r"|(review|see) this person available"
+    r"|(please )?stay on the line|hold while i (try|connect|transfer)"
+    r"|screening (this|your) call|who may i say is calling"
+    # Whisper mangles "leave your name" into "leave your man" / "really your
+    # name" often enough that the noun cannot carry the match alone.
+    r"|leave your (name|man|number|brief)|your name,? (and )?(phone )?number,? "
+    r"(and )?(a )?brief"
+    # Truncated carrier messages: the 30s window regularly clips these mid
+    # sentence, and requiring the final word lost the match entirely.
+    r"|person you.{0,6}(were |are )?trying to|your call has been forward"
+    r"|i'?m sorry[,.]? (you|the person|this)"
+    r"|check(ing)? my (voice ?)?messages?|send me a text"
+    # Spanish screener / voicemail phrasings.
+    r"|d[ée]je(se|nos|me)? un mensaje|deje un mensaje|un mensaje para"
+    r"|no est[aá] (disponible|en este momento)|le comunico",
     re.I)
 
 # Ringback, hold music and empty captures are not conversations. Whisper also
@@ -83,6 +106,42 @@ NON_SPEECH = re.compile(
     r"^\W*(\(|\[)?\s*(music|dramatic music|inaudible|silence|no audio|"
     r"blank_?audio|cough|coughing|noise|background noise|beep|sighs?|breathing)"
     r"\s*(\)|\])?\W*$", re.I)
+
+# Whisper invents new non-speech tags faster than a whitelist can track them:
+# "[Band Warms Up]" on three seconds of silence scored as a live contact
+# (Arlinda Dos Santos, 2026-08-18), and the 30s window truncates them mid-tag
+# ("[Band War"), so the closing bracket cannot be relied on either. Any window
+# that is NOTHING but bracketed or parenthesised tags is non-speech, whatever
+# the tag happens to say. Real speech is not written inside brackets.
+BRACKET_TAG = re.compile(r"[\[(][^\])]*(?:[\])]|$)")
+
+
+def is_only_tags(t):
+    """True when the transcript is bracketed tags and separators only."""
+    if not t:
+        return False
+    return not BRACKET_TAG.sub(" ", t).strip(" -|.,?!")
+
+
+# The producer talking and nobody talking back. A window whose only content is
+# the producer identifying themselves -- "Crystal with Farmers", "habla Mike de
+# la Seguranza Farmers" -- with dead air on the other window is a message being
+# left, not a contact (Maria Rodriguez, 2026-08-18).
+SELF_ID = re.compile(
+    r"\b(this is |habla |soy |le habla )?\w+ (with|de la|from) "
+    r"(farmers?|f[aá]rmios|seguran[czs]a|partners? insurance|farmer)"
+    r"|\b(crystal|lorena|mike|frank|coral|sarahi|debbie) with farmer",
+    re.I)
+
+# Two people alternating. Whisper marks speaker changes with ">>" when it hears
+# them, and a closing exchange ("okay ... that's okay ... bye-bye") only occurs
+# when someone is on the other end. This is what keeps a genuine pickup with no
+# greeting from being discarded (Aracely Meza Tapia, 2026-08-18).
+DIALOGUE = re.compile(
+    r">>|\bbye[- ]?bye\b|\bthat'?s ok(ay)?\b|\bno problem\b"
+    r"|\bcall (you|me) back\b|\bh[aá]blame\b|\bhasta luego\b"
+    r"|\bnice (talking|speaking) (to|with) you\b",
+    re.I)
 
 # A human answering.
 HUMAN = re.compile(
@@ -202,7 +261,7 @@ def classify(text, duration):
         # silence on a very short leg is a ring-out.
         return ("live", "connected, no speech captured") if duration >= 5 \
             else ("no answer", "no audio")
-    if NON_SPEECH.match(t):
+    if NON_SPEECH.match(t) or is_only_tags(t):
         return "no answer", "ringback or hold audio only"
     # "Hello? Hello? Hello?" and nothing else is the producer talking into dead
     # air, not a contact (Estella Ojeda, 08-17).
@@ -220,11 +279,30 @@ def classify(text, duration):
     # with Farmers..."), and matching that first labelled voicemails as live.
     if MACHINE.search(t):
         return "voicemail", "machine greeting in transcript"
+    # The producer identifying themselves with dead air on the other window is
+    # a message being left. Checked before HUMAN because "this is Crystal with
+    # Farmers" trips the greeting test on its own.
+    halves = [h.strip() for h in t.split("||")]
+    if SELF_ID.search(t) and any(is_only_tags(h) or not h for h in halves):
+        return "voicemail", "producer speaking into dead air"
     if HUMAN.search(t):
         return "live", "human greeting in transcript"
-    # Speech that is neither a known machine phrase nor a greeting is a person
-    # talking -- e.g. a pickup mid-sentence, or a hang-up after two words.
-    return "live", "speech in transcript"
+    # A two-party exchange with no greeting -- a pickup mid-sentence, or a
+    # hang-up after two words -- is still a contact.
+    if DIALOGUE.search(t):
+        return "live", "two-party exchange in transcript"
+    # ANYTHING ELSE IS NOT A CONTACT. This used to return "live" on the
+    # reasoning that speech means a person; in practice it was the single
+    # biggest source of false contacts. On 2026-08-18 it produced 18 of the 42
+    # live calls and only one of the 18 was real -- a screener, three
+    # silences, two voicemails and a Spanish machine greeting among them
+    # (Frank, 2026-08-18). We now claim a contact only on positive evidence:
+    # a human greeting, a two-party exchange, or the producer's own note.
+    #
+    # "unclear" is deliberately NOT "unknown". Unknown means we could not read
+    # the audio, so is_live() may fall back to duration. Unclear means we read
+    # it and found no sign of a person, and duration must not override that.
+    return "unclear", "speech present, no contact evidence"
 
 
 def run(day, recs, token, log=print):

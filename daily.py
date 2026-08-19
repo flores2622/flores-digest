@@ -178,7 +178,16 @@ def build_metrics(day):
         n = v.get("to")
         if not n:
             continue
-        if bynum.get(n) != "live":
+        # Rank by strength of evidence, not by arrival order. A number dialled
+        # more than once gets the STRONGEST verdict across its dials: a real
+        # pickup on any dial means the number was reached, and a confident
+        # machine greeting must not be overwritten by a later window that
+        # merely failed to find evidence. Albert Collier was dialled twice 24s
+        # apart -- the same screener message transcribed two ways -- and the
+        # weaker read used to win the row (Frank, 2026-08-18).
+        rank = {"live": 4, "voicemail": 3, "no answer": 2,
+                "unclear": 1, "unknown": 0}
+        if rank.get(v["class"], 0) > rank.get(bynum.get(n), -1):
             bynum[n] = v["class"]
         if v["class"] == "live" and v.get("text"):
             txt.setdefault(n, v["text"])
