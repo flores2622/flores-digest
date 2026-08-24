@@ -43,12 +43,20 @@ UA = "FloresDigest/1.0 (+frank@floresinsuranceagency.com)"
 
 AZ_TZ = dt.timezone(dt.timedelta(hours=-7))  # Arizona: UTC-7, never DST
 
-# Utilization scope = "all users except Amanda" (HANDOFF_4 s12) -- but Coral and
-# Sarahi are excluded from EVERY calculation and shown as placeholders only
-# (s5), so they drop out of the team weighting too. Confirmed arithmetically:
-# Insightful's own published team figure for 2026-08-07, 1620m/1851m = 87.52%,
-# is Crystal+Mike+Debbie+Lorena. Coral is not in it. Revisit 2026-08-28 (s6).
-TEAM_UTIL_EXCLUDE = {"Amanda Torricellas", "Coral Barwick", "Sarahi Chin"}
+# Utilization scope = "all users except Amanda" (HANDOFF_4 s12).
+#
+# 2026-08-24: Coral is now a regular producer and IS fully tracked by Insightful,
+# so she enters the team weighting. Leaving her out would have printed her as a
+# producer everywhere else while quietly dropping her from the one team figure --
+# the kind of inconsistency someone spots and then distrusts the whole panel for.
+# Sarahi stays listed because she has NO Insightful record; she contributes no
+# attendance rows either way, so naming her here is documentation, not arithmetic.
+#
+# Consequence, on purpose: the team figure no longer reproduces Insightful's own
+# published team number, which for 2026-08-07 was 1620m/1851m = 87.52% over
+# Crystal+Mike+Debbie+Lorena. That match was how the METHOD was verified, not a
+# constraint on scope. Reverting is one line: put Coral back in this set.
+TEAM_UTIL_EXCLUDE = {"Amanda Torricellas", "Sarahi Chin"}
 
 
 class Insightful:

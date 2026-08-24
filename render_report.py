@@ -14,8 +14,19 @@ import re
 import digest_config as cfg
 from util_panel import assert_div_balance
 
+# Identity colours, taken from the row-2 key of Frank's Sales.xlsx so the report
+# and the sheet agree: Crystal #CC0000, Lorena #9900FF, Mike #0000FF -- all three
+# already matched cA/cB/cC exactly, which confirms that sheet is the source.
+#
+# Row 2 of the sheet gives Coral and Sarahi the SAME orange, so Frank set theirs
+# directly on 2026-08-24: Coral #E6CFF2, Sarahi #FFCFC9 -- the two tints row 3
+# already used to tell them apart. They live on cJ and cK, both added to the
+# template stylesheet for them.
+# Deliberately NOT reused: cD, which the Call Outcome bars already use (og cD),
+# and cF green / cH amber, which carry good/warning tier meaning elsewhere. A
+# producer dot must not double as a status colour.
 DOT = {"Crystal Mango": "cA", "Lorena Gonzalez": "cB", "Mike Olvera": "cC",
-       "Debbie Aguilera": "cE", "Coral Barwick": "cG", "Sarahi Chin": "cG"}
+       "Debbie Aguilera": "cE", "Coral Barwick": "cJ", "Sarahi Chin": "cK"}
 TEAM_DOT = "cE"
 TIER = {"green": "tier-text-good", "yellow": "tier-text-warning",
         "red": "tier-text-critical"}
@@ -54,7 +65,10 @@ def funnel_card(title, subtitle, rows, team_value, team_tier):
 
 
 def build_funnel(m, day_label):
-    P = ["Crystal Mango", "Lorena Gonzalez", "Mike Olvera"]
+    # Its own hardcoded roster until 2026-08-24, which is why the funnel kept
+    # showing three producers and three-producer team totals after Coral and
+    # Sarahi were promoted everywhere else. Driven off the config now.
+    P = list(cfg.PRODUCERS)
     cards = []
 
     vol = [(p, m[p]["call_volume"],
@@ -149,3 +163,52 @@ def swap_panel(html, heading, new_inner, next_heading=None):
     if end is None or end < start:
         raise SystemExit(f"panel close not found: {heading}")
     return html[:start] + new_inner + html[end:]
+
+
+def move_panel_before(html, heading, marker):
+    """Relocate a whole panel so it sits immediately before `marker`.
+
+    Same depth walk as swap_panel and drop_panel, so the boundary cannot be
+    guessed wrong. Used to put Call Outcome Breakdown last in the digest (Frank,
+    2026-08-24). Panels outside the two-column table are already full width, so
+    moving one there is a position change only -- no wrapper or width to adjust.
+    """
+    i = html.find(heading)
+    if i < 0:
+        raise SystemExit(f"panel not found: {heading}")
+    open_tag = html.rfind('<div class="panel', 0, i)
+    if open_tag < 0:
+        raise SystemExit(f"panel opening tag not found: {heading}")
+    depth = 0
+    for m in TAG_RE.finditer(html, open_tag):
+        depth += -1 if m.group(1) else 1
+        if depth == 0:
+            block = html[open_tag:m.end()]
+            rest = html[:open_tag] + html[m.end():]
+            j = rest.find(marker)
+            if j < 0:
+                raise SystemExit(f"move target not found: {marker}")
+            return rest[:j] + block + rest[j:]
+    raise SystemExit(f"panel close not found: {heading}")
+
+
+def drop_panel(html, heading):
+    """Remove a whole panel -- its <div class="panel"> through its own close.
+
+    Same depth walk as swap_panel, so it cannot guess the boundary wrong. Used to
+    keep a panel out of an email body while its PDF companion still ships: the
+    attachments are built from their own templates and do not read the report, so
+    removing a panel here costs nothing downstream.
+    """
+    i = html.find(heading)
+    if i < 0:
+        raise SystemExit(f"panel not found: {heading}")
+    open_tag = html.rfind('<div class="panel', 0, i)
+    if open_tag < 0:
+        raise SystemExit(f"panel opening tag not found: {heading}")
+    depth = 0
+    for m in TAG_RE.finditer(html, open_tag):
+        depth += -1 if m.group(1) else 1
+        if depth == 0:
+            return html[:open_tag] + html[m.end():]
+    raise SystemExit(f"panel close not found: {heading}")

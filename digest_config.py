@@ -41,16 +41,25 @@ PRODUCERS = {
     "Crystal Mango":   {"ext": "106", "rc_id": "193226052", "az_id": 174445},
     "Lorena Gonzalez": {"ext": "104", "rc_id": "173445052", "az_id": 82587},
     "Mike Olvera":     {"ext": "105", "rc_id": "173446052", "az_id": 82588},
+    # Frank, 2026-08-24: "lets get Sarahi and Coral added on as regular
+    # producers effective today." This lands the s6 decision four days ahead of
+    # the 2026-08-28 review date, which is therefore closed, not pending.
+    # Coral has a full Insightful record. Sarahi has NONE -- she counts in every
+    # call, quote and sales figure, but her utilization card reads as unlicensed
+    # until someone creates her Insightful record (NO_INSIGHTFUL_LICENCE below).
+    "Coral Barwick":   {"ext": "108", "rc_id": "774861052", "az_id": 185440},
+    "Sarahi Chin":     {"ext": "109", "rc_id": "774862052", "az_id": 185441},
 }
-TEAM_SCALE = len(PRODUCERS)  # 3
+TEAM_SCALE = len(PRODUCERS)  # 5 as of 2026-08-24 (was 3)
 
 # Shown as placeholders only, excluded from every calculation.
 # Frank, 2026-08-13: "leave them out of everything for calculating the data for
 # now, just put placeholders on the report." Revisit 2026-08-28 (s6).
-PLACEHOLDERS = {
-    "Coral Barwick": {"ext": "108", "rc_id": "774861052", "az_id": 185440},
-    "Sarahi Chin":   {"ext": "109", "rc_id": "774862052", "az_id": 185441},
-}
+# EMPTIED 2026-08-24: both moved into PRODUCERS above. The name is kept so the
+# `name in cfg.PLACEHOLDERS` guards and placeholder_sales() stay valid -- they
+# are now no-ops rather than dead code, which is what keeps the utilization
+# panel's card loop and its order assertion working unchanged.
+PLACEHOLDERS = {}
 
 # ONE EXCEPTION to the placeholder pin, Frank 2026-08-14: "put a pin in Sarahi
 # and Coral's data display until the 28th as agreed, UNLESS THEY SELL
@@ -234,7 +243,13 @@ LEADERBOARD_CATEGORIES = [
     "Avg Call Score", "Contact Rate", "Households Quoted",
     "Premium Quoted", "Premium Sold",
 ]
-LEADERBOARD_POINTS = [3, 2, 1]
+# Frank, 2026-08-24: "lets do 3-2-1-.5-0 for the points". Keeps the original
+# 3/2/1 podium intact, so totals stay on the same scale as the three-producer
+# reports, and gives fourth place a half point for showing up rather than
+# nothing. Fifth scores zero, same as no activity at all.
+# Places beyond this list score 0 -- see the padding in panels.leaderboard, which
+# is what stops a sixth producer from raising IndexError.
+LEADERBOARD_POINTS = [3, 2, 1, 0.5, 0]
 # Tie-break, from Frank: premium sold, then households quoted, then call volume.
 LEADERBOARD_TIEBREAK = ["premium_sold", "households_quoted", "call_volume"]
 

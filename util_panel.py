@@ -133,6 +133,16 @@ def _card_html(card, name, detail):
                   "cannot be tracked until one is")
         return STATS_RE.sub(_stats(s1, s2), card)
 
+    if name in cfg.NO_INSIGHTFUL_LICENCE:
+        # No Insightful record AT ALL -- a different fact from "licensed but no
+        # rows today", and the only figure still missing for her now that she is
+        # a regular producer (2026-08-24). Wired up here so the card states the
+        # actual reason instead of implying she simply did not work.
+        return STATS_RE.sub(
+            _stats("no Insightful licence assigned &mdash; "
+                   "cannot be tracked until one is",
+                   "Every other figure for her is live"), card)
+
     if not d.get("tracked"):
         # Licensed but no attendance rows. Never render 0% -- a zero reads as a
         # terrible day rather than as no data.

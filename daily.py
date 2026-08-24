@@ -389,7 +389,21 @@ def coach_from_gmail(day):
              for p in PRODUCERS}
     path = ROOT / f"data/coach_{day}.json"
     if path.exists():
-        return json.loads(path.read_text())
+        # Merge OVER the blank template rather than returning the file as-is.
+        # This file is hand-written each evening from the Coach AI emails, and a
+        # producer with no rows in those emails is simply absent from it. Before
+        # 2026-08-24 the roster and the file always matched, so a raw return was
+        # safe; with five producers a missing name became a KeyError deep inside
+        # the leaderboard. Zeros are the correct reading of "absent" here.
+        loaded = json.loads(path.read_text())
+        merged = {p: dict(blank[p], **loaded.get(p, {})) for p in blank}
+        missing = [p for p in blank if p not in loaded]
+        if missing:
+            log(f"  coach AI: no rows for {', '.join(missing)} -- using zeros")
+        extra = [p for p in loaded if p not in blank]
+        if extra:
+            log(f"  coach AI: ignoring non-producer rows: {', '.join(extra)}")
+        return merged
     log("  coach AI: no cached figures, using zeros "
         "(populate data/coach_<day>.json to override)")
     return blank
@@ -456,10 +470,19 @@ def send(day, ops_html, pdfs, audience="both"):
     from attachments import qp_safe
     label = dt.date.fromisoformat(day).strftime("%b %-d, %Y")
     ops = qp_safe(ops_html)
-    i = ops.index('<div id="audit-section"')
-    tail = ops[i:]
-    staff = (ops[:i] + tail[tail.rindex("</body>"):]).replace(
-        "Daily Sales Digest &amp; Call Detail Audit", "Daily Sales Digest")
+
+    # Staff used to lose the whole audit section, which cut Call Detail along with
+    # it. Frank, 2026-08-24: staff should see the live call detail. So the staff
+    # body now keeps the audit section and drops only the Task Completion Audit
+    # panel, and its heading is retitled to match what is actually left in it.
+    # Removing one panel by depth walk keeps the section wrapper balanced, which
+    # cutting at the section boundary did by brute force.
+    import render_report as rr
+    staff = rr.drop_panel(ops, "Task Completion Audit &middot;")
+    staff = (staff
+             .replace("Call Detail &amp; Task Completion Audit", "Call Detail")
+             .replace("Daily Sales Digest &amp; Call Detail Audit",
+                      "Daily Sales Digest"))
     atts = [(pathlib.Path(p).name, pathlib.Path(p).read_bytes()) for p in pdfs]
     jobs = []
     if audience in ("ops", "both"):

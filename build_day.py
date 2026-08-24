@@ -63,6 +63,32 @@ def build(day, template=TEMPLATE):
         assert_div_balance(before, h, heading)
 
     h = util_panel.patch(h, day)
+
+    # Frank, 2026-08-24: he is not sold on the Recontact Struggle panel and asked
+    # to "just do the file". It is the single biggest panel in the body at about
+    # 12.5 KB, and Recontact_Detail_<day>.pdf already ships the same content in
+    # full, built from its own template -- so dropping it here loses nothing and
+    # buys back the headroom the fourth and fifth producers cost. Swapped first,
+    # then removed, so that deleting this one line can never ship the template's
+    # stale placeholder rows.
+    h = rr.drop_panel(h, "Recontact Struggle")
+
+    # Frank, 2026-08-24: Call Outcome Breakdown goes last in the digest, spanning
+    # the full width. It already sat outside the two-column table, so it was
+    # already as wide as both columns -- this is purely a reorder, moving it from
+    # just after the columns to after Coaching & Call Quality, immediately before
+    # the audit section starts.
+    # The "Notes & Methodology -- attached" strip is gone entirely (Frank,
+    # 2026-08-24: "its not needed"). Both companion PDFs still attach to the
+    # email; this only removes the in-body pointer to them. The footnote markers
+    # in the panel headings still number through to the notes attachment.
+    # Dropped BEFORE the move below, so the audit section is once again the right
+    # anchor for putting Call Outcome last in the digest.
+    h = rr.drop_panel(h, "Notes &amp; Methodology &mdash; attached")
+
+    h = rr.move_panel_before(h, "Call Outcome Breakdown",
+                             '<div id="audit-section"')
+
     assert_div_balance(src, h, "final")
 
     out = f"out/Ops_Report_{day}.html"

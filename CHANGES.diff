@@ -1,0 +1,545 @@
+diff --git a/build_day.py b/build_day.py
+index 20be930..ae14402 100644
+--- a/build_day.py
++++ b/build_day.py
+@@ -63,6 +63,32 @@ def build(day, template=TEMPLATE):
+         assert_div_balance(before, h, heading)
+ 
+     h = util_panel.patch(h, day)
++
++    # Frank, 2026-08-24: he is not sold on the Recontact Struggle panel and asked
++    # to "just do the file". It is the single biggest panel in the body at about
++    # 12.5 KB, and Recontact_Detail_<day>.pdf already ships the same content in
++    # full, built from its own template -- so dropping it here loses nothing and
++    # buys back the headroom the fourth and fifth producers cost. Swapped first,
++    # then removed, so that deleting this one line can never ship the template's
++    # stale placeholder rows.
++    h = rr.drop_panel(h, "Recontact Struggle")
++
++    # Frank, 2026-08-24: Call Outcome Breakdown goes last in the digest, spanning
++    # the full width. It already sat outside the two-column table, so it was
++    # already as wide as both columns -- this is purely a reorder, moving it from
++    # just after the columns to after Coaching & Call Quality, immediately before
++    # the audit section starts.
++    # The "Notes & Methodology -- attached" strip is gone entirely (Frank,
++    # 2026-08-24: "its not needed"). Both companion PDFs still attach to the
++    # email; this only removes the in-body pointer to them. The footnote markers
++    # in the panel headings still number through to the notes attachment.
++    # Dropped BEFORE the move below, so the audit section is once again the right
++    # anchor for putting Call Outcome last in the digest.
++    h = rr.drop_panel(h, "Notes &amp; Methodology &mdash; attached")
++
++    h = rr.move_panel_before(h, "Call Outcome Breakdown",
++                             '<div id="audit-section"')
++
+     assert_div_balance(src, h, "final")
+ 
+     out = f"out/Ops_Report_{day}.html"
+diff --git a/daily.py b/daily.py
+index 4cddf2a..60a0097 100644
+--- a/daily.py
++++ b/daily.py
+@@ -389,7 +389,21 @@ def coach_from_gmail(day):
+              for p in PRODUCERS}
+     path = ROOT / f"data/coach_{day}.json"
+     if path.exists():
+-        return json.loads(path.read_text())
++        # Merge OVER the blank template rather than returning the file as-is.
++        # This file is hand-written each evening from the Coach AI emails, and a
++        # producer with no rows in those emails is simply absent from it. Before
++        # 2026-08-24 the roster and the file always matched, so a raw return was
++        # safe; with five producers a missing name became a KeyError deep inside
++        # the leaderboard. Zeros are the correct reading of "absent" here.
++        loaded = json.loads(path.read_text())
++        merged = {p: dict(blank[p], **loaded.get(p, {})) for p in blank}
++        missing = [p for p in blank if p not in loaded]
++        if missing:
++            log(f"  coach AI: no rows for {', '.join(missing)} -- using zeros")
++        extra = [p for p in loaded if p not in blank]
++        if extra:
++            log(f"  coach AI: ignoring non-producer rows: {', '.join(extra)}")
++        return merged
+     log("  coach AI: no cached figures, using zeros "
+         "(populate data/coach_<day>.json to override)")
+     return blank
+@@ -456,10 +470,19 @@ def send(day, ops_html, pdfs, audience="both"):
+     from attachments import qp_safe
+     label = dt.date.fromisoformat(day).strftime("%b %-d, %Y")
+     ops = qp_safe(ops_html)
+-    i = ops.index('<div id="audit-section"')
+-    tail = ops[i:]
+-    staff = (ops[:i] + tail[tail.rindex("</body>"):]).replace(
+-        "Daily Sales Digest &amp; Call Detail Audit", "Daily Sales Digest")
++
++    # Staff used to lose the whole audit section, which cut Call Detail along with
++    # it. Frank, 2026-08-24: staff should see the live call detail. So the staff
++    # body now keeps the audit section and drops only the Task Completion Audit
++    # panel, and its heading is retitled to match what is actually left in it.
++    # Removing one panel by depth walk keeps the section wrapper balanced, which
++    # cutting at the section boundary did by brute force.
++    import render_report as rr
++    staff = rr.drop_panel(ops, "Task Completion Audit &middot;")
++    staff = (staff
++             .replace("Call Detail &amp; Task Completion Audit", "Call Detail")
++             .replace("Daily Sales Digest &amp; Call Detail Audit",
++                      "Daily Sales Digest"))
+     atts = [(pathlib.Path(p).name, pathlib.Path(p).read_bytes()) for p in pdfs]
+     jobs = []
+     if audience in ("ops", "both"):
+diff --git a/digest_config.py b/digest_config.py
+index 9d4eb0e..130baa7 100644
+--- a/digest_config.py
++++ b/digest_config.py
+@@ -41,16 +41,25 @@ PRODUCERS = {
+     "Crystal Mango":   {"ext": "106", "rc_id": "193226052", "az_id": 174445},
+     "Lorena Gonzalez": {"ext": "104", "rc_id": "173445052", "az_id": 82587},
+     "Mike Olvera":     {"ext": "105", "rc_id": "173446052", "az_id": 82588},
++    # Frank, 2026-08-24: "lets get Sarahi and Coral added on as regular
++    # producers effective today." This lands the s6 decision four days ahead of
++    # the 2026-08-28 review date, which is therefore closed, not pending.
++    # Coral has a full Insightful record. Sarahi has NONE -- she counts in every
++    # call, quote and sales figure, but her utilization card reads as unlicensed
++    # until someone creates her Insightful record (NO_INSIGHTFUL_LICENCE below).
++    "Coral Barwick":   {"ext": "108", "rc_id": "774861052", "az_id": 185440},
++    "Sarahi Chin":     {"ext": "109", "rc_id": "774862052", "az_id": 185441},
+ }
+-TEAM_SCALE = len(PRODUCERS)  # 3
++TEAM_SCALE = len(PRODUCERS)  # 5 as of 2026-08-24 (was 3)
+ 
+ # Shown as placeholders only, excluded from every calculation.
+ # Frank, 2026-08-13: "leave them out of everything for calculating the data for
+ # now, just put placeholders on the report." Revisit 2026-08-28 (s6).
+-PLACEHOLDERS = {
+-    "Coral Barwick": {"ext": "108", "rc_id": "774861052", "az_id": 185440},
+-    "Sarahi Chin":   {"ext": "109", "rc_id": "774862052", "az_id": 185441},
+-}
++# EMPTIED 2026-08-24: both moved into PRODUCERS above. The name is kept so the
++# `name in cfg.PLACEHOLDERS` guards and placeholder_sales() stay valid -- they
++# are now no-ops rather than dead code, which is what keeps the utilization
++# panel's card loop and its order assertion working unchanged.
++PLACEHOLDERS = {}
+ 
+ # ONE EXCEPTION to the placeholder pin, Frank 2026-08-14: "put a pin in Sarahi
+ # and Coral's data display until the 28th as agreed, UNLESS THEY SELL
+@@ -234,7 +243,13 @@ LEADERBOARD_CATEGORIES = [
+     "Avg Call Score", "Contact Rate", "Households Quoted",
+     "Premium Quoted", "Premium Sold",
+ ]
+-LEADERBOARD_POINTS = [3, 2, 1]
++# Frank, 2026-08-24: "lets do 3-2-1-.5-0 for the points". Keeps the original
++# 3/2/1 podium intact, so totals stay on the same scale as the three-producer
++# reports, and gives fourth place a half point for showing up rather than
++# nothing. Fifth scores zero, same as no activity at all.
++# Places beyond this list score 0 -- see the padding in panels.leaderboard, which
++# is what stops a sixth producer from raising IndexError.
++LEADERBOARD_POINTS = [3, 2, 1, 0.5, 0]
+ # Tie-break, from Frank: premium sold, then households quoted, then call volume.
+ LEADERBOARD_TIEBREAK = ["premium_sold", "households_quoted", "call_volume"]
+ 
+diff --git a/insightful_client.py b/insightful_client.py
+index 32be6fc..e6f3403 100644
+--- a/insightful_client.py
++++ b/insightful_client.py
+@@ -43,12 +43,20 @@ UA = "FloresDigest/1.0 (+frank@floresinsuranceagency.com)"
+ 
+ AZ_TZ = dt.timezone(dt.timedelta(hours=-7))  # Arizona: UTC-7, never DST
+ 
+-# Utilization scope = "all users except Amanda" (HANDOFF_4 s12) -- but Coral and
+-# Sarahi are excluded from EVERY calculation and shown as placeholders only
+-# (s5), so they drop out of the team weighting too. Confirmed arithmetically:
+-# Insightful's own published team figure for 2026-08-07, 1620m/1851m = 87.52%,
+-# is Crystal+Mike+Debbie+Lorena. Coral is not in it. Revisit 2026-08-28 (s6).
+-TEAM_UTIL_EXCLUDE = {"Amanda Torricellas", "Coral Barwick", "Sarahi Chin"}
++# Utilization scope = "all users except Amanda" (HANDOFF_4 s12).
++#
++# 2026-08-24: Coral is now a regular producer and IS fully tracked by Insightful,
++# so she enters the team weighting. Leaving her out would have printed her as a
++# producer everywhere else while quietly dropping her from the one team figure --
++# the kind of inconsistency someone spots and then distrusts the whole panel for.
++# Sarahi stays listed because she has NO Insightful record; she contributes no
++# attendance rows either way, so naming her here is documentation, not arithmetic.
++#
++# Consequence, on purpose: the team figure no longer reproduces Insightful's own
++# published team number, which for 2026-08-07 was 1620m/1851m = 87.52% over
++# Crystal+Mike+Debbie+Lorena. That match was how the METHOD was verified, not a
++# constraint on scope. Reverting is one line: put Coral back in this set.
++TEAM_UTIL_EXCLUDE = {"Amanda Torricellas", "Sarahi Chin"}
+ 
+ 
+ class Insightful:
+diff --git a/notes_patch.py b/notes_patch.py
+index cda221a..dcaf7c1 100644
+--- a/notes_patch.py
++++ b/notes_patch.py
+@@ -40,21 +40,22 @@ FOOTNOTE_6_NEW = (
+     "same ~3.5 minutes &mdash; her shift appears to have been edited after the "
+     "email was generated. Nothing is estimated. Green 85%+, yellow 80&ndash;84%, "
+     "red under 80%; the bar is tinted to match."
+-    "<br><br><b>Scope and roster.</b> The team weighted figure is all users "
+-    "except Amanda, Coral and Sarahi &mdash; confirmed arithmetically against "
+-    "Insightful&rsquo;s own published team number for Aug 7, 1620m/1851m, which "
+-    "is Crystal, Mike, Debbie and Lorena only. The roster is always shown in "
+-    "full. <b>Coral and Sarahi remain blank on purpose</b> while they are in "
+-    "training, and are excluded from every figure until the 2026-08-28 review "
+-    "&mdash; but the reason has changed: <b>Coral is fully tracked by Insightful "
+-    "and has a real utilization figure every day</b> (the old daily email was "
+-    "simply truncating her off at its top-five limit), so the 28th is now a "
+-    "straight include-or-not decision rather than an open question. "
+-    "<b>Sarahi has no Insightful record at all</b> &mdash; not merely untracked "
+-    "&mdash; and cannot be reported on until a licence is assigned to her, "
+-    "whatever is decided on the 28th. Francisco Flores holds an active licence "
+-    "but produces no attendance rows; he is reported as absent rather than 0%, "
+-    "since a zero would read as a bad day rather than as no data."
++    "<br><br><b>Scope and roster.</b> <b>As of Aug 24 Coral Barwick and Sarahi "
++    "Chin are regular producers</b> and count in every figure in this report, "
++    "including the team totals. The training pin that kept them blank, and the "
++    "Aug 28 review it was waiting for, are both closed. The team is therefore "
++    "five producers, not three, so team totals and the goal thresholds on call "
++    "volume and households quoted step up accordingly &mdash; <b>figures before "
++    "and after Aug 24 are not directly comparable</b> on those two metrics. "
++    "The team weighted utilization figure is all users except Amanda; it now "
++    "includes Coral, who is fully tracked by Insightful and has a real figure "
++    "every day (the old daily email was simply truncating her off at its "
++    "top-five limit). One gap remains: <b>Sarahi has no Insightful record at "
++    "all</b> &mdash; not merely untracked &mdash; so her utilization card alone "
++    "stays blank until a licence is assigned to her. Every other figure for her "
++    "is live. Francisco Flores holds an active licence but produces no "
++    "attendance rows; he is reported as absent rather than 0%, since a zero "
++    "would read as a bad day rather than as no data."
+ )
+ 
+ SOURCES_OLD = "Insightful daily report email"
+diff --git a/panels.py b/panels.py
+index e3ee047..814e07e 100644
+--- a/panels.py
++++ b/panels.py
+@@ -11,8 +11,22 @@ import digest_config as cfg
+ from render_report import DOT, TIER, hhmm, money
+ 
+ SHORT = {"Crystal Mango": "Crystal", "Lorena Gonzalez": "Lorena",
+-         "Mike Olvera": "Mike"}
+-P3 = ["Crystal Mango", "Lorena Gonzalez", "Mike Olvera"]
++         "Mike Olvera": "Mike", "Coral Barwick": "Coral",
++         "Sarahi Chin": "Sarahi"}
++# Historical name -- it was three producers until 2026-08-24, when Coral and
++# Sarahi were added and it became five. Derived from the roster now so adding or
++# removing a producer is a digest_config change only. Every panel below iterates
++# it; none may assume a length.
++P3 = list(cfg.PRODUCERS)
++
++
++def _pts(v):
++    """Point values as people write them: 30 not 30.0, 12.5 not 12.50.
++
++    Needed once the scheme went to 3-2-1-.5-0 (Frank, 2026-08-24) and totals
++    stopped being whole numbers.
++    """
++    return f"{v:g}"
+ 
+ 
+ # ---- Task Completion Rate --------------------------------------------------
+@@ -118,13 +132,29 @@ def _s2d_card(name, d):
+ 
+ 
+ def speed_table(s2d, team):
++    """Two cards per row, producers then Team. Was a fixed 2x2 for three
++    producers plus Team; now any count, with the padding alternating left/right
++    exactly as the approved layout did and the bottom row losing its 12px gap.
++    An odd card out spans both columns rather than leaving a ragged half-width
++    cell, which is how the Coaching panel handles the same situation."""
+     cards = [_s2d_card(p, s2d.get(p)) for p in P3] + [_s2d_card("Team", team)]
+-    pads = ['0 8px 12px 0', '0 0 12px 8px', '0 8px 12px 0', '0 0 12px 8px']
+-    cells = [f'<td valign="top" style="width:50%;border-bottom:none;padding:{pads[i]}">'
+-             f'{c}</td>' for i, c in enumerate(cards)]
++    rows = []
++    for i in range(0, len(cards), 2):
++        pair = cards[i:i + 2]
++        pad_b = "0" if i + 2 >= len(cards) else "12px"
++        if len(pair) == 2:
++            rows.append(
++                f'<tr><td valign="top" style="width:50%;border-bottom:none;'
++                f'padding:0 8px {pad_b} 0">{pair[0]}</td>'
++                f'<td valign="top" style="width:50%;border-bottom:none;'
++                f'padding:0 0 {pad_b} 8px">{pair[1]}</td></tr>')
++        else:
++            rows.append(
++                f'<tr><td valign="top" colspan="2" style="border-bottom:none;'
++                f'padding:0 0 {pad_b} 0">{pair[0]}</td></tr>')
+     return ('<table role="presentation" cellpadding="0" cellspacing="0" '
+             'style="width:100%;border-collapse:collapse;table-layout:fixed">'
+-            f'<tr>{cells[0]}{cells[1]}</tr><tr>{cells[2]}{cells[3]}</tr></table>')
++            + "".join(rows) + '</table>')
+ 
+ 
+ # ---- Coaching & Call Quality ----------------------------------------------
+@@ -146,15 +176,28 @@ def coach_cards(coach):
+                 + bar(p, "Avg Sentiment", c["sentiment"], *r["Avg Sentiment"])
+                 + bar(p, "Role Play", c["roleplay"], *r["Role Play"])
+                 + '</div>')
+-    a, b, d = (col(p) for p in P3)
++    # Two columns per row, any producer count. An odd producer out spans both
++    # columns on the final row, which is exactly how the approved three-producer
++    # layout behaved -- so the two-per-row rhythm and padding are preserved.
++    cols = [col(p) for p in P3]
++    rows = []
++    for i in range(0, len(cols), 2):
++        pair = cols[i:i + 2]
++        last = i + 2 >= len(cols)
++        pad_b = "0" if last else "12px"
++        if len(pair) == 2:
++            rows.append(
++                f'<tr><td valign="top" style="width:50%;border-bottom:none;'
++                f'padding:0 6px {pad_b} 0">{pair[0]}</td>'
++                f'<td valign="top" style="width:50%;border-bottom:none;'
++                f'padding:0 0 {pad_b} 6px">{pair[1]}</td></tr>')
++        else:
++            rows.append(
++                f'<tr><td valign="top" colspan="2" style="border-bottom:none;'
++                f'padding:0 0 {pad_b} 0">{pair[0]}</td></tr>')
+     return ('<table role="presentation" cellpadding="0" cellspacing="0" '
+             'style="width:100%;border-collapse:collapse;table-layout:fixed">'
+-            f'<tr><td valign="top" style="width:50%;border-bottom:none;'
+-            f'padding:0 6px 12px 0">{a}</td>'
+-            f'<td valign="top" style="width:50%;border-bottom:none;'
+-            f'padding:0 0 12px 6px">{b}</td></tr>'
+-            f'<tr><td valign="top" colspan="2" style="border-bottom:none;'
+-            f'padding:0">{d}</td></tr></table>')
++            + "".join(rows) + '</table>')
+ 
+ 
+ # ---- Team Leaderboard ------------------------------------------------------
+@@ -175,16 +218,39 @@ def leaderboard(M, coach):
+ 
+     points = {p: 0 for p in P3}
+     rows = []
++    def place(i):
++        """Points for finishing i-th. Beyond the scheme, zero -- never IndexError."""
++        return cfg.LEADERBOARD_POINTS[i] if i < len(cfg.LEADERBOARD_POINTS) else 0
++
+     for name, v, fmt in cats:
+         order = sorted(P3, key=lambda p: -v[p])
+         pts = {}
+-        rank = 0
+-        for i, p in enumerate(order):
+-            # Zero-activity override: no recorded activity scores 0, not a rank.
+-            pts[p] = 0 if not v[p] else cfg.LEADERBOARD_POINTS[i]
+-            points[p] += pts[p]
++        # Ties take the BEST place they occupy, golf-leaderboard style (Frank,
++        # 2026-08-24): "if they tied for 2nd, they should all get 2 pts, if they
++        # tied first, they all get 3 pts". Three tied at the top are all first,
++        # and the next producer is fourth -- so the places a tie swallows are
++        # gone, not redistributed. Splitting them evenly instead was the first
++        # attempt and is what golf does with prize money, but it is not how the
++        # standings read, and it is not what was asked for.
++        #
++        # Before either fix, ties were broken silently by roster order: three
++        # producers all scoring 81 on role play took 3, 2 and 1 points, and
++        # whoever sat last in the roster was penalised for an identical result.
++        i = 0
++        while i < len(order):
++            j = i
++            while j + 1 < len(order) and v[order[j + 1]] == v[order[i]]:
++                j += 1
++            best = place(i)
++            for q in order[i:j + 1]:
++                # Zero-activity override: no recorded activity scores 0, not a
++                # rank -- it still consumes its place, so a zero never promotes
++                # anyone behind it.
++                pts[q] = 0 if not v[q] else best
++                points[q] += pts[q]
++            i = j + 1
+         cells = "".join(
+-            f'<td class="num"><span class="pb">{pts[p]}'
++            f'<td class="num"><span class="pb">{_pts(pts[p])}'
+             f'{"pt" if pts[p] == 1 else "pts"}</span>'
+             f'<span class="pv">{fmt(v[p])}</span></td>' for p in P3)
+         rows.append(f'<tr><td>{name}</td>{cells}</tr>')
+@@ -194,21 +260,32 @@ def leaderboard(M, coach):
+                 M[p]["call_volume"])
+     standing = sorted(P3, key=tiebreak, reverse=True)
+     top = max(points.values()) or 1
++    # Gold/silver/bronze are the only medal colours the template defines. Fourth
++    # place onward gets the template's own slate tone inline, so the podium
++    # extends to any roster size without a stylesheet change (and inline
++    # backgrounds are the safe choice in email anyway).
+     medals = ["gold", "silver", "bronze"]
++
++    def medal(i):
++        if i < len(medals):
++            return f'class="mvp-medal {medals[i]}"'
++        return 'class="mvp-medal" style="background:#52514e"'
++
+     podium = "".join(
+         f'<table role="presentation" cellpadding="0" cellspacing="0" '
+         f'class="mvp-row-table mvp-{i + 1}"><tr>'
+         f'<td class="mvp-medal-cell" style="width:38px;padding-right:12px">'
+-        f'<div class="mvp-medal {medals[i]}">{i + 1}</div></td>'
++        f'<div {medal(i)}>{i + 1}</div></td>'
+         f'<td class="mvp-name-cell">{p}</td>'
+         f'<td><div class="mvp-track"><div class="mvp-fill {DOT[p]}" '
+         f'style="width:{points[p] / top * 100:.2f}%"></div></div></td>'
+-        f'<td class="mvp-pts-cell">{points[p]} pts</td></tr></table>'
++        f'<td class="mvp-pts-cell">{_pts(points[p])} pts</td></tr></table>'
+         for i, p in enumerate(standing))
+     head = ("<thead><tr><th>Category</th>" +
+             "".join(f'<th class="num">{SHORT[p]}</th>' for p in P3) + "</tr></thead>")
+     total = ('<tr><td><b>Total Points</b></td>' +
+-             "".join(f'<td class="num"><b>{points[p]} pts</b></td>' for p in P3) +
++             "".join(f'<td class="num"><b>{_pts(points[p])} pts</b></td>'
++                     for p in P3) +
+              "</tr>")
+     return (f'<div class="mvp-podium">{podium}</div>'
+             f'<div class="table-scroll"><table>{head}<tbody>'
+@@ -290,8 +367,11 @@ def recontact_cards(rc, attachment):
+ 
+ 
+ # ---- Call Detail -----------------------------------------------------------
++# Must stay in step with DOT in render_report and the .cN rules in the template
++# stylesheet -- these are the same colours, inlined for the Call Detail table.
+ DOT_HEX = {"Crystal Mango": "#cc0000", "Lorena Gonzalez": "#9900ff",
+-           "Mike Olvera": "#0000ff"}
++           "Mike Olvera": "#0000ff", "Coral Barwick": "#e6cff2",
++           "Sarahi Chin": "#ffcfc9"}
+ 
+ 
+ def _fmt_phone(e164):
+@@ -390,7 +470,17 @@ def call_detail(M, day):
+              "Marked dead/smart-cycled with NO quote presented"),
+             (cfg.CALL_ROW_COLORS["live_no_quote"],
+              "Live contact, no quote, no dead/smart-cycle outcome")]) + '</div>')
+-    return ('<table><thead><tr><th>Rep</th><th>Lead Name (AZ)</th><th>Phone</th>'
++    # Fixed layout with explicit column widths (Frank, 2026-08-24: "the call
++    # detail is too wide ... only as wide as the rest of the report"). The table
++    # was auto-layout, and .note-cell's max-width:480px does not bind in a table
++    # -- the browser widened the Note column to fit the longest transcript and
++    # pushed the whole table past the page. Fixed layout makes the percentages
++    # authoritative, so it fills the panel exactly and long notes wrap instead.
++    return ('<table style="table-layout:fixed;width:100%">'
++            '<colgroup><col style="width:9%"><col style="width:19%">'
++            '<col style="width:12%"><col style="width:8%">'
++            '<col style="width:52%"></colgroup>'
++            '<thead><tr><th>Rep</th><th>Lead Name (AZ)</th><th>Phone</th>'
+             '<th class="num">Duration</th><th>Note</th></tr></thead><tbody>'
+             + "".join(rows) + '</tbody></table>' + legend)
+ 
+diff --git a/render_report.py b/render_report.py
+index 8d5b622..5dac3c7 100644
+--- a/render_report.py
++++ b/render_report.py
+@@ -14,8 +14,19 @@ import re
+ import digest_config as cfg
+ from util_panel import assert_div_balance
+ 
++# Identity colours, taken from the row-2 key of Frank's Sales.xlsx so the report
++# and the sheet agree: Crystal #CC0000, Lorena #9900FF, Mike #0000FF -- all three
++# already matched cA/cB/cC exactly, which confirms that sheet is the source.
++#
++# Row 2 of the sheet gives Coral and Sarahi the SAME orange, so Frank set theirs
++# directly on 2026-08-24: Coral #E6CFF2, Sarahi #FFCFC9 -- the two tints row 3
++# already used to tell them apart. They live on cJ and cK, both added to the
++# template stylesheet for them.
++# Deliberately NOT reused: cD, which the Call Outcome bars already use (og cD),
++# and cF green / cH amber, which carry good/warning tier meaning elsewhere. A
++# producer dot must not double as a status colour.
+ DOT = {"Crystal Mango": "cA", "Lorena Gonzalez": "cB", "Mike Olvera": "cC",
+-       "Debbie Aguilera": "cE", "Coral Barwick": "cG", "Sarahi Chin": "cG"}
++       "Debbie Aguilera": "cE", "Coral Barwick": "cJ", "Sarahi Chin": "cK"}
+ TEAM_DOT = "cE"
+ TIER = {"green": "tier-text-good", "yellow": "tier-text-warning",
+         "red": "tier-text-critical"}
+@@ -54,7 +65,10 @@ def funnel_card(title, subtitle, rows, team_value, team_tier):
+ 
+ 
+ def build_funnel(m, day_label):
+-    P = ["Crystal Mango", "Lorena Gonzalez", "Mike Olvera"]
++    # Its own hardcoded roster until 2026-08-24, which is why the funnel kept
++    # showing three producers and three-producer team totals after Coral and
++    # Sarahi were promoted everywhere else. Driven off the config now.
++    P = list(cfg.PRODUCERS)
+     cards = []
+ 
+     vol = [(p, m[p]["call_volume"],
+@@ -149,3 +163,52 @@ def swap_panel(html, heading, new_inner, next_heading=None):
+     if end is None or end < start:
+         raise SystemExit(f"panel close not found: {heading}")
+     return html[:start] + new_inner + html[end:]
++
++
++def move_panel_before(html, heading, marker):
++    """Relocate a whole panel so it sits immediately before `marker`.
++
++    Same depth walk as swap_panel and drop_panel, so the boundary cannot be
++    guessed wrong. Used to put Call Outcome Breakdown last in the digest (Frank,
++    2026-08-24). Panels outside the two-column table are already full width, so
++    moving one there is a position change only -- no wrapper or width to adjust.
++    """
++    i = html.find(heading)
++    if i < 0:
++        raise SystemExit(f"panel not found: {heading}")
++    open_tag = html.rfind('<div class="panel', 0, i)
++    if open_tag < 0:
++        raise SystemExit(f"panel opening tag not found: {heading}")
++    depth = 0
++    for m in TAG_RE.finditer(html, open_tag):
++        depth += -1 if m.group(1) else 1
++        if depth == 0:
++            block = html[open_tag:m.end()]
++            rest = html[:open_tag] + html[m.end():]
++            j = rest.find(marker)
++            if j < 0:
++                raise SystemExit(f"move target not found: {marker}")
++            return rest[:j] + block + rest[j:]
++    raise SystemExit(f"panel close not found: {heading}")
++
++
++def drop_panel(html, heading):
++    """Remove a whole panel -- its <div class="panel"> through its own close.
++
++    Same depth walk as swap_panel, so it cannot guess the boundary wrong. Used to
++    keep a panel out of an email body while its PDF companion still ships: the
++    attachments are built from their own templates and do not read the report, so
++    removing a panel here costs nothing downstream.
++    """
++    i = html.find(heading)
++    if i < 0:
++        raise SystemExit(f"panel not found: {heading}")
++    open_tag = html.rfind('<div class="panel', 0, i)
++    if open_tag < 0:
++        raise SystemExit(f"panel opening tag not found: {heading}")
++    depth = 0
++    for m in TAG_RE.finditer(html, open_tag):
++        depth += -1 if m.group(1) else 1
++        if depth == 0:
++            return html[:open_tag] + html[m.end():]
++    raise SystemExit(f"panel close not found: {heading}")
+diff --git a/util_panel.py b/util_panel.py
+index 2cf1613..8568879 100644
+--- a/util_panel.py
++++ b/util_panel.py
+@@ -133,6 +133,16 @@ def _card_html(card, name, detail):
+                   "cannot be tracked until one is")
+         return STATS_RE.sub(_stats(s1, s2), card)
+ 
++    if name in cfg.NO_INSIGHTFUL_LICENCE:
++        # No Insightful record AT ALL -- a different fact from "licensed but no
++        # rows today", and the only figure still missing for her now that she is
++        # a regular producer (2026-08-24). Wired up here so the card states the
++        # actual reason instead of implying she simply did not work.
++        return STATS_RE.sub(
++            _stats("no Insightful licence assigned &mdash; "
++                   "cannot be tracked until one is",
++                   "Every other figure for her is live"), card)
++
+     if not d.get("tracked"):
+         # Licensed but no attendance rows. Never render 0% -- a zero reads as a
+         # terrible day rather than as no data.
+
+--- template/report_template.html -------------------------------------------
+Not shown above: the template is minified onto one line, so a textual diff is
+unreadable. The only change is two new dot colours in the stylesheet, added
+immediately after .cI:
+
+    .cJ{background:#e6cff2}   Coral Barwick
+    .cK{background:#ffcfc9}   Sarahi Chin
+
+Everything else in that file is byte-identical to what is on main.

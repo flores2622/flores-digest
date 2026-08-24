@@ -11,8 +11,22 @@ import digest_config as cfg
 from render_report import DOT, TIER, hhmm, money
 
 SHORT = {"Crystal Mango": "Crystal", "Lorena Gonzalez": "Lorena",
-         "Mike Olvera": "Mike"}
-P3 = ["Crystal Mango", "Lorena Gonzalez", "Mike Olvera"]
+         "Mike Olvera": "Mike", "Coral Barwick": "Coral",
+         "Sarahi Chin": "Sarahi"}
+# Historical name -- it was three producers until 2026-08-24, when Coral and
+# Sarahi were added and it became five. Derived from the roster now so adding or
+# removing a producer is a digest_config change only. Every panel below iterates
+# it; none may assume a length.
+P3 = list(cfg.PRODUCERS)
+
+
+def _pts(v):
+    """Point values as people write them: 30 not 30.0, 12.5 not 12.50.
+
+    Needed once the scheme went to 3-2-1-.5-0 (Frank, 2026-08-24) and totals
+    stopped being whole numbers.
+    """
+    return f"{v:g}"
 
 
 # ---- Task Completion Rate --------------------------------------------------
@@ -118,13 +132,29 @@ def _s2d_card(name, d):
 
 
 def speed_table(s2d, team):
+    """Two cards per row, producers then Team. Was a fixed 2x2 for three
+    producers plus Team; now any count, with the padding alternating left/right
+    exactly as the approved layout did and the bottom row losing its 12px gap.
+    An odd card out spans both columns rather than leaving a ragged half-width
+    cell, which is how the Coaching panel handles the same situation."""
     cards = [_s2d_card(p, s2d.get(p)) for p in P3] + [_s2d_card("Team", team)]
-    pads = ['0 8px 12px 0', '0 0 12px 8px', '0 8px 12px 0', '0 0 12px 8px']
-    cells = [f'<td valign="top" style="width:50%;border-bottom:none;padding:{pads[i]}">'
-             f'{c}</td>' for i, c in enumerate(cards)]
+    rows = []
+    for i in range(0, len(cards), 2):
+        pair = cards[i:i + 2]
+        pad_b = "0" if i + 2 >= len(cards) else "12px"
+        if len(pair) == 2:
+            rows.append(
+                f'<tr><td valign="top" style="width:50%;border-bottom:none;'
+                f'padding:0 8px {pad_b} 0">{pair[0]}</td>'
+                f'<td valign="top" style="width:50%;border-bottom:none;'
+                f'padding:0 0 {pad_b} 8px">{pair[1]}</td></tr>')
+        else:
+            rows.append(
+                f'<tr><td valign="top" colspan="2" style="border-bottom:none;'
+                f'padding:0 0 {pad_b} 0">{pair[0]}</td></tr>')
     return ('<table role="presentation" cellpadding="0" cellspacing="0" '
             'style="width:100%;border-collapse:collapse;table-layout:fixed">'
-            f'<tr>{cells[0]}{cells[1]}</tr><tr>{cells[2]}{cells[3]}</tr></table>')
+            + "".join(rows) + '</table>')
 
 
 # ---- Coaching & Call Quality ----------------------------------------------
@@ -146,15 +176,28 @@ def coach_cards(coach):
                 + bar(p, "Avg Sentiment", c["sentiment"], *r["Avg Sentiment"])
                 + bar(p, "Role Play", c["roleplay"], *r["Role Play"])
                 + '</div>')
-    a, b, d = (col(p) for p in P3)
+    # Two columns per row, any producer count. An odd producer out spans both
+    # columns on the final row, which is exactly how the approved three-producer
+    # layout behaved -- so the two-per-row rhythm and padding are preserved.
+    cols = [col(p) for p in P3]
+    rows = []
+    for i in range(0, len(cols), 2):
+        pair = cols[i:i + 2]
+        last = i + 2 >= len(cols)
+        pad_b = "0" if last else "12px"
+        if len(pair) == 2:
+            rows.append(
+                f'<tr><td valign="top" style="width:50%;border-bottom:none;'
+                f'padding:0 6px {pad_b} 0">{pair[0]}</td>'
+                f'<td valign="top" style="width:50%;border-bottom:none;'
+                f'padding:0 0 {pad_b} 6px">{pair[1]}</td></tr>')
+        else:
+            rows.append(
+                f'<tr><td valign="top" colspan="2" style="border-bottom:none;'
+                f'padding:0 0 {pad_b} 0">{pair[0]}</td></tr>')
     return ('<table role="presentation" cellpadding="0" cellspacing="0" '
             'style="width:100%;border-collapse:collapse;table-layout:fixed">'
-            f'<tr><td valign="top" style="width:50%;border-bottom:none;'
-            f'padding:0 6px 12px 0">{a}</td>'
-            f'<td valign="top" style="width:50%;border-bottom:none;'
-            f'padding:0 0 12px 6px">{b}</td></tr>'
-            f'<tr><td valign="top" colspan="2" style="border-bottom:none;'
-            f'padding:0">{d}</td></tr></table>')
+            + "".join(rows) + '</table>')
 
 
 # ---- Team Leaderboard ------------------------------------------------------
@@ -175,16 +218,39 @@ def leaderboard(M, coach):
 
     points = {p: 0 for p in P3}
     rows = []
+    def place(i):
+        """Points for finishing i-th. Beyond the scheme, zero -- never IndexError."""
+        return cfg.LEADERBOARD_POINTS[i] if i < len(cfg.LEADERBOARD_POINTS) else 0
+
     for name, v, fmt in cats:
         order = sorted(P3, key=lambda p: -v[p])
         pts = {}
-        rank = 0
-        for i, p in enumerate(order):
-            # Zero-activity override: no recorded activity scores 0, not a rank.
-            pts[p] = 0 if not v[p] else cfg.LEADERBOARD_POINTS[i]
-            points[p] += pts[p]
+        # Ties take the BEST place they occupy, golf-leaderboard style (Frank,
+        # 2026-08-24): "if they tied for 2nd, they should all get 2 pts, if they
+        # tied first, they all get 3 pts". Three tied at the top are all first,
+        # and the next producer is fourth -- so the places a tie swallows are
+        # gone, not redistributed. Splitting them evenly instead was the first
+        # attempt and is what golf does with prize money, but it is not how the
+        # standings read, and it is not what was asked for.
+        #
+        # Before either fix, ties were broken silently by roster order: three
+        # producers all scoring 81 on role play took 3, 2 and 1 points, and
+        # whoever sat last in the roster was penalised for an identical result.
+        i = 0
+        while i < len(order):
+            j = i
+            while j + 1 < len(order) and v[order[j + 1]] == v[order[i]]:
+                j += 1
+            best = place(i)
+            for q in order[i:j + 1]:
+                # Zero-activity override: no recorded activity scores 0, not a
+                # rank -- it still consumes its place, so a zero never promotes
+                # anyone behind it.
+                pts[q] = 0 if not v[q] else best
+                points[q] += pts[q]
+            i = j + 1
         cells = "".join(
-            f'<td class="num"><span class="pb">{pts[p]}'
+            f'<td class="num"><span class="pb">{_pts(pts[p])}'
             f'{"pt" if pts[p] == 1 else "pts"}</span>'
             f'<span class="pv">{fmt(v[p])}</span></td>' for p in P3)
         rows.append(f'<tr><td>{name}</td>{cells}</tr>')
@@ -194,21 +260,32 @@ def leaderboard(M, coach):
                 M[p]["call_volume"])
     standing = sorted(P3, key=tiebreak, reverse=True)
     top = max(points.values()) or 1
+    # Gold/silver/bronze are the only medal colours the template defines. Fourth
+    # place onward gets the template's own slate tone inline, so the podium
+    # extends to any roster size without a stylesheet change (and inline
+    # backgrounds are the safe choice in email anyway).
     medals = ["gold", "silver", "bronze"]
+
+    def medal(i):
+        if i < len(medals):
+            return f'class="mvp-medal {medals[i]}"'
+        return 'class="mvp-medal" style="background:#52514e"'
+
     podium = "".join(
         f'<table role="presentation" cellpadding="0" cellspacing="0" '
         f'class="mvp-row-table mvp-{i + 1}"><tr>'
         f'<td class="mvp-medal-cell" style="width:38px;padding-right:12px">'
-        f'<div class="mvp-medal {medals[i]}">{i + 1}</div></td>'
+        f'<div {medal(i)}>{i + 1}</div></td>'
         f'<td class="mvp-name-cell">{p}</td>'
         f'<td><div class="mvp-track"><div class="mvp-fill {DOT[p]}" '
         f'style="width:{points[p] / top * 100:.2f}%"></div></div></td>'
-        f'<td class="mvp-pts-cell">{points[p]} pts</td></tr></table>'
+        f'<td class="mvp-pts-cell">{_pts(points[p])} pts</td></tr></table>'
         for i, p in enumerate(standing))
     head = ("<thead><tr><th>Category</th>" +
             "".join(f'<th class="num">{SHORT[p]}</th>' for p in P3) + "</tr></thead>")
     total = ('<tr><td><b>Total Points</b></td>' +
-             "".join(f'<td class="num"><b>{points[p]} pts</b></td>' for p in P3) +
+             "".join(f'<td class="num"><b>{_pts(points[p])} pts</b></td>'
+                     for p in P3) +
              "</tr>")
     return (f'<div class="mvp-podium">{podium}</div>'
             f'<div class="table-scroll"><table>{head}<tbody>'
@@ -290,8 +367,11 @@ def recontact_cards(rc, attachment):
 
 
 # ---- Call Detail -----------------------------------------------------------
+# Must stay in step with DOT in render_report and the .cN rules in the template
+# stylesheet -- these are the same colours, inlined for the Call Detail table.
 DOT_HEX = {"Crystal Mango": "#cc0000", "Lorena Gonzalez": "#9900ff",
-           "Mike Olvera": "#0000ff"}
+           "Mike Olvera": "#0000ff", "Coral Barwick": "#e6cff2",
+           "Sarahi Chin": "#ffcfc9"}
 
 
 def _fmt_phone(e164):
@@ -390,7 +470,17 @@ def call_detail(M, day):
              "Marked dead/smart-cycled with NO quote presented"),
             (cfg.CALL_ROW_COLORS["live_no_quote"],
              "Live contact, no quote, no dead/smart-cycle outcome")]) + '</div>')
-    return ('<table><thead><tr><th>Rep</th><th>Lead Name (AZ)</th><th>Phone</th>'
+    # Fixed layout with explicit column widths (Frank, 2026-08-24: "the call
+    # detail is too wide ... only as wide as the rest of the report"). The table
+    # was auto-layout, and .note-cell's max-width:480px does not bind in a table
+    # -- the browser widened the Note column to fit the longest transcript and
+    # pushed the whole table past the page. Fixed layout makes the percentages
+    # authoritative, so it fills the panel exactly and long notes wrap instead.
+    return ('<table style="table-layout:fixed;width:100%">'
+            '<colgroup><col style="width:9%"><col style="width:19%">'
+            '<col style="width:12%"><col style="width:8%">'
+            '<col style="width:52%"></colgroup>'
+            '<thead><tr><th>Rep</th><th>Lead Name (AZ)</th><th>Phone</th>'
             '<th class="num">Duration</th><th>Note</th></tr></thead><tbody>'
             + "".join(rows) + '</tbody></table>' + legend)
 
