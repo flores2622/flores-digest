@@ -54,6 +54,13 @@ NEGATIVE = re.compile(
     # Frank, 2026-08-25 on Juan Avila: "not a live contact". 21 seconds, no
     # recording, note read "Juan stopped responding to me." The pattern already
     # had "did not respond" and "no response" but not the stopped/quit form.
+    # Frank, 2026-08-25 on Diego Rodriguez: "theres a note that says 'Called No
+    # Anwer'". The task note read exactly that -- answer misspelled by one
+    # letter -- so "no answer", "no ans\b" and "didn't answer" all missed it and
+    # the call scored as a live contact off the OTHER note on the lead. Anchored
+    # to a negating word so a bare "she answered" (which IS contact) is untouched,
+    # and the 3rd letter must be s or w so "no another"/"no anchor" do not match.
+    r"|(?:\bno|\bnever|\bdid ?n'?o?t|\bdoes ?n'?o?t)\s+an[sw]\w{0,3}r(ed)?\b"
     r"|stopped (respond|answer|reply|return)\w*|quit (respond|answer)\w*"
     r"|no longer respond\w*"
     # Could not leave one at all -- invisible to every system until now.

@@ -155,7 +155,20 @@ TEST_LEAD_RE = re.compile(
     r"|do not call|^asdf|^xxx", re.I)
 
 
+# Internal or test calls against a lead record that looks completely ordinary,
+# so no name pattern can catch it without risking real prospects. Matched on ID
+# only -- deliberately explicit and auditable. Add an id here when a call turns
+# out to have been a test.
+#   49675255  Frankie Flores -- Sarahi's test call, 2026-08-24 (Frank confirmed).
+#             Real-looking record created 2025-05-01 and assigned to Mike, and
+#             "Flores" is the agency's own surname, so TEST_LEAD_RE must not be
+#             widened to catch it.
+TEST_LEAD_IDS = {49675255}
+
+
 def is_test_lead(lead):
+    if lead.get("id") in TEST_LEAD_IDS:
+        return True
     name = (f"{(lead.get('firstname') or '').strip()} "
             f"{(lead.get('lastname') or '').strip()}").strip()
     return bool(name) and bool(TEST_LEAD_RE.search(name))
