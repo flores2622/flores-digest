@@ -24,7 +24,10 @@ CARD MARKUP, taken from the approved builds -- do not invent new structure:
     </div>
 
     TIER is tier-text-good / tier-text-warning / tier-text-critical
-    (.tier-text-good #0ca30c, -warning #fab219, -critical #DC2626), applied with
+    (.tier-text-good #0ca30c, -warning #fab219, -critical #e60000 -- was
+    #d64545 until 2026-08-25; Frank: "faded or lipstick", and the replacement
+    is both more saturated (0.86 vs 0.68) and higher contrast on the panel
+    (5.02:1 vs 4.26:1)), applied with
     the Utilization thresholds: 85+ green, 80-84 yellow, under 80 red.
 
     The Aug 7 build wrote "productive / 7h 32m expected". "Expected" is wrong --
@@ -60,9 +63,7 @@ TIER_CLASS = {"green": "tier-text-good",
 # would then have to be taught not to purge).
 TIER_BAR = {"green": "#0ca30c",      # --status-good
             "yellow": "#fab219",     # --status-warning
-            "red": "#DC2626"}        # --status-critical, matches TIER_COLORS'
-                                      # "red" -- was #d64545, too muted to read
-                                      # as an alert (Frank, 2026-08-25)
+            "red": "#e60000"}        # --status-critical
 
 CARD_RE = re.compile(
     r'(<div class="insight-card"[^>]*>.*?</div></div>)', re.S)
@@ -145,9 +146,47 @@ def _blank(card):
     return _set_bar(_set_num(card, "zero", "&mdash;"), 0)
 
 
+# The utilization cards carried their dot colour as a hard-coded class in the
+# template, and Coral and Sarahi were still on cG -- the grey used while they
+# were placeholders (Frank, 2026-08-25: "sarahi and corals colors are not by
+# their names in the utilization box, its grey"). Their real swatches, cJ and cK,
+# already existed in the CSS and were already in use in Call Detail. Driving the
+# class from here instead of the template means a roster change cannot leave a
+# stale colour behind again.
+DOT_CLASS = {"Crystal Mango": "cA", "Lorena Gonzalez": "cB",
+             "Mike Olvera": "cC", "Debbie Aguilera": "cE",
+             "Coral Barwick": "cJ", "Sarahi Chin": "cK"}
+DOT_RE = re.compile(r'(<span class="dot )c[A-Z]("></span>)')
+
+
+# The placeholder cards were drawn dashed and at 72% opacity while Coral and
+# Sarahi were excluded from the figures. They became full producers on
+# 2026-08-24 and the dimming was never lifted, so Coral's genuinely-critical
+# 70.2% was rendered through a 28% veil and read as washed-out salmon rather
+# than alert red (Frank, 2026-08-25: "still looks faded"). The old undim only
+# matched the exact string 'opacity:.8' and missed this variant; strip the whole
+# attribute instead, for any card that is not currently a placeholder.
+CARD_OPEN_RE = re.compile(r'<div class="insight-card"\s+style="[^"]*"\s*>')
+
+
+def _undim(card, name):
+    if name in cfg.PLACEHOLDERS:
+        return card
+    return CARD_OPEN_RE.sub('<div class="insight-card">', card, count=1)
+
+
+def _set_dot(card, name):
+    cls = DOT_CLASS.get(name)
+    if not cls:
+        return card
+    return DOT_RE.sub(lambda m: f"{m.group(1)}{cls}{m.group(2)}", card, count=1)
+
+
 def _card_html(card, name, detail):
-    """Rewrite one card's number, bar and stats. Everything else is preserved."""
+    """Rewrite one card's dot, number, bar and stats. Everything else is kept."""
     d = detail.get(name) or {}
+    card = _undim(card, name)
+    card = _set_dot(card, name)
 
     if name in cfg.PLACEHOLDERS:
         # Deliberately blank until 2026-08-28 -- except a sale, which is shown
