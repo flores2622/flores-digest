@@ -236,6 +236,15 @@ def build_metrics(day):
             elif quote_presented(lc._text(n.get("body"))):
                 hh[n["createdBy"]].add(int(f.stem))
 
+    # Task titles due today, per lead -- the primary signal for whether a quote
+    # is already out (Frank, 2026-08-25). Built once; lc.quote_state reads it.
+    titles_by_lead = collections.defaultdict(list)
+    tf = ROOT / f"data/az_tasks_{day}.json"
+    if tf.exists():
+        for t in json.loads(tf.read_text()):
+            if (t.get("customerType") or "").lower() == "lead" and t.get("customerId"):
+                titles_by_lead[t["customerId"]].append(t.get("title") or "")
+
     real = cfg.real_sales(day, pol, smap, azid)
     M = {}
     for who in PRODUCERS:
@@ -269,8 +278,22 @@ def build_metrics(day):
                                # which. Merging them printed Mike's typed
                                # notes as "From the call recording" (Frank,
                                # 2026-08-17, Lazaro Rueda).
-                               "note_producer": (ev["written"][0][:280]
-                                                 if ev["written"] else ""),
+                               # EVERY note the producer wrote on this lead
+                               # today, not just the first. evidence() has
+                               # always collected them all, but the panel
+                               # printed [0] alone -- on 2026-08-24 five of the
+                               # 32 contacts had two or three notes and only one
+                               # was shown (Frank, 2026-08-25: "they might add
+                               # multiple notes in one day ... are you reading
+                               # all the notes?").
+                               # De-duplicated: the same text can arrive as
+                               # both a comment and a stage-move comment, and
+                               # Josefina Chavez printed hers twice.
+                               "note_producer": " &middot; ".join(
+                                   dict.fromkeys(ev["written"]))[:480],
+                               "quote_state": lc.quote_state(
+                                   r["lead_id"], day,
+                                   titles_by_lead.get(r["lead_id"], ())),
                                "note_recording": txt.get(r["number"], "")[:280],
                                "moves": [m["move"] for m in ev["stage_moves"]]})
         talk = sum(r["talk_seconds"] for r in live)

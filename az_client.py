@@ -96,16 +96,41 @@ class AgencyZoom:
     MAX_PAGE_SIZE = 100
 
     def _paged(self, path, key, body):
-        out, page = [], 0
+        """Page through a list endpoint, DEDUPED BY id.
+
+        The two list endpoints disagree about where paging starts.
+        /v1/api/leads/list is 0-indexed: page=0 and page=1 return different
+        records, and 11,621 leads come back with no repeats. /v1/api/tasks/list
+        is 1-indexed and CLAMPS page=0 to the first page, so page=0 and page=1
+        both returned records 1-100 and every task in that first page was
+        collected twice (Frank, 2026-08-25 -- spotted as duplicate rows in the
+        audit). Aug 24 read 253 task records for 153 real tasks, which inflated
+        every producer's task total: 180 "tasks due" against a real 101, and
+        Sarahi's completion rate 35.7% against a real 40.0%.
+
+        Deduping here rather than at each call site fixes it for both endpoints
+        and for any list endpoint added later, whichever convention it follows.
+        The loop still terminates on the RAW count -- dedupe must not shorten
+        the walk, or a repeated first page would end it early and silently drop
+        the tail.
+        """
+        out, seen, fetched, page = [], set(), 0, 0
         while True:
             j = self.post(path, dict(body, page=page,
                                      pageSize=self.MAX_PAGE_SIZE)) or {}
             batch = j.get(key) or j.get("data") or j.get("content") or []
-            out.extend(batch)
+            fetched += len(batch)
+            for r in batch:
+                rid = r.get("id") if isinstance(r, dict) else None
+                if rid is None:
+                    out.append(r)          # no id to dedupe on -- keep it
+                elif rid not in seen:
+                    seen.add(rid)
+                    out.append(r)
             total = j.get("totalCount")
             page += 1
             if total is not None:
-                if len(out) >= total or not batch:
+                if fetched >= total or not batch:
                     return out
             elif len(batch) < self.MAX_PAGE_SIZE:
                 return out

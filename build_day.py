@@ -73,21 +73,25 @@ def build(day, template=TEMPLATE):
     # stale placeholder rows.
     h = rr.drop_panel(h, "Recontact Struggle")
 
-    # Frank, 2026-08-24: Call Outcome Breakdown goes last in the digest, spanning
-    # the full width. It already sat outside the two-column table, so it was
-    # already as wide as both columns -- this is purely a reorder, moving it from
-    # just after the columns to after Coaching & Call Quality, immediately before
-    # the audit section starts.
     # The "Notes & Methodology -- attached" strip is gone entirely (Frank,
     # 2026-08-24: "its not needed"). Both companion PDFs still attach to the
     # email; this only removes the in-body pointer to them. The footnote markers
     # in the panel headings still number through to the notes attachment.
-    # Dropped BEFORE the move below, so the audit section is once again the right
-    # anchor for putting Call Outcome last in the digest.
     h = rr.drop_panel(h, "Notes &amp; Methodology &mdash; attached")
 
-    h = rr.move_panel_before(h, "Call Outcome Breakdown",
-                             '<div id="audit-section"')
+    # Frank, 2026-08-25: "make the leaderboard that width, make it the top, and
+    # make the call outcome breakdown a small box again." This reverses the
+    # 08-24 arrangement, where Call Outcome was pulled out of the right column
+    # to span both columns at the end of the digest. Dropping that move is all
+    # it takes to put Call Outcome back in the column as a normal-width panel --
+    # the template has it there already -- and the leaderboard takes the wide
+    # slot instead, moved out of the column to just above the two-column table
+    # so it reads first. Anchoring on the table itself rather than on the Sales
+    # Funnel heading keeps this correct if the left column is ever reordered.
+    h = rr.move_panel_before(
+        h, "Team Leaderboard",
+        '<table role="presentation" cellpadding="0" cellspacing="0"'
+        ' class="two-col-table">')
 
     assert_div_balance(src, h, "final")
 

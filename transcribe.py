@@ -265,7 +265,14 @@ def classify(text, duration):
         return "no answer", "ringback or hold audio only"
     # "Hello? Hello? Hello?" and nothing else is the producer talking into dead
     # air, not a contact (Estella Ojeda, 08-17).
-    if re.fullmatch(r"(\W*(hello|hola|bueno|hi)\W*){2,}", t, re.I):
+    # NOTE (unattended run, 2026-08-24): the original pattern was
+    # r"(\W*(hello|hola|bueno|hi)\W*){2,}" -- the \W* on BOTH sides of the
+    # inner group makes every partition of the separators a distinct path, so a
+    # Whisper repetition-loop transcript ("Hello? " x300) that does not fully
+    # match backtracks exponentially and never returns. It hung the 08-24 build
+    # for 50 minutes on one call. The form below matches the same language
+    # (verified equal on 66,666 generated strings) in linear time.
+    if re.fullmatch(r"(?:\W*(?:hello|hola|bueno|hi)){2,}\W*", t, re.I):
         return "no answer", "repeated greeting, no reply"
     # A window that is nothing but the foreign-language placeholder means the
     # Spanish retry also failed. There is speech, but nothing that says whether

@@ -108,6 +108,41 @@ def _hm(ms):
     return f"{m // 60}h {m % 60:02d}m" if m >= 60 else f"{m}m"
 
 
+# The percentage and the bar used to be written with str.replace() keyed on the
+# EMPTY forms -- '<span class="num zero">&mdash;</span>' and 'width:0%'. Only the
+# two placeholder cards carry those; Crystal, Mike, Debbie and Lorena ship from
+# the template with Aug 12 values already baked in ("84.9%", 'width:85%'), so the
+# replace matched nothing and silently left the stale number while _stats() below
+# happily refreshed the times beside it. Lorena read 84.9% every day from Aug 12
+# to Aug 24 (Frank, 2026-08-25: "still stuck at 84.9%"), and Crystal read 89.5%
+# against a real 81.4%. These rewrite whatever is there and RAISE if the span has
+# gone, so the failure can never again be a silently wrong number.
+NUM_RE = re.compile(
+    r'(<div class="insight-util"><span class="num )[^"]*(">)[^<]*(</span>)')
+BAR_RE = re.compile(r'<span class="sf cI" style="width:[^"]*"></span>')
+
+
+def _set_num(card, cls, inner):
+    card, n = NUM_RE.subn(
+        lambda m: f"{m.group(1)}{cls}{m.group(2)}{inner}{m.group(3)}", card, 1)
+    if not n:
+        raise SystemExit("utilization card: number span not found -- layout changed?")
+    return card
+
+
+def _set_bar(card, pct, bg=None):
+    style = f"width:{pct:.0f}%" + (f";background:{bg}" if bg else "")
+    card, n = BAR_RE.subn(f'<span class="sf cI" style="{style}"></span>', card, 1)
+    if not n:
+        raise SystemExit("utilization card: bar span not found -- layout changed?")
+    return card
+
+
+def _blank(card):
+    """No figure for this card: em dash, empty bar. Never a stale % or a 0%."""
+    return _set_bar(_set_num(card, "zero", "&mdash;"), 0)
+
+
 def _card_html(card, name, detail):
     """Rewrite one card's number, bar and stats. Everything else is preserved."""
     d = detail.get(name) or {}
@@ -131,7 +166,7 @@ def _card_html(card, name, detail):
         else:
             s2 = ("no Insightful licence assigned &mdash; "
                   "cannot be tracked until one is")
-        return STATS_RE.sub(_stats(s1, s2), card)
+        return STATS_RE.sub(_stats(s1, s2), _blank(card))
 
     if name in cfg.NO_INSIGHTFUL_LICENCE:
         # No Insightful record AT ALL -- a different fact from "licensed but no
@@ -141,26 +176,21 @@ def _card_html(card, name, detail):
         return STATS_RE.sub(
             _stats("no Insightful licence assigned &mdash; "
                    "cannot be tracked until one is",
-                   "Every other figure for her is live"), card)
+                   "Every other figure for her is live"), _blank(card))
 
     if not d.get("tracked"):
         # Licensed but no attendance rows. Never render 0% -- a zero reads as a
         # terrible day rather than as no data.
         return STATS_RE.sub(
             _stats("no tracked time in Insightful for this day",
-                   "Nothing estimated"), card)
+                   "Nothing estimated"), _blank(card))
 
     prod, total = d["productive_ms"], d["total_ms"]
     pct = prod / total * 100
     t = cfg.tier("utilization_pct", pct)
 
-    card = card.replace(
-        '<span class="num zero">&mdash;</span>',
-        f'<span class="num {TIER_CLASS[t]}">{pct:.1f}%</span>')
-    card = card.replace(
-        '<span class="sf cI" style="width:0%"></span>',
-        f'<span class="sf cI" style="width:{pct:.0f}%;'
-        f'background:{TIER_BAR[t]}"></span>')
+    card = _set_num(card, TIER_CLASS[t], f"{pct:.1f}%")
+    card = _set_bar(card, pct, TIER_BAR[t])
     return STATS_RE.sub(
         _stats(f'<b>{_hm(prod)}</b> productive / {_hm(total)} tracked',
                f'<b>{_hm(total - prod)}</b> idle'), card)

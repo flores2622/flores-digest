@@ -213,6 +213,70 @@ def task_note_parts(body):
     return (who.group(1) if who else None), stripped
 
 
+QUOTE_STAGE_RE = re.compile(r"quote", re.I)
+
+
+def quote_state(lead_id, day, task_titles=()):
+    """'today' | 'open' | 'none' -- is a quote out on this lead, and how old?
+
+    TASK TITLES FIRST (Frank, 2026-08-25). The titles in this agency are a
+    controlled vocabulary -- "Quote follow #7", "Quoted Yesterday 1st Follow Up
+    call" against "Never quoted lead- Day 4 NEW", "Send quote to prospect" --
+    and they say plainly whether a quote is already out. quoteDate is NOT used:
+    a producer can start a quote one day and present it another, so the date
+    does not mean the prospect has seen it.
+
+    'today' is reserved for a quote that went out ON this call, which only a
+    same-day MOVE_STAGE into a quote stage can establish -- a task title
+    describes the job the producer sat down to do, not what came of it.
+
+    Falls back to stage history when the titles are silent or ambiguous (QNC).
+    The window matters: unbounded, "has ever been quoted" made follow-ups of
+    leads last quoted in 2022.
+    """
+    from digest_config import (QUOTE_QNC_TITLE_RE, QUOTE_FOLLOWUP_TITLE_RE,
+                               QUOTE_PENDING_TITLE_RE, QUOTE_OPEN_WINDOW_DAYS)
+    titled = None
+    for t in task_titles:
+        t = t or ""
+        # QNC == already presented once and did not close, so any QNC task is a
+        # follow-up. Checked first: "QNC Lead Day 4" also matches the pending
+        # pattern's "Lead Day N" (Frank, 2026-08-25).
+        if QUOTE_QNC_TITLE_RE.search(t) or QUOTE_FOLLOWUP_TITLE_RE.search(t):
+            titled = "open"      # a quote is already out; strongest signal
+            break
+        if QUOTE_PENDING_TITLE_RE.search(t):
+            titled = "none"      # keep looking -- a follow-up title outranks it
+
+    moved_today, latest_prior = False, None
+    for n in load_notes(lead_id):
+        if n.get("type") != "MOVE_STAGE":
+            continue
+        d = str(n.get("createDate") or "")[:10]
+        if not d:
+            continue
+        move, _ = _move_stage_parts(_text(n.get("body")))
+        dest = (move.split(" to ")[-1] if " to " in move else move).split("|")[-1]
+        # Same "match the stage, not the pipeline" trap as households quoted:
+        # "1-2 Leads Not Quoted" is where NEVER-quoted leads are recycled.
+        if not QUOTE_STAGE_RE.search(dest) or "not quoted" in dest.lower():
+            continue
+        if d == day:
+            moved_today = True
+        elif d < day and (latest_prior is None or d > latest_prior):
+            latest_prior = d
+
+    if moved_today:
+        return "today"
+    if titled is not None:
+        return titled
+    if latest_prior:
+        cutoff = (dt.date.fromisoformat(day)
+                  - dt.timedelta(days=QUOTE_OPEN_WINDOW_DAYS)).isoformat()
+        return "open" if latest_prior >= cutoff else "none"
+    return "none"
+
+
 def evidence(lead_id, day, producer):
     """Everything the producer wrote on this lead on this Arizona day."""
     out = {"written": [], "stage_moves": [], "call_notes": [], "negative": False,

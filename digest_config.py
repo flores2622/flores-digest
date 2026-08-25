@@ -249,7 +249,12 @@ LEADERBOARD_CATEGORIES = [
 # nothing. Fifth scores zero, same as no activity at all.
 # Places beyond this list score 0 -- see the padding in panels.leaderboard, which
 # is what stops a sixth producer from raising IndexError.
-LEADERBOARD_POINTS = [3, 2, 1, 0.5, 0]
+# Frank, 2026-08-25: five places, and a tie takes the LOWEST place it occupies
+# -- "if they tie, lower the score". A three-way tie for first is all three on
+# 3 pts (places 1-2-3 consumed, worst of them paid), then 2, then 1. A two-way
+# tie for first is 4 pts each, then 3, 2, 1. This REVERSES the 08-24 rule, where
+# a tie took the BEST place it occupied; see panels.leaderboard.
+LEADERBOARD_POINTS = [5, 4, 3, 2, 1]
 # Tie-break, from Frank: premium sold, then households quoted, then call volume.
 LEADERBOARD_TIEBREAK = ["premium_sold", "households_quoted", "call_volume"]
 
@@ -269,6 +274,77 @@ COACH_BAR_RANGES = {
 
 # --- Call Detail row colours (HANDOFF_4 s7) ---------------------------------
 # Recovered from the approved design, then amended by Frank.
+# Frank, 2026-08-25: "I want to know if the quote was presented on that call, or
+# if its a follow up from a previously presented quote." That splits the two
+# quote states in two, giving seven categories on five hues -- the follow-up
+# pair reuses its parent hue and is told apart by an OUTLINED chip and a DASHED
+# row edge rather than by a sixth and seventh colour. Seven hues cannot clear
+# the all-pairs colour-separation floors; five can, and every chip carries its
+# label anyway, so the extra state rides a non-colour channel.
+#
+# hue: the validated status set. fill=False draws the outlined/dashed variant.
+CALL_CATEGORIES = {
+    "sold_on_call":    {"hue": "#008300", "fill": True,
+                        "label": "Sold on the call"},
+    "quoted_call_open":{"hue": "#2a78d6", "fill": True,
+                        "label": "Quoted, no action"},
+    # The follow-up pair reuses its parent hue at ~45% over white -- the light
+    # blue Frank picked out of the per-producer mix bar (2026-08-25) -- with a
+    # dashed border and a dashed row rail in the full hue. Seven hues cannot
+    # clear the all-pairs separation floors and five can, so the this-call vs
+    # follow-up split rides lightness and stroke rather than a sixth colour.
+    "followup_open":   {"hue": "#2a78d6", "light": "#9fc2ed", "fill": False,
+                        "label": "Quote follow up, no action yet"},
+    "quoted_call_lost":{"hue": "#e34948", "fill": True,
+                        "label": "Quoted on this call, {d}"},
+    "followup_lost":   {"hue": "#e34948", "light": "#f2adad", "fill": False,
+                        "label": "Quote follow up, {d}"},
+    # Frank, 2026-08-25: "yellow and orange are 2 different colors, use them
+    # both" -- highlighter yellow here, the orange-yellow on Contacted below.
+    # #f0e800 sits outside the validator's mark-lightness band, which is what
+    # highlighter yellow means; the pair that matters clears the normal-vision
+    # floor at Delta E 17.7 against #eda100, and both chips take dark ink.
+    "dead_no_quote":   {"hue": "#f0e800", "fill": True,
+                        "label": "{d}, never quoted"},
+    "live_no_quote":   {"hue": "#eda100", "fill": True,
+                        "label": "Contacted, No Action"},
+}
+# Reading order, best first -- also the Call Detail sort order.
+CALL_CATEGORY_ORDER = ["sold_on_call", "quoted_call_open", "followup_open",
+                       "quoted_call_lost", "followup_lost", "dead_no_quote",
+                       "live_no_quote"]
+
+# Which quote state a call is in, read off the TASK TITLES due on that lead that
+# day (Frank, 2026-08-25: "you should be able to tell just by the task title
+# and/or quote submission date ... the flaw with quote submission day is they can
+# start it one day and present another, task title is probably best"). The titles
+# are a controlled vocabulary in this agency, so they are the primary signal and
+# quoteDate is not used at all.
+#   FOLLOWUP -> a quote is already out and this call chases it
+#   PENDING  -> no quote out yet; the task is about getting one built or sent
+QUOTE_FOLLOWUP_TITLE_RE = re.compile(
+    r"quoted?\b[^.]*\bfollow|\bfollow[- ]?up\b[^.]*\bquote|\bquote follow\b", re.I)
+QUOTE_PENDING_TITLE_RE = re.compile(
+    r"never quoted|\bnew\b.*lead|lead day \d|send quote|finish quotes?"
+    r"|present quote|quote to prospect", re.I)
+# Checked BEFORE the two above and short-circuits both: 'QNC Lead Day 4' also
+# matches the pending pattern's "lead day N", so without this guard it would be
+# silently filed as pending.
+# Frank, 2026-08-25: "QNC Pipeline is where leads go when they did not close the
+# LAST time they were presented, but the stages in that pipeline serve the same
+# function as the ones in the 1 pipeline they share names with. So when someone
+# goes into the quotes stage in the QNC Pipeline, they got quoted." A QNC lead
+# has therefore already been presented a quote -- 'QNC Lead Day 4' is a
+# follow-up, not an unknown. Checked BEFORE the pending pattern, which its
+# "Lead Day N" would otherwise match.
+QUOTE_QNC_TITLE_RE = re.compile(r"\bQNC\b", re.I)
+
+# Fallback when no task title settles it: a MOVE_STAGE into a quote stage inside
+# this window means a quote is genuinely still in play. Unbounded, it relabelled
+# half the board -- Genaro Cortez was last quoted 2022-09-01 and Frankie Flores
+# 2025-05-01, and neither is a live follow-up.
+QUOTE_OPEN_WINDOW_DAYS = 30
+
 CALL_ROW_COLORS = {
     "one_call_close":   "#4ADE80",  # quoted AND sold on the same call
     "quote_no_action":  "#D8B4FE",  # quote presented, no action yet

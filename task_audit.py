@@ -128,7 +128,7 @@ def build(day, tasks, dials_by_producer, leads, customers):
     counted = [t for t in tasks
                if not az_tasks.service_reason(t) and az_tasks.owner(t, az_ids)]
 
-    a, b, c, d = [], [], [], []
+    a, b, c, d, e = [], [], [], [], []
     for t in counted:
         who = az_tasks.owner(t, az_ids)
         todo = t.get("agencyTodo") or {}
@@ -159,6 +159,12 @@ def build(day, tasks, dials_by_producer, leads, customers):
         if cr and md and md[:10] > cr[:10]:
             c.append({**row, "created": cr, "modified": md, "due": dd})
 
+        # (e) never closed out at all -- still status 0 when the day ended.
+        # Distinct from (d): nobody decided anything about these, they were just
+        # left. Both count against the completion rate (Frank, 2026-08-25).
+        if t.get("status") == az_tasks.STATUS_OPEN:
+            e.append({**row, "due": dd})
+
         # (d) cancelled rather than completed
         if t.get("status") == az_tasks.STATUS_CLOSED_NOT_COMPLETED:
             act = day_activity(t.get("customerId"), day) if rid else {
@@ -173,10 +179,11 @@ def build(day, tasks, dials_by_producer, leads, customers):
                       "loss_reason": act["loss_reason"],
                       "move_comment": act.get("move_comment")})
 
-    for lst, key in ((a, "producer"), (b, "days_late"), (c, "producer"), (d, "producer")):
+    for lst, key in ((a, "producer"), (b, "days_late"), (c, "producer"),
+                     (d, "producer"), (e, "producer")):
         lst.sort(key=lambda r: (str(r.get(key)), str(r.get("producer"))),
                  reverse=(key == "days_late"))
-    return {"counted": len(counted), "a": a, "b": b, "c": c, "d": d}
+    return {"counted": len(counted), "a": a, "b": b, "c": c, "d": d, "e": e}
 
 
 if __name__ == "__main__":

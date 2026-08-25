@@ -225,15 +225,17 @@ def leaderboard(M, coach):
     for name, v, fmt in cats:
         order = sorted(P3, key=lambda p: -v[p])
         pts = {}
-        # Ties take the BEST place they occupy, golf-leaderboard style (Frank,
-        # 2026-08-24): "if they tied for 2nd, they should all get 2 pts, if they
-        # tied first, they all get 3 pts". Three tied at the top are all first,
-        # and the next producer is fourth -- so the places a tie swallows are
-        # gone, not redistributed. Splitting them evenly instead was the first
-        # attempt and is what golf does with prize money, but it is not how the
-        # standings read, and it is not what was asked for.
+        # Ties take the LOWEST place they occupy (Frank, 2026-08-25: "if they
+        # tie, lower the score"). On the 5-4-3-2-1 scale a three-way tie for
+        # first is all three on 3 pts -- places 1, 2 and 3 are consumed and the
+        # worst of them is what pays -- then 2, then 1. A two-way tie for first
+        # is 4 pts each, then 3, 2, 1.
         #
-        # Before either fix, ties were broken silently by roster order: three
+        # This REVERSES the 08-24 rule, where a tie took the BEST place it
+        # occupied (three tied at the top were all "first"). Same walk, one index
+        # changed: place(j) instead of place(i).
+        #
+        # Before either rule, ties were broken silently by roster order: three
         # producers all scoring 81 on role play took 3, 2 and 1 points, and
         # whoever sat last in the roster was penalised for an identical result.
         i = 0
@@ -241,7 +243,7 @@ def leaderboard(M, coach):
             j = i
             while j + 1 < len(order) and v[order[j + 1]] == v[order[i]]:
                 j += 1
-            best = place(i)
+            best = place(j)
             for q in order[i:j + 1]:
                 # Zero-activity override: no recorded activity scores 0, not a
                 # rank -- it still consumes its place, so a zero never promotes
@@ -379,110 +381,199 @@ def _fmt_phone(e164):
     return f"({d[:3]}) {d[3:6]}-{d[6:]}" if len(d) == 10 else (e164 or "")
 
 
-def _outcome_rank(row):
-    """Call Detail sort key: the five-way outcome, best first.
+def _call_category(row):
+    """One of cfg.CALL_CATEGORIES -- the seven-way Call Detail outcome.
 
-    Matches the colour bands in _row_colour so the table reads top to bottom as
-    sold -> quoted -> dead-with-quote -> dead -> live-no-quote.
-    """
-    order = {"one_call_close": 0, "quote_no_action": 1, "dead_with_quote": 2,
-             "dead_no_quote": 3, "live_no_quote": 4}
-    inv = {v: k for k, v in cfg.CALL_ROW_COLORS.items()}
-    return order.get(inv.get(_row_colour(row), "live_no_quote"), 4)
+    Splits the old five ways into seven by asking WHEN the quote went out
+    (Frank, 2026-08-25). `quote_state` comes off the row, set in build_metrics
+    from the day's task titles for that lead:
 
-
-def _row_colour(row):
-    """Five-way Call Detail colour (HANDOFF s7).
+        'today' -> a quote went out on this call
+        'open'  -> a quote was already out and this call chased it
+        'none'  -> no quote in play
 
     A quote presented verbally and never entered in AgencyZoom still counts for
-    the colour, but does not feed Premium Quoted. A "recycled back from
+    the category, but does not feed Premium Quoted. A "recycled back from
     Smart-Cycle" move is a move OUT of the cycle and is not a dead outcome.
     """
     moves = " ".join(row.get("moves") or []).lower()
     note = (row.get("note") or "").lower()
-    # Match the STAGE, not the pipeline -- same trap already fixed in the
-    # households-quoted count. "1-2 Leads Not Quoted" is the pipeline leads are
-    # recycled into when they were NEVER quoted, and a bare "quote" substring
-    # test reads it as a quote. Frank, 2026-08-17: Lazaro Rueda showed red.
-    stages = " ".join(seg.split("|")[-1] for seg in
-                      re.split(r"\s+to\s+", moves) if seg)
-    quoted = ("quote" in stages or "quote" in note)
+    # DESTINATION ONLY. Splitting the whole "A to B" string and testing every
+    # segment let the ORIGIN count: "Quotes Presented to Smart-Cycle" is a move
+    # OUT of the quote stage, and reading "quote" off the left-hand side filed
+    # Harry Anderson, Angel Inda and Juan Avila as quoted-on-this-call when all
+    # three had been quoted days earlier and this call was the follow-up that
+    # lost them. Also match the STAGE, not the pipeline -- "1-2 Leads Not
+    # Quoted" is where NEVER-quoted leads get recycled (Frank, 2026-08-17:
+    # Lazaro Rueda showed red).
+    dests = []
+    for mv in (row.get("moves") or []):
+        mv = (mv or "").lower()
+        d = mv.rsplit(" to ", 1)[-1] if " to " in mv else mv
+        dests.append(d.split("|")[-1])
+    quoted_here = (any("quote" in d and "not quoted" not in d for d in dests)
+                   or "quote" in note)
     dead = ("dead" in moves or "smart-cycle" in moves)
     sold = "sold" in moves or "sold" in note
-    if quoted and sold:
-        return cfg.CALL_ROW_COLORS["one_call_close"]
-    if dead and quoted:
-        return cfg.CALL_ROW_COLORS["dead_with_quote"]
+    qs = row.get("quote_state") or ("today" if quoted_here else "none")
+    # A stage move into a quote stage on this call outranks the task title: the
+    # title says what the producer sat down to do, the move says what happened.
+    if quoted_here:
+        qs = "today"
+
+    if sold:
+        return "sold_on_call"
     if dead:
-        return cfg.CALL_ROW_COLORS["dead_no_quote"]
-    if quoted:
-        return cfg.CALL_ROW_COLORS["quote_no_action"]
-    return cfg.CALL_ROW_COLORS["live_no_quote"]
+        if qs == "today":
+            return "quoted_call_lost"
+        if qs == "open":
+            return "followup_lost"
+        return "dead_no_quote"
+    if qs == "today":
+        return "quoted_call_open"
+    if qs == "open":
+        return "followup_open"
+    return "live_no_quote"
+
+
+def _outcome_rank(row):
+    """Call Detail sort key -- best first, matching cfg.CALL_CATEGORY_ORDER."""
+    try:
+        return cfg.CALL_CATEGORY_ORDER.index(_call_category(row))
+    except ValueError:
+        return len(cfg.CALL_CATEGORY_ORDER)
+
+
+def _dead_word(row):
+    """"Dead" only when the outcome actually says dead; otherwise "Lost".
+
+    Both land in the same category -- the difference is what we can honestly
+    claim. A smart-cycled lead is parked on a cadence, and calling it dead
+    overstates it (Frank, 2026-08-25: 'anything "dead" should always read
+    ... unless you actually see the dead outcome' -- then, on the wording,
+    'instead of "SmartCycle/Dead" just say "Lost"').
+    """
+    moves = " ".join(row.get("moves") or []).lower()
+    note = (row.get("note") or "").lower()
+    return "Dead" if ("dead" in moves or "dead" in note) else "Lost"
+
+
+def _cat_label(key, row=None):
+    lab = cfg.CALL_CATEGORIES[key]["label"]
+    return lab.replace("{d}", _dead_word(row) if row else "Lost")
+
+
+def _chip_ink(hex_hue):
+    """Dark ink on a light fill. #eda100 cannot carry white text."""
+    r, g, b = (int(hex_hue[i:i + 2], 16) / 255 for i in (1, 3, 5))
+    lin = [(c / 12.92 if c <= 0.03928 else ((c + 0.055) / 1.055) ** 2.4)
+           for c in (r, g, b)]
+    lum = 0.2126 * lin[0] + 0.7152 * lin[1] + 0.0722 * lin[2]
+    return "#0b0b0b" if lum > 0.35 else "#ffffff"
+
+
+def _cat_chip(key, small=False, row=None):
+    """Labelled chip. FILLED = it happened on this call, OUTLINED = follow-up.
+
+    The label is always present, so colour is never the only carrier -- which is
+    also what lets seven states ride on five hues.
+    """
+    return (f'<span class="cg g{cfg.CALL_CATEGORY_ORDER.index(key) + 1}">'
+            f'{_cat_label(key, row)}</span>')
+
+
+def _cat_legend():
+    """Panel legend. At the TOP of Call Detail from 2026-08-25 (Frank)."""
+    items = "".join(
+        f'<span><i class="k{cfg.CALL_CATEGORY_ORDER.index(k) + 1}"'
+        + ('' if cfg.CALL_CATEGORIES[k]["fill"] else
+           f' style="border:1px dashed {cfg.CALL_CATEGORIES[k]["hue"]}"')
+        + f'></i>{_cat_label(k)}</span>' for k in cfg.CALL_CATEGORY_ORDER)
+    return ('<div class="cdl">' + items
+            + '<span class="cdn">Solid = it happened on this call '
+            '&nbsp;&middot;&nbsp; dashed and paler = follow-up on a quote '
+            'already out</span></div>')
 
 
 def call_detail(M, day):
-    rows = []
-    everything = []
+    """Option D (Frank, 2026-08-25): a section per rep, each opening with a
+    stacked bar of that rep's outcome mix, then the calls full width beneath it.
+
+    Replaces a 32-row table whose every row was flooded with one of five pastel
+    fills. That read as a single wash with no rep boundaries -- and two of the
+    fills were not even distinguishable: dead-with-quote #FCA5A5 against
+    dead-no-quote #FDBA74 measured Delta E 9.3 for normal vision against a floor
+    of 15, and all five sat under 3:1 contrast on the panel. Colour now rides a
+    3px row edge and a labelled chip beside the talk time (Frank: "add the
+    outcome tag by the talk time like option B").
+    """
+    groups = {}
     for p in P3:
         for r in M[p]["call_detail"]:
-            everything.append((p, r))
-    # Producer first, then call outcome, then longest call (Frank, 2026-08-17).
-    # Was a single global sort on duration, which interleaved the three reps.
-    everything.sort(key=lambda x: (P3.index(x[0]), _outcome_rank(x[1]),
-                                   -x[1]["seconds"]))
-    for p, r in everything:
-        badge = ('<span class="badge-new" style="background:#9a988f;color:#fff">'
-                 'duration only</span>' if r["basis"] == "duration only" else "")
-        secs = r["seconds"] or 0
-        # Frank, 2026-08-17: "give me a summary of the transcribed portion of
-        # the call recording when avail, and a copy of the notes when not."
-        rec_txt = (r.get("note_recording") or "").strip()
-        prod_txt = (r.get("note_producer") or r.get("note") or "").strip()
-        if rec_txt:
-            note = f"From the call recording: &ldquo;{rec_txt}&rdquo;"
+            groups.setdefault(p, []).append(r)
+    for rows in groups.values():
+        rows.sort(key=lambda r: (_outcome_rank(r), -(r["seconds"] or 0)))
+
+    out = [_cat_legend()]
+    for p in P3:
+        rows = groups.get(p) or []
+        if not rows:
+            continue
+        n = len(rows)
+        counts = {}
+        for r in rows:
+            k = _call_category(r)
+            counts[k] = counts.get(k, 0) + 1
+        keys = [k for k in cfg.CALL_CATEGORY_ORDER if counts.get(k)]
+        # Mix bar. A dashed-edge category reads as a paler band so the bar
+        # carries the same this-call/follow-up split the chips do.
+        seg = "".join(
+            f'<td class="b{cfg.CALL_CATEGORY_ORDER.index(k) + 1}" '
+            f'style="width:{100.0 * counts[k] / n:.3f}%">&nbsp;</td>'
+            for k in keys)
+        key = "".join(
+            f'<span><i class="k{cfg.CALL_CATEGORY_ORDER.index(k) + 1}"></i>'
+            f'{counts[k]} {_cat_label(k).lower()}</span>' for k in keys)
+        out.append(
+            '<div class="cdh"><table class="cdi"><tr>'
+            f'<td class="cdr"><span class="dot" style="background:'
+            f'{DOT_HEX[p]}"></span>{SHORT[p]}</td>'
+            f'<td align="right" class="cdc">{n} live contact'
+            f'{"s" if n != 1 else ""}</td></tr></table>'
+            f'<table class="cdi cdb"><tr>{seg}</tr></table>'
+            f'<div class="cdk">{key}</div></div>')
+
+        body = []
+        for r in rows:
+            k = _call_category(r)
+            c = cfg.CALL_CATEGORIES[k]
+            secs = r["seconds"] or 0
+            badge = ('<span class="badge-new" style="background:#9a988f;'
+                     'color:#fff">duration only</span>'
+                     if r["basis"] == "duration only" else "")
+            link = (_lead_link(r["lead_id"], r["lead"]) if r["lead_id"]
+                    else (r["lead"] or _fmt_phone(r["number"])))
+            rec_txt = (r.get("note_recording") or "").strip()
+            prod_txt = (r.get("note_producer") or r.get("note") or "").strip()
+            note = ""
+            if rec_txt:
+                note += f'<div class="cdq">&ldquo;{rec_txt}&rdquo;</div>'
             if prod_txt:
-                note += f'<br><span style="color:#86847d">Producer note: {prod_txt}</span>'
-        elif prod_txt:
-            note = f"Producer note: {prod_txt}"
-        else:
-            note = ("Live contact established from the call recording; no "
-                    "producer-written outcome in AgencyZoom.")
-        link = (_lead_link(r["lead_id"], r["lead"]) if r["lead_id"]
-                else (r["lead"] or _fmt_phone(r["number"])))
-        rows.append(
-            f'<tr style="background:{_row_colour(r)}">'
-            f'<td class="name-cell"><span class="dot" '
-            f'style="background:{DOT_HEX[p]}"></span>{SHORT[p]}</td>'
-            f'<td>{link}{badge}</td>'
-            f'<td class="nowrap-cell">{_fmt_phone(r["number"])}</td>'
-            f'<td class="num nowrap-cell">{secs // 60}:{secs % 60:02d}</td>'
-            f'<td class="note-cell">{note}</td></tr>')
-    legend = ('<div class="row-legend">' + "".join(
-        f'<span class="item"><span class="row-swatch" style="background:{c}"></span>{t}</span>'
-        for c, t in [
-            (cfg.CALL_ROW_COLORS["one_call_close"],
-             "One-call close &mdash; quote presented AND the sale closed on the same call"),
-            (cfg.CALL_ROW_COLORS["quote_no_action"],
-             "Quote presented, no action yet &mdash; not sold, not dead/smart-cycled"),
-            (cfg.CALL_ROW_COLORS["dead_with_quote"],
-             "Marked dead/smart-cycled WITH a quote presented"),
-            (cfg.CALL_ROW_COLORS["dead_no_quote"],
-             "Marked dead/smart-cycled with NO quote presented"),
-            (cfg.CALL_ROW_COLORS["live_no_quote"],
-             "Live contact, no quote, no dead/smart-cycle outcome")]) + '</div>')
-    # Fixed layout with explicit column widths (Frank, 2026-08-24: "the call
-    # detail is too wide ... only as wide as the rest of the report"). The table
-    # was auto-layout, and .note-cell's max-width:480px does not bind in a table
-    # -- the browser widened the Note column to fit the longest transcript and
-    # pushed the whole table past the page. Fixed layout makes the percentages
-    # authoritative, so it fills the panel exactly and long notes wrap instead.
-    return ('<table style="table-layout:fixed;width:100%">'
-            '<colgroup><col style="width:9%"><col style="width:19%">'
-            '<col style="width:12%"><col style="width:8%">'
-            '<col style="width:52%"></colgroup>'
-            '<thead><tr><th>Rep</th><th>Lead Name (AZ)</th><th>Phone</th>'
-            '<th class="num">Duration</th><th>Note</th></tr></thead><tbody>'
-            + "".join(rows) + '</tbody></table>' + legend)
+                note += f'<div class="cdw">{prod_txt}</div>'
+            if not note:
+                note = ('<div class="cdx">Live contact from the recording; no '
+                        'producer-written outcome in AgencyZoom.</div>')
+            body.append(
+                f'<tr><td class="cdcell e{cfg.CALL_CATEGORY_ORDER.index(k) + 1}">'
+                '<table class="cdi"><tr>'
+                f'<td class="cdn2">{link}{badge}'
+                f'<span class="cdp">&nbsp; {_fmt_phone(r["number"])}</span></td>'
+                f'<td align="right" class="cdd" style="white-space:nowrap">'
+                f'{_cat_chip(k, True, r)}&nbsp; '
+                f'{secs // 60}:{secs % 60:02d}</td></tr></table>'
+                f'{note}</td></tr>')
+        out.append(f'<table class="cdi cdt">{"".join(body)}</table>')
+    return "".join(out)
 
 
 # ---- Task Completion Audit -------------------------------------------------
@@ -561,10 +652,12 @@ def task_audit_tables(audit, label):
     if audit["a"]:
         rows = "".join(
             f'<tr><td class="name-cell">{SHORT[r["producer"]]}</td>'
-            f'{_record_cell(r)}<td class="note-cell">{_clip(r["comment"])}</td>'
+            f'{_record_cell(r)}<td>{r["title"]}</td>'
+            f'<td class="note-cell">{_clip(r["comment"])}</td>'
             f'<td class="nowrap-cell">{_fmt_phone(r["number"])}</td></tr>'
             for r in audit["a"])
-        out.append('<table><tr><th>Rep</th><th>Household</th><th>Comment</th>'
+        out.append('<table><tr><th>Rep</th><th>Lead</th><th>Task</th>'
+                   '<th>Comment</th>'
                    f'<th>Number on file</th></tr>{rows}</table>')
     else:
         out.append(empty(
@@ -579,7 +672,7 @@ def task_audit_tables(audit, label):
             f'{_record_cell(r)}<td>{r["title"]}</td>'
             f'<td class="num">{r["due"]}</td><td class="num">{r["completed"]}</td>'
             f'<td class="num">{r["days_late"]}</td></tr>' for r in audit["b"])
-        out.append('<table><tr><th>Rep</th><th>Linked record</th><th>Task</th>'
+        out.append('<table><tr><th>Rep</th><th>Lead</th><th>Task</th>'
                    '<th class="num">Due</th><th class="num">Completed</th>'
                    f'<th class="num">Days late</th></tr>{rows}</table>')
     else:
@@ -595,7 +688,7 @@ def task_audit_tables(audit, label):
             f'<td class="nowrap-cell">{r["created"][:10]}</td>'
             f'<td class="nowrap-cell">{r["modified"][:10]}</td>'
             f'<td class="nowrap-cell">{r["due"]}</td></tr>' for r in audit["c"])
-        out.append('<table><tr><th>Rep</th><th>Linked record</th><th>Task</th>'
+        out.append('<table><tr><th>Rep</th><th>Lead</th><th>Task</th>'
                    '<th>Created</th><th>Last modified</th><th>Due</th></tr>'
                    f'{rows}</table>'
                    '<div class="footnote">AgencyZoom exposes when a task was '
@@ -612,14 +705,36 @@ def task_audit_tables(audit, label):
     if audit["d"]:
         rows = "".join(
             f'<tr><td class="name-cell">{SHORT[r["producer"]]}</td>'
-            f'<td>{r["title"]}</td>{_record_cell(r)}'
+            f'{_record_cell(r)}<td>{r["title"]}</td>'
             f'<td>{_activity_cell(r)}</td>'
             f'<td class="note-cell">{_why_cell(r)}</td></tr>'
             for r in audit["d"])
-        out.append('<table><tr><th>Rep</th><th>Task</th><th>Linked record</th>'
+        out.append('<table><tr><th>Rep</th><th>Lead</th><th>Task</th>'
                    '<th>Activity that day</th><th>Why / instruction</th></tr>'
                    f'{rows}</table>')
     else:
         out.append(empty(f'No producer task due {label} was cancelled.'))
+
+    # (e) Frank, 2026-08-25: "going to have to start including a section in the
+    # audit with the incomplete tasks." Section (d) already covers the ones that
+    # were actively closed without being done; these are the ones simply left
+    # open when the day ended, which until now showed only as a number in the
+    # Task Completion Rate panel with no way to see WHICH tasks they were.
+    out.append(title("e", "Still open at the end of the day",
+                     len(audit.get("e") or []),
+                     ", all counted against the rate"))
+    if audit.get("e"):
+        rows = "".join(
+            f'<tr><td class="name-cell">{SHORT[r["producer"]]}</td>'
+            f'{_record_cell(r)}<td>{r["title"]}</td>'
+            f'<td class="nowrap-cell">{r["due"]}</td>'
+            f'<td class="note-cell">{_clip(r["comment"])}</td></tr>'
+            for r in audit["e"])
+        out.append('<table><tr><th>Rep</th><th>Lead</th><th>Task</th>'
+                   '<th>Due</th><th>Comment</th></tr>'
+                   f'{rows}</table>')
+    else:
+        out.append(empty(f'Every producer task due {label} was closed out one '
+                         f'way or another &mdash; none left open.'))
 
     return "".join(out)
