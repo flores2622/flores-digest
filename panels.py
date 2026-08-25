@@ -463,15 +463,6 @@ def _cat_label(key, row=None):
     return lab.replace("{d}", _dead_word(row) if row else "Lost")
 
 
-def _chip_ink(hex_hue):
-    """Dark ink on a light fill. #eda100 cannot carry white text."""
-    r, g, b = (int(hex_hue[i:i + 2], 16) / 255 for i in (1, 3, 5))
-    lin = [(c / 12.92 if c <= 0.03928 else ((c + 0.055) / 1.055) ** 2.4)
-           for c in (r, g, b)]
-    lum = 0.2126 * lin[0] + 0.7152 * lin[1] + 0.0722 * lin[2]
-    return "#0b0b0b" if lum > 0.35 else "#ffffff"
-
-
 def _cat_chip(key, small=False, row=None):
     """Labelled chip. FILLED = it happened on this call, OUTLINED = follow-up.
 
@@ -485,14 +476,12 @@ def _cat_chip(key, small=False, row=None):
 def _cat_legend():
     """Panel legend. At the TOP of Call Detail from 2026-08-25 (Frank)."""
     items = "".join(
-        f'<span><i class="k{cfg.CALL_CATEGORY_ORDER.index(k) + 1}"'
-        + ('' if cfg.CALL_CATEGORIES[k]["fill"] else
-           f' style="border:1px dashed {cfg.CALL_CATEGORIES[k]["hue"]}"')
-        + f'></i>{_cat_label(k)}</span>' for k in cfg.CALL_CATEGORY_ORDER)
+        f'<span><i class="k{cfg.CALL_CATEGORY_ORDER.index(k) + 1}"></i>'
+        f'{_cat_label(k)}</span>' for k in cfg.CALL_CATEGORY_ORDER)
     return ('<div class="cdl">' + items
             + '<span class="cdn">Solid = it happened on this call '
-            '&nbsp;&middot;&nbsp; dashed and paler = follow-up on a quote '
-            'already out</span></div>')
+            '&nbsp;&middot;&nbsp; dotted = follow-up on a quote already out'
+            '</span></div>')
 
 
 def call_detail(M, day):
