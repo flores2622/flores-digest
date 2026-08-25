@@ -24,7 +24,7 @@ CARD MARKUP, taken from the approved builds -- do not invent new structure:
     </div>
 
     TIER is tier-text-good / tier-text-warning / tier-text-critical
-    (.tier-text-good #0ca30c, -warning #fab219, -critical #d64545), applied with
+    (.tier-text-good #0ca30c, -warning #fab219, -critical #DC2626), applied with
     the Utilization thresholds: 85+ green, 80-84 yellow, under 80 red.
 
     The Aug 7 build wrote "productive / 7h 32m expected". "Expected" is wrong --
@@ -60,7 +60,9 @@ TIER_CLASS = {"green": "tier-text-good",
 # would then have to be taught not to purge).
 TIER_BAR = {"green": "#0ca30c",      # --status-good
             "yellow": "#fab219",     # --status-warning
-            "red": "#d64545"}        # --status-critical
+            "red": "#DC2626"}        # --status-critical, matches TIER_COLORS'
+                                      # "red" -- was #d64545, too muted to read
+                                      # as an alert (Frank, 2026-08-25)
 
 CARD_RE = re.compile(
     r'(<div class="insight-card"[^>]*>.*?</div></div>)', re.S)
