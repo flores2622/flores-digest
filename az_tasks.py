@@ -48,12 +48,24 @@ def owner(task, az_ids):
     return None
 
 
-def audit(tasks):
-    """Per-producer task completion, plus the excluded-work tally for the notes."""
+def audit(tasks, verdicts=None):
+    """Per-producer task completion, plus the excluded-work tally for the notes.
+
+    `verdicts` is {task_id: 'excluded'|'excused'} from
+    task_audit.cancellation_verdicts (Frank, 2026-08-25):
+
+      excluded -- a duplicate lead's task. Not a real task; leaves the audit
+                  entirely, like service work.
+      excused  -- the producer smart-cycled or killed the lead that day and
+                  AgencyZoom's "cancel all related open tasks" checkbox closed
+                  the task. Counted OUT of the denominator so it does not drag
+                  the rate, but still listed in audit section (d).
+    """
     az_ids = {v["az_id"]: k for k, v in PRODUCERS.items()}
     per = {n: {"total": 0, "completed": 0, "closed_not_done": 0, "open": 0,
-               "outstanding": []} for n in PRODUCERS}
-    excluded = {"customer record": 0, "title": 0, "body": 0}
+               "excused": 0, "outstanding": []} for n in PRODUCERS}
+    excluded = {"customer record": 0, "title": 0, "body": 0, "duplicate lead": 0}
+    verdicts = verdicts or {}
 
     for t in tasks:
         reason = service_reason(t)
@@ -65,7 +77,15 @@ def audit(tasks):
         who = owner(t, az_ids)
         if not who:
             continue
+        v = verdicts.get(t.get("id"))
+        if v == "excluded":
+            excluded["duplicate lead"] += 1
+            continue
         p = per[who]
+        if v == "excused":
+            # Out of the denominator entirely -- neither a pass nor a fail.
+            p["excused"] += 1
+            continue
         p["total"] += 1
         if t.get("status") == STATUS_COMPLETED:
             p["completed"] += 1

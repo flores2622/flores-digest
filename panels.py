@@ -489,6 +489,108 @@ def _cat_legend():
             '</span></div>')
 
 
+# X3 (Frank, 2026-08-25): one chip per objection, and the chip says the word.
+# Colour always means "did it work", never "did he try" -- a producer can
+# address an objection well and still lose it, and Angel Inda's call is exactly
+# that. "Not addressed" needs no result half: an objection nobody engaged was
+# not overcome by definition.
+OBJ_CHIP = {("no", None): ("cdc-r", "Not addressed"),
+            ("yes", "yes"): ("cdc-g", "Addressed, overcome"),
+            ("yes", "no"): ("cdc-r", "Addressed, not overcome"),
+            ("yes", "unclear"): ("cdc-y", "Addressed, unclear")}
+
+
+def _obj_chip(o):
+    a = o.get("addressed")
+    key = ("no", None) if a != "yes" else ("yes", o.get("overcome") or "unclear")
+    cls, txt = OBJ_CHIP.get(key, ("cdc-y", "Addressed, unclear"))
+    return f'<span class="cdch {cls}">{txt}</span>'
+
+
+def _obj_rollup(objs):
+    """How many landed, and which one was still standing at the end.
+
+    Only a flat "no" is named. An unclear objection is not the thing that
+    killed the call -- naming it would put a refusal in the prospect's mouth
+    that the transcript never recorded. Guillermo Lara's third objection is
+    that case: 2 of 3, nothing named.
+    """
+    won = sum(1 for o in objs if o.get("overcome") == "yes")
+    tot = len(objs)
+    cls = "cdc-g" if won == tot else "cdc-r" if not won else "cdc-y"
+    v = f'<span class="cdch {cls}">{won} of {tot} overcome</span>'
+    left = [o["objection"] for o in objs if o.get("overcome") == "no"]
+    if left:
+        v += f'<span class="cdst">left standing: {left[-1]}</span>'
+    return v
+
+
+def _grid(pairs):
+    body = "".join(f'<tr><td class="cdgl">{k}</td><td class="cdgv">{v}</td></tr>'
+                   for k, v in pairs)
+    return f'<table class="cdg">{body}</table>'
+
+
+def _call_note(r):
+    """The labelled grid: what the call was, then every objection and its fate.
+
+    Replaces the first ~280 characters of the raw transcript, which was the
+    opening of the producer's own greeting and told a reader nothing (Frank,
+    2026-08-25). Layout is D1c + M2 + X3 from the 08-25 mock-ups: fixed labels
+    in a left gutter, one line per objection, and a roll-up row so a producer
+    who won two of three does not read as a flat loss.
+
+    `summary` is written by call_summary. When it is absent -- no API key, or
+    metrics built before this existed -- fall back to the old raw-transcript
+    behaviour so the panel never comes out empty.
+    """
+    d = r.get("summary") or {}
+    rec_txt = (r.get("note_recording") or "").strip()
+    prod_txt = (r.get("note_producer") or r.get("note") or "").strip()
+
+    if not d:
+        out = ""
+        if rec_txt:
+            out += f'<div class="cdq">&ldquo;{rec_txt}&rdquo;</div>'
+        if prod_txt:
+            out += f'<div class="cdw">{prod_txt}</div>'
+        return out or ('<div class="cdx">Live contact from the recording; no '
+                       'producer-written outcome in AgencyZoom.</div>')
+
+    import call_summary
+    d = call_summary.upgrade(d)
+    pairs = []
+    summ = (d.get("summary") or "").strip()
+    if summ:
+        pairs.append(("Call", summ))
+    objs = d.get("objections") or []
+    if objs:
+        lines = "".join(
+            f'<div class="cdol"><span class="cdon">{i}</span>'
+            f'<span class="cdot">{o["objection"]}</span>{_obj_chip(o)}</div>'
+            for i, o in enumerate(objs, 1))
+        pairs.append(("Objection" + ("s" if len(objs) > 1 else ""), lines))
+        # The roll-up only earns its line when there is something to add up.
+        # On a single-objection call it just reprints the chip and the
+        # objection text: "0 of 1 overcome, left standing: already bought
+        # elsewhere" says nothing the line above it did not.
+        if len(objs) > 1:
+            pairs.append(("Overcome", _obj_rollup(objs)))
+    elif summ:
+        # An empty list is a real finding, not missing data: nobody pushed back.
+        pairs.append(("Objections",
+                      '<span class="cdch cdc-n">None raised</span>'))
+    out = _grid(pairs) if pairs else ""
+    # Always say where this came from, so nobody reads a typed note as a
+    # transcript read or the other way round.
+    if d.get("source") == "producer note":
+        why = d.get("why") or "no recording"
+        out += (f'<div class="cdsrc">from the producer&rsquo;s note '
+                f'&mdash; {why}</div>')
+    return out or ('<div class="cdx">Live contact, but nothing recorded and '
+                   'nothing written.</div>')
+
+
 def call_detail(M, day):
     """Option D (Frank, 2026-08-25): a section per rep, each opening with a
     stacked bar of that rep's outcome mix, then the calls full width beneath it.
@@ -547,16 +649,7 @@ def call_detail(M, day):
                      if r["basis"] == "duration only" else "")
             link = (_lead_link(r["lead_id"], r["lead"]) if r["lead_id"]
                     else (r["lead"] or _fmt_phone(r["number"])))
-            rec_txt = (r.get("note_recording") or "").strip()
-            prod_txt = (r.get("note_producer") or r.get("note") or "").strip()
-            note = ""
-            if rec_txt:
-                note += f'<div class="cdq">&ldquo;{rec_txt}&rdquo;</div>'
-            if prod_txt:
-                note += f'<div class="cdw">{prod_txt}</div>'
-            if not note:
-                note = ('<div class="cdx">Live contact from the recording; no '
-                        'producer-written outcome in AgencyZoom.</div>')
+            note = _call_note(r)
             body.append(
                 f'<tr><td class="cdcell e{cfg.CALL_CATEGORY_ORDER.index(k) + 1}">'
                 '<table class="cdi"><tr>'
@@ -584,6 +677,15 @@ def _az_link(kind, rid, name):
         return name
     return (f'<a class="lead-link" href="{AZ_URL[kind].format(rid)}" '
             f'target="_blank">{name}</a>')
+
+
+def _verdict_cell(r):
+    """Why a cancelled task does or does not count. Printed so the excuse is
+    auditable rather than silent (Frank, 2026-08-25)."""
+    if r.get("verdict") == "excused":
+        return ('<span class="tier-text-good" style="font-weight:600">excused'
+                '</span><span class="sq">smart-cycled that day</span>')
+    return '<span class="tier-text-critical" style="font-weight:600">counts</span>'
 
 
 def _record_cell(r):
@@ -694,18 +796,28 @@ def task_audit_tables(audit, label):
                          f'day it was created.'))
 
     # (d) cancelled rather than completed
+    n_exc = sum(1 for r in audit["d"] if r.get("verdict") == "excused")
     out.append(title("d", "Cancelled rather than completed", len(audit["d"]),
-                     ", all counted against the rate"))
+                     f", {len(audit['d']) - n_exc} counted against the rate"
+                     + (f", {n_exc} excused" if n_exc else "")))
     if audit["d"]:
         rows = "".join(
             f'<tr><td class="name-cell">{SHORT[r["producer"]]}</td>'
             f'{_record_cell(r)}<td>{r["title"]}</td>'
             f'<td>{_activity_cell(r)}</td>'
-            f'<td class="note-cell">{_why_cell(r)}</td></tr>'
+            f'<td class="note-cell">{_why_cell(r)}</td>'
+            f'<td class="nowrap-cell">{_verdict_cell(r)}</td></tr>'
             for r in audit["d"])
         out.append('<table><tr><th>Rep</th><th>Lead</th><th>Task</th>'
-                   '<th>Activity that day</th><th>Why / instruction</th></tr>'
-                   f'{rows}</table>')
+                   '<th>Activity that day</th><th>Why / instruction</th>'
+                   f'<th>Counts?</th></tr>{rows}</table>'
+                   '<div class="footnote">A task the producer did not complete '
+                   'because they smart-cycled or killed the lead that day is '
+                   'excused &mdash; AgencyZoom&rsquo;s &ldquo;cancel all related '
+                   'open tasks&rdquo; checkbox is what closed it, so it leaves '
+                   'the completion-rate denominator but stays listed here. A '
+                   'duplicate lead&rsquo;s task is dropped from the audit '
+                   'entirely and is not shown.</div>')
     else:
         out.append(empty(f'No producer task due {label} was cancelled.'))
 

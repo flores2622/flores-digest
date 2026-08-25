@@ -330,14 +330,18 @@ def build_metrics(day):
                   "policies": n_sold, "premium_sold": round(prem)}
 
     util, weighted, _ = iu.pull(day)
-    tasks = az_tasks.audit(json.loads((ROOT / f"data/az_tasks_{day}.json").read_text()))
+    _raw_tasks = json.loads((ROOT / f"data/az_tasks_{day}.json").read_text())
+    import task_audit as _ta
+    _verdicts = _ta.cancellation_verdicts(
+        day, _raw_tasks, {v["az_id"]: k for k, v in PRODUCERS.items()})
+    tasks = az_tasks.audit(_raw_tasks, _verdicts)
     # Window dials, not day dials: recontact counts back to the stage-entry date.
     rc = recontact.build(day, leads, stage, day_calls.window_dials(day))
     import task_audit
     t_audit = task_audit.build(
-        day, json.loads((ROOT / f"data/az_tasks_{day}.json").read_text()),
-        dials, leads,
-        json.loads((ROOT / "data/az_customers_all.json").read_text()))
+        day, _raw_tasks, dials, leads,
+        json.loads((ROOT / "data/az_customers_all.json").read_text()),
+        _verdicts)
     coach = coach_from_gmail(day)
     s2d = speed_to_dial(day, leads, dials)
 
@@ -461,6 +465,16 @@ def main():
     pull_sources(day)
     transcribe_day(day)
     build_metrics(day)
+
+    # Full-transcribe and read the live contacts. Runs AFTER build_metrics
+    # because it only touches calls that came out as live contacts, and caches
+    # both stages, so it costs nothing on a re-run (Frank, 2026-08-25).
+    import call_summary
+    try:
+        call_summary.build(day, log=log)
+    except Exception as e:
+        log(f"  call summaries failed ({type(e).__name__}) -- "
+            f"Call Detail falls back to producer notes")
 
     import build_day
     out, html = build_day.build(day)
