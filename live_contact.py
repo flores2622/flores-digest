@@ -51,6 +51,14 @@ NEGATIVE = re.compile(
     r"|not a good (number|phone)|no valid (number|phone)"
     r"|tried calling|keep getting|kept getting|straight to"
     r"|ghosted|no callback|has not called back|hasn'?t called back"
+    # Frank, 2026-08-25 on Juan Avila: "not a live contact". 21 seconds, no
+    # recording, note read "Juan stopped responding to me." The pattern already
+    # had "did not respond" and "no response" but not the stopped/quit form.
+    r"|stopped (respond|answer|reply|return)\w*|quit (respond|answer)\w*"
+    r"|no longer respond\w*"
+    # Could not leave one at all -- invisible to every system until now.
+    r"|could ?n'?o?t leave (a )?(vm|voicemail|message)"
+    r"|un(able|available) to leave (a )?(vm|voicemail|message)"
     # An AI attendant, a screener or a dropped transfer is not a conversation
     # with the prospect. Frank, 2026-08-18 on Elsa Aguilera: "call dropped
     # after AI transferred me ... that was a call screener".
@@ -277,10 +285,33 @@ def quote_state(lead_id, day, task_titles=()):
     return "none"
 
 
+# TRAQ writes an AI summary note on EVERY call, voicemails included. It is long
+# prose, so NEGATIVE almost never matches it, and the "any note means live" rule
+# in is_live turned it into proof of a conversation. On 2026-08-24 five of the 30
+# live contacts rested on a TRAQ summary alone -- including an 11-second call to
+# Patricia Denhardt whose own summary says "the guest was prompted to leave a
+# message", and a 7-second call to Gerardo Ramos Martinez summarised as "the
+# guest identification number ... was provided".
+TRAQ_NOTE = re.compile(r"^\s*traq call\s*:", re.I)
+
+# What a TRAQ summary of a voicemail says, almost verbatim, every time.
+#
+# Deliberately NOT added to NEGATIVE. NEGATIVE is checked before `written` in
+# is_live, so a machine-read voicemail on one leg of the day would override a
+# real conversation the producer wrote up on another. That is exactly what
+# happened to Juan Esquivel: a 5-second voicemail at 7:26 PM and a genuine
+# 94-second conversation at 7:40 PM ("he mentioned he already has insurance for
+# his condo"). This is a WEAKER signal than a human note, and is_live consults
+# it only after `written`.
+TRAQ_VOICEMAIL = re.compile(
+    r"prompted to leave a message|asked to leave a message"
+    r"|to leave (a |their )?message for", re.I)
+
+
 def evidence(lead_id, day, producer):
     """Everything the producer wrote on this lead on this Arizona day."""
     out = {"written": [], "stage_moves": [], "call_notes": [], "negative": False,
-           "screener": False}
+           "screener": False, "machine_vm": False}
     for n in load_notes(lead_id):
         t = n.get("type")
         if t == "TASK":
@@ -331,6 +362,15 @@ def evidence(lead_id, day, producer):
             continue
         if not body or SYSTEM.search(body):
             continue
+        # Machine-written summary: read it for a voicemail tell and a screener,
+        # but it can never stand as the producer saying they spoke to someone,
+        # and it must not set `negative` -- see TRAQ_VOICEMAIL above.
+        if TRAQ_NOTE.search(body):
+            if TRAQ_VOICEMAIL.search(body):
+                out["machine_vm"] = True
+            if SCREENER.search(body):
+                out["screener"] = True
+            continue
         if SCREENER.search(body):
             out["screener"] = True
         if NEGATIVE.search(body):
@@ -369,6 +409,9 @@ def is_live(ev, talk_seconds=None, transcript_class=None):
         return False, "producer note (no contact)"
     if ev["written"]:
         return True, "producer note"
+    # Nobody wrote anything, and the call summary describes a voicemail.
+    if ev.get("machine_vm"):
+        return False, "call summary reports a voicemail"
     if transcript_class == "live":
         return True, "recording"
     if transcript_class in ("voicemail", "no answer"):
