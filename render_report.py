@@ -26,7 +26,8 @@ from util_panel import assert_div_balance
 # and cF green / cH amber, which carry good/warning tier meaning elsewhere. A
 # producer dot must not double as a status colour.
 DOT = {"Crystal Mango": "cA", "Lorena Gonzalez": "cB", "Mike Olvera": "cC",
-       "Debbie Aguilera": "cE", "Coral Barwick": "cJ", "Sarahi Chin": "cK"}
+       "Debbie Aguilera": "cE", "Coral Barwick": "cJ", "Sarahi Chin": "cK",
+       "Amanda Torricellas": "cL"}
 TEAM_DOT = "cE"
 TIER = {"green": "tier-text-good", "yellow": "tier-text-warning",
         "red": "tier-text-critical"}

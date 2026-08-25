@@ -371,9 +371,14 @@ def recontact_cards(rc, attachment):
 # ---- Call Detail -----------------------------------------------------------
 # Must stay in step with DOT in render_report and the .cN rules in the template
 # stylesheet -- these are the same colours, inlined for the Call Detail table.
-DOT_HEX = {"Crystal Mango": "#cc0000", "Lorena Gonzalez": "#9900ff",
-           "Mike Olvera": "#0000ff", "Coral Barwick": "#e6cff2",
-           "Sarahi Chin": "#ffcfc9"}
+# Producer identity colours, set by Frank 2026-08-25. These are swatches beside
+# a name, never the only carrier of meaning, which is why the pale ones are fine
+# here -- but note Amanda #baffff, Coral #00ffcf and Sarahi #ffb48c sit below the
+# 3:1 mark-vs-background floor (1.11, 1.15 and 1.73 against a white card), so as
+# a large filled funnel bar they read faint. Keep them paired with the name.
+DOT_HEX = {"Crystal Mango": "#ff4b4b", "Lorena Gonzalez": "#cd81ff",
+           "Mike Olvera": "#5656fe", "Coral Barwick": "#00ffcf",
+           "Sarahi Chin": "#ffb48c", "Amanda Torricellas": "#baffff"}
 
 
 def _fmt_phone(e164):
