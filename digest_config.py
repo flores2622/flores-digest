@@ -283,50 +283,30 @@ COACH_BAR_RANGES = {
 # label anyway, so the extra state rides a non-colour channel.
 #
 # hue: the validated status set. fill=False draws the outlined/dashed variant.
-# fill  -- True = solid chip, False = BORDERED box (white, coloured rule + ink)
-# dash  -- True = follow-up on a quote already out: dashed rule, pale mix bar
-# light -- the mix-bar/legend tint for a dashed category (~45% hue over white)
-#
-# Frank, 2026-08-25: "leave the bordered blue and red boxes for Quoted no
-# action, Quote follow up no action, and quoted lost, quote follow up lost."
-# All four quote states are bordered boxes, and the on-this-call / follow-up
-# split is carried by the RULE -- solid against dashed -- not by filling them.
-# Only the three non-quote states are solid chips.
-# paint  -- the colour of the chip, the mix-bar segment and the row rail
-# fill   -- True = solid block of `paint`; False = white box outlined in `paint`
-# stroke -- "solid" for something that happened ON this call, "dotted" for a
-#           follow-up on a quote already out. Applies to the chip border AND the
-#           row rail, so the two read as one signal.
-# ink    -- text colour on a bordered box (a filled one computes its own)
-#
-# Frank, 2026-08-25: "solid light blue for quoted, no action, dotted border
-# light blue for quote follow up, no action. Solid red for quoted on this call
-# lost, and dotted red border for quote follow up, lost ... on the left bar,
-# dotted or solid as well depending on which one it is."
 CALL_CATEGORIES = {
-    "sold_on_call":    {"paint": "#008300", "fill": True,  "stroke": "solid",
+    "sold_on_call":    {"hue": "#008300", "fill": True,
                         "label": "Sold on the call"},
-    "quoted_call_open":{"paint": "#9fc2ed", "fill": True,  "stroke": "solid",
+    "quoted_call_open":{"hue": "#2a78d6", "fill": True,
                         "label": "Quoted, no action"},
-    # `bar` exists because a 9px mix-bar segment cannot be a bordered box -- it
-    # rendered as a white gap. The bar and the key swatch take a solid tint one
-    # step paler than the on-this-call sibling, so the bar still reads as a bar
-    # while the chip keeps the dotted outline.
-    "followup_open":   {"paint": "#9fc2ed", "fill": False, "stroke": "dotted",
-                        "ink": "#2a78d6", "bar": "#d3e4f7",
+    # The follow-up pair reuses its parent hue at ~45% over white -- the light
+    # blue Frank picked out of the per-producer mix bar (2026-08-25) -- with a
+    # dashed border and a dashed row rail in the full hue. Seven hues cannot
+    # clear the all-pairs separation floors and five can, so the this-call vs
+    # follow-up split rides lightness and stroke rather than a sixth colour.
+    "followup_open":   {"hue": "#2a78d6", "light": "#9fc2ed", "fill": False,
                         "label": "Quote follow up, no action yet"},
-    "quoted_call_lost":{"paint": "#e34948", "fill": True,  "stroke": "solid",
+    "quoted_call_lost":{"hue": "#e34948", "fill": True,
                         "label": "Quoted on this call, {d}"},
-    "followup_lost":   {"paint": "#e34948", "fill": False, "stroke": "dotted",
-                        "ink": "#e34948", "bar": "#f2adad",
+    "followup_lost":   {"hue": "#e34948", "light": "#f2adad", "fill": False,
                         "label": "Quote follow up, {d}"},
     # Frank, 2026-08-25: "yellow and orange are 2 different colors, use them
-    # both". #f0e800 sits outside the validator's mark-lightness band, which is
-    # what highlighter yellow means; the pair that matters clears the
-    # normal-vision floor at Delta E 17.7 against #eda100, and both take dark ink.
-    "dead_no_quote":   {"paint": "#f0e800", "fill": True,  "stroke": "solid",
+    # both" -- highlighter yellow here, the orange-yellow on Contacted below.
+    # #f0e800 sits outside the validator's mark-lightness band, which is what
+    # highlighter yellow means; the pair that matters clears the normal-vision
+    # floor at Delta E 17.7 against #eda100, and both chips take dark ink.
+    "dead_no_quote":   {"hue": "#f0e800", "fill": True,
                         "label": "{d}, never quoted"},
-    "live_no_quote":   {"paint": "#eda100", "fill": True,  "stroke": "solid",
+    "live_no_quote":   {"hue": "#eda100", "fill": True,
                         "label": "Contacted, No Action"},
 }
 # Reading order, best first -- also the Call Detail sort order.
