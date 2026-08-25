@@ -101,6 +101,14 @@ def pull_sources(day):
             log(f"{name}...")
             p.write_text(json.dumps(fn()))
 
+    # Day-scoped: this is a snapshot of what is OPEN, so it has to be re-pulled
+    # each day. Cached under a bare name it would have frozen on day one and the
+    # renewal exclusion would have quietly gone stale.
+    p = ROOT / f"data/az_service_tickets_{day}.json"
+    if not p.exists():
+        log("service tickets...")
+        p.write_text(json.dumps(az.service_tickets_all()))
+
     p = ROOT / f"data/az_tasks_{day}.json"
     if not p.exists():
         log("tasks...")

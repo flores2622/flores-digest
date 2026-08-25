@@ -1,29 +1,64 @@
 # Flores digest — all changes through 2026-08-25
 
-Eleven files. `template/report_template.html` is a second copy of the same
+Twelve files. `template/report_template.html` is a second copy of the same
 template; both are kept in sync. Drop them over the repo, or:
 
     git apply flores-fixes-2026-08-25.patch
 
 Verify with `python3 daily.py --no-send`. Aug 24 rebuilds in ~20s once `data/`
-is warm and lands at **91,605 bytes — 10,795 under the 102,400 clip limit**.
-Nothing in this package sends mail.
+is warm and lands at **90,237 bytes — 12,163 under the 102,400 clip limit**.
+Nothing here sends mail.
 
-**Watch the headroom.** The new Call Detail is 34.7 KB against the old table's
-22.6 KB, and audit section (e) adds a row per open task. A day with many more
-open tasks or live contacts will approach the limit.
+**Watch the headroom.** The new Call Detail is ~35 KB against the old table's
+22.6 KB, and audit section (e) adds a row per open task.
 
 ---
+
+## New: renewals no longer count as new business
+
+Dana Sanchez and Genaro Cortez were being counted as new-business live contacts
+for Crystal. Both are full renewals — an **open Renewal SR with Crystal as the
+CSR**, the linked lead sold or smart-cycled and assigned to another producer.
+
+The rule is the service ticket, not lead status. `day_calls.build_context` now
+indexes every OPEN service ticket by phone number and CSR, and `classify`
+excludes a dial when a ticket matches the number AND the calling producer is the
+CSR. Tickets are pulled once a day via the new `AgencyZoom.service_tickets_all`
+and cached day-scoped (`data/az_service_tickets_<day>.json` — a bare filename
+would have frozen the snapshot on day one and gone stale).
+
+Why the CSR test matters, and why lead status was the wrong signal:
+
+* **Lead status cannot express it.** 19 of Aug 24's 32 live contacts sat on a
+  non-active lead, and most were smart-cycled BY the very call being reported —
+  real new business. Excluding on `status != 0` would have gutted the day.
+* **The existing service regex is too wide.** `SERVICE_BODY_RE` fired on the
+  call text for Dana (right) but also Genaro *and* Angel Inda — and Angel Inda
+  is Lorena's, so it is always new business.
+* **The CSR test keeps it narrow and correct.** Wesley Knowlton has an open
+  Missing Documents ticket under a different CSR, so Mike's call to him stays
+  new business. Angel Inda has no ticket, so Lorena keeps him.
+
+Blast radius: **2 of 32 live contacts, 5 of 190 dials**, all Crystal — which is
+right, since she is the only producer doing service and renewals.
+
+| | Before | After |
+|---|---|---|
+| Crystal calls / dials | 48 / 51 | 43 / 46 |
+| Crystal live contacts | 7 | 5 |
+| Crystal contact rate | 14.6% | 11.6% |
+| Team calls | 190 | 185 |
+| Team live / rate | 32 / 16.8% | 30 / 16.2% |
 
 ## Bugs found and fixed
 
 **transcribe.py — the build hang.** `classify()` tested for a repeated greeting
-with `r"(\W*(hello|hola|bueno|hi)\W*){2,}"`. The `\W*` on both sides of the inner
-group makes every partition of the separators its own path, so a Whisper
+with `r"(\W*(hello|hola|bueno|hi)\W*){2,}"`. The `\W*` on both sides of the
+inner group makes every partition of the separators its own path, so a Whisper
 repetition-loop transcript ("Hello? " x300) that does not fully match backtracks
 exponentially and never returns. It stopped the Aug 24 build for 50 minutes on
-one call. Now `r"(?:\W*(?:hello|hola|bueno|hi)){2,}\W*"` — same strings accepted
-(verified equal on 66,666 generated cases), linear time.
+one call. Now `r"(?:\W*(?:hello|hola|bueno|hi)){2,}\W*"` — same strings
+accepted (verified equal on 66,666 generated cases), linear time.
 
 **az_client.py — tasks counted twice.** `_paged()` starts at `page=0`.
 `/leads/list` is 0-indexed and clean; `/tasks/list` is 1-indexed and clamps
@@ -54,9 +89,9 @@ every note the producer wrote on the lead that day, but Call Detail printed
 of them, de-duplicated, capped at 480 chars.
 
 **report_template.html — the row rail was invisible.** `.cdi td{border:none}`
-and `.eN{border-left:...}` are both (0,0,1,1); the reset came later in source
-order and won. The rail rules are now `.cdt td.eN` — (0,0,2,1) — so they cannot
-tie.
+and `.eN{border-left:...}` are both specificity (0,0,1,1); the reset came later
+in source order and won. The rail rules are now `.cdt td.eN` — (0,0,2,1) — so
+they cannot tie.
 
 ## Requested changes
 
@@ -70,9 +105,7 @@ outcome chip beside the talk time, coloured rail down the left of every row.
 
 **Seven categories on five hues.** The quote state splits in two: presented ON
 the call versus a follow-up on one already out. The follow-up pair reuses its
-parent hue at ~45% over white with a dashed chip border and dashed rail. Seven
-hues cannot clear the all-pairs colour-separation floors; five can, and every
-chip is labelled, so the extra state rides lightness and stroke.
+parent hue at ~45% over white with a dashed chip border and dashed rail.
 
 | Category | Colour | Chip |
 |---|---|---|
@@ -87,50 +120,23 @@ chip is labelled, so the extra state rides lightness and stroke.
 The old five pastels failed measurably: dead-with-quote #FCA5A5 against
 dead-no-quote #FDBA74 was ΔE 9.3 for normal vision against a floor of 15, and
 all five sat under 3:1 contrast. The set above clears the normal-vision floor on
-every pair (worst 17.7, the two yellows); #f0e800 is outside the validator's
+every pair (worst 17.7, the two yellows); #f0e800 sits outside the validator's
 mark-lightness band, which is what "highlighter yellow" means, and both yellow
 chips carry dark ink.
 
-**Quote state from TASK TITLES**, a controlled vocabulary here — "Quote follow
-#7", "Quoted Yesterday 1st Follow Up call" against "Never quoted lead- Day 4
-NEW", "Send quote to prospect". quoteDate is not used at all: a quote can be
-started one day and presented another. **QNC titles count as follow-ups** — that
-pipeline is where leads land when they did not close the last time they were
-presented, so a quote has already been out. Checked before the pending pattern,
-whose "Lead Day N" would otherwise match. Falls back to stage history, which
-needs a quote-stage move inside 30 days; unbounded, it made follow-ups of leads
-last quoted in 2022.
+**Quote state from TASK TITLES** — "Quote follow #7", "Quoted Yesterday 1st
+Follow Up call" against "Never quoted lead- Day 4 NEW", "Send quote to
+prospect". quoteDate is not used: a quote can be started one day and presented
+another. **QNC titles count as follow-ups** — that pipeline is where leads land
+when they did not close the last time they were presented, so a quote has
+already been out. Checked before the pending pattern, whose "Lead Day N" would
+otherwise match. Falls back to stage history, which needs a quote-stage move
+inside 30 days; unbounded, it made follow-ups of leads last quoted in 2022.
 
-**"Lost", not "Dead"**, unless the outcome actually says dead — a smart-cycled
-lead is parked on a cadence.
+**"Lost", not "Dead"**, unless the outcome actually says dead.
 
 **Audit:** new section (e) for tasks still open at end of day; every table reads
 rep › lead › task › category data.
 
 **Layout:** Team Leaderboard full width at the top; Call Outcome Breakdown back
 to a normal-width panel in the column.
-
----
-
-## NOT changed — needs a decision
-
-**Dana Sanchez is counted as a new-business live contact for Crystal and
-probably should not be.** Her AgencyZoom lead is `status 2`, created 2025-03-21
-with a quoteDate the same day, and the number also matches a customer record;
-the call is about reviewing an auto renewal and increasing coverage. That is
-service.
-
-I did not write a rule for it, because every rule I tested is either too wide or
-guesses at something undocumented:
-
-* `status != 0` catches 19 of 32 live contacts — most are `status 5` leads that
-  this very call smart-cycled, which is real new business.
-* The existing `SERVICE_BODY_RE` fired on the call text for Dana (right) but
-  also Genaro Cortez and Angel Inda (both wrong — a winback and a live quoted
-  prospect, both new business).
-* `status == 2` plus a customer-record match isolates exactly Dana today, 1 of
-  32. That is the rule to write — but nothing documents what status 2 means, and
-  inventing semantics off one example is how the contact rate broke before.
-
-Confirm what status 2 is (and 3, which covers 4 more contacts) and it is a
-one-line change in `day_calls.classify`.

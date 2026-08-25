@@ -78,7 +78,33 @@ def build_context(day):
         for a in t.get("assignees") or []:
             if a.get("id") in az_ids:
                 svc_customers[az_ids[a["id"]]].add(t["customerId"])
-    return lead_idx, cust_idx, svc_customers
+
+    # OPEN service tickets (SRs) by dialled number, but only where the CALLING
+    # producer is the CSR (Frank, 2026-08-25). Dana Sanchez and Genaro Cortez
+    # were both counted as new-business live contacts for Crystal when both are
+    # "full blown renewals" -- an open Renewal SR with Crystal as CSR, the
+    # linked lead sold or smart-cycled and assigned to someone else. Lead status
+    # cannot express this: 19 of Aug 24's 32 contacts sat on a non-active lead
+    # and most were smart-cycled BY the call being reported. The SR can, and it
+    # is narrow -- 2 of 32 contacts, 5 of 190 dials.
+    #
+    # The CSR test is what keeps it honest. Wesley Knowlton has an open Missing
+    # Documents ticket under a different CSR, and Mike's call to him is real new
+    # business. Angel Inda has no ticket at all, so Lorena's call stays new
+    # business, which is right -- "it will ALWAYS be new business".
+    svc_phones = collections.defaultdict(list)
+    sr_file = pathlib.Path(f"data/az_service_tickets_{day}.json")
+    if sr_file.exists():
+        for t in json.loads(sr_file.read_text()):
+            if t.get("completeDate"):
+                continue                      # closed SR says nothing about today
+            who = az_ids.get(t.get("csr"))
+            if not who:
+                continue
+            ph = e164(t.get("phone"))
+            if ph:
+                svc_phones[(who, ph)].append(t)
+    return lead_idx, cust_idx, svc_customers, svc_phones
 
 
 def pick_lead(cands):
@@ -91,7 +117,7 @@ def pick_lead(cands):
 
 def classify(day):
     """Per producer: which dialled numbers count as new-business call volume."""
-    lead_idx, cust_idx, svc_customers = build_context(day)
+    lead_idx, cust_idx, svc_customers, svc_phones = build_context(day)
     dials = producer_dials(day)
     out = {}
     for who, bynum in dials.items():
@@ -107,6 +133,9 @@ def classify(day):
                 excluded = "customer record only (service/renewal)"
             elif any(c["id"] in svc_customers.get(who, set()) for c in custs):
                 excluded = "service/renewal task due today for this producer"
+            elif svc_phones.get((who, num)):
+                wf = svc_phones[(who, num)][0].get("workflowName") or "service"
+                excluded = f"open {wf} ticket with this producer as CSR"
             elif lead and is_test_lead(lead):
                 excluded = "test/dummy lead record"
             rows.append({

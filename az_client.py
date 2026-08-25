@@ -182,6 +182,27 @@ class AgencyZoom:
     def service_tickets(self, body=None):
         return self.post("/v1/api/serviceTicket/service-tickets/list", body or {})
 
+    def service_tickets_all(self):
+        """Every OPEN service ticket. Not `_paged` -- this endpoint returns its
+        rows under "serviceTickets" and its own page/pageSize echo, and it is
+        the SR list the renewal exclusion rests on (Frank, 2026-08-25: Dana
+        Sanchez and Genaro Cortez are "full blown renewals" with an active
+        Renewal SR, and Crystal is the only producer who does service).
+        """
+        out, seen, page = [], set(), 0
+        while True:
+            r = self.post("/v1/api/serviceTicket/service-tickets/list",
+                          {"page": page, "pageSize": 100}) or {}
+            arr = r.get("serviceTickets") or []
+            for t in arr:
+                if t.get("id") not in seen:
+                    seen.add(t.get("id"))
+                    out.append(t)
+            total = r.get("totalCount")
+            page += 1
+            if not arr or len(arr) < 100 or (total is not None and len(out) >= total):
+                return out
+
     def pipelines_and_stages(self):
         return self.get("/v1/api/pipelines-and-stages") or []
 

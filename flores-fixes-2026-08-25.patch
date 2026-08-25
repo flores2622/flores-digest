@@ -1,5 +1,5 @@
 diff --git a/az_client.py b/az_client.py
-index fe76fd5..a1d36dc 100644
+index fe76fd5..256d07f 100644
 --- a/az_client.py
 +++ b/az_client.py
 @@ -96,16 +96,41 @@ class AgencyZoom:
@@ -47,6 +47,34 @@ index fe76fd5..a1d36dc 100644
                      return out
              elif len(batch) < self.MAX_PAGE_SIZE:
                  return out
+@@ -157,6 +182,27 @@ class AgencyZoom:
+     def service_tickets(self, body=None):
+         return self.post("/v1/api/serviceTicket/service-tickets/list", body or {})
+ 
++    def service_tickets_all(self):
++        """Every OPEN service ticket. Not `_paged` -- this endpoint returns its
++        rows under "serviceTickets" and its own page/pageSize echo, and it is
++        the SR list the renewal exclusion rests on (Frank, 2026-08-25: Dana
++        Sanchez and Genaro Cortez are "full blown renewals" with an active
++        Renewal SR, and Crystal is the only producer who does service).
++        """
++        out, seen, page = [], set(), 0
++        while True:
++            r = self.post("/v1/api/serviceTicket/service-tickets/list",
++                          {"page": page, "pageSize": 100}) or {}
++            arr = r.get("serviceTickets") or []
++            for t in arr:
++                if t.get("id") not in seen:
++                    seen.add(t.get("id"))
++                    out.append(t)
++            total = r.get("totalCount")
++            page += 1
++            if not arr or len(arr) < 100 or (total is not None and len(out) >= total):
++                return out
++
+     def pipelines_and_stages(self):
+         return self.get("/v1/api/pipelines-and-stages") or []
+ 
 diff --git a/build_day.py b/build_day.py
 index ae14402..b81d2f6 100644
 --- a/build_day.py
@@ -87,10 +115,25 @@ index ae14402..b81d2f6 100644
      assert_div_balance(src, h, "final")
  
 diff --git a/daily.py b/daily.py
-index 60a0097..49cb862 100644
+index 60a0097..f8b096d 100644
 --- a/daily.py
 +++ b/daily.py
-@@ -236,6 +236,15 @@ def build_metrics(day):
+@@ -101,6 +101,14 @@ def pull_sources(day):
+             log(f"{name}...")
+             p.write_text(json.dumps(fn()))
+ 
++    # Day-scoped: this is a snapshot of what is OPEN, so it has to be re-pulled
++    # each day. Cached under a bare name it would have frozen on day one and the
++    # renewal exclusion would have quietly gone stale.
++    p = ROOT / f"data/az_service_tickets_{day}.json"
++    if not p.exists():
++        log("service tickets...")
++        p.write_text(json.dumps(az.service_tickets_all()))
++
+     p = ROOT / f"data/az_tasks_{day}.json"
+     if not p.exists():
+         log("tasks...")
+@@ -236,6 +244,15 @@ def build_metrics(day):
              elif quote_presented(lc._text(n.get("body"))):
                  hh[n["createdBy"]].add(int(f.stem))
  
@@ -106,7 +149,7 @@ index 60a0097..49cb862 100644
      real = cfg.real_sales(day, pol, smap, azid)
      M = {}
      for who in PRODUCERS:
-@@ -269,8 +278,22 @@ def build_metrics(day):
+@@ -269,8 +286,22 @@ def build_metrics(day):
                                 # which. Merging them printed Mike's typed
                                 # notes as "From the call recording" (Frank,
                                 # 2026-08-17, Lazaro Rueda).
@@ -131,6 +174,64 @@ index 60a0097..49cb862 100644
                                 "note_recording": txt.get(r["number"], "")[:280],
                                 "moves": [m["move"] for m in ev["stage_moves"]]})
          talk = sum(r["talk_seconds"] for r in live)
+diff --git a/day_calls.py b/day_calls.py
+index 7676872..aabc024 100644
+--- a/day_calls.py
++++ b/day_calls.py
+@@ -78,7 +78,33 @@ def build_context(day):
+         for a in t.get("assignees") or []:
+             if a.get("id") in az_ids:
+                 svc_customers[az_ids[a["id"]]].add(t["customerId"])
+-    return lead_idx, cust_idx, svc_customers
++
++    # OPEN service tickets (SRs) by dialled number, but only where the CALLING
++    # producer is the CSR (Frank, 2026-08-25). Dana Sanchez and Genaro Cortez
++    # were both counted as new-business live contacts for Crystal when both are
++    # "full blown renewals" -- an open Renewal SR with Crystal as CSR, the
++    # linked lead sold or smart-cycled and assigned to someone else. Lead status
++    # cannot express this: 19 of Aug 24's 32 contacts sat on a non-active lead
++    # and most were smart-cycled BY the call being reported. The SR can, and it
++    # is narrow -- 2 of 32 contacts, 5 of 190 dials.
++    #
++    # The CSR test is what keeps it honest. Wesley Knowlton has an open Missing
++    # Documents ticket under a different CSR, and Mike's call to him is real new
++    # business. Angel Inda has no ticket at all, so Lorena's call stays new
++    # business, which is right -- "it will ALWAYS be new business".
++    svc_phones = collections.defaultdict(list)
++    sr_file = pathlib.Path(f"data/az_service_tickets_{day}.json")
++    if sr_file.exists():
++        for t in json.loads(sr_file.read_text()):
++            if t.get("completeDate"):
++                continue                      # closed SR says nothing about today
++            who = az_ids.get(t.get("csr"))
++            if not who:
++                continue
++            ph = e164(t.get("phone"))
++            if ph:
++                svc_phones[(who, ph)].append(t)
++    return lead_idx, cust_idx, svc_customers, svc_phones
+ 
+ 
+ def pick_lead(cands):
+@@ -91,7 +117,7 @@ def pick_lead(cands):
+ 
+ def classify(day):
+     """Per producer: which dialled numbers count as new-business call volume."""
+-    lead_idx, cust_idx, svc_customers = build_context(day)
++    lead_idx, cust_idx, svc_customers, svc_phones = build_context(day)
+     dials = producer_dials(day)
+     out = {}
+     for who, bynum in dials.items():
+@@ -107,6 +133,9 @@ def classify(day):
+                 excluded = "customer record only (service/renewal)"
+             elif any(c["id"] in svc_customers.get(who, set()) for c in custs):
+                 excluded = "service/renewal task due today for this producer"
++            elif svc_phones.get((who, num)):
++                wf = svc_phones[(who, num)][0].get("workflowName") or "service"
++                excluded = f"open {wf} ticket with this producer as CSR"
+             elif lead and is_test_lead(lead):
+                 excluded = "test/dummy lead record"
+             rows.append({
 diff --git a/digest_config.py b/digest_config.py
 index 130baa7..f5c11ae 100644
 --- a/digest_config.py
