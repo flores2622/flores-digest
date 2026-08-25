@@ -315,12 +315,12 @@ CALL_CATEGORIES = {
     "quoted_call_open":{"paint": "#9fc2ed", "fill": True,  "stroke": "solid",
                         "label": "Quoted, no action"},
     "followup_open":   {"paint": "#2a78d6", "fill": False, "stroke": "solid",
-                        "ink": "#0b0b0b", "stripe": "#9fc2ed",
+                        "ink": "#0b0b0b", "stripe": "#d4e4f7",
                         "label": "Quote follow up, no action yet"},
     "quoted_call_lost":{"paint": "#e34948", "fill": True,  "stroke": "solid",
                         "label": "Quoted on this call, {d}"},
     "followup_lost":   {"paint": "#e34948", "fill": False, "stroke": "solid",
-                        "ink": "#0b0b0b", "stripe": "#f2adad",
+                        "ink": "#0b0b0b", "stripe": "#f9dada",
                         "label": "Quote follow up, {d}"},
     # Frank, 2026-08-25: "yellow and orange are 2 different colors, use them
     # both". #f0e800 sits outside the validator's mark-lightness band, which is
