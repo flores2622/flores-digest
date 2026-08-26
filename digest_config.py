@@ -44,9 +44,9 @@ PRODUCERS = {
     # Frank, 2026-08-24: "lets get Sarahi and Coral added on as regular
     # producers effective today." This lands the s6 decision four days ahead of
     # the 2026-08-28 review date, which is therefore closed, not pending.
-    # Coral has a full Insightful record. Sarahi has NONE -- she counts in every
-    # call, quote and sales figure, but her utilization card reads as unlicensed
-    # until someone creates her Insightful record (NO_INSIGHTFUL_LICENCE below).
+    # Both have full Insightful records now -- Coral from the start, Sarahi from
+    # 2026-08-25, when her licence was assigned. Both count in every figure,
+    # including the team weighted utilization.
     "Coral Barwick":   {"ext": "108", "rc_id": "774861052", "az_id": 185440},
     "Sarahi Chin":     {"ext": "109", "rc_id": "774862052", "az_id": 185441},
 }
@@ -135,9 +135,15 @@ UTIL_PANEL_ORDER = ["Crystal Mango", "Lorena Gonzalez", "Mike Olvera",
                     "Debbie Aguilera", "Amanda Torricellas",
                     "Coral Barwick", "Sarahi Chin"]
 
-# Sarahi has NO Insightful record at all -- not merely untracked. Flagged in the
-# audit so a licence can be assigned (Frank, 2026-08-14).
-NO_INSIGHTFUL_LICENCE = {"Sarahi Chin"}
+# Producers with no Insightful record AT ALL -- a different fact from
+# "licensed but no rows today", which util_panel words differently.
+# 2026-08-25: Sarahi's Insightful record now exists and is active
+# (employee w_zhn8dl-x0zgnx, deactivated=0), and she produced attendance
+# rows the same day -- 89 productive of 113 tracked minutes. The panel was
+# printing "no Insightful licence assigned", which had become a false
+# statement. Empty now; the branch in util_panel stays for the next person
+# who joins before their licence does.
+NO_INSIGHTFUL_LICENCE = set()
 # Francisco holds an active licence but produces no attendance rows.
 LICENSED_NOT_TRACKED = {"Francisco Flores"}
 
@@ -435,10 +441,6 @@ TRAQ_REVISIT_DATE = dt.date(2026, 9, 15)
 # Surfaced automatically as a highlighted block in the audit on/after this date.
 REVISIT_DATE = dt.date(2026, 8, 28)
 REVISIT_QUESTIONS = [
-    "Should Coral Barwick and Sarahi Chin be included in the utilization panel? "
-    "(Confirmed 2026-08-14: Coral IS tracked by Insightful and produces a full "
-    "utilization figure every day. Sarahi has no Insightful record at all and "
-    "needs a licence before she can ever appear.)",
     "Should Coral's and Sarahi's leads enter the lead-derived metrics?",
 ]
 
