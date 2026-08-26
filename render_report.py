@@ -193,6 +193,27 @@ def move_panel_before(html, heading, marker):
     raise SystemExit(f"panel close not found: {heading}")
 
 
+def cut_panel(html, heading):
+    """drop_panel, but hand back the panel it removed.
+
+    Same depth walk, so the boundary cannot be guessed wrong. The overflow
+    rescue needs the markup it cut, not just the shortened body: a panel that
+    leaves the email has to arrive as a PDF instead.
+    """
+    i = html.find(heading)
+    if i < 0:
+        raise SystemExit(f"panel not found: {heading}")
+    open_tag = html.rfind('<div class="panel', 0, i)
+    if open_tag < 0:
+        raise SystemExit(f"panel opening tag not found: {heading}")
+    depth = 0
+    for m in TAG_RE.finditer(html, open_tag):
+        depth += -1 if m.group(1) else 1
+        if depth == 0:
+            return html[:open_tag] + html[m.end():], html[open_tag:m.end()]
+    raise SystemExit(f"panel close not found: {heading}")
+
+
 def drop_panel(html, heading):
     """Remove a whole panel -- its <div class="panel"> through its own close.
 

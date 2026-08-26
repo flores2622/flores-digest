@@ -535,8 +535,19 @@ def send(day, ops_html, pdfs, audience="both"):
                      cfg.RECIPIENTS_OPS))
     if audience in ("staff", "both"):
         jobs.append((f"Daily Sales Digest — {label}", staff, cfg.RECIPIENTS_STAFF))
+    # On a heavy day the body can pass Gmail's clip threshold. Rather than
+    # refuse the whole send -- which cost BOTH audiences their report -- shed
+    # panels into a PDF attachment and say so at the top of the email (Frank,
+    # 2026-08-25). Each audience is measured on its own: the staff body is
+    # already lighter by one panel, so it can still fit when ops does not.
+    import overflow
     for subj, body, to in jobs:
-        send_digest.send(subj, body, to, attachments=atts, binary=True)
+        body, extra = overflow.relieve(day, body, log=log)
+        a = list(atts)
+        if extra:
+            a.append((pathlib.Path(extra).name,
+                      pathlib.Path(extra).read_bytes()))
+        send_digest.send(subj, body, to, attachments=a, binary=True)
         log(f"sent: {subj} -> {len(to)}")
 
 
