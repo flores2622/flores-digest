@@ -71,6 +71,61 @@ LOSS_RE = re.compile(r"Loss Reason:\s*([^|]+?)(?:\s+Comments:|$)", re.I)
 MOVE_COMMENT_RE = re.compile(r"Comments:\s*(.+)$", re.S)
 
 
+# Frank, 2026-08-25. Two rules for a task that was closed without being
+# completed, both driven by what the producer actually did on the lead that day:
+#
+#   EXCLUDED  the lead was a duplicate. "If Jorge was a duplicate then that was a
+#             duplicate task and therefore not a true task" -- it leaves the
+#             audit entirely, the same way service work does.
+#
+#   EXCUSED   the producer moved the lead into Smart-Cycle or Dead that day, and
+#             AgencyZoom's "cancel all related open tasks" checkbox is what
+#             closed the task. They made the call and made a decision; the
+#             cancellation is the CRM doing as it was told, not work left undone.
+#             Covers both a real loss (Angel Inda: "my quote was coming up higher
+#             at this time") and a cadence restart (David Garcia, smart-cycled to
+#             re-enroll the automation for the next day -- the same reasoning as
+#             the Recontact pause rule).
+#
+# Excused tasks come OUT of the completion-rate denominator but stay VISIBLE in
+# audit section (d) with their verdict printed. Visibility is the guard against
+# this being used to clear a task list, not a narrower rule.
+LOSS_DUPLICATE_RE = re.compile(r"duplicate", re.I)
+SMART_CYCLE_RE = re.compile(r"to\s+.{0,40}(smart-?cycle|\bdead\b)", re.I)
+
+
+def cancellation_verdicts(day, tasks, az_ids):
+    """{task_id: 'excluded'|'excused'} for closed-not-completed tasks."""
+    import live_contact as lc
+    out = {}
+    for t in tasks:
+        if t.get("status") != az_tasks.STATUS_CLOSED_NOT_COMPLETED:
+            continue
+        who = az_tasks.owner(t, az_ids)
+        lid = t.get("customerId")
+        if not who or not lid:
+            continue
+        dup = cycled = False
+        for n in lc.load_notes(lid):
+            if not str(n.get("createDate") or "").startswith(day):
+                continue
+            if n.get("type") != "MOVE_STAGE":
+                continue
+            body = lc._text(n.get("body")) or ""
+            g = LOSS_RE.search(body)
+            if g and LOSS_DUPLICATE_RE.search(g.group(1)):
+                dup = True
+            # The move has to be BY this producer -- someone else cycling the
+            # lead is not this producer's decision.
+            if SMART_CYCLE_RE.search(body) and who.split()[0].lower() in body.lower():
+                cycled = True
+        if dup:
+            out[t["id"]] = "excluded"
+        elif cycled:
+            out[t["id"]] = "excused"
+    return out
+
+
 def day_activity(lead_id, day):
     """What AgencyZoom recorded on this lead that day, beyond the phone.
 
@@ -119,14 +174,16 @@ def _link(task, leads_ids):
     return ("lead" if cid in leads_ids else "customer"), cid
 
 
-def build(day, tasks, dials_by_producer, leads, customers):
+def build(day, tasks, dials_by_producer, leads, customers, verdicts=None):
     az_ids = {v["az_id"]: k for k, v in PRODUCERS.items()}
     idx = _phone_index(leads, customers)
     lead_ids = {l["id"] for l in leads}
     dialled = {who: set(bynum) for who, bynum in dials_by_producer.items()}
 
+    verdicts = verdicts or {}
     counted = [t for t in tasks
-               if not az_tasks.service_reason(t) and az_tasks.owner(t, az_ids)]
+               if not az_tasks.service_reason(t) and az_tasks.owner(t, az_ids)
+               and verdicts.get(t.get("id")) != "excluded"]
 
     a, b, c, d, e = [], [], [], [], []
     for t in counted:
@@ -172,6 +229,7 @@ def build(day, tasks, dials_by_producer, leads, customers):
                 "move_comment": None}
             called = bool(phones) and any(p in dialled.get(who, ()) for p in phones)
             d.append({**row,
+                      "verdict": verdicts.get(t.get("id")),
                       "call_on_record": ("no number" if not phones else
                                          ("yes" if called else "no")),
                       "activity": act["kinds"],

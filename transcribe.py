@@ -220,6 +220,71 @@ def _window(path, start, seconds, language=None):
     return s.result.text.strip()
 
 
+# A Whisper repetition loop -- the same pathology that hung the 2026-08-24 build
+# via classify(). It also destroys a summary: Abel Ramos's 201-second Spanish
+# call came back as "(speaking in foreign language)" followed by the word "Okay"
+# about two hundred times. Collapse runs before anything reads the text, and
+# treat a transcript that is mostly one repeated token as unusable.
+REPEAT_RUN = re.compile(r"\b(\w[\w']*)\b(?:[\s,.!?\-]+\1\b)+", re.I)
+# Whisper loops on PHRASES too, not just words. Abel Ramos's call carried
+# "en el día de mañana" fifteen times in a row, which a single-word pattern
+# walks straight past -- and a summariser reading that concludes the prospect
+# said it fifteen times.
+REPEAT_PHRASE = re.compile(
+    r"\b((?:\w[\w']*[ ,]+){1,5}\w[\w']*)\b[ ,.!?-]*(?:\1\b[ ,.!?-]*){2,}", re.I)
+
+
+def collapse_repeats(text, keep=2):
+    """"okay okay okay ... okay" -> "okay okay". Leaves normal prose alone."""
+    if not text:
+        return text
+    def one(m):
+        word = m.group(1)
+        return " ".join([word] * keep)
+    out = REPEAT_PHRASE.sub(lambda m: (m.group(1).strip() + " ") * keep, text)
+    return REPEAT_RUN.sub(one, out)
+
+
+def repetition_ratio(text):
+    """Share of the transcript eaten by its single most repeated word."""
+    words = re.findall(r"[a-z']+", (text or "").lower())
+    if len(words) < 12:
+        return 0.0
+    top = max(set(words), key=words.count)
+    return words.count(top) / len(words)
+
+
+def transcribe_full(path, duration, seconds=30, language=None):
+    """The WHOLE call in `seconds` windows, not just head and tail.
+
+    transcribe_file deliberately reads only both ends, which is all the
+    live/voicemail classification needs. A summary and an objection read need the
+    middle: on 2026-08-24 Allen Lawson's objection ("I told her I didn't want to
+    give somebody all the same damn information again") sits four minutes into a
+    393-second call that head-and-tail never saw.
+    """
+    if not duration or duration <= 0:
+        return None
+    out = []
+    for start in range(0, int(duration), seconds):
+        t = one_window(path, start, seconds, language=language)
+        if t:
+            out.append(t.strip())
+    if not out:
+        return None
+    return collapse_repeats(" ".join(out)).strip()
+
+
+def one_window(path, start, seconds, language=None):
+    """_window, with the Spanish retry transcribe_file does per window."""
+    t = _window(path, start, seconds, language=language)
+    if t and FOREIGN.search(t) and language is None:
+        es = _window(path, start, seconds, language="es")
+        if es and not FOREIGN.search(es):
+            return es
+    return t
+
+
 def transcribe_file(path, seconds=30, duration=None):
     """Both ENDS of the call, not just the opening.
 

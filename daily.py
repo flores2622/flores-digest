@@ -330,14 +330,18 @@ def build_metrics(day):
                   "policies": n_sold, "premium_sold": round(prem)}
 
     util, weighted, _ = iu.pull(day)
-    tasks = az_tasks.audit(json.loads((ROOT / f"data/az_tasks_{day}.json").read_text()))
+    _raw_tasks = json.loads((ROOT / f"data/az_tasks_{day}.json").read_text())
+    import task_audit as _ta
+    _verdicts = _ta.cancellation_verdicts(
+        day, _raw_tasks, {v["az_id"]: k for k, v in PRODUCERS.items()})
+    tasks = az_tasks.audit(_raw_tasks, _verdicts)
     # Window dials, not day dials: recontact counts back to the stage-entry date.
     rc = recontact.build(day, leads, stage, day_calls.window_dials(day))
     import task_audit
     t_audit = task_audit.build(
-        day, json.loads((ROOT / f"data/az_tasks_{day}.json").read_text()),
-        dials, leads,
-        json.loads((ROOT / "data/az_customers_all.json").read_text()))
+        day, _raw_tasks, dials, leads,
+        json.loads((ROOT / "data/az_customers_all.json").read_text()),
+        _verdicts)
     coach = coach_from_gmail(day)
     s2d = speed_to_dial(day, leads, dials)
 
@@ -462,6 +466,16 @@ def main():
     transcribe_day(day)
     build_metrics(day)
 
+    # Full-transcribe and read the live contacts. Runs AFTER build_metrics
+    # because it only touches calls that came out as live contacts, and caches
+    # both stages, so it costs nothing on a re-run (Frank, 2026-08-25).
+    import call_summary
+    try:
+        call_summary.build(day, log=log)
+    except Exception as e:
+        log(f"  call summaries failed ({type(e).__name__}) -- "
+            f"Call Detail falls back to producer notes")
+
     import build_day
     out, html = build_day.build(day)
     log(f"rendered {out} ({len(html.encode()):,} bytes)")
@@ -521,8 +535,19 @@ def send(day, ops_html, pdfs, audience="both"):
                      cfg.RECIPIENTS_OPS))
     if audience in ("staff", "both"):
         jobs.append((f"Daily Sales Digest — {label}", staff, cfg.RECIPIENTS_STAFF))
+    # On a heavy day the body can pass Gmail's clip threshold. Rather than
+    # refuse the whole send -- which cost BOTH audiences their report -- shed
+    # panels into a PDF attachment and say so at the top of the email (Frank,
+    # 2026-08-25). Each audience is measured on its own: the staff body is
+    # already lighter by one panel, so it can still fit when ops does not.
+    import overflow
     for subj, body, to in jobs:
-        send_digest.send(subj, body, to, attachments=atts, binary=True)
+        body, extra = overflow.relieve(day, body, log=log)
+        a = list(atts)
+        if extra:
+            a.append((pathlib.Path(extra).name,
+                      pathlib.Path(extra).read_bytes()))
+        send_digest.send(subj, body, to, attachments=a, binary=True)
         log(f"sent: {subj} -> {len(to)}")
 
 
