@@ -576,8 +576,12 @@ def _call_note(r):
         # elsewhere" says nothing the line above it did not.
         if len(objs) > 1:
             pairs.append(("Overcome", _obj_rollup(objs)))
-    elif summ:
-        # An empty list is a real finding, not missing data: nobody pushed back.
+    elif summ and d.get("source") == "recording":
+        # "None raised" is a CLAIM, and it is only true when a transcript was
+        # actually read. On a producer-note fallback -- no recording, or no API
+        # key -- objections is empty because nobody looked, not because nobody
+        # objected. Printing "None raised" there would invent a finding, and
+        # with no key configured that is every row in the panel.
         pairs.append(("Objections",
                       '<span class="cdch cdc-n">None raised</span>'))
     out = _grid(pairs) if pairs else ""

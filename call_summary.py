@@ -128,7 +128,10 @@ address an objection well and still lose it. Do not let one answer drag the \
 other.
 - Never invent a name, price, coverage or date that is not in the input.
 - "not interested" with no reason given IS an objection.
-- Do not treat the producer's own pitch as something the prospect said."""
+- Do not treat the producer's own pitch as something the prospect said.
+- Refer to the agency side ONLY as the name given to you as the producer. Never \
+take their identity from the transcript: these calls open with the agency \
+greeting, which names the agency owner rather than whoever is on the line."""
 
 
 MAX_OBJECTIONS = 3
@@ -176,25 +179,68 @@ def upgrade(d):
     return d
 
 
-def _ask(model, transcript, notes, seconds):
-    body = {
-        "model": model,
-        "max_tokens": 600,
-        "system": SYSTEM,
-        "messages": [{"role": "user", "content":
-                      f"Call length: {seconds} seconds\n\n"
-                      f"Producer's own notes (may be empty):\n{notes or '(none)'}\n\n"
-                      f"Machine transcript:\n{transcript}"}],
-    }
+def _post(body):
     r = requests.post(API_URL, json=body, timeout=TIMEOUT, headers={
         "x-api-key": _key(), "anthropic-version": API_VERSION,
         "content-type": "application/json"})
-    r.raise_for_status()
-    text = "".join(b.get("text", "") for b in r.json().get("content", []))
-    m = re.search(r"\{.*\}", text, re.S)
+    if r.status_code >= 400:
+        raise RuntimeError(f"{r.status_code} {r.text[:300]}")
+    return r.json()
+
+
+def _extract(resp):
+    """Text blocks only, then the JSON object inside them.
+
+    Returns None when the model produced no parsable object -- which on a long
+    call usually means it ran out of budget mid-answer, not that it refused.
+    """
+    text = "".join(b.get("text", "") for b in resp.get("content", [])
+                   if b.get("type", "text") == "text")
+    m = re.search(r"\{.*\}", text, re.S)   # tolerates ```json fences
     if not m:
+        return None
+    try:
+        return json.loads(m.group(0))
+    except ValueError:
+        return None
+
+
+def _ask(model, transcript, notes, seconds, producer="the producer"):
+    """One call, one read. Two failure modes are handled, both seen for real.
+
+    1. THINKING ATE THE WHOLE BUDGET. claude-sonnet-5 thinks by default, and on
+       Guillermo Lara's 24-minute call it spent all 600 output tokens thinking
+       and returned zero text -- the summary came back empty for the longest,
+       most interesting call of the day. Thinking is disabled here: this is a
+       read-and-report task, not a reasoning one, and disabling it cut output
+       from 1,447 tokens to 314 with no loss of quality (same objections, same
+       verdicts). If a model ever rejects the parameter, the retry drops it and
+       buys a much bigger budget instead.
+    2. TRUNCATED MID-OBJECT. Any answer that hits the cap has no closing brace
+       and cannot be parsed. Retry once with room to finish.
+    """
+    msg = [{"role": "user", "content":
+            f"Producer on this call: {producer}\n"
+            f"Call length: {seconds} seconds\n\n"
+            f"Producer's own notes (may be empty):\n{notes or '(none)'}\n\n"
+            f"Machine transcript:\n{transcript}"}]
+    base = {"model": model, "system": SYSTEM, "messages": msg}
+
+    try:
+        resp = _post(dict(base, max_tokens=1000,
+                          thinking={"type": "disabled"}))
+    except RuntimeError as e:
+        if "thinking" not in str(e).lower():
+            raise
+        resp = _post(dict(base, max_tokens=3000))
+
+    d = _extract(resp)
+    if d is None:
+        resp = _post(dict(base, max_tokens=3000))
+        d = _extract(resp)
+    if d is None:
         raise ValueError("no JSON in response")
-    d = json.loads(m.group(0))
+
     return {"summary": str(d.get("summary") or "").strip(),
             "objections": _clean_objections(d.get("objections"))}
 
@@ -283,7 +329,8 @@ def build(day, log=print):
             sm[num] = from_notes(notes, "no API key configured")
             continue
         try:
-            d = _ask(model, text[:12000], notes, r.get("seconds") or 0)
+            d = _ask(model, text[:12000], notes, r.get("seconds") or 0,
+                     p.split()[0])
             d.update(source="recording", why="")
             sm[num] = d
         except Exception as e:

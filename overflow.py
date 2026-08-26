@@ -74,10 +74,23 @@ def _notice(labels, pdf_name):
         'Nothing was dropped.</div></div>')
 
 
+# Print-only, and only for the PDF -- the email body never sees this.
+#
+# A Call Detail row that straddles a page break makes Chromium paint that row's
+# collapsed left border down the FULL height of the next page. On the first
+# build, Mary Gunn's yellow rail ran the entire length of the following page,
+# straight through Mike's section, so every row under it looked like it was
+# tagged "lost, never quoted". Keeping rows whole fixes the colour bleed and
+# stops summaries splitting mid-sentence at the same time.
+PRINT_CSS = ("<style>@media print{.cdt tr{page-break-inside:avoid;"
+             "break-inside:avoid}.cdh{page-break-inside:avoid;"
+             "break-inside:avoid}}</style>")
+
+
 def _standalone(report_html, panels_html, day):
     """Wrap the shed panels in the report's own <head>, so the PDF matches."""
-    head_end = report_html.index("</head>") + len("</head>")
-    head = report_html[:head_end]
+    head_end = report_html.index("</head>")
+    head = report_html[:head_end] + PRINT_CSS + "</head>"
     title = re.search(r"<h1[^>]*>(.*?)</h1>", report_html, re.S)
     sub = re.search(r'<div class="subtitle">(.*?)</div>', report_html, re.S)
     return (head + '<body><div class="wrap"><div class="header">'
