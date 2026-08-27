@@ -49,14 +49,18 @@ AZ_TZ = dt.timezone(dt.timedelta(hours=-7))  # Arizona: UTC-7, never DST
 # so she enters the team weighting. Leaving her out would have printed her as a
 # producer everywhere else while quietly dropping her from the one team figure --
 # the kind of inconsistency someone spots and then distrusts the whole panel for.
-# Sarahi stays listed because she has NO Insightful record; she contributes no
-# attendance rows either way, so naming her here is documentation, not arithmetic.
+# Sarahi was listed here while she had no Insightful record at all. That record
+# now exists and produces attendance rows (2026-08-25), so she enters the team
+# weighting on the same reasoning as Coral: a producer counted everywhere else
+# must not be quietly dropped from the one team figure. Her first day is a part
+# day -- 113 tracked minutes against ~470 for everyone else -- so it moves the
+# team number very little: 83.17% -> 82.97% on 2026-08-25.
 #
 # Consequence, on purpose: the team figure no longer reproduces Insightful's own
 # published team number, which for 2026-08-07 was 1620m/1851m = 87.52% over
 # Crystal+Mike+Debbie+Lorena. That match was how the METHOD was verified, not a
 # constraint on scope. Reverting is one line: put Coral back in this set.
-TEAM_UTIL_EXCLUDE = {"Amanda Torricellas", "Sarahi Chin"}
+TEAM_UTIL_EXCLUDE = {"Amanda Torricellas"}
 
 
 class Insightful:
