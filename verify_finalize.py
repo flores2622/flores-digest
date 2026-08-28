@@ -4,8 +4,10 @@ Every figure is recomputed independently from day_calls, then compared with
 what finalize.apply() wrote into metrics.
 """
 import json, sys, collections
-sys.path.insert(0, '/root/flores-digest')
-import os; os.chdir('/root/flores-digest')
+import os, pathlib
+ROOT = pathlib.Path(__file__).resolve().parent
+sys.path.insert(0, str(ROOT))
+os.chdir(ROOT)
 import day_calls
 
 M = json.load(open('data/metrics_2026-08-25.json'))
