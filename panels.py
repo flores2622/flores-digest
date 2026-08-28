@@ -8,6 +8,7 @@ import datetime as dt
 import re
 
 import digest_config as cfg
+import live_contact as lc
 from render_report import DOT, TIER, hhmm, money
 
 SHORT = {"Crystal Mango": "Crystal", "Lorena Gonzalez": "Lorena",
@@ -95,7 +96,21 @@ def outcome_rows(M):
                 continue
             pct = n / total * 100
             cells.append(f'<td style="width:{pct:.2f}%">{n}</td>')
-            bars.append(f'<span class="og {colour}" style="width:{pct:.2f}%"></span>')
+            # A dial that got a call back the same day is drawn candy-caned
+            # INSIDE its own segment rather than pulled out into one of its
+            # own. Four of the five on 2026-08-25 sat in Live Contact -- the
+            # call back is what made the dial live -- so a separate segment
+            # would have printed "Live Contact 27" beside a Contact Rate panel
+            # still saying 31 (Frank, 2026-08-27).
+            cb = (m.get("outcomes_callback") or {}).get(name, 0)
+            if cb:
+                back = cb / total * 100
+                bars.append(f'<span class="og {colour}" '
+                            f'style="width:{pct - back:.2f}%"></span>')
+                bars.append(f'<span class="og {colour}b" '
+                            f'style="width:{back:.2f}%"></span>')
+            else:
+                bars.append(f'<span class="og {colour}" style="width:{pct:.2f}%"></span>')
         out.append(
             f'<div class="outcome-row"><div class="outcome-row-head">'
             f'<span class="rep-name"><span class="dot {DOT[p]}"></span>{SHORT[p]}</span>'
@@ -105,8 +120,27 @@ def outcome_rows(M):
             f'<div class="outcome-track">{"".join(bars)}</div></div></div>')
     legend = ('<div class="oc-legend">' + "".join(
         f'<span class="item"><span class="dot {c}"></span>{n}</span>'
-        for n, c in SEGMENTS) + '</div>')
-    return "".join(out) + legend
+        for n, c in SEGMENTS)
+        + '<span class="item"><span class="dot cFb"></span>'
+          'striped = the prospect called back</span></div>')
+    # Call backs answering a dial from an EARLIER day have nothing in today's
+    # denominator to mark, so they are reported beside the bar rather than in
+    # it. Keeping the segments equal to the day's dials is the property that
+    # makes the bar worth reading (Frank, 2026-08-27).
+    same = sum((M[p].get("outcomes_callback") or {}).values() for p in P3) \
+        if False else sum(sum((M[p].get("outcomes_callback") or {}).values())
+                          for p in P3)
+    prior = sum(M[p].get("callbacks_prior", 0) for p in P3)
+    note = ""
+    if same or prior:
+        bits = []
+        if same:
+            bits.append(f'{same} call back{"s" if same != 1 else ""} today')
+        if prior:
+            bits.append(f'{prior} to dial{"s" if prior != 1 else ""} '
+                        f'from an earlier day, not counted in the bars')
+        note = f'<div class="oc-prior">{" &middot; ".join(bits)}</div>'
+    return "".join(out) + legend + note
 
 
 # ---- Speed to Dial ---------------------------------------------------------
@@ -401,6 +435,14 @@ def _call_category(row):
     the category, but does not feed Premium Quoted. A "recycled back from
     Smart-Cycle" move is a move OUT of the cycle and is not a dead outcome.
     """
+    # An inbound call back that produced nothing. Checked FIRST: whether a
+    # conversation happened at all outranks every question about quotes and
+    # stages below. The recording is the evidence, with a duration floor for
+    # the transferred calls whose audio stops at the park and therefore reads
+    # as a machine greeting however long the producer actually talked.
+    if (row.get("inbound") and row.get("tx_class") != "live"
+            and (row.get("seconds") or 0) < lc.DURATION_FALLBACK_SECONDS):
+        return "callback_no_contact"
     moves = " ".join(row.get("moves") or []).lower()
     note = (row.get("note") or "").lower()
     # DESTINATION ONLY. Splitting the whole "A to B" string and testing every
@@ -416,10 +458,26 @@ def _call_category(row):
         mv = (mv or "").lower()
         d = mv.rsplit(" to ", 1)[-1] if " to " in mv else mv
         dests.append(d.split("|")[-1])
+    # A price presented VERBALLY and never entered in AgencyZoom counts here.
+    # The config has said so since Aug 25, but no source could see one: the
+    # task title says what the producer sat down to do and the stage move says
+    # where the lead went, and neither knows what was said on the call. The
+    # call read does. Lorena quoted Abner Castanon ($1,357 / $1,230) and Craig
+    # Turner ($771) on 2026-08-25, moved both straight New -> Smart-Cycle, and
+    # both printed "Lost, not quoted" (Frank, 2026-08-26: "Lorena quoted both
+    # Abner and Craig, how did they end up yellow?"). Still does NOT feed
+    # Premium Quoted, which stays on AgencyZoom figures only.
+    said_a_price = bool((row.get("summary") or {}).get("quote_presented"))
     quoted_here = (any("quote" in d and "not quoted" not in d for d in dests)
-                   or "quote" in note)
+                   or "quote" in note or said_a_price)
     dead = ("dead" in moves or "smart-cycle" in moves)
-    sold = "sold" in moves or "sold" in note
+    # The lead's own SOLD status is the primary signal and outranks the stage
+    # moves. Coral bound Hugo Bojorquez's home ($1,020, #828301744) and
+    # landlord ($731, #3815027091461) on 2026-08-25 -- both in Premium Sold --
+    # while the DUPLICATE lead record carrying the moves ended "FSD (Pending
+    # Bind) to Dead, Loss Reason: Duplicate Lead". Reading the moves alone
+    # printed "Quoted on this call, Dead" over a closed sale.
+    sold = (row.get("sold_today") or "sold" in moves or "sold" in note)
     qs = row.get("quote_state") or ("today" if quoted_here else "none")
     # A stage move into a quote stage on this call outranks the task title: the
     # title says what the producer sat down to do, the move says what happened.
@@ -438,6 +496,13 @@ def _call_category(row):
         return "quoted_call_open"
     if qs == "open":
         return "followup_open"
+    # No quote out, nothing dead -- but did they say yes to being quoted? Only
+    # the call read knows; no stage move or task title records "he was driving
+    # and asked me to call back at 4 with the price" (Victor Alapisco,
+    # 2026-08-25). Producer-note fallbacks never set it, so a row with no
+    # recording cannot claim the prospect agreed to anything.
+    if (row.get("summary") or {}).get("quote_agreed"):
+        return "live_quote_ok"
     return "live_no_quote"
 
 
@@ -478,15 +543,34 @@ def _cat_chip(key, small=False, row=None):
             f'{_cat_label(key, row)}</span>')
 
 
+def _time_cell(r, secs):
+    """Total, and for a merged call back the two halves that make it up.
+
+    The split lives here rather than in a badge: it is arithmetic about the
+    number beside it, and it answers the only question the total raises --
+    "29:43 of what?" -- without spending a tag on it.
+    """
+    total = f"{secs // 60}:{secs % 60:02d}"
+    cb = r.get("callback_seconds")
+    if not cb:
+        return total
+    out = secs - cb
+    return (f'{total}<div class="cdsplit">{out // 60}:{out % 60:02d}'
+            f' + {cb // 60}:{cb % 60:02d} back</div>')
+
+
 def _cat_legend():
-    """Panel legend. At the TOP of Call Detail from 2026-08-25 (Frank)."""
+    """Panel legend. At the TOP of Call Detail from 2026-08-25 (Frank).
+
+    The solid-vs-striped gloss was dropped on 2026-08-26 (Frank: "remove the
+    solid striped key in the legend. we already all know what it means and it
+    says it already"). Every chip carries its own words, so the swatch row is
+    the whole legend.
+    """
     items = "".join(
         f'<span><i class="k{cfg.CALL_CATEGORY_ORDER.index(k) + 1}"></i>'
         f'{_cat_label(k)}</span>' for k in cfg.CALL_CATEGORY_ORDER)
-    return ('<div class="cdl">' + items
-            + '<span class="cdn">Solid = it happened on this call '
-            '&nbsp;&middot;&nbsp; striped = follow-up on a quote already out'
-            '</span></div>')
+    return '<div class="cdl">' + items + '</div>'
 
 
 # X3 (Frank, 2026-08-25): one chip per objection, and the chip says the word.
@@ -494,9 +578,17 @@ def _cat_legend():
 # address an objection well and still lose it, and Angel Inda's call is exactly
 # that. "Not addressed" needs no result half: an objection nobody engaged was
 # not overcome by definition.
+# Frank, 2026-08-26: "maybe they didnt fully kill the objection and overcome
+# it, but they at least 'pushed it off' for now and kept going". That is a
+# distinct result from both a win and a loss, and it was being scored as a
+# loss. It reads AMBER, not red -- the call survived the objection.
 OBJ_CHIP = {("no", None): ("cdc-r", "Not addressed"),
             ("yes", "yes"): ("cdc-g", "Addressed, overcome"),
-            ("yes", "no"): ("cdc-r", "Addressed, not overcome"),
+            ("yes", "advanced"): ("cdc-y", "Addressed, kept going"),
+            # Its own class, not cdc-r: "he never engaged it" and "he engaged
+            # it and lost" are different failures and a producer needs to tell
+            # them apart at a glance (Frank, 2026-08-27).
+            ("yes", "no"): ("cdc-rx", "Addressed, not overcome"),
             ("yes", "unclear"): ("cdc-y", "Addressed, unclear")}
 
 
@@ -516,9 +608,17 @@ def _obj_rollup(objs):
     that case: 2 of 3, nothing named.
     """
     won = sum(1 for o in objs if o.get("overcome") == "yes")
+    adv = sum(1 for o in objs if o.get("overcome") == "advanced")
     tot = len(objs)
-    cls = "cdc-g" if won == tot else "cdc-r" if not won else "cdc-y"
+    # An objection the producer pushed past is not a loss, so a call that
+    # cleared every objection one way or the other must not print red.
+    cls = ("cdc-g" if won == tot else
+           "cdc-r" if not (won or adv) else "cdc-y")
     v = f'<span class="cdch {cls}">{won} of {tot} overcome</span>'
+    if adv:
+        v += f'<span class="cdch cdc-y">{adv} kept going</span>'
+    # "advanced" is deliberately NOT named as left standing: the call moved
+    # past it, so printing it as the thing that killed the call is a lie.
     left = [o["objection"] for o in objs if o.get("overcome") == "no"]
     if left:
         v += f'<span class="cdst">left standing: {left[-1]}</span>'
@@ -545,6 +645,7 @@ def _call_note(r):
     behaviour so the panel never comes out empty.
     """
     d = r.get("summary") or {}
+    partial = bool(r.get("partial"))
     rec_txt = (r.get("note_recording") or "").strip()
     prod_txt = (r.get("note_producer") or r.get("note") or "").strip()
 
@@ -591,6 +692,13 @@ def _call_note(r):
         why = d.get("why") or "no recording"
         out += (f'<div class="cdsrc">from the producer&rsquo;s note '
                 f'&mdash; {why}</div>')
+    elif partial:
+        # RingCentral stops recording when a call is parked, so a transferred
+        # call keeps only the front-desk opening. Saying so here, where the
+        # reader has just finished the summary, is more use than a badge at
+        # the top of the row -- it qualifies what they have already read.
+        out += ('<div class="cdsrc">recording covers the opening only '
+                '&mdash; the call carried on after the transfer</div>')
     return out or ('<div class="cdx">Live contact, but nothing recorded and '
                    'nothing written.</div>')
 
@@ -648,9 +756,27 @@ def call_detail(M, day):
             k = _call_category(r)
             c = cfg.CALL_CATEGORIES[k]
             secs = r["seconds"] or 0
+            # ONE tag per row at most (Frank, 2026-08-26: "our tags are
+            # getting messy/too many, we need to find a way to make it all
+            # easier on the eyes"). Provenance -- a partial recording, a note
+            # fallback -- belongs on the source line under the summary, not in
+            # a badge competing with the outcome. The split of a merged call
+            # back belongs in the time cell, next to the total it explains.
+            #
+            # The inbound tag takes the ROW'S OWN colour rather than a blue of
+            # its own, so a row still reads as one colour top to bottom and
+            # matches its left tab.
             badge = ('<span class="badge-new" style="background:#9a988f;'
                      'color:#fff">duration only</span>'
                      if r["basis"] == "duration only" else "")
+            if r.get("inbound"):
+                cc = cfg.CALL_CATEGORIES[k]
+                tone = cc["paint"] if cc.get("fill") else "#fff"
+                ink = "#fff" if cc.get("fill") else "#0b0b0b"
+                lbl = "call back" if r.get("kind") == "callback" else "call in"
+                badge += (f'<span class="badge-new" style="background:{tone};'
+                          f'color:{ink};border:1px solid {cc["paint"]}">'
+                          f'{lbl}</span>')
             link = (_lead_link(r["lead_id"], r["lead"]) if r["lead_id"]
                     else (r["lead"] or _fmt_phone(r["number"])))
             note = _call_note(r)
@@ -661,7 +787,7 @@ def call_detail(M, day):
                 f'<span class="cdp">&nbsp; {_fmt_phone(r["number"])}</span></td>'
                 f'<td align="right" class="cdd" style="white-space:nowrap">'
                 f'{_cat_chip(k, True, r)}&nbsp; '
-                f'{secs // 60}:{secs % 60:02d}</td></tr></table>'
+                f'{_time_cell(r, secs)}</td></tr></table>'
                 f'{note}</td></tr>')
         out.append(f'<table class="cdi cdt">{"".join(body)}</table>')
     return "".join(out)

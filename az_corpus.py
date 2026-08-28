@@ -20,13 +20,30 @@ CACHE = pathlib.Path("data/az_leads_all.json")
 
 
 def e164(raw):
-    """RingCentral gives +1XXXXXXXXXX; AgencyZoom gives (928) 726-0300."""
+    """Canonical MATCH KEY for a phone number -- not a true E.164 number.
+
+    RingCentral gives +1XXXXXXXXXX; AgencyZoom gives (928) 726-0300.
+
+    The last ten digits are the key, because that is the only form the two
+    systems agree on. AgencyZoom stores every number as ten digits with no
+    country code -- 10,351 of 10,357 lead records -- so a Mexican number reaches
+    it as "(653) 538-0676" while RingCentral delivers the same call as
+    "+526535380676". Requiring exactly ten digits dropped that call on the
+    floor: Sarahi's 5m41s conversation with Leticia Urias on 2026-08-25 matched
+    no lead, no customer and no ticket, and read as "no caller id" even though
+    AgencyZoom holds two lead records and a customer record for her.
+
+    The "+1" is a prefix on the key, not a claim about the country. Two numbers
+    from different countries sharing ten digits would collide -- but AgencyZoom
+    cannot tell them apart either, since it stores both the same way, so this
+    is exactly as precise as the book it is matching against.
+    """
     if not raw:
         return None
     d = re.sub(r'\D', '', str(raw))
-    if len(d) == 11 and d.startswith("1"):
-        d = d[1:]
-    return f"+1{d}" if len(d) == 10 else None
+    if len(d) < 10 or len(d) > 15:      # 15 is the E.164 maximum
+        return None
+    return f"+1{d[-10:]}"
 
 
 def fetch(force=False):

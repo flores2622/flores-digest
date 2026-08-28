@@ -254,7 +254,7 @@ def repetition_ratio(text):
     return words.count(top) / len(words)
 
 
-def transcribe_full(path, duration, seconds=30, language=None):
+def transcribe_full(path, duration, seconds=30, language=None, offset=0):
     """The WHOLE call in `seconds` windows, not just head and tail.
 
     transcribe_file deliberately reads only both ends, which is all the
@@ -266,7 +266,7 @@ def transcribe_full(path, duration, seconds=30, language=None):
     if not duration or duration <= 0:
         return None
     out = []
-    for start in range(0, int(duration), seconds):
+    for start in range(int(offset), int(offset) + int(duration), seconds):
         t = one_window(path, start, seconds, language=language)
         if t:
             out.append(t.strip())
@@ -285,8 +285,36 @@ def one_window(path, start, seconds, language=None):
     return t
 
 
-def transcribe_file(path, seconds=30, duration=None):
+def audio_seconds(path):
+    """Actual length of the mp3, which is NOT the length of the call.
+
+    RingCentral stops recording when a call is parked, so a transferred
+    inbound call keeps only the front-desk opening: Abner Castanon's 19m54s
+    call back to Lorena is 1,194 seconds of call and 67 seconds of audio.
+    Outbound is unaffected -- real conversations come back at 98-99% of their
+    logged duration.
+    """
+    try:
+        import subprocess
+        r = subprocess.run(
+            ["ffprobe", "-v", "error", "-show_entries", "format=duration",
+             "-of", "default=nw=1:nk=1", str(path)],
+            capture_output=True, text=True, timeout=30)
+        return float(r.stdout.strip())
+    except Exception:
+        return None
+
+
+def transcribe_file(path, seconds=30, duration=None, offset=0):
     """Both ENDS of the call, not just the opening.
+
+    `offset` skips a lead-in that is not part of the conversation. A call
+    transferred by the front desk is recorded from the moment it hits the
+    phone system, so the first minutes are the auto-attendant and Debbie --
+    Abner Castanon's 19m54s call back opens with the ring group and was
+    classified VOICEMAIL on the strength of that machine greeting, which is
+    exactly what the head-window test is for. The producer's conversation is
+    the last leg, so start there (Frank, 2026-08-26).
 
     The machine greeting that proves a voicemail is always at the start; what
     actually happened is at the end. Judged on the tail alone a voicemail reads
@@ -305,12 +333,12 @@ def transcribe_file(path, seconds=30, duration=None):
                 return es
         return t
 
-    head = one(0)
+    head = one(offset)
     if head is None:
         return None
     if not duration or duration <= seconds * 1.5:
         return head
-    tail = one(max(0, duration - seconds))
+    tail = one(max(offset, offset + duration - seconds))
     if not tail or tail == head:
         return head
     return f"{head} || {tail}"

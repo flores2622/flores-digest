@@ -46,6 +46,7 @@ import transcribe as T
 ROOT = pathlib.Path(__file__).resolve().parent
 
 # A transcript has to clear all three to be worth sending to the model.
+OVERCOME_VALUES = ("yes", "advanced", "no", "unclear")
 MIN_CHARS = 120           # under this there is nothing to summarise
 MAX_REPEAT_RATIO = 0.35   # one word eating a third of the text is a loop
 MAX_FOREIGN_SHARE = 0.25  # mostly "(speaking in foreign language)" is unusable
@@ -61,11 +62,23 @@ def _key():
     return (os.environ.get("ANTHROPIC_API_KEY") or "").strip()
 
 
-def usable(text):
-    """(ok, reason) -- can this transcript support a summary?"""
+BRIEF_CALL_SECONDS = 60
+
+
+def usable(text, seconds=None):
+    """(ok, reason) -- can this transcript support a summary?
+
+    Frank, 2026-08-26: a quick hang-up does not deserve a flag. "Transcription
+    too short" reads as a fault in the pipeline when the honest answer is that
+    a 26-second call had 26 seconds of speech in it. On a SHORT call say so
+    plainly; keep the flag for a long call that came back with nothing, which
+    is the case where something really did go wrong.
+    """
     t = (text or "").strip()
     if len(t) < MIN_CHARS:
-        return False, "transcript too short"
+        if seconds and seconds <= BRIEF_CALL_SECONDS:
+            return False, "brief call"
+        return False, "little speech captured"
     foreign = sum(len(m.group(0)) for m in T.FOREIGN.finditer(t))
     if foreign / len(t) > MAX_FOREIGN_SHARE:
         return False, "not transcribable (foreign language)"
@@ -105,6 +118,43 @@ Return ONLY a JSON object, no prose around it, with exactly these keys:
 
   "summary"     2 sentences max, plain past tense, what the call was about and \
 how it ended. Name what the prospect actually said. Do not pad.
+  "service_call"  true ONLY if the call was HOUSEKEEPING on a policy already \
+in force and no new business was being sought -- a renewal review, a premium \
+or payment question, a claim, adding or removing a vehicle or driver, \
+cancelling, chasing paperwork on a policy of OURS that is already sold.
+  Chasing a document is only service when the policy is ours and already in \
+force. Asking a PROSPECT for their current carrier's declarations page, \
+renewal notice or current premium is NEW BUSINESS -- that document exists to \
+be quoted against, and the whole point of getting it is to win the account.
+  It is FALSE whenever the producer is trying to WRITE something, even to a \
+long-standing customer and even if the call also touches an existing policy. \
+Selling a product the household does not have yet is new business, not \
+service: offering auto to a home-only customer because rates dropped, \
+re-quoting someone who cancelled, adding a life policy. If the producer is \
+pitching, quoting or asking for the chance to quote ANYTHING, answer false. \
+When in doubt, answer false -- a service call wrongly marked here is removed \
+from the producer\'s day entirely.
+  "quote_presented"  true ONLY if the PRODUCER presented OUR price for a \
+specific policy they are proposing -- a rated premium, a monthly or six-month \
+figure, a down payment -- that the prospect could accept or turn down on this \
+call. Count it even if the price was only spoken and never written down \
+anywhere. It is FALSE for every other kind of price talk, and prices come up \
+constantly on these calls without a quote being presented:
+    - what the prospect pays their CURRENT carrier, or what a competitor \
+quoted them. That is the prospect's number, not ours, however precise it is.
+    - general or ballpark pricing -- "it usually runs around X", "most people \
+in your situation pay Y" -- with no rated figure for this prospect.
+    - the prospect ASKING what something would cost, when no figure came back \
+on this call.
+    - a price for a policy already in force that is being reviewed, renewed or \
+adjusted. A renewal premium is not a quote.
+  If the only figures in the transcript came out of the prospect's mouth, this \
+is false.
+  "quote_agreed"  true ONLY if no quote was presented on this call AND the \
+prospect agreed to be quoted or to a specific next contact for pricing -- a \
+named callback time, "send it to me", "text me the quote". false if they \
+declined, gave a vague brush-off, or if a quote WAS presented. A prospect who \
+could not talk now but set a time to hear pricing is true.
   "objections"  a JSON array, one entry per objection the PROSPECT raised, in \
 the order they came up. Empty array if they raised none. At most 3 entries. \
 Each entry is an object with exactly these keys:
@@ -112,8 +162,10 @@ Each entry is an object with exactly these keys:
       "addressed"  "yes" if the producer engaged it -- gave a reason, offered \
 an alternative, or asked a question to open it back up. "no" if the producer \
 acknowledged it and moved on, or ignored it.
-      "overcome"   "yes" if the prospect moved on that specific point, "no" if \
-they held it, "unclear" if the transcript does not settle it.
+      "overcome"   "yes" if the prospect moved on that specific point, \
+"advanced" if the objection was NOT resolved but the call carried on \
+substantively anyway, "no" if they held it and the call ended on it, "unclear" \
+if the transcript does not settle it.
 
 Rules that matter more than being helpful:
 - MERGE near-duplicates into one entry before you count. "Too expensive" and \
@@ -126,8 +178,30 @@ wrong here is worse than being uninformative.
 - "addressed" is about effort, "overcome" is about result. A producer can \
 address an objection well and still lose it. Do not let one answer drag the \
 other.
+- Decide "overcome" in THIS order: did the call die on it -> "no". Did they \
+drop the point -> "yes". Did the call carry on with real selling despite it -> \
+"advanced". Only if none of those can be told from the transcript -> \
+"unclear". "unclear" is the LAST resort, not the safe default: if the \
+transcript shows what happened next, it is not unclear.
+- "advanced" is a REAL result, not a softer "unclear". Use it when the producer \
+parked the objection and kept selling: the prospect stayed on the line and the \
+call moved to quoting, fact-finding, or a scheduled next step. Sarahi's \
+2026-08-25 call with the Beltran household is the case -- "I need to ask my \
+husband" was never resolved, and the next twelve minutes were coverage limits, \
+mortgage details and prior policy dates. That is not a lost objection. Reserve \
+"no" for an objection the prospect HELD and the call died on. Judge this by \
+what happens AFTER the objection in the transcript, not by whether they bought.
 - Never invent a name, price, coverage or date that is not in the input.
 - "not interested" with no reason given IS an objection.
+- An objection is the prospect WITHHOLDING something -- a demand, a refusal, a
+stall, a condition. Background commentary is NOT an objection, even when it
+mentions a competitor or a price. "I just got quotes from American Family"
+states a fact and asks nothing of the producer; "your price is higher than
+American Family" is an objection. If nothing is being asked of the producer and
+nothing needs overcoming, leave it out and put it in the summary instead
+(Frank, 2026-08-26, Coral's call with Hugo Bojorquez: "idk if i would consider
+the first objection as a true objection, it was really just a comment that he
+recently got quotes from american family").
 - Do not treat the producer's own pitch as something the prospect said.
 - Refer to the agency side ONLY as the name given to you as the producer. Never \
 take their identity from the transcript: these calls open with the agency \
@@ -150,7 +224,11 @@ def _clean_objections(raw):
         oc = str(o.get("overcome") or "").strip().lower()
         out.append({"objection": txt,
                     "addressed": a if a in ("yes", "no") else "no",
-                    "overcome": oc if oc in ("yes", "no", "unclear") else "unclear"})
+                    # "advanced" MUST be in this whitelist. It was added to
+                    # the prompt on 2026-08-26 and silently coerced to
+                    # "unclear" here, so the state looked like the model was
+                    # refusing to use it when the parser was eating it.
+                    "overcome": oc if oc in OVERCOME_VALUES else "unclear"})
     return out
 
 
@@ -171,7 +249,7 @@ def upgrade(d):
     if obj and obj.lower() not in ("none", "n/a", ""):
         d["objections"] = [{"objection": obj,
                             "addressed": "yes" if att == "yes" else "no",
-                            "overcome": oc if oc in ("yes", "no", "unclear")
+                            "overcome": oc if oc in OVERCOME_VALUES
                             else "no" if oc == "not overcome"
                             else "yes" if oc == "overcome" else "unclear"}]
     else:
@@ -241,7 +319,10 @@ def _ask(model, transcript, notes, seconds, producer="the producer"):
     if d is None:
         raise ValueError("no JSON in response")
 
-    return {"summary": str(d.get("summary") or "").strip(),
+    return {"quote_agreed": bool(d.get("quote_agreed")),
+            "service_call": bool(d.get("service_call")),
+            "quote_presented": bool(d.get("quote_presented")),
+            "summary": str(d.get("summary") or "").strip(),
             "objections": _clean_objections(d.get("objections"))}
 
 
@@ -251,20 +332,56 @@ def from_notes(notes, why):
             "source": "producer note", "why": why}
 
 
+def _ck(producer, number):
+    """Cache key. JSON has no tuple keys, so the two parts ride in one string."""
+    return f"{producer}|{number}"
+
+
 def _audio_legs(day):
-    """dialled number -> [(recording_path, duration)], longest leg first."""
-    raw = json.loads((ROOT / f"data/rc_raw_{day}.json").read_text())
+    """(producer, number) -> [(path, seconds, class, direction)], longest first.
+
+    Built from the transcripts file rather than the raw call log, because that
+    file now covers BOTH directions and already carries the producer, the
+    other party's number and the live/voicemail verdict for each leg. An
+    inbound call back therefore lands on exactly the same key as the outbound
+    dial it answers, which is what lets one row be summarised from both
+    conversations.
+    """
+    tpath = ROOT / f"data/transcripts_{day}.json"
+    tx = json.loads(tpath.read_text()) if tpath.exists() else {}
     out = {}
-    for r in raw:
-        n = (r.get("to") or {}).get("phoneNumber")
-        if not n or not r.get("recording"):
+    for cid, v in tx.items():
+        n, who = v.get("to"), v.get("producer")
+        if not n or not who:
             continue
-        p = ROOT / f"data/audio/{r['id']}.mp3"
+        p = ROOT / f"data/audio/{cid}.mp3"
         if p.exists() and p.stat().st_size > 500:
-            out.setdefault(n, []).append((str(p), r.get("duration", 0)))
+            out.setdefault((who, n), []).append(
+                (str(p), v.get("audio_seconds") or v.get("duration") or 0,
+                 v.get("class"), v.get("direction") or "outbound",
+                 v.get("offset") or 0, bool(v.get("partial"))))
     for legs in out.values():
         legs.sort(key=lambda x: -x[1])
     return out
+
+
+def _wanted(legs):
+    """Which recordings to read for one row.
+
+    Normally the longest leg -- head and tail of one call is all a summary
+    needs. But when the prospect CALLED BACK and both halves were real
+    conversations, both get read and the summary covers the pair (Frank,
+    2026-08-26: "use the total of both times and summary of both calls (if
+    there were 2 live conversations, the initial outbound and the lead call
+    back)"). A call back to a voicemail is NOT that case -- nobody talked into
+    the voicemail, so the call back alone is the conversation.
+    """
+    if not legs:
+        return []
+    live = [l for l in legs if l[2] == "live"]
+    if len(live) > 1 and len({l[3] for l in live}) > 1:
+        return sorted(live, key=lambda l: l[3] != "outbound")   # outbound first
+    return [legs[0]]
 
 
 def build(day, log=print):
@@ -283,7 +400,7 @@ def build(day, log=print):
 
     legs = _audio_legs(day)
     rows = [(p, r) for p, v in M["producers"].items() for r in v["call_detail"]]
-    todo = [(p, r) for p, r in rows if r["number"] not in sm]
+    todo = [(p, r) for p, r in rows if _ck(p, r["number"]) not in sm]
     if not todo:
         # Everything is cached. Do NOT return here: build_metrics rewrites
         # metrics_<day>.json from scratch on every run, so the summaries have
@@ -294,16 +411,30 @@ def build(day, log=print):
 
     # --- stage 1: full transcription of anything not already done ---------
     need = [(p, r) for p, r in todo
-            if r["number"] not in fx and legs.get(r["number"])]
+            if _ck(p, r["number"]) not in fx and legs.get((p, r["number"]))]
     if need:
-        secs = sum(legs[r["number"]][0][1] for _, r in need)
+        secs = sum(sum(l[1] for l in _wanted(legs[(p, r["number"])]))
+                   for p, r in need)
         log(f"  full-transcribing {len(need)} live contacts ({secs // 60}m audio)...")
-        for i, (_, r) in enumerate(need, 1):
-            path, dur = legs[r["number"]][0]
+        for i, (p_, r) in enumerate(need, 1):
+            want = _wanted(legs[(p_, r["number"])])
             try:
-                fx[r["number"]] = T.transcribe_full(path, dur) or ""
+                parts = []
+                for path, dur, cls, direction, off, partial in want:
+                    t = T.transcribe_full(path, dur, offset=off) or ""
+                    if not t:
+                        continue
+                    if len(want) > 1 or partial:
+                        tag = (f"[{direction} call, {dur // 60}m{dur % 60:02d}s"
+                               + (" -- ONLY THE OPENING WAS RECORDED; the call "
+                                  "continued after a transfer" if partial else "")
+                               + "]")
+                        parts.append(f"{tag}\n{t}")
+                    else:
+                        parts.append(t)
+                fx[_ck(p_, r["number"])] = "\n\n".join(parts)
             except Exception as e:
-                fx[r["number"]] = ""
+                fx[_ck(p_, r["number"])] = ""
                 log(f"    {r['lead']}: transcription failed ({type(e).__name__})")
             if i % 5 == 0:
                 log(f"    {i}/{len(need)}")
@@ -318,32 +449,40 @@ def build(day, log=print):
         log("  ANTHROPIC_API_KEY not set -- falling back to producer notes")
 
     for p, r in todo:
-        num = r["number"]
+        ck = _ck(p, r["number"])
         notes = (r.get("note_producer") or "").replace("&middot;", ";").strip()
-        text = fx.get(num, "")
-        ok, why = usable(text)
+        text = fx.get(ck, "")
+        ok, why = usable(text, r.get("seconds"))
         if not ok:
-            sm[num] = from_notes(notes, why if text else "no recording")
+            sm[ck] = from_notes(notes, why if text else "no recording")
             continue
         if not key:
-            sm[num] = from_notes(notes, "no API key configured")
+            sm[ck] = from_notes(notes, "no API key configured")
             continue
         try:
             d = _ask(model, text[:12000], notes, r.get("seconds") or 0,
                      p.split()[0])
             d.update(source="recording", why="")
-            sm[num] = d
+            sm[ck] = d
         except Exception as e:
             log(f"    {r['lead']}: read failed ({type(e).__name__}) -- using notes")
-            sm[num] = from_notes(notes, "summary unavailable")
+            sm[ck] = from_notes(notes, "summary unavailable")
 
     if todo:
         sm_path.write_text(json.dumps(sm, indent=1))
 
-    for _, r in rows:
-        d = sm.get(r["number"])
+    import finalize
+    for p, r in rows:
+        d = sm.get(_ck(p, r["number"]))
         if d:
             r["summary"] = upgrade(d)
+            # Only a READ can say this -- a producer-note fallback has not
+            # looked at anything. AgencyZoom missed Luis Martinez's renewal
+            # entirely (no ticket, no task, an invisible customer record) and
+            # the audio said it in the first thirty seconds.
+            if d.get("service_call") and d.get("source") == "recording":
+                finalize.flag_service(M, p, r["number"])
+    finalize.apply(M)
     mpath.write_text(json.dumps(M, indent=1, default=str))
     src = sum(1 for _, r in rows if (r.get("summary") or {}).get("source") == "recording")
     log(f"  call summaries: {src} from the recording, "

@@ -316,9 +316,26 @@ TRAQ_VOICEMAIL = re.compile(
 
 
 def evidence(lead_id, day, producer):
-    """Everything the producer wrote on this lead on this Arizona day."""
+    """Everything the producer wrote on this lead on this Arizona day.
+
+    Accepts one lead id or several. Duplicate lead records on one phone number
+    are pervasive in this book, and the producer's notes land on whichever
+    record they had open -- not necessarily the one pick_lead settles on.
+    Hugo Bojorquez, 2026-08-25: the sold record (61514431) carries the sale,
+    the duplicate (88468860) carries the note, and reading either one alone
+    loses half the call. Merge across all of them.
+    """
+    ids = ([lead_id] if isinstance(lead_id, (int, str)) or lead_id is None
+           else list(lead_id))
     out = {"written": [], "stage_moves": [], "call_notes": [], "negative": False,
            "screener": False, "machine_vm": False}
+    for lid in ids:
+        if lid is not None:
+            _evidence_into(out, lid, day, producer)
+    return out
+
+
+def _evidence_into(out, lead_id, day, producer):
     for n in load_notes(lead_id):
         t = n.get("type")
         if t == "TASK":
@@ -384,7 +401,6 @@ def evidence(lead_id, day, producer):
             out["negative"] = True
         elif not is_data_capture(body):
             out["written"].append(body)
-    return out
 
 
 def is_live(ev, talk_seconds=None, transcript_class=None):
