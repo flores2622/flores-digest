@@ -17,6 +17,7 @@ same producer, or a service/renewal ticket opened that day with that producer as
 CSR, or it matches no AgencyZoom record at all.
 """
 import collections
+import datetime as dt
 import json
 import pathlib
 
@@ -96,8 +97,24 @@ def build_context(day):
     sr_file = pathlib.Path(f"data/az_service_tickets_{day}.json")
     if sr_file.exists():
         for t in json.loads(sr_file.read_text()):
-            if t.get("completeDate"):
-                continue                      # closed SR says nothing about today
+            # POINT IN TIME: was this ticket open on `day`? Anything else
+            # makes a rebuild disagree with the original run, which is fatal
+            # for weekly and monthly roll-ups.
+            #   created after the day  -> did not exist yet, ignore
+            #   completed before it    -> already closed, says nothing
+            #   otherwise              -> it was open then, and a ticket
+            #                             completed ON the day is the
+            #                             strongest evidence there is that
+            #                             the call was service work
+            # Rebuilding Aug 25 on Aug 26 was excluding Mike's Abraham
+            # Carrillo dial on a ticket created 2026-08-26 -- a day AFTER the
+            # call it was being used to explain.
+            created = str(t.get("createDate") or "")[:10]
+            cd = str(t.get("completeDate") or "")[:10]
+            if created and created > day:
+                continue
+            if cd and cd < day:
+                continue
             who = az_ids.get(t.get("csr"))
             if not who:
                 continue
@@ -107,12 +124,84 @@ def build_context(day):
     return lead_idx, cust_idx, svc_customers, svc_phones
 
 
-def pick_lead(cands):
-    """Duplicate lead records are pervasive. Prefer the most recently active."""
+# Frank, 2026-08-26: "lets do 30 or 60 days". 60 -- missing documents and
+# paperless enrolments on a fresh sale routinely drag past a month, and the
+# open-lead test above is what actually does the discriminating, so the window
+# only has to be generous enough to name the reason honestly.
+RECENT_SALE_DAYS = 60
+
+
+def is_household_housekeeping(cands, day):
+    """This number is an existing customer and nobody is selling them anything.
+
+    Frank, 2026-08-26: "we also need to exclude those service request calls and
+    calls to recent sales (if not to sell an additional product) because they
+    are doing housekeeping for their recent sells, its not new business".
+
+    Three tests, in order, over EVERY lead record on the number:
+
+    1. Was anything sold to this household? status 2 with convertedHouseholdId.
+       All 1,517 status-2 leads carry a soldDate and nothing else does.
+    2. Was it sold TODAY? Then this IS the sale call -- Hugo Bojorquez, whose
+       two policies bound on 2026-08-25. Never exclude it.
+    3. Is there an OPEN lead (status not 2) created on or after the sale? That
+       is the additional-product attempt Frank carved out, and AgencyZoom names
+       it plainly: Adriana Navarro's is "Life Cross Sell", created 8/21 against
+       a 8/14 sale; Cipriano Duarte's is a "Winback" opened the day after his.
+       Both are real new business and both stay in.
+
+    What is left is a customer with no open opportunity -- Mike's day-after
+    call to Abraham Carrillo, Coral's to Francisco Vizcaino. Housekeeping.
+
+    Age is deliberately NOT a test of WHETHER to exclude -- a 2022 customer
+    being re-quoted has an open lead and passes on step 3, which is why this
+    catches 4 of 212 dials rather than the 34 a bare "sold household" test
+    would take. Age only decides WHICH reason is reported, so the audit can
+    tell "finishing off last week's sale" from "an old customer with nothing
+    open". Both are excluded either way.
+
+    Returns None, or the reason string.
+    """
+    sold = [l for l in cands
+            if l.get("status") == 2 and l.get("convertedHouseholdId")
+            and l.get("soldDate")]
+    if not sold:
+        return None
+    last_sale = max(str(l["soldDate"])[:10] for l in sold)
+    if last_sale >= day:
+        return None
+    if any(l.get("status") != 2
+           and str(l.get("createDate") or "")[:10] >= last_sale
+           for l in cands):
+        return None
+    try:
+        age = (dt.date.fromisoformat(day)
+               - dt.date.fromisoformat(last_sale)).days
+    except ValueError:
+        age = None
+    if age is not None and age <= RECENT_SALE_DAYS:
+        return "housekeeping on a recent sale"
+    return "existing customer, nothing open"
+
+
+def pick_lead(cands, day=None):
+    """Duplicate lead records are pervasive. Prefer the most recently active.
+
+    A lead SOLD on `day` outranks recency (Frank, 2026-08-26). Hugo Bojorquez
+    had three records: 61514431 (status 2, soldDate 2026-08-25, the real one)
+    and 88468860, a duplicate created at 20:20 that same evening which Coral
+    then marked Dead with Loss Reason "Duplicate Lead". Recency picked the
+    duplicate, so the row read "Quoted on this call, Dead" for a household that
+    bound two policies worth $1,751 that afternoon. status 2 is unambiguous --
+    all 1,517 of them carry a soldDate and nothing else does.
+    """
     if not cands:
         return None
-    return sorted(cands, key=lambda l: (l.get("lastActivityDate") or "",
-                                        l.get("createDate") or ""))[-1]
+    sold_today = [l for l in cands
+                  if day and str(l.get("soldDate") or "").startswith(day)]
+    pool = sold_today or cands
+    return sorted(pool, key=lambda l: (l.get("lastActivityDate") or "",
+                                       l.get("createDate") or ""))[-1]
 
 
 def classify(day):
@@ -124,7 +213,7 @@ def classify(day):
         rows = []
         for num, calls in bynum.items():
             cands = lead_idx.get(num, [])
-            lead = pick_lead(cands)
+            lead = pick_lead(cands, day)
             custs = cust_idx.get(num, [])
             excluded = None
             if not cands and not custs:
@@ -138,9 +227,29 @@ def classify(day):
                 excluded = f"open {wf} ticket with this producer as CSR"
             elif lead and is_test_lead(lead):
                 excluded = "test/dummy lead record"
+            elif is_household_housekeeping(cands, day):
+                excluded = is_household_housekeeping(cands, day)
             rows.append({
                 "number": num,
                 "lead_id": lead.get("id") if lead else None,
+                # EVERY duplicate record on this number, so the note search can
+                # cover all of them (see live_contact.evidence).
+                "lead_ids": [c.get("id") for c in cands if c.get("id")],
+                # AgencyZoom lead status 2 == sold, and every status-2 lead
+                # carries a soldDate. This is the ONLY join from a dialled
+                # number to a sale: policy records hold no name, phone,
+                # customerId or leadId -- only leadSourceId, which is the
+                # marketing source and is shared by thousands of policies.
+                "sold_today": bool(lead and str(lead.get("soldDate") or ""
+                                                ).startswith(day)),
+                # An ACTIVE lead on this number (status 0) means somebody is
+                # working this household for new business right now. "Ever
+                # sold" cannot carry this test: Carlos Cruz and Ruben Serrano
+                # are BOTH converted customer households with a customer
+                # record, and the only thing that separates them is that
+                # Carlos has an open status-0 lead assigned to Coral while
+                # Ruben's only lead is status 5.
+                "open_lead": any(c.get("status") == 0 for c in cands),
                 "lead_name": (f"{(lead.get('firstname') or '').strip()} "
                               f"{(lead.get('lastname') or '').strip()}".strip()
                               if lead else None),

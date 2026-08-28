@@ -183,7 +183,7 @@ class AgencyZoom:
         return self.post("/v1/api/serviceTicket/service-tickets/list", body or {})
 
     def service_tickets_all(self):
-        """Every OPEN service ticket. Not `_paged` -- this endpoint returns its
+        """Every service ticket, open or completed. Not `_paged` -- this endpoint returns its
         rows under "serviceTickets" and its own page/pageSize echo, and it is
         the SR list the renewal exclusion rests on (Frank, 2026-08-25: Dana
         Sanchez and Genaro Cortez are "full blown renewals" with an active
@@ -191,8 +191,14 @@ class AgencyZoom:
         """
         out, seen, page = [], set(), 0
         while True:
+            # status "all" is the only filter this endpoint honours -- it
+            # ignores customerId, householdId and every date range tried
+            # (2026-08-26). Without it the list is OPEN tickets only and an SR
+            # COMPLETED today never arrives, which is exactly the evidence that
+            # today's call was service work.
             r = self.post("/v1/api/serviceTicket/service-tickets/list",
-                          {"page": page, "pageSize": 100}) or {}
+                          {"page": page, "pageSize": 100,
+                           "status": "all"}) or {}
             arr = r.get("serviceTickets") or []
             for t in arr:
                 if t.get("id") not in seen:

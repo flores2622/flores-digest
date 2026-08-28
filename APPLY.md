@@ -1,142 +1,104 @@
-# Flores digest — all changes through 2026-08-25
+# Flores digest — all changes through 2026-08-27
 
-Twelve files. `template/report_template.html` is a second copy of the same
-template; both are kept in sync. Drop them over the repo, or:
+Fifteen files: twelve changed, three new (`inbound.py`, `finalize.py`,
+`verify_finalize.py`), plus `CLAUDE.md` and `HANDOFF_10.md`. Apply with:
 
-    git apply flores-fixes-2026-08-25.patch
+    git apply flores-fixes-2026-08-27.patch
 
-Verify with `python3 daily.py --no-send`. Aug 24 rebuilds in ~20s once `data/`
-is warm and lands at **90,237 bytes — 12,163 under the 102,400 clip limit**.
-Nothing here sends mail.
+Verify with `python3 daily.py --no-send --day 2026-08-25`, then
+`python3 verify_finalize.py` — it reconciles all six headline figures against
+source data and costs nothing. Nothing here sends mail.
 
-**Watch the headroom.** The new Call Detail is ~35 KB against the old table's
-22.6 KB, and audit section (e) adds a row per open task.
+**2026-08-25 moves from 210 dials / 33 live / 15.7% to 208 / 31 / 14.9%.**
+Sales are unchanged at $4,370 and always were. Full reasoning in HANDOFF_10.md.
+
+**Watch the headroom — there isn't any.** The body now runs ~110 KB against the
+102,400 clip limit, so `overflow.py` fires every day and the ops email always
+carries the Task Completion Audit as a PDF. That is expected. Only "REFUSING TO
+SEND" is a problem.
 
 ---
 
-## New: renewals no longer count as new business
+## Two producers were being handed each other's calls
 
-Dana Sanchez and Genaro Cortez were being counted as new-business live contacts
-for Crystal. Both are full renewals — an **open Renewal SR with Crystal as the
-CSR**, the linked lead sold or smart-cycled and assigned to another producer.
+Every transcript cache was keyed on the dialled number alone. Sarahi reached
+Juan Rojas at 9:36 (77s, live); Mike's own 4:15pm dial went to voicemail. Mike's
+row printed Sarahi's verdict, transcript and summary.
 
-The rule is the service ticket, not lead status. `day_calls.build_context` now
-indexes every OPEN service ticket by phone number and CSR, and `classify`
-excludes a dial when a ticket matches the number AND the calling producer is the
-CSR. Tickets are pulled once a day via the new `AgencyZoom.service_tickets_all`
-and cached day-scoped (`data/az_service_tickets_<day>.json` — a bare filename
-would have frozen the snapshot on day one and gone stale).
+`bynum`, `txt`, `all_txt`, `_audio_legs` and the summary cache are now keyed on
+**(producer, number)**. Notes are also read across every duplicate lead record
+on a number, which is what actually removed Mike's row — his own no-contact note
+outranks any recording.
 
-Why the CSR test matters, and why lead status was the wrong signal:
+## Inbound calls now count
 
-* **Lead status cannot express it.** 19 of Aug 24's 32 live contacts sat on a
-  non-active lead, and most were smart-cycled BY the very call being reported —
-  real new business. Excluding on `status != 0` would have gutted the day.
-* **The existing service regex is too wide.** `SERVICE_BODY_RE` fired on the
-  call text for Dana (right) but also Genaro *and* Angel Inda — and Angel Inda
-  is Lorena's, so it is always new business.
-* **The CSR test keeps it narrow and correct.** Wesley Knowlton has an open
-  Missing Documents ticket under a different CSR, so Mike's call to him stays
-  new business. Angel Inda has no ticket, so Lorena keeps him.
+New `inbound.py`. ~90 minutes of producer conversation a day was invisible,
+including Abner Castanon's 19m54s call back to Lorena and Rasha Hassoun's 87
+seconds to Sarahi — which is why Rasha read as a voicemail.
 
-Blast radius: **2 of 32 live contacts, 5 of 190 dials**, all Crystal — which is
-right, since she is the only producer doing service and renewals.
+Two attribution routes: a producer's **personal DID** (a number exactly one
+person dials out from, derived so the shared main line excludes itself), and a
+**ring-group transfer**, where Debbie's hold is a FindMe leg and the producer's
+pickup is a Park Location leg. Talk time is the producer's leg, never the whole
+call — Debbie held one of Crystal's calls for 117 of its 562 seconds.
 
-| | Before | After |
-|---|---|---|
-| Crystal calls / dials | 48 / 51 | 43 / 46 |
-| Crystal live contacts | 7 | 5 |
-| Crystal contact rate | 14.6% | 11.6% |
-| Team calls | 190 | 185 |
-| Team live / rate | 32 / 16.8% | 30 / 16.2% |
+Screened against the same record tests as outbound BEFORE any audio is fetched.
+A **same-day** call back merges into the dial it answers; anything else becomes
+its own inbound line on the day it happened.
 
-## Bugs found and fixed
+RingCentral stops recording at the park, so a transferred call keeps only the
+front-desk opening — Abner's call is 1,194 seconds with 67 seconds of audio.
+Those rows say "recording covers the opening only". Talk time is unaffected.
+Every producer extension already has `callDirection: All`; this is not a
+settings problem.
 
-**transcribe.py — the build hang.** `classify()` tested for a repeated greeting
-with `r"(\W*(hello|hola|bueno|hi)\W*){2,}"`. The `\W*` on both sides of the
-inner group makes every partition of the separators its own path, so a Whisper
-repetition-loop transcript ("Hello? " x300) that does not fully match backtracks
-exponentially and never returns. It stopped the Aug 24 build for 50 minutes on
-one call. Now `r"(?:\W*(?:hello|hola|bueno|hi)){2,}\W*"` — same strings
-accepted (verified equal on 66,666 generated cases), linear time.
+## Service and renewal work in, new business out
 
-**az_client.py — tasks counted twice.** `_paged()` starts at `page=0`.
-`/leads/list` is 0-indexed and clean; `/tasks/list` is 1-indexed and clamps
-page=0 to the first page, so the first 100 tasks came back twice — 253 records
-for 153 real tasks. Team tasks due read 180 against a real 102; Sarahi 35.7%
-against a real 40.0%. Deduped by `id` inside `_paged`; the loop still terminates
-on the RAW fetched count, or a repeated first page would end it early and
-silently drop the tail.
+* Service tickets fetched with `status: "all"` — the old fetch returned 321 of
+  338 open — and tested **point in time**: created on or before the day, not
+  already closed before it. Rebuilds no longer reach into later data.
+* New exclusion: **a household that has bought, with no open lead created since
+  the sale**. Never fires on the day of the sale. An open lead created after it
+  ("Life Cross Sell", "Winback") means an additional-product attempt and stays
+  in. 4 of 212 dials — a bare "sold household" test would have taken 34.
+* The call read can flag a service call the records missed, but is **refused
+  while an open lead sits on the number**. Coral chasing Carlos Cruz's
+  *competitor's* dec page read as service and deleted a live contact.
 
-**util_panel.py — utilization frozen since Aug 12.** The percentage and bar were
-written with `str.replace()` keyed on the EMPTY placeholder forms, which only
-Coral's and Sarahi's cards carry. The other four ship from the template with Aug
-12 values baked in, so the replace matched nothing and left the stale number
-while the code below it refreshed the times beside it. Lorena read 84.9% every
-day for twelve days (real Aug 24: 89.0%); Crystal read 89.5% against a real
-81.3%. Now rewrites whatever is present and RAISES if the span is gone.
+## Totals are computed after the read
 
-**panels.py — quote origin read as destination.** The "was this quoted on the
-call" test split `"A to B"` and checked every segment, so the ORIGIN counted:
-"Quotes Presented to Smart-Cycle" is a move OUT of the quote stage. Harry
-Anderson, Angel Inda and Juan Avila were filed as quoted-on-this-call when all
-three were quoted days earlier and this call was the follow-up that lost them.
-Destination only now.
+`build_metrics` keeps every counted dial on `M[who]["dials"]` instead of
+collapsing to six numbers on the spot; new `finalize.py` totals them and is
+idempotent. Nothing downstream could previously drop a dial and still leave an
+honest call volume behind.
 
-**daily.py — only the first note was shown.** `evidence()` has always collected
-every note the producer wrote on the lead that day, but Call Detail printed
-`written[0]` alone. Five of Aug 24's 32 contacts had two or three notes. Now all
-of them, de-duplicated, capped at 480 chars.
+## Outcomes and objections
 
-**report_template.html — the row rail was invisible.** `.cdi td{border:none}`
-and `.eN{border-left:...}` are both specificity (0,0,1,1); the reset came later
-in source order and won. The rail rules are now `.cdt td.eN` — (0,0,2,1) — so
-they cannot tie.
+* "Sold on the call" honours the lead's own sold status ahead of stage moves —
+  Hugo Bojorquez bound $1,020 + $731 while the duplicate lead carrying the moves
+  ended "Dead, Duplicate Lead".
+* A price spoken aloud counts as a quote presented — our rated price only, not
+  the prospect's current premium or a competitor's quote.
+* `overcome` gained **"advanced"**; the parser whitelist was silently coercing
+  it to "unclear".
+* An objection must be the prospect withholding something. 34 became 27.
+* Two new categories: **"Contacted, okay to quote, no action"** (orange
+  candy-cane, dashed rail) and **"Called back, no conversation"** (grey
+  candy-cane, dashed rail).
+* Objection chips are pale tints so the outcome chip wins the row, and the two
+  reds differ: solid = never engaged, candy-cane = engaged and lost.
+* Call backs stripe **inside** their existing segment in the Call Outcome
+  Breakdown, so segments still sum to the day's dials.
 
-## Requested changes
+## Two render bugs
 
-**Leaderboard 5-4-3-2-1, ties take the LOWEST place** (reverses the 08-24 rule).
-Three-way tie for first = 3 pts each, then 2, 1. Two-way tie for first = 4 pts
-each, then 3, 2, 1. Zero activity still scores 0 and still consumes its place.
+* `.e8`/`.b8` lacked the `.cdt td` / `.cdb td` prefixes, so the eighth category
+  lost on specificity and **call-in rows rendered with no left rail**.
+* One tag per row at most; provenance moved under the summary, the merged call
+  back's split moved into the time cell.
 
-**Call Detail rebuilt as option D** — a section per rep opening with a stacked
-bar of that rep's outcome mix, calls full width beneath, legend at the TOP,
-outcome chip beside the talk time, coloured rail down the left of every row.
+## Phone numbers
 
-**Seven categories on five hues.** The quote state splits in two: presented ON
-the call versus a follow-up on one already out. The follow-up pair reuses its
-parent hue at ~45% over white with a dashed chip border and dashed rail.
-
-| Category | Colour | Chip |
-|---|---|---|
-| Sold on the call | green #008300 | solid |
-| Quoted, no action | blue #2a78d6 | solid |
-| Quote follow up, no action yet | light blue #9fc2ed | dashed |
-| Quoted on this call, Lost/Dead | red #e34948 | solid |
-| Quote follow up, Lost/Dead | light red #f2adad | dashed |
-| Lost/Dead, never quoted | highlighter yellow #f0e800 | solid |
-| Contacted, No Action | orange-yellow #eda100 | solid |
-
-The old five pastels failed measurably: dead-with-quote #FCA5A5 against
-dead-no-quote #FDBA74 was ΔE 9.3 for normal vision against a floor of 15, and
-all five sat under 3:1 contrast. The set above clears the normal-vision floor on
-every pair (worst 17.7, the two yellows); #f0e800 sits outside the validator's
-mark-lightness band, which is what "highlighter yellow" means, and both yellow
-chips carry dark ink.
-
-**Quote state from TASK TITLES** — "Quote follow #7", "Quoted Yesterday 1st
-Follow Up call" against "Never quoted lead- Day 4 NEW", "Send quote to
-prospect". quoteDate is not used: a quote can be started one day and presented
-another. **QNC titles count as follow-ups** — that pipeline is where leads land
-when they did not close the last time they were presented, so a quote has
-already been out. Checked before the pending pattern, whose "Lead Day N" would
-otherwise match. Falls back to stage history, which needs a quote-stage move
-inside 30 days; unbounded, it made follow-ups of leads last quoted in 2022.
-
-**"Lost", not "Dead"**, unless the outcome actually says dead.
-
-**Audit:** new section (e) for tasks still open at end of day; every table reads
-rep › lead › task › category data.
-
-**Layout:** Team Leaderboard full width at the top; Call Outcome Breakdown back
-to a normal-width panel in the column.
+`az_corpus.e164` keys on the **last ten digits**. AgencyZoom stores ten digits
+with no country code, so Sarahi's 5m41s call with Leticia Urias arrived as
+`+526535380676`, matched nothing, and vanished.

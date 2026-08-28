@@ -157,6 +157,55 @@ def transcribe_day(day):
             if (i + 1) % 25 == 0:
                 log(f"  {i + 1}/{len(todo)}")
         out_f.write_text(json.dumps(done))
+
+    # --- inbound -------------------------------------------------------
+    # Screened FIRST, so service and renewal call-ins never cost a download
+    # (Frank, 2026-08-26). What survives is stored under the CALLER's number
+    # against the producer who took it, which is the same key an outbound dial
+    # to that number uses -- so a live call back simply outranks the voicemail
+    # the producer left, with no special handling anywhere downstream.
+    import inbound as ib
+    raw_by_id = {r["id"]: r for r in
+                 json.loads((ROOT / f"data/rc_raw_{day}.json").read_text())}
+    win = json.loads((ROOT / f"data/rc_window_{day}.json").read_text())
+    in_rows = ib.screen(ib.link_callbacks(
+        ib.answered(day, list(raw_by_id.values())), win, day), day)
+    keep = [r for r in in_rows if not r["skip"] and r["recording"]]
+    dropped = len(in_rows) - len(keep)
+    in_todo = [raw_by_id[r["id"]] for r in keep if r["id"] not in done]
+    if in_todo:
+        log(f"inbound: {len(in_rows)} reached a producer, "
+            f"{dropped} screened out, downloading {len(in_todo)}...")
+        transcribe.download(in_todo, RingCentral().token(), per_minute=12, log=log)
+        by_id = {r["id"]: r for r in keep}
+        for r in in_todo:
+            meta = by_id[r["id"]]
+            # The recording covers the WHOLE call, front desk included. The
+            # producer's conversation is the last leg, so skip everything
+            # before it -- otherwise the auto-attendant at the top classifies
+            # the call as a voicemail.
+            path = f"data/audio/{r['id']}.mp3"
+            total = r.get("duration") or meta["seconds"]
+            leg = meta["seconds"] or 0
+            have = transcribe.audio_seconds(path) or total
+            # Only offset when the recording is actually long enough to hold
+            # the producer's leg. On a parked transfer it is not -- the audio
+            # stops at the hand-off -- and offsetting into it reads past the
+            # end and returns nothing at all.
+            partial = have < leg * 0.8
+            off = 0 if partial else max(0, total - leg)
+            use = int(have) if partial else leg
+            txt = transcribe.transcribe_file(path, duration=use, offset=off)
+            cls, why = transcribe.classify(txt, use)
+            done[r["id"]] = {"producer": meta["producer"],
+                             "to": meta["e164"] or meta["number"],
+                             "duration": meta["seconds"], "text": txt,
+                             "class": cls, "why": why,
+                             "direction": "inbound", "kind": meta["kind"],
+                             "offset": off, "audio_seconds": use,
+                             "partial": partial,
+                             "callback_day": meta.get("callback_day")}
+        out_f.write_text(json.dumps(done))
     c = collections.Counter(v["class"] for v in done.values())
     log(f"  transcripts: {dict(c)}")
     return done
@@ -193,14 +242,23 @@ def build_metrics(day):
         # merely failed to find evidence. Albert Collier was dialled twice 24s
         # apart -- the same screener message transcribed two ways -- and the
         # weaker read used to win the row (Frank, 2026-08-18).
+        # KEYED BY (PRODUCER, NUMBER), not by number alone. Taking the
+        # strongest verdict across a number is right WITHIN one producer -- it
+        # is what Albert Collier needed -- but two producers can work the same
+        # number on the same day, and then it hands one of them the other's
+        # call. On 2026-08-25 Sarahi reached Juan Rojas at 9:36 (77s, live)
+        # while Mike's own 4:15pm dial to him went to voicemail; Mike's row
+        # printed Sarahi's live verdict, her transcript and her summary
+        # (Frank, 2026-08-26: "how did it get duplicated to Mike?").
+        k = (v.get("producer"), n)
         rank = {"live": 4, "voicemail": 3, "no answer": 2,
                 "unclear": 1, "unknown": 0}
-        if rank.get(v["class"], 0) > rank.get(bynum.get(n), -1):
-            bynum[n] = v["class"]
+        if rank.get(v["class"], 0) > rank.get(bynum.get(k), -1):
+            bynum[k] = v["class"]
         if v["class"] == "live" and v.get("text"):
-            txt.setdefault(n, v["text"])
+            txt.setdefault(k, v["text"])
         if v.get("text"):
-            all_txt[n] = (all_txt.get(n, "") + " " + v["text"]).strip()
+            all_txt[k] = (all_txt.get(k, "") + " " + v["text"]).strip()
 
     rows = day_calls.classify(day)
     dials = day_calls.producer_dials(day)
@@ -254,15 +312,25 @@ def build_metrics(day):
                 titles_by_lead[t["customerId"]].append(t.get("title") or "")
 
     real = cfg.real_sales(day, pol, smap, azid)
+    # Inbound transcripts, grouped by producer. transcribe_day stored them
+    # under the caller's number, so they are already keyed like a dial.
+    inb = collections.defaultdict(list)
+    for v in tx.values():
+        if v.get("direction") == "inbound":
+            inb[v["producer"]].append(v)
+    from az_corpus import phone_index as _pidx
+    lead_ix = _pidx(leads)
+    _pick = day_calls.pick_lead
     M = {}
     for who in PRODUCERS:
         counted = [r for r in rows.get(who, []) if not r["excluded"]]
-        live, b, detail = [], collections.Counter(), []
+        live, b, detail, dials_kept = [], collections.Counter(), [], []
         for r in counted:
-            ev = (lc.evidence(r["lead_id"], day, who) if r["lead_id"] else
+            ev = (lc.evidence(r.get("lead_ids") or [r["lead_id"]], day, who)
+                  if r["lead_id"] else
                   {"written": [], "stage_moves": [], "call_notes": [],
                    "negative": False, "screener": False})
-            tc = bynum.get(r["number"])
+            tc = bynum.get((who, r["number"]))
             ok, basis = lc.is_live(ev, r["talk_seconds"], tc)
             # Screener is checked ahead of the transcript class on purpose. An
             # AI attendant reads as a machine greeting, so Elsa Aguilera --
@@ -271,12 +339,25 @@ def build_metrics(day):
             # 2026-08-18). A screener is a distinct outcome: the call reached
             # something, just never the prospect.
             screened = ev.get("screener") or bool(
-                lc.SCREENER.search(all_txt.get(r["number"], "")))
-            b["Live Contact" if ok else
-              ("Screener" if screened else
-               ("Voicemail" if tc == "voicemail" else
-                ("No Answer" if tc == "no answer"
-                 else lc.outcome_bucket(ev, ok))))] += 1
+                lc.SCREENER.search(all_txt.get((who, r["number"]), "")))
+            bucket = ("Live Contact" if ok else
+                      ("Screener" if screened else
+                       ("Voicemail" if tc == "voicemail" else
+                        ("No Answer" if tc == "no answer"
+                         else lc.outcome_bucket(ev, ok)))))
+            b[bucket] += 1
+            # Everything finalize() needs to re-total this producer once the
+            # call read has had its say. Kept per row on purpose: the totals
+            # used to be computed here and the rows thrown away, which is why
+            # nothing downstream could drop a dial and still report an honest
+            # call volume (Frank, 2026-08-26: "can we just not compute the
+            # call volume until later?").
+            dials_kept.append({
+                "number": r["number"], "bucket": bucket, "live": ok,
+                "talk_seconds": r["talk_seconds"],
+                "attempts": len(dials.get(who, {}).get(r["number"], []) or []),
+                "open_lead": r.get("open_lead", False),
+            })
             if ok:
                 live.append(r)
                 detail.append({"lead": r["lead_name"], "lead_id": r["lead_id"],
@@ -302,9 +383,57 @@ def build_metrics(day):
                                "quote_state": lc.quote_state(
                                    r["lead_id"], day,
                                    titles_by_lead.get(r["lead_id"], ())),
-                               "note_recording": txt.get(r["number"], "")[:280],
+                               "note_recording": txt.get((who, r["number"]), "")[:280],
+                               # Carried from day_calls: the lead behind this
+                               # number is marked SOLD today. Outranks the
+                               # stage moves, which can sit on a duplicate
+                               # record the producer killed (Hugo Bojorquez,
+                               # 2026-08-25).
+                               "sold_today": r.get("sold_today", False),
                                "moves": [m["move"] for m in ev["stage_moves"]]})
-        talk = sum(r["talk_seconds"] for r in live)
+        # --- inbound ----------------------------------------------------
+        # A call back that arrived the SAME day merges into the dial it
+        # answers: one row, both conversations, the times added (Frank,
+        # 2026-08-26). Everything else -- a cold call-in, or a call back to a
+        # dial from an earlier day -- becomes its own inbound line on the day
+        # it happened, because that earlier day's report has already gone out.
+        prior_callbacks = 0
+        for e in inb.get(who, []):
+            same_day = e.get("kind") == "callback" and e.get("callback_day") == day
+            if e.get("kind") == "callback" and not same_day:
+                # Answers a dial from an earlier day, which is not in today's
+                # denominator. Counted beside the bar, never inside it.
+                prior_callbacks += 1
+            if same_day:
+                # Mark the DIAL, whatever its outcome. The bar counts dials, so
+                # the call back shows as a candy-cane slice of whichever
+                # segment that dial already sits in -- usually Live Contact,
+                # because the call back's own transcript is what turned the
+                # dial live in the first place.
+                for d0 in dials_kept:
+                    if d0["number"] == e["to"]:
+                        d0["callback"] = True
+                        break
+            row = next((d for d in detail if d["number"] == e["to"]), None)
+            if same_day and row is not None:
+                row["seconds"] += e.get("duration") or 0
+                row["callback_seconds"] = e.get("duration") or 0
+                continue
+            lead = _pick(lead_ix.get(e["to"], []))
+            detail.append({
+                "lead": (f"{(lead.get('firstname') or '').strip()} "
+                         f"{(lead.get('lastname') or '').strip()}".strip()
+                         if lead else None),
+                "lead_id": lead.get("id") if lead else None,
+                "number": e["to"], "seconds": e.get("duration") or 0,
+                "basis": "recording (inbound)", "inbound": True,
+                "kind": e.get("kind"), "callback_of_day": e.get("callback_day"),
+                "note_producer": "", "quote_state": "none",
+                "note_recording": (e.get("text") or "")[:280],
+                "partial": bool(e.get("partial")),
+                "tx_class": e.get("class"),
+                "sold_today": False, "moves": []})
+
         tot = 0
         for lid in hh.get(who, ()):
             try:
@@ -314,16 +443,7 @@ def build_metrics(day):
             arr = qs.get("quotes") if isinstance(qs, dict) else qs
             tot += sum(float(q.get("premium") or 0) for q in (arr or []))
         n_sold, prem = real.get(who, (0, 0.0))
-        # Call volume is DISTINCT numbers; total_dials is every attempt on those
-        # same numbers, so a producer working a number three times shows 1 vs 3.
-        # Scoped to counted numbers, so service/renewal exclusions stay excluded.
-        total_dials = sum(len(dials.get(who, {}).get(r["number"], []) or [])
-                          for r in counted)
-        M[who] = {"call_volume": len(counted), "total_dials": total_dials,
-                  "live": len(live),
-                  "contact_rate": round(len(live) / len(counted) * 100, 1) if counted else 0,
-                  "avg_talk": round(talk / len(live)) if live else 0,
-                  "outcomes": dict(b),
+        M[who] = {"dials": dials_kept, "callbacks_prior": prior_callbacks,
                   "call_detail": sorted(detail, key=lambda d: -d["seconds"]),
                   "households_quoted": len(hh.get(who, ())),
                   "premium_quoted": round(tot),
@@ -355,6 +475,11 @@ def build_metrics(day):
                               "lead_name": f"{x['lead'].get('firstname','')} "
                                            f"{x['lead'].get('lastname','')}".strip()}
                              for x in v] for k, v in rc.items()}}
+    # Total it once here so metrics_<day>.json is always well-formed for
+    # anything that reads it before the call summaries land. main() re-applies
+    # after the read, and finalize.apply is idempotent by design.
+    import finalize
+    finalize.apply(out)
     (ROOT / f"data/metrics_{day}.json").write_text(json.dumps(out, indent=1, default=str))
     return out
 
@@ -475,6 +600,20 @@ def main():
     except Exception as e:
         log(f"  call summaries failed ({type(e).__name__}) -- "
             f"Call Detail falls back to producer notes")
+
+    # Re-total after the read: it can drop a dial that AgencyZoom had no way
+    # to flag as service work (Frank, 2026-08-26).
+    import finalize
+    M = json.loads((ROOT / f"data/metrics_{day}.json").read_text())
+    before = {w: v.get("call_volume") for w, v in M["producers"].items()}
+    finalize.apply(M)
+    (ROOT / f"data/metrics_{day}.json").write_text(
+        json.dumps(M, indent=2, default=str))
+    moved = {w: (before[w], M["producers"][w]["call_volume"])
+             for w in before if before[w] != M["producers"][w]["call_volume"]}
+    if moved:
+        for w, (b, a) in moved.items():
+            log(f"  {w}: call volume {b} -> {a} (service found in the call)")
 
     import build_day
     out, html = build_day.build(day)

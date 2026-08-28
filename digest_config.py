@@ -346,14 +346,50 @@ CALL_CATEGORIES = {
     # what highlighter yellow means; the pair that matters clears the
     # normal-vision floor at Delta E 17.7 against #eda100, and both take dark ink.
     "dead_no_quote":   {"paint": "#f0e800", "fill": True,  "stroke": "solid",
-                        "label": "{d}, never quoted"},
+                        "label": "{d}, not quoted"},
+    # Frank, 2026-08-26: "can we add a different color to a lead we contacted
+    # and they said yes to a quote but agreed to a call or text later". Victor
+    # Alapisco is the case -- driving, could not talk, agreed to a 4pm callback
+    # with pricing. That is a live prospect who said yes, and burying it in
+    # "Contacted, No Action" beside people who gave nothing is wrong.
+    #
+    # NOT an eighth hue: seven already cannot clear the all-pairs separation
+    # floors. It takes the same orange as its parent and rides the fill
+    # channel -- a BORDERED box with a solid rule, the one fill/stroke
+    # combination not already spoken for (both follow-up states are bordered
+    # AND striped). Degrades to a visible orange border wherever CSS
+    # gradients are stripped.
+    # Frank, 2026-08-26: "orange color looks good, but i want the same candy
+    # cane opaque look we did with the blue and red". #fbeccc is #eda100 at the
+    # same 20% over white the other two stripes use -- the formula reproduces
+    # #d4e4f7 from #2a78d6 exactly. The row rail is DASHED like the two
+    # follow-up states (Frank, 2026-08-27: "a dotted line on the left tab like
+    # the follow up colors"). Dashed therefore reads as "no quote is on the
+    # table yet from this call" rather than strictly "a quote is already out" --
+    # the three dashed states are told apart by hue, and every chip says its
+    # own name regardless.
+    "live_quote_ok":   {"paint": "#eda100", "fill": False, "stroke": "solid",
+                        "ink": "#0b0b0b", "stripe": "#fbeccc",
+                        "label": "Contacted, okay to quote, no action"},
     "live_no_quote":   {"paint": "#eda100", "fill": True,  "stroke": "solid",
                         "label": "Contacted, No Action"},
+    # Frank, 2026-08-27: "we need to keep the grey striped i like that, but it
+    # needs to show in the call detail."
+    #
+    # The prospect rang back and nothing came of it -- Jose Cisneros's 12
+    # seconds to Lorena on 2026-08-25. In the outcome bar that dial stays in
+    # No Answer with a candy-cane slice, and this is the SAME event wearing the
+    # same clothes in Call Detail: the grey of the no-contact buckets, striped
+    # because a call back happened. Before this it rendered orange "Contacted,
+    # No Action", which claimed a conversation the bar was denying.
+    "callback_no_contact": {"paint": "#9a988f", "fill": False, "stroke": "solid",
+                        "ink": "#0b0b0b", "stripe": "#ebeae9",
+                        "label": "Called back, no conversation"},
 }
 # Reading order, best first -- also the Call Detail sort order.
 CALL_CATEGORY_ORDER = ["sold_on_call", "quoted_call_open", "followup_open",
                        "quoted_call_lost", "followup_lost", "dead_no_quote",
-                       "live_no_quote"]
+                       "live_quote_ok", "live_no_quote", "callback_no_contact"]
 
 # Which quote state a call is in, read off the TASK TITLES due on that lead that
 # day (Frank, 2026-08-25: "you should be able to tell just by the task title
