@@ -9,7 +9,7 @@ import re
 
 import digest_config as cfg
 import live_contact as lc
-from render_report import DOT, TIER, hhmm, money
+from render_report import DOT, TEAM_DOT, TIER, hhmm, money
 
 SHORT = {"Crystal Mango": "Crystal", "Lorena Gonzalez": "Lorena",
          "Mike Olvera": "Mike", "Coral Barwick": "Coral",
@@ -145,9 +145,15 @@ def outcome_rows(M):
 
 # ---- Speed to Dial ---------------------------------------------------------
 def _s2d_card(name, d):
+    # DOT.get, not DOT[]: this card is rendered for "Team" as well as for each
+    # producer, and "Team" is not in the producer dot map. The populated branch
+    # below always had the fallback; this one did not, so the panel only broke
+    # on a day where the TEAM had no internet leads at all and the empty card
+    # was reached -- which first happened on 2026-08-28.
     if not d:
         return (f'<div class="s2d-card"><div class="rep">'
-                f'<span class="dot {DOT[name]}"></span>{SHORT.get(name, name)}</div>'
+                f'<span class="dot {DOT.get(name, TEAM_DOT)}"></span>'
+                f'{SHORT.get(name, name)}</div>'
                 f'<div class="big">&mdash;</div>'
                 f'<div class="med-label">no internet leads assigned</div>'
                 f'<div class="stats"><div class="stat">Quickest<b>&mdash;</b></div>'
