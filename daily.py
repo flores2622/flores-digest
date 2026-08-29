@@ -343,10 +343,31 @@ def build_metrics(day):
     real = cfg.real_sales(day, pol, smap, azid)
     # Inbound transcripts, grouped by producer. transcribe_day stored them
     # under the caller's number, so they are already keyed like a dial.
+    # RE-SCREENED HERE, not just before download. The transcripts file is a
+    # cache: once a call has been transcribed it stays, so a call that a later
+    # screening rule would have dropped kept appearing in Call Detail on every
+    # subsequent build. Armando Alvarez survived the inbound service rule that
+    # was written to exclude him purely because his audio was already on disk
+    # from the run before it. The screen is pure record logic and costs
+    # nothing, so it is the authority at read time too.
+    import inbound as _ib
+    _raw = {r["id"]: r for r in
+            json.loads((ROOT / f"data/rc_raw_{day}.json").read_text())}
+    _win = json.loads((ROOT / f"data/rc_window_{day}.json").read_text())
+    _screened = _ib.screen(_ib.link_callbacks(
+        _ib.answered(day, list(_raw.values())), _win, day), day)
+    _allowed = {r["id"] for r in _screened if not r["skip"]}
     inb = collections.defaultdict(list)
-    for v in tx.values():
-        if v.get("direction") == "inbound":
-            inb[v["producer"]].append(v)
+    dropped_inbound = 0
+    for cid, v in tx.items():
+        if v.get("direction") != "inbound":
+            continue
+        if cid not in _allowed:
+            dropped_inbound += 1
+            continue
+        inb[v["producer"]].append(v)
+    if dropped_inbound:
+        log(f"  inbound: {dropped_inbound} cached call(s) dropped by screening")
     from az_corpus import phone_index as _pidx
     lead_ix = _pidx(leads)
     _pick = day_calls.pick_lead
