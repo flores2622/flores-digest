@@ -144,7 +144,7 @@ def transcribe_day(day):
     todo = [r for r in recs if r["id"] not in done]
     if todo:
         log(f"downloading {len(todo)} recordings (throttled)...")
-        transcribe.download(todo, RingCentral().token(), per_minute=12, log=log)
+        transcribe.download(todo, RingCentral().token(), log=log)
         log("transcribing...")
         for i, r in enumerate(todo):
             txt = transcribe.transcribe_file(f"data/audio/{r['id']}.mp3",
@@ -176,7 +176,7 @@ def transcribe_day(day):
     if in_todo:
         log(f"inbound: {len(in_rows)} reached a producer, "
             f"{dropped} screened out, downloading {len(in_todo)}...")
-        transcribe.download(in_todo, RingCentral().token(), per_minute=12, log=log)
+        transcribe.download(in_todo, RingCentral().token(), log=log)
         by_id = {r["id"]: r for r in keep}
         for r in in_todo:
             meta = by_id[r["id"]]
@@ -211,6 +211,27 @@ def transcribe_day(day):
     return done
 
 
+
+def _one_row_per_lead(detail):
+    """Collapse Call Detail rows that are the same lead on two numbers.
+
+    Rows with no lead_id are left alone -- they cannot be shown to be the same
+    person. An inbound row is never merged into an outbound one either: they
+    are two separate conversations that the report deliberately counts apart.
+    """
+    best, out = {}, []
+    for r in detail:
+        lid = r.get("lead_id")
+        key = (lid, bool(r.get("inbound")))
+        if lid is None:
+            out.append(r)
+            continue
+        keep = best.get(key)
+        if keep is None or (r.get("seconds") or 0) > (keep.get("seconds") or 0):
+            best[key] = r
+    return out + list(best.values())
+
+
 def build_metrics(day):
     import digest_config as cfg
     import day_calls
@@ -230,7 +251,7 @@ def build_metrics(day):
              json.loads((ROOT / "data/az_stages.json").read_text()).items()}
     tx = json.loads((ROOT / f"data/transcripts_{day}.json").read_text())
 
-    bynum, txt, all_txt = {}, {}, {}
+    bynum, txt, all_txt, livesecs = {}, {}, {}, {}
     for v in tx.values():
         n = v.get("to")
         if not n:
@@ -257,6 +278,14 @@ def build_metrics(day):
             bynum[k] = v["class"]
         if v["class"] == "live" and v.get("text"):
             txt.setdefault(k, v["text"])
+        # Longest SINGLE live recording on this key. Not the row's talk time,
+        # which sums every dial to the number and would let five voicemails add
+        # up to a "conversation". is_live uses this to decide whether a
+        # recording is substantial enough to overrule a no-contact note written
+        # earlier in the day (Ricardo Perea, Jose Garcia, Guadalupe Garcia --
+        # Frank, 2026-08-28).
+        if v["class"] == "live":
+            livesecs[k] = max(livesecs.get(k, 0), int(v.get("duration") or 0))
         if v.get("text"):
             all_txt[k] = (all_txt.get(k, "") + " " + v["text"]).strip()
 
@@ -331,7 +360,8 @@ def build_metrics(day):
                   {"written": [], "stage_moves": [], "call_notes": [],
                    "negative": False, "screener": False})
             tc = bynum.get((who, r["number"]))
-            ok, basis = lc.is_live(ev, r["talk_seconds"], tc)
+            ok, basis = lc.is_live(ev, r["talk_seconds"], tc,
+                                   live_seconds=livesecs.get((who, r["number"]), 0))
             # Screener is checked ahead of the transcript class on purpose. An
             # AI attendant reads as a machine greeting, so Elsa Aguilera --
             # "call dropped after AI transferred me" -- was being filed as
@@ -443,6 +473,15 @@ def build_metrics(day):
             arr = qs.get("quotes") if isinstance(qs, dict) else qs
             tot += sum(float(q.get("premium") or 0) for q in (arr or []))
         n_sold, prem = real.get(who, (0, 0.0))
+        # ONE PERSON, ONE CONTACT. Keying on (producer, number) is right for
+        # attribution, but a lead reachable on two numbers becomes two rows for
+        # the same conversation. Roger Ryan was dialled on +1 303-847-3747 for
+        # 100 seconds and on +1 480-883-8366 for one second; the lead note sat
+        # on both, AgencyZoom itself had the record marked "Loss Reason:
+        # Duplicate Lead", and Sarahi's contact rate counted him twice
+        # (Frank, 2026-08-28: "he was already there"). Keep the longest row --
+        # that is the dial the conversation actually happened on.
+        detail = _one_row_per_lead(detail)
         M[who] = {"dials": dials_kept, "callbacks_prior": prior_callbacks,
                   "call_detail": sorted(detail, key=lambda d: -d["seconds"]),
                   "households_quoted": len(hh.get(who, ())),

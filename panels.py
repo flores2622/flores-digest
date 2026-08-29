@@ -470,7 +470,13 @@ def _call_category(row):
     said_a_price = bool((row.get("summary") or {}).get("quote_presented"))
     quoted_here = (any("quote" in d and "not quoted" not in d for d in dests)
                    or "quote" in note or said_a_price)
-    dead = ("dead" in moves or "smart-cycle" in moves)
+    # DESTINATION ONLY here too. This tested the whole "A to B" string, so a
+    # move OUT of Dead counted as a move INTO it: Mike moved Jose Gonzalez
+    # "1 Pipeline | Dead to 1-2 Leads Not Quoted | Quoted" -- a lead revived
+    # and quoted -- and the report printed him lost over a lead AgencyZoom
+    # still has open at status 0 (Frank, 2026-08-28: "why did you make Jose
+    # Gonzalez a dead lost lead? he is open still").
+    dead = any("dead" in d or "smart-cycle" in d for d in dests)
     # The lead's own SOLD status is the primary signal and outranks the stage
     # moves. Coral bound Hugo Bojorquez's home ($1,020, #828301744) and
     # landlord ($731, #3815027091461) on 2026-08-25 -- both in Premium Sold --
@@ -582,20 +588,39 @@ def _cat_legend():
 # it, but they at least 'pushed it off' for now and kept going". That is a
 # distinct result from both a win and a loss, and it was being scored as a
 # loss. It reads AMBER, not red -- the call survived the objection.
-OBJ_CHIP = {("no", None): ("cdc-r", "Not addressed"),
-            ("yes", "yes"): ("cdc-g", "Addressed, overcome"),
-            ("yes", "advanced"): ("cdc-y", "Addressed, kept going"),
-            # Its own class, not cdc-r: "he never engaged it" and "he engaged
-            # it and lost" are different failures and a producer needs to tell
-            # them apart at a glance (Frank, 2026-08-27).
-            ("yes", "no"): ("cdc-rx", "Addressed, not overcome"),
-            ("yes", "unclear"): ("cdc-y", "Addressed, unclear")}
+# TWO AXES, NOT ONE (Frank, 2026-08-28). Colour was carrying the result of the
+# objection alone, so "addressed, not overcome" printed red on a lead that is
+# still an open opportunity -- Maria de Avina, who is mid-quote with a callback
+# booked, read the same as a lead that had just gone dead.
+#
+#   texture  <- did the producer ENGAGE it?   solid = never engaged
+#                                             candy-cane = engaged, unresolved
+#   colour   <- did the LEAD take a lost action?   red = lost, yellow = open
+#   green    <- overcome, and it outranks both
+#
+# A lost action is a move to Dead, or a smart-cycle more than 30 days out.
+OBJ_CHIP = {
+    # Never engaged. Solid tint either way.
+    ("no", None, True):   ("cdc-r",  "Not addressed"),
+    ("no", None, False):  ("cdc-y",  "Not addressed"),
+    # Engaged, still standing at the end of the call. Candy-cane either way.
+    ("yes", "no", True):   ("cdc-rx", "Addressed, not overcome"),
+    ("yes", "no", False):  ("cdc-yx", "Addressed, not overcome"),
+    ("yes", "advanced", True):  ("cdc-rx", "Addressed, kept going"),
+    ("yes", "advanced", False): ("cdc-yx", "Addressed, kept going"),
+    ("yes", "unclear", True):   ("cdc-rx", "Addressed, unclear"),
+    ("yes", "unclear", False):  ("cdc-yx", "Addressed, unclear"),
+    # Won. Green regardless of where the lead ended up.
+    ("yes", "yes", True):  ("cdc-g", "Addressed, overcome"),
+    ("yes", "yes", False): ("cdc-g", "Addressed, overcome"),
+}
 
 
-def _obj_chip(o):
+def _obj_chip(o, lost=False):
     a = o.get("addressed")
-    key = ("no", None) if a != "yes" else ("yes", o.get("overcome") or "unclear")
-    cls, txt = OBJ_CHIP.get(key, ("cdc-y", "Addressed, unclear"))
+    res = o.get("overcome") or "unclear"
+    key = ("no", None, bool(lost)) if a != "yes" else ("yes", res, bool(lost))
+    cls, txt = OBJ_CHIP.get(key, ("cdc-yx", "Addressed, unclear"))
     return f'<span class="cdch {cls}">{txt}</span>'
 
 
@@ -629,6 +654,30 @@ def _grid(pairs):
     body = "".join(f'<tr><td class="cdgl">{k}</td><td class="cdgv">{v}</td></tr>'
                    for k, v in pairs)
     return f'<table class="cdg">{body}</table>'
+
+
+
+# A LOST ACTION, per Frank 2026-08-28: "moved to dead, or smartcycled for more
+# than 30 days out". A smart-cycle inside thirty days is a lead parked on a
+# cadence and still being worked -- not a loss.
+SMARTCYCLE_LOST_DAYS = 30
+
+
+def _is_lost_action(row):
+    dests = []
+    for mv in (row.get("moves") or []):
+        mv = (mv or "").lower()
+        d = mv.rsplit(" to ", 1)[-1] if " to " in mv else mv
+        dests.append(d.split("|")[-1])
+    if any("dead" in d for d in dests):
+        return True
+    if any("smart-cycle" in d for d in dests):
+        # Only a long park counts. Without a date on the move we cannot tell a
+        # 2-day recycle from a 90-day shelf, and the conservative reading is
+        # that the lead is still live -- yellow, not red.
+        out = row.get("smartcycle_days")
+        return bool(out is not None and out > SMARTCYCLE_LOST_DAYS)
+    return False
 
 
 def _call_note(r):
@@ -665,10 +714,13 @@ def _call_note(r):
     if summ:
         pairs.append(("Call", summ))
     objs = d.get("objections") or []
+    # Did the LEAD end the day lost? Drives the objection colour; see OBJ_CHIP.
+    lost = _is_lost_action(r)
     if objs:
         lines = "".join(
             f'<div class="cdol"><span class="cdon">{i}</span>'
-            f'<span class="cdot">{o["objection"]}</span>{_obj_chip(o)}</div>'
+            f'<span class="cdot">{o["objection"]}</span>'
+            f'{_obj_chip(o, lost)}</div>'
             for i, o in enumerate(objs, 1))
         pairs.append(("Objection" + ("s" if len(objs) > 1 else ""), lines))
         # The roll-up only earns its line when there is something to add up.
@@ -770,12 +822,22 @@ def call_detail(M, day):
                      'color:#fff">duration only</span>'
                      if r["basis"] == "duration only" else "")
             if r.get("inbound"):
+                # MATCH THE OUTCOME CHIP BESIDE IT (Frank, 2026-08-28: "if they
+                # are matching the outcome tags, they should also carry the
+                # candy cane tinted stripes and the text should be the same
+                # color. I also feel that the blue doesnt match"). This used to
+                # paint a flat fill in the category colour with its own ink --
+                # white on filled categories, near-black otherwise -- so the
+                # badge and the chip next to it disagreed on both texture and
+                # text colour, and the teal read as an unrelated blue. Same
+                # hue, same stripes, same ink: one visual family.
                 cc = cfg.CALL_CATEGORIES[k]
-                tone = cc["paint"] if cc.get("fill") else "#fff"
-                ink = "#fff" if cc.get("fill") else "#0b0b0b"
+                paint = cc["paint"]
                 lbl = "call back" if r.get("kind") == "callback" else "call in"
-                badge += (f'<span class="badge-new" style="background:{tone};'
-                          f'color:{ink};border:1px solid {cc["paint"]}">'
+                badge += (f'<span class="badge-new badge-in" style="'
+                          f'background-image:repeating-linear-gradient(45deg,'
+                          f'{paint} 0,{paint} 3px,#fff 3px,#fff 7px);'
+                          f'color:{paint};border:1px solid {paint}">'
                           f'{lbl}</span>')
             link = (_lead_link(r["lead_id"], r["lead"]) if r["lead_id"]
                     else (r["lead"] or _fmt_phone(r["number"])))

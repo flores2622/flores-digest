@@ -163,9 +163,28 @@ def screen(rows, day):
     against the caller's number, so the two directions cannot disagree about
     what counts as service. Each row gets a `skip` reason or None.
     """
+    import collections
+    import json
+    import pathlib
     import day_calls
     from az_corpus import e164
     lead_idx, cust_idx, svc_customers, svc_phones = day_calls.build_context(day)
+
+    # Every open ticket on a number, WHOEVER the CSR is -- see the inbound
+    # branch below. Same point-in-time test day_calls uses, so the two
+    # directions still agree about which tickets were open on the day.
+    any_open_ticket = collections.defaultdict(list)
+    sr = pathlib.Path(f"data/az_service_tickets_{day}.json")
+    if sr.exists():
+        for t in json.loads(sr.read_text()):
+            created = str(t.get("createDate") or "")[:10]
+            cd = str(t.get("completeDate") or "")[:10]
+            if (created and created > day) or (cd and cd < day):
+                continue
+            ph = e164(t.get("phone"))
+            if ph:
+                any_open_ticket[ph].append(t)
+
     for row in rows:
         num = e164(row["number"])
         cands = lead_idx.get(num, []) if num else []
@@ -183,6 +202,17 @@ def screen(rows, day):
         elif svc_phones.get((who, num)):
             wf = svc_phones[(who, num)][0].get("workflowName") or "service"
             skip = f"open {wf} ticket with this producer as CSR"
+        # INBOUND DROPS THE CSR CONDITION (Frank, 2026-08-28). Outbound needs
+        # it -- an open ticket in someone else's name must not kill a real
+        # new-business dial, which is what keeps Wesley Knowlton as Mike's.
+        # But a customer who calls IN, with an open ticket and no open lead, is
+        # calling about that ticket whoever owns it. Armando Alvarez had an
+        # open ticket under CSR 83597, no open lead and a customer record;
+        # Crystal took the call, transferred him straight to a Spanish speaker,
+        # and it still landed in her Call Detail as a 455-second contact.
+        elif (any_open_ticket.get(num)
+              and not any(c.get("status") == 0 for c in cands)):
+            skip = "open service ticket, no open lead (inbound)"
         elif day_calls.is_household_housekeeping(cands, day):
             skip = day_calls.is_household_housekeeping(cands, day)
         row["e164"] = num
