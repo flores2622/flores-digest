@@ -689,6 +689,20 @@ def main():
     if a.no_send:
         log("--no-send, stopping")
         return
+    # A tracked SEND_HOLD file stops the nightly run from emailing while a
+    # change is mid-flight. The scheduled task clones main and runs a bare
+    # `daily.py`, so there is no flag to pass it and no way to pause it from
+    # outside the repo -- on 2026-08-28 both the scheduler pause and a push
+    # were blocked, and an unfixed report went to all ten people as a result.
+    # A tracked file is the only hold that travels with the code.
+    #
+    # To hold a send: commit a SEND_HOLD file with a line saying why.
+    # To release it: delete the file in the same merge that lands the fix.
+    hold = ROOT / "SEND_HOLD"
+    if hold.exists():
+        log(f"SEND_HOLD present, built but NOT sending -- "
+            f"{hold.read_text().strip()[:200]}")
+        return
     send(day, html, [notes, rec], audience=a.audience)
 
 
