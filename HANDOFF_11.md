@@ -1,15 +1,13 @@
 # HANDOFF 11 — 2026-08-28
 
 Frank's review of the 08-27 rebuild, worked through live, plus everything that
-broke while shipping the fixes. **Five commits sit on
-`claude/2026-08-28-review-fixes` and NONE of them are pushed** — the git proxy
-refuses this repo (`not in this session's authorized repository set`). They are
-also bundled as patches; `git am *.patch` onto a fresh clone.
+broke while shipping the fixes. The first seven commits merged as **PR #6**.
+This file was written before section 4 was understood and has been corrected —
+if you are reading an older copy, the size theory in it is wrong.
 
-The 08-28 digest went out FOUR times tonight (18:44 mine, ~19:20 the scheduled
-task on unfixed `main`, 22:46 mine again). Gmail threads them under one subject.
-The team saw broken formatting on all of them. Do not send again until the
-transport problem below is fixed.
+The 08-28 digest went out four times before it was right. Every copy arrived
+unstyled, and the cause was NOT what the first three investigations concluded;
+see section 4.
 
 ---
 
@@ -87,27 +85,50 @@ dark ink (it shipped as amber-on-amber and was unreadable). `_s2d_card` uses
 `DOT.get(name, TEAM_DOT)` — it raised `KeyError('Team')` and killed the whole
 build the first time the TEAM had no internet leads, which was 08-28.
 
-## 4. OPEN — the email arrives with holes in it
+## 4. SOLVED — why every email since 08-27 arrived unstyled
 
-**This is the live problem. Do not send until it is solved.**
+**Gmail applies exactly ONE `<style>` block and silently discards any block
+over ~16 KB.** Not the excess — the whole block. The email then renders as
+unstyled text.
 
-Evidence gathered tonight:
-- A **6 KB** probe through Resend arrives with the `<style>` block byte-for-byte
-  intact and `&#61;`-escaped links intact.
-- An **85 KB** probe, same content padded, **never arrived at all**.
-- The real **84 KB** digest arrives, but every AgencyZoom link is mangled:
-  `?id=87607238` → `?id�607238`.
+    2026-08-25 code   style 15,864   under   Aug 26 email rendered correctly
+    2026-08-27 fixes  style 17,851   OVER    first email built on it was the
+                                             first one that arrived unstyled
 
-The sent body contains **zero** literal `=`-followed-by-two-hex; all 27 links
-are `&#61;` (written by `panels.py:339` and `AZ_URL`, then `qp_safe`). So on the
-large-message path something decodes the entity back to `=` and a
-quoted-printable decode then eats `=`+2 chars. That deletion runs through the
-whole body including the 18 KB `<style>` block, which is what destroys the
-layout. **It is not Gmail stripping CSS.**
+The Aug 27 digest went out at 20:15 on the 27th still on pre-merge code and was
+fine. Everything built after PR #5 was over the line. The delivered Aug 26 mail
+measures exactly 15,864 characters of CSS; the broken ones measure 18,073.
 
-Direction: stop shipping an 84 KB HTML body. Either inline the critical CSS and
-drop inline Call Detail, or send a light HTML email with the report as the PDF.
-Prove it with a probe before sending to all ten.
+**Three theories were wrong before this one, all recorded so nobody re-runs
+them:**
+
+* *Body size.* Wrong. The broken email's body was SMALLER than the working
+  one's — 84 KB against 92 KB. `GMAIL_CLIP_BYTES` was briefly dropped to 55,000
+  chasing this and has been restored to 102,400.
+* *Attachments / total message size.* Wrong. Two probes with byte-identical
+  HTML, one with three PDFs and one with none, were both unstyled.
+* *Link corruption.* Not real. `&#61;` in the hrefs survives delivery intact;
+  the mangling only appears in Gmail's API-generated plaintext rendering, which
+  is a derived view. Frank clicks these links daily and they work.
+
+**The fix is `render_report.prune_css`**, applied per audience in `daily.send`
+after overflow has shed its panels. It drops style rules whose class selectors
+appear nowhere in that document — 27 rules and 2,276 bytes on 08-28 — leaving a
+single block at 15,797. It is self-adjusting: shedding a panel to PDF removes
+that panel's rules too, so the sheet shrinks exactly when the body grows.
+
+SPLITTING INTO TWO BLOCKS DOES NOT WORK. Tried 2026-08-31; Gmail applied only
+the first. Crystal, Lorena, Mike and Debbie kept their colours (.cA .cB .cC
+.cE, block one) and Coral, Sarahi and Amanda lost theirs (.cJ .cK .cL, block
+two). That is what identified the mechanism.
+
+There is a hard guard: if the pruned sheet still exceeds 16,384 the send
+refuses with an explanation rather than shipping an unstyled report. Treat it
+like the div-balance check — it is telling you the sheet has to shrink.
+
+Only class selectors are considered for pruning. Element selectors, ids and
+`@media` blocks are always kept, and the parser is brace-aware because a flat
+regex splits inside `@media` and loses the wrapper.
 
 ## 5. OPEN — the bare-name corpus caches go stale
 

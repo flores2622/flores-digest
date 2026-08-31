@@ -11,6 +11,80 @@ every panel below it.
 """
 import re
 
+# GMAIL DROPS A <style> BLOCK OVER ~16 KB -- silently, and the WHOLE block, so
+# the email arrives as unstyled text (Frank, 2026-08-28: "the whole formatting
+# has been lost"). Measured against delivered mail:
+#
+#     2026-08-25 code   style 15,864   under   Aug 26 email rendered correctly
+#     2026-08-27 fixes  style 17,851   OVER    first email built on it was the
+#                                              first one that arrived unstyled
+#
+# Nothing else moved: the broken email's BODY was SMALLER than the working
+# one's (84 KB vs 92 KB), the MIME tree, the quoted-printable encoding and the
+# markup were identical, and it happened with and without attachments.
+#
+# SPLITTING INTO TWO BLOCKS DOES NOT WORK. That was tried on 2026-08-31 and
+# Gmail applied only the FIRST block: Crystal, Lorena, Mike and Debbie kept
+# their colours (.cA .cB .cC .cE, block one) while Coral, Sarahi and Amanda
+# lost theirs (.cJ .cK .cL, block two). Gmail honours one <style> and discards
+# the rest. Everything has to fit in a single block.
+#
+# So the sheet is pruned instead: a rule whose every class selector is absent
+# from THIS document cannot affect it, and dropping it is a no-op on rendering.
+# That is worth ~2.3 KB on a normal day and more once overflow.py has shed a
+# panel, because the shed panel's styles go with it. It is also self-adjusting,
+# which a hand-trimmed sheet would not be.
+STYLE_BLOCK_LIMIT = 16_384
+
+
+def prune_css(html, log=None):
+    """Drop style rules whose classes appear nowhere in this document.
+
+    Only class selectors are considered. Element and id selectors, @media
+    blocks and anything else are always kept -- the test has to be certain,
+    and a rule wrongly dropped is a silent visual regression.
+    """
+    m = re.search(r"(<style[^>]*>)(.*?)(</style>)", html, re.S | re.I)
+    if not m:
+        return html
+    open_tag, css, close_tag = m.group(1), m.group(2), m.group(3)
+    used = {c for group in re.findall(r'class="([^"]*)"', html)
+            for c in group.split()}
+
+    # Brace-aware: an @media block is ONE unit. A flat regex splits inside it
+    # and silently loses the wrapper.
+    units, start, depth = [], 0, 0
+    for i, ch in enumerate(css):
+        if ch == "{":
+            depth += 1
+        elif ch == "}":
+            depth -= 1
+            if depth == 0:
+                units.append(css[start:i + 1])
+                start = i + 1
+    if start < len(css) or "".join(units) != css:
+        return html                      # could not parse it cleanly; leave alone
+
+    keep = []
+    for unit in units:
+        sel = unit.split("{", 1)[0]
+        classes = re.findall(r"\.([A-Za-z0-9_-]+)", sel)
+        if sel.strip().startswith("@") or not classes or any(c in used for c in classes):
+            keep.append(unit)
+    out = "".join(keep)
+    if log:
+        log(f"  css pruned {len(css):,} -> {len(out):,} bytes "
+            f"({len(units) - len(keep)} rules unused in this document)")
+    if len(out) > STYLE_BLOCK_LIMIT:
+        raise SystemExit(
+            f"REFUSING TO SEND: stylesheet is {len(out):,} bytes, over Gmail's "
+            f"~{STYLE_BLOCK_LIMIT:,} single-block cap. Gmail discards the whole "
+            f"block and the email arrives as unstyled text. Splitting does not "
+            f"help -- Gmail honours only the first block. Shrink the sheet.")
+    return html[:m.start()] + open_tag + out + close_tag + html[m.end():]
+
+
+
 import digest_config as cfg
 from util_panel import assert_div_balance
 
