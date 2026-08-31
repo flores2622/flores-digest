@@ -1,0 +1,360 @@
+From e8e71c036722a06e820faed439bce6c884d7842e Mon Sep 17 00:00:00 2001
+From: Flores Digest Automation <frank@floresinsuranceagency.com>
+Date: Mon, 31 Aug 2026 20:40:40 +0000
+Subject: [PATCH 1/2] Restore the SEND_HOLD guard
+
+Lost in transit: this was committed to main locally before the review branch
+was cut, so `git format-patch main..HEAD` excluded it and PR #6 landed the
+removal of the SEND_HOLD file without the check that reads it.
+
+It is the only way to stop a nightly send from inside the repo. The scheduled
+task clones main and runs a bare `daily.py`, so there is no flag to pass it;
+on 2026-08-28 the scheduler pause and a push were both blocked and an unfixed
+report reached all ten recipients because nothing could hold it.
+
+Co-Authored-By: Claude Opus 5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01Vnt6SJK5LgkQPDc7X6ThUW
+---
+ daily.py | 14 ++++++++++++++
+ 1 file changed, 14 insertions(+)
+
+diff --git a/daily.py b/daily.py
+index 6a2fd69..72473a7 100644
+--- a/daily.py
++++ b/daily.py
+@@ -689,6 +689,20 @@ def main():
+     if a.no_send:
+         log("--no-send, stopping")
+         return
++    # A tracked SEND_HOLD file stops the nightly run from emailing while a
++    # change is mid-flight. The scheduled task clones main and runs a bare
++    # `daily.py`, so there is no flag to pass it and no way to pause it from
++    # outside the repo -- on 2026-08-28 both the scheduler pause and a push
++    # were blocked, and an unfixed report went to all ten people as a result.
++    # A tracked file is the only hold that travels with the code.
++    #
++    # To hold a send: commit a SEND_HOLD file with a line saying why.
++    # To release it: delete the file in the same merge that lands the fix.
++    hold = ROOT / "SEND_HOLD"
++    if hold.exists():
++        log(f"SEND_HOLD present, built but NOT sending -- "
++            f"{hold.read_text().strip()[:200]}")
++        return
+     send(day, html, [notes, rec], audience=a.audience)
+ 
+ 
+-- 
+2.43.0
+
+
+From 1dfbb18284923e7842abafbe86a51d9f0640397d Mon Sep 17 00:00:00 2001
+From: Flores Digest Automation <frank@floresinsuranceagency.com>
+Date: Mon, 31 Aug 2026 21:55:52 +0000
+Subject: [PATCH 2/2] Fit the stylesheet in one <style> block, and restore the
+ send hold
+
+GMAIL APPLIES ONE <style> BLOCK AND DISCARDS ANY BLOCK OVER ~16 KB. Silently,
+and the whole block, so the email arrives as unstyled text.
+
+    2026-08-25 code   style 15,864   under   Aug 26 email rendered correctly
+    2026-08-27 fixes  style 17,851   OVER    first email built on it was the
+                                             first one that arrived unstyled
+
+The Aug 27 digest went out on pre-merge code and was fine; everything after
+PR #5 was over the line. The delivered Aug 26 mail carries exactly 15,864
+characters of CSS, the broken ones 18,073.
+
+Three earlier theories were wrong and are recorded in HANDOFF_11 so nobody
+re-runs them. Body size: the broken email's body was SMALLER than the working
+one's, 84 KB against 92 KB. Attachments: two probes with byte-identical HTML,
+one with three PDFs and one with none, were both unstyled. Link corruption:
+not real, an artefact of Gmail's API plaintext view; the hrefs are intact.
+
+Splitting into two blocks does not work either -- tried, and Gmail applied only
+the first: Crystal, Lorena, Mike and Debbie kept their colours (.cA .cB .cC .cE
+in block one) while Coral, Sarahi and Amanda lost theirs (.cJ .cK .cL in block
+two). That is what identified the mechanism.
+
+prune_css drops rules whose class selectors appear nowhere in the delivered
+document -- 27 rules, 2,276 bytes on 08-28 -- leaving one block at 15,797. It
+runs per audience after overflow has shed its panels, so it is self-adjusting:
+a panel moved to PDF takes its rules with it, and the sheet shrinks exactly
+when the body grows. Only class selectors are eligible; element selectors, ids
+and @media blocks are always kept, and the parser is brace-aware because a flat
+regex splits inside @media and loses the wrapper. A hard guard refuses the send
+if the pruned sheet is still over the cap rather than shipping unstyled mail.
+
+GMAIL_CLIP_BYTES returns to 102,400. It was dropped to 55,000 chasing the body
+-size theory and was making the report shed panels it did not need to.
+
+Also restores the SEND_HOLD guard, which was lost in transit: it was committed
+to main locally before the review branch was cut, so `git format-patch
+main..HEAD` excluded it and PR #6 landed the removal of the SEND_HOLD file
+without the check that reads it.
+
+Co-Authored-By: Claude Opus 5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01Vnt6SJK5LgkQPDc7X6ThUW
+---
+ HANDOFF_11.md    | 79 ++++++++++++++++++++++++++++++------------------
+ build_day.py     |  3 ++
+ daily.py         |  5 +++
+ digest_config.py | 29 +++++-------------
+ render_report.py | 74 +++++++++++++++++++++++++++++++++++++++++++++
+ 5 files changed, 139 insertions(+), 51 deletions(-)
+
+diff --git a/HANDOFF_11.md b/HANDOFF_11.md
+index 9178976..e106b38 100644
+--- a/HANDOFF_11.md
++++ b/HANDOFF_11.md
+@@ -1,15 +1,13 @@
+ # HANDOFF 11 — 2026-08-28
+ 
+ Frank's review of the 08-27 rebuild, worked through live, plus everything that
+-broke while shipping the fixes. **Five commits sit on
+-`claude/2026-08-28-review-fixes` and NONE of them are pushed** — the git proxy
+-refuses this repo (`not in this session's authorized repository set`). They are
+-also bundled as patches; `git am *.patch` onto a fresh clone.
++broke while shipping the fixes. The first seven commits merged as **PR #6**.
++This file was written before section 4 was understood and has been corrected —
++if you are reading an older copy, the size theory in it is wrong.
+ 
+-The 08-28 digest went out FOUR times tonight (18:44 mine, ~19:20 the scheduled
+-task on unfixed `main`, 22:46 mine again). Gmail threads them under one subject.
+-The team saw broken formatting on all of them. Do not send again until the
+-transport problem below is fixed.
++The 08-28 digest went out four times before it was right. Every copy arrived
++unstyled, and the cause was NOT what the first three investigations concluded;
++see section 4.
+ 
+ ---
+ 
+@@ -87,27 +85,50 @@ dark ink (it shipped as amber-on-amber and was unreadable). `_s2d_card` uses
+ `DOT.get(name, TEAM_DOT)` — it raised `KeyError('Team')` and killed the whole
+ build the first time the TEAM had no internet leads, which was 08-28.
+ 
+-## 4. OPEN — the email arrives with holes in it
+-
+-**This is the live problem. Do not send until it is solved.**
+-
+-Evidence gathered tonight:
+-- A **6 KB** probe through Resend arrives with the `<style>` block byte-for-byte
+-  intact and `&#61;`-escaped links intact.
+-- An **85 KB** probe, same content padded, **never arrived at all**.
+-- The real **84 KB** digest arrives, but every AgencyZoom link is mangled:
+-  `?id=87607238` → `?id�607238`.
+-
+-The sent body contains **zero** literal `=`-followed-by-two-hex; all 27 links
+-are `&#61;` (written by `panels.py:339` and `AZ_URL`, then `qp_safe`). So on the
+-large-message path something decodes the entity back to `=` and a
+-quoted-printable decode then eats `=`+2 chars. That deletion runs through the
+-whole body including the 18 KB `<style>` block, which is what destroys the
+-layout. **It is not Gmail stripping CSS.**
+-
+-Direction: stop shipping an 84 KB HTML body. Either inline the critical CSS and
+-drop inline Call Detail, or send a light HTML email with the report as the PDF.
+-Prove it with a probe before sending to all ten.
++## 4. SOLVED — why every email since 08-27 arrived unstyled
++
++**Gmail applies exactly ONE `<style>` block and silently discards any block
++over ~16 KB.** Not the excess — the whole block. The email then renders as
++unstyled text.
++
++    2026-08-25 code   style 15,864   under   Aug 26 email rendered correctly
++    2026-08-27 fixes  style 17,851   OVER    first email built on it was the
++                                             first one that arrived unstyled
++
++The Aug 27 digest went out at 20:15 on the 27th still on pre-merge code and was
++fine. Everything built after PR #5 was over the line. The delivered Aug 26 mail
++measures exactly 15,864 characters of CSS; the broken ones measure 18,073.
++
++**Three theories were wrong before this one, all recorded so nobody re-runs
++them:**
++
++* *Body size.* Wrong. The broken email's body was SMALLER than the working
++  one's — 84 KB against 92 KB. `GMAIL_CLIP_BYTES` was briefly dropped to 55,000
++  chasing this and has been restored to 102,400.
++* *Attachments / total message size.* Wrong. Two probes with byte-identical
++  HTML, one with three PDFs and one with none, were both unstyled.
++* *Link corruption.* Not real. `&#61;` in the hrefs survives delivery intact;
++  the mangling only appears in Gmail's API-generated plaintext rendering, which
++  is a derived view. Frank clicks these links daily and they work.
++
++**The fix is `render_report.prune_css`**, applied per audience in `daily.send`
++after overflow has shed its panels. It drops style rules whose class selectors
++appear nowhere in that document — 27 rules and 2,276 bytes on 08-28 — leaving a
++single block at 15,797. It is self-adjusting: shedding a panel to PDF removes
++that panel's rules too, so the sheet shrinks exactly when the body grows.
++
++SPLITTING INTO TWO BLOCKS DOES NOT WORK. Tried 2026-08-31; Gmail applied only
++the first. Crystal, Lorena, Mike and Debbie kept their colours (.cA .cB .cC
++.cE, block one) and Coral, Sarahi and Amanda lost theirs (.cJ .cK .cL, block
++two). That is what identified the mechanism.
++
++There is a hard guard: if the pruned sheet still exceeds 16,384 the send
++refuses with an explanation rather than shipping an unstyled report. Treat it
++like the div-balance check — it is telling you the sheet has to shrink.
++
++Only class selectors are considered for pruning. Element selectors, ids and
++`@media` blocks are always kept, and the parser is brace-aware because a flat
++regex splits inside `@media` and loses the wrapper.
+ 
+ ## 5. OPEN — the bare-name corpus caches go stale
+ 
+diff --git a/build_day.py b/build_day.py
+index b81d2f6..d50383f 100644
+--- a/build_day.py
++++ b/build_day.py
+@@ -95,6 +95,9 @@ def build(day, template=TEMPLATE):
+ 
+     assert_div_balance(src, h, "final")
+ 
++
++
++
+     out = f"out/Ops_Report_{day}.html"
+     pathlib.Path(out).parent.mkdir(exist_ok=True)
+     pathlib.Path(out).write_text(h)
+diff --git a/daily.py b/daily.py
+index 72473a7..0511a4f 100644
+--- a/daily.py
++++ b/daily.py
+@@ -744,6 +744,11 @@ def send(day, ops_html, pdfs, audience="both"):
+              .replace("Call Detail &amp; Task Completion Audit", "Call Detail")
+              .replace("Daily Sales Digest &amp; Call Detail Audit",
+                       "Daily Sales Digest"))
++    # Prune the stylesheet LAST, per audience, after shedding -- a shed panel's
++    # rules are dead weight in the body that remains, and Gmail throws away any
++    # <style> block over ~16 KB (see render_report.prune_css).
++    ops = rr.prune_css(ops, log=log)
++    staff = rr.prune_css(staff, log=log)
+     atts = [(pathlib.Path(p).name, pathlib.Path(p).read_bytes()) for p in pdfs]
+     jobs = []
+     if audience in ("ops", "both"):
+diff --git a/digest_config.py b/digest_config.py
+index 74325fd..0293cfc 100644
+--- a/digest_config.py
++++ b/digest_config.py
+@@ -461,28 +461,13 @@ FUNNEL_METRICS = ["Call Volume", "Avg Talk Time", "Contact Rate",
+ # Gmail clips HTML bodies above ~102,400 bytes and replaces the tail with
+ # "[Message clipped]" -- a clipped digest silently loses whole panels.
+ #
+-# BUT THE REAL CEILING IS LOWER, and it is the send path's, not Gmail's
+-# (2026-08-28). Measured by probing the live pipeline:
+-#
+-#     6 KB body  -> arrives, <style> byte-for-byte intact
+-#    52 KB body  -> arrives, 1,118 correct "=3D" escapes, style intact
+-#    84 KB body  -> ARRIVES CORRUPTED. Every "&#61;" in a link comes back as a
+-#                   raw "=" that has then been quoted-printable-decoded, so
+-#                   "?id=87607238" lands as "?id<bad byte>607238". The same
+-#                   deletion runs through the whole body, including the 18 KB
+-#                   <style> block -- which is why the layout collapsed.
+-#    85 KB body  -> NEVER DELIVERED AT ALL. Accepted by the API, never arrived.
+-#
+-# Above roughly 80 KB the large-message path stops encoding "=" correctly and
+-# starts dropping messages outright. Frank, 2026-08-28: "both emails were
+-# visually unreadable". Holding the body near 50 KB keeps it on the path that
+-# demonstrably works; overflow.py sheds the difference into the PDF, which
+-# loses nothing.
+-#
+-# The proper fix is to stop shipping a stylesheet-dependent 100 KB body at all
+-# -- inline the critical CSS, or send a light email with the report as the PDF.
+-# Until then this number is load-bearing. Do not raise it without re-probing.
+-GMAIL_CLIP_BYTES = 55_000
++# The body ceiling is Gmail's own and nothing more exotic. It was briefly
++# dropped to 55,000 on 2026-08-28 chasing an unstyled-email bug that turned out
++# to be the <style> block crossing Gmail's ~16 KB per-block cap -- see
++# render_report.split_style_blocks. Body size was never the cause: the broken
++# email's body was 84 KB and the working one before it was 92 KB. Restored, so
++# the report stops shedding panels into PDFs it does not need to.
++GMAIL_CLIP_BYTES = 102_400
+ # Gmail also strips <details>/<summary> and <input>/:checked. There is NO
+ # working disclosure widget in HTML email. Do not add one.
+ 
+diff --git a/render_report.py b/render_report.py
+index 0811d4b..15064f6 100644
+--- a/render_report.py
++++ b/render_report.py
+@@ -11,6 +11,80 @@ every panel below it.
+ """
+ import re
+ 
++# GMAIL DROPS A <style> BLOCK OVER ~16 KB -- silently, and the WHOLE block, so
++# the email arrives as unstyled text (Frank, 2026-08-28: "the whole formatting
++# has been lost"). Measured against delivered mail:
++#
++#     2026-08-25 code   style 15,864   under   Aug 26 email rendered correctly
++#     2026-08-27 fixes  style 17,851   OVER    first email built on it was the
++#                                              first one that arrived unstyled
++#
++# Nothing else moved: the broken email's BODY was SMALLER than the working
++# one's (84 KB vs 92 KB), the MIME tree, the quoted-printable encoding and the
++# markup were identical, and it happened with and without attachments.
++#
++# SPLITTING INTO TWO BLOCKS DOES NOT WORK. That was tried on 2026-08-31 and
++# Gmail applied only the FIRST block: Crystal, Lorena, Mike and Debbie kept
++# their colours (.cA .cB .cC .cE, block one) while Coral, Sarahi and Amanda
++# lost theirs (.cJ .cK .cL, block two). Gmail honours one <style> and discards
++# the rest. Everything has to fit in a single block.
++#
++# So the sheet is pruned instead: a rule whose every class selector is absent
++# from THIS document cannot affect it, and dropping it is a no-op on rendering.
++# That is worth ~2.3 KB on a normal day and more once overflow.py has shed a
++# panel, because the shed panel's styles go with it. It is also self-adjusting,
++# which a hand-trimmed sheet would not be.
++STYLE_BLOCK_LIMIT = 16_384
++
++
++def prune_css(html, log=None):
++    """Drop style rules whose classes appear nowhere in this document.
++
++    Only class selectors are considered. Element and id selectors, @media
++    blocks and anything else are always kept -- the test has to be certain,
++    and a rule wrongly dropped is a silent visual regression.
++    """
++    m = re.search(r"(<style[^>]*>)(.*?)(</style>)", html, re.S | re.I)
++    if not m:
++        return html
++    open_tag, css, close_tag = m.group(1), m.group(2), m.group(3)
++    used = {c for group in re.findall(r'class="([^"]*)"', html)
++            for c in group.split()}
++
++    # Brace-aware: an @media block is ONE unit. A flat regex splits inside it
++    # and silently loses the wrapper.
++    units, start, depth = [], 0, 0
++    for i, ch in enumerate(css):
++        if ch == "{":
++            depth += 1
++        elif ch == "}":
++            depth -= 1
++            if depth == 0:
++                units.append(css[start:i + 1])
++                start = i + 1
++    if start < len(css) or "".join(units) != css:
++        return html                      # could not parse it cleanly; leave alone
++
++    keep = []
++    for unit in units:
++        sel = unit.split("{", 1)[0]
++        classes = re.findall(r"\.([A-Za-z0-9_-]+)", sel)
++        if sel.strip().startswith("@") or not classes or any(c in used for c in classes):
++            keep.append(unit)
++    out = "".join(keep)
++    if log:
++        log(f"  css pruned {len(css):,} -> {len(out):,} bytes "
++            f"({len(units) - len(keep)} rules unused in this document)")
++    if len(out) > STYLE_BLOCK_LIMIT:
++        raise SystemExit(
++            f"REFUSING TO SEND: stylesheet is {len(out):,} bytes, over Gmail's "
++            f"~{STYLE_BLOCK_LIMIT:,} single-block cap. Gmail discards the whole "
++            f"block and the email arrives as unstyled text. Splitting does not "
++            f"help -- Gmail honours only the first block. Shrink the sheet.")
++    return html[:m.start()] + open_tag + out + close_tag + html[m.end():]
++
++
++
+ import digest_config as cfg
+ from util_panel import assert_div_balance
+ 
+-- 
+2.43.0
+
