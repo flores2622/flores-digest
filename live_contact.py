@@ -582,7 +582,58 @@ def is_live(ev, talk_seconds=None, transcript_class=None, live_seconds=0):
     return False, "no outcome logged"
 
 
-def outcome_bucket(ev, live):
+# RINGCENTRAL ALREADY KNOWS (Frank, 2026-08-28: "were also going to need to
+# start including those ringcentral result and consider it, 19 unknown is
+# crazy"). Every outbound dial carries a `result`, and on 08-28 it partitioned
+# the day exactly:
+#
+#     Call connected  189   (187 recorded)
+#     Hang Up          22   (0 recorded)
+#     Wrong Number      5   (0 recorded)
+#     Call Failed       5   (0 recorded)
+#     No Answer         4   (0 recorded)
+#
+# Not one of the 36 non-connected dials produced audio, which is the whole
+# reason they were landing in No Outcome Logged -- there was no recording to
+# read and often no note, so the report said "we do not know" about calls the
+# phone system had already labelled. Lorena alone had 19 of them.
+#
+# NOTE on "Wrong Number": this is RingCentral's own disposition for a number it
+# could not complete a call to. It is NOT the Kenneth Payne case -- a human
+# answering and saying they are not the prospect -- which is a real contact and
+# comes from the producer's note. Do not merge the two.
+RC_NO_CONNECT = {
+    "no answer":    ("No Answer", "RingCentral: no answer"),
+    "hang up":      ("No Answer", "RingCentral: hung up before connecting"),
+    "call failed":  ("No Answer", "RingCentral: call failed"),
+    "wrong number": ("No Answer", "RingCentral: bad number"),
+    "busy":         ("No Answer", "RingCentral: busy"),
+    "rejected":     ("No Answer", "RingCentral: rejected"),
+    "blocked":      ("No Answer", "RingCentral: blocked"),
+    "stopped":      ("No Answer", "RingCentral: stopped"),
+    "voicemail":    ("Voicemail", "RingCentral: went to voicemail"),
+}
+
+
+def rc_outcome(results):
+    """(bucket, reason) from RingCentral's own dispositions, or (None, None).
+
+    `results` is every result string on this (producer, number) today. A
+    number dialled twice can be "Hang Up" then "Call connected"; the connected
+    leg is the one with evidence, so any connect means this test says nothing
+    and the recording or the note decides.
+    """
+    seen = [str(r or "").strip().lower() for r in (results or [])]
+    if not seen or any(s not in RC_NO_CONNECT for s in seen):
+        return None, None
+    # All legs failed to connect. Prefer the most specific non-generic reason.
+    for s in seen:
+        if s != "hang up":
+            return RC_NO_CONNECT[s]
+    return RC_NO_CONNECT["hang up"]
+
+
+def outcome_bucket(ev, live, rc_results=None):
     """Call Outcome Breakdown segment."""
     if live:
         return "Live Contact"
@@ -597,4 +648,10 @@ def outcome_bucket(ev, live):
         return "Screener"
     if ev["negative"]:
         return "No Answer"
+    # LAST, and only where nothing human said anything. A producer note and the
+    # recording both outrank the switch: RingCentral knows whether the call
+    # connected, not what was said once it did.
+    bucket, _ = rc_outcome(rc_results)
+    if bucket:
+        return bucket
     return "No Outcome Logged"

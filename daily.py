@@ -395,7 +395,10 @@ def build_metrics(day):
                       ("Screener" if screened else
                        ("Voicemail" if tc == "voicemail" else
                         ("No Answer" if tc == "no answer"
-                         else lc.outcome_bucket(ev, ok)))))
+                         else lc.outcome_bucket(
+                             ev, ok,
+                             [c.get("result") for c in
+                              dials.get(who, {}).get(r["number"], [])])))))
             b[bucket] += 1
             # Everything finalize() needs to re-total this producer once the
             # call read has had its say. Kept per row on purpose: the totals
