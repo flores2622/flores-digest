@@ -545,6 +545,19 @@ def _cat_label(key, row=None):
     return lab.replace("{d}", _dead_word(row) if row else "Lost")
 
 
+
+def _tint(hex_colour, weight=0.20):
+    """A pale wash of a category colour, for categories with no `stripe`.
+
+    Mixes the paint into white so a striped background stays light enough for
+    dark text to sit on it.
+    """
+    h = hex_colour.lstrip("#")
+    r, g, b = (int(h[i:i + 2], 16) for i in (0, 2, 4))
+    mix = lambda c: round(255 - (255 - c) * weight)
+    return f"#{mix(r):02x}{mix(g):02x}{mix(b):02x}"
+
+
 def _cat_chip(key, small=False, row=None):
     """Labelled chip. FILLED = it happened on this call, OUTLINED = follow-up.
 
@@ -838,12 +851,23 @@ def call_detail(M, day):
                 # text colour, and the teal read as an unrelated blue. Same
                 # hue, same stripes, same ink: one visual family.
                 cc = cfg.CALL_CATEGORIES[k]
-                paint = cc["paint"]
+                # STRIPE IN THE TINT, INK IN THE DARK. Striping at full paint
+                # saturation and colouring the text the same paint made the
+                # word unreadable -- amber on amber (Frank, 2026-08-28:
+                # "both emails were visually unreadable"). The outcome chips
+                # already carry the right pair for the outlined categories, so
+                # reuse it; the filled ones have no tint of their own, so mix
+                # one. background-color has to be set inline as well: the
+                # .badge-new rule comes later in the sheet and its `background`
+                # shorthand would otherwise repaint the base solid green.
+                tint = cc.get("stripe") or _tint(cc["paint"])
+                ink = cc.get("ink") or "#0b0b0b"
                 lbl = "call back" if r.get("kind") == "callback" else "call in"
                 badge += (f'<span class="badge-new badge-in" style="'
+                          f'background-color:#fff;'
                           f'background-image:repeating-linear-gradient(45deg,'
-                          f'{paint} 0,{paint} 3px,#fff 3px,#fff 7px);'
-                          f'color:{paint};border:1px solid {paint}">'
+                          f'{tint} 0,{tint} 3px,#fff 3px,#fff 7px);'
+                          f'color:{ink};border:1px solid {tint}">'
                           f'{lbl}</span>')
             link = (_lead_link(r["lead_id"], r["lead"]) if r["lead_id"]
                     else (r["lead"] or _fmt_phone(r["number"])))
