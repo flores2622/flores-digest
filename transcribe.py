@@ -150,32 +150,74 @@ HUMAN = re.compile(
     re.I)
 
 
-def download(recs, token, per_minute=10, log=print):
-    """Fetch recordings, honouring the throttle. Returns {call_id: path}."""
+def download(recs, token, per_minute=8, log=print):
+    """Fetch recordings, honouring the throttle. Returns {call_id: path}.
+
+    RATE LIMIT, measured 2026-08-27. The media endpoint is in RingCentral's
+    `heavy` group and answers a breach with these headers:
+
+        X-Rate-Limit-Group: heavy
+        X-Rate-Limit-Limit: 10          <- ten requests
+        X-Rate-Limit-Window: 60         <- per rolling sixty seconds
+        Retry-After: 60
+
+    The old default of 10/min sat exactly ON that ceiling and both callers
+    asked for 12, so the window saturated partway through the day and never
+    drained: every request came back CMN-301, the retry path slept 6-30s and
+    ignored Retry-After, and each record burned five futile attempts before
+    being skipped with no audio. On 2026-08-27 that stalled the run for thirty
+    minutes at record 115 of 203 and would have left 88 calls untranscribed --
+    which silently understates live contact, because a dial with no recording
+    falls back to whatever the producer did or did not write.
+
+    8/min leaves headroom for the retries themselves, and a 429 now waits the
+    full Retry-After the server asked for.
+    """
     os.makedirs(AUDIO, exist_ok=True)
     gap = 60.0 / per_minute
     out, last = {}, 0.0
+    missing = []
     for i, r in enumerate(recs):
         p = f"{AUDIO}/{r['id']}.mp3"
         if os.path.exists(p) and os.path.getsize(p) > 500:
             out[r["id"]] = p
             continue
-        for attempt in range(5):
+        for attempt in range(6):
             wait = gap - (time.time() - last)
             if wait > 0:
                 time.sleep(wait)
-            resp = requests.get(r["recording"]["contentUri"],
-                                headers={"Authorization": f"Bearer {token}"},
-                                timeout=90)
+            try:
+                resp = requests.get(r["recording"]["contentUri"],
+                                    headers={"Authorization": f"Bearer {token}"},
+                                    timeout=90)
+            except Exception as e:
+                last = time.time()
+                log(f"    {r['id']}: {type(e).__name__}, retrying")
+                time.sleep(gap)
+                continue
             last = time.time()
             body = resp.content
             if resp.status_code == 200 and RATE_LIMIT_MARKER not in body[:300]:
                 open(p, "wb").write(body)
                 out[r["id"]] = p
                 break
-            time.sleep(gap * (attempt + 1))      # backoff and retry
+            # Honour the server's own back-off. Guessing shorter is what kept
+            # the window saturated -- it never gets a chance to drain.
+            if resp.status_code == 429 or RATE_LIMIT_MARKER in body[:300]:
+                nap = int(resp.headers.get("Retry-After", 60) or 60)
+                log(f"    rate limited at {i + 1}/{len(recs)}, waiting {nap}s")
+                time.sleep(min(nap, 120))
+            else:
+                time.sleep(gap * (attempt + 1))
+        else:
+            missing.append(r["id"])
         if (i + 1) % 20 == 0:
             log(f"  {i + 1}/{len(recs)} fetched")
+    # Never let this pass quietly. A missing recording is not a neutral event:
+    # it removes the only independent evidence that dial had.
+    if missing:
+        log(f"  WARNING: {len(missing)} recordings could not be fetched -- "
+            f"those dials fall back to the producer's own note")
     return out
 
 
@@ -385,6 +427,15 @@ def classify(text, duration):
     halves = [h.strip() for h in t.split("||")]
     if SELF_ID.search(t) and any(is_only_tags(h) or not h for h in halves):
         return "voicemail", "producer speaking into dead air"
+    # A greeting and a NAME, and nothing else, is the producer calling into a
+    # line nobody picked up -- "Hello? Robert?" (Robert Munoz, 2026-08-27).
+    # HUMAN matches \bhello\b with no idea who said it, so the fragment scored
+    # as a human answering and then outranked the OTHER dial to the same
+    # number, which had transcribed a full "the mailbox is full" greeting.
+    # Frank: "the 'hello, Robert?' does not indicate a live contact, it should
+    # be considered a no answer." A real pickup gives us more words than this.
+    if len(t.split()) <= 4 and HUMAN.search(t) and not DIALOGUE.search(t):
+        return "no answer", "greeting only, no reply"
     if HUMAN.search(t):
         return "live", "human greeting in transcript"
     # A two-party exchange with no greeting -- a pickup mid-sentence, or a

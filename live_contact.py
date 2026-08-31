@@ -315,6 +315,84 @@ TRAQ_VOICEMAIL = re.compile(
     r"|to leave (a |their )?message for", re.I)
 
 
+# A producer STATING that a conversation happened. Frank, 2026-08-28, after
+# three rows went live on text that asserted nothing at all:
+#   * John Hoeppner  -- the whole note was "Rachel Anderson", a name jotted
+#     down, while the recording said "this mailbox is full" and Crystal's own
+#     task comment said "Called, MB full".
+#   * Juan Esquivel  -- the note was coaching-script copy pasted into a stage
+#     move: "I completely understand on the condo. Since we're already talking,
+#     let me ask you about your auto...".
+#   * Nazzer Robles  -- a plan for a future call: "Possible winback for
+#     renters. or confirm if they have moved... Offer life policy".
+# None of those is a producer saying they spoke to anyone. `written` still
+# feeds the report, but only text matching this counts as an ASSERTION strong
+# enough to survive a no-contact signal from earlier in the day.
+ASSERTS_CONTACT = re.compile(
+    r"\bspoke\b|\bspoke with\b|\btalked\b|\bsaid\b|\badvised\b|\btold (me|him|her)\b"
+    # Deliberately NOT "he has"/"she has": "He has home and autos already" is a
+    # fact about the lead that could have come from the record, not a report of
+    # a conversation, and it sat on both of Roger Ryan's duplicate rows.
+    r"|\bhe (wants|asked|said|will|needs|wanted)\b|\bshe (wants|asked|said|will|needs|wanted)\b"
+    r"|\bthey (want|asked|said|will|wanted)\b"
+    r"|\bappoi?ntm?e?nt\b|\bappoi?ment\b|\bnot interested\b|\bhung up on\b"
+    r"|\bcall(ed)? (me|him|her) back\b|\brequested\b|\bagreed\b|\bdeclined\b"
+    r"|\bgot (him|her|them) to\b|\bquoted (him|her|them)\b|\breviewed with\b"
+    r"|\bwas told\b|\bconfirmed\b|\basked (me|for)\b",
+    re.I)
+
+# Text that is an INSTRUCTION or a script, never a report of what happened.
+# Checked before ASSERTS_CONTACT because a rebuttal script is full of contact
+# verbs -- it is a sentence the producer intended to say, not one they did.
+NOT_AN_OUTCOME = re.compile(
+    r"^\s*[\"“‘']"                       # opens with a quotation mark
+    r"|^\s*(confirm|call|follow ?up|verify|clean ?up|offer|possible|need to"
+    r"|make (a |final )?attempt|try to|send|remind|check|move to|update)\b",
+    re.I)
+
+
+def is_outcome_text(text):
+    """Could this text be a producer reporting what happened on the call?
+
+    The weaker of the two tests. It does not ask whether contact is claimed --
+    only whether the text is the KIND of thing that reports an outcome at all.
+    A script, an instruction and a bare name are none of them, whatever else
+    they contain.
+    """
+    t = (text or "").strip()
+    if not t or NOT_AN_OUTCOME.search(t):
+        return False
+    # A bare name -- "Rachel Anderson" -- reports nothing. Three words or
+    # fewer with no contact verb in them is a person, not an outcome.
+    if len(t.split()) <= 3 and not ASSERTS_CONTACT.search(t):
+        return False
+    return True
+
+
+def asserts_contact(text):
+    """Does this text STATE that a conversation happened?
+
+    The stronger test, and the only one allowed to overrule a no-contact
+    signal from earlier in the day.
+    """
+    return bool(is_outcome_text(text) and ASSERTS_CONTACT.search(text or ""))
+
+
+# How much RECORDED live audio it takes for the recording to overrule a
+# no-contact note written earlier in the day. Measured against 2026-08-27:
+# the genuine conversations the old rule threw away were 94s (Jose Garcia) and
+# 113s (Guadalupe Garcia, a two-way Spanish call with ">>" speaker markers),
+# while every false "live" that a negative note correctly killed was a
+# producer's own greeting into a dead line -- 7s, 9s, 19s, 24s, 25s, 29s, 31s
+# and 34s. Sixty seconds separates the two sets with room on both sides.
+LIVE_OVERRIDE_SECONDS = 60
+
+# Below this, with no recording to say otherwise, a dial is a ring-out. Only
+# applied when there is NO transcript at all -- a recorded two-second pickup is
+# still judged on what the audio actually contains.
+MIN_CONTACT_SECONDS = 5
+
+
 def evidence(lead_id, day, producer):
     """Everything the producer wrote on this lead on this Arizona day.
 
@@ -328,7 +406,7 @@ def evidence(lead_id, day, producer):
     ids = ([lead_id] if isinstance(lead_id, (int, str)) or lead_id is None
            else list(lead_id))
     out = {"written": [], "stage_moves": [], "call_notes": [], "negative": False,
-           "screener": False, "machine_vm": False}
+           "screener": False, "machine_vm": False, "asserted": []}
     for lid in ids:
         if lid is not None:
             _evidence_into(out, lid, day, producer)
@@ -383,6 +461,8 @@ def _evidence_into(out, lead_id, day, producer):
                     out["negative"] = True
                 elif not is_data_capture(comment):
                     out["written"].append(comment)
+                    if asserts_contact(comment):
+                        out["asserted"].append(comment)
             continue
         if not body or SYSTEM.search(body):
             continue
@@ -401,10 +481,17 @@ def _evidence_into(out, lead_id, day, producer):
             out["negative"] = True
         elif not is_data_capture(body):
             out["written"].append(body)
+            if asserts_contact(body):
+                out["asserted"].append(body)
 
 
-def is_live(ev, talk_seconds=None, transcript_class=None):
+def is_live(ev, talk_seconds=None, transcript_class=None, live_seconds=0):
     """(bool, basis) -- basis is what the report prints for the row.
+
+    `live_seconds` is the length of the longest LIVE-classified recording on
+    this (producer, number) -- not the row's talk time, which sums every dial.
+    It is what lets a real conversation outweigh a no-contact note written
+    earlier in the same day; see the comment on the negative branch below.
 
     ORDER OF EVIDENCE. The recording wins, because it is the only source that
     actually knows what happened. On 2026-08-13 the transcripts split 135
@@ -428,9 +515,43 @@ def is_live(ev, talk_seconds=None, transcript_class=None):
     #
     # A producer saying nobody was reached is now final. A producer saying they
     # spoke to someone is trusted next. Only then the recording, then duration.
+    #
+    # NOT QUITE FINAL, from 2026-08-28. A no-contact note is a statement about
+    # the moment it was written, and a producer's day on one lead is a
+    # sequence, not a verdict. Ricardo Perea: Sarahi dialled at 11:49, got
+    # voicemail, and completed the task "Called No Answer" -- true right then.
+    # He called back at 13:25 and they talked for 15m44s in Spanish about
+    # bundling his auto; she wrote "Spoke with Ricardo have appoiment set for
+    # 1:30" and moved him to Ready to Present. The report scored the dial as no
+    # contact, because `negative` was checked first and returned before
+    # anything else was consulted -- including her own note saying the
+    # opposite. Jose Garcia and Guadalupe Garcia were lost the same way.
+    #
+    # So a negative is now overruled by either of the two things that can only
+    # be true if the conversation actually happened: the producer explicitly
+    # stating it, or a sustained live recording. Both bars are deliberately
+    # high -- a bare name, a pasted script and a ten-second "Hello?" all still
+    # lose to a producer who wrote that nobody answered.
+    # FLOOR. A dial that never got past the first ring is not a conversation,
+    # whatever is written on the lead. Roger Ryan was dialled on two numbers;
+    # the second connected for ONE SECOND with no recording, and the lead note
+    # "He has home and autos already" -- written for the other call -- carried
+    # it into the contact rate as a second live contact for the same person
+    # (Frank, 2026-08-28: "one is 1 sec long, its not a live contact").
+    if (talk_seconds or 0) < MIN_CONTACT_SECONDS and not transcript_class:
+        return False, "too short to be a conversation"
+    sustained = (transcript_class == "live"
+                 and (live_seconds or 0) >= LIVE_OVERRIDE_SECONDS)
+    if ev.get("asserted"):
+        return True, "producer note (states contact)"
+    if ev["negative"] and sustained:
+        return True, f"recording ({live_seconds}s conversation)"
     if ev["negative"]:
         return False, "producer note (no contact)"
-    if ev["written"]:
+    # "Any note at all means they spoke to someone" is what put a jotted name,
+    # a pasted rebuttal script and a to-do list into the contact rate on
+    # 2026-08-27. The note still has to look like a report of the call.
+    if any(is_outcome_text(w) for w in ev["written"]):
         return True, "producer note"
     # Nobody wrote anything, and the call summary describes a voicemail.
     if ev.get("machine_vm"):
@@ -445,13 +566,74 @@ def is_live(ev, talk_seconds=None, transcript_class=None):
     # unreadable and where the duration fallback below still applies.
     if transcript_class == "unclear":
         return False, "recording (no contact evidence)"
-    longest = max([c["seconds"] for c in ev["call_notes"]] + [talk_seconds or 0])
-    if longest >= DURATION_FALLBACK_SECONDS:
-        return True, "duration only"
+    # DURATION NO LONGER PROMOTES A DIAL TO LIVE (Frank, 2026-08-28).
+    #
+    # It was the last resort where there was neither a recording nor a note,
+    # and on 2026-08-27 it was the ONLY basis for exactly two rows -- Coral's
+    # Guillermo Lara (75s) and Cynthia Atondo (64s) -- both of which Frank read
+    # as nobody answering: "it does not seem that they answered, that is just
+    # producer error". Nazzer Robles would have been a third once his to-do
+    # note stopped counting. Nothing on the day was correctly promoted by it.
+    #
+    # A long dial with no recording and nothing written is a producer who did
+    # not log an outcome, and that is what the report should say. Guessing
+    # "live" from the clock invents contacts out of a missing note, which is
+    # the one direction the contact rate must never drift.
     return False, "no outcome logged"
 
 
-def outcome_bucket(ev, live):
+# RINGCENTRAL ALREADY KNOWS (Frank, 2026-08-28: "were also going to need to
+# start including those ringcentral result and consider it, 19 unknown is
+# crazy"). Every outbound dial carries a `result`, and on 08-28 it partitioned
+# the day exactly:
+#
+#     Call connected  189   (187 recorded)
+#     Hang Up          22   (0 recorded)
+#     Wrong Number      5   (0 recorded)
+#     Call Failed       5   (0 recorded)
+#     No Answer         4   (0 recorded)
+#
+# Not one of the 36 non-connected dials produced audio, which is the whole
+# reason they were landing in No Outcome Logged -- there was no recording to
+# read and often no note, so the report said "we do not know" about calls the
+# phone system had already labelled. Lorena alone had 19 of them.
+#
+# NOTE on "Wrong Number": this is RingCentral's own disposition for a number it
+# could not complete a call to. It is NOT the Kenneth Payne case -- a human
+# answering and saying they are not the prospect -- which is a real contact and
+# comes from the producer's note. Do not merge the two.
+RC_NO_CONNECT = {
+    "no answer":    ("No Answer", "RingCentral: no answer"),
+    "hang up":      ("No Answer", "RingCentral: hung up before connecting"),
+    "call failed":  ("No Answer", "RingCentral: call failed"),
+    "wrong number": ("No Answer", "RingCentral: bad number"),
+    "busy":         ("No Answer", "RingCentral: busy"),
+    "rejected":     ("No Answer", "RingCentral: rejected"),
+    "blocked":      ("No Answer", "RingCentral: blocked"),
+    "stopped":      ("No Answer", "RingCentral: stopped"),
+    "voicemail":    ("Voicemail", "RingCentral: went to voicemail"),
+}
+
+
+def rc_outcome(results):
+    """(bucket, reason) from RingCentral's own dispositions, or (None, None).
+
+    `results` is every result string on this (producer, number) today. A
+    number dialled twice can be "Hang Up" then "Call connected"; the connected
+    leg is the one with evidence, so any connect means this test says nothing
+    and the recording or the note decides.
+    """
+    seen = [str(r or "").strip().lower() for r in (results or [])]
+    if not seen or any(s not in RC_NO_CONNECT for s in seen):
+        return None, None
+    # All legs failed to connect. Prefer the most specific non-generic reason.
+    for s in seen:
+        if s != "hang up":
+            return RC_NO_CONNECT[s]
+    return RC_NO_CONNECT["hang up"]
+
+
+def outcome_bucket(ev, live, rc_results=None):
     """Call Outcome Breakdown segment."""
     if live:
         return "Live Contact"
@@ -466,4 +648,10 @@ def outcome_bucket(ev, live):
         return "Screener"
     if ev["negative"]:
         return "No Answer"
+    # LAST, and only where nothing human said anything. A producer note and the
+    # recording both outrank the switch: RingCentral knows whether the call
+    # connected, not what was said once it did.
+    bucket, _ = rc_outcome(rc_results)
+    if bucket:
+        return bucket
     return "No Outcome Logged"
