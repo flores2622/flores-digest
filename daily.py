@@ -744,6 +744,11 @@ def send(day, ops_html, pdfs, audience="both"):
              .replace("Call Detail &amp; Task Completion Audit", "Call Detail")
              .replace("Daily Sales Digest &amp; Call Detail Audit",
                       "Daily Sales Digest"))
+    # Prune the stylesheet LAST, per audience, after shedding -- a shed panel's
+    # rules are dead weight in the body that remains, and Gmail throws away any
+    # <style> block over ~16 KB (see render_report.prune_css).
+    ops = rr.prune_css(ops, log=log)
+    staff = rr.prune_css(staff, log=log)
     atts = [(pathlib.Path(p).name, pathlib.Path(p).read_bytes()) for p in pdfs]
     jobs = []
     if audience in ("ops", "both"):

@@ -461,28 +461,13 @@ FUNNEL_METRICS = ["Call Volume", "Avg Talk Time", "Contact Rate",
 # Gmail clips HTML bodies above ~102,400 bytes and replaces the tail with
 # "[Message clipped]" -- a clipped digest silently loses whole panels.
 #
-# BUT THE REAL CEILING IS LOWER, and it is the send path's, not Gmail's
-# (2026-08-28). Measured by probing the live pipeline:
-#
-#     6 KB body  -> arrives, <style> byte-for-byte intact
-#    52 KB body  -> arrives, 1,118 correct "=3D" escapes, style intact
-#    84 KB body  -> ARRIVES CORRUPTED. Every "&#61;" in a link comes back as a
-#                   raw "=" that has then been quoted-printable-decoded, so
-#                   "?id=87607238" lands as "?id<bad byte>607238". The same
-#                   deletion runs through the whole body, including the 18 KB
-#                   <style> block -- which is why the layout collapsed.
-#    85 KB body  -> NEVER DELIVERED AT ALL. Accepted by the API, never arrived.
-#
-# Above roughly 80 KB the large-message path stops encoding "=" correctly and
-# starts dropping messages outright. Frank, 2026-08-28: "both emails were
-# visually unreadable". Holding the body near 50 KB keeps it on the path that
-# demonstrably works; overflow.py sheds the difference into the PDF, which
-# loses nothing.
-#
-# The proper fix is to stop shipping a stylesheet-dependent 100 KB body at all
-# -- inline the critical CSS, or send a light email with the report as the PDF.
-# Until then this number is load-bearing. Do not raise it without re-probing.
-GMAIL_CLIP_BYTES = 55_000
+# The body ceiling is Gmail's own and nothing more exotic. It was briefly
+# dropped to 55,000 on 2026-08-28 chasing an unstyled-email bug that turned out
+# to be the <style> block crossing Gmail's ~16 KB per-block cap -- see
+# render_report.split_style_blocks. Body size was never the cause: the broken
+# email's body was 84 KB and the working one before it was 92 KB. Restored, so
+# the report stops shedding panels into PDFs it does not need to.
+GMAIL_CLIP_BYTES = 102_400
 # Gmail also strips <details>/<summary> and <input>/:checked. There is NO
 # working disclosure widget in HTML email. Do not add one.
 

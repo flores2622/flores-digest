@@ -95,6 +95,9 @@ def build(day, template=TEMPLATE):
 
     assert_div_balance(src, h, "final")
 
+
+
+
     out = f"out/Ops_Report_{day}.html"
     pathlib.Path(out).parent.mkdir(exist_ok=True)
     pathlib.Path(out).write_text(h)
