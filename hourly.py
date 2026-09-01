@@ -16,22 +16,80 @@ everything already transcribed.
 
 This script does NOT build or send anything. It only fills the cache.
 
-IT DOES NOTHING USEFUL UNLESS data/ SURVIVES BETWEEN RUNS. See the
-"persistence" note in HOURLY_RUNS.md section 12. Every run prints what it found
-on arrival, so the first two fires answer that question by themselves --
-`prior transcripts: 0` on the second fire of the day means the cache is being
-thrown away and the schedule is pointless until that is fixed.
+PERSISTENCE. Scheduled runs get a COLD container every time -- measured
+2026-09-01, a marker written by one run was gone an hour later and uptime read
+0 minutes. data/ does NOT survive on its own, so this script carries the one
+file that matters, data/transcripts_<day>.json (32 KB), in the repository: it
+pulls at the start of a run and commits at the end.
+
+If the commit cannot be pushed the run still completes, but every later run
+that day re-downloads the whole day. It says so loudly rather than quietly
+burning the RingCentral media quota.
+
+Inbound calls are deliberately NOT screened here -- see transcribe_day's
+outbound_only. Screening them needs the whole AgencyZoom corpus and a 31-day
+RingCentral window, about eight minutes, which in a cold container would be
+paid ten times a day to classify roughly three calls. The nightly build does
+inbound itself.
 """
 import argparse
 import datetime as dt
 import json
 import pathlib
+import subprocess
 
 import daily
 
 AZ = dt.timezone(dt.timedelta(hours=-7))
 ROOT = pathlib.Path(__file__).resolve().parent
 log = daily.log
+
+
+TRANSCRIPTS = "data/transcripts_{day}.json"
+
+
+def git(*args):
+    return subprocess.run(["git", *args], cwd=ROOT,
+                          capture_output=True, text=True)
+
+
+def pull_transcripts(dry=False):
+    """Bring in whatever an earlier run committed today."""
+    if dry:
+        log("  [dry-run] would git pull")
+        return
+    r = git("pull", "--ff-only", "--quiet")
+    if r.returncode:
+        log(f"  git pull failed: {(r.stderr or '').strip()[:160]}")
+
+
+def commit_transcripts(day, dry=False):
+    """Carry the transcript file forward.
+
+    data/ is gitignored for good reason -- the audio and the AgencyZoom corpus
+    run to hundreds of megabytes. This one 32 KB file is force-added past the
+    ignore rule because it is the only thing worth keeping.
+    """
+    f = TRANSCRIPTS.format(day=day)
+    if dry or not (ROOT / f).exists():
+        return None
+    git("add", "-f", f)
+    if git("diff", "--cached", "--quiet").returncode == 0:
+        log("  nothing new to commit")
+        return True
+    git("-c", "user.name=Flores hourly prefetch",
+        "-c", "user.email=frank.automation@floresinsuranceagency.com",
+        "commit", "-m", f"Transcripts for {day}, hourly prefetch")
+    r = git("push")
+    if r.returncode:
+        log("  !! COULD NOT SAVE THE TRANSCRIPTS -- the next run starts from "
+            "nothing and re-downloads the whole day.")
+        log(f"     {(r.stderr or '').strip()[:200]}")
+        log("     Fix: add flores2622/flores-digest to this task's sources. "
+            "Until then the schedule wastes RingCentral quota -- pause it.")
+        return False
+    log(f"  saved {f} for the next run")
+    return True
 
 
 def refresh_call_log(day, dry=False):
@@ -101,16 +159,21 @@ def main():
         log("  cache is EMPTY -- either this is the first run of the day or "
             "data/ did not survive the last one. See HOURLY_RUNS.md s12.")
 
+    pull_transcripts(a.dry_run)
+    if tf.exists():
+        prior = len(json.loads(tf.read_text()))
+        log(f"  AFTER PULL: prior transcripts {prior}")
+
     before, after = refresh_call_log(day, a.dry_run)
     log(f"  call log: {before} -> {after} records")
-    refresh_window(day, a.dry_run)
 
     if a.dry_run:
         log("[dry-run] stopping before download/transcribe")
         return
 
     daily.ensure_model()
-    done = daily.transcribe_day(day)
+    done = daily.transcribe_day(day, outbound_only=True)
+    commit_transcripts(day, a.dry_run)
 
     new = len(done) - prior
     log(f"DONE: {len(done)} transcripts on file (+{new} this run)")

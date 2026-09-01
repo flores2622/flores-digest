@@ -614,60 +614,59 @@ ceiling.
 By 5:15pm the evening run finds everything already transcribed and goes straight
 to metrics. Calls after 5:15 are the only ones it still has to fetch.
 
-### Persistence — the same blocker as §8, with a clean answer
+### COLD CONTAINERS — measured 2026-09-01, this is the design constraint
 
-Each run starts in a fresh container, so anything not committed is gone. But the
-artifacts differ enormously in size:
+A probe scheduled task wrote a marker file, then ran again an hour later:
 
-    data/audio/                242 MB    disposable — never persist
-    transcripts_<day>.json      70 KB    MUST persist
-    callsum_<day>.json          17 KB    MUST persist (Anthropic spend)
-    rc_raw_<day>.json          1.0 MB    cheap to refetch, optional
+    run 1, 19:33 UTC   wrote ~/persist_probe.log
+    run 2, 20:34 UTC   NO PROBE FILE — and uptime "0 min"
 
-**The audio does not need to survive.** Once a recording is transcribed the .wav
-is dead weight. What has to survive is the transcript, and that is 70 KB — the
-whole repo's `.git` is 1.8 MB today.
+**Every scheduled run gets a fresh container.** Nothing under `data/` survives.
+Two consequences needing different answers, because the artifacts differ by
+three orders of magnitude:
 
-So: each hourly run downloads the new recordings, transcribes them, merges into
-`transcripts_<day>.json`, commits that file, and throws the audio away. Roughly
-90 KB/day of committed text, ~22 MB a year.
+    transcripts_<day>.json      32 KB    carry it in the repo
+    az_*_all.json (corpus)      25 MB    too big — stop needing it
+    rc_window_<day>.json        27 MB    too big — stop needing it
+    data/audio/                 46 MB by 1pm, ~240 MB a full day — disposable
 
-`callsum_<day>.json` matters for a second reason: it is the only artifact that
-costs money to regenerate (Anthropic per-call summaries). CLAUDE.md already warns
-against deleting it casually. Committing it hourly means a failed run never
-re-pays for work already done.
+**Answer 1: commit the transcript file.** `hourly.py` pulls at the start of a
+run and force-adds `data/transcripts_<day>.json` past the gitignore at the end.
+32 KB a run, and it is the only thing that makes the next run cheap.
 
-This also answers §8. The missed-call idempotency ledger is a small tracked file
-in the same commit — no separate mechanism needed. Solve persistence once and
-both features get it.
+This needs push access, which a scheduled session does NOT have today:
 
-### BLOCKED — a scheduled session cannot push, tested 2026-09-01
-
-    git push --dry-run origin HEAD:refs/heads/probe-push-test
     remote: access denied by the git proxy: flores2622/flores-digest is not in
-    this session's authorized repository set, so the proxy will not inject a
-    credential for it. To fix, add the repository to the session's sources.
-    fatal: ... The requested URL returned error: 403
+    this session's authorized repository set... To fix, add the repository to
+    the session's sources.
 
-Clone works; push does not. HANDOFF 11 §9 recorded the same thing on 08-31, so
-this is the standing state for scheduled sessions, not a one-off.
+Clone works, push does not. HANDOFF 11 §9 saw the same on 08-31. **The fix is a
+settings change on the scheduled task — add the repo to its sources.** Until
+then `hourly.py` completes but warns loudly, and the schedule stays paused:
+without it every run re-downloads the whole day and burns the RingCentral media
+quota the nightly build needs.
 
-**Committing `transcripts_<day>.json` hourly is therefore not available today.**
-Three ways forward, in order of preference:
+**Answer 2: stop needing the corpus.** `daily.transcribe_day()` grew an
+`outbound_only` flag and `hourly.py` passes it. The inbound branch is what
+pulled the 25 MB corpus and the 31-day RingCentral window — about eight minutes
+— to screen roughly three calls a day. In a cold container that price would be
+paid ten times daily. The nightly build does inbound itself, so the hourly
+prefetch skips it and still captures the expensive part: the recordings.
 
-1. **Authorise the repo for the hourly scheduled task.** The proxy names the fix
-   itself — add `flores2622/flores-digest` to that task's sources. This has to be
-   done when the task is created, from the app, by Frank. If it works, the whole
-   persistence design in this section stands as written.
-2. **A store outside git** — anything the container can write and re-read next
-   hour. Needs picking; none is set up.
-3. **Warm container.** If an hourly scheduled task reuses one container across
-   fires rather than cloning fresh each time, `data/` simply persists and nothing
-   else is needed. Untested, and the nightly task clones fresh every night, so
-   assume it does not until proven.
+A run is now: clone, pull transcripts, one call-log request, download what is
+new, transcribe, commit. Measured warm after both changes: **15 seconds**.
 
-Test option 1 first. It is a settings change, and if it works the rest of this
-section needs no revision.
+**`outbound_only` does NOT affect the missed-call feature.** Frank asked,
+09-01. What it skips is `inbound.answered()`, which selects
+`result == "Accepted"` — inbound calls a producer PICKED UP — and transcribes
+them for the contact rate. A missed call by definition was not accepted, so it
+was never in that path.
+
+Missed-call detection reads `rc_raw_<day>.json` for
+`result in ("Missed", "Voicemail")`, and `hourly.py` **re-pulls that file every
+run**. The hourly schedule is the missed-call trigger source, not a casualty of
+it. The routing lookups in §2 are narrow per-number AgencyZoom queries and never
+needed the corpus either.
 
 ### Open
 
