@@ -32,6 +32,14 @@ def capture(day):
         if v["class"] == "live":
             livesecs[k] = max(livesecs.get(k, 0), int(v.get("duration") or 0))
 
+    dials = day_calls.producer_dials(day)
+    alltxt = {}
+    for v in tx.values():
+        n = v.get("to")
+        if n and v.get("text"):
+            k = (v.get("producer"), n)
+            alltxt[k] = (alltxt.get(k, "") + " " + v["text"]).strip()
+
     rows = day_calls.classify(day)
     out = []
     for who, rs in rows.items():
@@ -40,8 +48,12 @@ def capture(day):
                 continue
             k = (who, r["number"])
             ev = lc.evidence(r["lead_id"], day, who)
+            calls = (dials.get(who) or {}).get(r["number"]) or []
+            unrec = sum(1 for c in calls if not c.get("recording"))
+            scr = ev.get("screener") or bool(lc.SCREENER.search(alltxt.get(k, "")))
             got, basis = lc.is_live(ev, r["talk_seconds"], bynum.get(k),
-                                    live_seconds=livesecs.get(k, 0))
+                                    live_seconds=livesecs.get(k, 0),
+                                    unrecorded_dials=unrec, screener=scr)
             out.append({
                 "producer": who,
                 "lead_name": r.get("lead_name"),
@@ -50,6 +62,8 @@ def capture(day):
                 "talk_seconds": r.get("talk_seconds"),
                 "transcript_class": bynum.get(k),
                 "live_seconds": livesecs.get(k, 0),
+                "unrecorded_dials": unrec,
+                "screener": scr,
                 "evidence": ev,
                 # what the code does TODAY -- the regression baseline
                 "current": got,

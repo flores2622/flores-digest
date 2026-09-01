@@ -17,8 +17,10 @@
   "live_seconds": 326,
   "number": "+19288438263",
   "producer": "Coral Barwick",
+  "screener": false,
   "talk_seconds": 326,
   "transcript_class": "live",
+  "unrecorded_dials": 0,
   "why": "recording is a two-way conversation"
  },
  {
@@ -44,8 +46,10 @@
   "live_seconds": 124,
   "number": "+19282918712",
   "producer": "Coral Barwick",
+  "screener": false,
   "talk_seconds": 124,
   "transcript_class": "live",
+  "unrecorded_dials": 0,
   "why": "recording is a two-way conversation"
  },
  {
@@ -71,8 +75,10 @@
   "live_seconds": 109,
   "number": "+19284466527",
   "producer": "Coral Barwick",
+  "screener": false,
   "talk_seconds": 109,
   "transcript_class": "live",
+  "unrecorded_dials": 0,
   "why": "recording is a two-way conversation"
  },
  {
@@ -93,8 +99,10 @@
   "live_seconds": 102,
   "number": "+16024197455",
   "producer": "Coral Barwick",
+  "screener": false,
   "talk_seconds": 102,
   "transcript_class": "live",
+  "unrecorded_dials": 0,
   "why": "recording is a two-way conversation"
  },
  {
@@ -115,13 +123,15 @@
   "live_seconds": 0,
   "number": "+19282590250",
   "producer": "Coral Barwick",
+  "screener": false,
   "talk_seconds": 47,
   "transcript_class": "unclear",
+  "unrecorded_dials": 0,
   "why": ""
  },
  {
   "current": false,
-  "current_basis": "producer note (no contact)",
+  "current_basis": "recording (voicemail), every dial recorded",
   "evidence": {
    "asserted": [],
    "call_notes": [],
@@ -137,8 +147,10 @@
   "live_seconds": 0,
   "number": "+17146718076",
   "producer": "Coral Barwick",
+  "screener": false,
   "talk_seconds": 39,
   "transcript_class": "voicemail",
+  "unrecorded_dials": 0,
   "why": "recording is a voicemail, code agrees"
  },
  {
@@ -164,13 +176,15 @@
   "live_seconds": 0,
   "number": "+14028137835",
   "producer": "Coral Barwick",
+  "screener": false,
   "talk_seconds": 39,
   "transcript_class": "unclear",
+  "unrecorded_dials": 0,
   "why": ""
  },
  {
   "current": false,
-  "current_basis": "recording (voicemail)",
+  "current_basis": "recording (voicemail), every dial recorded",
   "evidence": {
    "asserted": [],
    "call_notes": [
@@ -191,13 +205,15 @@
   "live_seconds": 0,
   "number": "+14807483700",
   "producer": "Coral Barwick",
+  "screener": false,
   "talk_seconds": 36,
   "transcript_class": "voicemail",
+  "unrecorded_dials": 0,
   "why": "recording is a voicemail, code agrees"
  },
  {
   "current": false,
-  "current_basis": "recording (voicemail)",
+  "current_basis": "recording (voicemail), every dial recorded",
   "evidence": {
    "asserted": [],
    "call_notes": [],
@@ -213,8 +229,10 @@
   "live_seconds": 0,
   "number": "+15204487032",
   "producer": "Coral Barwick",
+  "screener": false,
   "talk_seconds": 26,
   "transcript_class": "voicemail",
+  "unrecorded_dials": 0,
   "why": "recording is a voicemail, code agrees"
  },
  {
@@ -235,13 +253,15 @@
   "live_seconds": 24,
   "number": "+19284599772",
   "producer": "Coral Barwick",
+  "screener": false,
   "talk_seconds": 24,
   "transcript_class": "live",
+  "unrecorded_dials": 0,
   "why": ""
  },
  {
   "current": false,
-  "current_basis": "producer note (no contact)",
+  "current_basis": "recording (voicemail), every dial recorded",
   "evidence": {
    "asserted": [],
    "call_notes": [],
@@ -257,8 +277,10 @@
   "live_seconds": 0,
   "number": "+15313758663",
   "producer": "Coral Barwick",
+  "screener": false,
   "talk_seconds": 9,
   "transcript_class": "voicemail",
+  "unrecorded_dials": 0,
   "why": "recording is a voicemail, code agrees"
  },
  {
@@ -279,13 +301,15 @@
   "live_seconds": 0,
   "number": "+16023031119",
   "producer": "Coral Barwick",
+  "screener": false,
   "talk_seconds": 8,
   "transcript_class": null,
+  "unrecorded_dials": 1,
   "why": ""
  },
  {
-  "current": true,
-  "current_basis": "producer note",
+  "current": false,
+  "current_basis": "recording (voicemail), every dial recorded",
   "evidence": {
    "asserted": [],
    "call_notes": [],
@@ -302,15 +326,17 @@
     "Rec Engine requesting to win back home"
    ]
   },
-  "expected": null,
+  "expected": false,
   "lead_id": 81028848,
   "lead_name": "Ricardo Vazquez",
   "live_seconds": 0,
   "number": "+16234145919",
   "producer": "Coral Barwick",
+  "screener": false,
   "talk_seconds": 7,
   "transcript_class": "voicemail",
-  "why": "DISPUTED: recording says voicemail, code says live"
+  "unrecorded_dials": 0,
+  "why": "Frank 2026-08-31: voicemail. Note is a Rec Engine prompt, not a call outcome"
  },
  {
   "current": false,
@@ -330,8 +356,10 @@
   "live_seconds": 0,
   "number": "+16531159747",
   "producer": "Coral Barwick",
+  "screener": false,
   "talk_seconds": 0,
   "transcript_class": null,
+  "unrecorded_dials": 1,
   "why": ""
  },
  {
@@ -361,8 +389,10 @@
   "live_seconds": 33,
   "number": "+19282617378",
   "producer": "Crystal Mango",
+  "screener": false,
   "talk_seconds": 100,
   "transcript_class": "live",
+  "unrecorded_dials": 0,
   "why": ""
  },
  {
@@ -383,13 +413,15 @@
   "live_seconds": 82,
   "number": "+19287500264",
   "producer": "Crystal Mango",
+  "screener": false,
   "talk_seconds": 82,
   "transcript_class": "live",
+  "unrecorded_dials": 0,
   "why": "recording is a two-way conversation"
  },
  {
   "current": false,
-  "current_basis": "producer note (no contact)",
+  "current_basis": "recording (voicemail), every dial recorded",
   "evidence": {
    "asserted": [],
    "call_notes": [
@@ -414,13 +446,15 @@
   "live_seconds": 0,
   "number": "+14808243612",
   "producer": "Crystal Mango",
+  "screener": false,
   "talk_seconds": 77,
   "transcript_class": "voicemail",
+  "unrecorded_dials": 0,
   "why": "recording is a voicemail, code agrees"
  },
  {
   "current": false,
-  "current_basis": "producer note (no contact)",
+  "current_basis": "recording (voicemail), every dial recorded",
   "evidence": {
    "asserted": [],
    "call_notes": [
@@ -441,13 +475,15 @@
   "live_seconds": 0,
   "number": "+16025166372",
   "producer": "Crystal Mango",
+  "screener": false,
   "talk_seconds": 65,
   "transcript_class": "voicemail",
+  "unrecorded_dials": 0,
   "why": "recording is a voicemail, code agrees"
  },
  {
   "current": false,
-  "current_basis": "recording (voicemail)",
+  "current_basis": "recording (voicemail), every dial recorded",
   "evidence": {
    "asserted": [],
    "call_notes": [],
@@ -463,8 +499,10 @@
   "live_seconds": 0,
   "number": "+19289882918",
   "producer": "Crystal Mango",
+  "screener": false,
   "talk_seconds": 64,
   "transcript_class": "voicemail",
+  "unrecorded_dials": 0,
   "why": "recording is a voicemail, code agrees"
  },
  {
@@ -490,8 +528,10 @@
   "live_seconds": 0,
   "number": "+15206881314",
   "producer": "Crystal Mango",
+  "screener": true,
   "talk_seconds": 62,
   "transcript_class": "voicemail",
+  "unrecorded_dials": 0,
   "why": "recording is a voicemail, code agrees"
  },
  {
@@ -517,13 +557,15 @@
   "live_seconds": 0,
   "number": "+13863384464",
   "producer": "Crystal Mango",
+  "screener": true,
   "talk_seconds": 62,
   "transcript_class": "voicemail",
+  "unrecorded_dials": 0,
   "why": "recording is a voicemail, code agrees"
  },
  {
   "current": false,
-  "current_basis": "producer note (no contact)",
+  "current_basis": "recording (voicemail), every dial recorded",
   "evidence": {
    "asserted": [],
    "call_notes": [
@@ -544,13 +586,15 @@
   "live_seconds": 0,
   "number": "+19282465446",
   "producer": "Crystal Mango",
+  "screener": false,
   "talk_seconds": 60,
   "transcript_class": "voicemail",
+  "unrecorded_dials": 0,
   "why": "recording is a voicemail, code agrees"
  },
  {
   "current": false,
-  "current_basis": "producer note (no contact)",
+  "current_basis": "recording (voicemail), every dial recorded",
   "evidence": {
    "asserted": [],
    "call_notes": [
@@ -571,13 +615,15 @@
   "live_seconds": 0,
   "number": "+19289683695",
   "producer": "Crystal Mango",
+  "screener": false,
   "talk_seconds": 57,
   "transcript_class": "voicemail",
+  "unrecorded_dials": 0,
   "why": "recording is a voicemail, code agrees"
  },
  {
   "current": false,
-  "current_basis": "recording (voicemail)",
+  "current_basis": "recording (voicemail), every dial recorded",
   "evidence": {
    "asserted": [],
    "call_notes": [],
@@ -593,13 +639,15 @@
   "live_seconds": 0,
   "number": "+19282570413",
   "producer": "Crystal Mango",
+  "screener": false,
   "talk_seconds": 57,
   "transcript_class": "voicemail",
+  "unrecorded_dials": 0,
   "why": "recording is a voicemail, code agrees"
  },
  {
   "current": false,
-  "current_basis": "producer note (no contact)",
+  "current_basis": "recording (voicemail), every dial recorded",
   "evidence": {
    "asserted": [],
    "call_notes": [
@@ -620,13 +668,15 @@
   "live_seconds": 0,
   "number": "+14802170355",
   "producer": "Crystal Mango",
+  "screener": false,
   "talk_seconds": 56,
   "transcript_class": "voicemail",
+  "unrecorded_dials": 0,
   "why": "recording is a voicemail, code agrees"
  },
  {
   "current": false,
-  "current_basis": "recording (voicemail)",
+  "current_basis": "recording (voicemail), every dial recorded",
   "evidence": {
    "asserted": [],
    "call_notes": [
@@ -647,13 +697,15 @@
   "live_seconds": 0,
   "number": "+14809935961",
   "producer": "Crystal Mango",
+  "screener": false,
   "talk_seconds": 51,
   "transcript_class": "voicemail",
+  "unrecorded_dials": 0,
   "why": "recording is a voicemail, code agrees"
  },
  {
   "current": false,
-  "current_basis": "producer note (no contact)",
+  "current_basis": "recording (voicemail), every dial recorded",
   "evidence": {
    "asserted": [],
    "call_notes": [
@@ -674,13 +726,15 @@
   "live_seconds": 0,
   "number": "+15037405083",
   "producer": "Crystal Mango",
+  "screener": false,
   "talk_seconds": 50,
   "transcript_class": "voicemail",
+  "unrecorded_dials": 0,
   "why": "recording is a voicemail, code agrees"
  },
  {
   "current": false,
-  "current_basis": "producer note (no contact)",
+  "current_basis": "recording (voicemail), every dial recorded",
   "evidence": {
    "asserted": [],
    "call_notes": [
@@ -701,13 +755,15 @@
   "live_seconds": 0,
   "number": "+15202859775",
   "producer": "Crystal Mango",
+  "screener": false,
   "talk_seconds": 50,
   "transcript_class": "voicemail",
+  "unrecorded_dials": 0,
   "why": "recording is a voicemail, code agrees"
  },
  {
   "current": false,
-  "current_basis": "producer note (no contact)",
+  "current_basis": "recording (voicemail), every dial recorded",
   "evidence": {
    "asserted": [],
    "call_notes": [
@@ -728,8 +784,10 @@
   "live_seconds": 0,
   "number": "+13162889218",
   "producer": "Crystal Mango",
+  "screener": false,
   "talk_seconds": 49,
   "transcript_class": "voicemail",
+  "unrecorded_dials": 0,
   "why": "recording is a voicemail, code agrees"
  },
  {
@@ -762,13 +820,15 @@
   "live_seconds": 49,
   "number": "+15205593799",
   "producer": "Crystal Mango",
+  "screener": false,
   "talk_seconds": 49,
   "transcript_class": "live",
+  "unrecorded_dials": 0,
   "why": "recording is a two-way conversation"
  },
  {
   "current": false,
-  "current_basis": "producer note (no contact)",
+  "current_basis": "recording (voicemail), every dial recorded",
   "evidence": {
    "asserted": [],
    "call_notes": [
@@ -789,13 +849,15 @@
   "live_seconds": 0,
   "number": "+19282878720",
   "producer": "Crystal Mango",
+  "screener": false,
   "talk_seconds": 45,
   "transcript_class": "voicemail",
+  "unrecorded_dials": 0,
   "why": "recording is a voicemail, code agrees"
  },
  {
   "current": false,
-  "current_basis": "producer note (no contact)",
+  "current_basis": "recording (voicemail), every dial recorded",
   "evidence": {
    "asserted": [],
    "call_notes": [
@@ -816,13 +878,15 @@
   "live_seconds": 0,
   "number": "+19289209457",
   "producer": "Crystal Mango",
+  "screener": false,
   "talk_seconds": 43,
   "transcript_class": "voicemail",
+  "unrecorded_dials": 0,
   "why": "recording is a voicemail, code agrees"
  },
  {
   "current": false,
-  "current_basis": "producer note (no contact)",
+  "current_basis": "recording (voicemail), every dial recorded",
   "evidence": {
    "asserted": [],
    "call_notes": [
@@ -843,8 +907,10 @@
   "live_seconds": 0,
   "number": "+17072362439",
   "producer": "Crystal Mango",
+  "screener": false,
   "talk_seconds": 42,
   "transcript_class": "voicemail",
+  "unrecorded_dials": 0,
   "why": "recording is a voicemail, code agrees"
  },
  {
@@ -870,13 +936,15 @@
   "live_seconds": 41,
   "number": "+15202749199",
   "producer": "Crystal Mango",
+  "screener": false,
   "talk_seconds": 41,
   "transcript_class": "live",
+  "unrecorded_dials": 0,
   "why": ""
  },
  {
   "current": false,
-  "current_basis": "producer note (no contact)",
+  "current_basis": "recording (voicemail), every dial recorded",
   "evidence": {
    "asserted": [],
    "call_notes": [
@@ -897,13 +965,15 @@
   "live_seconds": 0,
   "number": "+19282460432",
   "producer": "Crystal Mango",
+  "screener": false,
   "talk_seconds": 40,
   "transcript_class": "voicemail",
+  "unrecorded_dials": 0,
   "why": "recording is a voicemail, code agrees"
  },
  {
   "current": false,
-  "current_basis": "producer note (no contact)",
+  "current_basis": "recording (voicemail), every dial recorded",
   "evidence": {
    "asserted": [],
    "call_notes": [
@@ -924,13 +994,15 @@
   "live_seconds": 0,
   "number": "+16233831697",
   "producer": "Crystal Mango",
+  "screener": false,
   "talk_seconds": 40,
   "transcript_class": "voicemail",
+  "unrecorded_dials": 0,
   "why": "recording is a voicemail, code agrees"
  },
  {
   "current": false,
-  "current_basis": "producer note (no contact)",
+  "current_basis": "recording (voicemail), every dial recorded",
   "evidence": {
    "asserted": [],
    "call_notes": [
@@ -951,13 +1023,15 @@
   "live_seconds": 0,
   "number": "+17037277520",
   "producer": "Crystal Mango",
+  "screener": false,
   "talk_seconds": 40,
   "transcript_class": "voicemail",
+  "unrecorded_dials": 0,
   "why": "recording is a voicemail, code agrees"
  },
  {
   "current": false,
-  "current_basis": "producer note (no contact)",
+  "current_basis": "recording (voicemail), every dial recorded",
   "evidence": {
    "asserted": [],
    "call_notes": [
@@ -978,13 +1052,15 @@
   "live_seconds": 0,
   "number": "+19282465313",
   "producer": "Crystal Mango",
+  "screener": false,
   "talk_seconds": 40,
   "transcript_class": "voicemail",
+  "unrecorded_dials": 0,
   "why": "recording is a voicemail, code agrees"
  },
  {
-  "current": true,
-  "current_basis": "producer note (states contact)",
+  "current": false,
+  "current_basis": "recording (voicemail), every dial recorded",
   "evidence": {
    "asserted": [
     "He didn't say he wanted to switch after i showed him the quote. Thank you"
@@ -1008,19 +1084,21 @@
     "He didn't say he wanted to switch after i showed him the quote. Thank you"
    ]
   },
-  "expected": null,
+  "expected": false,
   "lead_id": 87600805,
   "lead_name": "Hector Altamirano",
   "live_seconds": 0,
   "number": "+19284883645",
   "producer": "Crystal Mango",
+  "screener": false,
   "talk_seconds": 38,
   "transcript_class": "voicemail",
-  "why": "DISPUTED: recording says voicemail, code says live"
+  "unrecorded_dials": 0,
+  "why": "Frank 2026-09-01: the note is the spouse's inbound TEXT, pasted by Crystal into the stage-move comment. Only call that day was 39s to voicemail"
  },
  {
   "current": false,
-  "current_basis": "producer note (no contact)",
+  "current_basis": "recording (voicemail), every dial recorded",
   "evidence": {
    "asserted": [],
    "call_notes": [
@@ -1041,8 +1119,10 @@
   "live_seconds": 0,
   "number": "+14808262794",
   "producer": "Crystal Mango",
+  "screener": false,
   "talk_seconds": 37,
   "transcript_class": "voicemail",
+  "unrecorded_dials": 0,
   "why": "recording is a voicemail, code agrees"
  },
  {
@@ -1063,13 +1143,15 @@
   "live_seconds": 35,
   "number": "+19289194227",
   "producer": "Crystal Mango",
+  "screener": false,
   "talk_seconds": 35,
   "transcript_class": "live",
+  "unrecorded_dials": 0,
   "why": "recording is a two-way conversation"
  },
  {
   "current": false,
-  "current_basis": "recording (voicemail)",
+  "current_basis": "recording (voicemail), every dial recorded",
   "evidence": {
    "asserted": [],
    "call_notes": [
@@ -1090,13 +1172,15 @@
   "live_seconds": 0,
   "number": "+19286660870",
   "producer": "Crystal Mango",
+  "screener": false,
   "talk_seconds": 34,
   "transcript_class": "voicemail",
+  "unrecorded_dials": 0,
   "why": "recording is a voicemail, code agrees"
  },
  {
   "current": false,
-  "current_basis": "producer note (no contact)",
+  "current_basis": "recording (voicemail), every dial recorded",
   "evidence": {
    "asserted": [],
    "call_notes": [
@@ -1117,13 +1201,15 @@
   "live_seconds": 0,
   "number": "+16026773344",
   "producer": "Crystal Mango",
+  "screener": false,
   "talk_seconds": 34,
   "transcript_class": "voicemail",
+  "unrecorded_dials": 0,
   "why": "recording is a voicemail, code agrees"
  },
  {
   "current": false,
-  "current_basis": "producer note (no contact)",
+  "current_basis": "recording (voicemail), every dial recorded",
   "evidence": {
    "asserted": [],
    "call_notes": [
@@ -1144,13 +1230,15 @@
   "live_seconds": 0,
   "number": "+16026906269",
   "producer": "Crystal Mango",
+  "screener": false,
   "talk_seconds": 31,
   "transcript_class": "voicemail",
+  "unrecorded_dials": 0,
   "why": "recording is a voicemail, code agrees"
  },
  {
   "current": false,
-  "current_basis": "producer note (no contact)",
+  "current_basis": "recording (voicemail), every dial recorded",
   "evidence": {
    "asserted": [],
    "call_notes": [
@@ -1171,13 +1259,15 @@
   "live_seconds": 0,
   "number": "+16026436897",
   "producer": "Crystal Mango",
+  "screener": false,
   "talk_seconds": 30,
   "transcript_class": "voicemail",
+  "unrecorded_dials": 0,
   "why": "recording is a voicemail, code agrees"
  },
  {
   "current": false,
-  "current_basis": "recording (voicemail)",
+  "current_basis": "recording (voicemail), every dial recorded",
   "evidence": {
    "asserted": [],
    "call_notes": [],
@@ -1193,13 +1283,15 @@
   "live_seconds": 0,
   "number": "+14424562942",
   "producer": "Crystal Mango",
+  "screener": false,
   "talk_seconds": 29,
   "transcript_class": "voicemail",
+  "unrecorded_dials": 0,
   "why": "recording is a voicemail, code agrees"
  },
  {
   "current": false,
-  "current_basis": "producer note (no contact)",
+  "current_basis": "recording (voicemail), every dial recorded",
   "evidence": {
    "asserted": [],
    "call_notes": [
@@ -1220,13 +1312,15 @@
   "live_seconds": 0,
   "number": "+14805932718",
   "producer": "Crystal Mango",
+  "screener": false,
   "talk_seconds": 28,
   "transcript_class": "voicemail",
+  "unrecorded_dials": 0,
   "why": "recording is a voicemail, code agrees"
  },
  {
   "current": false,
-  "current_basis": "recording (voicemail)",
+  "current_basis": "recording (voicemail), every dial recorded",
   "evidence": {
    "asserted": [],
    "call_notes": [
@@ -1247,13 +1341,15 @@
   "live_seconds": 0,
   "number": "+15202222495",
   "producer": "Crystal Mango",
+  "screener": false,
   "talk_seconds": 28,
   "transcript_class": "voicemail",
+  "unrecorded_dials": 0,
   "why": "recording is a voicemail, code agrees"
  },
  {
   "current": false,
-  "current_basis": "producer note (no contact)",
+  "current_basis": "recording (voicemail), every dial recorded",
   "evidence": {
    "asserted": [],
    "call_notes": [
@@ -1274,8 +1370,10 @@
   "live_seconds": 0,
   "number": "+13108927676",
   "producer": "Crystal Mango",
+  "screener": false,
   "talk_seconds": 26,
   "transcript_class": "voicemail",
+  "unrecorded_dials": 0,
   "why": "recording is a voicemail, code agrees"
  },
  {
@@ -1301,13 +1399,15 @@
   "live_seconds": 25,
   "number": "+15208501438",
   "producer": "Crystal Mango",
+  "screener": false,
   "talk_seconds": 25,
   "transcript_class": "live",
+  "unrecorded_dials": 0,
   "why": "recording is a two-way conversation"
  },
  {
   "current": false,
-  "current_basis": "producer note (no contact)",
+  "current_basis": "recording (voicemail), every dial recorded",
   "evidence": {
    "asserted": [],
    "call_notes": [
@@ -1328,8 +1428,10 @@
   "live_seconds": 0,
   "number": "+19282874682",
   "producer": "Crystal Mango",
+  "screener": false,
   "talk_seconds": 21,
   "transcript_class": "voicemail",
+  "unrecorded_dials": 0,
   "why": "recording is a voicemail, code agrees"
  },
  {
@@ -1355,8 +1457,10 @@
   "live_seconds": 0,
   "number": "+19287683241",
   "producer": "Crystal Mango",
+  "screener": false,
   "talk_seconds": 16,
   "transcript_class": null,
+  "unrecorded_dials": 1,
   "why": ""
  },
  {
@@ -1377,13 +1481,15 @@
   "live_seconds": 0,
   "number": "+19092435119",
   "producer": "Crystal Mango",
+  "screener": false,
   "talk_seconds": 15,
   "transcript_class": null,
+  "unrecorded_dials": 1,
   "why": ""
  },
  {
   "current": false,
-  "current_basis": "recording (voicemail)",
+  "current_basis": "recording (voicemail), every dial recorded",
   "evidence": {
    "asserted": [],
    "call_notes": [
@@ -1404,8 +1510,10 @@
   "live_seconds": 0,
   "number": "+16029803429",
   "producer": "Crystal Mango",
+  "screener": false,
   "talk_seconds": 7,
   "transcript_class": "voicemail",
+  "unrecorded_dials": 0,
   "why": "recording is a voicemail, code agrees"
  },
  {
@@ -1431,8 +1539,10 @@
   "live_seconds": 0,
   "number": "+14808259976",
   "producer": "Crystal Mango",
+  "screener": false,
   "talk_seconds": 6,
   "transcript_class": null,
+  "unrecorded_dials": 1,
   "why": ""
  },
  {
@@ -1458,13 +1568,15 @@
   "live_seconds": 0,
   "number": "+16054250324",
   "producer": "Crystal Mango",
+  "screener": false,
   "talk_seconds": 5,
   "transcript_class": null,
+  "unrecorded_dials": 1,
   "why": ""
  },
  {
   "current": false,
-  "current_basis": "recording (voicemail)",
+  "current_basis": "recording (voicemail), every dial recorded",
   "evidence": {
    "asserted": [],
    "call_notes": [
@@ -1485,8 +1597,10 @@
   "live_seconds": 0,
   "number": "+16233052108",
   "producer": "Crystal Mango",
+  "screener": false,
   "talk_seconds": 5,
   "transcript_class": "voicemail",
+  "unrecorded_dials": 0,
   "why": "recording is a voicemail, code agrees"
  },
  {
@@ -1512,8 +1626,10 @@
   "live_seconds": 0,
   "number": "+15203262539",
   "producer": "Crystal Mango",
+  "screener": false,
   "talk_seconds": 1,
   "transcript_class": null,
+  "unrecorded_dials": 1,
   "why": ""
  },
  {
@@ -1548,13 +1664,15 @@
   "live_seconds": 1180,
   "number": "+19289203772",
   "producer": "Lorena Gonzalez",
+  "screener": false,
   "talk_seconds": 751,
   "transcript_class": "live",
+  "unrecorded_dials": 0,
   "why": "recording is a two-way conversation"
  },
  {
   "current": false,
-  "current_basis": "producer note (no contact)",
+  "current_basis": "recording (voicemail), every dial recorded",
   "evidence": {
    "asserted": [],
    "call_notes": [
@@ -1575,8 +1693,10 @@
   "live_seconds": 0,
   "number": "+19282430524",
   "producer": "Lorena Gonzalez",
+  "screener": false,
   "talk_seconds": 146,
   "transcript_class": "voicemail",
+  "unrecorded_dials": 0,
   "why": "recording is a voicemail, code agrees"
  },
  {
@@ -1606,8 +1726,10 @@
   "live_seconds": 0,
   "number": "+19284500175",
   "producer": "Lorena Gonzalez",
+  "screener": false,
   "talk_seconds": 52,
   "transcript_class": "no answer",
+  "unrecorded_dials": 1,
   "why": "recording is a no answer, code agrees"
  },
  {
@@ -1642,8 +1764,10 @@
   "live_seconds": 43,
   "number": "+19094610489",
   "producer": "Lorena Gonzalez",
+  "screener": false,
   "talk_seconds": 43,
   "transcript_class": "live",
+  "unrecorded_dials": 0,
   "why": "recording is a two-way conversation"
  },
  {
@@ -1669,13 +1793,15 @@
   "live_seconds": 0,
   "number": "+16029802595",
   "producer": "Lorena Gonzalez",
+  "screener": true,
   "talk_seconds": 40,
   "transcript_class": "voicemail",
+  "unrecorded_dials": 0,
   "why": "recording is a voicemail, code agrees"
  },
  {
   "current": false,
-  "current_basis": "producer note (no contact)",
+  "current_basis": "recording (voicemail), every dial recorded",
   "evidence": {
    "asserted": [],
    "call_notes": [
@@ -1696,13 +1822,15 @@
   "live_seconds": 0,
   "number": "+15203289738",
   "producer": "Lorena Gonzalez",
+  "screener": false,
   "talk_seconds": 32,
   "transcript_class": "voicemail",
+  "unrecorded_dials": 0,
   "why": "recording is a voicemail, code agrees"
  },
  {
   "current": false,
-  "current_basis": "producer note (no contact)",
+  "current_basis": "recording (voicemail), every dial recorded",
   "evidence": {
    "asserted": [],
    "call_notes": [
@@ -1723,8 +1851,10 @@
   "live_seconds": 0,
   "number": "+15202133134",
   "producer": "Lorena Gonzalez",
+  "screener": false,
   "talk_seconds": 32,
   "transcript_class": "voicemail",
+  "unrecorded_dials": 0,
   "why": "recording is a voicemail, code agrees"
  },
  {
@@ -1750,8 +1880,10 @@
   "live_seconds": 32,
   "number": "+16029800081",
   "producer": "Lorena Gonzalez",
+  "screener": false,
   "talk_seconds": 32,
   "transcript_class": "live",
+  "unrecorded_dials": 0,
   "why": ""
  },
  {
@@ -1777,13 +1909,15 @@
   "live_seconds": 0,
   "number": "+12532216472",
   "producer": "Lorena Gonzalez",
+  "screener": true,
   "talk_seconds": 31,
   "transcript_class": "voicemail",
+  "unrecorded_dials": 0,
   "why": "recording is a voicemail, code agrees"
  },
  {
   "current": false,
-  "current_basis": "producer note (no contact)",
+  "current_basis": "recording (no answer), every dial recorded",
   "evidence": {
    "asserted": [],
    "call_notes": [
@@ -1808,8 +1942,10 @@
   "live_seconds": 0,
   "number": "+19512594711",
   "producer": "Lorena Gonzalez",
+  "screener": false,
   "talk_seconds": 29,
   "transcript_class": "no answer",
+  "unrecorded_dials": 0,
   "why": "recording is a no answer, code agrees"
  },
  {
@@ -1835,8 +1971,10 @@
   "live_seconds": 0,
   "number": "+16027908008",
   "producer": "Lorena Gonzalez",
+  "screener": false,
   "talk_seconds": 28,
   "transcript_class": null,
+  "unrecorded_dials": 1,
   "why": ""
  },
  {
@@ -1862,8 +2000,10 @@
   "live_seconds": 0,
   "number": "+16022904115",
   "producer": "Lorena Gonzalez",
+  "screener": false,
   "talk_seconds": 28,
   "transcript_class": null,
+  "unrecorded_dials": 1,
   "why": ""
  },
  {
@@ -1889,8 +2029,10 @@
   "live_seconds": 0,
   "number": "+18316764953",
   "producer": "Lorena Gonzalez",
+  "screener": false,
   "talk_seconds": 27,
   "transcript_class": null,
+  "unrecorded_dials": 1,
   "why": ""
  },
  {
@@ -1925,8 +2067,10 @@
   "live_seconds": 25,
   "number": "+15109159673",
   "producer": "Lorena Gonzalez",
+  "screener": false,
   "talk_seconds": 25,
   "transcript_class": "live",
+  "unrecorded_dials": 0,
   "why": "recording is a two-way conversation"
  },
  {
@@ -1952,8 +2096,10 @@
   "live_seconds": 0,
   "number": "+14803131669",
   "producer": "Lorena Gonzalez",
+  "screener": false,
   "talk_seconds": 25,
   "transcript_class": null,
+  "unrecorded_dials": 1,
   "why": ""
  },
  {
@@ -1974,13 +2120,15 @@
   "live_seconds": 0,
   "number": "+19284599515",
   "producer": "Lorena Gonzalez",
+  "screener": false,
   "talk_seconds": 24,
   "transcript_class": null,
+  "unrecorded_dials": 1,
   "why": ""
  },
  {
   "current": false,
-  "current_basis": "producer note (no contact)",
+  "current_basis": "recording (no answer), every dial recorded",
   "evidence": {
    "asserted": [],
    "call_notes": [
@@ -2001,8 +2149,10 @@
   "live_seconds": 0,
   "number": "+19287237596",
   "producer": "Lorena Gonzalez",
+  "screener": false,
   "talk_seconds": 24,
   "transcript_class": "no answer",
+  "unrecorded_dials": 0,
   "why": "recording is a no answer, code agrees"
  },
  {
@@ -2028,8 +2178,10 @@
   "live_seconds": 0,
   "number": "+15202502254",
   "producer": "Lorena Gonzalez",
+  "screener": false,
   "talk_seconds": 24,
   "transcript_class": null,
+  "unrecorded_dials": 1,
   "why": ""
  },
  {
@@ -2055,13 +2207,15 @@
   "live_seconds": 0,
   "number": "+17602228789",
   "producer": "Lorena Gonzalez",
+  "screener": false,
   "talk_seconds": 23,
   "transcript_class": null,
+  "unrecorded_dials": 1,
   "why": ""
  },
  {
   "current": false,
-  "current_basis": "producer note (no contact)",
+  "current_basis": "recording (no answer), every dial recorded",
   "evidence": {
    "asserted": [],
    "call_notes": [
@@ -2082,13 +2236,15 @@
   "live_seconds": 0,
   "number": "+18055097703",
   "producer": "Lorena Gonzalez",
+  "screener": false,
   "talk_seconds": 23,
   "transcript_class": "no answer",
+  "unrecorded_dials": 0,
   "why": "recording is a no answer, code agrees"
  },
  {
   "current": false,
-  "current_basis": "producer note (no contact)",
+  "current_basis": "recording (voicemail), every dial recorded",
   "evidence": {
    "asserted": [],
    "call_notes": [
@@ -2113,8 +2269,10 @@
   "live_seconds": 0,
   "number": "+13523168292",
   "producer": "Lorena Gonzalez",
+  "screener": false,
   "talk_seconds": 22,
   "transcript_class": "voicemail",
+  "unrecorded_dials": 0,
   "why": "recording is a voicemail, code agrees"
  },
  {
@@ -2140,13 +2298,15 @@
   "live_seconds": 0,
   "number": "+15207094549",
   "producer": "Lorena Gonzalez",
+  "screener": false,
   "talk_seconds": 22,
   "transcript_class": null,
+  "unrecorded_dials": 1,
   "why": ""
  },
  {
   "current": false,
-  "current_basis": "producer note (no contact)",
+  "current_basis": "recording (no answer), every dial recorded",
   "evidence": {
    "asserted": [],
    "call_notes": [
@@ -2167,8 +2327,10 @@
   "live_seconds": 0,
   "number": "+15208206337",
   "producer": "Lorena Gonzalez",
+  "screener": false,
   "talk_seconds": 21,
   "transcript_class": "no answer",
+  "unrecorded_dials": 0,
   "why": "recording is a no answer, code agrees"
  },
  {
@@ -2194,8 +2356,10 @@
   "live_seconds": 0,
   "number": "+19289556560",
   "producer": "Lorena Gonzalez",
+  "screener": false,
   "talk_seconds": 19,
   "transcript_class": null,
+  "unrecorded_dials": 1,
   "why": ""
  },
  {
@@ -2221,8 +2385,10 @@
   "live_seconds": 0,
   "number": "+18189127663",
   "producer": "Lorena Gonzalez",
+  "screener": false,
   "talk_seconds": 18,
   "transcript_class": null,
+  "unrecorded_dials": 1,
   "why": ""
  },
  {
@@ -2248,8 +2414,10 @@
   "live_seconds": 0,
   "number": "+19287541776",
   "producer": "Lorena Gonzalez",
+  "screener": false,
   "talk_seconds": 18,
   "transcript_class": null,
+  "unrecorded_dials": 1,
   "why": ""
  },
  {
@@ -2275,13 +2443,15 @@
   "live_seconds": 0,
   "number": "+19283888945",
   "producer": "Lorena Gonzalez",
+  "screener": false,
   "talk_seconds": 17,
   "transcript_class": null,
+  "unrecorded_dials": 1,
   "why": ""
  },
  {
   "current": false,
-  "current_basis": "producer note (no contact)",
+  "current_basis": "recording (voicemail), every dial recorded",
   "evidence": {
    "asserted": [],
    "call_notes": [
@@ -2302,13 +2472,15 @@
   "live_seconds": 0,
   "number": "+19283889074",
   "producer": "Lorena Gonzalez",
+  "screener": false,
   "talk_seconds": 16,
   "transcript_class": "voicemail",
+  "unrecorded_dials": 0,
   "why": "recording is a voicemail, code agrees"
  },
  {
   "current": false,
-  "current_basis": "producer note (no contact)",
+  "current_basis": "recording (no answer), every dial recorded",
   "evidence": {
    "asserted": [],
    "call_notes": [
@@ -2329,13 +2501,15 @@
   "live_seconds": 0,
   "number": "+16239201223",
   "producer": "Lorena Gonzalez",
+  "screener": false,
   "talk_seconds": 15,
   "transcript_class": "no answer",
+  "unrecorded_dials": 0,
   "why": "recording is a no answer, code agrees"
  },
  {
   "current": false,
-  "current_basis": "producer note (no contact)",
+  "current_basis": "recording (no answer), every dial recorded",
   "evidence": {
    "asserted": [],
    "call_notes": [
@@ -2360,13 +2534,15 @@
   "live_seconds": 0,
   "number": "+17737913733",
   "producer": "Lorena Gonzalez",
+  "screener": false,
   "talk_seconds": 14,
   "transcript_class": "no answer",
+  "unrecorded_dials": 0,
   "why": "recording is a no answer, code agrees"
  },
  {
   "current": false,
-  "current_basis": "producer note (no contact)",
+  "current_basis": "recording (no answer), every dial recorded",
   "evidence": {
    "asserted": [],
    "call_notes": [
@@ -2387,8 +2563,10 @@
   "live_seconds": 0,
   "number": "+19282854513",
   "producer": "Lorena Gonzalez",
+  "screener": false,
   "talk_seconds": 14,
   "transcript_class": "no answer",
+  "unrecorded_dials": 0,
   "why": "recording is a no answer, code agrees"
  },
  {
@@ -2409,8 +2587,10 @@
   "live_seconds": 0,
   "number": "+19289198444",
   "producer": "Lorena Gonzalez",
+  "screener": false,
   "talk_seconds": 13,
   "transcript_class": "unclear",
+  "unrecorded_dials": 0,
   "why": ""
  },
  {
@@ -2436,8 +2616,10 @@
   "live_seconds": 0,
   "number": "+19204446427",
   "producer": "Lorena Gonzalez",
+  "screener": false,
   "talk_seconds": 13,
   "transcript_class": null,
+  "unrecorded_dials": 1,
   "why": ""
  },
  {
@@ -2458,8 +2640,10 @@
   "live_seconds": 0,
   "number": "+16025701878",
   "producer": "Lorena Gonzalez",
+  "screener": false,
   "talk_seconds": 12,
   "transcript_class": null,
+  "unrecorded_dials": 1,
   "why": ""
  },
  {
@@ -2485,13 +2669,15 @@
   "live_seconds": 0,
   "number": "+18034025028",
   "producer": "Lorena Gonzalez",
+  "screener": false,
   "talk_seconds": 12,
   "transcript_class": "unclear",
+  "unrecorded_dials": 0,
   "why": ""
  },
  {
   "current": false,
-  "current_basis": "producer note (no contact)",
+  "current_basis": "recording (voicemail), every dial recorded",
   "evidence": {
    "asserted": [],
    "call_notes": [
@@ -2512,13 +2698,15 @@
   "live_seconds": 0,
   "number": "+16023590861",
   "producer": "Lorena Gonzalez",
+  "screener": false,
   "talk_seconds": 11,
   "transcript_class": "voicemail",
+  "unrecorded_dials": 0,
   "why": "recording is a voicemail, code agrees"
  },
  {
   "current": false,
-  "current_basis": "producer note (no contact)",
+  "current_basis": "recording (voicemail), every dial recorded",
   "evidence": {
    "asserted": [],
    "call_notes": [],
@@ -2534,13 +2722,15 @@
   "live_seconds": 0,
   "number": "+19282576787",
   "producer": "Lorena Gonzalez",
+  "screener": false,
   "talk_seconds": 10,
   "transcript_class": "voicemail",
+  "unrecorded_dials": 0,
   "why": "recording is a voicemail, code agrees"
  },
  {
   "current": false,
-  "current_basis": "producer note (no contact)",
+  "current_basis": "recording (voicemail), every dial recorded",
   "evidence": {
    "asserted": [],
    "call_notes": [
@@ -2561,13 +2751,15 @@
   "live_seconds": 0,
   "number": "+15204440440",
   "producer": "Lorena Gonzalez",
+  "screener": false,
   "talk_seconds": 9,
   "transcript_class": "voicemail",
+  "unrecorded_dials": 0,
   "why": "recording is a voicemail, code agrees"
  },
  {
   "current": false,
-  "current_basis": "producer note (no contact)",
+  "current_basis": "recording (voicemail), every dial recorded",
   "evidence": {
    "asserted": [],
    "call_notes": [
@@ -2588,13 +2780,15 @@
   "live_seconds": 0,
   "number": "+19282591341",
   "producer": "Lorena Gonzalez",
+  "screener": false,
   "talk_seconds": 7,
   "transcript_class": "voicemail",
+  "unrecorded_dials": 0,
   "why": "recording is a voicemail, code agrees"
  },
  {
   "current": false,
-  "current_basis": "producer note (no contact)",
+  "current_basis": "recording (voicemail), every dial recorded",
   "evidence": {
    "asserted": [],
    "call_notes": [
@@ -2615,13 +2809,15 @@
   "live_seconds": 0,
   "number": "+17603358868",
   "producer": "Lorena Gonzalez",
+  "screener": false,
   "talk_seconds": 7,
   "transcript_class": "voicemail",
+  "unrecorded_dials": 0,
   "why": "recording is a voicemail, code agrees"
  },
  {
   "current": false,
-  "current_basis": "producer note (no contact)",
+  "current_basis": "recording (voicemail), every dial recorded",
   "evidence": {
    "asserted": [],
    "call_notes": [
@@ -2642,13 +2838,15 @@
   "live_seconds": 0,
   "number": "+14806001179",
   "producer": "Lorena Gonzalez",
+  "screener": false,
   "talk_seconds": 6,
   "transcript_class": "voicemail",
+  "unrecorded_dials": 0,
   "why": "recording is a voicemail, code agrees"
  },
  {
   "current": false,
-  "current_basis": "producer note (no contact)",
+  "current_basis": "recording (voicemail), every dial recorded",
   "evidence": {
    "asserted": [],
    "call_notes": [
@@ -2669,13 +2867,15 @@
   "live_seconds": 0,
   "number": "+19283152630",
   "producer": "Lorena Gonzalez",
+  "screener": false,
   "talk_seconds": 6,
   "transcript_class": "voicemail",
+  "unrecorded_dials": 0,
   "why": "recording is a voicemail, code agrees"
  },
  {
   "current": false,
-  "current_basis": "producer note (no contact)",
+  "current_basis": "recording (voicemail), every dial recorded",
   "evidence": {
    "asserted": [],
    "call_notes": [
@@ -2696,8 +2896,10 @@
   "live_seconds": 0,
   "number": "+16024656362",
   "producer": "Lorena Gonzalez",
+  "screener": false,
   "talk_seconds": 6,
   "transcript_class": "voicemail",
+  "unrecorded_dials": 0,
   "why": "recording is a voicemail, code agrees"
  },
  {
@@ -2723,13 +2925,15 @@
   "live_seconds": 0,
   "number": "+19287508237",
   "producer": "Lorena Gonzalez",
+  "screener": false,
   "talk_seconds": 5,
   "transcript_class": null,
+  "unrecorded_dials": 1,
   "why": ""
  },
  {
   "current": false,
-  "current_basis": "producer note (no contact)",
+  "current_basis": "recording (voicemail), every dial recorded",
   "evidence": {
    "asserted": [],
    "call_notes": [
@@ -2750,8 +2954,10 @@
   "live_seconds": 0,
   "number": "+12488423905",
   "producer": "Lorena Gonzalez",
+  "screener": false,
   "talk_seconds": 4,
   "transcript_class": "voicemail",
+  "unrecorded_dials": 0,
   "why": "recording is a voicemail, code agrees"
  },
  {
@@ -2777,8 +2983,10 @@
   "live_seconds": 0,
   "number": "+16023217723",
   "producer": "Lorena Gonzalez",
+  "screener": false,
   "talk_seconds": 1,
   "transcript_class": null,
+  "unrecorded_dials": 1,
   "why": ""
  },
  {
@@ -2813,13 +3021,15 @@
   "live_seconds": 252,
   "number": "+19178041091",
   "producer": "Mike Olvera",
+  "screener": false,
   "talk_seconds": 252,
   "transcript_class": "live",
+  "unrecorded_dials": 0,
   "why": "recording is a two-way conversation"
  },
  {
   "current": false,
-  "current_basis": "recording (voicemail)",
+  "current_basis": "recording (voicemail), every dial recorded",
   "evidence": {
    "asserted": [],
    "call_notes": [
@@ -2845,8 +3055,10 @@
   "live_seconds": 0,
   "number": "+15208704819",
   "producer": "Mike Olvera",
+  "screener": false,
   "talk_seconds": 245,
   "transcript_class": "voicemail",
+  "unrecorded_dials": 0,
   "why": "recording is a voicemail, code agrees"
  },
  {
@@ -2872,8 +3084,10 @@
   "live_seconds": 155,
   "number": "+19289418065",
   "producer": "Mike Olvera",
+  "screener": false,
   "talk_seconds": 155,
   "transcript_class": "live",
+  "unrecorded_dials": 0,
   "why": "recording is a two-way conversation"
  },
  {
@@ -2899,8 +3113,10 @@
   "live_seconds": 0,
   "number": "+19283236133",
   "producer": "Mike Olvera",
+  "screener": true,
   "talk_seconds": 135,
   "transcript_class": "voicemail",
+  "unrecorded_dials": 0,
   "why": "recording is a voicemail, code agrees"
  },
  {
@@ -2926,8 +3142,10 @@
   "live_seconds": 117,
   "number": "+19282007915",
   "producer": "Mike Olvera",
+  "screener": false,
   "talk_seconds": 117,
   "transcript_class": "live",
+  "unrecorded_dials": 0,
   "why": "recording is a two-way conversation"
  },
  {
@@ -2962,13 +3180,15 @@
   "live_seconds": 111,
   "number": "+19282713551",
   "producer": "Mike Olvera",
+  "screener": false,
   "talk_seconds": 111,
   "transcript_class": "live",
+  "unrecorded_dials": 0,
   "why": "recording is a two-way conversation"
  },
  {
   "current": false,
-  "current_basis": "producer note (no contact)",
+  "current_basis": "recording (voicemail), every dial recorded",
   "evidence": {
    "asserted": [],
    "call_notes": [
@@ -2989,8 +3209,10 @@
   "live_seconds": 0,
   "number": "+13609100113",
   "producer": "Mike Olvera",
+  "screener": false,
   "talk_seconds": 79,
   "transcript_class": "voicemail",
+  "unrecorded_dials": 0,
   "why": "recording is a voicemail, code agrees"
  },
  {
@@ -3023,13 +3245,15 @@
   "live_seconds": 77,
   "number": "+19282468588",
   "producer": "Mike Olvera",
+  "screener": false,
   "talk_seconds": 77,
   "transcript_class": "live",
+  "unrecorded_dials": 0,
   "why": "recording is a two-way conversation"
  },
  {
   "current": false,
-  "current_basis": "producer note (no contact)",
+  "current_basis": "recording (voicemail), every dial recorded",
   "evidence": {
    "asserted": [],
    "call_notes": [
@@ -3050,8 +3274,10 @@
   "live_seconds": 0,
   "number": "+16237344862",
   "producer": "Mike Olvera",
+  "screener": false,
   "talk_seconds": 69,
   "transcript_class": "voicemail",
+  "unrecorded_dials": 0,
   "why": "recording is a voicemail, code agrees"
  },
  {
@@ -3086,13 +3312,15 @@
   "live_seconds": 67,
   "number": "+16312763801",
   "producer": "Mike Olvera",
+  "screener": false,
   "talk_seconds": 67,
   "transcript_class": "live",
+  "unrecorded_dials": 0,
   "why": "recording is a two-way conversation"
  },
  {
   "current": false,
-  "current_basis": "recording (voicemail)",
+  "current_basis": "recording (voicemail), every dial recorded",
   "evidence": {
    "asserted": [],
    "call_notes": [
@@ -3113,8 +3341,10 @@
   "live_seconds": 0,
   "number": "+14086651614",
   "producer": "Mike Olvera",
+  "screener": false,
   "talk_seconds": 63,
   "transcript_class": "voicemail",
+  "unrecorded_dials": 0,
   "why": "recording is a voicemail, code agrees"
  },
  {
@@ -3140,8 +3370,10 @@
   "live_seconds": 0,
   "number": "+16232040544",
   "producer": "Mike Olvera",
+  "screener": true,
   "talk_seconds": 59,
   "transcript_class": "voicemail",
+  "unrecorded_dials": 0,
   "why": "recording is a voicemail, code agrees"
  },
  {
@@ -3172,8 +3404,10 @@
   "live_seconds": 59,
   "number": "+16027101144",
   "producer": "Mike Olvera",
+  "screener": false,
   "talk_seconds": 59,
   "transcript_class": "live",
+  "unrecorded_dials": 0,
   "why": ""
  },
  {
@@ -3199,8 +3433,10 @@
   "live_seconds": 0,
   "number": "+15207195474",
   "producer": "Mike Olvera",
+  "screener": true,
   "talk_seconds": 58,
   "transcript_class": "voicemail",
+  "unrecorded_dials": 0,
   "why": "recording is a voicemail, code agrees"
  },
  {
@@ -3226,13 +3462,15 @@
   "live_seconds": 0,
   "number": "+19522005312",
   "producer": "Mike Olvera",
+  "screener": true,
   "talk_seconds": 58,
   "transcript_class": "voicemail",
+  "unrecorded_dials": 0,
   "why": "recording is a voicemail, code agrees"
  },
  {
   "current": false,
-  "current_basis": "producer note (no contact)",
+  "current_basis": "recording (voicemail), every dial recorded",
   "evidence": {
    "asserted": [],
    "call_notes": [
@@ -3257,8 +3495,10 @@
   "live_seconds": 0,
   "number": "+16025159105",
   "producer": "Mike Olvera",
+  "screener": false,
   "talk_seconds": 57,
   "transcript_class": "voicemail",
+  "unrecorded_dials": 0,
   "why": "recording is a voicemail, code agrees"
  },
  {
@@ -3284,8 +3524,10 @@
   "live_seconds": 0,
   "number": "+17174206836",
   "producer": "Mike Olvera",
+  "screener": true,
   "talk_seconds": 57,
   "transcript_class": "voicemail",
+  "unrecorded_dials": 0,
   "why": "recording is a voicemail, code agrees"
  },
  {
@@ -3311,8 +3553,10 @@
   "live_seconds": 0,
   "number": "+18315941541",
   "producer": "Mike Olvera",
+  "screener": true,
   "talk_seconds": 56,
   "transcript_class": "voicemail",
+  "unrecorded_dials": 0,
   "why": "recording is a voicemail, code agrees"
  },
  {
@@ -3342,8 +3586,10 @@
   "live_seconds": 0,
   "number": "+19289655569",
   "producer": "Mike Olvera",
+  "screener": false,
   "talk_seconds": 55,
   "transcript_class": "unclear",
+  "unrecorded_dials": 0,
   "why": ""
  },
  {
@@ -3378,13 +3624,15 @@
   "live_seconds": 54,
   "number": "+15202498958",
   "producer": "Mike Olvera",
+  "screener": false,
   "talk_seconds": 54,
   "transcript_class": "live",
+  "unrecorded_dials": 0,
   "why": "recording is a two-way conversation"
  },
  {
   "current": false,
-  "current_basis": "recording (voicemail)",
+  "current_basis": "recording (voicemail), every dial recorded",
   "evidence": {
    "asserted": [],
    "call_notes": [
@@ -3405,13 +3653,15 @@
   "live_seconds": 0,
   "number": "+19282467535",
   "producer": "Mike Olvera",
+  "screener": false,
   "talk_seconds": 52,
   "transcript_class": "voicemail",
+  "unrecorded_dials": 0,
   "why": "recording is a voicemail, code agrees"
  },
  {
   "current": false,
-  "current_basis": "producer note (no contact)",
+  "current_basis": "recording (voicemail), every dial recorded",
   "evidence": {
    "asserted": [],
    "call_notes": [
@@ -3432,13 +3682,15 @@
   "live_seconds": 0,
   "number": "+15204142423",
   "producer": "Mike Olvera",
+  "screener": false,
   "talk_seconds": 49,
   "transcript_class": "voicemail",
+  "unrecorded_dials": 0,
   "why": "recording is a voicemail, code agrees"
  },
  {
   "current": false,
-  "current_basis": "producer note (no contact)",
+  "current_basis": "recording (voicemail), every dial recorded",
   "evidence": {
    "asserted": [],
    "call_notes": [
@@ -3459,13 +3711,15 @@
   "live_seconds": 0,
   "number": "+19285816949",
   "producer": "Mike Olvera",
+  "screener": false,
   "talk_seconds": 49,
   "transcript_class": "voicemail",
+  "unrecorded_dials": 0,
   "why": "recording is a voicemail, code agrees"
  },
  {
   "current": false,
-  "current_basis": "producer note (no contact)",
+  "current_basis": "recording (voicemail), every dial recorded",
   "evidence": {
    "asserted": [],
    "call_notes": [
@@ -3491,13 +3745,15 @@
   "live_seconds": 0,
   "number": "+19282870409",
   "producer": "Mike Olvera",
+  "screener": false,
   "talk_seconds": 49,
   "transcript_class": "voicemail",
+  "unrecorded_dials": 0,
   "why": "recording is a voicemail, code agrees"
  },
  {
   "current": false,
-  "current_basis": "recording (voicemail)",
+  "current_basis": "recording (voicemail), every dial recorded",
   "evidence": {
    "asserted": [],
    "call_notes": [
@@ -3518,13 +3774,15 @@
   "live_seconds": 0,
   "number": "+14809387984",
   "producer": "Mike Olvera",
+  "screener": false,
   "talk_seconds": 49,
   "transcript_class": "voicemail",
+  "unrecorded_dials": 0,
   "why": "recording is a voicemail, code agrees"
  },
  {
   "current": false,
-  "current_basis": "producer note (no contact)",
+  "current_basis": "recording (voicemail), every dial recorded",
   "evidence": {
    "asserted": [],
    "call_notes": [
@@ -3545,13 +3803,15 @@
   "live_seconds": 0,
   "number": "+13097063512",
   "producer": "Mike Olvera",
+  "screener": false,
   "talk_seconds": 46,
   "transcript_class": "voicemail",
+  "unrecorded_dials": 0,
   "why": "recording is a voicemail, code agrees"
  },
  {
   "current": false,
-  "current_basis": "recording (voicemail)",
+  "current_basis": "recording (voicemail), every dial recorded",
   "evidence": {
    "asserted": [],
    "call_notes": [
@@ -3572,8 +3832,10 @@
   "live_seconds": 0,
   "number": "+16025098818",
   "producer": "Mike Olvera",
+  "screener": false,
   "talk_seconds": 46,
   "transcript_class": "voicemail",
+  "unrecorded_dials": 0,
   "why": "recording is a voicemail, code agrees"
  },
  {
@@ -3606,13 +3868,15 @@
   "live_seconds": 45,
   "number": "+19285801139",
   "producer": "Mike Olvera",
+  "screener": false,
   "talk_seconds": 45,
   "transcript_class": "live",
+  "unrecorded_dials": 0,
   "why": "recording is a two-way conversation"
  },
  {
   "current": false,
-  "current_basis": "producer note (no contact)",
+  "current_basis": "recording (voicemail), every dial recorded",
   "evidence": {
    "asserted": [],
    "call_notes": [
@@ -3638,8 +3902,10 @@
   "live_seconds": 0,
   "number": "+14802139992",
   "producer": "Mike Olvera",
+  "screener": false,
   "talk_seconds": 39,
   "transcript_class": "voicemail",
+  "unrecorded_dials": 0,
   "why": "recording is a voicemail, code agrees"
  },
  {
@@ -3674,8 +3940,10 @@
   "live_seconds": 39,
   "number": "+16128171218",
   "producer": "Mike Olvera",
+  "screener": false,
   "talk_seconds": 39,
   "transcript_class": "live",
+  "unrecorded_dials": 0,
   "why": "recording is a two-way conversation"
  },
  {
@@ -3701,13 +3969,15 @@
   "live_seconds": 39,
   "number": "+19282919626",
   "producer": "Mike Olvera",
+  "screener": false,
   "talk_seconds": 39,
   "transcript_class": "live",
+  "unrecorded_dials": 0,
   "why": "recording is a two-way conversation"
  },
  {
   "current": false,
-  "current_basis": "producer note (no contact)",
+  "current_basis": "recording (voicemail), every dial recorded",
   "evidence": {
    "asserted": [],
    "call_notes": [
@@ -3728,13 +3998,15 @@
   "live_seconds": 0,
   "number": "+19283805031",
   "producer": "Mike Olvera",
+  "screener": false,
   "talk_seconds": 38,
   "transcript_class": "voicemail",
+  "unrecorded_dials": 0,
   "why": "recording is a voicemail, code agrees"
  },
  {
   "current": false,
-  "current_basis": "recording (voicemail)",
+  "current_basis": "recording (voicemail), every dial recorded",
   "evidence": {
    "asserted": [],
    "call_notes": [
@@ -3755,13 +4027,15 @@
   "live_seconds": 0,
   "number": "+19289551724",
   "producer": "Mike Olvera",
+  "screener": false,
   "talk_seconds": 36,
   "transcript_class": "voicemail",
+  "unrecorded_dials": 0,
   "why": "recording is a voicemail, code agrees"
  },
  {
   "current": false,
-  "current_basis": "producer note (no contact)",
+  "current_basis": "recording (voicemail), every dial recorded",
   "evidence": {
    "asserted": [],
    "call_notes": [
@@ -3787,13 +4061,15 @@
   "live_seconds": 0,
   "number": "+15635802261",
   "producer": "Mike Olvera",
+  "screener": false,
   "talk_seconds": 34,
   "transcript_class": "voicemail",
+  "unrecorded_dials": 0,
   "why": "recording is a voicemail, code agrees"
  },
  {
   "current": false,
-  "current_basis": "producer note (no contact)",
+  "current_basis": "recording (voicemail), every dial recorded",
   "evidence": {
    "asserted": [],
    "call_notes": [
@@ -3814,13 +4090,15 @@
   "live_seconds": 0,
   "number": "+14805803525",
   "producer": "Mike Olvera",
+  "screener": false,
   "talk_seconds": 34,
   "transcript_class": "voicemail",
+  "unrecorded_dials": 0,
   "why": "recording is a voicemail, code agrees"
  },
  {
   "current": false,
-  "current_basis": "producer note (no contact)",
+  "current_basis": "recording (voicemail), every dial recorded",
   "evidence": {
    "asserted": [],
    "call_notes": [
@@ -3841,8 +4119,10 @@
   "live_seconds": 0,
   "number": "+16239100829",
   "producer": "Mike Olvera",
+  "screener": false,
   "talk_seconds": 33,
   "transcript_class": "voicemail",
+  "unrecorded_dials": 0,
   "why": "recording is a voicemail, code agrees"
  },
  {
@@ -3868,13 +4148,15 @@
   "live_seconds": 0,
   "number": "+16025614750",
   "producer": "Mike Olvera",
+  "screener": true,
   "talk_seconds": 30,
   "transcript_class": "voicemail",
+  "unrecorded_dials": 0,
   "why": "recording is a voicemail, code agrees"
  },
  {
-  "current": true,
-  "current_basis": "producer note",
+  "current": false,
+  "current_basis": "recording (voicemail), every dial recorded",
   "evidence": {
    "asserted": [],
    "call_notes": [
@@ -3896,19 +4178,21 @@
     "has not been interested for a while."
    ]
   },
-  "expected": null,
+  "expected": false,
   "lead_id": 34532587,
   "lead_name": "Elizabeth Benitez Flores",
   "live_seconds": 0,
   "number": "+19257875906",
   "producer": "Mike Olvera",
+  "screener": false,
   "talk_seconds": 27,
   "transcript_class": "voicemail",
-  "why": "DISPUTED: recording says voicemail, code says live"
+  "unrecorded_dials": 0,
+  "why": "voicemail. \"has not been interested for a while\" summarises a month of contact, not this dial"
  },
  {
   "current": false,
-  "current_basis": "recording (voicemail)",
+  "current_basis": "recording (voicemail), every dial recorded",
   "evidence": {
    "asserted": [],
    "call_notes": [
@@ -3946,8 +4230,10 @@
   "live_seconds": 0,
   "number": "+15203239206",
   "producer": "Mike Olvera",
+  "screener": false,
   "talk_seconds": 27,
   "transcript_class": "voicemail",
+  "unrecorded_dials": 0,
   "why": "recording is a voicemail, code agrees"
  },
  {
@@ -3973,13 +4259,15 @@
   "live_seconds": 0,
   "number": "+17192892201",
   "producer": "Mike Olvera",
+  "screener": true,
   "talk_seconds": 26,
   "transcript_class": "voicemail",
+  "unrecorded_dials": 0,
   "why": "recording is a voicemail, code agrees"
  },
  {
   "current": false,
-  "current_basis": "recording (no answer)",
+  "current_basis": "recording (no answer), every dial recorded",
   "evidence": {
    "asserted": [],
    "call_notes": [
@@ -4000,13 +4288,15 @@
   "live_seconds": 0,
   "number": "+19284468269",
   "producer": "Mike Olvera",
+  "screener": false,
   "talk_seconds": 21,
   "transcript_class": "no answer",
+  "unrecorded_dials": 0,
   "why": "recording is a no answer, code agrees"
  },
  {
   "current": false,
-  "current_basis": "producer note (no contact)",
+  "current_basis": "recording (voicemail), every dial recorded",
   "evidence": {
    "asserted": [],
    "call_notes": [
@@ -4027,13 +4317,15 @@
   "live_seconds": 0,
   "number": "+19284293528",
   "producer": "Mike Olvera",
+  "screener": false,
   "talk_seconds": 19,
   "transcript_class": "voicemail",
+  "unrecorded_dials": 0,
   "why": "recording is a voicemail, code agrees"
  },
  {
   "current": false,
-  "current_basis": "producer note (no contact)",
+  "current_basis": "recording (voicemail), every dial recorded",
   "evidence": {
    "asserted": [],
    "call_notes": [
@@ -4054,13 +4346,15 @@
   "live_seconds": 0,
   "number": "+16026171639",
   "producer": "Mike Olvera",
+  "screener": false,
   "talk_seconds": 15,
   "transcript_class": "voicemail",
+  "unrecorded_dials": 0,
   "why": "recording is a voicemail, code agrees"
  },
  {
-  "current": true,
-  "current_basis": "producer note",
+  "current": false,
+  "current_basis": "recording (voicemail), every dial recorded",
   "evidence": {
    "asserted": [],
    "call_notes": [
@@ -4077,19 +4371,21 @@
     "Claims not to have a car but she is listed a s a driver on 3 policies. All policies have Barry Holloway as PNI"
    ]
   },
-  "expected": null,
+  "expected": false,
   "lead_id": 68026437,
   "lead_name": "Marty Tissaw",
   "live_seconds": 0,
   "number": "+19285802841",
   "producer": "Mike Olvera",
+  "screener": false,
   "talk_seconds": 15,
   "transcript_class": "voicemail",
-  "why": "DISPUTED: recording says voicemail, code says live"
+  "unrecorded_dials": 0,
+  "why": "voicemail greeting saying she does not check voicemail. Mike has dialled her once, ever -- \"Claims not to have a car\" cannot come from this call"
  },
  {
   "current": false,
-  "current_basis": "producer note (no contact)",
+  "current_basis": "recording (no answer), every dial recorded",
   "evidence": {
    "asserted": [],
    "call_notes": [
@@ -4119,13 +4415,15 @@
   "live_seconds": 0,
   "number": "+15202860183",
   "producer": "Mike Olvera",
+  "screener": false,
   "talk_seconds": 14,
   "transcript_class": "no answer",
+  "unrecorded_dials": 0,
   "why": "recording is a no answer, code agrees"
  },
  {
   "current": false,
-  "current_basis": "producer note (no contact)",
+  "current_basis": "recording (voicemail), every dial recorded",
   "evidence": {
    "asserted": [],
    "call_notes": [
@@ -4146,13 +4444,15 @@
   "live_seconds": 0,
   "number": "+15205408663",
   "producer": "Mike Olvera",
+  "screener": false,
   "talk_seconds": 11,
   "transcript_class": "voicemail",
+  "unrecorded_dials": 0,
   "why": "recording is a voicemail, code agrees"
  },
  {
   "current": false,
-  "current_basis": "producer note (no contact)",
+  "current_basis": "recording (voicemail), every dial recorded",
   "evidence": {
    "asserted": [],
    "call_notes": [
@@ -4178,13 +4478,15 @@
   "live_seconds": 0,
   "number": "+15204194058",
   "producer": "Mike Olvera",
+  "screener": false,
   "talk_seconds": 7,
   "transcript_class": "voicemail",
+  "unrecorded_dials": 0,
   "why": "recording is a voicemail, code agrees"
  },
  {
   "current": false,
-  "current_basis": "recording (voicemail)",
+  "current_basis": "recording (voicemail), every dial recorded",
   "evidence": {
    "asserted": [],
    "call_notes": [
@@ -4205,13 +4507,15 @@
   "live_seconds": 0,
   "number": "+19284462103",
   "producer": "Mike Olvera",
+  "screener": false,
   "talk_seconds": 7,
   "transcript_class": "voicemail",
+  "unrecorded_dials": 0,
   "why": "recording is a voicemail, code agrees"
  },
  {
   "current": false,
-  "current_basis": "producer note (no contact)",
+  "current_basis": "recording (voicemail), every dial recorded",
   "evidence": {
    "asserted": [],
    "call_notes": [
@@ -4237,8 +4541,10 @@
   "live_seconds": 0,
   "number": "+16232066696",
   "producer": "Mike Olvera",
+  "screener": false,
   "talk_seconds": 6,
   "transcript_class": "voicemail",
+  "unrecorded_dials": 0,
   "why": "recording is a voicemail, code agrees"
  },
  {
@@ -4264,13 +4570,15 @@
   "live_seconds": 0,
   "number": "+14809536993",
   "producer": "Mike Olvera",
+  "screener": false,
   "talk_seconds": 5,
   "transcript_class": null,
+  "unrecorded_dials": 1,
   "why": ""
  },
  {
   "current": false,
-  "current_basis": "producer note (no contact)",
+  "current_basis": "recording (voicemail), every dial recorded",
   "evidence": {
    "asserted": [],
    "call_notes": [
@@ -4296,8 +4604,10 @@
   "live_seconds": 0,
   "number": "+19284466719",
   "producer": "Mike Olvera",
+  "screener": false,
   "talk_seconds": 5,
   "transcript_class": "voicemail",
+  "unrecorded_dials": 0,
   "why": "recording is a voicemail, code agrees"
  },
  {
@@ -4323,8 +4633,10 @@
   "live_seconds": 0,
   "number": "+15209795625",
   "producer": "Mike Olvera",
+  "screener": false,
   "talk_seconds": 3,
   "transcript_class": null,
+  "unrecorded_dials": 1,
   "why": ""
  },
  {
@@ -4350,8 +4662,10 @@
   "live_seconds": 0,
   "number": "+19286278859",
   "producer": "Mike Olvera",
+  "screener": false,
   "talk_seconds": 2,
   "transcript_class": null,
+  "unrecorded_dials": 1,
   "why": ""
  },
  {
@@ -4377,8 +4691,10 @@
   "live_seconds": 0,
   "number": "+19073804114",
   "producer": "Mike Olvera",
+  "screener": false,
   "talk_seconds": 1,
   "transcript_class": null,
+  "unrecorded_dials": 1,
   "why": ""
  },
  {
@@ -4404,8 +4720,10 @@
   "live_seconds": 83,
   "number": "+19283153668",
   "producer": "Sarahi Chin",
+  "screener": false,
   "talk_seconds": 83,
   "transcript_class": "live",
+  "unrecorded_dials": 0,
   "why": "recording is a two-way conversation"
  },
  {
@@ -4426,8 +4744,10 @@
   "live_seconds": 0,
   "number": "+14027065488",
   "producer": "Sarahi Chin",
+  "screener": false,
   "talk_seconds": 80,
   "transcript_class": null,
+  "unrecorded_dials": 1,
   "why": ""
  },
  {
@@ -4448,8 +4768,10 @@
   "live_seconds": 0,
   "number": "+18578297066",
   "producer": "Sarahi Chin",
+  "screener": true,
   "talk_seconds": 76,
   "transcript_class": "voicemail",
+  "unrecorded_dials": 0,
   "why": "recording is a voicemail, code agrees"
  },
  {
@@ -4470,8 +4792,10 @@
   "live_seconds": 0,
   "number": "+17194409911",
   "producer": "Sarahi Chin",
+  "screener": true,
   "talk_seconds": 63,
   "transcript_class": "voicemail",
+  "unrecorded_dials": 0,
   "why": "recording is a voicemail, code agrees"
  },
  {
@@ -4492,8 +4816,10 @@
   "live_seconds": 56,
   "number": "+16265231846",
   "producer": "Sarahi Chin",
+  "screener": false,
   "talk_seconds": 56,
   "transcript_class": "live",
+  "unrecorded_dials": 0,
   "why": "recording is a two-way conversation"
  },
  {
@@ -4514,13 +4840,15 @@
   "live_seconds": 50,
   "number": "+19283669545",
   "producer": "Sarahi Chin",
+  "screener": false,
   "talk_seconds": 50,
   "transcript_class": "live",
+  "unrecorded_dials": 0,
   "why": "recording is a two-way conversation"
  },
  {
   "current": false,
-  "current_basis": "producer note (no contact)",
+  "current_basis": "recording (voicemail), every dial recorded",
   "evidence": {
    "asserted": [],
    "call_notes": [],
@@ -4541,13 +4869,15 @@
   "live_seconds": 0,
   "number": "+19288172415",
   "producer": "Sarahi Chin",
+  "screener": false,
   "talk_seconds": 49,
   "transcript_class": "voicemail",
+  "unrecorded_dials": 0,
   "why": "recording is a voicemail, code agrees"
  },
  {
   "current": false,
-  "current_basis": "producer note (no contact)",
+  "current_basis": "recording (voicemail), every dial recorded",
   "evidence": {
    "asserted": [],
    "call_notes": [
@@ -4568,13 +4898,15 @@
   "live_seconds": 0,
   "number": "+19282561788",
   "producer": "Sarahi Chin",
+  "screener": false,
   "talk_seconds": 44,
   "transcript_class": "voicemail",
+  "unrecorded_dials": 0,
   "why": "recording is a voicemail, code agrees"
  },
  {
   "current": false,
-  "current_basis": "recording (voicemail)",
+  "current_basis": "recording (voicemail), every dial recorded",
   "evidence": {
    "asserted": [],
    "call_notes": [],
@@ -4590,8 +4922,10 @@
   "live_seconds": 0,
   "number": "+14022104977",
   "producer": "Sarahi Chin",
+  "screener": false,
   "talk_seconds": 44,
   "transcript_class": "voicemail",
+  "unrecorded_dials": 0,
   "why": "recording is a voicemail, code agrees"
  },
  {
@@ -4612,13 +4946,15 @@
   "live_seconds": 0,
   "number": "+15414205266",
   "producer": "Sarahi Chin",
+  "screener": true,
   "talk_seconds": 41,
   "transcript_class": "voicemail",
+  "unrecorded_dials": 0,
   "why": "recording is a voicemail, code agrees"
  },
  {
   "current": false,
-  "current_basis": "producer note (no contact)",
+  "current_basis": "recording (voicemail), every dial recorded",
   "evidence": {
    "asserted": [],
    "call_notes": [],
@@ -4634,13 +4970,15 @@
   "live_seconds": 0,
   "number": "+19285807714",
   "producer": "Sarahi Chin",
+  "screener": false,
   "talk_seconds": 39,
   "transcript_class": "voicemail",
+  "unrecorded_dials": 0,
   "why": "recording is a voicemail, code agrees"
  },
  {
   "current": false,
-  "current_basis": "producer note (no contact)",
+  "current_basis": "recording (voicemail), every dial recorded",
   "evidence": {
    "asserted": [],
    "call_notes": [],
@@ -4656,13 +4994,15 @@
   "live_seconds": 0,
   "number": "+15052313954",
   "producer": "Sarahi Chin",
+  "screener": false,
   "talk_seconds": 37,
   "transcript_class": "voicemail",
+  "unrecorded_dials": 0,
   "why": "recording is a voicemail, code agrees"
  },
  {
   "current": false,
-  "current_basis": "recording (voicemail)",
+  "current_basis": "recording (voicemail), every dial recorded",
   "evidence": {
    "asserted": [],
    "call_notes": [],
@@ -4678,8 +5018,10 @@
   "live_seconds": 0,
   "number": "+19282579015",
   "producer": "Sarahi Chin",
+  "screener": false,
   "talk_seconds": 36,
   "transcript_class": "voicemail",
+  "unrecorded_dials": 0,
   "why": "recording is a voicemail, code agrees"
  },
  {
@@ -4707,8 +5049,10 @@
   "live_seconds": 35,
   "number": "+19282464970",
   "producer": "Sarahi Chin",
+  "screener": false,
   "talk_seconds": 35,
   "transcript_class": "live",
+  "unrecorded_dials": 0,
   "why": "recording is a two-way conversation"
  },
  {
@@ -4729,8 +5073,10 @@
   "live_seconds": 33,
   "number": "+16232867352",
   "producer": "Sarahi Chin",
+  "screener": false,
   "talk_seconds": 33,
   "transcript_class": "live",
+  "unrecorded_dials": 0,
   "why": "recording is a two-way conversation"
  },
  {
@@ -4751,8 +5097,10 @@
   "live_seconds": 0,
   "number": "+19282710555",
   "producer": "Sarahi Chin",
+  "screener": false,
   "talk_seconds": 33,
   "transcript_class": null,
+  "unrecorded_dials": 1,
   "why": ""
  },
  {
@@ -4771,19 +5119,21 @@
     "called and he picked up asking what do i want then i said im from farmers insurance he then said i already have insurance and hung up."
    ]
   },
-  "expected": null,
+  "expected": true,
   "lead_id": 88598996,
   "lead_name": "Randy Webster",
   "live_seconds": 0,
   "number": "+14809109816",
   "producer": "Sarahi Chin",
+  "screener": true,
   "talk_seconds": 28,
   "transcript_class": "voicemail",
-  "why": "DISPUTED: recording says voicemail, code says live"
+  "unrecorded_dials": 0,
+  "why": "LIVE. Classed voicemail because it opens with a screener, but Randy speaks on the recording -- \"What do you want?\" -- matching Sarahi's note"
  },
  {
   "current": false,
-  "current_basis": "producer note (no contact)",
+  "current_basis": "recording (voicemail), every dial recorded",
   "evidence": {
    "asserted": [],
    "call_notes": [
@@ -4806,13 +5156,15 @@
   "live_seconds": 0,
   "number": "+14037418280",
   "producer": "Sarahi Chin",
+  "screener": false,
   "talk_seconds": 24,
   "transcript_class": "voicemail",
+  "unrecorded_dials": 0,
   "why": "recording is a voicemail, code agrees"
  },
  {
   "current": false,
-  "current_basis": "producer note (no contact)",
+  "current_basis": "recording (no answer), every dial recorded",
   "evidence": {
    "asserted": [],
    "call_notes": [],
@@ -4830,13 +5182,15 @@
   "live_seconds": 0,
   "number": "+19283041216",
   "producer": "Sarahi Chin",
+  "screener": false,
   "talk_seconds": 24,
   "transcript_class": "no answer",
+  "unrecorded_dials": 0,
   "why": "recording is a no answer, code agrees"
  },
  {
   "current": false,
-  "current_basis": "producer note (no contact)",
+  "current_basis": "recording (voicemail), every dial recorded",
   "evidence": {
    "asserted": [],
    "call_notes": [],
@@ -4852,13 +5206,15 @@
   "live_seconds": 0,
   "number": "+19282469933",
   "producer": "Sarahi Chin",
+  "screener": false,
   "talk_seconds": 24,
   "transcript_class": "voicemail",
+  "unrecorded_dials": 0,
   "why": "recording is a voicemail, code agrees"
  },
  {
   "current": false,
-  "current_basis": "producer note (no contact)",
+  "current_basis": "recording (voicemail), every dial recorded",
   "evidence": {
    "asserted": [],
    "call_notes": [],
@@ -4874,13 +5230,15 @@
   "live_seconds": 0,
   "number": "+14807883047",
   "producer": "Sarahi Chin",
+  "screener": false,
   "talk_seconds": 24,
   "transcript_class": "voicemail",
+  "unrecorded_dials": 0,
   "why": "recording is a voicemail, code agrees"
  },
  {
   "current": false,
-  "current_basis": "producer note (no contact)",
+  "current_basis": "recording (voicemail), every dial recorded",
   "evidence": {
    "asserted": [],
    "call_notes": [],
@@ -4896,13 +5254,15 @@
   "live_seconds": 0,
   "number": "+14023066890",
   "producer": "Sarahi Chin",
+  "screener": false,
   "talk_seconds": 22,
   "transcript_class": "voicemail",
+  "unrecorded_dials": 0,
   "why": "recording is a voicemail, code agrees"
  },
  {
   "current": false,
-  "current_basis": "producer note (no contact)",
+  "current_basis": "recording (voicemail), every dial recorded",
   "evidence": {
    "asserted": [],
    "call_notes": [],
@@ -4918,8 +5278,10 @@
   "live_seconds": 0,
   "number": "+15202382230",
   "producer": "Sarahi Chin",
+  "screener": false,
   "talk_seconds": 21,
   "transcript_class": "voicemail",
+  "unrecorded_dials": 0,
   "why": "recording is a voicemail, code agrees"
  },
  {
@@ -4940,13 +5302,15 @@
   "live_seconds": 21,
   "number": "+19285808067",
   "producer": "Sarahi Chin",
+  "screener": false,
   "talk_seconds": 21,
   "transcript_class": "live",
+  "unrecorded_dials": 0,
   "why": ""
  },
  {
   "current": false,
-  "current_basis": "producer note (no contact)",
+  "current_basis": "recording (voicemail), every dial recorded",
   "evidence": {
    "asserted": [],
    "call_notes": [],
@@ -4962,13 +5326,15 @@
   "live_seconds": 0,
   "number": "+13017600787",
   "producer": "Sarahi Chin",
+  "screener": false,
   "talk_seconds": 16,
   "transcript_class": "voicemail",
+  "unrecorded_dials": 0,
   "why": "recording is a voicemail, code agrees"
  },
  {
   "current": false,
-  "current_basis": "producer note (no contact)",
+  "current_basis": "recording (voicemail), every dial recorded",
   "evidence": {
    "asserted": [],
    "call_notes": [],
@@ -4984,13 +5350,15 @@
   "live_seconds": 0,
   "number": "+19283155629",
   "producer": "Sarahi Chin",
+  "screener": false,
   "talk_seconds": 13,
   "transcript_class": "voicemail",
+  "unrecorded_dials": 0,
   "why": "recording is a voicemail, code agrees"
  },
  {
-  "current": true,
-  "current_basis": "producer note",
+  "current": false,
+  "current_basis": "recording (voicemail), every dial recorded",
   "evidence": {
    "asserted": [],
    "call_notes": [],
@@ -5015,19 +5383,21 @@
     "Thomas Runyon has autos but no home. Mention that our home rates recently went down and that bundling with his autos would make a huge difference."
    ]
   },
-  "expected": null,
+  "expected": false,
   "lead_id": 88948248,
   "lead_name": "Thomas Runyons",
   "live_seconds": 0,
   "number": "+19284465754",
   "producer": "Sarahi Chin",
+  "screener": false,
   "talk_seconds": 13,
   "transcript_class": "voicemail",
-  "why": "DISPUTED: recording says voicemail, code says live"
+  "unrecorded_dials": 0,
+  "why": "voicemail. Note is a to-do written before the call"
  },
  {
   "current": false,
-  "current_basis": "producer note (no contact)",
+  "current_basis": "recording (voicemail), every dial recorded",
   "evidence": {
    "asserted": [],
    "call_notes": [],
@@ -5043,8 +5413,10 @@
   "live_seconds": 0,
   "number": "+19284881413",
   "producer": "Sarahi Chin",
+  "screener": false,
   "talk_seconds": 12,
   "transcript_class": "voicemail",
+  "unrecorded_dials": 0,
   "why": "recording is a voicemail, code agrees"
  },
  {
@@ -5065,13 +5437,15 @@
   "live_seconds": 0,
   "number": "+19289191283",
   "producer": "Sarahi Chin",
+  "screener": false,
   "talk_seconds": 11,
   "transcript_class": "unclear",
+  "unrecorded_dials": 0,
   "why": ""
  },
  {
   "current": false,
-  "current_basis": "producer note (no contact)",
+  "current_basis": "recording (voicemail), every dial recorded",
   "evidence": {
    "asserted": [],
    "call_notes": [],
@@ -5087,13 +5461,15 @@
   "live_seconds": 0,
   "number": "+19282471584",
   "producer": "Sarahi Chin",
+  "screener": false,
   "talk_seconds": 10,
   "transcript_class": "voicemail",
+  "unrecorded_dials": 0,
   "why": "recording is a voicemail, code agrees"
  },
  {
   "current": false,
-  "current_basis": "producer note (no contact)",
+  "current_basis": "recording (voicemail), every dial recorded",
   "evidence": {
    "asserted": [],
    "call_notes": [],
@@ -5109,13 +5485,15 @@
   "live_seconds": 0,
   "number": "+19287504036",
   "producer": "Sarahi Chin",
+  "screener": false,
   "talk_seconds": 9,
   "transcript_class": "voicemail",
+  "unrecorded_dials": 0,
   "why": "recording is a voicemail, code agrees"
  },
  {
   "current": false,
-  "current_basis": "producer note (no contact)",
+  "current_basis": "recording (voicemail), every dial recorded",
   "evidence": {
    "asserted": [],
    "call_notes": [],
@@ -5131,8 +5509,10 @@
   "live_seconds": 0,
   "number": "+16232854950",
   "producer": "Sarahi Chin",
+  "screener": false,
   "talk_seconds": 9,
   "transcript_class": "voicemail",
+  "unrecorded_dials": 0,
   "why": "recording is a voicemail, code agrees"
  },
  {
@@ -5155,13 +5535,15 @@
   "live_seconds": 0,
   "number": "+15593655707",
   "producer": "Sarahi Chin",
+  "screener": false,
   "talk_seconds": 8,
   "transcript_class": null,
+  "unrecorded_dials": 1,
   "why": ""
  },
  {
   "current": false,
-  "current_basis": "producer note (no contact)",
+  "current_basis": "recording (voicemail), every dial recorded",
   "evidence": {
    "asserted": [],
    "call_notes": [],
@@ -5177,8 +5559,10 @@
   "live_seconds": 0,
   "number": "+16023179999",
   "producer": "Sarahi Chin",
+  "screener": false,
   "talk_seconds": 8,
   "transcript_class": "voicemail",
+  "unrecorded_dials": 0,
   "why": "recording is a voicemail, code agrees"
  },
  {
@@ -5199,8 +5583,10 @@
   "live_seconds": 0,
   "number": "+19282465259",
   "producer": "Sarahi Chin",
+  "screener": false,
   "talk_seconds": 1,
   "transcript_class": null,
+  "unrecorded_dials": 1,
   "why": ""
  },
  {
@@ -5221,8 +5607,10 @@
   "live_seconds": 0,
   "number": "+19283291525",
   "producer": "Sarahi Chin",
+  "screener": false,
   "talk_seconds": 1,
   "transcript_class": null,
+  "unrecorded_dials": 1,
   "why": ""
  }
 ]

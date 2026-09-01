@@ -38,7 +38,9 @@ for path in FIX:
     for r in rows:
         got, basis = lc.is_live(r["evidence"], r["talk_seconds"],
                                 r["transcript_class"],
-                                live_seconds=r.get("live_seconds") or 0)
+                                live_seconds=r.get("live_seconds") or 0,
+                                unrecorded_dials=r.get("unrecorded_dials"),
+                                screener=r.get("screener", False))
         want = r["expected"]
         if want is None:
             pending += 1

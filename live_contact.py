@@ -485,7 +485,8 @@ def _evidence_into(out, lead_id, day, producer):
                 out["asserted"].append(body)
 
 
-def is_live(ev, talk_seconds=None, transcript_class=None, live_seconds=0):
+def is_live(ev, talk_seconds=None, transcript_class=None, live_seconds=0,
+            unrecorded_dials=None, screener=False):
     """(bool, basis) -- basis is what the report prints for the row.
 
     `live_seconds` is the length of the longest LIVE-classified recording on
@@ -542,6 +543,54 @@ def is_live(ev, talk_seconds=None, transcript_class=None, live_seconds=0):
         return False, "too short to be a conversation"
     sustained = (transcript_class == "live"
                  and (live_seconds or 0) >= LIVE_OVERRIDE_SECONDS)
+    # NOTHING PROMOTES A DAY WHERE EVERY DIAL WAS RECORDED AND EVERY RECORDING
+    # IS A MACHINE. If the producer made one dial, it was recorded, and the audio
+    # is a voicemail greeting, then there is no unobserved call for a
+    # conversation to have happened on -- so a note claiming one is about some
+    # other day, some other person, or is not the producer's own words at all.
+    #
+    # Frank, 2026-08-31: "a bunch of voicemails or no answers made it to the
+    # 8/31 live contact stats". Six rows, every one of them a single recorded
+    # dial to a voicemail greeting:
+    #   Coral   / Ricardo Vazquez     7s  "Rec Engine requesting to win back home"
+    #   Crystal / Hector Altamirano  38s  see below
+    #   Mike    / Elizabeth Benitez  27s  "has not been interested for a while"
+    #   Mike    / Marty Tissaw       15s  "Claims not to have a car..." -- and Mike
+    #                                     has dialled her exactly once, ever
+    #   Sarahi  / Randy Webster      28s  audio is a call screener
+    #   Sarahi  / Thomas Runyons     13s  a to-do written before the call
+    #
+    # Hector is why this has to outrank `asserted` rather than sit below it.
+    # The lead's spouse TEXTED at 10:01 ("He didn't say he wanted to switch after
+    # i showed him the quote"); Crystal dialled at 14:39 and got voicemail; at
+    # 15:28 she moved the lead to Smart-Cycle and PASTED THE CUSTOMER'S TEXT into
+    # the stage-move comment. asserts_contact read the customer's own words as
+    # Crystal reporting a conversation. No filter on note wording can catch that
+    # reliably -- but the audio can, because there was only ever the one call and
+    # it was a voicemail.
+    #
+    # This is deliberately narrow. It needs EVERY dial recorded: one unrecorded
+    # dial means a conversation could have happened off-tape, and then the note
+    # is the only witness and still wins. It is also silent when there is no
+    # transcript at all.
+    # SCREENER CALLS ARE EXEMPT, and this exemption is the whole reason the gate
+    # is safe. The transcriber labels a call by how it OPENS, so an answering
+    # service or Google-style call screen reads as "voicemail" even when a
+    # person then comes on the line. Sarahi / Randy Webster, 2026-08-31, is
+    # exactly that: classed voicemail, and the audio runs
+    #   "If you record your name and reason for calling, I'll see if this person
+    #    is available. Hello, this is from Farmers Insurance. How are you doing
+    #    today? WHAT DO YOU WANT? I thought you requested a quote online."
+    # -- Randy himself, mid-recording, matching her note word for word ("he
+    # picked up asking what do i want"). Without this carve-out the gate would
+    # have thrown away a real conversation. Measured on 2026-08-31, roughly 3%
+    # of voicemail-classed calls are live conversations behind a screener, and
+    # they are the only systematic false negative this gate can produce.
+    machine_only = (transcript_class in ("voicemail", "no answer")
+                    and unrecorded_dials == 0
+                    and not screener)
+    if machine_only:
+        return False, f"recording ({transcript_class}), every dial recorded"
     if ev.get("asserted"):
         return True, "producer note (states contact)"
     if ev["negative"] and sustained:

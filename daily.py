@@ -381,8 +381,16 @@ def build_metrics(day):
                   {"written": [], "stage_moves": [], "call_notes": [],
                    "negative": False, "screener": False})
             tc = bynum.get((who, r["number"]))
+            # How many dials to this number went UNRECORDED. Zero means the
+            # audio is a complete account of the day and is_live may trust it
+            # over anything written -- see the machine_only gate there.
+            _calls = (dials.get(who) or {}).get(r["number"]) or []
+            _unrec = sum(1 for c in _calls if not c.get("recording"))
+            _scr = ev.get("screener") or bool(
+                lc.SCREENER.search(all_txt.get((who, r["number"]), "")))
             ok, basis = lc.is_live(ev, r["talk_seconds"], tc,
-                                   live_seconds=livesecs.get((who, r["number"]), 0))
+                                   live_seconds=livesecs.get((who, r["number"]), 0),
+                                   unrecorded_dials=_unrec, screener=_scr)
             # Screener is checked ahead of the transcript class on purpose. An
             # AI attendant reads as a machine greeting, so Elsa Aguilera --
             # "call dropped after AI transferred me" -- was being filed as
