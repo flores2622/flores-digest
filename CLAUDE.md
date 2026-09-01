@@ -72,6 +72,39 @@ Open tickets close overnight, so a rebuild disagrees with the original run.
 The service-ticket test is point-in-time: a ticket counts only if it was created
 on or before the day and was not already closed before it.
 
+## How long the nightly run takes
+
+**Expect about 85 minutes, not the 30-40 the scheduled-task prompt claims.**
+Measured 2026-09-01: fired 01:45:34 UTC, finished 03:09:35 — 1h24m. The prompt's
+figure is stale and this file overrides it.
+
+Roughly 30 of those minutes are nothing but downloading recordings. RingCentral's
+media endpoint allows 10 requests per rolling 60s, the downloader paces at 8/min,
+and the agency averages 238 recordings a day (peak 298). Steady progress of about
+20 recordings every 2.5 minutes is normal.
+
+A stall still means the log has not advanced in ~5 minutes, or repeated "rate
+limited" lines. Judge it on progress, not on total elapsed time — an 80-minute
+run is healthy.
+
+`HOURLY_RUNS.md` is the plan to move that download-and-transcribe work into
+hourly runs so the evening build finds it already cached. Not built yet.
+
+## Service tickets — the corpus changed on 2026-09-01
+
+`service_tickets_all()` used to pass `status: "all"`, which silently returned
+**open tickets only**. It now passes `status: [0, 1]` and returns open plus
+closed. Because 359 of 361 closed tickets carry no `completeDate`,
+`inbound.py` and `day_calls.py` fall back to `lastActivityDate` as the close
+date, and only when `status == 1`.
+
+**Expect the service-screening numbers to move slightly on the first build after
+this, and do NOT report it as a data problem.** About 50 more tickets are visible
+per day. Modelled against 2026-08-28 it would have screened **two** additional
+answered inbound calls as service work, so contact rates shift by a point or
+two, downward, for whoever took those calls. That shift is the bug being
+corrected.
+
 ## Cost
 
 Transcription is local and free. **The Anthropic API read in `call_summary.py`
