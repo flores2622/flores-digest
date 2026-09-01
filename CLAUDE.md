@@ -36,6 +36,12 @@ Everything caches under `data/`, so a re-run resumes rather than restarting.
   call back changes the VERDICT on a dial already made, so it lands inside the
   numerator by turning that dial live. A cold call-in had no dial and sits
   outside the rate entirely.
+- **ONE ACCOUNT, ONE CONTACT AND ONE ATTEMPT** (Frank, 2026-09-01). The same
+  lead reached on two of their own numbers is one person: `_one_row_per_lead`
+  collapses the Call Detail row and the duplicate dial is marked `dropped`, so
+  it leaves the numerator AND the denominator. Reaching someone on their mobile
+  after their landline must not read as a 50% contact rate. Mike / Nicole
+  Santana, 2026-08-31 -- 252s and 67s on one lead -- and Roger Ryan before her.
 - **Talk time counts every conversation**, inbound included.
 - **Notes win over the recording** (Frank, 2026-08-18). A producer writing "no
   answer" outranks a 12-second transcript that sounds live. Duration is the
