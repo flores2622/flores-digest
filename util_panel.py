@@ -38,10 +38,13 @@ PANEL ORDER is taken from the approved TEST 7 layout: Crystal, Mike, Debbie,
 Lorena, Coral, Sarahi. Amanda is NOT in this panel -- she is in the utilization
 SCOPE rule ("all users except Amanda") but was never rendered as a card.
 
-PLACEHOLDERS: Coral and Sarahi keep their dashed, deliberately-blank cards
-(Frank, 2026-08-14: hold until the 08-28 review). Their second stat line is
-updated to record what we now know -- Coral's data exists, Sarahi has no
-licence -- so the 28th is a straight yes/no rather than another investigation.
+PLACEHOLDERS: none. Coral and Sarahi held dashed, deliberately-blank cards
+until the 2026-08-28 review (Frank, 2026-08-14); that review is CLOSED and both
+render as full cards. Coral's Insightful data existed from the start and
+Sarahi's licence was assigned 2026-08-25, so both utilization cards are live.
+The "no Insightful licence assigned" branch below is kept for the next person
+who joins before their licence does -- it fires off
+`digest_config.NO_INSIGHTFUL_LICENCE`, which is currently empty.
 """
 import re
 

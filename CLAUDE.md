@@ -47,8 +47,10 @@ Everything caches under `data/`, so a re-run resumes rather than restarting.
 
 - **Producers**: Crystal Mango, Lorena Gonzalez, Mike Olvera, Coral Barwick,
   Sarahi Chin. Coral and Sarahi are full producers as of 2026-08-24 — the
-  2026-08-28 review date is CLOSED. Sarahi has no Insightful licence, so her
-  utilization card says so; every other figure for her is live.
+  2026-08-28 review date is CLOSED. Sarahi's Insightful licence was assigned
+  2026-08-25 and her utilization is live like everyone else's; `digest_config.
+  NO_INSIGHTFUL_LICENCE` is empty and the panel branch that printed "no
+  Insightful licence assigned" no longer fires for anyone.
 - **Not producers**: Debbie Aguilera is the front desk and handles ~90% of
   inbound, transferring to whoever the call is for. Amanda Torricellas is
   operations manager, sells, and is deliberately not tracked.
