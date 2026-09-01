@@ -136,6 +136,26 @@ corrected.
   Sarahi's 25 voicemails of 35 rows are why she sits at 11. This is not a fault
   to fix in our pipeline -- it is how TRAQ scores -- but it means these two
   figures cannot rank producers with different answer rates against each other.
+- **Getting a real per-call score, with no API.** TRAQ has no API key and one is
+  not coming soon (Frank, 2026-09-01). The working route is manual and takes
+  about two minutes:
+    1. Every TRAQ note cached under `data/notes/` carries the call id, the
+       duration, and TRAQ's own prose summary. Grep them for `Traq Call`.
+    2. TRAQ states the call type in its own summary -- "the call was directed to
+       voicemail", "un mensaje dejado" -- so calls can be picked by type without
+       trusting our classification.
+    3. Hand someone with a TRAQ login the `app.traq.ai/call/0/<id>` links and
+       have them read back score and sentiment.
+  That is exactly how the 3 / 3 / 292 figures above were obtained. Do NOT ask
+  for or accept a person's own TRAQ password to automate this. If it is ever
+  worth automating, the right shape is a TRAQ **service account** in
+  `secrets/all.env`, the way `AZ_USERNAME=frank.automation@...` already works
+  for AgencyZoom -- never an individual's credentials.
+- **A live-call-only score can be ESTIMATED without TRAQ at all**, since a
+  voicemail scores ~3: `live_avg ~= (calls x avg_score - voicemails x 3) /
+  live_calls`, taking calls and avg_score from the Coach AI email and the
+  voicemail/live split from our own transcripts. Not implemented. It would be a
+  DERIVED figure and would have to be labelled as one everywhere it appeared.
 - The TRAQ note on every call carries its call id (app.traq.ai/call/0/<id>).
   IF a TRAQ API key ever lands, those ids join TRAQ's per-call scores onto our
   own live/voicemail classification directly and remove all of the inference
