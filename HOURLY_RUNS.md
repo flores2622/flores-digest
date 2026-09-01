@@ -562,6 +562,35 @@ download and transcribe the calls?"* This is the original ask. The missed-call
 work was added on top of it and then took over the conversation; the run
 schedule in §7 exists to serve both.
 
+### BUILT — `hourly.py`, written and tested 2026-09-01
+
+    python3 hourly.py                # today, Arizona
+    python3 hourly.py --day 2026-09-01
+    python3 hourly.py --dry-run      # report state, fetch nothing
+
+It is thin on purpose. `daily.transcribe_day()` was already incremental — it
+reads the existing transcripts file and processes only what is missing — so the
+script's real job is just to keep today's call log fresh and call it. The one
+thing it must NOT reuse is `daily.pull_sources`'s `if not f.exists()` guard on
+`rc_raw_<day>.json`: that is right for a finished day and wrong for one still in
+progress, and would leave the 4pm run reading the 8:35 snapshot.
+
+Measured end to end on 2026-09-01, both runs real:
+
+    first run, empty cache      18m36s   6m corpus cold start, 8m30s download
+                                         61 recordings, 63 transcripts
+                                         (voicemail 44 / live 12 / no answer 3 / unclear 4)
+    second run, warm cache       3s      +2 call records, +0 transcripts
+
+**Three seconds.** That is the whole case for this design: a warm run costs
+nothing, so ten a day is free, and the evening build arrives to a full cache.
+
+It also shows what a COLD run costs — about six minutes of AgencyZoom corpus
+pulls before it can screen inbound calls, plus a full re-download. Ten cold runs
+a day would be roughly 2,000 media requests against a 10-per-minute ceiling and
+would collide with the nightly build. **Do not switch the schedule on until
+persistence is confirmed.**
+
 ### What it costs today
 
 Measured over 20 business days, Aug 3–28:
@@ -612,10 +641,37 @@ This also answers §8. The missed-call idempotency ledger is a small tracked fil
 in the same commit — no separate mechanism needed. Solve persistence once and
 both features get it.
 
+### BLOCKED — a scheduled session cannot push, tested 2026-09-01
+
+    git push --dry-run origin HEAD:refs/heads/probe-push-test
+    remote: access denied by the git proxy: flores2622/flores-digest is not in
+    this session's authorized repository set, so the proxy will not inject a
+    credential for it. To fix, add the repository to the session's sources.
+    fatal: ... The requested URL returned error: 403
+
+Clone works; push does not. HANDOFF 11 §9 recorded the same thing on 08-31, so
+this is the standing state for scheduled sessions, not a one-off.
+
+**Committing `transcripts_<day>.json` hourly is therefore not available today.**
+Three ways forward, in order of preference:
+
+1. **Authorise the repo for the hourly scheduled task.** The proxy names the fix
+   itself — add `flores2622/flores-digest` to that task's sources. This has to be
+   done when the task is created, from the app, by Frank. If it works, the whole
+   persistence design in this section stands as written.
+2. **A store outside git** — anything the container can write and re-read next
+   hour. Needs picking; none is set up.
+3. **Warm container.** If an hourly scheduled task reuses one container across
+   fires rather than cloning fresh each time, `data/` simply persists and nothing
+   else is needed. Untested, and the nightly task clones fresh every night, so
+   assume it does not until proven.
+
+Test option 1 first. It is a settings change, and if it works the rest of this
+section needs no revision.
+
 ### Open
 
-- Whether an hourly run can commit to the repo at all, or needs a different
-  store. This is the single blocking unknown for both features.
+- Whether a scheduled task can be created with repo push access at all (above).
 - Merge semantics for `transcripts_<day>.json` when two runs overlap. Keyed by
   recording id, so a dict merge is safe, but the write must not clobber.
 - Whether transcription of ~24 recordings fits comfortably inside one run's
