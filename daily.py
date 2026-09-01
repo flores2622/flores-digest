@@ -540,10 +540,31 @@ def build_metrics(day):
         # person, not two attempts -- reaching someone on their mobile after
         # their landline should not read as a 50% contact rate.
         detail, duplicates = _one_row_per_lead(detail)
-        dup_numbers = {d["number"] for d in duplicates if not d.get("inbound")}
-        for d in dials_kept:
-            if d["number"] in dup_numbers:
-                d["dropped"] = "duplicate lead (same person, another number)"
+        # THE ATTEMPT SURVIVES, THE CONTACT DOES NOT. Frank, 2026-09-01:
+        # "theres 2 outbounds to 2 numbers. he got a hold on the second one,
+        # it 2 dials, one unique number/contact." A first pass dropped the
+        # duplicate outright and took its dial with it -- Mike's total_dials
+        # fell 57 -> 56, erasing a call he really made.
+        #
+        # This is exactly how the model already treats one number dialled
+        # twice: ONE call_volume entry carrying attempts=2. A second number for
+        # the same person is the same thing, so its attempts move onto the
+        # surviving row before it is dropped. Result for Nicole Santana:
+        # call_volume 53, total_dials 57, one live contact.
+        keep_num = {r["lead_id"]: r["number"] for r in detail
+                    if not r.get("inbound") and r.get("lead_id") is not None}
+        by_number = {d["number"]: d for d in dials_kept}
+        for dup in duplicates:
+            if dup.get("inbound"):
+                continue
+            row = by_number.get(dup["number"])
+            if row is None:
+                continue
+            survivor = by_number.get(keep_num.get(dup.get("lead_id")))
+            if survivor is not None and survivor is not row:
+                survivor["attempts"] = ((survivor.get("attempts") or 0)
+                                        + (row.get("attempts") or 0))
+            row["dropped"] = "duplicate lead (same person, another number)"
         M[who] = {"dials": dials_kept, "callbacks_prior": prior_callbacks,
                   "call_detail": sorted(detail, key=lambda d: -d["seconds"]),
                   "households_quoted": len(hh.get(who, ())),

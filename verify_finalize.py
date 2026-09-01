@@ -3,25 +3,41 @@
 Every figure is recomputed independently from day_calls, then compared with
 what finalize.apply() wrote into metrics.
 """
-import json, sys, collections
+import json, sys, collections, datetime as dt
 import os, pathlib
 ROOT = pathlib.Path(__file__).resolve().parent
 sys.path.insert(0, str(ROOT))
 os.chdir(ROOT)
 import day_calls
 
-M = json.load(open('data/metrics_2026-08-25.json'))
-rows = day_calls.classify('2026-08-25')
-dials = day_calls.producer_dials('2026-08-25')
+# The day was hardcoded to 2026-08-25 from the day this was written, so it
+# silently reconciled a stale file whenever anyone ran it against a newer build
+# (HANDOFF_11 s7). Takes the day as an argument now, defaulting to today in
+# Arizona, which is what the nightly build reports.
+DAY = (sys.argv[1] if len(sys.argv) > 1 else
+       (dt.datetime.now(dt.timezone.utc) - dt.timedelta(hours=7)).date().isoformat())
+print(f"reconciling {DAY}")
+
+M = json.load(open(f'data/metrics_{DAY}.json'))
+rows = day_calls.classify(DAY)
+dials = day_calls.producer_dials(DAY)
 bad = 0
 for who, v in M['producers'].items():
     counted = [r for r in rows.get(who, []) if not r['excluded']]
     dropped = {d['number'] for d in (v.get('dials') or []) if d.get('dropped')}
+    # A dial dropped as a DUPLICATE LEAD keeps its attempt -- the producer
+    # really made that call, and it was merged onto the surviving row for the
+    # same person (Frank, 2026-09-01: "it 2 dials, one unique
+    # number/contact"). Every other drop reason takes its attempt with it: a
+    # service/renewal call is not new-business activity at all.
+    merged = {d['number'] for d in (v.get('dials') or [])
+              if 'duplicate lead' in str(d.get('dropped') or '')}
     expect_numbers = {r['number'] for r in counted} - dropped
     checks = {
         'call_volume': (v['call_volume'], len(expect_numbers)),
         'total_dials': (v['total_dials'],
-                        sum(len(dials.get(who, {}).get(n) or []) for n in expect_numbers)),
+                        sum(len(dials.get(who, {}).get(n) or [])
+                            for n in expect_numbers | merged)),
         # call_detail now carries inbound rows too, which are conversations
         # but not dials -- so live counts only the OUTBOUND rows.
         'live':        (v['live'],
