@@ -173,12 +173,22 @@ def screen(rows, day):
     # Every open ticket on a number, WHOEVER the CSR is -- see the inbound
     # branch below. Same point-in-time test day_calls uses, so the two
     # directions still agree about which tickets were open on the day.
+    #
+    # 359 of 361 closed tickets carry no completeDate, so once
+    # service_tickets_all() started returning closed tickets too
+    # (2026-09-01) they need a fallback close date or every one of them reads
+    # as open forever. lastActivityDate is the usable proxy, and only counts
+    # when status says the ticket is actually closed -- see day_calls for the
+    # full reasoning, kept in step here.
     any_open_ticket = collections.defaultdict(list)
     sr = pathlib.Path(f"data/az_service_tickets_{day}.json")
     if sr.exists():
         for t in json.loads(sr.read_text()):
             created = str(t.get("createDate") or "")[:10]
-            cd = str(t.get("completeDate") or "")[:10]
+            cd = ""
+            if t.get("status") == 1:
+                cd = str(t.get("completeDate") or t.get("lastActivityDate")
+                          or "")[:10]
             if (created and created > day) or (cd and cd < day):
                 continue
             ph = e164(t.get("phone"))
