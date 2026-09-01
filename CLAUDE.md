@@ -123,6 +123,24 @@ corrected.
   window -- because scaling 0-800 makes every bar a sliver. The side effect is
   that 224 renders nearly full when it is under a third of a perfect call. If
   the bar is ever relabelled or re-anchored, that is the reason.
+.- **Voicemails are scored as calls, and that is the whole story of the low
+  numbers.** Confirmed 2026-09-01 against TRAQ's own per-call scores, read off
+  three of Sarahi's calls where TRAQ itself labels the call type:
+    voicemail -> score 3,   sentiment 0
+    voicemail -> score 3,   sentiment 0
+    live call -> score 292, sentiment 48
+  A voicemail scores ~3 against a real conversation's ~292 (~100x), and
+  sentiment on a voicemail is a flat 0. Avg Call Score and Avg Sentiment are
+  therefore answer-rate-weighted, NOT call-quality measures: a producer who
+  reaches more voicemails posts a lower average regardless of how they talk.
+  Sarahi's 25 voicemails of 35 rows are why she sits at 11. This is not a fault
+  to fix in our pipeline -- it is how TRAQ scores -- but it means these two
+  figures cannot rank producers with different answer rates against each other.
+- The TRAQ note on every call carries its call id (app.traq.ai/call/0/<id>).
+  When the TRAQ API key lands (parked to 2026-09-15, digest_config.
+  TRAQ_REVISIT_DATE) those ids join TRAQ's per-call scores onto our own
+  live/voicemail classification directly, which removes all of the inference
+  above.
 - The per-user rows ARE internally consistent: they are call-weighted averages
   over Coach's own Total Calls column and roll up exactly to the team figure
   (2026-08-31: 12,835/142 = 90.4 against a stated 90; role play 399/5 = 79.8
