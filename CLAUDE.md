@@ -106,6 +106,31 @@ per day. Modelled against 2026-08-28 it would have screened **two** additional
 answered inbound calls as service work, so contact rates shift by a point or
 two, downward, for whoever took those calls. That shift is the bug being
 corrected.
+## Coach AI
+
+- **The call score is NOT a 0-100 percentage.** Frank, 2026-09-01: a *perfect
+  call* scores **750-800**. A producer averaging 224 is near 29% of a perfect
+  call, not "over the cap". Nothing above 100 is evidence of a bug -- do not
+  describe it as one, and do not "correct" a score for being over 100.
+  Transcribe what the email prints, always, but for the ordinary reason that it
+  is their measure and not ours.
+- On that scale every figure the team currently posts is LOW: 2026-08-31 ran
+  Lorena 224, Mike 148, Coral 122, Crystal 90, Sarahi 11, team 90. The team
+  average is roughly 12% of a perfect call. Low scores are the finding, not a
+  data fault.
+- **`COACH_BAR_RANGES` is team-relative, not a share of the scale.** The Avg
+  Call Score bar spans (38, 251) -- per-producer extremes over the trailing
+  window -- because scaling 0-800 makes every bar a sliver. The side effect is
+  that 224 renders nearly full when it is under a third of a perfect call. If
+  the bar is ever relabelled or re-anchored, that is the reason.
+- The per-user rows ARE internally consistent: they are call-weighted averages
+  over Coach's own Total Calls column and roll up exactly to the team figure
+  (2026-08-31: 12,835/142 = 90.4 against a stated 90; role play 399/5 = 79.8
+  against 80). The aggregation is not in question.
+- **Total Calls includes voicemails**, and Coach's coverage of a producer's day
+  varies wildly -- 2026-08-31 it saw 9 of Lorena's 52 dials but 35 of Sarahi's
+  40. Cross-producer comparison of these averages is unsafe for that reason
+  alone, independent of the scale.
 
 ## Cost
 

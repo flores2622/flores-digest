@@ -285,6 +285,13 @@ LEADERBOARD_TIEBREAK = ["premium_sold", "households_quoted", "call_volume"]
 COACH_TITLE_IS_NEXT_DAY = True
 # Bars scale against PER-PRODUCER extremes over the trailing window -- not team
 # daily averages, which put individual scores below the floor.
+#
+# THESE ARE TEAM-RELATIVE, NOT A SHARE OF THE SCALE. Frank, 2026-09-01: a
+# perfect call scores 750-800, so the 251 ceiling here is "best anyone has
+# posted lately", not "full marks". A producer at 224 draws an almost-full bar
+# while sitting under a third of a perfect call. Anchoring to 800 instead is
+# honest but makes every bar a sliver, which is the floor problem noted above.
+# Left as-is deliberately; revisit only with Frank.
 COACH_BAR_RANGES = {
     "Avg Call Score": (38, 251),
     "Avg Sentiment": (11, 43),
