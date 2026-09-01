@@ -137,10 +137,14 @@ corrected.
   to fix in our pipeline -- it is how TRAQ scores -- but it means these two
   figures cannot rank producers with different answer rates against each other.
 - The TRAQ note on every call carries its call id (app.traq.ai/call/0/<id>).
-  When the TRAQ API key lands (parked to 2026-09-15, digest_config.
-  TRAQ_REVISIT_DATE) those ids join TRAQ's per-call scores onto our own
-  live/voicemail classification directly, which removes all of the inference
-  above.
+  IF a TRAQ API key ever lands, those ids join TRAQ's per-call scores onto our
+  own live/voicemail classification directly and remove all of the inference
+  above. Do NOT plan around a date: 2026-09-15 (digest_config.
+  TRAQ_REVISIT_DATE) is when Frank FOLLOWS UP, not when the key arrives, and he
+  has said explicitly it is not guaranteed. Until it exists the manual route
+  works -- pull the app.traq.ai links out of the cached TRAQ notes, pick calls
+  by the type TRAQ states in its own summary, and have someone with a login
+  read the scores back. That is how the numbers above were obtained.
 - The per-user rows ARE internally consistent: they are call-weighted averages
   over Coach's own Total Calls column and roll up exactly to the team figure
   (2026-08-31: 12,835/142 = 90.4 against a stated 90; role play 399/5 = 79.8
