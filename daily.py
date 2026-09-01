@@ -130,7 +130,15 @@ def pull_sources(day):
         p.write_text(json.dumps({str(k): v for k, v in stage.items()}))
 
 
-def transcribe_day(day):
+def transcribe_day(day, outbound_only=False):
+    """Download and transcribe today's recordings; inbound too, unless told not to.
+
+    outbound_only skips the inbound branch below. Screening inbound calls needs
+    the whole AgencyZoom corpus and a 31-day RingCentral window -- about eight
+    minutes -- to classify roughly three calls a day. A cold hourly container
+    (see HOURLY_RUNS.md) cannot afford to pay that ten times a day just to
+    prefetch recordings; the nightly build does inbound itself.
+    """
     import transcribe
     from digest_config import PRODUCERS
     from rc_client import RingCentral, owner_ext_id
@@ -158,54 +166,55 @@ def transcribe_day(day):
                 log(f"  {i + 1}/{len(todo)}")
         out_f.write_text(json.dumps(done))
 
-    # --- inbound -------------------------------------------------------
-    # Screened FIRST, so service and renewal call-ins never cost a download
-    # (Frank, 2026-08-26). What survives is stored under the CALLER's number
-    # against the producer who took it, which is the same key an outbound dial
-    # to that number uses -- so a live call back simply outranks the voicemail
-    # the producer left, with no special handling anywhere downstream.
-    import inbound as ib
-    raw_by_id = {r["id"]: r for r in
-                 json.loads((ROOT / f"data/rc_raw_{day}.json").read_text())}
-    win = json.loads((ROOT / f"data/rc_window_{day}.json").read_text())
-    in_rows = ib.screen(ib.link_callbacks(
-        ib.answered(day, list(raw_by_id.values())), win, day), day)
-    keep = [r for r in in_rows if not r["skip"] and r["recording"]]
-    dropped = len(in_rows) - len(keep)
-    in_todo = [raw_by_id[r["id"]] for r in keep if r["id"] not in done]
-    if in_todo:
-        log(f"inbound: {len(in_rows)} reached a producer, "
-            f"{dropped} screened out, downloading {len(in_todo)}...")
-        transcribe.download(in_todo, RingCentral().token(), log=log)
-        by_id = {r["id"]: r for r in keep}
-        for r in in_todo:
-            meta = by_id[r["id"]]
-            # The recording covers the WHOLE call, front desk included. The
-            # producer's conversation is the last leg, so skip everything
-            # before it -- otherwise the auto-attendant at the top classifies
-            # the call as a voicemail.
-            path = f"data/audio/{r['id']}.mp3"
-            total = r.get("duration") or meta["seconds"]
-            leg = meta["seconds"] or 0
-            have = transcribe.audio_seconds(path) or total
-            # Only offset when the recording is actually long enough to hold
-            # the producer's leg. On a parked transfer it is not -- the audio
-            # stops at the hand-off -- and offsetting into it reads past the
-            # end and returns nothing at all.
-            partial = have < leg * 0.8
-            off = 0 if partial else max(0, total - leg)
-            use = int(have) if partial else leg
-            txt = transcribe.transcribe_file(path, duration=use, offset=off)
-            cls, why = transcribe.classify(txt, use)
-            done[r["id"]] = {"producer": meta["producer"],
-                             "to": meta["e164"] or meta["number"],
-                             "duration": meta["seconds"], "text": txt,
-                             "class": cls, "why": why,
-                             "direction": "inbound", "kind": meta["kind"],
-                             "offset": off, "audio_seconds": use,
-                             "partial": partial,
-                             "callback_day": meta.get("callback_day")}
-        out_f.write_text(json.dumps(done))
+    if not outbound_only:
+        # --- inbound -------------------------------------------------------
+        # Screened FIRST, so service and renewal call-ins never cost a download
+        # (Frank, 2026-08-26). What survives is stored under the CALLER's number
+        # against the producer who took it, which is the same key an outbound dial
+        # to that number uses -- so a live call back simply outranks the voicemail
+        # the producer left, with no special handling anywhere downstream.
+        import inbound as ib
+        raw_by_id = {r["id"]: r for r in
+                     json.loads((ROOT / f"data/rc_raw_{day}.json").read_text())}
+        win = json.loads((ROOT / f"data/rc_window_{day}.json").read_text())
+        in_rows = ib.screen(ib.link_callbacks(
+            ib.answered(day, list(raw_by_id.values())), win, day), day)
+        keep = [r for r in in_rows if not r["skip"] and r["recording"]]
+        dropped = len(in_rows) - len(keep)
+        in_todo = [raw_by_id[r["id"]] for r in keep if r["id"] not in done]
+        if in_todo:
+            log(f"inbound: {len(in_rows)} reached a producer, "
+                f"{dropped} screened out, downloading {len(in_todo)}...")
+            transcribe.download(in_todo, RingCentral().token(), log=log)
+            by_id = {r["id"]: r for r in keep}
+            for r in in_todo:
+                meta = by_id[r["id"]]
+                # The recording covers the WHOLE call, front desk included. The
+                # producer's conversation is the last leg, so skip everything
+                # before it -- otherwise the auto-attendant at the top classifies
+                # the call as a voicemail.
+                path = f"data/audio/{r['id']}.mp3"
+                total = r.get("duration") or meta["seconds"]
+                leg = meta["seconds"] or 0
+                have = transcribe.audio_seconds(path) or total
+                # Only offset when the recording is actually long enough to hold
+                # the producer's leg. On a parked transfer it is not -- the audio
+                # stops at the hand-off -- and offsetting into it reads past the
+                # end and returns nothing at all.
+                partial = have < leg * 0.8
+                off = 0 if partial else max(0, total - leg)
+                use = int(have) if partial else leg
+                txt = transcribe.transcribe_file(path, duration=use, offset=off)
+                cls, why = transcribe.classify(txt, use)
+                done[r["id"]] = {"producer": meta["producer"],
+                                 "to": meta["e164"] or meta["number"],
+                                 "duration": meta["seconds"], "text": txt,
+                                 "class": cls, "why": why,
+                                 "direction": "inbound", "kind": meta["kind"],
+                                 "offset": off, "audio_seconds": use,
+                                 "partial": partial,
+                                 "callback_day": meta.get("callback_day")}
+            out_f.write_text(json.dumps(done))
     c = collections.Counter(v["class"] for v in done.values())
     log(f"  transcripts: {dict(c)}")
     return done
