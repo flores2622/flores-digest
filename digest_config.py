@@ -254,13 +254,20 @@ def tier(metric, value):
 
 
 # --- MVP leaderboard (HANDOFF_4 s7) -----------------------------------------
-# Nine categories in this exact order. 3/2/1 by rank; bars scale to the leading
-# total. Zero-activity override: no recorded activity in a category scores 0,
-# not a ranked point.
+# Seven scored categories in this exact order. 3/2/1 by rank; bars scale to the
+# leading total. Zero-activity override: no recorded activity in a category
+# scores 0, not a ranked point.
+#
+# Avg Call Score and Avg Sentiment were REMOVED 2026-09-01 (Frank). TRAQ scores
+# voicemails as calls -- 3 and sentiment 0, against 292 and 48 for a live
+# conversation -- so both rank producers on their answer rate and pay for not
+# connecting. They still display in Coaching & Call Quality. See CLAUDE.md.
+#
+# NOTE: this list is descriptive. The scored categories are built in
+# panels.leaderboard; change both together.
 LEADERBOARD_CATEGORIES = [
-    "Role Play", "Call Volume", "Avg Talk Time", "Avg Sentiment",
-    "Avg Call Score", "Contact Rate", "Households Quoted",
-    "Premium Quoted", "Premium Sold",
+    "Role Play", "Call Volume", "Avg Talk Time", "Contact Rate",
+    "Households Quoted", "Premium Quoted", "Premium Sold",
 ]
 # Frank, 2026-08-24: "lets do 3-2-1-.5-0 for the points". Keeps the original
 # 3/2/1 podium intact, so totals stay on the same scale as the three-producer
@@ -285,6 +292,13 @@ LEADERBOARD_TIEBREAK = ["premium_sold", "households_quoted", "call_volume"]
 COACH_TITLE_IS_NEXT_DAY = True
 # Bars scale against PER-PRODUCER extremes over the trailing window -- not team
 # daily averages, which put individual scores below the floor.
+#
+# THESE ARE TEAM-RELATIVE, NOT A SHARE OF THE SCALE. Frank, 2026-09-01: a
+# perfect call scores 750-800, so the 251 ceiling here is "best anyone has
+# posted lately", not "full marks". A producer at 224 draws an almost-full bar
+# while sitting under a third of a perfect call. Anchoring to 800 instead is
+# honest but makes every bar a sliver, which is the floor problem noted above.
+# Left as-is deliberately; revisit only with Frank.
 COACH_BAR_RANGES = {
     "Avg Call Score": (38, 251),
     "Avg Sentiment": (11, 43),

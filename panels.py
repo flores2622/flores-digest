@@ -248,8 +248,16 @@ def leaderboard(M, coach):
     cats.append(("Role Play", vals(None, lambda m, c: c["roleplay"]), lambda v: str(v)))
     cats.append(("Call Volume", vals(None, lambda m, c: m["call_volume"]), str))
     cats.append(("Avg Talk Time", vals(None, lambda m, c: m["avg_talk"]), hhmm))
-    cats.append(("Avg Sentiment", vals(None, lambda m, c: c["sentiment"]), str))
-    cats.append(("Avg Call Score", vals(None, lambda m, c: c["score"]), str))
+    # Avg Call Score and Avg Sentiment are NOT scored here. Frank, 2026-09-01.
+    # TRAQ scores a voicemail as a call: measured on three of Sarahi's, a
+    # voicemail scores 3 with sentiment 0 against a live conversation's 292 with
+    # sentiment 48. Both figures are therefore driven by how many people picked
+    # up, not by how the producer talked -- and ranking on them pays producers
+    # for NOT connecting. On 2026-08-31 Lorena took first on Avg Call Score with
+    # TRAQ seeing only 9 of her 52 dials, because the calls she hangs up before
+    # pickup never record and so never enter her average.
+    # Both still DISPLAY in the Coaching & Call Quality panel; they just do not
+    # award points. Restore them here once they can be normalised by answer rate.
     cats.append(("Contact Rate", vals(None, lambda m, c: m["contact_rate"]),
                  lambda v: f"{v}%"))
     cats.append(("Households Quoted", vals(None, lambda m, c: m["households_quoted"]), str))
@@ -329,9 +337,23 @@ def leaderboard(M, coach):
              "".join(f'<td class="num"><b>{_pts(points[p])} pts</b></td>'
                      for p in P3) +
              "</tr>")
+    # Inline-styled so it survives both Gmail and render_report.prune_css, which
+    # drops class rules it cannot find in the delivered document.
+    #
+    # DO NOT name a panel by its exact heading in body copy. render_report's
+    # panel helpers locate a panel with html.find(heading), so the first literal
+    # match wins -- this footnote originally read "shown in Coaching &amp; Call
+    # Quality", which sits earlier in the document than the panel itself, and
+    # the build died with "panel close not found: Coaching &amp; Call Quality"
+    # while walking div depth from the wrong opening tag.
+    note = ('<div style="margin-top:10px;font-size:11px;line-height:1.5;'
+            'color:#52514e">Avg Call Score and Avg Sentiment are still shown '
+            'below but no longer award points. TRAQ scores a voicemail as a '
+            'call (3 against a live call&rsquo;s 292), so both track how many '
+            'people answered rather than how the call went.</div>')
     return (f'<div class="mvp-podium">{podium}</div>'
             f'<div class="table-scroll"><table>{head}<tbody>'
-            f'{"".join(rows)}{total}</tbody></table></div>')
+            f'{"".join(rows)}{total}</tbody></table>{note}</div>')
 
 
 # ---- Recontact Struggle ----------------------------------------------------

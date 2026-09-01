@@ -1,0 +1,5614 @@
+[
+ {
+  "current": true,
+  "current_basis": "recording",
+  "evidence": {
+   "asserted": [],
+   "call_notes": [],
+   "machine_vm": false,
+   "negative": false,
+   "screener": false,
+   "stage_moves": [],
+   "written": []
+  },
+  "expected": true,
+  "lead_id": 84165694,
+  "lead_name": "Guillermo Lara",
+  "live_seconds": 326,
+  "number": "+19288438263",
+  "producer": "Coral Barwick",
+  "screener": false,
+  "talk_seconds": 326,
+  "transcript_class": "live",
+  "unrecorded_dials": 0,
+  "why": "recording is a two-way conversation"
+ },
+ {
+  "current": true,
+  "current_basis": "recording",
+  "evidence": {
+   "asserted": [],
+   "call_notes": [
+    {
+     "seconds": 109,
+     "status": true
+    }
+   ],
+   "machine_vm": false,
+   "negative": false,
+   "screener": false,
+   "stage_moves": [],
+   "written": []
+  },
+  "expected": true,
+  "lead_id": 88839110,
+  "lead_name": "Cecilia Arviso",
+  "live_seconds": 124,
+  "number": "+19282918712",
+  "producer": "Coral Barwick",
+  "screener": false,
+  "talk_seconds": 124,
+  "transcript_class": "live",
+  "unrecorded_dials": 0,
+  "why": "recording is a two-way conversation"
+ },
+ {
+  "current": true,
+  "current_basis": "recording",
+  "evidence": {
+   "asserted": [],
+   "call_notes": [],
+   "machine_vm": false,
+   "negative": false,
+   "screener": false,
+   "stage_moves": [
+    {
+     "comment": "",
+     "move": "1 Pipeline | Quotes Presented to Smart-Cycle by Coral Barwick"
+    }
+   ],
+   "written": []
+  },
+  "expected": true,
+  "lead_id": 88841302,
+  "lead_name": "Erick Cruz",
+  "live_seconds": 109,
+  "number": "+19284466527",
+  "producer": "Coral Barwick",
+  "screener": false,
+  "talk_seconds": 109,
+  "transcript_class": "live",
+  "unrecorded_dials": 0,
+  "why": "recording is a two-way conversation"
+ },
+ {
+  "current": true,
+  "current_basis": "recording",
+  "evidence": {
+   "asserted": [],
+   "call_notes": [],
+   "machine_vm": false,
+   "negative": false,
+   "screener": false,
+   "stage_moves": [],
+   "written": []
+  },
+  "expected": true,
+  "lead_id": 48921798,
+  "lead_name": "Leonel Martinez",
+  "live_seconds": 102,
+  "number": "+16024197455",
+  "producer": "Coral Barwick",
+  "screener": false,
+  "talk_seconds": 102,
+  "transcript_class": "live",
+  "unrecorded_dials": 0,
+  "why": "recording is a two-way conversation"
+ },
+ {
+  "current": false,
+  "current_basis": "recording (no contact evidence)",
+  "evidence": {
+   "asserted": [],
+   "call_notes": [],
+   "machine_vm": false,
+   "negative": false,
+   "screener": false,
+   "stage_moves": [],
+   "written": []
+  },
+  "expected": null,
+  "lead_id": 88097511,
+  "lead_name": "Guadalupe Garcia",
+  "live_seconds": 0,
+  "number": "+19282590250",
+  "producer": "Coral Barwick",
+  "screener": false,
+  "talk_seconds": 47,
+  "transcript_class": "unclear",
+  "unrecorded_dials": 0,
+  "why": ""
+ },
+ {
+  "current": false,
+  "current_basis": "recording (voicemail), every dial recorded",
+  "evidence": {
+   "asserted": [],
+   "call_notes": [],
+   "machine_vm": false,
+   "negative": true,
+   "screener": false,
+   "stage_moves": [],
+   "written": []
+  },
+  "expected": false,
+  "lead_id": 88093924,
+  "lead_name": "Abelardo Contreras",
+  "live_seconds": 0,
+  "number": "+17146718076",
+  "producer": "Coral Barwick",
+  "screener": false,
+  "talk_seconds": 39,
+  "transcript_class": "voicemail",
+  "unrecorded_dials": 0,
+  "why": "recording is a voicemail, code agrees"
+ },
+ {
+  "current": false,
+  "current_basis": "producer note (no contact)",
+  "evidence": {
+   "asserted": [],
+   "call_notes": [
+    {
+     "seconds": 20,
+     "status": true
+    }
+   ],
+   "machine_vm": false,
+   "negative": true,
+   "screener": false,
+   "stage_moves": [],
+   "written": []
+  },
+  "expected": null,
+  "lead_id": 85405342,
+  "lead_name": "Juan Castro",
+  "live_seconds": 0,
+  "number": "+14028137835",
+  "producer": "Coral Barwick",
+  "screener": false,
+  "talk_seconds": 39,
+  "transcript_class": "unclear",
+  "unrecorded_dials": 0,
+  "why": ""
+ },
+ {
+  "current": false,
+  "current_basis": "recording (voicemail), every dial recorded",
+  "evidence": {
+   "asserted": [],
+   "call_notes": [
+    {
+     "seconds": 21,
+     "status": false
+    }
+   ],
+   "machine_vm": false,
+   "negative": false,
+   "screener": false,
+   "stage_moves": [],
+   "written": []
+  },
+  "expected": false,
+  "lead_id": 78035417,
+  "lead_name": "Carlos Cruz",
+  "live_seconds": 0,
+  "number": "+14807483700",
+  "producer": "Coral Barwick",
+  "screener": false,
+  "talk_seconds": 36,
+  "transcript_class": "voicemail",
+  "unrecorded_dials": 0,
+  "why": "recording is a voicemail, code agrees"
+ },
+ {
+  "current": false,
+  "current_basis": "recording (voicemail), every dial recorded",
+  "evidence": {
+   "asserted": [],
+   "call_notes": [],
+   "machine_vm": false,
+   "negative": false,
+   "screener": false,
+   "stage_moves": [],
+   "written": []
+  },
+  "expected": false,
+  "lead_id": 54477281,
+  "lead_name": "Ricardo Lopez Vazquez",
+  "live_seconds": 0,
+  "number": "+15204487032",
+  "producer": "Coral Barwick",
+  "screener": false,
+  "talk_seconds": 26,
+  "transcript_class": "voicemail",
+  "unrecorded_dials": 0,
+  "why": "recording is a voicemail, code agrees"
+ },
+ {
+  "current": false,
+  "current_basis": "producer note (no contact)",
+  "evidence": {
+   "asserted": [],
+   "call_notes": [],
+   "machine_vm": false,
+   "negative": true,
+   "screener": false,
+   "stage_moves": [],
+   "written": []
+  },
+  "expected": null,
+  "lead_id": 63422489,
+  "lead_name": "Miguel Acosta",
+  "live_seconds": 24,
+  "number": "+19284599772",
+  "producer": "Coral Barwick",
+  "screener": false,
+  "talk_seconds": 24,
+  "transcript_class": "live",
+  "unrecorded_dials": 0,
+  "why": ""
+ },
+ {
+  "current": false,
+  "current_basis": "recording (voicemail), every dial recorded",
+  "evidence": {
+   "asserted": [],
+   "call_notes": [],
+   "machine_vm": false,
+   "negative": true,
+   "screener": false,
+   "stage_moves": [],
+   "written": []
+  },
+  "expected": false,
+  "lead_id": 86876675,
+  "lead_name": "Jose Hernandez",
+  "live_seconds": 0,
+  "number": "+15313758663",
+  "producer": "Coral Barwick",
+  "screener": false,
+  "talk_seconds": 9,
+  "transcript_class": "voicemail",
+  "unrecorded_dials": 0,
+  "why": "recording is a voicemail, code agrees"
+ },
+ {
+  "current": false,
+  "current_basis": "producer note (no contact)",
+  "evidence": {
+   "asserted": [],
+   "call_notes": [],
+   "machine_vm": false,
+   "negative": true,
+   "screener": false,
+   "stage_moves": [],
+   "written": []
+  },
+  "expected": null,
+  "lead_id": 87779323,
+  "lead_name": "Ana Martinez",
+  "live_seconds": 0,
+  "number": "+16023031119",
+  "producer": "Coral Barwick",
+  "screener": false,
+  "talk_seconds": 8,
+  "transcript_class": null,
+  "unrecorded_dials": 1,
+  "why": ""
+ },
+ {
+  "current": false,
+  "current_basis": "recording (voicemail), every dial recorded",
+  "evidence": {
+   "asserted": [],
+   "call_notes": [],
+   "machine_vm": false,
+   "negative": false,
+   "screener": false,
+   "stage_moves": [
+    {
+     "comment": "",
+     "move": "Smart-Cycle recycled back to 1-2 Leads Not Quoted | New 1st Cycle by Coral Barwick"
+    }
+   ],
+   "written": [
+    "Rec Engine requesting to win back home"
+   ]
+  },
+  "expected": false,
+  "lead_id": 81028848,
+  "lead_name": "Ricardo Vazquez",
+  "live_seconds": 0,
+  "number": "+16234145919",
+  "producer": "Coral Barwick",
+  "screener": false,
+  "talk_seconds": 7,
+  "transcript_class": "voicemail",
+  "unrecorded_dials": 0,
+  "why": "Frank 2026-08-31: voicemail. Note is a Rec Engine prompt, not a call outcome"
+ },
+ {
+  "current": false,
+  "current_basis": "too short to be a conversation",
+  "evidence": {
+   "asserted": [],
+   "call_notes": [],
+   "machine_vm": false,
+   "negative": true,
+   "screener": false,
+   "stage_moves": [],
+   "written": []
+  },
+  "expected": null,
+  "lead_id": 84203981,
+  "lead_name": "Francisco Vasquez Caro",
+  "live_seconds": 0,
+  "number": "+16531159747",
+  "producer": "Coral Barwick",
+  "screener": false,
+  "talk_seconds": 0,
+  "transcript_class": null,
+  "unrecorded_dials": 1,
+  "why": ""
+ },
+ {
+  "current": false,
+  "current_basis": "producer note (no contact)",
+  "evidence": {
+   "asserted": [],
+   "call_notes": [
+    {
+     "seconds": 67,
+     "status": true
+    },
+    {
+     "seconds": 33,
+     "status": true
+    }
+   ],
+   "machine_vm": false,
+   "negative": true,
+   "screener": false,
+   "stage_moves": [],
+   "written": []
+  },
+  "expected": null,
+  "lead_id": 37479683,
+  "lead_name": "Maria Malta",
+  "live_seconds": 33,
+  "number": "+19282617378",
+  "producer": "Crystal Mango",
+  "screener": false,
+  "talk_seconds": 100,
+  "transcript_class": "live",
+  "unrecorded_dials": 0,
+  "why": ""
+ },
+ {
+  "current": true,
+  "current_basis": "recording",
+  "evidence": {
+   "asserted": [],
+   "call_notes": [],
+   "machine_vm": false,
+   "negative": false,
+   "screener": false,
+   "stage_moves": [],
+   "written": []
+  },
+  "expected": true,
+  "lead_id": 12578636,
+  "lead_name": "Nichols Lock & Safe, LLC",
+  "live_seconds": 82,
+  "number": "+19287500264",
+  "producer": "Crystal Mango",
+  "screener": false,
+  "talk_seconds": 82,
+  "transcript_class": "live",
+  "unrecorded_dials": 0,
+  "why": "recording is a two-way conversation"
+ },
+ {
+  "current": false,
+  "current_basis": "recording (voicemail), every dial recorded",
+  "evidence": {
+   "asserted": [],
+   "call_notes": [
+    {
+     "seconds": 45,
+     "status": true
+    },
+    {
+     "seconds": 33,
+     "status": true
+    }
+   ],
+   "machine_vm": false,
+   "negative": true,
+   "screener": false,
+   "stage_moves": [],
+   "written": []
+  },
+  "expected": false,
+  "lead_id": 88256668,
+  "lead_name": "Albino Medellin",
+  "live_seconds": 0,
+  "number": "+14808243612",
+  "producer": "Crystal Mango",
+  "screener": false,
+  "talk_seconds": 77,
+  "transcript_class": "voicemail",
+  "unrecorded_dials": 0,
+  "why": "recording is a voicemail, code agrees"
+ },
+ {
+  "current": false,
+  "current_basis": "recording (voicemail), every dial recorded",
+  "evidence": {
+   "asserted": [],
+   "call_notes": [
+    {
+     "seconds": 65,
+     "status": true
+    }
+   ],
+   "machine_vm": false,
+   "negative": true,
+   "screener": false,
+   "stage_moves": [],
+   "written": []
+  },
+  "expected": false,
+  "lead_id": 88840095,
+  "lead_name": "Kevin Herrick",
+  "live_seconds": 0,
+  "number": "+16025166372",
+  "producer": "Crystal Mango",
+  "screener": false,
+  "talk_seconds": 65,
+  "transcript_class": "voicemail",
+  "unrecorded_dials": 0,
+  "why": "recording is a voicemail, code agrees"
+ },
+ {
+  "current": false,
+  "current_basis": "recording (voicemail), every dial recorded",
+  "evidence": {
+   "asserted": [],
+   "call_notes": [],
+   "machine_vm": false,
+   "negative": false,
+   "screener": false,
+   "stage_moves": [],
+   "written": []
+  },
+  "expected": false,
+  "lead_id": 78353712,
+  "lead_name": "Laura Albelaiz",
+  "live_seconds": 0,
+  "number": "+19289882918",
+  "producer": "Crystal Mango",
+  "screener": false,
+  "talk_seconds": 64,
+  "transcript_class": "voicemail",
+  "unrecorded_dials": 0,
+  "why": "recording is a voicemail, code agrees"
+ },
+ {
+  "current": false,
+  "current_basis": "producer note (no contact)",
+  "evidence": {
+   "asserted": [],
+   "call_notes": [
+    {
+     "seconds": 62,
+     "status": true
+    }
+   ],
+   "machine_vm": false,
+   "negative": true,
+   "screener": false,
+   "stage_moves": [],
+   "written": []
+  },
+  "expected": false,
+  "lead_id": 88029487,
+  "lead_name": "Jose Miranda",
+  "live_seconds": 0,
+  "number": "+15206881314",
+  "producer": "Crystal Mango",
+  "screener": true,
+  "talk_seconds": 62,
+  "transcript_class": "voicemail",
+  "unrecorded_dials": 0,
+  "why": "recording is a voicemail, code agrees"
+ },
+ {
+  "current": false,
+  "current_basis": "producer note (no contact)",
+  "evidence": {
+   "asserted": [],
+   "call_notes": [
+    {
+     "seconds": 62,
+     "status": true
+    }
+   ],
+   "machine_vm": false,
+   "negative": true,
+   "screener": false,
+   "stage_moves": [],
+   "written": []
+  },
+  "expected": false,
+  "lead_id": 88255731,
+  "lead_name": "Harold Henderson",
+  "live_seconds": 0,
+  "number": "+13863384464",
+  "producer": "Crystal Mango",
+  "screener": true,
+  "talk_seconds": 62,
+  "transcript_class": "voicemail",
+  "unrecorded_dials": 0,
+  "why": "recording is a voicemail, code agrees"
+ },
+ {
+  "current": false,
+  "current_basis": "recording (voicemail), every dial recorded",
+  "evidence": {
+   "asserted": [],
+   "call_notes": [
+    {
+     "seconds": 61,
+     "status": true
+    }
+   ],
+   "machine_vm": false,
+   "negative": true,
+   "screener": false,
+   "stage_moves": [],
+   "written": []
+  },
+  "expected": false,
+  "lead_id": 88258256,
+  "lead_name": "Martina Villarreal",
+  "live_seconds": 0,
+  "number": "+19282465446",
+  "producer": "Crystal Mango",
+  "screener": false,
+  "talk_seconds": 60,
+  "transcript_class": "voicemail",
+  "unrecorded_dials": 0,
+  "why": "recording is a voicemail, code agrees"
+ },
+ {
+  "current": false,
+  "current_basis": "recording (voicemail), every dial recorded",
+  "evidence": {
+   "asserted": [],
+   "call_notes": [
+    {
+     "seconds": 57,
+     "status": true
+    }
+   ],
+   "machine_vm": false,
+   "negative": true,
+   "screener": false,
+   "stage_moves": [],
+   "written": []
+  },
+  "expected": false,
+  "lead_id": 87816220,
+  "lead_name": "Mario Cramer",
+  "live_seconds": 0,
+  "number": "+19289683695",
+  "producer": "Crystal Mango",
+  "screener": false,
+  "talk_seconds": 57,
+  "transcript_class": "voicemail",
+  "unrecorded_dials": 0,
+  "why": "recording is a voicemail, code agrees"
+ },
+ {
+  "current": false,
+  "current_basis": "recording (voicemail), every dial recorded",
+  "evidence": {
+   "asserted": [],
+   "call_notes": [],
+   "machine_vm": false,
+   "negative": false,
+   "screener": false,
+   "stage_moves": [],
+   "written": []
+  },
+  "expected": false,
+  "lead_id": 64757070,
+  "lead_name": "Douglas Acero",
+  "live_seconds": 0,
+  "number": "+19282570413",
+  "producer": "Crystal Mango",
+  "screener": false,
+  "talk_seconds": 57,
+  "transcript_class": "voicemail",
+  "unrecorded_dials": 0,
+  "why": "recording is a voicemail, code agrees"
+ },
+ {
+  "current": false,
+  "current_basis": "recording (voicemail), every dial recorded",
+  "evidence": {
+   "asserted": [],
+   "call_notes": [
+    {
+     "seconds": 57,
+     "status": true
+    }
+   ],
+   "machine_vm": false,
+   "negative": true,
+   "screener": false,
+   "stage_moves": [],
+   "written": []
+  },
+  "expected": false,
+  "lead_id": 87821693,
+  "lead_name": "Rudolph Chavez",
+  "live_seconds": 0,
+  "number": "+14802170355",
+  "producer": "Crystal Mango",
+  "screener": false,
+  "talk_seconds": 56,
+  "transcript_class": "voicemail",
+  "unrecorded_dials": 0,
+  "why": "recording is a voicemail, code agrees"
+ },
+ {
+  "current": false,
+  "current_basis": "recording (voicemail), every dial recorded",
+  "evidence": {
+   "asserted": [],
+   "call_notes": [
+    {
+     "seconds": 51,
+     "status": true
+    }
+   ],
+   "machine_vm": false,
+   "negative": false,
+   "screener": false,
+   "stage_moves": [],
+   "written": []
+  },
+  "expected": false,
+  "lead_id": 88253480,
+  "lead_name": "Robert Miller",
+  "live_seconds": 0,
+  "number": "+14809935961",
+  "producer": "Crystal Mango",
+  "screener": false,
+  "talk_seconds": 51,
+  "transcript_class": "voicemail",
+  "unrecorded_dials": 0,
+  "why": "recording is a voicemail, code agrees"
+ },
+ {
+  "current": false,
+  "current_basis": "recording (voicemail), every dial recorded",
+  "evidence": {
+   "asserted": [],
+   "call_notes": [
+    {
+     "seconds": 50,
+     "status": true
+    }
+   ],
+   "machine_vm": false,
+   "negative": true,
+   "screener": false,
+   "stage_moves": [],
+   "written": []
+  },
+  "expected": false,
+  "lead_id": 87899922,
+  "lead_name": "Eric Miller",
+  "live_seconds": 0,
+  "number": "+15037405083",
+  "producer": "Crystal Mango",
+  "screener": false,
+  "talk_seconds": 50,
+  "transcript_class": "voicemail",
+  "unrecorded_dials": 0,
+  "why": "recording is a voicemail, code agrees"
+ },
+ {
+  "current": false,
+  "current_basis": "recording (voicemail), every dial recorded",
+  "evidence": {
+   "asserted": [],
+   "call_notes": [
+    {
+     "seconds": 51,
+     "status": true
+    }
+   ],
+   "machine_vm": false,
+   "negative": true,
+   "screener": false,
+   "stage_moves": [],
+   "written": []
+  },
+  "expected": false,
+  "lead_id": 87805178,
+  "lead_name": "Felipe Loera",
+  "live_seconds": 0,
+  "number": "+15202859775",
+  "producer": "Crystal Mango",
+  "screener": false,
+  "talk_seconds": 50,
+  "transcript_class": "voicemail",
+  "unrecorded_dials": 0,
+  "why": "recording is a voicemail, code agrees"
+ },
+ {
+  "current": false,
+  "current_basis": "recording (voicemail), every dial recorded",
+  "evidence": {
+   "asserted": [],
+   "call_notes": [
+    {
+     "seconds": 49,
+     "status": true
+    }
+   ],
+   "machine_vm": false,
+   "negative": true,
+   "screener": false,
+   "stage_moves": [],
+   "written": []
+  },
+  "expected": false,
+  "lead_id": 88837086,
+  "lead_name": "Mary Brandt",
+  "live_seconds": 0,
+  "number": "+13162889218",
+  "producer": "Crystal Mango",
+  "screener": false,
+  "talk_seconds": 49,
+  "transcript_class": "voicemail",
+  "unrecorded_dials": 0,
+  "why": "recording is a voicemail, code agrees"
+ },
+ {
+  "current": true,
+  "current_basis": "producer note",
+  "evidence": {
+   "asserted": [],
+   "call_notes": [
+    {
+     "seconds": 50,
+     "status": true
+    }
+   ],
+   "machine_vm": false,
+   "negative": false,
+   "screener": false,
+   "stage_moves": [
+    {
+     "comment": "Called and PAtrick stated he ran all the numbers and will stay with AAA for right now but is okay with me reaching out in a couple of months to try again",
+     "move": "1 Pipeline | Quotes Presented to Smart-Cycle by Crystal Mango"
+    }
+   ],
+   "written": [
+    "Called and PAtrick stated he ran all the numbers and will stay with AAA for right now but is okay with me reaching out in a couple of months to try again"
+   ]
+  },
+  "expected": true,
+  "lead_id": 88600950,
+  "lead_name": "Patrick Tate",
+  "live_seconds": 49,
+  "number": "+15205593799",
+  "producer": "Crystal Mango",
+  "screener": false,
+  "talk_seconds": 49,
+  "transcript_class": "live",
+  "unrecorded_dials": 0,
+  "why": "recording is a two-way conversation"
+ },
+ {
+  "current": false,
+  "current_basis": "recording (voicemail), every dial recorded",
+  "evidence": {
+   "asserted": [],
+   "call_notes": [
+    {
+     "seconds": 45,
+     "status": true
+    }
+   ],
+   "machine_vm": false,
+   "negative": true,
+   "screener": false,
+   "stage_moves": [],
+   "written": []
+  },
+  "expected": false,
+  "lead_id": 59915898,
+  "lead_name": "Valeria Gonzalez",
+  "live_seconds": 0,
+  "number": "+19282878720",
+  "producer": "Crystal Mango",
+  "screener": false,
+  "talk_seconds": 45,
+  "transcript_class": "voicemail",
+  "unrecorded_dials": 0,
+  "why": "recording is a voicemail, code agrees"
+ },
+ {
+  "current": false,
+  "current_basis": "recording (voicemail), every dial recorded",
+  "evidence": {
+   "asserted": [],
+   "call_notes": [
+    {
+     "seconds": 43,
+     "status": true
+    }
+   ],
+   "machine_vm": false,
+   "negative": true,
+   "screener": false,
+   "stage_moves": [],
+   "written": []
+  },
+  "expected": false,
+  "lead_id": 87592364,
+  "lead_name": "Cindy Sanchez",
+  "live_seconds": 0,
+  "number": "+19289209457",
+  "producer": "Crystal Mango",
+  "screener": false,
+  "talk_seconds": 43,
+  "transcript_class": "voicemail",
+  "unrecorded_dials": 0,
+  "why": "recording is a voicemail, code agrees"
+ },
+ {
+  "current": false,
+  "current_basis": "recording (voicemail), every dial recorded",
+  "evidence": {
+   "asserted": [],
+   "call_notes": [
+    {
+     "seconds": 42,
+     "status": true
+    }
+   ],
+   "machine_vm": false,
+   "negative": true,
+   "screener": false,
+   "stage_moves": [],
+   "written": []
+  },
+  "expected": false,
+  "lead_id": 88605283,
+  "lead_name": "Lonnie Mcknight",
+  "live_seconds": 0,
+  "number": "+17072362439",
+  "producer": "Crystal Mango",
+  "screener": false,
+  "talk_seconds": 42,
+  "transcript_class": "voicemail",
+  "unrecorded_dials": 0,
+  "why": "recording is a voicemail, code agrees"
+ },
+ {
+  "current": false,
+  "current_basis": "producer note (no contact)",
+  "evidence": {
+   "asserted": [],
+   "call_notes": [
+    {
+     "seconds": 41,
+     "status": true
+    }
+   ],
+   "machine_vm": false,
+   "negative": true,
+   "screener": false,
+   "stage_moves": [],
+   "written": []
+  },
+  "expected": null,
+  "lead_id": 89003363,
+  "lead_name": "Aldo Silva",
+  "live_seconds": 41,
+  "number": "+15202749199",
+  "producer": "Crystal Mango",
+  "screener": false,
+  "talk_seconds": 41,
+  "transcript_class": "live",
+  "unrecorded_dials": 0,
+  "why": ""
+ },
+ {
+  "current": false,
+  "current_basis": "recording (voicemail), every dial recorded",
+  "evidence": {
+   "asserted": [],
+   "call_notes": [
+    {
+     "seconds": 40,
+     "status": true
+    }
+   ],
+   "machine_vm": false,
+   "negative": true,
+   "screener": false,
+   "stage_moves": [],
+   "written": []
+  },
+  "expected": false,
+  "lead_id": 88951179,
+  "lead_name": "Silvia Yi",
+  "live_seconds": 0,
+  "number": "+19282460432",
+  "producer": "Crystal Mango",
+  "screener": false,
+  "talk_seconds": 40,
+  "transcript_class": "voicemail",
+  "unrecorded_dials": 0,
+  "why": "recording is a voicemail, code agrees"
+ },
+ {
+  "current": false,
+  "current_basis": "recording (voicemail), every dial recorded",
+  "evidence": {
+   "asserted": [],
+   "call_notes": [
+    {
+     "seconds": 40,
+     "status": true
+    }
+   ],
+   "machine_vm": false,
+   "negative": true,
+   "screener": false,
+   "stage_moves": [],
+   "written": []
+  },
+  "expected": false,
+  "lead_id": 88032920,
+  "lead_name": "Robert Flohr",
+  "live_seconds": 0,
+  "number": "+16233831697",
+  "producer": "Crystal Mango",
+  "screener": false,
+  "talk_seconds": 40,
+  "transcript_class": "voicemail",
+  "unrecorded_dials": 0,
+  "why": "recording is a voicemail, code agrees"
+ },
+ {
+  "current": false,
+  "current_basis": "recording (voicemail), every dial recorded",
+  "evidence": {
+   "asserted": [],
+   "call_notes": [
+    {
+     "seconds": 41,
+     "status": true
+    }
+   ],
+   "machine_vm": false,
+   "negative": true,
+   "screener": false,
+   "stage_moves": [],
+   "written": []
+  },
+  "expected": false,
+  "lead_id": 88255154,
+  "lead_name": "Theresa Rispoli",
+  "live_seconds": 0,
+  "number": "+17037277520",
+  "producer": "Crystal Mango",
+  "screener": false,
+  "talk_seconds": 40,
+  "transcript_class": "voicemail",
+  "unrecorded_dials": 0,
+  "why": "recording is a voicemail, code agrees"
+ },
+ {
+  "current": false,
+  "current_basis": "recording (voicemail), every dial recorded",
+  "evidence": {
+   "asserted": [],
+   "call_notes": [
+    {
+     "seconds": 40,
+     "status": true
+    }
+   ],
+   "machine_vm": false,
+   "negative": true,
+   "screener": false,
+   "stage_moves": [],
+   "written": []
+  },
+  "expected": false,
+  "lead_id": 75911864,
+  "lead_name": "Randy Mosley",
+  "live_seconds": 0,
+  "number": "+19282465313",
+  "producer": "Crystal Mango",
+  "screener": false,
+  "talk_seconds": 40,
+  "transcript_class": "voicemail",
+  "unrecorded_dials": 0,
+  "why": "recording is a voicemail, code agrees"
+ },
+ {
+  "current": false,
+  "current_basis": "recording (voicemail), every dial recorded",
+  "evidence": {
+   "asserted": [
+    "He didn't say he wanted to switch after i showed him the quote. Thank you"
+   ],
+   "call_notes": [
+    {
+     "seconds": 39,
+     "status": true
+    }
+   ],
+   "machine_vm": false,
+   "negative": true,
+   "screener": false,
+   "stage_moves": [
+    {
+     "comment": "He didn't say he wanted to switch after i showed him the quote. Thank you",
+     "move": "1 Pipeline | Quotes Presented to Smart-Cycle by Crystal Mango"
+    }
+   ],
+   "written": [
+    "He didn't say he wanted to switch after i showed him the quote. Thank you"
+   ]
+  },
+  "expected": false,
+  "lead_id": 87600805,
+  "lead_name": "Hector Altamirano",
+  "live_seconds": 0,
+  "number": "+19284883645",
+  "producer": "Crystal Mango",
+  "screener": false,
+  "talk_seconds": 38,
+  "transcript_class": "voicemail",
+  "unrecorded_dials": 0,
+  "why": "Frank 2026-09-01: the note is the spouse's inbound TEXT, pasted by Crystal into the stage-move comment. Only call that day was 39s to voicemail"
+ },
+ {
+  "current": false,
+  "current_basis": "recording (voicemail), every dial recorded",
+  "evidence": {
+   "asserted": [],
+   "call_notes": [
+    {
+     "seconds": 37,
+     "status": true
+    }
+   ],
+   "machine_vm": false,
+   "negative": true,
+   "screener": false,
+   "stage_moves": [],
+   "written": []
+  },
+  "expected": false,
+  "lead_id": 88601436,
+  "lead_name": "Eric Andersen",
+  "live_seconds": 0,
+  "number": "+14808262794",
+  "producer": "Crystal Mango",
+  "screener": false,
+  "talk_seconds": 37,
+  "transcript_class": "voicemail",
+  "unrecorded_dials": 0,
+  "why": "recording is a voicemail, code agrees"
+ },
+ {
+  "current": true,
+  "current_basis": "recording",
+  "evidence": {
+   "asserted": [],
+   "call_notes": [],
+   "machine_vm": false,
+   "negative": false,
+   "screener": false,
+   "stage_moves": [],
+   "written": []
+  },
+  "expected": true,
+  "lead_id": 47655598,
+  "lead_name": "Silvia Alatorre",
+  "live_seconds": 35,
+  "number": "+19289194227",
+  "producer": "Crystal Mango",
+  "screener": false,
+  "talk_seconds": 35,
+  "transcript_class": "live",
+  "unrecorded_dials": 0,
+  "why": "recording is a two-way conversation"
+ },
+ {
+  "current": false,
+  "current_basis": "recording (voicemail), every dial recorded",
+  "evidence": {
+   "asserted": [],
+   "call_notes": [
+    {
+     "seconds": 34,
+     "status": true
+    }
+   ],
+   "machine_vm": false,
+   "negative": false,
+   "screener": false,
+   "stage_moves": [],
+   "written": []
+  },
+  "expected": false,
+  "lead_id": 88257880,
+  "lead_name": "Julio Perez",
+  "live_seconds": 0,
+  "number": "+19286660870",
+  "producer": "Crystal Mango",
+  "screener": false,
+  "talk_seconds": 34,
+  "transcript_class": "voicemail",
+  "unrecorded_dials": 0,
+  "why": "recording is a voicemail, code agrees"
+ },
+ {
+  "current": false,
+  "current_basis": "recording (voicemail), every dial recorded",
+  "evidence": {
+   "asserted": [],
+   "call_notes": [
+    {
+     "seconds": 34,
+     "status": true
+    }
+   ],
+   "machine_vm": false,
+   "negative": true,
+   "screener": false,
+   "stage_moves": [],
+   "written": []
+  },
+  "expected": false,
+  "lead_id": 88602499,
+  "lead_name": "Rachel Torrez",
+  "live_seconds": 0,
+  "number": "+16026773344",
+  "producer": "Crystal Mango",
+  "screener": false,
+  "talk_seconds": 34,
+  "transcript_class": "voicemail",
+  "unrecorded_dials": 0,
+  "why": "recording is a voicemail, code agrees"
+ },
+ {
+  "current": false,
+  "current_basis": "recording (voicemail), every dial recorded",
+  "evidence": {
+   "asserted": [],
+   "call_notes": [
+    {
+     "seconds": 31,
+     "status": true
+    }
+   ],
+   "machine_vm": false,
+   "negative": true,
+   "screener": false,
+   "stage_moves": [],
+   "written": []
+  },
+  "expected": false,
+  "lead_id": 89003006,
+  "lead_name": "Kenneth Bowman I",
+  "live_seconds": 0,
+  "number": "+16026906269",
+  "producer": "Crystal Mango",
+  "screener": false,
+  "talk_seconds": 31,
+  "transcript_class": "voicemail",
+  "unrecorded_dials": 0,
+  "why": "recording is a voicemail, code agrees"
+ },
+ {
+  "current": false,
+  "current_basis": "recording (voicemail), every dial recorded",
+  "evidence": {
+   "asserted": [],
+   "call_notes": [
+    {
+     "seconds": 30,
+     "status": true
+    }
+   ],
+   "machine_vm": false,
+   "negative": true,
+   "screener": false,
+   "stage_moves": [],
+   "written": []
+  },
+  "expected": false,
+  "lead_id": 89003951,
+  "lead_name": "Mina Phengmyrath",
+  "live_seconds": 0,
+  "number": "+16026436897",
+  "producer": "Crystal Mango",
+  "screener": false,
+  "talk_seconds": 30,
+  "transcript_class": "voicemail",
+  "unrecorded_dials": 0,
+  "why": "recording is a voicemail, code agrees"
+ },
+ {
+  "current": false,
+  "current_basis": "recording (voicemail), every dial recorded",
+  "evidence": {
+   "asserted": [],
+   "call_notes": [],
+   "machine_vm": false,
+   "negative": false,
+   "screener": false,
+   "stage_moves": [],
+   "written": []
+  },
+  "expected": false,
+  "lead_id": 62125499,
+  "lead_name": "Victor Acosta",
+  "live_seconds": 0,
+  "number": "+14424562942",
+  "producer": "Crystal Mango",
+  "screener": false,
+  "talk_seconds": 29,
+  "transcript_class": "voicemail",
+  "unrecorded_dials": 0,
+  "why": "recording is a voicemail, code agrees"
+ },
+ {
+  "current": false,
+  "current_basis": "recording (voicemail), every dial recorded",
+  "evidence": {
+   "asserted": [],
+   "call_notes": [
+    {
+     "seconds": 28,
+     "status": true
+    }
+   ],
+   "machine_vm": false,
+   "negative": true,
+   "screener": false,
+   "stage_moves": [],
+   "written": []
+  },
+  "expected": false,
+  "lead_id": 88094316,
+  "lead_name": "Tonia Rogoff",
+  "live_seconds": 0,
+  "number": "+14805932718",
+  "producer": "Crystal Mango",
+  "screener": false,
+  "talk_seconds": 28,
+  "transcript_class": "voicemail",
+  "unrecorded_dials": 0,
+  "why": "recording is a voicemail, code agrees"
+ },
+ {
+  "current": false,
+  "current_basis": "recording (voicemail), every dial recorded",
+  "evidence": {
+   "asserted": [],
+   "call_notes": [
+    {
+     "seconds": 28,
+     "status": true
+    }
+   ],
+   "machine_vm": false,
+   "negative": false,
+   "screener": false,
+   "stage_moves": [],
+   "written": []
+  },
+  "expected": false,
+  "lead_id": 87517623,
+  "lead_name": "Valerie Searles",
+  "live_seconds": 0,
+  "number": "+15202222495",
+  "producer": "Crystal Mango",
+  "screener": false,
+  "talk_seconds": 28,
+  "transcript_class": "voicemail",
+  "unrecorded_dials": 0,
+  "why": "recording is a voicemail, code agrees"
+ },
+ {
+  "current": false,
+  "current_basis": "recording (voicemail), every dial recorded",
+  "evidence": {
+   "asserted": [],
+   "call_notes": [
+    {
+     "seconds": 26,
+     "status": true
+    }
+   ],
+   "machine_vm": false,
+   "negative": true,
+   "screener": false,
+   "stage_moves": [],
+   "written": []
+  },
+  "expected": false,
+  "lead_id": 88034836,
+  "lead_name": "Teri Powers",
+  "live_seconds": 0,
+  "number": "+13108927676",
+  "producer": "Crystal Mango",
+  "screener": false,
+  "talk_seconds": 26,
+  "transcript_class": "voicemail",
+  "unrecorded_dials": 0,
+  "why": "recording is a voicemail, code agrees"
+ },
+ {
+  "current": true,
+  "current_basis": "recording",
+  "evidence": {
+   "asserted": [],
+   "call_notes": [
+    {
+     "seconds": 26,
+     "status": true
+    }
+   ],
+   "machine_vm": false,
+   "negative": false,
+   "screener": false,
+   "stage_moves": [],
+   "written": []
+  },
+  "expected": true,
+  "lead_id": 85949826,
+  "lead_name": "Virginia Gastelum",
+  "live_seconds": 25,
+  "number": "+15208501438",
+  "producer": "Crystal Mango",
+  "screener": false,
+  "talk_seconds": 25,
+  "transcript_class": "live",
+  "unrecorded_dials": 0,
+  "why": "recording is a two-way conversation"
+ },
+ {
+  "current": false,
+  "current_basis": "recording (voicemail), every dial recorded",
+  "evidence": {
+   "asserted": [],
+   "call_notes": [
+    {
+     "seconds": 22,
+     "status": true
+    }
+   ],
+   "machine_vm": false,
+   "negative": true,
+   "screener": false,
+   "stage_moves": [],
+   "written": []
+  },
+  "expected": false,
+  "lead_id": 75246082,
+  "lead_name": "Steven Vazquez",
+  "live_seconds": 0,
+  "number": "+19282874682",
+  "producer": "Crystal Mango",
+  "screener": false,
+  "talk_seconds": 21,
+  "transcript_class": "voicemail",
+  "unrecorded_dials": 0,
+  "why": "recording is a voicemail, code agrees"
+ },
+ {
+  "current": false,
+  "current_basis": "producer note (no contact)",
+  "evidence": {
+   "asserted": [],
+   "call_notes": [
+    {
+     "seconds": 15,
+     "status": true
+    }
+   ],
+   "machine_vm": false,
+   "negative": true,
+   "screener": false,
+   "stage_moves": [],
+   "written": []
+  },
+  "expected": null,
+  "lead_id": 88255201,
+  "lead_name": "Kellie Williams",
+  "live_seconds": 0,
+  "number": "+19287683241",
+  "producer": "Crystal Mango",
+  "screener": false,
+  "talk_seconds": 16,
+  "transcript_class": null,
+  "unrecorded_dials": 1,
+  "why": ""
+ },
+ {
+  "current": false,
+  "current_basis": "no outcome logged",
+  "evidence": {
+   "asserted": [],
+   "call_notes": [],
+   "machine_vm": false,
+   "negative": false,
+   "screener": false,
+   "stage_moves": [],
+   "written": []
+  },
+  "expected": null,
+  "lead_id": 16245671,
+  "lead_name": "Maria Ortiz",
+  "live_seconds": 0,
+  "number": "+19092435119",
+  "producer": "Crystal Mango",
+  "screener": false,
+  "talk_seconds": 15,
+  "transcript_class": null,
+  "unrecorded_dials": 1,
+  "why": ""
+ },
+ {
+  "current": false,
+  "current_basis": "recording (voicemail), every dial recorded",
+  "evidence": {
+   "asserted": [],
+   "call_notes": [
+    {
+     "seconds": 8,
+     "status": true
+    }
+   ],
+   "machine_vm": false,
+   "negative": false,
+   "screener": false,
+   "stage_moves": [],
+   "written": []
+  },
+  "expected": false,
+  "lead_id": 87518205,
+  "lead_name": "Kevin Mckeever",
+  "live_seconds": 0,
+  "number": "+16029803429",
+  "producer": "Crystal Mango",
+  "screener": false,
+  "talk_seconds": 7,
+  "transcript_class": "voicemail",
+  "unrecorded_dials": 0,
+  "why": "recording is a voicemail, code agrees"
+ },
+ {
+  "current": false,
+  "current_basis": "producer note (no contact)",
+  "evidence": {
+   "asserted": [],
+   "call_notes": [
+    {
+     "seconds": 6,
+     "status": true
+    }
+   ],
+   "machine_vm": false,
+   "negative": true,
+   "screener": false,
+   "stage_moves": [],
+   "written": []
+  },
+  "expected": null,
+  "lead_id": 88602721,
+  "lead_name": "Oscar Rodriguez",
+  "live_seconds": 0,
+  "number": "+14808259976",
+  "producer": "Crystal Mango",
+  "screener": false,
+  "talk_seconds": 6,
+  "transcript_class": null,
+  "unrecorded_dials": 1,
+  "why": ""
+ },
+ {
+  "current": false,
+  "current_basis": "producer note (no contact)",
+  "evidence": {
+   "asserted": [],
+   "call_notes": [
+    {
+     "seconds": 5,
+     "status": true
+    }
+   ],
+   "machine_vm": false,
+   "negative": true,
+   "screener": false,
+   "stage_moves": [],
+   "written": []
+  },
+  "expected": null,
+  "lead_id": 87518688,
+  "lead_name": "Luis Durand",
+  "live_seconds": 0,
+  "number": "+16054250324",
+  "producer": "Crystal Mango",
+  "screener": false,
+  "talk_seconds": 5,
+  "transcript_class": null,
+  "unrecorded_dials": 1,
+  "why": ""
+ },
+ {
+  "current": false,
+  "current_basis": "recording (voicemail), every dial recorded",
+  "evidence": {
+   "asserted": [],
+   "call_notes": [
+    {
+     "seconds": 6,
+     "status": true
+    }
+   ],
+   "machine_vm": false,
+   "negative": false,
+   "screener": false,
+   "stage_moves": [],
+   "written": []
+  },
+  "expected": false,
+  "lead_id": 88030057,
+  "lead_name": "Aireal Silvas",
+  "live_seconds": 0,
+  "number": "+16233052108",
+  "producer": "Crystal Mango",
+  "screener": false,
+  "talk_seconds": 5,
+  "transcript_class": "voicemail",
+  "unrecorded_dials": 0,
+  "why": "recording is a voicemail, code agrees"
+ },
+ {
+  "current": false,
+  "current_basis": "too short to be a conversation",
+  "evidence": {
+   "asserted": [],
+   "call_notes": [
+    {
+     "seconds": 8,
+     "status": true
+    }
+   ],
+   "machine_vm": false,
+   "negative": false,
+   "screener": false,
+   "stage_moves": [],
+   "written": []
+  },
+  "expected": null,
+  "lead_id": 87524814,
+  "lead_name": "Kenneth Scharman",
+  "live_seconds": 0,
+  "number": "+15203262539",
+  "producer": "Crystal Mango",
+  "screener": false,
+  "talk_seconds": 1,
+  "transcript_class": null,
+  "unrecorded_dials": 1,
+  "why": ""
+ },
+ {
+  "current": true,
+  "current_basis": "recording",
+  "evidence": {
+   "asserted": [],
+   "call_notes": [
+    {
+     "seconds": 1178,
+     "status": true
+    }
+   ],
+   "machine_vm": false,
+   "negative": false,
+   "screener": false,
+   "stage_moves": [
+    {
+     "comment": "Provided quote over the phone. Once I ran report system pulled two speeding tickets and cell phone use while driving ticker for wife. BW was also not giving me quote as it is giving me an error due to address. I chatted with BW rep and they advised they referred for correction but it would take 1-2 days for it to be fixed. Jesus need policy today as he is driving vehicle he just purchased. Excluding wife price increased rate from $391 to $561 for the six months. He is currently on his fathers policy and vehicle under his father is at $290 for they six months. He advised he would just add to his fathers policy.",
+     "move": "1-2 Leads Not Quoted | New 1st Cycle to Smart-Cycle by Lorena Gonzalez"
+    },
+    {
+     "comment": "",
+     "move": "Smart-Cycle recycled back to 1-2 Leads Not Quoted | New 1st Cycle by Lorena Gonzalez"
+    }
+   ],
+   "written": []
+  },
+  "expected": true,
+  "lead_id": 87770879,
+  "lead_name": "Jesus Zepeda",
+  "live_seconds": 1180,
+  "number": "+19289203772",
+  "producer": "Lorena Gonzalez",
+  "screener": false,
+  "talk_seconds": 751,
+  "transcript_class": "live",
+  "unrecorded_dials": 0,
+  "why": "recording is a two-way conversation"
+ },
+ {
+  "current": false,
+  "current_basis": "recording (voicemail), every dial recorded",
+  "evidence": {
+   "asserted": [],
+   "call_notes": [
+    {
+     "seconds": 72,
+     "status": true
+    }
+   ],
+   "machine_vm": false,
+   "negative": true,
+   "screener": false,
+   "stage_moves": [],
+   "written": []
+  },
+  "expected": false,
+  "lead_id": 88030030,
+  "lead_name": "Wil Lopez",
+  "live_seconds": 0,
+  "number": "+19282430524",
+  "producer": "Lorena Gonzalez",
+  "screener": false,
+  "talk_seconds": 146,
+  "transcript_class": "voicemail",
+  "unrecorded_dials": 0,
+  "why": "recording is a voicemail, code agrees"
+ },
+ {
+  "current": false,
+  "current_basis": "producer note (no contact)",
+  "evidence": {
+   "asserted": [],
+   "call_notes": [
+    {
+     "seconds": 30,
+     "status": true
+    },
+    {
+     "seconds": 22,
+     "status": true
+    }
+   ],
+   "machine_vm": false,
+   "negative": true,
+   "screener": false,
+   "stage_moves": [],
+   "written": []
+  },
+  "expected": false,
+  "lead_id": 87822963,
+  "lead_name": "Diego Cazarez",
+  "live_seconds": 0,
+  "number": "+19284500175",
+  "producer": "Lorena Gonzalez",
+  "screener": false,
+  "talk_seconds": 52,
+  "transcript_class": "no answer",
+  "unrecorded_dials": 1,
+  "why": "recording is a no answer, code agrees"
+ },
+ {
+  "current": true,
+  "current_basis": "producer note (states contact)",
+  "evidence": {
+   "asserted": [
+    "Eduardo said he already had insurance and hung up."
+   ],
+   "call_notes": [
+    {
+     "seconds": 43,
+     "status": true
+    }
+   ],
+   "machine_vm": false,
+   "negative": false,
+   "screener": false,
+   "stage_moves": [
+    {
+     "comment": "Eduardo said he already had insurance and hung up.",
+     "move": "1 Pipeline | New to Smart-Cycle by Lorena Gonzalez"
+    }
+   ],
+   "written": [
+    "Eduardo said he already had insurance and hung up."
+   ]
+  },
+  "expected": true,
+  "lead_id": 88034501,
+  "lead_name": "Eduardo Din",
+  "live_seconds": 43,
+  "number": "+19094610489",
+  "producer": "Lorena Gonzalez",
+  "screener": false,
+  "talk_seconds": 43,
+  "transcript_class": "live",
+  "unrecorded_dials": 0,
+  "why": "recording is a two-way conversation"
+ },
+ {
+  "current": false,
+  "current_basis": "producer note (no contact)",
+  "evidence": {
+   "asserted": [],
+   "call_notes": [
+    {
+     "seconds": 40,
+     "status": true
+    }
+   ],
+   "machine_vm": false,
+   "negative": true,
+   "screener": false,
+   "stage_moves": [],
+   "written": []
+  },
+  "expected": false,
+  "lead_id": 87518025,
+  "lead_name": "Elaine Matie",
+  "live_seconds": 0,
+  "number": "+16029802595",
+  "producer": "Lorena Gonzalez",
+  "screener": true,
+  "talk_seconds": 40,
+  "transcript_class": "voicemail",
+  "unrecorded_dials": 0,
+  "why": "recording is a voicemail, code agrees"
+ },
+ {
+  "current": false,
+  "current_basis": "recording (voicemail), every dial recorded",
+  "evidence": {
+   "asserted": [],
+   "call_notes": [
+    {
+     "seconds": 31,
+     "status": true
+    }
+   ],
+   "machine_vm": false,
+   "negative": true,
+   "screener": false,
+   "stage_moves": [],
+   "written": []
+  },
+  "expected": false,
+  "lead_id": 87814952,
+  "lead_name": "Renan Montano",
+  "live_seconds": 0,
+  "number": "+15203289738",
+  "producer": "Lorena Gonzalez",
+  "screener": false,
+  "talk_seconds": 32,
+  "transcript_class": "voicemail",
+  "unrecorded_dials": 0,
+  "why": "recording is a voicemail, code agrees"
+ },
+ {
+  "current": false,
+  "current_basis": "recording (voicemail), every dial recorded",
+  "evidence": {
+   "asserted": [],
+   "call_notes": [
+    {
+     "seconds": 33,
+     "status": true
+    }
+   ],
+   "machine_vm": false,
+   "negative": true,
+   "screener": false,
+   "stage_moves": [],
+   "written": []
+  },
+  "expected": false,
+  "lead_id": 88601181,
+  "lead_name": "Lore Kanoza",
+  "live_seconds": 0,
+  "number": "+15202133134",
+  "producer": "Lorena Gonzalez",
+  "screener": false,
+  "talk_seconds": 32,
+  "transcript_class": "voicemail",
+  "unrecorded_dials": 0,
+  "why": "recording is a voicemail, code agrees"
+ },
+ {
+  "current": false,
+  "current_basis": "producer note (no contact)",
+  "evidence": {
+   "asserted": [],
+   "call_notes": [
+    {
+     "seconds": 32,
+     "status": true
+    }
+   ],
+   "machine_vm": false,
+   "negative": true,
+   "screener": false,
+   "stage_moves": [],
+   "written": []
+  },
+  "expected": null,
+  "lead_id": 88258485,
+  "lead_name": "Gwen Mccown",
+  "live_seconds": 32,
+  "number": "+16029800081",
+  "producer": "Lorena Gonzalez",
+  "screener": false,
+  "talk_seconds": 32,
+  "transcript_class": "live",
+  "unrecorded_dials": 0,
+  "why": ""
+ },
+ {
+  "current": false,
+  "current_basis": "producer note (no contact)",
+  "evidence": {
+   "asserted": [],
+   "call_notes": [
+    {
+     "seconds": 32,
+     "status": true
+    }
+   ],
+   "machine_vm": false,
+   "negative": true,
+   "screener": false,
+   "stage_moves": [],
+   "written": []
+  },
+  "expected": false,
+  "lead_id": 87385655,
+  "lead_name": "Annette Bauder",
+  "live_seconds": 0,
+  "number": "+12532216472",
+  "producer": "Lorena Gonzalez",
+  "screener": true,
+  "talk_seconds": 31,
+  "transcript_class": "voicemail",
+  "unrecorded_dials": 0,
+  "why": "recording is a voicemail, code agrees"
+ },
+ {
+  "current": false,
+  "current_basis": "recording (no answer), every dial recorded",
+  "evidence": {
+   "asserted": [],
+   "call_notes": [
+    {
+     "seconds": 0,
+     "status": false
+    },
+    {
+     "seconds": 29,
+     "status": true
+    }
+   ],
+   "machine_vm": false,
+   "negative": true,
+   "screener": false,
+   "stage_moves": [],
+   "written": []
+  },
+  "expected": false,
+  "lead_id": 87522733,
+  "lead_name": "Mark Fields",
+  "live_seconds": 0,
+  "number": "+19512594711",
+  "producer": "Lorena Gonzalez",
+  "screener": false,
+  "talk_seconds": 29,
+  "transcript_class": "no answer",
+  "unrecorded_dials": 0,
+  "why": "recording is a no answer, code agrees"
+ },
+ {
+  "current": false,
+  "current_basis": "producer note (no contact)",
+  "evidence": {
+   "asserted": [],
+   "call_notes": [
+    {
+     "seconds": 30,
+     "status": true
+    }
+   ],
+   "machine_vm": false,
+   "negative": true,
+   "screener": false,
+   "stage_moves": [],
+   "written": []
+  },
+  "expected": null,
+  "lead_id": 88601504,
+  "lead_name": "Brian Brown",
+  "live_seconds": 0,
+  "number": "+16027908008",
+  "producer": "Lorena Gonzalez",
+  "screener": false,
+  "talk_seconds": 28,
+  "transcript_class": null,
+  "unrecorded_dials": 1,
+  "why": ""
+ },
+ {
+  "current": false,
+  "current_basis": "producer note (no contact)",
+  "evidence": {
+   "asserted": [],
+   "call_notes": [
+    {
+     "seconds": 28,
+     "status": true
+    }
+   ],
+   "machine_vm": false,
+   "negative": true,
+   "screener": false,
+   "stage_moves": [],
+   "written": []
+  },
+  "expected": null,
+  "lead_id": 88837169,
+  "lead_name": "Andrew Avalos",
+  "live_seconds": 0,
+  "number": "+16022904115",
+  "producer": "Lorena Gonzalez",
+  "screener": false,
+  "talk_seconds": 28,
+  "transcript_class": null,
+  "unrecorded_dials": 1,
+  "why": ""
+ },
+ {
+  "current": false,
+  "current_basis": "producer note (no contact)",
+  "evidence": {
+   "asserted": [],
+   "call_notes": [
+    {
+     "seconds": 27,
+     "status": true
+    }
+   ],
+   "machine_vm": false,
+   "negative": true,
+   "screener": false,
+   "stage_moves": [],
+   "written": []
+  },
+  "expected": null,
+  "lead_id": 87822804,
+  "lead_name": "Cristofer Martinez",
+  "live_seconds": 0,
+  "number": "+18316764953",
+  "producer": "Lorena Gonzalez",
+  "screener": false,
+  "talk_seconds": 27,
+  "transcript_class": null,
+  "unrecorded_dials": 1,
+  "why": ""
+ },
+ {
+  "current": true,
+  "current_basis": "producer note (states contact)",
+  "evidence": {
+   "asserted": [
+    "Michael advised he did not need insurance and hung up. Will reach back in 6 months."
+   ],
+   "call_notes": [
+    {
+     "seconds": 25,
+     "status": true
+    }
+   ],
+   "machine_vm": false,
+   "negative": false,
+   "screener": false,
+   "stage_moves": [
+    {
+     "comment": "Michael advised he did not need insurance and hung up. Will reach back in 6 months.",
+     "move": "1 Pipeline | New to Smart-Cycle by Lorena Gonzalez"
+    }
+   ],
+   "written": [
+    "Michael advised he did not need insurance and hung up. Will reach back in 6 months."
+   ]
+  },
+  "expected": true,
+  "lead_id": 89009618,
+  "lead_name": "Michael Gutting",
+  "live_seconds": 25,
+  "number": "+15109159673",
+  "producer": "Lorena Gonzalez",
+  "screener": false,
+  "talk_seconds": 25,
+  "transcript_class": "live",
+  "unrecorded_dials": 0,
+  "why": "recording is a two-way conversation"
+ },
+ {
+  "current": false,
+  "current_basis": "producer note (no contact)",
+  "evidence": {
+   "asserted": [],
+   "call_notes": [
+    {
+     "seconds": 25,
+     "status": true
+    }
+   ],
+   "machine_vm": false,
+   "negative": true,
+   "screener": false,
+   "stage_moves": [],
+   "written": []
+  },
+  "expected": null,
+  "lead_id": 87519781,
+  "lead_name": "Julianna Shaffer",
+  "live_seconds": 0,
+  "number": "+14803131669",
+  "producer": "Lorena Gonzalez",
+  "screener": false,
+  "talk_seconds": 25,
+  "transcript_class": null,
+  "unrecorded_dials": 1,
+  "why": ""
+ },
+ {
+  "current": false,
+  "current_basis": "producer note (no contact)",
+  "evidence": {
+   "asserted": [],
+   "call_notes": [],
+   "machine_vm": false,
+   "negative": true,
+   "screener": false,
+   "stage_moves": [],
+   "written": []
+  },
+  "expected": null,
+  "lead_id": 55303572,
+  "lead_name": "Edward Gutierrez",
+  "live_seconds": 0,
+  "number": "+19284599515",
+  "producer": "Lorena Gonzalez",
+  "screener": false,
+  "talk_seconds": 24,
+  "transcript_class": null,
+  "unrecorded_dials": 1,
+  "why": ""
+ },
+ {
+  "current": false,
+  "current_basis": "recording (no answer), every dial recorded",
+  "evidence": {
+   "asserted": [],
+   "call_notes": [
+    {
+     "seconds": 24,
+     "status": true
+    }
+   ],
+   "machine_vm": false,
+   "negative": true,
+   "screener": false,
+   "stage_moves": [],
+   "written": []
+  },
+  "expected": false,
+  "lead_id": 87816426,
+  "lead_name": "Alfredo Covarrubias",
+  "live_seconds": 0,
+  "number": "+19287237596",
+  "producer": "Lorena Gonzalez",
+  "screener": false,
+  "talk_seconds": 24,
+  "transcript_class": "no answer",
+  "unrecorded_dials": 0,
+  "why": "recording is a no answer, code agrees"
+ },
+ {
+  "current": false,
+  "current_basis": "producer note (no contact)",
+  "evidence": {
+   "asserted": [],
+   "call_notes": [
+    {
+     "seconds": 25,
+     "status": true
+    }
+   ],
+   "machine_vm": false,
+   "negative": true,
+   "screener": false,
+   "stage_moves": [],
+   "written": []
+  },
+  "expected": null,
+  "lead_id": 82123761,
+  "lead_name": "William Steikar",
+  "live_seconds": 0,
+  "number": "+15202502254",
+  "producer": "Lorena Gonzalez",
+  "screener": false,
+  "talk_seconds": 24,
+  "transcript_class": null,
+  "unrecorded_dials": 1,
+  "why": ""
+ },
+ {
+  "current": false,
+  "current_basis": "producer note (no contact)",
+  "evidence": {
+   "asserted": [],
+   "call_notes": [
+    {
+     "seconds": 23,
+     "status": true
+    }
+   ],
+   "machine_vm": false,
+   "negative": true,
+   "screener": false,
+   "stage_moves": [],
+   "written": []
+  },
+  "expected": null,
+  "lead_id": 88064322,
+  "lead_name": "Adriana Navarro",
+  "live_seconds": 0,
+  "number": "+17602228789",
+  "producer": "Lorena Gonzalez",
+  "screener": false,
+  "talk_seconds": 23,
+  "transcript_class": null,
+  "unrecorded_dials": 1,
+  "why": ""
+ },
+ {
+  "current": false,
+  "current_basis": "recording (no answer), every dial recorded",
+  "evidence": {
+   "asserted": [],
+   "call_notes": [
+    {
+     "seconds": 23,
+     "status": true
+    }
+   ],
+   "machine_vm": false,
+   "negative": true,
+   "screener": false,
+   "stage_moves": [],
+   "written": []
+  },
+  "expected": false,
+  "lead_id": 88255128,
+  "lead_name": "Jeannine Martin",
+  "live_seconds": 0,
+  "number": "+18055097703",
+  "producer": "Lorena Gonzalez",
+  "screener": false,
+  "talk_seconds": 23,
+  "transcript_class": "no answer",
+  "unrecorded_dials": 0,
+  "why": "recording is a no answer, code agrees"
+ },
+ {
+  "current": false,
+  "current_basis": "recording (voicemail), every dial recorded",
+  "evidence": {
+   "asserted": [],
+   "call_notes": [
+    {
+     "seconds": 12,
+     "status": true
+    },
+    {
+     "seconds": 11,
+     "status": true
+    }
+   ],
+   "machine_vm": false,
+   "negative": true,
+   "screener": false,
+   "stage_moves": [],
+   "written": []
+  },
+  "expected": false,
+  "lead_id": 88030140,
+  "lead_name": "Pamela Smeberg",
+  "live_seconds": 0,
+  "number": "+13523168292",
+  "producer": "Lorena Gonzalez",
+  "screener": false,
+  "talk_seconds": 22,
+  "transcript_class": "voicemail",
+  "unrecorded_dials": 0,
+  "why": "recording is a voicemail, code agrees"
+ },
+ {
+  "current": false,
+  "current_basis": "producer note (no contact)",
+  "evidence": {
+   "asserted": [],
+   "call_notes": [
+    {
+     "seconds": 21,
+     "status": true
+    }
+   ],
+   "machine_vm": false,
+   "negative": true,
+   "screener": false,
+   "stage_moves": [],
+   "written": []
+  },
+  "expected": null,
+  "lead_id": 88253466,
+  "lead_name": "Monique Batiest",
+  "live_seconds": 0,
+  "number": "+15207094549",
+  "producer": "Lorena Gonzalez",
+  "screener": false,
+  "talk_seconds": 22,
+  "transcript_class": null,
+  "unrecorded_dials": 1,
+  "why": ""
+ },
+ {
+  "current": false,
+  "current_basis": "recording (no answer), every dial recorded",
+  "evidence": {
+   "asserted": [],
+   "call_notes": [
+    {
+     "seconds": 22,
+     "status": true
+    }
+   ],
+   "machine_vm": false,
+   "negative": true,
+   "screener": false,
+   "stage_moves": [],
+   "written": []
+  },
+  "expected": false,
+  "lead_id": 88255812,
+  "lead_name": "Michael Moioffer",
+  "live_seconds": 0,
+  "number": "+15208206337",
+  "producer": "Lorena Gonzalez",
+  "screener": false,
+  "talk_seconds": 21,
+  "transcript_class": "no answer",
+  "unrecorded_dials": 0,
+  "why": "recording is a no answer, code agrees"
+ },
+ {
+  "current": false,
+  "current_basis": "producer note (no contact)",
+  "evidence": {
+   "asserted": [],
+   "call_notes": [
+    {
+     "seconds": 19,
+     "status": true
+    }
+   ],
+   "machine_vm": false,
+   "negative": true,
+   "screener": false,
+   "stage_moves": [],
+   "written": []
+  },
+  "expected": null,
+  "lead_id": 88605761,
+  "lead_name": "Luis Escoto Ayala",
+  "live_seconds": 0,
+  "number": "+19289556560",
+  "producer": "Lorena Gonzalez",
+  "screener": false,
+  "talk_seconds": 19,
+  "transcript_class": null,
+  "unrecorded_dials": 1,
+  "why": ""
+ },
+ {
+  "current": false,
+  "current_basis": "producer note (no contact)",
+  "evidence": {
+   "asserted": [],
+   "call_notes": [
+    {
+     "seconds": 19,
+     "status": true
+    }
+   ],
+   "machine_vm": false,
+   "negative": true,
+   "screener": false,
+   "stage_moves": [],
+   "written": []
+  },
+  "expected": null,
+  "lead_id": 88837017,
+  "lead_name": "Keri Borstelmann",
+  "live_seconds": 0,
+  "number": "+18189127663",
+  "producer": "Lorena Gonzalez",
+  "screener": false,
+  "talk_seconds": 18,
+  "transcript_class": null,
+  "unrecorded_dials": 1,
+  "why": ""
+ },
+ {
+  "current": false,
+  "current_basis": "producer note (no contact)",
+  "evidence": {
+   "asserted": [],
+   "call_notes": [
+    {
+     "seconds": 19,
+     "status": true
+    }
+   ],
+   "machine_vm": false,
+   "negative": true,
+   "screener": false,
+   "stage_moves": [],
+   "written": []
+  },
+  "expected": null,
+  "lead_id": 88255160,
+  "lead_name": "Sam Ohanesian",
+  "live_seconds": 0,
+  "number": "+19287541776",
+  "producer": "Lorena Gonzalez",
+  "screener": false,
+  "talk_seconds": 18,
+  "transcript_class": null,
+  "unrecorded_dials": 1,
+  "why": ""
+ },
+ {
+  "current": false,
+  "current_basis": "producer note (no contact)",
+  "evidence": {
+   "asserted": [],
+   "call_notes": [
+    {
+     "seconds": 16,
+     "status": true
+    }
+   ],
+   "machine_vm": false,
+   "negative": true,
+   "screener": false,
+   "stage_moves": [],
+   "written": []
+  },
+  "expected": null,
+  "lead_id": 88603386,
+  "lead_name": "Brenda Madison",
+  "live_seconds": 0,
+  "number": "+19283888945",
+  "producer": "Lorena Gonzalez",
+  "screener": false,
+  "talk_seconds": 17,
+  "transcript_class": null,
+  "unrecorded_dials": 1,
+  "why": ""
+ },
+ {
+  "current": false,
+  "current_basis": "recording (voicemail), every dial recorded",
+  "evidence": {
+   "asserted": [],
+   "call_notes": [
+    {
+     "seconds": 16,
+     "status": true
+    }
+   ],
+   "machine_vm": false,
+   "negative": true,
+   "screener": false,
+   "stage_moves": [],
+   "written": []
+  },
+  "expected": false,
+  "lead_id": 75459279,
+  "lead_name": "Edward Deines",
+  "live_seconds": 0,
+  "number": "+19283889074",
+  "producer": "Lorena Gonzalez",
+  "screener": false,
+  "talk_seconds": 16,
+  "transcript_class": "voicemail",
+  "unrecorded_dials": 0,
+  "why": "recording is a voicemail, code agrees"
+ },
+ {
+  "current": false,
+  "current_basis": "recording (no answer), every dial recorded",
+  "evidence": {
+   "asserted": [],
+   "call_notes": [
+    {
+     "seconds": 16,
+     "status": true
+    }
+   ],
+   "machine_vm": false,
+   "negative": true,
+   "screener": false,
+   "stage_moves": [],
+   "written": []
+  },
+  "expected": false,
+  "lead_id": 87518219,
+  "lead_name": "Francisco Martinez",
+  "live_seconds": 0,
+  "number": "+16239201223",
+  "producer": "Lorena Gonzalez",
+  "screener": false,
+  "talk_seconds": 15,
+  "transcript_class": "no answer",
+  "unrecorded_dials": 0,
+  "why": "recording is a no answer, code agrees"
+ },
+ {
+  "current": false,
+  "current_basis": "recording (no answer), every dial recorded",
+  "evidence": {
+   "asserted": [],
+   "call_notes": [
+    {
+     "seconds": 5,
+     "status": true
+    },
+    {
+     "seconds": 10,
+     "status": true
+    }
+   ],
+   "machine_vm": false,
+   "negative": true,
+   "screener": false,
+   "stage_moves": [],
+   "written": []
+  },
+  "expected": false,
+  "lead_id": 88030096,
+  "lead_name": "Vincent Carotenuto",
+  "live_seconds": 0,
+  "number": "+17737913733",
+  "producer": "Lorena Gonzalez",
+  "screener": false,
+  "talk_seconds": 14,
+  "transcript_class": "no answer",
+  "unrecorded_dials": 0,
+  "why": "recording is a no answer, code agrees"
+ },
+ {
+  "current": false,
+  "current_basis": "recording (no answer), every dial recorded",
+  "evidence": {
+   "asserted": [],
+   "call_notes": [
+    {
+     "seconds": 14,
+     "status": true
+    }
+   ],
+   "machine_vm": false,
+   "negative": true,
+   "screener": false,
+   "stage_moves": [],
+   "written": []
+  },
+  "expected": false,
+  "lead_id": 87823289,
+  "lead_name": "Andy Sanchez",
+  "live_seconds": 0,
+  "number": "+19282854513",
+  "producer": "Lorena Gonzalez",
+  "screener": false,
+  "talk_seconds": 14,
+  "transcript_class": "no answer",
+  "unrecorded_dials": 0,
+  "why": "recording is a no answer, code agrees"
+ },
+ {
+  "current": false,
+  "current_basis": "producer note (no contact)",
+  "evidence": {
+   "asserted": [],
+   "call_notes": [],
+   "machine_vm": false,
+   "negative": true,
+   "screener": false,
+   "stage_moves": [],
+   "written": []
+  },
+  "expected": null,
+  "lead_id": 87901903,
+  "lead_name": "Juan Malta",
+  "live_seconds": 0,
+  "number": "+19289198444",
+  "producer": "Lorena Gonzalez",
+  "screener": false,
+  "talk_seconds": 13,
+  "transcript_class": "unclear",
+  "unrecorded_dials": 0,
+  "why": ""
+ },
+ {
+  "current": false,
+  "current_basis": "producer note (no contact)",
+  "evidence": {
+   "asserted": [],
+   "call_notes": [
+    {
+     "seconds": 13,
+     "status": true
+    }
+   ],
+   "machine_vm": false,
+   "negative": true,
+   "screener": false,
+   "stage_moves": [],
+   "written": []
+  },
+  "expected": null,
+  "lead_id": 88034153,
+  "lead_name": "Mary Rhodes",
+  "live_seconds": 0,
+  "number": "+19204446427",
+  "producer": "Lorena Gonzalez",
+  "screener": false,
+  "talk_seconds": 13,
+  "transcript_class": null,
+  "unrecorded_dials": 1,
+  "why": ""
+ },
+ {
+  "current": false,
+  "current_basis": "producer note (no contact)",
+  "evidence": {
+   "asserted": [],
+   "call_notes": [],
+   "machine_vm": false,
+   "negative": true,
+   "screener": false,
+   "stage_moves": [],
+   "written": []
+  },
+  "expected": null,
+  "lead_id": 35893926,
+  "lead_name": "Victor Alapisco",
+  "live_seconds": 0,
+  "number": "+16025701878",
+  "producer": "Lorena Gonzalez",
+  "screener": false,
+  "talk_seconds": 12,
+  "transcript_class": null,
+  "unrecorded_dials": 1,
+  "why": ""
+ },
+ {
+  "current": false,
+  "current_basis": "producer note (no contact)",
+  "evidence": {
+   "asserted": [],
+   "call_notes": [
+    {
+     "seconds": 12,
+     "status": true
+    }
+   ],
+   "machine_vm": false,
+   "negative": true,
+   "screener": false,
+   "stage_moves": [],
+   "written": []
+  },
+  "expected": null,
+  "lead_id": 88598015,
+  "lead_name": "Amanda Risner",
+  "live_seconds": 0,
+  "number": "+18034025028",
+  "producer": "Lorena Gonzalez",
+  "screener": false,
+  "talk_seconds": 12,
+  "transcript_class": "unclear",
+  "unrecorded_dials": 0,
+  "why": ""
+ },
+ {
+  "current": false,
+  "current_basis": "recording (voicemail), every dial recorded",
+  "evidence": {
+   "asserted": [],
+   "call_notes": [
+    {
+     "seconds": 11,
+     "status": true
+    }
+   ],
+   "machine_vm": false,
+   "negative": true,
+   "screener": false,
+   "stage_moves": [],
+   "written": []
+  },
+  "expected": false,
+  "lead_id": 88602640,
+  "lead_name": "Robert Flores",
+  "live_seconds": 0,
+  "number": "+16023590861",
+  "producer": "Lorena Gonzalez",
+  "screener": false,
+  "talk_seconds": 11,
+  "transcript_class": "voicemail",
+  "unrecorded_dials": 0,
+  "why": "recording is a voicemail, code agrees"
+ },
+ {
+  "current": false,
+  "current_basis": "recording (voicemail), every dial recorded",
+  "evidence": {
+   "asserted": [],
+   "call_notes": [],
+   "machine_vm": false,
+   "negative": true,
+   "screener": false,
+   "stage_moves": [],
+   "written": []
+  },
+  "expected": false,
+  "lead_id": 89003025,
+  "lead_name": "Victor Robledo",
+  "live_seconds": 0,
+  "number": "+19282576787",
+  "producer": "Lorena Gonzalez",
+  "screener": false,
+  "talk_seconds": 10,
+  "transcript_class": "voicemail",
+  "unrecorded_dials": 0,
+  "why": "recording is a voicemail, code agrees"
+ },
+ {
+  "current": false,
+  "current_basis": "recording (voicemail), every dial recorded",
+  "evidence": {
+   "asserted": [],
+   "call_notes": [
+    {
+     "seconds": 10,
+     "status": true
+    }
+   ],
+   "machine_vm": false,
+   "negative": true,
+   "screener": false,
+   "stage_moves": [],
+   "written": []
+  },
+  "expected": false,
+  "lead_id": 88253754,
+  "lead_name": "Ruben Morales",
+  "live_seconds": 0,
+  "number": "+15204440440",
+  "producer": "Lorena Gonzalez",
+  "screener": false,
+  "talk_seconds": 9,
+  "transcript_class": "voicemail",
+  "unrecorded_dials": 0,
+  "why": "recording is a voicemail, code agrees"
+ },
+ {
+  "current": false,
+  "current_basis": "recording (voicemail), every dial recorded",
+  "evidence": {
+   "asserted": [],
+   "call_notes": [
+    {
+     "seconds": 8,
+     "status": true
+    }
+   ],
+   "machine_vm": false,
+   "negative": true,
+   "screener": false,
+   "stage_moves": [],
+   "written": []
+  },
+  "expected": false,
+  "lead_id": 87793900,
+  "lead_name": "Maria Mendez",
+  "live_seconds": 0,
+  "number": "+19282591341",
+  "producer": "Lorena Gonzalez",
+  "screener": false,
+  "talk_seconds": 7,
+  "transcript_class": "voicemail",
+  "unrecorded_dials": 0,
+  "why": "recording is a voicemail, code agrees"
+ },
+ {
+  "current": false,
+  "current_basis": "recording (voicemail), every dial recorded",
+  "evidence": {
+   "asserted": [],
+   "call_notes": [
+    {
+     "seconds": 7,
+     "status": true
+    }
+   ],
+   "machine_vm": false,
+   "negative": true,
+   "screener": false,
+   "stage_moves": [],
+   "written": []
+  },
+  "expected": false,
+  "lead_id": 88028975,
+  "lead_name": "Karina Sosa",
+  "live_seconds": 0,
+  "number": "+17603358868",
+  "producer": "Lorena Gonzalez",
+  "screener": false,
+  "talk_seconds": 7,
+  "transcript_class": "voicemail",
+  "unrecorded_dials": 0,
+  "why": "recording is a voicemail, code agrees"
+ },
+ {
+  "current": false,
+  "current_basis": "recording (voicemail), every dial recorded",
+  "evidence": {
+   "asserted": [],
+   "call_notes": [
+    {
+     "seconds": 6,
+     "status": true
+    }
+   ],
+   "machine_vm": false,
+   "negative": true,
+   "screener": false,
+   "stage_moves": [],
+   "written": []
+  },
+  "expected": false,
+  "lead_id": 88029718,
+  "lead_name": "Andrea Bevil",
+  "live_seconds": 0,
+  "number": "+14806001179",
+  "producer": "Lorena Gonzalez",
+  "screener": false,
+  "talk_seconds": 6,
+  "transcript_class": "voicemail",
+  "unrecorded_dials": 0,
+  "why": "recording is a voicemail, code agrees"
+ },
+ {
+  "current": false,
+  "current_basis": "recording (voicemail), every dial recorded",
+  "evidence": {
+   "asserted": [],
+   "call_notes": [
+    {
+     "seconds": 6,
+     "status": true
+    }
+   ],
+   "machine_vm": false,
+   "negative": true,
+   "screener": false,
+   "stage_moves": [],
+   "written": []
+  },
+  "expected": false,
+  "lead_id": 87385467,
+  "lead_name": "Patricia Acosta",
+  "live_seconds": 0,
+  "number": "+19283152630",
+  "producer": "Lorena Gonzalez",
+  "screener": false,
+  "talk_seconds": 6,
+  "transcript_class": "voicemail",
+  "unrecorded_dials": 0,
+  "why": "recording is a voicemail, code agrees"
+ },
+ {
+  "current": false,
+  "current_basis": "recording (voicemail), every dial recorded",
+  "evidence": {
+   "asserted": [],
+   "call_notes": [
+    {
+     "seconds": 6,
+     "status": true
+    }
+   ],
+   "machine_vm": false,
+   "negative": true,
+   "screener": false,
+   "stage_moves": [],
+   "written": []
+  },
+  "expected": false,
+  "lead_id": 88030015,
+  "lead_name": "Mike Jacott",
+  "live_seconds": 0,
+  "number": "+16024656362",
+  "producer": "Lorena Gonzalez",
+  "screener": false,
+  "talk_seconds": 6,
+  "transcript_class": "voicemail",
+  "unrecorded_dials": 0,
+  "why": "recording is a voicemail, code agrees"
+ },
+ {
+  "current": false,
+  "current_basis": "producer note (no contact)",
+  "evidence": {
+   "asserted": [],
+   "call_notes": [
+    {
+     "seconds": 6,
+     "status": true
+    }
+   ],
+   "machine_vm": false,
+   "negative": true,
+   "screener": false,
+   "stage_moves": [],
+   "written": []
+  },
+  "expected": null,
+  "lead_id": 89003390,
+  "lead_name": "Ana b Armijo Castro",
+  "live_seconds": 0,
+  "number": "+19287508237",
+  "producer": "Lorena Gonzalez",
+  "screener": false,
+  "talk_seconds": 5,
+  "transcript_class": null,
+  "unrecorded_dials": 1,
+  "why": ""
+ },
+ {
+  "current": false,
+  "current_basis": "recording (voicemail), every dial recorded",
+  "evidence": {
+   "asserted": [],
+   "call_notes": [
+    {
+     "seconds": 5,
+     "status": true
+    }
+   ],
+   "machine_vm": false,
+   "negative": true,
+   "screener": false,
+   "stage_moves": [],
+   "written": []
+  },
+  "expected": false,
+  "lead_id": 88605458,
+  "lead_name": "Gwynne Zafarana",
+  "live_seconds": 0,
+  "number": "+12488423905",
+  "producer": "Lorena Gonzalez",
+  "screener": false,
+  "talk_seconds": 4,
+  "transcript_class": "voicemail",
+  "unrecorded_dials": 0,
+  "why": "recording is a voicemail, code agrees"
+ },
+ {
+  "current": false,
+  "current_basis": "too short to be a conversation",
+  "evidence": {
+   "asserted": [],
+   "call_notes": [
+    {
+     "seconds": 3,
+     "status": true
+    }
+   ],
+   "machine_vm": false,
+   "negative": false,
+   "screener": false,
+   "stage_moves": [],
+   "written": []
+  },
+  "expected": null,
+  "lead_id": 88257598,
+  "lead_name": "Mina Bunn",
+  "live_seconds": 0,
+  "number": "+16023217723",
+  "producer": "Lorena Gonzalez",
+  "screener": false,
+  "talk_seconds": 1,
+  "transcript_class": null,
+  "unrecorded_dials": 1,
+  "why": ""
+ },
+ {
+  "current": true,
+  "current_basis": "recording",
+  "evidence": {
+   "asserted": [],
+   "call_notes": [
+    {
+     "seconds": 252,
+     "status": true
+    },
+    {
+     "seconds": 67,
+     "status": true
+    }
+   ],
+   "machine_vm": false,
+   "negative": false,
+   "screener": false,
+   "stage_moves": [
+    {
+     "comment": "",
+     "move": "Smart-Cycle recycled back to 1-2 Leads Not Quoted | Quoted by Mike Olvera"
+    }
+   ],
+   "written": []
+  },
+  "expected": true,
+  "lead_id": 42759342,
+  "lead_name": "Nicole Santana",
+  "live_seconds": 252,
+  "number": "+19178041091",
+  "producer": "Mike Olvera",
+  "screener": false,
+  "talk_seconds": 252,
+  "transcript_class": "live",
+  "unrecorded_dials": 0,
+  "why": "recording is a two-way conversation"
+ },
+ {
+  "current": false,
+  "current_basis": "recording (voicemail), every dial recorded",
+  "evidence": {
+   "asserted": [],
+   "call_notes": [
+    {
+     "seconds": 245,
+     "status": true
+    }
+   ],
+   "machine_vm": false,
+   "negative": false,
+   "screener": false,
+   "stage_moves": [
+    {
+     "comment": "",
+     "move": "1-2 Leads Not Quoted | New 2nd Cycle to 1-2 Leads Not Quoted | Contacted by Mike Olvera"
+    }
+   ],
+   "written": []
+  },
+  "expected": false,
+  "lead_id": 35990870,
+  "lead_name": "Donald Trout",
+  "live_seconds": 0,
+  "number": "+15208704819",
+  "producer": "Mike Olvera",
+  "screener": false,
+  "talk_seconds": 245,
+  "transcript_class": "voicemail",
+  "unrecorded_dials": 0,
+  "why": "recording is a voicemail, code agrees"
+ },
+ {
+  "current": true,
+  "current_basis": "recording",
+  "evidence": {
+   "asserted": [],
+   "call_notes": [
+    {
+     "seconds": 155,
+     "status": true
+    }
+   ],
+   "machine_vm": false,
+   "negative": false,
+   "screener": false,
+   "stage_moves": [],
+   "written": []
+  },
+  "expected": true,
+  "lead_id": 83286618,
+  "lead_name": "Andres Garcia",
+  "live_seconds": 155,
+  "number": "+19289418065",
+  "producer": "Mike Olvera",
+  "screener": false,
+  "talk_seconds": 155,
+  "transcript_class": "live",
+  "unrecorded_dials": 0,
+  "why": "recording is a two-way conversation"
+ },
+ {
+  "current": false,
+  "current_basis": "producer note (no contact)",
+  "evidence": {
+   "asserted": [],
+   "call_notes": [
+    {
+     "seconds": 136,
+     "status": true
+    }
+   ],
+   "machine_vm": false,
+   "negative": true,
+   "screener": true,
+   "stage_moves": [],
+   "written": []
+  },
+  "expected": false,
+  "lead_id": 17433923,
+  "lead_name": "Jose Ramirez Sanchez",
+  "live_seconds": 0,
+  "number": "+19283236133",
+  "producer": "Mike Olvera",
+  "screener": true,
+  "talk_seconds": 135,
+  "transcript_class": "voicemail",
+  "unrecorded_dials": 0,
+  "why": "recording is a voicemail, code agrees"
+ },
+ {
+  "current": true,
+  "current_basis": "recording",
+  "evidence": {
+   "asserted": [],
+   "call_notes": [
+    {
+     "seconds": 117,
+     "status": true
+    }
+   ],
+   "machine_vm": false,
+   "negative": false,
+   "screener": false,
+   "stage_moves": [],
+   "written": []
+  },
+  "expected": true,
+  "lead_id": 34743013,
+  "lead_name": "Gary Beaver",
+  "live_seconds": 117,
+  "number": "+19282007915",
+  "producer": "Mike Olvera",
+  "screener": false,
+  "talk_seconds": 117,
+  "transcript_class": "live",
+  "unrecorded_dials": 0,
+  "why": "recording is a two-way conversation"
+ },
+ {
+  "current": true,
+  "current_basis": "producer note (states contact)",
+  "evidence": {
+   "asserted": [
+    "not interested now"
+   ],
+   "call_notes": [
+    {
+     "seconds": 111,
+     "status": true
+    }
+   ],
+   "machine_vm": false,
+   "negative": false,
+   "screener": false,
+   "stage_moves": [
+    {
+     "comment": "not interested now",
+     "move": "1 Pipeline | New to Smart-Cycle by Mike Olvera"
+    }
+   ],
+   "written": [
+    "not interested now"
+   ]
+  },
+  "expected": true,
+  "lead_id": 22231941,
+  "lead_name": "Martha Rosales",
+  "live_seconds": 111,
+  "number": "+19282713551",
+  "producer": "Mike Olvera",
+  "screener": false,
+  "talk_seconds": 111,
+  "transcript_class": "live",
+  "unrecorded_dials": 0,
+  "why": "recording is a two-way conversation"
+ },
+ {
+  "current": false,
+  "current_basis": "recording (voicemail), every dial recorded",
+  "evidence": {
+   "asserted": [],
+   "call_notes": [
+    {
+     "seconds": 80,
+     "status": true
+    }
+   ],
+   "machine_vm": false,
+   "negative": true,
+   "screener": false,
+   "stage_moves": [],
+   "written": []
+  },
+  "expected": false,
+  "lead_id": 35455428,
+  "lead_name": "Orlando Gonzalez",
+  "live_seconds": 0,
+  "number": "+13609100113",
+  "producer": "Mike Olvera",
+  "screener": false,
+  "talk_seconds": 79,
+  "transcript_class": "voicemail",
+  "unrecorded_dials": 0,
+  "why": "recording is a voicemail, code agrees"
+ },
+ {
+  "current": true,
+  "current_basis": "producer note",
+  "evidence": {
+   "asserted": [],
+   "call_notes": [
+    {
+     "seconds": 78,
+     "status": true
+    }
+   ],
+   "machine_vm": false,
+   "negative": false,
+   "screener": false,
+   "stage_moves": [
+    {
+     "comment": "paid for 6 months last week, ok to follow up before next renewal.",
+     "move": "1-2 Leads Not Quoted | New 2nd Cycle to Smart-Cycle by Mike Olvera"
+    }
+   ],
+   "written": [
+    "paid for 6 months last week, ok to follow up before next renewal."
+   ]
+  },
+  "expected": true,
+  "lead_id": 29890971,
+  "lead_name": "Galilea Torres",
+  "live_seconds": 77,
+  "number": "+19282468588",
+  "producer": "Mike Olvera",
+  "screener": false,
+  "talk_seconds": 77,
+  "transcript_class": "live",
+  "unrecorded_dials": 0,
+  "why": "recording is a two-way conversation"
+ },
+ {
+  "current": false,
+  "current_basis": "recording (voicemail), every dial recorded",
+  "evidence": {
+   "asserted": [],
+   "call_notes": [
+    {
+     "seconds": 70,
+     "status": true
+    }
+   ],
+   "machine_vm": false,
+   "negative": true,
+   "screener": false,
+   "stage_moves": [],
+   "written": []
+  },
+  "expected": false,
+  "lead_id": 35996230,
+  "lead_name": "Mark Cannard",
+  "live_seconds": 0,
+  "number": "+16237344862",
+  "producer": "Mike Olvera",
+  "screener": false,
+  "talk_seconds": 69,
+  "transcript_class": "voicemail",
+  "unrecorded_dials": 0,
+  "why": "recording is a voicemail, code agrees"
+ },
+ {
+  "current": true,
+  "current_basis": "recording",
+  "evidence": {
+   "asserted": [],
+   "call_notes": [
+    {
+     "seconds": 252,
+     "status": true
+    },
+    {
+     "seconds": 67,
+     "status": true
+    }
+   ],
+   "machine_vm": false,
+   "negative": false,
+   "screener": false,
+   "stage_moves": [
+    {
+     "comment": "",
+     "move": "Smart-Cycle recycled back to 1-2 Leads Not Quoted | Quoted by Mike Olvera"
+    }
+   ],
+   "written": []
+  },
+  "expected": true,
+  "lead_id": 42759342,
+  "lead_name": "Nicole Santana",
+  "live_seconds": 67,
+  "number": "+16312763801",
+  "producer": "Mike Olvera",
+  "screener": false,
+  "talk_seconds": 67,
+  "transcript_class": "live",
+  "unrecorded_dials": 0,
+  "why": "recording is a two-way conversation"
+ },
+ {
+  "current": false,
+  "current_basis": "recording (voicemail), every dial recorded",
+  "evidence": {
+   "asserted": [],
+   "call_notes": [
+    {
+     "seconds": 64,
+     "status": true
+    }
+   ],
+   "machine_vm": false,
+   "negative": false,
+   "screener": false,
+   "stage_moves": [],
+   "written": []
+  },
+  "expected": false,
+  "lead_id": 28888815,
+  "lead_name": "Alice Garcia",
+  "live_seconds": 0,
+  "number": "+14086651614",
+  "producer": "Mike Olvera",
+  "screener": false,
+  "talk_seconds": 63,
+  "transcript_class": "voicemail",
+  "unrecorded_dials": 0,
+  "why": "recording is a voicemail, code agrees"
+ },
+ {
+  "current": false,
+  "current_basis": "producer note (no contact)",
+  "evidence": {
+   "asserted": [],
+   "call_notes": [
+    {
+     "seconds": 59,
+     "status": true
+    }
+   ],
+   "machine_vm": false,
+   "negative": true,
+   "screener": false,
+   "stage_moves": [],
+   "written": []
+  },
+  "expected": false,
+  "lead_id": 34494766,
+  "lead_name": "Akshara Yeldandi",
+  "live_seconds": 0,
+  "number": "+16232040544",
+  "producer": "Mike Olvera",
+  "screener": true,
+  "talk_seconds": 59,
+  "transcript_class": "voicemail",
+  "unrecorded_dials": 0,
+  "why": "recording is a voicemail, code agrees"
+ },
+ {
+  "current": false,
+  "current_basis": "producer note (no contact)",
+  "evidence": {
+   "asserted": [],
+   "call_notes": [
+    {
+     "seconds": 60,
+     "status": true
+    }
+   ],
+   "machine_vm": false,
+   "negative": true,
+   "screener": false,
+   "stage_moves": [
+    {
+     "comment": "never answered",
+     "move": "1-2 Leads Not Quoted | New 2nd Cycle to Smart-Cycle by Mike Olvera"
+    }
+   ],
+   "written": []
+  },
+  "expected": null,
+  "lead_id": 35699702,
+  "lead_name": "Tom Stumper",
+  "live_seconds": 59,
+  "number": "+16027101144",
+  "producer": "Mike Olvera",
+  "screener": false,
+  "talk_seconds": 59,
+  "transcript_class": "live",
+  "unrecorded_dials": 0,
+  "why": ""
+ },
+ {
+  "current": false,
+  "current_basis": "producer note (no contact)",
+  "evidence": {
+   "asserted": [],
+   "call_notes": [
+    {
+     "seconds": 58,
+     "status": true
+    }
+   ],
+   "machine_vm": false,
+   "negative": true,
+   "screener": false,
+   "stage_moves": [],
+   "written": []
+  },
+  "expected": false,
+  "lead_id": 35992775,
+  "lead_name": "Danya Ayers",
+  "live_seconds": 0,
+  "number": "+15207195474",
+  "producer": "Mike Olvera",
+  "screener": true,
+  "talk_seconds": 58,
+  "transcript_class": "voicemail",
+  "unrecorded_dials": 0,
+  "why": "recording is a voicemail, code agrees"
+ },
+ {
+  "current": false,
+  "current_basis": "producer note (no contact)",
+  "evidence": {
+   "asserted": [],
+   "call_notes": [
+    {
+     "seconds": 58,
+     "status": true
+    }
+   ],
+   "machine_vm": false,
+   "negative": true,
+   "screener": false,
+   "stage_moves": [],
+   "written": []
+  },
+  "expected": false,
+  "lead_id": 35995876,
+  "lead_name": "Barbara Sullivan",
+  "live_seconds": 0,
+  "number": "+19522005312",
+  "producer": "Mike Olvera",
+  "screener": true,
+  "talk_seconds": 58,
+  "transcript_class": "voicemail",
+  "unrecorded_dials": 0,
+  "why": "recording is a voicemail, code agrees"
+ },
+ {
+  "current": false,
+  "current_basis": "recording (voicemail), every dial recorded",
+  "evidence": {
+   "asserted": [],
+   "call_notes": [
+    {
+     "seconds": 28,
+     "status": true
+    },
+    {
+     "seconds": 28,
+     "status": true
+    }
+   ],
+   "machine_vm": false,
+   "negative": true,
+   "screener": false,
+   "stage_moves": [],
+   "written": []
+  },
+  "expected": false,
+  "lead_id": 35993411,
+  "lead_name": "Kevin Owinyo",
+  "live_seconds": 0,
+  "number": "+16025159105",
+  "producer": "Mike Olvera",
+  "screener": false,
+  "talk_seconds": 57,
+  "transcript_class": "voicemail",
+  "unrecorded_dials": 0,
+  "why": "recording is a voicemail, code agrees"
+ },
+ {
+  "current": false,
+  "current_basis": "producer note (no contact)",
+  "evidence": {
+   "asserted": [],
+   "call_notes": [
+    {
+     "seconds": 58,
+     "status": true
+    }
+   ],
+   "machine_vm": false,
+   "negative": true,
+   "screener": false,
+   "stage_moves": [],
+   "written": []
+  },
+  "expected": false,
+  "lead_id": 35883382,
+  "lead_name": "Tommie Pratt",
+  "live_seconds": 0,
+  "number": "+17174206836",
+  "producer": "Mike Olvera",
+  "screener": true,
+  "talk_seconds": 57,
+  "transcript_class": "voicemail",
+  "unrecorded_dials": 0,
+  "why": "recording is a voicemail, code agrees"
+ },
+ {
+  "current": false,
+  "current_basis": "producer note (no contact)",
+  "evidence": {
+   "asserted": [],
+   "call_notes": [
+    {
+     "seconds": 56,
+     "status": true
+    }
+   ],
+   "machine_vm": false,
+   "negative": true,
+   "screener": false,
+   "stage_moves": [],
+   "written": []
+  },
+  "expected": false,
+  "lead_id": 20747206,
+  "lead_name": "Alexis Gonzalez",
+  "live_seconds": 0,
+  "number": "+18315941541",
+  "producer": "Mike Olvera",
+  "screener": true,
+  "talk_seconds": 56,
+  "transcript_class": "voicemail",
+  "unrecorded_dials": 0,
+  "why": "recording is a voicemail, code agrees"
+ },
+ {
+  "current": false,
+  "current_basis": "producer note (no contact)",
+  "evidence": {
+   "asserted": [],
+   "call_notes": [
+    {
+     "seconds": 47,
+     "status": true
+    },
+    {
+     "seconds": 8,
+     "status": true
+    }
+   ],
+   "machine_vm": false,
+   "negative": true,
+   "screener": false,
+   "stage_moves": [],
+   "written": []
+  },
+  "expected": null,
+  "lead_id": 35991810,
+  "lead_name": "Michelle Arevalo",
+  "live_seconds": 0,
+  "number": "+19289655569",
+  "producer": "Mike Olvera",
+  "screener": false,
+  "talk_seconds": 55,
+  "transcript_class": "unclear",
+  "unrecorded_dials": 0,
+  "why": ""
+ },
+ {
+  "current": true,
+  "current_basis": "producer note (states contact)",
+  "evidence": {
+   "asserted": [
+    "was not interested last time"
+   ],
+   "call_notes": [
+    {
+     "seconds": 54,
+     "status": true
+    }
+   ],
+   "machine_vm": false,
+   "negative": false,
+   "screener": false,
+   "stage_moves": [
+    {
+     "comment": "was not interested last time",
+     "move": "1-2 Leads Not Quoted | New 1st Cycle to Smart-Cycle by Mike Olvera"
+    }
+   ],
+   "written": [
+    "was not interested last time"
+   ]
+  },
+  "expected": true,
+  "lead_id": 67487900,
+  "lead_name": "Gage Allard",
+  "live_seconds": 54,
+  "number": "+15202498958",
+  "producer": "Mike Olvera",
+  "screener": false,
+  "talk_seconds": 54,
+  "transcript_class": "live",
+  "unrecorded_dials": 0,
+  "why": "recording is a two-way conversation"
+ },
+ {
+  "current": false,
+  "current_basis": "recording (voicemail), every dial recorded",
+  "evidence": {
+   "asserted": [],
+   "call_notes": [
+    {
+     "seconds": 51,
+     "status": true
+    }
+   ],
+   "machine_vm": false,
+   "negative": false,
+   "screener": false,
+   "stage_moves": [],
+   "written": []
+  },
+  "expected": false,
+  "lead_id": 81607800,
+  "lead_name": "Sheila & Ernie Santos",
+  "live_seconds": 0,
+  "number": "+19282467535",
+  "producer": "Mike Olvera",
+  "screener": false,
+  "talk_seconds": 52,
+  "transcript_class": "voicemail",
+  "unrecorded_dials": 0,
+  "why": "recording is a voicemail, code agrees"
+ },
+ {
+  "current": false,
+  "current_basis": "recording (voicemail), every dial recorded",
+  "evidence": {
+   "asserted": [],
+   "call_notes": [
+    {
+     "seconds": 49,
+     "status": true
+    }
+   ],
+   "machine_vm": false,
+   "negative": true,
+   "screener": false,
+   "stage_moves": [],
+   "written": []
+  },
+  "expected": false,
+  "lead_id": 35721219,
+  "lead_name": "Saul Perez",
+  "live_seconds": 0,
+  "number": "+15204142423",
+  "producer": "Mike Olvera",
+  "screener": false,
+  "talk_seconds": 49,
+  "transcript_class": "voicemail",
+  "unrecorded_dials": 0,
+  "why": "recording is a voicemail, code agrees"
+ },
+ {
+  "current": false,
+  "current_basis": "recording (voicemail), every dial recorded",
+  "evidence": {
+   "asserted": [],
+   "call_notes": [
+    {
+     "seconds": 49,
+     "status": true
+    }
+   ],
+   "machine_vm": false,
+   "negative": true,
+   "screener": false,
+   "stage_moves": [],
+   "written": []
+  },
+  "expected": false,
+  "lead_id": 16555352,
+  "lead_name": "Claudia Rivas",
+  "live_seconds": 0,
+  "number": "+19285816949",
+  "producer": "Mike Olvera",
+  "screener": false,
+  "talk_seconds": 49,
+  "transcript_class": "voicemail",
+  "unrecorded_dials": 0,
+  "why": "recording is a voicemail, code agrees"
+ },
+ {
+  "current": false,
+  "current_basis": "recording (voicemail), every dial recorded",
+  "evidence": {
+   "asserted": [],
+   "call_notes": [
+    {
+     "seconds": 49,
+     "status": true
+    }
+   ],
+   "machine_vm": false,
+   "negative": true,
+   "screener": false,
+   "stage_moves": [
+    {
+     "comment": "",
+     "move": "1-2 Leads Not Quoted | New 1st Cycle to 1-2 Leads Not Quoted | New 2nd Cycle by Mike Olvera"
+    }
+   ],
+   "written": []
+  },
+  "expected": false,
+  "lead_id": 54258226,
+  "lead_name": "Stephanny Aguilar",
+  "live_seconds": 0,
+  "number": "+19282870409",
+  "producer": "Mike Olvera",
+  "screener": false,
+  "talk_seconds": 49,
+  "transcript_class": "voicemail",
+  "unrecorded_dials": 0,
+  "why": "recording is a voicemail, code agrees"
+ },
+ {
+  "current": false,
+  "current_basis": "recording (voicemail), every dial recorded",
+  "evidence": {
+   "asserted": [],
+   "call_notes": [
+    {
+     "seconds": 49,
+     "status": true
+    }
+   ],
+   "machine_vm": false,
+   "negative": false,
+   "screener": false,
+   "stage_moves": [],
+   "written": []
+  },
+  "expected": false,
+  "lead_id": 35925533,
+  "lead_name": "Melanie Gause",
+  "live_seconds": 0,
+  "number": "+14809387984",
+  "producer": "Mike Olvera",
+  "screener": false,
+  "talk_seconds": 49,
+  "transcript_class": "voicemail",
+  "unrecorded_dials": 0,
+  "why": "recording is a voicemail, code agrees"
+ },
+ {
+  "current": false,
+  "current_basis": "recording (voicemail), every dial recorded",
+  "evidence": {
+   "asserted": [],
+   "call_notes": [
+    {
+     "seconds": 46,
+     "status": true
+    }
+   ],
+   "machine_vm": false,
+   "negative": true,
+   "screener": false,
+   "stage_moves": [],
+   "written": []
+  },
+  "expected": false,
+  "lead_id": 35898870,
+  "lead_name": "Cameron Upton",
+  "live_seconds": 0,
+  "number": "+13097063512",
+  "producer": "Mike Olvera",
+  "screener": false,
+  "talk_seconds": 46,
+  "transcript_class": "voicemail",
+  "unrecorded_dials": 0,
+  "why": "recording is a voicemail, code agrees"
+ },
+ {
+  "current": false,
+  "current_basis": "recording (voicemail), every dial recorded",
+  "evidence": {
+   "asserted": [],
+   "call_notes": [
+    {
+     "seconds": 46,
+     "status": true
+    }
+   ],
+   "machine_vm": false,
+   "negative": false,
+   "screener": false,
+   "stage_moves": [],
+   "written": []
+  },
+  "expected": false,
+  "lead_id": 36744326,
+  "lead_name": "David Van Omen",
+  "live_seconds": 0,
+  "number": "+16025098818",
+  "producer": "Mike Olvera",
+  "screener": false,
+  "talk_seconds": 46,
+  "transcript_class": "voicemail",
+  "unrecorded_dials": 0,
+  "why": "recording is a voicemail, code agrees"
+ },
+ {
+  "current": true,
+  "current_basis": "producer note",
+  "evidence": {
+   "asserted": [],
+   "call_notes": [
+    {
+     "seconds": 45,
+     "status": true
+    }
+   ],
+   "machine_vm": false,
+   "negative": false,
+   "screener": false,
+   "stage_moves": [
+    {
+     "comment": "had gone with someone else. Should have 6 mo prior in Feb",
+     "move": "1-2 Leads Not Quoted | Contacted to Smart-Cycle by Mike Olvera"
+    }
+   ],
+   "written": [
+    "had gone with someone else. Should have 6 mo prior in Feb"
+   ]
+  },
+  "expected": true,
+  "lead_id": 54258194,
+  "lead_name": "Victoria Alarcon",
+  "live_seconds": 45,
+  "number": "+19285801139",
+  "producer": "Mike Olvera",
+  "screener": false,
+  "talk_seconds": 45,
+  "transcript_class": "live",
+  "unrecorded_dials": 0,
+  "why": "recording is a two-way conversation"
+ },
+ {
+  "current": false,
+  "current_basis": "recording (voicemail), every dial recorded",
+  "evidence": {
+   "asserted": [],
+   "call_notes": [
+    {
+     "seconds": 39,
+     "status": true
+    }
+   ],
+   "machine_vm": false,
+   "negative": true,
+   "screener": false,
+   "stage_moves": [
+    {
+     "comment": "NEVER ANSWERED",
+     "move": "1-2 Leads Not Quoted | New 2nd Cycle to Smart-Cycle by Mike Olvera"
+    }
+   ],
+   "written": []
+  },
+  "expected": false,
+  "lead_id": 35692417,
+  "lead_name": "Lee Dominick",
+  "live_seconds": 0,
+  "number": "+14802139992",
+  "producer": "Mike Olvera",
+  "screener": false,
+  "talk_seconds": 39,
+  "transcript_class": "voicemail",
+  "unrecorded_dials": 0,
+  "why": "recording is a voicemail, code agrees"
+ },
+ {
+  "current": true,
+  "current_basis": "producer note (states contact)",
+  "evidence": {
+   "asserted": [
+    "not interested now"
+   ],
+   "call_notes": [
+    {
+     "seconds": 40,
+     "status": true
+    }
+   ],
+   "machine_vm": false,
+   "negative": false,
+   "screener": false,
+   "stage_moves": [
+    {
+     "comment": "not interested now",
+     "move": "1-1 QNC | New 1st Cycle to Smart-Cycle by Mike Olvera"
+    }
+   ],
+   "written": [
+    "not interested now"
+   ]
+  },
+  "expected": true,
+  "lead_id": 70035451,
+  "lead_name": "Robert Goemer",
+  "live_seconds": 39,
+  "number": "+16128171218",
+  "producer": "Mike Olvera",
+  "screener": false,
+  "talk_seconds": 39,
+  "transcript_class": "live",
+  "unrecorded_dials": 0,
+  "why": "recording is a two-way conversation"
+ },
+ {
+  "current": true,
+  "current_basis": "recording",
+  "evidence": {
+   "asserted": [],
+   "call_notes": [
+    {
+     "seconds": 39,
+     "status": true
+    }
+   ],
+   "machine_vm": false,
+   "negative": false,
+   "screener": false,
+   "stage_moves": [],
+   "written": []
+  },
+  "expected": true,
+  "lead_id": 88935197,
+  "lead_name": "Nydia Figueroa",
+  "live_seconds": 39,
+  "number": "+19282919626",
+  "producer": "Mike Olvera",
+  "screener": false,
+  "talk_seconds": 39,
+  "transcript_class": "live",
+  "unrecorded_dials": 0,
+  "why": "recording is a two-way conversation"
+ },
+ {
+  "current": false,
+  "current_basis": "recording (voicemail), every dial recorded",
+  "evidence": {
+   "asserted": [],
+   "call_notes": [
+    {
+     "seconds": 38,
+     "status": true
+    }
+   ],
+   "machine_vm": false,
+   "negative": true,
+   "screener": false,
+   "stage_moves": [],
+   "written": []
+  },
+  "expected": false,
+  "lead_id": 35896472,
+  "lead_name": "Brandon Maestas",
+  "live_seconds": 0,
+  "number": "+19283805031",
+  "producer": "Mike Olvera",
+  "screener": false,
+  "talk_seconds": 38,
+  "transcript_class": "voicemail",
+  "unrecorded_dials": 0,
+  "why": "recording is a voicemail, code agrees"
+ },
+ {
+  "current": false,
+  "current_basis": "recording (voicemail), every dial recorded",
+  "evidence": {
+   "asserted": [],
+   "call_notes": [
+    {
+     "seconds": 36,
+     "status": true
+    }
+   ],
+   "machine_vm": false,
+   "negative": false,
+   "screener": false,
+   "stage_moves": [],
+   "written": []
+  },
+  "expected": false,
+  "lead_id": 86713586,
+  "lead_name": "Mileth Rodriguez-Sanchez",
+  "live_seconds": 0,
+  "number": "+19289551724",
+  "producer": "Mike Olvera",
+  "screener": false,
+  "talk_seconds": 36,
+  "transcript_class": "voicemail",
+  "unrecorded_dials": 0,
+  "why": "recording is a voicemail, code agrees"
+ },
+ {
+  "current": false,
+  "current_basis": "recording (voicemail), every dial recorded",
+  "evidence": {
+   "asserted": [],
+   "call_notes": [
+    {
+     "seconds": 34,
+     "status": true
+    }
+   ],
+   "machine_vm": false,
+   "negative": true,
+   "screener": false,
+   "stage_moves": [
+    {
+     "comment": "never answered",
+     "move": "1-2 Leads Not Quoted | New 2nd Cycle to Smart-Cycle by Mike Olvera"
+    }
+   ],
+   "written": []
+  },
+  "expected": false,
+  "lead_id": 35762408,
+  "lead_name": "Joseph Miller",
+  "live_seconds": 0,
+  "number": "+15635802261",
+  "producer": "Mike Olvera",
+  "screener": false,
+  "talk_seconds": 34,
+  "transcript_class": "voicemail",
+  "unrecorded_dials": 0,
+  "why": "recording is a voicemail, code agrees"
+ },
+ {
+  "current": false,
+  "current_basis": "recording (voicemail), every dial recorded",
+  "evidence": {
+   "asserted": [],
+   "call_notes": [
+    {
+     "seconds": 35,
+     "status": true
+    }
+   ],
+   "machine_vm": false,
+   "negative": true,
+   "screener": false,
+   "stage_moves": [],
+   "written": []
+  },
+  "expected": false,
+  "lead_id": 35992934,
+  "lead_name": "Jerry Martinez",
+  "live_seconds": 0,
+  "number": "+14805803525",
+  "producer": "Mike Olvera",
+  "screener": false,
+  "talk_seconds": 34,
+  "transcript_class": "voicemail",
+  "unrecorded_dials": 0,
+  "why": "recording is a voicemail, code agrees"
+ },
+ {
+  "current": false,
+  "current_basis": "recording (voicemail), every dial recorded",
+  "evidence": {
+   "asserted": [],
+   "call_notes": [
+    {
+     "seconds": 33,
+     "status": true
+    }
+   ],
+   "machine_vm": false,
+   "negative": true,
+   "screener": false,
+   "stage_moves": [],
+   "written": []
+  },
+  "expected": false,
+  "lead_id": 35983863,
+  "lead_name": "Luci Eblin",
+  "live_seconds": 0,
+  "number": "+16239100829",
+  "producer": "Mike Olvera",
+  "screener": false,
+  "talk_seconds": 33,
+  "transcript_class": "voicemail",
+  "unrecorded_dials": 0,
+  "why": "recording is a voicemail, code agrees"
+ },
+ {
+  "current": false,
+  "current_basis": "producer note (no contact)",
+  "evidence": {
+   "asserted": [],
+   "call_notes": [
+    {
+     "seconds": 30,
+     "status": true
+    }
+   ],
+   "machine_vm": false,
+   "negative": true,
+   "screener": true,
+   "stage_moves": [],
+   "written": []
+  },
+  "expected": false,
+  "lead_id": 35902890,
+  "lead_name": "Victor Acalco",
+  "live_seconds": 0,
+  "number": "+16025614750",
+  "producer": "Mike Olvera",
+  "screener": true,
+  "talk_seconds": 30,
+  "transcript_class": "voicemail",
+  "unrecorded_dials": 0,
+  "why": "recording is a voicemail, code agrees"
+ },
+ {
+  "current": false,
+  "current_basis": "recording (voicemail), every dial recorded",
+  "evidence": {
+   "asserted": [],
+   "call_notes": [
+    {
+     "seconds": 27,
+     "status": true
+    }
+   ],
+   "machine_vm": false,
+   "negative": false,
+   "screener": false,
+   "stage_moves": [
+    {
+     "comment": "has not been interested for a while.",
+     "move": "Smart-Cycle to Smart-Cycle by Mike Olvera"
+    }
+   ],
+   "written": [
+    "has not been interested for a while."
+   ]
+  },
+  "expected": false,
+  "lead_id": 34532587,
+  "lead_name": "Elizabeth Benitez Flores",
+  "live_seconds": 0,
+  "number": "+19257875906",
+  "producer": "Mike Olvera",
+  "screener": false,
+  "talk_seconds": 27,
+  "transcript_class": "voicemail",
+  "unrecorded_dials": 0,
+  "why": "voicemail. \"has not been interested for a while\" summarises a month of contact, not this dial"
+ },
+ {
+  "current": false,
+  "current_basis": "recording (voicemail), every dial recorded",
+  "evidence": {
+   "asserted": [],
+   "call_notes": [
+    {
+     "seconds": 27,
+     "status": true
+    },
+    {
+     "seconds": 488,
+     "status": true
+    },
+    {
+     "seconds": 488,
+     "status": true
+    },
+    {
+     "seconds": 488,
+     "status": true
+    }
+   ],
+   "machine_vm": false,
+   "negative": false,
+   "screener": false,
+   "stage_moves": [
+    {
+     "comment": "",
+     "move": "Smart-Cycle recycled back to 1-2 Leads Not Quoted | Quoted by Mike Olvera"
+    }
+   ],
+   "written": []
+  },
+  "expected": false,
+  "lead_id": 36947331,
+  "lead_name": "Patricia Quinlan",
+  "live_seconds": 0,
+  "number": "+15203239206",
+  "producer": "Mike Olvera",
+  "screener": false,
+  "talk_seconds": 27,
+  "transcript_class": "voicemail",
+  "unrecorded_dials": 0,
+  "why": "recording is a voicemail, code agrees"
+ },
+ {
+  "current": false,
+  "current_basis": "producer note (no contact)",
+  "evidence": {
+   "asserted": [],
+   "call_notes": [
+    {
+     "seconds": 26,
+     "status": true
+    }
+   ],
+   "machine_vm": false,
+   "negative": true,
+   "screener": false,
+   "stage_moves": [],
+   "written": []
+  },
+  "expected": false,
+  "lead_id": 38585320,
+  "lead_name": "Debra Sullivan",
+  "live_seconds": 0,
+  "number": "+17192892201",
+  "producer": "Mike Olvera",
+  "screener": true,
+  "talk_seconds": 26,
+  "transcript_class": "voicemail",
+  "unrecorded_dials": 0,
+  "why": "recording is a voicemail, code agrees"
+ },
+ {
+  "current": false,
+  "current_basis": "recording (no answer), every dial recorded",
+  "evidence": {
+   "asserted": [],
+   "call_notes": [
+    {
+     "seconds": 22,
+     "status": true
+    }
+   ],
+   "machine_vm": false,
+   "negative": false,
+   "screener": false,
+   "stage_moves": [],
+   "written": []
+  },
+  "expected": false,
+  "lead_id": 23154017,
+  "lead_name": "Aldo Lemus Silva",
+  "live_seconds": 0,
+  "number": "+19284468269",
+  "producer": "Mike Olvera",
+  "screener": false,
+  "talk_seconds": 21,
+  "transcript_class": "no answer",
+  "unrecorded_dials": 0,
+  "why": "recording is a no answer, code agrees"
+ },
+ {
+  "current": false,
+  "current_basis": "recording (voicemail), every dial recorded",
+  "evidence": {
+   "asserted": [],
+   "call_notes": [
+    {
+     "seconds": 20,
+     "status": true
+    }
+   ],
+   "machine_vm": false,
+   "negative": true,
+   "screener": false,
+   "stage_moves": [],
+   "written": []
+  },
+  "expected": false,
+  "lead_id": 35894567,
+  "lead_name": "Roy Hathale",
+  "live_seconds": 0,
+  "number": "+19284293528",
+  "producer": "Mike Olvera",
+  "screener": false,
+  "talk_seconds": 19,
+  "transcript_class": "voicemail",
+  "unrecorded_dials": 0,
+  "why": "recording is a voicemail, code agrees"
+ },
+ {
+  "current": false,
+  "current_basis": "recording (voicemail), every dial recorded",
+  "evidence": {
+   "asserted": [],
+   "call_notes": [
+    {
+     "seconds": 16,
+     "status": true
+    }
+   ],
+   "machine_vm": false,
+   "negative": true,
+   "screener": false,
+   "stage_moves": [],
+   "written": []
+  },
+  "expected": false,
+  "lead_id": 35997681,
+  "lead_name": "Ronald Ohara",
+  "live_seconds": 0,
+  "number": "+16026171639",
+  "producer": "Mike Olvera",
+  "screener": false,
+  "talk_seconds": 15,
+  "transcript_class": "voicemail",
+  "unrecorded_dials": 0,
+  "why": "recording is a voicemail, code agrees"
+ },
+ {
+  "current": false,
+  "current_basis": "recording (voicemail), every dial recorded",
+  "evidence": {
+   "asserted": [],
+   "call_notes": [
+    {
+     "seconds": 15,
+     "status": true
+    }
+   ],
+   "machine_vm": false,
+   "negative": false,
+   "screener": false,
+   "stage_moves": [],
+   "written": [
+    "Claims not to have a car but she is listed a s a driver on 3 policies. All policies have Barry Holloway as PNI"
+   ]
+  },
+  "expected": false,
+  "lead_id": 68026437,
+  "lead_name": "Marty Tissaw",
+  "live_seconds": 0,
+  "number": "+19285802841",
+  "producer": "Mike Olvera",
+  "screener": false,
+  "talk_seconds": 15,
+  "transcript_class": "voicemail",
+  "unrecorded_dials": 0,
+  "why": "voicemail greeting saying she does not check voicemail. Mike has dialled her once, ever -- \"Claims not to have a car\" cannot come from this call"
+ },
+ {
+  "current": false,
+  "current_basis": "recording (no answer), every dial recorded",
+  "evidence": {
+   "asserted": [],
+   "call_notes": [
+    {
+     "seconds": 6,
+     "status": true
+    },
+    {
+     "seconds": 9,
+     "status": true
+    }
+   ],
+   "machine_vm": false,
+   "negative": true,
+   "screener": false,
+   "stage_moves": [
+    {
+     "comment": "never answered",
+     "move": "1-2 Leads Not Quoted | New 2nd Cycle to Smart-Cycle by Mike Olvera"
+    }
+   ],
+   "written": []
+  },
+  "expected": false,
+  "lead_id": 35763913,
+  "lead_name": "Peter Torres",
+  "live_seconds": 0,
+  "number": "+15202860183",
+  "producer": "Mike Olvera",
+  "screener": false,
+  "talk_seconds": 14,
+  "transcript_class": "no answer",
+  "unrecorded_dials": 0,
+  "why": "recording is a no answer, code agrees"
+ },
+ {
+  "current": false,
+  "current_basis": "recording (voicemail), every dial recorded",
+  "evidence": {
+   "asserted": [],
+   "call_notes": [
+    {
+     "seconds": 11,
+     "status": true
+    }
+   ],
+   "machine_vm": false,
+   "negative": true,
+   "screener": false,
+   "stage_moves": [],
+   "written": []
+  },
+  "expected": false,
+  "lead_id": 35968064,
+  "lead_name": "Ana Morales",
+  "live_seconds": 0,
+  "number": "+15205408663",
+  "producer": "Mike Olvera",
+  "screener": false,
+  "talk_seconds": 11,
+  "transcript_class": "voicemail",
+  "unrecorded_dials": 0,
+  "why": "recording is a voicemail, code agrees"
+ },
+ {
+  "current": false,
+  "current_basis": "recording (voicemail), every dial recorded",
+  "evidence": {
+   "asserted": [],
+   "call_notes": [
+    {
+     "seconds": 8,
+     "status": true
+    }
+   ],
+   "machine_vm": false,
+   "negative": true,
+   "screener": false,
+   "stage_moves": [
+    {
+     "comment": "never answered",
+     "move": "1-2 Leads Not Quoted | New 2nd Cycle to Smart-Cycle by Mike Olvera"
+    }
+   ],
+   "written": []
+  },
+  "expected": false,
+  "lead_id": 35728216,
+  "lead_name": "Andres Rascon",
+  "live_seconds": 0,
+  "number": "+15204194058",
+  "producer": "Mike Olvera",
+  "screener": false,
+  "talk_seconds": 7,
+  "transcript_class": "voicemail",
+  "unrecorded_dials": 0,
+  "why": "recording is a voicemail, code agrees"
+ },
+ {
+  "current": false,
+  "current_basis": "recording (voicemail), every dial recorded",
+  "evidence": {
+   "asserted": [],
+   "call_notes": [
+    {
+     "seconds": 7,
+     "status": true
+    }
+   ],
+   "machine_vm": false,
+   "negative": false,
+   "screener": false,
+   "stage_moves": [],
+   "written": []
+  },
+  "expected": false,
+  "lead_id": 13148635,
+  "lead_name": "Carolina Lara Mejia",
+  "live_seconds": 0,
+  "number": "+19284462103",
+  "producer": "Mike Olvera",
+  "screener": false,
+  "talk_seconds": 7,
+  "transcript_class": "voicemail",
+  "unrecorded_dials": 0,
+  "why": "recording is a voicemail, code agrees"
+ },
+ {
+  "current": false,
+  "current_basis": "recording (voicemail), every dial recorded",
+  "evidence": {
+   "asserted": [],
+   "call_notes": [
+    {
+     "seconds": 6,
+     "status": true
+    }
+   ],
+   "machine_vm": false,
+   "negative": true,
+   "screener": false,
+   "stage_moves": [
+    {
+     "comment": "no answer",
+     "move": "1-2 Leads Not Quoted | New 1st Cycle to Smart-Cycle by Mike Olvera"
+    }
+   ],
+   "written": []
+  },
+  "expected": false,
+  "lead_id": 22540895,
+  "lead_name": "Ricardo Mendez",
+  "live_seconds": 0,
+  "number": "+16232066696",
+  "producer": "Mike Olvera",
+  "screener": false,
+  "talk_seconds": 6,
+  "transcript_class": "voicemail",
+  "unrecorded_dials": 0,
+  "why": "recording is a voicemail, code agrees"
+ },
+ {
+  "current": false,
+  "current_basis": "no outcome logged",
+  "evidence": {
+   "asserted": [],
+   "call_notes": [
+    {
+     "seconds": 5,
+     "status": true
+    }
+   ],
+   "machine_vm": false,
+   "negative": false,
+   "screener": false,
+   "stage_moves": [],
+   "written": []
+  },
+  "expected": null,
+  "lead_id": 35856334,
+  "lead_name": "Melinda Boggs",
+  "live_seconds": 0,
+  "number": "+14809536993",
+  "producer": "Mike Olvera",
+  "screener": false,
+  "talk_seconds": 5,
+  "transcript_class": null,
+  "unrecorded_dials": 1,
+  "why": ""
+ },
+ {
+  "current": false,
+  "current_basis": "recording (voicemail), every dial recorded",
+  "evidence": {
+   "asserted": [],
+   "call_notes": [
+    {
+     "seconds": 6,
+     "status": true
+    }
+   ],
+   "machine_vm": false,
+   "negative": true,
+   "screener": false,
+   "stage_moves": [
+    {
+     "comment": "never answered",
+     "move": "1 Pipeline | New to Smart-Cycle by Mike Olvera"
+    }
+   ],
+   "written": []
+  },
+  "expected": false,
+  "lead_id": 48142709,
+  "lead_name": "Andresa Griffin",
+  "live_seconds": 0,
+  "number": "+19284466719",
+  "producer": "Mike Olvera",
+  "screener": false,
+  "talk_seconds": 5,
+  "transcript_class": "voicemail",
+  "unrecorded_dials": 0,
+  "why": "recording is a voicemail, code agrees"
+ },
+ {
+  "current": false,
+  "current_basis": "too short to be a conversation",
+  "evidence": {
+   "asserted": [],
+   "call_notes": [
+    {
+     "seconds": 3,
+     "status": true
+    }
+   ],
+   "machine_vm": false,
+   "negative": false,
+   "screener": false,
+   "stage_moves": [],
+   "written": []
+  },
+  "expected": null,
+  "lead_id": 26949919,
+  "lead_name": "Ivan Saldana Mendivil",
+  "live_seconds": 0,
+  "number": "+15209795625",
+  "producer": "Mike Olvera",
+  "screener": false,
+  "talk_seconds": 3,
+  "transcript_class": null,
+  "unrecorded_dials": 1,
+  "why": ""
+ },
+ {
+  "current": false,
+  "current_basis": "too short to be a conversation",
+  "evidence": {
+   "asserted": [],
+   "call_notes": [
+    {
+     "seconds": 7,
+     "status": true
+    }
+   ],
+   "machine_vm": false,
+   "negative": false,
+   "screener": false,
+   "stage_moves": [],
+   "written": []
+  },
+  "expected": null,
+  "lead_id": 13148635,
+  "lead_name": "Carolina Lara Mejia",
+  "live_seconds": 0,
+  "number": "+19286278859",
+  "producer": "Mike Olvera",
+  "screener": false,
+  "talk_seconds": 2,
+  "transcript_class": null,
+  "unrecorded_dials": 1,
+  "why": ""
+ },
+ {
+  "current": false,
+  "current_basis": "too short to be a conversation",
+  "evidence": {
+   "asserted": [],
+   "call_notes": [
+    {
+     "seconds": 7,
+     "status": true
+    }
+   ],
+   "machine_vm": false,
+   "negative": false,
+   "screener": false,
+   "stage_moves": [],
+   "written": []
+  },
+  "expected": null,
+  "lead_id": 35993499,
+  "lead_name": "Lisande Donohoe",
+  "live_seconds": 0,
+  "number": "+19073804114",
+  "producer": "Mike Olvera",
+  "screener": false,
+  "talk_seconds": 1,
+  "transcript_class": null,
+  "unrecorded_dials": 1,
+  "why": ""
+ },
+ {
+  "current": true,
+  "current_basis": "recording",
+  "evidence": {
+   "asserted": [],
+   "call_notes": [],
+   "machine_vm": false,
+   "negative": false,
+   "screener": false,
+   "stage_moves": [
+    {
+     "comment": "",
+     "move": "1 Pipeline | New to 1 Pipeline | Ready to Present by Sarahi Chin"
+    }
+   ],
+   "written": []
+  },
+  "expected": true,
+  "lead_id": 88945924,
+  "lead_name": "Vicente Soria",
+  "live_seconds": 83,
+  "number": "+19283153668",
+  "producer": "Sarahi Chin",
+  "screener": false,
+  "talk_seconds": 83,
+  "transcript_class": "live",
+  "unrecorded_dials": 0,
+  "why": "recording is a two-way conversation"
+ },
+ {
+  "current": false,
+  "current_basis": "producer note (no contact)",
+  "evidence": {
+   "asserted": [],
+   "call_notes": [],
+   "machine_vm": false,
+   "negative": true,
+   "screener": false,
+   "stage_moves": [],
+   "written": []
+  },
+  "expected": null,
+  "lead_id": 86819178,
+  "lead_name": "Manuel Soto",
+  "live_seconds": 0,
+  "number": "+14027065488",
+  "producer": "Sarahi Chin",
+  "screener": false,
+  "talk_seconds": 80,
+  "transcript_class": null,
+  "unrecorded_dials": 1,
+  "why": ""
+ },
+ {
+  "current": false,
+  "current_basis": "recording (voicemail)",
+  "evidence": {
+   "asserted": [],
+   "call_notes": [],
+   "machine_vm": false,
+   "negative": false,
+   "screener": false,
+   "stage_moves": [],
+   "written": []
+  },
+  "expected": false,
+  "lead_id": 88599356,
+  "lead_name": "Kyle Kigo",
+  "live_seconds": 0,
+  "number": "+18578297066",
+  "producer": "Sarahi Chin",
+  "screener": true,
+  "talk_seconds": 76,
+  "transcript_class": "voicemail",
+  "unrecorded_dials": 0,
+  "why": "recording is a voicemail, code agrees"
+ },
+ {
+  "current": false,
+  "current_basis": "recording (voicemail)",
+  "evidence": {
+   "asserted": [],
+   "call_notes": [],
+   "machine_vm": false,
+   "negative": false,
+   "screener": false,
+   "stage_moves": [],
+   "written": []
+  },
+  "expected": false,
+  "lead_id": 88941892,
+  "lead_name": "Nancy Martens",
+  "live_seconds": 0,
+  "number": "+17194409911",
+  "producer": "Sarahi Chin",
+  "screener": true,
+  "talk_seconds": 63,
+  "transcript_class": "voicemail",
+  "unrecorded_dials": 0,
+  "why": "recording is a voicemail, code agrees"
+ },
+ {
+  "current": true,
+  "current_basis": "recording",
+  "evidence": {
+   "asserted": [],
+   "call_notes": [],
+   "machine_vm": false,
+   "negative": false,
+   "screener": false,
+   "stage_moves": [],
+   "written": []
+  },
+  "expected": true,
+  "lead_id": 88599209,
+  "lead_name": "Dorothy Rodriguez",
+  "live_seconds": 56,
+  "number": "+16265231846",
+  "producer": "Sarahi Chin",
+  "screener": false,
+  "talk_seconds": 56,
+  "transcript_class": "live",
+  "unrecorded_dials": 0,
+  "why": "recording is a two-way conversation"
+ },
+ {
+  "current": true,
+  "current_basis": "recording",
+  "evidence": {
+   "asserted": [],
+   "call_notes": [],
+   "machine_vm": false,
+   "negative": false,
+   "screener": false,
+   "stage_moves": [],
+   "written": []
+  },
+  "expected": true,
+  "lead_id": 86578834,
+  "lead_name": "Sarahi Coronado",
+  "live_seconds": 50,
+  "number": "+19283669545",
+  "producer": "Sarahi Chin",
+  "screener": false,
+  "talk_seconds": 50,
+  "transcript_class": "live",
+  "unrecorded_dials": 0,
+  "why": "recording is a two-way conversation"
+ },
+ {
+  "current": false,
+  "current_basis": "recording (voicemail), every dial recorded",
+  "evidence": {
+   "asserted": [],
+   "call_notes": [],
+   "machine_vm": false,
+   "negative": true,
+   "screener": false,
+   "stage_moves": [
+    {
+     "comment": "",
+     "move": "1 Pipeline | Ready to Present to 1 Pipeline | Contacted, In Progress by Sarahi Chin"
+    }
+   ],
+   "written": []
+  },
+  "expected": false,
+  "lead_id": 88710082,
+  "lead_name": "Ricardo Perea",
+  "live_seconds": 0,
+  "number": "+19288172415",
+  "producer": "Sarahi Chin",
+  "screener": false,
+  "talk_seconds": 49,
+  "transcript_class": "voicemail",
+  "unrecorded_dials": 0,
+  "why": "recording is a voicemail, code agrees"
+ },
+ {
+  "current": false,
+  "current_basis": "recording (voicemail), every dial recorded",
+  "evidence": {
+   "asserted": [],
+   "call_notes": [
+    {
+     "seconds": 21,
+     "status": true
+    }
+   ],
+   "machine_vm": false,
+   "negative": true,
+   "screener": false,
+   "stage_moves": [],
+   "written": []
+  },
+  "expected": false,
+  "lead_id": 85318337,
+  "lead_name": "Daniel Colunga",
+  "live_seconds": 0,
+  "number": "+19282561788",
+  "producer": "Sarahi Chin",
+  "screener": false,
+  "talk_seconds": 44,
+  "transcript_class": "voicemail",
+  "unrecorded_dials": 0,
+  "why": "recording is a voicemail, code agrees"
+ },
+ {
+  "current": false,
+  "current_basis": "recording (voicemail), every dial recorded",
+  "evidence": {
+   "asserted": [],
+   "call_notes": [],
+   "machine_vm": false,
+   "negative": false,
+   "screener": false,
+   "stage_moves": [],
+   "written": []
+  },
+  "expected": false,
+  "lead_id": 86851710,
+  "lead_name": "Javier Hernandez",
+  "live_seconds": 0,
+  "number": "+14022104977",
+  "producer": "Sarahi Chin",
+  "screener": false,
+  "talk_seconds": 44,
+  "transcript_class": "voicemail",
+  "unrecorded_dials": 0,
+  "why": "recording is a voicemail, code agrees"
+ },
+ {
+  "current": false,
+  "current_basis": "producer note (no contact)",
+  "evidence": {
+   "asserted": [],
+   "call_notes": [],
+   "machine_vm": false,
+   "negative": true,
+   "screener": false,
+   "stage_moves": [],
+   "written": []
+  },
+  "expected": false,
+  "lead_id": 86372040,
+  "lead_name": "Randy Blomquist",
+  "live_seconds": 0,
+  "number": "+15414205266",
+  "producer": "Sarahi Chin",
+  "screener": true,
+  "talk_seconds": 41,
+  "transcript_class": "voicemail",
+  "unrecorded_dials": 0,
+  "why": "recording is a voicemail, code agrees"
+ },
+ {
+  "current": false,
+  "current_basis": "recording (voicemail), every dial recorded",
+  "evidence": {
+   "asserted": [],
+   "call_notes": [],
+   "machine_vm": false,
+   "negative": true,
+   "screener": false,
+   "stage_moves": [],
+   "written": []
+  },
+  "expected": false,
+  "lead_id": 88957137,
+  "lead_name": "Guillermo Alegria",
+  "live_seconds": 0,
+  "number": "+19285807714",
+  "producer": "Sarahi Chin",
+  "screener": false,
+  "talk_seconds": 39,
+  "transcript_class": "voicemail",
+  "unrecorded_dials": 0,
+  "why": "recording is a voicemail, code agrees"
+ },
+ {
+  "current": false,
+  "current_basis": "recording (voicemail), every dial recorded",
+  "evidence": {
+   "asserted": [],
+   "call_notes": [],
+   "machine_vm": false,
+   "negative": true,
+   "screener": false,
+   "stage_moves": [],
+   "written": []
+  },
+  "expected": false,
+  "lead_id": 88956440,
+  "lead_name": "Deborah Korbitz",
+  "live_seconds": 0,
+  "number": "+15052313954",
+  "producer": "Sarahi Chin",
+  "screener": false,
+  "talk_seconds": 37,
+  "transcript_class": "voicemail",
+  "unrecorded_dials": 0,
+  "why": "recording is a voicemail, code agrees"
+ },
+ {
+  "current": false,
+  "current_basis": "recording (voicemail), every dial recorded",
+  "evidence": {
+   "asserted": [],
+   "call_notes": [],
+   "machine_vm": false,
+   "negative": false,
+   "screener": false,
+   "stage_moves": [],
+   "written": []
+  },
+  "expected": false,
+  "lead_id": 89007456,
+  "lead_name": "Selina Owens",
+  "live_seconds": 0,
+  "number": "+19282579015",
+  "producer": "Sarahi Chin",
+  "screener": false,
+  "talk_seconds": 36,
+  "transcript_class": "voicemail",
+  "unrecorded_dials": 0,
+  "why": "recording is a voicemail, code agrees"
+ },
+ {
+  "current": true,
+  "current_basis": "producer note",
+  "evidence": {
+   "asserted": [],
+   "call_notes": [],
+   "machine_vm": false,
+   "negative": false,
+   "screener": false,
+   "stage_moves": [
+    {
+     "comment": "",
+     "move": "1 Pipeline | New to Smart-Cycle by Sarahi Chin"
+    }
+   ],
+   "written": [
+    "Had home with us , try to win home back possibly autos as well"
+   ]
+  },
+  "expected": true,
+  "lead_id": 88955131,
+  "lead_name": "Caiden Kellner",
+  "live_seconds": 35,
+  "number": "+19282464970",
+  "producer": "Sarahi Chin",
+  "screener": false,
+  "talk_seconds": 35,
+  "transcript_class": "live",
+  "unrecorded_dials": 0,
+  "why": "recording is a two-way conversation"
+ },
+ {
+  "current": true,
+  "current_basis": "recording",
+  "evidence": {
+   "asserted": [],
+   "call_notes": [],
+   "machine_vm": false,
+   "negative": false,
+   "screener": false,
+   "stage_moves": [],
+   "written": []
+  },
+  "expected": true,
+  "lead_id": 88250709,
+  "lead_name": "Jose Garcia",
+  "live_seconds": 33,
+  "number": "+16232867352",
+  "producer": "Sarahi Chin",
+  "screener": false,
+  "talk_seconds": 33,
+  "transcript_class": "live",
+  "unrecorded_dials": 0,
+  "why": "recording is a two-way conversation"
+ },
+ {
+  "current": false,
+  "current_basis": "producer note (no contact)",
+  "evidence": {
+   "asserted": [],
+   "call_notes": [],
+   "machine_vm": false,
+   "negative": true,
+   "screener": false,
+   "stage_moves": [],
+   "written": []
+  },
+  "expected": null,
+  "lead_id": 88249681,
+  "lead_name": "Cid Duenas",
+  "live_seconds": 0,
+  "number": "+19282710555",
+  "producer": "Sarahi Chin",
+  "screener": false,
+  "talk_seconds": 33,
+  "transcript_class": null,
+  "unrecorded_dials": 1,
+  "why": ""
+ },
+ {
+  "current": true,
+  "current_basis": "producer note (states contact)",
+  "evidence": {
+   "asserted": [
+    "called and he picked up asking what do i want then i said im from farmers insurance he then said i already have insurance and hung up."
+   ],
+   "call_notes": [],
+   "machine_vm": false,
+   "negative": false,
+   "screener": false,
+   "stage_moves": [],
+   "written": [
+    "called and he picked up asking what do i want then i said im from farmers insurance he then said i already have insurance and hung up."
+   ]
+  },
+  "expected": true,
+  "lead_id": 88598996,
+  "lead_name": "Randy Webster",
+  "live_seconds": 0,
+  "number": "+14809109816",
+  "producer": "Sarahi Chin",
+  "screener": true,
+  "talk_seconds": 28,
+  "transcript_class": "voicemail",
+  "unrecorded_dials": 0,
+  "why": "LIVE. Classed voicemail because it opens with a screener, but Randy speaks on the recording -- \"What do you want?\" -- matching Sarahi's note"
+ },
+ {
+  "current": false,
+  "current_basis": "recording (voicemail), every dial recorded",
+  "evidence": {
+   "asserted": [],
+   "call_notes": [
+    {
+     "seconds": 0,
+     "status": true
+    }
+   ],
+   "machine_vm": false,
+   "negative": true,
+   "screener": false,
+   "stage_moves": [],
+   "written": [
+    "Had home with us trying to win home back and possibly bundle autos"
+   ]
+  },
+  "expected": false,
+  "lead_id": 88955286,
+  "lead_name": "Gordon Pidoborozny",
+  "live_seconds": 0,
+  "number": "+14037418280",
+  "producer": "Sarahi Chin",
+  "screener": false,
+  "talk_seconds": 24,
+  "transcript_class": "voicemail",
+  "unrecorded_dials": 0,
+  "why": "recording is a voicemail, code agrees"
+ },
+ {
+  "current": false,
+  "current_basis": "recording (no answer), every dial recorded",
+  "evidence": {
+   "asserted": [],
+   "call_notes": [],
+   "machine_vm": false,
+   "negative": true,
+   "screener": false,
+   "stage_moves": [],
+   "written": [
+    "Gary had home and autos with us, sold AZ property see if he still has cars"
+   ]
+  },
+  "expected": false,
+  "lead_id": 88954080,
+  "lead_name": "Gary Hunter",
+  "live_seconds": 0,
+  "number": "+19283041216",
+  "producer": "Sarahi Chin",
+  "screener": false,
+  "talk_seconds": 24,
+  "transcript_class": "no answer",
+  "unrecorded_dials": 0,
+  "why": "recording is a no answer, code agrees"
+ },
+ {
+  "current": false,
+  "current_basis": "recording (voicemail), every dial recorded",
+  "evidence": {
+   "asserted": [],
+   "call_notes": [],
+   "machine_vm": false,
+   "negative": true,
+   "screener": false,
+   "stage_moves": [],
+   "written": []
+  },
+  "expected": false,
+  "lead_id": 88942110,
+  "lead_name": "Abdiel Manriquez",
+  "live_seconds": 0,
+  "number": "+19282469933",
+  "producer": "Sarahi Chin",
+  "screener": false,
+  "talk_seconds": 24,
+  "transcript_class": "voicemail",
+  "unrecorded_dials": 0,
+  "why": "recording is a voicemail, code agrees"
+ },
+ {
+  "current": false,
+  "current_basis": "recording (voicemail), every dial recorded",
+  "evidence": {
+   "asserted": [],
+   "call_notes": [],
+   "machine_vm": false,
+   "negative": true,
+   "screener": false,
+   "stage_moves": [],
+   "written": []
+  },
+  "expected": false,
+  "lead_id": 88946877,
+  "lead_name": "Paul Word",
+  "live_seconds": 0,
+  "number": "+14807883047",
+  "producer": "Sarahi Chin",
+  "screener": false,
+  "talk_seconds": 24,
+  "transcript_class": "voicemail",
+  "unrecorded_dials": 0,
+  "why": "recording is a voicemail, code agrees"
+ },
+ {
+  "current": false,
+  "current_basis": "recording (voicemail), every dial recorded",
+  "evidence": {
+   "asserted": [],
+   "call_notes": [],
+   "machine_vm": false,
+   "negative": true,
+   "screener": false,
+   "stage_moves": [],
+   "written": []
+  },
+  "expected": false,
+  "lead_id": 86854228,
+  "lead_name": "Roger Hernandez-Romero",
+  "live_seconds": 0,
+  "number": "+14023066890",
+  "producer": "Sarahi Chin",
+  "screener": false,
+  "talk_seconds": 22,
+  "transcript_class": "voicemail",
+  "unrecorded_dials": 0,
+  "why": "recording is a voicemail, code agrees"
+ },
+ {
+  "current": false,
+  "current_basis": "recording (voicemail), every dial recorded",
+  "evidence": {
+   "asserted": [],
+   "call_notes": [],
+   "machine_vm": false,
+   "negative": true,
+   "screener": false,
+   "stage_moves": [],
+   "written": []
+  },
+  "expected": false,
+  "lead_id": 88956699,
+  "lead_name": "Ailani Dominguez",
+  "live_seconds": 0,
+  "number": "+15202382230",
+  "producer": "Sarahi Chin",
+  "screener": false,
+  "talk_seconds": 21,
+  "transcript_class": "voicemail",
+  "unrecorded_dials": 0,
+  "why": "recording is a voicemail, code agrees"
+ },
+ {
+  "current": false,
+  "current_basis": "producer note (no contact)",
+  "evidence": {
+   "asserted": [],
+   "call_notes": [],
+   "machine_vm": false,
+   "negative": true,
+   "screener": false,
+   "stage_moves": [],
+   "written": []
+  },
+  "expected": null,
+  "lead_id": 64757183,
+  "lead_name": "Paula Cota",
+  "live_seconds": 21,
+  "number": "+19285808067",
+  "producer": "Sarahi Chin",
+  "screener": false,
+  "talk_seconds": 21,
+  "transcript_class": "live",
+  "unrecorded_dials": 0,
+  "why": ""
+ },
+ {
+  "current": false,
+  "current_basis": "recording (voicemail), every dial recorded",
+  "evidence": {
+   "asserted": [],
+   "call_notes": [],
+   "machine_vm": false,
+   "negative": true,
+   "screener": false,
+   "stage_moves": [],
+   "written": []
+  },
+  "expected": false,
+  "lead_id": 82251798,
+  "lead_name": "Jgail Gipson",
+  "live_seconds": 0,
+  "number": "+13017600787",
+  "producer": "Sarahi Chin",
+  "screener": false,
+  "talk_seconds": 16,
+  "transcript_class": "voicemail",
+  "unrecorded_dials": 0,
+  "why": "recording is a voicemail, code agrees"
+ },
+ {
+  "current": false,
+  "current_basis": "recording (voicemail), every dial recorded",
+  "evidence": {
+   "asserted": [],
+   "call_notes": [],
+   "machine_vm": false,
+   "negative": true,
+   "screener": false,
+   "stage_moves": [],
+   "written": []
+  },
+  "expected": false,
+  "lead_id": 88036139,
+  "lead_name": "Albert Ochoa",
+  "live_seconds": 0,
+  "number": "+19283155629",
+  "producer": "Sarahi Chin",
+  "screener": false,
+  "talk_seconds": 13,
+  "transcript_class": "voicemail",
+  "unrecorded_dials": 0,
+  "why": "recording is a voicemail, code agrees"
+ },
+ {
+  "current": false,
+  "current_basis": "recording (voicemail), every dial recorded",
+  "evidence": {
+   "asserted": [],
+   "call_notes": [],
+   "machine_vm": false,
+   "negative": false,
+   "screener": false,
+   "stage_moves": [
+    {
+     "comment": "",
+     "move": "1 Pipeline | New to 1 Pipeline | Contacted, In Progress by Sarahi Chin"
+    },
+    {
+     "comment": "",
+     "move": "Smart-Cycle recycled back to 1 Pipeline | New by Sarahi Chin"
+    },
+    {
+     "comment": "",
+     "move": "Smart-Cycle to Smart-Cycle by Sarahi Chin"
+    }
+   ],
+   "written": [
+    "Thomas Runyon has autos but no home. Mention that our home rates recently went down and that bundling with his autos would make a huge difference."
+   ]
+  },
+  "expected": false,
+  "lead_id": 88948248,
+  "lead_name": "Thomas Runyons",
+  "live_seconds": 0,
+  "number": "+19284465754",
+  "producer": "Sarahi Chin",
+  "screener": false,
+  "talk_seconds": 13,
+  "transcript_class": "voicemail",
+  "unrecorded_dials": 0,
+  "why": "voicemail. Note is a to-do written before the call"
+ },
+ {
+  "current": false,
+  "current_basis": "recording (voicemail), every dial recorded",
+  "evidence": {
+   "asserted": [],
+   "call_notes": [],
+   "machine_vm": false,
+   "negative": true,
+   "screener": false,
+   "stage_moves": [],
+   "written": []
+  },
+  "expected": false,
+  "lead_id": 88963961,
+  "lead_name": "Yesenia Arreguin",
+  "live_seconds": 0,
+  "number": "+19284881413",
+  "producer": "Sarahi Chin",
+  "screener": false,
+  "talk_seconds": 12,
+  "transcript_class": "voicemail",
+  "unrecorded_dials": 0,
+  "why": "recording is a voicemail, code agrees"
+ },
+ {
+  "current": false,
+  "current_basis": "producer note (no contact)",
+  "evidence": {
+   "asserted": [],
+   "call_notes": [],
+   "machine_vm": false,
+   "negative": true,
+   "screener": false,
+   "stage_moves": [],
+   "written": []
+  },
+  "expected": null,
+  "lead_id": 89006837,
+  "lead_name": "Guadalupe Vela",
+  "live_seconds": 0,
+  "number": "+19289191283",
+  "producer": "Sarahi Chin",
+  "screener": false,
+  "talk_seconds": 11,
+  "transcript_class": "unclear",
+  "unrecorded_dials": 0,
+  "why": ""
+ },
+ {
+  "current": false,
+  "current_basis": "recording (voicemail), every dial recorded",
+  "evidence": {
+   "asserted": [],
+   "call_notes": [],
+   "machine_vm": false,
+   "negative": true,
+   "screener": false,
+   "stage_moves": [],
+   "written": []
+  },
+  "expected": false,
+  "lead_id": 88036484,
+  "lead_name": "Carla Baldenegro",
+  "live_seconds": 0,
+  "number": "+19282471584",
+  "producer": "Sarahi Chin",
+  "screener": false,
+  "talk_seconds": 10,
+  "transcript_class": "voicemail",
+  "unrecorded_dials": 0,
+  "why": "recording is a voicemail, code agrees"
+ },
+ {
+  "current": false,
+  "current_basis": "recording (voicemail), every dial recorded",
+  "evidence": {
+   "asserted": [],
+   "call_notes": [],
+   "machine_vm": false,
+   "negative": true,
+   "screener": false,
+   "stage_moves": [],
+   "written": []
+  },
+  "expected": false,
+  "lead_id": 24064953,
+  "lead_name": "Vern Harkins",
+  "live_seconds": 0,
+  "number": "+19287504036",
+  "producer": "Sarahi Chin",
+  "screener": false,
+  "talk_seconds": 9,
+  "transcript_class": "voicemail",
+  "unrecorded_dials": 0,
+  "why": "recording is a voicemail, code agrees"
+ },
+ {
+  "current": false,
+  "current_basis": "recording (voicemail), every dial recorded",
+  "evidence": {
+   "asserted": [],
+   "call_notes": [],
+   "machine_vm": false,
+   "negative": true,
+   "screener": false,
+   "stage_moves": [],
+   "written": []
+  },
+  "expected": false,
+  "lead_id": 88599595,
+  "lead_name": "Jose Achutegui",
+  "live_seconds": 0,
+  "number": "+16232854950",
+  "producer": "Sarahi Chin",
+  "screener": false,
+  "talk_seconds": 9,
+  "transcript_class": "voicemail",
+  "unrecorded_dials": 0,
+  "why": "recording is a voicemail, code agrees"
+ },
+ {
+  "current": false,
+  "current_basis": "producer note (no contact)",
+  "evidence": {
+   "asserted": [],
+   "call_notes": [],
+   "machine_vm": false,
+   "negative": true,
+   "screener": false,
+   "stage_moves": [],
+   "written": []
+  },
+  "expected": false,
+  "lead_id": 88255293,
+  "lead_name": "Claudia Pineda",
+  "live_seconds": 0,
+  "number": "+15593655707",
+  "producer": "Sarahi Chin",
+  "screener": false,
+  "talk_seconds": 8,
+  "transcript_class": null,
+  "unrecorded_dials": 1,
+  "why": "Frank 2026-09-01: no contact. Note says \"phone seems to be disconected\" -- an explicit no-contact statement the detector missed on a one-n misspelling"
+ },
+ {
+  "current": false,
+  "current_basis": "recording (voicemail), every dial recorded",
+  "evidence": {
+   "asserted": [],
+   "call_notes": [],
+   "machine_vm": false,
+   "negative": true,
+   "screener": false,
+   "stage_moves": [],
+   "written": []
+  },
+  "expected": false,
+  "lead_id": 85056810,
+  "lead_name": "Moji Zahedi",
+  "live_seconds": 0,
+  "number": "+16023179999",
+  "producer": "Sarahi Chin",
+  "screener": false,
+  "talk_seconds": 8,
+  "transcript_class": "voicemail",
+  "unrecorded_dials": 0,
+  "why": "recording is a voicemail, code agrees"
+ },
+ {
+  "current": false,
+  "current_basis": "too short to be a conversation",
+  "evidence": {
+   "asserted": [],
+   "call_notes": [],
+   "machine_vm": false,
+   "negative": true,
+   "screener": false,
+   "stage_moves": [],
+   "written": []
+  },
+  "expected": null,
+  "lead_id": 88036462,
+  "lead_name": "Alejandro Vieyra",
+  "live_seconds": 0,
+  "number": "+19282465259",
+  "producer": "Sarahi Chin",
+  "screener": false,
+  "talk_seconds": 1,
+  "transcript_class": null,
+  "unrecorded_dials": 1,
+  "why": ""
+ },
+ {
+  "current": false,
+  "current_basis": "too short to be a conversation",
+  "evidence": {
+   "asserted": [],
+   "call_notes": [],
+   "machine_vm": false,
+   "negative": false,
+   "screener": false,
+   "stage_moves": [],
+   "written": []
+  },
+  "expected": null,
+  "lead_id": 88029675,
+  "lead_name": "Maria Amaya",
+  "live_seconds": 0,
+  "number": "+19283291525",
+  "producer": "Sarahi Chin",
+  "screener": false,
+  "talk_seconds": 1,
+  "transcript_class": null,
+  "unrecorded_dials": 1,
+  "why": ""
+ }
+]

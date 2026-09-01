@@ -215,11 +215,16 @@ def transcribe_day(day):
 def _one_row_per_lead(detail):
     """Collapse Call Detail rows that are the same lead on two numbers.
 
+    Returns (kept, collapsed). The collapsed rows are the DUPLICATE dials --
+    the same human, reached on another of their numbers -- and the caller marks
+    them dropped so they leave the contact rate as well as the panel.
+
     Rows with no lead_id are left alone -- they cannot be shown to be the same
     person. An inbound row is never merged into an outbound one either: they
     are two separate conversations that the report deliberately counts apart.
     """
     best, out = {}, []
+    collapsed = []
     for r in detail:
         lid = r.get("lead_id")
         key = (lid, bool(r.get("inbound")))
@@ -227,9 +232,14 @@ def _one_row_per_lead(detail):
             out.append(r)
             continue
         keep = best.get(key)
-        if keep is None or (r.get("seconds") or 0) > (keep.get("seconds") or 0):
+        if keep is None:
             best[key] = r
-    return out + list(best.values())
+        elif (r.get("seconds") or 0) > (keep.get("seconds") or 0):
+            collapsed.append(keep)          # the shorter dial is the duplicate
+            best[key] = r
+        else:
+            collapsed.append(r)
+    return out + list(best.values()), collapsed
 
 
 def build_metrics(day):
@@ -381,8 +391,16 @@ def build_metrics(day):
                   {"written": [], "stage_moves": [], "call_notes": [],
                    "negative": False, "screener": False})
             tc = bynum.get((who, r["number"]))
+            # How many dials to this number went UNRECORDED. Zero means the
+            # audio is a complete account of the day and is_live may trust it
+            # over anything written -- see the machine_only gate there.
+            _calls = (dials.get(who) or {}).get(r["number"]) or []
+            _unrec = sum(1 for c in _calls if not c.get("recording"))
+            _scr = ev.get("screener") or bool(
+                lc.SCREENER.search(all_txt.get((who, r["number"]), "")))
             ok, basis = lc.is_live(ev, r["talk_seconds"], tc,
-                                   live_seconds=livesecs.get((who, r["number"]), 0))
+                                   live_seconds=livesecs.get((who, r["number"]), 0),
+                                   unrecorded_dials=_unrec, screener=_scr)
             # Screener is checked ahead of the transcript class on purpose. An
             # AI attendant reads as a machine greeting, so Elsa Aguilera --
             # "call dropped after AI transferred me" -- was being filed as
@@ -505,7 +523,48 @@ def build_metrics(day):
         # Duplicate Lead", and Sarahi's contact rate counted him twice
         # (Frank, 2026-08-28: "he was already there"). Keep the longest row --
         # that is the dial the conversation actually happened on.
-        detail = _one_row_per_lead(detail)
+        # ONE ACCOUNT, ONE EVERYTHING. Frank, 2026-09-01: "can we make a rule
+        # for same accounts to not count as a duplicate even if its from
+        # another number". Collapsing Call Detail was only half of it -- the
+        # live count and the contact rate come off `dials_kept`, which was not
+        # collapsed, so one person reached on two of their numbers scored as
+        # two contacts. Mike / Nicole Santana on 2026-08-31: 252s on
+        # +1 917-804-1091 and 67s on +1 631-276-3801, same lead 42759342, both
+        # counted. Same shape as Roger Ryan (Frank, 2026-08-28: "he was already
+        # there").
+        #
+        # The duplicate dial is marked `dropped`, which is the mechanism the
+        # service/renewal read already uses: finalize._totals filters dropped
+        # dials before it computes ANY figure, so the second number leaves the
+        # numerator and the denominator together. It is one attempt at one
+        # person, not two attempts -- reaching someone on their mobile after
+        # their landline should not read as a 50% contact rate.
+        detail, duplicates = _one_row_per_lead(detail)
+        # THE ATTEMPT SURVIVES, THE CONTACT DOES NOT. Frank, 2026-09-01:
+        # "theres 2 outbounds to 2 numbers. he got a hold on the second one,
+        # it 2 dials, one unique number/contact." A first pass dropped the
+        # duplicate outright and took its dial with it -- Mike's total_dials
+        # fell 57 -> 56, erasing a call he really made.
+        #
+        # This is exactly how the model already treats one number dialled
+        # twice: ONE call_volume entry carrying attempts=2. A second number for
+        # the same person is the same thing, so its attempts move onto the
+        # surviving row before it is dropped. Result for Nicole Santana:
+        # call_volume 53, total_dials 57, one live contact.
+        keep_num = {r["lead_id"]: r["number"] for r in detail
+                    if not r.get("inbound") and r.get("lead_id") is not None}
+        by_number = {d["number"]: d for d in dials_kept}
+        for dup in duplicates:
+            if dup.get("inbound"):
+                continue
+            row = by_number.get(dup["number"])
+            if row is None:
+                continue
+            survivor = by_number.get(keep_num.get(dup.get("lead_id")))
+            if survivor is not None and survivor is not row:
+                survivor["attempts"] = ((survivor.get("attempts") or 0)
+                                        + (row.get("attempts") or 0))
+            row["dropped"] = "duplicate lead (same person, another number)"
         M[who] = {"dials": dials_kept, "callbacks_prior": prior_callbacks,
                   "call_detail": sorted(detail, key=lambda d: -d["seconds"]),
                   "households_quoted": len(hh.get(who, ())),
