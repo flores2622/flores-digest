@@ -191,14 +191,17 @@ class AgencyZoom:
         """
         out, seen, page = [], set(), 0
         while True:
-            # status "all" is the only filter this endpoint honours -- it
-            # ignores customerId, householdId and every date range tried
-            # (2026-08-26). Without it the list is OPEN tickets only and an SR
-            # COMPLETED today never arrives, which is exactly the evidence that
-            # today's call was service work.
+            # status "all" was tried first (2026-08-26) and looked right, but
+            # probing on 2026-09-01 found it silently falls back to open-only:
+            #   status="all"   -> 344 rows, all status 0 (OPEN)
+            #   status omitted -> 361 rows, all status 1 (CLOSED)
+            #   status=[0, 1]  -> 705 rows, both
+            # customerId, householdId and every date range tried (2026-08-26)
+            # are also ignored. [0, 1] is the list this endpoint actually
+            # honours -- the bare string "0,1" falls back to open-only too.
             r = self.post("/v1/api/serviceTicket/service-tickets/list",
                           {"page": page, "pageSize": 100,
-                           "status": "all"}) or {}
+                           "status": [0, 1]}) or {}
             arr = r.get("serviceTickets") or []
             for t in arr:
                 if t.get("id") not in seen:
