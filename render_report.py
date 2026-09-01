@@ -71,10 +71,29 @@ def prune_css(html, log=None):
         classes = re.findall(r"\.([A-Za-z0-9_-]+)", sel)
         if sel.strip().startswith("@") or not classes or any(c in used for c in classes):
             keep.append(unit)
-    out = "".join(keep)
+    # Drop byte-identical duplicate rules, keeping the LAST occurrence.
+    # A rule repeated verbatim is dead weight: same selector, same specificity,
+    # same declarations, so the later copy already wins and deleting the earlier
+    # one cannot change a single computed value. Keeping the last (not the
+    # first) is the safe direction -- anything declared between the two copies
+    # still gets overridden exactly as it did before.
+    #
+    # This is a guard, not the fix. The 810 bytes it found on 2026-08-31 were a
+    # block of base rules pasted twice into report_template.html, which is what
+    # took the sheet from 15,864 to 17,851 "in one merge" (HANDOFF 11 s4). The
+    # template has been deduped; this keeps the next stray paste from silently
+    # eating the headroom again.
+    last = {}
+    for i, unit in enumerate(keep):
+        last[unit] = i
+    deduped = [u for i, u in enumerate(keep) if last[u] == i]
+    dups = len(keep) - len(deduped)
+
+    out = "".join(deduped)
     if log:
         log(f"  css pruned {len(css):,} -> {len(out):,} bytes "
-            f"({len(units) - len(keep)} rules unused in this document)")
+            f"({len(units) - len(keep)} rules unused in this document"
+            + (f", {dups} duplicate rules dropped" if dups else "") + ")")
     if len(out) > STYLE_BLOCK_LIMIT:
         raise SystemExit(
             f"REFUSING TO SEND: stylesheet is {len(out):,} bytes, over Gmail's "
