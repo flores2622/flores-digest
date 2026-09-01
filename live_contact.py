@@ -29,7 +29,11 @@ NOTE_DIR = pathlib.Path("data/notes")
 NEGATIVE = re.compile(
     # Original list.
     r"never answered|no answer|no ans\b|didn'?t answer|left ?vm|left a? ?message"
-    r"|voice ?mail|\bvm\b|\blm\b|no machine|disconnected|not in service"
+    # `disconn?ected` on purpose. Sarahi wrote "phone seems to be disconected"
+    # on 2026-08-31 (Claudia Pineda) -- one n -- and the exact spelling missed
+    # it, so an explicit statement of NO contact scored as a live contact. These
+    # notes are typed fast between dials; spelling is not evidence of anything.
+    r"|voice ?mail|\bvm\b|\blm\b|no machine|disconn?ect(ed)?|not in service"
     r"|bad number|number might be bad|wrong number|busy signal|line busy"
     r"|no longer in service|mailbox (is )?full"
     # Frank walked the 2026-08-17 Call Detail and found rows that were plainly

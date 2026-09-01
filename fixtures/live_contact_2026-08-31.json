@@ -5516,20 +5516,18 @@
   "why": "recording is a voicemail, code agrees"
  },
  {
-  "current": true,
-  "current_basis": "producer note",
+  "current": false,
+  "current_basis": "producer note (no contact)",
   "evidence": {
    "asserted": [],
    "call_notes": [],
    "machine_vm": false,
-   "negative": false,
+   "negative": true,
    "screener": false,
    "stage_moves": [],
-   "written": [
-    "phone seems to be disconected i emailed her to contact us"
-   ]
+   "written": []
   },
-  "expected": null,
+  "expected": false,
   "lead_id": 88255293,
   "lead_name": "Claudia Pineda",
   "live_seconds": 0,
@@ -5539,7 +5537,7 @@
   "talk_seconds": 8,
   "transcript_class": null,
   "unrecorded_dials": 1,
-  "why": ""
+  "why": "Frank 2026-09-01: no contact. Note says \"phone seems to be disconected\" -- an explicit no-contact statement the detector missed on a one-n misspelling"
  },
  {
   "current": false,

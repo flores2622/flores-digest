@@ -339,12 +339,18 @@ def leaderboard(M, coach):
              "</tr>")
     # Inline-styled so it survives both Gmail and render_report.prune_css, which
     # drops class rules it cannot find in the delivered document.
+    #
+    # DO NOT name a panel by its exact heading in body copy. render_report's
+    # panel helpers locate a panel with html.find(heading), so the first literal
+    # match wins -- this footnote originally read "shown in Coaching &amp; Call
+    # Quality", which sits earlier in the document than the panel itself, and
+    # the build died with "panel close not found: Coaching &amp; Call Quality"
+    # while walking div depth from the wrong opening tag.
     note = ('<div style="margin-top:10px;font-size:11px;line-height:1.5;'
-            'color:#52514e">Avg Call Score and Avg Sentiment are shown in '
-            'Coaching &amp; Call Quality but no longer award points. TRAQ '
-            'scores a voicemail as a call (3 against a live call&rsquo;s 292), '
-            'so both track how many people answered rather than how the call '
-            'went.</div>')
+            'color:#52514e">Avg Call Score and Avg Sentiment are still shown '
+            'below but no longer award points. TRAQ scores a voicemail as a '
+            'call (3 against a live call&rsquo;s 292), so both track how many '
+            'people answered rather than how the call went.</div>')
     return (f'<div class="mvp-podium">{podium}</div>'
             f'<div class="table-scroll"><table>{head}<tbody>'
             f'{"".join(rows)}{total}</tbody></table>{note}</div>')
