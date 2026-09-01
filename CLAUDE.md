@@ -80,23 +80,50 @@ Open tickets close overnight, so a rebuild disagrees with the original run.
 The service-ticket test is point-in-time: a ticket counts only if it was created
 on or before the day and was not already closed before it.
 
-## How long the nightly run takes
+## THE RUN STARTS AT 5:35 PM AND PREFETCHES FIRST
 
-**Expect about 85 minutes, not the 30-40 the scheduled-task prompt claims.**
-Measured 2026-09-01: fired 01:45:34 UTC, finished 03:09:35 — 1h24m. The prompt's
-figure is stale and this file overrides it.
+**This overrides the scheduled-task prompt, which still describes a single
+6:45 PM `python3 daily.py` and is stale.** Changed 2026-09-01.
 
-Roughly 30 of those minutes are nothing but downloading recordings. RingCentral's
-media endpoint allows 10 requests per rolling 60s, the downloader paces at 8/min,
-and the agency averages 238 recordings a day (peak 298). Steady progress of about
-20 recordings every 2.5 minutes is normal.
+    1.  python3 hourly.py        <- FIRST. Downloads and transcribes the day.
+    2.  wait for the Coach AI emails, then write data/coach_<day>.json
+    3.  python3 daily.py         <- finds every transcript already cached
+
+**Why.** Roughly 30 minutes of the old run was nothing but downloading
+recordings: the agency averages 238 a day (peak 298) and RingCentral's media
+endpoint allows 10 requests per rolling 60 seconds, so the downloader paces at
+8/min and no amount of tuning makes one big pass faster. The office closes at
+5:30, so by 5:35 every call of the day already exists. Doing the download while
+waiting for Coach AI, instead of after it, moves delivery from about 8:10 PM to
+about 7:00 PM.
+
+`hourly.py` and `daily.py` share `data/`, and this is all ONE session in ONE
+container, so the transcripts are simply there when `daily.py` runs. That is the
+whole trick, and it is why this works when a separate hourly schedule does not:
+scheduled runs get a COLD container every time (HOURLY_RUNS.md s12), so nothing
+survives between them, and a scheduled session cannot push to the repository to
+carry it either. Both were measured on 2026-09-01. Do not rebuild the separate
+hourly schedule until one of those two facts changes.
+
+**Coach AI is the reason for the wait, not the reason to start late.** Those
+emails arrive around 6:00 PM Arizona. Step 1 takes roughly 25-30 minutes from a
+5:35 start, so they are normally there by the time it finishes. If they are not,
+wait for them rather than writing zeros — there is time now, which there was not
+before.
+
+**Timing to expect.**
+
+    5:35   hourly.py starts        ~25-30 min, downloads pace at 8/min
+    ~6:05  Coach AI figures        wait if they have not landed
+    ~6:10  daily.py starts         transcription already done
+    ~7:00  both emails sent
 
 A stall still means the log has not advanced in ~5 minutes, or repeated "rate
-limited" lines. Judge it on progress, not on total elapsed time — an 80-minute
-run is healthy.
+limited" lines. Judge it on progress, not on elapsed time.
 
-`HOURLY_RUNS.md` is the plan to move that download-and-transcribe work into
-hourly runs so the evening build finds it already cached. Not built yet.
+If `hourly.py` fails for any reason, **just run `daily.py`** — it does its own
+downloading and the day still goes out, only later. Never skip the digest
+because the prefetch broke.
 
 ## Service tickets — the corpus changed on 2026-09-01
 
