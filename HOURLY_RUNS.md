@@ -427,13 +427,16 @@ from `az_client.service_tickets_all()`, then treat a `status == 1` ticket as
 closed on `completeDate`, falling back to `lastActivityDate` when that field
 was null (true for 359 of 361 of them). **That belief was wrong.**
 
-Frank confirmed 2026-09-02: **status 0 is DELETED**, not open — he verified
-two of them are gone from AgencyZoom entirely, one with a deletion event in
-its own activity log. **Status 1 is LIVE.** There is no closed state in this
+Frank confirmed 2026-09-02 against AgencyZoom itself: **status 0 is DELETED**
+-- he couldn't find two of them at all, and a third showed a deletion event in
+its own activity log. Status-0 tickets skew ancient and stuck: median age 812
+days, 61% over a year old, nearly all stranded in stage "New". **Status 1 is
+LIVE** -- median age 28 days, and it's the set Dana Sanchez and Genaro Cortez
+(both hand-confirmed active on 08-25) are in. There is no closed state in this
 payload at all; a service ticket is either live or it was deleted. So the
-09-01 fix was fetching real, deleted-and-gone tickets alongside live ones,
-and then inventing a close date for tickets that were never closed in the
-first place.
+09-01 fix was fetching a graveyard of deleted tickets alongside live ones, and
+then inventing a close date to explain why so many "closed" tickets never had
+one -- they were never closed, they just weren't real.
 
 The original probe numbers still stand, just reread correctly:
 
@@ -441,17 +444,25 @@ The original probe numbers still stand, just reread correctly:
     status omitted → 361 rows, all status 1 (LIVE, not CLOSED)
     status=[0, 1]  → 705 rows, both
 
-**The fix is now the opposite of what this section used to say:**
+**The fix, corrected:**
 
 1. `az_client.service_tickets_all()` is renamed `service_tickets_live()` and
    passes `status: [1]` only — deleted tickets should never have been fetched.
-2. The `completeDate`/`lastActivityDate` close-date fallback in `inbound.py`
-   and `day_calls.py` is reverted. There is nothing to fall back to: every
-   fetched ticket is live, so a ticket counts as open on `day` purely on the
-   `createDate` point-in-time guard (created after `day` -> ignore it).
+2. `inbound.py` and `day_calls.py` revert the `lastActivityDate` fallback
+   added 09-01 -- there is no closed state for it to be standing in for --
+   back to a bare `cd = str(t.get("completeDate") or "")[:10]`. This is not
+   a "closed" test (there is no such state); it is only ever 7 of 705
+   tickets, and where one is set it still means the work was done as of that
+   date. The `createDate` point-in-time guard is unchanged.
 3. `missed_call_audit.route()` tested `status == 0` for an "open SR" — under
    the old belief that was open, under the corrected one it was DELETED. It
-   now tests `status == 1`.
+   now tests `status == 1`. The `open_lead` check a few lines below tests a
+   *lead's* `status == 0`, which genuinely does mean open -- same field name,
+   different object, and it stays as-is.
+4. `missed_call_audit.route()`'s `csrFirstname` comes back null on every
+   ticket from the list endpoint, so a small id -> first name map
+   (`CSR_NAMES`) now names who a live SR is assigned to before falling back
+   to "the assigned CSR".
 
 ## 10c. WHY the "no record" bucket is inflated — the Lupita Hernandez case
 

@@ -174,16 +174,20 @@ def screen(rows, day):
     # branch below. Same point-in-time test day_calls uses, so the two
     # directions still agree about which tickets were open on the day.
     #
-    # No close-date fallback here: status 0 is DELETED (Frank confirmed
-    # 2026-09-02), not closed, and az_client now fetches status=[1] only, so
-    # every ticket in this file is live -- see day_calls for the full
-    # reasoning, kept in step here.
+    # status is NOT open/closed -- status 0 is DELETED and az_client now
+    # fetches status=[1] only, so every ticket here is live (Frank confirmed
+    # 2026-09-02). There is no closed state in this payload, which is why
+    # only 7 of 705 tickets carry a completeDate at all -- but the
+    # lastActivityDate fallback added 2026-09-01 to compensate for that
+    # rarity is gone: it was covering for a "closed" state that does not
+    # exist. See day_calls for the full reasoning, kept in step here.
     any_open_ticket = collections.defaultdict(list)
     sr = pathlib.Path(f"data/az_service_tickets_{day}.json")
     if sr.exists():
         for t in json.loads(sr.read_text()):
             created = str(t.get("createDate") or "")[:10]
-            if created and created > day:
+            cd = str(t.get("completeDate") or "")[:10]
+            if (created and created > day) or (cd and cd < day):
                 continue
             ph = e164(t.get("phone"))
             if ph:

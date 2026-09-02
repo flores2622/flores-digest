@@ -189,11 +189,14 @@ class AgencyZoom:
         Sanchez and Genaro Cortez are "full blown renewals" with an active
         Renewal SR, and Crystal is the only producer who does service).
 
-        status is NOT open/closed -- Frank confirmed 2026-09-02: status 0 is
-        DELETED (verified two are gone from AgencyZoom entirely, one with a
-        deletion event in its activity log) and status 1 is LIVE. There is no
-        closed state in this payload, so status=[0, 1] was quietly fetching
-        deleted tickets alongside real ones. Only [1] is ever wanted.
+        status is NOT open/closed -- Frank confirmed 2026-09-02 against
+        AgencyZoom: status 0 is DELETED (two tickets he couldn't find at all,
+        a third with a deletion event in its own activity log; median age 812
+        days, 61% over a year old, nearly all stranded in stage "New") and
+        status 1 is LIVE (median age 28 days; Dana Sanchez and Genaro Cortez,
+        both hand-confirmed active on 08-25, are in this set). "all" returns
+        the deleted set only, so every earlier version of this function
+        screened calls against a graveyard and never saw a live ticket.
         """
         out, seen, page = [], set(), 0
         while True:

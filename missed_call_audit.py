@@ -101,14 +101,28 @@ def build_index(day):
     return idx, len(cust), len(leads), len(tix)
 
 
+# csr id -> first name. The service-ticket list endpoint returns
+# csrFirstname as null on every row, so this is the only way to name who a
+# live SR is assigned to (Frank, 2026-09-02).
+CSR_NAMES = {
+    83597: "Debbie", 174445: "Crystal", 82587: "Lorena", 185441: "Sarahi",
+    105006: "Amanda", 185440: "Coral", 82588: "Mike", 82589: "Frank",
+    82590: "Adrian", 82372: "Francisco",
+}
+
+
 def route(hit):
     """The five buckets from HOURLY_RUNS.md s2, in priority order."""
     if not hit:
         return "no record", "Debbie", "No record at all"
     open_sr = [t for t in hit["tix"] if t.get("status") == 1]
+    # Ticket status and lead status are NOT the same field despite the name:
+    # a ticket's status 0 is DELETED (2026-09-02), but a lead's status 0
+    # genuinely means open. Do not "make them consistent".
     open_lead = [l for l in hit["lead"] if l.get("status") == 0]
     if open_sr:
-        who = open_sr[0].get("csrFirstname") or "the assigned CSR"
+        t = open_sr[0]
+        who = t.get("csrFirstname") or CSR_NAMES.get(t.get("csr")) or "the assigned CSR"
         return "open SR", who, "Open service request"
     if open_lead:
         who = open_lead[0].get("assignToFirstname") or "the lead's producer"
