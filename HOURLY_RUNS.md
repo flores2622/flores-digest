@@ -419,43 +419,50 @@ touch was a lead for 136 and an SR for only 47: most of this bucket is people we
 sold and then stopped hearing from. 35 (16%) have a customer record but no lead
 or SR predating the call at all.
 
-## 10b. FOUND — the SR corpus has only ever read OPEN tickets
+## 10b. CORRECTED 2026-09-02 — status is DELETED/LIVE, not OPEN/CLOSED
 
-`az_client.service_tickets_all()` passes `status: "all"` and its docstring claims
-that returns open plus completed. **It does not.** Probed 09-01:
+This section originally concluded that ticket `status` meant open (0) versus
+closed (1), and shipped a two-part fix on that belief: fetch `status: [0, 1]`
+from `az_client.service_tickets_all()`, then treat a `status == 1` ticket as
+closed on `completeDate`, falling back to `lastActivityDate` when that field
+was null (true for 359 of 361 of them). **That belief was wrong.**
 
-    status="all"   → 344 rows, all status 0 (OPEN)
-    status omitted → 361 rows, all status 1 (CLOSED)
+Frank confirmed 2026-09-02 against AgencyZoom itself: **status 0 is DELETED**
+-- he couldn't find two of them at all, and a third showed a deletion event in
+its own activity log. Status-0 tickets skew ancient and stuck: median age 812
+days, 61% over a year old, nearly all stranded in stage "New". **Status 1 is
+LIVE** -- median age 28 days, and it's the set Dana Sanchez and Genaro Cortez
+(both hand-confirmed active on 08-25) are in. There is no closed state in this
+payload at all; a service ticket is either live or it was deleted. So the
+09-01 fix was fetching a graveyard of deleted tickets alongside live ones, and
+then inventing a close date to explain why so many "closed" tickets never had
+one -- they were never closed, they just weren't real.
+
+The original probe numbers still stand, just reread correctly:
+
+    status="all"   → 344 rows, all status 0 (DELETED, not OPEN)
+    status omitted → 361 rows, all status 1 (LIVE, not CLOSED)
     status=[0, 1]  → 705 rows, both
 
-So the function named `_all` has been returning open tickets only, and the
-renewal exclusion that rests on it has never been able to see an SR completed
-that day — the exact failure its own comment warns about.
+**The fix, corrected:**
 
-**The one-line fix is NOT safe on its own.** `inbound.py` decides whether a
-ticket was open on the day being built with:
-
-    created > day        -> not yet open
-    completeDate < day   -> already closed
-
-**359 of the 361 closed tickets have no `completeDate`.** Only 2 do. So under a
-bare `status: [0, 1]` every closed ticket reads as permanently open. Measured
-against 2026-08-28: 324 closed tickets would be counted open, when only 50
-actually were — **274 phantom open tickets, every single day**. That would screen
-real inbound calls out as service work and quietly depress contact rates.
-
-`lastActivityDate` is the usable close proxy; on closed tickets it lands seconds
-to hours after `createDate`.
-
-**The fix is two parts, and both are needed:**
-
-1. `service_tickets_all()` passes `status: [0, 1]` — the list, not the string
-   `"0,1"`, which silently falls back to open-only.
-2. Everywhere a ticket's open-on-day test runs (`inbound.py`, `day_calls.py`),
-   a `status == 1` ticket closes on `completeDate` **or, when that is null,
-   `lastActivityDate`**.
-
-Land them together or not at all.
+1. `az_client.service_tickets_all()` is renamed `service_tickets_live()` and
+   passes `status: [1]` only — deleted tickets should never have been fetched.
+2. `inbound.py` and `day_calls.py` revert the `lastActivityDate` fallback
+   added 09-01 -- there is no closed state for it to be standing in for --
+   back to a bare `cd = str(t.get("completeDate") or "")[:10]`. This is not
+   a "closed" test (there is no such state); it is only ever 7 of 705
+   tickets, and where one is set it still means the work was done as of that
+   date. The `createDate` point-in-time guard is unchanged.
+3. `missed_call_audit.route()` tested `status == 0` for an "open SR" — under
+   the old belief that was open, under the corrected one it was DELETED. It
+   now tests `status == 1`. The `open_lead` check a few lines below tests a
+   *lead's* `status == 0`, which genuinely does mean open -- same field name,
+   different object, and it stays as-is.
+4. `missed_call_audit.route()`'s `csrFirstname` comes back null on every
+   ticket from the list endpoint, so a small id -> first name map
+   (`CSR_NAMES`) now names who a live SR is assigned to before falling back
+   to "the assigned CSR".
 
 ## 10c. WHY the "no record" bucket is inflated — the Lupita Hernandez case
 
@@ -546,8 +553,8 @@ marked **ASK**.
 
 **Adjacent, not part of this**
 
-- `service_tickets_all()` reads OPEN tickets only (§10b). One-line fix, but it is
-  in the nightly digest and affects the renewal exclusion.
+- `service_tickets_live()` fetches status=[1] only and excludes deleted (status
+  0) tickets (§10b, corrected 2026-09-02). Done.
 - RingCentral caller ID is read nowhere in the pipeline. It is what surfaced
   every finding in §10c and §10d.
 - RingCentral flags spam itself in `from.name == "Possible spam call"` — 7

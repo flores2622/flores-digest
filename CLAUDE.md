@@ -133,20 +133,28 @@ If `hourly.py` fails for any reason, **just run `daily.py`** — it does its own
 downloading and the day still goes out, only later. Never skip the digest
 because the prefetch broke.
 
-## Service tickets — the corpus changed on 2026-09-01
+## Service ticket status is DELETED/LIVE, not OPEN/CLOSED
 
-`service_tickets_all()` used to pass `status: "all"`, which silently returned
-**open tickets only**. It now passes `status: [0, 1]` and returns open plus
-closed. Because 359 of 361 closed tickets carry no `completeDate`,
-`inbound.py` and `day_calls.py` fall back to `lastActivityDate` as the close
-date, and only when `status == 1`.
+**Corrected 2026-09-02 — do not revert to the 2026-09-01 understanding.**
+Ticket `status` is not open/closed. Frank confirmed against AgencyZoom:
+**status 0 is DELETED** (two he couldn't find at all, a third with a deletion
+event in its own activity log; median age 812 days, 61% over a year old,
+nearly all stranded in stage "New") and **status 1 is LIVE** (median age 28
+days; Dana Sanchez and Genaro Cortez, both hand-confirmed active on 08-25,
+are in this set). There is no closed state in this payload at all.
 
-**Expect the service-screening numbers to move slightly on the first build after
-this, and do NOT report it as a data problem.** About 50 more tickets are visible
-per day. Modelled against 2026-08-28 it would have screened **two** additional
-answered inbound calls as service work, so contact rates shift by a point or
-two, downward, for whoever took those calls. That shift is the bug being
-corrected.
+`az_client.service_tickets_live()` (renamed from `service_tickets_all`)
+passes `status: [1]` only — a deleted ticket should never have been fetched.
+`inbound.py` and `day_calls.py` drop only the `lastActivityDate` fallback
+added 09-01 to guess a close date for a "closed" state that doesn't exist;
+they keep a bare `completeDate` check (only 7 of 705 tickets carry one, but
+where it's set the work was genuinely done as of that date) alongside the
+`createDate` point-in-time guard. `missed_call_audit.route()` tests
+`status == 1` for a live SR, not `status == 0` — but a *lead's* `status == 0`
+in the same function genuinely does mean open and is untouched; same field
+name, different object. That function also maps a ticket's `csr` id to a
+first name (`CSR_NAMES`), since `csrFirstname` comes back null on every row
+from the list endpoint.
 ## Coach AI
 
 - **The call score is NOT a 0-100 percentage.** Frank, 2026-09-01: a *perfect

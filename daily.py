@@ -107,7 +107,7 @@ def pull_sources(day):
     p = ROOT / f"data/az_service_tickets_{day}.json"
     if not p.exists():
         log("service tickets...")
-        p.write_text(json.dumps(az.service_tickets_all()))
+        p.write_text(json.dumps(az.service_tickets_live()))
 
     p = ROOT / f"data/az_tasks_{day}.json"
     if not p.exists():
