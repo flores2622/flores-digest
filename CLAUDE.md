@@ -121,6 +121,14 @@ before.
 A stall still means the log has not advanced in ~5 minutes, or repeated "rate
 limited" lines. Judge it on progress, not on elapsed time.
 
+`hourly.py` ends by trying to push the transcripts to the repo, and on failure
+prints "COULD NOT SAVE THE TRANSCRIPTS ... pause it". In this single-session
+flow that warning is meaningless — the transcripts are already on local disk,
+which is all `daily.py` needs — so just note it in one line and carry on to
+the Coach AI step. Do not treat it as a run failure and do not pause anything.
+A real failure looks like a traceback or no `DONE:` line, and the response to
+that is still the same: just run `daily.py`.
+
 If `hourly.py` fails for any reason, **just run `daily.py`** — it does its own
 downloading and the day still goes out, only later. Never skip the digest
 because the prefetch broke.
