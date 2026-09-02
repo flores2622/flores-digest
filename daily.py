@@ -775,6 +775,7 @@ def main():
         return
     send(day, html, [notes, rec], audience=a.audience,
          ops_only_pdfs=[missed] if missed else [])
+    make_missed_call_tasks(day)
 
 
 def make_attachments(day):
@@ -881,6 +882,22 @@ def send(day, ops_html, pdfs, audience="both", ops_only_pdfs=()):
                       pathlib.Path(extra).read_bytes()))
         send_digest.send(subj, body, to, attachments=a, binary=True)
         log(f"sent: {subj} -> {len(to)}")
+
+
+def make_missed_call_tasks(day):
+    """Create the missed-call tasks in AgencyZoom (missed_call_tasks.run, live).
+
+    Runs AFTER send(): the digest emails have already gone out by this point,
+    so nothing here may ever raise -- a failure creating tasks must not be
+    allowed to look like a failure to send the day's numbers.
+    """
+    import missed_call_tasks
+    try:
+        made, skipped = missed_call_tasks.run(day, live=True)
+        log(f"missed-call tasks: {len(made)} created, {len(skipped)} skipped")
+    except Exception as e:
+        log(f"missed-call tasks failed ({type(e).__name__}: {e}) -- "
+            f"the digest already sent, so nothing else is affected")
 
 
 if __name__ == "__main__":
