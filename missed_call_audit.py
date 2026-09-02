@@ -105,7 +105,7 @@ def route(hit):
     """The five buckets from HOURLY_RUNS.md s2, in priority order."""
     if not hit:
         return "no record", "Debbie", "No record at all"
-    open_sr = [t for t in hit["tix"] if t.get("status") == 0]
+    open_sr = [t for t in hit["tix"] if t.get("status") == 1]
     open_lead = [l for l in hit["lead"] if l.get("status") == 0]
     if open_sr:
         who = open_sr[0].get("csrFirstname") or "the assigned CSR"

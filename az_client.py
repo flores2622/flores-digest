@@ -182,26 +182,28 @@ class AgencyZoom:
     def service_tickets(self, body=None):
         return self.post("/v1/api/serviceTicket/service-tickets/list", body or {})
 
-    def service_tickets_all(self):
-        """Every service ticket, open or completed. Not `_paged` -- this endpoint returns its
+    def service_tickets_live(self):
+        """Every live service ticket. Not `_paged` -- this endpoint returns its
         rows under "serviceTickets" and its own page/pageSize echo, and it is
         the SR list the renewal exclusion rests on (Frank, 2026-08-25: Dana
         Sanchez and Genaro Cortez are "full blown renewals" with an active
         Renewal SR, and Crystal is the only producer who does service).
+
+        status is NOT open/closed -- Frank confirmed 2026-09-02: status 0 is
+        DELETED (verified two are gone from AgencyZoom entirely, one with a
+        deletion event in its activity log) and status 1 is LIVE. There is no
+        closed state in this payload, so status=[0, 1] was quietly fetching
+        deleted tickets alongside real ones. Only [1] is ever wanted.
         """
         out, seen, page = [], set(), 0
         while True:
-            # status "all" was tried first (2026-08-26) and looked right, but
-            # probing on 2026-09-01 found it silently falls back to open-only:
-            #   status="all"   -> 344 rows, all status 0 (OPEN)
-            #   status omitted -> 361 rows, all status 1 (CLOSED)
-            #   status=[0, 1]  -> 705 rows, both
             # customerId, householdId and every date range tried (2026-08-26)
-            # are also ignored. [0, 1] is the list this endpoint actually
-            # honours -- the bare string "0,1" falls back to open-only too.
+            # are ignored by this endpoint. status must be passed as a list
+            # (a bare string silently falls back to a different set -- true
+            # of "0,1", untested for "1" alone, so keep the list form).
             r = self.post("/v1/api/serviceTicket/service-tickets/list",
                           {"page": page, "pageSize": 100,
-                           "status": [0, 1]}) or {}
+                           "status": [1]}) or {}
             arr = r.get("serviceTickets") or []
             for t in arr:
                 if t.get("id") not in seen:

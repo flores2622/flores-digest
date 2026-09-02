@@ -97,37 +97,21 @@ def build_context(day):
     sr_file = pathlib.Path(f"data/az_service_tickets_{day}.json")
     if sr_file.exists():
         for t in json.loads(sr_file.read_text()):
-            # POINT IN TIME: was this ticket open on `day`? Anything else
+            # POINT IN TIME: did this ticket exist yet on `day`? Anything else
             # makes a rebuild disagree with the original run, which is fatal
             # for weekly and monthly roll-ups.
-            #   created after the day  -> did not exist yet, ignore
-            #   completed before it    -> already closed, says nothing
-            #   otherwise              -> it was open then, and a ticket
-            #                             completed ON the day is the
-            #                             strongest evidence there is that
-            #                             the call was service work
             # Rebuilding Aug 25 on Aug 26 was excluding Mike's Abraham
             # Carrillo dial on a ticket created 2026-08-26 -- a day AFTER the
             # call it was being used to explain.
             #
-            # service_tickets_all() switched from open-only to open+closed on
-            # 2026-09-01 (see az_client), which makes the "completed before it"
-            # branch reachable for the first time -- and 359 of 361 closed
-            # tickets carry no completeDate at all. Without a fallback every
-            # one of them reads as open forever: 274 phantom-open tickets on
-            # 2026-08-28 alone, screening out real inbound calls as service
-            # work. lastActivityDate is the usable close proxy; on a closed
-            # ticket it lands seconds to hours after createDate. Only applied
-            # when status says closed -- an OPEN ticket's lastActivityDate is
-            # just its last update, not a close, and must not exclude it.
+            # There is no closed state to fall back on here: status 0 is
+            # DELETED (Frank confirmed 2026-09-02) and az_client now fetches
+            # status=[1] only, so every ticket in this file is live. The
+            # completeDate/lastActivityDate close-date fallback added
+            # 2026-09-01, when [0, 1] was believed to mean open+closed, is
+            # gone -- a live ticket is simply open on `day`.
             created = str(t.get("createDate") or "")[:10]
-            cd = ""
-            if t.get("status") == 1:
-                cd = str(t.get("completeDate") or t.get("lastActivityDate")
-                          or "")[:10]
             if created and created > day:
-                continue
-            if cd and cd < day:
                 continue
             who = az_ids.get(t.get("csr"))
             if not who:

@@ -133,20 +133,22 @@ If `hourly.py` fails for any reason, **just run `daily.py`** — it does its own
 downloading and the day still goes out, only later. Never skip the digest
 because the prefetch broke.
 
-## Service tickets — the corpus changed on 2026-09-01
+## Service ticket status is DELETED/LIVE, not OPEN/CLOSED
 
-`service_tickets_all()` used to pass `status: "all"`, which silently returned
-**open tickets only**. It now passes `status: [0, 1]` and returns open plus
-closed. Because 359 of 361 closed tickets carry no `completeDate`,
-`inbound.py` and `day_calls.py` fall back to `lastActivityDate` as the close
-date, and only when `status == 1`.
+**Corrected 2026-09-02 — do not revert to the 2026-09-01 understanding.**
+Ticket `status` is not open/closed. Frank confirmed: **status 0 is DELETED**
+(verified two are gone from AgencyZoom entirely, one with a deletion event in
+its own activity log) and **status 1 is LIVE**. There is no closed state in
+this payload at all.
 
-**Expect the service-screening numbers to move slightly on the first build after
-this, and do NOT report it as a data problem.** About 50 more tickets are visible
-per day. Modelled against 2026-08-28 it would have screened **two** additional
-answered inbound calls as service work, so contact rates shift by a point or
-two, downward, for whoever took those calls. That shift is the bug being
-corrected.
+`az_client.service_tickets_live()` (renamed from `service_tickets_all`)
+passes `status: [1]` only — a deleted ticket should never have been fetched.
+`inbound.py` and `day_calls.py` no longer fall back to `completeDate` /
+`lastActivityDate`; that fallback existed only because the 09-01 fix believed
+closed tickets needed a synthetic close date, and there is no closed state to
+close. A ticket counts as open on `day` purely on the `createDate`
+point-in-time guard. `missed_call_audit.route()` tests `status == 1` for a
+live SR, not `status == 0`.
 ## Coach AI
 
 - **The call score is NOT a 0-100 percentage.** Frank, 2026-09-01: a *perfect
