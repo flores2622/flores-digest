@@ -152,9 +152,19 @@ def already_there(azc, r, day):
         j = azc.get(f"/v1/api/customers/{rec}/tasks")
     except Exception:
         return False
-    rows = j if isinstance(j, list) else (j.get("data") or j.get("tasks") or [])
+    # A record with no tasks comes back as JSON null, not [] or {} -- seen
+    # 2026-09-02, where it killed the run after the first caller and left 10
+    # of 11 missed-call tasks uncreated. Anything that is not a list or a dict
+    # means "no tasks on this record", which is exactly "not already there".
+    if isinstance(j, list):
+        rows = j
+    elif isinstance(j, dict):
+        rows = j.get("data") or j.get("tasks") or []
+    else:
+        rows = []
     want = title_for(r)
-    return any((t.get("title") or "").strip() == want for t in rows)
+    return any((t.get("title") or "").strip() == want
+               for t in rows if isinstance(t, dict))
 
 
 _STANDALONE = None
@@ -228,7 +238,7 @@ def run(day, live=False):
     todo = [r for r in rows if r["back_in"] is None]
     log(f"{len(rows)} missed callers, {len(rows) - len(todo)} already reached, "
         f"{len(todo)} need a task")
-    made, skipped = [], []
+    made, skipped, failed = [], [], []
     for r in todo:
         who = r["name"] or audit.pretty(r["number"])
         if already_there(azc, r, day):
@@ -236,12 +246,26 @@ def run(day, live=False):
             log(f"  skip {who} -- a task already exists")
             continue
         log(f"  {who} -> {r['who']} ({r['bucket']})")
-        tid = create(azc, r, live)
+        try:
+            tid = create(azc, r, live)
+        except Exception as e:
+            # One record AgencyZoom rejects must not abandon the rest of the
+            # batch. Seen 2026-09-02: POST /v1/api/tasks answers 400 {"error":
+            # "The customer is not found"} for every LEAD-bucket caller,
+            # because customerId is sent a lead id. The lead contract is not
+            # known, so these are reported for manual handling rather than
+            # guessed at -- but the customer and standalone tasks still land.
+            failed.append((who, r["who"], r.get("record_type"), str(e)[:120]))
+            log(f"    FAILED ({r.get('record_type') or 'standalone'}): {e}")
+            continue
         if live:
             log(f"    task {tid}")
         made.append((who, r["who"], tid))
     log(f"{'CREATED' if live else 'WOULD CREATE'} {len(made)} tasks, "
-        f"skipped {len(skipped)} already there")
+        f"skipped {len(skipped)} already there"
+        + (f", {len(failed)} FAILED" if failed else ""))
+    for who, assignee, kind, err in failed:
+        log(f"  STILL NEEDS A TASK BY HAND: {who} -> {assignee} ({kind}): {err}")
     return made, skipped
 
 
