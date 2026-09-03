@@ -347,7 +347,21 @@ CALL_CATEGORIES = {
                         "label": "Sold on the call"},
     "quoted_call_open":{"paint": "#9fc2ed", "fill": True,  "stroke": "solid",
                         "label": "Quoted, no action"},
-    "followup_open":   {"paint": "#2a78d6", "fill": False, "stroke": "solid",
+    # ONE HUE PER FAMILY, TEXTURE CARRIES THE STATE (Frank, 2026-09-01: "i dont
+    # like how the blues dont match for quoted/quote follow up ... lets make them
+    # match like the oranges match"). The reds all sit on #e34948 and the oranges
+    # all on #eda100, filled for "on this call" and striped for "follow up", so
+    # each pair reads as two states of one thing. The blues were the only pair
+    # using two different hues -- #9fc2ed filled against #2a78d6 striped -- which
+    # made them read as unrelated colours. Both now sit on #9fc2ed, the lighter
+    # one, which is the solid Frank wants on the left tab.
+    #
+    # THE STRIPE IS KEPT AS IT WAS, deliberately. #d4e4f7 is _tint("#2a78d6"),
+    # a tint of the OLD dark blue, and Frank said it reads fine on the outcome
+    # chip -- it was the call back / call in badge that washed out. A tint of
+    # #9fc2ed would be #ecf3fb, near-white, and the texture would vanish. So the
+    # paint changes to unify the hue and the stripe stays where it works.
+    "followup_open":   {"paint": "#9fc2ed", "fill": False, "stroke": "solid",
                         "ink": "#0b0b0b", "stripe": "#d4e4f7",
                         "label": "Quote follow up, no action yet"},
     "quoted_call_lost":{"paint": "#e34948", "fill": True,  "stroke": "solid",
