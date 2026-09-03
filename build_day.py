@@ -9,6 +9,7 @@ import importlib
 import json
 import pathlib
 import re
+import statistics
 import sys
 
 import panels
@@ -38,9 +39,27 @@ def build(day, template=TEMPLATE):
 
     P = M["producers"]
     s2d = M["speed_to_dial"]
-    meds = [v["median"] for v in s2d.values() if v]
-    team_s2d = ({"median": sorted(meds)[len(meds) // 2],
-                 "quickest": min(meds), "longest": max(meds)} if meds else None)
+    # POOLED, NOT A STATISTIC OVER STATISTICS (Frank, 2026-09-01: "can we fix it
+    # to display the quickest of anyone on the team, the longest of anyone on the
+    # team, and the median of all times to dial").
+    #
+    # This block used to read the LIST OF PER-PRODUCER MEDIANS. Three bugs fell
+    # out of that: team `longest` was max(medians), which can never exceed the
+    # worst individual longest, so the team card always understated the worst
+    # response -- 1m58s printed against a true 20m47s on 09-01, with Crystal at
+    # 19m14s and Lorena at 20m47s on the same page. `quickest` was min(medians),
+    # the same defect mirrored. And `median` was a median-of-medians taking the
+    # upper middle on an even count, so with two qualifying producers it simply
+    # returned the slower one's median.
+    #
+    # Team extremes will now often equal some producer's extremes. That is
+    # correct by definition -- the fastest dial on the team belongs to whoever
+    # made it -- and is not a bug to "fix" later.
+    live = [v for v in s2d.values() if v]
+    pooled = sorted(x for v in live for x in v.get("secs", []))
+    team_s2d = ({"median": int(statistics.median(pooled)),
+                 "quickest": pooled[0], "longest": pooled[-1],
+                 "n": len(pooled)} if pooled else None)
 
     for heading, new in [
         ("Sales Funnel by Producer", rr.build_funnel(P, label)),
@@ -72,6 +91,14 @@ def build(day, template=TEMPLATE):
     # then removed, so that deleting this one line can never ship the template's
     # stale placeholder rows.
     h = rr.drop_panel(h, "Recontact Struggle")
+
+    # If nobody received internet leads there is nothing to time, and
+    # panels.speed_table returns "" rather than a grid of placeholders (Frank,
+    # 2026-09-01: "if no leads came in at all remove it"). An empty panel body
+    # would still leave the heading and its border behind, so drop the whole
+    # panel. Guarded on the same emptiness test the panel uses.
+    if not any(s2d.get(p) for p in s2d):
+        h = rr.drop_panel(h, "Speed to Dial")
 
     # The "Notes & Methodology -- attached" strip is gone entirely (Frank,
     # 2026-08-24: "its not needed"). Both companion PDFs still attach to the

@@ -19,6 +19,7 @@ import json
 import os
 import pathlib
 import re
+import statistics
 import subprocess
 import sys
 
@@ -663,8 +664,21 @@ def speed_to_dial(day, leads, dials):
     out = {}
     for p in PRODUCERS:
         v = sorted(per.get(p, []))
-        out[p] = ({"median": v[len(v) // 2], "n": len(v),
-                   "quickest": v[0], "longest": v[-1]} if v else None)
+        # `secs` IS THE POINT: the team card is the median of every lead time
+        # pooled, not a statistic over per-producer medians, so the raw list has
+        # to survive into metrics_<day>.json. build_day.py used to derive the
+        # team figures from the medians alone, which made team `longest`
+        # max(medians) -- structurally incapable of exceeding the worst
+        # individual longest. On 2026-09-01 it printed 1m58s against a true
+        # 20m47s. See REVIEW_2026-09-01.md section 1.
+        #
+        # statistics.median, not v[len(v)//2]: on an EVEN count the old index
+        # took the upper of the two middle values, which is not a median. It
+        # inflated Crystal to 1m58s on 09-01 when hers was 1m13s -- and that
+        # figure drives the card's colour tier, whose green/yellow line is at
+        # 2 minutes, so she was two seconds from being coloured wrong.
+        out[p] = ({"median": int(statistics.median(v)), "n": len(v),
+                   "quickest": v[0], "longest": v[-1], "secs": v} if v else None)
     return out
 
 

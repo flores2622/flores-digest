@@ -177,7 +177,16 @@ def speed_table(s2d, team):
     exactly as the approved layout did and the bottom row losing its 12px gap.
     An odd card out spans both columns rather than leaving a ragged half-width
     cell, which is how the Coaching panel handles the same situation."""
-    cards = [_s2d_card(p, s2d.get(p)) for p in P3] + [_s2d_card("Team", team)]
+    # ONLY PRODUCERS WHO ACTUALLY RECEIVED INTERNET LEADS (Frank, 2026-09-01:
+    # "we need remove anyone that did not receive internet leads ... I decide the
+    # lead distribution so im not worried about it"). On 09-01 three of six cards
+    # were the empty "no internet leads assigned" placeholder -- half the panel
+    # saying nothing. The empty branch in _s2d_card stays for the Team slot,
+    # which is the 2026-08-28 KeyError fix and still has to render.
+    cards = [_s2d_card(p, s2d[p]) for p in P3 if s2d.get(p)]
+    if not cards:
+        return ""          # nobody got internet leads -> no panel at all
+    cards.append(_s2d_card("Team", team))
     rows = []
     for i in range(0, len(cards), 2):
         pair = cards[i:i + 2]
@@ -863,33 +872,31 @@ def call_detail(M, day):
                      'color:#fff">duration only</span>'
                      if r["basis"] == "duration only" else "")
             if r.get("inbound"):
-                # MATCH THE OUTCOME CHIP BESIDE IT (Frank, 2026-08-28: "if they
-                # are matching the outcome tags, they should also carry the
-                # candy cane tinted stripes and the text should be the same
-                # color. I also feel that the blue doesnt match"). This used to
-                # paint a flat fill in the category colour with its own ink --
-                # white on filled categories, near-black otherwise -- so the
-                # badge and the chip next to it disagreed on both texture and
-                # text colour, and the teal read as an unrelated blue. Same
-                # hue, same stripes, same ink: one visual family.
-                cc = cfg.CALL_CATEGORIES[k]
-                # STRIPE IN THE TINT, INK IN THE DARK. Striping at full paint
-                # saturation and colouring the text the same paint made the
-                # word unreadable -- amber on amber (Frank, 2026-08-28:
-                # "both emails were visually unreadable"). The outcome chips
-                # already carry the right pair for the outlined categories, so
-                # reuse it; the filled ones have no tint of their own, so mix
-                # one. background-color has to be set inline as well: the
-                # .badge-new rule comes later in the sheet and its `background`
-                # shorthand would otherwise repaint the base solid green.
-                tint = cc.get("stripe") or _tint(cc["paint"])
-                ink = cc.get("ink") or "#0b0b0b"
+                # WEAR THE OUTCOME CHIP'S OWN CLASS (Frank, 2026-09-01: "the
+                # call back and call in tags in the call detail should match the
+                # size and format of the call outcome tags as to not distract.
+                # same border, tint/striping if applicable, same text color" and
+                # then "use the format of the quote result tag").
+                #
+                # The 2026-08-28 attempt at this mixed the badge's own colours
+                # inline -- `cc["stripe"] or _tint(cc["paint"])` for the stripe,
+                # a 1px border of that same pale tint, and .badge-new's pill
+                # radius and uppercase still applying underneath. So it was the
+                # right hue at the wrong weight: a 1px pale border against the
+                # chip's 2px paint, a 3px/7px stripe against the chip's 4px/8px,
+                # and a 10px pill beside a 3px radius. That is why it still read
+                # as a different object, and why the blue washed out on the
+                # badge while looking fine on the chip -- the badge borrowed the
+                # TINT for its border where the chip uses the PAINT.
+                #
+                # Reusing `cg g{n}` ends the whole class of bug: there is now
+                # exactly one definition of what a category looks like, in the
+                # stylesheet, and the badge cannot drift from the chip because
+                # it is not describing itself any more. `badge-slot` carries
+                # only the spacing that separates it from the lead name.
                 lbl = "call back" if r.get("kind") == "callback" else "call in"
-                badge += (f'<span class="badge-new badge-in" style="'
-                          f'background-color:#fff;'
-                          f'background-image:repeating-linear-gradient(45deg,'
-                          f'{tint} 0,{tint} 3px,#fff 3px,#fff 7px);'
-                          f'color:{ink};border:1px solid {tint}">'
+                badge += (f'<span class="badge-slot cg '
+                          f'g{cfg.CALL_CATEGORY_ORDER.index(k) + 1}">'
                           f'{lbl}</span>')
             link = (_lead_link(r["lead_id"], r["lead"]) if r["lead_id"]
                     else (r["lead"] or _fmt_phone(r["number"])))
