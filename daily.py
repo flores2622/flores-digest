@@ -223,6 +223,34 @@ def transcribe_day(day, outbound_only=False):
 
 
 
+def _smartcycle_days(xdate, day):
+    """How long a smart-cycled lead has been parked for, in days.
+
+    Frank, 2026-09-02: **xDate IS the date the lead was smart-cycled for**, so
+    the park length is simply xDate minus the day being reported.
+
+    `panels._is_lost_action` has read `row["smartcycle_days"]` since 2026-08-28
+    to tell a 2-day recycle from a 90-day shelf, but nothing ever wrote the key,
+    so it was always None, every smart-cycle scored "not lost", and the
+    >30-day rule Frank set that day never actually ran. This is the write side.
+
+    None means we cannot tell -- no xDate on the lead -- and _is_lost_action
+    keeps its conservative reading (still live, yellow not red) for that case.
+    """
+    if not xdate:
+        return None
+    try:
+        d = dt.datetime.strptime(str(xdate)[:10], "%Y-%m-%d").date()
+    except (ValueError, TypeError):
+        return None
+    if isinstance(day, str):
+        try:
+            day = dt.datetime.strptime(day[:10], "%Y-%m-%d").date()
+        except ValueError:
+            return None
+    return (d - day).days
+
+
 def _one_row_per_lead(detail):
     """Collapse Call Detail rows that are the same lead on two numbers.
 
@@ -265,6 +293,9 @@ def build_metrics(day):
     from digest_config import PRODUCERS
 
     leads = fetch()
+    # Lead xDate by id, for _smartcycle_days above.
+    xdate_by_lead = {l["id"]: l.get("xDate")
+                     for l in leads if l.get("id")}
     pol = json.loads((ROOT / "data/az_policies_all.json").read_text())
     smap = cfg.lead_source_map(leads)
     azid = {v["az_id"]: k for k, v in PRODUCERS.items()}
@@ -473,6 +504,8 @@ def build_metrics(day):
                                # record the producer killed (Hugo Bojorquez,
                                # 2026-08-25).
                                "sold_today": r.get("sold_today", False),
+                               "smartcycle_days": _smartcycle_days(
+                                   xdate_by_lead.get(r["lead_id"]), day),
                                "moves": [m["move"] for m in ev["stage_moves"]]})
         # --- inbound ----------------------------------------------------
         # A call back that arrived the SAME day merges into the dial it
@@ -515,7 +548,10 @@ def build_metrics(day):
                 "note_recording": (e.get("text") or "")[:280],
                 "partial": bool(e.get("partial")),
                 "tx_class": e.get("class"),
-                "sold_today": False, "moves": []})
+                "sold_today": False,
+                "smartcycle_days": _smartcycle_days(
+                    xdate_by_lead.get(lead.get("id") if lead else None), day),
+                "moves": []})
 
         tot = 0
         for lid in hh.get(who, ()):
