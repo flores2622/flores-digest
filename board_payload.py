@@ -19,7 +19,6 @@ longest -- on 2026-09-01 it printed 1m58s against a true 20m47s. See REVIEW
 2026-09-01 section 1. Until that patch lands in build_day.py the board and the
 email will disagree on this panel, and the board is the one that is right.
 """
-import collections
 import datetime as dt
 import json
 import pathlib
@@ -105,13 +104,25 @@ def leaderboard(M):
 
 
 def outcome_breakdown(M):
-    out = {}
-    for name, v in M["producers"].items():
-        c = collections.Counter()
-        for r in v.get("call_detail", []):
-            c[r.get("category") or "uncategorised"] += 1
-        out[name] = dict(c)
-    return out
+    """Per-producer counts of Live Contact / Voicemail / No Answer / Screener /
+    No Outcome Logged, straight from finalize.apply()'s own tally.
+
+    Used to read r.get("category") over each producer's call_detail rows, but
+    no Call Detail row has ever carried a "category" key -- they carry lead,
+    lead_id, number, seconds, basis, note_producer, note_recording,
+    quote_state, sold_today, smartcycle_days, moves, callback_seconds, summary.
+    Every producer collapsed to a single "uncategorised" count, so the board's
+    Outcomes panel has shown nothing since it was written (confirmed against
+    the 2026-09-01 and 2026-09-02 documents already in the artifact store).
+
+    call_detail is also the wrong source even fixed: it holds only live
+    contacts plus inbound, so it would still miss every voicemail, no answer
+    and screener. daily.py already buckets every kept dial and finalize.py
+    totals them per producer under M["producers"][name]["outcomes"] -- the
+    same figures panels.outcome_rows renders in the email. Read that instead.
+    """
+    return {name: dict(v.get("outcomes") or {})
+            for name, v in M["producers"].items()}
 
 
 def build(day):
