@@ -1,0 +1,489 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Sales Floor — Flores Insurance Agency</title>
+<style>
+/* ---------------------------------------------------------------------------
+   Palette. Categorical slots 1-5 in fixed order, validated in both modes:
+   light  worst adjacent CVD dE 9.1, normal-vision 19.6
+   dark   worst adjacent CVD dE 8.4, normal-vision 19.3
+   Light mode puts aqua/yellow/magenta under 3:1 on the surface, so every
+   stacked segment carries a visible count label and a legend -- that is the
+   required relief, not decoration. Do not drop the labels.
+   Colour follows the OUTCOME, never its rank or size, so a quiet day does not
+   repaint the chart.
+--------------------------------------------------------------------------- */
+:root {
+  color-scheme: light;
+  --surface:        #fcfcfb;
+  --surface-raised: #ffffff;
+  --border:         #e5e4e0;
+  --border-strong:  #d2d1cc;
+  --text-primary:   #0b0b0b;
+  --text-secondary: #52514e;
+  --text-muted:     #78776f;
+  --grid:           #ecebe7;
+  --s1: #2a78d6;  /* Live Contact       */
+  --s2: #eb6834;  /* Voicemail          */
+  --s3: #1baf7a;  /* Screener           */
+  --s4: #eda100;  /* No Answer          */
+  --s5: #e87ba4;  /* No Outcome Logged  */
+  --bar:           #2a78d6;
+  --bar-track:     #ecebe7;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    color-scheme: dark;
+    --surface:        #1a1a19;
+    --surface-raised: #222221;
+    --border:         #35352f;
+    --border-strong:  #45453e;
+    --text-primary:   #ffffff;
+    --text-secondary: #c3c2b7;
+    --text-muted:     #8e8d84;
+    --grid:           #2b2b27;
+    --s1: #3987e5;
+    --s2: #d95926;
+    --s3: #199e70;
+    --s4: #c98500;
+    --s5: #d55181;
+    --bar:            #3987e5;
+    --bar-track:      #2b2b27;
+  }
+}
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --surface:        #1a1a19;
+  --surface-raised: #222221;
+  --border:         #35352f;
+  --border-strong:  #45453e;
+  --text-primary:   #ffffff;
+  --text-secondary: #c3c2b7;
+  --text-muted:     #8e8d84;
+  --grid:           #2b2b27;
+  --s1: #3987e5;
+  --s2: #d95926;
+  --s3: #199e70;
+  --s4: #c98500;
+  --s5: #d55181;
+  --bar:            #3987e5;
+  --bar-track:      #2b2b27;
+}
+
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  background: var(--surface);
+  color: var(--text-primary);
+  font: 14px/1.5 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+.wrap { max-width: 1120px; margin: 0 auto; padding: 24px 20px 72px; }
+
+header.top {
+  display: flex; flex-wrap: wrap; gap: 12px 20px;
+  align-items: baseline; justify-content: space-between;
+  padding-bottom: 16px; margin-bottom: 24px;
+  border-bottom: 1px solid var(--border);
+}
+h1 { font-size: 19px; font-weight: 600; margin: 0; letter-spacing: -0.01em; }
+.sub { color: var(--text-secondary); font-size: 13px; margin-top: 2px; }
+.controls { display: flex; gap: 8px; align-items: center; }
+select, button.ghost {
+  font: inherit; font-size: 13px;
+  color: var(--text-primary); background: var(--surface-raised);
+  border: 1px solid var(--border-strong); border-radius: 6px;
+  padding: 6px 10px; cursor: pointer;
+}
+
+h2 {
+  font-size: 12px; font-weight: 600; text-transform: uppercase;
+  letter-spacing: 0.07em; color: var(--text-muted);
+  margin: 36px 0 14px;
+}
+h2:first-of-type { margin-top: 8px; }
+
+/* Stat tiles. Team headline figures are single numbers, so they are tiles and
+   not a chart -- a five-bar chart of unrelated units would be a worse read. */
+.tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(148px, 1fr)); gap: 10px; }
+.tile {
+  background: var(--surface-raised); border: 1px solid var(--border);
+  border-radius: 10px; padding: 14px 16px;
+}
+.tile .k { font-size: 11px; text-transform: uppercase; letter-spacing: 0.06em; color: var(--text-muted); }
+.tile .v { font-size: 26px; font-weight: 600; letter-spacing: -0.02em; margin-top: 4px; font-variant-numeric: tabular-nums; }
+.tile .n { font-size: 12px; color: var(--text-secondary); margin-top: 2px; }
+
+table { width: 100%; border-collapse: collapse; font-variant-numeric: tabular-nums; }
+th, td { text-align: right; padding: 9px 10px; border-bottom: 1px solid var(--grid); }
+th:first-child, td:first-child { text-align: left; }
+th {
+  font-size: 11px; font-weight: 600; text-transform: uppercase;
+  letter-spacing: 0.05em; color: var(--text-muted);
+  border-bottom: 1px solid var(--border-strong);
+}
+td.name { font-weight: 500; }
+tbody tr:hover { background: color-mix(in oklab, var(--bar) 7%, transparent); }
+.scroll { overflow-x: auto; }
+
+/* Magnitude-by-identity: one measure, one hue. Not categorical -- these bars
+   compare the same quantity across people, so a second colour would encode
+   nothing. 4px rounded data-end anchored to the baseline. */
+.bars { display: grid; gap: 7px; }
+.row { display: grid; grid-template-columns: 132px 1fr 76px; gap: 12px; align-items: center; }
+.row .lbl { font-size: 13px; color: var(--text-secondary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.track { background: var(--bar-track); border-radius: 4px; height: 20px; position: relative; }
+.fill { background: var(--bar); border-radius: 0 4px 4px 0; height: 100%; min-width: 2px; transition: width .18s ease; }
+.row .val { font-size: 13px; font-weight: 500; text-align: right; font-variant-numeric: tabular-nums; }
+
+/* Stacked outcome bar. 2px surface gap between segments (the spacer rule) so
+   adjacent fills never touch, plus a count label inside any segment wide
+   enough to hold one. */
+.stack { display: flex; height: 26px; border-radius: 4px; overflow: hidden; gap: 2px; background: var(--bar-track); }
+.seg { position: relative; display: flex; align-items: center; justify-content: center; min-width: 3px; }
+.seg span {
+  font-size: 11px; font-weight: 600; color: #fff;
+  text-shadow: 0 0 3px rgba(0,0,0,.45); font-variant-numeric: tabular-nums;
+}
+.legend { display: flex; flex-wrap: wrap; gap: 6px 16px; margin-bottom: 12px; }
+.legend .item { display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--text-secondary); }
+.swatch { width: 11px; height: 11px; border-radius: 3px; flex: none; }
+
+.note { color: var(--text-muted); font-size: 12px; margin-top: 10px; }
+.empty { color: var(--text-muted); padding: 28px 0; text-align: center; }
+.pill {
+  display: inline-block; font-size: 11px; padding: 1px 7px; border-radius: 999px;
+  border: 1px solid var(--border-strong); color: var(--text-secondary);
+}
+
+#tip {
+  position: fixed; pointer-events: none; opacity: 0; transition: opacity .1s;
+  background: var(--surface-raised); color: var(--text-primary);
+  border: 1px solid var(--border-strong); border-radius: 7px;
+  padding: 7px 10px; font-size: 12px; line-height: 1.45;
+  box-shadow: 0 6px 20px rgba(0,0,0,.16); z-index: 50; max-width: 260px;
+}
+#tip b { font-weight: 600; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="top">
+    <div>
+      <h1>Sales Floor</h1>
+      <div class="sub" id="daylabel">Loading…</div>
+    </div>
+    <div class="controls">
+      <select id="daypick" aria-label="Reporting day"></select>
+      <button class="ghost" id="themebtn" type="button" title="Toggle light/dark">◐</button>
+    </div>
+  </header>
+  <main id="main"><div class="empty">Loading…</div></main>
+</div>
+<div id="tip" role="tooltip"></div>
+
+<script>
+const OUTCOMES = [
+  ["Live Contact",       "--s1"],
+  ["Voicemail",          "--s2"],
+  ["Screener",           "--s3"],
+  ["No Answer",          "--s4"],
+  ["No Outcome Logged",  "--s5"],
+];
+
+const $ = (s, r) => (r || document).querySelector(s);
+const el = (t, cls, txt) => { const e = document.createElement(t); if (cls) e.className = cls; if (txt != null) e.textContent = txt; return e; };
+const money = n => "$" + Math.round(n || 0).toLocaleString();
+const secs = n => { n = Math.round(n || 0); const m = Math.floor(n / 60); return m ? `${m}m ${String(n % 60).padStart(2, "0")}s` : `${n}s`; };
+
+/* ---- tooltip ------------------------------------------------------------ */
+const tip = $("#tip");
+function hoverable(node, html) {
+  node.addEventListener("mousemove", e => {
+    tip.innerHTML = html;
+    tip.style.opacity = 1;
+    const pad = 14, w = tip.offsetWidth, h = tip.offsetHeight;
+    let x = e.clientX + pad, y = e.clientY + pad;
+    if (x + w > innerWidth - 8) x = e.clientX - w - pad;
+    if (y + h > innerHeight - 8) y = e.clientY - h - pad;
+    tip.style.left = x + "px"; tip.style.top = y + "px";
+  });
+  node.addEventListener("mouseleave", () => { tip.style.opacity = 0; });
+}
+
+/* ---- theme -------------------------------------------------------------- */
+$("#themebtn").addEventListener("click", () => {
+  const cur = document.documentElement.getAttribute("data-theme");
+  const next = cur === "dark" ? "light" : cur === "light" ? "dark"
+    : (matchMedia("(prefers-color-scheme: dark)").matches ? "light" : "dark");
+  document.documentElement.setAttribute("data-theme", next);
+  try { localStorage.setItem("board-theme", next); } catch (_) {}
+});
+try {
+  const t = localStorage.getItem("board-theme");
+  if (t) document.documentElement.setAttribute("data-theme", t);
+} catch (_) {}
+
+/* ---- sections ----------------------------------------------------------- */
+function section(title) { const h = el("h2", null, title); $("#main").append(h); return h; }
+
+function tiles(T) {
+  const box = el("div", "tiles");
+  const add = (k, v, n) => {
+    const t = el("div", "tile");
+    t.append(el("div", "k", k), el("div", "v", v));
+    if (n) t.append(el("div", "n", n));
+    box.append(t);
+  };
+  add("Dials", (T.dials ?? 0).toLocaleString());
+  add("Live Contacts", (T.live ?? 0).toLocaleString(), `${T.rate ?? 0}% contact rate`);
+  add("Households Quoted", T.hh ?? 0);
+  add("Premium Quoted", money(T.pq));
+  add("Premium Sold", money(T.ps), (T.pol ?? 0) + " polic" + ((T.pol === 1) ? "y" : "ies"));
+  if (T.util != null) add("Utilization", T.util + "%");
+  $("#main").append(box);
+}
+
+function barChart(rows, fmt, tipFn) {
+  const max = Math.max(1, ...rows.map(r => r.v));
+  const box = el("div", "bars");
+  for (const r of rows) {
+    const row = el("div", "row");
+    row.append(el("div", "lbl", r.name));
+    const track = el("div", "track"), fill = el("div", "fill");
+    fill.style.width = (100 * r.v / max) + "%";
+    track.append(fill);
+    row.append(track, el("div", "val", fmt(r.v)));
+    if (tipFn) hoverable(row, tipFn(r));
+    box.append(row);
+  }
+  $("#main").append(box);
+}
+
+function outcomeStacks(outcomes) {
+  const names = Object.keys(outcomes || {});
+  if (!names.length) return;
+  section("Call Outcomes · behind the contact rate");
+
+  const legend = el("div", "legend");
+  for (const [label, varname] of OUTCOMES) {
+    const i = el("div", "item"), sw = el("span", "swatch");
+    sw.style.background = `var(${varname})`;
+    i.append(sw, document.createTextNode(label));
+    legend.append(i);
+  }
+  $("#main").append(legend);
+
+  const box = el("div", "bars");
+  for (const name of names) {
+    const o = outcomes[name] || {};
+    const total = Object.values(o).reduce((a, b) => a + b, 0) || 1;
+    const row = el("div", "row");
+    row.append(el("div", "lbl", name));
+    const stack = el("div", "stack");
+    for (const [label, varname] of OUTCOMES) {
+      const n = o[label] || 0;
+      if (!n) continue;
+      const seg = el("div", "seg");
+      seg.style.background = `var(${varname})`;
+      seg.style.flex = `${n} 0 0`;
+      // Label every segment wide enough to hold one: this is the relief the
+      // light-mode contrast warning requires, so it is load-bearing.
+      if (n / total > 0.07) seg.append(el("span", null, String(n)));
+      hoverable(seg, `<b>${name}</b><br>${label}: ${n} of ${total} dials`);
+      stack.append(seg);
+    }
+    // Anything the payload carries that is not one of the five known buckets.
+    const known = new Set(OUTCOMES.map(o => o[0]));
+    const other = Object.entries(o).filter(([k]) => !known.has(k));
+    for (const [k, n] of other) {
+      if (!n) continue;
+      const seg = el("div", "seg");
+      seg.style.background = "var(--bar-track)";
+      seg.style.flex = `${n} 0 0`;
+      seg.style.border = "1px dashed var(--border-strong)";
+      hoverable(seg, `<b>${name}</b><br>${k}: ${n}`);
+      stack.append(seg);
+    }
+    row.append(stack, el("div", "val", String(total)));
+    box.append(row);
+  }
+  $("#main").append(box);
+}
+
+function producerTable(P) {
+  section("Sales Funnel by Producer");
+  const cols = [
+    ["Producer", r => r.name, "name"],
+    ["Dials", r => r.dials],
+    ["Live", r => r.live],
+    ["Rate", r => (r.rate ?? 0) + "%"],
+    ["Avg Talk", r => secs(r.talk)],
+    ["HH", r => r.hh],
+    ["Quoted", r => money(r.pq)],
+    ["Sold", r => money(r.ps)],
+  ];
+  const wrap = el("div", "scroll"), t = el("table");
+  const thead = el("thead"), htr = el("tr");
+  for (const [h] of cols) htr.append(el("th", null, h));
+  thead.append(htr); t.append(thead);
+  const tb = el("tbody");
+  for (const r of P) {
+    const tr = el("tr");
+    for (const [, f, cls] of cols) tr.append(el("td", cls || null, String(f(r))));
+    tb.append(tr);
+  }
+  t.append(tb); wrap.append(t); $("#main").append(wrap);
+}
+
+function listTable(title, rows, cols, note) {
+  if (!rows || !rows.length) return;
+  section(title);
+  const wrap = el("div", "scroll"), t = el("table");
+  const thead = el("thead"), htr = el("tr");
+  for (const [h] of cols) htr.append(el("th", null, h));
+  thead.append(htr); t.append(thead);
+  const tb = el("tbody");
+  for (const r of rows) {
+    const tr = el("tr");
+    for (const [, f, cls] of cols) {
+      const v = f(r);
+      tr.append(el("td", cls || null, v == null ? "—" : String(v)));
+    }
+    tb.append(tr);
+  }
+  t.append(tb); wrap.append(t); $("#main").append(wrap);
+  if (note) $("#main").append(el("div", "note", note));
+}
+
+/* ---- render ------------------------------------------------------------- */
+function render(d) {
+  const main = $("#main");
+  main.innerHTML = "";
+  $("#daylabel").textContent =
+    (d.label || d.date) + (d.built_at ? " · built " + new Date(d.built_at).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" }) : "");
+
+  section("Team");
+  tiles(d.totals || {});
+
+  const P = (d.producers || []).slice();
+
+  if (P.length) {
+    producerTable(P);
+
+    section("Call Volume");
+    barChart(
+      P.slice().sort((a, b) => b.dials - a.dials).map(p => ({ name: p.name, v: p.dials, p })),
+      v => v.toLocaleString(),
+      r => `<b>${r.name}</b><br>${r.p.dials} dials · ${r.p.live} live<br>${r.p.inbound || 0} inbound`
+    );
+
+    section("Contact Rate");
+    barChart(
+      P.slice().sort((a, b) => b.rate - a.rate).map(p => ({ name: p.name, v: p.rate, p })),
+      v => v + "%",
+      r => `<b>${r.name}</b><br>${r.p.live} live of ${r.p.dials} dials<br>Live contact is decided by the recording, the producer's note and RingCentral's disposition — never by duration.`
+    );
+
+    section("Premium Quoted");
+    barChart(
+      P.slice().sort((a, b) => b.pq - a.pq).map(p => ({ name: p.name, v: p.pq, p })),
+      money,
+      r => `<b>${r.name}</b><br>${money(r.p.pq)} across ${r.p.hh} household${r.p.hh === 1 ? "" : "s"}`
+    );
+  }
+
+  outcomeStacks(d.outcomes);
+
+  if (d.leaderboard && d.leaderboard.points) {
+    section("Leaderboard");
+    const pts = d.leaderboard.points;
+    const rows = Object.entries(pts).sort((a, b) => b[1] - a[1]).map(([name, v]) => ({ name, v }));
+    barChart(rows, v => v + " pts", r => `<b>${r.name}</b><br>${r.v} points across ${(d.leaderboard.categories || []).length} categories`);
+    $("#main").append(el("div", "note",
+      "Avg Call Score and Avg Sentiment do not award points. TRAQ scores a voicemail as a call, so both track how many people answered rather than how the call went."));
+  }
+
+  const std = d.speed_to_dial && d.speed_to_dial.team;
+  if (std) {
+    section("Speed to Dial · internet leads");
+    const box = el("div", "tiles");
+    const add = (k, v) => { const t = el("div", "tile"); t.append(el("div", "k", k), el("div", "v", v)); box.append(t); };
+    add("Median", secs(std.median));
+    add("Quickest", secs(std.quickest));
+    add("Longest", secs(std.longest));
+    add("Leads", std.n ?? 0);
+    $("#main").append(box);
+    if (d.speed_to_dial.note) $("#main").append(el("div", "note", d.speed_to_dial.note));
+  }
+
+  const rc = d.recontact || {};
+  listTable("At Risk · quoted, losing traction", rc.at_risk, [
+    ["Lead", r => r.lead_name, "name"],
+    ["Producer", r => r.producer],
+    ["Stage", r => r.stage],
+    ["Calls", r => r.calls],
+    ["Days", r => r.business_days],
+    ["Last dial", r => r.last_dial],
+    ["Flag", r => r.flag],
+  ]);
+
+  const ta = d.task_audit || {};
+  const openRows = (ta.rows && ta.rows.e) || [];
+  listTable("Tasks Still Open at End of Day", openRows, [
+    ["Record", r => r.record, "name"],
+    ["Producer", r => r.producer],
+    ["Task", r => r.title],
+    ["Due", r => r.due],
+    ["Comment", r => r.comment],
+  ], ta.counted ? `${ta.counted} producer tasks audited for this day.` : null);
+
+  if (d.calls && d.calls.length) {
+    section("Coaching · authored cards");
+    for (const c of d.calls) {
+      const t = el("div", "tile");
+      t.style.marginBottom = "10px";
+      t.append(el("div", "k", `${c.producer || ""} · ${c.lead || ""}`));
+      if (c.summary) t.append(el("div", "n", c.summary));
+      $("#main").append(t);
+    }
+  } else {
+    section("Coaching");
+    $("#main").append(el("div", "note",
+      "No coaching cards were authored for this day. Cards are written by hand, never generated — an empty tab is correct here."));
+  }
+}
+
+/* ---- load --------------------------------------------------------------- */
+async function loadDay(day) {
+  $("#main").innerHTML = '<div class="empty">Loading…</div>';
+  const r = await fetch(`/api/days/${day}`, { cache: "no-store" });
+  if (!r.ok) {
+    $("#main").innerHTML = '<div class="empty">No report for this day.</div>';
+    $("#daylabel").textContent = day;
+    return;
+  }
+  render(await r.json());
+}
+
+(async function init() {
+  let days = [];
+  try {
+    const r = await fetch("/api/days", { cache: "no-store" });
+    days = (await r.json()).days || [];
+  } catch (_) {}
+  const pick = $("#daypick");
+  if (!days.length) {
+    $("#main").innerHTML = '<div class="empty">No reports yet.</div>';
+    $("#daylabel").textContent = "";
+    return;
+  }
+  for (const d of days) pick.append(new Option(d, d));
+  pick.addEventListener("change", () => loadDay(pick.value));
+  await loadDay(days[0]);
+})();
+</script>
+</body>
+</html>

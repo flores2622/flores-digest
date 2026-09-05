@@ -825,7 +825,37 @@ def main():
         return
     send(day, html, [notes, rec], audience=a.audience,
          ops_only_pdfs=[missed] if missed else [])
+    publish_day(day)
     make_missed_call_tasks(day)
+
+
+def publish_day(day):
+    """Push the day onto the Sales Floor board (publish_board.publish, live).
+
+    Runs AFTER send(), for the same reason make_missed_call_tasks does: the
+    emails have already gone out by this point, so nothing here may ever raise.
+    A Cloudflare outage, an expired R2 key or a missing secret must cost the
+    board and nothing else.
+
+    This replaced the `Artifact write_db` step, which was a Claude tool call
+    and therefore stopped to ask a human for approval in a run where nobody is
+    watching -- the 2026-09-03 document landed forty-one hours late that way,
+    while its emails had gone out on time. An S3 PUT with a key we hold cannot
+    do that. See publish_board's module docstring.
+    """
+    try:
+        import publish_board
+        publish_board.publish(day, log=log)
+    except (Exception, SystemExit) as e:
+        # secrets_load.load() raises SystemExit, not a plain Exception, when a
+        # secret is missing -- and that IS the expected way for a not-yet-
+        # configured R2 credential to fail. `except Exception` alone does not
+        # catch it (SystemExit is a BaseException), which would have let a
+        # missing secret escape this function and abort the rest of main(),
+        # including make_missed_call_tasks below -- exactly the failure this
+        # function's docstring promises cannot happen.
+        log(f"board publish failed ({type(e).__name__}: {e}) -- "
+            f"the digest already sent, so nothing else is affected")
 
 
 def make_attachments(day):
