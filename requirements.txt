@@ -3,3 +3,4 @@ playwright
 pdfplumber
 sherpa-onnx
 numpy
+boto3
