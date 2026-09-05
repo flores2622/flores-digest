@@ -20,20 +20,22 @@ So the rule this module exists to honour:
 An S3 PUT with a key we hold is the first kind. That is the whole point.
 
 WHAT THE NIGHTLY RUN DOES. One `put_object` of `days/<day>.json`. No wrangler,
-no node, no site deploy, no cache invalidation. The static shell and the Pages
-Function that reads this bucket are deployed ONCE by `deploy_site.py`, and only
-again when the UI changes. Keeping the nightly path down to a single HTTP call
-is deliberate: every additional step is another thing that can fail at 7 PM
-while nobody is looking.
+no node, no site deploy, no cache invalidation. The static shell and the
+Worker that reads this bucket (site/public/, site/worker.js, wrangler.jsonc)
+are deployed separately by the `flores-board` Workers Builds project, which
+Cloudflare runs automatically on every push to main that touches those paths
+-- there is no manual deploy step and no deploy_site.py. Keeping the nightly
+path down to a single HTTP call is deliberate: every additional step is
+another thing that can fail at 7 PM while nobody is looking.
 
 THE DATA IS NOT PUBLIC. `days/<day>.json` carries customer names, phone numbers
 and notes on what coverage they were quoted -- see `recontact.at_risk[].
 lead_name` and `task_audit.rows.*[].phones`. That is customer NPI belonging to
 an insurance agency, not a scoreboard. The bucket therefore stays PRIVATE: it is
 never given a public r2.dev URL and never a public custom domain. The only
-reader is the Pages Function, through its binding, and the whole site sits
+reader is the flores-board Worker, through its binding, and the whole site sits
 behind Cloudflare Access. If you are ever tempted to "just make the bucket
-public to debug something", don't -- serve it through the Function or read it
+public to debug something", don't -- serve it through the Worker or read it
 with this module's --dry-run.
 """
 import argparse
@@ -48,9 +50,9 @@ import secrets_load
 ROOT = pathlib.Path(__file__).resolve().parent
 AZ = dt.timezone(dt.timedelta(hours=-7))
 
-# Object layout in the bucket. The Function maps /api/days/<day> onto
+# Object layout in the bucket. site/worker.js maps /api/days/<day> onto
 # days/<day>.json and lists this prefix for the date picker, so a change here
-# is a change in site/functions/api/days/ too.
+# is a change there too.
 PREFIX = "days"
 
 

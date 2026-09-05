@@ -1,0 +1,23 @@
+{
+  // Sales Floor board. Deployed by the "flores-board" Workers Builds project
+  // already connected to this repo (Cloudflare dashboard -> Workers & Pages
+  // -> flores-board -> Settings -> Build). If that project's "Root
+  // directory" setting is not "/", move this file to match it or update that
+  // setting -- Workers Builds looks for this config relative to whatever
+  // root directory the project is configured with, and this repo's root is
+  // otherwise a Python project (daily.py, CLAUDE.md, etc.), not a Node one.
+  "name": "flores-board",
+  "compatibility_date": "2026-09-05",
+  "main": "site/worker.js",
+  "assets": {
+    "directory": "site/public",
+    "binding": "ASSETS"
+  },
+  "r2_buckets": [
+    // Same bucket publish_board.py writes to over the S3 API -- see that
+    // file for why the write side uses boto3 + an R2 API token instead of a
+    // binding (this repo's nightly build is a plain Python process, not a
+    // Worker, so it has no binding to use).
+    { "binding": "BOARD", "bucket_name": "flores-board" }
+  ]
+}
