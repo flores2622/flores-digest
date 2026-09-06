@@ -68,6 +68,10 @@ export default {
         if (parts.length === 2) return listDays(env);
         if (parts.length === 3) return getDay(env, parts[2]);
       }
+
+      if (parts[1] === "months" && parts.length === 3) {
+        return getMonth(env, parts[2]);
+      }
       return json({ error: "not found" }, 404);
     }
 
@@ -249,4 +253,29 @@ async function verifyJwt(token, team, aud) {
   if (typeof payload.nbf === "number" && payload.nbf > now) return null;
 
   return payload;
+}
+
+/** GET /api/months/:month -> the month-to-date rollup, e.g. 2026-09.
+ *
+ * Served straight from months/<YYYY-MM>.json, which publish_board.py rewrites
+ * every night from that month's day documents. The Worker deliberately does
+ * NOT aggregate days itself: a full month is up to 23 documents at 20-135 KB
+ * each, so doing it here would mean megabytes of R2 reads on every page load,
+ * for every viewer, growing through the month.
+ */
+async function getMonth(env, month) {
+  if (!/^\d{4}-\d{2}$/.test(month)) {
+    return json({ error: "bad month" }, 400);
+  }
+  const obj = await env.BOARD.get(`months/${month}.json`);
+  if (obj === null) {
+    return json({ error: "no rollup for this month", month }, 404);
+  }
+  return new Response(obj.body, {
+    headers: {
+      "content-type": "application/json; charset=utf-8",
+      // Rewritten nightly, and rewritten again by any past-day rebuild.
+      "cache-control": "no-store",
+    },
+  });
 }

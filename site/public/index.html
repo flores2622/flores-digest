@@ -158,6 +158,26 @@ tbody tr:hover { background: color-mix(in oklab, var(--bar) 7%, transparent); }
   border: 1px solid var(--border-strong); color: var(--text-secondary);
 }
 
+/* View toggle. Two states, so a segmented control rather than a dropdown --
+   the choice is always visible and one click away. */
+.seg { display: inline-flex; border: 1px solid var(--border-strong); border-radius: 6px; overflow: hidden; }
+.seg button {
+  font: inherit; font-size: 13px; padding: 6px 12px; cursor: pointer;
+  background: var(--surface-raised); color: var(--text-secondary);
+  border: 0; border-right: 1px solid var(--border-strong);
+}
+.seg button:last-child { border-right: 0; }
+.seg button[aria-pressed="true"] { background: var(--bar); color: #fff; font-weight: 500; }
+
+/* Trend line. One series, so no legend -- the section title names it. 2px
+   stroke, recessive grid, markers big enough to hit. */
+.trend { width: 100%; height: 200px; display: block; }
+.trend .grid { stroke: var(--grid); stroke-width: 1; }
+.trend .axis { fill: var(--text-muted); font-size: 11px; }
+.trend .ln { fill: none; stroke: var(--bar); stroke-width: 2; stroke-linejoin: round; stroke-linecap: round; }
+.trend .dot { fill: var(--bar); stroke: var(--surface); stroke-width: 2; }
+.trend .hit { fill: transparent; cursor: crosshair; }
+
 #tip {
   position: fixed; pointer-events: none; opacity: 0; transition: opacity .1s;
   background: var(--surface-raised); color: var(--text-primary);
@@ -176,6 +196,10 @@ tbody tr:hover { background: color-mix(in oklab, var(--bar) 7%, transparent); }
       <div class="sub" id="daylabel">Loading…</div>
     </div>
     <div class="controls">
+      <span class="seg" role="group" aria-label="View">
+        <button id="vday" type="button" aria-pressed="true">Day</button>
+        <button id="vmtd" type="button" aria-pressed="false">Month to date</button>
+      </span>
       <select id="daypick" aria-label="Reporting day"></select>
       <button class="ghost" id="themebtn" type="button" title="Toggle light/dark">◐</button>
     </div>
@@ -358,6 +382,145 @@ function listTable(title, rows, cols, note) {
   if (note) $("#main").append(el("div", "note", note));
 }
 
+/* Trend line: change over time, one series, so a line and no legend.
+   Crosshair + tooltip per point; the hit targets are full-height columns so
+   they are far easier to hit than the 4px dots. */
+function lineChart(points, fmt, tipFn) {
+  const W = 720, H = 200, L = 44, R = 12, T = 14, B = 26;
+  const xs = (i) => L + (points.length < 2 ? (W - L - R) / 2
+                    : i * (W - L - R) / (points.length - 1));
+  const vals = points.map(p => p.v);
+  const hi = Math.max(...vals, 0), lo = Math.min(...vals, 0);
+  const span = (hi - lo) || 1;
+  const ys = (v) => T + (H - T - B) * (1 - (v - lo) / span);
+
+  const ns = "http://www.w3.org/2000/svg";
+  const svg = document.createElementNS(ns, "svg");
+  svg.setAttribute("class", "trend");
+  svg.setAttribute("viewBox", `0 0 ${W} ${H}`);
+  svg.setAttribute("preserveAspectRatio", "none");
+
+  for (const frac of [0, 0.5, 1]) {
+    const v = lo + span * frac, y = ys(v);
+    const g = document.createElementNS(ns, "line");
+    g.setAttribute("class", "grid");
+    g.setAttribute("x1", L); g.setAttribute("x2", W - R);
+    g.setAttribute("y1", y); g.setAttribute("y2", y);
+    svg.append(g);
+    const t = document.createElementNS(ns, "text");
+    t.setAttribute("class", "axis");
+    t.setAttribute("x", 4); t.setAttribute("y", y + 4);
+    t.textContent = fmt(Math.round(v * 10) / 10);
+    svg.append(t);
+  }
+
+  const path = document.createElementNS(ns, "path");
+  path.setAttribute("class", "ln");
+  path.setAttribute("d", points.map((p, i) =>
+    `${i ? "L" : "M"}${xs(i)},${ys(p.v)}`).join(" "));
+  svg.append(path);
+
+  points.forEach((p, i) => {
+    const c = document.createElementNS(ns, "circle");
+    c.setAttribute("class", "dot");
+    c.setAttribute("cx", xs(i)); c.setAttribute("cy", ys(p.v));
+    c.setAttribute("r", 4);
+    svg.append(c);
+
+    const lab = document.createElementNS(ns, "text");
+    lab.setAttribute("class", "axis");
+    lab.setAttribute("x", xs(i)); lab.setAttribute("y", H - 8);
+    lab.setAttribute("text-anchor", "middle");
+    lab.textContent = p.label;
+    svg.append(lab);
+
+    const hit = document.createElementNS(ns, "rect");
+    hit.setAttribute("class", "hit");
+    hit.setAttribute("x", xs(i) - (W - L - R) / (2 * Math.max(1, points.length - 1)));
+    hit.setAttribute("y", 0);
+    hit.setAttribute("width", (W - L - R) / Math.max(1, points.length - 1));
+    hit.setAttribute("height", H);
+    hoverable(hit, tipFn(p));
+    svg.append(hit);
+  });
+
+  $("#main").append(svg);
+}
+
+function renderMonth(d) {
+  const main = $("#main");
+  main.innerHTML = "";
+  $("#daylabel").textContent =
+    `${d.label} · month to date · ${d.business_days} business day` +
+    (d.business_days === 1 ? "" : "s");
+
+  const T = d.totals || {};
+  section("Month to Date");
+  const box = el("div", "tiles");
+  const add = (k, v, n) => {
+    const t = el("div", "tile");
+    t.append(el("div", "k", k), el("div", "v", v));
+    if (n) t.append(el("div", "n", n));
+    box.append(t);
+  };
+  add("Dials", (T.dials ?? 0).toLocaleString());
+  add("Live Contacts", (T.live ?? 0).toLocaleString(), `${T.rate ?? 0}% contact rate`);
+  add("Households Quoted", T.hh ?? 0);
+  add("Premium Quoted", money(T.pq));
+  add("Premium Sold", money(T.ps), `${T.pol ?? 0} policies`);
+  add("Business Days", d.business_days ?? 0);
+  main.append(box);
+
+  const P = d.producers || [];
+  if (P.length) {
+    section("Producers · month to date");
+    const cols = [
+      ["Producer", r => r.name, "name"],
+      ["Days", r => r.days],
+      ["Dials", r => r.dials],
+      ["Live", r => r.live],
+      ["Rate", r => (r.rate ?? 0) + "%"],
+      ["Avg Talk", r => secs(r.talk)],
+      ["HH", r => r.hh],
+      ["Quoted", r => money(r.pq)],
+      ["Sold", r => money(r.ps)],
+    ];
+    const wrap = el("div", "scroll"), t = el("table");
+    const thead = el("thead"), htr = el("tr");
+    for (const [h] of cols) htr.append(el("th", null, h));
+    thead.append(htr); t.append(thead);
+    const tb = el("tbody");
+    for (const r of P) {
+      const tr = el("tr");
+      for (const [, f, cls] of cols) tr.append(el("td", cls || null, String(f(r))));
+      tb.append(tr);
+    }
+    t.append(tb); wrap.append(t); main.append(wrap);
+
+    section("Premium Sold · month to date");
+    barChart(P.slice().sort((a, b) => b.ps - a.ps).map(p => ({ name: p.name, v: p.ps, p })),
+      money,
+      r => `<b>${r.name}</b><br>${money(r.p.ps)} from ${r.p.pol} polic${r.p.pol === 1 ? "y" : "ies"}<br>over ${r.p.days} day${r.p.days === 1 ? "" : "s"}`);
+
+    section("Contact Rate · month to date");
+    barChart(P.slice().sort((a, b) => b.rate - a.rate).map(p => ({ name: p.name, v: p.rate, p })),
+      v => v + "%",
+      r => `<b>${r.name}</b><br>${r.p.live} live of ${r.p.dials} dials<br>Month rate is total live over total dials, not an average of daily rates.`);
+  }
+
+  const tr = d.trend || [];
+  if (tr.length > 1) {
+    section("Team Contact Rate by Day");
+    lineChart(
+      tr.map(t => ({ label: t.date.slice(8), v: t.rate, t })),
+      v => v + "%",
+      p => `<b>${p.t.date}</b><br>${p.t.rate}% — ${p.t.live} live of ${p.t.dials} dials<br>${money(p.t.ps)} sold`,
+    );
+    main.append(el("div", "note",
+      "Rates are recomputed from the month's totals, never averaged across days — a 15-dial day should not weigh the same as a 76-dial one."));
+  }
+}
+
 /* ---- render ------------------------------------------------------------- */
 function render(d) {
   const main = $("#main");
@@ -457,6 +620,19 @@ function render(d) {
 }
 
 /* ---- load --------------------------------------------------------------- */
+let VIEW = "day";
+
+async function loadMonth(month) {
+  $("#main").innerHTML = '<div class="empty">Loading…</div>';
+  const r = await fetch(`/api/months/${month}`, { cache: "no-store" });
+  if (!r.ok) {
+    $("#main").innerHTML = '<div class="empty">No month-to-date rollup yet. It is written by the nightly run.</div>';
+    $("#daylabel").textContent = month;
+    return;
+  }
+  renderMonth(await r.json());
+}
+
 async function loadDay(day) {
   $("#main").innerHTML = '<div class="empty">Loading…</div>';
   const r = await fetch(`/api/days/${day}`, { cache: "no-store" });
@@ -482,7 +658,24 @@ async function loadDay(day) {
   }
   for (const d of days) pick.append(new Option(d, d));
   pick.addEventListener("change", () => loadDay(pick.value));
-  await loadDay(days[0]);
+
+  const setView = async (v) => {
+    VIEW = v;
+    $("#vday").setAttribute("aria-pressed", String(v === "day"));
+    $("#vmtd").setAttribute("aria-pressed", String(v === "mtd"));
+    // The day picker is meaningless in the month view; the month is taken
+    // from whichever day is selected, so switching back lands where you were.
+    pick.style.display = v === "day" ? "" : "none";
+    if (v === "day") await loadDay(pick.value);
+    else await loadMonth(pick.value.slice(0, 7));
+    try { localStorage.setItem("board-view", v); } catch (_) {}
+  };
+  $("#vday").addEventListener("click", () => setView("day"));
+  $("#vmtd").addEventListener("click", () => setView("mtd"));
+
+  let start = "day";
+  try { start = localStorage.getItem("board-view") || "day"; } catch (_) {}
+  await setView(start);
 })();
 </script>
 </body>
