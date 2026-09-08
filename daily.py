@@ -217,6 +217,14 @@ def transcribe_day(day, outbound_only=False):
                                  "partial": partial,
                                  "callback_day": meta.get("callback_day")}
             out_f.write_text(json.dumps(done))
+    # A day with no recordings at all -- a holiday, a weekend, an office
+    # closure -- still has to leave a transcripts file behind. Both writes
+    # above are guarded by a non-empty todo list, so on 2026-09-07 (Labor Day,
+    # 0 outbound dials, 7 unanswered inbound) neither fired and build_metrics
+    # died on FileNotFoundError reading data/transcripts_<day>.json. An empty
+    # day is a real day and must report as zeros, not as a crash.
+    if not out_f.exists():
+        out_f.write_text(json.dumps(done))
     c = collections.Counter(v["class"] for v in done.values())
     log(f"  transcripts: {dict(c)}")
     return done
