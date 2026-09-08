@@ -646,11 +646,29 @@ async function loadDay(day) {
 
 (async function init() {
   let days = [];
+  let notSignedIn = false;
   try {
     const r = await fetch("/api/days", { cache: "no-store" });
-    days = (await r.json()).days || [];
-  } catch (_) {}
+    if (r.status === 401 || r.status === 403) {
+      notSignedIn = true;
+    } else if ((r.headers.get("content-type") || "").includes("application/json")) {
+      days = (await r.json()).days || [];
+    } else {
+      // Cloudflare Access redirects an unauthenticated request to its own
+      // login page rather than returning 401/403 -- that response is HTML,
+      // not JSON. Treating it as "no data" here would hide a login problem
+      // behind a lie about the bucket being empty.
+      notSignedIn = true;
+    }
+  } catch (_) {
+    notSignedIn = true;
+  }
   const pick = $("#daypick");
+  if (notSignedIn) {
+    $("#main").innerHTML = '<div class="empty">Not signed in to Cloudflare Access. Reload this page and complete the login prompt, then try again.</div>';
+    $("#daylabel").textContent = "";
+    return;
+  }
   if (!days.length) {
     $("#main").innerHTML = '<div class="empty">No reports yet.</div>';
     $("#daylabel").textContent = "";
