@@ -87,13 +87,28 @@
   --bad:    #f0908e; --badbg:  #3a1a1a; --badbd:  #632c2c;
   --gold:   #e3bf55; --silver: #c4c4c4; --bronze: #d79a63;
 }
-/* Digest-email tier colours, verbatim (render_report.DOT / .tier-text-*).
-   These are the actual colours the sent email uses -- not chosen here --
-   so a tier reads the same colour on the board as in their inbox.
-   Deliberately NOT theme-varied: matching the digest is the point. */
+/* Digest-email tier colours, verbatim (render_report.DOT / .tier-text-*),
+   in LIGHT mode -- these are the actual colours the sent email uses, so a
+   tier reads the same colour on the board as in their inbox there.
+   Frank, 2026-09-09: in dark mode the email's saturated red/orange/green
+   sitting directly on near-black text (no chip background to soften it,
+   unlike .c-g/.c-w/.c-r) read as "blurry" -- full-saturation colour on a
+   very dark ground causes exactly the halation the rest of this file's
+   dark palette was built to avoid (see --good/--warn/--bad above, and
+   .colh.g/.colh.b which already use them for the same bare-text-no-chip
+   case). Dark mode gets those same tuned tokens instead of the email's
+   literal hex; light mode is untouched and still matches the email exactly. */
 .tg { color: #0ca30c; font-weight: 600; }
 .ty { color: #eda100; font-weight: 600; }
 .tr { color: #e60000; font-weight: 600; }
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) .tg { color: var(--good); }
+  :root:not([data-theme="light"]) .ty { color: var(--warn); }
+  :root:not([data-theme="light"]) .tr { color: var(--bad); }
+}
+:root[data-theme="dark"] .tg { color: var(--good); }
+:root[data-theme="dark"] .ty { color: var(--warn); }
+:root[data-theme="dark"] .tr { color: var(--bad); }
 .n1 { color: var(--gold); font-weight: 700; }
 .n2 { color: var(--silver); }
 .n3 { color: var(--bronze); }
