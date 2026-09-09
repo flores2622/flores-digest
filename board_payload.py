@@ -25,6 +25,8 @@ import pathlib
 import statistics
 import sys
 
+import digest_config as cfg
+
 ROOT = pathlib.Path(__file__).resolve().parent
 AZ = dt.timezone(dt.timedelta(hours=-7))
 
@@ -125,6 +127,54 @@ def outcome_breakdown(M):
             for name, v in M["producers"].items()}
 
 
+def _producer_tiers(p):
+    """Board-column-name -> tier, for the metrics the email itself colours
+    (render_report.build_funnel and util_panel.py) -- everything except
+    Policies and Premium Sold, which are coloured on the sale streak instead
+    of a daily target and are filled in separately once that's known (see
+    publish_board.publish, which needs prior days' documents from R2 to
+    compute it -- this module stays pure and reads only metrics_<day>.json).
+    """
+    hh = p.get("hh") or 0
+    pq_per = (p.get("pq") or 0) / hh if hh else 0
+    out = {
+        "dials": cfg.tier("call_volume", p.get("dials") or 0),
+        "talk":  cfg.tier("avg_talk_min", (p.get("talk") or 0) / 60),
+        "rate":  cfg.tier("contact_rate_pct", p.get("rate") or 0),
+        "hh":    cfg.tier("households_quoted", hh),
+        "pq":    cfg.tier("premium_quoted_per_hh", pq_per),
+    }
+    if p.get("util") is not None:
+        out["util"] = cfg.tier("utilization_pct", p["util"])
+    return out
+
+
+def _team_tiers(totals, producers):
+    """Same metrics as _producer_tiers, but for the Team row. Straight-sum
+    metrics (call volume, households quoted) scale down by TEAM_SCALE before
+    hitting the per-producer threshold, exactly like the email's funnel
+    cards (render_report.build_funnel) -- everything else is already a
+    rate/ratio and applies the threshold unscaled.
+    """
+    scale = cfg.TEAM_SCALE or 1
+    hh = totals.get("hh") or 0
+    dials = totals.get("dials") or 0
+    live = sum(p.get("live") or 0 for p in producers)
+    talk_secs = sum((p.get("talk") or 0) * (p.get("live") or 0) for p in producers)
+    team_talk = (talk_secs // live) if live else 0
+    pq_per = (totals.get("pq") or 0) / hh if hh else 0
+    out = {
+        "dials": cfg.tier("call_volume", dials / scale),
+        "talk":  cfg.tier("avg_talk_min", team_talk / 60),
+        "rate":  cfg.tier("contact_rate_pct", totals.get("rate") or 0),
+        "hh":    cfg.tier("households_quoted", hh / scale),
+        "pq":    cfg.tier("premium_quoted_per_hh", pq_per),
+    }
+    if totals.get("util") is not None:
+        out["util"] = cfg.tier("utilization_pct", totals["util"])
+    return out
+
+
 def build(day):
     M = json.loads((ROOT / f"data/metrics_{day}.json").read_text())
     P = M["producers"]
@@ -179,6 +229,8 @@ def build(day):
     }
     doc["totals"]["rate"] = round(
         100 * doc["totals"]["live"] / doc["totals"]["dials"], 1) if doc["totals"]["dials"] else 0
+    doc["tiers"] = {p["name"]: _producer_tiers(p) for p in producers}
+    doc["tiers"]["team"] = _team_tiers(doc["totals"], producers)
     return doc
 
 
