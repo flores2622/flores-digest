@@ -71,6 +71,17 @@
   --bar:            #3987e5;
   --bar-track:      #2b2b27;
 }
+/* Digest-email palette, verbatim (render_report.DOT / .tier-text-*). These
+   are the actual colours the sent email uses -- not chosen here -- so a
+   producer or a tier reads the same colour on the board as in their inbox.
+   Deliberately NOT theme-varied: matching the digest is the point. */
+.tg { color: #0ca30c; font-weight: 600; }
+.ty { color: #eda100; font-weight: 600; }
+.tr { color: #e60000; font-weight: 600; }
+.n1 { color: #9a6f00; font-weight: 700; }
+.n2 { color: #6f6f6f; }
+.n3 { color: #9a5f2b; }
+.mdl { font-size: 14px; line-height: 1; margin-left: 5px; }
 
 * { box-sizing: border-box; }
 body {
@@ -80,23 +91,57 @@ body {
   font: 14px/1.5 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
   -webkit-font-smoothing: antialiased;
 }
-.wrap { max-width: 1120px; margin: 0 auto; padding: 24px 20px 72px; }
 
-header.top {
-  display: flex; flex-wrap: wrap; gap: 12px 20px;
-  align-items: baseline; justify-content: space-between;
-  padding-bottom: 16px; margin-bottom: 24px;
-  border-bottom: 1px solid var(--border);
+/* ---- top bar + shell ------------------------------------------------------ */
+.top {
+  background: var(--text-primary); color: var(--surface);
+  padding: 14px 22px; display: flex; align-items: baseline; gap: 14px; flex-wrap: wrap;
 }
-h1 { font-size: 19px; font-weight: 600; margin: 0; letter-spacing: -0.01em; }
-.sub { color: var(--text-secondary); font-size: 13px; margin-top: 2px; }
-.controls { display: flex; gap: 8px; align-items: center; }
+.top h1 { font-size: 17px; margin: 0; color: inherit; font-weight: 600; }
+.top .sub { font-size: 12px; color: var(--text-muted); }
+.thbtn {
+  margin-left: auto; align-self: center; display: inline-flex; align-items: center; gap: 6px;
+  background: transparent; color: inherit; border: 1px solid var(--border-strong); border-radius: 7px;
+  padding: 5px 10px; font: 500 12px/1 inherit; cursor: pointer;
+}
+.shell { display: grid; grid-template-columns: 200px minmax(0, 1fr); min-height: calc(100vh - 49px); }
+@media (max-width: 800px) { .shell { grid-template-columns: 1fr; } .rail { border-right: none; border-bottom: 1px solid var(--border); } }
+.rail { background: var(--surface-raised); border-right: 1px solid var(--border); padding: 16px 12px; }
+.raill { font-size: 10px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--text-muted); margin: 0 0 8px 6px; }
+.dayb {
+  display: block; width: 100%; text-align: left; background: none; border: none; border-radius: 6px;
+  padding: 8px 10px; font: inherit; color: var(--text-primary); cursor: pointer; margin-bottom: 2px;
+}
+.dayb:hover { background: var(--surface); }
+.dayb[aria-current="true"] { background: var(--text-primary); color: var(--surface); }
+.dayb .d1 { font-weight: 600; font-size: 13px; }
+.prow { display: flex; align-items: center; gap: 7px; font-size: 12px; padding: 3px 6px; }
+.pd { width: 8px; height: 8px; border-radius: 2px; flex: none; }
+.main { padding: 20px 24px 60px; min-width: 0; }
+
+.tabs { display: flex; gap: 2px; border-bottom: 1px solid var(--border); margin-bottom: 20px; }
+.tab {
+  background: none; border: none; border-bottom: 2px solid transparent; padding: 8px 13px;
+  font: inherit; font-weight: 600; font-size: 13px; color: var(--text-muted); cursor: pointer;
+}
+.tab[aria-selected="true"] { color: var(--text-primary); border-bottom-color: var(--text-primary); }
+.tab:hover { color: var(--text-primary); }
+
+.controls { display: flex; gap: 8px; align-items: center; margin-bottom: 18px; }
 select, button.ghost {
   font: inherit; font-size: 13px;
   color: var(--text-primary); background: var(--surface-raised);
   border: 1px solid var(--border-strong); border-radius: 6px;
   padding: 6px 10px; cursor: pointer;
 }
+.dseg { display: inline-flex; border: 1px solid var(--border-strong); border-radius: 6px; overflow: hidden; }
+.dseg button {
+  font: inherit; font-size: 13px; padding: 6px 12px; cursor: pointer;
+  background: var(--surface-raised); color: var(--text-secondary);
+  border: 0; border-right: 1px solid var(--border-strong);
+}
+.dseg button:last-child { border-right: 0; }
+.dseg button[aria-pressed="true"] { background: var(--bar); color: #fff; font-weight: 500; }
 
 h2 {
   font-size: 12px; font-weight: 600; text-transform: uppercase;
@@ -104,9 +149,9 @@ h2 {
   margin: 36px 0 14px;
 }
 h2:first-of-type { margin-top: 8px; }
+.sd { font-size: 12.5px; color: var(--text-secondary); margin: -10px 0 14px; line-height: 1.55; }
 
-/* Stat tiles. Team headline figures are single numbers, so they are tiles and
-   not a chart -- a five-bar chart of unrelated units would be a worse read. */
+/* Stat tiles. */
 .tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(148px, 1fr)); gap: 10px; }
 .tile {
   background: var(--surface-raised); border: 1px solid var(--border);
@@ -117,7 +162,7 @@ h2:first-of-type { margin-top: 8px; }
 .tile .n { font-size: 12px; color: var(--text-secondary); margin-top: 2px; }
 
 table { width: 100%; border-collapse: collapse; font-variant-numeric: tabular-nums; }
-th, td { text-align: right; padding: 9px 10px; border-bottom: 1px solid var(--grid); }
+th, td { text-align: right; padding: 9px 10px; border-bottom: 1px solid var(--grid); font-size: 12.5px; }
 th:first-child, td:first-child { text-align: left; }
 th {
   font-size: 11px; font-weight: 600; text-transform: uppercase;
@@ -125,12 +170,12 @@ th {
   border-bottom: 1px solid var(--border-strong);
 }
 td.name { font-weight: 500; }
+tr.tot td { font-weight: 700; background: var(--surface); }
 tbody tr:hover { background: color-mix(in oklab, var(--bar) 7%, transparent); }
-.scroll { overflow-x: auto; }
+.scroll { overflow-x: auto; border: 1px solid var(--border); border-radius: 8px; }
+.scroll table { min-width: 640px; }
+.who { display: flex; align-items: center; gap: 7px; font-weight: 600; }
 
-/* Magnitude-by-identity: one measure, one hue. Not categorical -- these bars
-   compare the same quantity across people, so a second colour would encode
-   nothing. 4px rounded data-end anchored to the baseline. */
 .bars { display: grid; gap: 7px; }
 .row { display: grid; grid-template-columns: 132px 1fr 76px; gap: 12px; align-items: center; }
 .row .lbl { font-size: 13px; color: var(--text-secondary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
@@ -138,45 +183,30 @@ tbody tr:hover { background: color-mix(in oklab, var(--bar) 7%, transparent); }
 .fill { background: var(--bar); border-radius: 0 4px 4px 0; height: 100%; min-width: 2px; transition: width .18s ease; }
 .row .val { font-size: 13px; font-weight: 500; text-align: right; font-variant-numeric: tabular-nums; }
 
-/* Stacked outcome bar. 2px surface gap between segments (the spacer rule) so
-   adjacent fills never touch, plus a count label inside any segment wide
-   enough to hold one. */
 .stack { display: flex; height: 26px; border-radius: 4px; overflow: hidden; gap: 2px; background: var(--bar-track); }
-.seg { position: relative; display: flex; align-items: center; justify-content: center; min-width: 3px; }
-.seg span {
-  font-size: 11px; font-weight: 600; color: #fff;
-  text-shadow: 0 0 3px rgba(0,0,0,.45); font-variant-numeric: tabular-nums;
-}
+.seg2 { position: relative; display: flex; align-items: center; justify-content: center; min-width: 3px; }
+.seg2 span { font-size: 11px; font-weight: 600; color: #fff; text-shadow: 0 0 3px rgba(0,0,0,.45); font-variant-numeric: tabular-nums; }
 .legend { display: flex; flex-wrap: wrap; gap: 6px 16px; margin-bottom: 12px; }
 .legend .item { display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--text-secondary); }
 .swatch { width: 11px; height: 11px; border-radius: 3px; flex: none; }
 
 .note { color: var(--text-muted); font-size: 12px; margin-top: 10px; }
 .empty { color: var(--text-muted); padding: 28px 0; text-align: center; }
-.pill {
-  display: inline-block; font-size: 11px; padding: 1px 7px; border-radius: 999px;
-  border: 1px solid var(--border-strong); color: var(--text-secondary);
-}
+.hero { background: var(--surface-raised); border: 1px solid var(--border-strong); border-radius: 9px; padding: 16px 18px; margin-bottom: 16px; }
+.hero .hl { font-weight: 700; font-size: 15px; margin-bottom: 6px; }
+.hero p { margin: 0 0 9px; font-size: 12.5px; line-height: 1.6; color: var(--text-secondary); }
+.hero p:last-child { margin-bottom: 0; }
+.q { font-style: italic; }
 
-/* View toggle. Two states, so a segmented control rather than a dropdown --
-   the choice is always visible and one click away. */
-.seg { display: inline-flex; border: 1px solid var(--border-strong); border-radius: 6px; overflow: hidden; }
-.seg button {
-  font: inherit; font-size: 13px; padding: 6px 12px; cursor: pointer;
-  background: var(--surface-raised); color: var(--text-secondary);
-  border: 0; border-right: 1px solid var(--border-strong);
-}
-.seg button:last-child { border-right: 0; }
-.seg button[aria-pressed="true"] { background: var(--bar); color: #fff; font-weight: 500; }
-
-/* Trend line. One series, so no legend -- the section title names it. 2px
-   stroke, recessive grid, markers big enough to hit. */
+/* Trend line. */
 .trend { width: 100%; height: 200px; display: block; }
 .trend .grid { stroke: var(--grid); stroke-width: 1; }
 .trend .axis { fill: var(--text-muted); font-size: 11px; }
 .trend .ln { fill: none; stroke: var(--bar); stroke-width: 2; stroke-linejoin: round; stroke-linecap: round; }
 .trend .dot { fill: var(--bar); stroke: var(--surface); stroke-width: 2; }
 .trend .hit { fill: transparent; cursor: crosshair; }
+.spark { display: flex; align-items: flex-end; gap: 3px; height: 34px; }
+.spark i { display: block; width: 9px; background: var(--bar); border-radius: 1px 1px 0 0; min-height: 2px; }
 
 #tip {
   position: fixed; pointer-events: none; opacity: 0; transition: opacity .1s;
@@ -186,43 +216,115 @@ tbody tr:hover { background: color-mix(in oklab, var(--bar) 7%, transparent); }
   box-shadow: 0 6px 20px rgba(0,0,0,.16); z-index: 50; max-width: 260px;
 }
 #tip b { font-weight: 600; }
+
+/* ---- coaching cards -------------------------------------------------------
+   Ported from the pre-migration board (a claude.ai Artifact). This is
+   authored content -- never generated -- so the markup mirrors the artifact's
+   structure closely rather than being redesigned. */
+.cpick { display: flex; align-items: center; gap: 9px; margin: 0 0 18px; }
+.cpick label { font-size: 10px; text-transform: uppercase; letter-spacing: 0.07em; color: var(--text-muted); }
+.ccard { background: var(--surface); border: 1px solid var(--border-strong); border-radius: 9px; padding: 12px; margin-bottom: 13px; }
+.blk { background: var(--surface-raised); border: 1px solid var(--border); border-radius: 7px; padding: 13px 15px; margin-bottom: 9px; }
+.blk:last-child { margin-bottom: 0; }
+.bl { font-size: 10px; text-transform: uppercase; letter-spacing: 0.09em; color: var(--text-muted); margin-bottom: 9px; }
+.chead { display: flex; justify-content: space-between; gap: 12px; align-items: baseline; flex-wrap: wrap; }
+.cname { font-weight: 700; font-size: 15px; }
+.cmeta { font-size: 11px; color: var(--text-muted); margin-top: 1px; }
+.sum { font-size: 12.5px; line-height: 1.55; margin-top: 9px; }
+.two { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+@media (max-width: 640px) { .two { grid-template-columns: 1fr; } }
+.ol { font-size: 9.5px; text-transform: uppercase; letter-spacing: 0.07em; color: var(--text-muted); margin-bottom: 3px; }
+.said { font-size: 12px; line-height: 1.6; }
+.en { color: var(--text-muted); font-size: 10.5px; }
+.anal { background: var(--surface); border: 1px solid var(--border); border-radius: 6px; padding: 10px 12px; font-size: 12px; line-height: 1.6; margin-top: 12px; }
+.fix { background: color-mix(in oklab, var(--bar) 10%, var(--surface)); border-left: 3px solid var(--bar); border-radius: 0 5px 5px 0; padding: 10px 12px; font-size: 12px; line-height: 1.65; margin-top: 9px; }
+.fixl { display: block; font-size: 9px; text-transform: uppercase; letter-spacing: 0.07em; opacity: .75; font-weight: 600; margin-bottom: 4px; }
+.gl { list-style: none; margin: 0; padding: 0; }
+.gl li { font-size: 12px; line-height: 1.55; margin-bottom: 8px; padding-left: 14px; position: relative; }
+.gl li b { display: block; }
+.gl li:before { content: ""; position: absolute; left: 0; top: 6px; width: 5px; height: 5px; border-radius: 50%; }
+.gl.g li:before { background: var(--s1); }
+.gl.b li:before { background: var(--s4); }
+.colh { font-size: 9.5px; text-transform: uppercase; letter-spacing: 0.07em; font-weight: 600; padding-bottom: 6px; margin-bottom: 9px; border-bottom: 2px solid var(--border-strong); }
+.colh.g { color: #0ca30c; } .colh.b { color: #e60000; }
+details.sc { margin-top: 11px; border: 1px solid var(--border); border-radius: 6px; background: var(--surface); }
+details.sc > summary { cursor: pointer; list-style: none; padding: 9px 12px; font-size: 10.5px; font-weight: 600; color: var(--text-secondary); display: flex; justify-content: space-between; gap: 10px; align-items: center; }
+details.sc > summary::-webkit-details-marker { display: none; }
+details.sc .scb { padding: 0 12px 12px; }
+.pips { display: flex; gap: 2px; }
+.pip { width: 8px; height: 8px; border-radius: 2px; }
+.askt { width: 100%; }
+.askt td { border-bottom: 1px solid var(--border); padding: 6px 0; font-size: 12px; vertical-align: top; text-align: left; }
+.askt tr:last-child td { border-bottom: none; }
+.askt .k { width: 132px; font-weight: 600; }
+.askt .v { width: 52px; }
+.tl { display: grid; grid-template-columns: 52px 14px 1fr; row-gap: 0; }
+.tlt { font-size: 10.5px; color: var(--text-muted); padding-top: 7px; }
+.tlk { position: relative; display: flex; justify-content: center; }
+.tlk .ln { width: 1px; background: var(--border-strong); flex: none; margin-top: 14px; }
+.tlk .dt { width: 9px; height: 9px; border-radius: 50%; position: absolute; top: 6px; }
+.tlx { padding: 5px 0 11px 4px; font-size: 12px; line-height: 1.5; }
+.tlx b { display: block; }
+.tlx span { color: var(--text-secondary); }
+.cat { display: inline-block; font-size: 9.5px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.03em; padding: 2px 8px; border-radius: 10px; white-space: nowrap; color: #16150f; }
+.cat-q { background: #9fc2ed; } .cat-sold { background: #008300; color: #fff; } .cat-live { background: #eda100; }
+.cat-dead { background: #f0e800; }
+.cat-fsd { background: var(--surface-raised); color: #0ca30c; border: 1px solid #0ca30c; }
+.flag { display: inline-block; font-size: 10px; font-weight: 500; padding: 1px 6px; border-radius: 3px; background: color-mix(in oklab, #eda100 18%, var(--surface)); color: #8a6100; margin: 0 4px 3px 0; }
+.chip { display: inline-block; font-size: 9.5px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em; padding: 2px 7px; border-radius: 3px; white-space: nowrap; }
+.c-g { background: color-mix(in oklab, #0ca30c 18%, var(--surface)); color: #0a6b0a; border: 1px solid #b7e2b7; }
+.c-w { background: color-mix(in oklab, #eda100 18%, var(--surface)); color: #8a6100; border: 1px solid #e0c184; }
+.c-r { background: color-mix(in oklab, #e60000 15%, var(--surface)); color: #a80000; border: 1px solid #f0b4b4; }
+.c-n { background: var(--surface); color: var(--text-muted); border: 1px solid var(--border-strong); }
 </style>
 </head>
 <body>
-<div class="wrap">
-  <header class="top">
-    <div>
-      <h1>Sales Floor</h1>
-      <div class="sub" id="daylabel">Loading…</div>
+<div class="top">
+  <h1>Sales Floor</h1>
+  <span class="sub" id="topsub">loading…</span>
+  <button class="thbtn" id="thbtn" type="button"><span id="thico">◑</span><span id="thlbl">System</span></button>
+</div>
+<div class="shell">
+  <nav class="rail" aria-label="Days">
+    <p class="raill">Reporting day</p>
+    <div id="days"></div>
+    <p class="raill" style="margin-top:20px">Producers</p>
+    <div id="plist"></div>
+  </nav>
+  <main class="main">
+    <div class="tabs" role="tablist">
+      <button class="tab" role="tab" aria-selected="true"  data-v="digest">Digest</button>
+      <button class="tab" role="tab" aria-selected="false" data-v="coaching">Coaching</button>
+      <button class="tab" role="tab" aria-selected="false" data-v="trends">Trends</button>
     </div>
-    <div class="controls">
-      <span class="seg" role="group" aria-label="View">
-        <button id="vday" type="button" aria-pressed="true">Day</button>
-        <button id="vmtd" type="button" aria-pressed="false">Month to date</button>
-      </span>
-      <select id="daypick" aria-label="Reporting day"></select>
-      <button class="ghost" id="themebtn" type="button" title="Toggle light/dark">◐</button>
-    </div>
-  </header>
-  <main id="main"><div class="empty">Loading…</div></main>
+    <div id="view"><div class="empty">Loading…</div></div>
+  </main>
 </div>
 <div id="tip" role="tooltip"></div>
 
 <script>
-const OUTCOMES = [
-  ["Live Contact",       "--s1"],
-  ["Voicemail",          "--s2"],
-  ["Screener",           "--s3"],
-  ["No Answer",          "--s4"],
-  ["No Outcome Logged",  "--s5"],
-];
+/* The digest email's own producer colours (render_report.DOT), so a producer
+   is the same colour on the board as in their inbox. Not chosen here. */
+const DOT = {"Crystal Mango":"#ff4b4b", "Lorena Gonzalez":"#cd81ff",
+             "Mike Olvera":"#5656fe",   "Debbie Aguilera":"#0b0b0b",
+             "Coral Barwick":"#00ffcf",  "Sarahi Chin":"#ffb48c",
+             "Amanda Torricellas":"#baffff"};
+const TEAM_DOT = "#0b0b0b";
 
 const $ = (s, r) => (r || document).querySelector(s);
 const el = (t, cls, txt) => { const e = document.createElement(t); if (cls) e.className = cls; if (txt != null) e.textContent = txt; return e; };
 const money = n => "$" + Math.round(n || 0).toLocaleString();
 const secs = n => { n = Math.round(n || 0); const m = Math.floor(n / 60); return m ? `${m}m ${String(n % 60).padStart(2, "0")}s` : `${n}s`; };
+const hhmm = secs;
 
-/* ---- tooltip ------------------------------------------------------------ */
+let DAYS = [];       // date strings from /api/days, newest first
+let cur = null;      // the currently loaded day's full document
+let view = "digest";
+let coachWho = "";
+let dayView = "day";  // "day" | "mtd", within the Digest tab
+let monthDoc = null;
+
+/* ---- tooltip -------------------------------------------------------------- */
 const tip = $("#tip");
 function hoverable(node, html) {
   node.addEventListener("mousemove", e => {
@@ -237,203 +339,367 @@ function hoverable(node, html) {
   node.addEventListener("mouseleave", () => { tip.style.opacity = 0; });
 }
 
-/* ---- theme -------------------------------------------------------------- */
-$("#themebtn").addEventListener("click", () => {
-  const cur = document.documentElement.getAttribute("data-theme");
-  const next = cur === "dark" ? "light" : cur === "light" ? "dark"
-    : (matchMedia("(prefers-color-scheme: dark)").matches ? "light" : "dark");
-  document.documentElement.setAttribute("data-theme", next);
-  try { localStorage.setItem("board-theme", next); } catch (_) {}
-});
-try {
-  const t = localStorage.getItem("board-theme");
-  if (t) document.documentElement.setAttribute("data-theme", t);
-} catch (_) {}
-
-/* ---- sections ----------------------------------------------------------- */
-function section(title) { const h = el("h2", null, title); $("#main").append(h); return h; }
-
-function tiles(T) {
-  const box = el("div", "tiles");
-  const add = (k, v, n) => {
-    const t = el("div", "tile");
-    t.append(el("div", "k", k), el("div", "v", v));
-    if (n) t.append(el("div", "n", n));
-    box.append(t);
+/* ---- theme: system -> light -> dark, remembered per browser --------------- */
+(function () {
+  const K = "board-theme", R = document.documentElement, b = $("#thbtn"),
+        ico = $("#thico"), lbl = $("#thlbl");
+  const M = ["system", "light", "dark"],
+        T = { system: ["◑", "System"], light: ["☀", "Light"], dark: ["☾", "Dark"] };
+  const read = () => { try { const v = localStorage.getItem(K); return M.includes(v) ? v : "system"; } catch (_) { return "system"; } };
+  const apply = (m, save) => {
+    if (m === "system") { delete R.dataset.theme; R.style.colorScheme = ""; }
+    else { R.dataset.theme = m; R.style.colorScheme = m; }
+    ico.textContent = T[m][0]; lbl.textContent = T[m][1];
+    if (save) try { localStorage.setItem(K, m); } catch (_) {}
   };
-  add("Dials", (T.dials ?? 0).toLocaleString());
-  add("Live Contacts", (T.live ?? 0).toLocaleString(), `${T.rate ?? 0}% contact rate`);
-  add("Households Quoted", T.hh ?? 0);
-  add("Premium Quoted", money(T.pq));
-  add("Premium Sold", money(T.ps), (T.pol ?? 0) + " polic" + ((T.pol === 1) ? "y" : "ies"));
-  if (T.util != null) add("Utilization", T.util + "%");
-  $("#main").append(box);
-}
+  let cur = read(); apply(cur, false);
+  b.addEventListener("click", () => { cur = M[(M.indexOf(cur) + 1) % M.length]; apply(cur, true); });
+})();
 
-function barChart(rows, fmt, tipFn) {
-  const max = Math.max(1, ...rows.map(r => r.v));
-  const box = el("div", "bars");
-  for (const r of rows) {
-    const row = el("div", "row");
-    row.append(el("div", "lbl", r.name));
-    const track = el("div", "track"), fill = el("div", "fill");
-    fill.style.width = (100 * r.v / max) + "%";
-    track.append(fill);
-    row.append(track, el("div", "val", fmt(r.v)));
-    if (tipFn) hoverable(row, tipFn(r));
-    box.append(row);
-  }
-  $("#main").append(box);
-}
-
-function outcomeStacks(outcomes) {
-  const names = Object.keys(outcomes || {});
-  if (!names.length) return;
-  section("Call Outcomes · behind the contact rate");
-
-  const legend = el("div", "legend");
-  for (const [label, varname] of OUTCOMES) {
-    const i = el("div", "item"), sw = el("span", "swatch");
-    sw.style.background = `var(${varname})`;
-    i.append(sw, document.createTextNode(label));
-    legend.append(i);
-  }
-  $("#main").append(legend);
-
-  const box = el("div", "bars");
-  for (const name of names) {
-    const o = outcomes[name] || {};
-    const total = Object.values(o).reduce((a, b) => a + b, 0) || 1;
-    const row = el("div", "row");
-    row.append(el("div", "lbl", name));
-    const stack = el("div", "stack");
-    for (const [label, varname] of OUTCOMES) {
-      const n = o[label] || 0;
-      if (!n) continue;
-      const seg = el("div", "seg");
-      seg.style.background = `var(${varname})`;
-      seg.style.flex = `${n} 0 0`;
-      // Label every segment wide enough to hold one: this is the relief the
-      // light-mode contrast warning requires, so it is load-bearing.
-      if (n / total > 0.07) seg.append(el("span", null, String(n)));
-      hoverable(seg, `<b>${name}</b><br>${label}: ${n} of ${total} dials`);
-      stack.append(seg);
-    }
-    // Anything the payload carries that is not one of the five known buckets.
-    const known = new Set(OUTCOMES.map(o => o[0]));
-    const other = Object.entries(o).filter(([k]) => !known.has(k));
-    for (const [k, n] of other) {
-      if (!n) continue;
-      const seg = el("div", "seg");
-      seg.style.background = "var(--bar-track)";
-      seg.style.flex = `${n} 0 0`;
-      seg.style.border = "1px dashed var(--border-strong)";
-      hoverable(seg, `<b>${name}</b><br>${k}: ${n}`);
-      stack.append(seg);
-    }
-    row.append(stack, el("div", "val", String(total)));
-    box.append(row);
-  }
-  $("#main").append(box);
-}
-
-function producerTable(P) {
-  section("Sales Funnel by Producer");
-  const cols = [
-    ["Producer", r => r.name, "name"],
-    ["Dials", r => r.dials],
-    ["Live", r => r.live],
-    ["Rate", r => (r.rate ?? 0) + "%"],
-    ["Avg Talk", r => secs(r.talk)],
-    ["HH", r => r.hh],
-    ["Quoted", r => money(r.pq)],
-    ["Sold", r => money(r.ps)],
+/* ---- Digest tab ------------------------------------------------------------
+   Ranked like the leaderboard, medals on the top three. Each stat is coloured
+   by the day document's own `tiers` (computed server-side from
+   digest_config, so the boundary rules live in one place), and Policies
+   falls back to the day's premium-sold streak when today's figure is $0, so
+   the two never disagree. */
+function digestDay(d) {
+  const t = d.totals || {}, rate = t.dials ? (100 * t.live / t.dials).toFixed(1) : "0";
+  const tiles = [
+    ["Dials", t.dials ?? 0, "outbound, after exclusions"],
+    ["Live contacts", t.live ?? 0, rate + "% contact rate"],
+    ["Households quoted", t.hh ?? 0, ""],
+    ["Premium quoted", money(t.pq), ""],
+    ["Policies", t.pol ?? 0, ""],
+    ["Premium sold", money(t.ps), ""],
   ];
-  const wrap = el("div", "scroll"), t = el("table");
-  const thead = el("thead"), htr = el("tr");
-  for (const [h] of cols) htr.append(el("th", null, h));
-  thead.append(htr); t.append(thead);
-  const tb = el("tbody");
-  for (const r of P) {
-    const tr = el("tr");
-    for (const [, f, cls] of cols) tr.append(el("td", cls || null, String(f(r))));
-    tb.append(tr);
-  }
-  t.append(tb); wrap.append(t); $("#main").append(wrap);
+  if (t.util != null) tiles.push(["Utilization", t.util + "%", "weighted"]);
+  const tilesHtml = tiles.map(([k, v, n]) =>
+    `<div class="tile"><div class="k">${k}</div><div class="v">${v}</div>${n ? `<div class="n">${n}</div>` : ""}</div>`).join("");
+
+  const TI = { green: "tg", yellow: "ty", red: "tr" };
+  const tc = (name, key) => TI[((d.tiers || {})[name] || {})[key]] || "";
+  const MEDAL = ["\u{1F3C6}", "\u{1F948}", "\u{1F949}"];
+  const NCL = ["n1", "n2", "n3"];
+  const streak = d.policy_streak || {};
+  const polTitle = n => {
+    const g = streak[n];
+    return g === 0 ? "sold today" : g == null ? "no sale on record"
+         : g + " business day" + (g === 1 ? "" : "s") + " without a sale";
+  };
+  const byName = Object.fromEntries((d.producers || []).map(p => [p.name, p]));
+  const ranked = ((d.leaderboard && d.leaderboard.order) || (d.producers || []).map(p => p.name))
+                   .map(n => byName[n]).filter(Boolean);
+  const hasRoleplay = ranked.some(p => (p.coach || {}).roleplay != null);
+  const rows = ranked.map((p, i) => `<tr>
+    <td><span class="who"><span class="pd" style="background:${DOT[p.name] || "#8a877f"}"></span><span${
+       i < 3 ? ` class="${NCL[i]}"` : ""}>${p.name}</span>${
+       i < 3 ? `<span class="mdl" role="img" aria-label="${["1st", "2nd", "3rd"][i]}">${MEDAL[i]}</span>` : ""}</span></td>
+    ${hasRoleplay ? `<td class="num">${(p.coach || {}).roleplay ?? "—"}</td>` : ""}
+    <td class="num ${tc(p.name, "dials")}">${p.dials ?? 0}</td>
+    <td class="num ${tc(p.name, "talk")}">${hhmm(p.talk)}</td>
+    <td class="num ${tc(p.name, "rate")}">${p.rate ?? 0}% <span style="opacity:.72">(${p.live ?? 0})</span></td>
+    <td class="num ${tc(p.name, "hh")}">${p.hh ?? 0}</td>
+    <td class="num ${tc(p.name, "pq")}">${money(p.pq)}</td>
+    <td class="num ${tc(p.name, "pol")}" title="${polTitle(p.name)}">${p.pol ?? 0}</td>
+    <td class="num ${tc(p.name, "ps")}">${money(p.ps)}</td>
+    ${p.util != null ? `<td class="num ${tc(p.name, "util")}">${p.util}%</td>` : ""}</tr>`).join("");
+  const tt = k => TI[((d.tiers || {})["team"] || {})[k]] || "";
+  const tot = `<tr class="tot"><td><span class="who"><span class="pd" style="background:${TEAM_DOT}"></span>Team</span></td>
+    ${hasRoleplay ? `<td class="num">—</td>` : ""}
+    <td class="num ${tt("dials")}">${t.dials ?? 0}</td>
+    <td class="num">—</td>
+    <td class="num ${tt("rate")}">${rate}% <span style="opacity:.72">(${t.live ?? 0})</span></td>
+    <td class="num ${tt("hh")}">${t.hh ?? 0}</td>
+    <td class="num ${tt("pq")}">${money(t.pq)}</td>
+    <td class="num ${tt("pol")}">${t.pol ?? 0}</td>
+    <td class="num ${tt("ps")}">${money(t.ps)}</td>
+    ${t.util != null ? `<td class="num ${tt("util")}">${t.util}%</td>` : ""}</tr>`;
+
+  const s = d.scan;
+  const sold = (d.calls || []).filter(c => c.catc === "cat-sold").map(c => c.lead);
+  const says = !s ? "" : `<div class="sect"><h2>What the day says</h2>
+   <p class="sd">Two patterns that only show up across calls, not within one.</p>
+   <div class="hero">
+    <div class="hl">The opening asks permission</div>
+    <p><b>${s.asked_open} of ${s.of}</b> coached calls opened by asking for the opportunity —
+    the <b>${s.assumed_open}</b> that opened assumptively, with the work already done, are where the
+    committed next steps came from.</p>
+   </div>
+   <div class="hero">
+    <div class="hl">Prices on the table against asks made</div>
+    <p><b>${s.priced}</b> of ${s.of} calls put a real price in front of someone. <b>${s.closed}</b> closed on the
+    call${sold.length ? ` — ${sold.join(", ")}` : ""}. Current premium was captured on <b>${s.premium}</b>, a
+    renewal date on <b>${s.xdate}</b>, and a bundle raised on <b>${s.bundle}</b>.
+    <b>${s.timeset} of ${s.of}</b> set a specific callback time — that one is usually the cheapest to fix.</p>
+   </div>
+  </div>`;
+  const objs = !(d.objcats && d.objcats.length) ? "" : `<div class="sect"><h2>Objections by category</h2>
+   <p class="sd">Won means the objection was addressed and overcome on the call, not merely answered.</p>
+   <div class="scroll"><table><thead><tr><th>Category</th><th class="num">Raised</th><th class="num">Won</th></tr></thead><tbody>
+   ${d.objcats.map(([c, n, w]) => `<tr><td>${c}</td><td class="num">${n}</td>
+     <td class="num">${w ? `<span class="chip c-g">${w}</span>` : `<span class="chip c-r">0</span>`}</td></tr>`).join("")}
+   </tbody></table></div></div>`;
+
+  return `<div class="tiles">${tilesHtml}</div>
+  <div class="sect"><h2>Scoreboard</h2>
+   <p class="sd">Each figure is coloured against its goal — <span class="tg">on or exceeding</span>,
+   <span class="ty">off pace but close</span>, <span class="tr">off track</span>. Policies is coloured on a
+   streak instead of a daily target. Hover a policy count for the gap. Contact Rate shows live contacts in
+   brackets.</p>
+   <div class="scroll"><table><thead><tr><th>Producer</th>${hasRoleplay ? "<th class=\"num\">Role Play</th>" : ""}
+   <th class="num">Call Volume</th><th class="num">Avg Talk Time</th><th class="num">Contact Rate</th>
+   <th class="num">Households Quoted</th><th class="num">Premium Quoted</th>
+   <th class="num">Policies</th><th class="num">Premium Sold</th>
+   ${ranked.some(p => p.util != null) ? "<th class=\"num\">Utilization</th>" : ""}</tr></thead>
+   <tbody>${rows}${tot}</tbody></table></div></div>
+  ${says}${objs}`;
 }
 
-function listTable(title, rows, cols, note) {
-  if (!rows || !rows.length) return;
-  section(title);
-  const wrap = el("div", "scroll"), t = el("table");
-  const thead = el("thead"), htr = el("tr");
-  for (const [h] of cols) htr.append(el("th", null, h));
-  thead.append(htr); t.append(thead);
-  const tb = el("tbody");
-  for (const r of rows) {
-    const tr = el("tr");
-    for (const [, f, cls] of cols) {
-      const v = f(r);
-      tr.append(el("td", cls || null, v == null ? "—" : String(v)));
-    }
-    tb.append(tr);
-  }
-  t.append(tb); wrap.append(t); $("#main").append(wrap);
-  if (note) $("#main").append(el("div", "note", note));
+function leaderboardPanel(d) {
+  const lb = d.leaderboard;
+  if (!(lb && lb.order && lb.order.length)) return "";
+  const names = lb.order;
+  const fmt = (label, v) => label === "Avg Talk Time" ? hhmm(v)
+      : label === "Contact Rate" ? v + "%"
+      : /Premium/.test(label) ? money(v) : v;
+  const head = names.map(n => `<th class="num">${n.split(" ")[0]}</th>`).join("");
+  const rows = (lb.categories || []).map(c => `<tr><td>${c.label}</td>${names.map(n => {
+      const pl = (c.places || {})[n];
+      return `<td class="num">${fmt(c.label, (c.values || {})[n])}${pl === 1 ? ` <span class="chip c-g">1st</span>` : ""}</td>`;
+    }).join("")}</tr>`).join("");
+  return `<div class="sect"><h2>Team Leaderboard</h2>
+   <p class="sd">Avg Call Score and Avg Sentiment are excluded — TRAQ scores a voicemail as a call, so both
+   track who answered rather than how the producer talked.</p>
+   <div class="scroll"><table><thead><tr><th>Category</th>${head}</tr></thead><tbody>${rows}
+    <tr class="tot"><td>Points</td>${names.map(n => `<td class="num">${(lb.points || {})[n] ?? 0}</td>`).join("")}</tr>
+   </tbody></table></div></div>`;
 }
 
-/* Trend line: change over time, one series, so a line and no legend.
-   Crosshair + tooltip per point; the hit targets are full-height columns so
-   they are far easier to hit than the 4px dots. */
+function speedPanel(d) {
+  const s = d.speed_to_dial;
+  if (!s) return `<div class="sect"><h2>Speed to Dial</h2>
+    <p class="sd">No internet leads were assigned today, so there is nothing to time.</p></div>`;
+  const cards = Object.entries(s.per || {}).map(([n, v]) => `
+    <div class="tile"><div class="k"><span class="pd" style="background:${DOT[n] || "#8a877f"};display:inline-block;margin-right:5px"></span>${n.split(" ")[0]}</div>
+      <div class="v">${hhmm(v.median)}</div>
+      <div class="n">median · ${v.n} lead${v.n > 1 ? "s" : ""}</div>
+      <div class="n" style="margin-top:5px">quickest ${hhmm(v.quickest)} · longest ${hhmm(v.longest)}</div></div>`).join("")
+   + (s.team ? `<div class="tile" style="border-color:var(--border-strong);background:var(--surface)">
+      <div class="k">Team</div><div class="v">${hhmm(s.team.median)}</div>
+      <div class="n">median of all ${s.team.n} leads</div>
+      <div class="n" style="margin-top:5px">quickest ${hhmm(s.team.quickest)} · longest ${hhmm(s.team.longest)}</div></div>` : "");
+  return `<div class="sect"><h2>Speed to Dial</h2>
+    <p class="sd">${s.note || ""} Producers with no internet leads are not shown.</p>
+    <div class="tiles">${cards}</div></div>`;
+}
+
+function recontactPanel(d) {
+  const rows = ((d.recontact || {}).at_risk || []).slice(0, 14).map(r => `<tr>
+    <td>${r.lead_name || "—"}</td>
+    <td><span class="who"><span class="pd" style="background:${DOT[r.producer] || "#8a877f"}"></span>${(r.producer || "").split(" ")[0]}</span></td>
+    <td>${r.stage || ""}</td><td class="num">${r.business_days ?? "—"}</td><td class="num">${r.calls ?? "—"}</td>
+    <td><span class="chip ${r.flag === "under-worked" ? "c-r" : "c-w"}">${r.flag || ""}</span></td></tr>`).join("");
+  const n = ((d.recontact || {}).at_risk || []).length;
+  if (!n) return "";
+  return `<div class="sect"><h2>Recontact Struggle</h2>
+   <p class="sd">${n} lead${n === 1 ? "" : "s"} sitting in a stage longer than the work put into them justifies.
+   ${n > 14 ? `Showing the 14 worst.` : ""}</p>
+   <div class="scroll"><table><thead><tr><th>Lead</th><th>Producer</th><th>Stage</th><th class="num">Days in stage</th>
+   <th class="num">Dials</th><th>Flag</th></tr></thead><tbody>${rows}</tbody></table></div></div>`;
+}
+
+function auditPanel(d) {
+  const ta = d.task_audit || {};
+  const b = ta.buckets || {};
+  const LB = { a: "Task says no answer, call says contact", b: "Task done, no dial found",
+               c: "Completed with a matching dial", d: "Completed, dial on another number", e: "Completed, no phone on record" };
+  const rows = Object.entries(b).filter(([, v]) => v).map(([k, v]) => `<tr><td>${LB[k] || k}</td><td class="num">${v}</td></tr>`).join("");
+  if (!rows) return "";
+  return `<div class="sect"><h2>Task Completion Audit</h2>
+   <p class="sd">${ta.counted ?? 0} completed tasks checked against the call log.</p>
+   <div class="scroll"><table><thead><tr><th>Finding</th><th class="num">Tasks</th></tr></thead><tbody>${rows}</tbody></table></div></div>`;
+}
+
+function digestPanel(d) {
+  return `${digestDay(d)}
+  <div class="sect">${leaderboardPanel(d)}</div>
+  ${speedPanel(d)}
+  ${recontactPanel(d)}
+  ${auditPanel(d)}`;
+}
+
+/* ---- Month to date (secondary toggle within Digest) ----------------------- */
+function digestMonth(d) {
+  const T = d.totals || {};
+  const tiles = [
+    ["Dials", (T.dials ?? 0).toLocaleString(), ""],
+    ["Live Contacts", (T.live ?? 0).toLocaleString(), `${T.rate ?? 0}% contact rate`],
+    ["Households Quoted", T.hh ?? 0, ""],
+    ["Premium Quoted", money(T.pq), ""],
+    ["Premium Sold", money(T.ps), `${T.pol ?? 0} policies`],
+    ["Business Days", d.business_days ?? 0, ""],
+  ].map(([k, v, n]) => `<div class="tile"><div class="k">${k}</div><div class="v">${v}</div>${n ? `<div class="n">${n}</div>` : ""}</div>`).join("");
+
+  const P = d.producers || [];
+  const rows = P.map(r => `<tr><td class="name">${r.name}</td><td class="num">${r.days ?? 0}</td>
+    <td class="num">${r.dials ?? 0}</td><td class="num">${r.live ?? 0}</td><td class="num">${r.rate ?? 0}%</td>
+    <td class="num">${secs(r.talk)}</td><td class="num">${r.hh ?? 0}</td>
+    <td class="num">${money(r.pq)}</td><td class="num">${money(r.ps)}</td></tr>`).join("");
+
+  return `<div class="sect"><h2>Month to Date</h2><div class="tiles">${tiles}</div></div>
+  ${P.length ? `<div class="sect"><h2>Producers · month to date</h2>
+    <div class="scroll"><table><thead><tr><th>Producer</th><th class="num">Days</th><th class="num">Dials</th>
+    <th class="num">Live</th><th class="num">Rate</th><th class="num">Avg Talk</th><th class="num">HH</th>
+    <th class="num">Quoted</th><th class="num">Sold</th></tr></thead><tbody>${rows}</tbody></table></div></div>` : ""}`;
+}
+
+/* ---- Coaching tab (ported verbatim from the pre-migration artifact) ------- */
+function chips(o) {
+  if (!o.addressed) return `<span class="chip c-r">Not addressed</span> <span class="chip c-n">No attempt</span>`;
+  const m = { "Addressed, overcome": ["c-g", "Overcome"], "Addressed, not overcome": ["c-r", "Not overcome"],
+              "Addressed, kept going": ["c-w", "Kept going"] }[o.chipt] || ["c-w", "Unclear"];
+  return `<span class="chip c-g">Addressed</span> <span class="chip ${m[0]}">${m[1]}</span>`;
+}
+const DIMS = ["Opening & identification", "Discovery", "Current premium captured", "Renewal / X-date captured",
+  "Product knowledge", "Presenting numbers", "Bundle / cross-sell raised", "Next step specificity", "CRM after the call"];
+const RT = { s: ["c-g", "Strong"], w: ["c-w", "Weak"], m: ["c-r", "Missing"] };
+function scorecard(sc) {
+  if (!sc || !Object.keys(sc).length) return "";
+  let n = { s: 0, w: 0, m: 0, x: 0 }, rows = "";
+  DIMS.forEach(d => {
+    const e = sc[d]; if (!e || e[0] === "n") { n.x++; return; }
+    n[e[0]]++; const r = RT[e[0]];
+    rows += `<tr><td style="width:172px;font-weight:600">${d}</td>
+      <td style="width:78px"><span class="chip ${r[0]}">${r[1]}</span></td>
+      <td style="color:var(--text-secondary)">${e[1] || ""}</td></tr>`;
+  });
+  const head = [n.s && n.s + " strong", n.w && n.w + " weak", n.m && n.m + " missing", n.x && n.x + " not scored"].filter(Boolean).join(" · ");
+  const dotc = { s: "#0ca30c", w: "#eda100", m: "#e60000", x: "var(--border-strong)" };
+  const pips = ["s", "w", "m", "x"].flatMap(k => Array(n[k]).fill(`<span class="pip" style="background:${dotc[k]}"></span>`)).join("");
+  return `<details class="sc"><summary><span>Scorecard — ${head}</span><span class="pips">${pips}</span></summary>
+    <div class="scb"><table class="askt">${rows}</table></div></details>`;
+}
+function card(c) {
+  const o = c.obj;
+  const objBlk = o ? `<div class="blk"><div class="bl">Objection</div>
+    <div class="chead" style="margin-bottom:11px"><span class="cat" style="background:var(--text-primary);color:var(--surface)">${o.cat}</span>
+    <span>${chips(o)}</span></div>
+    <div class="two">
+      <div><div class="ol">They said · ${o.at}</div><div class="said">${o.they}${o.theyen ? `<br><span class="en">${o.theyen}</span>` : ""}</div></div>
+      <div><div class="ol">You said${o.noresp ? ` <span class="chip c-r">no response</span>` : ""}</div>
+           <div class="said">${o.you}${o.youen ? `<br><span class="en">${o.youen}</span>` : ""}</div></div>
+    </div>
+    <div class="anal">${o.anal}</div>
+    ${o.fix && o.fix.length ? `<div class="fix"><span class="fixl">Ways to take it on</span>${o.fix.map((f, i) => `<b>${i + 1}.</b> ${f}`).join("<br>")}</div>` : ""}
+    </div>` : "";
+  const bdg = v => v === null || v === undefined ? `<span class="chip c-n">n/a</span>` : (v ? `<span class="chip c-g">yes</span>` : `<span class="chip c-r">no</span>`);
+  const spine = (c.spine && c.spine.length) ? `<div class="blk"><div class="bl">How the call went</div><div class="tl">${
+    c.spine.map(([t, m, h, s], i) => `<div class="tlt">${t}</div>
+      <div class="tlk"><span class="dt" style="background:${{ g: "#0ca30c", y: "#eda100", r: "#e60000", n: "var(--border-strong)" }[m]}"></span>
+      ${i < c.spine.length - 1 ? `<span class="ln" style="height:100%"></span>` : ""}</div>
+      <div class="tlx"><b>${h}</b>${s ? `<span>${s}</span>` : ""}</div>`).join("")}</div></div>` : "";
+  return `<div class="ccard">
+   <div class="blk" style="border-left:4px solid ${c.tab || "var(--border-strong)"}">
+     <div class="chead"><div><div class="cname">${c.lead || ""}</div>
+       <div class="cmeta">${c.who || ""} · ${c.time || ""} · ${c.dur || ""} · ${c.lang || ""} · ${c.src || ""}</div></div>
+       <span class="cat ${c.catc || ""}">${c.cat || ""}</span></div>
+     <div class="sum">${c.summary || ""}</div>
+     ${c.flags && c.flags.length ? `<div style="margin-top:8px">${c.flags.map(f => `<span class="flag">${f}</span>`).join("")}</div>` : ""}
+   </div>
+   ${c.askq ? `<div class="blk"><div class="bl">The Assumption</div><table class="askt">
+     <tr><td class="k">Assumed the quote</td><td class="v">${bdg(c.askq[0])}</td><td>${c.askq[1] || ""}</td></tr>
+     <tr><td class="k">Assumed the sale</td><td class="v">${bdg((c.asks || [])[0])}</td><td>${(c.asks || [])[1] || ""}</td></tr></table>
+     ${c.askfix ? `<div class="fix"><span class="fixl">What assumptive sounds like</span>${c.askfix}</div>` : ""}
+   </div>` : ""}
+   ${objBlk}
+   <div class="blk"><div class="bl">Strengths and gaps</div><div class="two">
+     <div><div class="colh g">What worked</div><ul class="gl g">${(c.good || []).map(([t, dd]) => `<li><b>${t}</b>${dd}</li>`).join("") || `<li style="color:var(--text-muted)">—</li>`}</ul></div>
+     <div><div class="colh b">What cost the sale</div><ul class="gl b">${(c.bad || []).map(([t, dd]) => `<li><b>${t}</b>${dd}</li>`).join("") || `<li style="color:var(--text-muted);padding-left:0">Nothing to flag on this call.</li>`}</ul></div>
+   </div>${scorecard(c.score)}</div>
+   ${spine}</div>`;
+}
+function coachingPanel(d, who) {
+  const order = ["Lorena Gonzalez", "Crystal Mango", "Mike Olvera", "Coral Barwick", "Sarahi Chin"];
+  if (!(d.calls && d.calls.length)) return `<div class="empty">
+    <div style="font-weight:600;font-size:15px;margin-bottom:6px">No coaching cards for this day</div>
+    <p style="max-width:46ch;margin:0 auto;font-size:12.5px;line-height:1.6">${d.label || d.date} was uploaded with its stats
+    only. The cards are written from the call recordings and are not generated, so a day gets them when someone
+    writes them — an empty tab here means nobody has yet, not that the calls were clean.</p></div>`;
+  const have = order.filter(p => d.calls.some(c => c.who === p));
+  const sel = have.includes(who) ? who : "";
+  const pick = `<div class="cpick"><label for="cwho">Producer</label>
+    <select id="cwho"><option value=""${sel ? "" : " selected"}>All producers — ${d.calls.length} calls</option>
+    ${have.map(p => `<option value="${p}"${p === sel ? " selected" : ""}>${p} — ${
+      d.calls.filter(c => c.who === p).length} call${d.calls.filter(c => c.who === p).length > 1 ? "s" : ""}</option>`).join("")}
+    </select></div>`;
+  let out = pick;
+  order.forEach(p => {
+    if (sel && sel !== p) return;
+    const mine = d.calls.filter(c => c.who === p);
+    if (!mine.length) return;
+    out += `<div class="sect"><h2>${p}</h2><p class="sd">${mine.length} coached call${mine.length > 1 ? "s" : ""}</p>
+      ${mine.map(card).join("")}</div>`;
+  });
+  return out + (d.notcoached ? `<div class="note" style="border:1px dashed var(--border-strong);border-radius:8px;padding:14px 16px">
+    <b>Not coached, and why.</b> ${d.notcoached}</div>` : "");
+}
+
+/* ---- Trends tab ------------------------------------------------------------
+   Built from the month rollups' own `trend` arrays (already computed nightly
+   by publish_board.publish_month) rather than fetching every day's full
+   document -- that keeps this tab to one small read per month instead of
+   megabytes of R2 reads on every page load. The rollup doesn't carry the
+   per-day "time set" figure the original artifact's Trends table had, so
+   that column isn't reproducible here. */
+let TREND_CACHE = null;
+async function loadTrend() {
+  if (TREND_CACHE) return TREND_CACHE;
+  const months = [...new Set(DAYS.map(d => d.slice(0, 7)))].sort();
+  const rows = [];
+  for (const m of months) {
+    try {
+      const r = await fetch(`/api/months/${m}`, { cache: "no-store" });
+      if (!r.ok) continue;
+      const doc = await r.json();
+      for (const t of (doc.trend || [])) rows.push(t);
+    } catch (_) {}
+  }
+  rows.sort((a, b) => a.date < b.date ? -1 : 1);
+  TREND_CACHE = rows;
+  return rows;
+}
 function lineChart(points, fmt, tipFn) {
   const W = 720, H = 200, L = 44, R = 12, T = 14, B = 26;
-  const xs = (i) => L + (points.length < 2 ? (W - L - R) / 2
-                    : i * (W - L - R) / (points.length - 1));
+  const xs = i => L + (points.length < 2 ? (W - L - R) / 2 : i * (W - L - R) / (points.length - 1));
   const vals = points.map(p => p.v);
   const hi = Math.max(...vals, 0), lo = Math.min(...vals, 0);
   const span = (hi - lo) || 1;
-  const ys = (v) => T + (H - T - B) * (1 - (v - lo) / span);
-
+  const ys = v => T + (H - T - B) * (1 - (v - lo) / span);
   const ns = "http://www.w3.org/2000/svg";
   const svg = document.createElementNS(ns, "svg");
-  svg.setAttribute("class", "trend");
-  svg.setAttribute("viewBox", `0 0 ${W} ${H}`);
-  svg.setAttribute("preserveAspectRatio", "none");
-
+  svg.setAttribute("class", "trend"); svg.setAttribute("viewBox", `0 0 ${W} ${H}`); svg.setAttribute("preserveAspectRatio", "none");
   for (const frac of [0, 0.5, 1]) {
     const v = lo + span * frac, y = ys(v);
     const g = document.createElementNS(ns, "line");
-    g.setAttribute("class", "grid");
-    g.setAttribute("x1", L); g.setAttribute("x2", W - R);
-    g.setAttribute("y1", y); g.setAttribute("y2", y);
+    g.setAttribute("class", "grid"); g.setAttribute("x1", L); g.setAttribute("x2", W - R); g.setAttribute("y1", y); g.setAttribute("y2", y);
     svg.append(g);
     const t = document.createElementNS(ns, "text");
-    t.setAttribute("class", "axis");
-    t.setAttribute("x", 4); t.setAttribute("y", y + 4);
+    t.setAttribute("class", "axis"); t.setAttribute("x", 4); t.setAttribute("y", y + 4);
     t.textContent = fmt(Math.round(v * 10) / 10);
     svg.append(t);
   }
-
   const path = document.createElementNS(ns, "path");
   path.setAttribute("class", "ln");
-  path.setAttribute("d", points.map((p, i) =>
-    `${i ? "L" : "M"}${xs(i)},${ys(p.v)}`).join(" "));
+  path.setAttribute("d", points.map((p, i) => `${i ? "L" : "M"}${xs(i)},${ys(p.v)}`).join(" "));
   svg.append(path);
-
   points.forEach((p, i) => {
     const c = document.createElementNS(ns, "circle");
-    c.setAttribute("class", "dot");
-    c.setAttribute("cx", xs(i)); c.setAttribute("cy", ys(p.v));
-    c.setAttribute("r", 4);
+    c.setAttribute("class", "dot"); c.setAttribute("cx", xs(i)); c.setAttribute("cy", ys(p.v)); c.setAttribute("r", 4);
     svg.append(c);
-
     const lab = document.createElementNS(ns, "text");
-    lab.setAttribute("class", "axis");
-    lab.setAttribute("x", xs(i)); lab.setAttribute("y", H - 8);
-    lab.setAttribute("text-anchor", "middle");
+    lab.setAttribute("class", "axis"); lab.setAttribute("x", xs(i)); lab.setAttribute("y", H - 8); lab.setAttribute("text-anchor", "middle");
     lab.textContent = p.label;
     svg.append(lab);
-
     const hit = document.createElementNS(ns, "rect");
     hit.setAttribute("class", "hit");
     hit.setAttribute("x", xs(i) - (W - L - R) / (2 * Math.max(1, points.length - 1)));
@@ -443,206 +709,96 @@ function lineChart(points, fmt, tipFn) {
     hoverable(hit, tipFn(p));
     svg.append(hit);
   });
-
-  $("#main").append(svg);
+  return svg.outerHTML;
+}
+async function trendsPanel() {
+  const ds = await loadTrend();
+  if (ds.length < 2) return `<div class="empty">
+    <div style="font-weight:600;font-size:15px;margin-bottom:6px">Not enough days on file yet</div>
+    <p style="max-width:44ch;margin:0 auto;font-size:12.5px;line-height:1.6">Trends need at least two reporting
+    days. A line through one point would be a decoration, not a finding.</p></div>`;
+  const mx = Math.max(...ds.map(x => x.rate || 0), 1), mxs = Math.max(...ds.map(x => x.ps || 0), 1);
+  const spark = (vals, max) => `<div class="spark">${vals.map(v =>
+    `<i style="height:${Math.max(2, Math.round(v / max * 34))}px" title="${v}"></i>`).join("")}</div>`;
+  const rows = ds.map(x => `<tr>
+    <td>${new Date(x.date + "T12:00:00").toLocaleDateString(undefined, { weekday: "short", month: "short", day: "numeric" })}</td>
+    <td class="num">${x.dials ?? 0}</td><td class="num">${x.live ?? 0}</td>
+    <td class="num">${(x.rate ?? 0).toFixed ? x.rate.toFixed(1) : x.rate}%</td>
+    <td class="num">${money(x.pq)}</td><td class="num">${money(x.ps)}</td></tr>`).join("");
+  return `<div class="sect"><h2>Across ${ds.length} reporting days</h2>
+   <p class="sd">Oldest first. Too few days to call anything a trend — this is the record, not a forecast.</p>
+   <div class="tiles">
+     <div class="tile"><div class="k">Contact rate</div>${spark(ds.map(x => x.rate || 0), mx)}
+       <div class="n">${(ds[0].rate ?? 0)}% → ${(ds[ds.length - 1].rate ?? 0)}%</div></div>
+     <div class="tile"><div class="k">Premium sold</div>${spark(ds.map(x => x.ps || 0), mxs)}
+       <div class="n">${money(ds[0].ps)} → ${money(ds[ds.length - 1].ps)}</div></div>
+   </div>
+   <div class="scroll"><table><thead><tr><th>Day</th><th class="num">Dials</th><th class="num">Live</th>
+    <th class="num">Rate</th><th class="num">Quoted</th><th class="num">Sold</th></tr></thead><tbody>${rows}</tbody></table></div></div>`;
 }
 
-function renderMonth(d) {
-  const main = $("#main");
-  main.innerHTML = "";
-  $("#daylabel").textContent =
-    `${d.label} · month to date · ${d.business_days} business day` +
-    (d.business_days === 1 ? "" : "s");
-
-  const T = d.totals || {};
-  section("Month to Date");
-  const box = el("div", "tiles");
-  const add = (k, v, n) => {
-    const t = el("div", "tile");
-    t.append(el("div", "k", k), el("div", "v", v));
-    if (n) t.append(el("div", "n", n));
-    box.append(t);
-  };
-  add("Dials", (T.dials ?? 0).toLocaleString());
-  add("Live Contacts", (T.live ?? 0).toLocaleString(), `${T.rate ?? 0}% contact rate`);
-  add("Households Quoted", T.hh ?? 0);
-  add("Premium Quoted", money(T.pq));
-  add("Premium Sold", money(T.ps), `${T.pol ?? 0} policies`);
-  add("Business Days", d.business_days ?? 0);
-  main.append(box);
-
-  const P = d.producers || [];
-  if (P.length) {
-    section("Producers · month to date");
-    const cols = [
-      ["Producer", r => r.name, "name"],
-      ["Days", r => r.days],
-      ["Dials", r => r.dials],
-      ["Live", r => r.live],
-      ["Rate", r => (r.rate ?? 0) + "%"],
-      ["Avg Talk", r => secs(r.talk)],
-      ["HH", r => r.hh],
-      ["Quoted", r => money(r.pq)],
-      ["Sold", r => money(r.ps)],
-    ];
-    const wrap = el("div", "scroll"), t = el("table");
-    const thead = el("thead"), htr = el("tr");
-    for (const [h] of cols) htr.append(el("th", null, h));
-    thead.append(htr); t.append(thead);
-    const tb = el("tbody");
-    for (const r of P) {
-      const tr = el("tr");
-      for (const [, f, cls] of cols) tr.append(el("td", cls || null, String(f(r))));
-      tb.append(tr);
-    }
-    t.append(tb); wrap.append(t); main.append(wrap);
-
-    section("Premium Sold · month to date");
-    barChart(P.slice().sort((a, b) => b.ps - a.ps).map(p => ({ name: p.name, v: p.ps, p })),
-      money,
-      r => `<b>${r.name}</b><br>${money(r.p.ps)} from ${r.p.pol} polic${r.p.pol === 1 ? "y" : "ies"}<br>over ${r.p.days} day${r.p.days === 1 ? "" : "s"}`);
-
-    section("Contact Rate · month to date");
-    barChart(P.slice().sort((a, b) => b.rate - a.rate).map(p => ({ name: p.name, v: p.rate, p })),
-      v => v + "%",
-      r => `<b>${r.name}</b><br>${r.p.live} live of ${r.p.dials} dials<br>Month rate is total live over total dials, not an average of daily rates.`);
-  }
-
-  const tr = d.trend || [];
-  if (tr.length > 1) {
-    section("Team Contact Rate by Day");
-    lineChart(
-      tr.map(t => ({ label: t.date.slice(8), v: t.rate, t })),
-      v => v + "%",
-      p => `<b>${p.t.date}</b><br>${p.t.rate}% — ${p.t.live} live of ${p.t.dials} dials<br>${money(p.t.ps)} sold`,
-    );
-    main.append(el("div", "note",
-      "Rates are recomputed from the month's totals, never averaged across days — a 15-dial day should not weigh the same as a 76-dial one."));
-  }
+/* ---- shell / paint --------------------------------------------------------- */
+function paintRail() {
+  $("#days").innerHTML = DAYS.map(day => {
+    const dt = new Date(day + "T12:00:00");
+    return `<button class="dayb" data-d="${day}" aria-current="${day === (cur && cur.date)}">
+      <span class="d1">${dt.toLocaleDateString(undefined, { weekday: "short", month: "short", day: "numeric" })}</span></button>`;
+  }).join("");
+  $$("#days .dayb").forEach(b => b.onclick = () => loadDay(b.dataset.d));
+  $("#plist").innerHTML = cur ? (cur.producers || []).map(p =>
+    `<div class="prow"><span class="pd" style="background:${DOT[p.name] || "#8a877f"}"></span><span>${p.name.split(" ")[0]}</span></div>`).join("") : "";
 }
+function $$(s) { return Array.from(document.querySelectorAll(s)); }
 
-/* ---- render ------------------------------------------------------------- */
-function render(d) {
-  const main = $("#main");
-  main.innerHTML = "";
-  $("#daylabel").textContent =
-    (d.label || d.date) + (d.built_at ? " · built " + new Date(d.built_at).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" }) : "");
-
-  section("Team");
-  tiles(d.totals || {});
-
-  const P = (d.producers || []).slice();
-
-  if (P.length) {
-    producerTable(P);
-
-    section("Call Volume");
-    barChart(
-      P.slice().sort((a, b) => b.dials - a.dials).map(p => ({ name: p.name, v: p.dials, p })),
-      v => v.toLocaleString(),
-      r => `<b>${r.name}</b><br>${r.p.dials} dials · ${r.p.live} live<br>${r.p.inbound || 0} inbound`
-    );
-
-    section("Contact Rate");
-    barChart(
-      P.slice().sort((a, b) => b.rate - a.rate).map(p => ({ name: p.name, v: p.rate, p })),
-      v => v + "%",
-      r => `<b>${r.name}</b><br>${r.p.live} live of ${r.p.dials} dials<br>Live contact is decided by the recording, the producer's note and RingCentral's disposition — never by duration.`
-    );
-
-    section("Premium Quoted");
-    barChart(
-      P.slice().sort((a, b) => b.pq - a.pq).map(p => ({ name: p.name, v: p.pq, p })),
-      money,
-      r => `<b>${r.name}</b><br>${money(r.p.pq)} across ${r.p.hh} household${r.p.hh === 1 ? "" : "s"}`
-    );
-  }
-
-  outcomeStacks(d.outcomes);
-
-  if (d.leaderboard && d.leaderboard.points) {
-    section("Leaderboard");
-    const pts = d.leaderboard.points;
-    const rows = Object.entries(pts).sort((a, b) => b[1] - a[1]).map(([name, v]) => ({ name, v }));
-    barChart(rows, v => v + " pts", r => `<b>${r.name}</b><br>${r.v} points across ${(d.leaderboard.categories || []).length} categories`);
-    $("#main").append(el("div", "note",
-      "Avg Call Score and Avg Sentiment do not award points. TRAQ scores a voicemail as a call, so both track how many people answered rather than how the call went."));
-  }
-
-  const std = d.speed_to_dial && d.speed_to_dial.team;
-  if (std) {
-    section("Speed to Dial · internet leads");
-    const box = el("div", "tiles");
-    const add = (k, v) => { const t = el("div", "tile"); t.append(el("div", "k", k), el("div", "v", v)); box.append(t); };
-    add("Median", secs(std.median));
-    add("Quickest", secs(std.quickest));
-    add("Longest", secs(std.longest));
-    add("Leads", std.n ?? 0);
-    $("#main").append(box);
-    if (d.speed_to_dial.note) $("#main").append(el("div", "note", d.speed_to_dial.note));
-  }
-
-  const rc = d.recontact || {};
-  listTable("At Risk · quoted, losing traction", rc.at_risk, [
-    ["Lead", r => r.lead_name, "name"],
-    ["Producer", r => r.producer],
-    ["Stage", r => r.stage],
-    ["Calls", r => r.calls],
-    ["Days", r => r.business_days],
-    ["Last dial", r => r.last_dial],
-    ["Flag", r => r.flag],
-  ]);
-
-  const ta = d.task_audit || {};
-  const openRows = (ta.rows && ta.rows.e) || [];
-  listTable("Tasks Still Open at End of Day", openRows, [
-    ["Record", r => r.record, "name"],
-    ["Producer", r => r.producer],
-    ["Task", r => r.title],
-    ["Due", r => r.due],
-    ["Comment", r => r.comment],
-  ], ta.counted ? `${ta.counted} producer tasks audited for this day.` : null);
-
-  if (d.calls && d.calls.length) {
-    section("Coaching · authored cards");
-    for (const c of d.calls) {
-      const t = el("div", "tile");
-      t.style.marginBottom = "10px";
-      t.append(el("div", "k", `${c.producer || ""} · ${c.lead || ""}`));
-      if (c.summary) t.append(el("div", "n", c.summary));
-      $("#main").append(t);
+async function paint() {
+  const v = $("#view");
+  if (view === "digest") {
+    $("#topsub").textContent = cur ? (cur.label || cur.date) + " · " + ((cur.calls || []).length ? (cur.calls.length + " coached calls") : "stats only") : "";
+    const toggle = `<div class="dseg" role="group" aria-label="Digest range">
+      <button id="ddday" type="button" aria-pressed="${dayView === "day"}">Day</button>
+      <button id="ddmtd" type="button" aria-pressed="${dayView === "mtd"}">Month to date</button>
+    </div>`;
+    if (dayView === "day") {
+      v.innerHTML = toggle + (cur ? digestPanel(cur) : '<div class="empty">Loading…</div>');
+    } else {
+      v.innerHTML = toggle + '<div class="empty">Loading…</div>';
+      const month = (cur ? cur.date : DAYS[0]).slice(0, 7);
+      try {
+        const r = await fetch(`/api/months/${month}`, { cache: "no-store" });
+        monthDoc = r.ok ? await r.json() : null;
+      } catch (_) { monthDoc = null; }
+      v.innerHTML = toggle + (monthDoc ? digestMonth(monthDoc) : '<div class="empty">No month-to-date rollup yet. It is written by the nightly run.</div>');
     }
+    const dd = $("#ddday"), dm = $("#ddmtd");
+    if (dd) dd.onclick = () => { dayView = "day"; paint(); };
+    if (dm) dm.onclick = () => { dayView = "mtd"; paint(); };
+  } else if (view === "coaching") {
+    $("#topsub").textContent = cur ? (cur.label || cur.date) : "";
+    v.innerHTML = cur ? coachingPanel(cur, coachWho) : '<div class="empty">Loading…</div>';
+    const sel = $("#cwho");
+    if (sel) sel.onchange = () => { coachWho = sel.value; paint(); };
   } else {
-    section("Coaching");
-    $("#main").append(el("div", "note",
-      "No coaching cards were authored for this day. Cards are written by hand, never generated — an empty tab is correct here."));
+    $("#topsub").textContent = "trends across every reporting day";
+    v.innerHTML = '<div class="empty">Loading…</div>';
+    v.innerHTML = await trendsPanel();
   }
-}
-
-/* ---- load --------------------------------------------------------------- */
-let VIEW = "day";
-
-async function loadMonth(month) {
-  $("#main").innerHTML = '<div class="empty">Loading…</div>';
-  const r = await fetch(`/api/months/${month}`, { cache: "no-store" });
-  if (!r.ok) {
-    $("#main").innerHTML = '<div class="empty">No month-to-date rollup yet. It is written by the nightly run.</div>';
-    $("#daylabel").textContent = month;
-    return;
-  }
-  renderMonth(await r.json());
+  paintRail();
 }
 
 async function loadDay(day) {
-  $("#main").innerHTML = '<div class="empty">Loading…</div>';
-  const r = await fetch(`/api/days/${day}`, { cache: "no-store" });
-  if (!r.ok) {
-    $("#main").innerHTML = '<div class="empty">No report for this day.</div>';
-    $("#daylabel").textContent = day;
-    return;
-  }
-  render(await r.json());
+  $("#view").innerHTML = '<div class="empty">Loading…</div>';
+  try {
+    const r = await fetch(`/api/days/${day}`, { cache: "no-store" });
+    cur = r.ok ? await r.json() : null;
+  } catch (_) { cur = null; }
+  if (!cur) { $("#view").innerHTML = '<div class="empty">No report for this day.</div>'; $("#topsub").textContent = day; return; }
+  await paint();
 }
+
+$$(".tab").forEach(t => t.onclick = () => {
+  $$(".tab").forEach(x => x.setAttribute("aria-selected", String(x === t)));
+  view = t.dataset.v; paint();
+});
 
 (async function init() {
   let days = [];
@@ -651,56 +807,26 @@ async function loadDay(day) {
     const r = await fetch("/api/days", { cache: "no-store" });
     if ((r.headers.get("content-type") || "").includes("application/json")) {
       const body = await r.json();
-      if (r.ok) {
-        days = body.days || [];
-      } else {
-        // A well-formed error from the Worker itself -- e.g. Access is
-        // misconfigured, or an auth check failed -- carries its own message.
-        // Show that instead of guessing, so a config problem never reads as
-        // an empty bucket.
-        fetchError = body.error || `request failed (${r.status})`;
-      }
+      if (r.ok) { days = body.days || []; }
+      else { fetchError = body.error || `request failed (${r.status})`; }
     } else {
-      // Cloudflare Access redirects an unauthenticated request to its own
-      // HTML login page rather than returning JSON. Treating that as "no
-      // data" would hide a login problem behind a lie about the bucket
-      // being empty.
       fetchError = "not signed in to Cloudflare Access";
     }
   } catch (_) {
     fetchError = "could not reach the board API";
   }
-  const pick = $("#daypick");
   if (fetchError) {
-    $("#main").innerHTML = `<div class="empty">Could not load reports: ${fetchError}.</div>`;
-    $("#daylabel").textContent = "";
+    $("#topsub").textContent = "";
+    $("#view").innerHTML = `<div class="empty">Could not load reports: ${fetchError}.</div>`;
     return;
   }
   if (!days.length) {
-    $("#main").innerHTML = '<div class="empty">No reports yet.</div>';
-    $("#daylabel").textContent = "";
+    $("#topsub").textContent = "no reporting days yet";
+    $("#view").innerHTML = '<div class="empty">No reports yet.</div>';
     return;
   }
-  for (const d of days) pick.append(new Option(d, d));
-  pick.addEventListener("change", () => loadDay(pick.value));
-
-  const setView = async (v) => {
-    VIEW = v;
-    $("#vday").setAttribute("aria-pressed", String(v === "day"));
-    $("#vmtd").setAttribute("aria-pressed", String(v === "mtd"));
-    // The day picker is meaningless in the month view; the month is taken
-    // from whichever day is selected, so switching back lands where you were.
-    pick.style.display = v === "day" ? "" : "none";
-    if (v === "day") await loadDay(pick.value);
-    else await loadMonth(pick.value.slice(0, 7));
-    try { localStorage.setItem("board-view", v); } catch (_) {}
-  };
-  $("#vday").addEventListener("click", () => setView("day"));
-  $("#vmtd").addEventListener("click", () => setView("mtd"));
-
-  let start = "day";
-  try { start = localStorage.getItem("board-view") || "day"; } catch (_) {}
-  await setView(start);
+  DAYS = days;
+  await loadDay(days[0]);
 })();
 </script>
 </body>
