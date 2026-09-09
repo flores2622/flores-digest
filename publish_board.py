@@ -109,6 +109,90 @@ def build(day):
     return board_payload.build(day)
 
 
+def _policy_streaks(day, producers, cli, bucket, log=print, lookback=90):
+    """Business days without a sale, per producer, as of `day`.
+
+    0 means sold today. None means no sale anywhere in the days actually on
+    file (a brand-new producer, most likely) -- not the same as a long
+    streak, so the frontend can say "no sale on record" instead of a number.
+    Board colouring: 0 is green, 1-2 is yellow, 3+ (or None) is red -- see
+    board_payload._producer_tiers's docstring for why this lives here instead
+    of there (it needs prior days' documents, which that module doesn't read).
+
+    Walks backward through R2's days/ prefix rather than any local cache,
+    since a rebuilt past day must see the same history a live run would.
+    Capped at `lookback` prior days: a real streak that long is red either
+    way, and it bounds the R2 reads for a producer who has simply never sold
+    since day one of the corpus.
+    """
+    days, token = [], None
+    while True:
+        kw = {"Bucket": bucket, "Prefix": f"{PREFIX}/"}
+        if token:
+            kw["ContinuationToken"] = token
+        page = cli.list_objects_v2(**kw)
+        for o in page.get("Contents", []):
+            m = re.match(rf"^{PREFIX}/(\d{{4}}-\d{{2}}-\d{{2}})\.json$", o["Key"])
+            if m and m.group(1) < day:
+                days.append(m.group(1))
+        if not page.get("IsTruncated"):
+            break
+        token = page.get("NextContinuationToken")
+    days.sort(reverse=True)   # most recent first
+    days = days[:lookback]
+
+    streak = {p["name"]: (0 if (p.get("pol") or 0) > 0 else 1) for p in producers}
+    pending = {name for name, s in streak.items() if s != 0}
+    if not pending:
+        return streak
+
+    for d in days:
+        if not pending:
+            break
+        try:
+            body = cli.get_object(Bucket=bucket, Key=_key(d))["Body"].read()
+            prior = {p["name"]: (p.get("pol") or 0) for p in json.loads(body).get("producers") or []}
+        except Exception as e:
+            log(f"  policy streak: could not read {d} ({e}), stopping the walk-back there")
+            break
+        for name in list(pending):
+            if prior.get(name, 0) > 0:
+                pending.discard(name)          # found their last sale; streak already counted
+            else:
+                streak[name] += 1
+    for name in pending:
+        streak[name] = None                   # ran out of history without ever finding one
+    return streak
+
+
+def _apply_policy_streak(doc, cli, bucket, log=print):
+    """Fill in the one thing board_payload.build() can't: Policies and
+    Premium Sold are coloured on the sale streak, not a fixed target, and
+    Premium Sold falls back to that same colour whenever the day's figure is
+    $0 so the two never disagree (Policies has no digest_config threshold of
+    its own -- streak is the only rule for it)."""
+    streak = _policy_streaks(doc["date"], doc.get("producers") or [], cli, bucket, log=log)
+    doc["policy_streak"] = streak
+
+    def tier_for(s):
+        if s is None or s >= 3:
+            return "red"
+        return "green" if s == 0 else "yellow"
+
+    tiers = doc.setdefault("tiers", {})
+    for p in doc.get("producers") or []:
+        name = p["name"]
+        pol_tier = tier_for(streak.get(name))
+        row = tiers.setdefault(name, {})
+        row["pol"] = pol_tier
+        if p.get("ps"):
+            per = p["ps"] / p["pol"] if p.get("pol") else 0
+            row["ps"] = digest_config.tier("premium_sold_per_policy", per)
+        else:
+            row["ps"] = pol_tier
+    return doc
+
+
 def publish(day, doc=None, log=print):
     """Upload one day. Returns the key written.
 
@@ -117,8 +201,9 @@ def publish(day, doc=None, log=print):
     is what you want.
     """
     doc = doc if doc is not None else build(day)
-    body = json.dumps(doc, default=str).encode()
     cli, bucket = _client()
+    _apply_policy_streak(doc, cli, bucket, log=log)
+    body = json.dumps(doc, default=str).encode()
     cli.put_object(
         Bucket=bucket, Key=_key(day), Body=body,
         ContentType="application/json",
