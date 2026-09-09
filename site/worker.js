@@ -72,6 +72,10 @@ export default {
       if (parts[1] === "months" && parts.length === 3) {
         return getMonth(env, parts[2]);
       }
+
+      if (parts[1] === "folios" && parts.length === 3) {
+        return getFolio(env, parts[2]);
+      }
       return json({ error: "not found" }, 404);
     }
 
@@ -275,6 +279,28 @@ async function getMonth(env, month) {
     headers: {
       "content-type": "application/json; charset=utf-8",
       // Rewritten nightly, and rewritten again by any past-day rebuild.
+      "cache-control": "no-store",
+    },
+  });
+}
+
+/** GET /api/folios/:end -> the folio rollup ending on that date, e.g.
+ * 2026-09-18. Folios (Frank's "Folio Close Dates" calendar) do not align to
+ * calendar months, so this is a separate object from months/<YYYY-MM>.json --
+ * see publish_board.publish_folio, which rewrites it every night alongside
+ * the month rollup, and on any past-day rebuild.
+ */
+async function getFolio(env, end) {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(end)) {
+    return json({ error: "bad folio end date" }, 400);
+  }
+  const obj = await env.BOARD.get(`folios/${end}.json`);
+  if (obj === null) {
+    return json({ error: "no folio rollup for this date", end }, 404);
+  }
+  return new Response(obj.body, {
+    headers: {
+      "content-type": "application/json; charset=utf-8",
       "cache-control": "no-store",
     },
   });
