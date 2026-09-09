@@ -515,6 +515,49 @@ REVISIT_QUESTIONS = [
     "Should Coral's and Sarahi's leads enter the lead-derived metrics?",
 ]
 
+# --- folio periods -----------------------------------------------------------
+# Highlighted close dates from the agency's 2026 "Folio Close Dates" calendar
+# (Frank, 2026-09-09). A folio's last day is the highlighted date; the next
+# calendar day starts the next folio. Folios do not align to calendar months,
+# which is the whole reason this is separate from the month rollup.
+FOLIO_CLOSE_DATES = [
+    dt.date(2026, 1, 20),
+    dt.date(2026, 2, 18),
+    dt.date(2026, 3, 18),
+    dt.date(2026, 4, 17),
+    dt.date(2026, 5, 19),
+    dt.date(2026, 6, 18),
+    dt.date(2026, 7, 17),
+    dt.date(2026, 8, 19),
+    dt.date(2026, 9, 18),
+    dt.date(2026, 10, 19),
+    dt.date(2026, 11, 17),
+    dt.date(2026, 12, 17),
+]
+
+
+def folio_end_for(day):
+    """The folio-close date (inclusive) that `day` falls in.
+
+    `day` is an ISO string or a date. None if `day` is after the last close
+    date this calendar covers -- there is no 2027 calendar yet, so a day past
+    2026-12-17 has no known folio until next year's calendar is added.
+    """
+    d = day if isinstance(day, dt.date) else dt.date.fromisoformat(day)
+    for end in FOLIO_CLOSE_DATES:
+        if d <= end:
+            return end
+    return None
+
+
+def folio_start_for(end):
+    """The first day of the folio ending on `end`: the day after the previous
+    close date, or None if `end` is the first one on file -- meaning
+    unbounded, so a caller should take whatever days it actually has."""
+    i = FOLIO_CLOSE_DATES.index(end)
+    return FOLIO_CLOSE_DATES[i - 1] + dt.timedelta(days=1) if i > 0 else None
+
+
 # --- per-day facts ----------------------------------------------------------
 # UTIL[date] = {name: (published_pct, total_time, productive_time)}
 # Populated from insightful_util.pull(); no longer hand-maintained.

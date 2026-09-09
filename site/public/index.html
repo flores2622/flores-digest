@@ -134,14 +134,6 @@ select, button.ghost {
   border: 1px solid var(--border-strong); border-radius: 6px;
   padding: 6px 10px; cursor: pointer;
 }
-.dseg { display: inline-flex; border: 1px solid var(--border-strong); border-radius: 6px; overflow: hidden; }
-.dseg button {
-  font: inherit; font-size: 13px; padding: 6px 12px; cursor: pointer;
-  background: var(--surface-raised); color: var(--text-secondary);
-  border: 0; border-right: 1px solid var(--border-strong);
-}
-.dseg button:last-child { border-right: 0; }
-.dseg button[aria-pressed="true"] { background: var(--bar); color: #fff; font-weight: 500; }
 
 h2 {
   font-size: 12px; font-weight: 600; text-transform: uppercase;
@@ -311,6 +303,19 @@ const DOT = {"Crystal Mango":"#ff4b4b", "Lorena Gonzalez":"#cd81ff",
              "Amanda Torricellas":"#baffff"};
 const TEAM_DOT = "#0b0b0b";
 
+/* Folio close dates, 2026 (Frank's "Folio Close Dates" calendar). A folio's
+   last day is the highlighted date; the next calendar day starts the next
+   folio -- mirrors digest_config.FOLIO_CLOSE_DATES. Extend this array when
+   next year's calendar arrives; a day past the last entry has no folio yet. */
+const FOLIO_CLOSE_DATES = [
+  "2026-01-20", "2026-02-18", "2026-03-18", "2026-04-17",
+  "2026-05-19", "2026-06-18", "2026-07-17", "2026-08-19",
+  "2026-09-18", "2026-10-19", "2026-11-17", "2026-12-17",
+];
+function folioEndFor(dateStr) {
+  return FOLIO_CLOSE_DATES.find(end => dateStr <= end) || null;
+}
+
 const $ = (s, r) => (r || document).querySelector(s);
 const el = (t, cls, txt) => { const e = document.createElement(t); if (cls) e.className = cls; if (txt != null) e.textContent = txt; return e; };
 const money = n => "$" + Math.round(n || 0).toLocaleString();
@@ -321,8 +326,10 @@ let DAYS = [];       // date strings from /api/days, newest first
 let cur = null;      // the currently loaded day's full document
 let view = "digest";
 let coachWho = "";
-let dayView = "day";  // "day" | "mtd", within the Digest tab
-let monthDoc = null;
+// Digest-tab range selector. "day" shows the rail-selected day's full
+// digest; every other value renders an aggregate via digestRange().
+let rangeMode = "day";  // day | today | yesterday | week | mtd | ytd | folio | custom
+let customFrom = "", customTo = "";
 
 /* ---- tooltip -------------------------------------------------------------- */
 const tip = $("#tip");
@@ -528,29 +535,86 @@ function digestPanel(d) {
   ${auditPanel(d)}`;
 }
 
-/* ---- Month to date (secondary toggle within Digest) ----------------------- */
-function digestMonth(d) {
-  const T = d.totals || {};
+/* ---- Range aggregates (This Week / MTD / YTD / Folio / Custom) ------------
+   One generic aggregator + renderer feeds every non-single-day preset.
+   `docs` is either a list of full day documents (from /api/days/:day) or a
+   list of already-aggregated rollup documents (month/folio) -- both shapes
+   carry `totals` and `producers`, so the same merge works for either,
+   reconstructing each producer's weighted talk time from `talk * live`
+   (a rollup's `talk` is already an average, not raw seconds, same trick
+   publish_board.publish_month/_folio use server-side). */
+function aggregateDocs(docs) {
+  const NUM = ["dials", "live", "hh", "pq", "ps", "pol"];
+  const totals = Object.fromEntries(NUM.map(k => [k, 0]));
+  const per = {};
+  const days = new Set();
+  for (const doc of docs) {
+    const t = doc.totals || {};
+    for (const k of NUM) totals[k] += t[k] || 0;
+    if (doc.date) days.add(doc.date);
+    for (const d of doc.days || []) days.add(d);
+    for (const p of doc.producers || []) {
+      const row = per[p.name] || (per[p.name] = { name: p.name, days: 0, talk_secs: 0, ...Object.fromEntries(NUM.map(k => [k, 0])) });
+      for (const k of NUM) row[k] += p[k] || 0;
+      row.days += p.days || 1;
+      row.talk_secs += (p.talk || 0) * (p.live || 0);
+    }
+  }
+  for (const row of Object.values(per)) {
+    row.rate = row.dials ? Math.round(1000 * row.live / row.dials) / 10 : 0;
+    row.talk = row.live ? Math.round(row.talk_secs / row.live) : 0;
+    delete row.talk_secs;
+  }
+  totals.rate = totals.dials ? Math.round(1000 * totals.live / totals.dials) / 10 : 0;
+  return { totals, producers: Object.values(per).sort((a, b) => b.ps - a.ps),
+           business_days: days.size, days: [...days].sort() };
+}
+function digestRange(agg, label, sub) {
+  const T = agg.totals || {};
   const tiles = [
     ["Dials", (T.dials ?? 0).toLocaleString(), ""],
     ["Live Contacts", (T.live ?? 0).toLocaleString(), `${T.rate ?? 0}% contact rate`],
     ["Households Quoted", T.hh ?? 0, ""],
     ["Premium Quoted", money(T.pq), ""],
     ["Premium Sold", money(T.ps), `${T.pol ?? 0} policies`],
-    ["Business Days", d.business_days ?? 0, ""],
+    ["Business Days", agg.business_days ?? 0, ""],
   ].map(([k, v, n]) => `<div class="tile"><div class="k">${k}</div><div class="v">${v}</div>${n ? `<div class="n">${n}</div>` : ""}</div>`).join("");
 
-  const P = d.producers || [];
+  const P = agg.producers || [];
   const rows = P.map(r => `<tr><td class="name">${r.name}</td><td class="num">${r.days ?? 0}</td>
     <td class="num">${r.dials ?? 0}</td><td class="num">${r.live ?? 0}</td><td class="num">${r.rate ?? 0}%</td>
     <td class="num">${secs(r.talk)}</td><td class="num">${r.hh ?? 0}</td>
     <td class="num">${money(r.pq)}</td><td class="num">${money(r.ps)}</td></tr>`).join("");
 
-  return `<div class="sect"><h2>Month to Date</h2><div class="tiles">${tiles}</div></div>
-  ${P.length ? `<div class="sect"><h2>Producers · month to date</h2>
+  return `<div class="sect"><h2>${label}</h2>${sub ? `<p class="sd">${sub}</p>` : ""}<div class="tiles">${tiles}</div></div>
+  ${P.length ? `<div class="sect"><h2>Producers</h2>
     <div class="scroll"><table><thead><tr><th>Producer</th><th class="num">Days</th><th class="num">Dials</th>
     <th class="num">Live</th><th class="num">Rate</th><th class="num">Avg Talk</th><th class="num">HH</th>
     <th class="num">Quoted</th><th class="num">Sold</th></tr></thead><tbody>${rows}</tbody></table></div></div>` : ""}`;
+}
+
+/* ---- date helpers: Arizona is always UTC-7, never DST --------------------- */
+function azTodayDate() {
+  const now = new Date();
+  return new Date(now.getTime() + (now.getTimezoneOffset() * 60000) - 7 * 3600000);
+}
+function isoDate(d) { return d.toISOString().slice(0, 10); }
+function addDays(iso, n) { const d = new Date(iso + "T12:00:00Z"); d.setUTCDate(d.getUTCDate() + n); return isoDate(d); }
+function weekStart(iso) { const d = new Date(iso + "T12:00:00Z"); return addDays(iso, -d.getUTCDay()); }
+
+/* Fetch every day in [from, to] that actually has a report (checked against
+   DAYS, the /api/days list), then aggregate. Used for This Week and Custom
+   range -- there is no precomputed rollup for an arbitrary span. */
+async function fetchRangeDocs(from, to) {
+  const wanted = DAYS.filter(d => d >= from && d <= to);
+  const docs = [];
+  for (const d of wanted) {
+    try {
+      const r = await fetch(`/api/days/${d}`, { cache: "no-store" });
+      if (r.ok) docs.push(await r.json());
+    } catch (_) {}
+  }
+  return docs;
 }
 
 /* ---- Coaching tab (ported verbatim from the pre-migration artifact) ------- */
@@ -744,34 +808,118 @@ function paintRail() {
     return `<button class="dayb" data-d="${day}" aria-current="${day === (cur && cur.date)}">
       <span class="d1">${dt.toLocaleDateString(undefined, { weekday: "short", month: "short", day: "numeric" })}</span></button>`;
   }).join("");
-  $$("#days .dayb").forEach(b => b.onclick = () => loadDay(b.dataset.d));
+  $$("#days .dayb").forEach(b => b.onclick = () => { rangeMode = "day"; loadDay(b.dataset.d); });
   $("#plist").innerHTML = cur ? (cur.producers || []).map(p =>
     `<div class="prow"><span class="pd" style="background:${DOT[p.name] || "#8a877f"}"></span><span>${p.name.split(" ")[0]}</span></div>`).join("") : "";
 }
 function $$(s) { return Array.from(document.querySelectorAll(s)); }
 
+const RANGE_LABELS = { day: "Day", today: "Today", yesterday: "Yesterday",
+  week: "This Week", mtd: "Month to Date", ytd: "Year to Date",
+  folio: "Folio to Date", custom: "Custom range…" };
+
+function rangeControlHtml() {
+  const opts = Object.entries(RANGE_LABELS).map(([k, label]) =>
+    `<option value="${k}"${k === rangeMode ? " selected" : ""}>${label}</option>`).join("");
+  const today = isoDate(azTodayDate());
+  const custom = rangeMode === "custom" ? `
+    <input type="date" id="rfrom" value="${customFrom || today}" max="${today}">
+    <span style="color:var(--text-muted);font-size:12px">to</span>
+    <input type="date" id="rto" value="${customTo || today}" max="${today}">
+    <button class="ghost" id="rapply" type="button">Apply</button>` : "";
+  return `<div class="controls"><select id="rangesel" aria-label="Digest range">${opts}</select>${custom}</div>`;
+}
+function wireRangeControl() {
+  const sel = $("#rangesel");
+  if (sel) sel.onchange = () => { rangeMode = sel.value; paint(); };
+  const ap = $("#rapply");
+  if (ap) ap.onclick = () => {
+    customFrom = $("#rfrom").value; customTo = $("#rto").value;
+    if (customFrom && customTo) paint();
+  };
+}
+
+/* Resolve a preset into either a single ISO date (rendered via the normal
+   rich single-day digest) or a [from, to] range (rendered via digestRange). */
+async function renderDigestRange() {
+  const v = $("#view");
+  const today = isoDate(azTodayDate());
+
+  if (rangeMode === "day") {
+    v.innerHTML = rangeControlHtml() + (cur ? digestPanel(cur) : '<div class="empty">Loading…</div>');
+    wireRangeControl();
+    return;
+  }
+  if (rangeMode === "today" || rangeMode === "yesterday") {
+    const day = rangeMode === "today" ? today : addDays(today, -1);
+    v.innerHTML = rangeControlHtml() + '<div class="empty">Loading…</div>';
+    let doc = null;
+    try {
+      const r = await fetch(`/api/days/${day}`, { cache: "no-store" });
+      doc = r.ok ? await r.json() : null;
+    } catch (_) {}
+    v.innerHTML = rangeControlHtml() + (doc ? digestPanel(doc) : `<div class="empty">No report for ${day}.</div>`);
+    wireRangeControl();
+    return;
+  }
+
+  v.innerHTML = rangeControlHtml() + '<div class="empty">Loading…</div>';
+  let html;
+  if (rangeMode === "folio") {
+    const end = folioEndFor(today);
+    if (!end) {
+      html = '<div class="empty">No folio calendar covers today yet.</div>';
+    } else {
+      try {
+        const r = await fetch(`/api/folios/${end}`, { cache: "no-store" });
+        const doc = r.ok ? await r.json() : null;
+        html = doc ? digestRange(doc, "Folio to Date", doc.folio_start ? `${doc.folio_start} → ${doc.folio_end}` : `through ${doc.folio_end}`)
+                   : `<div class="empty">No folio rollup yet for the folio ending ${end}. It is written by the nightly run.</div>`;
+      } catch (_) { html = '<div class="empty">Could not load the folio rollup.</div>'; }
+    }
+  } else if (rangeMode === "mtd") {
+    const month = today.slice(0, 7);
+    try {
+      const r = await fetch(`/api/months/${month}`, { cache: "no-store" });
+      const doc = r.ok ? await r.json() : null;
+      html = doc ? digestRange(doc, "Month to Date", doc.label)
+                 : '<div class="empty">No month-to-date rollup yet. It is written by the nightly run.</div>';
+    } catch (_) { html = '<div class="empty">Could not load the month rollup.</div>'; }
+  } else if (rangeMode === "ytd") {
+    const year = today.slice(0, 4);
+    const curMonth = Number(today.slice(5, 7));
+    const docs = [];
+    for (let m = 1; m <= curMonth; m++) {
+      try {
+        const r = await fetch(`/api/months/${year}-${String(m).padStart(2, "0")}`, { cache: "no-store" });
+        if (r.ok) docs.push(await r.json());
+      } catch (_) {}
+    }
+    html = docs.length ? digestRange(aggregateDocs(docs), "Year to Date", `${year}-01-01 → ${today}`)
+                       : '<div class="empty">No months on file yet this year.</div>';
+  } else if (rangeMode === "week") {
+    const from = weekStart(today);
+    const docs = await fetchRangeDocs(from, today);
+    html = digestRange(aggregateDocs(docs), "This Week", `${from} → ${today}`);
+  } else if (rangeMode === "custom") {
+    if (!customFrom || !customTo) {
+      html = '<div class="empty">Pick a start and end date, then Apply.</div>';
+    } else {
+      const [from, to] = customFrom <= customTo ? [customFrom, customTo] : [customTo, customFrom];
+      const docs = await fetchRangeDocs(from, to);
+      html = docs.length ? digestRange(aggregateDocs(docs), "Custom Range", `${from} → ${to}`)
+                        : `<div class="empty">No reports in ${from} → ${to}.</div>`;
+    }
+  }
+  v.innerHTML = rangeControlHtml() + html;
+  wireRangeControl();
+}
+
 async function paint() {
   const v = $("#view");
   if (view === "digest") {
     $("#topsub").textContent = cur ? (cur.label || cur.date) + " · " + ((cur.calls || []).length ? (cur.calls.length + " coached calls") : "stats only") : "";
-    const toggle = `<div class="dseg" role="group" aria-label="Digest range">
-      <button id="ddday" type="button" aria-pressed="${dayView === "day"}">Day</button>
-      <button id="ddmtd" type="button" aria-pressed="${dayView === "mtd"}">Month to date</button>
-    </div>`;
-    if (dayView === "day") {
-      v.innerHTML = toggle + (cur ? digestPanel(cur) : '<div class="empty">Loading…</div>');
-    } else {
-      v.innerHTML = toggle + '<div class="empty">Loading…</div>';
-      const month = (cur ? cur.date : DAYS[0]).slice(0, 7);
-      try {
-        const r = await fetch(`/api/months/${month}`, { cache: "no-store" });
-        monthDoc = r.ok ? await r.json() : null;
-      } catch (_) { monthDoc = null; }
-      v.innerHTML = toggle + (monthDoc ? digestMonth(monthDoc) : '<div class="empty">No month-to-date rollup yet. It is written by the nightly run.</div>');
-    }
-    const dd = $("#ddday"), dm = $("#ddmtd");
-    if (dd) dd.onclick = () => { dayView = "day"; paint(); };
-    if (dm) dm.onclick = () => { dayView = "mtd"; paint(); };
+    await renderDigestRange();
   } else if (view === "coaching") {
     $("#topsub").textContent = cur ? (cur.label || cur.date) : "";
     v.innerHTML = cur ? coachingPanel(cur, coachWho) : '<div class="empty">Loading…</div>';

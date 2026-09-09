@@ -46,6 +46,7 @@ import re
 import sys
 
 import board_payload
+import digest_config
 import secrets_load
 
 ROOT = pathlib.Path(__file__).resolve().parent
@@ -56,6 +57,7 @@ AZ = dt.timezone(dt.timedelta(hours=-7))
 # is a change there too.
 PREFIX = "days"
 MONTH_PREFIX = "months"
+FOLIO_PREFIX = "folios"
 
 
 def _key(day):
@@ -64,6 +66,10 @@ def _key(day):
 
 def _month_key(month):
     return f"{MONTH_PREFIX}/{month}.json"
+
+
+def _folio_key(end):
+    return f"{FOLIO_PREFIX}/{end}.json"
 
 
 def _client():
@@ -123,6 +129,11 @@ def publish(day, doc=None, log=print):
     )
     log(f"  board: {len(body):,} bytes -> r2://{bucket}/{_key(day)}")
     publish_month(day[:7], cli=cli, bucket=bucket, log=log)
+    end = digest_config.folio_end_for(day)
+    if end:
+        publish_folio(end, cli=cli, bucket=bucket, log=log)
+    else:
+        log(f"  folio: no folio calendar covers {day} yet, skipping")
     return _key(day)
 
 
@@ -224,6 +235,106 @@ def publish_month(month, cli=None, bucket=None, log=print):
     log(f"  month:  {len(body):,} bytes -> r2://{bucket}/{_month_key(month)} "
         f"({len(days)} day{'' if len(days) == 1 else 's'})")
     return _month_key(month)
+
+
+def publish_folio(end, cli=None, bucket=None, log=print):
+    """Roll every day within the folio ending `end` into folios/<end>.json.
+
+    Folio periods (digest_config.FOLIO_CLOSE_DATES) run e.g. 2026-01-21
+    through 2026-02-18, and do not align to calendar months -- that is the
+    whole reason this exists separately from publish_month. Because a folio
+    can span a month boundary, this lists the WHOLE days/ prefix rather than
+    one month's, then filters to the folio's date range client-side, instead
+    of relying on a shared key prefix the way publish_month does.
+
+    Same rules as publish_month: always recomputed from scratch (a rebuilt
+    past day folds in automatically), rates are summed-then-divided rather
+    than averaged across days, and talk time is weighted by live contacts.
+    """
+    if cli is None:
+        cli, bucket = _client()
+
+    end = end if isinstance(end, dt.date) else dt.date.fromisoformat(end)
+    start = digest_config.folio_start_for(end)
+
+    days, token = [], None
+    while True:
+        kw = {"Bucket": bucket, "Prefix": f"{PREFIX}/"}
+        if token:
+            kw["ContinuationToken"] = token
+        page = cli.list_objects_v2(**kw)
+        for o in page.get("Contents", []):
+            m = re.match(rf"^{PREFIX}/(\d{{4}}-\d{{2}}-\d{{2}})\.json$", o["Key"])
+            if not m:
+                continue
+            d = dt.date.fromisoformat(m.group(1))
+            if d <= end and (start is None or d >= start):
+                days.append(m.group(1))
+        if not page.get("IsTruncated"):
+            break
+        token = page.get("NextContinuationToken")
+
+    if not days:
+        log(f"  folio {end}: no day documents in range, nothing to roll up")
+        return None
+
+    docs = []
+    for d in sorted(days):
+        body = cli.get_object(Bucket=bucket, Key=_key(d))["Body"].read()
+        docs.append(json.loads(body))
+
+    NUM = ("dials", "live", "hh", "pq", "ps", "pol")
+    totals = {k: 0 for k in NUM}
+    per = {}
+    trend = []
+
+    for doc in docs:
+        t = doc.get("totals") or {}
+        for k in NUM:
+            totals[k] += t.get(k) or 0
+        trend.append({
+            "date": doc.get("date"),
+            "dials": t.get("dials") or 0,
+            "live": t.get("live") or 0,
+            "rate": t.get("rate") or 0,
+            "pq": t.get("pq") or 0,
+            "ps": t.get("ps") or 0,
+        })
+        for p in doc.get("producers") or []:
+            row = per.setdefault(p["name"], {k: 0 for k in NUM} |
+                                 {"name": p["name"], "days": 0, "talk_secs": 0})
+            for k in NUM:
+                row[k] += p.get(k) or 0
+            row["days"] += 1
+            # Talk time is an average per live contact, so it re-weights by
+            # live contacts rather than by day.
+            row["talk_secs"] += (p.get("talk") or 0) * (p.get("live") or 0)
+
+    for row in per.values():
+        row["rate"] = round(100 * row["live"] / row["dials"], 1) if row["dials"] else 0.0
+        row["talk"] = round(row["talk_secs"] / row["live"]) if row["live"] else 0
+        del row["talk_secs"]
+
+    totals["rate"] = (round(100 * totals["live"] / totals["dials"], 1)
+                      if totals["dials"] else 0.0)
+
+    doc = {
+        "folio_end": end.isoformat(),
+        "folio_start": start.isoformat() if start else None,
+        "label": f"Folio ending {end.strftime('%b')} {end.day}, {end.year}",
+        "built_at": dt.datetime.now(AZ).isoformat(timespec="seconds"),
+        "days": sorted(days),
+        "business_days": len(days),
+        "totals": totals,
+        "producers": sorted(per.values(), key=lambda r: -r["ps"]),
+        "trend": trend,
+    }
+    body = json.dumps(doc, default=str).encode()
+    cli.put_object(Bucket=bucket, Key=_folio_key(end.isoformat()), Body=body,
+                   ContentType="application/json", CacheControl="no-store")
+    log(f"  folio:  {len(body):,} bytes -> r2://{bucket}/{_folio_key(end.isoformat())} "
+        f"({len(days)} day{'' if len(days) == 1 else 's'})")
+    return _folio_key(end.isoformat())
 
 
 def main():
