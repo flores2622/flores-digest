@@ -19,5 +19,18 @@
     // binding (this repo's nightly build is a plain Python process, not a
     // Worker, so it has no binding to use).
     { "binding": "BOARD", "bucket_name": "flores-board" }
-  ]
+  ],
+  // Cloudflare Access config for site/worker.js's requireAccess(). NOT
+  // secrets -- ACCESS_TEAM_DOMAIN is already public (it's in every Access
+  // login redirect URL), and ACCESS_AUD doesn't let anyone forge a token
+  // without Cloudflare's own signing key. Committed here on purpose after
+  // 2026-09-09: these were previously set only via the dashboard's "Runtime
+  // variables and secrets", and a Workers Builds deploy triggered by an
+  // unrelated PR merge wiped them, taking the board down with a 503 until
+  // someone noticed and re-typed them by hand. Declaring them here means
+  // every future deploy carries them regardless of dashboard state.
+  "vars": {
+    "ACCESS_TEAM_DOMAIN": "floresinsuranceagency",
+    "ACCESS_AUD": "46509102362d6d3f7a980163995a9ecda620eaace3733aa53beab032a2538437"
+  }
 }
