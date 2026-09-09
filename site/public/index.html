@@ -104,20 +104,9 @@ body {
   background: transparent; color: inherit; border: 1px solid var(--border-strong); border-radius: 7px;
   padding: 5px 10px; font: 500 12px/1 inherit; cursor: pointer;
 }
-.shell { display: grid; grid-template-columns: 200px minmax(0, 1fr); min-height: calc(100vh - 49px); }
-@media (max-width: 800px) { .shell { grid-template-columns: 1fr; } .rail { border-right: none; border-bottom: 1px solid var(--border); } }
-.rail { background: var(--surface-raised); border-right: 1px solid var(--border); padding: 16px 12px; }
-.raill { font-size: 10px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--text-muted); margin: 0 0 8px 6px; }
-.dayb {
-  display: block; width: 100%; text-align: left; background: none; border: none; border-radius: 6px;
-  padding: 8px 10px; font: inherit; color: var(--text-primary); cursor: pointer; margin-bottom: 2px;
-}
-.dayb:hover { background: var(--surface); }
-.dayb[aria-current="true"] { background: var(--text-primary); color: var(--surface); }
-.dayb .d1 { font-weight: 600; font-size: 13px; }
-.prow { display: flex; align-items: center; gap: 7px; font-size: 12px; padding: 3px 6px; }
+.shell { min-height: calc(100vh - 49px); }
 .pd { width: 8px; height: 8px; border-radius: 2px; flex: none; }
-.main { padding: 20px 24px 60px; min-width: 0; }
+.main { padding: 20px 24px 60px; min-width: 0; max-width: 1120px; margin: 0 auto; }
 
 .tabs { display: flex; gap: 2px; border-bottom: 1px solid var(--border); margin-bottom: 20px; }
 .tab {
@@ -277,12 +266,6 @@ details.sc .scb { padding: 0 12px 12px; }
   <button class="thbtn" id="thbtn" type="button"><span id="thico">◑</span><span id="thlbl">System</span></button>
 </div>
 <div class="shell">
-  <nav class="rail" aria-label="Days">
-    <p class="raill">Reporting day</p>
-    <div id="days"></div>
-    <p class="raill" style="margin-top:20px">Producers</p>
-    <div id="plist"></div>
-  </nav>
   <main class="main">
     <div class="tabs" role="tablist">
       <button class="tab" role="tab" aria-selected="true"  data-v="digest">Digest</button>
@@ -325,9 +308,13 @@ const hhmm = secs;
 let DAYS = [];       // date strings from /api/days, newest first
 let cur = null;      // the currently loaded day's full document
 let view = "digest";
-let coachWho = "";
-// Digest-tab range selector. "day" shows the rail-selected day's full
-// digest; every other value renders an aggregate via digestRange().
+// One producer filter shared by the Digest and Coaching tabs. "" = whole
+// agency. This is the roster CLAUDE.md treats as producers (not Debbie or
+// Amanda, who show up in DOT/coaching data but are not tracked as such).
+const PRODUCER_ROSTER = ["Crystal Mango", "Lorena Gonzalez", "Mike Olvera", "Coral Barwick", "Sarahi Chin"];
+let producerFilter = "";
+// Digest-tab range selector. "day" shows a picked day's full digest; every
+// other value renders an aggregate via digestRange().
 let rangeMode = "day";  // day | today | yesterday | week | mtd | ytd | folio | custom
 let customFrom = "", customTo = "";
 
@@ -369,8 +356,14 @@ function hoverable(node, html) {
    digest_config, so the boundary rules live in one place), and Policies
    falls back to the day's premium-sold streak when today's figure is $0, so
    the two never disagree. */
-function digestDay(d) {
-  const t = d.totals || {}, rate = t.dials ? (100 * t.live / t.dials).toFixed(1) : "0";
+function digestDay(d, who) {
+  const byName = Object.fromEntries((d.producers || []).map(p => [p.name, p]));
+  const focus = who ? byName[who] : null;
+  // Whole-agency tiles read from d.totals; a single producer's tiles read
+  // from their own row instead, since "the team's numbers" is not what
+  // filtering to one person means.
+  const t = focus || d.totals || {};
+  const rate = focus ? (focus.rate ?? 0) : (t.dials ? (100 * t.live / t.dials).toFixed(1) : "0");
   const tiles = [
     ["Dials", t.dials ?? 0, "outbound, after exclusions"],
     ["Live contacts", t.live ?? 0, rate + "% contact rate"],
@@ -393,14 +386,13 @@ function digestDay(d) {
     return g === 0 ? "sold today" : g == null ? "no sale on record"
          : g + " business day" + (g === 1 ? "" : "s") + " without a sale";
   };
-  const byName = Object.fromEntries((d.producers || []).map(p => [p.name, p]));
-  const ranked = ((d.leaderboard && d.leaderboard.order) || (d.producers || []).map(p => p.name))
+  const ranked = focus ? [focus] : ((d.leaderboard && d.leaderboard.order) || (d.producers || []).map(p => p.name))
                    .map(n => byName[n]).filter(Boolean);
   const hasRoleplay = ranked.some(p => (p.coach || {}).roleplay != null);
   const rows = ranked.map((p, i) => `<tr>
     <td><span class="who"><span class="pd" style="background:${DOT[p.name] || "#8a877f"}"></span><span${
-       i < 3 ? ` class="${NCL[i]}"` : ""}>${p.name}</span>${
-       i < 3 ? `<span class="mdl" role="img" aria-label="${["1st", "2nd", "3rd"][i]}">${MEDAL[i]}</span>` : ""}</span></td>
+       !focus && i < 3 ? ` class="${NCL[i]}"` : ""}>${p.name}</span>${
+       !focus && i < 3 ? `<span class="mdl" role="img" aria-label="${["1st", "2nd", "3rd"][i]}">${MEDAL[i]}</span>` : ""}</span></td>
     ${hasRoleplay ? `<td class="num">${(p.coach || {}).roleplay ?? "—"}</td>` : ""}
     <td class="num ${tc(p.name, "dials")}">${p.dials ?? 0}</td>
     <td class="num ${tc(p.name, "talk")}">${hhmm(p.talk)}</td>
@@ -411,18 +403,20 @@ function digestDay(d) {
     <td class="num ${tc(p.name, "ps")}">${money(p.ps)}</td>
     ${p.util != null ? `<td class="num ${tc(p.name, "util")}">${p.util}%</td>` : ""}</tr>`).join("");
   const tt = k => TI[((d.tiers || {})["team"] || {})[k]] || "";
-  const tot = `<tr class="tot"><td><span class="who"><span class="pd" style="background:${TEAM_DOT}"></span>Team</span></td>
+  const T = d.totals || {};
+  const teamRate = T.dials ? (100 * T.live / T.dials).toFixed(1) : "0";
+  const tot = focus ? "" : `<tr class="tot"><td><span class="who"><span class="pd" style="background:${TEAM_DOT}"></span>Team</span></td>
     ${hasRoleplay ? `<td class="num">—</td>` : ""}
-    <td class="num ${tt("dials")}">${t.dials ?? 0}</td>
+    <td class="num ${tt("dials")}">${T.dials ?? 0}</td>
     <td class="num">—</td>
-    <td class="num ${tt("rate")}">${rate}% <span style="opacity:.72">(${t.live ?? 0})</span></td>
-    <td class="num ${tt("hh")}">${t.hh ?? 0}</td>
-    <td class="num ${tt("pq")}">${money(t.pq)}</td>
-    <td class="num ${tt("pol")}">${t.pol ?? 0}</td>
-    <td class="num ${tt("ps")}">${money(t.ps)}</td>
-    ${t.util != null ? `<td class="num ${tt("util")}">${t.util}%</td>` : ""}</tr>`;
+    <td class="num ${tt("rate")}">${teamRate}% <span style="opacity:.72">(${T.live ?? 0})</span></td>
+    <td class="num ${tt("hh")}">${T.hh ?? 0}</td>
+    <td class="num ${tt("pq")}">${money(T.pq)}</td>
+    <td class="num ${tt("pol")}">${T.pol ?? 0}</td>
+    <td class="num ${tt("ps")}">${money(T.ps)}</td>
+    ${T.util != null ? `<td class="num ${tt("util")}">${T.util}%</td>` : ""}</tr>`;
 
-  const s = d.scan;
+  const s = focus ? null : d.scan;
   const sold = (d.calls || []).filter(c => c.catc === "cat-sold").map(c => c.lead);
   const says = !s ? "" : `<div class="sect"><h2>What the day says</h2>
    <p class="sd">Two patterns that only show up across calls, not within one.</p>
@@ -440,7 +434,7 @@ function digestDay(d) {
     <b>${s.timeset} of ${s.of}</b> set a specific callback time — that one is usually the cheapest to fix.</p>
    </div>
   </div>`;
-  const objs = !(d.objcats && d.objcats.length) ? "" : `<div class="sect"><h2>Objections by category</h2>
+  const objs = focus || !(d.objcats && d.objcats.length) ? "" : `<div class="sect"><h2>Objections by category</h2>
    <p class="sd">Won means the objection was addressed and overcome on the call, not merely answered.</p>
    <div class="scroll"><table><thead><tr><th>Category</th><th class="num">Raised</th><th class="num">Won</th></tr></thead><tbody>
    ${d.objcats.map(([c, n, w]) => `<tr><td>${c}</td><td class="num">${n}</td>
@@ -482,31 +476,35 @@ function leaderboardPanel(d) {
    </tbody></table></div></div>`;
 }
 
-function speedPanel(d) {
+function speedPanel(d, who) {
   const s = d.speed_to_dial;
   if (!s) return `<div class="sect"><h2>Speed to Dial</h2>
     <p class="sd">No internet leads were assigned today, so there is nothing to time.</p></div>`;
-  const cards = Object.entries(s.per || {}).map(([n, v]) => `
+  const entries = who ? Object.entries(s.per || {}).filter(([n]) => n === who) : Object.entries(s.per || {});
+  const cards = entries.map(([n, v]) => `
     <div class="tile"><div class="k"><span class="pd" style="background:${DOT[n] || "#8a877f"};display:inline-block;margin-right:5px"></span>${n.split(" ")[0]}</div>
       <div class="v">${hhmm(v.median)}</div>
       <div class="n">median · ${v.n} lead${v.n > 1 ? "s" : ""}</div>
       <div class="n" style="margin-top:5px">quickest ${hhmm(v.quickest)} · longest ${hhmm(v.longest)}</div></div>`).join("")
-   + (s.team ? `<div class="tile" style="border-color:var(--border-strong);background:var(--surface)">
+   + (!who && s.team ? `<div class="tile" style="border-color:var(--border-strong);background:var(--surface)">
       <div class="k">Team</div><div class="v">${hhmm(s.team.median)}</div>
       <div class="n">median of all ${s.team.n} leads</div>
       <div class="n" style="margin-top:5px">quickest ${hhmm(s.team.quickest)} · longest ${hhmm(s.team.longest)}</div></div>` : "");
+  if (who && !cards) return `<div class="sect"><h2>Speed to Dial</h2>
+    <p class="sd">No internet leads assigned to ${who} today.</p></div>`;
   return `<div class="sect"><h2>Speed to Dial</h2>
     <p class="sd">${s.note || ""} Producers with no internet leads are not shown.</p>
     <div class="tiles">${cards}</div></div>`;
 }
 
-function recontactPanel(d) {
-  const rows = ((d.recontact || {}).at_risk || []).slice(0, 14).map(r => `<tr>
+function recontactPanel(d, who) {
+  const all = ((d.recontact || {}).at_risk || []).filter(r => !who || r.producer === who);
+  const rows = all.slice(0, 14).map(r => `<tr>
     <td>${r.lead_name || "—"}</td>
     <td><span class="who"><span class="pd" style="background:${DOT[r.producer] || "#8a877f"}"></span>${(r.producer || "").split(" ")[0]}</span></td>
     <td>${r.stage || ""}</td><td class="num">${r.business_days ?? "—"}</td><td class="num">${r.calls ?? "—"}</td>
     <td><span class="chip ${r.flag === "under-worked" ? "c-r" : "c-w"}">${r.flag || ""}</span></td></tr>`).join("");
-  const n = ((d.recontact || {}).at_risk || []).length;
+  const n = all.length;
   if (!n) return "";
   return `<div class="sect"><h2>Recontact Struggle</h2>
    <p class="sd">${n} lead${n === 1 ? "" : "s"} sitting in a stage longer than the work put into them justifies.
@@ -515,24 +513,29 @@ function recontactPanel(d) {
    <th class="num">Dials</th><th>Flag</th></tr></thead><tbody>${rows}</tbody></table></div></div>`;
 }
 
-function auditPanel(d) {
+function auditPanel(d, who) {
   const ta = d.task_audit || {};
-  const b = ta.buckets || {};
   const LB = { a: "Task says no answer, call says contact", b: "Task done, no dial found",
                c: "Completed with a matching dial", d: "Completed, dial on another number", e: "Completed, no phone on record" };
-  const rows = Object.entries(b).filter(([, v]) => v).map(([k, v]) => `<tr><td>${LB[k] || k}</td><td class="num">${v}</td></tr>`).join("");
+  // Bucket counts come pre-aggregated team-wide; filtering to one producer
+  // recomputes them from the underlying rows, which do carry a producer field.
+  const counts = who
+    ? Object.fromEntries(Object.keys(LB).map(k => [k, ((ta.rows || {})[k] || []).filter(r => r.producer === who).length]))
+    : (ta.buckets || {});
+  const rows = Object.entries(counts).filter(([, v]) => v).map(([k, v]) => `<tr><td>${LB[k] || k}</td><td class="num">${v}</td></tr>`).join("");
   if (!rows) return "";
+  const counted = who ? Object.values(counts).reduce((a, b) => a + b, 0) : (ta.counted ?? 0);
   return `<div class="sect"><h2>Task Completion Audit</h2>
-   <p class="sd">${ta.counted ?? 0} completed tasks checked against the call log.</p>
+   <p class="sd">${counted} completed tasks checked against the call log.</p>
    <div class="scroll"><table><thead><tr><th>Finding</th><th class="num">Tasks</th></tr></thead><tbody>${rows}</tbody></table></div></div>`;
 }
 
-function digestPanel(d) {
-  return `${digestDay(d)}
-  <div class="sect">${leaderboardPanel(d)}</div>
-  ${speedPanel(d)}
-  ${recontactPanel(d)}
-  ${auditPanel(d)}`;
+function digestPanel(d, who) {
+  return `${digestDay(d, who)}
+  ${who ? "" : `<div class="sect">${leaderboardPanel(d)}</div>`}
+  ${speedPanel(d, who)}
+  ${recontactPanel(d, who)}
+  ${auditPanel(d, who)}`;
 }
 
 /* ---- Range aggregates (This Week / MTD / YTD / Folio / Custom) ------------
@@ -569,24 +572,26 @@ function aggregateDocs(docs) {
   return { totals, producers: Object.values(per).sort((a, b) => b.ps - a.ps),
            business_days: days.size, days: [...days].sort() };
 }
-function digestRange(agg, label, sub) {
-  const T = agg.totals || {};
+function digestRange(agg, label, sub, who) {
+  const byName = Object.fromEntries((agg.producers || []).map(p => [p.name, p]));
+  const focus = who ? byName[who] : null;
+  const T = focus || agg.totals || {};
   const tiles = [
     ["Dials", (T.dials ?? 0).toLocaleString(), ""],
     ["Live Contacts", (T.live ?? 0).toLocaleString(), `${T.rate ?? 0}% contact rate`],
     ["Households Quoted", T.hh ?? 0, ""],
     ["Premium Quoted", money(T.pq), ""],
     ["Premium Sold", money(T.ps), `${T.pol ?? 0} policies`],
-    ["Business Days", agg.business_days ?? 0, ""],
+    ["Business Days", (focus ? focus.days : agg.business_days) ?? 0, ""],
   ].map(([k, v, n]) => `<div class="tile"><div class="k">${k}</div><div class="v">${v}</div>${n ? `<div class="n">${n}</div>` : ""}</div>`).join("");
 
-  const P = agg.producers || [];
+  const P = focus ? [] : (agg.producers || []);
   const rows = P.map(r => `<tr><td class="name">${r.name}</td><td class="num">${r.days ?? 0}</td>
     <td class="num">${r.dials ?? 0}</td><td class="num">${r.live ?? 0}</td><td class="num">${r.rate ?? 0}%</td>
     <td class="num">${secs(r.talk)}</td><td class="num">${r.hh ?? 0}</td>
     <td class="num">${money(r.pq)}</td><td class="num">${money(r.ps)}</td></tr>`).join("");
 
-  return `<div class="sect"><h2>${label}</h2>${sub ? `<p class="sd">${sub}</p>` : ""}<div class="tiles">${tiles}</div></div>
+  return `<div class="sect"><h2>${label}${focus ? ` · ${who}` : ""}</h2>${sub ? `<p class="sd">${sub}</p>` : ""}<div class="tiles">${tiles}</div></div>
   ${P.length ? `<div class="sect"><h2>Producers</h2>
     <div class="scroll"><table><thead><tr><th>Producer</th><th class="num">Days</th><th class="num">Dials</th>
     <th class="num">Live</th><th class="num">Rate</th><th class="num">Avg Talk</th><th class="num">HH</th>
@@ -683,27 +688,29 @@ function card(c) {
    ${spine}</div>`;
 }
 function coachingPanel(d, who) {
+  // `who` is the shared producerFilter (top-of-page dropdown), not a
+  // tab-local control -- Digest and Coaching stay in sync on whoever is
+  // selected.
   const order = ["Lorena Gonzalez", "Crystal Mango", "Mike Olvera", "Coral Barwick", "Sarahi Chin"];
   if (!(d.calls && d.calls.length)) return `<div class="empty">
     <div style="font-weight:600;font-size:15px;margin-bottom:6px">No coaching cards for this day</div>
     <p style="max-width:46ch;margin:0 auto;font-size:12.5px;line-height:1.6">${d.label || d.date} was uploaded with its stats
     only. The cards are written from the call recordings and are not generated, so a day gets them when someone
     writes them — an empty tab here means nobody has yet, not that the calls were clean.</p></div>`;
-  const have = order.filter(p => d.calls.some(c => c.who === p));
-  const sel = have.includes(who) ? who : "";
-  const pick = `<div class="cpick"><label for="cwho">Producer</label>
-    <select id="cwho"><option value=""${sel ? "" : " selected"}>All producers — ${d.calls.length} calls</option>
-    ${have.map(p => `<option value="${p}"${p === sel ? " selected" : ""}>${p} — ${
-      d.calls.filter(c => c.who === p).length} call${d.calls.filter(c => c.who === p).length > 1 ? "s" : ""}</option>`).join("")}
-    </select></div>`;
-  let out = pick;
+  const sel = who && order.includes(who) ? who : "";
+  let out = "";
+  let shown = 0;
   order.forEach(p => {
     if (sel && sel !== p) return;
     const mine = d.calls.filter(c => c.who === p);
     if (!mine.length) return;
+    shown += mine.length;
     out += `<div class="sect"><h2>${p}</h2><p class="sd">${mine.length} coached call${mine.length > 1 ? "s" : ""}</p>
       ${mine.map(card).join("")}</div>`;
   });
+  if (!shown) {
+    out = `<div class="empty">${sel ? `No coaching cards for ${sel} on this day.` : "No coaching cards for this day."}</div>`;
+  }
   return out + (d.notcoached ? `<div class="note" style="border:1px dashed var(--border-strong);border-radius:8px;padding:14px 16px">
     <b>Not coached, and why.</b> ${d.notcoached}</div>` : "");
 }
@@ -802,16 +809,6 @@ async function trendsPanel() {
 }
 
 /* ---- shell / paint --------------------------------------------------------- */
-function paintRail() {
-  $("#days").innerHTML = DAYS.map(day => {
-    const dt = new Date(day + "T12:00:00");
-    return `<button class="dayb" data-d="${day}" aria-current="${day === (cur && cur.date)}">
-      <span class="d1">${dt.toLocaleDateString(undefined, { weekday: "short", month: "short", day: "numeric" })}</span></button>`;
-  }).join("");
-  $$("#days .dayb").forEach(b => b.onclick = () => { rangeMode = "day"; loadDay(b.dataset.d); });
-  $("#plist").innerHTML = cur ? (cur.producers || []).map(p =>
-    `<div class="prow"><span class="pd" style="background:${DOT[p.name] || "#8a877f"}"></span><span>${p.name.split(" ")[0]}</span></div>`).join("") : "";
-}
 function $$(s) { return Array.from(document.querySelectorAll(s)); }
 
 const RANGE_LABELS = { day: "Day", today: "Today", yesterday: "Yesterday",
@@ -822,16 +819,25 @@ function rangeControlHtml() {
   const opts = Object.entries(RANGE_LABELS).map(([k, label]) =>
     `<option value="${k}"${k === rangeMode ? " selected" : ""}>${label}</option>`).join("");
   const today = isoDate(azTodayDate());
-  const custom = rangeMode === "custom" ? `
+  let extra = "";
+  if (rangeMode === "day") {
+    extra = `<select id="daypick" aria-label="Reporting day">${DAYS.map(d =>
+      `<option value="${d}"${cur && d === cur.date ? " selected" : ""}>${
+        new Date(d + "T12:00:00").toLocaleDateString(undefined, { weekday: "short", month: "short", day: "numeric" })}</option>`).join("")}</select>`;
+  } else if (rangeMode === "custom") {
+    extra = `
     <input type="date" id="rfrom" value="${customFrom || today}" max="${today}">
     <span style="color:var(--text-muted);font-size:12px">to</span>
     <input type="date" id="rto" value="${customTo || today}" max="${today}">
-    <button class="ghost" id="rapply" type="button">Apply</button>` : "";
-  return `<div class="controls"><select id="rangesel" aria-label="Digest range">${opts}</select>${custom}</div>`;
+    <button class="ghost" id="rapply" type="button">Apply</button>`;
+  }
+  return `<div class="controls"><select id="rangesel" aria-label="Digest range">${opts}</select>${extra}</div>`;
 }
 function wireRangeControl() {
   const sel = $("#rangesel");
   if (sel) sel.onchange = () => { rangeMode = sel.value; paint(); };
+  const dp = $("#daypick");
+  if (dp) dp.onchange = () => loadDay(dp.value);
   const ap = $("#rapply");
   if (ap) ap.onclick = () => {
     customFrom = $("#rfrom").value; customTo = $("#rto").value;
@@ -839,31 +845,45 @@ function wireRangeControl() {
   };
 }
 
+/* Shared producer filter: whole agency or one person, kept in sync between
+   the Digest and Coaching tabs (Trends doesn't use it -- no per-producer
+   trend data exists yet). */
+function producerControlHtml() {
+  const opts = [`<option value=""${producerFilter ? "" : " selected"}>Whole Agency</option>`]
+    .concat(PRODUCER_ROSTER.map(p => `<option value="${p}"${p === producerFilter ? " selected" : ""}>${p}</option>`));
+  return `<div class="controls"><select id="prodsel" aria-label="Filter to producer">${opts.join("")}</select></div>`;
+}
+function wireProducerControl() {
+  const sel = $("#prodsel");
+  if (sel) sel.onchange = () => { producerFilter = sel.value; paint(); };
+}
+
 /* Resolve a preset into either a single ISO date (rendered via the normal
    rich single-day digest) or a [from, to] range (rendered via digestRange). */
 async function renderDigestRange() {
   const v = $("#view");
   const today = isoDate(azTodayDate());
+  const controls = rangeControlHtml() + producerControlHtml();
 
   if (rangeMode === "day") {
-    v.innerHTML = rangeControlHtml() + (cur ? digestPanel(cur) : '<div class="empty">Loading…</div>');
-    wireRangeControl();
+    v.innerHTML = controls + (cur ? digestPanel(cur, producerFilter) : '<div class="empty">Loading…</div>');
+    wireRangeControl(); wireProducerControl();
     return;
   }
   if (rangeMode === "today" || rangeMode === "yesterday") {
     const day = rangeMode === "today" ? today : addDays(today, -1);
-    v.innerHTML = rangeControlHtml() + '<div class="empty">Loading…</div>';
+    v.innerHTML = controls + '<div class="empty">Loading…</div>';
     let doc = null;
     try {
       const r = await fetch(`/api/days/${day}`, { cache: "no-store" });
       doc = r.ok ? await r.json() : null;
     } catch (_) {}
-    v.innerHTML = rangeControlHtml() + (doc ? digestPanel(doc) : `<div class="empty">No report for ${day}.</div>`);
-    wireRangeControl();
+    v.innerHTML = controls + (doc ? digestPanel(doc, producerFilter) : `<div class="empty">No report for ${day}.</div>`);
+    wireRangeControl(); wireProducerControl();
     return;
   }
 
-  v.innerHTML = rangeControlHtml() + '<div class="empty">Loading…</div>';
+  v.innerHTML = controls + '<div class="empty">Loading…</div>';
   let html;
   if (rangeMode === "folio") {
     const end = folioEndFor(today);
@@ -873,7 +893,7 @@ async function renderDigestRange() {
       try {
         const r = await fetch(`/api/folios/${end}`, { cache: "no-store" });
         const doc = r.ok ? await r.json() : null;
-        html = doc ? digestRange(doc, "Folio to Date", doc.folio_start ? `${doc.folio_start} → ${doc.folio_end}` : `through ${doc.folio_end}`)
+        html = doc ? digestRange(doc, "Folio to Date", doc.folio_start ? `${doc.folio_start} → ${doc.folio_end}` : `through ${doc.folio_end}`, producerFilter)
                    : `<div class="empty">No folio rollup yet for the folio ending ${end}. It is written by the nightly run.</div>`;
       } catch (_) { html = '<div class="empty">Could not load the folio rollup.</div>'; }
     }
@@ -882,7 +902,7 @@ async function renderDigestRange() {
     try {
       const r = await fetch(`/api/months/${month}`, { cache: "no-store" });
       const doc = r.ok ? await r.json() : null;
-      html = doc ? digestRange(doc, "Month to Date", doc.label)
+      html = doc ? digestRange(doc, "Month to Date", doc.label, producerFilter)
                  : '<div class="empty">No month-to-date rollup yet. It is written by the nightly run.</div>';
     } catch (_) { html = '<div class="empty">Could not load the month rollup.</div>'; }
   } else if (rangeMode === "ytd") {
@@ -895,24 +915,24 @@ async function renderDigestRange() {
         if (r.ok) docs.push(await r.json());
       } catch (_) {}
     }
-    html = docs.length ? digestRange(aggregateDocs(docs), "Year to Date", `${year}-01-01 → ${today}`)
+    html = docs.length ? digestRange(aggregateDocs(docs), "Year to Date", `${year}-01-01 → ${today}`, producerFilter)
                        : '<div class="empty">No months on file yet this year.</div>';
   } else if (rangeMode === "week") {
     const from = weekStart(today);
     const docs = await fetchRangeDocs(from, today);
-    html = digestRange(aggregateDocs(docs), "This Week", `${from} → ${today}`);
+    html = digestRange(aggregateDocs(docs), "This Week", `${from} → ${today}`, producerFilter);
   } else if (rangeMode === "custom") {
     if (!customFrom || !customTo) {
       html = '<div class="empty">Pick a start and end date, then Apply.</div>';
     } else {
       const [from, to] = customFrom <= customTo ? [customFrom, customTo] : [customTo, customFrom];
       const docs = await fetchRangeDocs(from, to);
-      html = docs.length ? digestRange(aggregateDocs(docs), "Custom Range", `${from} → ${to}`)
+      html = docs.length ? digestRange(aggregateDocs(docs), "Custom Range", `${from} → ${to}`, producerFilter)
                         : `<div class="empty">No reports in ${from} → ${to}.</div>`;
     }
   }
-  v.innerHTML = rangeControlHtml() + html;
-  wireRangeControl();
+  v.innerHTML = controls + html;
+  wireRangeControl(); wireProducerControl();
 }
 
 async function paint() {
@@ -922,18 +942,18 @@ async function paint() {
     await renderDigestRange();
   } else if (view === "coaching") {
     $("#topsub").textContent = cur ? (cur.label || cur.date) : "";
-    v.innerHTML = cur ? coachingPanel(cur, coachWho) : '<div class="empty">Loading…</div>';
-    const sel = $("#cwho");
-    if (sel) sel.onchange = () => { coachWho = sel.value; paint(); };
+    const controls = producerControlHtml();
+    v.innerHTML = controls + (cur ? coachingPanel(cur, producerFilter) : '<div class="empty">Loading…</div>');
+    wireProducerControl();
   } else {
     $("#topsub").textContent = "trends across every reporting day";
     v.innerHTML = '<div class="empty">Loading…</div>';
     v.innerHTML = await trendsPanel();
   }
-  paintRail();
 }
 
 async function loadDay(day) {
+  rangeMode = "day";
   $("#view").innerHTML = '<div class="empty">Loading…</div>';
   try {
     const r = await fetch(`/api/days/${day}`, { cache: "no-store" });
