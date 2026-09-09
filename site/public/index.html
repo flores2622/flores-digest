@@ -32,6 +32,14 @@
   --s5: #e87ba4;  /* No Outcome Logged  */
   --bar:           #2a78d6;
   --bar-track:     #ecebe7;
+  /* Chip/medal tokens, carried over from the pre-migration artifact's own
+     light/dark palette (it had these; the first port here flattened them
+     to single hardcoded values, which is why dark mode looked off --
+     dark-on-dark chip text, unreadable bronze/gold medal names). */
+  --good:   #0a6b0a; --goodbg: #e2f4e2; --goodbd: #b7e2b7;
+  --warn:   #8a6100; --warnbg: #fdf0d9; --warnbd: #e0c184;
+  --bad:    #a80000; --badbg:  #fce3e3; --badbd:  #f0b4b4;
+  --gold:   #9a6f00; --silver: #6f6f6f; --bronze: #9a5f2b;
 }
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
@@ -51,6 +59,10 @@
     --s5: #d55181;
     --bar:            #3987e5;
     --bar-track:      #2b2b27;
+    --good:   #7fd07f; --goodbg: #1c3320; --goodbd: #2f5a34;
+    --warn:   #e0b165; --warnbg: #33290f; --warnbd: #5c4a1c;
+    --bad:    #f0908e; --badbg:  #3a1a1a; --badbd:  #632c2c;
+    --gold:   #e3bf55; --silver: #c4c4c4; --bronze: #d79a63;
   }
 }
 :root[data-theme="dark"] {
@@ -70,17 +82,21 @@
   --s5: #d55181;
   --bar:            #3987e5;
   --bar-track:      #2b2b27;
+  --good:   #7fd07f; --goodbg: #1c3320; --goodbd: #2f5a34;
+  --warn:   #e0b165; --warnbg: #33290f; --warnbd: #5c4a1c;
+  --bad:    #f0908e; --badbg:  #3a1a1a; --badbd:  #632c2c;
+  --gold:   #e3bf55; --silver: #c4c4c4; --bronze: #d79a63;
 }
-/* Digest-email palette, verbatim (render_report.DOT / .tier-text-*). These
-   are the actual colours the sent email uses -- not chosen here -- so a
-   producer or a tier reads the same colour on the board as in their inbox.
+/* Digest-email tier colours, verbatim (render_report.DOT / .tier-text-*).
+   These are the actual colours the sent email uses -- not chosen here --
+   so a tier reads the same colour on the board as in their inbox.
    Deliberately NOT theme-varied: matching the digest is the point. */
 .tg { color: #0ca30c; font-weight: 600; }
 .ty { color: #eda100; font-weight: 600; }
 .tr { color: #e60000; font-weight: 600; }
-.n1 { color: #9a6f00; font-weight: 700; }
-.n2 { color: #6f6f6f; }
-.n3 { color: #9a5f2b; }
+.n1 { color: var(--gold); font-weight: 700; }
+.n2 { color: var(--silver); }
+.n3 { color: var(--bronze); }
 .mdl { font-size: 14px; line-height: 1; margin-left: 5px; }
 
 * { box-sizing: border-box; }
@@ -224,10 +240,10 @@ tbody tr:hover { background: color-mix(in oklab, var(--bar) 7%, transparent); }
 .gl li { font-size: 12px; line-height: 1.55; margin-bottom: 8px; padding-left: 14px; position: relative; }
 .gl li b { display: block; }
 .gl li:before { content: ""; position: absolute; left: 0; top: 6px; width: 5px; height: 5px; border-radius: 50%; }
-.gl.g li:before { background: var(--s1); }
-.gl.b li:before { background: var(--s4); }
+.gl.g li:before { background: var(--good); }
+.gl.b li:before { background: var(--bad); }
 .colh { font-size: 9.5px; text-transform: uppercase; letter-spacing: 0.07em; font-weight: 600; padding-bottom: 6px; margin-bottom: 9px; border-bottom: 2px solid var(--border-strong); }
-.colh.g { color: #0ca30c; } .colh.b { color: #e60000; }
+.colh.g { color: var(--good); } .colh.b { color: var(--bad); }
 details.sc { margin-top: 11px; border: 1px solid var(--border); border-radius: 6px; background: var(--surface); }
 details.sc > summary { cursor: pointer; list-style: none; padding: 9px 12px; font-size: 10.5px; font-weight: 600; color: var(--text-secondary); display: flex; justify-content: space-between; gap: 10px; align-items: center; }
 details.sc > summary::-webkit-details-marker { display: none; }
@@ -250,12 +266,12 @@ details.sc .scb { padding: 0 12px 12px; }
 .cat { display: inline-block; font-size: 9.5px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.03em; padding: 2px 8px; border-radius: 10px; white-space: nowrap; color: #16150f; }
 .cat-q { background: #9fc2ed; } .cat-sold { background: #008300; color: #fff; } .cat-live { background: #eda100; }
 .cat-dead { background: #f0e800; }
-.cat-fsd { background: var(--surface-raised); color: #0ca30c; border: 1px solid #0ca30c; }
-.flag { display: inline-block; font-size: 10px; font-weight: 500; padding: 1px 6px; border-radius: 3px; background: color-mix(in oklab, #eda100 18%, var(--surface)); color: #8a6100; margin: 0 4px 3px 0; }
+.cat-fsd { background: var(--surface-raised); color: var(--good); border: 1px solid var(--good); }
+.flag { display: inline-block; font-size: 10px; font-weight: 500; padding: 1px 6px; border-radius: 3px; background: var(--warnbg); color: var(--warn); margin: 0 4px 3px 0; }
 .chip { display: inline-block; font-size: 9.5px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em; padding: 2px 7px; border-radius: 3px; white-space: nowrap; }
-.c-g { background: color-mix(in oklab, #0ca30c 18%, var(--surface)); color: #0a6b0a; border: 1px solid #b7e2b7; }
-.c-w { background: color-mix(in oklab, #eda100 18%, var(--surface)); color: #8a6100; border: 1px solid #e0c184; }
-.c-r { background: color-mix(in oklab, #e60000 15%, var(--surface)); color: #a80000; border: 1px solid #f0b4b4; }
+.c-g { background: var(--goodbg); color: var(--good); border: 1px solid var(--goodbd); }
+.c-w { background: var(--warnbg); color: var(--warn); border: 1px solid var(--warnbd); }
+.c-r { background: var(--badbg); color: var(--bad); border: 1px solid var(--badbd); }
 .c-n { background: var(--surface); color: var(--text-muted); border: 1px solid var(--border-strong); }
 </style>
 </head>
@@ -643,7 +659,7 @@ function scorecard(sc) {
       <td style="color:var(--text-secondary)">${e[1] || ""}</td></tr>`;
   });
   const head = [n.s && n.s + " strong", n.w && n.w + " weak", n.m && n.m + " missing", n.x && n.x + " not scored"].filter(Boolean).join(" · ");
-  const dotc = { s: "#0ca30c", w: "#eda100", m: "#e60000", x: "var(--border-strong)" };
+  const dotc = { s: "var(--good)", w: "var(--warn)", m: "var(--bad)", x: "var(--border-strong)" };
   const pips = ["s", "w", "m", "x"].flatMap(k => Array(n[k]).fill(`<span class="pip" style="background:${dotc[k]}"></span>`)).join("");
   return `<details class="sc"><summary><span>Scorecard — ${head}</span><span class="pips">${pips}</span></summary>
     <div class="scb"><table class="askt">${rows}</table></div></details>`;
@@ -664,7 +680,7 @@ function card(c) {
   const bdg = v => v === null || v === undefined ? `<span class="chip c-n">n/a</span>` : (v ? `<span class="chip c-g">yes</span>` : `<span class="chip c-r">no</span>`);
   const spine = (c.spine && c.spine.length) ? `<div class="blk"><div class="bl">How the call went</div><div class="tl">${
     c.spine.map(([t, m, h, s], i) => `<div class="tlt">${t}</div>
-      <div class="tlk"><span class="dt" style="background:${{ g: "#0ca30c", y: "#eda100", r: "#e60000", n: "var(--border-strong)" }[m]}"></span>
+      <div class="tlk"><span class="dt" style="background:${{ g: "var(--good)", y: "var(--warn)", r: "var(--bad)", n: "var(--border-strong)" }[m]}"></span>
       ${i < c.spine.length - 1 ? `<span class="ln" style="height:100%"></span>` : ""}</div>
       <div class="tlx"><b>${h}</b>${s ? `<span>${s}</span>` : ""}</div>`).join("")}</div></div>` : "";
   return `<div class="ccard">
@@ -825,10 +841,16 @@ function rangeControlHtml() {
       `<option value="${d}"${cur && d === cur.date ? " selected" : ""}>${
         new Date(d + "T12:00:00").toLocaleDateString(undefined, { weekday: "short", month: "short", day: "numeric" })}</option>`).join("")}</select>`;
   } else if (rangeMode === "custom") {
+    // Default to the most recent day that actually has a report, not
+    // "today" -- today usually has no report yet (nightly run hasn't
+    // happened, or it's a weekend), so defaulting both ends to today made
+    // a blind "Apply" click land on an empty range that read as broken.
+    const latest = DAYS[0] || today;
+    const defaultFrom = DAYS[6] || DAYS[DAYS.length - 1] || latest;
     extra = `
-    <input type="date" id="rfrom" value="${customFrom || today}" max="${today}">
+    <input type="date" id="rfrom" value="${customFrom || defaultFrom}" max="${today}">
     <span style="color:var(--text-muted);font-size:12px">to</span>
-    <input type="date" id="rto" value="${customTo || today}" max="${today}">
+    <input type="date" id="rto" value="${customTo || latest}" max="${today}">
     <button class="ghost" id="rapply" type="button">Apply</button>`;
   }
   return `<div class="controls"><select id="rangesel" aria-label="Digest range">${opts}</select>${extra}</div>`;
