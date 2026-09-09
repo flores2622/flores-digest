@@ -91,13 +91,23 @@ def _client():
     ), s["R2_BUCKET"]
 
 
-def build(day):
+def build(day, log=print):
     """The day document. Identical shape to what the artifact board was fed.
 
-    If `coaching/cards_<day>.py` exists it is used instead, exactly as before:
-    it builds the same document plus the authored per-call coaching cards. The
-    cards are AUTHORED, never generated -- an invented coaching card is worse
-    than an empty tab, because someone will coach a producer on it.
+    If `coaching/cards_<day>.py` exists it wins outright, exactly as before:
+    it builds the whole document itself, hand-authored cards included, and
+    this function never touches it. That override predates automated
+    generation and stays for exactly the case it was built for -- forcing a
+    specific day's cards back to something hand-written.
+
+    Otherwise `coaching_cards.build()` generates the cards automatically and
+    they are attached here (Frank, 2026-09-09: "the nightly scheduled run
+    generates those coaching cards, and puts them only on the domain, not the
+    email" -- this function feeds the board's R2 document and nothing else;
+    render_report.py, the emailed digest, never calls it). Generation failing
+    for any reason -- no API key, no transcripts, a bug -- must never fail the
+    whole day's publish, so it is caught here and the day goes out without a
+    Coaching tab rather than not going out at all.
     """
     cards = ROOT / f"coaching/cards_{day}.py"
     if cards.exists():
@@ -106,7 +116,21 @@ def build(day):
         mod = importlib.util.module_from_spec(spec)
         spec.loader.exec_module(mod)
         return mod.build(day)
-    return board_payload.build(day)
+
+    doc = board_payload.build(day)
+    try:
+        import coaching_cards
+        generated = coaching_cards.build(day, log=log)
+        if generated:
+            doc["calls"] = generated
+            doc["scan"] = coaching_cards.scan(generated)
+            objc = coaching_cards.objcats(generated)
+            if objc:
+                doc["objcats"] = objc
+    except Exception as e:
+        log(f"  coaching cards: generation failed ({type(e).__name__}: {e}) "
+            f"-- publishing {day} without them")
+    return doc
 
 
 def _policy_streaks(day, producers, cli, bucket, log=print, lookback=90):
@@ -200,7 +224,7 @@ def publish(day, doc=None, log=print):
     for the wrapper. Raising here is correct for a hand run, where a traceback
     is what you want.
     """
-    doc = doc if doc is not None else build(day)
+    doc = doc if doc is not None else build(day, log=log)
     cli, bucket = _client()
     _apply_policy_streak(doc, cli, bucket, log=log)
     body = json.dumps(doc, default=str).encode()
