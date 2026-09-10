@@ -119,6 +119,16 @@
 .pname { width: 130px; flex-shrink: 0; font-size: 13px; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .ptrack { flex: 1; height: 10px; border-radius: 5px; background: var(--surface); border: 1px solid var(--border-strong); overflow: hidden; }
 .pfill { height: 100%; border-radius: 5px; }
+.sbar { display: flex; align-items: center; gap: 8px; margin: 5px 0; }
+.sbl { width: 100px; font-size: 11.5px; color: var(--text-secondary); flex-shrink: 0; }
+.sbv { width: 34px; text-align: right; font-size: 12.5px; font-weight: 600; flex-shrink: 0; }
+.orow { margin-bottom: 12px; }
+.orow-head { display: flex; justify-content: space-between; align-items: center; font-size: 12.5px; margin-bottom: 4px; }
+.on { color: var(--text-muted); }
+.otrack { display: flex; height: 14px; border-radius: 4px; overflow: hidden; background: var(--bar-track); }
+.ogseg { height: 100%; }
+.oleg { display: flex; flex-wrap: wrap; gap: 14px; margin-top: 10px; font-size: 11.5px; color: var(--text-secondary); }
+.oleg-item { display: flex; align-items: center; gap: 5px; }
 
 * { box-sizing: border-box; }
 body {
@@ -561,6 +571,119 @@ function winsLossesHtml(d, who) {
   return `<div class="sect"><h2>Wins and Losses</h2>${says}${objs}</div>`;
 }
 
+/* The next four sections mirror the customized email digest's own panels
+   (Frank, 2026-09-10) -- Task Completion Rate, Call Outcome Breakdown,
+   Utilization and Efficiency, and Coaching & Call Quality. All four read
+   data board_payload.py already computed (d.totals.tasks/producers[].tasks,
+   d.outcomes, producers[].util*, producers[].coach) but that had no
+   frontend renderer at all until now -- board_payload.outcome_breakdown's
+   own docstring already flagged the Outcomes figures as silently unused. */
+
+function taskCompletionHtml(d, who) {
+  const byName = Object.fromEntries((d.producers || []).map(p => [p.name, p]));
+  const focus = who ? byName[who] : null;
+  const TI = { green: "tg", yellow: "ty", red: "tr" };
+  const tc = (name) => TI[((d.tiers || {})[name] || {})["tasks"]] || "";
+  const list = (focus ? [focus] : (d.producers || [])).filter(p => p.tasks && p.tasks.total != null);
+  if (!list.length) return "";
+  const rows = list.map(p => { const t = p.tasks; const pct = t.pct ?? 0;
+    return `<tr><td><span class="who"><span class="pd" style="background:${DOT[p.name] || "#8a877f"}"></span>${p.name}</span></td>
+      <td class="num">${t.total ?? 0}</td><td class="num">${t.completed ?? 0}</td>
+      <td class="num ${tc(p.name)}">${(+pct).toFixed(1)}%</td></tr>`; }).join("");
+  const T = (d.totals || {}).tasks || {};
+  const tot = focus || T.total == null ? "" : `<tr class="tot"><td><span class="who">
+    <span class="pd" style="background:${TEAM_DOT}"></span>Team</span></td>
+    <td class="num">${T.total ?? 0}</td><td class="num">${T.completed ?? 0}</td>
+    <td class="num ${TI[((d.tiers || {})["team"] || {})["tasks"]] || ""}">${(+(T.pct ?? 0)).toFixed(1)}%</td></tr>`;
+  return `<div class="sect"><h2>Task Completion Rate</h2>
+   <p class="sd">AgencyZoom, per producer.</p>
+   <div class="scroll"><table><thead><tr><th>Producer</th><th class="num">Due</th>
+   <th class="num">Done</th><th class="num">Rate</th></tr></thead>
+   <tbody>${rows}${tot}</tbody></table></div></div>`;
+}
+
+const OUTCOME_SEGMENTS = [["Live Contact", "--s1"], ["Voicemail", "--s2"], ["Screener", "--s3"],
+  ["No Answer", "--s4"], ["No Outcome Logged", "--s5"]];
+function outcomeBreakdownHtml(d, who) {
+  const outcomes = d.outcomes || {};
+  const byName = Object.fromEntries((d.producers || []).map(p => [p.name, p]));
+  const names = (who ? [who] : Object.keys(outcomes)).filter(n => byName[n]);
+  const withVol = names.map(n => ({ name: n, o: outcomes[n] || {}, vol: (byName[n] || {}).dials || 0 }))
+    .filter(x => Object.values(x.o).some(v => v));
+  if (!withVol.length) return "";
+  withVol.sort((a, b) => b.vol - a.vol);
+  const busiest = Math.max(...withVol.map(x => x.vol), 1);
+  const rows = withVol.map(({ name, o, vol }) => {
+    const total = vol || 1;
+    const segs = OUTCOME_SEGMENTS.map(([label, cvar]) => {
+      const n = o[label] || 0;
+      if (!n) return "";
+      return `<span class="ogseg" style="width:${(n / total * 100).toFixed(2)}%;background:var(${cvar})" title="${label}: ${n}"></span>`;
+    }).join("");
+    return `<div class="orow"><div class="orow-head">
+      <span class="who"><span class="pd" style="background:${DOT[name] || "#8a877f"}"></span>${name}</span>
+      <span class="on">${vol} new-business dial${vol === 1 ? "" : "s"}</span></div>
+      <div style="width:${(vol / busiest * 100).toFixed(2)}%"><div class="otrack">${segs}</div></div></div>`;
+  }).join("");
+  const legend = OUTCOME_SEGMENTS.map(([label, cvar]) =>
+    `<span class="oleg-item"><span class="pd" style="background:var(${cvar})"></span>${label}</span>`).join("");
+  return `<div class="sect"><h2>Call Outcome Breakdown</h2>
+   <p class="sd">Behind the Contact Rate numbers — sorted by call volume, bars scaled to the busiest producer.</p>
+   ${rows}<div class="oleg">${legend}</div></div>`;
+}
+
+function utilizationHtml(d, who) {
+  const byName = Object.fromEntries((d.producers || []).map(p => [p.name, p]));
+  const focus = who ? byName[who] : null;
+  const TI = { green: "tg", yellow: "ty", red: "tr" };
+  const tc = (name) => TI[((d.tiers || {})[name] || {})["util"]] || "";
+  const list = (focus ? [focus] : (d.producers || [])).filter(p => p.util != null);
+  if (!list.length) return "";
+  const cards = list.map(p => `<div class="tile">
+    <div class="k">${p.name}</div><div class="v ${tc(p.name)}">${p.util}%</div>
+    <div class="n">${p.util_prod || "—"} productive / ${p.util_total || "—"} tracked</div></div>`).join("");
+  const T = d.totals || {};
+  const teamCard = focus || T.util == null ? "" : `<div class="tile" style="border-color:var(--border-strong)">
+    <div class="k">Team</div><div class="v ${TI[((d.tiers || {})["team"] || {})["util"]] || ""}">${T.util}%</div>
+    <div class="n">weighted</div></div>`;
+  return `<div class="sect"><h2>Utilization and Efficiency</h2>
+   <p class="sd">Tracked time in Insightful, per producer.</p>
+   <div class="tiles">${cards}${teamCard}</div></div>`;
+}
+
+// Must mirror digest_config.COACH_BAR_RANGES -- team-relative extremes over
+// the trailing window, not a share of the 0-800 scale (CLAUDE.md's Coach AI
+// section). Not exposed in the JSON payload since it's a fixed, manually-
+// curated constant, not per-day data.
+const COACH_BAR_RANGES = { "Avg Call Score": [38, 251], "Avg Sentiment": [11, 43], "Role Play": [58, 87] };
+function coachQualityHtml(d, who) {
+  const byName = Object.fromEntries((d.producers || []).map(p => [p.name, p]));
+  const focus = who ? byName[who] : null;
+  const list = (focus ? [focus] : (d.producers || []))
+    .filter(p => p.coach && (p.coach.calls || p.coach.score || p.coach.roleplay));
+  if (!list.length) return "";
+  const bar = (color, label, val) => {
+    const [lo, hi] = COACH_BAR_RANGES[label];
+    const pct = hi > lo ? Math.max(0, Math.min(100, (val - lo) / (hi - lo) * 100)) : 0;
+    return `<div class="sbar"><div class="sbl">${label}</div>
+      <div class="ptrack"><div class="pfill" style="width:${pct.toFixed(2)}%;background:${color}"></div></div>
+      <div class="sbv">${val ?? "—"}</div></div>`;
+  };
+  const cards = list.map(p => { const c = p.coach; const color = DOT[p.name] || "#8a877f";
+    return `<div class="tile" style="text-align:left">
+    <div class="who" style="margin-bottom:8px">
+      <span class="pd" style="background:${color}"></span>${p.name.split(" ")[0]}</div>
+    ${bar(color, "Avg Call Score", c.score || 0)}
+    ${bar(color, "Avg Sentiment", c.sentiment || 0)}
+    ${bar(color, "Role Play", c.roleplay || 0)}
+    </div>`; }).join("");
+  return `<div class="sect"><h2>Coaching &amp; Call Quality</h2>
+   <p class="sd">Coach AI (TRAQ). Avg Call Score and Avg Sentiment are excluded from the leaderboard — TRAQ
+   scores a voicemail as a call (~3 against a live call's ~292), so both track who answered more than how
+   the call went.</p>
+   <div class="tiles" style="grid-template-columns:repeat(auto-fill,minmax(210px,1fr))">${cards}</div></div>`;
+}
+
 function speedPanel(d, who) {
   const s = d.speed_to_dial;
   if (!s) return `<div class="sect"><h2>Speed to Dial</h2>
@@ -616,9 +739,19 @@ function auditPanel(d, who) {
 }
 
 function digestPanel(d, who) {
+  // Order follows the customized email digest (Frank, 2026-09-10): Task
+  // Completion Rate, Recontact Struggle, [Team Leaderboard already sits at
+  // the top of digestDay -- see teamLeaderboardHtml], Call Outcome
+  // Breakdown, Speed to Dial, Utilization and Efficiency, Coaching & Call
+  // Quality. Task Completion Audit stays last -- it's the OTHER, ops-only
+  // email's content, not part of the Sales Digest proper.
   return `${digestDay(d, who)}
-  ${speedPanel(d, who)}
+  ${taskCompletionHtml(d, who)}
   ${recontactPanel(d, who)}
+  ${outcomeBreakdownHtml(d, who)}
+  ${speedPanel(d, who)}
+  ${utilizationHtml(d, who)}
+  ${coachQualityHtml(d, who)}
   ${auditPanel(d, who)}`;
 }
 
