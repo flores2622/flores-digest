@@ -233,7 +233,13 @@ def _finish_card(d, producer, r, raw_dials):
     cat, catc = _category(r)
     return {
         "lead": r.get("lead") or "",
-        "who": producer.split()[0],
+        # Full name, not first name: coachingPanel() (site/public/index.html)
+        # groups cards by matching `who` against its own `order` list of full
+        # producer names -- a first-name-only value matches nothing, so every
+        # card silently fails the filter and the tab renders as if there were
+        # no cards at all (found 2026-09-10, 18 real cards on 2026-09-09 all
+        # invisible this way, first ever real day the automated pipeline ran).
+        "who": producer,
         "time": _call_time(raw_dials, producer, r["number"]),
         "dur": _dur(r.get("seconds")),
         "lang": str(d.get("lang") or "").strip() or "English",

@@ -346,7 +346,7 @@ const PRODUCER_ROSTER = ["Crystal Mango", "Lorena Gonzalez", "Mike Olvera", "Cor
 let producerFilter = "";
 // Digest-tab range selector. "day" shows a picked day's full digest; every
 // other value renders an aggregate via digestRange().
-let rangeMode = "day";  // day | today | yesterday | week | mtd | ytd | folio | custom
+let rangeMode = "day";  // day | yesterday | week | mtd | ytd | folio | custom
 let customFrom = "", customTo = "";
 
 /* ---- tooltip -------------------------------------------------------------- */
@@ -842,7 +842,14 @@ async function trendsPanel() {
 /* ---- shell / paint --------------------------------------------------------- */
 function $$(s) { return Array.from(document.querySelectorAll(s)); }
 
-const RANGE_LABELS = { day: "Day", today: "Today", yesterday: "Yesterday",
+// "Today" was removed 2026-09-10: it computed the date from the viewer's
+// own device clock (azTodayDate()), which does not reliably line up with
+// the last Arizona business day the nightly run actually built -- it read
+// as broken ("No report for <date>") whenever a viewer's clock or timezone
+// put "today" a day ahead of the last real reporting day. "Day" already
+// covers this correctly: its dropdown lists only days DAYS actually has a
+// report for, so it can't select a day that doesn't exist yet.
+const RANGE_LABELS = { day: "Day", yesterday: "Yesterday",
   week: "This Week", mtd: "Month to Date", ytd: "Year to Date",
   folio: "Folio to Date", custom: "Custom range…" };
 
@@ -907,8 +914,8 @@ async function renderDigestRange() {
     wireRangeControl(); wireProducerControl();
     return;
   }
-  if (rangeMode === "today" || rangeMode === "yesterday") {
-    const day = rangeMode === "today" ? today : addDays(today, -1);
+  if (rangeMode === "yesterday") {
+    const day = addDays(today, -1);
     v.innerHTML = controls + '<div class="empty">Loading…</div>';
     let doc = null;
     try {
