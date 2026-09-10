@@ -146,6 +146,12 @@ def _producer_tiers(p):
     }
     if p.get("util") is not None:
         out["util"] = cfg.tier("utilization_pct", p["util"])
+    # daily.py's coach blank-fill sets 0, not None, when no Coach AI figure
+    # was recorded for this producer today -- fold that back to None so
+    # tier()'s existing None->red rule gives the red 0 Frank asked for
+    # (2026-09-10), rather than the generic formula's yellow-at-0.
+    rp = (p.get("coach") or {}).get("roleplay") or None
+    out["roleplay"] = cfg.tier("roleplay_score", rp)
     return out
 
 
@@ -172,6 +178,12 @@ def _team_tiers(totals, producers):
     }
     if totals.get("util") is not None:
         out["util"] = cfg.tier("utilization_pct", totals["util"])
+    # Team figure is the mean of producers who actually have a recorded
+    # (non-zero) Coach AI role-play score today; if nobody does, that's a
+    # team-wide red 0 same as the per-producer case above.
+    recorded = [v for v in ((p.get("coach") or {}).get("roleplay") for p in producers) if v]
+    team_rp = (sum(recorded) / len(recorded)) if recorded else None
+    out["roleplay"] = cfg.tier("roleplay_score", team_rp)
     return out
 
 

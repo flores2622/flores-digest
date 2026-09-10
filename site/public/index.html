@@ -306,6 +306,9 @@ details.sc .scb { padding: 0 12px 12px; }
 .rprow { display: flex; gap: 8px; }
 .rprow input[type=text] { flex: 1; padding: 8px 10px; border-radius: 6px; border: 1px solid var(--border-strong); background: var(--surface); color: var(--text-primary); font-size: 13px; }
 .rpactions { display: flex; gap: 8px; margin-top: 10px; flex-wrap: wrap; }
+.rpmic { border: 1px solid var(--border-strong); border-radius: 6px; background: var(--surface); color: var(--text-primary); font-size: 13px; padding: 8px 14px; cursor: pointer; white-space: nowrap; }
+.rpmic.listening { background: var(--bad); color: #fff; border-color: var(--bad); animation: rppulse 1.1s ease-in-out infinite; }
+@keyframes rppulse { 0%,100% { opacity: 1; } 50% { opacity: .6; } }
 .gradecard { border: 1px solid var(--border-strong); border-radius: 10px; padding: 14px 16px; margin-top: 14px; max-width: 640px; background: var(--surface-raised); }
 .gradecard table { width: 100%; border-collapse: collapse; margin: 8px 0; }
 .gradecard td { padding: 5px 0; font-size: 12.5px; vertical-align: top; }
@@ -449,7 +452,7 @@ function digestDay(d, who) {
     <td><span class="who"><span class="pd" style="background:${DOT[p.name] || "#8a877f"}"></span><span${
        !focus && i < 3 ? ` class="${NCL[i]}"` : ""}>${p.name}</span>${
        !focus && i < 3 ? `<span class="mdl" role="img" aria-label="${["1st", "2nd", "3rd"][i]}">${MEDAL[i]}</span>` : ""}</span></td>
-    ${hasRoleplay ? `<td class="num">${(p.coach || {}).roleplay ?? "—"}</td>` : ""}
+    ${hasRoleplay ? `<td class="num ${tc(p.name, "roleplay")}">${(p.coach || {}).roleplay ?? "—"}</td>` : ""}
     <td class="num ${tc(p.name, "dials")}">${p.dials ?? 0}</td>
     <td class="num ${tc(p.name, "talk")}">${hhmm(p.talk)}</td>
     <td class="num ${tc(p.name, "rate")}">${p.rate ?? 0}% <span style="opacity:.72">(${p.live ?? 0})</span></td>
@@ -656,8 +659,18 @@ function digestRange(agg, label, sub, who) {
 
 /* ---- date helpers: Arizona is always UTC-7, never DST --------------------- */
 function azTodayDate() {
-  const now = new Date();
-  return new Date(now.getTime() + (now.getTimezoneOffset() * 60000) - 7 * 3600000);
+  // Deliberately ignores the viewer's own device timezone. The old formula
+  // (now.getTime() + now.getTimezoneOffset()*60000 - 7*3600000) only came out
+  // right when the viewer's device was set to UTC+0 -- getTime() is already
+  // an absolute instant, so adding the device's own offset just mis-shifts
+  // it by that amount for everyone else. For a device actually set to
+  // Arizona (offset +420, no DST) the two terms cancel exactly, so it
+  // returned the raw instant unshifted -- correct only until the true UTC
+  // calendar day rolls over while Arizona's hasn't (any time from 5pm to
+  // midnight AZ), at which point it silently returned TOMORROW's date.
+  // Arizona is always UTC-7, never DST -- shift the absolute instant
+  // directly and nothing about the viewer's own clock matters.
+  return new Date(Date.now() - 7 * 3600000);
 }
 function isoDate(d) { return d.toISOString().slice(0, 10); }
 function addDays(iso, n) { const d = new Date(iso + "T12:00:00Z"); d.setUTCDate(d.getUTCDate() + n); return isoDate(d); }
@@ -845,20 +858,72 @@ let rpPersonaKey = "";
 let rpHistory = [];        // [{role:"producer"|"prospect", content}]
 let rpGrade = null;
 let rpVoiceOn = true;
+let rpAutoListen = true;   // continuous two-way voice: re-arm the mic once the prospect finishes talking
 let rpBusy = false;
 let rpHistoryCache = [];   // past sessions for the selected producer
+let rpListening = false;
+let rpRecognition = null;
 
 function rpPersona(key) { return RP_PERSONAS.find(p => p.key === key); }
 
-function speakProspect(text) {
-  if (!rpVoiceOn || !("speechSynthesis" in window)) return;
+function rpSpeechSupported() { return !!(window.SpeechRecognition || window.webkitSpeechRecognition); }
+
+// onDone fires once the utterance finishes (or fails/is skipped), so a
+// continuous voice conversation can re-arm the mic right after the prospect
+// stops talking instead of the producer having to click Talk every turn.
+function speakProspect(text, onDone) {
+  if (!rpVoiceOn || !("speechSynthesis" in window)) { if (onDone) onDone(); return; }
   try {
     window.speechSynthesis.cancel();   // don't stack replies if one is still talking
     const u = new SpeechSynthesisUtterance(text);
     const p = rpPersona(rpPersonaKey);
     if (p) { u.rate = p.rate; u.pitch = p.pitch; }
+    if (onDone) { u.onend = onDone; u.onerror = onDone; }
     window.speechSynthesis.speak(u);
-  } catch (_) {}
+  } catch (_) { if (onDone) onDone(); }
+}
+
+function rpUpdateMicUI() {
+  const mic = document.getElementById("rpMic");
+  if (!mic) return;
+  mic.classList.toggle("listening", rpListening);
+  mic.textContent = rpListening ? "● Listening… (tap to stop)" : "🎙 Talk";
+}
+
+function rpStopListening() {
+  if (rpRecognition) { try { rpRecognition.stop(); } catch (_) {} }
+  rpListening = false;
+  rpUpdateMicUI();
+}
+
+function rpStartListening() {
+  if (rpBusy || rpListening || !rpSpeechSupported()) return;
+  const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+  const rec = new SR();
+  rec.lang = "en-US";
+  rec.interimResults = true;
+  rec.continuous = false;
+  rec.onresult = (e) => {
+    let finalText = "", interim = "";
+    for (let i = e.resultIndex; i < e.results.length; i++) {
+      const r = e.results[i];
+      if (r.isFinal) finalText += r[0].transcript; else interim += r[0].transcript;
+    }
+    const input = document.getElementById("rpInput");
+    if (input) input.value = (finalText || interim).trim();
+    if (finalText.trim()) {
+      const text = finalText.trim();
+      rpStopListening();
+      if (input) input.value = "";
+      rpSendTurn(text);
+    }
+  };
+  rec.onerror = () => { rpListening = false; rpUpdateMicUI(); };
+  rec.onend = () => { rpListening = false; rpUpdateMicUI(); };
+  rpRecognition = rec;
+  rpListening = true;
+  rpUpdateMicUI();
+  try { rec.start(); } catch (_) { rpListening = false; rpUpdateMicUI(); }
 }
 
 async function rpFetchHistory() {
@@ -928,12 +993,16 @@ function roleplayPanel() {
     <div class="rpchat">
       <div class="rpmsgs" id="rpMsgs">${msgs}</div>
       <div class="rprow">
-        <input type="text" id="rpInput" placeholder="What do you say?" ${rpBusy ? "disabled" : ""} autocomplete="off">
+        ${rpSpeechSupported() ? `<button class="rpmic" id="rpMic" type="button" ${rpBusy ? "disabled" : ""}>🎙 Talk</button>` : ""}
+        <input type="text" id="rpInput" placeholder="${rpSpeechSupported() ? "or type instead" : "What do you say?"}" ${rpBusy ? "disabled" : ""} autocomplete="off">
         <button id="rpSend" type="button" ${rpBusy ? "disabled" : ""}>${rpBusy ? "…" : "Send"}</button>
       </div>
+      ${rpSpeechSupported() ? "" : `<p class="sd" style="margin:6px 0 0">This browser can't listen for speech input -- try Chrome or Edge. Replies still speak aloud below; type your side for now.</p>`}
       <div class="rpactions">
         <label style="font-size:12px;display:flex;align-items:center;gap:5px">
           <input type="checkbox" id="rpVoice" ${rpVoiceOn ? "checked" : ""}> speak replies aloud</label>
+        ${rpSpeechSupported() ? `<label style="font-size:12px;display:flex;align-items:center;gap:5px">
+          <input type="checkbox" id="rpAutoListen" ${rpAutoListen ? "checked" : ""}> keep listening after each reply (hands-free)</label>` : ""}
         <button class="ghost" id="rpGrade" type="button" ${rpHistory.length ? "" : "disabled"}>Grade my attempt</button>
       </div>
     </div>
@@ -969,7 +1038,9 @@ async function rpSendTurn(text) {
     const body = await r.json();
     if (r.ok && body.reply) {
       rpHistory.push({ role: "prospect", content: body.reply });
-      speakProspect(body.reply);
+      speakProspect(body.reply, () => {
+        if (view === "roleplay" && rpAutoListen && rpPersonaKey && !rpGrade) rpStartListening();
+      });
     } else {
       rpHistory.push({ role: "prospect", content: `[could not reach the practice partner: ${body.error || r.status}]` });
     }
@@ -1005,6 +1076,8 @@ function wireRoleplayPanel() {
   // ungraded just because the producer picked a new scenario or switched
   // who's practicing, rather than clicking "Grade my attempt" themselves.
   const gradeThenReset = async (reset) => {
+    rpStopListening();
+    if ("speechSynthesis" in window) window.speechSynthesis.cancel();
     if (rpHistory.length && !rpGrade) await rpSubmitGrade();
     reset();
     document.getElementById("view").innerHTML = roleplayPanel();
@@ -1030,6 +1103,7 @@ function wireRoleplayPanel() {
     rpProducer = ""; rpPersonaKey = ""; rpHistory = []; rpGrade = null;
   });
   document.querySelectorAll(".pcard").forEach(el => el.onclick = () => {
+    rpStopListening();
     rpPersonaKey = el.dataset.persona; rpHistory = []; rpGrade = null;
     document.getElementById("view").innerHTML = roleplayPanel();
     wireRoleplayPanel();
@@ -1037,21 +1111,29 @@ function wireRoleplayPanel() {
   const newScenario = document.getElementById("rpNewScenario");
   if (newScenario) newScenario.onclick = () => gradeThenReset(() => {});
   const voice = document.getElementById("rpVoice");
-  if (voice) voice.onchange = () => { rpVoiceOn = voice.checked; };
+  if (voice) voice.onchange = () => {
+    rpVoiceOn = voice.checked;
+    if (!rpVoiceOn && "speechSynthesis" in window) window.speechSynthesis.cancel();
+  };
+  const autoListen = document.getElementById("rpAutoListen");
+  if (autoListen) autoListen.onchange = () => { rpAutoListen = autoListen.checked; };
   const grade = document.getElementById("rpGrade");
-  if (grade) grade.onclick = rpSubmitGrade;
+  if (grade) grade.onclick = () => { rpStopListening(); rpSubmitGrade(); };
+  const mic = document.getElementById("rpMic");
+  if (mic) mic.onclick = () => { rpListening ? rpStopListening() : rpStartListening(); };
   const send = document.getElementById("rpSend");
   const input = document.getElementById("rpInput");
   const submit = () => {
     const text = (input.value || "").trim();
     if (!text || rpBusy) return;
+    rpStopListening();
     input.value = "";
     rpSendTurn(text);
   };
   if (send) send.onclick = submit;
   if (input) {
     input.onkeydown = (e) => { if (e.key === "Enter") submit(); };
-    input.focus();
+    if (!rpSpeechSupported()) input.focus();
   }
 }
 
@@ -1337,8 +1419,10 @@ async function loadDay(day) {
 }
 
 $$(".tab").forEach(t => t.onclick = async () => {
-  if (view === "roleplay" && t.dataset.v !== "roleplay" && rpHistory.length && !rpGrade) {
-    await rpSubmitGrade();   // leaving the tab shouldn't leave a session ungraded
+  if (view === "roleplay" && t.dataset.v !== "roleplay") {
+    rpStopListening();
+    if ("speechSynthesis" in window) window.speechSynthesis.cancel();
+    if (rpHistory.length && !rpGrade) await rpSubmitGrade();   // leaving the tab shouldn't leave a session ungraded
   }
   $$(".tab").forEach(x => x.setAttribute("aria-selected", String(x === t)));
   view = t.dataset.v; paint();
