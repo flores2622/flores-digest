@@ -18,13 +18,21 @@ This script does NOT build or send anything. It only fills the cache.
 
 PERSISTENCE. Scheduled runs get a COLD container every time -- measured
 2026-09-01, a marker written by one run was gone an hour later and uptime read
-0 minutes. data/ does NOT survive on its own, so this script carries the one
-file that matters, data/transcripts_<day>.json (32 KB), in the repository: it
-pulls at the start of a run and commits at the end.
+0 minutes. data/ does NOT survive on its own, so `daily.transcribe_day()` and
+`daily.pull_sources()` sync through `r2_cache` (see that module's docstring):
+whatever an earlier run already downloaded and transcribed is pulled down
+before this run does any work, and whatever this run produces is pushed back
+up when it finishes, recordings included. A run that finds nothing cached
+just does the full day's work, same as the first run ever has to.
 
-If the commit cannot be pushed the run still completes, but every later run
-that day re-downloads the whole day. It says so loudly rather than quietly
-burning the RingCentral media quota.
+2026-09-10: this used to carry only data/transcripts_<day>.json by force-
+committing it to the repository (32 KB, pulled and committed by hand here).
+That covered the transcript text but not the recordings themselves, so a
+later stage needing the actual audio (call_summary.py's fulltx read) still
+depended on running in the same container that downloaded it. r2_cache
+covers both in the same place the finished digest and Role Play sessions
+already live (the flores-board R2 bucket), so this file no longer touches
+git at all.
 
 Inbound calls are deliberately NOT screened here -- see transcribe_day's
 outbound_only. Screening them needs the whole AgencyZoom corpus and a 31-day
@@ -36,60 +44,13 @@ import argparse
 import datetime as dt
 import json
 import pathlib
-import subprocess
 
 import daily
+import r2_cache
 
 AZ = dt.timezone(dt.timedelta(hours=-7))
 ROOT = pathlib.Path(__file__).resolve().parent
 log = daily.log
-
-
-TRANSCRIPTS = "data/transcripts_{day}.json"
-
-
-def git(*args):
-    return subprocess.run(["git", *args], cwd=ROOT,
-                          capture_output=True, text=True)
-
-
-def pull_transcripts(dry=False):
-    """Bring in whatever an earlier run committed today."""
-    if dry:
-        log("  [dry-run] would git pull")
-        return
-    r = git("pull", "--ff-only", "--quiet")
-    if r.returncode:
-        log(f"  git pull failed: {(r.stderr or '').strip()[:160]}")
-
-
-def commit_transcripts(day, dry=False):
-    """Carry the transcript file forward.
-
-    data/ is gitignored for good reason -- the audio and the AgencyZoom corpus
-    run to hundreds of megabytes. This one 32 KB file is force-added past the
-    ignore rule because it is the only thing worth keeping.
-    """
-    f = TRANSCRIPTS.format(day=day)
-    if dry or not (ROOT / f).exists():
-        return None
-    git("add", "-f", f)
-    if git("diff", "--cached", "--quiet").returncode == 0:
-        log("  nothing new to commit")
-        return True
-    git("-c", "user.name=Flores hourly prefetch",
-        "-c", "user.email=frank.automation@floresinsuranceagency.com",
-        "commit", "-m", f"Transcripts for {day}, hourly prefetch")
-    r = git("push")
-    if r.returncode:
-        log("  !! COULD NOT SAVE THE TRANSCRIPTS -- the next run starts from "
-            "nothing and re-downloads the whole day.")
-        log(f"     {(r.stderr or '').strip()[:200]}")
-        log("     Fix: add flores2622/flores-digest to this task's sources. "
-            "Until then the schedule wastes RingCentral quota -- pause it.")
-        return False
-    log(f"  saved {f} for the next run")
-    return True
 
 
 def refresh_call_log(day, dry=False):
@@ -159,10 +120,13 @@ def main():
         log("  cache is EMPTY -- either this is the first run of the day or "
             "data/ did not survive the last one. See HOURLY_RUNS.md s12.")
 
-    pull_transcripts(a.dry_run)
+    if a.dry_run:
+        log("  [dry-run] would pull the r2 cache")
+    else:
+        r2_cache.sync_down_day(day, log=log)
     if tf.exists():
         prior = len(json.loads(tf.read_text()))
-        log(f"  AFTER PULL: prior transcripts {prior}")
+        log(f"  AFTER R2 PULL: prior transcripts {prior}")
 
     before, after = refresh_call_log(day, a.dry_run)
     log(f"  call log: {before} -> {after} records")
@@ -173,7 +137,8 @@ def main():
 
     daily.ensure_model()
     done = daily.transcribe_day(day, outbound_only=True)
-    commit_transcripts(day, a.dry_run)
+    # transcribe_day() already pushes its own output to r2_cache -- nothing
+    # further to do here.
 
     new = len(done) - prior
     log(f"DONE: {len(done)} transcripts on file (+{new} this run)")
