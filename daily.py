@@ -164,9 +164,15 @@ def transcribe_day(day, outbound_only=False):
                              "to": (r.get("to") or {}).get("phoneNumber"),
                              "duration": r.get("duration"), "text": txt,
                              "class": cls, "why": why}
+            # Written after EVERY record, not once after the loop (REVIEW
+            # 2026-09-01 s8): this loop can run 20-30 minutes and this
+            # container has no way to guarantee it runs to completion. A
+            # write only after the loop meant any interruption -- a crash,
+            # a missing dependency (ffmpeg, 2026-09-10) -- silently lost
+            # every recording already transcribed in that run.
+            out_f.write_text(json.dumps(done))
             if (i + 1) % 25 == 0:
                 log(f"  {i + 1}/{len(todo)}")
-        out_f.write_text(json.dumps(done))
 
     if not outbound_only:
         # --- inbound -------------------------------------------------------
