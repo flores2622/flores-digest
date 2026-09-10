@@ -8,6 +8,15 @@ several items the handoffs still carry as OPEN are in fact closed, and one is
 implemented on the read side only. Trust this file over the older sections it
 names.
 
+**2026-09-10 — this is now the only handoff file.** HANDOFF_5, 6_ADDENDUM, 7,
+8, 9, 10, and 11 were deleted today after a full audit verified each claim
+against current code: their still-live content (items 3, 5, 6, 7 below, plus
+item 9) is carried forward here in full; everything else in them was either
+absorbed into CLAUDE.md or fixed by durable code changes and had zero
+remaining value. Items 1 and 4 below are crossed off as fixed today. Keep this
+file as the one running "still open" tracker going forward instead of writing
+a new HANDOFF_N.md per session — fold new findings into it directly.
+
 ---
 
 ## Verified CLOSED — stop carrying these forward
@@ -39,7 +48,12 @@ names.
 
 ## STILL OPEN, ranked
 
-### 1. Missed-call tasks cannot be created on LEADS — costs tasks every night
+### 1. Missed-call tasks cannot be created on LEADS — costs tasks every night — CLOSED 2026-09-10
+
+Fixed today: `missed_call_tasks.py:198-220` now builds `body["leadId"] =
+r["record_id"]` for lead-bucket rows instead of `customerId`/`customerType`
+(option A below, confirmed against `probe_lead_task.py`). Read-only
+investigation notes kept below for context; nothing left to do here.
 
 `POST /v1/api/tasks` answers `400 {"error":"The customer is not found",
 "fieldErrors":[]}` for every lead-bucket caller. Customer and standalone tasks
@@ -92,14 +106,12 @@ container silently reports stale numbers**; on 08-28 it hid four sales and
 reported $0. Fix: refresh when the file's mtime predates the day being built.
 Until then, delete those three files before any re-run in a warm container.
 
-### 4. The smart-cycle ">30 days is lost" rule has never actually run
+### 4. The smart-cycle ">30 days is lost" rule has never actually run — CLOSED
 
-`panels._is_lost_action` reads `row.get("smartcycle_days")` (`panels.py:719`)
-and **nothing anywhere assigns that key** — grep finds only the read. So it is
-always `None`, every smart-cycle scores "not lost", and the rule Frank set on
-08-28 has been dead since it was written while looking implemented. Either plumb
-the smart-cycle target date onto the row or delete the branch. This is the one
-that most deserves attention, because it reads as done.
+Fixed: `daily.py:240-264` implements `_smartcycle_days(xdate, day)` and writes
+it onto rows (`daily.py:521,566`); `panels.py`'s `_is_lost_action` reads
+`row.get("smartcycle_days")` and gates on `> SMARTCYCLE_LOST_DAYS` correctly.
+Verified 2026-09-10.
 
 ### 5. No wrong-number outcome — HANDOFF 11 §7
 
@@ -123,6 +135,18 @@ should surface before the send, not in a report afterwards.
 Only the green callback swatch is in the legend. The amber stripe (called back
 after a voicemail) is unexplained, and that conversation is counted in Call
 Detail while the bar still shows the dial as Voicemail.
+
+### 9. The emailed "Audited" column is dead — always equals "Rate" — found 2026-09-10 (traced to HANDOFF_7, 2026-08-16, never re-checked since)
+
+`build_day.py:66` calls `panels.task_table(M["tasks"], {})` — the `audited`
+argument is a permanent empty dict, every night, for every report ever sent.
+`task_table(tasks, audited)` (`panels.py:34-64`) computes the Audited column as
+`audited.get(p, pct)` / `audited.get("TEAM", tp)` — with `audited={}` those
+always equal `pct`/`tp`, the Rate column. So the Task Completion Rate panel's
+"Audited" column has been byte-identical to "Rate" in every email sent since
+this was written. Either wire in a real audited-count source or drop the
+column — it currently does nothing but take up space and imply a check that
+never runs.
 
 ### 8. Scheduled sessions still cannot push — CLOSED 2026-09-10
 
