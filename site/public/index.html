@@ -1348,6 +1348,12 @@ async function renderDigestRange() {
       const r = await fetch(`/api/days/${day}`, { cache: "no-store" });
       doc = r.ok ? await r.json() : null;
     } catch (_) {}
+    // Shared `cur`, not a locally-scoped doc: Coaching (and any other tab
+    // that reads `cur`) has to see "yesterday" too when it renders next,
+    // the same way picking a specific day via #daypick already does via
+    // loadDay(). Before this, switching to Coaching after picking
+    // "Yesterday" here silently kept showing whatever day cur last was.
+    cur = doc;
     v.innerHTML = controls + (doc ? digestPanel(doc, producerFilter) : `<div class="empty">No report for ${day}.</div>`);
     wireRangeControl(); wireProducerControl();
     return;
@@ -1405,6 +1411,16 @@ async function renderDigestRange() {
   wireRangeControl(); wireProducerControl();
 }
 
+// Digest is the only tab with an aggregate renderer (digestRange()) --
+// Coaching has no equivalent for "This Week"/MTD/YTD/Folio/Custom, so
+// picking one of those while on Coaching says so instead of silently
+// showing whatever single day `cur` last happened to be.
+const AGGREGATE_MODES = new Set(["week", "mtd", "ytd", "folio", "custom"]);
+function aggregateNotSupportedHtml(tabLabel) {
+  return `<div class="empty">${RANGE_LABELS[rangeMode] || "This range"} isn't available on the
+    ${tabLabel} tab yet — pick a single day above, or switch to Digest to see it aggregated.</div>`;
+}
+
 async function paint() {
   const v = $("#view");
   if (view === "digest") {
@@ -1412,15 +1428,24 @@ async function paint() {
     await renderDigestRange();
   } else if (view === "coaching") {
     $("#topsub").textContent = cur ? (cur.label || cur.date) : "";
-    const controls = producerControlHtml();
+    // Calendar filter + shortcut on every tab, editable in place (Frank,
+    // 2026-09-10) -- same rangeControlHtml()/wireRangeControl() Digest
+    // uses, so picking a day here updates the shared `cur` the same way
+    // and Digest sees it too if you switch back.
+    const controls = rangeControlHtml() + producerControlHtml();
+    if (AGGREGATE_MODES.has(rangeMode)) {
+      v.innerHTML = controls + aggregateNotSupportedHtml("Coaching");
+      wireRangeControl(); wireProducerControl();
+      return;
+    }
     v.innerHTML = controls + (cur ? coachingPanel(cur, producerFilter) : '<div class="empty">Loading…</div>');
-    wireProducerControl();
+    wireRangeControl(); wireProducerControl();
     wireObjectionBrowser();
     if (cur && !ALL_CALLS_CACHE) {
       fetchAllCalls().then(() => {
         if (view !== "coaching") return;   // navigated away before this landed
-        v.innerHTML = producerControlHtml() + coachingPanel(cur, producerFilter);
-        wireProducerControl();
+        v.innerHTML = controls + coachingPanel(cur, producerFilter);
+        wireRangeControl(); wireProducerControl();
         wireObjectionBrowser();
       });
     }
