@@ -212,9 +212,9 @@ def create(azc, r, live):
     return j.get("id")
 
 
-def enrich(rows, day):
+def enrich(rows, day, live_index=False):
     """Attach the AgencyZoom record each task hangs off."""
-    idx, *_ = audit.build_index(day)
+    idx, *_ = audit.build_index_live() if live_index else audit.build_index(day)
     for r in rows:
         hit = idx.get(r["number"]) or {}
         r["record_id"], r["record_type"] = None, None
@@ -231,10 +231,17 @@ def enrich(rows, day):
     return rows
 
 
-def run(day, live=False):
+def run(day, live=False, intraday=False):
+    """intraday=True is the cron-fired path (HOURLY_RUNS.md s7): a fresh
+    container each run, so both the call log and the AgencyZoom corpus are
+    re-pulled live rather than trusted from disk. The nightly path (called
+    from daily.py, inside a session that already fetched both for `day`)
+    leaves this False and reuses what pull_sources already wrote.
+    """
     from az_client import AgencyZoom
     azc = AgencyZoom()
-    rows = enrich(audit.build(day, refresh=False), day)
+    rows = enrich(audit.build(day, refresh=intraday, live_index=intraday),
+                  day, live_index=intraday)
     todo = [r for r in rows if r["back_in"] is None]
     log(f"{len(rows)} missed callers, {len(rows) - len(todo)} already reached, "
         f"{len(todo)} need a task")
@@ -274,11 +281,15 @@ def main():
     ap.add_argument("--day", default=None)
     ap.add_argument("--live", action="store_true",
                     help="actually create the tasks; without it nothing is written")
+    ap.add_argument("--intraday", action="store_true",
+                    help="fresh call log + fresh AgencyZoom corpus, no cached "
+                         "data/ files assumed -- for a cron-fired run in a "
+                         "container that never ran daily.py's pull_sources")
     a = ap.parse_args()
     day = a.day or dt.datetime.now(AZ).date().isoformat()
     if not a.live:
         log("DRY RUN -- nothing will be created. Pass --live to write.")
-    run(day, live=a.live)
+    run(day, live=a.live, intraday=a.intraday)
 
 
 if __name__ == "__main__":
