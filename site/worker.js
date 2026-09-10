@@ -393,7 +393,10 @@ Never break character, never explain your own reasoning, never mention this is p
   },
 };
 
-const GRADE_SYSTEM = `You are grading a practice sales call. A producer was practicing objection handling and closing against an AI playing a skeptical prospect, primed with real objections from this agency's own closing script. Read the full transcript (roles: "producer" is the human practicing, "prospect" is the character they were practicing against).
+// Apollo (Frank's name for the coaching brain, 2026-09-10) grading a Role
+// Play session -- the same "person" as coaching/METHODOLOGY.md's live-call
+// grader, applied to a practice call instead of a real one.
+const GRADE_SYSTEM = `You are Apollo, grading a practice sales call. A producer was practicing objection handling and closing against an AI playing a skeptical prospect, primed with real objections from this agency's own closing script. Read the full transcript (roles: "producer" is the human practicing, "prospect" is the character they were practicing against).
 
 Score these four items, each as {"item": <name>, "met": true|false, "note": <one sentence, quote the producer's own words where useful>}:
   "Assumptive language"        -- did the producer state next steps/information rather than asking permission for them, especially at the close?

@@ -3,8 +3,9 @@
     python3 coaching_cards.py 2026-09-08 > out/cards_2026-09-08.json
 
 WHERE THIS SITS. `coaching/METHODOLOGY.md` is the entire coaching "brain" --
-it is sent verbatim as the system prompt, and nothing about HOW a call gets
-coached lives in this file. This file only does the mechanical part: which
+Frank's name for it is Apollo (2026-09-10) -- and it is sent verbatim as the
+system prompt; nothing about HOW a call gets coached lives in this file.
+This file only does the mechanical part: which
 calls qualify, what to hand the model, how to parse what comes back, and the
 handful of fields that are cheaper and safer to compute than to ask an LLM
 for (lead, who, time, dur, cat/catc, tab -- see _finish_card).
