@@ -309,6 +309,12 @@ details.sc .scb { padding: 0 12px 12px; }
 .cat-q { background: #9fc2ed; } .cat-sold { background: #008300; color: #fff; } .cat-live { background: #eda100; }
 .cat-dead { background: #f0e800; }
 .cat-fsd { background: var(--surface-raised); color: var(--good); border: 1px solid var(--good); }
+/* Sales vs. service (Apollo's own judgment, distinct from .cat above --
+   see coaching/METHODOLOGY.md's Core judgment) -- outlined, not solid,
+   so it never reads as the same axis as the deal-stage badge next to it. */
+.ctype { display: inline-block; font-size: 9.5px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.03em; padding: 1px 7px; border-radius: 10px; white-space: nowrap; background: transparent; border: 1px solid var(--border-strong); color: var(--text-muted); }
+.ctype-service { border-color: var(--info, #6a9fd8); color: var(--info, #6a9fd8); }
+.ctype-mixed { border-color: var(--warn); color: var(--warn); }
 .flag { display: inline-block; font-size: 10px; font-weight: 500; padding: 1px 6px; border-radius: 3px; background: var(--warnbg); color: var(--warn); margin: 0 4px 3px 0; }
 .chip { display: inline-block; font-size: 9.5px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em; padding: 2px 7px; border-radius: 3px; white-space: nowrap; }
 .c-g { background: var(--goodbg); color: var(--good); border: 1px solid var(--goodbd); }
@@ -958,7 +964,7 @@ function card(c) {
    <summary class="blk cchead" style="border-left:4px solid ${c.tab || "var(--border-strong)"}">
      <div class="chead"><div><div class="cname">${c.lead || ""}</div>
        <div class="cmeta">${c.who || ""} · ${c.time || ""} · ${c.dur || ""} · ${c.lang || ""} · ${c.src || ""}</div></div>
-       <span class="cat ${c.catc || ""}">${c.cat || ""}</span><span class="ctog" aria-hidden="true">▸</span></div>
+       <span class="cat ${c.catc || ""}">${c.cat || ""}</span>${c.calltype && c.calltype[0] !== "sales" ? `<span class="ctype ctype-${c.calltype[0]}" title="${c.calltype[1] || ""}">${c.calltype[0]}</span>` : ""}<span class="ctog" aria-hidden="true">▸</span></div>
      <div class="sum">${c.summary || ""}</div>
      ${c.flags && c.flags.length ? `<div style="margin-top:8px">${c.flags.map(f => `<span class="flag">${f}</span>`).join("")}</div>` : ""}
    </summary>

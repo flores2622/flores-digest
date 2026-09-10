@@ -171,6 +171,19 @@ def _bool_pair(raw):
     return [bool(raw[0]), str(raw[1]).strip() if len(raw) > 1 else ""]
 
 
+CALLTYPE_VALUES = ("sales", "service", "mixed")
+
+
+def _calltype(raw):
+    """Apollo's own sales-vs-service judgment (Frank, 2026-09-10) -- distinct
+    from _category() above, which is a mechanically-computed deal-stage badge.
+    Defaults to "sales" (the pre-2026-09-10 assumption) if the model's value
+    is missing or malformed, rather than dropping the field."""
+    if isinstance(raw, (list, tuple)) and raw and str(raw[0]).lower() in CALLTYPE_VALUES:
+        return [str(raw[0]).lower(), str(raw[1]).strip() if len(raw) > 1 else ""]
+    return ["sales", ""]
+
+
 def _clean_pairs(raw, cap=6):
     out = []
     for item in (raw or [])[:cap]:
@@ -255,6 +268,7 @@ def _finish_card(d, producer, r, raw_dials):
         "src": "recording",
         "cat": cat, "catc": catc,
         "tab": _tab(askq, asks),
+        "calltype": _calltype(d.get("calltype")),
         "summary": str(d.get("summary") or "").strip(),
         "askq": askq, "asks": asks,
         "askfix": str(d.get("askfix") or "").strip(),

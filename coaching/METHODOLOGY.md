@@ -93,6 +93,24 @@ close HERE ONLY.
   invested in a quote it can't produce. The earlier it was knowable, the more
   it's worth flagging that it wasn't caught sooner. (2026-09-01 review: Karen
   Horais.)
+- **Decide SALES vs. SERVICE from what was actually said, independently of
+  any category label you're handed** (Frank, 2026-09-10: "I want to teach
+  apollo to mirror how I think about everything and not be dependent on any
+  other aspect"). This is the same distinction CLAUDE.md draws for the money
+  rules, and it governs how you coach the call, not just how it's counted:
+    - A renewal is not a sale. Neither is servicing, a payment, a claim, or
+      chasing paperwork on a policy already sold — coach these as SERVICE
+      calls: was the issue resolved, efficiently and correctly, not "did they
+      sell."
+    - Selling a product the household does not have yet IS a sale, even to a
+      customer of twenty years — a cross-sell offered mid-service-call makes
+      that call MIXED, not pure service, and the cross-sell attempt (or the
+      missed opening for one) still gets coached as a sale would be.
+    - Judge this from the actual content of the call — what was asked for,
+      discussed, or changed hands — never from a pre-computed label on the
+      row. You are not told and must not assume what a category badge
+      elsewhere on the board says this call is; if the transcript disagrees
+      with what you'd expect from context, trust the transcript.
 
 ## The 9-dimension call-structure framework (Frank, 2026-09-10)
 
@@ -120,6 +138,16 @@ rushed, or incomplete. "m" (missing) means a real opportunity existed and
 nothing was done. "n" (not applicable) means no such opportunity existed on
 this call at all — never force "m" onto a call that had no natural opening
 for the dimension.
+
+**On a SERVICE call** (see `calltype` in Core judgment above), most of these
+dimensions have no opportunity to exist at all — score "n", not "m", for
+"Current premium captured", "Renewal / X-date captured", "Presenting
+numbers", and "Next step specificity" unless the call actually did drift
+into that territory. The one exception is **"Bundle / cross-sell raised"**:
+per Core judgment, a cross-sell opportunity always counts, so score it
+normally (s/w/m) even on an otherwise pure service call — a producer who
+handles a claim call well but never notices the household has no life policy
+still gets an "m" there, same as on a sales call.
 
 - **Opening & identification** — producer clearly states who they are, what
   agency, and why they're calling, and confirms they're speaking with the
@@ -160,6 +188,12 @@ Return ONLY a JSON object, no prose around it, with exactly these keys:
 
 ```
 "lang"     "Spanish", "English", or "Spanish/English" if the call code-switches
+"calltype" [one of "sales"/"service"/"mixed", one-sentence quote-based
+           justification] -- your own determination, per Core judgment above,
+           of what this call actually was. Decide this BEFORE writing summary
+           below, since summary and every other field should read consistently
+           with it -- don't call it "service" here and then narrate a sales
+           pitch in summary.
 "summary"  2-3 sentences, plain past tense: what the call was about, what was
            offered, and how it ended. Name what the prospect actually said.
 "askq"     [boolean, one-sentence quote-based justification] -- did the
@@ -214,7 +248,9 @@ Return ONLY a JSON object, no prose around it, with exactly these keys:
            one just to fill the field). Distinct from "askq"/"asks" above,
            which are about assumptive vs. permission-seeking LANGUAGE, not
            which named technique was reached for -- don't re-score
-           assumptive language here.
+           assumptive language here. Same SERVICE-call gating as "score"
+           above: on a pure service call these are mostly "n", not "m",
+           except where a real cross-sell moment actually came up.
              "Elevator pitch"      a short, prepared reason-to-switch
                                     delivered in the first couple minutes,
                                     BEFORE any pushback -- this agency's own
@@ -267,7 +303,16 @@ Return ONLY a JSON object, no prose around it, with exactly these keys:
 
 - Category badge (Sold / Quoted / Contacted / Dead), lead source, and time of
   day are computed separately from structured data, not by you — you do not
-  need to and should not try to infer them.
+  need to and should not try to infer them. This is a DIFFERENT axis from
+  `calltype` (sales/service/mixed): the badge is a deal-stage outcome computed
+  mechanically outside this prompt; `calltype` is your own judgment of what
+  kind of call this was, made from the transcript alone. A call can be
+  "Live Contact" on the badge and "service" on `calltype` at the same time —
+  neither one implies the other.
+- "calltype" (Frank, 2026-09-10) is new and unproven, same caution as
+  "techniques" below: watch whether a call that's genuinely mixed (starts as
+  a payment call, drifts into a real cross-sell attempt) gets called "mixed"
+  rather than forced into "sales" or "service" for convenience.
 - There is no cross-call memory yet: each card is written from one call in
   isolation, even when the same lead was called multiple times in the same
   day or across days.
