@@ -294,8 +294,7 @@ details.sc .scb { padding: 0 12px 12px; }
 .pcard { border: 1px solid var(--border-strong); border-radius: 10px; padding: 14px 16px; cursor: pointer; background: var(--surface-raised); transition: border-color .15s; }
 .pcard:hover { border-color: var(--text-muted); }
 .pcard.sel { border-color: var(--good); box-shadow: 0 0 0 1px var(--good) inset; }
-.pcard .pn { font-weight: 700; font-size: 13.5px; margin-bottom: 4px; }
-.pcard .pb { font-size: 12px; color: var(--text-secondary); line-height: 1.4; }
+.pcard .pn { font-weight: 700; font-size: 13.5px; }
 .rpbar { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; margin-bottom: 10px; }
 .rpchat { border: 1px solid var(--border-strong); border-radius: 10px; background: var(--surface-raised); padding: 14px; max-width: 640px; }
 .rpmsgs { display: flex; flex-direction: column; gap: 10px; max-height: 480px; overflow-y: auto; margin-bottom: 12px; }
@@ -740,11 +739,16 @@ function chips(o) {
 }
 const DIMS = ["Opening & identification", "Discovery", "Current premium captured", "Renewal / X-date captured",
   "Product knowledge", "Presenting numbers", "Bundle / cross-sell raised", "Next step specificity", "CRM after the call"];
+// Named sales techniques (Frank, 2026-09-10) -- elevator pitch, feel-felt-found,
+// risk reversal ("what do you have to lose") and similar, scored separately
+// from the mechanical call-flow DIMS above. Same [letter, detail] shape, so
+// scorecard() below renders either with just a different dims list + label.
+const TECH_DIMS = ["Elevator pitch", "Feel-Felt-Found", "Risk reversal", "Social proof", "Trial close", "Takeaway / urgency"];
 const RT = { s: ["c-g", "Strong"], w: ["c-w", "Weak"], m: ["c-r", "Missing"] };
-function scorecard(sc) {
+function scorecard(sc, dims = DIMS, label = "Scorecard") {
   if (!sc || !Object.keys(sc).length) return "";
   let n = { s: 0, w: 0, m: 0, x: 0 }, rows = "";
-  DIMS.forEach(d => {
+  dims.forEach(d => {
     const e = sc[d]; if (!e || e[0] === "n") { n.x++; return; }
     n[e[0]]++; const r = RT[e[0]];
     rows += `<tr><td style="width:172px;font-weight:600">${d}</td>
@@ -754,7 +758,7 @@ function scorecard(sc) {
   const head = [n.s && n.s + " strong", n.w && n.w + " weak", n.m && n.m + " missing", n.x && n.x + " not scored"].filter(Boolean).join(" · ");
   const dotc = { s: "var(--good)", w: "var(--warn)", m: "var(--bad)", x: "var(--border-strong)" };
   const pips = ["s", "w", "m", "x"].flatMap(k => Array(n[k]).fill(`<span class="pip" style="background:${dotc[k]}"></span>`)).join("");
-  return `<details class="sc"><summary><span>Scorecard — ${head}</span><span class="pips">${pips}</span></summary>
+  return `<details class="sc"><summary><span>${label} — ${head}</span><span class="pips">${pips}</span></summary>
     <div class="scb"><table class="askt">${rows}</table></div></details>`;
 }
 function card(c) {
@@ -793,7 +797,7 @@ function card(c) {
    <div class="blk"><div class="bl">Strengths and gaps</div><div class="two">
      <div><div class="colh g">What worked</div><ul class="gl g">${(c.good || []).map(([t, dd]) => `<li><b>${t}</b>${dd}</li>`).join("") || `<li style="color:var(--text-muted)">—</li>`}</ul></div>
      <div><div class="colh b">What cost the sale</div><ul class="gl b">${(c.bad || []).map(([t, dd]) => `<li><b>${t}</b>${dd}</li>`).join("") || `<li style="color:var(--text-muted);padding-left:0">Nothing to flag on this call.</li>`}</ul></div>
-   </div>${scorecard(c.score)}</div>
+   </div>${scorecard(c.score)}${scorecard(c.techniques, TECH_DIMS, "Sales techniques")}</div>
    ${spine}</div>`;
 }
 function coachingPanel(d, who) {
@@ -862,9 +866,9 @@ function wireObjectionBrowser() {
    documents) so practice history survives a refresh and follows the
    producer across devices, not just one browser's local storage. */
 const RP_PERSONAS = [
-  { key: "easy",   name: "Easy-going",       blurb: "Open to a quote, minimal resistance", rate: 1.02, pitch: 1.08 },
-  { key: "medium", name: "Medium resistance", blurb: "Interested, but pushes back once",    rate: 0.98, pitch: 1.0 },
-  { key: "hard",   name: "Hard to get",       blurb: "Skeptical, cycles through objections, doesn't fold easily", rate: 0.95, pitch: 0.92 },
+  { key: "easy",   name: "Beginner",     rate: 1.02, pitch: 1.08 },
+  { key: "medium", name: "Medium",       rate: 0.98, pitch: 1.0 },
+  { key: "hard",   name: "Professional", rate: 0.95, pitch: 0.92 },
 ];
 let rpProducer = "";
 let rpPersonaKey = "";
@@ -998,12 +1002,12 @@ function roleplayPanel() {
     const recHtml = weak.length ? `<div class="note" style="border:1px dashed var(--border-strong);border-radius:8px;padding:10px 14px;margin-bottom:12px">
       <b>Recommended:</b> in the last 4 weeks, ${rpProducer.split(" ")[0]}'s real calls show unresolved objections most often around
       <b>${weak.map(([c, n]) => `${c} (${n}×)`).join(", ")}</b>. The prospect below will lean on objections like these instead of
-      generic ones. <b>Hard mode</b> cycles through them without giving in easily -- a good place to practice this.</div>` : "";
+      generic ones. <b>Professional</b> cycles through them without giving in easily -- a good place to practice this.</div>` : "";
     return `<div class="sect"><h2>Role Play</h2>
       <p class="sd">Practicing as <b>${rpProducer}</b>. <button class="ghost" id="rpChangeProducer" type="button" style="margin-left:6px">change</button></p>
       ${recHtml}
       <div class="pcards">${RP_PERSONAS.map(p => `<div class="pcard" data-persona="${p.key}">
-        <div class="pn">${p.name}</div><div class="pb">${p.blurb}</div></div>`).join("")}</div></div>
+        <div class="pn">${p.name}</div></div>`).join("")}</div></div>
       ${histHtml}`;
   }
 
@@ -1013,7 +1017,7 @@ function roleplayPanel() {
     || `<div class="empty" style="padding:20px 0">Say hello to open the call.</div>`;
 
   return `<div class="sect"><h2>Role Play &middot; ${p.name}</h2>
-    <p class="sd">${rpProducer} &middot; ${p.blurb}
+    <p class="sd">${rpProducer}
       <button class="ghost" id="rpNewScenario" type="button" style="margin-left:6px">new scenario</button>
       <button class="ghost" id="rpChangeProducer" type="button">change producer</button></p>
     <div class="rpchat">
