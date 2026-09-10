@@ -66,23 +66,7 @@ def az(t):
 
 # ---- routing ---------------------------------------------------------------
 
-def build_index(day):
-    """Phone -> records, from the cached corpus. Narrow by design.
-
-    The hourly job will query AgencyZoom per number instead of loading all of
-    this; the audit runs once and the corpus is already on disk, so it reuses it.
-    """
-    d = ROOT / "data"
-    def load(name):
-        p = d / name
-        if not p.exists():
-            return []
-        j = json.loads(p.read_text())
-        return j if isinstance(j, list) else (j.get("data") or list(j.values())[0])
-
-    cust, leads = load("az_customers_all.json"), load("az_leads_all.json")
-    tix = load(f"az_service_tickets_{day}.json")
-
+def _index(cust, leads, tix):
     idx = collections.defaultdict(lambda: {"cust": [], "lead": [], "tix": []})
     for c in cust:
         for f in ("phone", "secondaryPhone"):
@@ -99,6 +83,50 @@ def build_index(day):
         if n:
             idx[n]["tix"].append(t)
     return idx, len(cust), len(leads), len(tix)
+
+
+def build_index(day):
+    """Phone -> records, from the cached corpus. Narrow by design: the audit
+    runs once, inside daily.py's own session, after pull_sources has already
+    fetched everything for the day -- so this just reuses what is on disk.
+
+    See build_index_live() for the version an intraday run uses instead, where
+    nothing on disk can be trusted (or even assumed to exist).
+    """
+    d = ROOT / "data"
+    def load(name):
+        p = d / name
+        if not p.exists():
+            return []
+        j = json.loads(p.read_text())
+        return j if isinstance(j, list) else (j.get("data") or list(j.values())[0])
+
+    cust, leads = load("az_customers_all.json"), load("az_leads_all.json")
+    tix = load(f"az_service_tickets_{day}.json")
+    return _index(cust, leads, tix)
+
+
+def build_index_live():
+    """Same shape as build_index(), sourced fresh from AgencyZoom -- no
+    dependency on daily.py having already run in this container.
+
+    For an intraday cron-fired run: a fresh container starts with nothing
+    under data/, so there is no cached corpus to reuse. Customers and service
+    tickets have no phone filter worth relying on either (probed 2026-09-10 --
+    /v1/api/leads/list silently ignores every phone/search param tried), so
+    this just re-pulls all three, same as daily.py's own pull_sources does.
+    Measured cold: leads ~86s (11,945 records), customers ~29s (4,105),
+    service tickets ~6s (705, already narrow via service_tickets_live()) --
+    about two minutes total, comfortably inside an hourly cadence and with
+    nothing to persist between runs.
+    """
+    from az_client import AgencyZoom
+    import az_corpus
+    az = AgencyZoom()
+    leads = az_corpus.fetch(force=True)
+    cust = az._paged("/v1/api/customers/list", "customers", {})
+    tix = az.service_tickets_live()
+    return _index(cust, leads, tix)
 
 
 # csr id -> first name. The service-ticket list endpoint returns
@@ -231,12 +259,13 @@ def texted_after(hit, when, az_client):
     return best
 
 
-def build(day, refresh=True):
+def build(day, refresh=True, live_index=False):
     from az_client import AgencyZoom
     azc = AgencyZoom()
     recs = collect(day, refresh)
-    idx, nc, nl, nt = build_index(day)
-    log(f"corpus: {nc} customers, {nl} leads, {nt} service tickets")
+    idx, nc, nl, nt = build_index_live() if live_index else build_index(day)
+    log(f"corpus: {nc} customers, {nl} leads, {nt} service tickets"
+        + (" (live)" if live_index else ""))
     rows = []
     for n, calls in group(recs):
         first, last = parse(calls[0]["startTime"]), parse(calls[-1]["startTime"])
