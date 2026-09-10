@@ -288,6 +288,30 @@ details.sc .scb { padding: 0 12px 12px; }
 .c-w { background: var(--warnbg); color: var(--warn); border: 1px solid var(--warnbd); }
 .c-r { background: var(--badbg); color: var(--bad); border: 1px solid var(--badbd); }
 .c-n { background: var(--surface); color: var(--text-muted); border: 1px solid var(--border-strong); }
+
+/* ---- Role Play tab --------------------------------------------------- */
+.pcards { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px; margin: 14px 0; }
+.pcard { border: 1px solid var(--border-strong); border-radius: 10px; padding: 14px 16px; cursor: pointer; background: var(--surface-raised); transition: border-color .15s; }
+.pcard:hover { border-color: var(--text-muted); }
+.pcard.sel { border-color: var(--good); box-shadow: 0 0 0 1px var(--good) inset; }
+.pcard .pn { font-weight: 700; font-size: 13.5px; margin-bottom: 4px; }
+.pcard .pb { font-size: 12px; color: var(--text-secondary); line-height: 1.4; }
+.rpbar { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; margin-bottom: 10px; }
+.rpchat { border: 1px solid var(--border-strong); border-radius: 10px; background: var(--surface-raised); padding: 14px; max-width: 640px; }
+.rpmsgs { display: flex; flex-direction: column; gap: 10px; max-height: 480px; overflow-y: auto; margin-bottom: 12px; }
+.rpmsg { max-width: 82%; padding: 8px 12px; border-radius: 10px; font-size: 13px; line-height: 1.45; }
+.rpmsg.producer { align-self: flex-end; background: var(--s1); color: #fff; }
+.rpmsg.prospect { align-self: flex-start; background: var(--surface); border: 1px solid var(--border-strong); color: var(--text-primary); }
+.rpmsg .rl { display: block; font-size: 9.5px; text-transform: uppercase; letter-spacing: .04em; opacity: .7; margin-bottom: 3px; }
+.rprow { display: flex; gap: 8px; }
+.rprow input[type=text] { flex: 1; padding: 8px 10px; border-radius: 6px; border: 1px solid var(--border-strong); background: var(--surface); color: var(--text-primary); font-size: 13px; }
+.rpactions { display: flex; gap: 8px; margin-top: 10px; flex-wrap: wrap; }
+.gradecard { border: 1px solid var(--border-strong); border-radius: 10px; padding: 14px 16px; margin-top: 14px; max-width: 640px; background: var(--surface-raised); }
+.gradecard table { width: 100%; border-collapse: collapse; margin: 8px 0; }
+.gradecard td { padding: 5px 0; font-size: 12.5px; vertical-align: top; }
+.gradecard td.gi { width: 180px; font-weight: 600; }
+.histrow { display: flex; justify-content: space-between; gap: 10px; padding: 7px 0; border-bottom: 1px solid var(--border); font-size: 12.5px; }
+.histrow:last-child { border-bottom: none; }
 </style>
 </head>
 <body>
@@ -302,6 +326,7 @@ details.sc .scb { padding: 0 12px 12px; }
       <button class="tab" role="tab" aria-selected="true"  data-v="digest">Digest</button>
       <button class="tab" role="tab" aria-selected="false" data-v="coaching">Coaching</button>
       <button class="tab" role="tab" aria-selected="false" data-v="trends">Trends</button>
+      <button class="tab" role="tab" aria-selected="false" data-v="roleplay">Role Play</button>
     </div>
     <div id="view"><div class="empty">Loading…</div></div>
   </main>
@@ -653,6 +678,33 @@ async function fetchRangeDocs(from, to) {
   return docs;
 }
 
+/* Cross-day objection index -- every coached call's objection, across every
+   reporting day, flattened and cached once per page load. Feeds two
+   things: the Coaching tab's "browse by objection" control (any producer,
+   any day) and the Role Play tab's "recommended" persona (this producer's
+   real unresolved objections). Fetches every day document once DAYS is
+   known; small enough at current volume to just do this in the browser,
+   the same way This Week/Custom range already re-fetch multiple days. */
+let ALL_CALLS_CACHE = null;
+async function fetchAllCalls() {
+  if (ALL_CALLS_CACHE) return ALL_CALLS_CACHE;
+  const out = [];
+  for (const d of DAYS) {
+    try {
+      const r = await fetch(`/api/days/${d}`, { cache: "no-store" });
+      if (!r.ok) continue;
+      const doc = await r.json();
+      for (const c of (doc.calls || [])) {
+        if (!c.obj) continue;
+        out.push({ date: d, who: c.who, lead: c.lead, cat: c.obj.cat,
+                  chipt: c.obj.chipt, addressed: c.obj.addressed });
+      }
+    } catch (_) {}
+  }
+  ALL_CALLS_CACHE = out;
+  return out;
+}
+
 /* ---- Coaching tab (ported verbatim from the pre-migration artifact) ------- */
 function chips(o) {
   if (!o.addressed) return `<span class="chip c-r">Not addressed</span> <span class="chip c-n">No attempt</span>`;
@@ -743,7 +795,264 @@ function coachingPanel(d, who) {
     out = `<div class="empty">${sel ? `No coaching cards for ${sel} on this day.` : "No coaching cards for this day."}</div>`;
   }
   return out + (d.notcoached ? `<div class="note" style="border:1px dashed var(--border-strong);border-radius:8px;padding:14px 16px">
-    <b>Not coached, and why.</b> ${d.notcoached}</div>` : "");
+    <b>Not coached, and why.</b> ${d.notcoached}</div>` : "") + objectionBrowserHtml();
+}
+
+let objBrowserCat = "";
+function objectionBrowserHtml() {
+  if (!ALL_CALLS_CACHE || !ALL_CALLS_CACHE.length) return "";
+  const counts = {};
+  for (const c of ALL_CALLS_CACHE) {
+    if (!c.cat) continue;
+    counts[c.cat] = (counts[c.cat] || 0) + 1;
+  }
+  const cats = Object.entries(counts).sort((a, b) => b[1] - a[1]);
+  if (!cats.length) return "";
+  const opts = [`<option value="">Select an objection…</option>`]
+    .concat(cats.map(([cat, n]) => `<option value="${encodeURIComponent(cat)}"${cat === objBrowserCat ? " selected" : ""}>${cat} (${n})</option>`)).join("");
+  const rows = objBrowserCat ? ALL_CALLS_CACHE.filter(c => c.cat === objBrowserCat) : [];
+  const rowsHtml = rows.map(c => `<tr><td>${c.date}</td><td>${c.who || ""}</td><td>${c.lead || ""}</td>
+    <td><span class="chip ${c.chipt === "Addressed, overcome" ? "c-g" : c.addressed ? "c-w" : "c-r"}">${c.chipt || (c.addressed ? "addressed, not overcome" : "not addressed")}</span></td></tr>`).join("");
+  return `<div class="sect"><h2>Browse by objection</h2>
+   <p class="sd">Every objection category seen across all reporting days, most common first.</p>
+   <select id="objBrowserSel">${opts}</select>
+   ${objBrowserCat ? `<div class="scroll" style="margin-top:10px"><table><thead><tr><th>Date</th><th>Producer</th>
+     <th>Lead</th><th>Outcome</th></tr></thead><tbody>${rowsHtml}</tbody></table></div>`
+     : ""}
+  </div>`;
+}
+function wireObjectionBrowser() {
+  const sel = document.getElementById("objBrowserSel");
+  if (sel) sel.onchange = () => { objBrowserCat = sel.value ? decodeURIComponent(sel.value) : ""; paint(); };
+}
+
+/* ---- Role Play tab ----------------------------------------------------
+   A practice partner for objection handling and closing, grounded in the
+   agency's own "One Call Close" script -- the actual objections and the
+   producer's own answer are graded here; the correct rebuttal itself
+   lives ONLY in the Worker's system prompt (site/worker.js), never sent
+   to this page, so there is nothing to view-source for the answer.
+   Sessions and grades persist server-side (R2, same bucket as the day
+   documents) so practice history survives a refresh and follows the
+   producer across devices, not just one browser's local storage. */
+const RP_PERSONAS = [
+  { key: "easy",   name: "Easy-going",       blurb: "Open to a quote, minimal resistance", rate: 1.02, pitch: 1.08 },
+  { key: "medium", name: "Medium resistance", blurb: "Interested, but pushes back once",    rate: 0.98, pitch: 1.0 },
+  { key: "hard",   name: "Hard to get",       blurb: "Skeptical, cycles through objections, doesn't fold easily", rate: 0.95, pitch: 0.92 },
+];
+let rpProducer = "";
+let rpPersonaKey = "";
+let rpHistory = [];        // [{role:"producer"|"prospect", content}]
+let rpGrade = null;
+let rpVoiceOn = true;
+let rpBusy = false;
+let rpHistoryCache = [];   // past sessions for the selected producer
+
+function rpPersona(key) { return RP_PERSONAS.find(p => p.key === key); }
+
+function speakProspect(text) {
+  if (!rpVoiceOn || !("speechSynthesis" in window)) return;
+  try {
+    window.speechSynthesis.cancel();   // don't stack replies if one is still talking
+    const u = new SpeechSynthesisUtterance(text);
+    const p = rpPersona(rpPersonaKey);
+    if (p) { u.rate = p.rate; u.pitch = p.pitch; }
+    window.speechSynthesis.speak(u);
+  } catch (_) {}
+}
+
+async function rpFetchHistory() {
+  if (!rpProducer) { rpHistoryCache = []; return; }
+  try {
+    const r = await fetch(`/api/roleplay/history?producer=${encodeURIComponent(rpProducer)}`, { cache: "no-store" });
+    const body = r.ok ? await r.json() : { sessions: [] };
+    rpHistoryCache = body.sessions || [];
+  } catch (_) { rpHistoryCache = []; }
+}
+
+/* This producer's real, unresolved objection categories -- from actual
+   coached calls, not practice sessions -- most-common first, capped at 2.
+   "Unresolved" here means the objection did not end in "Addressed,
+   overcome"; a resolved objection isn't a weak spot to drill. */
+function producerWeakSpots(producer) {
+  if (!ALL_CALLS_CACHE) return [];
+  const counts = {};
+  for (const c of ALL_CALLS_CACHE) {
+    if (!c.cat || c.who !== producer || c.chipt === "Addressed, overcome") continue;
+    counts[c.cat] = (counts[c.cat] || 0) + 1;
+  }
+  return Object.entries(counts).sort((a, b) => b[1] - a[1]).slice(0, 2);
+}
+
+function roleplayPanel() {
+  const producerOpts = [`<option value="">Who's practicing?</option>`]
+    .concat(PRODUCER_ROSTER.map(p => `<option value="${p}"${p === rpProducer ? " selected" : ""}>${p}</option>`)).join("");
+
+  if (!rpProducer) {
+    return `<div class="sect"><h2>Role Play</h2>
+      <p class="sd">Practice objection handling and closing against a prospect character built from the
+      agency's own closing script. Pick who's practicing to start.</p>
+      <select id="rpProdSel">${producerOpts}</select></div>`;
+  }
+
+  const histHtml = rpHistoryCache.length ? `<div class="sect"><h2>Past sessions</h2>
+    ${rpHistoryCache.map(s => `<div class="histrow">
+      <span>${new Date(s.created_at).toLocaleString(undefined, { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })}
+        · ${(rpPersona(s.persona) || {}).name || s.persona}</span>
+      <span>${s.grade && s.grade.resolved ? '<span class="chip c-g">resolved</span>' : '<span class="chip c-w">not resolved</span>'}</span>
+    </div>`).join("")}</div>` : "";
+
+  if (!rpPersonaKey) {
+    const weak = producerWeakSpots(rpProducer);
+    const recHtml = weak.length ? `<div class="note" style="border:1px dashed var(--border-strong);border-radius:8px;padding:10px 14px;margin-bottom:12px">
+      <b>Recommended:</b> ${rpProducer.split(" ")[0]}'s real calls show unresolved objections most often around
+      <b>${weak.map(([c, n]) => `${c} (${n}×)`).join(", ")}</b>. <b>Hard mode</b> cycles through objections like these
+      without giving in easily -- a good place to practice this.</div>` : "";
+    return `<div class="sect"><h2>Role Play</h2>
+      <p class="sd">Practicing as <b>${rpProducer}</b>. <button class="ghost" id="rpChangeProducer" type="button" style="margin-left:6px">change</button></p>
+      ${recHtml}
+      <div class="pcards">${RP_PERSONAS.map(p => `<div class="pcard" data-persona="${p.key}">
+        <div class="pn">${p.name}</div><div class="pb">${p.blurb}</div></div>`).join("")}</div></div>
+      ${histHtml}`;
+  }
+
+  const p = rpPersona(rpPersonaKey);
+  const msgs = rpHistory.map(m => `<div class="rpmsg ${m.role}">
+    <span class="rl">${m.role === "producer" ? rpProducer.split(" ")[0] : "Prospect"}</span>${m.content}</div>`).join("")
+    || `<div class="empty" style="padding:20px 0">Say hello to open the call.</div>`;
+
+  return `<div class="sect"><h2>Role Play &middot; ${p.name}</h2>
+    <p class="sd">${rpProducer} &middot; ${p.blurb}
+      <button class="ghost" id="rpNewScenario" type="button" style="margin-left:6px">new scenario</button>
+      <button class="ghost" id="rpChangeProducer" type="button">change producer</button></p>
+    <div class="rpchat">
+      <div class="rpmsgs" id="rpMsgs">${msgs}</div>
+      <div class="rprow">
+        <input type="text" id="rpInput" placeholder="What do you say?" ${rpBusy ? "disabled" : ""} autocomplete="off">
+        <button id="rpSend" type="button" ${rpBusy ? "disabled" : ""}>${rpBusy ? "…" : "Send"}</button>
+      </div>
+      <div class="rpactions">
+        <label style="font-size:12px;display:flex;align-items:center;gap:5px">
+          <input type="checkbox" id="rpVoice" ${rpVoiceOn ? "checked" : ""}> speak replies aloud</label>
+        <button class="ghost" id="rpGrade" type="button" ${rpHistory.length ? "" : "disabled"}>Grade my attempt</button>
+      </div>
+    </div>
+    ${rpGrade ? gradeCardHtml(rpGrade) : ""}
+    ${histHtml}
+  </div>`;
+}
+
+function gradeCardHtml(g) {
+  const rows = (g.checklist || []).map(c => `<tr>
+    <td class="gi"><span class="chip ${c.met ? "c-g" : "c-r"}">${c.met ? "met" : "missed"}</span> ${c.item}</td>
+    <td>${c.note || ""}</td></tr>`).join("");
+  return `<div class="gradecard">
+    <div style="display:flex;justify-content:space-between;align-items:center">
+      <b>Result</b><span class="chip ${g.resolved ? "c-g" : "c-w"}">${g.resolved ? "Resolved" : "Not resolved"}</span>
+    </div>
+    <p style="font-size:12.5px;margin:8px 0">${g.summary || ""}</p>
+    <table>${rows}</table>
+    <div class="fix" style="margin-top:8px"><span class="fixl">Tip for next time</span>${g.tip || ""}</div>
+  </div>`;
+}
+
+async function rpSendTurn(text) {
+  rpHistory.push({ role: "producer", content: text });
+  rpBusy = true;
+  document.getElementById("view").innerHTML = roleplayPanel();
+  wireRoleplayPanel();
+  try {
+    const r = await fetch("/api/roleplay/turn", {
+      method: "POST", headers: { "content-type": "application/json" },
+      body: JSON.stringify({ persona: rpPersonaKey, history: rpHistory }),
+    });
+    const body = await r.json();
+    if (r.ok && body.reply) {
+      rpHistory.push({ role: "prospect", content: body.reply });
+      speakProspect(body.reply);
+    } else {
+      rpHistory.push({ role: "prospect", content: `[could not reach the practice partner: ${body.error || r.status}]` });
+    }
+  } catch (e) {
+    rpHistory.push({ role: "prospect", content: `[connection error: ${e}]` });
+  }
+  rpBusy = false;
+  document.getElementById("view").innerHTML = roleplayPanel();
+  wireRoleplayPanel();
+}
+
+async function rpSubmitGrade() {
+  if (!rpHistory.length || rpGrade || rpBusy) return;
+  rpBusy = true;
+  document.getElementById("view").innerHTML = roleplayPanel();
+  wireRoleplayPanel();
+  try {
+    const r = await fetch("/api/roleplay/grade", {
+      method: "POST", headers: { "content-type": "application/json" },
+      body: JSON.stringify({ producer: rpProducer, persona: rpPersonaKey, history: rpHistory }),
+    });
+    const body = await r.json();
+    if (r.ok && body.grade) rpGrade = body.grade;
+    await rpFetchHistory();
+  } catch (_) {}
+  rpBusy = false;
+  document.getElementById("view").innerHTML = roleplayPanel();
+  wireRoleplayPanel();
+}
+
+function wireRoleplayPanel() {
+  // Auto-grade on the way out: nothing that got practiced should go
+  // ungraded just because the producer picked a new scenario or switched
+  // who's practicing, rather than clicking "Grade my attempt" themselves.
+  const gradeThenReset = async (reset) => {
+    if (rpHistory.length && !rpGrade) await rpSubmitGrade();
+    reset();
+    document.getElementById("view").innerHTML = roleplayPanel();
+    wireRoleplayPanel();
+    // The producer picker needs the cross-day objection index for its
+    // "Recommended" banner; paint() only fetches it on a fresh tab entry,
+    // so a same-tab producer change/reset has to ask for it too.
+    if (rpProducer && !ALL_CALLS_CACHE) {
+      fetchAllCalls().then(() => {
+        if (view !== "roleplay") return;
+        document.getElementById("view").innerHTML = roleplayPanel();
+        wireRoleplayPanel();
+      });
+    }
+  };
+  const prodSel = document.getElementById("rpProdSel");
+  if (prodSel) prodSel.onchange = () => gradeThenReset(async () => {
+    rpProducer = prodSel.value; rpPersonaKey = ""; rpHistory = []; rpGrade = null;
+    await rpFetchHistory();
+  });
+  const changeProd = document.getElementById("rpChangeProducer");
+  if (changeProd) changeProd.onclick = () => gradeThenReset(() => {
+    rpProducer = ""; rpPersonaKey = ""; rpHistory = []; rpGrade = null;
+  });
+  document.querySelectorAll(".pcard").forEach(el => el.onclick = () => {
+    rpPersonaKey = el.dataset.persona; rpHistory = []; rpGrade = null;
+    document.getElementById("view").innerHTML = roleplayPanel();
+    wireRoleplayPanel();
+  });
+  const newScenario = document.getElementById("rpNewScenario");
+  if (newScenario) newScenario.onclick = () => gradeThenReset(() => {});
+  const voice = document.getElementById("rpVoice");
+  if (voice) voice.onchange = () => { rpVoiceOn = voice.checked; };
+  const grade = document.getElementById("rpGrade");
+  if (grade) grade.onclick = rpSubmitGrade;
+  const send = document.getElementById("rpSend");
+  const input = document.getElementById("rpInput");
+  const submit = () => {
+    const text = (input.value || "").trim();
+    if (!text || rpBusy) return;
+    input.value = "";
+    rpSendTurn(text);
+  };
+  if (send) send.onclick = submit;
+  if (input) {
+    input.onkeydown = (e) => { if (e.key === "Enter") submit(); };
+    input.focus();
+  }
 }
 
 /* ---- Trends tab ------------------------------------------------------------
@@ -989,6 +1298,26 @@ async function paint() {
     const controls = producerControlHtml();
     v.innerHTML = controls + (cur ? coachingPanel(cur, producerFilter) : '<div class="empty">Loading…</div>');
     wireProducerControl();
+    wireObjectionBrowser();
+    if (cur && !ALL_CALLS_CACHE) {
+      fetchAllCalls().then(() => {
+        if (view !== "coaching") return;   // navigated away before this landed
+        v.innerHTML = producerControlHtml() + coachingPanel(cur, producerFilter);
+        wireProducerControl();
+        wireObjectionBrowser();
+      });
+    }
+  } else if (view === "roleplay") {
+    $("#topsub").textContent = "practice objection handling and closing";
+    v.innerHTML = roleplayPanel();
+    wireRoleplayPanel();
+    if (rpProducer && !ALL_CALLS_CACHE) {
+      fetchAllCalls().then(() => {
+        if (view !== "roleplay") return;
+        v.innerHTML = roleplayPanel();
+        wireRoleplayPanel();
+      });
+    }
   } else {
     $("#topsub").textContent = "trends across every reporting day";
     v.innerHTML = '<div class="empty">Loading…</div>';
@@ -1007,7 +1336,10 @@ async function loadDay(day) {
   await paint();
 }
 
-$$(".tab").forEach(t => t.onclick = () => {
+$$(".tab").forEach(t => t.onclick = async () => {
+  if (view === "roleplay" && t.dataset.v !== "roleplay" && rpHistory.length && !rpGrade) {
+    await rpSubmitGrade();   // leaving the tab shouldn't leave a session ungraded
+  }
   $$(".tab").forEach(x => x.setAttribute("aria-selected", String(x === t)));
   view = t.dataset.v; paint();
 });

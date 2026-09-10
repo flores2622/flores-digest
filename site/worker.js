@@ -76,6 +76,18 @@ export default {
       if (parts[1] === "folios" && parts.length === 3) {
         return getFolio(env, parts[2]);
       }
+
+      if (parts[1] === "roleplay") {
+        if (parts[2] === "turn" && request.method === "POST") {
+          return roleplayTurn(request, env);
+        }
+        if (parts[2] === "grade" && request.method === "POST") {
+          return roleplayGrade(request, env);
+        }
+        if (parts[2] === "history" && request.method === "GET") {
+          return roleplayHistory(env, url.searchParams.get("producer"));
+        }
+      }
       return json({ error: "not found" }, 404);
     }
 
@@ -304,4 +316,249 @@ async function getFolio(env, end) {
       "cache-control": "no-store",
     },
   });
+}
+
+/* -----------------------------------------------------------------------
+   Role Play — an objection/closing practice partner.
+
+   Grounded in Coral's licensed "One Call Close" workbook (Insurance Sales
+   Lab): its Closing Objections Workflow is a numbered decision tree --
+   "I want to think about it", "I need to talk to my spouse", "your price
+   is too high", etc. -- each with the agency's own scripted technique
+   (address the REAL concern behind the objection, then immediately
+   re-ask for the sale as a direct question, never a soft "would that be
+   ok"). That is also exactly the assumptive-vs-permission-seeking
+   distinction coaching_cards.py already grades real calls on
+   (askq/asks), so the practice partner and the real-call coaching speak
+   the same language on purpose.
+
+   THE PERSONA PROMPTS BELOW ARE THE ANSWER KEY AND MUST NEVER REACH THE
+   CLIENT. They encode which objection(s) the persona raises and what a
+   good response looks like, so the model can judge in character whether
+   the producer's real reply earns a concession. Sending this to the
+   browser would let a producer read the correct answer instead of
+   practicing it -- it exists only in this Worker's memory, server-side.
+
+   No streaming yet (v1): the board's frontend is plain script-tag JS
+   with no fetch-stream reader wired up. A ~1-3 sentence reply comes back
+   fast enough non-streaming that this is a reasonable place to start;
+   revisit if replies feel slow in practice.
+*/
+const PERSONAS = {
+  easy: {
+    label: "Easy-going",
+    blurb: "Open to a quote, minimal resistance",
+    system: `You are playing a phone prospect on a call with an insurance producer who is practicing their pitch. You are warm and already leaning toward yes -- you like the price and coverage discussed so far.
+
+The call can open with one soft HOOK-stage line if it fits ("who's calling?" or "I already have insurance, but sure, go ahead") -- answer it and move on right away, don't dwell on it. Then raise exactly ONE soft closing objection, in your own words, along the lines of "can you just email me the quote" or "what do I need to do to get started." Do not raise any other closing objection after that.
+
+If the producer responds by directly and confidently asking for the next step (a specific, direct question -- which card, which bank, what day to start -- not a tentative or permission-seeking one), agree and move toward closing within the next reply or two. If they hesitate, only ask soft permission questions, or let a reply go by without asking for the sale, stay warm but non-committal ("yeah, maybe, let me think about it") until they ask directly.
+
+If the producer brings up life insurance near the end and you already have it through work or elsewhere, say so plainly but don't make it a fight -- if they explain a real reason to also have a personal policy, you're open to hearing more.
+
+Never break character, never explain your own reasoning, never mention this is practice. Reply in 1-3 short sentences, like a real phone call -- no stage directions, no narration.`,
+  },
+  medium: {
+    label: "Medium resistance",
+    blurb: "Interested, but pushes back once",
+    system: `You are playing a phone prospect on a call with an insurance producer who is practicing their pitch. You are genuinely interested but not sold yet.
+
+The call can open with one HOOK-stage objection if it fits the moment ("I'm kind of busy" / "I didn't request this, did I?" / "I just renewed with my current company") -- give the producer one exchange to get past it, then move on into the pitch either way.
+
+At a natural point once price or coverage comes up, raise ONE of these real closing objections in your own words -- pick whichever fits the conversation so far: "I want to think about it" / "your price is higher than what I'm paying now" / "I need to talk to my spouse first" / "I'd want to shop this around a bit."
+
+How you react to what the producer says next:
+- If they name the REAL concern behind your specific objection (not a generic recap of price or coverage) and then immediately ask for the sale again as a direct question -- soften and move toward yes.
+- If they just repeat the pitch without addressing what you actually said, or ask a soft permission question ("would you be open to...") instead of directly asking for the close -- hold your objection, stay mildly hesitant, and give them at most two more tries before saying you have to go.
+
+If the producer brings up life insurance and you have it already (through work, or elsewhere), raise a mild version of that as a one-line objection too -- give in only if they give you a real, specific reason a second policy makes sense (not just "everyone should have it").
+
+Never break character, never explain your own reasoning, never mention this is practice. Reply in 1-3 short sentences, like a real phone call -- no stage directions, no narration.`,
+  },
+  hard: {
+    label: "Hard to get",
+    blurb: "Skeptical, cycles through objections, doesn't fold easily",
+    system: `You are playing a phone prospect on a call with an insurance producer who is practicing their pitch. You are skeptical, though not rude, and genuinely hard to close.
+
+Open with a real HOOK-stage objection ("who is this, and how'd you get my number" / "I never requested a quote" / "I'm not interested, I just renewed") and make the producer actually earn their way past it before you engage with the pitch at all.
+
+Once you're engaged, raise TWO or THREE of these closing objections in sequence (pick the order that fits the conversation, but don't skip more than one): "I want to think about it", "I need to talk to my spouse", "your price is too high", "I'm loyal to my current agent", "I want to shop this around."
+
+For EACH objection, only ease up (move to the next objection, or agree if that was the last one) if the producer's response both (a) speaks to the REAL concern behind that specific objection rather than a generic answer, AND (b) immediately re-asks for the sale as a direct, assumptive question -- never "would that be okay" or a reply that trails off without asking. If they do only one of those, or neither, hold firm and restate the SAME objection in different words -- do not concede and do not move on. If the producer goes more than two replies in a row without directly asking for the close again, end the call ("I have to go, maybe another time").
+
+If they bring up life insurance, push back hard by default ("I already have it, I'm covered") and only engage seriously if they give you a specific, real reason (mortgage payoff, dependents) rather than a generic pitch.
+
+Never break character, never explain your own reasoning, never mention this is practice. Reply in 1-3 short sentences, natural and a little impatient, like a real phone call -- no stage directions, no narration.`,
+  },
+};
+
+const GRADE_SYSTEM = `You are grading a practice sales call. A producer was practicing objection handling and closing against an AI playing a skeptical prospect, primed with real objections from this agency's own closing script. Read the full transcript (roles: "producer" is the human practicing, "prospect" is the character they were practicing against).
+
+Score these four items, each as {"item": <name>, "met": true|false, "note": <one sentence, quote the producer's own words where useful>}:
+  "Assumptive language"        -- did the producer state next steps/information rather than asking permission for them, especially at the close?
+  "Addressed the real concern" -- when an objection came up, did the producer respond to the actual concern behind it, not a generic price/coverage recap?
+  "Re-asked immediately"       -- after addressing an objection, did the producer immediately ask for the sale again as a direct question, not "would that be ok"?
+  "Kept driving the call"      -- did the producer keep moving the conversation forward rather than pausing, hesitating, or dropping the thread?
+
+Then return:
+  "resolved" -- true only if the prospect actually conceded/agreed to move forward by the end of this transcript.
+  "summary"  -- 2 sentences, plain, what happened.
+  "tip"      -- one specific, actionable tip for next time. Quote the producer's own weakest line if there is one.
+
+Return ONLY a JSON object with exactly these keys: checklist, resolved, summary, tip. No prose outside the JSON.`;
+
+async function callClaude(env, { system, messages, maxTokens }) {
+  if (!env.ANTHROPIC_API_KEY) {
+    throw new Error("ANTHROPIC_API_KEY is not configured on this Worker");
+  }
+  const r = await fetch("https://api.anthropic.com/v1/messages", {
+    method: "POST",
+    headers: {
+      "x-api-key": env.ANTHROPIC_API_KEY,
+      "anthropic-version": "2023-06-01",
+      "content-type": "application/json",
+    },
+    body: JSON.stringify({
+      model: "claude-sonnet-5",
+      max_tokens: maxTokens,
+      system,
+      messages,
+      thinking: { type: "disabled" },
+    }),
+  });
+  if (!r.ok) {
+    throw new Error(`Claude API ${r.status}: ${(await r.text()).slice(0, 300)}`);
+  }
+  const data = await r.json();
+  return (data.content || [])
+    .filter((b) => b.type === "text")
+    .map((b) => b.text)
+    .join("");
+}
+
+function roleplaySlug(name) {
+  return String(name || "unknown").trim().toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "") || "unknown";
+}
+
+/** POST /api/roleplay/turn {persona, history} -> {reply}
+ *
+ * `history` is the growing [{role: "producer"|"prospect", content}, ...]
+ * transcript the frontend already holds -- the Claude API is stateless, so
+ * the full conversation rides on every turn, same as any other multi-turn
+ * chat. Mapped to the API's user/assistant roles here so the persona
+ * prompt above can talk about "producer" and "prospect" in plain English.
+ */
+async function roleplayTurn(request, env) {
+  let body;
+  try {
+    body = await request.json();
+  } catch (_) {
+    return json({ error: "bad request body" }, 400);
+  }
+  const persona = PERSONAS[body.persona];
+  if (!persona) return json({ error: "unknown persona" }, 400);
+  const history = Array.isArray(body.history) ? body.history : [];
+  if (!history.length || history[history.length - 1].role !== "producer") {
+    return json({ error: "history must end with a producer turn" }, 400);
+  }
+
+  const messages = history.map((h) => ({
+    role: h.role === "producer" ? "user" : "assistant",
+    content: String(h.content || "").slice(0, 4000),
+  }));
+
+  try {
+    const reply = await callClaude(env, { system: persona.system, messages, maxTokens: 300 });
+    return json({ reply: reply.trim() });
+  } catch (e) {
+    return json({ error: "role-play turn failed", detail: String(e).slice(0, 300) }, 502);
+  }
+}
+
+/** POST /api/roleplay/grade {producer, persona, history} -> {grade}
+ *
+ * Grades the transcript, then stores the whole session (transcript +
+ * grade) under roleplay/<producer-slug>/<iso-timestamp>.json in the same
+ * private R2 bucket the day documents live in -- same bucket, new prefix,
+ * no new infrastructure. Scores and sessions persist across devices this
+ * way, not just in one browser's local storage.
+ */
+async function roleplayGrade(request, env) {
+  let body;
+  try {
+    body = await request.json();
+  } catch (_) {
+    return json({ error: "bad request body" }, 400);
+  }
+  const persona = PERSONAS[body.persona];
+  if (!persona) return json({ error: "unknown persona" }, 400);
+  const history = Array.isArray(body.history) ? body.history : [];
+  if (!history.length) return json({ error: "no transcript to grade" }, 400);
+  const producer = String(body.producer || "").trim();
+  if (!producer) return json({ error: "producer is required" }, 400);
+
+  const transcriptText = history
+    .map((h) => `${h.role === "producer" ? "Producer" : "Prospect"}: ${h.content}`)
+    .join("\n");
+
+  let grade;
+  try {
+    const raw = await callClaude(env, {
+      system: GRADE_SYSTEM,
+      messages: [{ role: "user", content: transcriptText.slice(0, 12000) }],
+      maxTokens: 1000,
+    });
+    const m = raw.match(/\{[\s\S]*\}/);
+    grade = m ? JSON.parse(m[0]) : null;
+  } catch (e) {
+    return json({ error: "grading failed", detail: String(e).slice(0, 300) }, 502);
+  }
+  if (!grade) return json({ error: "grading returned no parsable result" }, 502);
+
+  const now = new Date();
+  const session = {
+    producer,
+    persona: body.persona,
+    persona_label: persona.label,
+    history,
+    grade,
+    created_at: now.toISOString(),
+  };
+  const key = `roleplay/${roleplaySlug(producer)}/${now.toISOString()}.json`;
+  try {
+    await env.BOARD.put(key, JSON.stringify(session), {
+      httpMetadata: { contentType: "application/json" },
+    });
+  } catch (e) {
+    // The producer still gets their grade even if the save failed -- a
+    // lost practice record is a much smaller problem than a lost grade.
+    return json({ grade, saved: false, save_error: String(e).slice(0, 200) });
+  }
+  return json({ grade, saved: true, key });
+}
+
+/** GET /api/roleplay/history?producer=X -> {sessions: [...]}
+ *
+ * Most recent first, capped at 25. Without a producer filter, lists
+ * across everyone -- small volume expected (practice reps, not a
+ * once-a-day batch), so a plain list-then-fetch is fine; no rollup file
+ * the way months/folios have one.
+ */
+async function roleplayHistory(env, producer) {
+  const prefix = producer ? `roleplay/${roleplaySlug(producer)}/` : "roleplay/";
+  const keys = [];
+  let cursor;
+  do {
+    const listed = await env.BOARD.list({ prefix, cursor });
+    for (const o of listed.objects) keys.push(o.key);
+    cursor = listed.truncated ? listed.cursor : undefined;
+  } while (cursor);
+  keys.sort().reverse();
+
+  const sessions = [];
+  for (const key of keys.slice(0, 25)) {
+    const obj = await env.BOARD.get(key);
+    if (obj) sessions.push(await obj.json());
+  }
+  return json({ sessions });
 }
