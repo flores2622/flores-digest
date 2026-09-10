@@ -196,13 +196,28 @@ def _standalone_titles(azc, day):
 
 
 def create(azc, r, live):
+    """POST /v1/api/tasks.
+
+    Two different shapes depending on what the task hangs off, found by
+    probe_lead_task.py (2026-09-10). AgencyZoom's own create endpoint answers
+    400 "The customer is not found" for a LEAD-bucket caller sent as
+    customerId + customerType "lead" -- confirmed a create-side contract
+    mismatch, not bad data (an existing lead task read back from
+    /v1/api/tasks/list carries exactly that shape, and GET /v1/api/leads/<id>
+    for the id sent back 200). The working shape for a lead is `leadId`
+    instead; customerId/customerType is unchanged and already correct for a
+    customer or service-ticket record.
+    """
     body = {"title": title_for(r),
             "comments": meta_line(r) + BODIES[r["bucket"]],
             "type": "call",
             "assigneeId": EMPLOYEE.get(r["who"], FALLBACK)}
     if r.get("record_id"):
-        body["customerId"] = r["record_id"]
-        body["customerType"] = r["record_type"]
+        if r["record_type"] == "lead":
+            body["leadId"] = r["record_id"]
+        else:
+            body["customerId"] = r["record_id"]
+            body["customerType"] = r["record_type"]
     if not live:
         where = (f"on {r['record_type']} {r['record_id']}"
                  if r.get("record_id") else "standalone")
@@ -257,11 +272,12 @@ def run(day, live=False, intraday=False):
             tid = create(azc, r, live)
         except Exception as e:
             # One record AgencyZoom rejects must not abandon the rest of the
-            # batch. Seen 2026-09-02: POST /v1/api/tasks answers 400 {"error":
-            # "The customer is not found"} for every LEAD-bucket caller,
-            # because customerId is sent a lead id. The lead contract is not
-            # known, so these are reported for manual handling rather than
-            # guessed at -- but the customer and standalone tasks still land.
+            # batch. The lead-bucket 400 seen 2026-09-02 through 2026-09-10
+            # (POST /v1/api/tasks answering "The customer is not found" for
+            # every LEAD-bucket caller) is fixed -- see create()'s docstring --
+            # so this branch is now the genuine fallback for whatever
+            # AgencyZoom rejects next, reported for manual handling rather
+            # than guessed at.
             failed.append((who, r["who"], r.get("record_type"), str(e)[:120]))
             log(f"    FAILED ({r.get('record_type') or 'standalone'}): {e}")
             continue
