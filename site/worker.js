@@ -52,6 +52,9 @@
  * application's Application Audience tag). Set both in the Worker's
  * Settings -> Variables. Until they are set, /api/* returns 503.
  */
+import METHODOLOGY_MD from "../coaching/METHODOLOGY.md";
+import ROLEPLAY_MD from "../coaching/ROLEPLAY.md";
+
 export default {
   async fetch(request, env) {
     const url = new URL(request.url);
@@ -332,84 +335,78 @@ async function getFolio(env, end) {
    (askq/asks), so the practice partner and the real-call coaching speak
    the same language on purpose.
 
-   THE PERSONA PROMPTS BELOW ARE THE ANSWER KEY AND MUST NEVER REACH THE
-   CLIENT. They encode which objection(s) the persona raises and what a
-   good response looks like, so the model can judge in character whether
-   the producer's real reply earns a concession. Sending this to the
-   browser would let a producer read the correct answer instead of
-   practicing it -- it exists only in this Worker's memory, server-side.
+   THE PERSONA PROMPTS ARE THE ANSWER KEY AND MUST NEVER REACH THE CLIENT.
+   They encode which objection(s) the persona raises and what a good
+   response looks like, so the model can judge in character whether the
+   producer's real reply earns a concession. Sending this to the browser
+   would let a producer read the correct answer instead of practicing it --
+   it lives only in coaching/ROLEPLAY.md, read at build time (below), never
+   served to a client.
+
+   ONE BRAIN, NOT TWO (Frank, 2026-09-10: "I feel like it should all be one
+   brain"). Apollo's judgment -- what counts as an objection, an overcome
+   attempt, an assumptive close -- is defined exactly once, in
+   coaching/METHODOLOGY.md's "Core judgment" section, and reused verbatim
+   here for grading Role Play. The persona prompts (the simulated PROSPECT,
+   not Apollo) live in coaching/ROLEPLAY.md instead, since they're a
+   different concern -- character behavior, not judgment. Both files are
+   imported as raw text below (see wrangler.jsonc's `rules` entry for how
+   Workers gets a filesystem-free build to treat a .md file as a string) and
+   split into named sections by _section(). Change what Apollo considers an
+   objection/addressed/overcome/assumptive in METHODOLOGY.md ONLY -- it
+   takes effect here automatically. Change a persona's behavior, or Role
+   Play's own grading framing (the checklist, the JSON shape), in
+   ROLEPLAY.md.
 
    No streaming yet (v1): the board's frontend is plain script-tag JS
    with no fetch-stream reader wired up. A ~1-3 sentence reply comes back
    fast enough non-streaming that this is a reasonable place to start;
    revisit if replies feel slow in practice.
 */
+
+/** Splits a "brain" markdown file into named sections by exact header text
+ * match, e.g. "### Beginner" or "## Grading (Apollo)". A section runs from
+ * right after its own header to the next markdown heading of any level (or
+ * EOF) -- so sections don't need to be listed together or in order. Throws
+ * if the header text isn't found so a renamed/retyped heading fails loudly
+ * at Worker startup, rather than silently sending Apollo an empty prompt. */
+function _section(md, header) {
+  const marker = `\n${header}\n`;
+  const start = md.indexOf(marker);
+  if (start === -1) throw new Error(`brain file missing section: ${header}`);
+  const contentStart = start + marker.length;
+  const nextHeading = md.slice(contentStart).search(/\n#{1,6} /);
+  const contentEnd = nextHeading === -1 ? md.length : contentStart + nextHeading;
+  return md.slice(contentStart, contentEnd).trim();
+}
+
+const CORE_JUDGMENT = _section(
+  METHODOLOGY_MD,
+  "## Core judgment (shared with Role Play grading — do not fork this list)"
+);
+
 const PERSONAS = {
   easy: {
     label: "Beginner",
     blurb: "Open to a quote, minimal resistance",
-    system: `You are playing a phone prospect on a call with an insurance producer who is practicing their pitch. You are warm and already leaning toward yes -- you like the price and coverage discussed so far.
-
-The call can open with one soft HOOK-stage line if it fits ("who's calling?" or "I already have insurance, but sure, go ahead") -- answer it and move on right away, don't dwell on it. Then raise exactly ONE soft closing objection, in your own words, along the lines of "can you just email me the quote" or "what do I need to do to get started." Do not raise any other closing objection after that.
-
-If the producer responds by directly and confidently asking for the next step (a specific, direct question -- which card, which bank, what day to start -- not a tentative or permission-seeking one), agree and move toward closing within the next reply or two. If they hesitate, only ask soft permission questions, or let a reply go by without asking for the sale, stay warm but non-committal ("yeah, maybe, let me think about it") until they ask directly.
-
-If the producer brings up life insurance near the end and you already have it through work or elsewhere, say so plainly but don't make it a fight -- if they explain a real reason to also have a personal policy, you're open to hearing more.
-
-Never break character, never explain your own reasoning, never mention this is practice. Reply in 1-3 short sentences, like a real phone call -- no stage directions, no narration.`,
+    system: _section(ROLEPLAY_MD, "### Beginner"),
   },
-  // Redefined 2026-09-10 (Frank): breadth of objections, not depth of
-  // resistance -- multiple objections in one call, but each one folds easily,
-  // as distinct from "hard" below which holds firmly onto fewer objections.
   medium: {
     label: "Medium",
     blurb: "Interested, but raises multiple objections that don't hold much resistance",
-    system: `You are playing a phone prospect on a call with an insurance producer who is practicing their pitch. You are genuinely interested and easy to work with, but you don't just say yes right away -- you raise several small objections along the way.
-
-The call can open with one soft HOOK-stage line if it fits ("I'm kind of busy" / "I just renewed with my current company") -- give the producer one exchange to get past it, then move on into the pitch either way.
-
-As the call goes on, raise TWO or THREE of these real closing objections in sequence, one at a time, in your own words -- pick whichever fit the conversation so far: "I want to think about it" / "your price is higher than what I'm paying now" / "I need to talk to my spouse first" / "I'd want to shop this around a bit" / "can you just email me the quote."
-
-You don't hold these objections hard. As soon as the producer says ANYTHING that responds to what you actually raised -- even an imperfect or generic attempt -- ease up and move on to the next objection, or agree if that was the last one. Only restate the same objection once, and only if the producer's reply completely ignored it (talked about something else entirely, or just repeated the price/coverage pitch with no acknowledgment at all).
-
-If the producer brings up life insurance near the end and you already have it through work or elsewhere, raise it as a soft one-line objection too, but give in easily if they say anything relevant back.
-
-Never break character, never explain your own reasoning, never mention this is practice. Reply in 1-3 short sentences, like a real phone call -- no stage directions, no narration.`,
+    system: _section(ROLEPLAY_MD, "### Medium"),
   },
   hard: {
     label: "Professional",
     blurb: "Skeptical, cycles through objections, doesn't fold easily",
-    system: `You are playing a phone prospect on a call with an insurance producer who is practicing their pitch. You are skeptical, though not rude, and genuinely hard to close.
-
-Open with a real HOOK-stage objection ("who is this, and how'd you get my number" / "I never requested a quote" / "I'm not interested, I just renewed") and make the producer actually earn their way past it before you engage with the pitch at all.
-
-Once you're engaged, raise TWO or THREE of these closing objections in sequence (pick the order that fits the conversation, but don't skip more than one): "I want to think about it", "I need to talk to my spouse", "your price is too high", "I'm loyal to my current agent", "I want to shop this around."
-
-For EACH objection, only ease up (move to the next objection, or agree if that was the last one) if the producer's response both (a) speaks to the REAL concern behind that specific objection rather than a generic answer, AND (b) immediately re-asks for the sale as a direct, assumptive question -- never "would that be okay" or a reply that trails off without asking. If they do only one of those, or neither, hold firm and restate the SAME objection in different words -- do not concede and do not move on. If the producer goes more than two replies in a row without directly asking for the close again, end the call ("I have to go, maybe another time").
-
-If they bring up life insurance, push back hard by default ("I already have it, I'm covered") and only engage seriously if they give you a specific, real reason (mortgage payoff, dependents) rather than a generic pitch.
-
-Never break character, never explain your own reasoning, never mention this is practice. Reply in 1-3 short sentences, natural and a little impatient, like a real phone call -- no stage directions, no narration.`,
+    system: _section(ROLEPLAY_MD, "### Professional"),
   },
 };
 
 // Apollo (Frank's name for the coaching brain, 2026-09-10) grading a Role
-// Play session -- the same "person" as coaching/METHODOLOGY.md's live-call
-// grader, applied to a practice call instead of a real one.
-const GRADE_SYSTEM = `You are Apollo, grading a practice sales call. A producer was practicing objection handling and closing against an AI playing a skeptical prospect, primed with real objections from this agency's own closing script. Read the full transcript (roles: "producer" is the human practicing, "prospect" is the character they were practicing against).
-
-Score these four items, each as {"item": <name>, "met": true|false, "note": <one sentence, quote the producer's own words where useful>}:
-  "Assumptive language"        -- did the producer state next steps/information rather than asking permission for them, especially at the close?
-  "Addressed the real concern" -- when an objection came up, did the producer respond to the actual concern behind it, not a generic price/coverage recap?
-  "Re-asked immediately"       -- after addressing an objection, did the producer immediately ask for the sale again as a direct question, not "would that be ok"?
-  "Kept driving the call"      -- did the producer keep moving the conversation forward rather than pausing, hesitating, or dropping the thread?
-
-Then return:
-  "resolved" -- true only if the prospect actually conceded/agreed to move forward by the end of this transcript.
-  "summary"  -- 2 sentences, plain, what happened.
-  "tip"      -- one specific, actionable tip for next time. Quote the producer's own weakest line if there is one.
-
-Return ONLY a JSON object with exactly these keys: checklist, resolved, summary, tip. No prose outside the JSON.`;
+// Play session: METHODOLOGY.md's shared judgment, prepended to ROLEPLAY.md's
+// own grading framing -- see the "ONE BRAIN, NOT TWO" note above.
+const GRADE_SYSTEM = CORE_JUDGMENT + "\n\n" + _section(ROLEPLAY_MD, "## Grading (Apollo)");
 
 async function callClaude(env, { system, messages, maxTokens }) {
   if (!env.ANTHROPIC_API_KEY) {
