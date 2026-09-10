@@ -440,12 +440,28 @@ function roleplaySlug(name) {
   return String(name || "unknown").trim().toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "") || "unknown";
 }
 
-/** POST /api/roleplay/turn {persona, history} -> {reply}
+/** Appended to a persona's system prompt when the frontend sends
+ * focus_objections -- this producer's own real, unresolved objection
+ * categories from the trailing 4 completed weeks (site/public/index.html's
+ * producerWeakSpots/objectionWindow4wk). Steers WHICH objection the
+ * persona reaches for, not how hard it holds -- that's still entirely the
+ * difficulty-level text above (Frank, 2026-09-10: "the objections
+ * presented to the producer by the AI bot should be based off of what
+ * they have been unsuccessful on"). */
+function focusObjectionInstruction(categories) {
+  if (!categories || !categories.length) return "";
+  return `\n\nThis producer's real calls over the last 4 weeks show they have NOT been overcoming these specific objection types: ${categories.join(", ")}. When you raise your closing objection(s) this call, phrase them so they land as one of these categories rather than a generic one from the list above -- everything else about how hard you push stays exactly as described for your difficulty level.`;
+}
+
+/** POST /api/roleplay/turn {persona, history, focus_objections} -> {reply}
  *
  * `history` is the growing [{role: "producer"|"prospect", content}, ...]
  * transcript the frontend already holds -- the Claude API is stateless, so
  * the full conversation rides on every turn, same as any other multi-turn
- * chat. Mapped to the API's user/assistant roles here so the persona
+ * chat. `focus_objections` (optional, up to 3 category strings) steers
+ * which objections the persona reaches for -- see
+ * focusObjectionInstruction(). Mapped to the API's user/assistant roles
+ * here so the persona
  * prompt above can talk about "producer" and "prospect" in plain English.
  */
 async function roleplayTurn(request, env) {
@@ -466,9 +482,13 @@ async function roleplayTurn(request, env) {
     role: h.role === "producer" ? "user" : "assistant",
     content: String(h.content || "").slice(0, 4000),
   }));
+  const focusObjections = Array.isArray(body.focus_objections)
+    ? body.focus_objections.filter((c) => typeof c === "string").slice(0, 3)
+    : [];
+  const system = persona.system + focusObjectionInstruction(focusObjections);
 
   try {
-    const reply = await callClaude(env, { system: persona.system, messages, maxTokens: 300 });
+    const reply = await callClaude(env, { system, messages, maxTokens: 300 });
     return json({ reply: reply.trim() });
   } catch (e) {
     return json({ error: "role-play turn failed", detail: String(e).slice(0, 300) }, 502);
