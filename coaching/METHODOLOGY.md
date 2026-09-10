@@ -93,6 +93,94 @@ close HERE ONLY.
   invested in a quote it can't produce. The earlier it was knowable, the more
   it's worth flagging that it wasn't caught sooner. (2026-09-01 review: Karen
   Horais.)
+- **Decide SALES vs. SERVICE from what was actually said, independently of
+  any category label you're handed** (Frank, 2026-09-10: "I want to teach
+  apollo to mirror how I think about everything and not be dependent on any
+  other aspect"). This is the same distinction CLAUDE.md draws for the money
+  rules, and it governs how you coach the call, not just how it's counted:
+    - A renewal is not a sale. Neither is servicing, a payment, a claim, or
+      chasing paperwork on a policy already sold — coach these as SERVICE
+      calls: was the issue resolved, efficiently and correctly, not "did they
+      sell."
+    - Selling a product the household does not have yet IS a sale, even to a
+      customer of twenty years — a cross-sell offered mid-service-call makes
+      that call MIXED, not pure service, and the cross-sell attempt (or the
+      missed opening for one) still gets coached as a sale would be.
+    - Judge this from the actual content of the call — what was asked for,
+      discussed, or changed hands — never from a pre-computed label on the
+      row. You are not told and must not assume what a category badge
+      elsewhere on the board says this call is; if the transcript disagrees
+      with what you'd expect from context, trust the transcript.
+
+## The 9-dimension call-structure framework (Frank, 2026-09-10)
+
+This is the second half of Apollo's judgment, alongside Core judgment above.
+Core judgment governs objection/close moments; this framework governs the
+rest of the call's shape. It is REAL-CALL-ONLY (a Role Play snippet has no
+CRM, no captured premium, often no full opening) and is not prepended into
+Role Play's grading prompt the way Core judgment is — do not add it to
+`ROLEPLAY.md`.
+
+**Use this as the lens you analyze the call through, not a checklist you fill
+in after the fact.** Read the call once with these nine checkpoints actively
+in mind, the same way you already read it for objections. A dimension scored
+"w" or "m" is, by default, also a `bad` entry or a `spine` moment somewhere —
+if presenting numbers was weak, that weakness should show up as a red/yellow
+spine beat with the actual quote, not just as a letter in `score` nobody
+narrated. Conversely a `good` entry that amounts to one of these dimensions
+done well ("clean discovery," "specific next step") should say so plainly
+rather than reaching for vaguer praise. `summary` and `anal` fields should
+read as if you diagnosed the call against this framework, because you did.
+
+Each dimension: "s" (strong) requires the transcript actually show it done
+well — quote or closely paraphrase it. "w" (weak) means attempted but thin,
+rushed, or incomplete. "m" (missing) means a real opportunity existed and
+nothing was done. "n" (not applicable) means no such opportunity existed on
+this call at all — never force "m" onto a call that had no natural opening
+for the dimension.
+
+**On a SERVICE call** (see `calltype` in Core judgment above), most of these
+dimensions have no opportunity to exist at all — score "n", not "m", for
+"Current premium captured", "Renewal / X-date captured", "Presenting
+numbers", and "Next step specificity" unless the call actually did drift
+into that territory. The one exception is **"Bundle / cross-sell raised"**:
+per Core judgment, a cross-sell opportunity always counts, so score it
+normally (s/w/m) even on an otherwise pure service call — a producer who
+handles a claim call well but never notices the household has no life policy
+still gets an "m" there, same as on a sales call.
+
+- **Opening & identification** — producer clearly states who they are, what
+  agency, and why they're calling, and confirms they're speaking with the
+  right person, before moving into the pitch. A pitch that starts before
+  identification lands is "w" even if the rest of the call goes well.
+- **Discovery** — asks about the household's actual situation before
+  pitching: current carrier, what matters to them (price vs. coverage vs.
+  service), any recent life change (new car, new driver, moved, new baby).
+  Reciting a pitch without first asking anything is "m", not "w".
+- **Current premium captured** — got the actual number the prospect is
+  paying now, not an assumed or ballpark figure the producer never
+  confirmed. A quote built on an assumed premium is a gap even if the call
+  otherwise goes well.
+- **Renewal / X-date captured** — got or confirmed the renewal/expiration
+  date needed to time the switch and avoid a lapse or a pay-twice month.
+- **Product knowledge** — coverage, price, and process are represented
+  accurately; no invented rule, no wrong coverage description. A confident
+  wrong answer is worse than an honest "let me check" — score it "w" or "m"
+  accordingly, not "s" for confidence alone.
+- **Presenting numbers** — the quoted price/savings is stated clearly and
+  specifically (an actual number, compared to what they're paying now), not
+  vague ("it'll probably save you some money").
+- **Bundle / cross-sell raised** — a product the household doesn't have yet
+  (home, life, umbrella) was raised as a real question, not a throwaway
+  mention buried in a sentence about something else.
+- **Next step specificity** — the call ends with a concrete, dated/timed next
+  step ("I'll call you Thursday at 3 with the final numbers"), not a vague
+  "I'll follow up" or "I'll get that over to you."
+- **CRM after the call** — almost never knowable from a transcript alone
+  (it happens after the recording ends). Score "n" by default; only score
+  "s"/"w"/"m" if the call itself gives direct evidence (e.g. the producer
+  says "let me put a note in the system for X" and either does or visibly
+  skips it). Do not guess at what happened after the call ended.
 
 ## Output format
 
@@ -100,6 +188,12 @@ Return ONLY a JSON object, no prose around it, with exactly these keys:
 
 ```
 "lang"     "Spanish", "English", or "Spanish/English" if the call code-switches
+"calltype" [one of "sales"/"service"/"mixed", one-sentence quote-based
+           justification] -- your own determination, per Core judgment above,
+           of what this call actually was. Decide this BEFORE writing summary
+           below, since summary and every other field should read consistently
+           with it -- don't call it "service" here and then narrate a sales
+           pitch in summary.
 "summary"  2-3 sentences, plain past tense: what the call was about, what was
            offered, and how it ended. Name what the prospect actually said.
 "askq"     [boolean, one-sentence quote-based justification] -- did the
@@ -138,18 +232,13 @@ Return ONLY a JSON object, no prose around it, with exactly these keys:
 - "bad"    an array of [short title, one-sentence detail] pairs -- specific
            things that cost the sale or the next step. Empty array only if
            the call was genuinely clean.
-"score"    an object scoring EXACTLY these 9 dimensions. Each value is
-           [letter, one-sentence detail] where letter is "s" (strong), "w"
-           (weak), "m" (missing), or "n" (not applicable to this call):
-             "Opening & identification"
-             "Discovery"
-             "Current premium captured"
-             "Renewal / X-date captured"
-             "Product knowledge"
-             "Presenting numbers"
-             "Bundle / cross-sell raised"
-             "Next step specificity"
-             "CRM after the call"
+"score"    an object scoring EXACTLY the 9 dimensions defined in "The
+           9-dimension call-structure framework" above -- same keys, same
+           [letter, one-sentence detail] shape, same s/w/m/n meaning defined
+           there. Don't re-derive the criteria here; that section is
+           authoritative. As noted there, a "w"/"m" verdict here should
+           generally also surface as a `bad` entry or a `spine` moment --
+           don't let this object disagree with the rest of the card.
 "techniques" an object scoring EXACTLY these 6 named sales techniques, same
            shape as "score" above: [letter, one-sentence detail] where letter
            is "s" (used, and it worked), "w" (attempted but landed flat --
@@ -159,7 +248,9 @@ Return ONLY a JSON object, no prose around it, with exactly these keys:
            one just to fill the field). Distinct from "askq"/"asks" above,
            which are about assumptive vs. permission-seeking LANGUAGE, not
            which named technique was reached for -- don't re-score
-           assumptive language here.
+           assumptive language here. Same SERVICE-call gating as "score"
+           above: on a pure service call these are mostly "n", not "m",
+           except where a real cross-sell moment actually came up.
              "Elevator pitch"      a short, prepared reason-to-switch
                                     delivered in the first couple minutes,
                                     BEFORE any pushback -- this agency's own
@@ -212,12 +303,24 @@ Return ONLY a JSON object, no prose around it, with exactly these keys:
 
 - Category badge (Sold / Quoted / Contacted / Dead), lead source, and time of
   day are computed separately from structured data, not by you — you do not
-  need to and should not try to infer them.
+  need to and should not try to infer them. This is a DIFFERENT axis from
+  `calltype` (sales/service/mixed): the badge is a deal-stage outcome computed
+  mechanically outside this prompt; `calltype` is your own judgment of what
+  kind of call this was, made from the transcript alone. A call can be
+  "Live Contact" on the badge and "service" on `calltype` at the same time —
+  neither one implies the other.
+- "calltype" (Frank, 2026-09-10) is new and unproven, same caution as
+  "techniques" below: watch whether a call that's genuinely mixed (starts as
+  a payment call, drifts into a real cross-sell attempt) gets called "mixed"
+  rather than forced into "sales" or "service" for convenience.
 - There is no cross-call memory yet: each card is written from one call in
   isolation, even when the same lead was called multiple times in the same
   day or across days.
-- The scorecard dimensions above are a fixed list ported from the pre-
-  automation cards. If a dimension consistently doesn't fit how coaching
+- The 9 call-structure dimensions started as a fixed list ported from the
+  pre-automation cards; as of 2026-09-10 each one has real per-dimension
+  criteria (see "The 9-dimension call-structure framework") and is meant to
+  actively shape `summary`/`good`/`bad`/`spine`, not sit as an isolated
+  checklist. If a dimension consistently doesn't fit how coaching
   conversations actually go, that's something to change here, not something
   to work around per-call.
 - "techniques" (Frank, 2026-09-10) is new and unproven -- it asks the same
