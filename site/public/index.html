@@ -113,6 +113,12 @@
 .n2 { color: var(--silver); }
 .n3 { color: var(--bronze); }
 .mdl { font-size: 14px; line-height: 1; margin-left: 5px; }
+.podium { display: flex; flex-direction: column; gap: 9px; margin: 4px 0 18px; }
+.prow { display: flex; align-items: center; gap: 10px; }
+.prank { width: 22px; text-align: center; font-size: 13px; flex-shrink: 0; }
+.pname { width: 130px; flex-shrink: 0; font-size: 13px; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ptrack { flex: 1; height: 10px; border-radius: 5px; background: var(--surface); border: 1px solid var(--border-strong); overflow: hidden; }
+.pfill { height: 100%; border-radius: 5px; }
 
 * { box-sizing: border-box; }
 body {
@@ -421,18 +427,37 @@ function digestDay(d, who) {
   // filtering to one person means.
   const t = focus || d.totals || {};
   const rate = focus ? (focus.rate ?? 0) : (t.dials ? (100 * t.live / t.dials).toFixed(1) : "0");
+  // Households Quoted + Premium Quoted combined into one tile, Policies +
+  // Premium Sold combined into another -- Frank, 2026-09-10: "that way
+  // there are 5 boxes." Big number is the count; the dollar figure moves to
+  // the subtitle, same slot other tiles already use for a second stat.
   const tiles = [
     ["Dials", t.dials ?? 0, "outbound, after exclusions"],
     ["Live contacts", t.live ?? 0, rate + "% contact rate"],
-    ["Households quoted", t.hh ?? 0, ""],
-    ["Premium quoted", money(t.pq), ""],
-    ["Policies", t.pol ?? 0, ""],
-    ["Premium sold", money(t.ps), ""],
+    ["Households Quoted", t.hh ?? 0, `${money(t.pq)} quoted`],
+    ["Policies", t.pol ?? 0, `${money(t.ps)} sold`],
   ];
   if (t.util != null) tiles.push(["Utilization", t.util + "%", "weighted"]);
   const tilesHtml = tiles.map(([k, v, n]) =>
     `<div class="tile"><div class="k">${k}</div><div class="v">${v}</div>${n ? `<div class="n">${n}</div>` : ""}</div>`).join("");
 
+  return `<div class="tiles">${tilesHtml}</div>
+  ${teamLeaderboardHtml(d, who)}`;
+}
+
+/* Team Leaderboard -- replaces what used to be two separate panels
+   ("Scoreboard" and "Team Leaderboard"), which showed the same producers
+   and mostly the same figures two different ways (Frank, 2026-09-10: "are
+   identical, right?"). Podium below is styled after the email's MVP
+   leaderboard (panels.leaderboard: a bar per producer sized to their
+   standing) -- ranking and bar length still come from the same point
+   system/rules the email uses (d.leaderboard.points, computed server-side
+   in board_payload.leaderboard()), just never printed as a number. Below
+   the podium, the per-category table is the OLD Scoreboard, unchanged:
+   every figure coloured against its own goal, not by rank. */
+function teamLeaderboardHtml(d, who) {
+  const byName = Object.fromEntries((d.producers || []).map(p => [p.name, p]));
+  const focus = who ? byName[who] : null;
   const TI = { green: "tg", yellow: "ty", red: "tr" };
   const tc = (name, key) => TI[((d.tiers || {})[name] || {})[key]] || "";
   const MEDAL = ["\u{1F3C6}", "\u{1F948}", "\u{1F949}"];
@@ -443,9 +468,23 @@ function digestDay(d, who) {
     return g === 0 ? "sold today" : g == null ? "no sale on record"
          : g + " business day" + (g === 1 ? "" : "s") + " without a sale";
   };
-  const ranked = focus ? [focus] : ((d.leaderboard && d.leaderboard.order) || (d.producers || []).map(p => p.name))
+  const lb = d.leaderboard || {};
+  const ranked = focus ? [focus] : ((lb.order) || (d.producers || []).map(p => p.name))
                    .map(n => byName[n]).filter(Boolean);
   const hasRoleplay = ranked.some(p => (p.coach || {}).roleplay != null);
+
+  let podium = "";
+  if (!focus && lb.order && lb.order.length > 1) {
+    const points = lb.points || {};
+    const top = Math.max(...lb.order.map(n => points[n] || 0), 1);
+    podium = `<div class="podium">${lb.order.map((n, i) => `
+      <div class="prow">
+        <span class="prank">${i < 3 ? MEDAL[i] : i + 1}</span>
+        <span class="pname">${n}</span>
+        <div class="ptrack"><div class="pfill" style="width:${((points[n] || 0) / top * 100).toFixed(2)}%;background:${DOT[n] || "#8a877f"}"></div></div>
+      </div>`).join("")}</div>`;
+  }
+
   const rows = ranked.map((p, i) => `<tr>
     <td><span class="who"><span class="pd" style="background:${DOT[p.name] || "#8a877f"}"></span><span${
        !focus && i < 3 ? ` class="${NCL[i]}"` : ""}>${p.name}</span>${
@@ -473,9 +512,30 @@ function digestDay(d, who) {
     <td class="num ${tt("ps")}">${money(T.ps)}</td>
     ${T.util != null ? `<td class="num ${tt("util")}">${T.util}%</td>` : ""}</tr>`;
 
-  const s = focus ? null : d.scan;
+  return `<div class="sect"><h2>Team Leaderboard</h2>
+   <p class="sd">Ranked the same way the email's MVP leaderboard ranks producers -- but every figure below is
+   coloured against its own goal, not by rank: <span class="tg">on or exceeding</span>,
+   <span class="ty">off pace but close</span>, <span class="tr">off track</span>. Policies is coloured on a
+   streak instead of a daily target. Hover a policy count for the gap. Contact Rate shows live contacts in
+   brackets.</p>
+   ${podium}
+   <div class="scroll"><table><thead><tr><th>Producer</th>${hasRoleplay ? "<th class=\"num\">Role Play</th>" : ""}
+   <th class="num">Call Volume</th><th class="num">Avg Talk Time</th><th class="num">Contact Rate</th>
+   <th class="num">Households Quoted</th><th class="num">Premium Quoted</th>
+   <th class="num">Policies</th><th class="num">Premium Sold</th>
+   ${ranked.some(p => p.util != null) ? "<th class=\"num\">Utilization</th>" : ""}</tr></thead>
+   <tbody>${rows}${tot}</tbody></table></div></div>`;
+}
+
+/* Wins and Losses -- was "What the day says" + "Objections by category" on
+   the Digest tab; moved to its own section on the Coaching tab (Frank,
+   2026-09-10). Team-level, not meaningful filtered to one producer, same as
+   before. */
+function winsLossesHtml(d, who) {
+  if (who) return "";
+  const s = d.scan;
   const sold = (d.calls || []).filter(c => c.catc === "cat-sold").map(c => c.lead);
-  const says = !s ? "" : `<div class="sect"><h2>What the day says</h2>
+  const says = !s ? "" : `
    <p class="sd">Two patterns that only show up across calls, not within one.</p>
    <div class="hero">
     <div class="hl">The opening asks permission</div>
@@ -489,48 +549,16 @@ function digestDay(d, who) {
     call${sold.length ? ` — ${sold.join(", ")}` : ""}. Current premium was captured on <b>${s.premium}</b>, a
     renewal date on <b>${s.xdate}</b>, and a bundle raised on <b>${s.bundle}</b>.
     <b>${s.timeset} of ${s.of}</b> set a specific callback time — that one is usually the cheapest to fix.</p>
-   </div>
-  </div>`;
-  const objs = focus || !(d.objcats && d.objcats.length) ? "" : `<div class="sect"><h2>Objections by category</h2>
+   </div>`;
+  const objs = !(d.objcats && d.objcats.length) ? "" : `
+   <h3>Objections by category</h3>
    <p class="sd">Won means the objection was addressed and overcome on the call, not merely answered.</p>
    <div class="scroll"><table><thead><tr><th>Category</th><th class="num">Raised</th><th class="num">Won</th></tr></thead><tbody>
    ${d.objcats.map(([c, n, w]) => `<tr><td>${c}</td><td class="num">${n}</td>
      <td class="num">${w ? `<span class="chip c-g">${w}</span>` : `<span class="chip c-r">0</span>`}</td></tr>`).join("")}
-   </tbody></table></div></div>`;
-
-  return `<div class="tiles">${tilesHtml}</div>
-  <div class="sect"><h2>Scoreboard</h2>
-   <p class="sd">Each figure is coloured against its goal — <span class="tg">on or exceeding</span>,
-   <span class="ty">off pace but close</span>, <span class="tr">off track</span>. Policies is coloured on a
-   streak instead of a daily target. Hover a policy count for the gap. Contact Rate shows live contacts in
-   brackets.</p>
-   <div class="scroll"><table><thead><tr><th>Producer</th>${hasRoleplay ? "<th class=\"num\">Role Play</th>" : ""}
-   <th class="num">Call Volume</th><th class="num">Avg Talk Time</th><th class="num">Contact Rate</th>
-   <th class="num">Households Quoted</th><th class="num">Premium Quoted</th>
-   <th class="num">Policies</th><th class="num">Premium Sold</th>
-   ${ranked.some(p => p.util != null) ? "<th class=\"num\">Utilization</th>" : ""}</tr></thead>
-   <tbody>${rows}${tot}</tbody></table></div></div>
-  ${says}${objs}`;
-}
-
-function leaderboardPanel(d) {
-  const lb = d.leaderboard;
-  if (!(lb && lb.order && lb.order.length)) return "";
-  const names = lb.order;
-  const fmt = (label, v) => label === "Avg Talk Time" ? hhmm(v)
-      : label === "Contact Rate" ? v + "%"
-      : /Premium/.test(label) ? money(v) : v;
-  const head = names.map(n => `<th class="num">${n.split(" ")[0]}</th>`).join("");
-  const rows = (lb.categories || []).map(c => `<tr><td>${c.label}</td>${names.map(n => {
-      const pl = (c.places || {})[n];
-      return `<td class="num">${fmt(c.label, (c.values || {})[n])}${pl === 1 ? ` <span class="chip c-g">1st</span>` : ""}</td>`;
-    }).join("")}</tr>`).join("");
-  return `<div class="sect"><h2>Team Leaderboard</h2>
-   <p class="sd">Avg Call Score and Avg Sentiment are excluded — TRAQ scores a voicemail as a call, so both
-   track who answered rather than how the producer talked.</p>
-   <div class="scroll"><table><thead><tr><th>Category</th>${head}</tr></thead><tbody>${rows}
-    <tr class="tot"><td>Points</td>${names.map(n => `<td class="num">${(lb.points || {})[n] ?? 0}</td>`).join("")}</tr>
-   </tbody></table></div></div>`;
+   </tbody></table></div>`;
+  if (!says && !objs) return "";
+  return `<div class="sect"><h2>Wins and Losses</h2>${says}${objs}</div>`;
 }
 
 function speedPanel(d, who) {
@@ -589,7 +617,6 @@ function auditPanel(d, who) {
 
 function digestPanel(d, who) {
   return `${digestDay(d, who)}
-  ${who ? "" : `<div class="sect">${leaderboardPanel(d)}</div>`}
   ${speedPanel(d, who)}
   ${recontactPanel(d, who)}
   ${auditPanel(d, who)}`;
@@ -811,6 +838,7 @@ function coachingPanel(d, who) {
     only. The cards are written from the call recordings and are not generated, so a day gets them when someone
     writes them — an empty tab here means nobody has yet, not that the calls were clean.</p></div>`;
   const sel = who && order.includes(who) ? who : "";
+  const wl = winsLossesHtml(d, sel);
   let out = "";
   let shown = 0;
   order.forEach(p => {
@@ -824,6 +852,7 @@ function coachingPanel(d, who) {
   if (!shown) {
     out = `<div class="empty">${sel ? `No coaching cards for ${sel} on this day.` : "No coaching cards for this day."}</div>`;
   }
+  out = wl + out;
   return out + (d.notcoached ? `<div class="note" style="border:1px dashed var(--border-strong);border-radius:8px;padding:14px 16px">
     <b>Not coached, and why.</b> ${d.notcoached}</div>` : "") + objectionBrowserHtml();
 }
