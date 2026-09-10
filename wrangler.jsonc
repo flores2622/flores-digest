@@ -20,6 +20,14 @@
     // Worker, so it has no binding to use).
     { "binding": "BOARD", "bucket_name": "flores-board" }
   ],
+  // Lets site/worker.js `import` coaching/METHODOLOGY.md and
+  // coaching/ROLEPLAY.md as plain strings at build time (Workers has no
+  // filesystem at request time). Added 2026-09-10 so Apollo's brain is one
+  // set of markdown files, not duplicated as JS template strings in code --
+  // see coaching/ROLEPLAY.md's own comment for how worker.js parses them.
+  "rules": [
+    { "type": "Text", "globs": ["**/coaching/*.md"], "fallthrough": true }
+  ],
   // Cloudflare Access config for site/worker.js's requireAccess(). NOT
   // secrets -- ACCESS_TEAM_DOMAIN is already public (it's in every Access
   // login redirect URL), and ACCESS_AUD doesn't let anyone forge a token

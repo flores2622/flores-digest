@@ -52,6 +52,9 @@
  * application's Application Audience tag). Set both in the Worker's
  * Settings -> Variables. Until they are set, /api/* returns 503.
  */
+import METHODOLOGY_MD from "../coaching/METHODOLOGY.md";
+import ROLEPLAY_MD from "../coaching/ROLEPLAY.md";
+
 export default {
   async fetch(request, env) {
     const url = new URL(request.url);
@@ -75,6 +78,18 @@ export default {
 
       if (parts[1] === "folios" && parts.length === 3) {
         return getFolio(env, parts[2]);
+      }
+
+      if (parts[1] === "roleplay") {
+        if (parts[2] === "turn" && request.method === "POST") {
+          return roleplayTurn(request, env);
+        }
+        if (parts[2] === "grade" && request.method === "POST") {
+          return roleplayGrade(request, env);
+        }
+        if (parts[2] === "history" && request.method === "GET") {
+          return roleplayHistory(env, url.searchParams.get("producer"));
+        }
       }
       return json({ error: "not found" }, 404);
     }
@@ -304,4 +319,267 @@ async function getFolio(env, end) {
       "cache-control": "no-store",
     },
   });
+}
+
+/* -----------------------------------------------------------------------
+   Role Play — an objection/closing practice partner.
+
+   Grounded in Coral's licensed "One Call Close" workbook (Insurance Sales
+   Lab): its Closing Objections Workflow is a numbered decision tree --
+   "I want to think about it", "I need to talk to my spouse", "your price
+   is too high", etc. -- each with the agency's own scripted technique
+   (address the REAL concern behind the objection, then immediately
+   re-ask for the sale as a direct question, never a soft "would that be
+   ok"). That is also exactly the assumptive-vs-permission-seeking
+   distinction coaching_cards.py already grades real calls on
+   (askq/asks), so the practice partner and the real-call coaching speak
+   the same language on purpose.
+
+   THE PERSONA PROMPTS ARE THE ANSWER KEY AND MUST NEVER REACH THE CLIENT.
+   They encode which objection(s) the persona raises and what a good
+   response looks like, so the model can judge in character whether the
+   producer's real reply earns a concession. Sending this to the browser
+   would let a producer read the correct answer instead of practicing it --
+   it lives only in coaching/ROLEPLAY.md, read at build time (below), never
+   served to a client.
+
+   ONE BRAIN, NOT TWO (Frank, 2026-09-10: "I feel like it should all be one
+   brain"). Apollo's judgment -- what counts as an objection, an overcome
+   attempt, an assumptive close -- is defined exactly once, in
+   coaching/METHODOLOGY.md's "Core judgment" section, and reused verbatim
+   here for grading Role Play. The persona prompts (the simulated PROSPECT,
+   not Apollo) live in coaching/ROLEPLAY.md instead, since they're a
+   different concern -- character behavior, not judgment. Both files are
+   imported as raw text below (see wrangler.jsonc's `rules` entry for how
+   Workers gets a filesystem-free build to treat a .md file as a string) and
+   split into named sections by _section(). Change what Apollo considers an
+   objection/addressed/overcome/assumptive in METHODOLOGY.md ONLY -- it
+   takes effect here automatically. Change a persona's behavior, or Role
+   Play's own grading framing (the checklist, the JSON shape), in
+   ROLEPLAY.md.
+
+   No streaming yet (v1): the board's frontend is plain script-tag JS
+   with no fetch-stream reader wired up. A ~1-3 sentence reply comes back
+   fast enough non-streaming that this is a reasonable place to start;
+   revisit if replies feel slow in practice.
+*/
+
+/** Splits a "brain" markdown file into named sections by exact header text
+ * match, e.g. "### Beginner" or "## Grading (Apollo)". A section runs from
+ * right after its own header to the next markdown heading of any level (or
+ * EOF) -- so sections don't need to be listed together or in order. Throws
+ * if the header text isn't found so a renamed/retyped heading fails loudly
+ * at Worker startup, rather than silently sending Apollo an empty prompt. */
+function _section(md, header) {
+  const marker = `\n${header}\n`;
+  const start = md.indexOf(marker);
+  if (start === -1) throw new Error(`brain file missing section: ${header}`);
+  const contentStart = start + marker.length;
+  const nextHeading = md.slice(contentStart).search(/\n#{1,6} /);
+  const contentEnd = nextHeading === -1 ? md.length : contentStart + nextHeading;
+  return md.slice(contentStart, contentEnd).trim();
+}
+
+const CORE_JUDGMENT = _section(
+  METHODOLOGY_MD,
+  "## Core judgment (shared with Role Play grading — do not fork this list)"
+);
+
+const PERSONAS = {
+  easy: {
+    label: "Beginner",
+    blurb: "Open to a quote, minimal resistance",
+    system: _section(ROLEPLAY_MD, "### Beginner"),
+  },
+  medium: {
+    label: "Medium",
+    blurb: "Interested, but raises multiple objections that don't hold much resistance",
+    system: _section(ROLEPLAY_MD, "### Medium"),
+  },
+  hard: {
+    label: "Professional",
+    blurb: "Skeptical, cycles through objections, doesn't fold easily",
+    system: _section(ROLEPLAY_MD, "### Professional"),
+  },
+};
+
+// Apollo (Frank's name for the coaching brain, 2026-09-10) grading a Role
+// Play session: METHODOLOGY.md's shared judgment, prepended to ROLEPLAY.md's
+// own grading framing -- see the "ONE BRAIN, NOT TWO" note above.
+const GRADE_SYSTEM = CORE_JUDGMENT + "\n\n" + _section(ROLEPLAY_MD, "## Grading (Apollo)");
+
+async function callClaude(env, { system, messages, maxTokens }) {
+  if (!env.ANTHROPIC_API_KEY) {
+    throw new Error("ANTHROPIC_API_KEY is not configured on this Worker");
+  }
+  const r = await fetch("https://api.anthropic.com/v1/messages", {
+    method: "POST",
+    headers: {
+      "x-api-key": env.ANTHROPIC_API_KEY,
+      "anthropic-version": "2023-06-01",
+      "content-type": "application/json",
+    },
+    body: JSON.stringify({
+      model: "claude-sonnet-5",
+      max_tokens: maxTokens,
+      system,
+      messages,
+      thinking: { type: "disabled" },
+    }),
+  });
+  if (!r.ok) {
+    throw new Error(`Claude API ${r.status}: ${(await r.text()).slice(0, 300)}`);
+  }
+  const data = await r.json();
+  return (data.content || [])
+    .filter((b) => b.type === "text")
+    .map((b) => b.text)
+    .join("");
+}
+
+function roleplaySlug(name) {
+  return String(name || "unknown").trim().toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "") || "unknown";
+}
+
+/** Appended to a persona's system prompt when the frontend sends
+ * focus_objections -- this producer's own real, unresolved objection
+ * categories from the trailing 4 completed weeks (site/public/index.html's
+ * producerWeakSpots/objectionWindow4wk). Steers WHICH objection the
+ * persona reaches for, not how hard it holds -- that's still entirely the
+ * difficulty-level text above (Frank, 2026-09-10: "the objections
+ * presented to the producer by the AI bot should be based off of what
+ * they have been unsuccessful on"). */
+function focusObjectionInstruction(categories) {
+  if (!categories || !categories.length) return "";
+  return `\n\nThis producer's real calls over the last 4 weeks show they have NOT been overcoming these specific objection types: ${categories.join(", ")}. When you raise your closing objection(s) this call, phrase them so they land as one of these categories rather than a generic one from the list above -- everything else about how hard you push stays exactly as described for your difficulty level.`;
+}
+
+/** POST /api/roleplay/turn {persona, history, focus_objections} -> {reply}
+ *
+ * `history` is the growing [{role: "producer"|"prospect", content}, ...]
+ * transcript the frontend already holds -- the Claude API is stateless, so
+ * the full conversation rides on every turn, same as any other multi-turn
+ * chat. `focus_objections` (optional, up to 3 category strings) steers
+ * which objections the persona reaches for -- see
+ * focusObjectionInstruction(). Mapped to the API's user/assistant roles
+ * here so the persona
+ * prompt above can talk about "producer" and "prospect" in plain English.
+ */
+async function roleplayTurn(request, env) {
+  let body;
+  try {
+    body = await request.json();
+  } catch (_) {
+    return json({ error: "bad request body" }, 400);
+  }
+  const persona = PERSONAS[body.persona];
+  if (!persona) return json({ error: "unknown persona" }, 400);
+  const history = Array.isArray(body.history) ? body.history : [];
+  if (!history.length || history[history.length - 1].role !== "producer") {
+    return json({ error: "history must end with a producer turn" }, 400);
+  }
+
+  const messages = history.map((h) => ({
+    role: h.role === "producer" ? "user" : "assistant",
+    content: String(h.content || "").slice(0, 4000),
+  }));
+  const focusObjections = Array.isArray(body.focus_objections)
+    ? body.focus_objections.filter((c) => typeof c === "string").slice(0, 3)
+    : [];
+  const system = persona.system + focusObjectionInstruction(focusObjections);
+
+  try {
+    const reply = await callClaude(env, { system, messages, maxTokens: 300 });
+    return json({ reply: reply.trim() });
+  } catch (e) {
+    return json({ error: "role-play turn failed", detail: String(e).slice(0, 300) }, 502);
+  }
+}
+
+/** POST /api/roleplay/grade {producer, persona, history} -> {grade}
+ *
+ * Grades the transcript, then stores the whole session (transcript +
+ * grade) under roleplay/<producer-slug>/<iso-timestamp>.json in the same
+ * private R2 bucket the day documents live in -- same bucket, new prefix,
+ * no new infrastructure. Scores and sessions persist across devices this
+ * way, not just in one browser's local storage.
+ */
+async function roleplayGrade(request, env) {
+  let body;
+  try {
+    body = await request.json();
+  } catch (_) {
+    return json({ error: "bad request body" }, 400);
+  }
+  const persona = PERSONAS[body.persona];
+  if (!persona) return json({ error: "unknown persona" }, 400);
+  const history = Array.isArray(body.history) ? body.history : [];
+  if (!history.length) return json({ error: "no transcript to grade" }, 400);
+  const producer = String(body.producer || "").trim();
+  if (!producer) return json({ error: "producer is required" }, 400);
+
+  const transcriptText = history
+    .map((h) => `${h.role === "producer" ? "Producer" : "Prospect"}: ${h.content}`)
+    .join("\n");
+
+  let grade;
+  try {
+    const raw = await callClaude(env, {
+      system: GRADE_SYSTEM,
+      messages: [{ role: "user", content: transcriptText.slice(0, 12000) }],
+      maxTokens: 1000,
+    });
+    const m = raw.match(/\{[\s\S]*\}/);
+    grade = m ? JSON.parse(m[0]) : null;
+  } catch (e) {
+    return json({ error: "grading failed", detail: String(e).slice(0, 300) }, 502);
+  }
+  if (!grade) return json({ error: "grading returned no parsable result" }, 502);
+
+  const now = new Date();
+  const session = {
+    producer,
+    persona: body.persona,
+    persona_label: persona.label,
+    history,
+    grade,
+    created_at: now.toISOString(),
+  };
+  const key = `roleplay/${roleplaySlug(producer)}/${now.toISOString()}.json`;
+  try {
+    await env.BOARD.put(key, JSON.stringify(session), {
+      httpMetadata: { contentType: "application/json" },
+    });
+  } catch (e) {
+    // The producer still gets their grade even if the save failed -- a
+    // lost practice record is a much smaller problem than a lost grade.
+    return json({ grade, saved: false, save_error: String(e).slice(0, 200) });
+  }
+  return json({ grade, saved: true, key });
+}
+
+/** GET /api/roleplay/history?producer=X -> {sessions: [...]}
+ *
+ * Most recent first, capped at 25. Without a producer filter, lists
+ * across everyone -- small volume expected (practice reps, not a
+ * once-a-day batch), so a plain list-then-fetch is fine; no rollup file
+ * the way months/folios have one.
+ */
+async function roleplayHistory(env, producer) {
+  const prefix = producer ? `roleplay/${roleplaySlug(producer)}/` : "roleplay/";
+  const keys = [];
+  let cursor;
+  do {
+    const listed = await env.BOARD.list({ prefix, cursor });
+    for (const o of listed.objects) keys.push(o.key);
+    cursor = listed.truncated ? listed.cursor : undefined;
+  } while (cursor);
+  keys.sort().reverse();
+
+  const sessions = [];
+  for (const key of keys.slice(0, 25)) {
+    const obj = await env.BOARD.get(key);
+    if (obj) sessions.push(await obj.json());
+  }
+  return json({ sessions });
 }

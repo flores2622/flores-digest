@@ -217,6 +217,17 @@ THRESHOLDS = {
     "task_completion_pct": {"green": 100, "yellow": 90},
     "speed_to_dial_min": {"green": 2, "yellow": 5, "lower_better": True},
     "utilization_pct":   {"green": 85,   "yellow": 80},
+    # Coach AI's Role Play score (0-100ish, not the 0-800 call-score scale --
+    # team ran 79.8 against a stated 80 on 2026-08-31). Frank, 2026-09-10:
+    # "no role play score recorded on the day should be a red 0, anything
+    # above 80 is green, anything 79 and under is yellow". >=80 green rather
+    # than a literal >80 -- every other threshold in this table uses the
+    # same inclusive >= convention (tier()'s general case), and a fractional
+    # team average landing on exactly 80.0 is the only case it would change.
+    # A day with no Role Play figure at all reads as None, which tier()
+    # already colours red on its own -- the "shown as 0" half of the rule is
+    # the leaderboard's existing c.get("roleplay", 0) default, unchanged here.
+    "roleplay_score":    {"green": 80,   "yellow": 0},
 }
 
 # Straight-sum metrics scale x3 for the team row. Rate, percentage and per-unit
