@@ -124,12 +124,16 @@ Only the green callback swatch is in the legend. The amber stripe (called back
 after a voicemail) is unexplained, and that conversation is counted in Call
 Detail while the bar still shows the dial as Voicemail.
 
-### 8. Scheduled sessions still cannot push
+### 8. Scheduled sessions still cannot push — CLOSED 2026-09-10
 
 Asked for since at least 08-31. Add `flores2622/flores-digest` to the scheduled
 task's sources. Two costs while it is missing: every nightly code fix comes back
 as a hand-carried patch, and `hourly.py` cannot cache transcripts between runs,
 so a lost container re-downloads the whole day against RingCentral's quota.
+
+Closed per Frank, 2026-09-10 — sessions now push, open PRs and merge directly.
+`PATCHES.md`'s hand-carried-patch procedure is removed as its own explicit
+instruction once this closed; deleted alongside it.
 
 ---
 

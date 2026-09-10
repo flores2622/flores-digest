@@ -436,9 +436,12 @@ def build(day, log=print):
             except Exception as e:
                 fx[_ck(p_, r["number"])] = ""
                 log(f"    {r['lead']}: transcription failed ({type(e).__name__})")
+            # Written after EVERY record, not once after the loop (REVIEW
+            # 2026-09-01 s8) -- an interrupted run must not lose full
+            # transcriptions it already paid the time for.
+            fx_path.write_text(json.dumps(fx))
             if i % 5 == 0:
                 log(f"    {i}/{len(need)}")
-        fx_path.write_text(json.dumps(fx))
 
     # --- stage 2: the read ------------------------------------------------
     key = _key() if todo else ""
@@ -455,20 +458,22 @@ def build(day, log=print):
         ok, why = usable(text, r.get("seconds"))
         if not ok:
             sm[ck] = from_notes(notes, why if text else "no recording")
-            continue
-        if not key:
+        elif not key:
             sm[ck] = from_notes(notes, "no API key configured")
-            continue
-        try:
-            d = _ask(model, text[:12000], notes, r.get("seconds") or 0,
-                     p.split()[0])
-            d.update(source="recording", why="")
-            sm[ck] = d
-        except Exception as e:
-            log(f"    {r['lead']}: read failed ({type(e).__name__}) -- using notes")
-            sm[ck] = from_notes(notes, "summary unavailable")
-
-    if todo:
+        else:
+            try:
+                d = _ask(model, text[:12000], notes, r.get("seconds") or 0,
+                         p.split()[0])
+                d.update(source="recording", why="")
+                sm[ck] = d
+            except Exception as e:
+                log(f"    {r['lead']}: read failed ({type(e).__name__}) -- using notes")
+                sm[ck] = from_notes(notes, "summary unavailable")
+        # Written after EVERY call, not once after the loop (REVIEW
+        # 2026-09-01 s8): this stage is the ONLY paid step (one Anthropic
+        # read per live contact), so an interrupted run losing unwritten
+        # entries here means re-paying for reads already done, not just
+        # re-doing free work.
         sm_path.write_text(json.dumps(sm, indent=1))
 
     import finalize

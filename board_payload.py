@@ -191,9 +191,14 @@ def build(day):
             "hh": v["households_quoted"], "pq": v["premium_quoted"],
             "pol": v["policies"], "ps": v["premium_sold"],
             "callbacks_prior": v.get("callbacks_prior", 0),
+            # insightful_util.pull() writes (pct, total_hhmm, prod_hhmm) --
+            # these field names were swapped relative to that order until
+            # 2026-09-10 (util_prod actually held TOTAL tracked time,
+            # util_track actually held PRODUCTIVE time). Renamed to match
+            # what they hold; no frontend consumer existed yet to break.
             "util": (util.get(name) or [None])[0],
-            "util_prod": (util.get(name) or [None, None])[1] if util.get(name) else None,
-            "util_track": (util.get(name) or [None, None, None])[2] if util.get(name) else None,
+            "util_total": (util.get(name) or [None, None])[1] if util.get(name) else None,
+            "util_prod": (util.get(name) or [None, None, None])[2] if util.get(name) else None,
             "coach": (M.get("coach") or {}).get(name, {}),
             "tasks": tasks.get(name, {}),
         })
