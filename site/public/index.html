@@ -162,6 +162,13 @@ body {
 }
 .tab[aria-selected="true"] { color: var(--text-primary); border-bottom-color: var(--text-primary); }
 .tab:hover { color: var(--text-primary); }
+.subtabs { display: flex; gap: 6px; margin-bottom: 18px; }
+.subtab {
+  background: var(--surface); border: 1px solid var(--border-strong); border-radius: 20px;
+  padding: 6px 14px; font: inherit; font-weight: 600; font-size: 12px; color: var(--text-secondary); cursor: pointer;
+}
+.subtab.sel { background: var(--text-primary); color: var(--surface); border-color: var(--text-primary); }
+.subtab:hover:not(.sel) { border-color: var(--text-muted); color: var(--text-primary); }
 
 .controls { display: flex; gap: 8px; align-items: center; margin-bottom: 18px; }
 select, button.ghost {
@@ -967,18 +974,43 @@ function card(c) {
    </div>${scorecard(c.score)}${scorecard(c.techniques, TECH_DIMS, "Sales techniques")}</div>
    ${spine}</details>`;
 }
+// Two sub-tabs within the Coaching tab (Frank, 2026-09-10, correcting an
+// earlier misread of this same request): "Live Contact Detail" is the
+// per-call coaching cards, exactly what was there before. "Wins and Losses"
+// is its own separate view -- the day-level "what the day says" + objection
+// summary -- not stacked above the cards on the same scroll.
+let coachSubTab = "detail";
+function coachSubTabsHtml() {
+  return `<div class="subtabs">
+    <button class="subtab${coachSubTab === "detail" ? " sel" : ""}" data-st="detail" type="button">Live Contact Detail</button>
+    <button class="subtab${coachSubTab === "wins" ? " sel" : ""}" data-st="wins" type="button">Wins and Losses</button>
+  </div>`;
+}
+function wireCoachSubTabs() {
+  document.querySelectorAll(".subtab").forEach(el => el.onclick = () => {
+    coachSubTab = el.dataset.st;
+    document.getElementById("view").innerHTML = rangeControlHtml() + producerControlHtml() + coachingPanel(cur, producerFilter);
+    wireRangeControl(); wireProducerControl(); wireCoachSubTabs(); wireObjectionBrowser();
+  });
+}
+
 function coachingPanel(d, who) {
   // `who` is the shared producerFilter (top-of-page dropdown), not a
   // tab-local control -- Digest and Coaching stay in sync on whoever is
   // selected.
   const order = ["Lorena Gonzalez", "Crystal Mango", "Mike Olvera", "Coral Barwick", "Sarahi Chin"];
-  if (!(d.calls && d.calls.length)) return `<div class="empty">
+  const sel = who && order.includes(who) ? who : "";
+  const nav = coachSubTabsHtml();
+
+  if (coachSubTab === "wins") {
+    return nav + (winsLossesHtml(d, sel) || `<div class="empty">Nothing to show for this day.</div>`);
+  }
+
+  if (!(d.calls && d.calls.length)) return nav + `<div class="empty">
     <div style="font-weight:600;font-size:15px;margin-bottom:6px">No coaching cards for this day</div>
     <p style="max-width:46ch;margin:0 auto;font-size:12.5px;line-height:1.6">${d.label || d.date} was uploaded with its stats
     only. The cards are written from the call recordings and are not generated, so a day gets them when someone
     writes them — an empty tab here means nobody has yet, not that the calls were clean.</p></div>`;
-  const sel = who && order.includes(who) ? who : "";
-  const wl = winsLossesHtml(d, sel);
   let out = "";
   let shown = 0;
   order.forEach(p => {
@@ -992,8 +1024,7 @@ function coachingPanel(d, who) {
   if (!shown) {
     out = `<div class="empty">${sel ? `No coaching cards for ${sel} on this day.` : "No coaching cards for this day."}</div>`;
   }
-  out = wl + out;
-  return out + (d.notcoached ? `<div class="note" style="border:1px dashed var(--border-strong);border-radius:8px;padding:14px 16px">
+  return nav + out + (d.notcoached ? `<div class="note" style="border:1px dashed var(--border-strong);border-radius:8px;padding:14px 16px">
     <b>Not coached, and why.</b> ${d.notcoached}</div>` : "") + objectionBrowserHtml();
 }
 
@@ -1580,13 +1611,13 @@ async function paint() {
     }
     v.innerHTML = controls + (cur ? coachingPanel(cur, producerFilter) : '<div class="empty">Loading…</div>');
     wireRangeControl(); wireProducerControl();
-    wireObjectionBrowser();
+    wireCoachSubTabs(); wireObjectionBrowser();
     if (cur && !ALL_CALLS_CACHE) {
       fetchAllCalls().then(() => {
         if (view !== "coaching") return;   // navigated away before this landed
         v.innerHTML = controls + coachingPanel(cur, producerFilter);
         wireRangeControl(); wireProducerControl();
-        wireObjectionBrowser();
+        wireCoachSubTabs(); wireObjectionBrowser();
       });
     }
   } else if (view === "roleplay") {
