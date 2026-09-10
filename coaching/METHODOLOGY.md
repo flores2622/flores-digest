@@ -98,6 +98,52 @@ Return ONLY a JSON object, no prose around it, with exactly these keys:
              "Bundle / cross-sell raised"
              "Next step specificity"
              "CRM after the call"
+"techniques" an object scoring EXACTLY these 6 named sales techniques, same
+           shape as "score" above: [letter, one-sentence detail] where letter
+           is "s" (used, and it worked), "w" (attempted but landed flat --
+           rushed, generic, or undercut by whatever came right after), "m"
+           (a clear opening existed and the producer let it go by), or "n"
+           (no natural opening existed on this call at all -- do not force
+           one just to fill the field). Distinct from "askq"/"asks" above,
+           which are about assumptive vs. permission-seeking LANGUAGE, not
+           which named technique was reached for -- don't re-score
+           assumptive language here.
+             "Elevator pitch"      a short, prepared reason-to-switch
+                                    delivered in the first couple minutes,
+                                    BEFORE any pushback -- this agency's own
+                                    script calls it the Benefit Statement
+                                    ("we've helped a lot of people in [city]
+                                    switch... because we have great rates,
+                                    with better coverage"). "s" requires it
+                                    land early and unprompted, not get recited
+                                    later as a reaction to an objection.
+             "Feel-Felt-Found"     acknowledge the objection ("I understand
+                                    how you feel"), normalize it against other
+                                    real clients ("a lot of people feel the
+                                    same way when..."), then resolve it with
+                                    what those clients found or decided. Only
+                                    "s" if the producer did all three steps in
+                                    that order -- an "I understand" with no
+                                    follow-through is "w" at best.
+             "Risk reversal"       removing the cost of saying yes right now
+                                    -- "this won't cost you anything today", a
+                                    pre-approval framing, an easy first step --
+                                    distinct from a generic reassurance that
+                                    isn't tied to an actual objection.
+             "Social proof"        a specific other client or a real number,
+                                    not a bare claim like "everyone loves us."
+             "Trial close"         a small agreement check ("does that make
+                                    sense?") placed to bank agreement BEFORE
+                                    the final ask -- not the final ask itself,
+                                    and not empty verbal filler.
+             "Takeaway / urgency"  a REAL, specific reason to act now (a rate
+                                    that could change, a discount tied to
+                                    timing) -- a fabricated deadline is a "w",
+                                    not an "s".
+           Same rule as everywhere else in this file: a "s" or "w" verdict
+           must be traceable to something actually said, quoted or closely
+           paraphrased in the detail sentence. If you can't point to it, it's
+           "m" or "n", not "s".
 "spine"    an array of 4-8 [time, colour, headline, detail] entries walking
            through the call in order. "time" is a rough mm:ss into the call.
            "colour" is "g" (this moment went well), "y" (mixed/questionable),
@@ -122,3 +168,10 @@ Return ONLY a JSON object, no prose around it, with exactly these keys:
   automation cards. If a dimension consistently doesn't fit how coaching
   conversations actually go, that's something to change here, not something
   to work around per-call.
+- "techniques" (Frank, 2026-09-10) is new and unproven -- it asks the same
+  model that already reads the call to also recognize named sales techniques
+  (elevator pitch, feel-felt-found, risk reversal, and similar) rather than
+  just the mechanical call-flow dimensions above. Watch its first real days
+  for the same failure mode "score" already guards against: crediting a
+  technique that wasn't really there because the shape of the conversation
+  loosely resembles it.

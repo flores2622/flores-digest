@@ -55,17 +55,25 @@ AZ = dt.timezone(dt.timedelta(hours=-7))
 
 METHODOLOGY = (ROOT / "coaching/METHODOLOGY.md").read_text()
 
-# The card schema (spine, 9-dim scorecard, objection deep-dive, strengths and
-# gaps) is much richer than call_summary.py's one-paragraph read, so it needs
-# a much bigger budget. Sized off a 15-20 minute call's worth of transcript;
-# the retry tier exists for the same reason call_summary.py's does -- a long
-# call can still fill the first budget with thinking or run past it.
-MAX_TOKENS = 4000
-RETRY_TOKENS = 7000
+# The card schema (spine, 9-dim scorecard, 6-technique scorecard, objection
+# deep-dive, strengths and gaps) is much richer than call_summary.py's
+# one-paragraph read, so it needs a much bigger budget. Sized off a 15-20
+# minute call's worth of transcript; the retry tier exists for the same
+# reason call_summary.py's does -- a long call can still fill the first
+# budget with thinking or run past it. Bumped 2026-09-10 when "techniques"
+# (6 more scored dimensions) was added to the schema.
+MAX_TOKENS = 4800
+RETRY_TOKENS = 8000
 
 DIMS = ["Opening & identification", "Discovery", "Current premium captured",
         "Renewal / X-date captured", "Product knowledge", "Presenting numbers",
         "Bundle / cross-sell raised", "Next step specificity", "CRM after the call"]
+
+# Named sales techniques (Frank, 2026-09-10) -- same [letter, detail] shape as
+# DIMS/score above, scored separately because these are about WHICH technique
+# a producer reached for, not the mechanical call-flow checklist above.
+TECH_DIMS = ["Elevator pitch", "Feel-Felt-Found", "Risk reversal",
+             "Social proof", "Trial close", "Takeaway / urgency"]
 
 CHIPT_VALUES = ("Addressed, overcome", "Addressed, not overcome", "Addressed, kept going")
 
@@ -173,11 +181,11 @@ def _clean_pairs(raw, cap=6):
     return out
 
 
-def _clean_score(raw):
+def _clean_score(raw, dims=DIMS):
     out = {}
     if not isinstance(raw, dict):
         return out
-    for dim in DIMS:
+    for dim in dims:
         e = raw.get(dim)
         if isinstance(e, (list, tuple)) and e and str(e[0]).lower() in ("s", "w", "m", "n"):
             out[dim] = [str(e[0]).lower(), str(e[1]).strip() if len(e) > 1 else ""]
@@ -253,6 +261,7 @@ def _finish_card(d, producer, r, raw_dials):
         "good": _clean_pairs(d.get("good")),
         "bad": _clean_pairs(d.get("bad")),
         "score": _clean_score(d.get("score")),
+        "techniques": _clean_score(d.get("techniques"), TECH_DIMS),
         "spine": _clean_spine(d.get("spine")),
         "flags": [str(f).strip() for f in (d.get("flags") or []) if str(f).strip()][:6],
     }
