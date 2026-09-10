@@ -251,7 +251,11 @@ tbody tr:hover { background: color-mix(in oklab, var(--bar) 7%, transparent); }
    structure closely rather than being redesigned. */
 .cpick { display: flex; align-items: center; gap: 9px; margin: 0 0 18px; }
 .cpick label { font-size: 10px; text-transform: uppercase; letter-spacing: 0.07em; color: var(--text-muted); }
-.ccard { background: var(--surface); border: 1px solid var(--border-strong); border-radius: 9px; padding: 12px; margin-bottom: 13px; }
+.ccard { display: block; background: var(--surface); border: 1px solid var(--border-strong); border-radius: 9px; padding: 12px; margin-bottom: 13px; }
+.ccard > summary.cchead { cursor: pointer; list-style: none; }
+.ccard > summary.cchead::-webkit-details-marker { display: none; }
+.ctog { color: var(--text-muted); font-size: 11px; margin-left: 8px; display: inline-block; transition: transform .15s; }
+.ccard[open] .ctog { transform: rotate(90deg); }
 .blk { background: var(--surface-raised); border: 1px solid var(--border); border-radius: 7px; padding: 13px 15px; margin-bottom: 9px; }
 .blk:last-child { margin-bottom: 0; }
 .bl { font-size: 10px; text-transform: uppercase; letter-spacing: 0.09em; color: var(--text-muted); margin-bottom: 9px; }
@@ -940,14 +944,17 @@ function card(c) {
       <div class="tlk"><span class="dt" style="background:${{ g: "var(--good)", y: "var(--warn)", r: "var(--bad)", n: "var(--border-strong)" }[m]}"></span>
       ${i < c.spine.length - 1 ? `<span class="ln" style="height:100%"></span>` : ""}</div>
       <div class="tlx"><b>${h}</b>${s ? `<span>${s}</span>` : ""}</div>`).join("")}</div></div>` : "";
-  return `<div class="ccard">
-   <div class="blk" style="border-left:4px solid ${c.tab || "var(--border-strong)"}">
+  // Collapsed by default -- the whole header (the box with the left accent
+  // strip) is a <summary>, so clicking anywhere on it expands the rest of
+  // the card natively; clicking again collapses it (Frank, 2026-09-10).
+  return `<details class="ccard">
+   <summary class="blk cchead" style="border-left:4px solid ${c.tab || "var(--border-strong)"}">
      <div class="chead"><div><div class="cname">${c.lead || ""}</div>
        <div class="cmeta">${c.who || ""} · ${c.time || ""} · ${c.dur || ""} · ${c.lang || ""} · ${c.src || ""}</div></div>
-       <span class="cat ${c.catc || ""}">${c.cat || ""}</span></div>
+       <span class="cat ${c.catc || ""}">${c.cat || ""}</span><span class="ctog" aria-hidden="true">▸</span></div>
      <div class="sum">${c.summary || ""}</div>
      ${c.flags && c.flags.length ? `<div style="margin-top:8px">${c.flags.map(f => `<span class="flag">${f}</span>`).join("")}</div>` : ""}
-   </div>
+   </summary>
    ${c.askq ? `<div class="blk"><div class="bl">The Assumption</div><table class="askt">
      <tr><td class="k">Assumed the quote</td><td class="v">${bdg(c.askq[0])}</td><td>${c.askq[1] || ""}</td></tr>
      <tr><td class="k">Assumed the sale</td><td class="v">${bdg((c.asks || [])[0])}</td><td>${(c.asks || [])[1] || ""}</td></tr></table>
@@ -958,7 +965,7 @@ function card(c) {
      <div><div class="colh g">What worked</div><ul class="gl g">${(c.good || []).map(([t, dd]) => `<li><b>${t}</b>${dd}</li>`).join("") || `<li style="color:var(--text-muted)">—</li>`}</ul></div>
      <div><div class="colh b">What cost the sale</div><ul class="gl b">${(c.bad || []).map(([t, dd]) => `<li><b>${t}</b>${dd}</li>`).join("") || `<li style="color:var(--text-muted);padding-left:0">Nothing to flag on this call.</li>`}</ul></div>
    </div>${scorecard(c.score)}${scorecard(c.techniques, TECH_DIMS, "Sales techniques")}</div>
-   ${spine}</div>`;
+   ${spine}</details>`;
 }
 function coachingPanel(d, who) {
   // `who` is the shared producerFilter (top-of-page dropdown), not a
