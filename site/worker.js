@@ -80,6 +80,10 @@ export default {
         return getFolio(env, parts[2]);
       }
 
+      if (parts[1] === "intraday" && parts.length === 3) {
+        return getIntraday(env, parts[2]);
+      }
+
       if (parts[1] === "roleplay") {
         if (parts[2] === "turn" && request.method === "POST") {
           return roleplayTurn(request, env);
@@ -147,6 +151,29 @@ async function getDay(env, day) {
       // rewritten if the run is re-run, and a stale board that disagrees
       // with the email is exactly the failure this whole migration exists
       // to end.
+      "cache-control": "no-store",
+    },
+  });
+}
+
+/** GET /api/intraday/:day -> that day's latest hourly snapshot, or 404 if
+ * intraday.py hasn't run yet today, or the day has already been finalized
+ * and intraday.py refused to touch it (see that script's own guard) --
+ * either way the UI's fallback is simply not to show a live panel, same as
+ * getDay's "no report for this day". A SEPARATE key from days/<day>.json on
+ * purpose: an in-progress snapshot must never be servable from, or mistaken
+ * for, the finalized document. */
+async function getIntraday(env, day) {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(day)) {
+    return json({ error: "bad day" }, 400);
+  }
+  const obj = await env.BOARD.get(`intraday/${day}.json`);
+  if (obj === null) {
+    return json({ error: "no intraday snapshot for this day", day }, 404);
+  }
+  return new Response(obj.body, {
+    headers: {
+      "content-type": "application/json; charset=utf-8",
       "cache-control": "no-store",
     },
   });

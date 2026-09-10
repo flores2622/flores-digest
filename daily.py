@@ -49,10 +49,16 @@ def ensure_model():
 def pull_sources(day):
     """Everything the day needs, cached so a re-run is cheap."""
     import az_corpus
+    import r2_cache
     from az_client import AgencyZoom
     from rc_client import RingCentral
 
     (ROOT / "data").mkdir(exist_ok=True)
+    # Pull anything an earlier run today (this session's own hourly checks, or
+    # a genuinely separate container) already fetched, before the `if not
+    # p.exists()` guards below decide whether to hit the API. See r2_cache's
+    # docstring for what is and is not cached this way and why.
+    r2_cache.sync_down_day(day, log=log)
     nxt = (dt.date.fromisoformat(day) + dt.timedelta(days=1)).isoformat()
 
     f = ROOT / f"data/rc_raw_{day}.json"
@@ -92,15 +98,23 @@ def pull_sources(day):
         f"{len({r['startTime'][:10] for r in _w if r.get('startTime')})} days")
 
     az = AgencyZoom()
-    for name, fn in [("az_leads_all", lambda: az_corpus.fetch()),
+    # ALWAYS refetched, never cached (HANDOFF_12 #3, fixed here): this is the
+    # corpus that decides whether a sale happened. AgencyZoom's list APIs run
+    # at ~90 req/min, nowhere near RingCentral's media throttle, so there is
+    # no cost reason to let it go stale -- a re-run in a warm container used
+    # to silently serve an hours-old copy and once hid four real sales.
+    for name, fn in [# az_corpus.fetch() has its OWN internal cache check
+                     # against this exact file (data/az_leads_all.json) --
+                     # force=True is required here or this "always fresh"
+                     # loop silently keeps serving the stale copy for leads
+                     # specifically, the one place HANDOFF_12 #3 was found.
+                     ("az_leads_all", lambda: az_corpus.fetch(force=True)),
                      ("az_customers_all",
                       lambda: az._paged("/v1/api/customers/list", "customers", {})),
                      ("az_policies_all",
                       lambda: az._paged("/v1/api/policies", "policies", {}))]:
-        p = ROOT / f"data/{name}.json"
-        if not p.exists():
-            log(f"{name}...")
-            p.write_text(json.dumps(fn()))
+        log(f"{name}...")
+        (ROOT / f"data/{name}.json").write_text(json.dumps(fn()))
 
     # Day-scoped: this is a snapshot of what is OPEN, so it has to be re-pulled
     # each day. Cached under a bare name it would have frozen on day one and the
@@ -129,6 +143,11 @@ def pull_sources(day):
                     walk(v)
         walk(az.pipelines_and_stages())
         p.write_text(json.dumps({str(k): v for k, v in stage.items()}))
+
+    # Push whatever is now on local disk -- freshly fetched here, or already
+    # brought in by sync_down_day above -- so the NEXT run, in this session or
+    # a fresh container, doesn't pay to re-fetch it.
+    r2_cache.sync_up_day(day, log=log)
 
 
 def transcribe_day(day, outbound_only=False):
@@ -233,6 +252,12 @@ def transcribe_day(day, outbound_only=False):
         out_f.write_text(json.dumps(done))
     c = collections.Counter(v["class"] for v in done.values())
     log(f"  transcripts: {dict(c)}")
+    # Recordings and the transcripts they produced are the whole reason this
+    # module exists (RingCentral's throttled media endpoint) -- push them now
+    # so the NEXT run, cold container or not, never re-downloads or
+    # re-transcribes anything already done here.
+    import r2_cache
+    r2_cache.sync_up_day(day, log=log)
     return done
 
 

@@ -58,6 +58,7 @@ AZ = dt.timezone(dt.timedelta(hours=-7))
 PREFIX = "days"
 MONTH_PREFIX = "months"
 FOLIO_PREFIX = "folios"
+INTRADAY_PREFIX = "intraday"
 
 
 def _key(day):
@@ -70,6 +71,63 @@ def _month_key(month):
 
 def _folio_key(end):
     return f"{FOLIO_PREFIX}/{end}.json"
+
+
+def _intraday_key(day):
+    return f"{INTRADAY_PREFIX}/{day}.json"
+
+
+def day_is_finalized(day, cli=None, bucket=None):
+    """True once days/<day>.json exists -- the nightly build has run and this
+    day is locked (CLAUDE.md's service-ticket point-in-time rule). Anything
+    that only checks the day so far (intraday.py) must refuse past this
+    point: az_service_tickets_<day>.json in particular must never be
+    re-fetched for a day already built."""
+    if cli is None:
+        cli, bucket = _client()
+    try:
+        cli.head_object(Bucket=bucket, Key=_key(day))
+        return True
+    except Exception:
+        return False
+
+
+def publish_intraday(day, doc, flags, cli=None, bucket=None, log=print):
+    """Write the day's latest intraday snapshot. Never touches days/<day>.json
+    -- this is a SEPARATE key, read by a separate Worker route, so an
+    in-progress snapshot can never be mistaken for the finalized board
+    document.
+
+    Keeps a short trend of prior checks THIS day (as_of/dials/live/rate),
+    capped at 30 points -- plenty for one business day's worth of hourly
+    checks -- so sanity_gate.check() has something to compare a swing
+    against and the board can show a same-day trend line.
+    """
+    if cli is None:
+        cli, bucket = _client()
+    totals = doc.get("totals") or {}
+    point = {
+        "as_of": dt.datetime.now(AZ).isoformat(timespec="seconds"),
+        "dials": totals.get("dials") or 0,
+        "live": totals.get("live") or 0,
+        "rate": totals.get("rate") or 0,
+    }
+    trend = []
+    try:
+        prior = json.loads(cli.get_object(Bucket=bucket, Key=_intraday_key(day))
+                           ["Body"].read())
+        trend = prior.get("trend") or []
+    except Exception:
+        pass
+    trend = (trend + [point])[-30:]
+
+    out = {**doc, "as_of": point["as_of"], "flags": flags, "trend": trend}
+    body = json.dumps(out, default=str).encode()
+    cli.put_object(Bucket=bucket, Key=_intraday_key(day), Body=body,
+                   ContentType="application/json", CacheControl="no-store")
+    log(f"  intraday: {len(body):,} bytes -> r2://{bucket}/{_intraday_key(day)}"
+        + (f" -- {len(flags)} flag(s)" if flags else ""))
+    return _intraday_key(day)
 
 
 def _client():

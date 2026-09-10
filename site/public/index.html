@@ -196,6 +196,14 @@ h2:first-of-type { margin-top: 8px; }
 .tile .v { font-size: 26px; font-weight: 600; letter-spacing: -0.02em; margin-top: 4px; font-variant-numeric: tabular-nums; }
 .tile .n { font-size: 12px; color: var(--text-secondary); margin-top: 2px; }
 
+/* Live intraday strip (intraday.py, Frank, 2026-09-10) -- visually distinct
+   from the static digest sections below it, since it's the one thing on the
+   page that's still moving. */
+.livesnap { border: 1px solid var(--good); border-radius: 10px; padding: 14px 16px; margin-bottom: 18px; }
+.liveasof { text-transform: none; letter-spacing: normal; font-size: 11px; color: var(--text-muted); margin-left: 8px; }
+.liveflags { margin-top: 10px; display: flex; flex-direction: column; gap: 6px; }
+.liveflag { font-size: 12.5px; color: var(--warn); background: var(--surface-raised); border: 1px solid var(--warn); border-radius: 8px; padding: 7px 10px; }
+
 table { width: 100%; border-collapse: collapse; font-variant-numeric: tabular-nums; }
 th, td { text-align: right; padding: 9px 10px; border-bottom: 1px solid var(--grid); font-size: 12.5px; }
 th:first-child, td:first-child { text-align: left; }
@@ -755,14 +763,45 @@ function auditPanel(d, who) {
    <div class="scroll"><table><thead><tr><th>Finding</th><th class="num">Tasks</th></tr></thead><tbody>${rows}</tbody></table></div></div>`;
 }
 
+// The day's hourly intraday.py snapshot, fetched once per loadDay() alongside
+// the finalized document itself (see loadDay below) -- null on any day that
+// isn't in progress (no snapshot yet, or the day is already finalized and
+// intraday.py refused to touch it, same guard either way).
+let curIntraday = null;
+
+/** Small "so far today" strip -- last snapshot time, headline numbers, and
+ * any tripped sanity_gate.py flags. Team-level only (Frank's board, not a
+ * per-producer breakdown), so it's gated the same way winsLossesHtml() is:
+ * skip entirely on a producer filter or a non-day range. */
+function liveSnapshotHtml(d, who) {
+  if (who || !curIntraday) return "";
+  const t = curIntraday.totals || {};
+  const asOf = curIntraday.as_of ?
+    new Date(curIntraday.as_of).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" }) : "";
+  const flags = curIntraday.flags || [];
+  return `<div class="sect livesnap">
+    <div class="bl">So far today ${asOf ? `<span class="liveasof">as of ${asOf}</span>` : ""}</div>
+    <div class="tiles">
+      <div class="tile"><div class="k">Dials</div><div class="v">${t.dials || 0}</div></div>
+      <div class="tile"><div class="k">Live contacts</div><div class="v">${t.live || 0}</div></div>
+      <div class="tile"><div class="k">Contact rate</div><div class="v">${t.rate || 0}%</div></div>
+      <div class="tile"><div class="k">Policies sold</div><div class="v">${t.pol || 0}</div></div>
+      <div class="tile"><div class="k">Premium sold</div><div class="v">$${(t.ps || 0).toLocaleString()}</div></div>
+    </div>
+    ${flags.length ? `<div class="liveflags">${flags.map(f => `<div class="liveflag">${f}</div>`).join("")}</div>` : ""}
+  </div>`;
+}
+
 function digestPanel(d, who) {
   // Order follows the customized email digest (Frank, 2026-09-10): Task
   // Completion Rate, Recontact Struggle, [Team Leaderboard already sits at
   // the top of digestDay -- see teamLeaderboardHtml], Call Outcome
   // Breakdown, Speed to Dial, Utilization and Efficiency, Coaching & Call
   // Quality. Task Completion Audit stays last -- it's the OTHER, ops-only
-  // email's content, not part of the Sales Digest proper.
-  return `${digestDay(d, who)}
+  // email's content, not part of the Sales Digest proper. The live strip, if
+  // any, sits above all of it -- it's about right now, not last night.
+  return `${liveSnapshotHtml(d, who)}
+  ${digestDay(d, who)}
   ${taskCompletionHtml(d, who)}
   ${recontactPanel(d, who)}
   ${outcomeBreakdownHtml(d, who)}
@@ -1651,6 +1690,14 @@ async function loadDay(day) {
     const r = await fetch(`/api/days/${day}`, { cache: "no-store" });
     cur = r.ok ? await r.json() : null;
   } catch (_) { cur = null; }
+  // Best-effort: absent on any day with no snapshot yet (most past days,
+  // once the day is finalized this key stops updating -- see intraday.py's
+  // own guard) or if the fetch itself fails. Either way the live strip
+  // just doesn't render; it's never the reason a day fails to load.
+  try {
+    const ir = await fetch(`/api/intraday/${day}`, { cache: "no-store" });
+    curIntraday = ir.ok ? await ir.json() : null;
+  } catch (_) { curIntraday = null; }
   if (!cur) { $("#view").innerHTML = '<div class="empty">No report for this day.</div>'; $("#topsub").textContent = day; return; }
   await paint();
 }
