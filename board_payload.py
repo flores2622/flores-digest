@@ -152,6 +152,9 @@ def _producer_tiers(p):
     # (2026-09-10), rather than the generic formula's yellow-at-0.
     rp = (p.get("coach") or {}).get("roleplay") or None
     out["roleplay"] = cfg.tier("roleplay_score", rp)
+    tp = (p.get("tasks") or {}).get("pct")
+    if tp is not None:
+        out["tasks"] = cfg.tier("task_completion_pct", tp or 0)
     return out
 
 
@@ -184,6 +187,9 @@ def _team_tiers(totals, producers):
     recorded = [v for v in ((p.get("coach") or {}).get("roleplay") for p in producers) if v]
     team_rp = (sum(recorded) / len(recorded)) if recorded else None
     out["roleplay"] = cfg.tier("roleplay_score", team_rp)
+    ttp = (totals.get("tasks") or {}).get("pct")
+    if ttp is not None:
+        out["tasks"] = cfg.tier("task_completion_pct", ttp or 0)
     return out
 
 
@@ -229,6 +235,7 @@ def build(day):
             "pol": sum(p["pol"] for p in producers),
             "ps": sum(p["ps"] for p in producers),
             "util": M.get("util_weighted"),
+            "tasks": (M.get("tasks") or {}).get("team") or {},
         },
         "producers": producers,
         "speed_to_dial": speed_to_dial(M),
