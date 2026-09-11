@@ -181,6 +181,12 @@ def collect(day, refresh=True):
         log("re-pulling today's call log...")
         recs = RingCentral().call_log(f"{day}T00:00:00-07:00",
                                       f"{nxt}T00:00:00-07:00")
+        # daily.py/hourly.py both mkdir data/ before anything writes into it,
+        # but an --intraday run can be the FIRST thing to touch data/ in a
+        # genuinely fresh container (no daily.py/hourly.py in this run at
+        # all) -- without this, f.write_text below raises FileNotFoundError
+        # (Frank, 2026-09-11: missed-call runs failing with exactly that).
+        f.parent.mkdir(parents=True, exist_ok=True)
         f.write_text(json.dumps(recs))
     return json.loads(f.read_text())
 
