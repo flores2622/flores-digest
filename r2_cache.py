@@ -7,12 +7,14 @@ WHY THIS EXISTS. Every scheduled/triggered session gets a cold container --
 hourly.py's own docstring, and CLAUDE.md's "THE RUN STARTS AT 5:35 PM" section
 for how the single-session workaround works today). That was fine when the
 whole day's work happened once, inside one long session. It stops being fine
-the moment checks run hourly across separate firings (Frank, 2026-09-10): each
-firing would re-download every recording the previous hour's firing already
-paid RingCentral's throttled media endpoint for, so cost would climb with
-every extra checkpoint instead of staying flat. This module is what makes it
-flat -- push what a run produced, pull what an earlier run already produced,
-so a checkpoint only ever pays for the DELTA since the last one.
+the moment checks run repeatedly through the day across separate firings
+(Frank, 2026-09-10 -- in practice the business-hour schedule these ride on
+isn't evenly hourly at all, see HOURLY_RUNS.md's ten checkpoints): each
+firing would re-download every recording an earlier firing already paid
+RingCentral's throttled media endpoint for, so cost would climb with every
+extra checkpoint instead of staying flat. This module is what makes it flat
+-- push what a run produced, pull what an earlier run already produced, so a
+checkpoint only ever pays for the DELTA since the last one.
 
 WHAT LIVES HERE, AND WHAT DOES NOT.
 
@@ -132,14 +134,14 @@ def sync_down_day(day, log=print):
 
 def sync_up_day(day, log=print):
     """Push whatever this run produced (or already had) back to R2, so the
-    NEXT run -- this session's next hourly check, or tonight's build in a
-    genuinely fresh container -- doesn't pay to re-fetch it.
+    NEXT run -- this session's next business-hour check, or tonight's build
+    in a genuinely fresh container -- doesn't pay to re-fetch it.
 
     PUTs unconditionally rather than checking first: these are the day's own
     JSON caches, small next to what re-fetching them would cost, and a PUT of
     unchanged bytes is harmless. Audio is the one case explicitly listed
     first (see below) to keep from re-uploading megabytes of unchanged mp3s
-    every hour.
+    on every check.
     """
     cli, bucket = _client()
     pushed = []
@@ -156,8 +158,8 @@ def sync_up_day(day, log=print):
     if tpath.exists():
         ids = set(json.loads(tpath.read_text()).keys())
         # Only upload ids not already in R2, one LIST instead of one HEAD per
-        # file -- keeps a repeated hourly push from re-sending the same
-        # megabytes of audio it already sent an hour earlier.
+        # file -- keeps a repeated push from re-sending the same megabytes of
+        # audio an earlier check already sent.
         have = set()
         token = None
         prefix = f"{PREFIX}/{day}/audio/"

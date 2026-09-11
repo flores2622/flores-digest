@@ -1,10 +1,14 @@
 """Cheap, deterministic checks against a day's own numbers so far.
 
 HANDOFF_12 #6 ("nothing checks the report before it sends"), plus the checks
-worth running hourly, not just at 6:30 PM: a contact-rate swing since the
-last snapshot, a producer at zero dials well into the day, a duplicate
-lead_id that should already have been collapsed, a sub-5-second dial counted
-as a live contact.
+worth running at each business-hour checkpoint through the day, not just at
+6:30 PM: a contact-rate swing since the last snapshot, a producer at zero
+dials well into the day, a duplicate lead_id that should already have been
+collapsed, a sub-5-second dial counted as a live contact. Deliberately makes
+no assumption about how far apart two checks are -- the schedule these run
+on isn't evenly spaced (HOURLY_RUNS.md's ten checkpoints run 30-75 minutes
+apart) -- the rate-swing check only fires once BOTH snapshots clear a sample
+floor, and the zero-dial check gates on the clock, not on elapsed time.
 
 NOT a replacement for verify_finalize.py -- these are checks a run can make
 for free from data it already has in hand (metrics_<day>.json,

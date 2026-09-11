@@ -156,7 +156,7 @@ async function getDay(env, day) {
   });
 }
 
-/** GET /api/intraday/:day -> that day's latest hourly snapshot, or 404 if
+/** GET /api/intraday/:day -> that day's latest intraday snapshot, or 404 if
  * intraday.py hasn't run yet today, or the day has already been finalized
  * and intraday.py refused to touch it (see that script's own guard) --
  * either way the UI's fallback is simply not to show a live panel, same as

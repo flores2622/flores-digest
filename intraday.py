@@ -1,4 +1,5 @@
-"""Intraday snapshot: the day's numbers so far, checked and published hourly.
+"""Intraday snapshot: the day's numbers so far, checked and published at each
+business-hour check through the day.
 
     python3 intraday.py                # today, Arizona
     python3 intraday.py --day 2026-09-10
@@ -13,13 +14,22 @@ writes). Reusing the exact same functions the nightly build uses is the
 whole point -- an intraday number can never disagree with the final one on
 method, only on how much of the day has happened yet.
 
-WHY THIS CAN RUN HOURLY AT THE SAME COST AS ONCE A NIGHT (Frank, 2026-09-10).
-r2_cache (see that module's docstring) makes every input incremental:
-recordings and transcripts an earlier hour already fetched are pulled from R2
-instead of re-downloaded, so cost only ever pays for that hour's delta. The
-AgencyZoom corpus is refetched fresh every run on purpose -- it is the one
-thing that must never be stale, and its list APIs are fast enough that
-caching it would only bring back HANDOFF_12 #3's bug at a new layer.
+WHY THIS CAN RUN AT EACH CHECKPOINT AT THE SAME TOTAL COST AS ONCE A NIGHT
+(Frank, 2026-09-10). r2_cache (see that module's docstring) makes every input
+incremental: recordings and transcripts an earlier checkpoint already fetched
+are pulled from R2 instead of re-downloaded, so cost only ever pays for the
+delta since the last check. The AgencyZoom corpus is refetched fresh every
+run on purpose -- it is the one thing that must never be stale, and its list
+APIs are fast enough that caching it would only bring back HANDOFF_12 #3's
+bug at a new layer.
+
+Runs as part of the same business-hour schedule HOURLY_RUNS.md's missed-call
+tasks already use (Frank, 2026-09-11: folded onto that schedule rather than a
+separate one) -- ten checkpoints from 8:35 AM to 5:15 PM Arizona, NOT evenly
+hourly (the gaps run 30-75 minutes). Nothing here assumes a fixed interval:
+sanity_gate.check() compares against whatever the last snapshot actually was,
+and its zero-dial check gates on the clock, not elapsed time since the last
+run.
 
 GUARD. Refuses to touch a day that has already been finalized (days/<day>.json
 already exists on the board): a late or mis-scheduled run must never
