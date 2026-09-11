@@ -127,10 +127,8 @@ my claim only pay X."
 
 The date an existing policy comes up for renewal (or, for a lead who was
 quoted before but never bought, the date they said they'd be ready to
-switch). Capturing this accurately is one of Apollo's own 9 call-structure
-dimensions -- see coaching/METHODOLOGY.md -- because a switch usually only
-makes financial sense timed to this date, to avoid a cancellation fee or a
-short-rate penalty on the old policy.
+switch). A switch usually only makes financial sense timed to this date, to
+avoid a cancellation fee or a short-rate penalty on the old policy.
 
 ### Underwriting
 
