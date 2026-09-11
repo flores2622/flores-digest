@@ -520,6 +520,19 @@ function focusObjectionInstruction(categories) {
   return `\n\nThis producer's real calls over the last 4 weeks show they have NOT been overcoming these specific objection types: ${categories.join(", ")}. When you raise your closing objection(s) this call, phrase them so they land as one of these categories rather than a generic one from the list above -- everything else about how hard you push stays exactly as described for your difficulty level.`;
 }
 
+/** Appended to a persona's system prompt when the frontend sends
+ * lead_source -- backstory flavor only (site/public/index.html's
+ * LEAD_SOURCES), shown to the producer on the pre-call debrief screen so
+ * they know the same context you do (Frank, 2026-09-11: "they should know
+ * ... what the lead source is"). This is scene-setting, not the answer
+ * key -- it must never change which objections you raise or how hard you
+ * hold them, only how you'd naturally react if asked how you were
+ * contacted or why you're on the phone. */
+function leadSourceInstruction(backstory) {
+  if (!backstory) return "";
+  return `\n\nBackstory context for how this call came about: ${backstory} If the producer asks how you were contacted or why you're on the phone, answer consistently with this -- but it does not change which objections you raise, how hard you hold them, or anything else about your difficulty level above.`;
+}
+
 /** POST /api/roleplay/turn {persona, history, focus_objections} -> {reply}
  *
  * `history` is the growing [{role: "producer"|"prospect", content}, ...]
@@ -552,7 +565,8 @@ async function roleplayTurn(request, env) {
   const focusObjections = Array.isArray(body.focus_objections)
     ? body.focus_objections.filter((c) => typeof c === "string").slice(0, 3)
     : [];
-  const system = persona.system + focusObjectionInstruction(focusObjections);
+  const leadSource = typeof body.lead_source === "string" ? body.lead_source.slice(0, 500) : "";
+  const system = persona.system + focusObjectionInstruction(focusObjections) + leadSourceInstruction(leadSource);
 
   try {
     const reply = await callClaude(env, { system, messages, maxTokens: 300 });
@@ -607,6 +621,7 @@ async function roleplayGrade(request, env) {
     producer,
     persona: body.persona,
     persona_label: persona.label,
+    lead_source: typeof body.lead_source === "string" ? body.lead_source.slice(0, 200) : "",
     history,
     grade,
     created_at: now.toISOString(),

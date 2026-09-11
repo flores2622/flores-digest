@@ -1162,12 +1162,53 @@ function wireObjectionBrowser() {
    documents) so practice history survives a refresh and follows the
    producer across devices, not just one browser's local storage. */
 const RP_PERSONAS = [
-  { key: "easy",   name: "Beginner",     rate: 1.02, pitch: 1.08 },
-  { key: "medium", name: "Medium",       rate: 0.98, pitch: 1.0 },
-  { key: "hard",   name: "Professional", rate: 0.95, pitch: 0.92 },
+  { key: "easy",   name: "Beginner",     rate: 1.02, pitch: 1.08, blurb: "Open to a quote, minimal resistance" },
+  { key: "medium", name: "Medium",       rate: 0.98, pitch: 1.0,  blurb: "Interested, but raises multiple objections that don't hold much resistance" },
+  { key: "hard",   name: "Professional", rate: 0.95, pitch: 0.92, blurb: "Skeptical, cycles through objections, doesn't fold easily" },
+];
+// Flavor only -- backstory context for the debrief screen and for the
+// prospect's own opening context, never an objection or a script. Randomly
+// assigned per scenario (Frank, 2026-09-11: producers should walk in
+// knowing "the type of client, how they should approach the call, what the
+// lead source is") so producers practice adjusting their open to the
+// source, the same way they have to on a real call.
+const LEAD_SOURCES = [
+  { key: "website",  label: "Website quote request",
+    forCustomer: "You filled out a quote request on the agency's website within the last day or two, giving your name and number for a callback.",
+    tip: "They asked for this call -- confirm what they requested and get straight to discovery, don't re-sell them on needing insurance." },
+  { key: "referral", label: "Referral from an existing client",
+    forCustomer: "A friend or family member who is already a customer of this agency gave the producer your number and told you someone would call.",
+    tip: "Name-drop the referral early -- it buys trust fast and shortens the opening." },
+  { key: "renewal",  label: "Renewal reminder (policy expiring soon)",
+    forCustomer: "Your current auto/home policy renews within the next couple of weeks and you got a reminder that an agent would reach out.",
+    tip: "Lead with the renewal date and get their current premium -- this is the easiest discovery ask of any source." },
+  { key: "crosssell", label: "Cross-sell (existing policyholder, new product)",
+    forCustomer: "You are already an insurance customer of this agency for one policy, and the producer is calling about a different type of coverage you don't have yet.",
+    tip: "This is new business even though they're a long-time customer -- don't let \"I already have insurance with you\" end the call, that's not a real objection here." },
+  { key: "socialad", label: "Facebook / Instagram lead ad",
+    forCustomer: "You clicked a quote ad on social media a day or two ago, mostly out of curiosity about the price, and gave your number.",
+    tip: "Cold-ish -- they may barely remember clicking. Re-establish why you're calling fast, then move into discovery before they lose interest." },
+  { key: "coldlist", label: "Inbound call -- shopping around",
+    forCustomer: "You called in yourself asking for a quote because you're currently shopping multiple companies for a better price.",
+    tip: "They called YOU -- the motivation is already there. Don't waste it on a long pitch; get current premium and X-date, then move to close." },
+];
+function pickLeadSource() { return LEAD_SOURCES[Math.floor(Math.random() * LEAD_SOURCES.length)]; }
+// The 4-5 things every call needs regardless of persona or lead source --
+// condensed from coaching/METHODOLOGY.md's 9-dimension framework and
+// coaching/TRAINING.md, not re-derived here; keep those three in sync if
+// this list ever changes (Frank, 2026-09-11: training/coaching/Apollo's
+// brain evolve together).
+const RP_APPROACH_CHECKLIST = [
+  "Identify yourself and the reason for the call in the first line -- don't ask permission to explain why you're calling.",
+  "Get discovery before you pitch: current premium, renewal/X-date, and what's currently covered.",
+  "Always check for a cross-sell -- a product they don't have yet, even to a customer of twenty years.",
+  "When an objection comes up, respond to the REAL concern behind it, then immediately re-ask for the next step -- never \"would that be OK?\"",
+  "Close assumptively: state the next step (\"I'll go ahead and get this started\") instead of asking permission.",
 ];
 let rpProducer = "";
 let rpPersonaKey = "";
+let rpLeadSource = null;
+let rpStarted = false;     // true once the producer clicks past the debrief into the live chat
 let rpHistory = [];        // [{role:"producer"|"prospect", content}]
 let rpGrade = null;
 let rpBusy = false;
@@ -1303,11 +1344,13 @@ function roleplayPanel() {
       <p class="sd">Practicing as <b>${rpProducer}</b>. <button class="ghost" id="rpChangeProducer" type="button" style="margin-left:6px">change</button></p>
       ${recHtml}
       <div class="pcards">${RP_PERSONAS.map(p => `<div class="pcard" data-persona="${p.key}">
-        <div class="pn">${p.name}</div></div>`).join("")}</div></div>
+        <div class="pn">${p.name}</div><div class="sd" style="margin:4px 0 0">${p.blurb}</div></div>`).join("")}</div></div>
       ${histHtml}`;
   }
 
   const p = rpPersona(rpPersonaKey);
+  if (!rpStarted) return roleplayDebriefHtml(p);
+
   const msgs = rpHistory.map(m => `<div class="rpmsg ${m.role}">
     <span class="rl">${m.role === "producer" ? rpProducer.split(" ")[0] : "Prospect"}</span>${m.content}</div>`).join("")
     || `<div class="empty" style="padding:20px 0">Say hello to open the call.</div>`;
@@ -1328,6 +1371,36 @@ function roleplayPanel() {
     ${rpGrade ? gradeCardHtml(rpGrade) : ""}
     ${histHtml}
   </div>`;
+}
+
+/* Pre-call debrief (Frank, 2026-09-11): shown once a persona is picked and
+   before the live chat starts, so the producer walks in knowing the client
+   type, the lead source, and how to approach the call -- everything a
+   manager would tell them before handing over a real lead. rpLeadSource is
+   flavor/backstory only (see LEAD_SOURCES above), never the objection
+   script -- that stays server-side and out of the client entirely. */
+function roleplayDebriefHtml(p) {
+  const ls = rpLeadSource || pickLeadSource();
+  rpLeadSource = ls;
+  const weak = producerWeakSpots(rpProducer);
+  const weakHtml = weak.length ? `<div class="note" style="border:1px dashed var(--border-strong);border-radius:8px;padding:10px 14px;margin-top:12px">
+    <b>Watch for today:</b> ${rpProducer.split(" ")[0]}'s real calls over the last 4 weeks show unresolved objections most often around
+    <b>${weak.map(([c, n]) => `${c} (${n}×)`).join(", ")}</b> -- this prospect will lean on objections like these instead of generic ones.</div>` : "";
+  return `<div class="sect"><h2>Role Play &middot; ${p.name} &middot; Debrief</h2>
+    <p class="sd">${rpProducer}
+      <button class="ghost" id="rpChangePersona" type="button" style="margin-left:6px">change persona</button>
+      <button class="ghost" id="rpChangeProducer" type="button">change producer</button></p>
+    <div class="tiles" style="margin-bottom:6px">
+      <div class="tile"><div class="k">Client type</div><div class="v" style="font-size:16px">${p.name}</div><div class="n">${p.blurb}</div></div>
+      <div class="tile"><div class="k">Lead source</div><div class="v" style="font-size:16px">${ls.label}</div><div class="n">${ls.tip}</div></div>
+    </div>
+    ${weakHtml}
+    <div class="bl" style="margin-top:16px">Approach checklist</div>
+    <ul class="gl g">${RP_APPROACH_CHECKLIST.map(c => `<li>${c}</li>`).join("")}</ul>
+    <div class="rpactions" style="justify-content:center;margin-top:10px">
+      <button class="btn" id="rpStartCall" type="button">Start the call</button>
+    </div>
+    </div>`;
 }
 
 function gradeCardHtml(g) {
@@ -1353,7 +1426,7 @@ async function rpSendTurn(text) {
     const focusObjections = producerWeakSpots(rpProducer).map(([c]) => c);
     const r = await fetch("/api/roleplay/turn", {
       method: "POST", headers: { "content-type": "application/json" },
-      body: JSON.stringify({ persona: rpPersonaKey, history: rpHistory, focus_objections: focusObjections }),
+      body: JSON.stringify({ persona: rpPersonaKey, history: rpHistory, focus_objections: focusObjections, lead_source: rpLeadSource ? rpLeadSource.forCustomer : "" }),
     });
     const body = await r.json();
     if (r.ok && body.reply) {
@@ -1380,7 +1453,7 @@ async function rpSubmitGrade() {
   try {
     const r = await fetch("/api/roleplay/grade", {
       method: "POST", headers: { "content-type": "application/json" },
-      body: JSON.stringify({ producer: rpProducer, persona: rpPersonaKey, history: rpHistory }),
+      body: JSON.stringify({ producer: rpProducer, persona: rpPersonaKey, history: rpHistory, lead_source: rpLeadSource ? rpLeadSource.label : "" }),
     });
     const body = await r.json();
     if (r.ok && body.grade) rpGrade = body.grade;
@@ -1415,24 +1488,41 @@ function wireRoleplayPanel() {
   };
   const prodSel = document.getElementById("rpProdSel");
   if (prodSel) prodSel.onchange = () => gradeThenReset(async () => {
-    rpProducer = prodSel.value; rpPersonaKey = ""; rpHistory = []; rpGrade = null;
+    rpProducer = prodSel.value; rpPersonaKey = ""; rpStarted = false; rpHistory = []; rpGrade = null;
     await rpFetchHistory();
   });
   const changeProd = document.getElementById("rpChangeProducer");
   if (changeProd) changeProd.onclick = () => gradeThenReset(() => {
-    rpProducer = ""; rpPersonaKey = ""; rpHistory = []; rpGrade = null;
+    rpProducer = ""; rpPersonaKey = ""; rpStarted = false; rpHistory = []; rpGrade = null;
   });
   document.querySelectorAll(".pcard").forEach(el => el.onclick = () => {
     rpStopListening();
-    rpPersonaKey = el.dataset.persona; rpHistory = []; rpGrade = null;
+    rpPersonaKey = el.dataset.persona; rpLeadSource = pickLeadSource(); rpStarted = false; rpHistory = []; rpGrade = null;
     document.getElementById("view").innerHTML = roleplayPanel();
     wireRoleplayPanel();
   });
+  const changePersona = document.getElementById("rpChangePersona");
+  if (changePersona) changePersona.onclick = () => {
+    rpStopListening();
+    rpPersonaKey = ""; rpStarted = false; rpHistory = []; rpGrade = null;
+    document.getElementById("view").innerHTML = roleplayPanel();
+    wireRoleplayPanel();
+  };
+  const startCall = document.getElementById("rpStartCall");
+  if (startCall) startCall.onclick = () => {
+    rpStarted = true;
+    document.getElementById("view").innerHTML = roleplayPanel();
+    wireRoleplayPanel();
+  };
   const newScenario = document.getElementById("rpNewScenario");
-  // Reset the transcript/grade (same persona, same producer) -- previously
-  // this passed an empty reset() and left rpHistory/rpGrade untouched, so
-  // the button appeared to do nothing (Frank, 2026-09-10).
-  if (newScenario) newScenario.onclick = () => gradeThenReset(() => { rpHistory = []; rpGrade = null; });
+  // Reset the transcript/grade (same persona, same producer) and roll a
+  // fresh lead source, back to the debrief screen -- a "new scenario" is a
+  // new client, not just a blank transcript (Frank, 2026-09-10 originally
+  // added this button to reset the transcript; extended 2026-09-11 to also
+  // re-debrief since scenarios now carry a lead source).
+  if (newScenario) newScenario.onclick = () => gradeThenReset(() => {
+    rpLeadSource = pickLeadSource(); rpStarted = false; rpHistory = []; rpGrade = null;
+  });
   const grade = document.getElementById("rpGrade");
   if (grade) grade.onclick = () => { rpStopListening(); rpSubmitGrade(); };
   const mic = document.getElementById("rpMic");
