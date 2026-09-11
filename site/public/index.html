@@ -204,6 +204,45 @@ h2:first-of-type { margin-top: 8px; }
 .liveflags { margin-top: 10px; display: flex; flex-direction: column; gap: 6px; }
 .liveflag { font-size: 12.5px; color: var(--warn); background: var(--surface-raised); border: 1px solid var(--warn); border-radius: 8px; padding: 7px 10px; }
 
+/* Training tab flashcards (Frank, 2026-09-11) -- flip card driven purely by
+   a CSS 3D transform on .flipped, no JS animation. Front/back are both laid
+   out and stacked via backface-visibility so there's no flash of the wrong
+   face mid-flip. */
+.btn {
+  font: inherit; font-size: 13px; font-weight: 600;
+  color: var(--text-primary); background: var(--surface-raised);
+  border: 1px solid var(--border-strong); border-radius: 6px;
+  padding: 7px 14px; cursor: pointer;
+}
+.btn:hover { border-color: var(--text-muted); }
+.flashcard {
+  perspective: 1400px; cursor: pointer; margin: 10px 0 18px;
+  min-height: 220px;
+}
+.flashcard:focus-visible .fcface { outline: 2px solid var(--text-primary); outline-offset: 2px; }
+.fcinner {
+  position: relative; width: 100%; height: 100%; min-height: inherit;
+  transform-style: preserve-3d; transition: transform 0.5s ease;
+}
+.flashcard.flipped .fcinner { transform: rotateY(180deg); }
+.fcface {
+  position: absolute; inset: 0; backface-visibility: hidden;
+  border: 1px solid var(--border-strong); border-radius: 12px;
+  background: var(--surface-raised); padding: 22px 26px;
+  display: flex; align-items: center; justify-content: center;
+  overflow-y: auto;
+}
+/* align-items:center (inherited from .fcface) clips a tall back face at the
+   top when it overflows the fixed-height box -- centering a scrollable flex
+   item hides the portion above the fold instead of leaving it reachable by
+   scrolling. Top-align the back face instead so overflow only ever runs
+   downward, where overflow-y:auto can actually reach it. */
+.fcback { transform: rotateY(180deg); align-items: flex-start; justify-content: flex-start; }
+.fctext { font-size: 17px; font-weight: 600; text-align: center; line-height: 1.4; }
+.fctext-back { font-size: 13.5px; font-weight: 400; text-align: left; line-height: 1.55; width: 100%; }
+.fctext-back .gl li:before { background: var(--text-muted); }
+.fccontrols { display: flex; gap: 8px; flex-wrap: wrap; }
+
 table { width: 100%; border-collapse: collapse; font-variant-numeric: tabular-nums; }
 th, td { text-align: right; padding: 9px 10px; border-bottom: 1px solid var(--grid); font-size: 12.5px; }
 th:first-child, td:first-child { text-align: left; }
@@ -369,6 +408,7 @@ details.sc .scb { padding: 0 12px 12px; }
       <button class="tab" role="tab" aria-selected="false" data-v="coaching">Coaching</button>
       <button class="tab" role="tab" aria-selected="false" data-v="trends">Trends</button>
       <button class="tab" role="tab" aria-selected="false" data-v="roleplay">Role Play</button>
+      <button class="tab" role="tab" aria-selected="false" data-v="training">Training</button>
     </div>
     <div id="view"><div class="empty">Loading…</div></div>
   </main>
@@ -415,6 +455,17 @@ let producerFilter = "";
 // other value renders an aggregate via digestRange().
 let rangeMode = "day";  // day | yesterday | week | mtd | ytd | folio | custom
 let customFrom = "", customTo = "";
+
+// Training tab state. TRAINING_CACHE is fetched once (static content, same
+// for every viewer) and kept for the life of the page. trainingOrder is a
+// shuffled index array into the current deck's cards, rebuilt whenever the
+// deck changes or Shuffle is clicked -- trainingPos indexes INTO that order,
+// not into the deck's cards directly.
+let TRAINING_CACHE = null;
+let trainingDeckIdx = 0;
+let trainingOrder = [];
+let trainingPos = 0;
+let trainingFlipped = false;
 
 /* ---- tooltip -------------------------------------------------------------- */
 const tip = $("#tip");
@@ -1455,6 +1506,116 @@ function lineChart(points, fmt, tipFn) {
   });
   return svg.outerHTML;
 }
+/* ---- Training tab: Apollo's flashcard decks (coaching/TRAINING.md) -------- */
+
+async function loadTraining() {
+  if (TRAINING_CACHE) return TRAINING_CACHE;
+  try {
+    const r = await fetch("/api/training", { cache: "no-store" });
+    TRAINING_CACHE = r.ok ? await r.json() : { decks: [] };
+  } catch (_) { TRAINING_CACHE = { decks: [] }; }
+  return TRAINING_CACHE;
+}
+
+function shuffledOrder(n) {
+  const a = Array.from({ length: n }, (_, i) => i);
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a;
+}
+
+// mini markdown -> html for a card's back: just bullet lines and *word* bold,
+// enough for TRAINING.md's own "- " lines and quoted example phrasing --
+// deliberately not a full markdown parser, this content is hand-written and
+// never carries anything richer than that.
+function trainingMd(text) {
+  const lines = text.split("\n");
+  let html = "", inList = false;
+  for (const line of lines) {
+    const m = line.match(/^- (.*)/);
+    if (m) {
+      if (!inList) { html += "<ul class=\"gl\">"; inList = true; }
+      html += `<li>${m[1]}</li>`;
+    } else {
+      if (inList) { html += "</ul>"; inList = false; }
+      if (line.trim()) html += `<p style="margin:0 0 10px">${line}</p>`;
+    }
+  }
+  if (inList) html += "</ul>";
+  return html;
+}
+
+function trainingPanel(data) {
+  const decks = data.decks || [];
+  if (!decks.length) return '<div class="empty">No training content yet.</div>';
+  const deck = decks[trainingDeckIdx] || decks[0];
+  ensureTrainingOrder(deck);   // must run before idx below -- otherwise the
+  // first render (before wireTrainingPanel ever runs) uses an empty
+  // trainingOrder and shows card 0 unshuffled, then the first flip jumps to
+  // whatever the freshly-shuffled order actually put at position 0
+  const idx = trainingOrder[trainingPos] ?? 0;
+  const card = deck.cards[idx];
+  const pills = decks.map((d, i) => `<button class="subtab ${i === trainingDeckIdx ? "sel" : ""}" data-deck="${i}">${d.name}</button>`).join("");
+  return `<div class="subtabs" style="margin-bottom:16px">${pills}</div>
+  <div class="sect">
+    <div class="bl">${deck.name} &middot; card ${trainingPos + 1} of ${deck.cards.length}</div>
+    <div class="flashcard ${trainingFlipped ? "flipped" : ""}" id="flashcard" tabindex="0" role="button" aria-label="Flip card">
+      <div class="fcinner">
+        <div class="fcface fcfront"><div class="fctext">${card.front}</div></div>
+        <div class="fcface fcback"><div class="fctext fctext-back">${trainingMd(card.back)}</div></div>
+      </div>
+    </div>
+    <div class="fccontrols">
+      <button class="btn" id="fcprev">&larr; Prev</button>
+      <button class="btn" id="fcflip">Flip</button>
+      <button class="btn" id="fcnext">Next &rarr;</button>
+      <button class="btn" id="fcshuffle">Shuffle</button>
+    </div>
+  </div>`;
+}
+
+function ensureTrainingOrder(deck) {
+  if (trainingOrder.length !== deck.cards.length) {
+    trainingOrder = shuffledOrder(deck.cards.length);
+    trainingPos = 0;
+  }
+}
+
+function wireTrainingPanel(data) {
+  const decks = data.decks || [];
+  $$(".subtab[data-deck]").forEach(b => b.onclick = () => {
+    trainingDeckIdx = Number(b.dataset.deck);
+    trainingOrder = []; trainingPos = 0; trainingFlipped = false;
+    ensureTrainingOrder(decks[trainingDeckIdx]);
+    $("#view").innerHTML = trainingPanel(data);
+    wireTrainingPanel(data);
+  });
+  const deck = decks[trainingDeckIdx];
+  ensureTrainingOrder(deck);
+  const repaint = () => { $("#view").innerHTML = trainingPanel(data); wireTrainingPanel(data); };
+  const flip = () => { trainingFlipped = !trainingFlipped; repaint(); };
+  const move = (delta) => {
+    trainingPos = (trainingPos + delta + deck.cards.length) % deck.cards.length;
+    trainingFlipped = false;
+    repaint();
+  };
+  const fc = $("#flashcard");
+  if (fc) {
+    fc.onclick = flip;
+    fc.onkeydown = (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); flip(); } };
+  }
+  const flipBtn = $("#fcflip"); if (flipBtn) flipBtn.onclick = flip;
+  const prevBtn = $("#fcprev"); if (prevBtn) prevBtn.onclick = () => move(-1);
+  const nextBtn = $("#fcnext"); if (nextBtn) nextBtn.onclick = () => move(1);
+  const shufBtn = $("#fcshuffle"); if (shufBtn) shufBtn.onclick = () => {
+    trainingOrder = shuffledOrder(deck.cards.length);
+    trainingPos = 0; trainingFlipped = false;
+    repaint();
+  };
+}
+
 async function trendsPanel() {
   const ds = await loadTrend();
   if (ds.length < 2) return `<div class="empty">
@@ -1676,6 +1837,12 @@ async function paint() {
         wireRoleplayPanel();
       });
     }
+  } else if (view === "training") {
+    $("#topsub").textContent = "Apollo training -- flashcards for objections, info-gathering and technique";
+    v.innerHTML = '<div class="empty">Loading…</div>';
+    const data = await loadTraining();
+    v.innerHTML = trainingPanel(data);
+    wireTrainingPanel(data);
   } else {
     $("#topsub").textContent = "trends across every reporting day";
     v.innerHTML = '<div class="empty">Loading…</div>';

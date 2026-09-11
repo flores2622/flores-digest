@@ -54,6 +54,7 @@
  */
 import METHODOLOGY_MD from "../coaching/METHODOLOGY.md";
 import ROLEPLAY_MD from "../coaching/ROLEPLAY.md";
+import TRAINING_MD from "../coaching/TRAINING.md";
 
 export default {
   async fetch(request, env) {
@@ -82,6 +83,10 @@ export default {
 
       if (parts[1] === "intraday" && parts.length === 3) {
         return getIntraday(env, parts[2]);
+      }
+
+      if (parts[1] === "training" && parts.length === 2) {
+        return json(trainingDecks());
       }
 
       if (parts[1] === "roleplay") {
@@ -177,6 +182,40 @@ async function getIntraday(env, day) {
       "cache-control": "no-store",
     },
   });
+}
+
+/** Parses coaching/TRAINING.md into [{ name, cards: [{ front, back }] }].
+ * Static content bundled with the Worker (no R2 read, no per-request
+ * computation beyond this parse) -- `## Deck Name` starts a deck, `### Front
+ * text` starts a card, everything until the next `###` or `##` is the back.
+ * Prose before the first `## ` (the file's own editorial notes) is skipped
+ * on purpose -- it's for whoever edits this file next, not the flashcard UI.
+ * Cached at module scope: parsed once per Worker isolate, not per request. */
+let _trainingCache = null;
+function trainingDecks() {
+  if (_trainingCache) return _trainingCache;
+  const lines = TRAINING_MD.split("\n");
+  const decks = [];
+  let deck = null, card = null;
+  for (const line of lines) {
+    const deckMatch = line.match(/^## (.+)/);
+    const cardMatch = line.match(/^### (.+)/);
+    if (deckMatch) {
+      deck = { name: deckMatch[1].trim(), cards: [] };
+      decks.push(deck);
+      card = null;
+    } else if (cardMatch && deck) {
+      card = { front: cardMatch[1].trim(), back: "" };
+      deck.cards.push(card);
+    } else if (card) {
+      card.back += (card.back ? "\n" : "") + line;
+    }
+  }
+  for (const d of decks) {
+    for (const c of d.cards) c.back = c.back.trim();
+  }
+  _trainingCache = { decks };
+  return _trainingCache;
 }
 
 function json(body, status) {
