@@ -204,6 +204,45 @@ h2:first-of-type { margin-top: 8px; }
 .liveflags { margin-top: 10px; display: flex; flex-direction: column; gap: 6px; }
 .liveflag { font-size: 12.5px; color: var(--warn); background: var(--surface-raised); border: 1px solid var(--warn); border-radius: 8px; padding: 7px 10px; }
 
+/* Training tab flashcards (Frank, 2026-09-11) -- flip card driven purely by
+   a CSS 3D transform on .flipped, no JS animation. Front/back are both laid
+   out and stacked via backface-visibility so there's no flash of the wrong
+   face mid-flip. */
+.btn {
+  font: inherit; font-size: 13px; font-weight: 600;
+  color: var(--text-primary); background: var(--surface-raised);
+  border: 1px solid var(--border-strong); border-radius: 6px;
+  padding: 7px 14px; cursor: pointer;
+}
+.btn:hover { border-color: var(--text-muted); }
+.flashcard {
+  perspective: 1400px; cursor: pointer; margin: 10px 0 18px;
+  min-height: 220px;
+}
+.flashcard:focus-visible .fcface { outline: 2px solid var(--text-primary); outline-offset: 2px; }
+.fcinner {
+  position: relative; width: 100%; height: 100%; min-height: inherit;
+  transform-style: preserve-3d; transition: transform 0.5s ease;
+}
+.flashcard.flipped .fcinner { transform: rotateY(180deg); }
+.fcface {
+  position: absolute; inset: 0; backface-visibility: hidden;
+  border: 1px solid var(--border-strong); border-radius: 12px;
+  background: var(--surface-raised); padding: 22px 26px;
+  display: flex; align-items: center; justify-content: center;
+  overflow-y: auto;
+}
+/* align-items:center (inherited from .fcface) clips a tall back face at the
+   top when it overflows the fixed-height box -- centering a scrollable flex
+   item hides the portion above the fold instead of leaving it reachable by
+   scrolling. Top-align the back face instead so overflow only ever runs
+   downward, where overflow-y:auto can actually reach it. */
+.fcback { transform: rotateY(180deg); align-items: flex-start; justify-content: flex-start; }
+.fctext { font-size: 17px; font-weight: 600; text-align: center; line-height: 1.4; }
+.fctext-back { font-size: 13.5px; font-weight: 400; text-align: left; line-height: 1.55; width: 100%; }
+.fctext-back .gl li:before { background: var(--text-muted); }
+.fccontrols { display: flex; gap: 8px; flex-wrap: wrap; }
+
 table { width: 100%; border-collapse: collapse; font-variant-numeric: tabular-nums; }
 th, td { text-align: right; padding: 9px 10px; border-bottom: 1px solid var(--grid); font-size: 12.5px; }
 th:first-child, td:first-child { text-align: left; }
@@ -369,6 +408,7 @@ details.sc .scb { padding: 0 12px 12px; }
       <button class="tab" role="tab" aria-selected="false" data-v="coaching">Coaching</button>
       <button class="tab" role="tab" aria-selected="false" data-v="trends">Trends</button>
       <button class="tab" role="tab" aria-selected="false" data-v="roleplay">Role Play</button>
+      <button class="tab" role="tab" aria-selected="false" data-v="training">Training</button>
     </div>
     <div id="view"><div class="empty">Loading…</div></div>
   </main>
@@ -415,6 +455,17 @@ let producerFilter = "";
 // other value renders an aggregate via digestRange().
 let rangeMode = "day";  // day | yesterday | week | mtd | ytd | folio | custom
 let customFrom = "", customTo = "";
+
+// Training tab state. TRAINING_CACHE is fetched once (static content, same
+// for every viewer) and kept for the life of the page. trainingOrder is a
+// shuffled index array into the current deck's cards, rebuilt whenever the
+// deck changes or Shuffle is clicked -- trainingPos indexes INTO that order,
+// not into the deck's cards directly.
+let TRAINING_CACHE = null;
+let trainingDeckIdx = 0;
+let trainingOrder = [];
+let trainingPos = 0;
+let trainingFlipped = false;
 
 /* ---- tooltip -------------------------------------------------------------- */
 const tip = $("#tip");
@@ -1111,12 +1162,53 @@ function wireObjectionBrowser() {
    documents) so practice history survives a refresh and follows the
    producer across devices, not just one browser's local storage. */
 const RP_PERSONAS = [
-  { key: "easy",   name: "Beginner",     rate: 1.02, pitch: 1.08 },
-  { key: "medium", name: "Medium",       rate: 0.98, pitch: 1.0 },
-  { key: "hard",   name: "Professional", rate: 0.95, pitch: 0.92 },
+  { key: "easy",   name: "Beginner",     rate: 1.02, pitch: 1.08, blurb: "Open to a quote, minimal resistance" },
+  { key: "medium", name: "Medium",       rate: 0.98, pitch: 1.0,  blurb: "Interested, but raises multiple objections that don't hold much resistance" },
+  { key: "hard",   name: "Professional", rate: 0.95, pitch: 0.92, blurb: "Skeptical, cycles through objections, doesn't fold easily" },
+];
+// Flavor only -- backstory context for the debrief screen and for the
+// prospect's own opening context, never an objection or a script. Randomly
+// assigned per scenario (Frank, 2026-09-11: producers should walk in
+// knowing "the type of client, how they should approach the call, what the
+// lead source is") so producers practice adjusting their open to the
+// source, the same way they have to on a real call.
+const LEAD_SOURCES = [
+  { key: "website",  label: "Website quote request",
+    forCustomer: "You filled out a quote request on the agency's website within the last day or two, giving your name and number for a callback.",
+    tip: "They asked for this call -- confirm what they requested and get straight to discovery, don't re-sell them on needing insurance." },
+  { key: "referral", label: "Referral from an existing client",
+    forCustomer: "A friend or family member who is already a customer of this agency gave the producer your number and told you someone would call.",
+    tip: "Name-drop the referral early -- it buys trust fast and shortens the opening." },
+  { key: "renewal",  label: "Renewal reminder (policy expiring soon)",
+    forCustomer: "Your current auto/home policy renews within the next couple of weeks and you got a reminder that an agent would reach out.",
+    tip: "Lead with the renewal date and get their current premium -- this is the easiest discovery ask of any source." },
+  { key: "crosssell", label: "Cross-sell (existing policyholder, new product)",
+    forCustomer: "You are already an insurance customer of this agency for one policy, and the producer is calling about a different type of coverage you don't have yet.",
+    tip: "This is new business even though they're a long-time customer -- don't let \"I already have insurance with you\" end the call, that's not a real objection here." },
+  { key: "socialad", label: "Facebook / Instagram lead ad",
+    forCustomer: "You clicked a quote ad on social media a day or two ago, mostly out of curiosity about the price, and gave your number.",
+    tip: "Cold-ish -- they may barely remember clicking. Re-establish why you're calling fast, then move into discovery before they lose interest." },
+  { key: "coldlist", label: "Inbound call -- shopping around",
+    forCustomer: "You called in yourself asking for a quote because you're currently shopping multiple companies for a better price.",
+    tip: "They called YOU -- the motivation is already there. Don't waste it on a long pitch; get current premium and X-date, then move to close." },
+];
+function pickLeadSource() { return LEAD_SOURCES[Math.floor(Math.random() * LEAD_SOURCES.length)]; }
+// The 4-5 things every call needs regardless of persona or lead source --
+// condensed from coaching/METHODOLOGY.md's 9-dimension framework and
+// coaching/TRAINING.md, not re-derived here; keep those three in sync if
+// this list ever changes (Frank, 2026-09-11: training/coaching/Apollo's
+// brain evolve together).
+const RP_APPROACH_CHECKLIST = [
+  "Identify yourself and the reason for the call in the first line -- don't ask permission to explain why you're calling.",
+  "Get discovery before you pitch: current premium, renewal/X-date, and what's currently covered.",
+  "Always check for a cross-sell -- a product they don't have yet, even to a customer of twenty years.",
+  "When an objection comes up, respond to the REAL concern behind it, then immediately re-ask for the next step -- never \"would that be OK?\"",
+  "Close assumptively: state the next step (\"I'll go ahead and get this started\") instead of asking permission.",
 ];
 let rpProducer = "";
 let rpPersonaKey = "";
+let rpLeadSource = null;
+let rpStarted = false;     // true once the producer clicks past the debrief into the live chat
 let rpHistory = [];        // [{role:"producer"|"prospect", content}]
 let rpGrade = null;
 let rpBusy = false;
@@ -1252,11 +1344,13 @@ function roleplayPanel() {
       <p class="sd">Practicing as <b>${rpProducer}</b>. <button class="ghost" id="rpChangeProducer" type="button" style="margin-left:6px">change</button></p>
       ${recHtml}
       <div class="pcards">${RP_PERSONAS.map(p => `<div class="pcard" data-persona="${p.key}">
-        <div class="pn">${p.name}</div></div>`).join("")}</div></div>
+        <div class="pn">${p.name}</div><div class="sd" style="margin:4px 0 0">${p.blurb}</div></div>`).join("")}</div></div>
       ${histHtml}`;
   }
 
   const p = rpPersona(rpPersonaKey);
+  if (!rpStarted) return roleplayDebriefHtml(p);
+
   const msgs = rpHistory.map(m => `<div class="rpmsg ${m.role}">
     <span class="rl">${m.role === "producer" ? rpProducer.split(" ")[0] : "Prospect"}</span>${m.content}</div>`).join("")
     || `<div class="empty" style="padding:20px 0">Say hello to open the call.</div>`;
@@ -1277,6 +1371,36 @@ function roleplayPanel() {
     ${rpGrade ? gradeCardHtml(rpGrade) : ""}
     ${histHtml}
   </div>`;
+}
+
+/* Pre-call debrief (Frank, 2026-09-11): shown once a persona is picked and
+   before the live chat starts, so the producer walks in knowing the client
+   type, the lead source, and how to approach the call -- everything a
+   manager would tell them before handing over a real lead. rpLeadSource is
+   flavor/backstory only (see LEAD_SOURCES above), never the objection
+   script -- that stays server-side and out of the client entirely. */
+function roleplayDebriefHtml(p) {
+  const ls = rpLeadSource || pickLeadSource();
+  rpLeadSource = ls;
+  const weak = producerWeakSpots(rpProducer);
+  const weakHtml = weak.length ? `<div class="note" style="border:1px dashed var(--border-strong);border-radius:8px;padding:10px 14px;margin-top:12px">
+    <b>Watch for today:</b> ${rpProducer.split(" ")[0]}'s real calls over the last 4 weeks show unresolved objections most often around
+    <b>${weak.map(([c, n]) => `${c} (${n}×)`).join(", ")}</b> -- this prospect will lean on objections like these instead of generic ones.</div>` : "";
+  return `<div class="sect"><h2>Role Play &middot; ${p.name} &middot; Debrief</h2>
+    <p class="sd">${rpProducer}
+      <button class="ghost" id="rpChangePersona" type="button" style="margin-left:6px">change persona</button>
+      <button class="ghost" id="rpChangeProducer" type="button">change producer</button></p>
+    <div class="tiles" style="margin-bottom:6px">
+      <div class="tile"><div class="k">Client type</div><div class="v" style="font-size:16px">${p.name}</div><div class="n">${p.blurb}</div></div>
+      <div class="tile"><div class="k">Lead source</div><div class="v" style="font-size:16px">${ls.label}</div><div class="n">${ls.tip}</div></div>
+    </div>
+    ${weakHtml}
+    <div class="bl" style="margin-top:16px">Approach checklist</div>
+    <ul class="gl g">${RP_APPROACH_CHECKLIST.map(c => `<li>${c}</li>`).join("")}</ul>
+    <div class="rpactions" style="justify-content:center;margin-top:10px">
+      <button class="btn" id="rpStartCall" type="button">Start the call</button>
+    </div>
+    </div>`;
 }
 
 function gradeCardHtml(g) {
@@ -1302,7 +1426,7 @@ async function rpSendTurn(text) {
     const focusObjections = producerWeakSpots(rpProducer).map(([c]) => c);
     const r = await fetch("/api/roleplay/turn", {
       method: "POST", headers: { "content-type": "application/json" },
-      body: JSON.stringify({ persona: rpPersonaKey, history: rpHistory, focus_objections: focusObjections }),
+      body: JSON.stringify({ persona: rpPersonaKey, history: rpHistory, focus_objections: focusObjections, lead_source: rpLeadSource ? rpLeadSource.forCustomer : "" }),
     });
     const body = await r.json();
     if (r.ok && body.reply) {
@@ -1329,7 +1453,7 @@ async function rpSubmitGrade() {
   try {
     const r = await fetch("/api/roleplay/grade", {
       method: "POST", headers: { "content-type": "application/json" },
-      body: JSON.stringify({ producer: rpProducer, persona: rpPersonaKey, history: rpHistory }),
+      body: JSON.stringify({ producer: rpProducer, persona: rpPersonaKey, history: rpHistory, lead_source: rpLeadSource ? rpLeadSource.label : "" }),
     });
     const body = await r.json();
     if (r.ok && body.grade) rpGrade = body.grade;
@@ -1364,24 +1488,41 @@ function wireRoleplayPanel() {
   };
   const prodSel = document.getElementById("rpProdSel");
   if (prodSel) prodSel.onchange = () => gradeThenReset(async () => {
-    rpProducer = prodSel.value; rpPersonaKey = ""; rpHistory = []; rpGrade = null;
+    rpProducer = prodSel.value; rpPersonaKey = ""; rpStarted = false; rpHistory = []; rpGrade = null;
     await rpFetchHistory();
   });
   const changeProd = document.getElementById("rpChangeProducer");
   if (changeProd) changeProd.onclick = () => gradeThenReset(() => {
-    rpProducer = ""; rpPersonaKey = ""; rpHistory = []; rpGrade = null;
+    rpProducer = ""; rpPersonaKey = ""; rpStarted = false; rpHistory = []; rpGrade = null;
   });
   document.querySelectorAll(".pcard").forEach(el => el.onclick = () => {
     rpStopListening();
-    rpPersonaKey = el.dataset.persona; rpHistory = []; rpGrade = null;
+    rpPersonaKey = el.dataset.persona; rpLeadSource = pickLeadSource(); rpStarted = false; rpHistory = []; rpGrade = null;
     document.getElementById("view").innerHTML = roleplayPanel();
     wireRoleplayPanel();
   });
+  const changePersona = document.getElementById("rpChangePersona");
+  if (changePersona) changePersona.onclick = () => {
+    rpStopListening();
+    rpPersonaKey = ""; rpStarted = false; rpHistory = []; rpGrade = null;
+    document.getElementById("view").innerHTML = roleplayPanel();
+    wireRoleplayPanel();
+  };
+  const startCall = document.getElementById("rpStartCall");
+  if (startCall) startCall.onclick = () => {
+    rpStarted = true;
+    document.getElementById("view").innerHTML = roleplayPanel();
+    wireRoleplayPanel();
+  };
   const newScenario = document.getElementById("rpNewScenario");
-  // Reset the transcript/grade (same persona, same producer) -- previously
-  // this passed an empty reset() and left rpHistory/rpGrade untouched, so
-  // the button appeared to do nothing (Frank, 2026-09-10).
-  if (newScenario) newScenario.onclick = () => gradeThenReset(() => { rpHistory = []; rpGrade = null; });
+  // Reset the transcript/grade (same persona, same producer) and roll a
+  // fresh lead source, back to the debrief screen -- a "new scenario" is a
+  // new client, not just a blank transcript (Frank, 2026-09-10 originally
+  // added this button to reset the transcript; extended 2026-09-11 to also
+  // re-debrief since scenarios now carry a lead source).
+  if (newScenario) newScenario.onclick = () => gradeThenReset(() => {
+    rpLeadSource = pickLeadSource(); rpStarted = false; rpHistory = []; rpGrade = null;
+  });
   const grade = document.getElementById("rpGrade");
   if (grade) grade.onclick = () => { rpStopListening(); rpSubmitGrade(); };
   const mic = document.getElementById("rpMic");
@@ -1455,6 +1596,116 @@ function lineChart(points, fmt, tipFn) {
   });
   return svg.outerHTML;
 }
+/* ---- Training tab: Apollo's flashcard decks (coaching/TRAINING.md) -------- */
+
+async function loadTraining() {
+  if (TRAINING_CACHE) return TRAINING_CACHE;
+  try {
+    const r = await fetch("/api/training", { cache: "no-store" });
+    TRAINING_CACHE = r.ok ? await r.json() : { decks: [] };
+  } catch (_) { TRAINING_CACHE = { decks: [] }; }
+  return TRAINING_CACHE;
+}
+
+function shuffledOrder(n) {
+  const a = Array.from({ length: n }, (_, i) => i);
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a;
+}
+
+// mini markdown -> html for a card's back: just bullet lines and *word* bold,
+// enough for TRAINING.md's own "- " lines and quoted example phrasing --
+// deliberately not a full markdown parser, this content is hand-written and
+// never carries anything richer than that.
+function trainingMd(text) {
+  const lines = text.split("\n");
+  let html = "", inList = false;
+  for (const line of lines) {
+    const m = line.match(/^- (.*)/);
+    if (m) {
+      if (!inList) { html += "<ul class=\"gl\">"; inList = true; }
+      html += `<li>${m[1]}</li>`;
+    } else {
+      if (inList) { html += "</ul>"; inList = false; }
+      if (line.trim()) html += `<p style="margin:0 0 10px">${line}</p>`;
+    }
+  }
+  if (inList) html += "</ul>";
+  return html;
+}
+
+function trainingPanel(data) {
+  const decks = data.decks || [];
+  if (!decks.length) return '<div class="empty">No training content yet.</div>';
+  const deck = decks[trainingDeckIdx] || decks[0];
+  ensureTrainingOrder(deck);   // must run before idx below -- otherwise the
+  // first render (before wireTrainingPanel ever runs) uses an empty
+  // trainingOrder and shows card 0 unshuffled, then the first flip jumps to
+  // whatever the freshly-shuffled order actually put at position 0
+  const idx = trainingOrder[trainingPos] ?? 0;
+  const card = deck.cards[idx];
+  const pills = decks.map((d, i) => `<button class="subtab ${i === trainingDeckIdx ? "sel" : ""}" data-deck="${i}">${d.name}</button>`).join("");
+  return `<div class="subtabs" style="margin-bottom:16px">${pills}</div>
+  <div class="sect">
+    <div class="bl">${deck.name} &middot; card ${trainingPos + 1} of ${deck.cards.length}</div>
+    <div class="flashcard ${trainingFlipped ? "flipped" : ""}" id="flashcard" tabindex="0" role="button" aria-label="Flip card">
+      <div class="fcinner">
+        <div class="fcface fcfront"><div class="fctext">${card.front}</div></div>
+        <div class="fcface fcback"><div class="fctext fctext-back">${trainingMd(card.back)}</div></div>
+      </div>
+    </div>
+    <div class="fccontrols">
+      <button class="btn" id="fcprev">&larr; Prev</button>
+      <button class="btn" id="fcflip">Flip</button>
+      <button class="btn" id="fcnext">Next &rarr;</button>
+      <button class="btn" id="fcshuffle">Shuffle</button>
+    </div>
+  </div>`;
+}
+
+function ensureTrainingOrder(deck) {
+  if (trainingOrder.length !== deck.cards.length) {
+    trainingOrder = shuffledOrder(deck.cards.length);
+    trainingPos = 0;
+  }
+}
+
+function wireTrainingPanel(data) {
+  const decks = data.decks || [];
+  $$(".subtab[data-deck]").forEach(b => b.onclick = () => {
+    trainingDeckIdx = Number(b.dataset.deck);
+    trainingOrder = []; trainingPos = 0; trainingFlipped = false;
+    ensureTrainingOrder(decks[trainingDeckIdx]);
+    $("#view").innerHTML = trainingPanel(data);
+    wireTrainingPanel(data);
+  });
+  const deck = decks[trainingDeckIdx];
+  ensureTrainingOrder(deck);
+  const repaint = () => { $("#view").innerHTML = trainingPanel(data); wireTrainingPanel(data); };
+  const flip = () => { trainingFlipped = !trainingFlipped; repaint(); };
+  const move = (delta) => {
+    trainingPos = (trainingPos + delta + deck.cards.length) % deck.cards.length;
+    trainingFlipped = false;
+    repaint();
+  };
+  const fc = $("#flashcard");
+  if (fc) {
+    fc.onclick = flip;
+    fc.onkeydown = (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); flip(); } };
+  }
+  const flipBtn = $("#fcflip"); if (flipBtn) flipBtn.onclick = flip;
+  const prevBtn = $("#fcprev"); if (prevBtn) prevBtn.onclick = () => move(-1);
+  const nextBtn = $("#fcnext"); if (nextBtn) nextBtn.onclick = () => move(1);
+  const shufBtn = $("#fcshuffle"); if (shufBtn) shufBtn.onclick = () => {
+    trainingOrder = shuffledOrder(deck.cards.length);
+    trainingPos = 0; trainingFlipped = false;
+    repaint();
+  };
+}
+
 async function trendsPanel() {
   const ds = await loadTrend();
   if (ds.length < 2) return `<div class="empty">
@@ -1676,6 +1927,12 @@ async function paint() {
         wireRoleplayPanel();
       });
     }
+  } else if (view === "training") {
+    $("#topsub").textContent = "Apollo training -- flashcards for objections, info-gathering and technique";
+    v.innerHTML = '<div class="empty">Loading…</div>';
+    const data = await loadTraining();
+    v.innerHTML = trainingPanel(data);
+    wireTrainingPanel(data);
   } else {
     $("#topsub").textContent = "trends across every reporting day";
     v.innerHTML = '<div class="empty">Loading…</div>';
