@@ -763,7 +763,7 @@ function auditPanel(d, who) {
    <div class="scroll"><table><thead><tr><th>Finding</th><th class="num">Tasks</th></tr></thead><tbody>${rows}</tbody></table></div></div>`;
 }
 
-// The day's hourly intraday.py snapshot, fetched once per loadDay() alongside
+// The day's latest intraday.py snapshot, fetched once per loadDay() alongside
 // the finalized document itself (see loadDay below) -- null on any day that
 // isn't in progress (no snapshot yet, or the day is already finalized and
 // intraday.py refused to touch it, same guard either way).

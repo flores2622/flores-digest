@@ -99,9 +99,10 @@ def publish_intraday(day, doc, flags, cli=None, bucket=None, log=print):
     document.
 
     Keeps a short trend of prior checks THIS day (as_of/dials/live/rate),
-    capped at 30 points -- plenty for one business day's worth of hourly
-    checks -- so sanity_gate.check() has something to compare a swing
-    against and the board can show a same-day trend line.
+    capped at 30 points -- plenty for one business day's worth of checkpoints,
+    even run more often than the current business-hour schedule's ten -- so
+    sanity_gate.check() has something to compare a swing against and the
+    board can show a same-day trend line.
     """
     if cli is None:
         cli, bucket = _client()
