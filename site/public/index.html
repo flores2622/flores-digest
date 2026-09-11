@@ -273,31 +273,16 @@ h2:first-of-type { margin-top: 8px; }
 .matchtile.wrong { background: var(--badbg); color: var(--bad); border-color: var(--badbd); }
 @media (max-width: 520px) { .matchgrid { grid-template-columns: 1fr; } }
 
-/* Print cheatsheet: #printCheatsheet is built fresh from TRAINING_CACHE
-   right before window.print() (see printCheatsheet() above) and is the
-   only thing shown on the printed page -- everything else on screen is
-   hidden for print. Plain black-on-white regardless of the site's
-   light/dark theme; a printed page has no theme. */
-.print-only { display: none; }
-@media print {
-  body * { visibility: hidden; }
-  #printCheatsheet, #printCheatsheet * { visibility: visible; }
-  #printCheatsheet {
-    display: block; position: absolute; left: 0; top: 0; width: 100%;
-    padding: 0.4in; color: #000; background: #fff;
-  }
-  #printCheatsheet h1 { font-size: 20px; margin: 0 0 4px; color: #000; }
-  #printCheatsheet .printmeta { font-size: 10px; color: #555; margin: 0 0 18px; }
-  #printCheatsheet h2 {
-    font-size: 14px; margin: 20px 0 8px; padding-bottom: 3px;
-    border-bottom: 1px solid #999; color: #000; break-after: avoid;
-  }
-  #printCheatsheet .printcard { margin-bottom: 10px; break-inside: avoid; }
-  #printCheatsheet .printcard h3 { font-size: 11.5px; margin: 0 0 2px; color: #000; }
-  #printCheatsheet .printback { font-size: 10px; line-height: 1.4; color: #222; }
-  #printCheatsheet .printback ul { margin: 3px 0; padding-left: 16px; }
-  #printCheatsheet .printback p { margin: 0 0 6px; }
-}
+/* Training tab: Terms & Techniques reference (Frank, 2026-09-11 --
+   replaces an earlier print-cheatsheet attempt with an always-current,
+   in-app read: "explains everything without having to download the
+   cheatsheet"). Same deck/card data as flashcards, rendered as one
+   scrollable page instead of one card at a time. */
+.refdeck { margin-bottom: 28px; }
+.refcard { margin-bottom: 14px; padding-bottom: 14px; border-bottom: 1px solid var(--grid); }
+.refcard:last-child { border-bottom: none; }
+.refcard h3 { font-size: 13.5px; margin: 0 0 4px; color: var(--text-primary); }
+.refcard .fctext-back { font-size: 12.5px; }
 
 table { width: 100%; border-collapse: collapse; font-variant-numeric: tabular-nums; }
 th, td { text-align: right; padding: 9px 10px; border-bottom: 1px solid var(--grid); font-size: 12.5px; }
@@ -1467,6 +1452,22 @@ function roleplayDebriefHtml(p) {
   const weakHtml = weak.length ? `<div class="note" style="border:1px dashed var(--border-strong);border-radius:8px;padding:10px 14px;margin-top:12px">
     <b>Watch for today:</b> ${rpProducer.split(" ")[0]}'s real calls over the last 4 weeks show unresolved objections most often around
     <b>${weak.map(([c, n]) => `${c} (${n}×)`).join(", ")}</b> -- this prospect will lean on objections like these instead of generic ones.</div>` : "";
+
+  // Call guide (Frank, 2026-09-11: moved here from a standalone printable
+  // cheatsheet -- "give them a cheatbox based on the roleplay that will be
+  // presented to them"). Needs the same /api/training data the Training
+  // tab uses; if it isn't cached yet, kick off the fetch and re-render the
+  // debrief once it lands rather than blocking this render on it.
+  if (!TRAINING_CACHE) {
+    loadTraining().then(() => {
+      if (view !== "roleplay" || !rpPersonaKey || rpStarted) return;   // navigated away before this landed
+      $("#view").innerHTML = roleplayPanel();
+      wireRoleplayPanel();
+    });
+  }
+  const callGuideHtml = TRAINING_CACHE ? roleplayCallGuideHtml(TRAINING_CACHE, weak)
+    : '<p class="sd" style="margin-top:12px">Loading call guide…</p>';
+
   return `<div class="sect"><h2>Role Play &middot; ${p.name} &middot; Debrief</h2>
     <p class="sd">${rpProducer}
       <button class="ghost" id="rpChangePersona" type="button" style="margin-left:6px">change persona</button>
@@ -1478,10 +1479,41 @@ function roleplayDebriefHtml(p) {
     ${weakHtml}
     <div class="bl" style="margin-top:16px">Approach checklist</div>
     <ul class="gl g">${RP_APPROACH_CHECKLIST.map(c => `<li>${c}</li>`).join("")}</ul>
-    <div class="rpactions" style="justify-content:center;margin-top:10px">
+    ${callGuideHtml}
+    <div class="rpactions" style="justify-content:center;margin-top:14px">
       <button class="btn" id="rpStartCall" type="button">Start the call</button>
     </div>
     </div>`;
+}
+
+// Pulls 2 real objection cards from Terms & Techniques' "Objections Apollo
+// Sees Most" deck -- matched to this producer's own weak-spot categories
+// when possible (same substring match a human would make reading the
+// category name against a card), falling back to the two most common
+// objections (the deck is already ordered by real frequency) when nothing
+// matches or there are no weak spots yet. Plus the technique names as a
+// quick-glance list -- full definitions live in the Training tab itself,
+// this is a reminder, not a re-explanation.
+function roleplayCallGuideHtml(data, weak) {
+  const decks = data.decks || [];
+  const objDeck = decks.find(d => d.name === "Objections Apollo Sees Most");
+  const techDeck = decks.find(d => d.name === "Sales Techniques");
+  if (!objDeck) return "";
+  const cats = (weak || []).map(([c]) => c.toLowerCase());
+  let picks = objDeck.cards.filter(c => cats.some(cat => (c.front + " " + c.back).toLowerCase().includes(cat)));
+  if (!picks.length) picks = objDeck.cards.slice(0, 2);
+  picks = picks.slice(0, 2);
+  const objHtml = picks.map(c => `<div class="refcard" style="margin-bottom:8px;padding-bottom:8px">
+    <h3 style="font-size:12.5px;margin-bottom:3px">${c.front}</h3>
+    <div class="fctext-back" style="font-size:11.5px">${trainingMd(c.back)}</div>
+  </div>`).join("");
+  const techHtml = techDeck ? `<div class="bl" style="margin-top:12px">Techniques to reach for</div>
+    <ul class="gl techlist">${techDeck.cards.map(c => `<li>${c.front}</li>`).join("")}</ul>` : "";
+  return `<div class="note" style="border:1px solid var(--border-strong);border-radius:8px;padding:12px 14px;margin-top:14px">
+    <div class="bl">Call guide</div>
+    ${objHtml}
+    ${techHtml}
+  </div>`;
 }
 
 function gradeCardHtml(g) {
@@ -1740,7 +1772,7 @@ function plainSnippet(text, maxLen) {
   return (lastSpace > 40 ? cut.slice(0, lastSpace) : cut) + "…";
 }
 
-const TRAINING_MODE_LABELS = { cards: "Flashcards", quiz: "Quiz", match: "Match" };
+const TRAINING_MODE_LABELS = { cards: "Flashcards", quiz: "Quiz", match: "Match", ref: "Terms & Techniques" };
 
 function trainingPanel(data) {
   const decks = data.decks || [];
@@ -1753,43 +1785,26 @@ function trainingPanel(data) {
   let body;
   if (trainingMode === "quiz") body = quizBody(deck);
   else if (trainingMode === "match") body = matchBody(deck);
+  else if (trainingMode === "ref") body = refBody(deck);
   else body = flashcardsBody(deck);
-  return `<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px;flex-wrap:wrap">
-    <div class="subtabs" style="margin-bottom:8px">${modePills}</div>
-    <button class="ghost" id="trainingPrint" type="button">Print cheatsheet</button>
-  </div>
+  return `<div class="subtabs" style="margin-bottom:8px">${modePills}</div>
   <div class="subtabs" style="margin-bottom:16px">${deckPills}</div>
   ${body}`;
 }
 
-// Print cheatsheet (Frank, 2026-09-11: wanted a printable reference, but
-// not a saved file that goes stale the moment TRAINING.md changes --
-// "if we make updates to it I don't want old copies out there"). This
-// builds the printable page FRESH from whatever TRAINING_CACHE holds right
-// now and drives the browser's own print dialog -- nothing is ever saved
-// or emailed, so there is no old copy to go stale. #printCheatsheet is
-// hidden on screen (.print-only) and is the ONLY thing visible when
-// @media print takes over, see the stylesheet.
-function printCheatsheet() {
-  const data = TRAINING_CACHE;
-  if (!data || !data.decks || !data.decks.length) return;
-  let el = document.getElementById("printCheatsheet");
-  if (!el) {
-    el = document.createElement("div");
-    el.id = "printCheatsheet";
-    el.className = "print-only";
-    document.body.appendChild(el);
-  }
-  const today = new Date().toLocaleDateString(undefined, { year: "numeric", month: "long", day: "numeric" });
-  el.innerHTML = `
-    <h1>Apollo Training Reference</h1>
-    <p class="printmeta">Flores Insurance Agency &middot; printed ${today} from the live Training tab &middot; always current as of this printout</p>
-    ${data.decks.map(d => `
-      <h2>${d.name}</h2>
-      ${d.cards.map(c => `<div class="printcard"><h3>${c.front}</h3><div class="printback">${trainingMd(c.back)}</div></div>`).join("")}
-    `).join("")}
-  `;
-  window.print();
+// Terms & Techniques (Frank, 2026-09-11): a plain scrollable read of the
+// same deck data flashcards flips one at a time -- "explains everything
+// without having to download the cheatsheet." Replaces an earlier
+// print-cheatsheet attempt entirely; nothing here is ever saved, emailed,
+// or printed, so there's no stale copy to worry about -- it's just the
+// live content, read straight from the page.
+function refBody(deck) {
+  const cards = deck.cards.map(c =>
+    `<div class="refcard"><h3>${c.front}</h3><div class="fctext-back">${trainingMd(c.back)}</div></div>`).join("");
+  return `<div class="sect refdeck">
+    <div class="bl">${deck.name} &middot; ${deck.cards.length} ${deck.cards.length === 1 ? "term" : "terms"}</div>
+    ${cards}
+  </div>`;
 }
 
 function flashcardsBody(deck) {
@@ -1919,9 +1934,6 @@ function wireTrainingPanel(data) {
     quizQuestions = []; matchPairs = [];   // fresh questions/pairs every time a mode is (re-)entered
     repaintAll();
   });
-  const printBtn = $("#trainingPrint");
-  if (printBtn) printBtn.onclick = () => printCheatsheet();
-
   const deck = decks[trainingDeckIdx];
   if (trainingMode === "quiz") { wireQuiz(deck, repaintAll); return; }
   if (trainingMode === "match") { wireMatch(deck, repaintAll); return; }
