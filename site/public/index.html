@@ -194,12 +194,12 @@ h2:first-of-type { margin-top: 8px; }
 .tile .v { font-size: 26px; font-weight: 600; letter-spacing: -0.02em; margin-top: 4px; font-variant-numeric: tabular-nums; }
 .tile .n { font-size: 12px; color: var(--text-secondary); margin-top: 2px; }
 
-/* Live intraday strip (intraday.py, Frank, 2026-09-10) -- visually distinct
-   from the static digest sections below it, since it's the one thing on the
-   page that's still moving. */
-.livesnap { border: 1px solid var(--good); border-radius: 10px; padding: 14px 16px; margin-bottom: 18px; }
-.liveasof { text-transform: none; letter-spacing: normal; font-size: 11px; color: var(--text-muted); margin-left: 8px; }
-.liveflags { margin-top: 10px; display: flex; flex-direction: column; gap: 6px; }
+/* Live indicator (intraday.py, Frank, 2026-09-12) -- a slim line, not a
+   duplicate stat box: the report below it already IS the live data (same
+   board_payload.build() shape whether the source is a finalized day or
+   intraday.py's latest checkpoint), so this only has to say so. */
+.livebanner { font-size: 12.5px; color: var(--text-secondary); border: 1px solid var(--good); border-radius: 8px; padding: 8px 12px; margin-bottom: 16px; }
+.liveflags { margin-top: 8px; display: flex; flex-direction: column; gap: 6px; }
 .liveflag { font-size: 12.5px; color: var(--warn); background: var(--surface-raised); border: 1px solid var(--warn); border-radius: 8px; padding: 7px 10px; }
 
 /* Training tab flashcards (Frank, 2026-09-11) -- flip card driven purely by
@@ -904,31 +904,30 @@ function auditPanel(d, who) {
    <div class="scroll"><table><thead><tr><th>Finding</th><th class="num">Tasks</th></tr></thead><tbody>${rows}</tbody></table></div></div>`;
 }
 
-// The day's latest intraday.py snapshot, fetched once per loadDay() alongside
-// the finalized document itself (see loadDay below) -- null on any day that
-// isn't in progress (no snapshot yet, or the day is already finalized and
-// intraday.py refused to touch it, same guard either way).
-let curIntraday = null;
+// True when `cur` was not a finalized days/<day>.json but a fallback from
+// intraday.py's latest checkpoint (see loadDay) -- the WHOLE report renders
+// from that same document (board_payload.build()'s shape is identical
+// either way), so this only has to gate a small "still updating" indicator,
+// not a second, separate set of numbers (Frank, 2026-09-12: the old "So far
+// today" box duplicated the totals row and, worse, froze forever at
+// whatever intraday.py last wrote before a day finalized -- once the
+// pull_sources() staleness bug hit a checkpoint, that box showed the same
+// stale reading on every later visit to that day, since nothing ever
+// rewrites intraday/<day>.json after finalization).
+let curLive = false;
 
-/** Small "so far today" strip -- last snapshot time, headline numbers, and
- * any tripped sanity_gate.py flags. Team-level only (Frank's board, not a
+/** One slim line above the report when it's still today's in-progress
+ * snapshot, not the finalized build -- last-checkpoint time plus any
+ * tripped sanity_gate.py flags. Team-level only (Frank's board, not a
  * per-producer breakdown), so it's gated the same way winsLossesHtml() is:
- * skip entirely on a producer filter or a non-day range. */
-function liveSnapshotHtml(d, who) {
-  if (who || !curIntraday) return "";
-  const t = curIntraday.totals || {};
-  const asOf = curIntraday.as_of ?
-    new Date(curIntraday.as_of).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" }) : "";
-  const flags = curIntraday.flags || [];
-  return `<div class="sect livesnap">
-    <div class="bl">So far today ${asOf ? `<span class="liveasof">as of ${asOf}</span>` : ""}</div>
-    <div class="tiles">
-      <div class="tile"><div class="k">Dials</div><div class="v">${t.dials || 0}</div></div>
-      <div class="tile"><div class="k">Live contacts</div><div class="v">${t.live || 0}</div></div>
-      <div class="tile"><div class="k">Contact rate</div><div class="v">${t.rate || 0}%</div></div>
-      <div class="tile"><div class="k">Policies sold</div><div class="v">${t.pol || 0}</div></div>
-      <div class="tile"><div class="k">Premium sold</div><div class="v">$${(t.ps || 0).toLocaleString()}</div></div>
-    </div>
+ * skip entirely on a producer filter. */
+function liveBannerHtml(d, who) {
+  if (who || !curLive) return "";
+  const asOf = d.as_of ?
+    new Date(d.as_of).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" }) : "";
+  const flags = d.flags || [];
+  return `<div class="livebanner">
+    <div>Live${asOf ? ` — last checkpoint ${asOf}` : ""}, still updating through the day. Tonight's build finalizes it.</div>
     ${flags.length ? `<div class="liveflags">${flags.map(f => `<div class="liveflag">${f}</div>`).join("")}</div>` : ""}
   </div>`;
 }
@@ -939,9 +938,9 @@ function digestPanel(d, who) {
   // the top of digestDay -- see teamLeaderboardHtml], Call Outcome
   // Breakdown, Speed to Dial, Utilization and Efficiency, Coaching & Call
   // Quality. Task Completion Audit stays last -- it's the OTHER, ops-only
-  // email's content, not part of the Sales Digest proper. The live strip, if
+  // email's content, not part of the Sales Digest proper. The live banner, if
   // any, sits above all of it -- it's about right now, not last night.
-  return `${liveSnapshotHtml(d, who)}
+  return `${liveBannerHtml(d, who)}
   ${digestDay(d, who)}
   ${taskCompletionHtml(d, who)}
   ${recontactPanel(d, who)}
@@ -2186,8 +2185,16 @@ function rangeControlHtml() {
   const today = isoDate(azTodayDate());
   let extra = "";
   if (rangeMode === "day") {
-    extra = `<select id="daypick" aria-label="Reporting day">${DAYS.map(d =>
+    // "Today" was removed 2026-09-10 because a bare device-clock guess could
+    // read as broken ("No report for <date>") before the nightly build ran.
+    // Re-added 2026-09-12 now that loadDay() falls back to intraday.py's
+    // live checkpoint instead of a dead end for exactly that case -- once
+    // today is finalized it shows up in DAYS on its own and this stops
+    // adding a duplicate entry.
+    const dayOptions = DAYS.includes(today) ? DAYS : [today, ...DAYS];
+    extra = `<select id="daypick" aria-label="Reporting day">${dayOptions.map(d =>
       `<option value="${d}"${cur && d === cur.date ? " selected" : ""}>${
+        d === today && !DAYS.includes(today) ? "Today (live)" :
         new Date(d + "T12:00:00").toLocaleDateString(undefined, { weekday: "short", month: "short", day: "numeric" })}</option>`).join("")}</select>`;
   } else if (rangeMode === "custom") {
     // Default to the most recent day that actually has a report, not
@@ -2254,7 +2261,10 @@ async function renderDigestRange() {
     // the same way picking a specific day via #daypick already does via
     // loadDay(). Before this, switching to Coaching after picking
     // "Yesterday" here silently kept showing whatever day cur last was.
-    cur = doc;
+    // curLive resets too -- always a finalized fetch, never intraday's
+    // fallback, so a live banner left over from a prior "Today" view must
+    // not carry into it.
+    cur = doc; curLive = false;
     v.innerHTML = controls + (doc ? digestPanel(doc, producerFilter) : `<div class="empty">No report for ${day}.</div>`);
     wireRangeControl(); wireProducerControl();
     return;
@@ -2325,7 +2335,7 @@ function aggregateNotSupportedHtml(tabLabel) {
 async function paint() {
   const v = $("#view");
   if (view === "digest") {
-    $("#topsub").textContent = cur ? (cur.label || cur.date) + " · " + ((cur.calls || []).length ? (cur.calls.length + " coached calls") : "stats only") : "";
+    $("#topsub").textContent = cur ? (cur.label || cur.date) + " · " + ((cur.calls || []).length ? (cur.calls.length + " coached calls") : "stats only") + (curLive ? " · live" : "") : "";
     await renderDigestRange();
   } else if (view === "coaching") {
     $("#topsub").textContent = cur ? (cur.label || cur.date) : "";
@@ -2383,19 +2393,27 @@ async function paint() {
 async function loadDay(day) {
   rangeMode = "day";
   $("#view").innerHTML = '<div class="empty">Loading…</div>';
+  cur = null; curLive = false;
   try {
     const r = await fetch(`/api/days/${day}`, { cache: "no-store" });
-    cur = r.ok ? await r.json() : null;
-  } catch (_) { cur = null; }
-  // Best-effort: absent on any day with no snapshot yet (most past days,
-  // once the day is finalized this key stops updating -- see intraday.py's
-  // own guard) or if the fetch itself fails. Either way the live strip
-  // just doesn't render; it's never the reason a day fails to load.
-  try {
-    const ir = await fetch(`/api/intraday/${day}`, { cache: "no-store" });
-    curIntraday = ir.ok ? await ir.json() : null;
-  } catch (_) { curIntraday = null; }
-  if (!cur) { $("#view").innerHTML = '<div class="empty">No report for this day.</div>'; $("#topsub").textContent = day; return; }
+    if (r.ok) cur = await r.json();
+  } catch (_) {}
+  if (!cur) {
+    // No finalized report for this day yet -- almost always because it's
+    // still in progress (today, before tonight's build). Falls back to
+    // intraday.py's latest checkpoint instead of a dead end: it runs the
+    // exact same board_payload.build() as the nightly build, stopped short
+    // of the two paid AI reads (call_summary, coaching cards) -- so the
+    // WHOLE report (leaderboard, task completion, outcomes, speed to dial,
+    // recontact, audit) renders from it unchanged, just with less of the
+    // day counted yet. The Coaching tab already has its own "stats only"
+    // fallback for exactly this shape (no `calls` array).
+    try {
+      const ir = await fetch(`/api/intraday/${day}`, { cache: "no-store" });
+      if (ir.ok) { cur = await ir.json(); curLive = true; }
+    } catch (_) {}
+  }
+  if (!cur) { $("#view").innerHTML = '<div class="empty">No report for this day yet.</div>'; $("#topsub").textContent = day; return; }
   await paint();
 }
 
