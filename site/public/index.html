@@ -351,6 +351,17 @@ tr.tot td { font-weight: 700; background: var(--surface); }
 tbody tr:hover { background: color-mix(in oklab, var(--bar) 7%, transparent); }
 .scroll { overflow-x: auto; border: 1px solid var(--border); border-radius: 8px; }
 .scroll table { min-width: 640px; }
+/* Inside a .digestgrid column (526px, half the main column's width) that
+   640px floor is exactly what forces a scrollbar on a table that would
+   otherwise fit -- Frank, 2026-09-12: "i have to scroll on the task
+   completion rate box, but theres so much dead space between the producer
+   names and the first stat". The dead space WAS that forced width: with
+   only 4 narrow columns (Producer/Due/Done/Rate) and nothing to fill 640px
+   with, the browser's table layout algorithm handed the slack to the
+   Producer column instead of just not being 640px wide. Table-layout:auto's
+   own content-based sizing is a fine floor for a table this narrow; the
+   wide leaderboard table above this grid isn't touched. */
+.digestgrid .scroll table { min-width: 0; }
 .who { display: flex; align-items: center; gap: 7px; font-weight: 600; }
 
 .bars { display: grid; gap: 7px; }
@@ -713,9 +724,17 @@ function hoverable(node, html) {
 /* ---- Digest tab ------------------------------------------------------------
    Ranked like the leaderboard, medals on the top three. Each stat is coloured
    by the day document's own `tiers` (computed server-side from
-   digest_config, so the boundary rules live in one place), and Policies
-   falls back to the day's premium-sold streak when today's figure is $0, so
-   the two never disagree. */
+   digest_config, so the boundary rules live in one place) -- the whole-agency
+   tiles use tiers.team, which board_payload._team_tiers() already scales
+   the volume metrics (dials, hh) x5 for and leaves the rate/ratio metrics
+   (contact rate, premium-per-hh, premium-per-policy, utilization) unscaled,
+   same as the leaderboard table's own Team row (Frank, 2026-09-12: "if
+   theres not tiering rule for the team, just multiply the per producer
+   tiering stats by 5 for the volume ones, rate stats stay the same" -- this
+   was already true server-side, just never wired up to these tiles). Team
+   Policies has no colour: its only rule is the per-producer sale streak,
+   which has no team-wide equivalent (see publish_board.apply_policy_streak's
+   own comment). */
 function digestDay(d, who) {
   const byName = Object.fromEntries((d.producers || []).map(p => [p.name, p]));
   const focus = who ? byName[who] : null;
@@ -724,6 +743,8 @@ function digestDay(d, who) {
   // filtering to one person means.
   const t = focus || d.totals || {};
   const rate = focus ? (focus.rate ?? 0) : (t.dials ? (100 * t.live / t.dials).toFixed(1) : "0");
+  const TI = { green: "tg", yellow: "ty", red: "tr" };
+  const tc = key => TI[((d.tiers || {})[who || "team"] || {})[key]] || "";
   // Households Quoted and Premium Quoted share one tile (and likewise
   // Policies/Premium Sold), but as two figures side by side on the SAME big
   // number line, not one promoted to the big number with the other demoted
@@ -732,14 +753,14 @@ function digestDay(d, who) {
   // four separate tiles per an earlier ask that they be "equally
   // important" -- this keeps that equal weight, one line, one box.)
   const tiles = [
-    ["Dials", t.dials ?? 0],
-    ["Live contacts", t.live ?? 0, rate + "% contact rate"],
-    ["HH/Prem. Quoted", `${t.hh ?? 0} HH / ${money(t.pq)}`],
-    ["Pol/Prem. Sold", `${t.pol ?? 0} Pol / ${money(t.ps)}`],
+    ["Dials", t.dials ?? 0, "", tc("dials")],
+    ["Live contacts", t.live ?? 0, rate + "% contact rate", tc("rate")],
+    ["HH/Prem. Quoted", `<span class="${tc("hh")}">${t.hh ?? 0} HH</span> / <span class="${tc("pq")}">${money(t.pq)}</span>`],
+    ["Pol/Prem. Sold", `${t.pol ?? 0} Pol / <span class="${tc("ps")}">${money(t.ps)}</span>`],
   ];
-  if (t.util != null) tiles.push(["Utilization", t.util + "%", "weighted"]);
-  const tilesHtml = tiles.map(([k, v, n]) =>
-    `<div class="tile"><div class="k">${k}</div><div class="v">${v}</div>${n ? `<div class="n">${n}</div>` : ""}</div>`).join("");
+  if (t.util != null) tiles.push(["Utilization", t.util + "%", "weighted", tc("util")]);
+  const tilesHtml = tiles.map(([k, v, n, cls]) =>
+    `<div class="tile"><div class="k">${k}</div><div class="v${cls ? " " + cls : ""}">${v}</div>${n ? `<div class="n">${n}</div>` : ""}</div>`).join("");
 
   return `<div class="tiles">${tilesHtml}</div>
   ${teamLeaderboardHtml(d, who)}`;
