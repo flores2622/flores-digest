@@ -62,19 +62,15 @@ def run(day, dry_run=False):
             f"refusing to touch it. Nothing to do.")
         return None
 
+    # pull_sources() itself now refreshes every per-day cache (call log,
+    # recontact window, service tickets, tasks) whenever `day` is still the
+    # Arizona day in progress -- not just here but for daily.py's own nightly
+    # build too, which is the gap this call used to paper over (2026-09-12:
+    # daily.py's build was still serving a stale mid-day call log even after
+    # this fixed intraday.py's own checkpoints). Calling refresh_call_log /
+    # refresh_window again here would just double the RingCentral requests
+    # every checkpoint makes for no reason.
     daily.pull_sources(day)
-    # pull_sources() only fetches data/rc_raw_<day>.json `if not f.exists()`
-    # -- correct for a finished day, wrong for one still in progress. An
-    # earlier checkpoint (or the sync_down_day pull inside pull_sources
-    # itself) already left that file on disk with whatever the call log
-    # looked like at THAT moment, so without this every later checkpoint
-    # keeps serving the same stale snapshot for the rest of the day --
-    # confirmed 2026-09-11: 0 dials for every producer still showing at
-    # 11 AM. hourly.py already solved exactly this (see its own
-    # refresh_call_log docstring); intraday.py just wasn't calling it.
-    import hourly
-    hourly.refresh_call_log(day)
-    hourly.refresh_window(day)
     daily.ensure_model()
     daily.transcribe_day(day, outbound_only=True)
     daily.build_metrics(day)
