@@ -49,6 +49,7 @@ def ensure_model():
 def pull_sources(day):
     """Everything the day needs, cached so a re-run is cheap."""
     import az_corpus
+    import hourly
     import r2_cache
     from az_client import AgencyZoom
     from rc_client import RingCentral
@@ -61,11 +62,34 @@ def pull_sources(day):
     r2_cache.sync_down_day(day, log=log)
     nxt = (dt.date.fromisoformat(day) + dt.timedelta(days=1)).isoformat()
 
+    # Whether `day` is the Arizona day still in progress. Everything below
+    # guarded by `refresh_today` gets re-pulled even when a file already
+    # exists on disk, because for an in-progress day "already exists" can
+    # mean "an earlier checkpoint of THIS SAME day cached it" -- exactly as
+    # stale as a genuinely separate day would be. A day that has already
+    # ended is left alone: re-pulling it would make a rebuild disagree with
+    # whatever report already went out for it, the same point-in-time rule
+    # CLAUDE.md already states for service tickets, applied here uniformly
+    # to everything else this function caches per-day (Frank, 2026-09-12:
+    # "the daily runs also kept saying 0 outbounds" -- confirmed the same
+    # `if not f.exists()` staleness PR #47 fixed for intraday.py's call log
+    # was never fixed here, so daily.py's own nightly build had it too).
+    today = dt.datetime.now(AZ).date().isoformat()
+    refresh_today = day == today
+
     f = ROOT / f"data/rc_raw_{day}.json"
     if not f.exists():
         log("RingCentral call log...")
         recs = RingCentral().call_log(f"{day}T00:00:00-07:00", f"{nxt}T00:00:00-07:00")
         f.write_text(json.dumps(recs))
+    elif refresh_today:
+        # hourly.py already has exactly this re-pull ("unlike
+        # daily.pull_sources, this OVERWRITES" -- its own docstring), reused
+        # here instead of reimplemented so EVERY caller of pull_sources gets
+        # it -- this nightly build and intraday.py's checkpoints alike --
+        # not just whichever caller remembers to ask for it separately.
+        log("RingCentral call log (refreshing today's snapshot)...")
+        hourly.refresh_call_log(day)
     log(f"  {len(json.loads(f.read_text()))} call records")
 
     # Recontact counts dials from the stage-entry date (up to MAX_STAGE_AGE days
@@ -93,6 +117,13 @@ def pull_sources(day):
                     seen.add(r.get("id"))
                     recs.append(r)
         wf.write_text(json.dumps(recs))
+    elif refresh_today:
+        # Incremental, not a 32-chunk rebuild: merges whatever rc_raw just
+        # picked up above that the window doesn't have yet. Rebuilding the
+        # whole window on every checkpoint would multiply RC API calls for
+        # no reason -- only today's own chunk can have changed.
+        log("  refreshing today's recontact window...")
+        hourly.refresh_window(day)
     _w = json.loads(wf.read_text())
     log(f"  {len(_w)} window call records over "
         f"{len({r['startTime'][:10] for r in _w if r.get('startTime')})} days")
@@ -116,17 +147,28 @@ def pull_sources(day):
         log(f"{name}...")
         (ROOT / f"data/{name}.json").write_text(json.dumps(fn()))
 
-    # Day-scoped: this is a snapshot of what is OPEN, so it has to be re-pulled
-    # each day. Cached under a bare name it would have frozen on day one and the
-    # renewal exclusion would have quietly gone stale.
+    # Day-scoped: this is a snapshot of what is OPEN, so it has to be
+    # re-pulled each day -- and, per refresh_today above, again within the
+    # same in-progress day, not just once. Cached under a bare name it would
+    # have frozen on day one and the renewal exclusion would have quietly
+    # gone stale.
     p = ROOT / f"data/az_service_tickets_{day}.json"
-    if not p.exists():
-        log("service tickets...")
+    if not p.exists() or refresh_today:
+        log("service tickets..." if not p.exists() else
+            "service tickets (refreshing today's snapshot)...")
         p.write_text(json.dumps(az.service_tickets_live()))
 
+    # Task COMPLETION is what this file feeds, and completion only ever grows
+    # over the day -- the audit asks "of the tasks due today, how many got
+    # done", a question about state at BUILD time, not whatever hour the file
+    # first happened to be written. Measured 2026-09-11: a cached mid-day
+    # snapshot held 41 tasks with 0 completed while AgencyZoom had 207 with
+    # 134 completed, and the Task Completion Rate panel emailed 0% for the
+    # whole team.
     p = ROOT / f"data/az_tasks_{day}.json"
-    if not p.exists():
-        log("tasks...")
+    if not p.exists() or refresh_today:
+        log("tasks..." if not p.exists() else
+            "tasks (refreshing today's snapshot)...")
         p.write_text(json.dumps(az.tasks(day, day)))
 
     p = ROOT / "data/az_stages.json"
