@@ -711,18 +711,18 @@ function digestDay(d, who) {
   // filtering to one person means.
   const t = focus || d.totals || {};
   const rate = focus ? (focus.rate ?? 0) : (t.dials ? (100 * t.live / t.dials).toFixed(1) : "0");
-  // Households Quoted and Premium Quoted are two separate, equal-weight
-  // tiles (and likewise Policies/Premium Sold), not one tile with the
-  // dollar figure demoted to a subtitle -- Frank, 2026-09-12: "they are
-  // equally important." (Reverses the 2026-09-10 "combine them, that way
-  // there are 5 boxes" call.)
+  // Households Quoted and Premium Quoted share one tile (and likewise
+  // Policies/Premium Sold), but as two figures side by side on the SAME big
+  // number line, not one promoted to the big number with the other demoted
+  // to a subtitle -- Frank, 2026-09-12: "I still want them in the same box,
+  // just side by side, so abbreviate it and a slash." (First split into
+  // four separate tiles per an earlier ask that they be "equally
+  // important" -- this keeps that equal weight, one line, one box.)
   const tiles = [
     ["Dials", t.dials ?? 0],
     ["Live contacts", t.live ?? 0, rate + "% contact rate"],
-    ["Households Quoted", t.hh ?? 0],
-    ["Premium Quoted", money(t.pq)],
-    ["Policies Sold", t.pol ?? 0],
-    ["Premium Sold", money(t.ps)],
+    ["HH/Prem. Quoted", `${t.hh ?? 0} HH / ${money(t.pq)}`],
+    ["Pol/Prem. Sold", `${t.pol ?? 0} Pol / ${money(t.ps)}`],
   ];
   if (t.util != null) tiles.push(["Utilization", t.util + "%", "weighted"]);
   const tilesHtml = tiles.map(([k, v, n]) =>
