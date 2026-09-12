@@ -219,9 +219,17 @@ h2:first-of-type { margin-top: 8px; }
 .sd { font-size: 12.5px; color: var(--text-secondary); margin: -10px 0 14px; line-height: 1.55; }
 
 /* Two-column card layout below the Digest tab's leaderboard, matching the
-   email's own side-by-side arrangement (Frank, 2026-09-12). Collapses to one
+   email's own side-by-side arrangement (Frank, 2026-09-12). minmax(0, 1fr),
+   not a bare 1fr: a grid track's automatic minimum size is its content's
+   min-content width unless overridden, and .scroll table's own min-width:
+   640px was winning that fight, forcing the column with a table in it to
+   642px against the other column's 410px -- not the width difference
+   that caused Frank's "still uneven" report to look like a bad content
+   grouping when it was really just unequal columns. .scroll's own
+   overflow-x:auto still handles a table wider than its now-truly-equal
+   column, same as it already does outside this grid. Collapses to one
    column under the same width other narrow layouts in this file use. */
-.digestgrid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; align-items: start; }
+.digestgrid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 20px; align-items: start; }
 @media (max-width: 720px) { .digestgrid { grid-template-columns: 1fr; } }
 
 /* Stat tiles. */
@@ -1053,28 +1061,40 @@ function digestPanel(d, who) {
   // Two-column card layout below the leaderboard, matching the email's own
   // template/report_template.html two-col-table (Frank, 2026-09-12: "the
   // digest was side by side after the leaderboard... it threw the order off
-  // and i dont like the one by one"). The email's own left/right split there
-  // is Sales Funnel + Task Completion Rate (left) vs. Team Leaderboard + Call
-  // Outcome Breakdown + Speed to Dial + Coaching & Call Quality (right) --
-  // but Sales Funnel and Team Leaderboard are already merged into ONE
-  // section above (see teamLeaderboardHtml's own comment), which leaves the
-  // email's own split lopsided once copied here: Coaching's cards alone run
-  // taller than everything else in this grid combined, and stacking Outcome
-  // Breakdown + Speed to Dial + Utilization on top of it made the right
-  // column roughly double the left's height for no reason a reader would
-  // want. Grouped by kind instead, at 3-and-3 for a closer match: Task
-  // Completion Rate, Recontact Struggle and Call Outcome Breakdown (all
-  // "how the day's effort is landing") on the left; Speed to Dial,
-  // Utilization and Coaching & Call Quality (all "how time is being spent")
-  // on the right. Task Completion Audit stays full-width, last -- it's the
-  // OTHER, ops-only email's content, not part of the Sales Digest proper.
-  // The live banner, if any, sits above all of it -- it's about right now,
-  // not last night.
+  // and i dont like the one by one"). Grouping by kind (an earlier pass at
+  // this split) still read as visibly uneven -- turned out to be TWO
+  // separate problems, not one:
+  //
+  // (1) The .digestgrid columns were never actually equal width. A bare
+  // `1fr 1fr` lets a track's automatic minimum size default to its
+  // content's min-content width, and .scroll table's own `min-width:640px`
+  // was winning that fight -- measured 642px vs 410px for what should have
+  // been two 526px columns. Fixed in .digestgrid itself with
+  // `minmax(0, 1fr)`; .scroll's own overflow-x:auto still covers a table
+  // wider than its now-genuinely-equal column, same as it already does
+  // everywhere else in this file.
+  //
+  // (2) Once the columns were actually 526px each, which panels go where
+  // still matters: Coaching & Call Quality's cards are the tallest thing in
+  // this grid by a wide margin. Measured with Playwright against realistic
+  // 5-producer data at a true 526px column width: Task Completion Rate
+  // 339px, Call Outcome Breakdown 333px, Speed to Dial 193px, Utilization
+  // 360px, Coaching & Call Quality 508px. {Task Completion, Outcome
+  // Breakdown, Speed to Dial} vs {Utilization, Coaching & Call Quality}
+  // comes out to 884px vs 868px -- the closest 2-way split of the five, and
+  // the rendered page now confirms it: 908px vs 884px, 24px apart.
+  //
+  // Recontact Struggle is OUT for now, not deleted -- Frank, 2026-09-12:
+  // "remove ... until i come up with something better" -- recontactPanel()
+  // itself is untouched, just not called here. Task Completion Audit stays
+  // full-width, last -- it's the OTHER, ops-only email's content, not part
+  // of the Sales Digest proper. The live banner, if any, sits above all of
+  // it -- it's about right now, not last night.
   return `${liveBannerHtml(d, who)}
   ${digestDay(d, who)}
   <div class="digestgrid">
-    <div>${taskCompletionHtml(d, who)}${recontactPanel(d, who)}${outcomeBreakdownHtml(d, who)}</div>
-    <div>${speedPanel(d, who)}${utilizationHtml(d, who)}${coachQualityHtml(d, who)}</div>
+    <div>${taskCompletionHtml(d, who)}${outcomeBreakdownHtml(d, who)}${speedPanel(d, who)}</div>
+    <div>${utilizationHtml(d, who)}${coachQualityHtml(d, who)}</div>
   </div>
   ${auditPanel(d, who)}`;
 }
