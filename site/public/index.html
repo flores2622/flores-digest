@@ -1119,7 +1119,7 @@ function card(c) {
   return `<details class="ccard">
    <summary class="blk cchead" style="border-left:4px solid ${c.tab || "var(--border-strong)"}">
      <div class="chead"><div><div class="cname">${c.lead || ""}</div>
-       <div class="cmeta">${c.who || ""} · ${c.time || ""} · ${c.dur || ""} · ${c.lang || ""} · ${c.src || ""}</div></div>
+       <div class="cmeta">${c.who || ""} · ${c.time || ""} · ${c.dur || ""} · ${c.lang || ""} · ${c.src || ""}${c.leadsrc ? ` · ${c.leadsrc}` : ""}</div></div>
        <span class="cat ${c.catc || ""}">${c.cat || ""}</span>${c.calltype && c.calltype[0] !== "sales" ? `<span class="ctype ctype-${c.calltype[0]}" title="${c.calltype[1] || ""}">${c.calltype[0]}</span>` : ""}<span class="ctog" aria-hidden="true">▸</span></div>
      <div class="sum">${c.summary || ""}</div>
      ${c.flags && c.flags.length ? `<div style="margin-top:8px">${c.flags.map(f => `<span class="flag">${f}</span>`).join("")}</div>` : ""}

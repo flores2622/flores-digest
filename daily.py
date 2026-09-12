@@ -514,6 +514,7 @@ def build_metrics(day):
             if ok:
                 live.append(r)
                 detail.append({"lead": r["lead_name"], "lead_id": r["lead_id"],
+                               "lead_source": r.get("lead_source"),
                                "number": r["number"], "seconds": r["talk_seconds"],
                                "basis": basis,
                                # Kept apart so the report can say which is
