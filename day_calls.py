@@ -239,6 +239,12 @@ def classify(day):
             rows.append({
                 "number": num,
                 "lead_id": lead.get("id") if lead else None,
+                # AgencyZoom's own leadSourceName -- Frank, 2026-09-12: "start
+                # including lead sources, especially in coaching, so we know
+                # the type of lead", explicitly the AgencyZoom source, not the
+                # Google Sheet's free-text Source column (that vocabulary
+                # doesn't match AgencyZoom's and would misrepresent it).
+                "lead_source": lead.get("leadSourceName") if lead else None,
                 # EVERY duplicate record on this number, so the note search can
                 # cover all of them (see live_contact.evidence).
                 "lead_ids": [c.get("id") for c in cands if c.get("id")],

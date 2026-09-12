@@ -264,6 +264,9 @@ def _finish_card(d, producer, r, raw_dials):
         "who": producer,
         "time": _call_time(raw_dials, producer, r["number"]),
         "dur": _dur(r.get("seconds")),
+        # AgencyZoom's own leadSourceName, not the Google Sheet's (Frank,
+        # 2026-09-12) -- blank when the call never resolved to a lead record.
+        "leadsrc": r.get("lead_source") or "",
         "lang": str(d.get("lang") or "").strip() or "English",
         "src": "recording",
         "cat": cat, "catc": catc,
