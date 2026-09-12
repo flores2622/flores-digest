@@ -210,10 +210,18 @@ select, button.ghost {
   padding: 6px 10px; cursor: pointer;
 }
 
+/* Section titles, made deliberately harder to mistake for one another or
+   for body text (Frank, 2026-09-12: "I cant really distinguish the
+   category titled, like leaderboard, utilization, etc."). Was 12px/muted --
+   same weight as .sd's own descriptive text right under it, so a title and
+   its caption barely read as different things. Bigger, full-contrast, and a
+   rule under each one now functions as the section boundary the eye was
+   missing. */
 h2 {
-  font-size: 12px; font-weight: 600; text-transform: uppercase;
-  letter-spacing: 0.07em; color: var(--text-muted);
-  margin: 36px 0 14px;
+  font-size: 15px; font-weight: 700; text-transform: uppercase;
+  letter-spacing: 0.05em; color: var(--text-primary);
+  margin: 40px 0 14px; padding-bottom: 8px;
+  border-bottom: 2px solid var(--border-strong);
 }
 h2:first-of-type { margin-top: 8px; }
 .sd { font-size: 12.5px; color: var(--text-secondary); margin: -10px 0 14px; line-height: 1.55; }
@@ -358,9 +366,6 @@ tbody tr:hover { background: color-mix(in oklab, var(--bar) 7%, transparent); }
 .legend { display: flex; flex-wrap: wrap; gap: 6px 16px; margin-bottom: 12px; }
 .legend .item { display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--text-secondary); }
 .swatch { width: 11px; height: 11px; border-radius: 3px; flex: none; }
-.swatch.sw-g { background: var(--good); }
-.swatch.sw-y { background: var(--warn); }
-.swatch.sw-r { background: var(--bad); }
 
 .note { color: var(--text-muted); font-size: 12px; margin-top: 10px; }
 .empty { color: var(--text-muted); padding: 28px 0; text-align: center; }
@@ -800,14 +805,6 @@ function teamLeaderboardHtml(d, who) {
     ${T.util != null ? `<td class="num ${tt("util")}">${T.util}%</td>` : ""}</tr>`;
 
   return `<div class="sect"><h2>Team Leaderboard</h2>
-   <p class="sd">Ranked the same way the email's MVP leaderboard ranks producers -- but every figure below is
-   coloured against its own goal, not by rank. Policies is coloured on a streak instead of a daily target.
-   Hover a policy count for the gap. Contact Rate shows live contacts in brackets.</p>
-   <div class="legend">
-     <span class="item"><span class="swatch sw-g"></span>On or exceeding goal</span>
-     <span class="item"><span class="swatch sw-y"></span>Off pace, but close</span>
-     <span class="item"><span class="swatch sw-r"></span>Off track, needs review</span>
-   </div>
    ${podium}
    <div class="scroll"><table><thead><tr><th>Producer</th>${hasRoleplay ? "<th class=\"num\">Role Play</th>" : ""}
    <th class="num">Call Volume</th><th class="num">Avg Talk Time</th><th class="num">Contact Rate</th>
