@@ -100,6 +100,19 @@ export default {
           return roleplayHistory(env, url.searchParams.get("producer"));
         }
       }
+
+      if (parts[1] === "saleslog" && parts[2] && /^\d{4}-\d{2}-\d{2}$/.test(parts[2])) {
+        const day = parts[2];
+        if (parts.length === 3 && request.method === "GET") {
+          return getSalesLog(env, day);
+        }
+        if (parts.length === 3 && request.method === "POST") {
+          return postSalesLog(request, env, day);
+        }
+        if (parts.length === 4 && parts[3] === "delete" && request.method === "POST") {
+          return deleteSalesLogEntry(request, env, day);
+        }
+      }
       return json({ error: "not found" }, 404);
     }
 
@@ -182,6 +195,100 @@ async function getIntraday(env, day) {
       "cache-control": "no-store",
     },
   });
+}
+
+function salesLogKey(day) { return `saleslog/${day}.json`; }
+
+/** GET /api/saleslog/:day -> {day, entries: [...]}, [] if nobody has logged
+ * anything for that day yet. */
+async function getSalesLog(env, day) {
+  const obj = await env.BOARD.get(salesLogKey(day));
+  if (obj === null) return json({ day, entries: [] });
+  return new Response(obj.body, {
+    headers: {
+      "content-type": "application/json; charset=utf-8",
+      "cache-control": "no-store",
+    },
+  });
+}
+
+/** POST /api/saleslog/:day {producer, client_name, policy_number, product,
+ * premium, term, notes} -> the created entry.
+ *
+ * A same-day, self-reported log (Frank, 2026-09-12: "I want a sales tab
+ * where they go in and enter their sales for the day") -- explicitly NOT
+ * the official Premium Sold figure, which stays AgencyZoom-derived as it
+ * already is everywhere else on this board. Every entry starts
+ * unreconciled; sales_log_reconcile.py matches it against AgencyZoom's own
+ * policies once that catches up and fills in az_policy_number/az_source
+ * (the actual AgencyZoom lead source, per the same 2026-09-12 instruction
+ * to use AgencyZoom's source rather than any manually-typed one) --
+ * never the other direction, so this can never become a second place to
+ * edit a real sale's numbers. An entry that stays unreconciled is exactly
+ * the "missing docs / not entered yet" signal that script also acts on. */
+async function postSalesLog(request, env, day) {
+  let body;
+  try {
+    body = await request.json();
+  } catch (_) {
+    return json({ error: "bad request body" }, 400);
+  }
+  const producer = String(body.producer || "").trim();
+  const client_name = String(body.client_name || "").trim();
+  if (!producer || !client_name) {
+    return json({ error: "producer and client_name are required" }, 400);
+  }
+  const premiumNum = Number(body.premium);
+  const entry = {
+    id: crypto.randomUUID(),
+    producer,
+    client_name,
+    policy_number: String(body.policy_number || "").trim().slice(0, 60),
+    product: String(body.product || "").trim().slice(0, 80),
+    premium: Number.isFinite(premiumNum) ? premiumNum : null,
+    term: String(body.term || "").trim().slice(0, 20),
+    notes: String(body.notes || "").trim().slice(0, 500),
+    created_at: new Date().toISOString(),
+    reconciled: false,
+    az_policy_number: null,
+    az_source: null,
+  };
+  const key = salesLogKey(day);
+  const existing = await env.BOARD.get(key);
+  const doc = existing ? JSON.parse(await existing.text()) : { day, entries: [] };
+  doc.entries.push(entry);
+  await env.BOARD.put(key, JSON.stringify(doc), {
+    httpMetadata: { contentType: "application/json" },
+  });
+  return json({ entry });
+}
+
+/** POST /api/saleslog/:day/delete {id} -- removes one entry (e.g. a typo'd
+ * duplicate). Refuses to delete a RECONCILED entry: once
+ * sales_log_reconcile.py has linked one to a real AgencyZoom policy,
+ * deleting it here would just hide that a real sale exists, not undo it. */
+async function deleteSalesLogEntry(request, env, day) {
+  let body;
+  try {
+    body = await request.json();
+  } catch (_) {
+    return json({ error: "bad request body" }, 400);
+  }
+  const id = String(body.id || "");
+  const key = salesLogKey(day);
+  const existing = await env.BOARD.get(key);
+  if (!existing) return json({ error: "no entries for this day" }, 404);
+  const doc = JSON.parse(await existing.text());
+  const target = doc.entries.find((e) => e.id === id);
+  if (!target) return json({ error: "entry not found" }, 404);
+  if (target.reconciled) {
+    return json({ error: "cannot delete a reconciled entry -- it's linked to a real AgencyZoom policy" }, 409);
+  }
+  doc.entries = doc.entries.filter((e) => e.id !== id);
+  await env.BOARD.put(key, JSON.stringify(doc), {
+    httpMetadata: { contentType: "application/json" },
+  });
+  return json({ ok: true });
 }
 
 /** Parses coaching/TRAINING.md into [{ name, cards: [{ front, back }] }].
