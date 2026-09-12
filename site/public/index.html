@@ -216,14 +216,24 @@ select, button.ghost {
    same weight as .sd's own descriptive text right under it, so a title and
    its caption barely read as different things. Bigger, full-contrast, and a
    rule under each one now functions as the section boundary the eye was
-   missing. */
+   missing.
+
+   `h2:first-of-type` (removed) does NOT mean "the first h2 on the page" --
+   it means "the first h2 among ITS OWN siblings", and every section here is
+   its own isolated <div class="sect"> holding exactly one h2. That makes
+   EVERY section's h2 "first of its type" within its own parent, so the
+   8px override that was meant for page-top only was actually collapsing
+   every section's top margin to 8px -- confirmed as the reason Frank still
+   saw titles "blend in" with the section above even after this rule
+   existed (a legend row directly above "SPEED TO DIAL" with almost no gap).
+   A uniform 36px top margin for every section reads better than chasing a
+   slightly smaller gap above the very first one. */
 h2 {
   font-size: 15px; font-weight: 700; text-transform: uppercase;
   letter-spacing: 0.05em; color: var(--text-primary);
-  margin: 40px 0 14px; padding-bottom: 8px;
+  margin: 36px 0 14px; padding-bottom: 8px;
   border-bottom: 2px solid var(--border-strong);
 }
-h2:first-of-type { margin-top: 8px; }
 .sd { font-size: 12.5px; color: var(--text-secondary); margin: -10px 0 14px; line-height: 1.55; }
 
 /* Two-column card layout below the Digest tab's leaderboard, matching the
