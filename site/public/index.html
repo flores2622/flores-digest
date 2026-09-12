@@ -450,6 +450,7 @@ details.sc .scb { padding: 0 12px 12px; }
       <button class="tab" role="tab" aria-selected="false" data-v="trends">Trends</button>
       <button class="tab" role="tab" aria-selected="false" data-v="roleplay">Role Play</button>
       <button class="tab" role="tab" aria-selected="false" data-v="training">Training</button>
+      <button class="tab" role="tab" aria-selected="false" data-v="sales">Sales</button>
     </div>
     <div id="view"><div class="empty">Loading…</div></div>
   </main>
@@ -532,6 +533,17 @@ let matchSelectedDef = null;
 let matchSolved = new Set();
 let matchWrong = null;      // {term, def} pair indices to flash red, cleared on next render
 let matchAttempts = 0;
+
+// Sales tab state (Frank, 2026-09-12): a same-day, self-reported log,
+// explicitly NOT the official Premium Sold figure (that stays AgencyZoom-
+// derived, as it already is everywhere else on this board). Entered sales
+// are stored in R2 (saleslog/<day>.json, site/worker.js) and later matched
+// against real AgencyZoom policies by sales_log_reconcile.py -- an entry
+// that stays unreconciled is the "missing docs / not entered yet" signal.
+let salesDay = null;          // set to today's AZ date on first load
+let salesEntries = [];        // this day's entries, from the last /api/saleslog fetch
+let salesProducer = "";       // who's currently logging a sale
+let salesBusy = false;
 
 /* ---- tooltip -------------------------------------------------------------- */
 const tip = $("#tip");
@@ -2008,6 +2020,114 @@ function wireMatch(deck, repaintAll) {
   if (retry) retry.onclick = () => { buildMatch(deck); repaintAll(); };
 }
 
+/* ---- Sales tab -------------------------------------------------------------
+   A same-day, self-reported log producers fill in themselves (Frank,
+   2026-09-12) -- explicitly NOT the official Premium Sold figure, which
+   stays AgencyZoom-derived everywhere else on this board (see
+   site/worker.js's postSalesLog docstring). Reconciliation against real
+   AgencyZoom policies happens offline; this UI only creates/lists/deletes
+   entries and shows whatever reconciliation status R2 already carries. */
+async function loadSalesLog(day) {
+  if (!salesDay) salesDay = isoDate(azTodayDate());
+  const d = day || salesDay;
+  try {
+    const r = await fetch(`/api/saleslog/${d}`, { cache: "no-store" });
+    const body = r.ok ? await r.json() : { entries: [] };
+    salesEntries = body.entries || [];
+  } catch (_) { salesEntries = []; }
+  return { day: d, entries: salesEntries };
+}
+
+function salesPanel(data) {
+  const entries = data.entries || [];
+  const producerOpts = [`<option value="">Who's logging?</option>`]
+    .concat(PRODUCER_ROSTER.map(p => `<option value="${p}"${p === salesProducer ? " selected" : ""}>${p}</option>`)).join("");
+  const rows = entries.slice().reverse().map(e => `<tr>
+    <td class="name">${e.producer}</td>
+    <td>${e.client_name}</td>
+    <td>${e.policy_number || ""}</td>
+    <td>${e.product || ""}</td>
+    <td class="num">${e.premium != null ? money(e.premium) : ""}</td>
+    <td>${e.term || ""}</td>
+    <td>${e.reconciled
+        ? `<span class="chip c-g">confirmed${e.az_source ? " · " + e.az_source : ""}</span>`
+        : `<span class="chip c-w">pending</span>`}</td>
+    <td>${e.reconciled ? "" : `<button class="ghost" data-del="${e.id}" type="button">delete</button>`}</td>
+  </tr>`).join("");
+
+  return `<div class="sect">
+    <h2>Log a sale</h2>
+    <p class="sd">Same-day list for immediate visibility -- AgencyZoom stays the official Premium Sold number.
+      Once AgencyZoom shows the matching policy, this row is marked confirmed automatically with its real source.</p>
+    <div class="controls" style="flex-wrap:wrap;gap:10px">
+      <select id="salesProdSel">${producerOpts}</select>
+      <input id="salesClient" type="text" placeholder="Client name" style="flex:1;min-width:160px">
+      <input id="salesPolicy" type="text" placeholder="Policy # (if known)" style="width:150px">
+      <input id="salesProduct" type="text" placeholder="Product" style="width:140px">
+      <input id="salesPremium" type="number" step="0.01" placeholder="Premium" style="width:110px">
+      <input id="salesTerm" type="text" placeholder="Term" style="width:90px">
+    </div>
+    <div class="controls" style="margin-top:8px">
+      <input id="salesNotes" type="text" placeholder="Notes (optional)" style="flex:1">
+      <button class="btn" id="salesSubmit" type="button" ${salesBusy ? "disabled" : ""}>Log sale</button>
+    </div>
+    <h2 style="margin-top:28px">Today's log</h2>
+    ${entries.length ? `<div class="scroll"><table>
+      <thead><tr><th>Producer</th><th>Client</th><th>Policy #</th><th>Product</th>
+        <th class="num">Premium</th><th>Term</th><th>Status</th><th></th></tr></thead>
+      <tbody>${rows}</tbody>
+    </table></div>` : '<div class="empty">Nothing logged yet today.</div>'}
+  </div>`;
+}
+
+function wireSalesPanel(data) {
+  const repaintAll = async () => {
+    const fresh = await loadSalesLog(salesDay);
+    $("#view").innerHTML = salesPanel(fresh);
+    wireSalesPanel(fresh);
+  };
+  const prodSel = $("#salesProdSel");
+  if (prodSel) prodSel.onchange = () => { salesProducer = prodSel.value; };
+  const submit = $("#salesSubmit");
+  if (submit) submit.onclick = async () => {
+    const producer = $("#salesProdSel").value;
+    const client_name = $("#salesClient").value.trim();
+    if (!producer || !client_name) {
+      alert("Pick who's logging and enter a client name.");
+      return;
+    }
+    salesBusy = true;
+    submit.disabled = true;
+    try {
+      const r = await fetch(`/api/saleslog/${salesDay}`, {
+        method: "POST", headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          producer, client_name,
+          policy_number: $("#salesPolicy").value.trim(),
+          product: $("#salesProduct").value.trim(),
+          premium: $("#salesPremium").value ? Number($("#salesPremium").value) : null,
+          term: $("#salesTerm").value.trim(),
+          notes: $("#salesNotes").value.trim(),
+        }),
+      });
+      if (!r.ok) alert("Couldn't save that -- try again.");
+    } catch (_) { alert("Couldn't save that -- try again."); }
+    salesBusy = false;
+    await repaintAll();
+  };
+  $$("[data-del]").forEach(b => b.onclick = async () => {
+    if (!confirm("Delete this logged sale?")) return;
+    try {
+      const r = await fetch(`/api/saleslog/${salesDay}/delete`, {
+        method: "POST", headers: { "content-type": "application/json" },
+        body: JSON.stringify({ id: b.dataset.del }),
+      });
+      if (!r.ok) alert("Couldn't delete that -- try again.");
+    } catch (_) { alert("Couldn't delete that -- try again."); }
+    await repaintAll();
+  });
+}
+
 async function trendsPanel() {
   const ds = await loadTrend();
   if (ds.length < 2) return `<div class="empty">
@@ -2235,6 +2355,12 @@ async function paint() {
     const data = await loadTraining();
     v.innerHTML = trainingPanel(data);
     wireTrainingPanel(data);
+  } else if (view === "sales") {
+    $("#topsub").textContent = "log today's sales -- a same-day list, not the official Premium Sold figure";
+    v.innerHTML = '<div class="empty">Loading…</div>';
+    const data = await loadSalesLog(salesDay);
+    v.innerHTML = salesPanel(data);
+    wireSalesPanel(data);
   } else {
     $("#topsub").textContent = "trends across every reporting day";
     v.innerHTML = '<div class="empty">Loading…</div>';
