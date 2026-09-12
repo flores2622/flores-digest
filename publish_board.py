@@ -248,12 +248,18 @@ def _policy_streaks(day, producers, cli, bucket, log=print, lookback=90):
     return streak
 
 
-def _apply_policy_streak(doc, cli, bucket, log=print):
+def apply_policy_streak(doc, cli, bucket, log=print):
     """Fill in the one thing board_payload.build() can't: Policies and
     Premium Sold are coloured on the sale streak, not a fixed target, and
     Premium Sold falls back to that same colour whenever the day's figure is
     $0 so the two never disagree (Policies has no digest_config threshold of
-    its own -- streak is the only rule for it)."""
+    its own -- streak is the only rule for it).
+
+    Public (not `_apply_policy_streak`) because intraday.py calls this too
+    (Frank, 2026-09-12: "the whole report uploading in real time") -- it's
+    R2 reads only, no paid API, so there's no reason the live board's
+    Policies/Premium Sold columns should go uncoloured until tonight when
+    this is this cheap."""
     streak = _policy_streaks(doc["date"], doc.get("producers") or [], cli, bucket, log=log)
     doc["policy_streak"] = streak
 
@@ -285,7 +291,7 @@ def publish(day, doc=None, log=print):
     """
     doc = doc if doc is not None else build(day, log=log)
     cli, bucket = _client()
-    _apply_policy_streak(doc, cli, bucket, log=log)
+    apply_policy_streak(doc, cli, bucket, log=log)
     body = json.dumps(doc, default=str).encode()
     cli.put_object(
         Bucket=bucket, Key=_key(day), Body=body,
