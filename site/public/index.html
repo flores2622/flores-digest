@@ -110,12 +110,46 @@
 :root[data-theme="dark"] .ty { color: var(--warn); }
 :root[data-theme="dark"] .tr { color: var(--bad); }
 .mdl { font-size: 14px; line-height: 1; margin-left: 5px; }
-.podium { display: flex; flex-direction: column; gap: 9px; margin: 4px 0 18px; }
-.prow { display: flex; align-items: center; gap: 10px; }
-.prank { width: 22px; text-align: center; font-size: 13px; flex-shrink: 0; }
-.pname { width: 130px; flex-shrink: 0; font-size: 13px; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .ptrack { flex: 1; height: 10px; border-radius: 5px; background: var(--surface); border: 1px solid var(--border-strong); overflow: hidden; }
 .pfill { height: 100%; border-radius: 5px; }
+
+/* Podium (Frank, 2026-09-12). Two/1/3 on risers of fixed, decreasing height
+   (rank order, not score-proportional -- a real podium doesn't resize per
+   day), 4th/5th flanking lower with no riser at all. */
+.podium2 { display: flex; align-items: flex-end; justify-content: center; gap: 12px; margin: 6px 0 24px; flex-wrap: wrap; }
+.pod-block { display: flex; flex-direction: column; align-items: center; width: 108px; }
+.pod-side { display: flex; flex-direction: column; align-items: center; width: 80px; opacity: .85; margin-bottom: 4px; }
+.pod-avatar {
+  width: 48px; height: 48px; border-radius: 50%; display: flex; align-items: center; justify-content: center;
+  font-weight: 700; font-size: 17px; margin-bottom: 6px; background-size: cover; background-position: center;
+  box-shadow: 0 0 0 2px var(--border-strong); flex: none;
+}
+.pod-av-1 { width: 62px; height: 62px; font-size: 21px; }
+.pod-av-side { width: 38px; height: 38px; font-size: 13px; }
+.pod-name { font-size: 12px; font-weight: 600; text-align: center; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; margin-bottom: 3px; }
+.pod-pts { font-size: 11px; color: var(--text-muted); margin-bottom: 6px; }
+.pod-step {
+  width: 100%; border-radius: 6px 6px 0 0; display: flex; align-items: flex-start; justify-content: center;
+  padding-top: 6px; font-weight: 700; font-size: 19px; color: #fff;
+}
+.pod-1 .pod-step { height: 88px; background: linear-gradient(180deg, #f4c542, #d9a326); }
+.pod-2 .pod-step { height: 64px; background: linear-gradient(180deg, #c9ccd1, #a7abb2); }
+.pod-3 .pod-step { height: 44px; background: linear-gradient(180deg, #d69a63, #b87a44); }
+.pod-confetti { position: relative; width: 62px; height: 0; }
+.confetti-piece {
+  position: absolute; top: 0; left: 50%; width: 6px; height: 10px; opacity: 0;
+  animation-name: confetti-fall; animation-timing-function: ease-in; animation-iteration-count: infinite;
+}
+@keyframes confetti-fall {
+  0%   { transform: translate(0, -8px) rotate(0deg); opacity: 0; }
+  12%  { opacity: 1; }
+  100% { transform: translate(var(--dx, 20px), 58px) rotate(360deg); opacity: 0; }
+}
+@media (max-width: 520px) {
+  .podium2 { gap: 6px; }
+  .pod-block { width: 84px; }
+  .pod-side { width: 62px; }
+}
 .sbar { display: flex; align-items: center; gap: 8px; margin: 5px 0; }
 .sbl { width: 100px; font-size: 11.5px; color: var(--text-secondary); flex-shrink: 0; }
 .sbv { width: 34px; text-align: right; font-size: 12.5px; font-weight: 600; flex-shrink: 0; }
@@ -176,13 +210,35 @@ select, button.ghost {
   padding: 6px 10px; cursor: pointer;
 }
 
+/* Section titles, made deliberately harder to mistake for one another or
+   for body text (Frank, 2026-09-12: "I cant really distinguish the
+   category titled, like leaderboard, utilization, etc."). Was 12px/muted --
+   same weight as .sd's own descriptive text right under it, so a title and
+   its caption barely read as different things. Bigger, full-contrast, and a
+   rule under each one now functions as the section boundary the eye was
+   missing. */
 h2 {
-  font-size: 12px; font-weight: 600; text-transform: uppercase;
-  letter-spacing: 0.07em; color: var(--text-muted);
-  margin: 36px 0 14px;
+  font-size: 15px; font-weight: 700; text-transform: uppercase;
+  letter-spacing: 0.05em; color: var(--text-primary);
+  margin: 40px 0 14px; padding-bottom: 8px;
+  border-bottom: 2px solid var(--border-strong);
 }
 h2:first-of-type { margin-top: 8px; }
 .sd { font-size: 12.5px; color: var(--text-secondary); margin: -10px 0 14px; line-height: 1.55; }
+
+/* Two-column card layout below the Digest tab's leaderboard, matching the
+   email's own side-by-side arrangement (Frank, 2026-09-12). minmax(0, 1fr),
+   not a bare 1fr: a grid track's automatic minimum size is its content's
+   min-content width unless overridden, and .scroll table's own min-width:
+   640px was winning that fight, forcing the column with a table in it to
+   642px against the other column's 410px -- not the width difference
+   that caused Frank's "still uneven" report to look like a bad content
+   grouping when it was really just unequal columns. .scroll's own
+   overflow-x:auto still handles a table wider than its now-truly-equal
+   column, same as it already does outside this grid. Collapses to one
+   column under the same width other narrow layouts in this file use. */
+.digestgrid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 20px; align-items: start; }
+@media (max-width: 720px) { .digestgrid { grid-template-columns: 1fr; } }
 
 /* Stat tiles. */
 .tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(148px, 1fr)); gap: 10px; }
@@ -482,6 +538,67 @@ function pbadge(color, label) {
   return `<span class="pbadge" style="background:${color};color:${badgeTextColor(color)}">${label}</span>`;
 }
 
+// Producer name -> photo URL. Empty until real headshots exist somewhere
+// this can point to -- every avatar falls back to a colour-badge initial
+// (podiumAvatar below) until then. Deliberately NOT a repo-committed image
+// path: this repo is public on GitHub, so a real headshot belongs in the
+// private flores-board R2 bucket (served through a Worker route the same
+// access-gated way days/<day>.json already is), never under site/public/.
+const PRODUCER_PHOTOS = {};
+
+function podiumAvatar(name, sizeClass) {
+  const photo = PRODUCER_PHOTOS[name];
+  if (photo) return `<div class="pod-avatar ${sizeClass}" style="background-image:url('${photo}')"></div>`;
+  const color = DOT[name] || "#8a877f";
+  const initial = (name.split(" ")[0][0] || "?").toUpperCase();
+  return `<div class="pod-avatar ${sizeClass}" style="background:${color};color:${badgeTextColor(color)}">${initial}</div>`;
+}
+
+// A handful of small falling pieces, randomised each render so it never
+// looks mechanical -- CSS keyframes do the actual falling (see .confetti-piece).
+function confettiHtml() {
+  const colors = ["#ff4b4b", "#5656fe", "#00c37a", "#ffb84d", "#cd81ff"];
+  let pieces = "";
+  for (let i = 0; i < 14; i++) {
+    const dx = Math.round((Math.random() - 0.5) * 70);
+    const delay = (Math.random() * 1.6).toFixed(2);
+    const dur = (1.1 + Math.random() * 0.7).toFixed(2);
+    const left = Math.round(10 + Math.random() * 80);
+    pieces += `<span class="confetti-piece" style="left:${left}%;background:${colors[i % colors.length]};` +
+      `animation-delay:${delay}s;animation-duration:${dur}s;--dx:${dx}px"></span>`;
+  }
+  return `<div class="pod-confetti">${pieces}</div>`;
+}
+
+/* Podium -- 1st/2nd/3rd on risers (tallest to shortest, not point-proportional:
+   a real podium has fixed step heights), 4th and 5th flanking it lower and
+   smaller, no riser. Replaces the old horizontal bar-per-producer list
+   (Frank, 2026-09-12: "turn into a 1/2/3 podium with #4 off to the left and
+   #5 off to right, both a bit lower"). Confetti (CSS-only, no library) falls
+   over 1st only. Avatars fall back to a colour-initial circle until
+   PRODUCER_PHOTOS has a real photo for that name. */
+function podiumHtml(order, points) {
+  const block = (name, rank) => name == null ? "" : `<div class="pod-block pod-${rank}">
+    ${rank === 1 ? confettiHtml() : ""}
+    ${podiumAvatar(name, "pod-av-" + rank)}
+    <div class="pod-name">${name}</div>
+    <div class="pod-pts">${points[name] ?? 0} pts</div>
+    <div class="pod-step">${rank}</div>
+  </div>`;
+  const side = (name, label) => name == null ? "" : `<div class="pod-side">
+    ${podiumAvatar(name, "pod-av-side")}
+    <div class="pod-name">${name}</div>
+    <div class="pod-pts">${label}</div>
+  </div>`;
+  return `<div class="podium2">
+    ${side(order[3], "4th")}
+    ${block(order[1], 2)}
+    ${block(order[0], 1)}
+    ${block(order[2], 3)}
+    ${side(order[4], "5th")}
+  </div>`;
+}
+
 /* Folio close dates, 2026 (Frank's "Folio Close Dates" calendar). A folio's
    last day is the highlighted date; the next calendar day starts the next
    folio -- mirrors digest_config.FOLIO_CLOSE_DATES. Extend this array when
@@ -607,15 +724,18 @@ function digestDay(d, who) {
   // filtering to one person means.
   const t = focus || d.totals || {};
   const rate = focus ? (focus.rate ?? 0) : (t.dials ? (100 * t.live / t.dials).toFixed(1) : "0");
-  // Households Quoted + Premium Quoted combined into one tile, Policies +
-  // Premium Sold combined into another -- Frank, 2026-09-10: "that way
-  // there are 5 boxes." Big number is the count; the dollar figure moves to
-  // the subtitle, same slot other tiles already use for a second stat.
+  // Households Quoted and Premium Quoted share one tile (and likewise
+  // Policies/Premium Sold), but as two figures side by side on the SAME big
+  // number line, not one promoted to the big number with the other demoted
+  // to a subtitle -- Frank, 2026-09-12: "I still want them in the same box,
+  // just side by side, so abbreviate it and a slash." (First split into
+  // four separate tiles per an earlier ask that they be "equally
+  // important" -- this keeps that equal weight, one line, one box.)
   const tiles = [
-    ["Dials", t.dials ?? 0, "outbound, after exclusions"],
+    ["Dials", t.dials ?? 0],
     ["Live contacts", t.live ?? 0, rate + "% contact rate"],
-    ["Households Quoted", t.hh ?? 0, `${money(t.pq)} quoted`],
-    ["Policies", t.pol ?? 0, `${money(t.ps)} sold`],
+    ["HH/Prem. Quoted", `${t.hh ?? 0} HH / ${money(t.pq)}`],
+    ["Pol/Prem. Sold", `${t.pol ?? 0} Pol / ${money(t.ps)}`],
   ];
   if (t.util != null) tiles.push(["Utilization", t.util + "%", "weighted"]);
   const tilesHtml = tiles.map(([k, v, n]) =>
@@ -655,13 +775,7 @@ function teamLeaderboardHtml(d, who) {
   let podium = "";
   if (!focus && lb.order && lb.order.length > 1) {
     const points = lb.points || {};
-    const top = Math.max(...lb.order.map(n => points[n] || 0), 1);
-    podium = `<div class="podium">${lb.order.map((n, i) => `
-      <div class="prow">
-        <span class="prank">${i < 3 ? MEDAL[i] : i + 1}</span>
-        <span class="pname">${n}</span>
-        <div class="ptrack"><div class="pfill" style="width:${((points[n] || 0) / top * 100).toFixed(2)}%;background:${DOT[n] || "#8a877f"}"></div></div>
-      </div>`).join("")}</div>`;
+    podium = podiumHtml(lb.order, points);
   }
 
   const rows = ranked.map((p, i) => `<tr>
@@ -691,11 +805,6 @@ function teamLeaderboardHtml(d, who) {
     ${T.util != null ? `<td class="num ${tt("util")}">${T.util}%</td>` : ""}</tr>`;
 
   return `<div class="sect"><h2>Team Leaderboard</h2>
-   <p class="sd">Ranked the same way the email's MVP leaderboard ranks producers -- but every figure below is
-   coloured against its own goal, not by rank: <span class="tg">on or exceeding</span>,
-   <span class="ty">off pace but close</span>, <span class="tr">off track</span>. Policies is coloured on a
-   streak instead of a daily target. Hover a policy count for the gap. Contact Rate shows live contacts in
-   brackets.</p>
    ${podium}
    <div class="scroll"><table><thead><tr><th>Producer</th>${hasRoleplay ? "<th class=\"num\">Role Play</th>" : ""}
    <th class="num">Call Volume</th><th class="num">Avg Talk Time</th><th class="num">Contact Rate</th>
@@ -799,6 +908,17 @@ function outcomeBreakdownHtml(d, who) {
    ${rows}<div class="oleg">${legend}</div></div>`;
 }
 
+// Idle = tracked minus productive, straight from the two "HH:MM" strings
+// board_payload already carries -- the same figure util_panel.py's email
+// card shows ("<b>{total-prod}</b> idle"), just not computed on the board
+// (Frank, 2026-09-12: "the utilization cards dont have idle time anymore").
+function idleFromHHMM(total, prod) {
+  if (!total || !prod) return null;
+  const mins = s => { const [h, m] = s.split(":").map(Number); return h * 60 + m; };
+  const diff = mins(total) - mins(prod);
+  if (!Number.isFinite(diff) || diff < 0) return null;
+  return `${Math.floor(diff / 60)}h ${String(diff % 60).padStart(2, "0")}m`;
+}
 function utilizationHtml(d, who) {
   const byName = Object.fromEntries((d.producers || []).map(p => [p.name, p]));
   const focus = who ? byName[who] : null;
@@ -806,9 +926,11 @@ function utilizationHtml(d, who) {
   const tc = (name) => TI[((d.tiers || {})[name] || {})["util"]] || "";
   const list = (focus ? [focus] : (d.producers || [])).filter(p => p.util != null);
   if (!list.length) return "";
-  const cards = list.map(p => `<div class="tile">
+  const cards = list.map(p => { const idle = idleFromHHMM(p.util_total, p.util_prod);
+    return `<div class="tile">
     <div class="k">${p.name}</div><div class="v ${tc(p.name)}">${p.util}%</div>
-    <div class="n">${p.util_prod || "—"} productive / ${p.util_total || "—"} tracked</div></div>`).join("");
+    <div class="n">${p.util_prod || "—"} productive / ${p.util_total || "—"} tracked</div>
+    ${idle ? `<div class="n">${idle} idle</div>` : ""}</div>`; }).join("");
   const T = d.totals || {};
   const teamCard = focus || T.util == null ? "" : `<div class="tile" style="border-color:var(--border-strong)">
     <div class="k">Team</div><div class="v ${TI[((d.tiers || {})["team"] || {})["util"]] || ""}">${T.util}%</div>
@@ -933,21 +1055,44 @@ function liveBannerHtml(d, who) {
 }
 
 function digestPanel(d, who) {
-  // Order follows the customized email digest (Frank, 2026-09-10): Task
-  // Completion Rate, Recontact Struggle, [Team Leaderboard already sits at
-  // the top of digestDay -- see teamLeaderboardHtml], Call Outcome
-  // Breakdown, Speed to Dial, Utilization and Efficiency, Coaching & Call
-  // Quality. Task Completion Audit stays last -- it's the OTHER, ops-only
-  // email's content, not part of the Sales Digest proper. The live banner, if
-  // any, sits above all of it -- it's about right now, not last night.
+  // Two-column card layout below the leaderboard, matching the email's own
+  // template/report_template.html two-col-table (Frank, 2026-09-12: "the
+  // digest was side by side after the leaderboard... it threw the order off
+  // and i dont like the one by one"). Grouping by kind (an earlier pass at
+  // this split) still read as visibly uneven -- turned out to be TWO
+  // separate problems, not one:
+  //
+  // (1) The .digestgrid columns were never actually equal width. A bare
+  // `1fr 1fr` lets a track's automatic minimum size default to its
+  // content's min-content width, and .scroll table's own `min-width:640px`
+  // was winning that fight -- measured 642px vs 410px for what should have
+  // been two 526px columns. Fixed in .digestgrid itself with
+  // `minmax(0, 1fr)`; .scroll's own overflow-x:auto still covers a table
+  // wider than its now-genuinely-equal column, same as it already does
+  // everywhere else in this file.
+  //
+  // (2) Once the columns were actually 526px each, which panels go where
+  // still matters: Coaching & Call Quality's cards are the tallest thing in
+  // this grid by a wide margin. Measured with Playwright against realistic
+  // 5-producer data at a true 526px column width: Task Completion Rate
+  // 339px, Call Outcome Breakdown 333px, Speed to Dial 193px, Utilization
+  // 360px, Coaching & Call Quality 508px. {Task Completion, Outcome
+  // Breakdown, Speed to Dial} vs {Utilization, Coaching & Call Quality}
+  // comes out to 884px vs 868px -- the closest 2-way split of the five, and
+  // the rendered page now confirms it: 908px vs 884px, 24px apart.
+  //
+  // Recontact Struggle is OUT for now, not deleted -- Frank, 2026-09-12:
+  // "remove ... until i come up with something better" -- recontactPanel()
+  // itself is untouched, just not called here. Task Completion Audit stays
+  // full-width, last -- it's the OTHER, ops-only email's content, not part
+  // of the Sales Digest proper. The live banner, if any, sits above all of
+  // it -- it's about right now, not last night.
   return `${liveBannerHtml(d, who)}
   ${digestDay(d, who)}
-  ${taskCompletionHtml(d, who)}
-  ${recontactPanel(d, who)}
-  ${outcomeBreakdownHtml(d, who)}
-  ${speedPanel(d, who)}
-  ${utilizationHtml(d, who)}
-  ${coachQualityHtml(d, who)}
+  <div class="digestgrid">
+    <div>${taskCompletionHtml(d, who)}${outcomeBreakdownHtml(d, who)}${speedPanel(d, who)}</div>
+    <div>${utilizationHtml(d, who)}${coachQualityHtml(d, who)}</div>
+  </div>
   ${auditPanel(d, who)}`;
 }
 
