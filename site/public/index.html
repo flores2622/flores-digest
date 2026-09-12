@@ -109,9 +109,6 @@
 :root[data-theme="dark"] .tg { color: var(--good); }
 :root[data-theme="dark"] .ty { color: var(--warn); }
 :root[data-theme="dark"] .tr { color: var(--bad); }
-.n1 { color: var(--gold); font-weight: 700; }
-.n2 { color: var(--silver); }
-.n3 { color: var(--bronze); }
 .mdl { font-size: 14px; line-height: 1; margin-left: 5px; }
 .podium { display: flex; flex-direction: column; gap: 9px; margin: 4px 0 18px; }
 .prow { display: flex; align-items: center; gap: 10px; }
@@ -153,6 +150,7 @@ body {
 }
 .shell { min-height: calc(100vh - 49px); }
 .pd { width: 8px; height: 8px; border-radius: 2px; flex: none; }
+.pbadge { display: inline-flex; align-items: center; padding: 2px 8px; border-radius: 5px; font-size: 12px; font-weight: 700; line-height: 1.5; white-space: nowrap; }
 .main { padding: 20px 24px 60px; min-width: 0; max-width: 1120px; margin: 0 auto; }
 
 .tabs { display: flex; gap: 2px; border-bottom: 1px solid var(--border); margin-bottom: 20px; }
@@ -466,6 +464,24 @@ const DOT = {"Crystal Mango":"#ff4b4b", "Lorena Gonzalez":"#cd81ff",
              "Amanda Torricellas":"#baffff"};
 const TEAM_DOT = "#0b0b0b";
 
+/* Producer identity badge -- a colour-filled pill with the name inside,
+   replacing the old dot-plus-plain-text everywhere a row or card needs to
+   say whose number this is (Frank, 2026-09-12). Text colour picks whichever
+   of black/white has the higher WCAG contrast against that producer's own
+   colour: DOT spans from near-black (Debbie) to pale mint (Coral), so no
+   single text colour reads on all of it. */
+function badgeTextColor(hex) {
+  const c = hex.replace("#", "");
+  const r = parseInt(c.slice(0, 2), 16) / 255, g = parseInt(c.slice(2, 4), 16) / 255, b = parseInt(c.slice(4, 6), 16) / 255;
+  const lin = v => v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4);
+  const lum = 0.2126 * lin(r) + 0.7152 * lin(g) + 0.0722 * lin(b);
+  const contrast = (l1, l2) => (Math.max(l1, l2) + 0.05) / (Math.min(l1, l2) + 0.05);
+  return contrast(lum, 1) >= contrast(lum, 0) ? "#fff" : "#111";
+}
+function pbadge(color, label) {
+  return `<span class="pbadge" style="background:${color};color:${badgeTextColor(color)}">${label}</span>`;
+}
+
 /* Folio close dates, 2026 (Frank's "Folio Close Dates" calendar). A folio's
    last day is the highlighted date; the next calendar day starts the next
    folio -- mirrors digest_config.FOLIO_CLOSE_DATES. Extend this array when
@@ -625,7 +641,6 @@ function teamLeaderboardHtml(d, who) {
   const TI = { green: "tg", yellow: "ty", red: "tr" };
   const tc = (name, key) => TI[((d.tiers || {})[name] || {})[key]] || "";
   const MEDAL = ["\u{1F3C6}", "\u{1F948}", "\u{1F949}"];
-  const NCL = ["n1", "n2", "n3"];
   const streak = d.policy_streak || {};
   const polTitle = n => {
     const g = streak[n];
@@ -650,8 +665,7 @@ function teamLeaderboardHtml(d, who) {
   }
 
   const rows = ranked.map((p, i) => `<tr>
-    <td><span class="who"><span class="pd" style="background:${DOT[p.name] || "#8a877f"}"></span><span${
-       !focus && i < 3 ? ` class="${NCL[i]}"` : ""}>${p.name}</span>${
+    <td><span class="who">${pbadge(DOT[p.name] || "#8a877f", p.name)}${
        !focus && i < 3 ? `<span class="mdl" role="img" aria-label="${["1st", "2nd", "3rd"][i]}">${MEDAL[i]}</span>` : ""}</span></td>
     ${hasRoleplay ? `<td class="num ${tc(p.name, "roleplay")}">${(p.coach || {}).roleplay ?? "—"}</td>` : ""}
     <td class="num ${tc(p.name, "dials")}">${p.dials ?? 0}</td>
@@ -665,7 +679,7 @@ function teamLeaderboardHtml(d, who) {
   const tt = k => TI[((d.tiers || {})["team"] || {})[k]] || "";
   const T = d.totals || {};
   const teamRate = T.dials ? (100 * T.live / T.dials).toFixed(1) : "0";
-  const tot = focus ? "" : `<tr class="tot"><td><span class="who"><span class="pd" style="background:${TEAM_DOT}"></span>Team</span></td>
+  const tot = focus ? "" : `<tr class="tot"><td><span class="who">${pbadge(TEAM_DOT, "Team")}</span></td>
     ${hasRoleplay ? `<td class="num">—</td>` : ""}
     <td class="num ${tt("dials")}">${T.dials ?? 0}</td>
     <td class="num">—</td>
@@ -741,12 +755,11 @@ function taskCompletionHtml(d, who) {
   const list = (focus ? [focus] : (d.producers || [])).filter(p => p.tasks && p.tasks.total != null);
   if (!list.length) return "";
   const rows = list.map(p => { const t = p.tasks; const pct = t.pct ?? 0;
-    return `<tr><td><span class="who"><span class="pd" style="background:${DOT[p.name] || "#8a877f"}"></span>${p.name}</span></td>
+    return `<tr><td><span class="who">${pbadge(DOT[p.name] || "#8a877f", p.name)}</span></td>
       <td class="num">${t.total ?? 0}</td><td class="num">${t.completed ?? 0}</td>
       <td class="num ${tc(p.name)}">${(+pct).toFixed(1)}%</td></tr>`; }).join("");
   const T = (d.totals || {}).tasks || {};
-  const tot = focus || T.total == null ? "" : `<tr class="tot"><td><span class="who">
-    <span class="pd" style="background:${TEAM_DOT}"></span>Team</span></td>
+  const tot = focus || T.total == null ? "" : `<tr class="tot"><td><span class="who">${pbadge(TEAM_DOT, "Team")}</span></td>
     <td class="num">${T.total ?? 0}</td><td class="num">${T.completed ?? 0}</td>
     <td class="num ${TI[((d.tiers || {})["team"] || {})["tasks"]] || ""}">${(+(T.pct ?? 0)).toFixed(1)}%</td></tr>`;
   return `<div class="sect"><h2>Task Completion Rate</h2>
@@ -775,7 +788,7 @@ function outcomeBreakdownHtml(d, who) {
       return `<span class="ogseg" style="width:${(n / total * 100).toFixed(2)}%;background:var(${cvar})" title="${label}: ${n}"></span>`;
     }).join("");
     return `<div class="orow"><div class="orow-head">
-      <span class="who"><span class="pd" style="background:${DOT[name] || "#8a877f"}"></span>${name}</span>
+      <span class="who">${pbadge(DOT[name] || "#8a877f", name)}</span>
       <span class="on">${vol} new-business dial${vol === 1 ? "" : "s"}</span></div>
       <div style="width:${(vol / busiest * 100).toFixed(2)}%"><div class="otrack">${segs}</div></div></div>`;
   }).join("");
@@ -825,8 +838,7 @@ function coachQualityHtml(d, who) {
   };
   const cards = list.map(p => { const c = p.coach; const color = DOT[p.name] || "#8a877f";
     return `<div class="tile" style="text-align:left">
-    <div class="who" style="margin-bottom:8px">
-      <span class="pd" style="background:${color}"></span>${p.name.split(" ")[0]}</div>
+    <div class="who" style="margin-bottom:8px">${pbadge(color, p.name.split(" ")[0])}</div>
     ${bar(color, "Avg Call Score", c.score || 0)}
     ${bar(color, "Avg Sentiment", c.sentiment || 0)}
     ${bar(color, "Role Play", c.roleplay || 0)}
@@ -844,7 +856,7 @@ function speedPanel(d, who) {
     <p class="sd">No internet leads were assigned today, so there is nothing to time.</p></div>`;
   const entries = who ? Object.entries(s.per || {}).filter(([n]) => n === who) : Object.entries(s.per || {});
   const cards = entries.map(([n, v]) => `
-    <div class="tile"><div class="k"><span class="pd" style="background:${DOT[n] || "#8a877f"};display:inline-block;margin-right:5px"></span>${n.split(" ")[0]}</div>
+    <div class="tile"><div class="k">${pbadge(DOT[n] || "#8a877f", n.split(" ")[0])}</div>
       <div class="v">${hhmm(v.median)}</div>
       <div class="n">median · ${v.n} lead${v.n > 1 ? "s" : ""}</div>
       <div class="n" style="margin-top:5px">quickest ${hhmm(v.quickest)} · longest ${hhmm(v.longest)}</div></div>`).join("")
@@ -863,7 +875,7 @@ function recontactPanel(d, who) {
   const all = ((d.recontact || {}).at_risk || []).filter(r => !who || r.producer === who);
   const rows = all.slice(0, 14).map(r => `<tr>
     <td>${r.lead_name || "—"}</td>
-    <td><span class="who"><span class="pd" style="background:${DOT[r.producer] || "#8a877f"}"></span>${(r.producer || "").split(" ")[0]}</span></td>
+    <td><span class="who">${pbadge(DOT[r.producer] || "#8a877f", (r.producer || "").split(" ")[0])}</span></td>
     <td>${r.stage || ""}</td><td class="num">${r.business_days ?? "—"}</td><td class="num">${r.calls ?? "—"}</td>
     <td><span class="chip ${r.flag === "under-worked" ? "c-r" : "c-w"}">${r.flag || ""}</span></td></tr>`).join("");
   const n = all.length;
