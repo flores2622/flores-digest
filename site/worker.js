@@ -121,6 +121,9 @@ export default {
         if (parts.length === 4 && parts[3] === "delete" && request.method === "POST") {
           return deleteSalesLogEntry(request, env, day);
         }
+        if (parts.length === 4 && parts[3] === "track" && request.method === "POST") {
+          return trackSalesLogEntry(request, env, day);
+        }
       }
       return json({ error: "not found" }, 404);
     }
@@ -308,8 +311,23 @@ async function getSalesLogFolio(env, end) {
   });
 }
 
-/** POST /api/saleslog/:day {producer, client_name, policy_number, product,
- * premium, term, notes} -> the created entry.
+// The Docs Signed dropdown's exact options, taken from the real Google
+// "Sales" sheet's own column (Frank, 2026-09-14: "use the exact options
+// from the dropdown on the sales sheet") -- measured directly off 102 real
+// rows across two folios rather than guessed: "Docs + Paperless" (41),
+// "Producer 1".."Producer 6" (49 combined -- a real, actively-used part of
+// the vocabulary, not a fluke), "Paperless" (5), blank (3, the two producer
+// names seen once or twice each look like manual typos into the wrong
+// column, not real dropdown values, and are deliberately not carried over
+// as options). Blank is the default/unset ("pending") state -- nothing in
+// 102 rows ever spelled "Pending" outright, they just left it blank until
+// it was one of these.
+const DOCS_SIGNED_OPTIONS = ["", "Paperless", "Docs + Paperless",
+  "Producer 1", "Producer 2", "Producer 3", "Producer 4", "Producer 5", "Producer 6"];
+
+/** POST /api/saleslog/:day {producer, client_name, lead_source,
+ * policy_number, product, premium, term, notes, az_profile, docs_signed,
+ * review_sent} -> the created entry.
  *
  * A same-day, self-reported log (Frank, 2026-09-12: "I want a sales tab
  * where they go in and enter their sales for the day") -- explicitly NOT
@@ -321,7 +339,13 @@ async function getSalesLogFolio(env, end) {
  * to use AgencyZoom's source rather than any manually-typed one) --
  * never the other direction, so this can never become a second place to
  * edit a real sale's numbers. An entry that stays unreconciled is exactly
- * the "missing docs / not entered yet" signal that script also acts on. */
+ * the "missing docs / not entered yet" signal that script also acts on.
+ *
+ * az_profile/docs_signed/review_sent mirror the real Sales sheet's own
+ * AZ Profile, Docs signed and Review Sent columns (Frank, 2026-09-14) --
+ * tracked independently of reconciled, since paperwork status has nothing
+ * to do with whether AgencyZoom has caught up to the sale itself; see
+ * updateSalesLogEntry, which is what changes them after creation. */
 async function postSalesLog(request, env, day) {
   let body;
   try {
@@ -335,10 +359,12 @@ async function postSalesLog(request, env, day) {
     return json({ error: "producer and client_name are required" }, 400);
   }
   const premiumNum = Number(body.premium);
+  const docsSigned = String(body.docs_signed || "");
   const entry = {
     id: crypto.randomUUID(),
     producer,
     client_name,
+    lead_source: String(body.lead_source || "").trim().slice(0, 100),
     policy_number: String(body.policy_number || "").trim().slice(0, 60),
     product: String(body.product || "").trim().slice(0, 80),
     premium: Number.isFinite(premiumNum) ? premiumNum : null,
@@ -348,6 +374,9 @@ async function postSalesLog(request, env, day) {
     reconciled: false,
     az_policy_number: null,
     az_source: null,
+    az_profile: Boolean(body.az_profile),
+    docs_signed: DOCS_SIGNED_OPTIONS.includes(docsSigned) ? docsSigned : "",
+    review_sent: Boolean(body.review_sent),
   };
   const key = salesLogKey(day);
   const existing = await env.BOARD.get(key);
@@ -357,6 +386,42 @@ async function postSalesLog(request, env, day) {
     httpMetadata: { contentType: "application/json" },
   });
   return json({ entry });
+}
+
+/** POST /api/saleslog/:day/track {id, az_profile?, docs_signed?,
+ * review_sent?} -> the updated entry. Changes ONLY these three tracking
+ * fields, never the sale record itself (producer/client/premium/etc, or
+ * reconciled/az_policy_number/az_source, which only sales_log_reconcile.py
+ * may ever set) -- and works on a RECONCILED entry too, unlike delete:
+ * a policy can be confirmed in AgencyZoom while its paperwork is still
+ * pending signature, so these three are independent of reconciliation
+ * (Frank, 2026-09-14: "it should be able to be interactive... when they
+ * get signed later they should be able to change it"). */
+async function trackSalesLogEntry(request, env, day) {
+  let body;
+  try {
+    body = await request.json();
+  } catch (_) {
+    return json({ error: "bad request body" }, 400);
+  }
+  const id = String(body.id || "");
+  const key = salesLogKey(day);
+  const existing = await env.BOARD.get(key);
+  if (!existing) return json({ error: "no entries for this day" }, 404);
+  const doc = JSON.parse(await existing.text());
+  const target = doc.entries.find((e) => e.id === id);
+  if (!target) return json({ error: "entry not found" }, 404);
+  if ("az_profile" in body) target.az_profile = Boolean(body.az_profile);
+  if ("review_sent" in body) target.review_sent = Boolean(body.review_sent);
+  if ("docs_signed" in body) {
+    const v = String(body.docs_signed || "");
+    if (!DOCS_SIGNED_OPTIONS.includes(v)) return json({ error: "bad docs_signed value" }, 400);
+    target.docs_signed = v;
+  }
+  await env.BOARD.put(key, JSON.stringify(doc), {
+    httpMetadata: { contentType: "application/json" },
+  });
+  return json({ entry: target });
 }
 
 /** POST /api/saleslog/:day/delete {id} -- removes one entry (e.g. a typo'd
