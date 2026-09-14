@@ -43,6 +43,14 @@ a row with no usable audio gets no card, not a card built from notes alone.
 That is a known v1 gap, not an oversight: it means a real conversation with
 unusable audio (foreign language, a repetition loop) goes uncoached even
 though call_summary.py still reports it elsewhere.
+
+A live-contact row that qualifies still gets no card in the RETURNED list if
+Apollo's own calltype judgment (see METHODOLOGY.md's Core judgment) comes
+back pure "service" -- a renewal, payment, claim or paperwork call with no
+sales opportunity (Frank, 2026-09-14: "that is purely for new business
+opportunities"). A "mixed" call (a cross-sell raised mid-service-call) still
+gets a card. The model read still happens and is cached for every live
+contact regardless -- see build()'s filter, and the COST note above.
 """
 import datetime as dt
 import json
@@ -246,7 +254,7 @@ def _clean_obj(raw):
     return out
 
 
-def _finish_card(d, producer, r, raw_dials):
+def _finish_card(d, producer, r, raw_dials, day, transcript, recording_ids):
     """Merge the model's judgment with everything already known from the
     pipeline. Every mechanical field below is cheaper and more reliable to
     compute here than to ask the model for -- see the module docstring."""
@@ -254,6 +262,17 @@ def _finish_card(d, producer, r, raw_dials):
     asks = _bool_pair(d.get("asks"))
     cat, catc = _category(r)
     return {
+        "day": day,
+        # The machine transcript this card was read from, and the raw
+        # RingCentral recording id(s) (call_summary._audio_legs' own
+        # `_wanted` picks) behind it, so the board can offer "read the
+        # transcript" / "listen to the call" on the card itself (Frank,
+        # 2026-09-14) instead of the summary being the only way to check
+        # Apollo's read against the actual call. recording_ids is [] for
+        # a day built before this existed (see call_summary.build) or a
+        # row _wanted() found no usable leg for.
+        "transcript": transcript,
+        "recording_ids": recording_ids,
         "lead": r.get("lead") or "",
         # Full name, not first name: coachingPanel() (site/public/index.html)
         # groups cards by matching `who` against its own `order` list of full
@@ -310,6 +329,8 @@ def build(day, log=print):
     cache = json.loads(cpath.read_text()) if cpath.exists() else {}
     fx_path = ROOT / f"data/fulltx_{day}.json"
     fx = json.loads(fx_path.read_text()) if fx_path.exists() else {}
+    ar_path = ROOT / f"data/audiorefs_{day}.json"
+    audiorefs = json.loads(ar_path.read_text()) if ar_path.exists() else {}
 
     rows = [(p, r) for p, v in M.get("producers", {}).items()
             for r in v.get("call_detail", [])
@@ -338,12 +359,26 @@ def build(day, log=print):
         cpath.write_text(json.dumps(cache, indent=1))
 
     raw_dials = day_calls.producer_dials(day)
-    pairs = [(p, _finish_card(cache[CS._ck(p, r["number"])], p, r, raw_dials))
+    pairs = [(p, _finish_card(cache[CS._ck(p, r["number"])], p, r, raw_dials, day,
+                               fx.get(CS._ck(p, r["number"]), ""),
+                               audiorefs.get(CS._ck(p, r["number"]), [])))
             for p, r in rows if CS._ck(p, r["number"]) in cache]
     rank = {name: i for i, name in enumerate(ROSTER_ORDER)}
     pairs.sort(key=lambda pc: rank.get(pc[0], 99))
-    cards = [c for _, c in pairs]
-    log(f"  coaching cards: {len(cards)} for {day}")
+    all_cards = [c for _, c in pairs]
+    # This list is coaching for new-business opportunities, not a service-desk
+    # log (Frank, 2026-09-14: "If those are pure service calls with no sales
+    # opportunity, they should not be on that coaching list, that is purely
+    # for new business opportunities"). A "mixed" call keeps a real cross-sell
+    # attempt per Core judgment, so only "service" -- pure renewal/payment/
+    # claim/paperwork, per calltype's own definition -- drops here. The read
+    # is still paid for and cached above for every live contact regardless
+    # (COST note up top): this filters what gets DISPLAYED, not what gets
+    # summarized, since calltype isn't known until after the model reads it.
+    cards = [c for c in all_cards if c.get("calltype", ["sales", ""])[0] != "service"]
+    dropped = len(all_cards) - len(cards)
+    log(f"  coaching cards: {len(cards)} for {day}"
+        + (f" ({dropped} pure-service calls filtered out)" if dropped else ""))
     return cards
 
 

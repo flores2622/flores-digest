@@ -85,6 +85,10 @@ export default {
         return getIntraday(env, parts[2]);
       }
 
+      if (parts[1] === "recordings" && parts.length === 4) {
+        return getRecording(request, env, parts[2], parts[3]);
+      }
+
       if (parts[1] === "training" && parts.length === 2) {
         return json(trainingDecks());
       }
@@ -207,6 +211,43 @@ async function getIntraday(env, day) {
       "cache-control": "no-store",
     },
   });
+}
+
+/** GET /api/recordings/:day/:id -> the raw call recording (audio/mpeg),
+ * range-aware so an <audio> element can seek. Reads r2_cache's own
+ * cache/<day>/audio/<id>.mp3 objects -- the same ones call_summary.py's
+ * transcription stage already downloads and, per that module's own
+ * docstring, keeps around without ever deleting them (Frank, 2026-09-14:
+ * "can we start uploading the recording or transcript to the coaching
+ * card" -- they were already durably in R2, just never served anywhere).
+ * `id` is a coaching card's own recording_ids entry (coaching_cards.py),
+ * never user-typed in the UI, but still validated here since it reaches
+ * an R2 key straight from the URL path. */
+async function getRecording(request, env, day, id) {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(day) || !/^[A-Za-z0-9_-]{1,80}$/.test(id)) {
+    return json({ error: "bad day or recording id" }, 400);
+  }
+  const object = await env.BOARD.get(`cache/${day}/audio/${id}.mp3`, { range: request.headers });
+  if (object === null) {
+    return json({ error: "recording not found" }, 404);
+  }
+  const headers = new Headers();
+  headers.set("content-type", "audio/mpeg");
+  headers.set("accept-ranges", "bytes");
+  // Private per Access, not edge-public -- same customer-NPI posture as
+  // every other /api/* route (see this file's own top-of-file notice).
+  headers.set("cache-control", "private, max-age=3600");
+  let status = 200;
+  if (object.range) {
+    const offset = object.range.offset || 0;
+    const length = object.range.length ?? (object.size - offset);
+    headers.set("content-range", `bytes ${offset}-${offset + length - 1}/${object.size}`);
+    headers.set("content-length", String(length));
+    status = 206;
+  } else {
+    headers.set("content-length", String(object.size));
+  }
+  return new Response(object.body, { status, headers });
 }
 
 /** GET /api/leadsources -> {sources: [...]}, AgencyZoom's own lead source
