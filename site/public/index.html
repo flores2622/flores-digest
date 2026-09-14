@@ -694,10 +694,11 @@ let matchAttempts = 0;
 // are stored in R2 (saleslog/<day>.json, site/worker.js) and later matched
 // against real AgencyZoom policies by sales_log_reconcile.py -- an entry
 // that stays unreconciled is the "missing docs / not entered yet" signal.
-let salesDay = null;          // set to today's AZ date on first load
-let salesEntries = [];        // this day's entries, from the last /api/saleslog fetch
+let salesDay = null;          // set to today's AZ date on first load -- still the day a NEW sale is logged against
+let salesEntries = [];        // the current folio's entries (or just salesDay's, if it falls outside any known folio), newest-added first
 let salesProducer = "";       // who's currently logging a sale
 let salesBusy = false;
+let salesLeadSourceCache = null;   // AgencyZoom's own lead source names, fetched once
 
 /* ---- tooltip -------------------------------------------------------------- */
 const tip = $("#tip");
@@ -2213,25 +2214,50 @@ function wireMatch(deck, repaintAll) {
    stays AgencyZoom-derived everywhere else on this board (see
    site/worker.js's postSalesLog docstring). Reconciliation against real
    AgencyZoom policies happens offline; this UI only creates/lists/deletes
-   entries and shows whatever reconciliation status R2 already carries. */
+   entries and shows whatever reconciliation status R2 already carries.
+
+   The log below the form spans the WHOLE current folio, not just today
+   (Frank, 2026-09-14: "I want this folios sales sheet to be displayed,
+   sorted from recently added to oldest added") -- a new sale is still
+   logged against salesDay specifically, but everyone wants to see the
+   whole folio's entries in one place, newest first. Each entry carries its
+   own `day` (from the folio endpoint, or injected here for the single-day
+   fallback) so a delete request targets the right day's R2 key even when
+   that's not today. */
 async function loadSalesLog(day) {
   if (!salesDay) salesDay = isoDate(azTodayDate());
   const d = day || salesDay;
+  const end = folioEndFor(d);
   try {
-    const r = await fetch(`/api/saleslog/${d}`, { cache: "no-store" });
+    const url = end ? `/api/saleslog/folio/${end}` : `/api/saleslog/${d}`;
+    const r = await fetch(url, { cache: "no-store" });
     const body = r.ok ? await r.json() : { entries: [] };
-    salesEntries = body.entries || [];
+    salesEntries = (body.entries || []).map(e => ({ day: d, ...e }))
+      .sort((a, b) => (b.created_at || "").localeCompare(a.created_at || ""));
   } catch (_) { salesEntries = []; }
   return { day: d, entries: salesEntries };
+}
+
+async function loadLeadSources() {
+  if (salesLeadSourceCache) return salesLeadSourceCache;
+  try {
+    const r = await fetch("/api/leadsources", { cache: "no-store" });
+    const body = r.ok ? await r.json() : { sources: [] };
+    salesLeadSourceCache = body.sources || [];
+  } catch (_) { salesLeadSourceCache = []; }
+  return salesLeadSourceCache;
 }
 
 function salesPanel(data) {
   const entries = data.entries || [];
   const producerOpts = [`<option value="">Who's logging?</option>`]
     .concat(PRODUCER_ROSTER.map(p => `<option value="${p}"${p === salesProducer ? " selected" : ""}>${p}</option>`)).join("");
-  const rows = entries.slice().reverse().map(e => `<tr>
+  const sourceOpts = [`<option value="">Lead source</option>`]
+    .concat((salesLeadSourceCache || []).map(s => `<option value="${s}">${s}</option>`)).join("");
+  const rows = entries.map(e => `<tr>
     <td class="name">${e.producer}</td>
     <td>${e.client_name}</td>
+    <td>${e.lead_source || ""}</td>
     <td>${e.policy_number || ""}</td>
     <td>${e.product || ""}</td>
     <td class="num">${e.premium != null ? money(e.premium) : ""}</td>
@@ -2239,7 +2265,7 @@ function salesPanel(data) {
     <td>${e.reconciled
         ? `<span class="chip c-g">confirmed${e.az_source ? " · " + e.az_source : ""}</span>`
         : `<span class="chip c-w">pending</span>`}</td>
-    <td>${e.reconciled ? "" : `<button class="ghost" data-del="${e.id}" type="button">delete</button>`}</td>
+    <td>${e.reconciled ? "" : `<button class="ghost" data-del="${e.id}" data-day="${e.day}" type="button">delete</button>`}</td>
   </tr>`).join("");
 
   return `<div class="sect">
@@ -2249,6 +2275,7 @@ function salesPanel(data) {
     <div class="controls" style="flex-wrap:wrap;gap:10px">
       <select id="salesProdSel">${producerOpts}</select>
       <input id="salesClient" type="text" placeholder="Client name" style="flex:1;min-width:160px">
+      <select id="salesLeadSource">${sourceOpts}</select>
       <input id="salesPolicy" type="text" placeholder="Policy # (if known)" style="width:150px">
       <input id="salesProduct" type="text" placeholder="Product" style="width:140px">
       <input id="salesPremium" type="number" step="0.01" placeholder="Premium" style="width:110px">
@@ -2258,12 +2285,13 @@ function salesPanel(data) {
       <input id="salesNotes" type="text" placeholder="Notes (optional)" style="flex:1">
       <button class="btn" id="salesSubmit" type="button" ${salesBusy ? "disabled" : ""}>Log sale</button>
     </div>
-    <h2 style="margin-top:28px">Today's log</h2>
+    <h2 style="margin-top:28px">This folio's log</h2>
+    <p class="sd">Newest logged first, across every day in the current folio.</p>
     ${entries.length ? `<div class="scroll"><table>
-      <thead><tr><th>Producer</th><th>Client</th><th>Policy #</th><th>Product</th>
+      <thead><tr><th>Producer</th><th>Client</th><th>Lead Source</th><th>Policy #</th><th>Product</th>
         <th class="num">Premium</th><th>Term</th><th>Status</th><th></th></tr></thead>
       <tbody>${rows}</tbody>
-    </table></div>` : '<div class="empty">Nothing logged yet today.</div>'}
+    </table></div>` : '<div class="empty">Nothing logged yet this folio.</div>'}
   </div>`;
 }
 
@@ -2290,6 +2318,7 @@ function wireSalesPanel(data) {
         method: "POST", headers: { "content-type": "application/json" },
         body: JSON.stringify({
           producer, client_name,
+          lead_source: $("#salesLeadSource").value,
           policy_number: $("#salesPolicy").value.trim(),
           product: $("#salesProduct").value.trim(),
           premium: $("#salesPremium").value ? Number($("#salesPremium").value) : null,
@@ -2302,10 +2331,14 @@ function wireSalesPanel(data) {
     salesBusy = false;
     await repaintAll();
   };
+  // Each row's own day (see loadSalesLog), not the fixed salesDay a NEW sale
+  // is logged against -- the folio log below the form can show entries from
+  // any day in the folio, and a delete has to hit the R2 key that entry
+  // actually lives under.
   $$("[data-del]").forEach(b => b.onclick = async () => {
     if (!confirm("Delete this logged sale?")) return;
     try {
-      const r = await fetch(`/api/saleslog/${salesDay}/delete`, {
+      const r = await fetch(`/api/saleslog/${b.dataset.day}/delete`, {
         method: "POST", headers: { "content-type": "application/json" },
         body: JSON.stringify({ id: b.dataset.del }),
       });
@@ -2556,7 +2589,7 @@ async function paint() {
   } else if (view === "sales") {
     $("#topsub").textContent = "log today's sales -- a same-day list, not the official Premium Sold figure";
     v.innerHTML = '<div class="empty">Loading…</div>';
-    const data = await loadSalesLog(salesDay);
+    const [data] = await Promise.all([loadSalesLog(salesDay), loadLeadSources()]);
     v.innerHTML = salesPanel(data);
     wireSalesPanel(data);
   } else {
