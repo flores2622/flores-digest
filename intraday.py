@@ -7,13 +7,14 @@ business-hour check through the day.
 
 WHAT THIS IS, AND IS NOT. This runs the SAME pipeline the 6:30 PM digest does
 -- daily.pull_sources() -> daily.transcribe_day() -> daily.build_metrics() ->
-board_payload.build() -> publish_board.apply_policy_streak() -- stopped
-before anything paid or final: no call_summary.py read, no
-coaching_cards.py read, no email, and it never writes days/<day>.json (the
-finalized document publish_board.publish() writes). Reusing the exact same
-functions the nightly build uses is the whole point -- an intraday number
-can never disagree with the final one on method, only on how much of the
-day has happened yet.
+call_summary.build() -> publish_board.build() (board_payload.build() plus
+coaching_cards.build(), same as the nightly path) -> publish_board.
+apply_policy_streak() -- stopped before only the truly final/one-way steps:
+no missed-call-task creation, no email, and it never writes days/<day>.json
+(the finalized document publish_board.publish() writes). Reusing the exact
+same functions the nightly build uses is the whole point -- an intraday
+number, coaching card included, can never disagree with the final one on
+method, only on how much of the day has happened yet.
 
 THE BOARD RENDERS THIS AS THE WHOLE REPORT, NOT A SEPARATE STRIP (Frank,
 2026-09-12: "I want the whole report uploading in real time"). Before this,
@@ -24,11 +25,24 @@ pre-finalization reading forever, including the pull_sources() staleness
 bug's 0-dial readings on days it hit. Now the frontend's loadDay() falls
 back to /api/intraday/<day> whenever /api/days/<day> 404s (i.e. the day
 hasn't finalized yet) and renders the SAME leaderboard/task-completion/
-outcomes/etc. panels from it unchanged, since the document this module
-publishes is board_payload.build()'s exact shape. The two things it is
-still missing -- coaching_cards.py's cards and call_summary.py's call
-reads, both paid -- degrade gracefully: the Coaching tab already has a
-"stats only" fallback for a document with no `calls` array.
+outcomes/coaching/etc. panels from it unchanged, since the document this
+module publishes is publish_board.build()'s exact shape.
+
+CALL SUMMARIES AND COACHING CARDS NOW RUN HERE TOO (Frank, 2026-09-14: "I
+have live contacts and data, but no coaching cards, how do we get that to
+be generated in those runs"). Originally deferred to the once-a-night
+build -- coaching_cards.build()'s own row filter needs summary.source ==
+"recording", which only call_summary.build() ever sets, so skipping one
+meant skipping both. Both are cached per (producer, number) in
+data/callsum_<day>.json / data/coaching_cards_<day>.json, both already
+round-tripped through r2_cache same as everything else this module
+touches, so a live contact gets read ONCE across the whole day's
+checkpoints combined, same total paid cost as reading it all at once
+at 6:30 PM -- this only changes WHEN in the day that cost lands, not
+how much of it there is. A read failing (no API key, a bad call) must
+never block the checkpoint's numbers from publishing, so both are
+wrapped to degrade gracefully -- see run()'s try/except and
+publish_board.build()'s own docstring.
 
 WHY THIS CAN RUN AT EACH CHECKPOINT AT THE SAME TOTAL COST AS ONCE A NIGHT
 (Frank, 2026-09-10). r2_cache (see that module's docstring) makes every input
@@ -62,7 +76,6 @@ import datetime as dt
 import json
 import sys
 
-import board_payload
 import daily
 import publish_board
 import sanity_gate
@@ -90,10 +103,24 @@ def run(day, dry_run=False):
     daily.ensure_model()
     daily.transcribe_day(day, outbound_only=True)
     daily.build_metrics(day)
-    doc = board_payload.build(day)
+
+    # Populates summary.source == "recording" on each call_detail row, which
+    # coaching_cards.build() (called inside publish_board.build() below)
+    # filters on -- skip this and every card silently has nothing to
+    # generate from, however many live contacts there are. Never allowed to
+    # block the checkpoint's numbers: a failure here means this checkpoint's
+    # cards are missing or stale, not that dials/premium/etc. don't publish.
+    try:
+        import call_summary
+        call_summary.build(day, log=log)
+    except Exception as e:
+        log(f"  call summaries: failed ({type(e).__name__}: {e}) -- "
+            f"coaching cards will be missing or stale this checkpoint")
+
+    doc = publish_board.build(day, log=log)
     # Free (R2 reads only, no paid API), so the live board's Policies/Premium
     # Sold columns get the same sale-streak colouring as the finalized one
-    # instead of going uncoloured until tonight -- board_payload.build() alone
+    # instead of going uncoloured until tonight -- publish_board.build() alone
     # can't do this itself, it needs prior days' documents from R2.
     publish_board.apply_policy_streak(doc, cli, bucket, log=log)
 
