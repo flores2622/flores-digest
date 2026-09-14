@@ -401,6 +401,23 @@ def build(day, log=print):
     legs = _audio_legs(day)
     rows = [(p, r) for p, v in M["producers"].items() for r in v["call_detail"]]
     todo = [(p, r) for p, r in rows if _ck(p, r["number"]) not in sm]
+
+    # recording_ids: the raw RingCentral call id(s) (data/audio/<id>.mp3,
+    # r2_cache's cache/<day>/audio/<id>.mp3) actually used for this row's
+    # transcript, same legs _wanted() picked -- so the board can offer a
+    # "listen to this call" link per card (Frank, 2026-09-14). A pure
+    # function of `legs`, recomputed every run regardless of the fx/sm
+    # cache state above: cheap (no transcription, no model call), and it
+    # means a day whose calls were already fully cached before this
+    # existed still backfills recording_ids on its next rebuild, as long
+    # as data/transcripts_<day>.json is still on disk.
+    audiorefs = {}
+    for p, r in rows:
+        want = _wanted(legs.get((p, r["number"]), []))
+        ids = [pathlib.Path(path).stem for path, *_ in want]
+        if ids:
+            audiorefs[_ck(p, r["number"])] = ids
+    (ROOT / f"data/audiorefs_{day}.json").write_text(json.dumps(audiorefs))
     if not todo:
         # Everything is cached. Do NOT return here: build_metrics rewrites
         # metrics_<day>.json from scratch on every run, so the summaries have

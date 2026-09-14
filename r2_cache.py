@@ -20,10 +20,11 @@ WHAT LIVES HERE, AND WHAT DOES NOT.
 
   DAY-SCOPED (cache/<day>/<name>.json), safe to reuse across separate runs
   on the SAME day: rc_raw, rc_window, transcripts, fulltx, callsum,
-  coaching_cards, metrics, az_service_tickets, az_tasks. All either day-locked
-  snapshots or keyed per-call/per-lead, so re-using an earlier run's copy and
-  only fetching what changed is always correct, never stale in a way that
-  matters -- rc_raw/rc_window/az_service_tickets/az_tasks are still refreshed
+  coaching_cards, metrics, az_service_tickets, az_tasks, audiorefs. All
+  either day-locked snapshots or keyed per-call/per-lead, so re-using an
+  earlier run's copy and only fetching what changed is always correct,
+  never stale in a way that matters -- rc_raw/rc_window/az_service_tickets/
+  az_tasks are still refreshed
   ON TOP of the cached copy while the day is in progress (see intraday.py and
   hourly.refresh_call_log/refresh_window), never served untouched.
 
@@ -62,6 +63,7 @@ DAY_FILES = [
     "rc_raw_{day}.json", "rc_window_{day}.json", "transcripts_{day}.json",
     "fulltx_{day}.json", "callsum_{day}.json", "coaching_cards_{day}.json",
     "metrics_{day}.json", "az_service_tickets_{day}.json", "az_tasks_{day}.json",
+    "audiorefs_{day}.json",
 ]
 
 
