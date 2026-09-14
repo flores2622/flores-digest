@@ -279,6 +279,18 @@ def apply_policy_streak(doc, cli, bucket, log=print):
             row["ps"] = digest_config.tier("premium_sold_per_policy", per)
         else:
             row["ps"] = pol_tier
+
+    # Team "ps", the same premium_sold_per_policy RATE the per-producer rows
+    # above use, unscaled -- a per-policy dollar figure doesn't grow with
+    # headcount the way a raw count does, so there is no "x5" version of it
+    # (Frank, 2026-09-12: "rate stats stay the same"). Team "pol" has no
+    # equivalent: the per-producer colour there is the sale STREAK, which has
+    # no team-wide analogue without tracking a team streak nobody has asked
+    # for -- left uncoloured on purpose rather than inventing one.
+    T = doc.get("totals") or {}
+    if T.get("pol"):
+        per = (T.get("ps") or 0) / T["pol"]
+        tiers.setdefault("team", {})["ps"] = digest_config.tier("premium_sold_per_policy", per)
     return doc
 
 
