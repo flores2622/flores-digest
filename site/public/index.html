@@ -263,7 +263,13 @@ h2 {
    overflow-x:auto still handles a table wider than its now-truly-equal
    column, same as it already does outside this grid. Collapses to one
    column under the same width other narrow layouts in this file use. */
-.digestgrid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 20px; align-items: start; }
+/* margin-top matches .sect's own inter-section gap (24px) -- .digestgrid
+   itself isn't a .sect, so it never got that spacing, and the FIRST .sect
+   inside each column is deliberately zeroed by .sect:first-of-type (it's a
+   true first div-sibling there), so without this the Team Leaderboard box
+   above sat flush against the grid below it (Frank, 2026-09-14: "space
+   between leaderboard and the boxes under it just like the rest"). */
+.digestgrid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 20px; align-items: start; margin-top: 24px; }
 @media (max-width: 720px) { .digestgrid { grid-template-columns: 1fr; } }
 
 /* Stat tiles. */
