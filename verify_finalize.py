@@ -2,6 +2,22 @@
 
 Every figure is recomputed independently from day_calls, then compared with
 what finalize.apply() wrote into metrics.
+
+SAME-DAY ONLY (Frank, 2026-09-14, after 2026-09-11 showed 12 "mismatches"
+that were nothing of the kind). day_calls.classify() reads
+data/az_leads_all.json and data/az_customers_all.json, and r2_cache.py's own
+docstring says why those two are DELIBERATELY NOT day-scoped or cached:
+daily.pull_sources() always fetches them fresh. That is correct for building
+TODAY's report, but it means there is no way to recover the exact leads/
+customers snapshot a past day was originally built against -- re-running
+classify() for an old day just uses whatever corpus happens to be on disk
+now. Every one of 2026-09-11's 12 mismatches traced to a number that
+genuinely resolved to a lead or customer record at build time and genuinely
+does not anymore (reassigned, merged, converted, a service task's due date
+moved on) -- not a bug in the published day. This is the exact same
+point-in-time hazard CLAUDE.md already documents for service tickets,
+just unguarded here. Warn loudly rather than print a confusing mismatch
+list for anyone who reaches for this days later, the way this session did.
 """
 import json, sys, collections, datetime as dt
 import os, pathlib
@@ -14,9 +30,17 @@ import day_calls
 # silently reconciled a stale file whenever anyone ran it against a newer build
 # (HANDOFF_11 s7). Takes the day as an argument now, defaulting to today in
 # Arizona, which is what the nightly build reports.
-DAY = (sys.argv[1] if len(sys.argv) > 1 else
-       (dt.datetime.now(dt.timezone.utc) - dt.timedelta(hours=7)).date().isoformat())
+TODAY_AZ = (dt.datetime.now(dt.timezone.utc) - dt.timedelta(hours=7)).date().isoformat()
+DAY = sys.argv[1] if len(sys.argv) > 1 else TODAY_AZ
 print(f"reconciling {DAY}")
+if DAY != TODAY_AZ:
+    print(f"  WARNING: {DAY} is not today ({TODAY_AZ}) -- az_leads_all.json/"
+          f"az_customers_all.json are never day-scoped, so any mismatch below "
+          f"may just mean a lead or customer record has changed since {DAY} "
+          f"was built, not that the published day is wrong. Only a mismatch "
+          f"you can trace to something OTHER than a lead/customer/service-task "
+          f"lookup (e.g. avg_talk, live, or a raw dial-count difference) "
+          f"points at a real bug.")
 
 M = json.load(open(f'data/metrics_{DAY}.json'))
 rows = day_calls.classify(DAY)
