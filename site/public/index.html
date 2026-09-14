@@ -2265,6 +2265,14 @@ function docsSignedOpts(selected) {
 // All three are editable in place, on any entry including reconciled ones,
 // via /api/saleslog/:day/track -- paperwork status is independent of
 // whether AgencyZoom has caught up to the sale itself.
+// Same DOT palette as everywhere else on the board (Frank, 2026-09-14:
+// "match all the coloring and the highlight based on producer sold") --
+// the picker itself is tinted to the chosen producer's colour, and every
+// logged row's Producer cell gets the same pbadge every other table uses.
+function prodSelStyle(name) {
+  const color = DOT[name] || "";
+  return color ? `background:${color};color:${badgeTextColor(color)}` : "";
+}
 function salesPanel(data) {
   const entries = data.entries || [];
   const producerOpts = [`<option value="">Who's logging?</option>`]
@@ -2274,7 +2282,7 @@ function salesPanel(data) {
   const rows = entries.map(e => `<tr>
     <td><input type="checkbox" data-track="az_profile" data-id="${e.id}" data-day="${e.day}" ${e.az_profile ? "checked" : ""}></td>
     <td><select data-track="docs_signed" data-id="${e.id}" data-day="${e.day}">${docsSignedOpts(e.docs_signed || "")}</select></td>
-    <td class="name">${e.producer}</td>
+    <td class="name"><span class="who">${pbadge(DOT[e.producer] || "#8a877f", e.producer)}</span></td>
     <td>${e.client_name}</td>
     <td>${e.lead_source || ""}</td>
     <td>${e.policy_number || ""}</td>
@@ -2295,7 +2303,7 @@ function salesPanel(data) {
     <div class="controls" style="flex-wrap:wrap;gap:10px;align-items:center">
       <label style="display:flex;align-items:center;gap:5px;font-size:12.5px"><input id="salesAzProfile" type="checkbox"> AZ Profile</label>
       <select id="salesDocsSigned">${docsSignedOpts("")}</select>
-      <select id="salesProdSel">${producerOpts}</select>
+      <select id="salesProdSel" style="${prodSelStyle(salesProducer)}">${producerOpts}</select>
       <input id="salesClient" type="text" placeholder="Client name" style="flex:1;min-width:160px">
       <select id="salesLeadSource">${sourceOpts}</select>
       <input id="salesPolicy" type="text" placeholder="Policy # (if known)" style="width:150px">
@@ -2325,7 +2333,10 @@ function wireSalesPanel(data) {
     wireSalesPanel(fresh);
   };
   const prodSel = $("#salesProdSel");
-  if (prodSel) prodSel.onchange = () => { salesProducer = prodSel.value; };
+  if (prodSel) prodSel.onchange = () => {
+    salesProducer = prodSel.value;
+    prodSel.style.cssText = prodSelStyle(salesProducer);
+  };
   const submit = $("#salesSubmit");
   if (submit) submit.onclick = async () => {
     const producer = $("#salesProdSel").value;
