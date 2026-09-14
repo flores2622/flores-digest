@@ -28,6 +28,13 @@ ROOT = pathlib.Path(__file__).resolve().parent
 MODEL_URL = ("https://github.com/k2-fsa/sherpa-onnx/releases/download/"
              "asr-models/sherpa-onnx-whisper-base.tar.bz2")
 
+# How many recordings transcribe_day() downloads before checkpointing progress
+# to r2_cache (Frank, 2026-09-14). At the 8/min throttle this is ~2.5 minutes
+# between pushes -- frequent enough that a business-hour checkpoint's cold
+# container, killed at any point, hands the next one only a couple of
+# minutes' worth of re-work instead of the whole day's downloads.
+DOWNLOAD_CHECKPOINT = 20
+
 
 def log(*a):
     print(f"[{dt.datetime.now(AZ):%H:%M:%S}]", *a, flush=True)
@@ -214,6 +221,7 @@ def transcribe_day(day, outbound_only=False):
     skips it and still lands the expensive part: the recordings.
     """
     import transcribe
+    import r2_cache
     from digest_config import PRODUCERS
     from rc_client import RingCentral, owner_ext_id
 
@@ -226,7 +234,20 @@ def transcribe_day(day, outbound_only=False):
     todo = [r for r in recs if r["id"] not in done]
     if todo:
         log(f"downloading {len(todo)} recordings (throttled)...")
-        transcribe.download(todo, RingCentral().token(), log=log)
+        # CHECKPOINTED, not one call for the whole list (Frank, 2026-09-14:
+        # "what happened to the intraday runs"). A business-hour checkpoint
+        # is a fresh cold container (HOURLY_RUNS.md), and this download alone
+        # measured ~14 minutes for 112 recordings on 2026-09-14 -- every one
+        # of that day's five earlier checkpoints died somewhere in here and,
+        # since r2_cache.sync_up_day was only ever called once the whole
+        # function returned, pushed NOTHING back, so the next checkpoint
+        # re-downloaded all 112 from zero. Pushing what landed on disk every
+        # DOWNLOAD_CHECKPOINT recordings means a checkpoint cut off mid-
+        # download still hands the next one a head start instead of nothing.
+        token = RingCentral().token()
+        for i in range(0, len(todo), DOWNLOAD_CHECKPOINT):
+            transcribe.download(todo[i:i + DOWNLOAD_CHECKPOINT], token, log=log)
+            r2_cache.sync_up_day(day, log=log)
         log("transcribing...")
         for i, r in enumerate(todo):
             txt = transcribe.transcribe_file(f"data/audio/{r['id']}.mp3",
@@ -245,6 +266,9 @@ def transcribe_day(day, outbound_only=False):
             out_f.write_text(json.dumps(done))
             if (i + 1) % 25 == 0:
                 log(f"  {i + 1}/{len(todo)}")
+                # Same checkpoint reasoning as the download loop above --
+                # push transcribed progress too, not just at the very end.
+                r2_cache.sync_up_day(day, log=log)
 
     if not outbound_only:
         # --- inbound -------------------------------------------------------
@@ -308,8 +332,8 @@ def transcribe_day(day, outbound_only=False):
     # Recordings and the transcripts they produced are the whole reason this
     # module exists (RingCentral's throttled media endpoint) -- push them now
     # so the NEXT run, cold container or not, never re-downloads or
-    # re-transcribes anything already done here.
-    import r2_cache
+    # re-transcribes anything already done here. (Also checkpointed mid-loop
+    # above now, not just here -- see that comment.)
     r2_cache.sync_up_day(day, log=log)
     return done
 

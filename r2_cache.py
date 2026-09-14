@@ -156,9 +156,18 @@ def sync_up_day(day, log=print):
                        ContentType="application/json")
         pushed.append(fname)
 
-    tpath = ROOT / "data" / f"transcripts_{day}.json"
-    if tpath.exists():
-        ids = set(json.loads(tpath.read_text()).keys())
+    # Keyed off rc_raw_<day>.json's own recording ids, not transcripts_<day>.json's
+    # -- a strict superset, so a recording that DOWNLOADED but has not been
+    # TRANSCRIBED yet still gets pushed (Frank, 2026-09-14: "what happened to
+    # the intraday runs" -- every business-hour checkpoint is a fresh cold
+    # container per HOURLY_RUNS.md's own finding, and the ~14-minute download
+    # phase is by far the likeliest place for one to run out of time before
+    # this function's caller ever reaches its OWN sync_up_day call. Keying on
+    # transcripts.json meant a checkpoint killed mid-download pushed nothing
+    # at all, so the next one paid to re-download every recording from zero.
+    rc_path = ROOT / "data" / f"rc_raw_{day}.json"
+    if rc_path.exists():
+        ids = {r["id"] for r in json.loads(rc_path.read_text()) if r.get("id")}
         # Only upload ids not already in R2, one LIST instead of one HEAD per
         # file -- keeps a repeated push from re-sending the same megabytes of
         # audio an earlier check already sent.
