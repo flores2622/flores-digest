@@ -92,6 +92,30 @@ def day_is_finalized(day, cli=None, bucket=None):
         return False
 
 
+def publish_lead_sources(cli=None, bucket=None, log=print):
+    """The full set of AgencyZoom lead source names, as a plain sorted list --
+    powers the Sales tab's Lead Source dropdown (Frank, 2026-09-14: "which
+    should be a dropdown with the lead sources from agency zoom", not free
+    text). Reads data/az_leads_all.json, which daily.pull_sources() already
+    force-refetches fresh on every call (both the nightly build and every
+    intraday.py checkpoint) -- called from there so this list is at most as
+    stale as the corpus itself, never staler.
+
+    Names only, not leadSourceId: the Sales tab's dropdown value has to be
+    something a human typed on a form is comparing against, and AgencyZoom's
+    own id numbering means nothing to a producer filling this in."""
+    import digest_config as cfg
+    leads = json.loads((ROOT / "data/az_leads_all.json").read_text())
+    names = sorted({n for n in cfg.lead_source_map(leads).values() if n})
+    if cli is None:
+        cli, bucket = _client()
+    body = json.dumps({"sources": names}).encode()
+    cli.put_object(Bucket=bucket, Key="leadsources.json", Body=body,
+                   ContentType="application/json", CacheControl="no-store")
+    log(f"  lead sources: {len(names)} -> r2://{bucket}/leadsources.json")
+    return names
+
+
 def publish_intraday(day, doc, flags, cli=None, bucket=None, log=print):
     """Write the day's latest intraday snapshot. Never touches days/<day>.json
     -- this is a SEPARATE key, read by a separate Worker route, so an

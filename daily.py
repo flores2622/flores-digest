@@ -147,6 +147,17 @@ def pull_sources(day):
         log(f"{name}...")
         (ROOT / f"data/{name}.json").write_text(json.dumps(fn()))
 
+    # Powers the Sales tab's Lead Source dropdown (Frank, 2026-09-14) --
+    # piggybacks on the leads corpus just refetched above, so this list is
+    # never staler than it is. Never allowed to fail the day's build: this
+    # is a UI convenience, not a reported figure.
+    try:
+        import publish_board
+        publish_board.publish_lead_sources(log=log)
+    except Exception as e:
+        log(f"  lead sources: publish failed ({type(e).__name__}: {e}) -- "
+            f"Sales tab dropdown falls back to empty until the next run")
+
     # Day-scoped: this is a snapshot of what is OPEN, so it has to be
     # re-pulled each day -- and, per refresh_today above, again within the
     # same in-progress day, not just once. Cached under a bare name it would

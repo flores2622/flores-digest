@@ -89,6 +89,10 @@ export default {
         return json(trainingDecks());
       }
 
+      if (parts[1] === "leadsources" && parts.length === 2) {
+        return getLeadSources(env);
+      }
+
       if (parts[1] === "roleplay") {
         if (parts[2] === "turn" && request.method === "POST") {
           return roleplayTurn(request, env);
@@ -101,6 +105,11 @@ export default {
         }
       }
 
+      if (parts[1] === "saleslog" && parts[2] === "folio" && parts[3] && parts.length === 4
+          && request.method === "GET") {
+        return getSalesLogFolio(env, parts[3]);
+      }
+
       if (parts[1] === "saleslog" && parts[2] && /^\d{4}-\d{2}-\d{2}$/.test(parts[2])) {
         const day = parts[2];
         if (parts.length === 3 && request.method === "GET") {
@@ -111,6 +120,9 @@ export default {
         }
         if (parts.length === 4 && parts[3] === "delete" && request.method === "POST") {
           return deleteSalesLogEntry(request, env, day);
+        }
+        if (parts.length === 4 && parts[3] === "track" && request.method === "POST") {
+          return trackSalesLogEntry(request, env, day);
         }
       }
       return json({ error: "not found" }, 404);
@@ -197,6 +209,26 @@ async function getIntraday(env, day) {
   });
 }
 
+/** GET /api/leadsources -> {sources: [...]}, AgencyZoom's own lead source
+ * names -- powers the Sales tab's Lead Source dropdown (Frank, 2026-09-14:
+ * "which should be a dropdown with the lead sources from agency zoom", not
+ * free text). Written by publish_board.publish_lead_sources(), refreshed
+ * every time pull_sources() runs (daily.py's nightly build and every
+ * intraday.py checkpoint alike) since that's also when the lead corpus
+ * itself gets force-refetched. Empty list, not an error, if nothing has
+ * published it yet -- the dropdown just renders with nothing but the
+ * placeholder option. */
+async function getLeadSources(env) {
+  const obj = await env.BOARD.get("leadsources.json");
+  if (obj === null) return json({ sources: [] });
+  return new Response(obj.body, {
+    headers: {
+      "content-type": "application/json; charset=utf-8",
+      "cache-control": "no-store",
+    },
+  });
+}
+
 function salesLogKey(day) { return `saleslog/${day}.json`; }
 
 /** GET /api/saleslog/:day -> {day, entries: [...]}, [] if nobody has logged
@@ -212,8 +244,90 @@ async function getSalesLog(env, day) {
   });
 }
 
-/** POST /api/saleslog/:day {producer, client_name, policy_number, product,
- * premium, term, notes} -> the created entry.
+// Mirrors digest_config.FOLIO_CLOSE_DATES (site/public/index.html has its own
+// copy too, for the date picker) -- a folio period doesn't align to calendar
+// months, so it can't be derived, only listed. Extend this array the same
+// day that file's copy is extended.
+const FOLIO_CLOSE_DATES = [
+  "2026-01-20", "2026-02-18", "2026-03-18", "2026-04-17",
+  "2026-05-19", "2026-06-18", "2026-07-17", "2026-08-19",
+  "2026-09-18", "2026-10-19", "2026-11-17", "2026-12-17",
+];
+function folioEndFor(day) {
+  return FOLIO_CLOSE_DATES.find(end => day <= end) || null;
+}
+function folioStartFor(end) {
+  const i = FOLIO_CLOSE_DATES.indexOf(end);
+  if (i <= 0) return null;   // first folio on file, or not a real close date
+  const d = new Date(FOLIO_CLOSE_DATES[i - 1] + "T00:00:00Z");
+  d.setUTCDate(d.getUTCDate() + 1);
+  return d.toISOString().slice(0, 10);
+}
+
+/** GET /api/saleslog/folio/:end -> every saleslog entry logged within the
+ * folio ending on `end`, across every day in it, newest-added first (Frank,
+ * 2026-09-14: "I want this folios sales sheet to be displayed, sorted from
+ * recently added to oldest added").
+ *
+ * Computed at request time, not built nightly like months/folios rollups
+ * (publish_board.publish_month/_folio): a sales log entry can be added any
+ * moment during the day, so a pre-built rollup would go stale the instant
+ * someone logs a sale. A folio is at most ~4 weeks, so this is at most ~28
+ * R2 reads per request -- cheap, and nobody is hitting this tab hard enough
+ * to matter. Each entry carries its own `day` (which key it came from) since
+ * a flat merged list would otherwise lose that. */
+async function getSalesLogFolio(env, end) {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(end) || !FOLIO_CLOSE_DATES.includes(end)) {
+    return json({ error: "bad folio end date" }, 400);
+  }
+  const start = folioStartFor(end);
+  const days = [];
+  if (start) {
+    for (let d = new Date(start + "T00:00:00Z"), endD = new Date(end + "T00:00:00Z");
+         d <= endD; d.setUTCDate(d.getUTCDate() + 1)) {
+      days.push(d.toISOString().slice(0, 10));
+    }
+  } else {
+    // Unbounded start (this is the first folio FOLIO_CLOSE_DATES knows about)
+    // -- walk back from `end` a generous 45 days rather than the whole R2
+    // bucket's history, same spirit as publish_board._policy_streaks' own cap.
+    for (let d = new Date(end + "T00:00:00Z"), i = 0; i < 45; i++, d.setUTCDate(d.getUTCDate() - 1)) {
+      days.push(d.toISOString().slice(0, 10));
+    }
+  }
+
+  const entries = [];
+  for (const day of days) {
+    const obj = await env.BOARD.get(salesLogKey(day));
+    if (!obj) continue;
+    const doc = JSON.parse(await obj.text());
+    for (const e of doc.entries || []) entries.push({ ...e, day });
+  }
+  entries.sort((a, b) => (b.created_at || "").localeCompare(a.created_at || ""));
+  return json({
+    folio_start: start,
+    folio_end: end,
+    entries,
+  });
+}
+
+// The Docs Signed dropdown's exact options, taken from the real Google
+// "Sales" sheet's own column (Frank, 2026-09-14: "use the exact options
+// from the dropdown on the sales sheet") -- measured directly off 102 real
+// rows across two folios rather than guessed: "Docs + Paperless" (41),
+// "Producer 1".."Producer 6" (49 combined -- a real, actively-used part of
+// the vocabulary, not a fluke), "Paperless" (5), blank (3, the two producer
+// names seen once or twice each look like manual typos into the wrong
+// column, not real dropdown values, and are deliberately not carried over
+// as options). Blank is the default/unset ("pending") state -- nothing in
+// 102 rows ever spelled "Pending" outright, they just left it blank until
+// it was one of these.
+const DOCS_SIGNED_OPTIONS = ["", "Paperless", "Docs + Paperless",
+  "Producer 1", "Producer 2", "Producer 3", "Producer 4", "Producer 5", "Producer 6"];
+
+/** POST /api/saleslog/:day {producer, client_name, lead_source,
+ * policy_number, product, premium, term, notes, az_profile, docs_signed,
+ * review_sent} -> the created entry.
  *
  * A same-day, self-reported log (Frank, 2026-09-12: "I want a sales tab
  * where they go in and enter their sales for the day") -- explicitly NOT
@@ -225,7 +339,13 @@ async function getSalesLog(env, day) {
  * to use AgencyZoom's source rather than any manually-typed one) --
  * never the other direction, so this can never become a second place to
  * edit a real sale's numbers. An entry that stays unreconciled is exactly
- * the "missing docs / not entered yet" signal that script also acts on. */
+ * the "missing docs / not entered yet" signal that script also acts on.
+ *
+ * az_profile/docs_signed/review_sent mirror the real Sales sheet's own
+ * AZ Profile, Docs signed and Review Sent columns (Frank, 2026-09-14) --
+ * tracked independently of reconciled, since paperwork status has nothing
+ * to do with whether AgencyZoom has caught up to the sale itself; see
+ * updateSalesLogEntry, which is what changes them after creation. */
 async function postSalesLog(request, env, day) {
   let body;
   try {
@@ -239,10 +359,12 @@ async function postSalesLog(request, env, day) {
     return json({ error: "producer and client_name are required" }, 400);
   }
   const premiumNum = Number(body.premium);
+  const docsSigned = String(body.docs_signed || "");
   const entry = {
     id: crypto.randomUUID(),
     producer,
     client_name,
+    lead_source: String(body.lead_source || "").trim().slice(0, 100),
     policy_number: String(body.policy_number || "").trim().slice(0, 60),
     product: String(body.product || "").trim().slice(0, 80),
     premium: Number.isFinite(premiumNum) ? premiumNum : null,
@@ -252,6 +374,9 @@ async function postSalesLog(request, env, day) {
     reconciled: false,
     az_policy_number: null,
     az_source: null,
+    az_profile: Boolean(body.az_profile),
+    docs_signed: DOCS_SIGNED_OPTIONS.includes(docsSigned) ? docsSigned : "",
+    review_sent: Boolean(body.review_sent),
   };
   const key = salesLogKey(day);
   const existing = await env.BOARD.get(key);
@@ -261,6 +386,42 @@ async function postSalesLog(request, env, day) {
     httpMetadata: { contentType: "application/json" },
   });
   return json({ entry });
+}
+
+/** POST /api/saleslog/:day/track {id, az_profile?, docs_signed?,
+ * review_sent?} -> the updated entry. Changes ONLY these three tracking
+ * fields, never the sale record itself (producer/client/premium/etc, or
+ * reconciled/az_policy_number/az_source, which only sales_log_reconcile.py
+ * may ever set) -- and works on a RECONCILED entry too, unlike delete:
+ * a policy can be confirmed in AgencyZoom while its paperwork is still
+ * pending signature, so these three are independent of reconciliation
+ * (Frank, 2026-09-14: "it should be able to be interactive... when they
+ * get signed later they should be able to change it"). */
+async function trackSalesLogEntry(request, env, day) {
+  let body;
+  try {
+    body = await request.json();
+  } catch (_) {
+    return json({ error: "bad request body" }, 400);
+  }
+  const id = String(body.id || "");
+  const key = salesLogKey(day);
+  const existing = await env.BOARD.get(key);
+  if (!existing) return json({ error: "no entries for this day" }, 404);
+  const doc = JSON.parse(await existing.text());
+  const target = doc.entries.find((e) => e.id === id);
+  if (!target) return json({ error: "entry not found" }, 404);
+  if ("az_profile" in body) target.az_profile = Boolean(body.az_profile);
+  if ("review_sent" in body) target.review_sent = Boolean(body.review_sent);
+  if ("docs_signed" in body) {
+    const v = String(body.docs_signed || "");
+    if (!DOCS_SIGNED_OPTIONS.includes(v)) return json({ error: "bad docs_signed value" }, 400);
+    target.docs_signed = v;
+  }
+  await env.BOARD.put(key, JSON.stringify(doc), {
+    httpMetadata: { contentType: "application/json" },
+  });
+  return json({ entry: target });
 }
 
 /** POST /api/saleslog/:day/delete {id} -- removes one entry (e.g. a typo'd
