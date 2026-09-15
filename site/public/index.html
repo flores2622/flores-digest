@@ -1240,14 +1240,19 @@ function secsToHHMM(s) {
    days") -- no separate, thinner aggregate renderer that could drift
    from what a single day actually shows.
 
-   Deliberately OMITS tiers, leaderboard.order/points, policy_streak and
-   recontact -- those are computed server-side (board_payload.py) against
-   ONE day's thresholds/point rules, which have no client-side equivalent
-   to recompute over an arbitrary range. Every renderer that reads them
-   already degrades gracefully without them: the tc()/tt() tier-color
-   helpers fall back to no color, teamLeaderboardHtml falls back to
-   producers[] order with no podium/medals, and polTitle() falls back to
-   "no sale on record" -- confirmed by reading each one, not assumed.
+   Tiers ARE recomputed for the range (Frank, 2026-09-15: "rates and
+   percentages should stay the same, and the quantity stats should be
+   tiered by multiplying the daily goal by the number of BUSINESS days
+   being filtered") -- see rangeProducerTiers/rangeTeamTiers just below,
+   a straight JS mirror of digest_config.THRESHOLDS/tier() and
+   board_payload._producer_tiers/_team_tiers. Still OMITTED: leaderboard.
+   order/points and policy_streak coloring, which aren't goal thresholds
+   at all -- one's a ranked-points system, the other a day-to-day sale
+   streak -- and have no meaning stretched across a range. Every renderer
+   that reads them already degrades gracefully without them:
+   teamLeaderboardHtml falls back to producers[] order with no podium/
+   medals, and polTitle() falls back to "no sale on record" -- confirmed
+   by reading each one, not assumed.
 
    Talk time, utilization and Coach AI score/sentiment are all reweighted
    from the underlying totals (seconds, call counts), not averaged day to
@@ -1266,6 +1271,70 @@ function median(arr) {
   const s = [...arr].sort((a, b) => a - b);
   const mid = Math.floor(s.length / 2);
   return s.length % 2 ? s[mid] : Math.round((s[mid - 1] + s[mid]) / 2);
+}
+
+// Mirrors digest_config.THRESHOLDS/tier()/TEAM_SCALE -- update this in
+// lockstep if that file's copy ever changes, same obligation
+// COACH_BAR_RANGES above already carries. premium_sold_per_policy and
+// speed_to_dial_min are omitted: Policies/Premium Sold colour on the sale
+// streak instead (apply_policy_streak, day-relative, not a goal -- not
+// reproduced here), and nothing renders a tier off Speed to Dial today.
+const THRESHOLDS = {
+  call_volume: { green: 50, yellow: 40 },
+  avg_talk_min: { green: 7, yellow: 3 },
+  contact_rate_pct: { green: 13, yellow: 10 },
+  households_quoted: { green: 5, yellow: 2 },
+  premium_quoted_per_hh: { green: 900, yellow: 501 },
+  task_completion_pct: { green: 100, yellow: 90 },
+  utilization_pct: { green: 85, yellow: 80 },
+  roleplay_score: { green: 80, yellow: 0 },
+};
+const TEAM_SCALE = 5; // digest_config.TEAM_SCALE == len(PRODUCERS)
+function tierColor(metric, value) {
+  const t = THRESHOLDS[metric];
+  if (value == null) return "red";
+  if (metric === "task_completion_pct") return value >= 100 ? "green" : value >= t.yellow ? "yellow" : "red";
+  return value >= t.green ? "green" : value >= t.yellow ? "yellow" : "red";
+}
+// `businessDays` scales the goal for the two straight-COUNT metrics (call
+// volume, households quoted) -- a rate or percentage needs no such scaling,
+// it's the same goal whether the range is one day or thirty.
+function rangeProducerTiers(p, businessDays) {
+  const hh = p.hh || 0;
+  const pqPer = hh ? (p.pq || 0) / hh : 0;
+  const out = {
+    dials: tierColor("call_volume", (p.dials || 0) / businessDays),
+    talk: tierColor("avg_talk_min", (p.talk || 0) / 60),
+    rate: tierColor("contact_rate_pct", p.rate || 0),
+    hh: tierColor("households_quoted", hh / businessDays),
+    pq: tierColor("premium_quoted_per_hh", pqPer),
+  };
+  if (p.util != null) out.util = tierColor("utilization_pct", p.util);
+  out.roleplay = tierColor("roleplay_score", (p.coach || {}).roleplay || null);
+  const tp = (p.tasks || {}).pct;
+  if (tp != null) out.tasks = tierColor("task_completion_pct", tp || 0);
+  return out;
+}
+function rangeTeamTiers(totals, producers, businessDays) {
+  const scale = TEAM_SCALE * businessDays;
+  const hh = totals.hh || 0;
+  const live = producers.reduce((s, p) => s + (p.live || 0), 0);
+  const talkSecs = producers.reduce((s, p) => s + (p.talk || 0) * (p.live || 0), 0);
+  const teamTalk = live ? Math.floor(talkSecs / live) : 0;
+  const pqPer = hh ? (totals.pq || 0) / hh : 0;
+  const out = {
+    dials: tierColor("call_volume", (totals.dials || 0) / scale),
+    talk: tierColor("avg_talk_min", teamTalk / 60),
+    rate: tierColor("contact_rate_pct", totals.rate || 0),
+    hh: tierColor("households_quoted", hh / scale),
+    pq: tierColor("premium_quoted_per_hh", pqPer),
+  };
+  if (totals.util != null) out.util = tierColor("utilization_pct", totals.util);
+  const recorded = producers.map(p => (p.coach || {}).roleplay).filter(Boolean);
+  out.roleplay = tierColor("roleplay_score", recorded.length ? recorded.reduce((a, b) => a + b, 0) / recorded.length : null);
+  const ttp = (totals.tasks || {}).pct;
+  if (ttp != null) out.tasks = tierColor("task_completion_pct", ttp || 0);
+  return out;
 }
 function mergeDayDocs(docs) {
   const NUM = ["dials", "live", "hh", "pq", "ps", "pol"];
@@ -1395,13 +1464,19 @@ function mergeDayDocs(docs) {
 
   calls.sort((a, b) => (b.day || "").localeCompare(a.day || ""));
 
+  const finalTotals = { ...totals, tasks: taskTotals.total ? taskTotals : null };
+  const finalProducers = Object.values(per).sort((a, b) => b.ps - a.ps);
+  const businessDays = days.filter(Boolean).length;
+  const tiers = businessDays ? Object.fromEntries(finalProducers.map(p => [p.name, rangeProducerTiers(p, businessDays)])) : {};
+  if (businessDays) tiers.team = rangeTeamTiers(finalTotals, finalProducers, businessDays);
+
   return {
     date: null, days: days.filter(Boolean),
-    totals: { ...totals, tasks: taskTotals.total ? taskTotals : null },
-    producers: Object.values(per).sort((a, b) => b.ps - a.ps),
+    totals: finalTotals,
+    producers: finalProducers,
     outcomes, task_audit: { buckets: taskBuckets, rows: taskRows },
     objcats: Object.values(objcats), scan: hasScan ? scan : null,
-    speed_to_dial: speedToDial, calls,
+    speed_to_dial: speedToDial, calls, tiers,
     notcoached: notcoached.join("; ") || null,
   };
 }
