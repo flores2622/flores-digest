@@ -271,6 +271,57 @@ def tier(metric, value):
     return "yellow" if value >= t["yellow"] else "red"
 
 
+# --- live-day pace (Frank, 2026-09-15: "can we set on and off pace for the
+# live runs to show if they are on pace for the day or not") -------------
+# The business day the ten HOURLY_RUNS.md checkpoints cover, 8:35 AM to
+# 5:15 PM Arizona (intraday.py's own docstring). Only used to judge a
+# CUMULATIVE metric partway through today against pace toward the full-day
+# goal -- a finalized day's tiering must never depend on wall-clock time, so
+# only board_payload.build(..., live=True) (intraday.py's callers) may use
+# this; a nightly or backfilled build always passes live=False and gets the
+# exact same tier() behaviour as before this was added.
+BUSINESS_START_HOUR, BUSINESS_START_MIN = 8, 35
+BUSINESS_END_HOUR, BUSINESS_END_MIN = 17, 15
+
+# Paced this way. Dials and households quoted accumulate roughly steadily
+# through the day, so a linear pace clock is fair. Sales/premium are too
+# lumpy (plenty of good days close most of their business in the afternoon)
+# for the same treatment, and every other board metric is already a rate or
+# ratio that doesn't accumulate -- those keep using tier() unpaced even on a
+# live day. Not a coincidence that these two are also digest_config's own
+# TEAM_SCALED_METRICS -- both are straight day-totals, which is exactly what
+# a pace clock needs.
+PACED_METRICS = {"call_volume", "households_quoted"}
+
+
+def day_fraction_elapsed(now=None):
+    """Fraction of the business day elapsed, clamped to [0, 1]. `now`
+    defaults to the current Arizona time; pass it explicitly only for
+    testing -- production callers always want "right now"."""
+    az = dt.timezone(dt.timedelta(hours=-7))
+    now = now or dt.datetime.now(az)
+    start = now.replace(hour=BUSINESS_START_HOUR, minute=BUSINESS_START_MIN,
+                         second=0, microsecond=0)
+    end = now.replace(hour=BUSINESS_END_HOUR, minute=BUSINESS_END_MIN,
+                       second=0, microsecond=0)
+    frac = (now - start).total_seconds() / (end - start).total_seconds()
+    return max(0.0, min(1.0, frac))
+
+
+def paced_tier(metric, value, fraction):
+    """Like tier(), but the green/yellow thresholds are scaled down by
+    `fraction` first -- e.g. at 40% of the business day elapsed, 40% of the
+    full-day dial goal is "on pace". Only ever called for metric in
+    PACED_METRICS; every other metric keeps calling tier() even live."""
+    t = THRESHOLDS[metric]
+    if value is None:
+        return "red"
+    green, yellow = t["green"] * fraction, t["yellow"] * fraction
+    if value >= green:
+        return "green"
+    return "yellow" if value >= yellow else "red"
+
+
 # --- MVP leaderboard (HANDOFF_4 s7) -----------------------------------------
 # Seven scored categories in this exact order. 3/2/1 by rank; bars scale to the
 # leading total. Zero-activity override: no recorded activity in a category
