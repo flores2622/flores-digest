@@ -1070,19 +1070,86 @@ function recontactPanel(d, who) {
    <th class="num">Dials</th><th>Flag</th></tr></thead><tbody>${rows}</tbody></table></div></div>`;
 }
 
+// Mirrors task_audit.py's own docstring/build() -- these five labels replace
+// an older, stale set that no longer matched what buckets a-e actually mean
+// (found while adding the drill-down below, Frank, 2026-09-15: "why do i not
+// have a dropdown to show me the exact tasks it is reading"). panels.py's
+// task_audit_tables() is the email's own correct rendering of this same
+// data; the column sets and cell logic below are ported from it so the board
+// and the email never disagree on what a bucket contains.
+const TASK_AUDIT_LABELS = {
+  a: "Completed on the strength of a call that is not in the call log",
+  b: "Closed noticeably after the due date",
+  c: "Due date was changed",
+  d: "Cancelled rather than completed",
+  e: "Still open at the end of the day",
+};
+const AZ_TASK_URL = { lead: "https://app.agencyzoom.com/lead?id=", customer: "https://app.agencyzoom.com/customer?id=" };
+function fmtPhone(e164) {
+  const digits = String(e164 || "").replace(/\D/g, "").slice(-10);
+  return digits.length === 10 ? `(${digits.slice(0, 3)}) ${digits.slice(3, 6)}-${digits.slice(6)}` : (e164 || "—");
+}
+function auditRecordCell(r) {
+  const name = r.record || "—";
+  const kindNote = r.link_kind ? `<div class="n">${r.link_kind}</div>` : "";
+  if (!r.link_kind || !r.link_id) return `${name}${kindNote}`;
+  return `<a href="${AZ_TASK_URL[r.link_kind]}${encodeURIComponent(r.link_id)}" target="_blank" rel="noopener">${name}</a>${kindNote}`;
+}
+function auditColumns(bucket, list) {
+  if (bucket === "a") return {
+    head: ["Rep", "Lead", "Task", "Comment", "Number on file"],
+    body: list.map(r => `<tr><td>${r.producer || ""}</td><td>${auditRecordCell(r)}</td><td>${r.title || ""}</td>
+      <td>${r.comment || "—"}</td><td>${fmtPhone(r.number)}</td></tr>`).join(""),
+  };
+  if (bucket === "b") return {
+    head: ["Rep", "Lead", "Task", "Due", "Completed", "Days late"],
+    body: list.map(r => `<tr><td>${r.producer || ""}</td><td>${auditRecordCell(r)}</td><td>${r.title || ""}</td>
+      <td class="num">${r.due || ""}</td><td class="num">${r.completed || ""}</td><td class="num">${r.days_late ?? ""}</td></tr>`).join(""),
+  };
+  if (bucket === "c") return {
+    head: ["Rep", "Lead", "Task", "Created", "Last modified", "Due"],
+    body: list.map(r => `<tr><td>${r.producer || ""}</td><td>${auditRecordCell(r)}</td><td>${r.title || ""}</td>
+      <td>${(r.created || "").slice(0, 10)}</td><td>${(r.modified || "").slice(0, 10)}</td><td>${r.due || ""}</td></tr>`).join(""),
+  };
+  if (bucket === "d") {
+    const activity = r => (r.activity && r.activity.length) ? r.activity.join(", ")
+      : r.call_on_record === "yes" ? "call" : r.call_on_record === "no number" ? "no number on file" : "none";
+    const why = r => r.loss_reason || ((r.inbound || [])[0] && `Lead replied: "${r.inbound[0]}"`)
+      || (r.move_comment && `Producer: "${r.move_comment}"`) || (r.comment || "—");
+    const verdict = r => r.verdict === "excused" ? "excused — smart-cycled that day" : "counts";
+    return {
+      head: ["Rep", "Lead", "Task", "Activity that day", "Why / instruction", "Counts?"],
+      body: list.map(r => `<tr><td>${r.producer || ""}</td><td>${auditRecordCell(r)}</td><td>${r.title || ""}</td>
+        <td>${activity(r)}</td><td>${why(r)}</td><td>${verdict(r)}</td></tr>`).join(""),
+    };
+  }
+  // e -- still open at day's end
+  return {
+    head: ["Rep", "Lead", "Task", "Due", "Comment"],
+    body: list.map(r => `<tr><td>${r.producer || ""}</td><td>${auditRecordCell(r)}</td><td>${r.title || ""}</td>
+      <td>${r.due || ""}</td><td>${r.comment || "—"}</td></tr>`).join(""),
+  };
+}
 function auditPanel(d, who) {
   const ta = d.task_audit || {};
-  const LB = { a: "Task says no answer, call says contact", b: "Task done, no dial found",
-               c: "Completed with a matching dial", d: "Completed, dial on another number", e: "Completed, no phone on record" };
-  // Bucket counts come pre-aggregated team-wide; filtering to one producer
-  // recomputes them from the underlying rows, which do carry a producer field.
-  const counts = who
-    ? Object.fromEntries(Object.keys(LB).map(k => [k, ((ta.rows || {})[k] || []).filter(r => r.producer === who).length]))
-    : (ta.buckets || {});
-  const rows = Object.entries(counts).filter(([, v]) => v).map(([k, v]) => `<tr><td>${LB[k] || k}</td><td class="num">${v}</td></tr>`).join("");
-  if (!rows) return "";
-  return `<div class="sect"><h2>Task Completion Audit</h2>
-   <div class="scroll"><table><thead><tr><th>Finding</th><th class="num">Tasks</th></tr></thead><tbody>${rows}</tbody></table></div></div>`;
+  const buckets = ta.buckets || {};
+  const sections = Object.keys(TASK_AUDIT_LABELS).map(k => {
+    const cached = (ta.rows || {})[k] || [];
+    const list = who ? cached.filter(r => r.producer === who) : cached;
+    // Team-wide, the true count can exceed what got cached (board_payload.py
+    // caps each bucket's stored rows at 25) -- show the real total in the
+    // summary line even when the table beneath it can only list 25.
+    const total = who ? list.length : (buckets[k] ?? list.length);
+    if (!total) return "";
+    const truncated = !who && buckets[k] != null && buckets[k] > cached.length;
+    const { head, body } = auditColumns(k, list);
+    return `<details class="sc"><summary><span>(${k}) ${TASK_AUDIT_LABELS[k]} — ${total} found</span></summary>
+      <div class="scb">${truncated ? `<p class="sd">Showing the ${cached.length} cached for this day; ${total} total.</p>` : ""}
+      <div class="scroll"><table><thead><tr>${head.map(h => `<th>${h}</th>`).join("")}</tr></thead>
+      <tbody>${body}</tbody></table></div></div></details>`;
+  }).join("");
+  if (!sections) return "";
+  return `<div class="sect"><h2>Task Completion Audit</h2>${sections}</div>`;
 }
 
 // True when `cur` was not a finalized days/<day>.json but a fallback from
