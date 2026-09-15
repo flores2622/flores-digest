@@ -78,6 +78,7 @@ import sys
 
 import daily
 import publish_board
+import r2_cache
 import sanity_gate
 
 AZ = dt.timezone(dt.timedelta(hours=-7))
@@ -132,6 +133,22 @@ def run(day, dry_run=False):
             f"coaching cards will be missing or stale this checkpoint")
 
     doc = publish_board.build(day, log=log, live=True)
+
+    # call_summary.build() and coaching_cards.build() (the latter runs inside
+    # publish_board.build() above) both write to data/, and r2_cache's own
+    # last push in this run happened inside transcribe_day() -- BEFORE either
+    # of those exist on disk yet. Left unfixed, callsum_<day>.json and
+    # coaching_cards_<day>.json never make it to R2 at all: each checkpoint's
+    # container is torn down having generated real summaries and cards that
+    # simply vanish, so the NEXT checkpoint re-reads and re-summarizes the
+    # same live contacts from zero (paying the Anthropic API cost again, the
+    # opposite of this module's own "read exactly once across however many
+    # checkpoints" design) and a checkpoint that generated a real card can
+    # publish a board with none at all if torn down before a later checkpoint
+    # regenerates it (confirmed 2026-09-15: Sarahi Chin's live contact got a
+    # real "sales" card this way and it never reached the published board).
+    r2_cache.sync_up_day(day, log=log)
+
     # Free (R2 reads only, no paid API), so the live board's Policies/Premium
     # Sold columns get the same sale-streak colouring as the finalized one
     # instead of going uncoloured until tonight -- publish_board.build() alone
