@@ -160,6 +160,7 @@
 .ogseg { height: 100%; }
 .oleg { display: flex; flex-wrap: wrap; gap: 14px; margin-top: 10px; font-size: 11.5px; color: var(--text-secondary); }
 .oleg-item { display: flex; align-items: center; gap: 5px; }
+.orow-counts { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 5px; font-size: 11px; color: var(--text-muted); }
 
 * { box-sizing: border-box; }
 body {
@@ -705,9 +706,15 @@ let matchAttempts = 0;
 // Sales tab state (Frank, 2026-09-12): a same-day, self-reported log,
 // explicitly NOT the official Premium Sold figure (that stays AgencyZoom-
 // derived, as it already is everywhere else on this board). Entered sales
-// are stored in R2 (saleslog/<day>.json, site/worker.js) and later matched
-// against real AgencyZoom policies by sales_log_reconcile.py -- an entry
-// that stays unreconciled is the "missing docs / not entered yet" signal.
+// are stored in R2 (saleslog/<day>.json, site/worker.js).
+//
+// Amanda logs sales here even though she isn't a tracked PRODUCER_ROSTER
+// producer elsewhere on the board (Frank, 2026-09-15: "Amanda needs to be
+// an option for 'who is logging' with her color") -- a separate roster so
+// this doesn't pull her into the leaderboard/coaching tracking CLAUDE.md
+// deliberately keeps her out of. Her colour already exists in DOT (mirrors
+// the email's own palette), so pbadge/prodSelStyle need no changes.
+const SALES_LOGGER_ROSTER = [...PRODUCER_ROSTER, "Amanda Torricellas"];
 let salesDay = null;          // set to today's AZ date on first load -- still the day a NEW sale is logged against
 let salesEntries = [];        // the current folio's entries (or just salesDay's, if it falls outside any known folio), newest-added first
 let salesProducer = "";       // who's currently logging a sale
@@ -781,7 +788,11 @@ function digestDay(d, who) {
     ["Dials", t.dials ?? 0, "", tc("dials")],
     ["Live contacts", t.live ?? 0, rate + "% contact rate", tc("rate")],
     ["HH/Prem. Quoted", `<span class="${tc("hh")}">${t.hh ?? 0} HH</span> / <span class="${tc("pq")}">${money(t.pq)}</span>`],
-    ["Pol/Prem. Sold", `${t.pol ?? 0} Pol / <span class="${tc("ps")}">${money(t.ps)}</span>`],
+    // Policies colours on the sale streak (see apply_policy_streak), same
+    // tier data the Team Leaderboard table's own Pol column already uses --
+    // this tile just wasn't wrapping the number in it (unlike HH/Prem.
+    // Quoted right above, which colours both halves).
+    ["Pol/Prem. Sold", `<span class="${tc("pol")}">${t.pol ?? 0} Pol</span> / <span class="${tc("ps")}">${money(t.ps)}</span>`],
   ];
   if (t.util != null) tiles.push(["Utilization", t.util + "%", "weighted", tc("util")]);
   const tilesHtml = tiles.map(([k, v, n, cls]) =>
@@ -942,10 +953,21 @@ function outcomeBreakdownHtml(d, who) {
       if (!n) return "";
       return `<span class="ogseg" style="width:${(n / total * 100).toFixed(2)}%;background:var(${cvar})" title="${label}: ${n}"></span>`;
     }).join("");
+    // The bar's own proportions were the only place these counts showed up
+    // before -- a sliver segment has no room for a number, and hover-only
+    // (the `title` above) isn't discoverable (Frank, 2026-09-15: "i just
+    // see boxes with no idea of how many for each category"). This row
+    // always shows every non-zero count as plain text underneath.
+    const counts = OUTCOME_SEGMENTS.map(([label, cvar]) => {
+      const n = o[label] || 0;
+      if (!n) return "";
+      return `<span class="oleg-item"><span class="pd" style="background:var(${cvar})"></span>${label} ${n}</span>`;
+    }).join("");
     return `<div class="orow"><div class="orow-head">
       <span class="who">${pbadge(DOT[name] || "#8a877f", name)}</span>
       <span class="on">${vol} new-business dial${vol === 1 ? "" : "s"}</span></div>
-      <div style="width:${(vol / busiest * 100).toFixed(2)}%"><div class="otrack">${segs}</div></div></div>`;
+      <div style="width:${(vol / busiest * 100).toFixed(2)}%"><div class="otrack">${segs}</div></div>
+      <div class="orow-counts">${counts}</div></div>`;
   }).join("");
   const legend = OUTCOME_SEGMENTS.map(([label, cvar]) =>
     `<span class="oleg-item"><span class="pd" style="background:var(${cvar})"></span>${label}</span>`).join("");
@@ -1125,7 +1147,12 @@ function digestPanel(d, who) {
   // 360px, Coaching & Call Quality 508px. {Task Completion, Outcome
   // Breakdown, Speed to Dial} vs {Utilization, Coaching & Call Quality}
   // comes out to 884px vs 868px -- the closest 2-way split of the five, and
-  // the rendered page now confirms it: 908px vs 884px, 24px apart.
+  // the rendered page now confirms it: 908px vs 884px, 24px apart. Task
+  // Completion and Outcome Breakdown swapped order within this same left
+  // column (Frank, 2026-09-15: "i want the task completion box under the
+  // live contact detail box") -- both panels stay in this column either
+  // way, so the column's total height (and the balance above) is
+  // unaffected by which one renders first.
   //
   // Recontact Struggle is OUT for now, not deleted -- Frank, 2026-09-12:
   // "remove ... until i come up with something better" -- recontactPanel()
@@ -1136,7 +1163,7 @@ function digestPanel(d, who) {
   return `${liveBannerHtml(d, who)}
   ${digestDay(d, who)}
   <div class="digestgrid">
-    <div>${taskCompletionHtml(d, who)}${outcomeBreakdownHtml(d, who)}${speedPanel(d, who)}</div>
+    <div>${outcomeBreakdownHtml(d, who)}${taskCompletionHtml(d, who)}${speedPanel(d, who)}</div>
     <div>${utilizationHtml(d, who)}${coachQualityHtml(d, who)}</div>
   </div>
   ${auditPanel(d, who)}`;
@@ -2343,12 +2370,40 @@ function docsSignedOpts(selected) {
     `<option value="${v}"${v === selected ? " selected" : ""}>${v || "(pending)"}</option>`).join("");
 }
 
-// AZ Profile / Docs Signed / Review Sent mirror the real Sales sheet's own
-// three tracking columns (Frank, 2026-09-14) -- AZ Profile and Docs Signed
-// sit LEFT of the sale info same as that sheet, Review Sent sits RIGHT.
-// All three are editable in place, on any entry including reconciled ones,
-// via /api/saleslog/:day/track -- paperwork status is independent of
-// whether AgencyZoom has caught up to the sale itself.
+// Per-producer + team totals for this folio's log, at the top of the Sales
+// tab (Frank, 2026-09-15: "i want totals at the top for everyone and the
+// team total"). Counts every logged entry regardless of AZ Profile/Docs
+// Signed/Review Sent state -- this is a tally of what's been SELF-REPORTED
+// this folio, the same "not the official Premium Sold figure" scope as the
+// log itself, not a reconciled/official count.
+function salesTotalsHtml(entries) {
+  if (!entries.length) return "";
+  const byProd = {};
+  for (const e of entries) {
+    const row = byProd[e.producer] || (byProd[e.producer] = { count: 0, premium: 0 });
+    row.count++;
+    row.premium += e.premium || 0;
+  }
+  const names = Object.keys(byProd).sort((a, b) => byProd[b].premium - byProd[a].premium);
+  const rows = names.map(name => `<tr>
+    <td class="name"><span class="who">${pbadge(DOT[name] || "#8a877f", name)}</span></td>
+    <td class="num">${byProd[name].count}</td>
+    <td class="num">${money(byProd[name].premium)}</td></tr>`).join("");
+  const teamCount = entries.length;
+  const teamPremium = entries.reduce((s, e) => s + (e.premium || 0), 0);
+  return `<div class="sect">
+    <h2>Totals</h2>
+    <p class="sd">This folio's self-reported log, by producer -- same scope as the log below.</p>
+    <div class="scroll"><table>
+      <thead><tr><th>Producer</th><th class="num">Sales</th><th class="num">Premium</th></tr></thead>
+      <tbody>${rows}<tr class="tot">
+        <td class="name"><span class="who">${pbadge(TEAM_DOT, "Team")}</span></td>
+        <td class="num">${teamCount}</td>
+        <td class="num">${money(teamPremium)}</td></tr></tbody>
+    </table></div>
+  </div>`;
+}
+
 // Same DOT palette as everywhere else on the board (Frank, 2026-09-14:
 // "match all the coloring and the highlight based on producer sold") --
 // the picker itself is tinted to the chosen producer's colour, and every
@@ -2360,7 +2415,7 @@ function prodSelStyle(name) {
 function salesPanel(data) {
   const entries = data.entries || [];
   const producerOpts = [`<option value="">Who's logging?</option>`]
-    .concat(PRODUCER_ROSTER.map(p => `<option value="${p}"${p === salesProducer ? " selected" : ""}>${p}</option>`)).join("");
+    .concat(SALES_LOGGER_ROSTER.map(p => `<option value="${p}"${p === salesProducer ? " selected" : ""}>${p}</option>`)).join("");
   const sourceOpts = [`<option value="">Lead source</option>`]
     .concat((salesLeadSourceCache || []).map(s => `<option value="${s}">${s}</option>`)).join("");
   const rows = entries.map(e => `<tr>
@@ -2376,16 +2431,12 @@ function salesPanel(data) {
     <td>${e.term || ""}</td>
     <td>${e.effective_date || ""}</td>
     <td><input type="checkbox" data-track="review_sent" data-id="${e.id}" data-day="${e.day}" ${e.review_sent ? "checked" : ""}></td>
-    <td>${e.reconciled
-        ? `<span class="chip c-g">confirmed${e.az_source ? " · " + e.az_source : ""}</span>`
-        : `<span class="chip c-w">pending</span>`}</td>
-    <td>${e.reconciled ? "" : `<button class="ghost" data-del="${e.id}" data-day="${e.day}" type="button">delete</button>`}</td>
+    <td><button class="ghost" data-del="${e.id}" data-day="${e.day}" type="button">delete</button></td>
   </tr>`).join("");
 
-  return `<div class="sect">
+  return `${salesTotalsHtml(entries)}<div class="sect">
     <h2>Log a sale</h2>
-    <p class="sd">Same-day list for immediate visibility -- AgencyZoom stays the official Premium Sold number.
-      Once AgencyZoom shows the matching policy, this row is marked confirmed automatically with its real source.</p>
+    <p class="sd">Same-day list for immediate visibility -- AgencyZoom stays the official Premium Sold number.</p>
     <div class="controls" style="flex-wrap:wrap;gap:10px;align-items:center">
       <label style="display:flex;align-items:center;gap:5px;font-size:12.5px"><input id="salesAzProfile" type="checkbox"> AZ Profile</label>
       <select id="salesDocsSigned">${docsSignedOpts("")}</select>
@@ -2408,7 +2459,7 @@ function salesPanel(data) {
     <p class="sd">Newest logged first, across every day in the current folio.</p>
     ${entries.length ? `<div class="scroll"><table>
       <thead><tr><th>AZ Profile</th><th>Docs Signed</th><th>Date Sold</th><th>Producer</th><th>Client</th><th>Lead Source</th><th>Policy #</th><th>Product</th>
-        <th class="num">Premium</th><th>Term</th><th>Effective Date</th><th>Review Sent</th><th>Status</th><th></th></tr></thead>
+        <th class="num">Premium</th><th>Term</th><th>Effective Date</th><th>Review Sent</th><th></th></tr></thead>
       <tbody>${rows}</tbody>
     </table></div>` : '<div class="empty">Nothing logged yet this folio.</div>'}
   </div>`;
@@ -2458,9 +2509,9 @@ function wireSalesPanel(data) {
     salesBusy = false;
     await repaintAll();
   };
-  // AZ Profile / Docs Signed / Review Sent are editable in place on any row,
-  // including a reconciled one, via /track -- these three never touch the
-  // sale record itself (see trackSalesLogEntry in worker.js).
+  // AZ Profile / Docs Signed / Review Sent are editable in place on any
+  // row via /track -- these three never touch the sale record itself (see
+  // trackSalesLogEntry in worker.js).
   $$("[data-track]").forEach(el => el.onchange = async () => {
     const field = el.dataset.track;
     const value = el.type === "checkbox" ? el.checked : el.value;
