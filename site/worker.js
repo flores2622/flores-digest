@@ -367,8 +367,8 @@ const DOCS_SIGNED_OPTIONS = ["", "Paperless", "Docs + Paperless",
   "Producer 1", "Producer 2", "Producer 3", "Producer 4", "Producer 5", "Producer 6"];
 
 /** POST /api/saleslog/:day {producer, client_name, lead_source,
- * policy_number, product, premium, term, notes, az_profile, docs_signed,
- * review_sent} -> the created entry.
+ * policy_number, product, premium, term, date_sold, effective_date, notes,
+ * az_profile, docs_signed, review_sent} -> the created entry.
  *
  * A same-day, self-reported log (Frank, 2026-09-12: "I want a sales tab
  * where they go in and enter their sales for the day") -- explicitly NOT
@@ -401,6 +401,12 @@ async function postSalesLog(request, env, day) {
   }
   const premiumNum = Number(body.premium);
   const docsSigned = String(body.docs_signed || "");
+  // date_sold/effective_date are plain YYYY-MM-DD strings, same "typed in
+  // if known, blank otherwise" pattern as policy_number/product/term below
+  // -- an invalid or missing value is just blank, never a 400, since this
+  // is a same-day self-reported log, not a validated record.
+  const dateSold = String(body.date_sold || "");
+  const effectiveDate = String(body.effective_date || "");
   const entry = {
     id: crypto.randomUUID(),
     producer,
@@ -410,6 +416,8 @@ async function postSalesLog(request, env, day) {
     product: String(body.product || "").trim().slice(0, 80),
     premium: Number.isFinite(premiumNum) ? premiumNum : null,
     term: String(body.term || "").trim().slice(0, 20),
+    date_sold: /^\d{4}-\d{2}-\d{2}$/.test(dateSold) ? dateSold : "",
+    effective_date: /^\d{4}-\d{2}-\d{2}$/.test(effectiveDate) ? effectiveDate : "",
     notes: String(body.notes || "").trim().slice(0, 500),
     created_at: new Date().toISOString(),
     reconciled: false,

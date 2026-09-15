@@ -92,9 +92,6 @@ DIMS = ["Opening & identification", "Discovery", "Current premium captured",
 TECH_DIMS = ["Elevator pitch", "Feel-Felt-Found", "Risk reversal",
              "Social proof", "Trial close", "Takeaway / urgency"]
 
-CHIPT_VALUES = ("Addressed, overcome", "Addressed, not overcome", "Addressed, kept going")
-
-
 def _ask_card(model, transcript, notes, seconds, producer, lead, call_count=1):
     length_line = (f"Call length: {seconds} seconds" if call_count == 1 else
                    f"Total length across {call_count} calls with this same lead "
@@ -166,28 +163,45 @@ def _earliest_start(raw_dials, producer, number):
 
 
 def _call_times(producer, group, raw_dials):
-    """[seconds, ...], one entry per distinct real conversation, earliest
-    first -- so the board can show "1st talk time + 2nd talk time" instead
-    of only the combined total (Frank, 2026-09-15: "should show 1st talk
-    time + 2nd talk time to know the split").
+    """[seconds, ...], one entry per real conversation, earliest first --
+    so the board can show "1st talk time + 2nd talk time" instead of only
+    the combined total (Frank, 2026-09-15: "should show 1st talk time +
+    2nd talk time to know the split").
 
-    Covers BOTH ways two conversations with the same lead end up on one
-    card: this module's own cross-row grouping (2+ call_detail rows,
-    ordered by each row's own earliest dial time), and daily.py's own
+    Deliberately over `group`'s raw rows, NOT _distinct_calls() -- a
+    callback doesn't need a second number (Frank, 2026-09-15: "it
+    shouldn't need to be 2 different numbers, it can be from the same
+    number a call back"). Two rows on the same number are still two real
+    telephony sessions with their own logged `seconds`; _distinct_calls'
+    number-dedup exists only to stop the TRANSCRIPT/RECORDING from
+    repeating the one cached blob those rows share (see _group_transcript),
+    not to hide that a second call happened.
+
+    Covers all three ways two conversations with the same lead end up on
+    one card: two rows on different numbers, two rows on the SAME number
+    (this module's own cross-row grouping either way), and daily.py's own
     same-number same-day merge, where ONE row's `seconds` already
     includes a `callback_seconds` sub-total folded in by build_metrics --
     see daily.py's inbound-callback merge for exactly where that field is
     set. A single ordinary call returns a one-element list.
+
+    Ordering: day_calls.producer_dials() (raw_dials) is OUTBOUND ONLY, so
+    it can only ever place an outbound row by its actual dial time; an
+    inbound row on a number the producer never dialed has no timestamp to
+    sort by there. Two rows on the SAME number also tie (both look up the
+    identical raw_dials entry). Both cases fall back to outbound-before-
+    inbound, the same convention call_summary._wanted() already uses when
+    it orders same-number legs for transcription.
     """
-    distinct = _distinct_calls(producer, group)
-    if len(distinct) == 1:
-        r = distinct[0]
+    if len(group) == 1:
+        r = group[0]
         cb = r.get("callback_seconds")
         if cb:
             return [max((r.get("seconds") or 0) - cb, 0), cb]
         return [r.get("seconds") or 0]
-    ordered = sorted(distinct, key=lambda r: (
-        _earliest_start(raw_dials, producer, r["number"]) or "9999"))
+    ordered = sorted(group, key=lambda r: (
+        _earliest_start(raw_dials, producer, r["number"]) or "9999",
+        bool(r.get("inbound"))))
     return [r.get("seconds") or 0 for r in ordered]
 
 
@@ -198,6 +212,9 @@ def _callback_kind(producer, group):
     the board... it should specify under the clients name if... its a call
     back"). None when there's only one real conversation.
 
+    Over `group`'s raw rows, same as _call_times -- a same-number pair is
+    still two real calls, not one (see that function's docstring).
+
     daily.py's own same-number merge (see _call_times) only ever folds an
     inbound leg into an existing OUTBOUND row when that leg's own `kind`
     is "callback" -- so callback_seconds being set always means a genuine
@@ -205,10 +222,9 @@ def _callback_kind(producer, group):
     own cross-row grouping, the inbound row's own `kind` decides, exactly
     like the email's badge did.
     """
-    distinct = _distinct_calls(producer, group)
-    if len(distinct) == 1:
-        return "call back" if distinct[0].get("callback_seconds") else None
-    inbound = [r for r in distinct if r.get("inbound")]
+    if len(group) == 1:
+        return "call back" if group[0].get("callback_seconds") else None
+    inbound = [r for r in group if r.get("inbound")]
     if not inbound:
         return None
     return "call back" if any(r.get("kind") == "callback" for r in inbound) else "call in"
@@ -306,27 +322,63 @@ def _clean_spine(raw, cap=8):
     return out
 
 
-def _clean_obj(raw):
-    if not isinstance(raw, dict):
-        return None
-    cat = str(raw.get("cat") or "").strip()
-    they = str(raw.get("they") or "").strip()
-    you = str(raw.get("you") or "").strip()
-    if not cat or not they:
-        return None
-    out = {
-        "cat": cat, "at": str(raw.get("at") or "").strip(),
-        "they": they, "theyen": str(raw.get("theyen") or "").strip(),
-        "you": you, "youen": str(raw.get("youen") or "").strip(),
-        "noresp": bool(raw.get("noresp")),
-        "addressed": bool(raw.get("addressed")),
-        "anal": str(raw.get("anal") or "").strip(),
-    }
-    chipt = raw.get("chipt")
-    if out["addressed"] and chipt in CHIPT_VALUES:
-        out["chipt"] = chipt
-    fix = raw.get("fix")
-    out["fix"] = [str(f).strip() for f in fix if str(f).strip()][:3] if isinstance(fix, list) else []
+# Approximate scores for a cache entry written before this file moved from
+# one shared "chipt" verdict to a per-objection 0-10 score -- see
+# _clean_objs' `legacy` param. Never guessed for a card that HAS a real
+# score; only stands in until that call's model read is refreshed.
+_LEGACY_CHIPT_SCORE = {"Addressed, overcome": 9, "Addressed, kept going": 5,
+                        "Addressed, not overcome": 2}
+
+
+def _clean_objs(raw, legacy=None, cap=6):
+    """Every distinct objection the model found, each scored 0-10 on its own
+    (Frank, 2026-09-15: "I want them as their own badge, with a 0-10 score
+    based on how well they attempted to overcome the objection" -- a card
+    with a spousal-approval objection AND a separate mortgage/bundle
+    objection gets two entries here, not one with the second folded into
+    the first's "anal" text). `cap` guards against a runaway model response;
+    no real call has raised more than a handful.
+
+    `legacy` is the OLD single-object "obj" dict shape (with a "chipt"
+    enum instead of "score") a cache entry written before this schema
+    change still carries -- used only when `raw` (today's "objs" list) is
+    absent, so a day whose model read hasn't been refreshed yet still
+    shows the one real objection it has instead of going silently blank.
+    Its score is approximated from "chipt" and is replaced by a real per-
+    objection score the next time that call's model read happens.
+
+    "addressed" and "score" are independent verdicts (Frank, 2026-09-15,
+    re: Miguel Acosta -- ding the missing verbal acknowledgment without
+    dragging down a score that reflects the objection actually being
+    handled well in practice): never derive one from the other here, only
+    read whatever pair of values the model actually gave.
+    """
+    if not isinstance(raw, list):
+        raw = [legacy] if isinstance(legacy, dict) else []
+    out = []
+    for item in raw[:cap]:
+        if not isinstance(item, dict):
+            continue
+        cat = str(item.get("cat") or "").strip()
+        they = str(item.get("they") or "").strip()
+        you = str(item.get("you") or "").strip()
+        if not cat or not they:
+            continue
+        try:
+            score = max(0, min(10, int(round(float(item.get("score"))))))
+        except (TypeError, ValueError):
+            score = _LEGACY_CHIPT_SCORE.get(item.get("chipt"))
+        out.append({
+            "cat": cat, "at": str(item.get("at") or "").strip(),
+            "they": they, "theyen": str(item.get("theyen") or "").strip(),
+            "you": you, "youen": str(item.get("youen") or "").strip(),
+            "noresp": bool(item.get("noresp")),
+            "addressed": bool(item.get("addressed")),
+            "score": score,
+            "anal": str(item.get("anal") or "").strip(),
+            "fix": [str(f).strip() for f in item.get("fix") if str(f).strip()][:3]
+                   if isinstance(item.get("fix"), list) else [],
+        })
     return out
 
 
@@ -393,7 +445,7 @@ def _finish_card(d, producer, group, raw_dials, day, transcript, recording_ids):
         "summary": str(d.get("summary") or "").strip(),
         "askq": askq, "asks": asks,
         "askfix": str(d.get("askfix") or "").strip(),
-        "obj": _clean_obj(d.get("obj")),
+        "objs": _clean_objs(d.get("objs"), d.get("obj")),
         "good": _clean_pairs(d.get("good")),
         "bad": _clean_pairs(d.get("bad")),
         "score": _clean_score(d.get("score")),
@@ -407,15 +459,21 @@ def _distinct_calls(producer, group):
     """One row per distinct (producer, number) in the group, first-seen kept
     as the representative.
 
+    ONLY for what gets READ/PLAYED (the paid model call, the transcript
+    text, the recording players) -- NOT for whether this was "2 calls":
+    see _call_times/_callback_kind, which count every row in `group`
+    regardless of number (Frank, 2026-09-15: "it shouldn't need to be 2
+    different numbers, it can be from the same number a call back").
+
     Guards a real, narrow, pre-existing quirk: two call_detail rows can
     share one number (seen in real 2026-09-11 data -- an outbound dial and
     an unrelated same-day cold call-in that happened to land on the same
     number). call_summary.py caches its read by (producer, number), so both
     rows can only ever have fetched the identical transcript/summary --
-    counting or tagging them as two distinct calls would show the same
-    content twice under a "2 calls coached together" label that isn't true.
-    Duration still sums every row in the group (see _finish_card); only
-    which CALLS get tagged/counted as distinct narrows here."""
+    reading/showing it twice under two "[Call N of M]" tags would just be
+    the same text twice, not a second call's worth of content. Duration
+    still sums every row in the group (see _finish_card); only which CALLS
+    get a separate paid read / transcript segment narrows here."""
     seen = {}
     for r in group:
         seen.setdefault(CS._ck(producer, r["number"]), r)
@@ -595,16 +653,15 @@ def scan(cards):
 
 
 def objcats(cards):
-    """[[category, raised, won], ...] -- "won" means addressed AND overcome,
-    per the methodology's own addressed-vs-overcome distinction."""
+    """[[category, raised, won], ...] -- "won" means a strong resolution
+    (score 8+ out of 10), one row per objection now that a card can carry
+    several (Frank, 2026-09-15: each objection scored on its own, not one
+    shared addressed/overcome verdict for the whole card)."""
     agg = {}
     for c in cards:
-        o = c.get("obj")
-        if not o:
-            continue
-        raised, won = agg.get(o["cat"], (0, 0))
-        agg[o["cat"]] = (raised + 1,
-                         won + (1 if o.get("chipt") == "Addressed, overcome" else 0))
+        for o in c.get("objs") or []:
+            raised, won = agg.get(o["cat"], (0, 0))
+            agg[o["cat"]] = (raised + 1, won + (1 if (o.get("score") or 0) >= 8 else 0))
     return sorted(([cat, n, w] for cat, (n, w) in agg.items()), key=lambda row: -row[1])
 
 

@@ -74,7 +74,17 @@ close HERE ONLY.
   hard on a call and then asks permission to finish it.
 - "Addressed" is about effort, "overcome" is about result. A producer can
   engage an objection well and still lose it — do not let one verdict drag
-  the other.
+  the other. This cuts both ways: a producer can ALSO fail to verbally
+  acknowledge a stated constraint and still handle it well in practice —
+  Miguel told Coral he was working and had little time, she never said
+  anything acknowledging that, but she also didn't ignore it: she moved
+  fast, collected only what was needed for an accurate quote, and confirmed
+  he was fine getting a callback later. Ding "addressed" for the missing
+  acknowledgment (he heard nothing that told him she'd registered what he
+  said), but the objection's actual handling was still good — no
+  acknowledgment is not the same as no result, and a low "addressed" must
+  not automatically drag the score down too. (Frank, 2026-09-15: Miguel
+  Acosta.)
 - An acknowledgment is not an attempt. "Ok... I'll call you at the end of the
   month" responds to an objection without actually engaging it — that is NOT
   "addressed," it's parked. Credit "addressed" only when the producer said
@@ -214,26 +224,75 @@ Return ONLY a JSON object, no prose around it, with exactly these keys:
 "askfix"   one sentence: what an assumptive version of this call's weakest
            moment would have sounded like. Empty string if both askq and asks
            are already true.
-"obj"      the SINGLE most important objection the prospect raised, or null
-           if none was raised. An object with exactly these keys:
+"objs"     EVERY distinct objection the prospect raised, as an array -- empty
+           array if none was raised (Frank, 2026-09-15: reviewing a card
+           where the prospect raised both a spousal-approval objection AND a
+           separate mortgage/bundle objection, and only the first was
+           captured, the second folded into that entry's own analysis
+           instead of standing on its own). Do not pick "the most important
+           one" and drop the rest, and do not fold a second objection into
+           the first one's "anal" text as a mention -- if it's a distinct
+           thing the prospect pushed back on, it is its own entry in this
+           array, with its own quotes, score, and analysis. Each entry is an
+           object with exactly these keys:
              "cat"      short category name, e.g. "Price higher than current",
                         "Spousal approval", "Already insured / satisfied"
              "at"       roughly when in the call (e.g. "4:30" or "~6:00")
              "they"     what the prospect said, as close to verbatim as the
-                        transcript allows
+                        transcript allows. BEFORE writing "they" and "you",
+                        re-check who is actually speaking each line: the
+                        producer is the one running the call (introducing
+                        themselves, quoting premiums, asking for the sale);
+                        the prospect is everyone else on the line. A line
+                        that defers a decision, offers to let the quote be
+                        deleted/cancelled, or asks to end the call almost
+                        always belongs to the PROSPECT, not the producer --
+                        verify against who is asking for what before
+                        attributing it, don't default to whichever speaker
+                        you were just quoting.
              "theyen"   English translation if "they" is not in English,
                         otherwise empty string
-             "you"      what the producer said in response, verbatim
+             "you"      what the producer said in response, verbatim -- same
+                        speaker check as above, in reverse
              "youen"    English translation if "you" is not in English,
                         otherwise empty string
              "noresp"   true if the producer gave no response at all
-             "addressed" true if the producer made any real attempt to engage it
-             "chipt"    one of "Addressed, overcome" / "Addressed, not overcome"
-                        / "Addressed, kept going" / omit if addressed is false
+             "addressed" true if the producer said something that VERBALLY
+                        acknowledged the actual concern -- this is about
+                        WORDS, not results. A producer who never
+                        acknowledges a stated constraint in words is "not
+                        addressed" even if they went on to handle it well in
+                        practice (see Core judgment's Miguel Acosta note) --
+                        don't inflate this to "true" just because the
+                        outcome was fine.
+             "score"    integer 0-10: how well THIS SPECIFIC objection was
+                        actually resolved by the end of the call -- judged
+                        independently of "addressed" above. 0 = ignored it or
+                        made it worse, 10 = fully resolved and the prospect
+                        visibly moved forward with conviction afterward.
+                        These two fields can and do diverge: Miguel saying
+                        he was busy got no verbal acknowledgment (addressed:
+                        false) but a good practical response -- collect only
+                        what's needed, confirm a callback he agreed to --
+                        which still scores well here; conversely a warm,
+                        well-acknowledged objection the call still died on
+                        minutes later scores low regardless of how good the
+                        response sounded in the moment. Judge the score on
+                        what actually happened next in the call, not on
+                        tone: if the call ended within a couple of minutes
+                        of this objection with no further substantive back-
+                        and-forth AND no explicit next step the prospect
+                        agreed to, that is a LOW score (2-4 at most) even if
+                        the producer's response sounded reasonable.
              "anal"     2-3 sentences: what actually happened and why it
-                        worked or didn't. This is the most important field in
-                        the card -- the sentence a manager reads to understand
-                        the moment.
+                        worked or didn't, INCLUDING roughly how much longer
+                        the call continued after this moment and what (if
+                        anything) happened in that remaining time. Say
+                        plainly when the call simply ended shortly after --
+                        don't describe a call that ended two minutes later as
+                        one that "kept going." This is the most important
+                        field in the card -- the sentence a manager reads to
+                        understand the moment.
              "fix"      an array of 1-3 alternative lines the producer could
                         have said instead, in the same language as the call
 - "good"   an array of [short title, one-sentence detail] pairs -- specific
