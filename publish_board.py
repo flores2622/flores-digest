@@ -268,11 +268,9 @@ def _policy_streaks(day, producers, cli, bucket, log=print, lookback=90):
 
 
 def apply_policy_streak(doc, cli, bucket, log=print):
-    """Fill in the one thing board_payload.build() can't: Policies and
-    Premium Sold are coloured on the sale streak, not a fixed target, and
-    Premium Sold falls back to that same colour whenever the day's figure is
-    $0 so the two never disagree (Policies has no digest_config threshold of
-    its own -- streak is the only rule for it).
+    """Fill in the one thing board_payload.build() can't: a per-producer
+    Policies colours on the sale streak, not a fixed target (Premium Sold
+    falls back to that same colour when the day's figure is $0, unchanged).
 
     Public (not `_apply_policy_streak`) because intraday.py calls this too
     (Frank, 2026-09-12: "the whole report uploading in real time") -- it's
@@ -293,23 +291,35 @@ def apply_policy_streak(doc, cli, bucket, log=print):
         pol_tier = tier_for(streak.get(name))
         row = tiers.setdefault(name, {})
         row["pol"] = pol_tier
+        # Frank, 2026-09-15: "any sold premium should be green on a day
+        # board" -- a sale today is a green day regardless of how the
+        # per-policy dollar amount compares to the $900/$501 goal; that
+        # rate judgment is what premium_sold_per_policy is for everywhere
+        # ELSE (the range views below, and this same figure unscaled for
+        # the team just below), just not for "did today have a sale".
         if p.get("ps"):
-            per = p["ps"] / p["pol"] if p.get("pol") else 0
-            row["ps"] = digest_config.tier("premium_sold_per_policy", per)
+            row["ps"] = "green"
         else:
             row["ps"] = pol_tier
 
-    # Team "ps", the same premium_sold_per_policy RATE the per-producer rows
-    # above use, unscaled -- a per-policy dollar figure doesn't grow with
-    # headcount the way a raw count does, so there is no "x5" version of it
-    # (Frank, 2026-09-12: "rate stats stay the same"). Team "pol" has no
-    # equivalent: the per-producer colour there is the sale STREAK, which has
-    # no team-wide analogue without tracking a team streak nobody has asked
-    # for -- left uncoloured on purpose rather than inventing one.
+    # Team Policies now tiers on a flat count (Frank, 2026-09-15: "policy
+    # count for team needs tiering, 4+ green, 1-3 yellow, and 0 red") --
+    # digest_config.THRESHOLDS["policy_count"], NOT the per-producer sale
+    # streak, which has no team-wide analogue (no one asked for a team
+    # streak). Team "ps" mirrors the per-producer fallback pattern above:
+    # the premium_sold_per_policy RATE (unscaled -- a per-policy dollar
+    # figure doesn't grow with headcount the way a raw count does, Frank
+    # 2026-09-12: "rate stats stay the same") when the team sold anything,
+    # else the same policy-count colour Policies just got.
     T = doc.get("totals") or {}
+    team_pol_tier = digest_config.tier("policy_count", T.get("pol") or 0)
+    team_row = tiers.setdefault("team", {})
+    team_row["pol"] = team_pol_tier
     if T.get("pol"):
         per = (T.get("ps") or 0) / T["pol"]
-        tiers.setdefault("team", {})["ps"] = digest_config.tier("premium_sold_per_policy", per)
+        team_row["ps"] = digest_config.tier("premium_sold_per_policy", per)
+    else:
+        team_row["ps"] = team_pol_tier
     return doc
 
 

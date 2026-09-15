@@ -158,6 +158,21 @@ def _producer_tiers(p):
     return out
 
 
+def _team_talk_and_roleplay(producers):
+    """Team Avg Talk Time (seconds, weighted by live contacts) and Avg Role
+    Play (mean of producers who actually recorded a non-zero score today).
+    Computed once here and used BOTH for the actual displayed totals (Frank,
+    2026-09-15: "why no avg talk time or avg role play for the team" -- these
+    were computed for tiering only and the number itself was never kept) and
+    for _team_tiers()'s colouring, so the two can never drift apart."""
+    live = sum(p.get("live") or 0 for p in producers)
+    talk_secs = sum((p.get("talk") or 0) * (p.get("live") or 0) for p in producers)
+    team_talk = (talk_secs // live) if live else 0
+    recorded = [v for v in ((p.get("coach") or {}).get("roleplay") for p in producers) if v]
+    team_rp = (sum(recorded) / len(recorded)) if recorded else None
+    return team_talk, team_rp
+
+
 def _team_tiers(totals, producers):
     """Same metrics as _producer_tiers, but for the Team row. Straight-sum
     metrics (call volume, households quoted) scale down by TEAM_SCALE before
@@ -168,25 +183,17 @@ def _team_tiers(totals, producers):
     scale = cfg.TEAM_SCALE or 1
     hh = totals.get("hh") or 0
     dials = totals.get("dials") or 0
-    live = sum(p.get("live") or 0 for p in producers)
-    talk_secs = sum((p.get("talk") or 0) * (p.get("live") or 0) for p in producers)
-    team_talk = (talk_secs // live) if live else 0
     pq_per = (totals.get("pq") or 0) / hh if hh else 0
     out = {
         "dials": cfg.tier("call_volume", dials / scale),
-        "talk":  cfg.tier("avg_talk_min", team_talk / 60),
+        "talk":  cfg.tier("avg_talk_min", (totals.get("talk") or 0) / 60),
         "rate":  cfg.tier("contact_rate_pct", totals.get("rate") or 0),
         "hh":    cfg.tier("households_quoted", hh / scale),
         "pq":    cfg.tier("premium_quoted_per_hh", pq_per),
     }
     if totals.get("util") is not None:
         out["util"] = cfg.tier("utilization_pct", totals["util"])
-    # Team figure is the mean of producers who actually have a recorded
-    # (non-zero) Coach AI role-play score today; if nobody does, that's a
-    # team-wide red 0 same as the per-producer case above.
-    recorded = [v for v in ((p.get("coach") or {}).get("roleplay") for p in producers) if v]
-    team_rp = (sum(recorded) / len(recorded)) if recorded else None
-    out["roleplay"] = cfg.tier("roleplay_score", team_rp)
+    out["roleplay"] = cfg.tier("roleplay_score", totals.get("roleplay"))
     ttp = (totals.get("tasks") or {}).get("pct")
     if ttp is not None:
         out["tasks"] = cfg.tier("task_completion_pct", ttp or 0)
@@ -223,6 +230,7 @@ def build(day):
 
     ta = M.get("task_audit") or {}
     rc = M.get("recontact") or {}
+    team_talk, team_rp = _team_talk_and_roleplay(producers)
     doc = {
         "date": day,
         "label": dt.date.fromisoformat(day).strftime("%A, %B %-d, %Y"),
@@ -235,6 +243,8 @@ def build(day):
             "pol": sum(p["pol"] for p in producers),
             "ps": sum(p["ps"] for p in producers),
             "util": M.get("util_weighted"),
+            "talk": team_talk,
+            "roleplay": team_rp,
             "tasks": (M.get("tasks") or {}).get("team") or {},
         },
         "producers": producers,
