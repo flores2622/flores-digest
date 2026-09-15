@@ -60,16 +60,32 @@ class AgencyZoom:
         return self._jwt
 
     def _req(self, method, path, **kw):
+        """Confirmed 2026-09-15: a bare connection failure talking to
+        app.agencyzoom.com (a proxy hiccup mid-request -- 'Unable to connect
+        to proxy', RemoteDisconnected) raises BEFORE a response object ever
+        exists, so it skipped every retry below entirely and killed the whole
+        checkpoint outright, discarding everything pull_sources() had
+        already fetched that run (the RingCentral call log refresh included
+        -- it runs earlier in pull_sources() and had nothing to write it back
+        to R2 once the process died). One bad connection during a
+        thousands-of-records paginated fetch is exactly the kind of thing
+        that will keep happening; it should cost a retry, not the run."""
         url = f"{BASE}{path}"
         for attempt in range(6):
             self.lim.wait()
-            r = self.http.request(
-                method,
-                url,
-                headers={"Authorization": f"Bearer {self.jwt()}"},
-                timeout=60,
-                **kw,
-            )
+            try:
+                r = self.http.request(
+                    method,
+                    url,
+                    headers={"Authorization": f"Bearer {self.jwt()}"},
+                    timeout=60,
+                    **kw,
+                )
+            except requests.exceptions.RequestException as e:
+                if attempt == 5:
+                    raise
+                time.sleep(min(2 ** attempt, 60))
+                continue
             if r.status_code == 429 or r.status_code >= 500:
                 time.sleep(min(int(r.headers.get("Retry-After", 2 ** attempt)), 60))
                 continue
