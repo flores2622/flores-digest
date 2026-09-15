@@ -100,6 +100,20 @@ def run(day, dry_run=False):
     # refresh_window again here would just double the RingCentral requests
     # every checkpoint makes for no reason.
     daily.pull_sources(day)
+
+    # Sales Sheet automation (Frank, 2026-09-15: "i want automation for the
+    # sales sheet for all producers, including amanda") only needs the
+    # corpus pull_sources() just refreshed -- no paid API, R2 reads/writes
+    # only, so there's no reason it should wait for tonight's nightly build
+    # any more than the policy-streak colouring above does. Guarded the same
+    # way call_summary is below: a failure here costs only this feature, not
+    # the checkpoint's numbers.
+    try:
+        import sales_log_auto
+        sales_log_auto.sync_day(day, log=log, dry_run=dry_run)
+    except Exception as e:
+        log(f"  sales log auto: failed ({type(e).__name__}: {e})")
+
     daily.ensure_model()
     daily.transcribe_day(day, outbound_only=True)
     daily.build_metrics(day)

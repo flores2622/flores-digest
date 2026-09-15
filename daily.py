@@ -943,6 +943,7 @@ def main():
     send(day, html, [notes, rec], audience=a.audience,
          ops_only_pdfs=[missed] if missed else [])
     publish_day(day)
+    sync_sales_log(day)
     make_missed_call_tasks(day)
 
 
@@ -972,6 +973,23 @@ def publish_day(day):
         # including make_missed_call_tasks below -- exactly the failure this
         # function's docstring promises cannot happen.
         log(f"board publish failed ({type(e).__name__}: {e}) -- "
+            f"the digest already sent, so nothing else is affected")
+
+
+def sync_sales_log(day):
+    """Auto-populate the Sales Sheet from real AgencyZoom policies (Frank,
+    2026-09-15: "i want automation for the sales sheet for all producers,
+    including amanda"). See sales_log_auto.py's own docstring for what it
+    does and doesn't fill in.
+
+    Same guard as publish_day, for the same reason: this runs after send(),
+    so a Cloudflare/R2 hiccup here must cost only this feature, never the
+    digest that already went out."""
+    try:
+        import sales_log_auto
+        sales_log_auto.sync_day(day, log=log)
+    except (Exception, SystemExit) as e:
+        log(f"sales log auto failed ({type(e).__name__}: {e}) -- "
             f"the digest already sent, so nothing else is affected")
 
 

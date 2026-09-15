@@ -2419,9 +2419,19 @@ function salesPanel(data) {
   // into an email body, a literal = is correct here). Plain text otherwise;
   // there's no reliable way to look this id up from anything else on a
   // self-reported entry (AgencyZoom policy records carry no customerId).
-  const clientCell = e => e.az_customer_id
-    ? `<a href="https://app.agencyzoom.com/customer?id=${encodeURIComponent(e.az_customer_id)}" target="_blank" rel="noopener">${e.client_name}</a>`
-    : e.client_name;
+  const clientCell = e => {
+    const name = e.az_customer_id
+      ? `<a href="https://app.agencyzoom.com/customer?id=${encodeURIComponent(e.az_customer_id)}" target="_blank" rel="noopener">${e.client_name}</a>`
+      : e.client_name;
+    // sales_log_auto.py marks every row it creates with source: "auto" (a
+    // manually-typed entry via the Worker's own POST never has this key) --
+    // flagged here, reusing the existing .ctype badge, so a blank name (a
+    // sale with no confident lead match, see that file's own docstring) or
+    // any other gap is obviously "needs a human to check", not a mistake.
+    return e.source === "auto"
+      ? `${name} <span class="ctype" title="Auto-added from AgencyZoom">auto</span>`
+      : name;
+  };
   const rows = entries.map(e => `<tr>
     <td class="name"><span class="who">${pbadge(DOT[e.producer] || "#8a877f", e.producer)}</span></td>
     <td><select data-track="docs_signed" data-id="${e.id}" data-day="${e.day}">${docsSignedOpts(e.docs_signed || "")}</select></td>
