@@ -2732,18 +2732,18 @@ function salesTotalsHtml(entries) {
   return `<div class="sect">
     <h2>Totals</h2>
     <div style="display:flex;gap:24px;flex-wrap:wrap;align-items:flex-start">
-      <div style="flex:2 1 320px">
+      <div style="flex:0 1 460px">
         <div class="tiles" style="grid-template-columns:repeat(3, 1fr)">${cards}</div>
-        <div class="tile" style="margin-top:10px;border-color:var(--border-strong);background:var(--surface)">
+        <div class="tile" style="margin-top:10px;max-width:148px;border-color:var(--border-strong);background:var(--surface)">
           <div class="k">Team</div>
           <div class="v">${money(teamPremium)}</div>
           <div class="n">${teamCount} sale${teamCount === 1 ? "" : "s"}</div>
         </div>
       </div>
-      <div style="flex:1 1 180px;display:flex;flex-direction:column;align-items:center;gap:14px;padding-top:4px">
-        <div style="width:150px;height:150px;border-radius:50%;background:conic-gradient(${slices});flex:none"
+      <div style="flex:1 1 260px;display:flex;flex-direction:column;align-items:center;gap:16px;padding-top:4px">
+        <div style="width:210px;height:210px;border-radius:50%;background:conic-gradient(${slices});flex:none"
              title="Premium sold by producer, this folio"></div>
-        <div style="display:flex;flex-direction:column;gap:6px;width:100%;max-width:200px;font-size:12px">${legend}</div>
+        <div style="display:flex;flex-direction:column;gap:6px;width:100%;max-width:220px;font-size:12px">${legend}</div>
       </div>
     </div>
   </div>`;
