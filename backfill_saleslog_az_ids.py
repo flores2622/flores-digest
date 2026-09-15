@@ -1,7 +1,12 @@
-"""One-off backfill: fill in az_customer_id on Sales Sheet entries logged
-before that field existed (Frank, 2026-09-15: "where is the link on the
-sales sheet? i dont see it anywhere" -- checked, 0 of 53 real entries had
-it set; "yes, backfill it").
+"""One-off backfill: fill in az_customer_id, date_sold and effective_date on
+Sales Sheet entries logged before those fields existed (Frank, 2026-09-15:
+"where is the link on the sales sheet? i dont see it anywhere" -- checked,
+0 of 53 real entries had it set; "yes, backfill it". Then, on the same
+entries: "why is eff date and date sold blank" -- same root cause, checked:
+also 0 of 53. "yes, backfill those too"). date_sold/effective_date come
+straight off the same policy record this file already resolves for
+az_customer_id -- no lead/customer join needed, so they fill in even for
+the handful of entries whose customer can't be confidently resolved.
 
     python3 backfill_saleslog_az_ids.py            # dry run, prints what it would set
     python3 backfill_saleslog_az_ids.py --apply    # actually writes
@@ -40,10 +45,11 @@ policyNumber hit is disambiguated by (agentId, premium) before it's
 trusted -- if more than one candidate policy still matches after that,
 this leaves the entry alone rather than guessing.
 
-NEVER OVERWRITES. Only fills az_customer_id when it is currently blank,
-and only from a match that resolves to exactly one customer. Nothing else
-on the entry (client_name the producer typed, premium, dates, notes) is
-touched, ever.
+NEVER OVERWRITES. Only fills a field when it is currently blank -- an
+az_customer_id from a match that resolves to exactly one customer, a
+date_sold/effective_date straight off the policy record. Nothing else on
+the entry (client_name the producer typed, premium, notes) is touched,
+ever.
 """
 import argparse
 import json
@@ -89,14 +95,11 @@ def find_policies(pnum, digit_index):
     return [p for d, p in digit_index if d == dt or dt in d or d in dt]
 
 
-def find_customer_id(entry, doc_day, digit_index, leads, customers, customers_by_id, name_to_agent_id):
-    """Best-effort az_customer_id for one existing entry, or None.
-
-    policy_number -> matching policyNumber record(s) (find_policies),
-    disambiguated by (agentId, premium) -> the one real policy -> its
-    best-effort sold lead (same join sales_log_auto.build_entries already
-    validated) -> convertedHouseholdId -> customer.
-    """
+def find_policy(entry, digit_index, name_to_agent_id):
+    """The one real policy record behind this entry, or None -- shared by
+    both az_customer_id resolution and the date_sold/effective_date
+    backfill below, since both start from the exact same policyNumber
+    lookup (find_policies), disambiguated by (agentId, premium)."""
     pnum = str(entry.get("policy_number") or "").strip()
     if not pnum:
         return None, "no policy_number on this entry"
@@ -116,8 +119,15 @@ def find_customer_id(entry, doc_day, digit_index, leads, customers, customers_by
         else:
             return None, (f"{len(cands)} policies match policyNumber {pnum!r}, "
                            f"{len(exact)} match this entry's producer/premium -- ambiguous")
-    policy = exact[0]
+    return exact[0], None
 
+
+def find_customer_id(entry, policy, doc_day, leads, customers, customers_by_id):
+    """Best-effort az_customer_id for one existing entry given its already-
+    resolved policy (find_policy) -- policy -> its best-effort sold lead
+    (same join sales_log_auto.build_entries already validated) ->
+    convertedHouseholdId -> customer.
+    """
     # The POLICY's own soldDate, not the saleslog document's day (Frank,
     # 2026-09-15: "is there a lead at all... or whats the deal" -- checked:
     # Mary Carrillo's policy actually sold 2026-08-24, one day before the
@@ -232,16 +242,49 @@ def run(apply=False, days=None, log=print):
     if days:
         keys = [k for k in keys if any(k.endswith(f"{d}.json") for d in days)]
 
-    filled = skipped = already_set = 0
+    filled = skipped = already_set = dates_filled = 0
     for key in keys:
         doc_day = key.removeprefix("saleslog/").removesuffix(".json")
         doc = json.loads(cli.get_object(Bucket=bucket, Key=key)["Body"].read())
         changed = False
         for e in doc.get("entries", []):
-            if e.get("az_customer_id"):
+            need_cust = not e.get("az_customer_id")
+            need_dates = not e.get("date_sold") or not e.get("effective_date")
+            if not need_cust and not need_dates:
                 already_set += 1
                 continue
-            cust_id, detail = find_customer_id(e, doc_day, digit_index, leads, customers, customers_by_id, name_to_agent_id)
+
+            policy, policy_reason = find_policy(e, digit_index, name_to_agent_id)
+
+            # date_sold/effective_date come straight off the policy record
+            # itself (Frank, 2026-09-15: "why is eff date and date sold
+            # blank?" -- same root cause as az_customer_id: all 53 real
+            # entries predate those fields entirely) -- no lead/customer
+            # join needed, so this fills in even for an entry whose
+            # customer can't be resolved (Jose Alvarez Trust, Maria I
+            # Perez: policy found, dates fillable, customer still refused).
+            if need_dates and policy:
+                sold, eff = str(policy.get("soldDate") or "")[:10], str(policy.get("effectiveDate") or "")[:10]
+                if not e.get("date_sold") and sold:
+                    log(f"  {key}: {e.get('client_name')!r} date_sold -> {sold}{' [DRY RUN]' if not apply else ''}")
+                    dates_filled += 1
+                    if apply:
+                        e["date_sold"] = sold
+                        changed = True
+                if not e.get("effective_date") and eff:
+                    log(f"  {key}: {e.get('client_name')!r} effective_date -> {eff}{' [DRY RUN]' if not apply else ''}")
+                    dates_filled += 1
+                    if apply:
+                        e["effective_date"] = eff
+                        changed = True
+
+            if not need_cust:
+                continue
+            if not policy:
+                log(f"  {key}: {e.get('client_name')!r} ({e.get('producer')}) -- no match: {policy_reason}")
+                skipped += 1
+                continue
+            cust_id, detail = find_customer_id(e, policy, doc_day, leads, customers, customers_by_id)
             if cust_id:
                 log(f"  {key}: {e.get('client_name')!r} ({e.get('producer')}) -> "
                     f"customer {cust_id} ({detail!r}){' [DRY RUN]' if not apply else ''}")
@@ -257,8 +300,9 @@ def run(apply=False, days=None, log=print):
                             ContentType="application/json", CacheControl="no-store")
             log(f"  {key}: written")
 
-    log(f"\n{filled} filled, {skipped} left blank (no confident match), "
-        f"{already_set} already had one" + (" [DRY RUN -- pass --apply to write]" if not apply else ""))
+    log(f"\n{filled} az_customer_id filled, {dates_filled} dates filled, "
+        f"{skipped} left blank (no confident match), {already_set} already had everything"
+        + (" [DRY RUN -- pass --apply to write]" if not apply else ""))
     return filled, skipped
 
 
