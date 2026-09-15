@@ -367,16 +367,17 @@ const DOCS_SIGNED_OPTIONS = ["", "Paperless", "Docs + Paperless",
   "Producer 1", "Producer 2", "Producer 3", "Producer 4", "Producer 5", "Producer 6"];
 
 /** POST /api/saleslog/:day {producer, client_name, lead_source,
- * policy_number, product, premium, term, date_sold, effective_date, notes,
- * az_profile, docs_signed, review_sent} -> the created entry.
+ * az_customer_id, policy_number, product, premium, term, date_sold,
+ * effective_date, notes, docs_signed, review_sent} -> the created entry.
  *
  * A same-day, self-reported log (Frank, 2026-09-12: "I want a sales tab
  * where they go in and enter their sales for the day") -- explicitly NOT
  * the official Premium Sold figure, which stays AgencyZoom-derived as it
  * already is everywhere else on this board.
  *
- * az_profile/docs_signed/review_sent mirror the real Sales sheet's own
- * AZ Profile, Docs signed and Review Sent columns (Frank, 2026-09-14); see
+ * docs_signed/review_sent mirror two of the real Sales sheet's own
+ * tracking columns (Frank, 2026-09-14; AZ Profile, the third, removed
+ * 2026-09-15 -- "remove the az profile checkbox"); see
  * updateSalesLogEntry, which is what changes them after creation.
  *
  * No AgencyZoom-reconciliation status on this entry (Frank, 2026-09-15:
@@ -410,6 +411,13 @@ async function postSalesLog(request, env, day) {
     producer,
     client_name,
     lead_source: String(body.lead_source || "").trim().slice(0, 100),
+    // Typed in if known, same as policy_number below -- AgencyZoom policy
+    // records carry no customerId (CLAUDE.md's own money rules), so there
+    // is no way to look this up server-side from anything else on the
+    // entry; it's how the client name links to the real AgencyZoom
+    // customer account (Frank, 2026-09-15: "on the name can you link the
+    // agency zoom customer account").
+    az_customer_id: String(body.az_customer_id || "").trim().slice(0, 40),
     policy_number: String(body.policy_number || "").trim().slice(0, 60),
     product: String(body.product || "").trim().slice(0, 80),
     premium: Number.isFinite(premiumNum) ? premiumNum : null,
@@ -418,7 +426,6 @@ async function postSalesLog(request, env, day) {
     effective_date: /^\d{4}-\d{2}-\d{2}$/.test(effectiveDate) ? effectiveDate : "",
     notes: String(body.notes || "").trim().slice(0, 500),
     created_at: new Date().toISOString(),
-    az_profile: Boolean(body.az_profile),
     docs_signed: DOCS_SIGNED_OPTIONS.includes(docsSigned) ? docsSigned : "",
     review_sent: Boolean(body.review_sent),
   };
@@ -432,11 +439,11 @@ async function postSalesLog(request, env, day) {
   return json({ entry });
 }
 
-/** POST /api/saleslog/:day/track {id, az_profile?, docs_signed?,
- * review_sent?} -> the updated entry. Changes ONLY these three tracking
- * fields, never the sale record itself (producer/client/premium/etc)
- * (Frank, 2026-09-14: "it should be able to be interactive... when they
- * get signed later they should be able to change it"). */
+/** POST /api/saleslog/:day/track {id, docs_signed?, review_sent?} -> the
+ * updated entry. Changes ONLY these two tracking fields, never the sale
+ * record itself (producer/client/premium/etc) (Frank, 2026-09-14: "it
+ * should be able to be interactive... when they get signed later they
+ * should be able to change it"). */
 async function trackSalesLogEntry(request, env, day) {
   let body;
   try {
@@ -451,7 +458,6 @@ async function trackSalesLogEntry(request, env, day) {
   const doc = JSON.parse(await existing.text());
   const target = doc.entries.find((e) => e.id === id);
   if (!target) return json({ error: "entry not found" }, 404);
-  if ("az_profile" in body) target.az_profile = Boolean(body.az_profile);
   if ("review_sent" in body) target.review_sent = Boolean(body.review_sent);
   if ("docs_signed" in body) {
     const v = String(body.docs_signed || "");
