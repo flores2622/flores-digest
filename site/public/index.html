@@ -431,6 +431,7 @@ tbody tr:hover { background: color-mix(in oklab, var(--bar) 7%, transparent); }
 .bl { font-size: 10px; text-transform: uppercase; letter-spacing: 0.09em; color: var(--text-muted); margin-bottom: 9px; }
 .chead { display: flex; justify-content: space-between; gap: 12px; align-items: baseline; flex-wrap: wrap; }
 .cname { font-weight: 700; font-size: 15px; }
+.badge-slot { margin-left: 8px; vertical-align: middle; }
 .cmeta { font-size: 11px; color: var(--text-muted); margin-top: 1px; }
 .sum { font-size: 12.5px; line-height: 1.55; margin-top: 9px; }
 .two { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
@@ -453,6 +454,11 @@ details.sc { margin-top: 11px; border: 1px solid var(--border); border-radius: 6
 details.sc > summary { cursor: pointer; list-style: none; padding: 9px 12px; font-size: 10.5px; font-weight: 600; color: var(--text-secondary); display: flex; justify-content: space-between; gap: 10px; align-items: center; }
 details.sc > summary::-webkit-details-marker { display: none; }
 details.sc .scb { padding: 0 12px 12px; }
+.tturn { margin: 0 0 6px; padding: 6px 10px; border-radius: 6px; line-height: 1.55; }
+.tturn.t0 { background: var(--surface-raised); }
+.tturn.t1 { background: transparent; }
+.ttag { font-size: 10px; text-transform: uppercase; letter-spacing: 0.06em; color: var(--text-muted); margin: 12px 0 6px; }
+.ttag:first-child { margin-top: 0; }
 .pips { display: flex; gap: 2px; }
 .pip { width: 8px; height: 8px; border-radius: 2px; }
 .askt { width: 100%; }
@@ -478,6 +484,8 @@ details.sc .scb { padding: 0 12px 12px; }
 .ctype { display: inline-block; font-size: 9.5px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.03em; padding: 1px 7px; border-radius: 10px; white-space: nowrap; background: transparent; border: 1px solid var(--border-strong); color: var(--text-muted); }
 .ctype-service { border-color: var(--info, #6a9fd8); color: var(--info, #6a9fd8); }
 .ctype-mixed { border-color: var(--warn); color: var(--warn); }
+.cdl { display: flex; flex-wrap: wrap; gap: 14px; row-gap: 8px; font-size: 11px; color: var(--text-muted); margin: 4px 0 18px; align-items: center; }
+.cdl .legend-dot { display: inline-block; width: 10px; height: 10px; border-radius: 3px; margin-right: 5px; vertical-align: middle; }
 .flag { display: inline-block; font-size: 10px; font-weight: 500; padding: 1px 6px; border-radius: 3px; background: var(--warnbg); color: var(--warn); margin: 0 4px 3px 0; }
 .chip { display: inline-block; font-size: 9.5px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em; padding: 2px 7px; border-radius: 3px; white-space: nowrap; }
 .c-g { background: var(--goodbg); color: var(--good); border: 1px solid var(--goodbd); }
@@ -1322,11 +1330,18 @@ function card(c) {
   // Collapsed by default -- the whole header (the box with the left accent
   // strip) is a <summary>, so clicking anywhere on it expands the rest of
   // the card natively; clicking again collapses it (Frank, 2026-09-10).
+  // "call back"/"call in" sits right after the name, and the talk-time
+  // split (not just the total) shows in the meta line, matching the old
+  // email digest's own Call Detail convention before the move to the board
+  // (Frank, 2026-09-15: "it should specify under the clients name if its 2
+  // calls, if its a call back... show 1st talk time + 2nd talk time").
+  const durCell = (c.call_times && c.call_times.length > 1)
+    ? c.call_times.join(" + ") : (c.dur || "");
   return `<details class="ccard">
    <summary class="blk cchead" style="border-left:4px solid ${c.tab || "var(--border-strong)"}">
-     <div class="chead"><div><div class="cname">${c.lead || ""}</div>
-       <div class="cmeta">${c.who || ""} · ${c.time || ""} · ${c.dur || ""} · ${c.lang || ""} · ${c.src || ""}${c.leadsrc ? ` · ${c.leadsrc}` : ""}</div></div>
-       <span class="cat ${c.catc || ""}">${c.cat || ""}</span>${c.calltype && c.calltype[0] !== "sales" ? `<span class="ctype ctype-${c.calltype[0]}" title="${c.calltype[1] || ""}">${c.calltype[0]}</span>` : ""}${c.call_count > 1 ? `<span class="ctype" title="A second real conversation with this lead today -- coached as one relationship, not two separate calls">${c.call_count} calls coached together</span>` : ""}<span class="ctog" aria-hidden="true">▸</span></div>
+     <div class="chead"><div><div class="cname">${c.lead || ""}${c.callback_kind ? `<span class="badge-slot ctype">${c.callback_kind}</span>` : ""}</div>
+       <div class="cmeta">${c.who || ""} · ${c.time || ""} · ${durCell} · ${c.lang || ""} · ${c.src || ""}${c.leadsrc ? ` · ${c.leadsrc}` : ""}</div></div>
+       <span class="cat ${c.catc || ""}">${c.cat || ""}</span>${c.calltype && c.calltype[0] !== "sales" ? `<span class="ctype ctype-${c.calltype[0]}" title="${c.calltype[1] || ""}">${c.calltype[0]}</span>` : ""}<span class="ctog" aria-hidden="true">▸</span></div>
      <div class="sum">${c.summary || ""}</div>
      ${c.flags && c.flags.length ? `<div style="margin-top:8px">${c.flags.map(f => `<span class="flag">${f}</span>`).join("")}</div>` : ""}
    </summary>
@@ -1348,13 +1363,34 @@ function card(c) {
 // R2 (call_summary.py never deletes a day's recordings), just never served
 // anywhere before this. A day built before recording_ids existed shows
 // nothing here rather than a broken player.
+// Breaks the flat transcript into readable turns instead of one wall of
+// text (Frank, 2026-09-15: "the transcript should also be broken down by
+// speaker, not one super long paragraph, thats unreadable"). Whisper marks
+// a speaker change with ">>" when it hears one (see transcribe.py's own
+// DIALOGUE regex) -- that only says a turn changed, never WHO is now
+// talking, so this alternates a background tint per turn rather than
+// guessing "Producer"/"Customer" and risking a confidently wrong label.
+// "[Call N of M ...]" tags from a combined card (coaching_cards.
+// _group_transcript) are pulled out as their own small headers first, so
+// splitting on ">>" never eats one.
+function transcriptHtml(text) {
+  if (!text) return "";
+  const callBlocks = text.split(/\n\n(?=\[Call \d+ of \d+)/);
+  return callBlocks.map(block => {
+    const m = block.match(/^(\[Call \d+ of \d+[^\]]*\])\n([\s\S]*)$/);
+    const tag = m ? `<div class="ttag">${m[1]}</div>` : "";
+    const body = m ? m[2] : block;
+    const turns = body.split(/\s*>>\s*/).map(t => t.trim()).filter(Boolean);
+    return tag + turns.map((t, i) => `<p class="tturn t${i % 2}">${t}</p>`).join("");
+  }).join("");
+}
 function recordingBlk(c) {
   if (!c.transcript && !(c.recording_ids && c.recording_ids.length)) return "";
   const players = (c.recording_ids || []).map((id, i) => `
     <audio controls preload="none" style="width:100%;margin-top:${i ? "8" : "0"}px" src="/api/recordings/${c.day}/${id}"></audio>`).join("");
   const tx = c.transcript ? `<details class="sc" style="margin-top:${players ? "10" : "0"}px">
     <summary><span>Transcript</span></summary>
-    <div class="scb" style="white-space:pre-wrap;font-size:12px;line-height:1.6;padding:10px 2px">${c.transcript}</div>
+    <div class="scb" style="font-size:12px;padding:10px 2px">${transcriptHtml(c.transcript)}</div>
   </details>` : "";
   return `<div class="blk"><div class="bl">Recording &amp; transcript</div>${players}${tx}</div>`;
 }
@@ -1378,6 +1414,25 @@ function wireCoachSubTabs() {
   });
 }
 
+// Explains the card's own colour-coding and badges -- lost in the move from
+// the emailed Call Detail panel to this board, where it never got ported
+// over (Frank, 2026-09-15: "we also lost the legend showing what those left
+// tab colors are, the call outcome, and the call-in/call-back"). The email's
+// own legend covered a richer 9-way outcome system this board's cards don't
+// have (coaching_cards._category only ever computes Sold/Quoted/Live
+// Contact) -- this explains what the board ACTUALLY renders, not a port of
+// that richer system.
+function coachLegendHtml() {
+  return `<div class="cdl">
+    <span><i class="legend-dot" style="background:var(--good)"></i>Left border: assumptive language both times (quote and close)</span>
+    <span><i class="legend-dot" style="background:var(--warn)"></i>Left border: mixed -- assumed one, asked permission the other</span>
+    <span><i class="legend-dot" style="background:var(--bad)"></i>Left border: asked permission both times</span>
+    <span><span class="cat cat-sold">Sold</span> <span class="cat cat-q">Quoted</span> <span class="cat cat-live">Live Contact</span> -- deal stage as of today</span>
+    <span><span class="ctype ctype-service">service</span> <span class="ctype ctype-mixed">mixed</span> -- Apollo's sales-vs-service read (no tag = sales)</span>
+    <span><span class="badge-slot ctype">call back</span> <span class="badge-slot ctype">call in</span> -- a second real conversation with this lead today, coached together on one card, talk time split under the name</span>
+  </div>`;
+}
+
 function coachingPanel(d, who) {
   // `who` is the shared producerFilter (top-of-page dropdown), not a
   // tab-local control -- Digest and Coaching stay in sync on whoever is
@@ -1395,7 +1450,7 @@ function coachingPanel(d, who) {
     <p style="max-width:46ch;margin:0 auto;font-size:12.5px;line-height:1.6">${d.label || d.date} was uploaded with its stats
     only. The cards are written from the call recordings and are not generated, so a day gets them when someone
     writes them — an empty tab here means nobody has yet, not that the calls were clean.</p></div>`;
-  let out = "";
+  let out = coachLegendHtml();
   let shown = 0;
   order.forEach(p => {
     if (sel && sel !== p) return;

@@ -156,6 +156,64 @@ def _call_time(raw_dials, producer, numbers):
         return ""
 
 
+def _earliest_start(raw_dials, producer, number):
+    """Raw ISO start time of the earliest dial on this number, or None --
+    the sort key _call_times uses to put a group's calls in chronological
+    order (not outbound-then-inbound, which isn't always the true order)."""
+    calls = (raw_dials.get(producer) or {}).get(number) or []
+    starts = [c["startTime"] for c in calls if c.get("startTime")]
+    return min(starts) if starts else None
+
+
+def _call_times(producer, group, raw_dials):
+    """[seconds, ...], one entry per distinct real conversation, earliest
+    first -- so the board can show "1st talk time + 2nd talk time" instead
+    of only the combined total (Frank, 2026-09-15: "should show 1st talk
+    time + 2nd talk time to know the split").
+
+    Covers BOTH ways two conversations with the same lead end up on one
+    card: this module's own cross-row grouping (2+ call_detail rows,
+    ordered by each row's own earliest dial time), and daily.py's own
+    same-number same-day merge, where ONE row's `seconds` already
+    includes a `callback_seconds` sub-total folded in by build_metrics --
+    see daily.py's inbound-callback merge for exactly where that field is
+    set. A single ordinary call returns a one-element list.
+    """
+    distinct = _distinct_calls(producer, group)
+    if len(distinct) == 1:
+        r = distinct[0]
+        cb = r.get("callback_seconds")
+        if cb:
+            return [max((r.get("seconds") or 0) - cb, 0), cb]
+        return [r.get("seconds") or 0]
+    ordered = sorted(distinct, key=lambda r: (
+        _earliest_start(raw_dials, producer, r["number"]) or "9999"))
+    return [r.get("seconds") or 0 for r in ordered]
+
+
+def _callback_kind(producer, group):
+    """"call back" / "call in" / None -- what kind of repeat contact this
+    card represents, matching the email digest's own wording for the same
+    situation (Frank, 2026-09-15: "did we lose that when we moved over to
+    the board... it should specify under the clients name if... its a call
+    back"). None when there's only one real conversation.
+
+    daily.py's own same-number merge (see _call_times) only ever folds an
+    inbound leg into an existing OUTBOUND row when that leg's own `kind`
+    is "callback" -- so callback_seconds being set always means a genuine
+    call back, never a cold call-in, by construction. For this module's
+    own cross-row grouping, the inbound row's own `kind` decides, exactly
+    like the email's badge did.
+    """
+    distinct = _distinct_calls(producer, group)
+    if len(distinct) == 1:
+        return "call back" if distinct[0].get("callback_seconds") else None
+    inbound = [r for r in distinct if r.get("inbound")]
+    if not inbound:
+        return None
+    return "call back" if any(r.get("kind") == "callback" for r in inbound) else "call in"
+
+
 def _category(rows):
     """(label, css class) -- from the same mechanical facts daily.py already
     attaches to the row(s), never from the model's read of the call. Takes
@@ -315,11 +373,15 @@ def _finish_card(d, producer, group, raw_dials, day, transcript, recording_ids):
         "who": producer,
         "time": _call_time(raw_dials, producer, numbers),
         "dur": _dur(total_seconds),
-        # >1 when this card combines a callback (either direction) with the
-        # same lead into one coached unit -- the board renders "N calls
-        # coached together" off this (Frank, 2026-09-15). Counts DISTINCT
-        # calls, not raw rows -- see _distinct_calls.
-        "call_count": len(_distinct_calls(producer, group)),
+        # Per-call talk-time split, earliest first, and what kind of repeat
+        # contact this is (Frank, 2026-09-15: "should show 1st talk time +
+        # 2nd talk time to know the split... specify under the clients name
+        # if its 2 calls, if its a call back"). call_count is len(call_times),
+        # not len(group) -- a same-number merge is ONE call_detail row that
+        # still represents two real conversations (see _call_times).
+        "call_times": [_dur(s) for s in _call_times(producer, group, raw_dials)],
+        "call_count": len(_call_times(producer, group, raw_dials)),
+        "callback_kind": _callback_kind(producer, group),
         # AgencyZoom's own leadSourceName, not the Google Sheet's (Frank,
         # 2026-09-12) -- blank when the call never resolved to a lead record.
         "leadsrc": leadsrc,
