@@ -44,6 +44,14 @@ That is a known v1 gap, not an oversight: it means a real conversation with
 unusable audio (foreign language, a repetition loop) goes uncoached even
 though call_summary.py still reports it elsewhere.
 
+A SECOND real conversation with the same lead that day -- the producer
+calling back, or the lead calling back on their own -- is coached on the
+SAME card as the first, not a separate one (Frank, 2026-09-15). Grouped by
+(producer, lead_id); see build()'s own comment for exactly which cases
+that catches (only rows daily.py's _one_row_per_lead already left as
+separate call_detail entries -- this never touches that function or the
+contact-rate math it feeds).
+
 A live-contact row that qualifies still gets no card in the RETURNED list if
 Apollo's own calltype judgment (see METHODOLOGY.md's Core judgment) comes
 back pure "service" -- a renewal, payment, claim or paperwork call with no
@@ -87,11 +95,15 @@ TECH_DIMS = ["Elevator pitch", "Feel-Felt-Found", "Risk reversal",
 CHIPT_VALUES = ("Addressed, overcome", "Addressed, not overcome", "Addressed, kept going")
 
 
-def _ask_card(model, transcript, notes, seconds, producer, lead):
+def _ask_card(model, transcript, notes, seconds, producer, lead, call_count=1):
+    length_line = (f"Call length: {seconds} seconds" if call_count == 1 else
+                   f"Total length across {call_count} calls with this same lead "
+                   f"today: {seconds} seconds -- read the transcript below as ONE "
+                   f"continuing relationship, in the order the calls happened")
     msg = [{"role": "user", "content":
             f"Producer on this call: {producer}\n"
             f"Lead: {lead or '(name unknown)'}\n"
-            f"Call length: {seconds} seconds\n\n"
+            f"{length_line}\n\n"
             f"Producer's own notes (may be empty):\n{notes or '(none)'}\n\n"
             f"Machine transcript:\n{transcript}"}]
     base = {"model": model, "system": METHODOLOGY, "messages": msg}
@@ -122,14 +134,18 @@ def _dur(seconds):
     return f"{m}m {s:02d}s" if m else f"{s}s"
 
 
-def _call_time(raw_dials, producer, number):
-    """First dial's clock time, Arizona local -- e.g. "9:19 AM".
+def _call_time(raw_dials, producer, numbers):
+    """Earliest dial's clock time, Arizona local -- e.g. "9:19 AM", across
+    every number in the group (a "2 calls coached together" card can span
+    two different numbers for the same lead, Frank 2026-09-15).
 
     Pulled from the day's raw RingCentral log (already on disk by the time
     this runs, and the same file day_calls.classify reads), not from
     anything this module fetches itself.
     """
-    calls = (raw_dials.get(producer) or {}).get(number) or []
+    calls = []
+    for n in numbers:
+        calls += (raw_dials.get(producer) or {}).get(n) or []
     starts = [c["startTime"] for c in calls if c.get("startTime")]
     if not starts:
         return ""
@@ -140,9 +156,11 @@ def _call_time(raw_dials, producer, number):
         return ""
 
 
-def _category(r):
+def _category(rows):
     """(label, css class) -- from the same mechanical facts daily.py already
-    attaches to the row, never from the model's read of the call.
+    attaches to the row(s), never from the model's read of the call. Takes
+    the whole group so a "2 calls coached together" card's deal-stage badge
+    reflects EITHER call hitting today, not just whichever row loaded first.
 
     v1 covers only the three states cheaply knowable from call_detail: Sold
     (today), Quoted (a quote went out on this call), and Live Contact
@@ -150,9 +168,9 @@ def _category(r):
     CSS but need a post-call lead-status join this module does not do yet --
     a gap to close later, not a silent miscoloring today.
     """
-    if r.get("sold_today"):
+    if any(r.get("sold_today") for r in rows):
         return "Sold", "cat-sold"
-    if r.get("quote_state") == "today":
+    if any(r.get("quote_state") == "today" for r in rows):
         return "Quoted", "cat-q"
     return "Live Contact", "cat-live"
 
@@ -254,13 +272,26 @@ def _clean_obj(raw):
     return out
 
 
-def _finish_card(d, producer, r, raw_dials, day, transcript, recording_ids):
+def _finish_card(d, producer, group, raw_dials, day, transcript, recording_ids):
     """Merge the model's judgment with everything already known from the
     pipeline. Every mechanical field below is cheaper and more reliable to
-    compute here than to ask the model for -- see the module docstring."""
+    compute here than to ask the model for -- see the module docstring.
+
+    `group` is a list of one or more call_detail rows: more than one when
+    a second real conversation with the same lead that day -- a callback
+    either direction -- is being coached together as one card (Frank,
+    2026-09-15). Mechanical fields that only make sense per-call (lead
+    name, lead source) take the first non-empty value across the group,
+    since they describe the same person either way; `dur`/`time` combine
+    across all of them.
+    """
     askq = _bool_pair(d.get("askq"))
     asks = _bool_pair(d.get("asks"))
-    cat, catc = _category(r)
+    cat, catc = _category(group)
+    lead = next((r.get("lead") for r in group if r.get("lead")), "") or ""
+    leadsrc = next((r.get("lead_source") for r in group if r.get("lead_source")), "") or ""
+    numbers = [r["number"] for r in group]
+    total_seconds = sum(r.get("seconds") or 0 for r in group)
     return {
         "day": day,
         # The machine transcript this card was read from, and the raw
@@ -270,10 +301,11 @@ def _finish_card(d, producer, r, raw_dials, day, transcript, recording_ids):
         # 2026-09-14) instead of the summary being the only way to check
         # Apollo's read against the actual call. recording_ids is [] for
         # a day built before this existed (see call_summary.build) or a
-        # row _wanted() found no usable leg for.
+        # row _wanted() found no usable leg for. Both cover the WHOLE
+        # group when call_count > 1 -- one per call, in order.
         "transcript": transcript,
         "recording_ids": recording_ids,
-        "lead": r.get("lead") or "",
+        "lead": lead,
         # Full name, not first name: coachingPanel() (site/public/index.html)
         # groups cards by matching `who` against its own `order` list of full
         # producer names -- a first-name-only value matches nothing, so every
@@ -281,11 +313,16 @@ def _finish_card(d, producer, r, raw_dials, day, transcript, recording_ids):
         # no cards at all (found 2026-09-10, 18 real cards on 2026-09-09 all
         # invisible this way, first ever real day the automated pipeline ran).
         "who": producer,
-        "time": _call_time(raw_dials, producer, r["number"]),
-        "dur": _dur(r.get("seconds")),
+        "time": _call_time(raw_dials, producer, numbers),
+        "dur": _dur(total_seconds),
+        # >1 when this card combines a callback (either direction) with the
+        # same lead into one coached unit -- the board renders "N calls
+        # coached together" off this (Frank, 2026-09-15). Counts DISTINCT
+        # calls, not raw rows -- see _distinct_calls.
+        "call_count": len(_distinct_calls(producer, group)),
         # AgencyZoom's own leadSourceName, not the Google Sheet's (Frank,
         # 2026-09-12) -- blank when the call never resolved to a lead record.
-        "leadsrc": r.get("lead_source") or "",
+        "leadsrc": leadsrc,
         "lang": str(d.get("lang") or "").strip() or "English",
         "src": "recording",
         "cat": cat, "catc": catc,
@@ -302,6 +339,71 @@ def _finish_card(d, producer, r, raw_dials, day, transcript, recording_ids):
         "spine": _clean_spine(d.get("spine")),
         "flags": [str(f).strip() for f in (d.get("flags") or []) if str(f).strip()][:6],
     }
+
+
+def _distinct_calls(producer, group):
+    """One row per distinct (producer, number) in the group, first-seen kept
+    as the representative.
+
+    Guards a real, narrow, pre-existing quirk: two call_detail rows can
+    share one number (seen in real 2026-09-11 data -- an outbound dial and
+    an unrelated same-day cold call-in that happened to land on the same
+    number). call_summary.py caches its read by (producer, number), so both
+    rows can only ever have fetched the identical transcript/summary --
+    counting or tagging them as two distinct calls would show the same
+    content twice under a "2 calls coached together" label that isn't true.
+    Duration still sums every row in the group (see _finish_card); only
+    which CALLS get tagged/counted as distinct narrows here."""
+    seen = {}
+    for r in group:
+        seen.setdefault(CS._ck(producer, r["number"]), r)
+    return list(seen.values())
+
+
+def _group_ck(producer, group):
+    """Cache key for one coaching card: a single row's own call_summary._ck
+    for a lone call, or a stable combined key when 2+ DISTINCT calls with
+    the same lead_id are being coached together (Frank, 2026-09-15) --
+    sorted so the key is stable regardless of which row was seen first."""
+    distinct = _distinct_calls(producer, group)
+    if len(distinct) == 1:
+        return CS._ck(producer, distinct[0]["number"])
+    return producer + "||" + "+".join(sorted(r["number"] for r in distinct))
+
+
+def _group_transcript(producer, group, fx):
+    """The transcript text this card is read from and displays -- one call's
+    text unchanged, or every DISTINCT call's text concatenated and tagged
+    with which call it is, in order, when coaching 2+ calls together. A leg
+    with no transcript on file (shouldn't happen for a row that reached
+    this point, but cheap to guard) is skipped rather than leaving a blank
+    tagged section."""
+    distinct = _distinct_calls(producer, group)
+    multi = len(distinct) > 1
+    segs = []
+    for j, r in enumerate(distinct, 1):
+        text = fx.get(CS._ck(producer, r["number"]), "")
+        if not text:
+            continue
+        if multi:
+            tag = (f"[Call {j} of {len(distinct)} -- "
+                   f"{'inbound' if r.get('inbound') else 'outbound'}, "
+                   f"{_dur(r.get('seconds'))}]")
+            segs.append(f"{tag}\n{text}")
+        else:
+            segs.append(text)
+    return "\n\n".join(segs)
+
+
+def _group_recordings(producer, group, audiorefs):
+    """recording_ids for every DISTINCT call in the group, in order --
+    audiorefs.get() already returns [] for a call with no usable leg, so
+    this just concatenates whatever each distinct call actually has (see
+    _distinct_calls for why "distinct" and not every row)."""
+    ids = []
+    for r in _distinct_calls(producer, group):
+        ids += audiorefs.get(CS._ck(producer, r["number"]), [])
+    return ids
 
 
 ROSTER_ORDER = ["Lorena Gonzalez", "Crystal Mango", "Mike Olvera",
@@ -335,34 +437,60 @@ def build(day, log=print):
     rows = [(p, r) for p, v in M.get("producers", {}).items()
             for r in v.get("call_detail", [])
             if (r.get("summary") or {}).get("source") == "recording"]
-    todo = [(p, r) for p, r in rows if CS._ck(p, r["number"]) not in cache]
+
+    # GROUPED BY (producer, lead_id): a second real conversation with the
+    # same lead that day -- whether the producer called them back or they
+    # called back on their own -- becomes ONE coaching card covering both,
+    # not two (Frank, 2026-09-15: "it should be on the same coaching card,
+    # saying its 2 calls coached together"). This only ever groups rows
+    # that already reached call_detail as SEPARATE entries: a same-
+    # direction repeat to the same lead is already collapsed to one row
+    # upstream by daily.py's own _one_row_per_lead (settled contact-rate
+    # math, untouched here); what actually groups here is the cross-
+    # direction case that function deliberately leaves as two rows in its
+    # own words ("an inbound row is never merged into an outbound one").
+    # Rows with no lead_id can't be shown to be the same person, so each
+    # stays a group of one -- exactly today's per-call behaviour.
+    groups = {}
+    for p, r in rows:
+        lid = r.get("lead_id")
+        gkey = (p, lid) if lid is not None else (p, id(r))
+        groups.setdefault(gkey, (p, []))[1].append(r)
+    group_list = [(p, grp) for p, grp in groups.values()]
+
+    todo = [(p, grp) for p, grp in group_list if _group_ck(p, grp) not in cache]
 
     if todo:
         model = CS.pick_model()
         log(f"  writing {len(todo)} coaching cards with {model}...")
-        for i, (p, r) in enumerate(todo, 1):
-            ck = CS._ck(p, r["number"])
-            text = fx.get(ck, "")
-            ok, why = CS.usable(text, r.get("seconds"))
+        for i, (p, grp) in enumerate(todo, 1):
+            gck = _group_ck(p, grp)
+            text = _group_transcript(p, grp, fx)
+            total_seconds = sum(r.get("seconds") or 0 for r in grp)
+            lead_name = next((r.get("lead") for r in grp if r.get("lead")), "") or ""
+            ok, why = CS.usable(text, total_seconds)
             if not ok:
-                log(f"    {r['lead']}: {why} -- no card")
+                log(f"    {lead_name}: {why} -- no card")
                 continue
-            notes = (r.get("note_producer") or "").replace("&middot;", ";").strip()
+            notes = " / ".join(
+                n for n in ((r.get("note_producer") or "").replace("&middot;", ";").strip()
+                            for r in grp) if n)
             try:
-                d = _ask_card(model, text[:16000], notes, r.get("seconds") or 0,
-                             p.split()[0], r.get("lead") or "")
-                cache[ck] = d
+                d = _ask_card(model, text[:16000], notes, total_seconds,
+                             p.split()[0], lead_name,
+                             call_count=len(_distinct_calls(p, grp)))
+                cache[gck] = d
             except Exception as e:
-                log(f"    {r['lead']}: coaching read failed ({type(e).__name__}) -- no card")
+                log(f"    {lead_name}: coaching read failed ({type(e).__name__}) -- no card")
             if i % 5 == 0:
                 log(f"    {i}/{len(todo)}")
         cpath.write_text(json.dumps(cache, indent=1))
 
     raw_dials = day_calls.producer_dials(day)
-    pairs = [(p, _finish_card(cache[CS._ck(p, r["number"])], p, r, raw_dials, day,
-                               fx.get(CS._ck(p, r["number"]), ""),
-                               audiorefs.get(CS._ck(p, r["number"]), [])))
-            for p, r in rows if CS._ck(p, r["number"]) in cache]
+    pairs = [(p, _finish_card(cache[_group_ck(p, grp)], p, grp, raw_dials, day,
+                               _group_transcript(p, grp, fx),
+                               _group_recordings(p, grp, audiorefs)))
+             for p, grp in group_list if _group_ck(p, grp) in cache]
     rank = {name: i for i, name in enumerate(ROSTER_ORDER)}
     pairs.sort(key=lambda pc: rank.get(pc[0], 99))
     all_cards = [c for _, c in pairs]
@@ -377,8 +505,10 @@ def build(day, log=print):
     # summarized, since calltype isn't known until after the model reads it.
     cards = [c for c in all_cards if c.get("calltype", ["sales", ""])[0] != "service"]
     dropped = len(all_cards) - len(cards)
+    combined = sum(1 for c in cards if c.get("call_count", 1) > 1)
     log(f"  coaching cards: {len(cards)} for {day}"
-        + (f" ({dropped} pure-service calls filtered out)" if dropped else ""))
+        + (f" ({dropped} pure-service calls filtered out)" if dropped else "")
+        + (f" ({combined} combining 2+ calls)" if combined else ""))
     return cards
 
 
