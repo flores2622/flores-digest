@@ -2366,6 +2366,7 @@ function salesPanel(data) {
   const rows = entries.map(e => `<tr>
     <td><input type="checkbox" data-track="az_profile" data-id="${e.id}" data-day="${e.day}" ${e.az_profile ? "checked" : ""}></td>
     <td><select data-track="docs_signed" data-id="${e.id}" data-day="${e.day}">${docsSignedOpts(e.docs_signed || "")}</select></td>
+    <td>${e.date_sold || ""}</td>
     <td class="name"><span class="who">${pbadge(DOT[e.producer] || "#8a877f", e.producer)}</span></td>
     <td>${e.client_name}</td>
     <td>${e.lead_source || ""}</td>
@@ -2373,6 +2374,7 @@ function salesPanel(data) {
     <td>${e.product || ""}</td>
     <td class="num">${e.premium != null ? money(e.premium) : ""}</td>
     <td>${e.term || ""}</td>
+    <td>${e.effective_date || ""}</td>
     <td><input type="checkbox" data-track="review_sent" data-id="${e.id}" data-day="${e.day}" ${e.review_sent ? "checked" : ""}></td>
     <td>${e.reconciled
         ? `<span class="chip c-g">confirmed${e.az_source ? " · " + e.az_source : ""}</span>`
@@ -2387,6 +2389,7 @@ function salesPanel(data) {
     <div class="controls" style="flex-wrap:wrap;gap:10px;align-items:center">
       <label style="display:flex;align-items:center;gap:5px;font-size:12.5px"><input id="salesAzProfile" type="checkbox"> AZ Profile</label>
       <select id="salesDocsSigned">${docsSignedOpts("")}</select>
+      <label style="display:flex;align-items:center;gap:5px;font-size:12.5px">Date sold <input id="salesDateSold" type="date" value="${salesDay}"></label>
       <select id="salesProdSel" style="${prodSelStyle(salesProducer)}">${producerOpts}</select>
       <input id="salesClient" type="text" placeholder="Client name" style="flex:1;min-width:160px">
       <select id="salesLeadSource">${sourceOpts}</select>
@@ -2394,6 +2397,7 @@ function salesPanel(data) {
       <input id="salesProduct" type="text" placeholder="Product" style="width:140px">
       <input id="salesPremium" type="number" step="0.01" placeholder="Premium" style="width:110px">
       <input id="salesTerm" type="text" placeholder="Term" style="width:90px">
+      <label style="display:flex;align-items:center;gap:5px;font-size:12.5px">Effective <input id="salesEffectiveDate" type="date"></label>
       <label style="display:flex;align-items:center;gap:5px;font-size:12.5px"><input id="salesReviewSent" type="checkbox"> Review sent</label>
     </div>
     <div class="controls" style="margin-top:8px">
@@ -2403,8 +2407,8 @@ function salesPanel(data) {
     <h2 style="margin-top:28px">This folio's log</h2>
     <p class="sd">Newest logged first, across every day in the current folio.</p>
     ${entries.length ? `<div class="scroll"><table>
-      <thead><tr><th>AZ Profile</th><th>Docs Signed</th><th>Producer</th><th>Client</th><th>Lead Source</th><th>Policy #</th><th>Product</th>
-        <th class="num">Premium</th><th>Term</th><th>Review Sent</th><th>Status</th><th></th></tr></thead>
+      <thead><tr><th>AZ Profile</th><th>Docs Signed</th><th>Date Sold</th><th>Producer</th><th>Client</th><th>Lead Source</th><th>Policy #</th><th>Product</th>
+        <th class="num">Premium</th><th>Term</th><th>Effective Date</th><th>Review Sent</th><th>Status</th><th></th></tr></thead>
       <tbody>${rows}</tbody>
     </table></div>` : '<div class="empty">Nothing logged yet this folio.</div>'}
   </div>`;
@@ -2441,6 +2445,8 @@ function wireSalesPanel(data) {
           product: $("#salesProduct").value.trim(),
           premium: $("#salesPremium").value ? Number($("#salesPremium").value) : null,
           term: $("#salesTerm").value.trim(),
+          date_sold: $("#salesDateSold").value,
+          effective_date: $("#salesEffectiveDate").value,
           notes: $("#salesNotes").value.trim(),
           az_profile: $("#salesAzProfile").checked,
           docs_signed: $("#salesDocsSigned").value,
