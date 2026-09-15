@@ -1250,7 +1250,8 @@ async function fetchRangeDocs(from, to) {
   return docs;
 }
 
-/* Cross-day objection index -- every coached call's objection, across every
+/* Cross-day objection index -- every objection any coached call raised
+   (a call can raise more than one, each its own row here), across every
    reporting day, flattened and cached once per page load. Feeds two
    things: the Coaching tab's "browse by objection" control (any producer,
    any day) and the Role Play tab's "recommended" persona (this producer's
@@ -1267,9 +1268,10 @@ async function fetchAllCalls() {
       if (!r.ok) continue;
       const doc = await r.json();
       for (const c of (doc.calls || [])) {
-        if (!c.obj) continue;
-        out.push({ date: d, who: c.who, lead: c.lead, cat: c.obj.cat,
-                  chipt: c.obj.chipt, addressed: c.obj.addressed });
+        for (const o of (c.objs || [])) {
+          out.push({ date: d, who: c.who, lead: c.lead, cat: o.cat,
+                    score: o.score, addressed: o.addressed });
+        }
       }
     } catch (_) {}
   }
@@ -1279,10 +1281,18 @@ async function fetchAllCalls() {
 
 /* ---- Coaching tab (ported verbatim from the pre-migration artifact) ------- */
 function chips(o) {
-  if (!o.addressed) return `<span class="chip c-r">Not addressed</span> <span class="chip c-n">No attempt</span>`;
-  const m = { "Addressed, overcome": ["c-g", "Overcome"], "Addressed, not overcome": ["c-r", "Not overcome"],
-              "Addressed, kept going": ["c-w", "Kept going"] }[o.chipt] || ["c-w", "Unclear"];
-  return `<span class="chip c-g">Addressed</span> <span class="chip ${m[0]}">${m[1]}</span>`;
+  // "Addressed" (verbal acknowledgment) and the 0-10 score (how well it was
+  // actually resolved) are independent verdicts, not addressed always
+  // being ranked over score -- a producer can go unacknowledged and still
+  // score well by handling it well in practice (Frank, 2026-09-15: Miguel
+  // Acosta collected only what was needed and confirmed an agreed callback
+  // without ever saying she'd noticed he was busy -- ding the
+  // acknowledgment, not the outcome). Show both chips always.
+  const ack = o.addressed ? `<span class="chip c-g">Addressed</span>` : `<span class="chip c-r">Not addressed</span>`;
+  const s = o.score;
+  const [cls, label] = s == null ? ["c-w", "Unscored"]
+    : s >= 8 ? ["c-g", "Overcome"] : s >= 4 ? ["c-w", "Partial"] : ["c-r", "Not overcome"];
+  return `${ack} <span class="chip ${cls}">${label}${s != null ? ` (${s}/10)` : ""}</span>`;
 }
 const DIMS = ["Opening & identification", "Discovery", "Current premium captured", "Renewal / X-date captured",
   "Product knowledge", "Presenting numbers", "Bundle / cross-sell raised", "Next step specificity", "CRM after the call"];
@@ -1309,8 +1319,11 @@ function scorecard(sc, dims = DIMS, label = "Scorecard") {
     <div class="scb"><table class="askt">${rows}</table></div></details>`;
 }
 function card(c) {
-  const o = c.obj;
-  const objBlk = o ? `<div class="blk"><div class="bl">Objection</div>
+  const objs = c.objs || [];
+  // One block per objection -- a card can carry several (Frank, 2026-09-15:
+  // "I want them as their own badge"), each scored on its own instead of one
+  // shared verdict for the whole call.
+  const objBlk = objs.map(o => `<div class="blk"><div class="bl">Objection${objs.length > 1 ? ` — ${o.cat}` : ""}</div>
     <div class="chead" style="margin-bottom:11px"><span class="cat" style="background:var(--text-primary);color:var(--surface)">${o.cat}</span>
     <span>${chips(o)}</span></div>
     <div class="two">
@@ -1320,7 +1333,7 @@ function card(c) {
     </div>
     <div class="anal">${o.anal}</div>
     ${o.fix && o.fix.length ? `<div class="fix"><span class="fixl">Ways to take it on</span>${o.fix.map((f, i) => `<b>${i + 1}.</b> ${f}`).join("<br>")}</div>` : ""}
-    </div>` : "";
+    </div>`).join("");
   const bdg = v => v === null || v === undefined ? `<span class="chip c-n">n/a</span>` : (v ? `<span class="chip c-g">yes</span>` : `<span class="chip c-r">no</span>`);
   const spine = (c.spine && c.spine.length) ? `<div class="blk"><div class="bl">How the call went</div><div class="tl">${
     c.spine.map(([t, m, h, s], i) => `<div class="tlt">${t}</div>
@@ -1481,7 +1494,7 @@ function objectionBrowserHtml() {
     .concat(cats.map(([cat, n]) => `<option value="${encodeURIComponent(cat)}"${cat === objBrowserCat ? " selected" : ""}>${cat} (${n})</option>`)).join("");
   const rows = objBrowserCat ? ALL_CALLS_CACHE.filter(c => c.cat === objBrowserCat) : [];
   const rowsHtml = rows.map(c => `<tr><td>${c.date}</td><td>${c.who || ""}</td><td>${c.lead || ""}</td>
-    <td><span class="chip ${c.chipt === "Addressed, overcome" ? "c-g" : c.addressed ? "c-w" : "c-r"}">${c.chipt || (c.addressed ? "addressed, not overcome" : "not addressed")}</span></td></tr>`).join("");
+    <td><span class="chip ${(c.score || 0) >= 8 ? "c-g" : c.addressed ? "c-w" : "c-r"}">${c.score != null ? `${c.score}/10` : (c.addressed ? "addressed, not overcome" : "not addressed")}</span></td></tr>`).join("");
   return `<div class="sect"><h2>Browse by objection</h2>
    <p class="sd">Every objection category seen across all reporting days, most common first.</p>
    <select id="objBrowserSel">${opts}</select>
@@ -1642,17 +1655,17 @@ async function rpFetchHistory() {
 
 /* This producer's real, unresolved objection categories -- from actual
    coached calls, not practice sessions -- most-common first, capped at 2.
-   "Unresolved" here means the objection did not end in "Addressed,
-   overcome"; a resolved objection isn't a weak spot to drill. Windowed to
-   the trailing 4 completed weeks (Frank, 2026-09-10): refreshes every
-   Monday to the 4 weeks that just closed, so a bad stretch from months ago
-   doesn't keep dictating today's practice once it's been fixed. */
+   "Unresolved" here means a score under 8/10; a strongly-resolved
+   objection isn't a weak spot to drill. Windowed to the trailing 4
+   completed weeks (Frank, 2026-09-10): refreshes every Monday to the 4
+   weeks that just closed, so a bad stretch from months ago doesn't keep
+   dictating today's practice once it's been fixed. */
 function producerWeakSpots(producer) {
   if (!ALL_CALLS_CACHE) return [];
   const { start, end } = objectionWindow4wk();
   const counts = {};
   for (const c of ALL_CALLS_CACHE) {
-    if (!c.cat || c.who !== producer || c.chipt === "Addressed, overcome") continue;
+    if (!c.cat || c.who !== producer || (c.score || 0) >= 8) continue;
     if (c.date < start || c.date > end) continue;
     counts[c.cat] = (counts[c.cat] || 0) + 1;
   }

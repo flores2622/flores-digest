@@ -92,9 +92,6 @@ DIMS = ["Opening & identification", "Discovery", "Current premium captured",
 TECH_DIMS = ["Elevator pitch", "Feel-Felt-Found", "Risk reversal",
              "Social proof", "Trial close", "Takeaway / urgency"]
 
-CHIPT_VALUES = ("Addressed, overcome", "Addressed, not overcome", "Addressed, kept going")
-
-
 def _ask_card(model, transcript, notes, seconds, producer, lead, call_count=1):
     length_line = (f"Call length: {seconds} seconds" if call_count == 1 else
                    f"Total length across {call_count} calls with this same lead "
@@ -325,27 +322,63 @@ def _clean_spine(raw, cap=8):
     return out
 
 
-def _clean_obj(raw):
-    if not isinstance(raw, dict):
-        return None
-    cat = str(raw.get("cat") or "").strip()
-    they = str(raw.get("they") or "").strip()
-    you = str(raw.get("you") or "").strip()
-    if not cat or not they:
-        return None
-    out = {
-        "cat": cat, "at": str(raw.get("at") or "").strip(),
-        "they": they, "theyen": str(raw.get("theyen") or "").strip(),
-        "you": you, "youen": str(raw.get("youen") or "").strip(),
-        "noresp": bool(raw.get("noresp")),
-        "addressed": bool(raw.get("addressed")),
-        "anal": str(raw.get("anal") or "").strip(),
-    }
-    chipt = raw.get("chipt")
-    if out["addressed"] and chipt in CHIPT_VALUES:
-        out["chipt"] = chipt
-    fix = raw.get("fix")
-    out["fix"] = [str(f).strip() for f in fix if str(f).strip()][:3] if isinstance(fix, list) else []
+# Approximate scores for a cache entry written before this file moved from
+# one shared "chipt" verdict to a per-objection 0-10 score -- see
+# _clean_objs' `legacy` param. Never guessed for a card that HAS a real
+# score; only stands in until that call's model read is refreshed.
+_LEGACY_CHIPT_SCORE = {"Addressed, overcome": 9, "Addressed, kept going": 5,
+                        "Addressed, not overcome": 2}
+
+
+def _clean_objs(raw, legacy=None, cap=6):
+    """Every distinct objection the model found, each scored 0-10 on its own
+    (Frank, 2026-09-15: "I want them as their own badge, with a 0-10 score
+    based on how well they attempted to overcome the objection" -- a card
+    with a spousal-approval objection AND a separate mortgage/bundle
+    objection gets two entries here, not one with the second folded into
+    the first's "anal" text). `cap` guards against a runaway model response;
+    no real call has raised more than a handful.
+
+    `legacy` is the OLD single-object "obj" dict shape (with a "chipt"
+    enum instead of "score") a cache entry written before this schema
+    change still carries -- used only when `raw` (today's "objs" list) is
+    absent, so a day whose model read hasn't been refreshed yet still
+    shows the one real objection it has instead of going silently blank.
+    Its score is approximated from "chipt" and is replaced by a real per-
+    objection score the next time that call's model read happens.
+
+    "addressed" and "score" are independent verdicts (Frank, 2026-09-15,
+    re: Miguel Acosta -- ding the missing verbal acknowledgment without
+    dragging down a score that reflects the objection actually being
+    handled well in practice): never derive one from the other here, only
+    read whatever pair of values the model actually gave.
+    """
+    if not isinstance(raw, list):
+        raw = [legacy] if isinstance(legacy, dict) else []
+    out = []
+    for item in raw[:cap]:
+        if not isinstance(item, dict):
+            continue
+        cat = str(item.get("cat") or "").strip()
+        they = str(item.get("they") or "").strip()
+        you = str(item.get("you") or "").strip()
+        if not cat or not they:
+            continue
+        try:
+            score = max(0, min(10, int(round(float(item.get("score"))))))
+        except (TypeError, ValueError):
+            score = _LEGACY_CHIPT_SCORE.get(item.get("chipt"))
+        out.append({
+            "cat": cat, "at": str(item.get("at") or "").strip(),
+            "they": they, "theyen": str(item.get("theyen") or "").strip(),
+            "you": you, "youen": str(item.get("youen") or "").strip(),
+            "noresp": bool(item.get("noresp")),
+            "addressed": bool(item.get("addressed")),
+            "score": score,
+            "anal": str(item.get("anal") or "").strip(),
+            "fix": [str(f).strip() for f in item.get("fix") if str(f).strip()][:3]
+                   if isinstance(item.get("fix"), list) else [],
+        })
     return out
 
 
@@ -412,7 +445,7 @@ def _finish_card(d, producer, group, raw_dials, day, transcript, recording_ids):
         "summary": str(d.get("summary") or "").strip(),
         "askq": askq, "asks": asks,
         "askfix": str(d.get("askfix") or "").strip(),
-        "obj": _clean_obj(d.get("obj")),
+        "objs": _clean_objs(d.get("objs"), d.get("obj")),
         "good": _clean_pairs(d.get("good")),
         "bad": _clean_pairs(d.get("bad")),
         "score": _clean_score(d.get("score")),
@@ -620,16 +653,15 @@ def scan(cards):
 
 
 def objcats(cards):
-    """[[category, raised, won], ...] -- "won" means addressed AND overcome,
-    per the methodology's own addressed-vs-overcome distinction."""
+    """[[category, raised, won], ...] -- "won" means a strong resolution
+    (score 8+ out of 10), one row per objection now that a card can carry
+    several (Frank, 2026-09-15: each objection scored on its own, not one
+    shared addressed/overcome verdict for the whole card)."""
     agg = {}
     for c in cards:
-        o = c.get("obj")
-        if not o:
-            continue
-        raised, won = agg.get(o["cat"], (0, 0))
-        agg[o["cat"]] = (raised + 1,
-                         won + (1 if o.get("chipt") == "Addressed, overcome" else 0))
+        for o in c.get("objs") or []:
+            raised, won = agg.get(o["cat"], (0, 0))
+            agg[o["cat"]] = (raised + 1, won + (1 if (o.get("score") or 0) >= 8 else 0))
     return sorted(([cat, n, w] for cat, (n, w) in agg.items()), key=lambda row: -row[1])
 
 
