@@ -782,7 +782,11 @@ function digestDay(d, who) {
     ["Dials", t.dials ?? 0, "", tc("dials")],
     ["Live contacts", t.live ?? 0, rate + "% contact rate", tc("rate")],
     ["HH/Prem. Quoted", `<span class="${tc("hh")}">${t.hh ?? 0} HH</span> / <span class="${tc("pq")}">${money(t.pq)}</span>`],
-    ["Pol/Prem. Sold", `${t.pol ?? 0} Pol / <span class="${tc("ps")}">${money(t.ps)}</span>`],
+    // Policies colours on the sale streak (see apply_policy_streak), same
+    // tier data the Team Leaderboard table's own Pol column already uses --
+    // this tile just wasn't wrapping the number in it (unlike HH/Prem.
+    // Quoted right above, which colours both halves).
+    ["Pol/Prem. Sold", `<span class="${tc("pol")}">${t.pol ?? 0} Pol</span> / <span class="${tc("ps")}">${money(t.ps)}</span>`],
   ];
   if (t.util != null) tiles.push(["Utilization", t.util + "%", "weighted", tc("util")]);
   const tilesHtml = tiles.map(([k, v, n, cls]) =>
