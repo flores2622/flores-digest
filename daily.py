@@ -943,6 +943,21 @@ def main():
     send(day, html, [notes, rec], audience=a.audience,
          ops_only_pdfs=[missed] if missed else [])
     publish_day(day)
+
+    # publish_day() -> publish_board.build() -> coaching_cards.build() writes
+    # data/coaching_cards_<day>.json, and call_summary.build() above wrote
+    # data/callsum_<day>.json -- both AFTER transcribe_day()'s own last
+    # r2_cache.sync_up_day() call, so neither ever reached R2 without this.
+    # Same gap intraday.py's checkpoints had (see its own run(), fixed
+    # 2026-09-15 after a live contact's real coaching card generated during
+    # the day never survived to the published board): a same-day re-run of
+    # this nightly build -- or a future intraday checkpoint after tonight's
+    # finalize -- would otherwise re-pay the Anthropic API cost to
+    # re-summarize every live contact from zero instead of reusing tonight's
+    # reads.
+    import r2_cache
+    r2_cache.sync_up_day(day, log=log)
+
     sync_sales_log(day)
     make_missed_call_tasks(day)
 
