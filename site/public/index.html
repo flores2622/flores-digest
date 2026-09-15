@@ -707,6 +707,14 @@ let matchAttempts = 0;
 // explicitly NOT the official Premium Sold figure (that stays AgencyZoom-
 // derived, as it already is everywhere else on this board). Entered sales
 // are stored in R2 (saleslog/<day>.json, site/worker.js).
+//
+// Amanda logs sales here even though she isn't a tracked PRODUCER_ROSTER
+// producer elsewhere on the board (Frank, 2026-09-15: "Amanda needs to be
+// an option for 'who is logging' with her color") -- a separate roster so
+// this doesn't pull her into the leaderboard/coaching tracking CLAUDE.md
+// deliberately keeps her out of. Her colour already exists in DOT (mirrors
+// the email's own palette), so pbadge/prodSelStyle need no changes.
+const SALES_LOGGER_ROSTER = [...PRODUCER_ROSTER, "Amanda Torricellas"];
 let salesDay = null;          // set to today's AZ date on first load -- still the day a NEW sale is logged against
 let salesEntries = [];        // the current folio's entries (or just salesDay's, if it falls outside any known folio), newest-added first
 let salesProducer = "";       // who's currently logging a sale
@@ -2362,10 +2370,40 @@ function docsSignedOpts(selected) {
     `<option value="${v}"${v === selected ? " selected" : ""}>${v || "(pending)"}</option>`).join("");
 }
 
-// AZ Profile / Docs Signed / Review Sent mirror the real Sales sheet's own
-// three tracking columns (Frank, 2026-09-14) -- AZ Profile and Docs Signed
-// sit LEFT of the sale info same as that sheet, Review Sent sits RIGHT.
-// All three are editable in place via /api/saleslog/:day/track.
+// Per-producer + team totals for this folio's log, at the top of the Sales
+// tab (Frank, 2026-09-15: "i want totals at the top for everyone and the
+// team total"). Counts every logged entry regardless of AZ Profile/Docs
+// Signed/Review Sent state -- this is a tally of what's been SELF-REPORTED
+// this folio, the same "not the official Premium Sold figure" scope as the
+// log itself, not a reconciled/official count.
+function salesTotalsHtml(entries) {
+  if (!entries.length) return "";
+  const byProd = {};
+  for (const e of entries) {
+    const row = byProd[e.producer] || (byProd[e.producer] = { count: 0, premium: 0 });
+    row.count++;
+    row.premium += e.premium || 0;
+  }
+  const names = Object.keys(byProd).sort((a, b) => byProd[b].premium - byProd[a].premium);
+  const rows = names.map(name => `<tr>
+    <td class="name"><span class="who">${pbadge(DOT[name] || "#8a877f", name)}</span></td>
+    <td class="num">${byProd[name].count}</td>
+    <td class="num">${money(byProd[name].premium)}</td></tr>`).join("");
+  const teamCount = entries.length;
+  const teamPremium = entries.reduce((s, e) => s + (e.premium || 0), 0);
+  return `<div class="sect">
+    <h2>Totals</h2>
+    <p class="sd">This folio's self-reported log, by producer -- same scope as the log below.</p>
+    <div class="scroll"><table>
+      <thead><tr><th>Producer</th><th class="num">Sales</th><th class="num">Premium</th></tr></thead>
+      <tbody>${rows}<tr class="tot">
+        <td class="name"><span class="who">${pbadge(TEAM_DOT, "Team")}</span></td>
+        <td class="num">${teamCount}</td>
+        <td class="num">${money(teamPremium)}</td></tr></tbody>
+    </table></div>
+  </div>`;
+}
+
 // Same DOT palette as everywhere else on the board (Frank, 2026-09-14:
 // "match all the coloring and the highlight based on producer sold") --
 // the picker itself is tinted to the chosen producer's colour, and every
@@ -2377,7 +2415,7 @@ function prodSelStyle(name) {
 function salesPanel(data) {
   const entries = data.entries || [];
   const producerOpts = [`<option value="">Who's logging?</option>`]
-    .concat(PRODUCER_ROSTER.map(p => `<option value="${p}"${p === salesProducer ? " selected" : ""}>${p}</option>`)).join("");
+    .concat(SALES_LOGGER_ROSTER.map(p => `<option value="${p}"${p === salesProducer ? " selected" : ""}>${p}</option>`)).join("");
   const sourceOpts = [`<option value="">Lead source</option>`]
     .concat((salesLeadSourceCache || []).map(s => `<option value="${s}">${s}</option>`)).join("");
   const rows = entries.map(e => `<tr>
@@ -2396,7 +2434,7 @@ function salesPanel(data) {
     <td><button class="ghost" data-del="${e.id}" data-day="${e.day}" type="button">delete</button></td>
   </tr>`).join("");
 
-  return `<div class="sect">
+  return `${salesTotalsHtml(entries)}<div class="sect">
     <h2>Log a sale</h2>
     <p class="sd">Same-day list for immediate visibility -- AgencyZoom stays the official Premium Sold number.</p>
     <div class="controls" style="flex-wrap:wrap;gap:10px;align-items:center">
