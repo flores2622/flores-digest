@@ -672,6 +672,7 @@ let producerFilter = "";
 // document via ensureCurForRange()/mergeDayDocs() and renders it the same way.
 let rangeMode = "day";  // day | week | mtd | ytd | folio | custom
 let customFrom = "", customTo = "";
+let folioPick = "";  // a FOLIO_CLOSE_DATES entry; "" means the current folio (the one covering today)
 
 // Training tab state. TRAINING_CACHE is fetched once (static content, same
 // for every viewer) and kept for the life of the page. trainingOrder is a
@@ -2837,6 +2838,19 @@ function rangeControlHtml() {
       `<option value="${d}"${cur && d === cur.date ? " selected" : ""}>${
         d === today && !DAYS.includes(today) ? "Today (live)" :
         new Date(d + "T12:00:00").toLocaleDateString(undefined, { weekday: "short", month: "short", day: "numeric" })}</option>`).join("")}</select>`;
+  } else if (rangeMode === "folio") {
+    // Frank, 2026-09-15: "I want on the shortcuts for folio to date to
+    // reveal a dropdown, like the day shortcut does, and list the current
+    // and future folio periods" -- every entry on the calendar from the one
+    // covering today onward (a past folio already has its own days
+    // reachable through This Week/Custom/Day, so it isn't offered here).
+    const curEnd = folioEndFor(today);
+    const choices = curEnd ? FOLIO_CLOSE_DATES.filter(end => end >= curEnd) : [];
+    extra = choices.length ? `<select id="foliopick" aria-label="Folio period">${choices.map(end => {
+      const start = folioStartFor(end);
+      const label = `${start ? fmtShortDate(start) : "start"} – ${fmtShortDate(end)}, ${end.slice(0, 4)}`;
+      return `<option value="${end}"${(folioPick || curEnd) === end ? " selected" : ""}>${label}${end === curEnd ? " (current)" : ""}</option>`;
+    }).join("")}</select>` : "";
   } else if (rangeMode === "custom") {
     // Default to the most recent day that actually has a report, not
     // "today" -- today usually has no report yet (nightly run hasn't
@@ -2855,6 +2869,8 @@ function rangeControlHtml() {
 function wireRangeControl() {
   const sel = $("#rangesel");
   if (sel) sel.onchange = () => { rangeMode = sel.value; paint(); };
+  const fp = $("#foliopick");
+  if (fp) fp.onchange = () => { folioPick = fp.value; paint(); };
   const dp = $("#daypick");
   if (dp) dp.onchange = () => loadDay(dp.value);
   const ap = $("#rapply");
@@ -2890,10 +2906,11 @@ async function ensureCurForRange() {
   const today = isoDate(azTodayDate());
   let from, to, label;
   if (rangeMode === "folio") {
-    const end = folioEndFor(today);
-    if (!end) return "No folio calendar covers today yet.";
+    const curEnd = folioEndFor(today);
+    if (!curEnd) return "No folio calendar covers today yet.";
+    const end = folioPick || curEnd;
     from = folioStartFor(end); to = end < today ? end : today;
-    label = "Folio to Date";
+    label = end === curEnd ? "Folio to Date" : "Folio";
   } else if (rangeMode === "mtd") {
     from = today.slice(0, 7) + "-01"; to = today; label = "Month to Date";
   } else if (rangeMode === "ytd") {
@@ -2905,6 +2922,7 @@ async function ensureCurForRange() {
     [from, to] = customFrom <= customTo ? [customFrom, customTo] : [customTo, customFrom];
     label = "Custom Range";
   }
+  if (from && from > to) return `That folio hasn't started yet -- it begins ${from}.`;
   const docs = await fetchRangeDocs(from || "", to);
   if (!docs.length) return `No reports in ${from || "the start"} → ${to}.`;
   cur = mergeDayDocs(docs); curLive = false;

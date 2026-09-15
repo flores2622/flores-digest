@@ -77,10 +77,6 @@ export default {
         return getMonth(env, parts[2]);
       }
 
-      if (parts[1] === "folios" && parts.length === 3) {
-        return getFolio(env, parts[2]);
-      }
-
       if (parts[1] === "intraday" && parts.length === 3) {
         return getIntraday(env, parts[2]);
       }
@@ -310,10 +306,10 @@ function folioStartFor(end) {
  * 2026-09-14: "I want this folios sales sheet to be displayed, sorted from
  * recently added to oldest added").
  *
- * Computed at request time, not built nightly like months/folios rollups
- * (publish_board.publish_month/_folio): a sales log entry can be added any
- * moment during the day, so a pre-built rollup would go stale the instant
- * someone logs a sale. A folio is at most ~4 weeks, so this is at most ~28
+ * Computed at request time, not from a pre-built rollup: a sales log entry
+ * can be added any moment during the day, so a pre-built rollup would go
+ * stale the instant someone logs a sale. A folio is at most ~4 weeks, so
+ * this is at most ~28
  * R2 reads per request -- cheap, and nobody is hitting this tab hard enough
  * to matter. Each entry carries its own `day` (which key it came from) since
  * a flat merged list would otherwise lose that. */
@@ -649,13 +645,17 @@ async function verifyJwt(token, team, aud) {
   return payload;
 }
 
-/** GET /api/months/:month -> the month-to-date rollup, e.g. 2026-09.
+/** GET /api/months/:month -> that month's trend rollup, e.g. 2026-09.
  *
- * Served straight from months/<YYYY-MM>.json, which publish_board.py rewrites
- * every night from that month's day documents. The Worker deliberately does
- * NOT aggregate days itself: a full month is up to 23 documents at 20-135 KB
- * each, so doing it here would mean megabytes of R2 reads on every page load,
- * for every viewer, growing through the month.
+ * Served straight from months/<YYYY-MM>.json, which publish_board.py
+ * rewrites every night from that month's day documents. This is now ONLY
+ * the Trends tab's data source (loadTrend()'s sparkline points) -- the
+ * Digest tab's Week/MTD/YTD/Folio/Custom views read full day documents
+ * directly instead (mergeDayDocs), so the rollup no longer needs to carry
+ * totals/producers, only `trend`. The Worker still doesn't aggregate days
+ * itself here: a full month is up to 23 documents at 20-135 KB each, so
+ * doing it here would mean megabytes of R2 reads on every page load, for
+ * every viewer, growing through the month.
  */
 async function getMonth(env, month) {
   if (!/^\d{4}-\d{2}$/.test(month)) {
@@ -669,28 +669,6 @@ async function getMonth(env, month) {
     headers: {
       "content-type": "application/json; charset=utf-8",
       // Rewritten nightly, and rewritten again by any past-day rebuild.
-      "cache-control": "no-store",
-    },
-  });
-}
-
-/** GET /api/folios/:end -> the folio rollup ending on that date, e.g.
- * 2026-09-18. Folios (Frank's "Folio Close Dates" calendar) do not align to
- * calendar months, so this is a separate object from months/<YYYY-MM>.json --
- * see publish_board.publish_folio, which rewrites it every night alongside
- * the month rollup, and on any past-day rebuild.
- */
-async function getFolio(env, end) {
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(end)) {
-    return json({ error: "bad folio end date" }, 400);
-  }
-  const obj = await env.BOARD.get(`folios/${end}.json`);
-  if (obj === null) {
-    return json({ error: "no folio rollup for this date", end }, 404);
-  }
-  return new Response(obj.body, {
-    headers: {
-      "content-type": "application/json; charset=utf-8",
       "cache-control": "no-store",
     },
   });
@@ -952,8 +930,7 @@ async function roleplayGrade(request, env) {
  *
  * Most recent first, capped at 25. Without a producer filter, lists
  * across everyone -- small volume expected (practice reps, not a
- * once-a-day batch), so a plain list-then-fetch is fine; no rollup file
- * the way months/folios have one.
+ * once-a-day batch), so a plain list-then-fetch is fine; no rollup file.
  */
 async function roleplayHistory(env, producer) {
   const prefix = producer ? `roleplay/${roleplaySlug(producer)}/` : "roleplay/";
