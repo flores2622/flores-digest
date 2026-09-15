@@ -180,9 +180,25 @@ def is_test_lead(lead):
     return bool(name) and bool(TEST_LEAD_RE.search(name))
 
 
+# Leads assigned to these az_ids are excluded entirely from recontact.py's
+# Recontact Struggle panel (and flagged, though unused elsewhere, by
+# day_calls.py) -- for people who are NOT a tracked producer, so their leads
+# never clutter a panel that is meant to coach real producers. Frank Flores
+# and Amanda Torricellas are not producers (Amanda: "deliberately not
+# tracked", CLAUDE.md) and belong here permanently.
+#
+# Coral Barwick and Sarahi Chin were removed 2026-09-15 (Frank: "audit
+# Sarahi and Coral's leads" turned up zero, which was this bug, not a clean
+# book) -- they were added here while still TRAINEES, before CLAUDE.md's own
+# "full producers as of 2026-08-24" cutover, and nobody took them back out.
+# The result: their entire lead pipeline -- 19 and 18 real at-risk leads the
+# day this was found -- was invisible to the Recontact Struggle panel in the
+# actual digest and board, not just to an ad-hoc query, for about three
+# weeks. If a future producer needs this treatment during an actual training
+# period, add them here deliberately and remove them the day CLAUDE.md
+# records their own producer cutover -- do not let it linger past that date
+# again.
 TRAINING_LEAD_OWNERS = {82589,   # Frank Flores
-                        185440,  # Coral Barwick
-                        185441,  # Sarahi Chin
                         105006}  # Amanda Torricellas
 
 # Service, renewal and change work is excluded ENTIRELY -- from the numbers and
