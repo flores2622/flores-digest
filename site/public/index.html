@@ -669,7 +669,7 @@ const PRODUCER_ROSTER = ["Crystal Mango", "Lorena Gonzalez", "Mike Olvera", "Cor
 let producerFilter = "";
 // Digest-tab range selector. "day" shows a picked day's full digest; every
 // other value renders an aggregate via digestRange().
-let rangeMode = "day";  // day | yesterday | week | mtd | ytd | folio | custom
+let rangeMode = "day";  // day | week | mtd | ytd | folio | custom
 let customFrom = "", customTo = "";
 
 // Training tab state. TRAINING_CACHE is fetched once (static content, same
@@ -2594,7 +2594,7 @@ function $$(s) { return Array.from(document.querySelectorAll(s)); }
 // put "today" a day ahead of the last real reporting day. "Day" already
 // covers this correctly: its dropdown lists only days DAYS actually has a
 // report for, so it can't select a day that doesn't exist yet.
-const RANGE_LABELS = { day: "Day", yesterday: "Yesterday",
+const RANGE_LABELS = { day: "Day",
   week: "This Week", mtd: "Month to Date", ytd: "Year to Date",
   folio: "Folio to Date", custom: "Custom range…" };
 
@@ -2667,28 +2667,6 @@ async function renderDigestRange() {
     wireRangeControl(); wireProducerControl();
     return;
   }
-  if (rangeMode === "yesterday") {
-    const day = addDays(today, -1);
-    v.innerHTML = controls + '<div class="empty">Loading…</div>';
-    let doc = null;
-    try {
-      const r = await fetch(`/api/days/${day}`, { cache: "no-store" });
-      doc = r.ok ? await r.json() : null;
-    } catch (_) {}
-    // Shared `cur`, not a locally-scoped doc: Coaching (and any other tab
-    // that reads `cur`) has to see "yesterday" too when it renders next,
-    // the same way picking a specific day via #daypick already does via
-    // loadDay(). Before this, switching to Coaching after picking
-    // "Yesterday" here silently kept showing whatever day cur last was.
-    // curLive resets too -- always a finalized fetch, never intraday's
-    // fallback, so a live banner left over from a prior "Today" view must
-    // not carry into it.
-    cur = doc; curLive = false;
-    v.innerHTML = controls + (doc ? digestPanel(doc, producerFilter) : `<div class="empty">No report for ${day}.</div>`);
-    wireRangeControl(); wireProducerControl();
-    return;
-  }
-
   v.innerHTML = controls + '<div class="empty">Loading…</div>';
   let html;
   if (rangeMode === "folio") {
