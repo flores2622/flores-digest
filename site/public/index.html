@@ -667,10 +667,12 @@ let view = "digest";
 // Amanda, who show up in DOT/coaching data but are not tracked as such).
 const PRODUCER_ROSTER = ["Crystal Mango", "Lorena Gonzalez", "Mike Olvera", "Coral Barwick", "Sarahi Chin"];
 let producerFilter = "";
-// Digest-tab range selector. "day" shows a picked day's full digest; every
-// other value renders an aggregate via digestRange().
-let rangeMode = "day";  // day | yesterday | week | mtd | ytd | folio | custom
+// Range selector shared by Digest and Coaching. "day" shows a picked day's
+// own document; every other value merges every day in that range into one
+// document via ensureCurForRange()/mergeDayDocs() and renders it the same way.
+let rangeMode = "day";  // day | week | mtd | ytd | folio | custom
 let customFrom = "", customTo = "";
+let folioPick = "";  // a FOLIO_CLOSE_DATES entry; "" means the current folio (the one covering today)
 
 // Training tab state. TRAINING_CACHE is fetched once (static content, same
 // for every viewer) and kept for the life of the page. trainingOrder is a
@@ -1159,63 +1161,15 @@ function digestPanel(d, who) {
 }
 
 /* ---- Range aggregates (This Week / MTD / YTD / Folio / Custom) ------------
-   One generic aggregator + renderer feeds every non-single-day preset.
-   `docs` is either a list of full day documents (from /api/days/:day) or a
-   list of already-aggregated rollup documents (month/folio) -- both shapes
-   carry `totals` and `producers`, so the same merge works for either,
-   reconstructing each producer's weighted talk time from `talk * live`
-   (a rollup's `talk` is already an average, not raw seconds, same trick
-   publish_board.publish_month/_folio use server-side). */
-function aggregateDocs(docs) {
-  const NUM = ["dials", "live", "hh", "pq", "ps", "pol"];
-  const totals = Object.fromEntries(NUM.map(k => [k, 0]));
-  const per = {};
-  const days = new Set();
-  for (const doc of docs) {
-    const t = doc.totals || {};
-    for (const k of NUM) totals[k] += t[k] || 0;
-    if (doc.date) days.add(doc.date);
-    for (const d of doc.days || []) days.add(d);
-    for (const p of doc.producers || []) {
-      const row = per[p.name] || (per[p.name] = { name: p.name, days: 0, talk_secs: 0, ...Object.fromEntries(NUM.map(k => [k, 0])) });
-      for (const k of NUM) row[k] += p[k] || 0;
-      row.days += p.days || 1;
-      row.talk_secs += (p.talk || 0) * (p.live || 0);
-    }
-  }
-  for (const row of Object.values(per)) {
-    row.rate = row.dials ? Math.round(1000 * row.live / row.dials) / 10 : 0;
-    row.talk = row.live ? Math.round(row.talk_secs / row.live) : 0;
-    delete row.talk_secs;
-  }
-  totals.rate = totals.dials ? Math.round(1000 * totals.live / totals.dials) / 10 : 0;
-  return { totals, producers: Object.values(per).sort((a, b) => b.ps - a.ps),
-           business_days: days.size, days: [...days].sort() };
-}
-function digestRange(agg, label, sub, who) {
-  const byName = Object.fromEntries((agg.producers || []).map(p => [p.name, p]));
-  const focus = who ? byName[who] : null;
-  const T = focus || agg.totals || {};
-  const tiles = [
-    ["Dials", (T.dials ?? 0).toLocaleString(), ""],
-    ["Live Contacts", (T.live ?? 0).toLocaleString(), `${T.rate ?? 0}% contact rate`],
-    ["Households Quoted", T.hh ?? 0, ""],
-    ["Premium Quoted", money(T.pq), ""],
-    ["Premium Sold", money(T.ps), `${T.pol ?? 0} policies`],
-    ["Business Days", (focus ? focus.days : agg.business_days) ?? 0, ""],
-  ].map(([k, v, n]) => `<div class="tile"><div class="k">${k}</div><div class="v">${v}</div>${n ? `<div class="n">${n}</div>` : ""}</div>`).join("");
-
-  const P = focus ? [] : (agg.producers || []);
-  const rows = P.map(r => `<tr><td class="name">${r.name}</td><td class="num">${r.days ?? 0}</td>
-    <td class="num">${r.dials ?? 0}</td><td class="num">${r.live ?? 0}</td><td class="num">${r.rate ?? 0}%</td>
-    <td class="num">${secs(r.talk)}</td><td class="num">${r.hh ?? 0}</td>
-    <td class="num">${money(r.pq)}</td><td class="num">${money(r.ps)}</td></tr>`).join("");
-
-  return `<div class="sect"><h2>${label}${focus ? ` · ${who}` : ""}</h2>${sub ? `<p class="sd">${sub}</p>` : ""}<div class="tiles">${tiles}</div></div>
-  ${P.length ? `<div class="sect"><h2>Producers</h2>
-    <div class="scroll"><table><thead><tr><th>Producer</th><th class="num">Days</th><th class="num">Dials</th>
-    <th class="num">Live</th><th class="num">Rate</th><th class="num">Avg Talk</th><th class="num">HH</th>
-    <th class="num">Quoted</th><th class="num">Sold</th></tr></thead><tbody>${rows}</tbody></table></div></div>` : ""}`;
+   Digest and Coaching both render the SAME merged document a range resolves
+   to (see mergeDayDocs above and ensureCurForRange below, near paint()) --
+   there is no separate, thinner aggregate renderer to keep in sync with the
+   real one, and no tab-specific "not supported" gate any more (Frank,
+   2026-09-15: "i want the whole digest filtered to those days, and coaching
+   cards to those days"). */
+let curRangeLabel = "", curRangeSub = "";
+function rangeHeaderHtml() {
+  return curRangeLabel ? `<div class="sect"><h2>${curRangeLabel}</h2><p class="sd">${curRangeSub}</p></div>` : "";
 }
 
 /* ---- date helpers: Arizona is always UTC-7, never DST --------------------- */
@@ -1235,6 +1189,9 @@ function azTodayDate() {
 }
 function isoDate(d) { return d.toISOString().slice(0, 10); }
 function addDays(iso, n) { const d = new Date(iso + "T12:00:00Z"); d.setUTCDate(d.getUTCDate() + n); return isoDate(d); }
+function fmtShortDate(iso) {
+  return iso ? new Date(iso + "T12:00:00").toLocaleDateString(undefined, { month: "short", day: "numeric" }) : "";
+}
 function weekStart(iso) { const d = new Date(iso + "T12:00:00Z"); return addDays(iso, -d.getUTCDay()); }
 
 // Monday-anchored, distinct from weekStart()'s Sunday-anchored week used for
@@ -1264,6 +1221,270 @@ async function fetchRangeDocs(from, to) {
     } catch (_) {}
   }
   return docs;
+}
+
+function hhmmToSecs(s) {
+  if (!s) return 0;
+  const [h, m] = String(s).split(":").map(Number);
+  return (h || 0) * 3600 + (m || 0) * 60;
+}
+function secsToHHMM(s) {
+  s = Math.max(0, Math.round(s || 0));
+  return `${String(Math.floor(s / 3600)).padStart(2, "0")}:${String(Math.round((s % 3600) / 60)).padStart(2, "0")}`;
+}
+
+/* Merges N full single-day documents (the exact shape /api/days/:day
+   returns) into one document of the SAME shape, so every existing
+   per-day renderer (digestPanel, coachingPanel, and everything they call)
+   works unmodified on a date range too (Frank, 2026-09-15: "i want the
+   whole digest filtered to those days, and coaching cards to those
+   days") -- no separate, thinner aggregate renderer that could drift
+   from what a single day actually shows.
+
+   Tiers ARE recomputed for the range (Frank, 2026-09-15: "rates and
+   percentages should stay the same, and the quantity stats should be
+   tiered by multiplying the daily goal by the number of BUSINESS days
+   being filtered") -- see rangeProducerTiers/rangeTeamTiers just below,
+   a straight JS mirror of digest_config.THRESHOLDS/tier() and
+   board_payload._producer_tiers/_team_tiers. Still OMITTED: leaderboard.
+   order/points and policy_streak coloring, which aren't goal thresholds
+   at all -- one's a ranked-points system, the other a day-to-day sale
+   streak -- and have no meaning stretched across a range. Every renderer
+   that reads them already degrades gracefully without them:
+   teamLeaderboardHtml falls back to producers[] order with no podium/
+   medals, and polTitle() falls back to "no sale on record" -- confirmed
+   by reading each one, not assumed.
+
+   Talk time, utilization and Coach AI score/sentiment are all reweighted
+   from the underlying totals (seconds, call counts), not averaged day to
+   day, for the same reason CLAUDE.md's month/folio rollups already do
+   this server-side: a 3-call day and a 60-call day are not equally
+   informative. Speed to Dial's median is recombined EXACTLY, not
+   averaged -- each day's speed_to_dial.per[name] already carries the raw
+   per-lead response seconds (`.secs`), not just its own median, so this
+   pools every lead's own number across the whole range and recomputes one
+   real median from it, the same as the single-day figure would if every
+   lead in the range had been dialled on one day. An older cached day built
+   before `.secs` existed falls back to standing that day's own median in
+   as a single sample rather than dropping it. */
+function median(arr) {
+  if (!arr.length) return 0;
+  const s = [...arr].sort((a, b) => a - b);
+  const mid = Math.floor(s.length / 2);
+  return s.length % 2 ? s[mid] : Math.round((s[mid - 1] + s[mid]) / 2);
+}
+
+// Mirrors digest_config.THRESHOLDS/tier()/TEAM_SCALE -- update this in
+// lockstep if that file's copy ever changes, same obligation
+// COACH_BAR_RANGES above already carries. premium_sold_per_policy and
+// speed_to_dial_min are omitted: Policies/Premium Sold colour on the sale
+// streak instead (apply_policy_streak, day-relative, not a goal -- not
+// reproduced here), and nothing renders a tier off Speed to Dial today.
+const THRESHOLDS = {
+  call_volume: { green: 50, yellow: 40 },
+  avg_talk_min: { green: 7, yellow: 3 },
+  contact_rate_pct: { green: 13, yellow: 10 },
+  households_quoted: { green: 5, yellow: 2 },
+  premium_quoted_per_hh: { green: 900, yellow: 501 },
+  task_completion_pct: { green: 100, yellow: 90 },
+  utilization_pct: { green: 85, yellow: 80 },
+  roleplay_score: { green: 80, yellow: 0 },
+};
+const TEAM_SCALE = 5; // digest_config.TEAM_SCALE == len(PRODUCERS)
+function tierColor(metric, value) {
+  const t = THRESHOLDS[metric];
+  if (value == null) return "red";
+  if (metric === "task_completion_pct") return value >= 100 ? "green" : value >= t.yellow ? "yellow" : "red";
+  return value >= t.green ? "green" : value >= t.yellow ? "yellow" : "red";
+}
+// `businessDays` scales the goal for the two straight-COUNT metrics (call
+// volume, households quoted) -- a rate or percentage needs no such scaling,
+// it's the same goal whether the range is one day or thirty.
+function rangeProducerTiers(p, businessDays) {
+  const hh = p.hh || 0;
+  const pqPer = hh ? (p.pq || 0) / hh : 0;
+  const out = {
+    dials: tierColor("call_volume", (p.dials || 0) / businessDays),
+    talk: tierColor("avg_talk_min", (p.talk || 0) / 60),
+    rate: tierColor("contact_rate_pct", p.rate || 0),
+    hh: tierColor("households_quoted", hh / businessDays),
+    pq: tierColor("premium_quoted_per_hh", pqPer),
+  };
+  if (p.util != null) out.util = tierColor("utilization_pct", p.util);
+  out.roleplay = tierColor("roleplay_score", (p.coach || {}).roleplay || null);
+  const tp = (p.tasks || {}).pct;
+  if (tp != null) out.tasks = tierColor("task_completion_pct", tp || 0);
+  return out;
+}
+function rangeTeamTiers(totals, producers, businessDays) {
+  const scale = TEAM_SCALE * businessDays;
+  const hh = totals.hh || 0;
+  const live = producers.reduce((s, p) => s + (p.live || 0), 0);
+  const talkSecs = producers.reduce((s, p) => s + (p.talk || 0) * (p.live || 0), 0);
+  const teamTalk = live ? Math.floor(talkSecs / live) : 0;
+  const pqPer = hh ? (totals.pq || 0) / hh : 0;
+  const out = {
+    dials: tierColor("call_volume", (totals.dials || 0) / scale),
+    talk: tierColor("avg_talk_min", teamTalk / 60),
+    rate: tierColor("contact_rate_pct", totals.rate || 0),
+    hh: tierColor("households_quoted", hh / scale),
+    pq: tierColor("premium_quoted_per_hh", pqPer),
+  };
+  if (totals.util != null) out.util = tierColor("utilization_pct", totals.util);
+  const recorded = producers.map(p => (p.coach || {}).roleplay).filter(Boolean);
+  out.roleplay = tierColor("roleplay_score", recorded.length ? recorded.reduce((a, b) => a + b, 0) / recorded.length : null);
+  const ttp = (totals.tasks || {}).pct;
+  if (ttp != null) out.tasks = tierColor("task_completion_pct", ttp || 0);
+  return out;
+}
+function mergeDayDocs(docs) {
+  const NUM = ["dials", "live", "hh", "pq", "ps", "pol"];
+  const totals = Object.fromEntries(NUM.map(k => [k, 0]));
+  const taskTotals = { total: 0, completed: 0 };
+  let teamUtilTotalSecs = 0, teamUtilProdSecs = 0;
+  const per = {};
+  const outcomes = {};
+  const taskBuckets = {};
+  const taskRows = {};
+  const objcats = {};
+  const scan = { of: 0, asked_open: 0, assumed_open: 0, priced: 0, closed: 0, premium: 0, xdate: 0, bundle: 0, timeset: 0 };
+  let hasScan = false;
+  const speedPer = {};   // name -> pooled raw per-lead response seconds across every day
+  let speedNote = "";
+  const calls = [];
+  const notcoached = [];
+  const days = [];
+
+  for (const doc of docs) {
+    if (!doc) continue;
+    days.push(doc.date);
+    const t = doc.totals || {};
+    for (const k of NUM) totals[k] += t[k] || 0;
+    if (t.tasks) { taskTotals.total += t.tasks.total || 0; taskTotals.completed += t.tasks.completed || 0; }
+
+    for (const p of doc.producers || []) {
+      const row = per[p.name] || (per[p.name] = {
+        name: p.name, days: 0, talk_secs: 0, util_total_secs: 0, util_prod_secs: 0,
+        coach_calls: 0, coach_score_wsum: 0, coach_sentiment_wsum: 0, coach_roleplay_sum: 0, coach_roleplay_n: 0,
+        tasks: { total: 0, completed: 0 }, ...Object.fromEntries(NUM.map(k => [k, 0])),
+      });
+      for (const k of NUM) row[k] += p[k] || 0;
+      row.days += 1;
+      row.talk_secs += (p.talk || 0) * (p.live || 0);
+      // util_prod can be set on a day whose util_total is null (real data:
+      // Insightful didn't cleanly report total tracked time that day, e.g.
+      // 2026-09-01/02 for Mike Olvera) -- summing prod seconds from every
+      // day while only summing total seconds from days that HAVE one
+      // inflates the ratio past 100%. Only fold in a day where both halves
+      // of the same fraction are actually known.
+      if (p.util != null && p.util_total) {
+        const tSecs = hhmmToSecs(p.util_total), pSecs = hhmmToSecs(p.util_prod);
+        row.util_total_secs += tSecs; row.util_prod_secs += pSecs;
+        teamUtilTotalSecs += tSecs; teamUtilProdSecs += pSecs;
+      }
+      if (p.tasks) { row.tasks.total += p.tasks.total || 0; row.tasks.completed += p.tasks.completed || 0; }
+      if (p.coach) {
+        const c = p.coach;
+        row.coach_calls += c.calls || 0;
+        row.coach_score_wsum += (c.score || 0) * (c.calls || 0);
+        row.coach_sentiment_wsum += (c.sentiment || 0) * (c.calls || 0);
+        if (c.roleplay) { row.coach_roleplay_sum += c.roleplay; row.coach_roleplay_n++; }
+      }
+    }
+
+    for (const [name, segs] of Object.entries(doc.outcomes || {})) {
+      const row = outcomes[name] || (outcomes[name] = {});
+      for (const [seg, n] of Object.entries(segs || {})) row[seg] = (row[seg] || 0) + n;
+    }
+
+    const ta = doc.task_audit || {};
+    for (const [k, n] of Object.entries(ta.buckets || {})) taskBuckets[k] = (taskBuckets[k] || 0) + n;
+    for (const [k, rows] of Object.entries(ta.rows || {})) taskRows[k] = (taskRows[k] || []).concat(rows || []);
+
+    for (const [cat, n, w] of doc.objcats || []) {
+      const row = objcats[cat] || (objcats[cat] = [cat, 0, 0]);
+      row[1] += n || 0; row[2] += w || 0;
+    }
+
+    if (doc.scan) {
+      hasScan = true;
+      for (const k of Object.keys(scan)) scan[k] += doc.scan[k] || 0;
+    }
+
+    const s = doc.speed_to_dial;
+    if (s) {
+      speedNote = s.note || speedNote;
+      for (const [name, v] of Object.entries(s.per || {})) {
+        const row = speedPer[name] || (speedPer[name] = []);
+        if (v.secs && v.secs.length) row.push(...v.secs);
+        else if (v.n) row.push(v.median);
+      }
+    }
+
+    for (const c of doc.calls || []) calls.push(c);
+    if (doc.notcoached) notcoached.push(`${doc.date}: ${doc.notcoached}`);
+  }
+
+  for (const row of Object.values(per)) {
+    row.rate = row.dials ? Math.round(1000 * row.live / row.dials) / 10 : 0;
+    row.talk = row.live ? Math.round(row.talk_secs / row.live) : 0;
+    delete row.talk_secs;
+    if (row.util_total_secs) {
+      row.util = Math.round(1000 * row.util_prod_secs / row.util_total_secs) / 10;
+      row.util_total = secsToHHMM(row.util_total_secs);
+      row.util_prod = secsToHHMM(row.util_prod_secs);
+    }
+    delete row.util_total_secs; delete row.util_prod_secs;
+    if (row.tasks.total) row.tasks.pct = Math.round(1000 * row.tasks.completed / row.tasks.total) / 10;
+    if (row.coach_calls) {
+      row.coach = {
+        calls: row.coach_calls,
+        score: Math.round(row.coach_score_wsum / row.coach_calls),
+        sentiment: Math.round(row.coach_sentiment_wsum / row.coach_calls),
+        roleplay: row.coach_roleplay_n ? Math.round(row.coach_roleplay_sum / row.coach_roleplay_n) : null,
+      };
+    }
+    delete row.coach_calls; delete row.coach_score_wsum; delete row.coach_sentiment_wsum;
+    delete row.coach_roleplay_sum; delete row.coach_roleplay_n;
+  }
+
+  totals.rate = totals.dials ? Math.round(1000 * totals.live / totals.dials) / 10 : 0;
+  if (taskTotals.total) taskTotals.pct = Math.round(1000 * taskTotals.completed / taskTotals.total) / 10;
+  if (teamUtilTotalSecs) totals.util = Math.round(1000 * teamUtilProdSecs / teamUtilTotalSecs) / 10;
+
+  const speedToDial = Object.keys(speedPer).length ? {
+    note: speedNote,
+    per: Object.fromEntries(Object.entries(speedPer).map(([name, secsArr]) => [name, {
+      median: median(secsArr), n: secsArr.length, quickest: Math.min(...secsArr), longest: Math.max(...secsArr),
+    }])),
+    team: (() => {
+      const all = Object.values(speedPer).flat();
+      return all.length ? { median: median(all), n: all.length, quickest: Math.min(...all), longest: Math.max(...all) } : null;
+    })(),
+  } : null;
+
+  calls.sort((a, b) => (b.day || "").localeCompare(a.day || ""));
+
+  const finalTotals = { ...totals, tasks: taskTotals.total ? taskTotals : null };
+  const finalProducers = Object.values(per).sort((a, b) => b.ps - a.ps);
+  const businessDays = days.filter(Boolean).length;
+  const tiers = businessDays ? Object.fromEntries(finalProducers.map(p => [p.name, rangeProducerTiers(p, businessDays)])) : {};
+  if (businessDays) tiers.team = rangeTeamTiers(finalTotals, finalProducers, businessDays);
+
+  return {
+    date: null, days: days.filter(Boolean),
+    totals: finalTotals,
+    producers: finalProducers,
+    outcomes, task_audit: { buckets: taskBuckets, rows: taskRows },
+    objcats: Object.values(objcats), scan: hasScan ? scan : null,
+    speed_to_dial: speedToDial, calls, tiers,
+    notcoached: notcoached.join("; ") || null,
+  };
+}
+
+function folioStartFor(end) {
+  const i = FOLIO_CLOSE_DATES.indexOf(end);
+  return i > 0 ? addDays(FOLIO_CLOSE_DATES[i - 1], 1) : null;
 }
 
 /* Cross-day objection index -- every objection any coached call raised
@@ -1369,7 +1590,7 @@ function card(c) {
   return `<details class="ccard">
    <summary class="blk cchead" style="border-left:4px solid ${c.tab || "var(--border-strong)"}">
      <div class="chead"><div><div class="cname">${c.lead || ""}${c.callback_kind ? `<span class="badge-slot ctype">${c.callback_kind}</span>` : ""}</div>
-       <div class="cmeta">${c.who || ""} · ${c.time || ""} · ${durCell} · ${c.lang || ""} · ${c.src || ""}${c.leadsrc ? ` · ${c.leadsrc}` : ""}</div></div>
+       <div class="cmeta">${c.who || ""} · ${fmtShortDate(c.day)}${c.time ? ` ${c.time}` : ""} · ${durCell} · ${c.lang || ""} · ${c.src || ""}${c.leadsrc ? ` · ${c.leadsrc}` : ""}</div></div>
        <span class="cat ${c.catc || ""}">${c.cat || ""}</span>${c.calltype && c.calltype[0] !== "sales" ? `<span class="ctype ctype-${c.calltype[0]}" title="${c.calltype[1] || ""}">${c.calltype[0]}</span>` : ""}<span class="ctog" aria-hidden="true">▸</span></div>
      <div class="sum">${c.summary || ""}</div>
      ${c.flags && c.flags.length ? `<div style="margin-top:8px">${c.flags.map(f => `<span class="flag">${f}</span>`).join("")}</div>` : ""}
@@ -1438,7 +1659,7 @@ function coachSubTabsHtml() {
 function wireCoachSubTabs() {
   document.querySelectorAll(".subtab").forEach(el => el.onclick = () => {
     coachSubTab = el.dataset.st;
-    document.getElementById("view").innerHTML = rangeControlHtml() + producerControlHtml() + coachingPanel(cur, producerFilter);
+    document.getElementById("view").innerHTML = rangeControlHtml() + producerControlHtml() + rangeHeaderHtml() + coachingPanel(cur, producerFilter);
     wireRangeControl(); wireProducerControl(); wireCoachSubTabs(); wireObjectionBrowser();
   });
 }
@@ -1474,10 +1695,11 @@ function coachingPanel(d, who) {
     return nav + (winsLossesHtml(d, sel) || `<div class="empty">Nothing to show for this day.</div>`);
   }
 
+  const multiDay = (d.days || []).length > 1;
   if (!(d.calls && d.calls.length)) return nav + `<div class="empty">
-    <div style="font-weight:600;font-size:15px;margin-bottom:6px">No coaching cards for this day</div>
-    <p style="max-width:46ch;margin:0 auto;font-size:12.5px;line-height:1.6">${d.label || d.date} was uploaded with its stats
-    only. The cards are written from the call recordings and are not generated, so a day gets them when someone
+    <div style="font-weight:600;font-size:15px;margin-bottom:6px">No coaching cards ${multiDay ? "in this range" : "for this day"}</div>
+    <p style="max-width:46ch;margin:0 auto;font-size:12.5px;line-height:1.6">${multiDay ? (d.label || "This range") + " has no coached calls yet"
+    : `${d.label || d.date} was uploaded with its stats only`}. The cards are written from the call recordings and are not generated, so a day gets them when someone
     writes them — an empty tab here means nobody has yet, not that the calls were clean.</p></div>`;
   let out = coachLegendHtml();
   let shown = 0;
@@ -1490,7 +1712,8 @@ function coachingPanel(d, who) {
       ${mine.map(card).join("")}</div>`;
   });
   if (!shown) {
-    out = `<div class="empty">${sel ? `No coaching cards for ${sel} on this day.` : "No coaching cards for this day."}</div>`;
+    const scope = multiDay ? "in this range" : "on this day";
+    out = `<div class="empty">${sel ? `No coaching cards for ${sel} ${scope}.` : `No coaching cards ${scope}.`}</div>`;
   }
   return nav + out + (d.notcoached ? `<div class="note" style="border:1px dashed var(--border-strong);border-radius:8px;padding:14px 16px">
     <b>Not coached, and why.</b> ${d.notcoached}</div>` : "") + objectionBrowserHtml();
@@ -2594,7 +2817,7 @@ function $$(s) { return Array.from(document.querySelectorAll(s)); }
 // put "today" a day ahead of the last real reporting day. "Day" already
 // covers this correctly: its dropdown lists only days DAYS actually has a
 // report for, so it can't select a day that doesn't exist yet.
-const RANGE_LABELS = { day: "Day", yesterday: "Yesterday",
+const RANGE_LABELS = { day: "Day",
   week: "This Week", mtd: "Month to Date", ytd: "Year to Date",
   folio: "Folio to Date", custom: "Custom range…" };
 
@@ -2615,6 +2838,19 @@ function rangeControlHtml() {
       `<option value="${d}"${cur && d === cur.date ? " selected" : ""}>${
         d === today && !DAYS.includes(today) ? "Today (live)" :
         new Date(d + "T12:00:00").toLocaleDateString(undefined, { weekday: "short", month: "short", day: "numeric" })}</option>`).join("")}</select>`;
+  } else if (rangeMode === "folio") {
+    // Frank, 2026-09-15: "I want on the shortcuts for folio to date to
+    // reveal a dropdown, like the day shortcut does, and list the current
+    // and future folio periods" -- every entry on the calendar from the one
+    // covering today onward (a past folio already has its own days
+    // reachable through This Week/Custom/Day, so it isn't offered here).
+    const curEnd = folioEndFor(today);
+    const choices = curEnd ? FOLIO_CLOSE_DATES.filter(end => end >= curEnd) : [];
+    extra = choices.length ? `<select id="foliopick" aria-label="Folio period">${choices.map(end => {
+      const start = folioStartFor(end);
+      const label = `${start ? fmtShortDate(start) : "start"} – ${fmtShortDate(end)}, ${end.slice(0, 4)}`;
+      return `<option value="${end}"${(folioPick || curEnd) === end ? " selected" : ""}>${label}${end === curEnd ? " (current)" : ""}</option>`;
+    }).join("")}</select>` : "";
   } else if (rangeMode === "custom") {
     // Default to the most recent day that actually has a report, not
     // "today" -- today usually has no report yet (nightly run hasn't
@@ -2633,6 +2869,8 @@ function rangeControlHtml() {
 function wireRangeControl() {
   const sel = $("#rangesel");
   if (sel) sel.onchange = () => { rangeMode = sel.value; paint(); };
+  const fp = $("#foliopick");
+  if (fp) fp.onchange = () => { folioPick = fp.value; paint(); };
   const dp = $("#daypick");
   if (dp) dp.onchange = () => loadDay(dp.value);
   const ap = $("#rapply");
@@ -2655,126 +2893,75 @@ function wireProducerControl() {
   if (sel) sel.onchange = () => { producerFilter = sel.value; paint(); };
 }
 
-/* Resolve a preset into either a single ISO date (rendered via the normal
-   rich single-day digest) or a [from, to] range (rendered via digestRange). */
-async function renderDigestRange() {
-  const v = $("#view");
+/* Keeps `cur` in sync with rangeMode for BOTH Digest and Coaching, which now
+   share one merged document for any range (see mergeDayDocs above). Called
+   at the top of paint() for either tab. Returns an error message string if
+   the range can't be shown (nothing selected yet, nothing on file), or null
+   on success -- `cur`/curRangeLabel/curRangeSub are set as a side effect,
+   same shared-state pattern rangeMode/producerFilter/coachSubTab already
+   use elsewhere in this file. Leaves `cur` completely alone in "day" mode --
+   that one is still owned by loadDay(). */
+async function ensureCurForRange() {
+  if (rangeMode === "day") { curRangeLabel = ""; curRangeSub = ""; return null; }
   const today = isoDate(azTodayDate());
-  const controls = rangeControlHtml() + producerControlHtml();
-
-  if (rangeMode === "day") {
-    v.innerHTML = controls + (cur ? digestPanel(cur, producerFilter) : '<div class="empty">Loading…</div>');
-    wireRangeControl(); wireProducerControl();
-    return;
-  }
-  if (rangeMode === "yesterday") {
-    const day = addDays(today, -1);
-    v.innerHTML = controls + '<div class="empty">Loading…</div>';
-    let doc = null;
-    try {
-      const r = await fetch(`/api/days/${day}`, { cache: "no-store" });
-      doc = r.ok ? await r.json() : null;
-    } catch (_) {}
-    // Shared `cur`, not a locally-scoped doc: Coaching (and any other tab
-    // that reads `cur`) has to see "yesterday" too when it renders next,
-    // the same way picking a specific day via #daypick already does via
-    // loadDay(). Before this, switching to Coaching after picking
-    // "Yesterday" here silently kept showing whatever day cur last was.
-    // curLive resets too -- always a finalized fetch, never intraday's
-    // fallback, so a live banner left over from a prior "Today" view must
-    // not carry into it.
-    cur = doc; curLive = false;
-    v.innerHTML = controls + (doc ? digestPanel(doc, producerFilter) : `<div class="empty">No report for ${day}.</div>`);
-    wireRangeControl(); wireProducerControl();
-    return;
-  }
-
-  v.innerHTML = controls + '<div class="empty">Loading…</div>';
-  let html;
+  let from, to, label;
   if (rangeMode === "folio") {
-    const end = folioEndFor(today);
-    if (!end) {
-      html = '<div class="empty">No folio calendar covers today yet.</div>';
-    } else {
-      try {
-        const r = await fetch(`/api/folios/${end}`, { cache: "no-store" });
-        const doc = r.ok ? await r.json() : null;
-        html = doc ? digestRange(doc, "Folio to Date", doc.folio_start ? `${doc.folio_start} → ${doc.folio_end}` : `through ${doc.folio_end}`, producerFilter)
-                   : `<div class="empty">No folio rollup yet for the folio ending ${end}. It is written by the nightly run.</div>`;
-      } catch (_) { html = '<div class="empty">Could not load the folio rollup.</div>'; }
-    }
+    const curEnd = folioEndFor(today);
+    if (!curEnd) return "No folio calendar covers today yet.";
+    const end = folioPick || curEnd;
+    from = folioStartFor(end); to = end < today ? end : today;
+    label = end === curEnd ? "Folio to Date" : "Folio";
   } else if (rangeMode === "mtd") {
-    const month = today.slice(0, 7);
-    try {
-      const r = await fetch(`/api/months/${month}`, { cache: "no-store" });
-      const doc = r.ok ? await r.json() : null;
-      html = doc ? digestRange(doc, "Month to Date", doc.label, producerFilter)
-                 : '<div class="empty">No month-to-date rollup yet. It is written by the nightly run.</div>';
-    } catch (_) { html = '<div class="empty">Could not load the month rollup.</div>'; }
+    from = today.slice(0, 7) + "-01"; to = today; label = "Month to Date";
   } else if (rangeMode === "ytd") {
-    const year = today.slice(0, 4);
-    const curMonth = Number(today.slice(5, 7));
-    const docs = [];
-    for (let m = 1; m <= curMonth; m++) {
-      try {
-        const r = await fetch(`/api/months/${year}-${String(m).padStart(2, "0")}`, { cache: "no-store" });
-        if (r.ok) docs.push(await r.json());
-      } catch (_) {}
-    }
-    html = docs.length ? digestRange(aggregateDocs(docs), "Year to Date", `${year}-01-01 → ${today}`, producerFilter)
-                       : '<div class="empty">No months on file yet this year.</div>';
+    from = today.slice(0, 4) + "-01-01"; to = today; label = "Year to Date";
   } else if (rangeMode === "week") {
-    const from = weekStart(today);
-    const docs = await fetchRangeDocs(from, today);
-    html = digestRange(aggregateDocs(docs), "This Week", `${from} → ${today}`, producerFilter);
+    from = weekStart(today); to = today; label = "This Week";
   } else if (rangeMode === "custom") {
-    if (!customFrom || !customTo) {
-      html = '<div class="empty">Pick a start and end date, then Apply.</div>';
-    } else {
-      const [from, to] = customFrom <= customTo ? [customFrom, customTo] : [customTo, customFrom];
-      const docs = await fetchRangeDocs(from, to);
-      html = docs.length ? digestRange(aggregateDocs(docs), "Custom Range", `${from} → ${to}`, producerFilter)
-                        : `<div class="empty">No reports in ${from} → ${to}.</div>`;
-    }
+    if (!customFrom || !customTo) return "Pick a start and end date, then Apply.";
+    [from, to] = customFrom <= customTo ? [customFrom, customTo] : [customTo, customFrom];
+    label = "Custom Range";
   }
-  v.innerHTML = controls + html;
-  wireRangeControl(); wireProducerControl();
-}
-
-// Digest is the only tab with an aggregate renderer (digestRange()) --
-// Coaching has no equivalent for "This Week"/MTD/YTD/Folio/Custom, so
-// picking one of those while on Coaching says so instead of silently
-// showing whatever single day `cur` last happened to be.
-const AGGREGATE_MODES = new Set(["week", "mtd", "ytd", "folio", "custom"]);
-function aggregateNotSupportedHtml(tabLabel) {
-  return `<div class="empty">${RANGE_LABELS[rangeMode] || "This range"} isn't available on the
-    ${tabLabel} tab yet — pick a single day above, or switch to Digest to see it aggregated.</div>`;
+  if (from && from > to) return `That folio hasn't started yet -- it begins ${from}.`;
+  const docs = await fetchRangeDocs(from || "", to);
+  if (!docs.length) return `No reports in ${from || "the start"} → ${to}.`;
+  cur = mergeDayDocs(docs); curLive = false;
+  cur.label = label;
+  curRangeLabel = label; curRangeSub = `${from || "the start"} → ${to}`;
+  return null;
 }
 
 async function paint() {
   const v = $("#view");
   if (view === "digest") {
-    $("#topsub").textContent = cur ? (cur.label || cur.date) + " · " + ((cur.calls || []).length ? (cur.calls.length + " coached calls") : "stats only") + (curLive ? " · live" : "") : "";
-    await renderDigestRange();
+    if (rangeMode !== "day") v.innerHTML = rangeControlHtml() + producerControlHtml() + '<div class="empty">Loading…</div>';
+    const err = await ensureCurForRange();
+    const controls = rangeControlHtml() + producerControlHtml();
+    $("#topsub").textContent = cur ? (cur.label || cur.date) + " · " + ((cur.calls || []).length ? (cur.calls.length + " coached calls") : "stats only") + (curLive ? " · live" : "") : (err || "");
+    v.innerHTML = controls + (err ? `<div class="empty">${err}</div>`
+      : rangeHeaderHtml() + (cur ? digestPanel(cur, producerFilter) : '<div class="empty">Loading…</div>'));
+    wireRangeControl(); wireProducerControl();
   } else if (view === "coaching") {
-    $("#topsub").textContent = cur ? (cur.label || cur.date) : "";
+    if (rangeMode !== "day") v.innerHTML = rangeControlHtml() + producerControlHtml() + '<div class="empty">Loading…</div>';
+    const err = await ensureCurForRange();
+    $("#topsub").textContent = cur ? (cur.label || cur.date) : (err || "");
     // Calendar filter + shortcut on every tab, editable in place (Frank,
     // 2026-09-10) -- same rangeControlHtml()/wireRangeControl() Digest
     // uses, so picking a day here updates the shared `cur` the same way
     // and Digest sees it too if you switch back.
     const controls = rangeControlHtml() + producerControlHtml();
-    if (AGGREGATE_MODES.has(rangeMode)) {
-      v.innerHTML = controls + aggregateNotSupportedHtml("Coaching");
+    if (err) {
+      v.innerHTML = controls + `<div class="empty">${err}</div>`;
       wireRangeControl(); wireProducerControl();
       return;
     }
-    v.innerHTML = controls + (cur ? coachingPanel(cur, producerFilter) : '<div class="empty">Loading…</div>');
+    v.innerHTML = controls + rangeHeaderHtml() + (cur ? coachingPanel(cur, producerFilter) : '<div class="empty">Loading…</div>');
     wireRangeControl(); wireProducerControl();
     wireCoachSubTabs(); wireObjectionBrowser();
     if (cur && !ALL_CALLS_CACHE) {
       fetchAllCalls().then(() => {
         if (view !== "coaching") return;   // navigated away before this landed
-        v.innerHTML = controls + coachingPanel(cur, producerFilter);
+        v.innerHTML = controls + rangeHeaderHtml() + coachingPanel(cur, producerFilter);
         wireRangeControl(); wireProducerControl();
         wireCoachSubTabs(); wireObjectionBrowser();
       });

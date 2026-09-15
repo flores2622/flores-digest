@@ -57,7 +57,6 @@ AZ = dt.timezone(dt.timedelta(hours=-7))
 # is a change there too.
 PREFIX = "days"
 MONTH_PREFIX = "months"
-FOLIO_PREFIX = "folios"
 INTRADAY_PREFIX = "intraday"
 
 
@@ -67,10 +66,6 @@ def _key(day):
 
 def _month_key(month):
     return f"{MONTH_PREFIX}/{month}.json"
-
-
-def _folio_key(end):
-    return f"{FOLIO_PREFIX}/{end}.json"
 
 
 def _intraday_key(day):
@@ -339,34 +334,28 @@ def publish(day, doc=None, log=print):
     )
     log(f"  board: {len(body):,} bytes -> r2://{bucket}/{_key(day)}")
     publish_month(day[:7], cli=cli, bucket=bucket, log=log)
-    end = digest_config.folio_end_for(day)
-    if end:
-        publish_folio(end, cli=cli, bucket=bucket, log=log)
-    else:
-        log(f"  folio: no folio calendar covers {day} yet, skipping")
     return _key(day)
 
 
 def publish_month(month, cli=None, bucket=None, log=print):
-    """Roll every day of `month` up into months/<YYYY-MM>.json.
-
-    WHY A STORED ROLLUP RATHER THAN AGGREGATING IN THE WORKER. A month is up
-    to 23 day documents at 20-135 KB each, so making the dashboard aggregate
-    on the fly would mean up to ~3 MB of R2 reads on every page load, growing
-    through the month, paid again for every viewer. Rolling it up once a night
-    costs one extra listing and turns the dashboard's month view into a single
-    small read.
+    """Roll every day of `month`'s own totals.date/dials/live/rate/pq/ps into
+    months/<YYYY-MM>.json's `trend` array -- the ONLY thing this rollup is
+    for since the Digest tab's Week/MTD/YTD/Folio/Custom views started
+    merging full day documents directly instead (site/public/index.html's
+    mergeDayDocs, Frank 2026-09-15: "i want the whole digest filtered to
+    those days, and coaching cards to those days" needed real day documents
+    anyway, which made the month/folio rollups' totals/producers/business_days
+    fields dead weight -- trimmed here rather than carried along unread).
+    The Trends tab (loadTrend()) is the one remaining reader, via GET
+    /api/months/:month: a full month is up to 23 day documents at 20-135 KB
+    each, so making the dashboard read every one on every page load would
+    mean megabytes of R2 traffic, growing through the month, paid again for
+    every viewer -- rolling the trend points up once a night keeps that tab
+    to one small read per month instead.
 
     ALWAYS RECOMPUTED FROM SCRATCH, never incremented. A rebuilt past day
-    (`daily.py --day ...`) rewrites its own document, and the next nightly run
-    then folds the corrected figures in automatically. An incremental counter
-    would silently keep the old numbers, which is the same class of bug as the
-    stale-corpus one in CLAUDE.md.
-
-    RATES ARE RECOMPUTED, NEVER AVERAGED. Month contact rate is
-    sum(live)/sum(dials) across the month -- averaging five daily percentages
-    weights a 15-dial day the same as a 76-dial one. Same for avg talk time,
-    which is weighted by live contacts.
+    (`daily.py --day ...`) rewrites its own document, and the next nightly
+    run then folds the corrected figures into this rollup automatically.
     """
     if cli is None:
         cli, bucket = _client()
@@ -389,54 +378,23 @@ def publish_month(month, cli=None, bucket=None, log=print):
         log(f"  month {month}: no day documents, nothing to roll up")
         return None
 
-    docs = []
+    trend = []
     for d in sorted(days):
         body = cli.get_object(Bucket=bucket, Key=_key(d))["Body"].read()
-        docs.append(json.loads(body))
-
-    NUM = ("dials", "live", "hh", "pq", "ps", "pol")
-    totals = {k: 0 for k in NUM}
-    per = {}
-    trend = []
-
-    for doc in docs:
-        t = doc.get("totals") or {}
-        for k in NUM:
-            totals[k] += t.get(k) or 0
+        t = (json.loads(body).get("totals")) or {}
         trend.append({
-            "date": doc.get("date"),
+            "date": d,
             "dials": t.get("dials") or 0,
             "live": t.get("live") or 0,
             "rate": t.get("rate") or 0,
             "pq": t.get("pq") or 0,
             "ps": t.get("ps") or 0,
         })
-        for p in doc.get("producers") or []:
-            row = per.setdefault(p["name"], {k: 0 for k in NUM} |
-                                 {"name": p["name"], "days": 0, "talk_secs": 0})
-            for k in NUM:
-                row[k] += p.get(k) or 0
-            row["days"] += 1
-            # Talk time is an average per live contact, so it re-weights by
-            # live contacts rather than by day.
-            row["talk_secs"] += (p.get("talk") or 0) * (p.get("live") or 0)
-
-    for row in per.values():
-        row["rate"] = round(100 * row["live"] / row["dials"], 1) if row["dials"] else 0.0
-        row["talk"] = round(row["talk_secs"] / row["live"]) if row["live"] else 0
-        del row["talk_secs"]
-
-    totals["rate"] = (round(100 * totals["live"] / totals["dials"], 1)
-                      if totals["dials"] else 0.0)
 
     doc = {
         "month": month,
         "label": dt.date.fromisoformat(f"{month}-01").strftime("%B %Y"),
         "built_at": dt.datetime.now(AZ).isoformat(timespec="seconds"),
-        "days": sorted(days),
-        "business_days": len(days),
-        "totals": totals,
-        "producers": sorted(per.values(), key=lambda r: -r["ps"]),
         "trend": trend,
     }
     body = json.dumps(doc, default=str).encode()
@@ -445,106 +403,6 @@ def publish_month(month, cli=None, bucket=None, log=print):
     log(f"  month:  {len(body):,} bytes -> r2://{bucket}/{_month_key(month)} "
         f"({len(days)} day{'' if len(days) == 1 else 's'})")
     return _month_key(month)
-
-
-def publish_folio(end, cli=None, bucket=None, log=print):
-    """Roll every day within the folio ending `end` into folios/<end>.json.
-
-    Folio periods (digest_config.FOLIO_CLOSE_DATES) run e.g. 2026-01-21
-    through 2026-02-18, and do not align to calendar months -- that is the
-    whole reason this exists separately from publish_month. Because a folio
-    can span a month boundary, this lists the WHOLE days/ prefix rather than
-    one month's, then filters to the folio's date range client-side, instead
-    of relying on a shared key prefix the way publish_month does.
-
-    Same rules as publish_month: always recomputed from scratch (a rebuilt
-    past day folds in automatically), rates are summed-then-divided rather
-    than averaged across days, and talk time is weighted by live contacts.
-    """
-    if cli is None:
-        cli, bucket = _client()
-
-    end = end if isinstance(end, dt.date) else dt.date.fromisoformat(end)
-    start = digest_config.folio_start_for(end)
-
-    days, token = [], None
-    while True:
-        kw = {"Bucket": bucket, "Prefix": f"{PREFIX}/"}
-        if token:
-            kw["ContinuationToken"] = token
-        page = cli.list_objects_v2(**kw)
-        for o in page.get("Contents", []):
-            m = re.match(rf"^{PREFIX}/(\d{{4}}-\d{{2}}-\d{{2}})\.json$", o["Key"])
-            if not m:
-                continue
-            d = dt.date.fromisoformat(m.group(1))
-            if d <= end and (start is None or d >= start):
-                days.append(m.group(1))
-        if not page.get("IsTruncated"):
-            break
-        token = page.get("NextContinuationToken")
-
-    if not days:
-        log(f"  folio {end}: no day documents in range, nothing to roll up")
-        return None
-
-    docs = []
-    for d in sorted(days):
-        body = cli.get_object(Bucket=bucket, Key=_key(d))["Body"].read()
-        docs.append(json.loads(body))
-
-    NUM = ("dials", "live", "hh", "pq", "ps", "pol")
-    totals = {k: 0 for k in NUM}
-    per = {}
-    trend = []
-
-    for doc in docs:
-        t = doc.get("totals") or {}
-        for k in NUM:
-            totals[k] += t.get(k) or 0
-        trend.append({
-            "date": doc.get("date"),
-            "dials": t.get("dials") or 0,
-            "live": t.get("live") or 0,
-            "rate": t.get("rate") or 0,
-            "pq": t.get("pq") or 0,
-            "ps": t.get("ps") or 0,
-        })
-        for p in doc.get("producers") or []:
-            row = per.setdefault(p["name"], {k: 0 for k in NUM} |
-                                 {"name": p["name"], "days": 0, "talk_secs": 0})
-            for k in NUM:
-                row[k] += p.get(k) or 0
-            row["days"] += 1
-            # Talk time is an average per live contact, so it re-weights by
-            # live contacts rather than by day.
-            row["talk_secs"] += (p.get("talk") or 0) * (p.get("live") or 0)
-
-    for row in per.values():
-        row["rate"] = round(100 * row["live"] / row["dials"], 1) if row["dials"] else 0.0
-        row["talk"] = round(row["talk_secs"] / row["live"]) if row["live"] else 0
-        del row["talk_secs"]
-
-    totals["rate"] = (round(100 * totals["live"] / totals["dials"], 1)
-                      if totals["dials"] else 0.0)
-
-    doc = {
-        "folio_end": end.isoformat(),
-        "folio_start": start.isoformat() if start else None,
-        "label": f"Folio ending {end.strftime('%b')} {end.day}, {end.year}",
-        "built_at": dt.datetime.now(AZ).isoformat(timespec="seconds"),
-        "days": sorted(days),
-        "business_days": len(days),
-        "totals": totals,
-        "producers": sorted(per.values(), key=lambda r: -r["ps"]),
-        "trend": trend,
-    }
-    body = json.dumps(doc, default=str).encode()
-    cli.put_object(Bucket=bucket, Key=_folio_key(end.isoformat()), Body=body,
-                   ContentType="application/json", CacheControl="no-store")
-    log(f"  folio:  {len(body):,} bytes -> r2://{bucket}/{_folio_key(end.isoformat())} "
-        f"({len(days)} day{'' if len(days) == 1 else 's'})")
-    return _folio_key(end.isoformat())
 
 
 def main():
