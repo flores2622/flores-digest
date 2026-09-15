@@ -166,28 +166,45 @@ def _earliest_start(raw_dials, producer, number):
 
 
 def _call_times(producer, group, raw_dials):
-    """[seconds, ...], one entry per distinct real conversation, earliest
-    first -- so the board can show "1st talk time + 2nd talk time" instead
-    of only the combined total (Frank, 2026-09-15: "should show 1st talk
-    time + 2nd talk time to know the split").
+    """[seconds, ...], one entry per real conversation, earliest first --
+    so the board can show "1st talk time + 2nd talk time" instead of only
+    the combined total (Frank, 2026-09-15: "should show 1st talk time +
+    2nd talk time to know the split").
 
-    Covers BOTH ways two conversations with the same lead end up on one
-    card: this module's own cross-row grouping (2+ call_detail rows,
-    ordered by each row's own earliest dial time), and daily.py's own
+    Deliberately over `group`'s raw rows, NOT _distinct_calls() -- a
+    callback doesn't need a second number (Frank, 2026-09-15: "it
+    shouldn't need to be 2 different numbers, it can be from the same
+    number a call back"). Two rows on the same number are still two real
+    telephony sessions with their own logged `seconds`; _distinct_calls'
+    number-dedup exists only to stop the TRANSCRIPT/RECORDING from
+    repeating the one cached blob those rows share (see _group_transcript),
+    not to hide that a second call happened.
+
+    Covers all three ways two conversations with the same lead end up on
+    one card: two rows on different numbers, two rows on the SAME number
+    (this module's own cross-row grouping either way), and daily.py's own
     same-number same-day merge, where ONE row's `seconds` already
     includes a `callback_seconds` sub-total folded in by build_metrics --
     see daily.py's inbound-callback merge for exactly where that field is
     set. A single ordinary call returns a one-element list.
+
+    Ordering: day_calls.producer_dials() (raw_dials) is OUTBOUND ONLY, so
+    it can only ever place an outbound row by its actual dial time; an
+    inbound row on a number the producer never dialed has no timestamp to
+    sort by there. Two rows on the SAME number also tie (both look up the
+    identical raw_dials entry). Both cases fall back to outbound-before-
+    inbound, the same convention call_summary._wanted() already uses when
+    it orders same-number legs for transcription.
     """
-    distinct = _distinct_calls(producer, group)
-    if len(distinct) == 1:
-        r = distinct[0]
+    if len(group) == 1:
+        r = group[0]
         cb = r.get("callback_seconds")
         if cb:
             return [max((r.get("seconds") or 0) - cb, 0), cb]
         return [r.get("seconds") or 0]
-    ordered = sorted(distinct, key=lambda r: (
-        _earliest_start(raw_dials, producer, r["number"]) or "9999"))
+    ordered = sorted(group, key=lambda r: (
+        _earliest_start(raw_dials, producer, r["number"]) or "9999",
+        bool(r.get("inbound"))))
     return [r.get("seconds") or 0 for r in ordered]
 
 
@@ -198,6 +215,9 @@ def _callback_kind(producer, group):
     the board... it should specify under the clients name if... its a call
     back"). None when there's only one real conversation.
 
+    Over `group`'s raw rows, same as _call_times -- a same-number pair is
+    still two real calls, not one (see that function's docstring).
+
     daily.py's own same-number merge (see _call_times) only ever folds an
     inbound leg into an existing OUTBOUND row when that leg's own `kind`
     is "callback" -- so callback_seconds being set always means a genuine
@@ -205,10 +225,9 @@ def _callback_kind(producer, group):
     own cross-row grouping, the inbound row's own `kind` decides, exactly
     like the email's badge did.
     """
-    distinct = _distinct_calls(producer, group)
-    if len(distinct) == 1:
-        return "call back" if distinct[0].get("callback_seconds") else None
-    inbound = [r for r in distinct if r.get("inbound")]
+    if len(group) == 1:
+        return "call back" if group[0].get("callback_seconds") else None
+    inbound = [r for r in group if r.get("inbound")]
     if not inbound:
         return None
     return "call back" if any(r.get("kind") == "callback" for r in inbound) else "call in"
@@ -407,15 +426,21 @@ def _distinct_calls(producer, group):
     """One row per distinct (producer, number) in the group, first-seen kept
     as the representative.
 
+    ONLY for what gets READ/PLAYED (the paid model call, the transcript
+    text, the recording players) -- NOT for whether this was "2 calls":
+    see _call_times/_callback_kind, which count every row in `group`
+    regardless of number (Frank, 2026-09-15: "it shouldn't need to be 2
+    different numbers, it can be from the same number a call back").
+
     Guards a real, narrow, pre-existing quirk: two call_detail rows can
     share one number (seen in real 2026-09-11 data -- an outbound dial and
     an unrelated same-day cold call-in that happened to land on the same
     number). call_summary.py caches its read by (producer, number), so both
     rows can only ever have fetched the identical transcript/summary --
-    counting or tagging them as two distinct calls would show the same
-    content twice under a "2 calls coached together" label that isn't true.
-    Duration still sums every row in the group (see _finish_card); only
-    which CALLS get tagged/counted as distinct narrows here."""
+    reading/showing it twice under two "[Call N of M]" tags would just be
+    the same text twice, not a second call's worth of content. Duration
+    still sums every row in the group (see _finish_card); only which CALLS
+    get a separate paid read / transcript segment narrows here."""
     seen = {}
     for r in group:
         seen.setdefault(CS._ck(producer, r["number"]), r)
