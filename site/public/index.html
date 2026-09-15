@@ -1174,8 +1174,12 @@ function liveBannerHtml(d, who) {
   const asOf = d.as_of ?
     new Date(d.as_of).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" }) : "";
   const flags = d.flags || [];
+  // d.pace (0-1, board_payload.build()'s live-only fraction of the business
+  // day elapsed) is what Dials/Households Quoted are coloured against right
+  // now instead of the full-day goal -- shown here so the colour makes sense.
+  const paceNote = d.pace != null ? `, ${Math.round(d.pace * 100)}% through the business day` : "";
   return `<div class="livebanner">
-    <div>Live${asOf ? ` — last checkpoint ${asOf}` : ""}, still updating through the day. Tonight's build finalizes it.</div>
+    <div>Live${asOf ? ` — last checkpoint ${asOf}` : ""}${paceNote}, still updating through the day. Tonight's build finalizes it.</div>
     ${flags.length ? `<div class="liveflags">${flags.map(f => `<div class="liveflag">${f}</div>`).join("")}</div>` : ""}
   </div>`;
 }

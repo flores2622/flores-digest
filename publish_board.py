@@ -169,8 +169,11 @@ def _client():
     ), s["R2_BUCKET"]
 
 
-def build(day, log=print):
+def build(day, log=print, live=False):
     """The day document. Identical shape to what the artifact board was fed.
+
+    `live` is passed straight through to board_payload.build() -- see its
+    docstring. Only intraday.py's checkpoints ever pass True.
 
     If `coaching/cards_<day>.py` exists it wins outright, exactly as before:
     it builds the whole document itself, hand-authored cards included, and
@@ -195,7 +198,7 @@ def build(day, log=print):
         spec.loader.exec_module(mod)
         return mod.build(day)
 
-    doc = board_payload.build(day)
+    doc = board_payload.build(day, live=live)
     try:
         import coaching_cards
         generated = coaching_cards.build(day, log=log)

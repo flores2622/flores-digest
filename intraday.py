@@ -131,7 +131,7 @@ def run(day, dry_run=False):
         log(f"  call summaries: failed ({type(e).__name__}: {e}) -- "
             f"coaching cards will be missing or stale this checkpoint")
 
-    doc = publish_board.build(day, log=log)
+    doc = publish_board.build(day, log=log, live=True)
     # Free (R2 reads only, no paid API), so the live board's Policies/Premium
     # Sold columns get the same sale-streak colouring as the finalized one
     # instead of going uncoloured until tonight -- publish_board.build() alone
