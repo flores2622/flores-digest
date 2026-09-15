@@ -2700,11 +2700,11 @@ function salesTotalsHtml(entries) {
     row.count++;
     row.premium += e.premium || 0;
   }
-  // Mirrors the Google Sheet's own Totals strip (Frank, 2026-09-15: "look at
-  // how we have it on the sales sheet and make it similar to that") -- a
-  // producer name header with their premium dollar total directly below,
-  // ending in a distinct "Team" tile for the sum. Same .tile component
-  // speedPanel uses above, same shape: name in .k, the dollar figure in .v.
+  // Producer cards stacked 3-across on the left (Frank, 2026-09-15: "the
+  // producer boxes would be in three columns, 2 rows"), the Team card on
+  // its own row underneath them, and a pie chart of the same premium split
+  // to the right -- same .tile component speedPanel uses elsewhere, same
+  // shape: name in .k, the dollar figure in .v.
   const names = Object.keys(byProd).sort((a, b) => byProd[b].premium - byProd[a].premium);
   const cards = names.map(name => `
     <div class="tile"><div class="k">${pbadge(DOT[name] || "#8a877f", name.split(" ")[0])}</div>
@@ -2712,13 +2712,39 @@ function salesTotalsHtml(entries) {
       <div class="n">${byProd[name].count} sale${byProd[name].count === 1 ? "" : "s"}</div></div>`).join("");
   const teamCount = entries.length;
   const teamPremium = entries.reduce((s, e) => s + (e.premium || 0), 0);
+
+  // conic-gradient pie, one slice per producer by premium share -- no
+  // charting library on this page, and a CSS conic-gradient circle needs
+  // nothing more than the same start/end percentages every slice already
+  // has to add up to 100 anyway.
+  let acc = 0;
+  const slices = names.map(name => {
+    const pct = teamPremium ? byProd[name].premium / teamPremium * 100 : 0;
+    const from = acc; acc += pct;
+    return `${DOT[name] || "#8a877f"} ${from.toFixed(2)}% ${acc.toFixed(2)}%`;
+  }).join(", ");
+  const legend = names.map(name => `<div style="display:flex;align-items:center;gap:6px">
+      <i style="width:10px;height:10px;border-radius:2px;background:${DOT[name] || "#8a877f"};flex:none"></i>
+      <span style="flex:1">${name.split(" ")[0]}</span>
+      <span style="color:var(--text-muted);font-variant-numeric:tabular-nums">${teamPremium ? Math.round(byProd[name].premium / teamPremium * 100) : 0}%</span>
+    </div>`).join("");
+
   return `<div class="sect">
     <h2>Totals</h2>
-    <div class="tiles">${cards}
-      <div class="tile" style="border-color:var(--border-strong);background:var(--surface)">
-        <div class="k">Team</div>
-        <div class="v">${money(teamPremium)}</div>
-        <div class="n">${teamCount} sale${teamCount === 1 ? "" : "s"}</div></div>
+    <div style="display:flex;gap:24px;flex-wrap:wrap;align-items:flex-start">
+      <div style="flex:2 1 320px">
+        <div class="tiles" style="grid-template-columns:repeat(3, 1fr)">${cards}</div>
+        <div class="tile" style="margin-top:10px;border-color:var(--border-strong);background:var(--surface)">
+          <div class="k">Team</div>
+          <div class="v">${money(teamPremium)}</div>
+          <div class="n">${teamCount} sale${teamCount === 1 ? "" : "s"}</div>
+        </div>
+      </div>
+      <div style="flex:1 1 180px;display:flex;flex-direction:column;align-items:center;gap:14px;padding-top:4px">
+        <div style="width:150px;height:150px;border-radius:50%;background:conic-gradient(${slices});flex:none"
+             title="Premium sold by producer, this folio"></div>
+        <div style="display:flex;flex-direction:column;gap:6px;width:100%;max-width:200px;font-size:12px">${legend}</div>
+      </div>
     </div>
   </div>`;
 }
