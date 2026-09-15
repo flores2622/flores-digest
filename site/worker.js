@@ -373,20 +373,18 @@ const DOCS_SIGNED_OPTIONS = ["", "Paperless", "Docs + Paperless",
  * A same-day, self-reported log (Frank, 2026-09-12: "I want a sales tab
  * where they go in and enter their sales for the day") -- explicitly NOT
  * the official Premium Sold figure, which stays AgencyZoom-derived as it
- * already is everywhere else on this board. Every entry starts
- * unreconciled; sales_log_reconcile.py matches it against AgencyZoom's own
- * policies once that catches up and fills in az_policy_number/az_source
- * (the actual AgencyZoom lead source, per the same 2026-09-12 instruction
- * to use AgencyZoom's source rather than any manually-typed one) --
- * never the other direction, so this can never become a second place to
- * edit a real sale's numbers. An entry that stays unreconciled is exactly
- * the "missing docs / not entered yet" signal that script also acts on.
+ * already is everywhere else on this board.
  *
  * az_profile/docs_signed/review_sent mirror the real Sales sheet's own
- * AZ Profile, Docs signed and Review Sent columns (Frank, 2026-09-14) --
- * tracked independently of reconciled, since paperwork status has nothing
- * to do with whether AgencyZoom has caught up to the sale itself; see
- * updateSalesLogEntry, which is what changes them after creation. */
+ * AZ Profile, Docs signed and Review Sent columns (Frank, 2026-09-14); see
+ * updateSalesLogEntry, which is what changes them after creation.
+ *
+ * No AgencyZoom-reconciliation status on this entry (Frank, 2026-09-15:
+ * "i dont need that column, and will start working on something similar
+ * anyways, remove it") -- an earlier version carried reconciled/
+ * az_policy_number/az_source fields meant to be filled in by a
+ * sales_log_reconcile.py that was never actually built, so every entry
+ * sat "pending" forever. Removed rather than left as dead scaffolding. */
 async function postSalesLog(request, env, day) {
   let body;
   try {
@@ -420,9 +418,6 @@ async function postSalesLog(request, env, day) {
     effective_date: /^\d{4}-\d{2}-\d{2}$/.test(effectiveDate) ? effectiveDate : "",
     notes: String(body.notes || "").trim().slice(0, 500),
     created_at: new Date().toISOString(),
-    reconciled: false,
-    az_policy_number: null,
-    az_source: null,
     az_profile: Boolean(body.az_profile),
     docs_signed: DOCS_SIGNED_OPTIONS.includes(docsSigned) ? docsSigned : "",
     review_sent: Boolean(body.review_sent),
@@ -439,11 +434,7 @@ async function postSalesLog(request, env, day) {
 
 /** POST /api/saleslog/:day/track {id, az_profile?, docs_signed?,
  * review_sent?} -> the updated entry. Changes ONLY these three tracking
- * fields, never the sale record itself (producer/client/premium/etc, or
- * reconciled/az_policy_number/az_source, which only sales_log_reconcile.py
- * may ever set) -- and works on a RECONCILED entry too, unlike delete:
- * a policy can be confirmed in AgencyZoom while its paperwork is still
- * pending signature, so these three are independent of reconciliation
+ * fields, never the sale record itself (producer/client/premium/etc)
  * (Frank, 2026-09-14: "it should be able to be interactive... when they
  * get signed later they should be able to change it"). */
 async function trackSalesLogEntry(request, env, day) {
@@ -474,9 +465,7 @@ async function trackSalesLogEntry(request, env, day) {
 }
 
 /** POST /api/saleslog/:day/delete {id} -- removes one entry (e.g. a typo'd
- * duplicate). Refuses to delete a RECONCILED entry: once
- * sales_log_reconcile.py has linked one to a real AgencyZoom policy,
- * deleting it here would just hide that a real sale exists, not undo it. */
+ * duplicate). */
 async function deleteSalesLogEntry(request, env, day) {
   let body;
   try {
@@ -491,9 +480,6 @@ async function deleteSalesLogEntry(request, env, day) {
   const doc = JSON.parse(await existing.text());
   const target = doc.entries.find((e) => e.id === id);
   if (!target) return json({ error: "entry not found" }, 404);
-  if (target.reconciled) {
-    return json({ error: "cannot delete a reconciled entry -- it's linked to a real AgencyZoom policy" }, 409);
-  }
   doc.entries = doc.entries.filter((e) => e.id !== id);
   await env.BOARD.put(key, JSON.stringify(doc), {
     httpMetadata: { contentType: "application/json" },

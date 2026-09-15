@@ -706,9 +706,7 @@ let matchAttempts = 0;
 // Sales tab state (Frank, 2026-09-12): a same-day, self-reported log,
 // explicitly NOT the official Premium Sold figure (that stays AgencyZoom-
 // derived, as it already is everywhere else on this board). Entered sales
-// are stored in R2 (saleslog/<day>.json, site/worker.js) and later matched
-// against real AgencyZoom policies by sales_log_reconcile.py -- an entry
-// that stays unreconciled is the "missing docs / not entered yet" signal.
+// are stored in R2 (saleslog/<day>.json, site/worker.js).
 let salesDay = null;          // set to today's AZ date on first load -- still the day a NEW sale is logged against
 let salesEntries = [];        // the current folio's entries (or just salesDay's, if it falls outside any known folio), newest-added first
 let salesProducer = "";       // who's currently logging a sale
@@ -2367,9 +2365,7 @@ function docsSignedOpts(selected) {
 // AZ Profile / Docs Signed / Review Sent mirror the real Sales sheet's own
 // three tracking columns (Frank, 2026-09-14) -- AZ Profile and Docs Signed
 // sit LEFT of the sale info same as that sheet, Review Sent sits RIGHT.
-// All three are editable in place, on any entry including reconciled ones,
-// via /api/saleslog/:day/track -- paperwork status is independent of
-// whether AgencyZoom has caught up to the sale itself.
+// All three are editable in place via /api/saleslog/:day/track.
 // Same DOT palette as everywhere else on the board (Frank, 2026-09-14:
 // "match all the coloring and the highlight based on producer sold") --
 // the picker itself is tinted to the chosen producer's colour, and every
@@ -2397,16 +2393,12 @@ function salesPanel(data) {
     <td>${e.term || ""}</td>
     <td>${e.effective_date || ""}</td>
     <td><input type="checkbox" data-track="review_sent" data-id="${e.id}" data-day="${e.day}" ${e.review_sent ? "checked" : ""}></td>
-    <td>${e.reconciled
-        ? `<span class="chip c-g">confirmed${e.az_source ? " · " + e.az_source : ""}</span>`
-        : `<span class="chip c-w">pending</span>`}</td>
-    <td>${e.reconciled ? "" : `<button class="ghost" data-del="${e.id}" data-day="${e.day}" type="button">delete</button>`}</td>
+    <td><button class="ghost" data-del="${e.id}" data-day="${e.day}" type="button">delete</button></td>
   </tr>`).join("");
 
   return `<div class="sect">
     <h2>Log a sale</h2>
-    <p class="sd">Same-day list for immediate visibility -- AgencyZoom stays the official Premium Sold number.
-      Once AgencyZoom shows the matching policy, this row is marked confirmed automatically with its real source.</p>
+    <p class="sd">Same-day list for immediate visibility -- AgencyZoom stays the official Premium Sold number.</p>
     <div class="controls" style="flex-wrap:wrap;gap:10px;align-items:center">
       <label style="display:flex;align-items:center;gap:5px;font-size:12.5px"><input id="salesAzProfile" type="checkbox"> AZ Profile</label>
       <select id="salesDocsSigned">${docsSignedOpts("")}</select>
@@ -2429,7 +2421,7 @@ function salesPanel(data) {
     <p class="sd">Newest logged first, across every day in the current folio.</p>
     ${entries.length ? `<div class="scroll"><table>
       <thead><tr><th>AZ Profile</th><th>Docs Signed</th><th>Date Sold</th><th>Producer</th><th>Client</th><th>Lead Source</th><th>Policy #</th><th>Product</th>
-        <th class="num">Premium</th><th>Term</th><th>Effective Date</th><th>Review Sent</th><th>Status</th><th></th></tr></thead>
+        <th class="num">Premium</th><th>Term</th><th>Effective Date</th><th>Review Sent</th><th></th></tr></thead>
       <tbody>${rows}</tbody>
     </table></div>` : '<div class="empty">Nothing logged yet this folio.</div>'}
   </div>`;
@@ -2479,9 +2471,9 @@ function wireSalesPanel(data) {
     salesBusy = false;
     await repaintAll();
   };
-  // AZ Profile / Docs Signed / Review Sent are editable in place on any row,
-  // including a reconciled one, via /track -- these three never touch the
-  // sale record itself (see trackSalesLogEntry in worker.js).
+  // AZ Profile / Docs Signed / Review Sent are editable in place on any
+  // row via /track -- these three never touch the sale record itself (see
+  // trackSalesLogEntry in worker.js).
   $$("[data-track]").forEach(el => el.onchange = async () => {
     const field = el.dataset.track;
     const value = el.type === "checkbox" ? el.checked : el.value;
