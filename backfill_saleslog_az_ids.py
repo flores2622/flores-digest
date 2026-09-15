@@ -118,15 +118,38 @@ def find_customer_id(entry, doc_day, digit_index, leads, customers_by_id, name_t
                            f"{len(exact)} match this entry's producer/premium -- ambiguous")
     policy = exact[0]
 
-    # These entries predate the date_sold/day fields (a historical Google
-    # Sheet import, before this session's schema even existed) -- the
-    # saleslog/<day>.json key itself is the only date signal left, and it's
-    # exactly the day these sales were organized under to begin with.
-    day = entry.get("date_sold") or entry.get("day") or doc_day or ""
-    sold_leads = [l for l in leads if str(l.get("soldDate") or "").startswith(day)]
-    matches = [l for l in sold_leads
-               if l.get("assignedTo") == policy.get("agentId")
-               and l.get("leadSourceId") == policy.get("leadSourceId")]
+    # The POLICY's own soldDate, not the saleslog document's day (Frank,
+    # 2026-09-15: "is there a lead at all... or whats the deal" -- checked:
+    # Mary Carrillo's policy actually sold 2026-08-24, one day before the
+    # 2026-08-25 saleslog entry it was logged under; searching sold leads on
+    # the wrong day found nothing, not because there was no lead but because
+    # this used the wrong date). Only these old, pre-schema entries (no
+    # date_sold field at all) ever need the doc-key/entry fallback below.
+    day = str(policy.get("soldDate") or "")[:10] or entry.get("date_sold") or entry.get("day") or doc_day or ""
+    sold_leads = [l for l in leads if str(l.get("soldDate") or "").startswith(day)
+                  and l.get("assignedTo") == policy.get("agentId")]
+
+    # Tier 1: also require the lead's own leadSourceId to match the policy's
+    # -- sales_log_auto.py's original join, unique for about half of sold
+    # policies by its own admission.
+    matches = [l for l in sold_leads if l.get("leadSourceId") == policy.get("leadSourceId")]
+    tier = 1
+    if len(matches) != 1:
+        # Tier 2 (Frank, 2026-09-15: "what if you search it by the phone
+        # number linked to the account?" -- policies and saleslog entries
+        # both carry no phone to search by, so there is nothing to look
+        # phone up FROM; what real data showed instead: policy.leadSourceId
+        # and the correct lead's own leadSourceId can legitimately disagree
+        # -- Hugo Bojorquez's policy says 8858085, the actual sold lead
+        # (same agent, same day, exact name) says 8862725. Same agent + same
+        # day + a name that overlaps what the producer typed is corroborated
+        # by three independent facts, not fewer than tier 1's three (agent,
+        # source, day) -- source is swapped for name.
+        named = [l for l in sold_leads
+                 if _names_overlap(entry.get("client_name"),
+                                   f"{l.get('firstname') or ''} {l.get('lastname') or ''}")]
+        if len(named) == 1:
+            matches, tier = named, 2
     if len(matches) != 1:
         return None, f"{len(matches)} sold-lead matches for this policy on {day} -- not unique"
     hh_id = matches[0].get("convertedHouseholdId")
@@ -134,19 +157,19 @@ def find_customer_id(entry, doc_day, digit_index, leads, customers_by_id, name_t
     if not cust:
         return None, "matched lead has no converted household on file"
 
-    # The (agentId, leadSourceId, day) join is the same one sales_log_auto.py
-    # already accepts is only right "for about half of sold policies" --
-    # a UNIQUE match on those three fields is not the same as a CORRECT one.
-    # Real data proved it here: policy 826221247 (Crystal Mango, $203,
-    # 2026-09-09) resolves to exactly one sold lead on that join, and that
-    # lead is for Francisco Zendejas -- a real customer, just not the Carl
-    # Childress this entry actually names. sales_log_auto.py has no name to
-    # check a brand-new sale against, so it can't catch this; this backfill
-    # does have one (the producer already typed it), so it must use it: a
-    # match only counts if it shares at least one real name-word (3+
-    # letters) with what the producer typed, never on faith alone.
+    # Tier 1 still gets the same name check tier 2 already passed by
+    # construction: a UNIQUE (agentId, leadSourceId, day) match is not the
+    # same as a CORRECT one. Real data proved it here: policy 826221247
+    # (Crystal Mango, $203, 2026-09-09) resolves to exactly one sold lead on
+    # that join, and that lead is for Francisco Zendejas -- a real customer,
+    # just not the Carl Childress this entry actually names. sales_log_auto.
+    # py has no name to check a brand-new sale against, so it can't catch
+    # this; this backfill does have one (the producer already typed it), so
+    # it must use it: a match only counts if it shares at least one real
+    # name-word (3+ letters) with what the producer typed, never on faith
+    # alone.
     cust_name = _customer_name(cust)
-    if not _names_overlap(entry.get("client_name"), cust_name):
+    if tier == 1 and not _names_overlap(entry.get("client_name"), cust_name):
         return None, (f"join resolved to {cust_name!r}, which shares no name "
                        f"with {entry.get('client_name')!r} -- rejected, not trusted")
     return str(cust["id"]), cust_name
