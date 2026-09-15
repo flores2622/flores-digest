@@ -2378,23 +2378,26 @@ function salesTotalsHtml(entries) {
     row.count++;
     row.premium += e.premium || 0;
   }
+  // Mirrors the Google Sheet's own Totals strip (Frank, 2026-09-15: "look at
+  // how we have it on the sales sheet and make it similar to that") -- a
+  // producer name header with their premium dollar total directly below,
+  // ending in a distinct "Team" tile for the sum. Same .tile component
+  // speedPanel uses above, same shape: name in .k, the dollar figure in .v.
   const names = Object.keys(byProd).sort((a, b) => byProd[b].premium - byProd[a].premium);
-  const rows = names.map(name => `<tr>
-    <td class="name"><span class="who">${pbadge(DOT[name] || "#8a877f", name)}</span></td>
-    <td class="num">${byProd[name].count}</td>
-    <td class="num">${money(byProd[name].premium)}</td></tr>`).join("");
+  const cards = names.map(name => `
+    <div class="tile"><div class="k">${pbadge(DOT[name] || "#8a877f", name.split(" ")[0])}</div>
+      <div class="v">${money(byProd[name].premium)}</div>
+      <div class="n">${byProd[name].count} sale${byProd[name].count === 1 ? "" : "s"}</div></div>`).join("");
   const teamCount = entries.length;
   const teamPremium = entries.reduce((s, e) => s + (e.premium || 0), 0);
   return `<div class="sect">
     <h2>Totals</h2>
-    <p class="sd">This folio's self-reported log, by producer -- same scope as the log below.</p>
-    <div class="scroll"><table>
-      <thead><tr><th>Producer</th><th class="num">Sales</th><th class="num">Premium</th></tr></thead>
-      <tbody>${rows}<tr class="tot">
-        <td class="name"><span class="who">${pbadge(TEAM_DOT, "Team")}</span></td>
-        <td class="num">${teamCount}</td>
-        <td class="num">${money(teamPremium)}</td></tr></tbody>
-    </table></div>
+    <div class="tiles">${cards}
+      <div class="tile" style="border-color:var(--border-strong);background:var(--surface)">
+        <div class="k">Team</div>
+        <div class="v">${money(teamPremium)}</div>
+        <div class="n">${teamCount} sale${teamCount === 1 ? "" : "s"}</div></div>
+    </div>
   </div>`;
 }
 
