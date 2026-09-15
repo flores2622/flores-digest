@@ -1259,6 +1259,15 @@ function addDays(iso, n) { const d = new Date(iso + "T12:00:00Z"); d.setUTCDate(
 function fmtShortDate(iso) {
   return iso ? new Date(iso + "T12:00:00").toLocaleDateString(undefined, { month: "short", day: "numeric" }) : "";
 }
+// M-D-YY, no leading zeros (Frank, 2026-09-15: "i want my date format to
+// just be M-D-YY") -- the Sales Sheet's own displayed Date Sold/Effective
+// Date cells; the <input type="date"> pickers that write these values
+// still store/show plain ISO internally, since that's the browser's own
+// format for that control, not something this page renders.
+function fmtMDY(iso) {
+  const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(iso || "");
+  return m ? `${+m[2]}-${+m[3]}-${m[1].slice(2)}` : (iso || "");
+}
 function weekStart(iso) { const d = new Date(iso + "T12:00:00Z"); return addDays(iso, -d.getUTCDay()); }
 
 // Monday-anchored, distinct from weekStart()'s Sunday-anchored week used for
@@ -2750,8 +2759,8 @@ function salesPanel(data) {
   };
   const rows = entries.map(e => `<tr>
     <td class="name"><span class="who">${pbadge(DOT[e.producer] || "#8a877f", e.producer)}</span></td>
-    <td>${e.date_sold || ""}</td>
-    <td>${e.effective_date || ""}</td>
+    <td>${fmtMDY(e.date_sold)}</td>
+    <td>${fmtMDY(e.effective_date)}</td>
     <td>${clientCell(e)}</td>
     <td>${e.lead_source || ""}</td>
     <td>${e.policy_number || ""}</td>
