@@ -89,7 +89,7 @@ def find_policies(pnum, digit_index):
     return [p for d, p in digit_index if d == dt or dt in d or d in dt]
 
 
-def find_customer_id(entry, doc_day, digit_index, leads, customers_by_id, name_to_agent_id):
+def find_customer_id(entry, doc_day, digit_index, leads, customers, customers_by_id, name_to_agent_id):
     """Best-effort az_customer_id for one existing entry, or None.
 
     policy_number -> matching policyNumber record(s) (find_policies),
@@ -150,29 +150,68 @@ def find_customer_id(entry, doc_day, digit_index, leads, customers_by_id, name_t
                                    f"{l.get('firstname') or ''} {l.get('lastname') or ''}")]
         if len(named) == 1:
             matches, tier = named, 2
-    if len(matches) != 1:
-        return None, f"{len(matches)} sold-lead matches for this policy on {day} -- not unique"
-    hh_id = matches[0].get("convertedHouseholdId")
-    cust = customers_by_id.get(hh_id) if hh_id else None
-    if not cust:
-        return None, "matched lead has no converted household on file"
 
-    # Tier 1 still gets the same name check tier 2 already passed by
-    # construction: a UNIQUE (agentId, leadSourceId, day) match is not the
-    # same as a CORRECT one. Real data proved it here: policy 826221247
-    # (Crystal Mango, $203, 2026-09-09) resolves to exactly one sold lead on
-    # that join, and that lead is for Francisco Zendejas -- a real customer,
-    # just not the Carl Childress this entry actually names. sales_log_auto.
-    # py has no name to check a brand-new sale against, so it can't catch
-    # this; this backfill does have one (the producer already typed it), so
-    # it must use it: a match only counts if it shares at least one real
-    # name-word (3+ letters) with what the producer typed, never on faith
-    # alone.
-    cust_name = _customer_name(cust)
-    if tier == 1 and not _names_overlap(entry.get("client_name"), cust_name):
-        return None, (f"join resolved to {cust_name!r}, which shares no name "
-                       f"with {entry.get('client_name')!r} -- rejected, not trusted")
-    return str(cust["id"]), cust_name
+    cust = None
+    if len(matches) == 1:
+        hh_id = matches[0].get("convertedHouseholdId")
+        candidate = customers_by_id.get(hh_id) if hh_id else None
+        # Only tier 1 still needs a name check here: tier 2 already required
+        # one to find its candidate in the first place. A UNIQUE (agentId,
+        # leadSourceId, day) match is not the same as a CORRECT one -- real
+        # data proved it: policy 826221247 (Crystal Mango, $203, 2026-09-09)
+        # resolves to exactly one sold lead on that join, and that lead is
+        # Francisco Zendejas, a real customer, just not the Carl Childress
+        # this entry actually names. A REJECTED tier-1/2 match falls through
+        # to tiers 3/4 below rather than giving up outright -- the first
+        # version of this script did give up here, and it took Frank asking
+        # "how can you not see carl childress customer ID 38537044" to catch
+        # that tier 4 (below) would have found exactly that customer, unique
+        # by name, if it had ever gotten the chance to run.
+        if candidate and (tier != 1 or _names_overlap(entry.get("client_name"), _customer_name(candidate))):
+            cust = candidate
+
+    if not cust:
+        # Tier 3 (Frank, 2026-09-15, on the "0 sold-lead matches" cases:
+        # "is there a lead at all... or whats the deal" -- checked: Veronica
+        # Wimberly's THIRD policy that day is a small $88 add-on to a
+        # household she'd already converted with on 2026-08-27; there's no
+        # fresh "sold lead" dated to this particular policy at all, because
+        # she wasn't a new sale that day, just an existing customer buying
+        # one more thing). Drop the same-day requirement and search every
+        # SOLD lead ever assigned to this agent for a name match instead --
+        # accepted only if every one of them (a repeat customer can rack up
+        # several sold leads over time) agrees on the same household, so an
+        # ambiguous name (see tier 4's guard below for why that matters)
+        # still refuses rather than guessing.
+        any_day = [l for l in leads if l.get("status") == 2 and l.get("assignedTo") == policy.get("agentId")
+                   and _names_overlap(entry.get("client_name"),
+                                      f"{l.get('firstname') or ''} {l.get('lastname') or ''}")]
+        households = {l.get("convertedHouseholdId") for l in any_day if l.get("convertedHouseholdId")}
+        if len(households) == 1:
+            cust = customers_by_id.get(next(iter(households)))
+
+    if not cust:
+        # Tier 4: no lead trail at all (Carl Childress, Chad Shenk, Fabian
+        # Lopez -- all three already-converted customers with no "sold
+        # lead" record on file under that name whatsoever, checked
+        # directly). Last resort: an EXACT full-name match against the
+        # whole customer file, accepted only if it is the ONE customer
+        # anywhere with that name -- no agent/day/premium corroboration is
+        # possible here (a customer record carries none of those), so this
+        # tier leans entirely on the name being too specific to be a
+        # coincidence. A common name (Jose Alvarez Trust, Maria I Perez)
+        # fails this on its own: real data found 3 different "Jose
+        # Alvarez"s and zero exact "Maria Perez"s, correctly refusing both
+        # rather than guessing among strangers.
+        full = " ".join((entry.get("client_name") or "").split()[:2]).strip().lower()
+        name_matches = [c for c in customers
+                         if f"{(c.get('firstname') or '').strip()} {(c.get('lastname') or '').strip()}".strip().lower() == full] if full else []
+        if len(name_matches) == 1:
+            cust = name_matches[0]
+
+    if not cust:
+        return None, f"{len(matches)} sold-lead matches for this policy on {day}, no fallback resolved one household -- not unique"
+    return str(cust["id"]), _customer_name(cust)
 
 
 def run(apply=False, days=None, log=print):
@@ -202,7 +241,7 @@ def run(apply=False, days=None, log=print):
             if e.get("az_customer_id"):
                 already_set += 1
                 continue
-            cust_id, detail = find_customer_id(e, doc_day, digit_index, leads, customers_by_id, name_to_agent_id)
+            cust_id, detail = find_customer_id(e, doc_day, digit_index, leads, customers, customers_by_id, name_to_agent_id)
             if cust_id:
                 log(f"  {key}: {e.get('client_name')!r} ({e.get('producer')}) -> "
                     f"customer {cust_id} ({detail!r}){' [DRY RUN]' if not apply else ''}")
