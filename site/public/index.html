@@ -209,6 +209,12 @@ select, button.ghost {
   border: 1px solid var(--border-strong); border-radius: 6px;
   padding: 6px 10px; cursor: pointer;
 }
+.icon-btn {
+  background: none; border: none; padding: 5px; margin: 0; cursor: pointer;
+  display: inline-flex; align-items: center; justify-content: center; border-radius: 6px;
+}
+.icon-btn:hover { background: var(--surface-raised); }
+.del-btn { color: var(--bad); }
 
 /* Section titles, made deliberately harder to mistake for one another or
    for body text (Frank, 2026-09-12: "I cant really distinguish the
@@ -928,7 +934,6 @@ function taskCompletionHtml(d, who) {
     <td class="num">${T.total ?? 0}</td><td class="num">${T.completed ?? 0}</td>
     <td class="num ${TI[((d.tiers || {})["team"] || {})["tasks"]] || ""}">${(+(T.pct ?? 0)).toFixed(1)}%</td></tr>`;
   return `<div class="sect"><h2>Task Completion Rate</h2>
-   <p class="sd">AgencyZoom, per producer.</p>
    <div class="scroll"><table><thead><tr><th>Producer</th><th class="num">Due</th>
    <th class="num">Done</th><th class="num">Rate</th></tr></thead>
    <tbody>${rows}${tot}</tbody></table></div></div>`;
@@ -960,7 +965,6 @@ function outcomeBreakdownHtml(d, who) {
   const legend = OUTCOME_SEGMENTS.map(([label, cvar]) =>
     `<span class="oleg-item"><span class="pd" style="background:var(${cvar})"></span>${label}</span>`).join("");
   return `<div class="sect"><h2>Call Outcome Breakdown</h2>
-   <p class="sd">Behind the Contact Rate numbers — sorted by call volume, bars scaled to the busiest producer.</p>
    ${rows}<div class="oleg">${legend}</div></div>`;
 }
 
@@ -992,7 +996,6 @@ function utilizationHtml(d, who) {
     <div class="k">Team</div><div class="v ${TI[((d.tiers || {})["team"] || {})["util"]] || ""}">${T.util}%</div>
     <div class="n">weighted</div></div>`;
   return `<div class="sect"><h2>Utilization and Efficiency</h2>
-   <p class="sd">Tracked time in Insightful, per producer.</p>
    <div class="tiles">${cards}${teamCard}</div></div>`;
 }
 
@@ -1076,9 +1079,7 @@ function auditPanel(d, who) {
     : (ta.buckets || {});
   const rows = Object.entries(counts).filter(([, v]) => v).map(([k, v]) => `<tr><td>${LB[k] || k}</td><td class="num">${v}</td></tr>`).join("");
   if (!rows) return "";
-  const counted = who ? Object.values(counts).reduce((a, b) => a + b, 0) : (ta.counted ?? 0);
   return `<div class="sect"><h2>Task Completion Audit</h2>
-   <p class="sd">${counted} completed tasks checked against the call log.</p>
    <div class="scroll"><table><thead><tr><th>Finding</th><th class="num">Tasks</th></tr></thead><tbody>${rows}</tbody></table></div></div>`;
 }
 
@@ -2358,6 +2359,11 @@ function docsSignedOpts(selected) {
     `<option value="${v}"${v === selected ? " selected" : ""}>${v || "(pending)"}</option>`).join("");
 }
 
+// Small red trashcan (Frank, 2026-09-15: "instead of a button labeled
+// delete, a small red trashcan") -- replaces the old text "delete" button
+// on a logged row. currentColor so .del-btn's own CSS colour applies.
+const TRASH_ICON = `<svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/></svg>`;
+
 // Per-producer + team totals for this folio's log, at the top of the Sales
 // tab (Frank, 2026-09-15: "i want totals at the top for everyone and the
 // team total"). Counts every logged entry regardless of Docs Signed/
@@ -2406,11 +2412,21 @@ function salesPanel(data) {
     .concat(SALES_LOGGER_ROSTER.map(p => `<option value="${p}"${p === salesProducer ? " selected" : ""}>${p}</option>`)).join("");
   const sourceOpts = [`<option value="">Lead source</option>`]
     .concat((salesLeadSourceCache || []).map(s => `<option value="${s}">${s}</option>`)).join("");
+  // Client name links to the real AgencyZoom customer account when its id
+  // was typed in at logging time (Frank, 2026-09-15) -- same
+  // app.agencyzoom.com/customer?id=... URL panels.py's own AZ_URL uses for
+  // the email, minus that file's &#61; entity escaping (this isn't going
+  // into an email body, a literal = is correct here). Plain text otherwise;
+  // there's no reliable way to look this id up from anything else on a
+  // self-reported entry (AgencyZoom policy records carry no customerId).
+  const clientCell = e => e.az_customer_id
+    ? `<a href="https://app.agencyzoom.com/customer?id=${encodeURIComponent(e.az_customer_id)}" target="_blank" rel="noopener">${e.client_name}</a>`
+    : e.client_name;
   const rows = entries.map(e => `<tr>
     <td class="name"><span class="who">${pbadge(DOT[e.producer] || "#8a877f", e.producer)}</span></td>
     <td><select data-track="docs_signed" data-id="${e.id}" data-day="${e.day}">${docsSignedOpts(e.docs_signed || "")}</select></td>
     <td>${e.date_sold || ""}</td>
-    <td>${e.client_name}</td>
+    <td>${clientCell(e)}</td>
     <td>${e.lead_source || ""}</td>
     <td>${e.policy_number || ""}</td>
     <td>${e.product || ""}</td>
@@ -2418,7 +2434,7 @@ function salesPanel(data) {
     <td>${e.term || ""}</td>
     <td>${e.effective_date || ""}</td>
     <td><input type="checkbox" data-track="review_sent" data-id="${e.id}" data-day="${e.day}" ${e.review_sent ? "checked" : ""}></td>
-    <td><button class="ghost" data-del="${e.id}" data-day="${e.day}" type="button">delete</button></td>
+    <td><button class="icon-btn del-btn" data-del="${e.id}" data-day="${e.day}" type="button" title="Delete" aria-label="Delete">${TRASH_ICON}</button></td>
   </tr>`).join("");
 
   return `${salesTotalsHtml(entries)}<div class="sect">
@@ -2429,6 +2445,7 @@ function salesPanel(data) {
       <select id="salesDocsSigned">${docsSignedOpts("")}</select>
       <label style="display:flex;align-items:center;gap:5px;font-size:12.5px">Date sold <input id="salesDateSold" type="date" value="${salesDay}"></label>
       <input id="salesClient" type="text" placeholder="Client name" style="flex:1;min-width:160px">
+      <input id="salesCustomerId" type="text" placeholder="AZ customer ID (if known)" style="width:170px">
       <select id="salesLeadSource">${sourceOpts}</select>
       <input id="salesPolicy" type="text" placeholder="Policy # (if known)" style="width:150px">
       <input id="salesProduct" type="text" placeholder="Product" style="width:140px">
@@ -2477,6 +2494,7 @@ function wireSalesPanel(data) {
         method: "POST", headers: { "content-type": "application/json" },
         body: JSON.stringify({
           producer, client_name,
+          az_customer_id: $("#salesCustomerId").value.trim(),
           lead_source: $("#salesLeadSource").value,
           policy_number: $("#salesPolicy").value.trim(),
           product: $("#salesProduct").value.trim(),

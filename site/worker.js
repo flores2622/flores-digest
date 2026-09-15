@@ -367,8 +367,8 @@ const DOCS_SIGNED_OPTIONS = ["", "Paperless", "Docs + Paperless",
   "Producer 1", "Producer 2", "Producer 3", "Producer 4", "Producer 5", "Producer 6"];
 
 /** POST /api/saleslog/:day {producer, client_name, lead_source,
- * policy_number, product, premium, term, date_sold, effective_date, notes,
- * docs_signed, review_sent} -> the created entry.
+ * az_customer_id, policy_number, product, premium, term, date_sold,
+ * effective_date, notes, docs_signed, review_sent} -> the created entry.
  *
  * A same-day, self-reported log (Frank, 2026-09-12: "I want a sales tab
  * where they go in and enter their sales for the day") -- explicitly NOT
@@ -411,6 +411,13 @@ async function postSalesLog(request, env, day) {
     producer,
     client_name,
     lead_source: String(body.lead_source || "").trim().slice(0, 100),
+    // Typed in if known, same as policy_number below -- AgencyZoom policy
+    // records carry no customerId (CLAUDE.md's own money rules), so there
+    // is no way to look this up server-side from anything else on the
+    // entry; it's how the client name links to the real AgencyZoom
+    // customer account (Frank, 2026-09-15: "on the name can you link the
+    // agency zoom customer account").
+    az_customer_id: String(body.az_customer_id || "").trim().slice(0, 40),
     policy_number: String(body.policy_number || "").trim().slice(0, 60),
     product: String(body.product || "").trim().slice(0, 80),
     premium: Number.isFinite(premiumNum) ? premiumNum : null,
