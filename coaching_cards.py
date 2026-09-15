@@ -399,6 +399,15 @@ def _finish_card(d, producer, group, raw_dials, day, transcript, recording_ids):
     asks = _bool_pair(d.get("asks"))
     cat, catc = _category(group)
     lead = next((r.get("lead") for r in group if r.get("lead")), "") or ""
+    # AgencyZoom lead id, straight off the same call_detail rows day_calls.
+    # classify()/daily.py already resolved it onto by phone number -- no new
+    # lookup here (Frank, 2026-09-15: "i want links to AZ on the coaching
+    # cards ... on the lead/client name"). It is a LEAD id even for a sold
+    # lead: AgencyZoom leads don't stop existing on conversion (CLAUDE.md's
+    # own money rules already lean on lead.status==2 staying queryable), so
+    # app.agencyzoom.com/lead?id=<this> resolves whether the lead is still
+    # open or long since sold.
+    lead_id = next((r.get("lead_id") for r in group if r.get("lead_id")), None)
     leadsrc = next((r.get("lead_source") for r in group if r.get("lead_source")), "") or ""
     numbers = [r["number"] for r in group]
     total_seconds = sum(r.get("seconds") or 0 for r in group)
@@ -416,6 +425,7 @@ def _finish_card(d, producer, group, raw_dials, day, transcript, recording_ids):
         "transcript": transcript,
         "recording_ids": recording_ids,
         "lead": lead,
+        "lead_id": lead_id,
         # Full name, not first name: coachingPanel() (site/public/index.html)
         # groups cards by matching `who` against its own `order` list of full
         # producer names -- a first-name-only value matches nothing, so every

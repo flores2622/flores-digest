@@ -214,6 +214,13 @@ THRESHOLDS = {
     "households_quoted": {"green": 5,    "yellow": 2},
     "premium_quoted_per_hh":  {"green": 900, "yellow": 501},
     "premium_sold_per_policy": {"green": 900, "yellow": 501},
+    # Team Policies count (Frank, 2026-09-15: "policy count for team needs
+    # tiering, 4+ green, 1-3 yellow, and 0 red"). Team-only -- a per-producer
+    # Policies column stays coloured on the sale streak instead
+    # (publish_board.apply_policy_streak), which this does not touch or
+    # replace. tier()'s general >=green/>=yellow/else-red formula already
+    # gives exactly 4+/1-3/0 with these two numbers, no special case needed.
+    "policy_count": {"green": 4, "yellow": 1},
     "task_completion_pct": {"green": 100, "yellow": 90},
     "speed_to_dial_min": {"green": 2, "yellow": 5, "lower_better": True},
     "utilization_pct":   {"green": 85,   "yellow": 80},

@@ -109,7 +109,7 @@
 :root[data-theme="dark"] .tg { color: var(--good); }
 :root[data-theme="dark"] .ty { color: var(--warn); }
 :root[data-theme="dark"] .tr { color: var(--bad); }
-.mdl { font-size: 14px; line-height: 1; margin-left: 5px; }
+.mdl { font-size: 14px; line-height: 1; margin-right: 5px; }
 .ptrack { flex: 1; height: 10px; border-radius: 5px; background: var(--surface); border: 1px solid var(--border-strong); overflow: hidden; }
 .pfill { height: 100%; border-radius: 5px; }
 
@@ -843,8 +843,8 @@ function teamLeaderboardHtml(d, who) {
   }
 
   const rows = ranked.map((p, i) => `<tr>
-    <td><span class="who">${pbadge(DOT[p.name] || "#8a877f", p.name)}${
-       !focus && i < 3 ? `<span class="mdl" role="img" aria-label="${["1st", "2nd", "3rd"][i]}">${MEDAL[i]}</span>` : ""}</span></td>
+    <td><span class="who">${
+       !focus && i < 3 ? `<span class="mdl" role="img" aria-label="${["1st", "2nd", "3rd"][i]}">${MEDAL[i]}</span>` : ""}${pbadge(DOT[p.name] || "#8a877f", p.name)}</span></td>
     ${hasRoleplay ? `<td class="num ${tc(p.name, "roleplay")}">${(p.coach || {}).roleplay ?? "—"}</td>` : ""}
     <td class="num ${tc(p.name, "dials")}">${p.dials ?? 0}</td>
     <td class="num ${tc(p.name, "talk")}">${hhmm(p.talk)}</td>
@@ -858,9 +858,9 @@ function teamLeaderboardHtml(d, who) {
   const T = d.totals || {};
   const teamRate = T.dials ? (100 * T.live / T.dials).toFixed(1) : "0";
   const tot = focus ? "" : `<tr class="tot"><td><span class="who">${pbadge(TEAM_DOT, "Team")}</span></td>
-    ${hasRoleplay ? `<td class="num">—</td>` : ""}
+    ${hasRoleplay ? `<td class="num ${tt("roleplay")}">${T.roleplay != null ? Math.round(T.roleplay) : "—"}</td>` : ""}
     <td class="num ${tt("dials")}">${T.dials ?? 0}</td>
-    <td class="num">—</td>
+    <td class="num ${tt("talk")}">${hhmm(T.talk)}</td>
     <td class="num ${tt("rate")}">${teamRate}% <span style="opacity:.72">(${T.live ?? 0})</span></td>
     <td class="num ${tt("hh")}">${T.hh ?? 0}</td>
     <td class="num ${tt("pq")}">${money(T.pq)}</td>
@@ -1084,7 +1084,7 @@ const TASK_AUDIT_LABELS = {
   d: "Cancelled rather than completed",
   e: "Still open at the end of the day",
 };
-const AZ_TASK_URL = { lead: "https://app.agencyzoom.com/lead?id=", customer: "https://app.agencyzoom.com/customer?id=" };
+const AZ_URL = { lead: "https://app.agencyzoom.com/lead?id=", customer: "https://app.agencyzoom.com/customer?id=" };
 function fmtPhone(e164) {
   const digits = String(e164 || "").replace(/\D/g, "").slice(-10);
   return digits.length === 10 ? `(${digits.slice(0, 3)}) ${digits.slice(3, 6)}-${digits.slice(6)}` : (e164 || "—");
@@ -1093,7 +1093,7 @@ function auditRecordCell(r) {
   const name = r.record || "—";
   const kindNote = r.link_kind ? `<div class="n">${r.link_kind}</div>` : "";
   if (!r.link_kind || !r.link_id) return `${name}${kindNote}`;
-  return `<a href="${AZ_TASK_URL[r.link_kind]}${encodeURIComponent(r.link_id)}" target="_blank" rel="noopener">${name}</a>${kindNote}`;
+  return `<a href="${AZ_URL[r.link_kind]}${encodeURIComponent(r.link_id)}" target="_blank" rel="noopener">${name}</a>${kindNote}`;
 }
 function auditColumns(bucket, list) {
   if (bucket === "a") return {
@@ -1343,16 +1343,21 @@ function median(arr) {
 
 // Mirrors digest_config.THRESHOLDS/tier()/TEAM_SCALE -- update this in
 // lockstep if that file's copy ever changes, same obligation
-// COACH_BAR_RANGES above already carries. premium_sold_per_policy and
-// speed_to_dial_min are omitted: Policies/Premium Sold colour on the sale
-// streak instead (apply_policy_streak, day-relative, not a goal -- not
-// reproduced here), and nothing renders a tier off Speed to Dial today.
+// COACH_BAR_RANGES above already carries. speed_to_dial_min is omitted:
+// nothing renders a tier off Speed to Dial today. Policies/Premium Sold on a
+// single DAY colour on the sale streak instead (apply_policy_streak,
+// day-relative -- a streak has no meaning over a range), but a range uses
+// policy_count/premium_sold_per_policy same as the team always does
+// (Frank, 2026-09-15: "when filtered to a range of days, it should follow
+// the per policy tiering").
 const THRESHOLDS = {
   call_volume: { green: 50, yellow: 40 },
   avg_talk_min: { green: 7, yellow: 3 },
   contact_rate_pct: { green: 13, yellow: 10 },
   households_quoted: { green: 5, yellow: 2 },
   premium_quoted_per_hh: { green: 900, yellow: 501 },
+  premium_sold_per_policy: { green: 900, yellow: 501 },
+  policy_count: { green: 4, yellow: 1 },
   task_completion_pct: { green: 100, yellow: 90 },
   utilization_pct: { green: 85, yellow: 80 },
   roleplay_score: { green: 80, yellow: 0 },
@@ -1369,13 +1374,17 @@ function tierColor(metric, value) {
 // it's the same goal whether the range is one day or thirty.
 function rangeProducerTiers(p, businessDays) {
   const hh = p.hh || 0;
+  const pol = p.pol || 0;
   const pqPer = hh ? (p.pq || 0) / hh : 0;
+  const polTier = tierColor("policy_count", pol);
   const out = {
     dials: tierColor("call_volume", (p.dials || 0) / businessDays),
     talk: tierColor("avg_talk_min", (p.talk || 0) / 60),
     rate: tierColor("contact_rate_pct", p.rate || 0),
     hh: tierColor("households_quoted", hh / businessDays),
     pq: tierColor("premium_quoted_per_hh", pqPer),
+    pol: polTier,
+    ps: p.ps ? tierColor("premium_sold_per_policy", p.ps / pol) : polTier,
   };
   if (p.util != null) out.util = tierColor("utilization_pct", p.util);
   out.roleplay = tierColor("roleplay_score", (p.coach || {}).roleplay || null);
@@ -1383,23 +1392,23 @@ function rangeProducerTiers(p, businessDays) {
   if (tp != null) out.tasks = tierColor("task_completion_pct", tp || 0);
   return out;
 }
-function rangeTeamTiers(totals, producers, businessDays) {
+function rangeTeamTiers(totals, businessDays) {
   const scale = TEAM_SCALE * businessDays;
   const hh = totals.hh || 0;
-  const live = producers.reduce((s, p) => s + (p.live || 0), 0);
-  const talkSecs = producers.reduce((s, p) => s + (p.talk || 0) * (p.live || 0), 0);
-  const teamTalk = live ? Math.floor(talkSecs / live) : 0;
+  const pol = totals.pol || 0;
   const pqPer = hh ? (totals.pq || 0) / hh : 0;
+  const polTier = tierColor("policy_count", pol);
   const out = {
     dials: tierColor("call_volume", (totals.dials || 0) / scale),
-    talk: tierColor("avg_talk_min", teamTalk / 60),
+    talk: tierColor("avg_talk_min", (totals.talk || 0) / 60),
     rate: tierColor("contact_rate_pct", totals.rate || 0),
     hh: tierColor("households_quoted", hh / scale),
     pq: tierColor("premium_quoted_per_hh", pqPer),
+    pol: polTier,
+    ps: totals.ps ? tierColor("premium_sold_per_policy", totals.ps / pol) : polTier,
   };
   if (totals.util != null) out.util = tierColor("utilization_pct", totals.util);
-  const recorded = producers.map(p => (p.coach || {}).roleplay).filter(Boolean);
-  out.roleplay = tierColor("roleplay_score", recorded.length ? recorded.reduce((a, b) => a + b, 0) / recorded.length : null);
+  out.roleplay = tierColor("roleplay_score", totals.roleplay || null);
   const ttp = (totals.tasks || {}).pct;
   if (ttp != null) out.tasks = tierColor("task_completion_pct", ttp || 0);
   return out;
@@ -1532,11 +1541,23 @@ function mergeDayDocs(docs) {
 
   calls.sort((a, b) => (b.day || "").localeCompare(a.day || ""));
 
-  const finalTotals = { ...totals, tasks: taskTotals.total ? taskTotals : null };
   const finalProducers = Object.values(per).sort((a, b) => b.ps - a.ps);
+  // Team Avg Talk Time/Role Play, same reweighting board_payload.py's own
+  // _team_tiers() does -- talk weighted by live contacts, role play averaged
+  // across producers who actually recorded one (Frank, 2026-09-15: "why no
+  // avg talk time or avg role play for the team").
+  const teamLive = finalProducers.reduce((s, p) => s + (p.live || 0), 0);
+  const teamTalkSecs = finalProducers.reduce((s, p) => s + (p.talk || 0) * (p.live || 0), 0);
+  const recordedRp = finalProducers.map(p => (p.coach || {}).roleplay).filter(Boolean);
+  const finalTotals = {
+    ...totals,
+    talk: teamLive ? Math.floor(teamTalkSecs / teamLive) : 0,
+    roleplay: recordedRp.length ? recordedRp.reduce((a, b) => a + b, 0) / recordedRp.length : null,
+    tasks: taskTotals.total ? taskTotals : null,
+  };
   const businessDays = days.filter(Boolean).length;
   const tiers = businessDays ? Object.fromEntries(finalProducers.map(p => [p.name, rangeProducerTiers(p, businessDays)])) : {};
-  if (businessDays) tiers.team = rangeTeamTiers(finalTotals, finalProducers, businessDays);
+  if (businessDays) tiers.team = rangeTeamTiers(finalTotals, businessDays);
 
   return {
     date: null, days: days.filter(Boolean),
@@ -1656,7 +1677,9 @@ function card(c) {
     ? c.call_times.join(" + ") : (c.dur || "");
   return `<details class="ccard">
    <summary class="blk cchead" style="border-left:4px solid ${c.tab || "var(--border-strong)"}">
-     <div class="chead"><div><div class="cname">${c.lead || ""}${c.callback_kind ? `<span class="badge-slot ctype">${c.callback_kind}</span>` : ""}</div>
+     <div class="chead"><div><div class="cname">${c.lead_id
+       ? `<a href="${AZ_URL.lead}${encodeURIComponent(c.lead_id)}" target="_blank" rel="noopener" onclick="event.stopPropagation()">${c.lead || ""}</a>`
+       : (c.lead || "")}${c.callback_kind ? `<span class="badge-slot ctype">${c.callback_kind}</span>` : ""}</div>
        <div class="cmeta">${c.who || ""} · ${fmtShortDate(c.day)}${c.time ? ` ${c.time}` : ""} · ${durCell} · ${c.lang || ""} · ${c.src || ""}${c.leadsrc ? ` · ${c.leadsrc}` : ""}</div></div>
        <span class="cat ${c.catc || ""}">${c.cat || ""}</span>${c.calltype && c.calltype[0] !== "sales" ? `<span class="ctype ctype-${c.calltype[0]}" title="${c.calltype[1] || ""}">${c.calltype[0]}</span>` : ""}<span class="ctog" aria-hidden="true">▸</span></div>
      <div class="sum">${c.summary || ""}</div>
