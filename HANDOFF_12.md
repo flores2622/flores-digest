@@ -122,6 +122,17 @@ on six hues already). Note the **data is now free**: RingCentral's `result`
 supplies "Wrong Number" and is finally being read (closed item 2 above). Only
 the chip is missing.
 
+**Measured 2026-09-14 — this is what the gap costs.** "No Outcome Logged" rose
+to 13 team-wide (against 1 on 09-11 and 6 on 09-10), and 12 of the 13 are
+Lorena's. They reconcile EXACTLY to her RingCentral `result` values that no chip
+covers: 6 `Call Failed`, 5 `Wrong Number`, 1 `Busy` = 12. Team-wide the day
+carried 17 `Call Failed`, 10 `Wrong Number` and 1 `Busy`; Crystal's 5 and Mike's
+6 got a category from notes or the recording instead, which is why only Lorena's
+surfaced. So the bucket is not a data fault and not a regression — it is this
+missing-chip item, and it will keep spiking on whichever producer leaves the
+thinnest notes on a high-dial day. Three strings (`Wrong Number`, `Call Failed`,
+`Busy`) would empty it.
+
 ### 6. Nothing checks the report before it sends — HANDOFF 11 §8
 
 A cheap gate would catch: contact rate moving more than ~5 points overnight, a
