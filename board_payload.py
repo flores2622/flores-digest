@@ -228,6 +228,7 @@ def build(day, live=False):
         producers.append({
             "name": name,
             "dials": v["call_volume"], "total_dials": v.get("total_dials"),
+            "raw_dials": v.get("raw_dials"),
             "live": v["live"], "rate": v["contact_rate"], "talk": v["avg_talk"],
             "inbound": v.get("inbound", 0),
             "hh": v["households_quoted"], "pq": v["premium_quoted"],
@@ -254,6 +255,8 @@ def build(day, live=False):
         "built_at": dt.datetime.now(AZ).isoformat(timespec="seconds"),
         "totals": {
             "dials": sum(p["dials"] for p in producers),
+            "total_dials": sum(p.get("total_dials") or 0 for p in producers),
+            "raw_dials": sum(p.get("raw_dials") or 0 for p in producers),
             "live": sum(p["live"] for p in producers),
             "hh": sum(p["hh"] for p in producers),
             "pq": sum(p["pq"] for p in producers),

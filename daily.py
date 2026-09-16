@@ -541,7 +541,8 @@ def build_metrics(day):
     _pick = day_calls.pick_lead
     M = {}
     for who in PRODUCERS:
-        counted = [r for r in rows.get(who, []) if not r["excluded"]]
+        all_rows = rows.get(who, [])
+        counted = [r for r in all_rows if not r["excluded"]]
         live, b, detail, dials_kept = [], collections.Counter(), [], []
         for r in counted:
             ev = (lc.evidence(r.get("lead_ids") or [r["lead_id"]], day, who)
@@ -733,7 +734,20 @@ def build_metrics(day):
                   "call_detail": sorted(detail, key=lambda d: -d["seconds"]),
                   "households_quoted": len(hh.get(who, ())),
                   "premium_quoted": round(tot),
-                  "policies": n_sold, "premium_sold": round(prem)}
+                  "policies": n_sold, "premium_sold": round(prem),
+                  # ALL dialled numbers, including the ones classify() excluded
+                  # as service/renewal/no-record -- kept separately from
+                  # call_volume/total_dials (which stay new-business only, the
+                  # figure everything downstream tiers and compares against).
+                  # Crystal is the only producer who does service work
+                  # (az_client.py's own comment), so hers is the one day these
+                  # differ in practice, but this is computed for everyone: a
+                  # producer's raw call count should never look thin just
+                  # because AgencyZoom filed some of it as service (Frank,
+                  # 2026-09-16: "I want everyone else to see she makes renewal
+                  # calls, and still the same amount of calls as them").
+                  "raw_dials": sum(r["calls"] for r in all_rows),
+                  "raw_numbers": len(all_rows)}
 
     util, weighted, _ = iu.pull(day)
     _raw_tasks = json.loads((ROOT / f"data/az_tasks_{day}.json").read_text())
