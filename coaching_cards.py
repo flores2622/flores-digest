@@ -383,6 +383,43 @@ def _clean_objs(raw, legacy=None, cap=6):
     return out
 
 
+def _call_breakdown(producer, group, raw_dials):
+    """One entry per real conversation on this card, [{"cat", "catc", "kind"},
+    ...], in the same chronological order as _call_times -- each call's own
+    outcome and its own call-in/call-back kind, read off THAT call's row,
+    never the group's merged "best across all calls" cat/catc and never one
+    kind label standing in for a card that can mix a cold call-in with a
+    genuine call back (Frank, 2026-09-16: the outcome and call-in/call-back
+    badges "are not on a single call" -- both were only ever computed once
+    for the whole group, so a 2-call card showed one badge that didn't
+    clearly belong to either conversation). A lone call still returns a
+    single-element list, same shape, so the board needs no separate code
+    path for the common case.
+
+    Mirrors _call_times'/_callback_kind's own logic exactly (same
+    same-number-split case, same sort key) so `calls[i]` always pairs with
+    `call_times[i]`.
+    """
+    if len(group) == 1:
+        r = group[0]
+        key = panels._call_category(r)
+        entry = {"cat": panels._cat_label(key, r), "catc": key}
+        if r.get("callback_seconds"):
+            return [dict(entry, kind=""), dict(entry, kind="call back")]
+        return [dict(entry, kind="")]
+    ordered = sorted(group, key=lambda r: (
+        _earliest_start(raw_dials, producer, r["number"]) or "9999",
+        bool(r.get("inbound"))))
+    out = []
+    for r in ordered:
+        key = panels._call_category(r)
+        kind = ""
+        if r.get("inbound"):
+            kind = "call back" if r.get("kind") == "callback" else "call in"
+        out.append({"cat": panels._cat_label(key, r), "catc": key, "kind": kind})
+    return out
+
+
 def _finish_card(d, producer, group, raw_dials, day, transcript, recording_ids):
     """Merge the model's judgment with everything already known from the
     pipeline. Every mechanical field below is cheaper and more reliable to
@@ -445,6 +482,13 @@ def _finish_card(d, producer, group, raw_dials, day, transcript, recording_ids):
         "call_times": [_dur(s) for s in _call_times(producer, group, raw_dials)],
         "call_count": len(_call_times(producer, group, raw_dials)),
         "callback_kind": _callback_kind(producer, group),
+        # Per-call outcome + kind, same order as call_times above -- see
+        # _call_breakdown's own docstring for why this exists alongside
+        # callback_kind/cat/catc rather than replacing them: those two stay
+        # as the card-level "best across all calls" summary (used for the
+        # left border, filtering and the day-level scan stats), while this
+        # is what the board now badges each individual call with.
+        "calls": _call_breakdown(producer, group, raw_dials),
         # AgencyZoom's own leadSourceName, not the Google Sheet's (Frank,
         # 2026-09-12) -- blank when the call never resolved to a lead record.
         "leadsrc": leadsrc,
