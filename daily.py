@@ -919,8 +919,24 @@ def main():
     log(f"rendered {out} ({len(html.encode()):,} bytes)")
 
     import attachments
-    notes, rec = make_attachments(day)
-    log(f"attachments: {notes}, {rec}")
+    # A bug in attachment generation must never cost the digest itself --
+    # confirmed 2026-09-15: build_attachments.py's KeyError: 'Coral Barwick'
+    # (a hardcoded 3-producer colour map that PR #78 exposed by finally
+    # letting their leads reach the Recontact Detail table) raised straight
+    # out of an unguarded call here, aborting main() before send() was ever
+    # reached -- the ALREADY-RENDERED report sat unsent until someone
+    # noticed and hand-patched the bug. make_missed_call_audit() right below
+    # already has the correct shape for this (try/except, log, degrade to no
+    # attachment); this call never did. The two PDFs are companion
+    # documents, not the headline numbers -- send() already tolerates a
+    # missing one (see ops_only_pdfs=[missed] if missed else [] below).
+    try:
+        notes, rec = make_attachments(day)
+        log(f"attachments: {notes}, {rec}")
+    except (Exception, SystemExit) as e:
+        log(f"attachments failed ({type(e).__name__}: {e}) -- "
+            f"sending the digest without them")
+        notes, rec = None, None
     missed = make_missed_call_audit(day)
 
     if a.no_send:
@@ -940,7 +956,7 @@ def main():
         log(f"SEND_HOLD present, built but NOT sending -- "
             f"{hold.read_text().strip()[:200]}")
         return
-    send(day, html, [notes, rec], audience=a.audience,
+    send(day, html, [p for p in (notes, rec) if p], audience=a.audience,
          ops_only_pdfs=[missed] if missed else [])
     publish_day(day)
 
