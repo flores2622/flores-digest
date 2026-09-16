@@ -69,9 +69,21 @@ class AgencyZoom:
         -- it runs earlier in pull_sources() and had nothing to write it back
         to R2 once the process died). One bad connection during a
         thousands-of-records paginated fetch is exactly the kind of thing
-        that will keep happening; it should cost a retry, not the run."""
+        that will keep happening; it should cost a retry, not the run.
+
+        LOUD AND BOUNDED (2026-09-16). The first version of this retry was
+        silent and could back off up to 63s per failed request (1+2+4+8+16+32)
+        -- confirmed the next morning: a checkpoint's pull_sources() took
+        ~15 minutes instead of its normal ~4 with zero log output the whole
+        time, indistinguishable from a hang to whatever was watching it (a
+        scheduled session watching its own output, per HOURLY_RUNS.md/
+        intraday.py's own "keep checking until you see the closing line"
+        guidance). Every retry now prints immediately, and the backoff caps
+        at 20s/4 attempts (worst case ~30s total) instead of 60s/6 -- a
+        connection that is still failing after that is not going to
+        self-heal in this call, and failing loud beats stalling quiet."""
         url = f"{BASE}{path}"
-        for attempt in range(6):
+        for attempt in range(4):
             self.lim.wait()
             try:
                 r = self.http.request(
@@ -82,12 +94,18 @@ class AgencyZoom:
                     **kw,
                 )
             except requests.exceptions.RequestException as e:
-                if attempt == 5:
+                if attempt == 3:
                     raise
-                time.sleep(min(2 ** attempt, 60))
+                wait = min(2 ** attempt, 20)
+                print(f"  az_client: {type(e).__name__} on {path}, "
+                      f"retrying in {wait}s (attempt {attempt + 1}/4)")
+                time.sleep(wait)
                 continue
             if r.status_code == 429 or r.status_code >= 500:
-                time.sleep(min(int(r.headers.get("Retry-After", 2 ** attempt)), 60))
+                wait = min(int(r.headers.get("Retry-After", 2 ** attempt)), 20)
+                print(f"  az_client: HTTP {r.status_code} on {path}, "
+                      f"retrying in {wait}s (attempt {attempt + 1}/4)")
+                time.sleep(wait)
                 continue
             if r.status_code == 401:
                 self._jwt = None
