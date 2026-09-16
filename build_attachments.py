@@ -6,9 +6,15 @@ import pathlib
 import notes_patch
 
 ROOT = pathlib.Path(__file__).resolve().parent
-DOT = {"Crystal Mango": "cA", "Lorena Gonzalez": "cB", "Mike Olvera": "cC"}
+# Coral and Sarahi were added 2026-09-15, the day PR #78 took them out of
+# TRAINING_LEAD_OWNERS and their leads first reached these tables. Classes
+# match render_report.DOT exactly (cJ #00ffcf, cK #ffb48c) so the attachment
+# and the emailed report use one identity colour per producer.
+DOT = {"Crystal Mango": "cA", "Lorena Gonzalez": "cB", "Mike Olvera": "cC",
+       "Coral Barwick": "cJ", "Sarahi Chin": "cK"}
 SHORT = {"Crystal Mango": "Crystal", "Lorena Gonzalez": "Lorena",
-         "Mike Olvera": "Mike"}
+         "Mike Olvera": "Mike", "Coral Barwick": "Coral",
+         "Sarahi Chin": "Sarahi"}
 NUM = ' class="num"'
 WEEKDAY = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday",
            "Saturday", "Sunday"]
@@ -121,8 +127,8 @@ def recontact_detail(day, M, template):
             'Smart-Cycle</b>, so that field reads as the outcome date and is never '
             'used here.<br><br>&ldquo;Calls between&rdquo; counts that '
             'producer&rsquo;s dials to the lead&rsquo;s number between entering the '
-            'stage and the outcome. Leads assigned to Frank, Coral, Sarahi and '
-            'Amanda are excluded throughout &mdash; those are training leads.</div>'
+            'stage and the outcome. Leads assigned to Frank and Amanda are '
+            'excluded throughout &mdash; neither is a tracked producer.</div>'
             '</div></div></div></body></html>')
     return head + body
 
@@ -165,13 +171,6 @@ def notes_and_methodology(day, M, template):
            "name rather than new business won. It is excluded from Premium Sold, "
            "policy counts and the leaderboard.<br><br>")
     h = h[:start] + new + h[end:]
-    h = h.replace(
-        "<b>Coral Barwick and Sarahi Chin are excluded from every calculation on "
-        "this report</b>",
-        "<b>Coral Barwick and Sarahi Chin are excluded from every calculation on "
-        "this report</b>, with one exception: <b>a genuine sale by either of them "
-        "is shown on their placeholder card on the day it happens</b>, though it "
-        "still enters no team total")
     return h
 
 
