@@ -481,9 +481,22 @@ details.sc .scb { padding: 0 12px 12px; }
 .tlx b { display: block; }
 .tlx span { color: var(--text-secondary); }
 .cat { display: inline-block; font-size: 9.5px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.03em; padding: 2px 8px; border-radius: 10px; white-space: nowrap; color: #16150f; }
-.cat-q { background: #9fc2ed; } .cat-sold { background: #008300; color: #fff; } .cat-live { background: #eda100; }
-.cat-dead { background: #f0e800; }
-.cat-fsd { background: var(--surface-raised); color: var(--good); border: 1px solid var(--good); }
+/* Same nine-way outcome as the emailed Call Detail panel's own .g1-.g9
+   (report_template.html) -- copied here rather than computed, since the
+   colours are Frank-approved fixed values (digest_config.CALL_CATEGORIES),
+   not a scale. Filled = happened on THIS call; striped = a follow-up
+   chasing something already out (Frank, 2026-09-15: "if it dont like how
+   the blues dont match ... make them match"). Keep these in lockstep with
+   CALL_CATEGORIES if its paint/fill/stripe values ever change. */
+.cat-sold_on_call { color: #fff; background: #008300; border: 2px solid #008300; }
+.cat-quoted_call_open { color: #0b0b0b; background: #9fc2ed; border: 2px solid #9fc2ed; }
+.cat-followup_open { color: #0b0b0b; background-color: #fff; background-image: repeating-linear-gradient(45deg, #d4e4f7 0, #d4e4f7 4px, #fff 4px, #fff 8px); border: 2px solid #9fc2ed; }
+.cat-quoted_call_lost { color: #fff; background: #e34948; border: 2px solid #e34948; }
+.cat-followup_lost { color: #0b0b0b; background-color: #fff; background-image: repeating-linear-gradient(45deg, #f9dada 0, #f9dada 4px, #fff 4px, #fff 8px); border: 2px solid #e34948; }
+.cat-dead_no_quote { color: #0b0b0b; background: #f0e800; border: 2px solid #f0e800; }
+.cat-live_quote_ok { color: #0b0b0b; background-color: #fff; background-image: repeating-linear-gradient(45deg, #fbeccc 0, #fbeccc 4px, #fff 4px, #fff 8px); border: 2px solid #eda100; }
+.cat-live_no_quote { color: #0b0b0b; background: #eda100; border: 2px solid #eda100; }
+.cat-callback_no_contact { color: #0b0b0b; background-color: #fff; background-image: repeating-linear-gradient(45deg, #ebeae9 0, #ebeae9 4px, #fff 4px, #fff 8px); border: 2px solid #9a988f; }
 /* Sales vs. service (Apollo's own judgment, distinct from .cat above --
    see coaching/METHODOLOGY.md's Core judgment) -- outlined, not solid,
    so it never reads as the same axis as the deal-stage badge next to it. */
@@ -885,7 +898,7 @@ function teamLeaderboardHtml(d, who) {
 function winsLossesHtml(d, who) {
   if (who) return "";
   const s = d.scan;
-  const sold = (d.calls || []).filter(c => c.catc === "cat-sold").map(c => c.lead);
+  const sold = (d.calls || []).filter(c => c.catc === "sold_on_call").map(c => c.lead);
   const says = !s ? "" : `
    <p class="sd">Two patterns that only show up across calls, not within one.</p>
    <div class="hero">
@@ -1694,7 +1707,7 @@ function card(c) {
        ? `<a href="${AZ_URL.lead}${encodeURIComponent(c.lead_id)}" target="_blank" rel="noopener" onclick="event.stopPropagation()">${c.lead || ""}</a>`
        : (c.lead || "")}${c.callback_kind ? `<span class="badge-slot ctype">${c.callback_kind}</span>` : ""}</div>
        <div class="cmeta">${c.who || ""} · ${fmtShortDate(c.day)}${c.time ? ` ${c.time}` : ""} · ${durCell} · ${c.lang || ""} · ${c.src || ""}${c.leadsrc ? ` · ${c.leadsrc}` : ""}</div></div>
-       <span class="cat ${c.catc || ""}">${c.cat || ""}</span>${c.calltype && c.calltype[0] !== "sales" ? `<span class="ctype ctype-${c.calltype[0]}" title="${c.calltype[1] || ""}">${c.calltype[0]}</span>` : ""}<span class="ctog" aria-hidden="true">▸</span></div>
+       <span class="cat ${c.catc ? `cat-${c.catc}` : ""}">${c.cat || ""}</span>${c.calltype && c.calltype[0] !== "sales" ? `<span class="ctype ctype-${c.calltype[0]}" title="${c.calltype[1] || ""}">${c.calltype[0]}</span>` : ""}<span class="ctog" aria-hidden="true">▸</span></div>
      <div class="sum">${c.summary || ""}</div>
      ${c.flags && c.flags.length ? `<div style="margin-top:8px">${c.flags.map(f => `<span class="flag">${f}</span>`).join("")}</div>` : ""}
    </summary>
@@ -1767,20 +1780,28 @@ function wireCoachSubTabs() {
   });
 }
 
-// Explains the card's own colour-coding and badges -- lost in the move from
-// the emailed Call Detail panel to this board, where it never got ported
-// over (Frank, 2026-09-15: "we also lost the legend showing what those left
-// tab colors are, the call outcome, and the call-in/call-back"). The email's
-// own legend covered a richer 9-way outcome system this board's cards don't
-// have (coaching_cards._category only ever computes Sold/Quoted/Live
-// Contact) -- this explains what the board ACTUALLY renders, not a port of
-// that richer system.
+// Explains the card's own colour-coding and badges. Frank, 2026-09-16: "I
+// had developed colored live contact cards based on if it was a follow up,
+// quoted on that call, no quote but still open, lost and quoted, lost and
+// not quoted. I want the coaching cards to follow those color rules, not
+// the green yellow red rule we have right now" -- the left border (and the
+// outcome chip) now carry the SAME nine-way categorisation as the emailed
+// Call Detail panel (coaching_cards._category reuses panels._call_category
+// and digest_config.CALL_CATEGORIES directly), replacing the old
+// assumptive-language-derived green/yellow/red border. This legend lists
+// all nine so the board and the email are explained the same way.
 function coachLegendHtml() {
   return `<div class="cdl">
-    <span><i class="legend-dot" style="background:var(--good)"></i>Left border: assumptive language both times (quote and close)</span>
-    <span><i class="legend-dot" style="background:var(--warn)"></i>Left border: mixed -- assumed one, asked permission the other</span>
-    <span><i class="legend-dot" style="background:var(--bad)"></i>Left border: asked permission both times</span>
-    <span><span class="cat cat-sold">Sold</span> <span class="cat cat-q">Quoted</span> <span class="cat cat-live">Live Contact</span> -- deal stage as of today</span>
+    <span><span class="cat cat-sold_on_call">Sold on the call</span></span>
+    <span><span class="cat cat-quoted_call_open">Quoted, no action</span></span>
+    <span><span class="cat cat-followup_open">Quote follow up, no action yet</span></span>
+    <span><span class="cat cat-quoted_call_lost">Quoted on this call, Lost</span></span>
+    <span><span class="cat cat-followup_lost">Quote follow up, Lost</span></span>
+    <span><span class="cat cat-dead_no_quote">Lost, not quoted</span></span>
+    <span><span class="cat cat-live_quote_ok">Contacted, okay to quote, no action</span></span>
+    <span><span class="cat cat-live_no_quote">Contacted, No Action</span></span>
+    <span><span class="cat cat-callback_no_contact">Called back, no conversation</span></span>
+    <span>Left border matches the outcome chip's colour -- same categorisation as the emailed Call Detail panel</span>
     <span><span class="ctype ctype-service">service</span> <span class="ctype ctype-mixed">mixed</span> -- Apollo's sales-vs-service read (no tag = sales)</span>
     <span><span class="badge-slot ctype">call back</span> <span class="badge-slot ctype">call in</span> -- a second real conversation with this lead today, coached together on one card, talk time split under the name</span>
   </div>`;
