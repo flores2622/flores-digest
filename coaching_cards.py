@@ -66,6 +66,8 @@ import pathlib
 
 import call_summary as CS
 import day_calls
+import digest_config as cfg
+import panels
 
 ROOT = pathlib.Path(__file__).resolve().parent
 AZ = dt.timezone(dt.timedelta(hours=-7))
@@ -231,38 +233,37 @@ def _callback_kind(producer, group):
 
 
 def _category(rows):
-    """(label, css class) -- from the same mechanical facts daily.py already
-    attaches to the row(s), never from the model's read of the call. Takes
-    the whole group so a "2 calls coached together" card's deal-stage badge
-    reflects EITHER call hitting today, not just whichever row loaded first.
+    """(label, category key) -- reuses panels.py's own nine-way Call Detail
+    outcome (panels._call_category / digest_config.CALL_CATEGORIES), from
+    the same mechanical facts daily.py already attaches to the row(s),
+    never from the model's read of the call (Frank, 2026-09-16: "I had
+    developed colored live contact cards based on if it was a follow up,
+    quoted on that call, no quote but still open, lost and quoted, lost
+    and not quoted. I want the coaching cards to follow those color rules,
+    not the green yellow red rule we have right now").
 
-    v1 covers only the three states cheaply knowable from call_detail: Sold
-    (today), Quoted (a quote went out on this call), and Live Contact
-    (everything else). The board's cat-dead and cat-fsd classes exist in the
-    CSS but need a post-call lead-status join this module does not do yet --
-    a gap to close later, not a silent miscoloring today.
+    Coaching and the emailed Call Detail panel now colour and label the
+    same call the same way, instead of Coaching running its own
+    three-state approximation of the same thing.
+
+    A merged (callback) card takes the BEST outcome across its rows,
+    ranked by panels.CALL_CATEGORY_ORDER (sold beats quoted beats
+    follow-up beats lost beats live-contact beats no-contact) -- a lead
+    sold on the second of two calls still reads as sold, not whatever the
+    first row alone would have said.
     """
-    if any(r.get("sold_today") for r in rows):
-        return "Sold", "cat-sold"
-    if any(r.get("quote_state") == "today" for r in rows):
-        return "Quoted", "cat-q"
-    return "Live Contact", "cat-live"
+    best = min(rows, key=panels._outcome_rank)
+    key = panels._call_category(best)
+    return panels._cat_label(key, best), key
 
 
-def _tab(askq, asks):
-    """Card accent colour, derived from the two assumption verdicts the model
-    already gave -- not a separate judgment call. Green when the producer
-    worked assumptively start to finish, red when they asked permission at
-    both the quote and the close, yellow for a mixed call. This mirrors the
-    methodology's own framing of askq/asks as the throughline of the card.
-    """
-    aq = bool((askq or [False])[0])
-    ac = bool((asks or [False])[0])
-    if aq and ac:
-        return "var(--good)"
-    if not aq and not ac:
-        return "var(--bad)"
-    return "var(--warn)"
+def _tab(key):
+    """Card accent colour -- the exact paint used for this same outcome in
+    the Call Detail panel (digest_config.CALL_CATEGORIES), not a separate
+    judgment call over the model's assumptive-language read. Replaces the
+    former green/yellow/red-by-askq/asks rule (Frank, 2026-09-16 -- see
+    _category's docstring)."""
+    return cfg.CALL_CATEGORIES[key]["paint"]
 
 
 def _bool_pair(raw):
@@ -450,7 +451,7 @@ def _finish_card(d, producer, group, raw_dials, day, transcript, recording_ids):
         "lang": str(d.get("lang") or "").strip() or "English",
         "src": "recording",
         "cat": cat, "catc": catc,
-        "tab": _tab(askq, asks),
+        "tab": _tab(catc),
         "calltype": _calltype(d.get("calltype")),
         "summary": str(d.get("summary") or "").strip(),
         "askq": askq, "asks": asks,
@@ -653,8 +654,13 @@ def scan(cards):
         "of": len(cards),
         "asked_open": sum(1 for c in cards if c.get("askq") and c["askq"][0] is False),
         "assumed_open": sum(1 for c in cards if c.get("askq") and c["askq"][0] is True),
-        "priced": sum(1 for c in cards if c.get("catc") in ("cat-sold", "cat-q")),
-        "closed": sum(1 for c in cards if c.get("catc") == "cat-sold"),
+        # A quote went out ON THIS CALL -- sold, or quoted today whether
+        # still open or since lost. A follow-up call chasing an
+        # ALREADY-out quote (followup_open/followup_lost) doesn't count;
+        # this call didn't do the pricing. Keys match cfg.CALL_CATEGORIES.
+        "priced": sum(1 for c in cards if c.get("catc") in
+                      ("sold_on_call", "quoted_call_open", "quoted_call_lost")),
+        "closed": sum(1 for c in cards if c.get("catc") == "sold_on_call"),
         "premium": strong("Current premium captured"),
         "xdate": strong("Renewal / X-date captured"),
         "bundle": strong("Bundle / cross-sell raised"),
