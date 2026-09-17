@@ -395,7 +395,14 @@ def publish_month(month, cli=None, bucket=None, log=print):
     trend = []
     for d in sorted(days):
         body = cli.get_object(Bucket=bucket, Key=_key(d))["Body"].read()
-        t = (json.loads(body).get("totals")) or {}
+        day_doc = json.loads(body)
+        t = day_doc.get("totals") or {}
+        # Same team tiering the Digest tab's tiles/leaderboard already
+        # colour by (apply_policy_streak/board_payload._team_tiers), so
+        # Trends can follow it too (Frank, 2026-09-17: "make it follow
+        # team tiered coloring") instead of showing plain uncoloured
+        # numbers. Only the four metrics this rollup already carries.
+        team_tiers = (day_doc.get("tiers") or {}).get("team") or {}
         trend.append({
             "date": d,
             "dials": t.get("dials") or 0,
@@ -403,6 +410,7 @@ def publish_month(month, cli=None, bucket=None, log=print):
             "rate": t.get("rate") or 0,
             "pq": t.get("pq") or 0,
             "ps": t.get("ps") or 0,
+            "tiers": {k: team_tiers[k] for k in ("dials", "rate", "pq", "ps") if team_tiers.get(k)},
         })
 
     doc = {

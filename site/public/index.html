@@ -3062,11 +3062,16 @@ async function trendsPanel() {
   const mx = Math.max(...ds.map(x => x.rate || 0), 1), mxs = Math.max(...ds.map(x => x.ps || 0), 1);
   const spark = (vals, max) => `<div class="spark">${vals.map(v =>
     `<i style="height:${Math.max(2, Math.round(v / max * 34))}px" title="${v}"></i>`).join("")}</div>`;
+  // Same team tiering the Digest tab colours by (Frank, 2026-09-17: "make
+  // it follow team tiered coloring") -- each day's own tiers, as rolled
+  // up server-side by publish_month, not recomputed here.
+  const TI = { green: "tg", yellow: "ty", red: "tr" };
+  const tt = (x, key) => TI[(x.tiers || {})[key]] || "";
   const rows = ds.map(x => `<tr>
     <td>${new Date(x.date + "T12:00:00").toLocaleDateString(undefined, { weekday: "short", month: "short", day: "numeric" })}</td>
-    <td class="num">${x.dials ?? 0}</td><td class="num">${x.live ?? 0}</td>
-    <td class="num">${(x.rate ?? 0).toFixed ? x.rate.toFixed(1) : x.rate}%</td>
-    <td class="num">${money(x.pq)}</td><td class="num">${money(x.ps)}</td></tr>`).join("");
+    <td class="num ${tt(x, "dials")}">${x.dials ?? 0}</td><td class="num">${x.live ?? 0}</td>
+    <td class="num ${tt(x, "rate")}">${(x.rate ?? 0).toFixed ? x.rate.toFixed(1) : x.rate}%</td>
+    <td class="num ${tt(x, "pq")}">${money(x.pq)}</td><td class="num ${tt(x, "ps")}">${money(x.ps)}</td></tr>`).join("");
   return `<div class="sect"><h2>Across ${ds.length} reporting days</h2>
    <p class="sd">Oldest first. Too few days to call anything a trend — this is the record, not a forecast.</p>
    <div class="tiles">
