@@ -6,3 +6,4 @@ recovered/
 __pycache__/
 *.pyc
 .wrangler/
+logs/
