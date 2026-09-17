@@ -30,9 +30,15 @@ class _Limiter:
     before the window clears. Pacing every request up front, the same way
     az_client.py already paces AgencyZoom's, means the loop never gets fast
     enough to trip the limit in the first place.
+
+    1.0s (85-ish req/min) still 429'd once, two chunks further in than
+    before -- RC's call-log rate limit is account-wide, and this window
+    landed close to a scheduled checkpoint's own hourly run competing for
+    the same budget concurrently. 2.5s leaves real headroom for that
+    overlap rather than assuming this process has the account to itself.
     """
 
-    def __init__(self, min_interval=1.0):
+    def __init__(self, min_interval=2.5):
         self.min_interval = min_interval
         self._last = 0.0
         self._lock = threading.Lock()
