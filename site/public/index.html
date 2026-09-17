@@ -3069,7 +3069,7 @@ async function trendsPanel() {
   const tt = (x, key) => TI[(x.tiers || {})[key]] || "";
   const rows = ds.map(x => `<tr>
     <td>${new Date(x.date + "T12:00:00").toLocaleDateString(undefined, { weekday: "short", month: "short", day: "numeric" })}</td>
-    <td class="num ${tt(x, "dials")}">${x.dials ?? 0}</td><td class="num">${x.live ?? 0}</td>
+    <td class="num ${tt(x, "dials")}">${x.dials ?? 0}${dialsSub(x)}</td><td class="num">${x.live ?? 0}</td>
     <td class="num ${tt(x, "rate")}">${(x.rate ?? 0).toFixed ? x.rate.toFixed(1) : x.rate}%</td>
     <td class="num ${tt(x, "pq")}">${money(x.pq)}</td><td class="num ${tt(x, "ps")}">${money(x.ps)}</td></tr>`).join("");
   return `<div class="sect"><h2>Across ${ds.length} reporting days</h2>

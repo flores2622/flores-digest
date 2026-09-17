@@ -406,6 +406,11 @@ def publish_month(month, cli=None, bucket=None, log=print):
         trend.append({
             "date": d,
             "dials": t.get("dials") or 0,
+            # Total dial ATTEMPTS on those same new-business numbers, same
+            # figure as the Digest tab's own "N dials" note (board_payload.py
+            # totals.total_dials) -- Frank, 2026-09-17: "the pure dials need
+            # to be next to it in parenthesis, need to see unique and pure".
+            "total_dials": t.get("total_dials") or 0,
             "live": t.get("live") or 0,
             "rate": t.get("rate") or 0,
             "pq": t.get("pq") or 0,
