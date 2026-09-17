@@ -309,20 +309,21 @@ def apply_policy_streak(doc, cli, bucket, log=print):
     # count for team needs tiering, 4+ green, 1-3 yellow, and 0 red") --
     # digest_config.THRESHOLDS["policy_count"], NOT the per-producer sale
     # streak, which has no team-wide analogue (no one asked for a team
-    # streak). Team "ps" mirrors the per-producer fallback pattern above:
-    # the premium_sold_per_policy RATE (unscaled -- a per-policy dollar
-    # figure doesn't grow with headcount the way a raw count does, Frank
-    # 2026-09-12: "rate stats stay the same") when the team sold anything,
-    # else the same policy-count colour Policies just got.
+    # streak).
     T = doc.get("totals") or {}
     team_pol_tier = digest_config.tier("policy_count", T.get("pol") or 0)
     team_row = tiers.setdefault("team", {})
     team_row["pol"] = team_pol_tier
-    if T.get("pol"):
-        per = (T.get("ps") or 0) / T["pol"]
-        team_row["ps"] = digest_config.tier("premium_sold_per_policy", per)
-    else:
-        team_row["ps"] = team_pol_tier
+    # Team "ps" mirrors the per-producer rule above (Frank, 2026-09-17:
+    # "premium sold today is colored yellow. We said that ANY sold premium
+    # is green, ANY sold policy is green") -- any premium sold, team-wide,
+    # is a green day regardless of the per-policy dollar average. This
+    # used to run the premium_sold_per_policy RATE (per-policy $ vs. the
+    # $900/$501 goal) whenever the team sold anything, which could and did
+    # land on yellow for a genuine sale -- the exact bug reported. That
+    # rate judgment still belongs everywhere ELSE this figure appears
+    # (the range views' own tiering), just not for "did today have a sale".
+    team_row["ps"] = "green" if T.get("ps") else team_pol_tier
     return doc
 
 
