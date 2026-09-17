@@ -159,6 +159,27 @@ this was written. Either wire in a real audited-count source or drop the
 column — it currently does nothing but take up space and imply a check that
 never runs.
 
+### 10. A cold checkpoint container can lack `ffmpeg` — FIXED 2026-09-17
+
+The 8:55 AM checkpoint on 2026-09-17 pulled the day's RingCentral/AgencyZoom
+sources cleanly (rc_raw, service tickets, tasks all reached R2), then
+`intraday.py` died on `FileNotFoundError: ... 'ffmpeg'` partway through
+transcription and never reached its publish step -- the Digest tab's "So far
+today" tile stayed empty for the whole run, reported as a scheduled-task
+"success" because the turn itself didn't error out until the traceback.
+daily.py's own comments note the identical failure once before, 2026-09-10.
+Every scheduled/triggered firing gets a fresh container, and whatever gave
+this interactive session's own container `ffmpeg` (almost certainly an
+ad hoc `apt-get install` at some point, not anything the repo or the trigger
+prompts provision) does not travel with it.
+
+Fixed in `transcribe.py`: `_ensure_ffmpeg()` runs once per process before
+either `ffmpeg` or `ffprobe` is invoked, installing it quietly via `apt-get`
+if missing, so a cold container heals itself instead of losing the whole
+checkpoint. Worth re-confirming after a few more checkpoints actually
+publish clean -- this was diagnosed from one incident's evidence, not
+watched recur.
+
 ### 8. Scheduled sessions still cannot push — REOPENED 2026-09-17
 
 Asked for since at least 08-31, marked closed 2026-09-10, still broken. The
