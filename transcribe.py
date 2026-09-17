@@ -23,6 +23,7 @@ Always check the payload, never the status code.
 import json
 import os
 import re
+import shutil
 import subprocess
 import time
 import wave
@@ -33,6 +34,35 @@ import requests
 MODEL = "models/sherpa-onnx-whisper-base"
 AUDIO = "data/audio"
 RATE_LIMIT_MARKER = b"CMN-301"
+
+_ffmpeg_checked = False
+
+
+def _ensure_ffmpeg():
+    """Every scheduled/triggered session gets a fresh container (see
+    r2_cache.py's own docstring), and this dependency does not always survive
+    that reset -- confirmed 2026-09-17: the 8:55 AM checkpoint's intraday.py
+    ran pull_sources cleanly, then died on `FileNotFoundError: ... 'ffmpeg'`
+    partway through transcription, publishing nothing to the board for the
+    whole day. daily.py's own history notes the same failure on 2026-09-10.
+    One quiet, memoized apt-get here (root, no prompt) means the next cold
+    container heals itself instead of losing a whole checkpoint's build.
+    """
+    global _ffmpeg_checked
+    if _ffmpeg_checked:
+        return
+    _ffmpeg_checked = True
+    if shutil.which("ffmpeg"):
+        return
+    subprocess.run(["apt-get", "update", "-qq"], capture_output=True)
+    subprocess.run(["apt-get", "install", "-y", "-qq", "ffmpeg"],
+                    capture_output=True)
+    if not shutil.which("ffmpeg"):
+        raise RuntimeError(
+            "ffmpeg is not installed and could not be installed "
+            "automatically (no root, or no network to the package mirror) "
+            "-- transcription cannot run without it.")
+
 
 # Machine-answered: carrier messages and voicemail greetings.
 MACHINE = re.compile(
@@ -244,6 +274,7 @@ def _model(language=None, threads=2):
 
 def _window(path, start, seconds, language=None):
     """Transcribe one [start, start+seconds) window of a recording."""
+    _ensure_ffmpeg()
     wav_path = path.replace(".mp3", ".wav")
     r = subprocess.run(["ffmpeg", "-y", "-loglevel", "quiet",
                         "-ss", str(int(start)), "-t", str(int(seconds)),
@@ -338,6 +369,7 @@ def audio_seconds(path):
     """
     try:
         import subprocess
+        _ensure_ffmpeg()
         r = subprocess.run(
             ["ffprobe", "-v", "error", "-show_entries", "format=duration",
              "-of", "default=nw=1:nk=1", str(path)],
