@@ -1843,23 +1843,26 @@ function recordingBlk(c) {
   </details>` : "";
   return `<div class="blk"><div class="bl">Recording &amp; transcript</div>${players}${tx}</div>`;
 }
-// Two sub-tabs within the Coaching tab (Frank, 2026-09-10, correcting an
-// earlier misread of this same request): "Live Contact Detail" is the
-// per-call coaching cards, exactly what was there before. "Wins and Losses"
-// is its own separate view -- the day-level "what the day says" + objection
-// summary -- not stacked above the cards on the same scroll.
+// Three sub-tabs within the Coaching tab (Frank, 2026-09-10, correcting an
+// earlier misread of this same request, then 2026-09-17: "I want the
+// cards, wins and losses, and the objection data to be tabs within the
+// category"). "Cards" is the per-call coaching cards. "Wins and Losses"
+// is the day-level "what the day says" summary. "Objections" is its own
+// tab now too -- it used to sit above the cards inside "Cards", but a
+// click there still jumps to "Cards" (see wireObjectionChart) since
+// that's the only place the filtered cards can show.
 let coachSubTab = "detail";
 function coachSubTabsHtml() {
   return `<div class="subtabs">
-    <button class="subtab${coachSubTab === "detail" ? " sel" : ""}" data-st="detail" type="button">Live Contact Detail</button>
+    <button class="subtab${coachSubTab === "detail" ? " sel" : ""}" data-st="detail" type="button">Cards</button>
     <button class="subtab${coachSubTab === "wins" ? " sel" : ""}" data-st="wins" type="button">Wins and Losses</button>
+    <button class="subtab${coachSubTab === "objections" ? " sel" : ""}" data-st="objections" type="button">Objections</button>
   </div>`;
 }
 function wireCoachSubTabs() {
   document.querySelectorAll(".subtab").forEach(el => el.onclick = () => {
     coachSubTab = el.dataset.st;
-    document.getElementById("view").innerHTML = rangeControlHtml() + producerControlHtml() + rangeHeaderHtml() + coachingPanel(cur, producerFilter);
-    wireRangeControl(); wireProducerControl(); wireCoachSubTabs(); wireObjectionChart();
+    repaintCoaching();
   });
 }
 
@@ -1905,24 +1908,23 @@ function objectionChartHtml(objData, scopedCount) {
   }).join("");
   return `<div class="sect"><h2>Objections</h2>
    <p class="sd">Raised across ${scopedCount} coached call${scopedCount === 1 ? "" : "s"} in this range. Won means addressed and overcome (score 8+/10).
-   Click a bar to filter the cards below to that objection.${objFilterCat ? ` <button type="button" id="objClearBtn" class="linkbtn">Clear filter</button>` : ""}</p>
+   Click a bar to filter the Cards tab to that objection.${objFilterCat ? ` <button type="button" id="objClearBtn" class="linkbtn">Clear filter</button>` : ""}</p>
    <div>${rows}</div>
   </div>`;
+}
+function repaintCoaching() {
+  document.getElementById("view").innerHTML = rangeControlHtml() + producerControlHtml() + rangeHeaderHtml() + coachingPanel(cur, producerFilter);
+  wireRangeControl(); wireProducerControl(); wireCoachSubTabs(); wireObjectionChart();
 }
 function wireObjectionChart() {
   document.querySelectorAll(".objrow").forEach(el => el.onclick = () => {
     const cat = decodeURIComponent(el.dataset.cat);
     objFilterCat = objFilterCat === cat ? "" : cat;
-    document.getElementById("view").innerHTML = rangeControlHtml() + producerControlHtml() + rangeHeaderHtml() + coachingPanel(cur, producerFilter);
-    wireRangeControl(); wireProducerControl(); wireCoachSubTabs(); wireObjectionChart();
+    coachSubTab = "detail";   // the filtered cards can only show on the Cards tab
+    repaintCoaching();
   });
   const clearBtn = document.getElementById("objClearBtn");
-  if (clearBtn) clearBtn.onclick = (e) => {
-    e.stopPropagation();
-    objFilterCat = "";
-    document.getElementById("view").innerHTML = rangeControlHtml() + producerControlHtml() + rangeHeaderHtml() + coachingPanel(cur, producerFilter);
-    wireRangeControl(); wireProducerControl(); wireCoachSubTabs(); wireObjectionChart();
-  };
+  if (clearBtn) clearBtn.onclick = (e) => { e.stopPropagation(); objFilterCat = ""; repaintCoaching(); };
 }
 
 function coachingPanel(d, who) {
@@ -1950,8 +1952,17 @@ function coachingPanel(d, who) {
   const scoped = sel ? d.calls.filter(c => c.who === sel) : d.calls;
   const objData = computeObjCats(scoped);
   if (objFilterCat && !objData.some(([cat]) => cat === objFilterCat)) objFilterCat = "";
-  const chart = objectionChartHtml(objData, scoped.length);
+
+  if (coachSubTab === "objections") {
+    return nav + (objectionChartHtml(objData, scoped.length)
+      || `<div class="empty">No objections logged ${multiDay ? "in this range" : "on this day"}.</div>`);
+  }
+
+  // coachSubTab === "detail" (Cards)
   const matches = c => !objFilterCat || (c.objs || []).some(o => o.cat === objFilterCat);
+  const filterBanner = objFilterCat ? `<div class="sect" style="display:flex;justify-content:space-between;align-items:center;gap:10px">
+    <span class="sd" style="margin:0">Filtered to objection "${objFilterCat}"</span>
+    <button type="button" id="objClearBtn" class="linkbtn">Clear filter</button></div>` : "";
 
   let out = "";
   let shown = 0;
@@ -1968,7 +1979,7 @@ function coachingPanel(d, who) {
     out = `<div class="empty">${objFilterCat ? `No coaching cards carrying "${objFilterCat}"${sel ? ` for ${sel}` : ""} ${scope}.`
       : sel ? `No coaching cards for ${sel} ${scope}.` : `No coaching cards ${scope}.`}</div>`;
   }
-  return nav + chart + out + (d.notcoached ? `<div class="note" style="border:1px dashed var(--border-strong);border-radius:8px;padding:14px 16px">
+  return nav + filterBanner + out + (d.notcoached ? `<div class="note" style="border:1px dashed var(--border-strong);border-radius:8px;padding:14px 16px">
     <b>Not coached, and why.</b> ${d.notcoached}</div>` : "");
 }
 
