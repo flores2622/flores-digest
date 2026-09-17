@@ -811,16 +811,16 @@ function digestDay(d, who) {
   // Mirrors the emailed digest's Call Volume funnel card (render_report.
   // build_funnel): the big number stays new-business-only distinct numbers
   // (what's tiered/compared), with total dial ATTEMPTS on those same
-  // numbers as a "N dials" note -- unported to the board until now. When
-  // raw_dials (every dial including the ones AgencyZoom filed as service/
-  // renewal) exceeds that, it's appended too -- general for any producer,
-  // not just one, but Crystal (the only producer who also does service
-  // work) is the one this differs for today (Frank, 2026-09-16: "I want
-  // everyone else to see she makes renewal calls, and still the same
-  // amount of calls as them").
+  // numbers as a "N dials" note -- unported to the board until now, shown
+  // for every producer/team. The raw-incl.-service clause is Crystal Mango
+  // ONLY (Frank, 2026-09-17: "I only wanted to show crystals service
+  // calls, not everyone else") -- she's the one producer who also does
+  // service work, and this is deliberately her own callout, not a general
+  // mechanism that would surface a stray excluded call for anyone else.
   const dialsNote = [
     t.total_dials ? `${t.total_dials} dial${t.total_dials === 1 ? "" : "s"}` : "",
-    (t.raw_dials && t.total_dials && t.raw_dials > t.total_dials) ? `${t.raw_dials} incl. service` : "",
+    (focus && focus.name === "Crystal Mango" && t.raw_dials && t.total_dials
+     && t.raw_dials > t.total_dials) ? `${t.raw_dials} incl. service` : "",
   ].filter(Boolean).join(" · ");
   const tiles = [
     ["Dials", t.dials ?? 0, dialsNote, tc("dials")],
@@ -851,12 +851,14 @@ function digestDay(d, who) {
    the podium, the per-category table is the OLD Scoreboard, unchanged:
    every figure coloured against its own goal, not by rank. */
 // Same "N dials" / "N incl. service" figures as the Dials tile (digestDay's
-// own dialsNote) -- see that comment for why. Takes a producer row or the
-// team totals row, either shape carries the same three fields.
+// own dialsNote) -- see that comment for why the incl.-service clause is
+// gated to Crystal Mango's own row only (the team totals row has no
+// `.name`, so it never qualifies either).
 function dialsSub(row) {
   const parts = [
     row.total_dials ? `${row.total_dials} dials` : "",
-    (row.raw_dials && row.total_dials && row.raw_dials > row.total_dials) ? `${row.raw_dials} incl. service` : "",
+    (row.name === "Crystal Mango" && row.raw_dials && row.total_dials
+     && row.raw_dials > row.total_dials) ? `${row.raw_dials} incl. service` : "",
   ].filter(Boolean).join(", ");
   return parts ? ` <span style="opacity:.72">(${parts})</span>` : "";
 }
