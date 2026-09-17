@@ -194,18 +194,44 @@ body {
   background: transparent; color: inherit; border: 1px solid var(--border-strong); border-radius: 7px;
   padding: 5px 10px; font: 500 12px/1 inherit; cursor: pointer;
 }
-.shell { min-height: calc(100vh - 49px); }
+.shell { min-height: calc(100vh - 49px); display: flex; }
 .pd { width: 8px; height: 8px; border-radius: 2px; flex: none; }
 .pbadge { display: inline-flex; align-items: center; padding: 2px 8px; border-radius: 5px; font-size: 12px; font-weight: 700; line-height: 1.5; white-space: nowrap; }
-.main { padding: 20px 24px 60px; min-width: 0; max-width: 1120px; margin: 0 auto; }
+.main { padding: 20px 24px 60px; min-width: 0; flex: 1; max-width: 1120px; margin: 0 auto; }
 
-.tabs { display: flex; gap: 2px; border-bottom: 1px solid var(--border); margin-bottom: 20px; }
-.tab {
-  background: none; border: none; border-bottom: 2px solid transparent; padding: 8px 13px;
-  font: inherit; font-weight: 600; font-size: 13px; color: var(--text-muted); cursor: pointer;
+/* Left-side category menu (Frank, 2026-09-17: "turn our current tabs into
+   a left side menu" -- the single horizontal tab row had no overflow
+   handling at all and was going to keep growing as more tabs got added).
+   Same .tab buttons/data-v attributes/click-wiring as before, just laid
+   out as a vertical sticky rail instead of a horizontal strip -- nothing
+   about how a tab switches `view` changed, only where it sits. Any
+   view's own sub-navigation (Coaching's Live Contact Detail/Wins and
+   Losses .subtabs) still renders inside #view, unaffected -- that's the
+   "tabs within those categories" layer, already a separate component. */
+.tabs {
+  display: flex; flex-direction: column; gap: 2px; flex: none; width: 168px;
+  padding: 20px 10px; border-right: 1px solid var(--border);
+  position: sticky; top: 49px; align-self: flex-start; max-height: calc(100vh - 49px);
+  overflow-y: auto;
 }
-.tab[aria-selected="true"] { color: var(--text-primary); border-bottom-color: var(--text-primary); }
+.tab {
+  background: none; border: none; border-left: 3px solid transparent; border-radius: 0 7px 7px 0;
+  padding: 9px 12px; font: inherit; font-weight: 600; font-size: 13px; color: var(--text-muted);
+  cursor: pointer; text-align: left; width: 100%;
+}
+.tab[aria-selected="true"] { color: var(--text-primary); border-left-color: var(--text-primary); background: var(--surface-raised); }
 .tab:hover { color: var(--text-primary); }
+@media (max-width: 760px) {
+  .shell { flex-direction: column; }
+  .tabs {
+    flex-direction: row; width: 100%; max-width: 100%; min-width: 0; flex: none;
+    position: static; max-height: none; overflow-y: visible;
+    overflow-x: auto; border-right: none; border-bottom: 1px solid var(--border); padding: 8px 12px;
+  }
+  .tab { border-left: none; border-bottom: 2px solid transparent; border-radius: 0; white-space: nowrap; flex: none; width: auto; }
+  .tab[aria-selected="true"] { border-left-color: transparent; border-bottom-color: var(--text-primary); background: none; }
+  .main { max-width: none; min-width: 0; width: 100%; }
+}
 .subtabs { display: flex; gap: 6px; margin-bottom: 18px; }
 .subtab {
   background: var(--surface); border: 1px solid var(--border-strong); border-radius: 20px;
@@ -561,15 +587,15 @@ details.sc .scb { padding: 0 12px 12px; }
   <button class="thbtn" id="thbtn" type="button"><span id="thico">◑</span><span id="thlbl">System</span></button>
 </div>
 <div class="shell">
+  <nav class="tabs" role="tablist">
+    <button class="tab" role="tab" aria-selected="true"  data-v="digest">Digest</button>
+    <button class="tab" role="tab" aria-selected="false" data-v="coaching">Coaching</button>
+    <button class="tab" role="tab" aria-selected="false" data-v="trends">Trends</button>
+    <button class="tab" role="tab" aria-selected="false" data-v="roleplay">Role Play</button>
+    <button class="tab" role="tab" aria-selected="false" data-v="training">Training</button>
+    <button class="tab" role="tab" aria-selected="false" data-v="sales">Sales</button>
+  </nav>
   <main class="main">
-    <div class="tabs" role="tablist">
-      <button class="tab" role="tab" aria-selected="true"  data-v="digest">Digest</button>
-      <button class="tab" role="tab" aria-selected="false" data-v="coaching">Coaching</button>
-      <button class="tab" role="tab" aria-selected="false" data-v="trends">Trends</button>
-      <button class="tab" role="tab" aria-selected="false" data-v="roleplay">Role Play</button>
-      <button class="tab" role="tab" aria-selected="false" data-v="training">Training</button>
-      <button class="tab" role="tab" aria-selected="false" data-v="sales">Sales</button>
-    </div>
     <div id="view"><div class="empty">Loading…</div></div>
   </main>
 </div>
