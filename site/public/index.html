@@ -2413,10 +2413,21 @@ function wireRoleplayPanel() {
    document -- that keeps this tab to one small read per month instead of
    megabytes of R2 reads on every page load. The rollup doesn't carry the
    per-day "time set" figure the original artifact's Trends table had, so
-   that column isn't reproducible here. */
-let TREND_CACHE = null;
+   that column isn't reproducible here.
+
+   NOT cached across visits (removed 2026-09-17, Frank: "11 reporting days
+   is half the business month. it still says not enough days"). The old
+   `if (TREND_CACHE) return TREND_CACHE` locked in whatever the trend
+   looked like the first time this tab was opened in a given browser
+   session and never refreshed it again -- a tab left open from earlier in
+   the day, before that day (or any new day since) was published, kept
+   showing "not enough days on file" forever after, even once the real
+   month rollup had 11+ real entries (confirmed directly against
+   /api/months/2026-09, which was already correct). Re-fetching the
+   month rollup on every visit is still cheap -- it's the one small
+   monthly-rollup read this comment already describes, not a full day
+   document -- so there's no real cost to dropping the cache. */
 async function loadTrend() {
-  if (TREND_CACHE) return TREND_CACHE;
   const months = [...new Set(DAYS.map(d => d.slice(0, 7)))].sort();
   const rows = [];
   for (const m of months) {
@@ -2428,7 +2439,6 @@ async function loadTrend() {
     } catch (_) {}
   }
   rows.sort((a, b) => a.date < b.date ? -1 : 1);
-  TREND_CACHE = rows;
   return rows;
 }
 function lineChart(points, fmt, tipFn) {
