@@ -2427,18 +2427,30 @@ function wireRoleplayPanel() {
    month rollup on every visit is still cheap -- it's the one small
    monthly-rollup read this comment already describes, not a full day
    document -- so there's no real cost to dropping the cache. */
+// TEMPORARY (2026-09-17): diagnostic trail for the "still says not enough
+// days" report even after the TREND_CACHE fix -- shown on the empty state
+// below so Frank can read it straight off the page without dev tools.
+// Remove once the real cause is found.
+let TREND_DEBUG = null;
 async function loadTrend() {
   const months = [...new Set(DAYS.map(d => d.slice(0, 7)))].sort();
   const rows = [];
+  const debug = { daysLen: DAYS.length, daysSample: DAYS.slice(0, 3), months, perMonth: [] };
   for (const m of months) {
     try {
       const r = await fetch(`/api/months/${m}`, { cache: "no-store" });
-      if (!r.ok) continue;
+      if (!r.ok) { debug.perMonth.push({ m, status: r.status, ok: false }); continue; }
       const doc = await r.json();
+      const n = (doc.trend || []).length;
+      debug.perMonth.push({ m, status: r.status, ok: true, trendLen: n });
       for (const t of (doc.trend || [])) rows.push(t);
-    } catch (_) {}
+    } catch (e) {
+      debug.perMonth.push({ m, error: String(e && e.message || e) });
+    }
   }
   rows.sort((a, b) => a.date < b.date ? -1 : 1);
+  debug.rowsLen = rows.length;
+  TREND_DEBUG = debug;
   return rows;
 }
 function lineChart(points, fmt, tipFn) {
@@ -3058,7 +3070,9 @@ async function trendsPanel() {
   if (ds.length < 2) return `<div class="empty">
     <div style="font-weight:600;font-size:15px;margin-bottom:6px">Not enough days on file yet</div>
     <p style="max-width:44ch;margin:0 auto;font-size:12.5px;line-height:1.6">Trends need at least two reporting
-    days. A line through one point would be a decoration, not a finding.</p></div>`;
+    days. A line through one point would be a decoration, not a finding.</p>
+    <pre style="text-align:left;max-width:60ch;margin:16px auto 0;font-size:10.5px;background:var(--surface-raised);border:1px solid var(--border-strong);border-radius:6px;padding:10px 12px;white-space:pre-wrap;overflow-wrap:break-word">${
+      JSON.stringify(TREND_DEBUG, null, 1)}</pre></div>`;
   const mx = Math.max(...ds.map(x => x.rate || 0), 1), mxs = Math.max(...ds.map(x => x.ps || 0), 1);
   const spark = (vals, max) => `<div class="spark">${vals.map(v =>
     `<i style="height:${Math.max(2, Math.round(v / max * 34))}px" title="${v}"></i>`).join("")}</div>`;
