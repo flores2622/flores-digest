@@ -85,10 +85,17 @@ def personal_dids(records):
 
 
 def attribute(rec, dids):
-    """(producer, talk_seconds, route) for one inbound record, or (None, 0, None)."""
-    who = dids.get((rec.get("to") or {}).get("phoneNumber"))
-    if who:
-        return who, rec.get("duration") or 0, "direct"
+    """(producer, talk_seconds, route) for one inbound record, or (None, 0, None).
+
+    The root record's own `to` DID only says who the caller first reached,
+    not who actually talked -- Juanita Parish rang Lorena's personal DID,
+    Lorena held her 100s, then parked her to Mike for a real 2195s
+    conversation. Crediting the whole session to whoever owns the DID (the
+    old behaviour: return on the direct match before ever reading the legs)
+    got both the producer and the talk time wrong the moment a direct call
+    got handed off -- every leg has to be scanned regardless of how the call
+    came in, and the longest one actually connected to a producer wins.
+    """
     best = None
     for l in rec.get("legs") or []:
         if l.get("result") != "Call connected":
@@ -102,7 +109,11 @@ def attribute(rec, dids):
             continue
         if best is None or (l.get("duration") or 0) > best[1]:
             best = (f, l.get("duration") or 0)
-    return (best[0], best[1], "transferred") if best else (None, 0, None)
+    if not best:
+        return None, 0, None
+    who, secs = best
+    direct_who = dids.get((rec.get("to") or {}).get("phoneNumber"))
+    return who, secs, "direct" if who == direct_who else "transferred"
 
 
 def answered(day, records):

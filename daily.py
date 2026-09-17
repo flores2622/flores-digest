@@ -654,21 +654,33 @@ def build_metrics(day):
                 row["callback_seconds"] = e.get("duration") or 0
                 continue
             lead = _pick(lead_ix.get(e["to"], []))
+            lead_id = lead.get("id") if lead else None
             detail.append({
                 "lead": (f"{(lead.get('firstname') or '').strip()} "
                          f"{(lead.get('lastname') or '').strip()}".strip()
                          if lead else None),
-                "lead_id": lead.get("id") if lead else None,
+                "lead_id": lead_id,
                 "number": e["to"], "seconds": e.get("duration") or 0,
                 "basis": "recording (inbound)", "inbound": True,
                 "kind": e.get("kind"), "callback_of_day": e.get("callback_day"),
-                "note_producer": "", "quote_state": "none",
+                "note_producer": "",
+                # An inbound call can still be the sale, or the call that
+                # quoted it -- the lead lookup by number doesn't care which
+                # direction the call came in. Hardcoding these to "none"/False
+                # (as this branch did before) left every inbound sale reading
+                # as an open quote no matter what AgencyZoom said (Juanita
+                # Parish, sold same day, status 2 -- card stayed
+                # quoted_call_open because this branch never checked).
+                "quote_state": lc.quote_state(
+                    lead_id, day, titles_by_lead.get(lead_id, ())
+                ) if lead_id else "none",
                 "note_recording": (e.get("text") or "")[:280],
                 "partial": bool(e.get("partial")),
                 "tx_class": e.get("class"),
-                "sold_today": False,
+                "sold_today": bool(lead and str(lead.get("soldDate") or "")
+                                    .startswith(day)),
                 "smartcycle_days": _smartcycle_days(
-                    xdate_by_lead.get(lead.get("id") if lead else None), day),
+                    xdate_by_lead.get(lead_id), day),
                 "moves": []})
 
         tot = 0
