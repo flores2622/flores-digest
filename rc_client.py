@@ -6,12 +6,49 @@ Access token lives 3600s.
 Scopes: ReadAccounts RingSense ReadCallLog ReadCallRecording.
 RingSense is granted but unusable -- every documented endpoint returns AGW-404.
 """
+import threading
 import time
 import requests
 
 from secrets_load import load
 
 UA = "FloresDigest/1.0 (+frank@floresinsuranceagency.com)"
+
+
+class _Limiter:
+    """Same shape as az_client._Limiter -- a floor between calls so a tight
+    loop cannot outrun the endpoint's own rate limit before any retry gets a
+    chance to help.
+
+    Added 2026-09-17: pull_sources()'s 32-daily-chunk recontact-window fetch
+    (daily.py, one call_log() request per day, back to back, no pacing) hit
+    HTTP 429 on the SAME chunk (Aug 11-12) on two separate rebuild attempts,
+    both times exhausting get()'s existing 6-attempt/60s-cap backoff without
+    ever recovering. That backoff is reactive -- it only starts counting
+    after RC has already started throttling -- so a loop firing requests
+    faster than RC's own window resets can burn through all 6 attempts
+    before the window clears. Pacing every request up front, the same way
+    az_client.py already paces AgencyZoom's, means the loop never gets fast
+    enough to trip the limit in the first place.
+
+    1.0s (85-ish req/min) still 429'd once, two chunks further in than
+    before -- RC's call-log rate limit is account-wide, and this window
+    landed close to a scheduled checkpoint's own hourly run competing for
+    the same budget concurrently. 2.5s leaves real headroom for that
+    overlap rather than assuming this process has the account to itself.
+    """
+
+    def __init__(self, min_interval=2.5):
+        self.min_interval = min_interval
+        self._last = 0.0
+        self._lock = threading.Lock()
+
+    def wait(self):
+        with self._lock:
+            gap = time.time() - self._last
+            if gap < self.min_interval:
+                time.sleep(self.min_interval - gap)
+            self._last = time.time()
 
 
 class RingCentral:
@@ -25,6 +62,7 @@ class RingCentral:
         self._exp = 0
         self.http = requests.Session()
         self.http.headers["User-Agent"] = UA
+        self.lim = _Limiter()
 
     # ---- auth -------------------------------------------------------------
     def token(self):
@@ -49,6 +87,7 @@ class RingCentral:
         """GET with 429/5xx retry honouring Retry-After."""
         url = path if path.startswith("http") else f"{self.base}{path}"
         for attempt in range(6):
+            self.lim.wait()
             r = self.http.get(
                 url,
                 headers={"Authorization": f"Bearer {self.token()}"},
