@@ -160,6 +160,18 @@
 .ogseg { height: 100%; }
 .oleg { display: flex; flex-wrap: wrap; gap: 14px; margin-top: 10px; font-size: 11.5px; color: var(--text-secondary); }
 .oleg-item { display: flex; align-items: center; gap: 5px; }
+/* Objection chart -- Live Contact Detail's own top-of-tab bar chart (Frank,
+   2026-09-17), same bar-row shape as .orow/.otrack above but each row is a
+   clickable filter, not just a display. */
+.objrow { margin-bottom: 12px; cursor: pointer; border-radius: 6px; padding: 6px 8px; margin-left: -8px; margin-right: -8px; transition: background .1s; }
+.objrow:hover { background: var(--surface-raised); }
+.objrow.sel { background: color-mix(in oklab, var(--bar) 12%, var(--surface-raised)); }
+.objrow-head { display: flex; justify-content: space-between; align-items: baseline; font-size: 12.5px; margin-bottom: 4px; gap: 10px; }
+.objcat { font-weight: 600; }
+.objn { color: var(--text-muted); font-size: 11.5px; white-space: nowrap; }
+.objtrack { height: 14px; border-radius: 4px; overflow: hidden; background: var(--bar-track); }
+.objwon { height: 100%; background: var(--good); }
+.linkbtn { background: none; border: none; padding: 0; color: var(--bar); font-size: inherit; font-weight: 600; cursor: pointer; text-decoration: underline; }
 
 * { box-sizing: border-box; }
 body {
@@ -1821,7 +1833,7 @@ function wireCoachSubTabs() {
   document.querySelectorAll(".subtab").forEach(el => el.onclick = () => {
     coachSubTab = el.dataset.st;
     document.getElementById("view").innerHTML = rangeControlHtml() + producerControlHtml() + rangeHeaderHtml() + coachingPanel(cur, producerFilter);
-    wireRangeControl(); wireProducerControl(); wireCoachSubTabs(); wireObjectionBrowser();
+    wireRangeControl(); wireProducerControl(); wireCoachSubTabs(); wireObjectionChart();
   });
 }
 
@@ -1830,6 +1842,62 @@ function wireCoachSubTabs() {
 // need the legend") -- every chip's own text already IS its description
 // (e.g. "Quoted, no action"), so a separate key restating the same nine
 // phrases was pure repetition.
+
+// Objection chart: a click-to-filter bar chart, scoped to whatever date
+// range + producer filter is already active -- NOT the old bottom-of-tab
+// "Browse by objection" control, which read ALL_CALLS_CACHE (every day,
+// fetched once and never invalidated) so its counts never moved when the
+// range changed (Frank, 2026-09-17: "i dont even think the quantity count
+// is updating, numbers always stay the same when filtering different
+// dates"). Computed fresh from `d.calls` (already scoped to the current
+// range) on every render instead, respecting the producer filter too --
+// something the old global cache couldn't do since it wasn't scoped to
+// either. Moved to the TOP of Live Contact Detail, above the cards, per
+// Frank's own ask.
+let objFilterCat = "";
+function computeObjCats(cards) {
+  const agg = {};
+  for (const c of cards) {
+    for (const o of (c.objs || [])) {
+      const row = agg[o.cat] || (agg[o.cat] = [o.cat, 0, 0]);
+      row[1]++;
+      if ((o.score || 0) >= 8) row[2]++;
+    }
+  }
+  return Object.values(agg).sort((a, b) => b[1] - a[1]);
+}
+function objectionChartHtml(objData, scopedCount) {
+  if (!objData.length) return "";
+  const maxN = Math.max(...objData.map(([, n]) => n), 1);
+  const rows = objData.map(([cat, n, w]) => {
+    const pct = n ? Math.round(100 * w / n) : 0;
+    const wonPct = n ? (100 * w / n) : 0;
+    return `<div class="objrow${cat === objFilterCat ? " sel" : ""}" data-cat="${encodeURIComponent(cat)}" role="button" tabindex="0">
+      <div class="objrow-head"><span class="objcat">${cat}</span><span class="objn">${n} raised · ${pct}% won</span></div>
+      <div class="objtrack" style="width:${(100 * n / maxN).toFixed(1)}%"><div class="objwon" style="width:${wonPct.toFixed(1)}%"></div></div>
+    </div>`;
+  }).join("");
+  return `<div class="sect"><h2>Objections</h2>
+   <p class="sd">Raised across ${scopedCount} coached call${scopedCount === 1 ? "" : "s"} in this range. Won means addressed and overcome (score 8+/10).
+   Click a bar to filter the cards below to that objection.${objFilterCat ? ` <button type="button" id="objClearBtn" class="linkbtn">Clear filter</button>` : ""}</p>
+   <div>${rows}</div>
+  </div>`;
+}
+function wireObjectionChart() {
+  document.querySelectorAll(".objrow").forEach(el => el.onclick = () => {
+    const cat = decodeURIComponent(el.dataset.cat);
+    objFilterCat = objFilterCat === cat ? "" : cat;
+    document.getElementById("view").innerHTML = rangeControlHtml() + producerControlHtml() + rangeHeaderHtml() + coachingPanel(cur, producerFilter);
+    wireRangeControl(); wireProducerControl(); wireCoachSubTabs(); wireObjectionChart();
+  });
+  const clearBtn = document.getElementById("objClearBtn");
+  if (clearBtn) clearBtn.onclick = (e) => {
+    e.stopPropagation();
+    objFilterCat = "";
+    document.getElementById("view").innerHTML = rangeControlHtml() + producerControlHtml() + rangeHeaderHtml() + coachingPanel(cur, producerFilter);
+    wireRangeControl(); wireProducerControl(); wireCoachSubTabs(); wireObjectionChart();
+  };
+}
 
 function coachingPanel(d, who) {
   // `who` is the shared producerFilter (top-of-page dropdown), not a
@@ -1849,50 +1917,33 @@ function coachingPanel(d, who) {
     <p style="max-width:46ch;margin:0 auto;font-size:12.5px;line-height:1.6">${multiDay ? (d.label || "This range") + " has no coached calls yet"
     : `${d.label || d.date} was uploaded with its stats only`}. The cards are written from the call recordings and are not generated, so a day gets them when someone
     writes them — an empty tab here means nobody has yet, not that the calls were clean.</p></div>`;
+
+  // Scoped to the date range (d.calls already is) AND the producer filter
+  // (d.calls is NOT -- that only happens in the per-producer loop below),
+  // so the chart's counts and the cards' counts always agree.
+  const scoped = sel ? d.calls.filter(c => c.who === sel) : d.calls;
+  const objData = computeObjCats(scoped);
+  if (objFilterCat && !objData.some(([cat]) => cat === objFilterCat)) objFilterCat = "";
+  const chart = objectionChartHtml(objData, scoped.length);
+  const matches = c => !objFilterCat || (c.objs || []).some(o => o.cat === objFilterCat);
+
   let out = "";
   let shown = 0;
   order.forEach(p => {
     if (sel && sel !== p) return;
-    const mine = d.calls.filter(c => c.who === p);
+    const mine = d.calls.filter(c => c.who === p && matches(c));
     if (!mine.length) return;
     shown += mine.length;
-    out += `<div class="sect"><h2>${p}</h2><p class="sd">${mine.length} coached call${mine.length > 1 ? "s" : ""}</p>
+    out += `<div class="sect"><h2>${p}</h2><p class="sd">${mine.length} coached call${mine.length > 1 ? "s" : ""}${objFilterCat ? ` carrying "${objFilterCat}"` : ""}</p>
       ${mine.map(card).join("")}</div>`;
   });
   if (!shown) {
     const scope = multiDay ? "in this range" : "on this day";
-    out = `<div class="empty">${sel ? `No coaching cards for ${sel} ${scope}.` : `No coaching cards ${scope}.`}</div>`;
+    out = `<div class="empty">${objFilterCat ? `No coaching cards carrying "${objFilterCat}"${sel ? ` for ${sel}` : ""} ${scope}.`
+      : sel ? `No coaching cards for ${sel} ${scope}.` : `No coaching cards ${scope}.`}</div>`;
   }
-  return nav + out + (d.notcoached ? `<div class="note" style="border:1px dashed var(--border-strong);border-radius:8px;padding:14px 16px">
-    <b>Not coached, and why.</b> ${d.notcoached}</div>` : "") + objectionBrowserHtml();
-}
-
-let objBrowserCat = "";
-function objectionBrowserHtml() {
-  if (!ALL_CALLS_CACHE || !ALL_CALLS_CACHE.length) return "";
-  const counts = {};
-  for (const c of ALL_CALLS_CACHE) {
-    if (!c.cat) continue;
-    counts[c.cat] = (counts[c.cat] || 0) + 1;
-  }
-  const cats = Object.entries(counts).sort((a, b) => b[1] - a[1]);
-  if (!cats.length) return "";
-  const opts = [`<option value="">Select an objection…</option>`]
-    .concat(cats.map(([cat, n]) => `<option value="${encodeURIComponent(cat)}"${cat === objBrowserCat ? " selected" : ""}>${cat} (${n})</option>`)).join("");
-  const rows = objBrowserCat ? ALL_CALLS_CACHE.filter(c => c.cat === objBrowserCat) : [];
-  const rowsHtml = rows.map(c => `<tr><td>${c.date}</td><td>${c.who || ""}</td><td>${c.lead || ""}</td>
-    <td><span class="chip ${(c.score || 0) >= 8 ? "c-g" : c.addressed ? "c-w" : "c-r"}">${c.score != null ? `${c.score}/10` : (c.addressed ? "addressed, not overcome" : "not addressed")}</span></td></tr>`).join("");
-  return `<div class="sect"><h2>Browse by objection</h2>
-   <p class="sd">Every objection category seen across all reporting days, most common first.</p>
-   <select id="objBrowserSel">${opts}</select>
-   ${objBrowserCat ? `<div class="scroll" style="margin-top:10px"><table><thead><tr><th>Date</th><th>Producer</th>
-     <th>Lead</th><th>Outcome</th></tr></thead><tbody>${rowsHtml}</tbody></table></div>`
-     : ""}
-  </div>`;
-}
-function wireObjectionBrowser() {
-  const sel = document.getElementById("objBrowserSel");
-  if (sel) sel.onchange = () => { objBrowserCat = sel.value ? decodeURIComponent(sel.value) : ""; paint(); };
+  return nav + chart + out + (d.notcoached ? `<div class="note" style="border:1px dashed var(--border-strong);border-radius:8px;padding:14px 16px">
+    <b>Not coached, and why.</b> ${d.notcoached}</div>` : "");
 }
 
 /* ---- Role Play tab ----------------------------------------------------
@@ -3131,13 +3182,13 @@ async function paint() {
     }
     v.innerHTML = controls + rangeHeaderHtml() + (cur ? coachingPanel(cur, producerFilter) : '<div class="empty">Loading…</div>');
     wireRangeControl(); wireProducerControl();
-    wireCoachSubTabs(); wireObjectionBrowser();
+    wireCoachSubTabs(); wireObjectionChart();
     if (cur && !ALL_CALLS_CACHE) {
       fetchAllCalls().then(() => {
         if (view !== "coaching") return;   // navigated away before this landed
         v.innerHTML = controls + rangeHeaderHtml() + coachingPanel(cur, producerFilter);
         wireRangeControl(); wireProducerControl();
-        wireCoachSubTabs(); wireObjectionBrowser();
+        wireCoachSubTabs(); wireObjectionChart();
       });
     }
   } else if (view === "roleplay") {
