@@ -72,6 +72,17 @@ close HERE ONLY.
   quote?" asks permission for it. The whole point of `askq`/`asks` below (or
   Role Play's "Assumptive language" item) is to catch a producer who works
   hard on a call and then asks permission to finish it.
+- A producer who asks for banking or payment details (routing number, account
+  number, card info), a start/effective date, or moves straight into
+  e-sign/paperwork has ALREADY assumed the close — score `asks` true from
+  that alone, even if no line explicitly says "let's get you started." And
+  once the transcript shows this happened, every other field must agree the
+  sale is done: do not write a `bad` entry warning that lingering uncertainty
+  "could cost the sale" when the call already closed — that framing belongs
+  to a call still in play, not one that's won. (Frank, 2026-09-17: Juanita
+  Parish — the producer asked for routing and account information, a clear
+  assumed close, and "what costs the sale" should have read as resolved, not
+  open.)
 - "Addressed" is about effort, "overcome" is about result. A producer can
   engage an objection well and still lose it — do not let one verdict drag
   the other. This cuts both ways: a producer can ALSO fail to verbally
@@ -203,11 +214,27 @@ still gets an "m" there, same as on a sales call.
   specifically (an actual number, compared to what they're paying now), not
   vague ("it'll probably save you some money").
 - **Bundle / cross-sell raised** — a product the household doesn't have yet
-  (home, life, umbrella) was raised as a real question, not a throwaway
-  mention buried in a sentence about something else.
+  (home, life, umbrella, renters) was raised as a real question, not a
+  throwaway mention buried in a sentence about something else. Score "s" for
+  a cross-sell that was actually ADDED or sold on the call, even if it took
+  only a line or two — a quick, successful add is not weaker evidence than a
+  long conversation about it. Don't mark this "m" just because the exchange
+  was brief; check whether the second product ended up quoted, agreed to, or
+  bound before concluding nothing happened. (Frank, 2026-09-17: a card missed
+  a renters policy that had actually been cross-sold because the exchange
+  was short.)
 - **Next step specificity** — the call ends with a concrete, dated/timed next
-  step ("I'll call you Thursday at 3 with the final numbers"), not a vague
-  "I'll follow up" or "I'll get that over to you."
+  step. On a call that did NOT close, that means a real commitment ("I'll
+  call you Thursday at 3 with the final numbers"), not a vague "I'll follow
+  up" or "I'll get that over to you." On a call that DID close, the next step
+  IS the administrative wrap-up itself — payment method confirmed, how and
+  when to sign, the effective date, what (if anything) still needs to be
+  sent. Score "s" for a clean version of that wrap-up; don't mark this "w"
+  just because there's no future-callback framing — closing the sale on the
+  spot and telling the prospect exactly what happens next is the concrete
+  next step. (Frank, 2026-09-17: a card scored this weak on a call that ended
+  with the policy sold, payment explained, and signing instructions given —
+  "it doesn't really get better than that.")
 - **CRM after the call** — almost never knowable from a transcript alone
   (it happens after the recording ends). Score "n" by default; only score
   "s"/"w"/"m" if the call itself gives direct evidence (e.g. the producer
