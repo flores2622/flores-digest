@@ -159,16 +159,26 @@ this was written. Either wire in a real audited-count source or drop the
 column — it currently does nothing but take up space and imply a check that
 never runs.
 
-### 8. Scheduled sessions still cannot push — CLOSED 2026-09-10
+### 8. Scheduled sessions still cannot push — REOPENED 2026-09-17
 
-Asked for since at least 08-31. Add `flores2622/flores-digest` to the scheduled
-task's sources. Two costs while it is missing: every nightly code fix comes back
-as a hand-carried patch, and `hourly.py` cannot cache transcripts between runs,
-so a lost container re-downloads the whole day against RingCentral's quota.
+Asked for since at least 08-31, marked closed 2026-09-10, still broken. The
+5:35 PM scheduled digest run on 2026-09-16 tried to push a one-line `.gitignore`
+fix and was refused: `access denied by the git proxy: flores2622/flores-digest
+is not in this session's authorized repository set` -- the exact failure mode
+this item was originally opened for. Whatever changed access on 2026-09-10 did
+not stick, or never actually took effect for this scheduled task's sources.
+Two costs while it stays broken: every nightly code fix comes back as a
+hand-carried patch (for a human-driven session to apply, same as the .gitignore
+fix that reopened this item), and `hourly.py` cannot cache transcripts between
+runs, so a lost container re-downloads the whole day against RingCentral's
+quota. Do not mark this closed again on a session's own unverified say-so --
+close it only once a scheduled session has actually pushed a commit, not just
+been told access was added.
 
-Closed per Frank, 2026-09-10 — sessions now push, open PRs and merge directly.
-`PATCHES.md`'s hand-carried-patch procedure is removed as its own explicit
-instruction once this closed; deleted alongside it.
+`PATCHES.md` was deleted when this was (wrongly) marked closed; there being no
+separate procedure doc back is fine -- hand a `.patch` file (or its exact
+contents) to a human-driven session and ask it applied via `git am --signoff`,
+same as every other hand-carried fix this session has taken in.
 
 ---
 
