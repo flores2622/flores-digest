@@ -400,7 +400,19 @@ def build(day, log=print):
 
     legs = _audio_legs(day)
     rows = [(p, r) for p, v in M["producers"].items() for r in v["call_detail"]]
-    todo = [(p, r) for p, r in rows if _ck(p, r["number"]) not in sm]
+    # A cached "no API key configured" or "read failed" entry reflects THIS
+    # RUN's environment, not the call itself -- a checkpoint container that
+    # happened to start without ANTHROPIC_API_KEY set (or hit a transient
+    # API error) must not permanently poison the cache for every later run
+    # of the day, including the one nightly build that actually has the
+    # key. Found 2026-09-18: only Crystal had coaching cards on 2026-09-17
+    # because 25 of that day's 29 live contacts were cached this way by an
+    # earlier checkpoint and the nightly run, which DID have a working key,
+    # never got a chance to retry them.
+    retriable = {"no API key configured", "summary unavailable"}
+    todo = [(p, r) for p, r in rows
+            if _ck(p, r["number"]) not in sm
+            or sm[_ck(p, r["number"])].get("why") in retriable]
 
     # recording_ids: the raw RingCentral call id(s) (data/audio/<id>.mp3,
     # r2_cache's cache/<day>/audio/<id>.mp3) actually used for this row's
