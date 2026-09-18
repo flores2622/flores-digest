@@ -275,10 +275,26 @@ select, button.ghost {
 h2 {
   font-size: 15px; font-weight: 700; text-transform: uppercase;
   letter-spacing: 0.05em; color: var(--text-primary);
-  margin: 36px 0 14px; padding-bottom: 8px;
+  margin: 0 0 14px; padding-bottom: 8px;
   border-bottom: 2px solid var(--border-strong);
 }
 .sd { font-size: 12.5px; color: var(--text-secondary); margin: -10px 0 14px; line-height: 1.55; }
+
+/* Every section is its own bordered box now, not just a title with more
+   space above it (Frank, 2026-09-14, after the h2 margin fix: "still need
+   to separate the upper box from lower title its all getting merged
+   together" -- more whitespace alone wasn't reading as a boundary; an
+   actual border does). No background fill on purpose: .tile already uses
+   var(--surface-raised) for its own "raised card" look, and several
+   sections (Coaching & Call Quality, Speed to Dial, Utilization) nest
+   .tile cards directly inside a .sect -- filling .sect's own background
+   the same way would make the nested cards disappear into their container
+   instead of standing out from it. .sect:first-of-type is safe here
+   (unlike the earlier h2 one): these ARE true <div> siblings sharing a
+   parent (a .digestgrid column, in particular), not one lone h2 inside
+   its own isolated wrapper. */
+.sect { border: 1px solid var(--border-strong); border-radius: 10px; padding: 20px 22px; margin-top: 24px; }
+.sect:first-of-type { margin-top: 0; }
 
 /* Two-column card layout below the Digest tab's leaderboard, matching the
    email's own side-by-side arrangement (Frank, 2026-09-12). minmax(0, 1fr),
@@ -291,7 +307,13 @@ h2 {
    overflow-x:auto still handles a table wider than its now-truly-equal
    column, same as it already does outside this grid. Collapses to one
    column under the same width other narrow layouts in this file use. */
-.digestgrid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 20px; align-items: start; }
+/* margin-top matches .sect's own inter-section gap (24px) -- .digestgrid
+   itself isn't a .sect, so it never got that spacing, and the FIRST .sect
+   inside each column is deliberately zeroed by .sect:first-of-type (it's a
+   true first div-sibling there), so without this the Team Leaderboard box
+   above sat flush against the grid below it (Frank, 2026-09-14: "space
+   between leaderboard and the boxes under it just like the rest"). */
+.digestgrid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 20px; align-items: start; margin-top: 24px; }
 @media (max-width: 720px) { .digestgrid { grid-template-columns: 1fr; } }
 
 /* Stat tiles. */
