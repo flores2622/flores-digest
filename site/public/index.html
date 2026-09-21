@@ -778,7 +778,8 @@ let matchAttempts = 0;
 // the email's own palette), so pbadge/prodSelStyle need no changes.
 const SALES_LOGGER_ROSTER = [...PRODUCER_ROSTER, "Amanda Torricellas"];
 let salesDay = null;          // set to today's AZ date on first load -- still the day a NEW sale is logged against
-let salesEntries = [];        // the current folio's entries (or just salesDay's, if it falls outside any known folio), newest-added first
+let salesEntries = [];        // the picked folio's entries (or just salesDay's, if it falls outside any known folio), newest-added first
+let salesFolioPick = "";      // a FOLIO_CLOSE_DATES entry; "" means the current folio (the one covering today) -- lets Frank reference a closed folio's sheet (2026-09-21: "its a new folio ... I need to be able to reference the old folios")
 let salesProducer = "";       // who's currently logging a sale
 let salesBusy = false;
 let salesLeadSourceCache = null;   // AgencyZoom's own lead source names, fetched once
@@ -2799,10 +2800,13 @@ function wireMatch(deck, repaintAll) {
    own `day` (from the folio endpoint, or injected here for the single-day
    fallback) so a delete request targets the right day's R2 key even when
    that's not today. */
-async function loadSalesLog(day) {
+async function loadSalesLog(day, folioEnd) {
   if (!salesDay) salesDay = isoDate(azTodayDate());
   const d = day || salesDay;
-  const end = folioEndFor(d);
+  // folioEnd lets a caller pin an older, already-closed folio (see
+  // salesFolioPick) instead of always resolving to whichever folio `d`
+  // (today) falls in.
+  const end = folioEnd || folioEndFor(d);
   try {
     const url = end ? `/api/saleslog/folio/${end}` : `/api/saleslog/${d}`;
     const r = await fetch(url, { cache: "no-store" });
@@ -2810,7 +2814,7 @@ async function loadSalesLog(day) {
     salesEntries = (body.entries || []).map(e => ({ day: d, ...e }))
       .sort((a, b) => (b.created_at || "").localeCompare(a.created_at || ""));
   } catch (_) { salesEntries = []; }
-  return { day: d, entries: salesEntries };
+  return { day: d, entries: salesEntries, folio_end: end };
 }
 
 async function loadLeadSources() {
@@ -2904,8 +2908,31 @@ function prodSelStyle(name) {
   const color = DOT[name] || "";
   return color ? `background:${color};color:${badgeTextColor(color)}` : "";
 }
+// Every closed folio through the current one, newest first -- Frank wants
+// to reach for "last folio" fast when a new one just opened (2026-09-21),
+// unlike the Digest tab's forward-looking picker (rangeControlHtml) which
+// only offers the current folio onward since past days are reachable other
+// ways there. Sales has no other way to reach a closed folio's sheet.
+function salesFolioOptions() {
+  const today = isoDate(azTodayDate());
+  const curEnd = folioEndFor(today);
+  const choices = curEnd
+    ? FOLIO_CLOSE_DATES.filter(end => end <= curEnd).sort((a, b) => b.localeCompare(a))
+    : [];
+  const picked = salesFolioPick || curEnd;
+  return choices.map(end => {
+    const start = folioStartFor(end);
+    const label = `${start ? fmtShortDate(start) : "start"} – ${fmtShortDate(end)}, ${end.slice(0, 4)}`;
+    return `<option value="${end}"${picked === end ? " selected" : ""}>${label}${end === curEnd ? " (current)" : ""}</option>`;
+  }).join("");
+}
 function salesPanel(data) {
   const entries = data.entries || [];
+  const today = isoDate(azTodayDate());
+  const curEnd = folioEndFor(today);
+  const viewingEnd = data.folio_end || curEnd;
+  const isCurrent = !curEnd || viewingEnd === curEnd;
+  const folioOpts = salesFolioOptions();
   const producerOpts = [`<option value="">Who's logging?</option>`]
     .concat(SALES_LOGGER_ROSTER.map(p => `<option value="${p}"${p === salesProducer ? " selected" : ""}>${p}</option>`)).join("");
   const sourceOpts = [`<option value="">Lead source</option>`]
@@ -2947,7 +2974,8 @@ function salesPanel(data) {
 
   return `${salesTotalsHtml(entries)}<div class="sect">
     <h2>Log a sale</h2>
-    <p class="sd">Same-day list for immediate visibility -- AgencyZoom stays the official Premium Sold number.</p>
+    <p class="sd">Same-day list for immediate visibility -- AgencyZoom stays the official Premium Sold number.${
+      isCurrent ? "" : ` Always logs against today, even while you're looking at an older folio below.`}</p>
     <div class="controls" style="flex-wrap:wrap;gap:10px;align-items:center">
       <select id="salesProdSel" style="${prodSelStyle(salesProducer)}">${producerOpts}</select>
       <label style="display:flex;align-items:center;gap:5px;font-size:12.5px">Date sold <input id="salesDateSold" type="date" value="${salesDay}"></label>
@@ -2966,19 +2994,22 @@ function salesPanel(data) {
       <input id="salesNotes" type="text" placeholder="Notes (optional)" style="flex:1">
       <button class="btn" id="salesSubmit" type="button" ${salesBusy ? "disabled" : ""}>Log sale</button>
     </div>
-    <h2 style="margin-top:28px">This folio's log</h2>
-    <p class="sd">Newest logged first, across every day in the current folio.</p>
+    <h2 style="margin-top:28px">${isCurrent ? "This folio's log" : "Folio log"}</h2>
+    <div class="controls" style="margin:4px 0 2px">
+      ${folioOpts ? `<select id="salesFolioSel" aria-label="Folio period">${folioOpts}</select>` : ""}
+    </div>
+    <p class="sd">Newest logged first, across every day in ${isCurrent ? "the current folio." : `the folio ending ${fmtMDY(viewingEnd)}.`}</p>
     ${entries.length ? `<div class="scroll"><table>
       <thead><tr><th>Producer</th><th>Date Sold</th><th>Effective Date</th><th>Client</th><th>Lead Source</th><th>Policy #</th><th>Product</th>
         <th class="num">Premium</th><th>Term</th><th>Docs Signed</th><th>Review Sent</th><th></th></tr></thead>
       <tbody>${rows}</tbody>
-    </table></div>` : '<div class="empty">Nothing logged yet this folio.</div>'}
+    </table></div>` : `<div class="empty">${isCurrent ? "Nothing logged yet this folio." : "Nothing was logged in this folio."}</div>`}
   </div>`;
 }
 
 function wireSalesPanel(data) {
   const repaintAll = async () => {
-    const fresh = await loadSalesLog(salesDay);
+    const fresh = await loadSalesLog(salesDay, salesFolioPick);
     $("#view").innerHTML = salesPanel(fresh);
     wireSalesPanel(fresh);
   };
@@ -2986,6 +3017,16 @@ function wireSalesPanel(data) {
   if (prodSel) prodSel.onchange = () => {
     salesProducer = prodSel.value;
     prodSel.style.cssText = prodSelStyle(salesProducer);
+  };
+  const folioSel = $("#salesFolioSel");
+  if (folioSel) folioSel.onchange = async () => {
+    const today = isoDate(azTodayDate());
+    const curEnd = folioEndFor(today);
+    // "" means the current folio, same convention as the Digest tab's
+    // folioPick -- keeps a fresh page load defaulting to "current" even
+    // after the calendar rolls to a new folio.
+    salesFolioPick = folioSel.value === curEnd ? "" : folioSel.value;
+    await repaintAll();
   };
   const submit = $("#salesSubmit");
   if (submit) submit.onclick = async () => {
@@ -3261,9 +3302,9 @@ async function paint() {
     v.innerHTML = trainingPanel(data);
     wireTrainingPanel(data);
   } else if (view === "sales") {
-    $("#topsub").textContent = "log today's sales -- a same-day list, not the official Premium Sold figure";
+    $("#topsub").textContent = "log today's sales, and reference any past folio's sheet -- self-reported, not the official Premium Sold figure";
     v.innerHTML = '<div class="empty">Loading…</div>';
-    const [data] = await Promise.all([loadSalesLog(salesDay), loadLeadSources()]);
+    const [data] = await Promise.all([loadSalesLog(salesDay, salesFolioPick), loadLeadSources()]);
     v.innerHTML = salesPanel(data);
     wireSalesPanel(data);
   } else {
