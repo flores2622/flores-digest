@@ -30,6 +30,9 @@
   --s3: #1baf7a;  /* Screener           */
   --s4: #eda100;  /* No Answer          */
   --s5: #e87ba4;  /* No Outcome Logged  */
+  --s6: #008300;  /* categorical slot 6 -- sales breakdown charts */
+  --s7: #4a3aa7;  /* categorical slot 7 -- sales breakdown charts */
+  --s8: #e34948;  /* categorical slot 8 -- sales breakdown charts */
   --bar:           #2a78d6;
   --bar-track:     #ecebe7;
   /* Chip/medal tokens, carried over from the pre-migration artifact's own
@@ -57,6 +60,9 @@
     --s3: #199e70;
     --s4: #c98500;
     --s5: #d55181;
+    --s6: #008300;
+    --s7: #9085e9;
+    --s8: #e66767;
     --bar:            #3987e5;
     --bar-track:      #2b2b27;
     --good:   #7fd07f; --goodbg: #1c3320; --goodbd: #2f5a34;
@@ -80,6 +86,9 @@
   --s3: #199e70;
   --s4: #c98500;
   --s5: #d55181;
+  --s6: #008300;
+  --s7: #9085e9;
+  --s8: #e66767;
   --bar:            #3987e5;
   --bar-track:      #2b2b27;
   --good:   #7fd07f; --goodbg: #1c3320; --goodbd: #2f5a34;
@@ -780,6 +789,9 @@ const SALES_LOGGER_ROSTER = [...PRODUCER_ROSTER, "Amanda Torricellas"];
 let salesDay = null;          // set to today's AZ date on first load -- still the day a NEW sale is logged against
 let salesEntries = [];        // the picked folio's entries (or just salesDay's, if it falls outside any known folio), newest-added first
 let salesFolioPick = "";      // a FOLIO_CLOSE_DATES entry; "" means the current folio (the one covering today) -- lets Frank reference a closed folio's sheet (2026-09-21: "its a new folio ... I need to be able to reference the old folios")
+let salesSubTab = "log";      // "log" | "breakdown" -- second sub-tab added 2026-09-21 (Frank: "a second tab ... that I can filter by lead source, by policy type, or by producer, that will display the data in a type of graph")
+let salesBreakdownDim = "lead_source";
+let salesLastData = null;     // last-loaded {day, entries, folio_end} -- lets switching sub-tabs repaint without re-fetching
 let salesProducer = "";       // who's currently logging a sale
 let salesBusy = false;
 let salesLeadSourceCache = null;   // AgencyZoom's own lead source names, fetched once
@@ -3009,9 +3021,8 @@ function salesPanel(data) {
 
 function wireSalesPanel(data) {
   const repaintAll = async () => {
-    const fresh = await loadSalesLog(salesDay, salesFolioPick);
-    $("#view").innerHTML = salesPanel(fresh);
-    wireSalesPanel(fresh);
+    salesLastData = await loadSalesLog(salesDay, salesFolioPick);
+    repaintSales();
   };
   const prodSel = $("#salesProdSel");
   if (prodSel) prodSel.onchange = () => {
@@ -3092,6 +3103,112 @@ function wireSalesPanel(data) {
     } catch (_) { alert("Couldn't delete that -- try again."); }
     await repaintAll();
   });
+}
+
+function salesSubTabsHtml() {
+  return `<div class="subtabs">
+    <button class="subtab${salesSubTab === "log" ? " sel" : ""}" data-sst="log" type="button">Log</button>
+    <button class="subtab${salesSubTab === "breakdown" ? " sel" : ""}" data-sst="breakdown" type="button">Breakdown</button>
+  </div>`;
+}
+// Repaints whichever Sales sub-tab is active from the already-loaded data
+// (salesLastData) -- switching sub-tabs, or the dimension picker inside
+// Breakdown, never re-fetches; only picking a different folio (loadSalesLog)
+// or logging/editing/deleting a sale does.
+function repaintSales() {
+  const data = salesLastData || { entries: [] };
+  $("#view").innerHTML = salesSubTabsHtml()
+    + (salesSubTab === "breakdown" ? salesBreakdownPanel(data) : salesPanel(data));
+  wireSalesSubTabs();
+  if (salesSubTab === "breakdown") wireSalesBreakdownPanel(); else wireSalesPanel(data);
+}
+function wireSalesSubTabs() {
+  document.querySelectorAll(".subtab[data-sst]").forEach(el => el.onclick = () => {
+    salesSubTab = el.dataset.sst;
+    repaintSales();
+  });
+}
+
+// Breakdown sub-tab (Frank, 2026-09-21): the same folio's entries the Log
+// tab is showing (picked via salesFolioPick there), grouped one of three
+// ways and drawn as a bar chart -- same row/track shape as the Digest tab's
+// own Call Outcome Breakdown (.orow/.otrack/.ogseg/.oleg) so this reads as
+// the same chart language, not a new one. Bar length is total premium
+// (this tool's headline number); sale count rides along as the row's own
+// label, same as outcomeBreakdownHtml's dial count.
+const SALES_BREAKDOWN_DIMS = {
+  lead_source: { label: "Lead Source", key: e => (e.lead_source || "").trim() || "(none logged)" },
+  product:     { label: "Policy Type", key: e => (e.product || "").trim() || "(none logged)" },
+  producer:    { label: "Producer",    key: e => e.producer || "(none logged)" },
+};
+// Categorical slots --s1..--s7 (validated 8-hue theme, see :root); slot 8
+// is left for "Other" to stay a neutral grey rather than a hue with no real
+// identity behind it (Lead Source/Policy Type are open-ended and can run
+// well past 7 distinct values -- Producer never does, so it never folds).
+function computeSalesBreakdown(entries, dim) {
+  const keyOf = SALES_BREAKDOWN_DIMS[dim].key;
+  const agg = {};
+  for (const e of entries) {
+    const key = keyOf(e);
+    const row = agg[key] || (agg[key] = { key, premium: 0, count: 0 });
+    row.premium += e.premium || 0;
+    row.count++;
+  }
+  const rows = Object.values(agg).sort((a, b) => b.premium - a.premium);
+  if (dim === "producer" || rows.length <= 7) return { rows, otherCount: 0 };
+  const top = rows.slice(0, 7);
+  const rest = rows.slice(7);
+  top.push({ key: "Other", premium: rest.reduce((s, r) => s + r.premium, 0),
+             count: rest.reduce((s, r) => s + r.count, 0), other: true });
+  return { rows: top, otherCount: rest.length };
+}
+function salesBreakdownPanel(data) {
+  const entries = data.entries || [];
+  const today = isoDate(azTodayDate());
+  const curEnd = folioEndFor(today);
+  const viewingEnd = data.folio_end || curEnd;
+  const isCurrent = !curEnd || viewingEnd === curEnd;
+  const dim = salesBreakdownDim;
+  const { rows, otherCount } = computeSalesBreakdown(entries, dim);
+  const totalPremium = entries.reduce((s, e) => s + (e.premium || 0), 0);
+  const dimOpts = Object.entries(SALES_BREAKDOWN_DIMS).map(([k, v]) =>
+    `<option value="${k}"${k === dim ? " selected" : ""}>${v.label}</option>`).join("");
+
+  if (!rows.length) {
+    return `<div class="sect"><h2>Sales breakdown</h2>
+     <div class="controls" style="margin-bottom:14px"><select id="salesBkDim" aria-label="Breakdown dimension">${dimOpts}</select></div>
+     <div class="empty">${isCurrent ? "Nothing logged yet this folio." : "Nothing was logged in this folio."}</div></div>`;
+  }
+
+  const busiest = Math.max(...rows.map(r => r.premium), 1);
+  const colorFor = (row, i) => dim === "producer" ? (DOT[row.key] || "#8a877f")
+    : row.other ? "var(--text-muted)" : `var(--s${i + 1})`;
+  const barRows = rows.map((row, i) => {
+    const color = colorFor(row, i);
+    const label = dim === "producer" ? pbadge(color, row.key)
+      : `<span class="who"><span class="pd" style="background:${color}"></span>${row.key}</span>`;
+    return `<div class="orow"><div class="orow-head">
+      ${label}
+      <span class="on">${money(row.premium)} · ${row.count} sale${row.count === 1 ? "" : "s"}</span></div>
+      <div style="width:${(row.premium / busiest * 100).toFixed(2)}%"><div class="otrack">
+        <span class="ogseg" style="width:100%;background:${color}" title="${row.key}: ${money(row.premium)}, ${row.count} sale${row.count === 1 ? "" : "s"}"></span>
+      </div></div></div>`;
+  }).join("");
+  const legend = dim === "producer" ? "" : `<div class="oleg">${rows.map((row, i) =>
+    `<span class="oleg-item"><span class="pd" style="background:${colorFor(row, i)}"></span>${row.key}</span>`).join("")}</div>`;
+
+  return `<div class="sect"><h2>Sales breakdown</h2>
+   <p class="sd">${money(totalPremium)} across ${entries.length} sale${entries.length === 1 ? "" : "s"} in ${isCurrent ? "the current folio" : `the folio ending ${fmtMDY(viewingEnd)}`}${
+     otherCount ? `. "Other" folds in the ${otherCount} smallest ${SALES_BREAKDOWN_DIMS[dim].label.toLowerCase()} groups` : ""}.</p>
+   <div class="controls" style="margin-bottom:14px">
+     <select id="salesBkDim" aria-label="Breakdown dimension">${dimOpts}</select>
+   </div>
+   ${barRows}${legend}
+  </div>`;
+}
+function wireSalesBreakdownPanel() {
+  const sel = $("#salesBkDim");
+  if (sel) sel.onchange = () => { salesBreakdownDim = sel.value; repaintSales(); };
 }
 
 async function trendsPanel() {
@@ -3302,11 +3419,11 @@ async function paint() {
     v.innerHTML = trainingPanel(data);
     wireTrainingPanel(data);
   } else if (view === "sales") {
-    $("#topsub").textContent = "log today's sales, and reference any past folio's sheet -- self-reported, not the official Premium Sold figure";
+    $("#topsub").textContent = "log today's sales, reference any past folio's sheet, or break it down by source/type/producer -- self-reported, not the official Premium Sold figure";
     v.innerHTML = '<div class="empty">Loading…</div>';
     const [data] = await Promise.all([loadSalesLog(salesDay, salesFolioPick), loadLeadSources()]);
-    v.innerHTML = salesPanel(data);
-    wireSalesPanel(data);
+    salesLastData = data;
+    repaintSales();
   } else {
     $("#topsub").textContent = "trends across every reporting day";
     v.innerHTML = '<div class="empty">Loading…</div>';
