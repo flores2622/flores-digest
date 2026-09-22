@@ -11,17 +11,21 @@ here.
 **IT DOES NOTHING WITHOUT --live.** A dry run prints the exact payloads so a
 change can be read before it touches anybody's queue.
 
-WHEN THIS RUNS. Once a day, inside the 5:35 PM build, not hourly. The hourly
-schedule does not exist -- scheduled runs get a cold container and cannot push,
-so it was abandoned on 2026-09-01 (HOURLY_RUNS.md s12). It costs nothing here:
-the tasks are due the next morning anyway, and by 5:35 the phones are off, so a
-single end-of-day pass creates exactly the same tasks the ten hourly runs would
-have, minus the ones people had already handled -- which is the point.
+WHEN THIS RUNS. Re-enabled intraday 2026-09-10 (commit 131d560) -- this text
+said "once a day at 5:35 PM, the hourly schedule does not exist" for a while
+after that and was stale; it now runs on the full ~7-10-checkpoint business-
+hour schedule (HOURLY_RUNS.md s7), `--intraday` on every checkpoint but the
+last. Idempotency below is what makes that safe.
 
-IDEMPOTENCY. Re-running must not double up. Before creating, it reads the
-existing tasks on that record and skips any whose title already matches. For
-Debbie's standalone tasks there is no record to read, so the day's already-open
-missed-call tasks are pulled once and matched on title.
+IDEMPOTENCY. Re-running must not double up. Before creating, `already_there()`
+checks the day's own task list (one bulk `azc.tasks(day, day)`, cached for the
+whole run) for a task already on that record -- keyed by (customerId,
+customerType, title), not a per-record GET; AgencyZoom's per-record tasks
+endpoint answers JSON null for a lead id, which silently broke this exact
+check for every lead-bucket caller until 2026-09-22 (found when one caller
+picked up 5 duplicate tasks in a single day). Debbie's standalone tasks hang
+off no record at all, so they're matched on the phone number embedded in the
+title instead, off that same cached list.
 """
 import argparse
 import datetime as dt
@@ -143,55 +147,67 @@ def title_for(r):
     return TITLE.format(who=who or audit.pretty(r["number"]))
 
 
+_ALL_TASKS = None
+
+
+def _todays_tasks(azc, day):
+    """Every task already open with a due date of `day`, fetched once per run
+    and shared by both the per-record dedup check below and the standalone
+    (no-record) one -- one bulk read instead of one GET per caller.
+    """
+    global _ALL_TASKS
+    if _ALL_TASKS is None:
+        try:
+            _ALL_TASKS = azc.tasks(day, day)
+        except Exception as e:
+            log(f"  could not read today's tasks ({e}); "
+                f"skipping the duplicate check")
+            _ALL_TASKS = []
+    return _ALL_TASKS
+
+
 def already_there(azc, r, day):
-    """Has a task with this title already been made for this caller?"""
+    """Has a task with this title already been made for this caller?
+
+    Matched against the day's own task list (`_todays_tasks`), keyed by
+    (customerId, customerType, title) -- NOT the per-record GET this used to
+    be (`/v1/api/customers/<id>/tasks`). That endpoint answers JSON null for
+    a LEAD id (confirmed 2026-09-22, same shape as the 2026-09-02 crash this
+    function's old comment already knew about, just never checked for the
+    lead case specifically) -- read as "no tasks", it let every lead-bucket
+    caller create a fresh duplicate on every checkpoint that still found the
+    call in the log: Jose Angel got 5 in one day, Guillermo Lara 4, Joseph
+    Michaels 3. A customer id's own tasks list did work, but there is no
+    reason to trust two endpoints when the bulk list already carries
+    customerId/customerType/title for every task, lead or customer alike.
+    """
     rec = r.get("record_id")
     if not rec:
         return r["number"] in _standalone_titles(azc, day)
-    try:
-        j = azc.get(f"/v1/api/customers/{rec}/tasks")
-    except Exception:
-        return False
-    # A record with no tasks comes back as JSON null, not [] or {} -- seen
-    # 2026-09-02, where it killed the run after the first caller and left 10
-    # of 11 missed-call tasks uncreated. Anything that is not a list or a dict
-    # means "no tasks on this record", which is exactly "not already there".
-    if isinstance(j, list):
-        rows = j
-    elif isinstance(j, dict):
-        rows = j.get("data") or j.get("tasks") or []
-    else:
-        rows = []
     want = title_for(r)
     return any((t.get("title") or "").strip() == want
-               for t in rows if isinstance(t, dict))
+               and t.get("customerId") == rec
+               and t.get("customerType") == r["record_type"]
+               for t in _todays_tasks(azc, day))
 
 
 _STANDALONE = None
 
 
 def _standalone_titles(azc, day):
-    """Titles of missed-call tasks already open, for the no-record bucket.
-
-    Those tasks hang off no record, so there is nothing to query per caller.
-    One pass over the day's tasks is enough, and the phone number is in the
-    title whenever we had no name.
+    """Phone-number digits of every open "Missed Call from" task with no
+    record (Debbie's bucket) -- there is nothing to key a per-caller check
+    off, so match on the number embedded in the title instead.
     """
     global _STANDALONE
     if _STANDALONE is None:
         _STANDALONE = set()
-        try:
-            for t in azc.tasks(day, day):
-                title = (t.get("title") or "")
-                if title.startswith("Missed Call from"):
-                    for n in re.findall(r"\d", title):
-                        pass
-                    digits = re.sub(r"\D", "", title)
-                    if len(digits) >= 10:
-                        _STANDALONE.add(digits[-10:])
-        except Exception as e:
-            log(f"  could not read today's tasks ({e}); "
-                f"skipping the duplicate check for standalone tasks")
+        for t in _todays_tasks(azc, day):
+            title = (t.get("title") or "")
+            if title.startswith("Missed Call from"):
+                digits = re.sub(r"\D", "", title)
+                if len(digits) >= 10:
+                    _STANDALONE.add(digits[-10:])
     return _STANDALONE
 
 
