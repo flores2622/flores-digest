@@ -890,9 +890,13 @@ function digestDay(d, who) {
     (focus && focus.name === "Crystal Mango" && t.raw_dials && t.total_dials
      && t.raw_dials > t.total_dials) ? `${t.raw_dials} incl. service` : "",
   ].filter(Boolean).join(" · ");
+  // Dials and Live Contact combined into one tile (Frank, 2026-09-22),
+  // same "two figures, one box, slash-separated" shape as HH/Prem. Quoted
+  // and Pol/Prem. Sold below -- each half keeps its own tier colour rather
+  // than the whole tile sharing one, matching those two tiles' own pattern.
   const tiles = [
-    ["Dials", t.dials ?? 0, dialsNote, tc("dials")],
-    ["Live contacts", t.live ?? 0, rate + "% contact rate", tc("rate")],
+    ["Dials/Live", `<span class="${tc("dials")}">${t.dials ?? 0} Dials</span> / <span class="${tc("rate")}">${t.live ?? 0} Live</span>`,
+     [dialsNote, rate + "% contact rate"].filter(Boolean).join(" · ")],
     ["HH/Prem. Quoted", `<span class="${tc("hh")}">${t.hh ?? 0} HH</span> / <span class="${tc("pq")}">${money(t.pq)}</span>`],
     // Policies colours on the sale streak (see apply_policy_streak), same
     // tier data the Team Leaderboard table's own Pol column already uses --
@@ -900,11 +904,35 @@ function digestDay(d, who) {
     // Quoted right above, which colours both halves).
     ["Pol/Prem. Sold", `<span class="${tc("pol")}">${t.pol ?? 0} Pol</span> / <span class="${tc("ps")}">${money(t.ps)}</span>`],
   ];
-  if (t.util != null) tiles.push(["Utilization", t.util + "%", "weighted", tc("util")]);
   const tilesHtml = tiles.map(([k, v, n, cls]) =>
     `<div class="tile"><div class="k">${k}</div><div class="v${cls ? " " + cls : ""}">${v}</div>${n ? `<div class="n">${n}</div>` : ""}</div>`).join("");
 
+  // Closing Ratio (Frank, 2026-09-22: "add a closing rate table between the
+  // sold and utilization cards") -- policies sold as a share of households
+  // quoted, the same funnel step CLAUDE.md's contact-rate definition follows
+  // (an outcome over the attempt count that produced it). Purely derived
+  // from fields already on `t`, same as `rate` above -- no backend change.
+  // Deliberately UNCOLOURED: every other tiered figure on this board has a
+  // Frank-approved green/yellow/red threshold (digest_config.THRESHOLDS);
+  // this one doesn't yet, and inventing thresholds here isn't this change's
+  // call to make.
+  const hh = t.hh ?? 0, pol = t.pol ?? 0;
+  const closingRatio = hh ? (100 * pol / hh) : null;
+  const closingRatioHtml = `<div class="sect"><h2>Closing Ratio</h2>
+   <p class="sd">Policies sold &divide; households quoted.</p>
+   <table><thead><tr><th>Households Quoted</th><th>Policies Sold</th><th>Closing Ratio</th></tr></thead>
+   <tbody><tr><td class="num">${hh}</td><td class="num">${pol}</td>
+     <td class="num">${closingRatio == null ? "—" : closingRatio.toFixed(1) + "%"}</td></tr></tbody></table>
+  </div>`;
+  // Utilization split into its own tile row below the new table (it used to
+  // share the tiles array/div with Sold, with nothing between them).
+  const utilHtml = t.util != null ? `<div class="tiles"><div class="tile">
+   <div class="k">Utilization</div><div class="v${tc("util") ? " " + tc("util") : ""}">${t.util}%</div>
+   <div class="n">weighted</div></div></div>` : "";
+
   return `<div class="tiles">${tilesHtml}</div>
+  ${closingRatioHtml}
+  ${utilHtml}
   ${teamLeaderboardHtml(d, who)}`;
 }
 
