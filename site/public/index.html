@@ -616,7 +616,11 @@ details.sc .scb { padding: 0 12px 12px; }
 const DOT = {"Crystal Mango":"#ff4b4b", "Lorena Gonzalez":"#cd81ff",
              "Mike Olvera":"#5656fe",   "Debbie Aguilera":"#0b0b0b",
              "Coral Barwick":"#00ffcf",  "Sarahi Chin":"#ffb48c",
-             "Amanda Torricellas":"#baffff"};
+             "Amanda Torricellas":"#baffff",
+             // Coral + Sarahi's combined Sales-section identity (see
+             // SALES_TEAM_GROUPS) -- never looked up outside that map's own
+             // group name, since no individual is ever actually named this.
+             "The Insurance Icons":"#ffd700"};
 const TEAM_DOT = "#0b0b0b";
 
 /* Producer identity badge -- a colour-filled pill with the name inside,
@@ -786,6 +790,19 @@ let matchAttempts = 0;
 // deliberately keeps her out of. Her colour already exists in DOT (mirrors
 // the email's own palette), so pbadge/prodSelStyle need no changes.
 const SALES_LOGGER_ROSTER = [...PRODUCER_ROSTER, "Amanda Torricellas"];
+// Sales-section-only team grouping (Frank, 2026-09-22): "I have made Coral
+// and Sarahi a team ... they are now 'The Insurance Icons' and are aiming
+// for a collective goal." Combined ONLY in the Sales tab's aggregate views
+// (Totals tiles/pie, Breakdown's Producer chart) -- every individual sale
+// row still names who actually logged it, and every other screen (Coaching,
+// Digest, leaderboard, Trends) keeps Coral and Sarahi separate, since
+// nothing outside salesTotalsHtml/computeSalesBreakdown reads this map.
+const SALES_TEAM_GROUPS = { "Coral Barwick": "The Insurance Icons", "Sarahi Chin": "The Insurance Icons" };
+const salesGroupName = name => (name && SALES_TEAM_GROUPS[name]) || name;
+const SALES_TEAM_NAMES = new Set(Object.values(SALES_TEAM_GROUPS));
+// First-name-only reads fine for an individual ("Crystal Mango" -> "Crystal")
+// but not for a team name -- show those in full.
+const salesShortLabel = name => SALES_TEAM_NAMES.has(name) ? name : name.split(" ")[0];
 let salesDay = null;          // set to today's AZ date on first load -- still the day a NEW sale is logged against
 let salesEntries = [];        // the picked folio's entries (or just salesDay's, if it falls outside any known folio), newest-added first
 let salesFolioPick = "";      // a FOLIO_CLOSE_DATES entry; "" means the current folio (the one covering today) -- lets Frank reference a closed folio's sheet (2026-09-21: "its a new folio ... I need to be able to reference the old folios")
@@ -2859,7 +2876,8 @@ function salesTotalsHtml(entries) {
   if (!entries.length) return "";
   const byProd = {};
   for (const e of entries) {
-    const row = byProd[e.producer] || (byProd[e.producer] = { count: 0, premium: 0 });
+    const group = salesGroupName(e.producer);
+    const row = byProd[group] || (byProd[group] = { count: 0, premium: 0 });
     row.count++;
     row.premium += e.premium || 0;
   }
@@ -2867,10 +2885,12 @@ function salesTotalsHtml(entries) {
   // producer boxes would be in three columns, 2 rows"), the Team card on
   // its own row underneath them, and a pie chart of the same premium split
   // to the right -- same .tile component speedPanel uses elsewhere, same
-  // shape: name in .k, the dollar figure in .v.
+  // shape: name in .k, the dollar figure in .v. Coral/Sarahi collapse into
+  // one "The Insurance Icons" card here (salesGroupName above); every other
+  // rollup on the board keeps them separate.
   const names = Object.keys(byProd).sort((a, b) => byProd[b].premium - byProd[a].premium);
   const cards = names.map(name => `
-    <div class="tile"><div class="k">${pbadge(DOT[name] || "#8a877f", name.split(" ")[0])}</div>
+    <div class="tile"><div class="k">${pbadge(DOT[name] || "#8a877f", salesShortLabel(name))}</div>
       <div class="v">${money(byProd[name].premium)}</div>
       <div class="n">${byProd[name].count} sale${byProd[name].count === 1 ? "" : "s"}</div></div>`).join("");
   const teamCount = entries.length;
@@ -2888,7 +2908,7 @@ function salesTotalsHtml(entries) {
   }).join(", ");
   const legend = names.map(name => `<div style="display:flex;align-items:center;gap:6px">
       <i style="width:10px;height:10px;border-radius:2px;background:${DOT[name] || "#8a877f"};flex:none"></i>
-      <span style="flex:1">${name.split(" ")[0]}</span>
+      <span style="flex:1">${salesShortLabel(name)}</span>
       <span style="color:var(--text-muted);font-variant-numeric:tabular-nums">${teamPremium ? Math.round(byProd[name].premium / teamPremium * 100) : 0}%</span>
     </div>`).join("");
 
@@ -3139,7 +3159,9 @@ function wireSalesSubTabs() {
 const SALES_BREAKDOWN_DIMS = {
   lead_source: { label: "Lead Source", key: e => (e.lead_source || "").trim() || "(none logged)" },
   product:     { label: "Policy Type", key: e => (e.product || "").trim() || "(none logged)" },
-  producer:    { label: "Producer",    key: e => e.producer || "(none logged)" },
+  // salesGroupName folds Coral/Sarahi into "The Insurance Icons" here too --
+  // same Sales-only team grouping salesTotalsHtml uses.
+  producer:    { label: "Producer",    key: e => salesGroupName(e.producer) || "(none logged)" },
 };
 // Categorical slots --s1..--s7 (validated 8-hue theme, see :root); slot 8
 // is left for "Other" to stay a neutral grey rather than a hue with no real
