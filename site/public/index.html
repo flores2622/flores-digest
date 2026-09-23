@@ -1106,7 +1106,9 @@ function teamLeaderboardHtml(d, who) {
 /* Wins and Losses -- was "What the day says" + "Objections by category" on
    the Digest tab; moved to its own section on the Coaching tab (Frank,
    2026-09-10). Team-level, not meaningful filtered to one producer, same as
-   before. */
+   before. Objections live ONLY in the Coaching tab's own Objections sub-tab
+   now (Frank, 2026-09-23: "leave it only in the objections tab") -- the
+   "Objections by category" table that used to sit here duplicated it. */
 function winsLossesHtml(d, who) {
   if (who) return "";
   const s = d.scan;
@@ -1126,15 +1128,8 @@ function winsLossesHtml(d, who) {
     renewal date on <b>${s.xdate}</b>, and a bundle raised on <b>${s.bundle}</b>.
     <b>${s.timeset} of ${s.of}</b> set a specific callback time — that one is usually the cheapest to fix.</p>
    </div>`;
-  const objs = !(d.objcats && d.objcats.length) ? "" : `
-   <h3>Objections by category</h3>
-   <p class="sd">Won means the objection was addressed and overcome on the call, not merely answered.</p>
-   <div class="scroll"><table><thead><tr><th>Category</th><th class="num">Raised</th><th class="num">Won</th></tr></thead><tbody>
-   ${d.objcats.map(([c, n, w]) => `<tr><td>${c}</td><td class="num">${n}</td>
-     <td class="num">${w ? `<span class="chip c-g">${w}</span>` : `<span class="chip c-r">0</span>`}</td></tr>`).join("")}
-   </tbody></table></div>`;
-  if (!says && !objs) return "";
-  return `<div class="sect"><h2>Wins and Losses</h2>${says}${objs}</div>`;
+  if (!says) return "";
+  return `<div class="sect"><h2>Wins and Losses</h2>${says}</div>`;
 }
 
 /* The next four sections mirror the customized email digest's own panels
@@ -1835,7 +1830,7 @@ async function fetchAllCalls() {
       const doc = await r.json();
       for (const c of (doc.calls || [])) {
         for (const o of (c.objs || [])) {
-          out.push({ date: d, who: c.who, lead: c.lead, cat: o.cat,
+          out.push({ date: d, who: c.who, lead: c.lead, cat: o.cat, group: o.group,
                     score: o.score, addressed: o.addressed });
         }
       }
@@ -1889,7 +1884,7 @@ function card(c) {
   // One block per objection -- a card can carry several (Frank, 2026-09-15:
   // "I want them as their own badge"), each scored on its own instead of one
   // shared verdict for the whole call.
-  const objBlk = objs.map(o => `<div class="blk"><div class="bl">Objection${objs.length > 1 ? ` — ${o.cat}` : ""}</div>
+  const objBlk = objs.map(o => `<div class="blk"><div class="bl">Objection — ${o.group || "Other"}</div>
     <div class="chead" style="margin-bottom:11px"><span class="cat" style="background:var(--text-primary);color:var(--surface)">${o.cat}</span>
     <span>${chips(o)}</span></div>
     <div class="two">
@@ -2031,11 +2026,16 @@ function wireCoachSubTabs() {
 // either. Moved to the TOP of Live Contact Detail, above the cards, per
 // Frank's own ask.
 let objFilterCat = "";
+// Grouped by objection GROUP (digest_config.OBJECTION_GROUPS), not the
+// model's free-text label -- 15 days produced 170 distinct labels for 198
+// objections, so the chart was a list of one-offs (Frank, 2026-09-23: "they
+// should be categorized"). The specific label stays on each card.
 function computeObjCats(cards) {
   const agg = {};
   for (const c of cards) {
     for (const o of (c.objs || [])) {
-      const row = agg[o.cat] || (agg[o.cat] = [o.cat, 0, 0]);
+      const g = o.group || "Other";
+      const row = agg[g] || (agg[g] = [g, 0, 0]);
       row[1]++;
       if ((o.score || 0) >= 8) row[2]++;
     }
@@ -2106,7 +2106,7 @@ function coachingPanel(d, who) {
   }
 
   // coachSubTab === "detail" (Cards)
-  const matches = c => !objFilterCat || (c.objs || []).some(o => o.cat === objFilterCat);
+  const matches = c => !objFilterCat || (c.objs || []).some(o => (o.group || "Other") === objFilterCat);
   const filterBanner = objFilterCat ? `<div class="sect" style="display:flex;justify-content:space-between;align-items:center;gap:10px">
     <span class="sd" style="margin:0">Filtered to objection "${objFilterCat}"</span>
     <button type="button" id="objClearBtn" class="linkbtn">Clear filter</button></div>` : "";
@@ -2289,7 +2289,10 @@ function producerWeakSpots(producer) {
   for (const c of ALL_CALLS_CACHE) {
     if (!c.cat || c.who !== producer || (c.score || 0) >= 8) continue;
     if (c.date < start || c.date > end) continue;
-    counts[c.cat] = (counts[c.cat] || 0) + 1;
+    // By objection GROUP, not the free-text label -- with ~one label per
+    // objection, counting labels picked two near-random one-offs.
+    const g = c.group || "Other";
+    counts[g] = (counts[g] || 0) + 1;
   }
   return Object.entries(counts).sort((a, b) => b[1] - a[1]).slice(0, 2);
 }
