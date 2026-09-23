@@ -310,13 +310,17 @@ h2 {
    them fit") -- flex instead of the shared .tiles grid, so each tile keeps
    its own natural width (a short "Closing Ratio" card stays narrower than
    "HH/Prem. Quoted") rather than a grid forcing all 6 to one equal column
-   width. Below 900px there isn't room for 6 natural-width cards without
-   crushing the two-percentage Closing Ratio card's own internal layout, so
-   it wraps instead of overflowing the page (same breakpoint family
-   .digestgrid already uses at 720px, just wider because this row has more
-   columns to lose room from). overflow-x is a last-resort safety net, not
-   the primary mechanism -- wrapping should always trigger first. */
-.tiles-6 { display: flex; gap: 10px; flex-wrap: wrap; }
+   width. justify-content:space-between spreads any leftover row width INTO
+   the gaps between cards instead of leaving it as one dead strip after the
+   last card (Frank, 2026-09-23: "theres spaces off to the right, clean it
+   up") -- gap is still the FLOOR spacing, this only grows it when there's
+   slack to fill. Below 900px there isn't room for 6 natural-width cards
+   without crushing the two-percentage Closing Ratio card's own internal
+   layout, so it wraps instead of overflowing the page (same breakpoint
+   family .digestgrid already uses at 720px, just wider because this row
+   has more columns to lose room from). overflow-x is a last-resort safety
+   net, not the primary mechanism -- wrapping should always trigger first. */
+.tiles-6 { display: flex; gap: 10px; flex-wrap: wrap; justify-content: space-between; }
 .tiles-6 .tile { flex: 0 1 auto; min-width: 0; }
 @media (min-width: 900px) { .tiles-6 { flex-wrap: nowrap; overflow-x: auto; } }
 .tile {
