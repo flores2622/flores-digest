@@ -116,7 +116,14 @@ def run(day, dry_run=False):
         log(f"  sales log auto: failed ({type(e).__name__}: {e})")
 
     daily.ensure_model()
-    daily.transcribe_day(day, outbound_only=True)
+    # Call-ins too (Frank, 2026-09-23). outbound_only exists for hourly.py,
+    # which never pulls AgencyZoom and would pay ~2 minutes cold to screen a
+    # handful of calls. This checkpoint already pulled everything screening
+    # needs in pull_sources() above, so the only extra cost is downloading the
+    # few call-ins that survive screening -- and without them the checkpoint
+    # showed no call backs, no inbound talk time and no inbound Call Detail
+    # until the nightly build.
+    daily.transcribe_day(day)
     daily.build_metrics(day)
 
     # Populates summary.source == "recording" on each call_detail row, which

@@ -200,3 +200,53 @@ def sync_up_day(day, log=print):
     if pushed:
         log(f"  r2 cache: pushed {', '.join(pushed)}")
     return pushed
+
+
+# ---- AgencyZoom snapshot, for rebuilding a past day as it was ----------------
+#
+# The three corpus files are pulled fresh on every run for TODAY, and that does
+# not change: serving a saved copy as if it were current is HANDOFF_12 #3, which
+# hid four real sales. A snapshot saved here is only ever READ to rebuild a day
+# that has already ended, so `daily.py --day 2026-09-22` sees the leads,
+# customers and policies the 09-22 report saw instead of whatever AgencyZoom
+# says now (Frank, 2026-09-23: "go back and look at data as if we were still on
+# that day"). Without it a rebuild drifts -- leads reassigned, merged or sold
+# since -- which is why verify_finalize.py warns on any past day.
+#
+# Saved on every pull for today, so the last one of the day wins: the nightly
+# build's, i.e. the copy the report was actually built from. ~26 MB raw, a few
+# MB gzipped.
+CORPUS_FILES = ("az_leads_all.json", "az_customers_all.json", "az_policies_all.json")
+
+
+def _corpus_key(day, fname):
+    return f"{PREFIX}/{day}/corpus/{fname}.gz"
+
+
+def save_corpus(day, log=print):
+    """Push today's freshly pulled corpus as <day>'s snapshot."""
+    import gzip
+    cli, bucket = _client()
+    for fname in CORPUS_FILES:
+        body = gzip.compress((ROOT / "data" / fname).read_bytes(), compresslevel=6)
+        cli.put_object(Bucket=bucket, Key=_corpus_key(day, fname), Body=body,
+                       ContentType="application/gzip")
+    log(f"  r2 cache: saved AgencyZoom snapshot for {day}")
+
+
+def load_corpus(day, log=print):
+    """Restore <day>'s snapshot over data/. True only if ALL three were there --
+    a partial set would mix one day's leads with another day's policies."""
+    import gzip
+    cli, bucket = _client()
+    bodies = {}
+    for fname in CORPUS_FILES:
+        try:
+            bodies[fname] = cli.get_object(
+                Bucket=bucket, Key=_corpus_key(day, fname))["Body"].read()
+        except cli.exceptions.NoSuchKey:
+            return False
+    for fname, body in bodies.items():
+        (ROOT / "data" / fname).write_bytes(gzip.decompress(body))
+    log(f"  r2 cache: restored the AgencyZoom snapshot saved for {day}")
+    return True
