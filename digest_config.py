@@ -518,6 +518,49 @@ LEADERBOARD_POINTS = [5, 4, 3, 2, 1]
 # Tie-break, from Frank: premium sold, then households quoted, then call volume.
 LEADERBOARD_TIEBREAK = ["premium_sold", "households_quoted", "call_volume"]
 
+
+def leaderboard_score(categories, names, tiebreak):
+    """The ONE implementation of the leaderboard's scoring rules, shared by the
+    emailed digest (panels.leaderboard) and the board (board_payload.
+    leaderboard). They used to each carry their own copy, and the board's
+    never got the 08-24/08-25 rule changes above: on 2026-09-22 the email had
+    Coral, Mike and Lorena tied on 23 with Coral first on premium sold, while
+    the board -- same day, identical category values -- scored them 16, 17
+    and 19 and put Lorena first.
+
+    categories: [{name: value}], one dict per scored category, higher is better.
+    names:      the producers, in display order.
+    tiebreak:   {name: tuple} compared after total points, higher first.
+    Returns ([{name: pts}] per category, {name: total}, standing).
+    """
+    def place(i):
+        # Beyond the scheme, zero -- never IndexError on a larger roster.
+        return LEADERBOARD_POINTS[i] if i < len(LEADERBOARD_POINTS) else 0
+
+    totals = {n: 0 for n in names}
+    per_cat = []
+    for vals in categories:
+        v = {n: vals.get(n) or 0 for n in names}
+        order = sorted(names, key=lambda n: -v[n])
+        pts = {}
+        i = 0
+        while i < len(order):
+            j = i
+            while j + 1 < len(order) and v[order[j + 1]] == v[order[i]]:
+                j += 1
+            # A tie takes the LOWEST place it occupies (08-25 rule above).
+            paid = place(j)
+            for n in order[i:j + 1]:
+                # No recorded activity scores 0, not a rank -- it still
+                # consumes its place, so a zero never promotes anyone behind it.
+                pts[n] = paid if v[n] else 0
+                totals[n] += pts[n]
+            i = j + 1
+        per_cat.append(pts)
+    standing = sorted(names, key=lambda n: (totals[n],) + tuple(tiebreak[n]),
+                      reverse=True)
+    return per_cat, totals, standing
+
 # --- Coach AI (HANDOFF_4 s7) ------------------------------------------------
 # VERIFIED, DO NOT RELITIGATE. Coach AI titles each email with the UTC date at
 # generation, ONE DAY AHEAD of the Arizona day it describes. The email titled

@@ -273,51 +273,20 @@ def leaderboard(M, coach):
     cats.append(("Premium Quoted", vals(None, lambda m, c: m["premium_quoted"]), money))
     cats.append(("Premium Sold", vals(None, lambda m, c: m["premium_sold"]), money))
 
-    points = {p: 0 for p in P3}
+    # Scoring rules (5-4-3-2-1, a tie takes the LOWEST place it occupies, zero
+    # activity scores 0, tiebreak on premium sold / households quoted / call
+    # volume) live in cfg.leaderboard_score, shared with the board so the two
+    # can't drift apart again.
+    per_cat, points, standing = cfg.leaderboard_score(
+        [v for _, v, _ in cats], P3,
+        {p: tuple(M[p][f] for f in cfg.LEADERBOARD_TIEBREAK) for p in P3})
     rows = []
-    def place(i):
-        """Points for finishing i-th. Beyond the scheme, zero -- never IndexError."""
-        return cfg.LEADERBOARD_POINTS[i] if i < len(cfg.LEADERBOARD_POINTS) else 0
-
-    for name, v, fmt in cats:
-        order = sorted(P3, key=lambda p: -v[p])
-        pts = {}
-        # Ties take the LOWEST place they occupy (Frank, 2026-08-25: "if they
-        # tie, lower the score"). On the 5-4-3-2-1 scale a three-way tie for
-        # first is all three on 3 pts -- places 1, 2 and 3 are consumed and the
-        # worst of them is what pays -- then 2, then 1. A two-way tie for first
-        # is 4 pts each, then 3, 2, 1.
-        #
-        # This REVERSES the 08-24 rule, where a tie took the BEST place it
-        # occupied (three tied at the top were all "first"). Same walk, one index
-        # changed: place(j) instead of place(i).
-        #
-        # Before either rule, ties were broken silently by roster order: three
-        # producers all scoring 81 on role play took 3, 2 and 1 points, and
-        # whoever sat last in the roster was penalised for an identical result.
-        i = 0
-        while i < len(order):
-            j = i
-            while j + 1 < len(order) and v[order[j + 1]] == v[order[i]]:
-                j += 1
-            best = place(j)
-            for q in order[i:j + 1]:
-                # Zero-activity override: no recorded activity scores 0, not a
-                # rank -- it still consumes its place, so a zero never promotes
-                # anyone behind it.
-                pts[q] = 0 if not v[q] else best
-                points[q] += pts[q]
-            i = j + 1
+    for (name, v, fmt), pts in zip(cats, per_cat):
         cells = "".join(
             f'<td class="num"><span class="pb">{_pts(pts[p])}'
             f'{"pt" if pts[p] == 1 else "pts"}</span>'
             f'<span class="pv">{fmt(v[p])}</span></td>' for p in P3)
         rows.append(f'<tr><td>{name}</td>{cells}</tr>')
-
-    def tiebreak(p):
-        return (points[p], M[p]["premium_sold"], M[p]["households_quoted"],
-                M[p]["call_volume"])
-    standing = sorted(P3, key=tiebreak, reverse=True)
     top = max(points.values()) or 1
     # Gold/silver/bronze are the only medal colours the template defines. Fourth
     # place onward gets the template's own slate tone inline, so the podium
