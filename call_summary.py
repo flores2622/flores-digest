@@ -359,7 +359,8 @@ def _audio_legs(day):
             for r in json.loads(f.read_text()):
                 if r.get("id"):
                     rc.setdefault(r["id"], (r.get("startTime") or "",
-                                            (r.get("direction") or "").lower()))
+                                            (r.get("direction") or "").lower(),
+                                            r.get("result") or ""))
     out = {}
     for cid, v in tx.items():
         n, who = v.get("to"), v.get("producer")
@@ -367,11 +368,23 @@ def _audio_legs(day):
             continue
         p = ROOT / f"data/audio/{cid}.mp3"
         if p.exists() and p.stat().st_size > 500:
-            start, rc_dir = rc.get(cid, ("", ""))
+            start, rc_dir, result = rc.get(cid, ("", "", ""))
+            direction = v.get("direction") or rc_dir or "outbound"
+            cls = v.get("class")
+            # An inbound call RingCentral says was ANSWERED is a conversation
+            # the producer had -- read it, whatever the transcript check
+            # guessed. That check files "Thank you for calling Farmers,
+            # how can I help you?" -- the producer's own greeting -- as a
+            # machine greeting: both of Joaquin Guillen's 2026-09-22
+            # call-ins came back "voicemail". READING ONLY: the class in
+            # transcripts_<day>.json, which the contact rate uses, is left
+            # exactly as it was.
+            if direction == "inbound" and result == "Accepted":
+                cls = "live"
             out.setdefault((who, n), []).append(
                 (str(p), v.get("audio_seconds") or v.get("duration") or 0,
-                 v.get("class"), v.get("direction") or rc_dir or "outbound",
-                 v.get("offset") or 0, bool(v.get("partial")), start))
+                 cls, direction, v.get("offset") or 0, bool(v.get("partial")),
+                 start))
     for legs in out.values():
         legs.sort(key=lambda x: -x[1])
     return out
