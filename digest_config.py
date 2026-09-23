@@ -3,6 +3,7 @@
 Every value here is a decision Frank has already made. HANDOFF_4 s12 lists the
 ones that must not be re-asked. Section references below point back at it.
 """
+import collections
 import datetime as dt
 import re
 
@@ -109,6 +110,129 @@ def real_sales(day, policies, source_map, ids):
         n, prem = out.get(who, (0, 0.0))
         out[who] = (n + 1, prem + float(p.get("premium") or 0))
     return out
+
+
+# Cross-sell to an EXISTING household, signalled by AgencyZoom's own lead
+# source classification -- not a household join (Frank, 2026-09-23: "lead
+# source on the lead could be an indication ... 'Home no auto', 'auto no
+# home', 'cross sale'"). Checked against real data (asCustomerDate/
+# policySummary on the half of sales that DO resolve to a household, see
+# bundle_classification below): these five names are >=90% accurate for
+# "this household already had a policy with us." "Existing Customer
+# Referral" looks like it should qualify but doesn't -- spot-checked real
+# examples (policy/lead pairs 30339190, 30306924, 30296992, 30261716) where
+# the referred household's asCustomerDate equals the sale date itself, i.e.
+# it brings in a brand-new household, not a cross-sell to an existing one.
+CROSS_SELL_LEAD_SOURCES = {
+    "cross sell", "home no auto", "auto no home", "life cross sell",
+    "existing client purchased a new",
+}
+
+# How recently a household must have become a customer, relative to a
+# multi-line sale, to call it a "new bundle" rather than an existing
+# household that has simply accumulated products over the years (Frank,
+# 2026-09-23: "2+ sales on the same household in the last 60 days"). The
+# real data is cleanly bimodal, not sensitive to the exact cutoff: of 645
+# resolved multi-line sales, 332 have a household age of 0-3 days and 267
+# have one of 180+ days, with only 44 (7%) landing anywhere in between --
+# so 60 vs. 3 vs. 14 days barely moves the split either way.
+NEW_HOUSEHOLD_DAYS = 60
+
+
+def is_cross_sell(policy, source_map):
+    name = (source_map.get(policy.get("leadSourceId")) or "").strip().lower()
+    return name in CROSS_SELL_LEAD_SOURCES
+
+
+def _policy_line_count(policy_summary):
+    """AgencyZoom's `policySummary` on a customer record is a PHP-serialized
+    array of that household's current policy lines, e.g.
+    'a:2:{s:2:"p1";...s:2:"p2";...}' -- its own leading `a:<n>:` IS that
+    count, so this needs no PHP deserializer (not installed, and unneeded)."""
+    if not policy_summary:
+        return None
+    m = re.match(r"a:(\d+):", policy_summary)
+    return int(m.group(1)) if m else None
+
+
+def bundle_classification(day, policies, leads, customers, source_map, ids):
+    """Per producer: {"cross_sell": n, "new_bundle": n, "resolved": n}, for
+    real (non-BOB) sales on `day`.
+
+    cross_sell counts every sale AgencyZoom's own lead source already
+    labels as a cross-sell to an existing household (100% coverage, no join
+    needed -- see is_cross_sell/CROSS_SELL_LEAD_SOURCES).
+
+    new_bundle is a genuinely harder question -- a NEW household that
+    bought 2+ products together -- and there is no direct policy ->
+    household field in this data at all: a raw policy record carries no
+    name, phone, customerId or leadId, only a leadSourceId shared by
+    thousands of records (CLAUDE.md's own note). The only join available is
+    the one sales_log_auto.py already uses for its client-name best-effort
+    fill: a policy resolves to a household ONLY when exactly one status-2
+    sold lead shares its (assignedTo, leadSourceId, soldDate). Measured
+    against the real policy corpus (2019-2026, all real-sale policies):
+    this resolves for about half of sales. WIDENING the day window to try
+    to reach a literal 60-day match makes this WORSE, not better (the
+    unique-match rate falls from 41% at same-day to 24% at +/-20 days),
+    because only ~87 distinct lead sources exist across the whole lead
+    corpus, shared by hundreds to thousands of leads each, so a wider
+    window turns former non-matches into ambiguous ties faster than it
+    resolves the real lag between a lead's own soldDate and its policy's
+    (Coral Barwick's 2026-09-11 motorcycle policy's matching sold lead has
+    its OWN soldDate three days later, 2026-09-14 -- same-day is the
+    least-bad option here, not a compromise for convenience).
+
+    For the half that DOES resolve, this is precise, not a guess: it reads
+    the household's own live `policySummary` policy-line count (Frank's own
+    idea, 2026-09-23: "if its a monoline household, we know they didnt
+    bundle it") -- a household showing 2+ lines whose asCustomerDate is
+    within NEW_HOUSEHOLD_DAYS of this soldDate is a new household that
+    bundled at signup; one line means this sale did NOT bundle, full stop,
+    regardless of when the household was created.
+
+    `resolved` is the denominator (how many of `day`'s real sales resolved
+    to a household at all) so callers can show new_bundle as a rate/lower
+    bound, never as a raw count next to cross_sell's 100%-coverage figure.
+    """
+    sold_leads_by_day = collections.defaultdict(list)
+    for l in leads:
+        if l.get("status") == 2 and l.get("soldDate"):
+            sold_leads_by_day[str(l["soldDate"])[:10]].append(l)
+    cust_by_id = {c["id"]: c for c in customers if c.get("id") is not None}
+
+    out = collections.defaultdict(lambda: {"cross_sell": 0, "new_bundle": 0, "resolved": 0})
+    for p in policies:
+        if not str(p.get("soldDate") or "").startswith(day):
+            continue
+        who = ids.get(p.get("agentId"))
+        if not who or not is_real_sale(p, source_map):
+            continue
+        row = out[who]
+        if is_cross_sell(p, source_map):
+            row["cross_sell"] += 1
+
+        cands = [l for l in sold_leads_by_day.get(day, ())
+                 if l.get("assignedTo") == p.get("agentId")
+                 and l.get("leadSourceId") == p.get("leadSourceId")]
+        if len(cands) != 1:
+            continue
+        cust = cust_by_id.get(cands[0].get("convertedHouseholdId"))
+        if not cust:
+            continue
+        row["resolved"] += 1
+        lines = _policy_line_count(cust.get("policySummary"))
+        if lines is None or lines < 2:
+            continue
+        acd = str(cust.get("asCustomerDate") or "")[:10]
+        try:
+            age = ((dt.date.fromisoformat(day) - dt.date.fromisoformat(acd)).days
+                   if acd else None)
+        except ValueError:
+            age = None
+        if age is not None and age <= NEW_HOUSEHOLD_DAYS:
+            row["new_bundle"] += 1
+    return dict(out)
 
 
 def placeholder_sales(day, policies, source_map):

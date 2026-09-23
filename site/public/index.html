@@ -929,6 +929,26 @@ function digestDay(d, who) {
    <div class="v">${hhClosingRatio == null ? "—" : hhClosingRatio.toFixed(1) + "%"} HH / ${premClosingRatio == null ? "—" : premClosingRatio.toFixed(1) + "%"} Prem</div>
    <div class="n">${pol} of ${hh} HH &middot; ${money(ps)} of ${money(pq)} prem</div>
   </div></div>`;
+
+  // Bundling breakdown (Frank, 2026-09-23: "know if they completed an
+  // existing household ... or if they are selling a new bundle/household").
+  // Two DIFFERENT confidence levels sharing one tile, same reason the note
+  // spells each one out rather than trusting the reader to know:
+  //   - Cross-Sell reads AgencyZoom's own lead source on the sale ("Home no
+  //     Auto", "Cross Sell", etc.) -- no join needed, covers every sale.
+  //   - New Bundle needs a policy -> household match that only resolves for
+  //     part of a day's sales (no customerId/leadId on a policy record --
+  //     see digest_config.bundle_classification for the full method and why
+  //     widening the match window makes it WORSE, not better). It is a
+  //     LOWER BOUND, marked with "+" for exactly that reason, and the note
+  //     states its own coverage so it's never read as a complete count.
+  const crossSell = t.cross_sell ?? 0, newBundle = t.new_bundle ?? 0,
+        bundleResolved = t.bundle_resolved ?? 0;
+  const bundleTileHtml = pol ? `<div class="tiles"><div class="tile">
+   <div class="k">Cross-Sell/Bundle</div>
+   <div class="v">${crossSell} Cross-Sell / ${newBundle}+ New Bundle</div>
+   <div class="n">${bundleResolved} of ${pol} sold matched to a household</div>
+  </div></div>` : "";
   // Utilization split into its own tile row below the new tile (it used to
   // share the tiles array/div with Sold, with nothing between them).
   const utilHtml = t.util != null ? `<div class="tiles"><div class="tile">
@@ -937,6 +957,7 @@ function digestDay(d, who) {
 
   return `<div class="tiles">${tilesHtml}</div>
   ${closingRatioTileHtml}
+  ${bundleTileHtml}
   ${utilHtml}
   ${teamLeaderboardHtml(d, who)}`;
 }
