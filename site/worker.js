@@ -81,6 +81,11 @@ export default {
         return getIntraday(env, parts[2]);
       }
 
+      if (parts[1] === "service") {
+        if (parts.length === 2) return listService(env);
+        if (parts.length === 3) return getService(env, parts[2]);
+      }
+
       if (parts[1] === "recordings" && parts.length === 4) {
         return getRecording(request, env, parts[2], parts[3]);
       }
@@ -200,6 +205,40 @@ async function getIntraday(env, day) {
   const obj = await env.BOARD.get(`intraday/${day}.json`);
   if (obj === null) {
     return json({ error: "no intraday snapshot for this day", day }, 404);
+  }
+  return new Response(obj.body, {
+    headers: {
+      "content-type": "application/json; charset=utf-8",
+      "cache-control": "no-store",
+    },
+  });
+}
+
+/** GET /api/service -> { days: [...] }, newest first -- every day
+ * service_digest.py has published. Same paginated key walk as listDays. */
+async function listService(env) {
+  const days = [];
+  let cursor;
+  do {
+    const listed = await env.BOARD.list({ prefix: "service/", cursor });
+    for (const o of listed.objects) {
+      const m = o.key.match(/^service\/(\d{4}-\d{2}-\d{2})\.json$/);
+      if (m) days.push(m[1]);
+    }
+    cursor = listed.truncated ? listed.cursor : undefined;
+  } while (cursor);
+  days.sort().reverse();
+  return json({ days });
+}
+
+/** GET /api/service/:day -> the Service tab's document for that day. */
+async function getService(env, day) {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(day)) {
+    return json({ error: "bad day" }, 400);
+  }
+  const obj = await env.BOARD.get(`service/${day}.json`);
+  if (obj === null) {
+    return json({ error: "no service report for this day", day }, 404);
   }
   return new Response(obj.body, {
     headers: {

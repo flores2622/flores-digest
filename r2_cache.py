@@ -63,7 +63,7 @@ DAY_FILES = [
     "rc_raw_{day}.json", "rc_window_{day}.json", "transcripts_{day}.json",
     "fulltx_{day}.json", "callsum_{day}.json", "coaching_cards_{day}.json",
     "metrics_{day}.json", "az_service_tickets_{day}.json", "az_tasks_{day}.json",
-    "audiorefs_{day}.json",
+    "audiorefs_{day}.json", "az_service_tickets_done_{day}.json",
 ]
 
 

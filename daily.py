@@ -1054,6 +1054,7 @@ def main():
     send(day, html, [p for p in (notes, rec) if p], audience=a.audience,
          ops_only_pdfs=[missed] if missed else [])
     publish_day(day)
+    publish_service(day)
 
     # publish_day() -> publish_board.build() -> coaching_cards.build() writes
     # data/coaching_cards_<day>.json, and call_summary.build() above wrote
@@ -1071,6 +1072,19 @@ def main():
 
     sync_sales_log(day)
     make_missed_call_tasks(day)
+
+
+def publish_service(day):
+    """The Service tab's document (service_digest.py). Board only for now --
+    no email until its numbers are trusted (Frank, 2026-09-23). Runs after
+    everything the sales digest needs, and like publish_day it may never
+    raise: a service failure costs the Service tab and nothing else."""
+    try:
+        import service_digest
+        service_digest.publish(day, log=log)
+    except (Exception, SystemExit) as e:
+        log(f"service digest failed ({type(e).__name__}: {e}) -- "
+            f"the Service tab keeps its last day")
 
 
 def publish_day(day):

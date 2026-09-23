@@ -160,6 +160,12 @@ in the same function genuinely does mean open and is untouched; same field
 name, different object. That function also maps a ticket's `csr` id to a
 first name (`CSR_NAMES`), since `csrFirstname` comes back null on every row
 from the list endpoint.
+
+**Status 2 is COMPLETED** (found 2026-09-23). "No closed state" above is true
+of what `service_tickets_live()` asks for, not of AgencyZoom: requesting
+`status: [2]` returns every completed ticket (19,287) with `completeDate` and
+`resolutionDesc`. Screening calls still wants live tickets only. The completed
+set is read by `service_digest.py` alone, for resolution times.
 ## Coach AI
 
 - **The call score is NOT a 0-100 percentage.** Frank, 2026-09-01: a *perfect
