@@ -37,6 +37,14 @@ from digest_config import PRODUCERS
 
 AZ_OFFSET = dt.timedelta(hours=7)      # Arizona does not observe DST
 RING_GROUP_ACTIONS = ("Park Location", "FindMe")
+# A producer answering on their own desk phone. Before #99 attribute() never
+# read the legs of a call to a producer's own DID -- it credited the DID owner
+# outright -- so this leg type was never needed. Once every call was
+# leg-scanned it had to be, and without it 38 answered call-ins over
+# 2026-09-01..09-22 came back unattributed, nearly all Sarahi's: Henry
+# Baker's 29-minute call back on 09-04 among them. Those calls fell out of
+# Call Detail and talk time, and could not turn the dial they answered live.
+PICKUP_ACTIONS = RING_GROUP_ACTIONS + ("VoIP Call",)
 # Frank, 2026-08-26: "doesnt have to be that day, could be the next day, we dial
 # leads every other day, usually." An every-other-day cadence means a call back
 # can arrive a day or two after the dial it answers.
@@ -101,7 +109,7 @@ def attribute(rec, dids):
         if l.get("result") != "Call connected":
             continue
         f = (l.get("from") or {}).get("name")
-        if f not in PRODUCERS or l.get("action") not in RING_GROUP_ACTIONS:
+        if f not in PRODUCERS or l.get("action") not in PICKUP_ACTIONS:
             continue
         # A FindMe leg is someone's phone ringing THEMSELVES; anything else on
         # that action is the group hunting and is not a pickup.

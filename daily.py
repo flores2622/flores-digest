@@ -309,7 +309,10 @@ def transcribe_day(day, outbound_only=False):
                 off = 0 if partial else max(0, total - leg)
                 use = int(have) if partial else leg
                 txt = transcribe.transcribe_file(path, duration=use, offset=off)
-                cls, why = transcribe.classify(txt, use)
+                # Screened and answered, so a conversation whatever the
+                # transcript says (build_metrics applies the same rule to
+                # calls cached before 2026-09-23).
+                cls, why = "live", "answered call-in"
                 done[r["id"]] = {"producer": meta["producer"],
                                  "to": meta["e164"] or meta["number"],
                                  "duration": meta["seconds"], "text": txt,
@@ -419,11 +422,47 @@ def build_metrics(day):
     stage = {int(k): v for k, v in
              json.loads((ROOT / "data/az_stages.json").read_text()).items()}
     tx = json.loads((ROOT / f"data/transcripts_{day}.json").read_text())
+    # Inbound calls are re-screened here, before anything reads a verdict --
+    # see the inbound block below for why the cache alone is not trusted.
+    import inbound as _ib
+    _raw = {r["id"]: r for r in
+            json.loads((ROOT / f"data/rc_raw_{day}.json").read_text())}
+    _win = json.loads((ROOT / f"data/rc_window_{day}.json").read_text())
+    _screened = _ib.screen(_ib.link_callbacks(
+        _ib.answered(day, list(_raw.values())), _win, day), day)
+    _allowed = {r["id"] for r in _screened if not r["skip"]}
+    # Only these may change a dial's verdict below.
+    _same_day = {r["id"] for r in _screened if not r["skip"]
+                 and r.get("kind") == "callback" and r.get("callback_day") == day}
+    # AN ANSWERED CALL-IN IS A CONVERSATION (Frank, 2026-09-23). A call that
+    # survives screening was Accepted by RingCentral AND connected on a
+    # producer's own phone -- attribute() requires that leg, so a caller who
+    # only reached Debbie or Amanda never gets this far. The transcript cannot
+    # overrule it: the producer answering "Thank you for calling Farmers" trips
+    # MACHINE's auto-attendant pattern, and 39 of 85 cached call-ins over
+    # 09-01..09-22 read as voicemail on that alone. A same-day call back so
+    # classified could never turn the dial it answered live. Applied at read
+    # time so a rebuild of a past day corrects without re-transcribing.
+    for cid, v in tx.items():
+        if v.get("direction") == "inbound" and cid in _allowed:
+            v["class"], v["why"] = "live", "answered call-in"
 
     bynum, txt, all_txt, livesecs = {}, {}, {}, {}
-    for v in tx.values():
+    for cid, v in tx.items():
         n = v.get("to")
         if not n:
+            continue
+        # A CALL-IN ONLY SPEAKS FOR A DIAL IT ANSWERED. A same-day call back
+        # turns the dial live; a cold call-in, a call back to an earlier day's
+        # dial, or a screened-out service call has no dial today and sits
+        # outside the rate (CLAUDE.md). This loop used to take every call-in
+        # on the number, screened out or not, which was harmless only while
+        # most call-ins read as voicemail. Its text still feeds all_txt for
+        # the screener test.
+        if v.get("direction") == "inbound" and cid not in _same_day:
+            if v.get("text"):
+                all_txt[(v.get("producer"), n)] = (
+                    all_txt.get((v.get("producer"), n), "") + " " + v["text"]).strip()
             continue
         # Rank by strength of evidence, not by arrival order. A number dialled
         # more than once gets the STRONGEST verdict across its dials: a real
@@ -520,13 +559,7 @@ def build_metrics(day):
     # was written to exclude him purely because his audio was already on disk
     # from the run before it. The screen is pure record logic and costs
     # nothing, so it is the authority at read time too.
-    import inbound as _ib
-    _raw = {r["id"]: r for r in
-            json.loads((ROOT / f"data/rc_raw_{day}.json").read_text())}
-    _win = json.loads((ROOT / f"data/rc_window_{day}.json").read_text())
-    _screened = _ib.screen(_ib.link_callbacks(
-        _ib.answered(day, list(_raw.values())), _win, day), day)
-    _allowed = {r["id"] for r in _screened if not r["skip"]}
+    # (_allowed is computed at the top of this function.)
     inb = collections.defaultdict(list)
     dropped_inbound = 0
     for cid, v in tx.items():

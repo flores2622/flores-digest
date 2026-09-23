@@ -42,6 +42,11 @@ Everything caches under `data/`, so a re-run resumes rather than restarting.
   it leaves the numerator AND the denominator. Reaching someone on their mobile
   after their landline must not read as a 50% contact rate. Mike / Nicole
   Santana, 2026-08-31 -- 252s and 67s on one lead -- and Roger Ryan before her.
+- **An answered call-in is a conversation** (Frank, 2026-09-23). If it survives
+  `inbound.screen` -- Accepted, and connected on a producer's own phone -- it is
+  live, whatever the transcript says; the producer's "Thank you for calling
+  Farmers" reads as an auto-attendant greeting to `transcribe.MACHINE`. Only a
+  SAME-DAY call back may turn a dial live; any other call-in stays outside the rate.
 - **Talk time counts every conversation**, inbound included.
 - **Notes win over the recording** (Frank, 2026-08-18). A producer writing "no
   answer" outranks a 12-second transcript that sounds live. Duration is the
