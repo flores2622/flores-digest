@@ -322,7 +322,8 @@ h2 {
    lose room from). overflow-x is a last-resort safety net, not the primary
    mechanism -- wrapping should always trigger first. */
 .tiles-6 { display: flex; gap: 10px; flex-wrap: wrap; }
-.tiles-6 .tile { flex: 1 1 auto; min-width: 0; }
+.tiles-6 .tile { flex: 1 1 0; min-width: 0; }
+@media (max-width: 899px) { .tiles-6 .tile { flex-basis: 140px; } }
 @media (min-width: 900px) { .tiles-6 { flex-wrap: nowrap; overflow-x: auto; } }
 .tile {
   background: var(--surface-raised); border: 1px solid var(--border);
@@ -916,12 +917,12 @@ function digestDay(d, who) {
   const tiles = [
     ["Dials", t.dials ?? 0, dialsNote, tc("dials")],
     ["Live contacts", t.live ?? 0, rate + "% contact rate", tc("rate")],
-    ["HH/Prem. Quoted", `<span class="${tc("hh")}">${t.hh ?? 0} HH</span> / <span class="${tc("pq")}">${money(t.pq)}</span>`],
+    ["HH/Prem. Quoted", `<span class="${tc("hh")}">${t.hh ?? 0} HH</span><br><span class="${tc("pq")}">${money(t.pq)}</span>`],
     // Policies colours on the sale streak (see apply_policy_streak), same
     // tier data the Team Leaderboard table's own Pol column already uses --
     // this tile just wasn't wrapping the number in it (unlike HH/Prem.
     // Quoted right above, which colours both halves).
-    ["Pol/Prem. Sold", `<span class="${tc("pol")}">${t.pol ?? 0} Pol</span> / <span class="${tc("ps")}">${money(t.ps)}</span>`],
+    ["Pol/Prem. Sold", `<span class="${tc("pol")}">${t.pol ?? 0} Pol</span><br><span class="${tc("ps")}">${money(t.ps)}</span>`],
   ];
   if (t.util != null) tiles.push(["Utilization", t.util + "%", "weighted", tc("util")]);
   const tilesHtml = tiles.map(([k, v, n, cls]) =>
@@ -945,19 +946,10 @@ function digestDay(d, who) {
   // research: green >=25%, yellow 15-24.99%, red <15% -- see
   // digest_config.THRESHOLDS["closing_ratio_pct"]) -- both halves share the
   // one scheme, since Frank gave one for "close ratio", not two.
+  const pct = v => v == null ? "—" : v.toFixed(1) + "%";
   const closingRatioTileHtml = `<div class="tile">
    <div class="k">Closing Ratio</div>
-   <div class="v" style="display:flex; align-items:flex-start; justify-content:center; gap:8px;">
-    <span style="display:inline-flex; flex-direction:column; align-items:center;">
-     <span class="${tc("closing_hh")}">${hhClosingRatio == null ? "—" : hhClosingRatio.toFixed(1) + "%"}</span>
-     <span class="n" style="margin-top:2px; font-weight:400;">households</span>
-    </span>
-    <span style="opacity:.45;">/</span>
-    <span style="display:inline-flex; flex-direction:column; align-items:center;">
-     <span class="${tc("closing_pq")}">${premClosingRatio == null ? "—" : premClosingRatio.toFixed(1) + "%"}</span>
-     <span class="n" style="margin-top:2px; font-weight:400;">premium</span>
-    </span>
-   </div>
+   <div class="v"><span class="${tc("closing_hh")}">${pct(hhClosingRatio)}</span> <span class="n" style="font-weight:400">households</span><br><span class="${tc("closing_pq")}">${pct(premClosingRatio)}</span> <span class="n" style="font-weight:400">premium</span></div>
   </div>`;
 
   return `<div class="tiles tiles-6">${tilesHtml}${closingRatioTileHtml}</div>
