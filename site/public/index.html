@@ -608,6 +608,11 @@ details.sc .scb { padding: 0 12px 12px; }
 .gradecard td.gi { width: 180px; font-weight: 600; }
 .histrow { display: flex; justify-content: space-between; gap: 10px; padding: 7px 0; border-bottom: 1px solid var(--border); font-size: 12.5px; }
 .histrow:last-child { border-bottom: none; }
+.rtt { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 12.5px; font-variant-numeric: tabular-nums; }
+.rtt th { text-align: right; font-weight: 500; color: var(--text-muted); font-size: 11px; padding: 3px 0 3px 8px; }
+.rtt td { text-align: right; padding: 4px 0 4px 8px; border-top: 1px solid var(--border); }
+.rtt td:first-child, .rtt th:first-child { text-align: left; padding-left: 0; }
+.rtt td.mut { color: var(--text-muted); }
 </style>
 </head>
 <body>
@@ -3619,6 +3624,8 @@ function fmtDur(h) {
 }
 function servicePanel(d) {
   const T = d.tickets || {}, K = d.tasks || {}, U = d.utilization || {};
+  const CB = d.callbacks, RT = d.retention;
+  const mins = m => m == null ? "—" : (m < 60 ? m + "m" : (Math.round(m / 6) / 10) + "h");
   const R = T.resolution || {};
   const team = (d.team || []).map(t => t.name);
   const first = n => n.split(" ")[0];
@@ -3649,15 +3656,35 @@ function servicePanel(d) {
       <div class="n" style="margin-top:8px"><b>${k.completed ?? 0}/${k.due ?? 0}</b> service tasks &middot; <b>${c.total || 0}</b> tickets closed</div>
       <div class="n"><b>${b.open ?? 0}</b> open tickets &middot; <b>${b.overdue ?? 0}</b> overdue</div>
       <div class="n">Changes ${fmtDur(res("changes").median_h)} <span style="color:var(--text-muted)">(${res("changes").n || 0})</span> &middot; Renewals ${fmtDur(res("renewals").median_h)} <span style="color:var(--text-muted)">(${res("renewals").n || 0})</span></div>
+      ${CB ? `<div class="n">Call backs <b>${((CB.by_person || {})[n] || {}).returned || 0}</b>${((CB.by_person || {})[n] || {}).median_min != null ? ` &middot; median ${mins(CB.by_person[n].median_min)}` : ""}</div>` : ""}
       <div class="n">Utilization <b>${pct(u.pct)}</b>${u.total ? ` &middot; ${u.productive} of ${u.total}` : ""}${u.hybrid ? ' <span style="color:var(--text-muted)">&middot; whole day, shared with sales</span>' : ""}</div>
     </div>`;
   };
-  const pending = `<div class="tiles">
-    <div class="tile"><div class="k">Retention &middot; Renewal Window</div><div class="v" style="color:var(--text-muted)">—</div>
-      <div class="n">Retained vs cancelled, endorsed and rewritten, 30 days before to 45 days after renewal &middot; households, policies, premium. Live window and last closed month. Coming next.</div></div>
-    <div class="tile"><div class="k">Call-Back Resolution</div><div class="v" style="color:var(--text-muted)">—</div>
-      <div class="n">Missed or voicemail call-in to the first return call. Coming next.</div></div>
-  </div>`;
+  const cbTile = !CB ? "" : `<div class="tile"><div class="k">Call-Back Resolution</div>
+      <div class="v">${mins(CB.median_min)}</div>
+      <div class="n">median to the first return call &middot; ${CB.returned} of ${CB.missed} missed service calls returned today</div>
+      <div class="n">${CB.unreturned} not returned by close${CB.returned_by_others ? ` &middot; ${CB.returned_by_others} returned by someone outside the team` : ""}</div></div>`;
+  const fmtDate = x => { const [y, m, dd] = x.split("-"); return `${+m}/${+dd}`; };
+  const monthName = ym => new Date(ym + "-15T12:00:00").toLocaleString("en-US", { month: "long", year: "numeric" });
+  const rtCol = (v, title, sub, live) => {
+    const row = (label, o, cls) => `<tr><td${cls ? ` class="${cls}"` : ""}>${label}</td><td>${o.households}</td><td>${o.policies}</td><td>${money(o.premium)}</td></tr>`;
+    return `<div class="tile" style="padding-bottom:10px"><div class="k">${title}</div>
+      <div class="v">${v.rate_policies == null ? "—" : v.rate_policies + "%"}<span style="font-size:13px;color:var(--text-muted)"> policies &middot; ${v.rate_premium == null ? "—" : v.rate_premium + "%"} premium</span></div>
+      <div class="n">${sub}${v.rate_policies_floor != null && v.unconfirmed.policies ? ` &middot; ${v.rate_policies_floor}% if every "no renewal on file" is lost` : ""}</div>
+      <table class="rtt"><thead><tr><th></th><th>HH</th><th>Policies</th><th>Premium</th></tr></thead><tbody>
+        ${row("Retained", v.retained)}${row("Rewritten", v.rewritten)}${row("Cancelled", v.cancelled)}
+        ${row("No renewal on file", v.unconfirmed, "mut")}${live ? row("Upcoming", v.upcoming, "mut") : ""}
+        ${row("Endorsed in window", v.endorsed, "mut")}
+        ${v.before_window && v.before_window.policies ? row(`Cancelled earlier (&gt;${RT.window.before}d before)`, v.before_window, "mut") : ""}
+      </tbody></table>
+      <div class="n" style="color:var(--text-muted)">${v.matched} of ${v.total} policies matched to a household</div></div>`;
+  };
+  const rtTiles = !RT ? `<div class="tile"><div class="k">Retention</div><div class="v" style="color:var(--text-muted)">—</div><div class="n">Not available for this day.</div></div>`
+    : rtCol(RT.live, "Retention &middot; Live Window", `renewals ${fmtDate(RT.live.from)} &rarr; ${fmtDate(RT.live.to)}, as of today`, true)
+      + rtCol(RT.month, `Retention &middot; ${monthName(RT.month.month)}`, `final &middot; every renewal has had its ${RT.window.after} days`, false);
+  const pending = `<div class="tiles" style="grid-template-columns:repeat(auto-fit,minmax(300px,1fr))">${rtTiles}</div>
+    <p class="sd" style="margin:10px 0 0">Window: ${RT ? RT.window.before : 30} days before to ${RT ? RT.window.after : 45} days after each renewal date. Rate = retained + rewritten over everything decided. Cancellation dates are the policy record's last change until the daily AgencyZoom snapshots cover the window.</p>
+    ${cbTile ? `<div class="tiles" style="margin-top:14px">${cbTile}</div>` : ""}`;
   return `<div class="sect"><h2>Service Team</h2>
     <p class="sd">Credit goes to whoever closed the task or ticket. Resolution time is ticket opened to completed.</p>${tiles}</div>
     <div class="sect"><h2>By Person</h2><div class="tiles">${team.map(person).join("")}</div></div>

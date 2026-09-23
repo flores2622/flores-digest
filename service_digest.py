@@ -18,11 +18,9 @@ is right for screening calls against OPEN work). Asking for status [2]
 returns 19,287 completed tickets, each with completeDate and resolutionDesc --
 found 2026-09-23. This module is the only reader of the completed set.
 
-WHAT IS NOT HERE YET: retention across the renewal window (households,
-policies and premium retained / cancelled / rewritten / endorsed, 30 days
-before to 45 after renewal) and call-back resolution time. Both need more
-than one pull -- the household for each policy, and missed calls matched to
-return calls -- and come in the next pass.
+RETENTION across the renewal window lives in service_retention.py (its
+docstring says how each outcome is read). CALL-BACK resolution reuses the
+missed-call audit's own grouping and routing, keeping the service-side calls.
 """
 import argparse
 import collections
@@ -184,6 +182,56 @@ def ticket_figures(day, done, live):
     }
 
 
+# Missed-call buckets (missed_call_audit.route) that are service work. An open
+# lead or a closed lead is a sales call back; those stay with the producers.
+SERVICE_CALL_BUCKETS = {"customer", "open SR", "no record"}
+
+
+def callback_figures(day, recs=None):
+    """Call-back resolution: each missed or voicemail call-in to the office
+    (grouped per caller per hour, exactly as the missed-call audit does) that
+    routes to service, and the time until the first outbound call back to
+    that number. Credit goes to whoever made the return call. Same-day only:
+    a call missed at 5:20 and returned tomorrow reads as not yet returned.
+    Texts are not counted here -- a hand-typed reply lives on LEAD notes,
+    which a service customer usually does not have."""
+    import missed_call_audit as mca
+    recs = recs if recs is not None else mca.collect(day, refresh=False)
+    idx, *_ = mca.build_index(day)
+    names = set(SERVICE_TEAM)
+    rows = []
+    for n, calls in mca.group(recs):
+        bucket = mca.route(idx.get(n))[0]
+        if bucket not in SERVICE_CALL_BUCKETS:
+            continue
+        last = mca.parse(calls[-1]["startTime"])
+        back = None
+        for r in recs:
+            if r.get("direction") != "Outbound":
+                continue
+            if mca.norm((r.get("to") or {}).get("phoneNumber")) != n:
+                continue
+            t = mca.parse(r.get("startTime"))
+            if t and last and t > last and (back is None or t < back[0]):
+                back = (t, (r.get("from") or {}).get("name") or "")
+        rows.append({"bucket": bucket,
+                     "minutes": round((back[0] - last).total_seconds() / 60) if back else None,
+                     "by": back[1] if back else None})
+    done = [r for r in rows if r["minutes"] is not None]
+    med = lambda xs: round(statistics.median(xs)) if xs else None
+    by_person = {}
+    for name in SERVICE_TEAM:
+        mine = [r["minutes"] for r in done if r["by"] == name]
+        by_person[name] = {"returned": len(mine), "median_min": med(mine)}
+    others = [r for r in done if r["by"] not in names]
+    return {"missed": len(rows), "returned": len(done),
+            "unreturned": len(rows) - len(done),
+            "median_min": med([r["minutes"] for r in done]),
+            "returned_by_others": len(others),
+            "by_bucket": dict(collections.Counter(r["bucket"] for r in rows)),
+            "by_person": by_person}
+
+
 def util_figures(day):
     import insightful_util as iu
     util, _, detail = iu.pull(day)
@@ -202,7 +250,7 @@ def util_figures(day):
     return out
 
 
-def build(day, log=log):
+def build(day, log=log, refresh_households=True):
     tasks = json.loads((ROOT / f"data/az_tasks_{day}.json").read_text())
     live_f = ROOT / f"data/az_service_tickets_{day}.json"
     live = json.loads(live_f.read_text()) if live_f.exists() else []
@@ -212,6 +260,22 @@ def build(day, log=log):
     except Exception as e:
         log(f"  utilization failed ({type(e).__name__}: {e})")
         util = {}
+    # Each section may fail alone: a bad retention read must not cost the
+    # task and ticket cards that are already right.
+    try:
+        callbacks = callback_figures(day)
+    except Exception as e:
+        log(f"  call backs failed ({type(e).__name__}: {e})")
+        callbacks = None
+    try:
+        import service_retention
+        retention = service_retention.figures(
+            day, json.loads((ROOT / "data/az_policies_all.json").read_text()),
+            json.loads((ROOT / "data/az_customers_all.json").read_text()),
+            done, log=log, refresh=refresh_households)
+    except Exception as e:
+        log(f"  retention failed ({type(e).__name__}: {e})")
+        retention = None
     return {
         "date": day,
         "label": dt.date.fromisoformat(day).strftime("%A, %B %-d, %Y"),
@@ -220,7 +284,8 @@ def build(day, log=log):
         "tasks": task_figures(tasks),
         "tickets": ticket_figures(day, done, live),
         "utilization": util,
-        "pending": ["retention", "callbacks"],
+        "callbacks": callbacks,
+        "retention": retention,
     }
 
 
