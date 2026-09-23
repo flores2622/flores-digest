@@ -441,6 +441,11 @@ def _finish_card(d, producer, group, raw_dials, day, transcript, recording_ids):
     """
     askq = _bool_pair(d.get("askq"))
     asks = _bool_pair(d.get("asks"))
+    # The producer ending a call with no objection, request to go, or time
+    # constraint standing in the way (Frank, 2026-09-23). None, not
+    # [False, ""], on a card read before METHODOLOGY.md had the key, so the
+    # board can leave the row off rather than claim "no" it never checked.
+    exit_ = _bool_pair(d.get("exit")) if "exit" in d else None
     cat, catc = _category(group)
     lead = next((r.get("lead") for r in group if r.get("lead")), "") or ""
     # AgencyZoom lead id, straight off the same call_detail rows day_calls.
@@ -504,7 +509,7 @@ def _finish_card(d, producer, group, raw_dials, day, transcript, recording_ids):
         "tab": _tab(catc),
         "calltype": _calltype(d.get("calltype")),
         "summary": str(d.get("summary") or "").strip(),
-        "askq": askq, "asks": asks,
+        "askq": askq, "asks": asks, "exit": exit_,
         "askfix": str(d.get("askfix") or "").strip(),
         "objs": _clean_objs(d.get("objs"), d.get("obj")),
         "good": _clean_pairs(d.get("good")),

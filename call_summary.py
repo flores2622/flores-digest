@@ -349,6 +349,17 @@ def _audio_legs(day):
     """
     tpath = ROOT / f"data/transcripts_{day}.json"
     tx = json.loads(tpath.read_text()) if tpath.exists() else {}
+    # Start time and direction per call id, from the raw RingCentral log. The
+    # transcripts file only marks inbound entries, so an entry with no
+    # "direction" is only ASSUMED outbound -- the log says for sure.
+    rc = {}
+    for name in (f"rc_raw_{day}.json", f"rc_window_{day}.json"):
+        f = ROOT / "data" / name
+        if f.exists():
+            for r in json.loads(f.read_text()):
+                if r.get("id"):
+                    rc.setdefault(r["id"], (r.get("startTime") or "",
+                                            (r.get("direction") or "").lower()))
     out = {}
     for cid, v in tx.items():
         n, who = v.get("to"), v.get("producer")
@@ -356,10 +367,11 @@ def _audio_legs(day):
             continue
         p = ROOT / f"data/audio/{cid}.mp3"
         if p.exists() and p.stat().st_size > 500:
+            start, rc_dir = rc.get(cid, ("", ""))
             out.setdefault((who, n), []).append(
                 (str(p), v.get("audio_seconds") or v.get("duration") or 0,
-                 v.get("class"), v.get("direction") or "outbound",
-                 v.get("offset") or 0, bool(v.get("partial"))))
+                 v.get("class"), v.get("direction") or rc_dir or "outbound",
+                 v.get("offset") or 0, bool(v.get("partial")), start))
     for legs in out.values():
         legs.sort(key=lambda x: -x[1])
     return out
@@ -368,19 +380,23 @@ def _audio_legs(day):
 def _wanted(legs):
     """Which recordings to read for one row.
 
-    Normally the longest leg -- head and tail of one call is all a summary
-    needs. But when the prospect CALLED BACK and both halves were real
-    conversations, both get read and the summary covers the pair (Frank,
-    2026-08-26: "use the total of both times and summary of both calls (if
-    there were 2 live conversations, the initial outbound and the lead call
-    back)"). A call back to a voicemail is NOT that case -- nobody talked into
-    the voicemail, so the call back alone is the conversation.
+    Every LIVE conversation on the number, in the order they happened, so the
+    read covers all of them (Frank, 2026-08-26: "use the total of both times
+    and summary of both calls"). A voicemail leg is skipped -- nobody talked
+    into it. With no second live leg, the longest leg alone.
+
+    This used to require the live legs to differ in DIRECTION (an outbound
+    dial plus an inbound call back), and since the transcripts file only
+    marks inbound entries, a call-in followed by a call back often failed
+    that test and only the longer call was read. Joaquin Guillen, 2026-09-22:
+    the card counted both calls but Apollo only ever saw the call-in (Frank,
+    2026-09-23: "Its a call in and call back, need to include both").
     """
     if not legs:
         return []
     live = [l for l in legs if l[2] == "live"]
-    if len(live) > 1 and len({l[3] for l in live}) > 1:
-        return sorted(live, key=lambda l: l[3] != "outbound")   # outbound first
+    if len(live) > 1:
+        return sorted(live, key=lambda l: l[6] or "")   # chronological
     return [legs[0]]
 
 
@@ -449,18 +465,19 @@ def build(day, log=print):
             want = _wanted(legs[(p_, r["number"])])
             try:
                 parts = []
-                for path, dur, cls, direction, off, partial in want:
+                for path, dur, cls, direction, off, partial, _start in want:
                     t = T.transcribe_full(path, dur, offset=off) or ""
                     if not t:
                         continue
-                    if len(want) > 1 or partial:
-                        tag = (f"[{direction} call, {dur // 60}m{dur % 60:02d}s"
-                               + (" -- ONLY THE OPENING WAS RECORDED; the call "
-                                  "continued after a transfer" if partial else "")
-                               + "]")
-                        parts.append(f"{tag}\n{t}")
-                    else:
-                        parts.append(t)
+                    # Always tagged, even a lone call: whether the prospect
+                    # called in or was dialled changes how the call is
+                    # coached (METHODOLOGY.md -- a call-in for a quote is
+                    # already the green light).
+                    tag = (f"[{direction} call, {dur // 60}m{dur % 60:02d}s"
+                           + (" -- ONLY THE OPENING WAS RECORDED; the call "
+                              "continued after a transfer" if partial else "")
+                           + "]")
+                    parts.append(f"{tag}\n{t}")
                 fx[_ck(p_, r["number"])] = "\n\n".join(parts)
             except Exception as e:
                 fx[_ck(p_, r["number"])] = ""

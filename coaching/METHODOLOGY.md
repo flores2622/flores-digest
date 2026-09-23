@@ -72,6 +72,24 @@ close HERE ONLY.
   quote?" asks permission for it. The whole point of `askq`/`asks` below (or
   Role Play's "Assumptive language" item) is to catch a producer who works
   hard on a call and then asks permission to finish it.
+- A prospect who CALLED IN for a quote, or already asked to be quoted, has
+  given the green light. Permission is not needed and asking for it is a
+  miss, not good manners: "I would need that in order to finish up the
+  quote", asking whether they want it quoted, or asking permission for each
+  piece of information all score `askq` false, and the justification must say
+  plainly that the prospect had already asked for the quote. The transcript
+  opens with a tag saying whether each call was inbound or outbound -- read
+  it, and make `summary` say who called whom. (Frank, 2026-09-23: Joaquin
+  Guillen called in for his quote and Lorena still asked permission piece by
+  piece -- "you already have the green light. GO.")
+- The PRODUCER ending the call is a red flag in its own right. "I'll let you
+  go", "I'll send you the quotes", "I'll give you a call back" -- said while
+  the prospect had raised no objection, not asked to go, and not said they
+  had to leave -- is the producer walking away from a live opportunity. Score
+  it in `exit` below and name it in `bad`. It is worse than simply not
+  assuming the sale: there was nothing to overcome and the producer stopped
+  anyway. (Frank, 2026-09-23: Joaquin Guillen -- "she got him off the phone
+  herself ... an objection was not even presented".)
 - A producer who asks for banking or payment details (routing number, account
   number, card info), a start/effective date, or moves straight into
   e-sign/paperwork has ALREADY assumed the close — score `asks` true from
@@ -264,6 +282,14 @@ Return ONLY a JSON object, no prose around it, with exactly these keys:
 "askfix"   one sentence: what an assumptive version of this call's weakest
            moment would have sounded like. Empty string if both askq and asks
            are already true.
+"exit"     [boolean, one-sentence quote-based justification] -- did the
+           PRODUCER end the call while the prospect had raised no objection,
+           not asked to go, and not said they had to leave? Quote the
+           producer's wrap-up line. true = the producer walked away (red
+           flag, see Core judgment). false when the prospect ended it or
+           asked to, when an objection or a stated time constraint came first,
+           or when the call reached a real close. Always false on a pure
+           "service" call.
 "objs"     EVERY distinct objection the prospect raised, as an array -- empty
            array if none was raised (Frank, 2026-09-15: reviewing a card
            where the prospect raised both a spousal-approval objection AND a
