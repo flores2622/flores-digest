@@ -936,16 +936,20 @@ function digestDay(d, who) {
   const hh = t.hh ?? 0, pol = t.pol ?? 0, pq = t.pq ?? 0, ps = t.ps ?? 0;
   const hhClosingRatio = hh ? (100 * pol / hh) : null;
   const premClosingRatio = pq ? (100 * ps / pq) : null;
+  // Tier-coloured (Frank, 2026-09-23, off industry cross-sell close-rate
+  // research: green >=25%, yellow 15-24.99%, red <15% -- see
+  // digest_config.THRESHOLDS["closing_ratio_pct"]) -- both halves share the
+  // one scheme, since Frank gave one for "close ratio", not two.
   const closingRatioTileHtml = `<div class="tile">
    <div class="k">Closing Ratio</div>
    <div class="v" style="display:flex; align-items:flex-start; justify-content:center; gap:8px;">
     <span style="display:inline-flex; flex-direction:column; align-items:center;">
-     <span>${hhClosingRatio == null ? "—" : hhClosingRatio.toFixed(1) + "%"}</span>
+     <span class="${tc("closing_hh")}">${hhClosingRatio == null ? "—" : hhClosingRatio.toFixed(1) + "%"}</span>
      <span class="n" style="margin-top:2px; font-weight:400;">households</span>
     </span>
     <span style="opacity:.45;">/</span>
     <span style="display:inline-flex; flex-direction:column; align-items:center;">
-     <span>${premClosingRatio == null ? "—" : premClosingRatio.toFixed(1) + "%"}</span>
+     <span class="${tc("closing_pq")}">${premClosingRatio == null ? "—" : premClosingRatio.toFixed(1) + "%"}</span>
      <span class="n" style="margin-top:2px; font-weight:400;">premium</span>
     </span>
    </div>
@@ -979,24 +983,37 @@ function householdCompletionHtml(d, who) {
   const byName = Object.fromEntries((d.producers || []).map(p => [p.name, p]));
   const focus = who ? byName[who] : null;
   const ranked = focus ? [focus] : (d.producers || []);
+  const TI = { green: "tg", yellow: "ty", red: "tr" };
+  const tc = (name, key) => TI[((d.tiers || {})[name] || {})[key]] || "";
+  // Resolved policies over resolved HOUSEHOLDS (never over `pol`, which
+  // includes the ~50% of sales the join can't place at a household at all
+  // -- see digest_config.bundle_classification). Tier-coloured (Frank,
+  // 2026-09-23, off industry policies-per-household benchmarks: green
+  // >=1.5, yellow 1.1-1.49, red <1.1 -- digest_config.THRESHOLDS
+  // ["policies_per_household"]).
+  const perHh = p => (p.bundle_resolved_households
+    ? (p.bundle_resolved / p.bundle_resolved_households) : null);
 
   const row = p => `<tr><td><span class="who">${pbadge(DOT[p.name] || "#8a877f", p.name)}</span></td>
     <td class="num">${p.pol ?? 0}</td>
     <td class="num">${p.cross_sell ?? 0}</td>
     <td class="num">${p.new_bundle ?? 0}+</td>
-    <td class="num">${p.bundle_resolved ?? 0} of ${p.pol ?? 0}</td></tr>`;
+    <td class="num">${p.bundle_resolved ?? 0} of ${p.pol ?? 0}</td>
+    <td class="num ${tc(p.name, "policies_per_hh")}">${perHh(p) == null ? "—" : perHh(p).toFixed(2)}</td></tr>`;
   const rows = ranked.map(row).join("");
   const T = d.totals || {};
   const tot = focus ? "" : `<tr class="tot"><td><span class="who">${pbadge(TEAM_DOT, "Team")}</span></td>
     <td class="num">${T.pol ?? 0}</td>
     <td class="num">${T.cross_sell ?? 0}</td>
     <td class="num">${T.new_bundle ?? 0}+</td>
-    <td class="num">${T.bundle_resolved ?? 0} of ${T.pol ?? 0}</td></tr>`;
+    <td class="num">${T.bundle_resolved ?? 0} of ${T.pol ?? 0}</td>
+    <td class="num ${tc("team", "policies_per_hh")}">${perHh(T) == null ? "—" : perHh(T).toFixed(2)}</td></tr>`;
 
   return `<div class="sect"><h2>Household Completion</h2>
    <p class="sd">Cross-sell to an existing household (AgencyZoom's own lead source, every sale) vs. a brand-new bundled household (est. lower bound -- see Matched to Household).</p>
    <div class="scroll"><table><thead><tr><th>Producer</th><th class="num">Policies Sold</th>
-   <th class="num">Cross-Sell</th><th class="num">New Bundle</th><th class="num">Matched to Household</th></tr></thead>
+   <th class="num">Cross-Sell</th><th class="num">New Bundle</th><th class="num">Matched to Household</th>
+   <th class="num">Policies/HH</th></tr></thead>
    <tbody>${rows}${tot}</tbody></table></div></div>`;
 }
 

@@ -153,6 +153,21 @@ def _producer_tiers(p, pace=None):
     }
     if p.get("util") is not None:
         out["util"] = cfg.tier("utilization_pct", p["util"])
+    # Closing Ratio (Frank, 2026-09-23) -- sold / quoted, households and
+    # premium alike. None (no households/premium quoted) reads red via
+    # tier()'s own None rule, same as every other None-means-red metric here.
+    out["closing_hh"] = cfg.tier("closing_ratio_pct",
+        (100 * (p.get("pol") or 0) / hh) if hh else None)
+    pq = p.get("pq") or 0
+    out["closing_pq"] = cfg.tier("closing_ratio_pct",
+        (100 * (p.get("ps") or 0) / pq) if pq else None)
+    # Household Completion's policies-per-household (Frank, 2026-09-23) --
+    # resolved policies over resolved households (see bundle_classification),
+    # never `pol` over resolved households, since `pol` includes the ~50%
+    # of sales this join can't place at a household at all.
+    resolved_hh = p.get("bundle_resolved_households") or 0
+    out["policies_per_hh"] = cfg.tier("policies_per_household",
+        (p.get("bundle_resolved") or 0) / resolved_hh if resolved_hh else None)
     # daily.py's coach blank-fill sets 0, not None, when no Coach AI figure
     # was recorded for this producer today -- fold that back to None so
     # tier()'s existing None->red rule gives the red 0 Frank asked for
@@ -203,6 +218,14 @@ def _team_tiers(totals, producers, pace=None):
     }
     if totals.get("util") is not None:
         out["util"] = cfg.tier("utilization_pct", totals["util"])
+    out["closing_hh"] = cfg.tier("closing_ratio_pct",
+        (100 * (totals.get("pol") or 0) / hh) if hh else None)
+    pq = totals.get("pq") or 0
+    out["closing_pq"] = cfg.tier("closing_ratio_pct",
+        (100 * (totals.get("ps") or 0) / pq) if pq else None)
+    resolved_hh = totals.get("bundle_resolved_households") or 0
+    out["policies_per_hh"] = cfg.tier("policies_per_household",
+        (totals.get("bundle_resolved") or 0) / resolved_hh if resolved_hh else None)
     out["roleplay"] = cfg.tier("roleplay_score", totals.get("roleplay"))
     ttp = (totals.get("tasks") or {}).get("pct")
     if ttp is not None:
@@ -236,6 +259,7 @@ def build(day, live=False):
             "cross_sell": v.get("cross_sell", 0),
             "new_bundle": v.get("new_bundle", 0),
             "bundle_resolved": v.get("bundle_resolved", 0),
+            "bundle_resolved_households": v.get("bundle_resolved_households", 0),
             "callbacks_prior": v.get("callbacks_prior", 0),
             # insightful_util.pull() writes (pct, total_hhmm, prod_hhmm) --
             # these field names were swapped relative to that order until
@@ -268,6 +292,7 @@ def build(day, live=False):
             "cross_sell": sum(p["cross_sell"] for p in producers),
             "new_bundle": sum(p["new_bundle"] for p in producers),
             "bundle_resolved": sum(p["bundle_resolved"] for p in producers),
+            "bundle_resolved_households": sum(p["bundle_resolved_households"] for p in producers),
             "util": M.get("util_weighted"),
             "talk": team_talk,
             "roleplay": team_rp,

@@ -768,7 +768,8 @@ def build_metrics(day):
                   # only be computed for the "resolved" share of policies.
                   "cross_sell": bundle.get(who, {}).get("cross_sell", 0),
                   "new_bundle": bundle.get(who, {}).get("new_bundle", 0),
-                  "bundle_resolved": bundle.get(who, {}).get("resolved", 0)}
+                  "bundle_resolved": bundle.get(who, {}).get("resolved", 0),
+                  "bundle_resolved_households": bundle.get(who, {}).get("resolved_households", 0)}
 
     util, weighted, _ = iu.pull(day)
     _raw_tasks = json.loads((ROOT / f"data/az_tasks_{day}.json").read_text())

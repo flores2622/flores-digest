@@ -194,6 +194,14 @@ def bundle_classification(day, policies, leads, customers, source_map, ids):
     `resolved` is the denominator (how many of `day`'s real sales resolved
     to a household at all) so callers can show new_bundle as a rate/lower
     bound, never as a raw count next to cross_sell's 100%-coverage figure.
+
+    `resolved_households` is the count of DISTINCT households behind those
+    `resolved` policies -- a resolved policy is a sale, not a household, so
+    two resolved policies for the same household (a bundle) must not read
+    as two households. This is what policies-per-household (Frank,
+    2026-09-23, for the tier thresholds on this card) divides by: resolved
+    / resolved_households, never `pol` / `resolved_households`, since `pol`
+    includes the ~50% of sales this join never resolves at all.
     """
     sold_leads_by_day = collections.defaultdict(list)
     for l in leads:
@@ -202,6 +210,7 @@ def bundle_classification(day, policies, leads, customers, source_map, ids):
     cust_by_id = {c["id"]: c for c in customers if c.get("id") is not None}
 
     out = collections.defaultdict(lambda: {"cross_sell": 0, "new_bundle": 0, "resolved": 0})
+    households = collections.defaultdict(set)
     for p in policies:
         if not str(p.get("soldDate") or "").startswith(day):
             continue
@@ -217,10 +226,12 @@ def bundle_classification(day, policies, leads, customers, source_map, ids):
                  and l.get("leadSourceId") == p.get("leadSourceId")]
         if len(cands) != 1:
             continue
-        cust = cust_by_id.get(cands[0].get("convertedHouseholdId"))
+        hh_id = cands[0].get("convertedHouseholdId")
+        cust = cust_by_id.get(hh_id)
         if not cust:
             continue
         row["resolved"] += 1
+        households[who].add(hh_id)
         lines = _policy_line_count(cust.get("policySummary"))
         if lines is None or lines < 2:
             continue
@@ -232,6 +243,8 @@ def bundle_classification(day, policies, leads, customers, source_map, ids):
             age = None
         if age is not None and age <= NEW_HOUSEHOLD_DAYS:
             row["new_bundle"] += 1
+    for who, row in out.items():
+        row["resolved_households"] = len(households.get(who, ()))
     return dict(out)
 
 
@@ -375,6 +388,18 @@ THRESHOLDS = {
     # already colours red on its own -- the "shown as 0" half of the rule is
     # the leaderboard's existing c.get("roleplay", 0) default, unchanged here.
     "roleplay_score":    {"green": 80,   "yellow": 0},
+    # Closing Ratio (Frank, 2026-09-23, after industry research on cross-sell
+    # close rates -- see digestDay's own comment for the citations): applies
+    # to BOTH halves of the Closing Ratio card, households% and premium%
+    # alike -- Frank gave one scheme for "close ratio", not two.
+    "closing_ratio_pct": {"green": 25, "yellow": 15},
+    # Household Completion's policies-per-household (Frank, 2026-09-23, off
+    # the industry benchmark that top agencies run 1.5-2.5+ policies per
+    # household against an industry average under 2.0 -- see
+    # digest_config.bundle_classification's resolved_households for what
+    # this divides: RESOLVED policies over resolved households, never total
+    # `pol`, since the join only resolves about half of a day's sales).
+    "policies_per_household": {"green": 1.5, "yellow": 1.1},
 }
 
 # Straight-sum metrics scale x3 for the team row. Rate, percentage and per-unit
