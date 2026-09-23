@@ -3677,12 +3677,13 @@ function servicePanel(d) {
         ${row("Endorsed in window", v.endorsed, "mut")}
         ${v.before_window && v.before_window.policies ? row(`Cancelled earlier (&gt;${RT.window.before}d before)`, v.before_window, "mut") : ""}
       </tbody></table>
-      <div class="n" style="color:var(--text-muted)">${v.matched} of ${v.total} policies matched to a household</div></div>`;
+      <div class="n" style="color:var(--text-muted)">${v.matched} of ${v.total} policies matched to a household${v.by_resolution ? ` &middot; ${v.by_resolution} decided by the renewal SR's resolution` : ""}</div></div>`;
   };
   const rtTiles = !RT ? `<div class="tile"><div class="k">Retention</div><div class="v" style="color:var(--text-muted)">—</div><div class="n">Not available for this day.</div></div>`
     : rtCol(RT.live, "Retention &middot; Live Window", `renewals ${fmtDate(RT.live.from)} &rarr; ${fmtDate(RT.live.to)}, as of today`, true)
       + rtCol(RT.month, `Retention &middot; ${monthName(RT.month.month)}`, `final &middot; every renewal has had its ${RT.window.after} days`, false);
   const pending = `<div class="tiles" style="grid-template-columns:repeat(auto-fit,minmax(300px,1fr))">${rtTiles}</div>
+    ${RT && RT.unnamed_resolutions && Object.keys(RT.unnamed_resolutions).length ? `<p class="sd" style="margin:10px 0 0;color:var(--warn, #b45309)">Renewal SR resolutions not yet named: ${Object.entries(RT.unnamed_resolutions).map(([k, n]) => `id ${k} (${n})`).join(", ")} -- counted from the policy records until they are.</p>` : ""}
     <p class="sd" style="margin:10px 0 0">Window: ${RT ? RT.window.before : 30} days before to ${RT ? RT.window.after : 45} days after each renewal date. Rate = retained + rewritten over everything decided. Cancellation dates are the policy record's last change until the daily AgencyZoom snapshots cover the window.</p>
     ${cbTile ? `<div class="tiles" style="margin-top:14px">${cbTile}</div>` : ""}`;
   return `<div class="sect"><h2>Service Team</h2>

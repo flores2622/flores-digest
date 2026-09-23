@@ -62,6 +62,28 @@ REFRESH_BATCH = 150                    # of those, how many per night
 # nightly run; it works through the backlog a few hundred a night instead.
 MAX_FETCH = 400
 
+# ---- renewal SR resolutions (Frank, 2026-09-23) ----------------------------
+# The ONLY resolutions the team uses on renewal tickets from 2026-09-24. Frank
+# renamed some old choices and added others, and the old ones could not all be
+# deleted -- so an old id now carries a new name that does not describe what
+# was picked when it was used. Resolutions are therefore read only on tickets
+# completed on or after RESOLUTIONS_FROM; everything earlier stays with the
+# policy-chain reading.
+RESOLUTIONS_FROM = "2026-09-24"
+RESOLUTION_OUTCOME = {
+    "Renewed: Accepted as is": "retained",
+    "Renewed: Endorsed": "retained",            # and counts as endorsed
+    "Rewrite Accepted": "rewritten",
+    "Cancelled: Rewrite Declined": "cancelled",
+    "Cancelled, no endorse/rewrite available": "cancelled",
+    "Unable to Contact": None,                  # undecided: policy chain decides
+}
+ENDORSED_RESOLUTIONS = {"Renewed: Endorsed"}
+# AgencyZoom's API returns resolutionId only, never the name, and has no lookup
+# for it. Each id is named here once, by hand, the first time a ticket closed
+# with it shows up -- the Service tab lists any id it cannot name yet.
+RESOLUTION_LABELS = {}
+
 _HOME = re.compile(r"home|dwelling|\bdp\d?\b|mobile|manufactured|landlord|condo|renter|ho-?\d", re.I)
 CHANGE = re.compile(r"endors|change|add|remov|replac|swap|delet|updat|vehicle|driver|"
                     r"lienholder|mortgagee|coverage", re.I)
@@ -243,6 +265,42 @@ def _cohort(policies, hh, pn2hh, lo, hi, day):
     return rows
 
 
+def _resolution_overrides(rows, done_tickets, day):
+    """{policyNumber: (outcome, label)} from renewal tickets completed on or
+    after RESOLUTIONS_FROM and by `day`, inside that policy's own window.
+    A ticket belongs to a household, not a policy: if its text names one of
+    the household's renewing policy numbers it applies to that one, otherwise
+    to every policy of the household whose window holds the completion.
+    Also returns the ids that could not be named."""
+    from service_digest import RENEWALS
+    by_hh = collections.defaultdict(list)
+    unknown = collections.Counter()
+    for t in done_tickets:
+        c = _d(t.get("completeDate"))
+        if t.get("workflowName") not in RENEWALS or not (RESOLUTIONS_FROM <= c <= day):
+            continue
+        rid = t.get("resolutionId")
+        label = RESOLUTION_LABELS.get(rid)
+        if label is None:
+            if rid is not None:
+                unknown[rid] += 1
+            continue
+        text = re.sub(r"\s+", "", " ".join(str(t.get(k) or "") for k in
+                                           ("subject", "serviceDesc", "resolutionDesc")))
+        by_hh[str(t.get("householdId"))].append((c, label, text))
+    out = {}
+    for r in rows:
+        tix = by_hh.get(r["household"] or "")
+        if not tix:
+            continue
+        lo, hi = _shift(r["renewal"], -BEFORE), min(_shift(r["renewal"], AFTER), day)
+        named = [x for x in tix if r["policy"] in x[2]]
+        for c, label, _ in sorted(named or tix):
+            if lo <= c <= hi:
+                out[r["policy"]] = (RESOLUTION_OUTCOME.get(label), label)
+    return out, dict(unknown)
+
+
 def _endorsed(rows, done_tickets, day):
     """Households in the cohort with a change ticket completed inside their
     own renewal window (and by `day`)."""
@@ -304,10 +362,61 @@ def figures(day, policies, customers, done_tickets, az=None, log=print, refresh=
         pn2hh = policy_households(hh)
     live = _cohort(policies, hh, pn2hh, live_lo, live_hi, day)
     month = _cohort(policies, hh, pn2hh, m_lo, m_hi, day)
+    unknown = {}
+    endorsed_by_sr = set()
+    for rows in (live, month):
+        ov, unk = _resolution_overrides(rows, done_tickets, day)
+        unknown.update(unk)
+        for r in rows:
+            if r["policy"] in ov:
+                outc, label = ov[r["policy"]]
+                r["resolution"] = label
+                if label in ENDORSED_RESOLUTIONS:
+                    endorsed_by_sr.add(r["policy"])
+                # The team's own answer outranks the chain reading -- except
+                # before a renewal date, where "retained" is not decided yet.
+                if outc and not (outc == "retained" and r["renewal"] > day):
+                    r["outcome"] = outc
     return {
         "window": {"before": BEFORE, "after": AFTER},
-        "live": {"from": live_lo, "to": live_hi, **_summarize(live, _endorsed(live, done_tickets, day))},
+        "live": {"from": live_lo, "to": live_hi,
+                 **_summarize(live, _endorsed(live, done_tickets, day) | endorsed_by_sr),
+                 "by_resolution": sum(1 for r in live if r.get("resolution"))},
         "month": {"month": m_lo[:7], "from": m_lo, "to": m_hi,
-                  **_summarize(month, _endorsed(month, done_tickets, day))},
+                  **_summarize(month, _endorsed(month, done_tickets, day) | endorsed_by_sr),
+                  "by_resolution": sum(1 for r in month if r.get("resolution"))},
+        "unnamed_resolutions": unknown,
+        "resolutions_from": RESOLUTIONS_FROM,
         "cancel_date_note": "modifyDate stands in for the cancellation date until daily snapshots cover the window",
     }
+
+
+def list_resolutions(done_tickets, since=RESOLUTIONS_FROM):
+    """Every resolutionId on renewal tickets completed since `since`, with two
+    examples each -- what to show Frank to name an id once."""
+    from service_digest import RENEWALS
+    by = collections.defaultdict(list)
+    for t in done_tickets:
+        if t.get("workflowName") in RENEWALS and _d(t.get("completeDate")) >= since:
+            by[t.get("resolutionId")].append(t)
+    for rid, ts in sorted(by.items(), key=lambda x: -len(x[1])):
+        print(f"id {rid}: {len(ts)} ticket(s), named: {RESOLUTION_LABELS.get(rid, '-- not yet --')}")
+        for t in ts[:2]:
+            note = re.sub(r"\s+", " ", re.sub("<[^>]+>", " ", t.get("resolutionDesc") or ""))[:80]
+            print(f"    {t.get('name')} | {t.get('subject')} | closed {_d(t.get('completeDate'))}"
+                  f" by {t.get('modifiedBy')} | {note}")
+
+
+if __name__ == "__main__":
+    # python3 service_retention.py --resolutions [--since YYYY-MM-DD]
+    import sys
+    import os
+    os.chdir(ROOT)
+    import secrets_load
+    secrets_load.load()
+    if "--resolutions" in sys.argv:
+        from service_digest import completed_tickets
+        import datetime as _dt
+        since = sys.argv[sys.argv.index("--since") + 1] if "--since" in sys.argv else RESOLUTIONS_FROM
+        today = _dt.datetime.now(_dt.timezone(_dt.timedelta(hours=-7))).date().isoformat()
+        list_resolutions(completed_tickets(today), since)

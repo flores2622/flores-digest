@@ -65,7 +65,10 @@ def completed_tickets(day, az=None, log=log):
     nothing inside the lookback. A year covers every ticket completed in the
     last 30 days -- the slowest renewals since June took 46 days at p90."""
     f = ROOT / f"data/az_service_tickets_done_{day}.json"
-    if f.exists():
+    # A day that has ended keeps its first pull (point in time, like every
+    # other day file). A day still in progress is re-pulled every build --
+    # tickets keep closing, and an earlier checkpoint's copy is stale.
+    if f.exists() and day != dt.datetime.now(AZ).date().isoformat():
         return json.loads(f.read_text())
     if az is None:
         from az_client import AgencyZoom
