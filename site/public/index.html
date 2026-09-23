@@ -624,6 +624,7 @@ details.sc .scb { padding: 0 12px 12px; }
     <button class="tab" role="tab" aria-selected="false" data-v="roleplay">Role Play</button>
     <button class="tab" role="tab" aria-selected="false" data-v="training">Training</button>
     <button class="tab" role="tab" aria-selected="false" data-v="sales">Sales</button>
+    <button class="tab" role="tab" aria-selected="false" data-v="service">Service</button>
   </nav>
   <main class="main">
     <div id="view"><div class="empty">Loading…</div></div>
@@ -3575,11 +3576,103 @@ async function paint() {
     const [data] = await Promise.all([loadSalesLog(salesDay, salesFolioPick), loadLeadSources()]);
     salesLastData = data;
     repaintSales();
+  } else if (view === "service") {
+    $("#topsub").textContent = "service team -- Debbie, Amanda and Crystal";
+    v.innerHTML = '<div class="empty">Loading…</div>';
+    await loadService(serviceDay);
+    repaintService();
   } else {
     $("#topsub").textContent = "trends across every reporting day";
     v.innerHTML = '<div class="empty">Loading…</div>';
     v.innerHTML = await trendsPanel();
   }
+}
+
+/* ---- Service tab (Frank, 2026-09-23) -------------------------------------
+   The service team's day: Debbie (CSR) plus Amanda and Crystal (hybrid).
+   Its own document (service/<day>.json, service_digest.py) and its own day
+   picker -- it does not follow the sales range controls, since a service
+   day and a sales day are built separately. Credit on every figure goes to
+   whoever CLOSED the task or ticket. Retention and call-back resolution are
+   placeholders until the next pass lands them. */
+let SERVICE_DAYS = null, serviceDay = null, serviceDoc = null;
+async function loadService(day) {
+  if (SERVICE_DAYS === null) {
+    try {
+      const r = await fetch("/api/service", { cache: "no-store" });
+      SERVICE_DAYS = r.ok ? ((await r.json()).days || []) : [];
+    } catch (_) { SERVICE_DAYS = []; }
+  }
+  serviceDay = day || serviceDay || SERVICE_DAYS[0] || null;
+  serviceDoc = null;
+  if (!serviceDay) return;
+  try {
+    const r = await fetch(`/api/service/${serviceDay}`, { cache: "no-store" });
+    if (r.ok) serviceDoc = await r.json();
+  } catch (_) {}
+}
+function fmtDur(h) {
+  if (h == null) return "—";
+  if (h < 1) return Math.max(1, Math.round(h * 60)) + "m";
+  if (h < 48) return (Math.round(h * 10) / 10) + "h";
+  return (Math.round(h / 24 * 10) / 10) + "d";
+}
+function servicePanel(d) {
+  const T = d.tickets || {}, K = d.tasks || {}, U = d.utilization || {};
+  const R = T.resolution || {};
+  const team = (d.team || []).map(t => t.name);
+  const first = n => n.split(" ")[0];
+  const pct = x => x == null ? "—" : Math.round(x) + "%";
+  const closedTeam = team.reduce((a, n) => a + (((T.closed_today || {})[n] || {}).total || 0), 0);
+  const rt = k => (R[k] || {}).team || {};
+  const tiles = `<div class="tiles">
+    <div class="tile"><div class="k">Service Tasks Done</div>
+      <div class="v">${(K.team || {}).completed ?? 0}<span style="font-size:15px;color:var(--text-muted)"> / ${(K.team || {}).due ?? 0}</span></div>
+      <div class="n">${pct((K.team || {}).pct)} of service tasks due today</div></div>
+    <div class="tile"><div class="k">Tickets Closed</div>
+      <div class="v">${closedTeam}</div><div class="n">service tickets completed today</div></div>
+    <div class="tile"><div class="k">Change Resolution</div>
+      <div class="v">${fmtDur(rt("changes").median_h)}</div>
+      <div class="n">median, ${rt("changes").n ?? 0} changes &middot; last ${T.window_days || 30} days</div></div>
+    <div class="tile"><div class="k">Renewal Resolution</div>
+      <div class="v">${fmtDur(rt("renewals").median_h)}</div>
+      <div class="n">median, ${rt("renewals").n ?? 0} renewals &middot; last ${T.window_days || 30} days</div></div>
+    <div class="tile"><div class="k">Utilization</div>
+      <div class="v">${pct((U.team || {}).pct)}</div><div class="n">productive / tracked time, whole team</div></div>
+  </div>`;
+  const person = n => {
+    const k = K[n] || {}, u = U[n] || {}, c = (T.closed_today || {})[n] || {}, b = (T.backlog || {})[n] || {};
+    const res = key => ((R[key] || {}).by_person || {})[n] || {};
+    const role = ((d.team || []).find(t => t.name === n) || {}).role || "";
+    return `<div class="tile">
+      <div class="k">${pbadge(DOT[n] || TEAM_DOT, first(n))} <span style="margin-left:4px">${role}</span></div>
+      <div class="n" style="margin-top:8px"><b>${k.completed ?? 0}/${k.due ?? 0}</b> service tasks &middot; <b>${c.total || 0}</b> tickets closed</div>
+      <div class="n"><b>${b.open ?? 0}</b> open tickets &middot; <b>${b.overdue ?? 0}</b> overdue</div>
+      <div class="n">Changes ${fmtDur(res("changes").median_h)} <span style="color:var(--text-muted)">(${res("changes").n || 0})</span> &middot; Renewals ${fmtDur(res("renewals").median_h)} <span style="color:var(--text-muted)">(${res("renewals").n || 0})</span></div>
+      <div class="n">Utilization <b>${pct(u.pct)}</b>${u.total ? ` &middot; ${u.productive} of ${u.total}` : ""}${u.hybrid ? ' <span style="color:var(--text-muted)">&middot; whole day, shared with sales</span>' : ""}</div>
+    </div>`;
+  };
+  const pending = `<div class="tiles">
+    <div class="tile"><div class="k">Retention &middot; Renewal Window</div><div class="v" style="color:var(--text-muted)">—</div>
+      <div class="n">Retained vs cancelled, endorsed and rewritten, 30 days before to 45 days after renewal &middot; households, policies, premium. Live window and last closed month. Coming next.</div></div>
+    <div class="tile"><div class="k">Call-Back Resolution</div><div class="v" style="color:var(--text-muted)">—</div>
+      <div class="n">Missed or voicemail call-in to the first return call. Coming next.</div></div>
+  </div>`;
+  return `<div class="sect"><h2>Service Team</h2>
+    <p class="sd">Credit goes to whoever closed the task or ticket. Resolution time is ticket opened to completed.</p>${tiles}</div>
+    <div class="sect"><h2>By Person</h2><div class="tiles">${team.map(person).join("")}</div></div>
+    <div class="sect"><h2>Retention &amp; Call Backs</h2>${pending}</div>`;
+}
+function repaintService() {
+  const v = $("#view");
+  const days = SERVICE_DAYS || [];
+  const picker = days.length ? `<div class="rangebar" style="margin-bottom:12px"><label style="font-size:12.5px;color:var(--text-secondary)">Day
+      <select id="svcday">${days.map(x => `<option value="${x}"${x === serviceDay ? " selected" : ""}>${x}</option>`).join("")}</select></label></div>` : "";
+  v.innerHTML = picker + (serviceDoc ? servicePanel(serviceDoc)
+    : `<div class="empty">${days.length ? "No service report for this day." : "No service reports yet."}</div>`);
+  if (serviceDoc) $("#topsub").textContent = "service team · " + serviceDoc.label;
+  const sel = $("#svcday");
+  if (sel) sel.onchange = async () => { v.innerHTML = '<div class="empty">Loading…</div>'; await loadService(sel.value); repaintService(); };
 }
 
 async function loadDay(day) {
