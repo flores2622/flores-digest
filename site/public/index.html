@@ -890,13 +890,13 @@ function digestDay(d, who) {
     (focus && focus.name === "Crystal Mango" && t.raw_dials && t.total_dials
      && t.raw_dials > t.total_dials) ? `${t.raw_dials} incl. service` : "",
   ].filter(Boolean).join(" · ");
-  // Dials and Live Contact combined into one tile (Frank, 2026-09-22),
-  // same "two figures, one box, slash-separated" shape as HH/Prem. Quoted
-  // and Pol/Prem. Sold below -- each half keeps its own tier colour rather
-  // than the whole tile sharing one, matching those two tiles' own pattern.
+  // Back to 5 small tiles in one line (Frank, 2026-09-23: "i dont like how
+  // the cards came out, and want 5 small cards in one line how we had them
+  // before") -- Dials and Live Contact split back into their own tiles, and
+  // Utilization back in this same row, undoing the 2026-09-22 merge/split.
   const tiles = [
-    ["Dials/Live", `<span class="${tc("dials")}">${t.dials ?? 0} Dials</span> / <span class="${tc("rate")}">${t.live ?? 0} Live</span>`,
-     [dialsNote, rate + "% contact rate"].filter(Boolean).join(" · ")],
+    ["Dials", t.dials ?? 0, dialsNote, tc("dials")],
+    ["Live contacts", t.live ?? 0, rate + "% contact rate", tc("rate")],
     ["HH/Prem. Quoted", `<span class="${tc("hh")}">${t.hh ?? 0} HH</span> / <span class="${tc("pq")}">${money(t.pq)}</span>`],
     // Policies colours on the sale streak (see apply_policy_streak), same
     // tier data the Team Leaderboard table's own Pol column already uses --
@@ -904,6 +904,7 @@ function digestDay(d, who) {
     // Quoted right above, which colours both halves).
     ["Pol/Prem. Sold", `<span class="${tc("pol")}">${t.pol ?? 0} Pol</span> / <span class="${tc("ps")}">${money(t.ps)}</span>`],
   ];
+  if (t.util != null) tiles.push(["Utilization", t.util + "%", "weighted", tc("util")]);
   const tilesHtml = tiles.map(([k, v, n, cls]) =>
     `<div class="tile"><div class="k">${k}</div><div class="v${cls ? " " + cls : ""}">${v}</div>${n ? `<div class="n">${n}</div>` : ""}</div>`).join("");
 
@@ -930,36 +931,54 @@ function digestDay(d, who) {
    <div class="n">${pol} of ${hh} HH &middot; ${money(ps)} of ${money(pq)} prem</div>
   </div></div>`;
 
-  // Bundling breakdown (Frank, 2026-09-23: "know if they completed an
-  // existing household ... or if they are selling a new bundle/household").
-  // Two DIFFERENT confidence levels sharing one tile, same reason the note
-  // spells each one out rather than trusting the reader to know:
-  //   - Cross-Sell reads AgencyZoom's own lead source on the sale ("Home no
-  //     Auto", "Cross Sell", etc.) -- no join needed, covers every sale.
-  //   - New Bundle needs a policy -> household match that only resolves for
-  //     part of a day's sales (no customerId/leadId on a policy record --
-  //     see digest_config.bundle_classification for the full method and why
-  //     widening the match window makes it WORSE, not better). It is a
-  //     LOWER BOUND, marked with "+" for exactly that reason, and the note
-  //     states its own coverage so it's never read as a complete count.
-  const crossSell = t.cross_sell ?? 0, newBundle = t.new_bundle ?? 0,
-        bundleResolved = t.bundle_resolved ?? 0;
-  const bundleTileHtml = pol ? `<div class="tiles"><div class="tile">
-   <div class="k">Cross-Sell/Bundle</div>
-   <div class="v">${crossSell} Cross-Sell / ${newBundle}+ New Bundle</div>
-   <div class="n">${bundleResolved} of ${pol} sold matched to a household</div>
-  </div></div>` : "";
-  // Utilization split into its own tile row below the new tile (it used to
-  // share the tiles array/div with Sold, with nothing between them).
-  const utilHtml = t.util != null ? `<div class="tiles"><div class="tile">
-   <div class="k">Utilization</div><div class="v${tc("util") ? " " + tc("util") : ""}">${t.util}%</div>
-   <div class="n">weighted</div></div></div>` : "";
-
   return `<div class="tiles">${tilesHtml}</div>
   ${closingRatioTileHtml}
-  ${bundleTileHtml}
-  ${utilHtml}
+  ${householdCompletionHtml(d, who)}
   ${teamLeaderboardHtml(d, who)}`;
+}
+
+/* Household Completion -- was a single "Cross-Sell/Bundle" tile in the main
+   row (Frank, 2026-09-23: "know if they completed an existing household ...
+   or if they are selling a new bundle/household"), moved down and expanded
+   into its own section, same table shape as Team Leaderboard: one row per
+   producer, a team total row below (Frank, 2026-09-23: "down below for now,
+   with individual numbers, then a team total").
+
+   Two DIFFERENT confidence levels sharing this table, so the caption spells
+   each one out rather than trusting the reader to know:
+     - Cross-Sell reads AgencyZoom's own lead source on the sale ("Home no
+       Auto", "Cross Sell", etc.) -- no join needed, covers every sale.
+     - New Bundle needs a policy -> household match that only resolves for
+       part of a day's sales (no customerId/leadId on a policy record --
+       see digest_config.bundle_classification for the full method and why
+       widening the match window makes it WORSE, not better). It is a LOWER
+       BOUND, marked with "+" for exactly that reason, with its own coverage
+       (Matched to Household) alongside so it's never read as a complete
+       count. Neither column is tier-coloured yet -- no Frank-approved
+       threshold exists for either. */
+function householdCompletionHtml(d, who) {
+  const byName = Object.fromEntries((d.producers || []).map(p => [p.name, p]));
+  const focus = who ? byName[who] : null;
+  const ranked = focus ? [focus] : (d.producers || []);
+
+  const row = p => `<tr><td><span class="who">${pbadge(DOT[p.name] || "#8a877f", p.name)}</span></td>
+    <td class="num">${p.pol ?? 0}</td>
+    <td class="num">${p.cross_sell ?? 0}</td>
+    <td class="num">${p.new_bundle ?? 0}+</td>
+    <td class="num">${p.bundle_resolved ?? 0} of ${p.pol ?? 0}</td></tr>`;
+  const rows = ranked.map(row).join("");
+  const T = d.totals || {};
+  const tot = focus ? "" : `<tr class="tot"><td><span class="who">${pbadge(TEAM_DOT, "Team")}</span></td>
+    <td class="num">${T.pol ?? 0}</td>
+    <td class="num">${T.cross_sell ?? 0}</td>
+    <td class="num">${T.new_bundle ?? 0}+</td>
+    <td class="num">${T.bundle_resolved ?? 0} of ${T.pol ?? 0}</td></tr>`;
+
+  return `<div class="sect"><h2>Household Completion</h2>
+   <p class="sd">Cross-sell to an existing household (AgencyZoom's own lead source, every sale) vs. a brand-new bundled household (est. lower bound -- see Matched to Household).</p>
+   <div class="scroll"><table><thead><tr><th>Producer</th><th class="num">Policies Sold</th>
+   <th class="num">Cross-Sell</th><th class="num">New Bundle</th><th class="num">Matched to Household</th></tr></thead>
+   <tbody>${rows}${tot}</tbody></table></div></div>`;
 }
 
 /* Team Leaderboard -- replaces what used to be two separate panels
