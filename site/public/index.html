@@ -308,20 +308,21 @@ h2 {
 /* Digest's top row specifically (Frank, 2026-09-23: "I want all 6 cards in
    1 row, and they dont need to be the same size if thats needed to make
    them fit") -- flex instead of the shared .tiles grid, so each tile keeps
-   its own natural width (a short "Closing Ratio" card stays narrower than
+   its own relative width (a short "Closing Ratio" card stays narrower than
    "HH/Prem. Quoted") rather than a grid forcing all 6 to one equal column
-   width. justify-content:space-between spreads any leftover row width INTO
-   the gaps between cards instead of leaving it as one dead strip after the
-   last card (Frank, 2026-09-23: "theres spaces off to the right, clean it
-   up") -- gap is still the FLOOR spacing, this only grows it when there's
-   slack to fill. Below 900px there isn't room for 6 natural-width cards
-   without crushing the two-percentage Closing Ratio card's own internal
-   layout, so it wraps instead of overflowing the page (same breakpoint
-   family .digestgrid already uses at 720px, just wider because this row
-   has more columns to lose room from). overflow-x is a last-resort safety
-   net, not the primary mechanism -- wrapping should always trigger first. */
-.tiles-6 { display: flex; gap: 10px; flex-wrap: wrap; justify-content: space-between; }
-.tiles-6 .tile { flex: 0 1 auto; min-width: 0; }
+   width. flex-grow:1 on every tile absorbs any leftover row width into the
+   CARDS themselves (widening each by an equal share) instead of stretching
+   the GAPS between them (Frank, 2026-09-23: "i dont like the space between
+   the top cards" -- justify-content:space-between's wide gaps, tried first,
+   read worse than a tight fixed 10px gap with wider cards). Below 900px
+   there isn't room for 6 natural-width cards without crushing the
+   two-percentage Closing Ratio card's own internal layout, so it wraps
+   instead of overflowing the page (same breakpoint family .digestgrid
+   already uses at 720px, just wider because this row has more columns to
+   lose room from). overflow-x is a last-resort safety net, not the primary
+   mechanism -- wrapping should always trigger first. */
+.tiles-6 { display: flex; gap: 10px; flex-wrap: wrap; }
+.tiles-6 .tile { flex: 1 1 auto; min-width: 0; }
 @media (min-width: 900px) { .tiles-6 { flex-wrap: nowrap; overflow-x: auto; } }
 .tile {
   background: var(--surface-raised); border: 1px solid var(--border);
@@ -960,16 +961,18 @@ function digestDay(d, who) {
   </div>`;
 
   return `<div class="tiles tiles-6">${tilesHtml}${closingRatioTileHtml}</div>
-  ${householdCompletionHtml(d, who)}
   ${teamLeaderboardHtml(d, who)}`;
 }
 
 /* Household Completion -- was a single "Cross-Sell/Bundle" tile in the main
    row (Frank, 2026-09-23: "know if they completed an existing household ...
-   or if they are selling a new bundle/household"), moved down and expanded
-   into its own section, same table shape as Team Leaderboard: one row per
-   producer, a team total row below (Frank, 2026-09-23: "down below for now,
-   with individual numbers, then a team total").
+   or if they are selling a new bundle/household"), then a table of its own
+   between Closing Ratio and Team Leaderboard, now moved into digestPanel()'s
+   .digestgrid alongside Speed to Dial/Utilization (Frank, 2026-09-24: "it
+   should be down below with the other small cards, and should be smaller
+   itself") -- one row per producer, a team total row below (Frank,
+   2026-09-23: "down below for now, with individual numbers, then a team
+   total").
 
    Two DIFFERENT confidence levels sharing this table, so the caption spells
    each one out rather than trusting the reader to know:
@@ -983,42 +986,48 @@ function digestDay(d, who) {
        (Matched to Household) alongside so it's never read as a complete
        count. Neither column is tier-coloured yet -- no Frank-approved
        threshold exists for either. */
+// Small per-producer cards, same shape as utilizationHtml's (name, one big
+// tiered number, small notes below) instead of a wide table -- moved out of
+// digestDay() into digestPanel()'s .digestgrid, alongside Speed to Dial and
+// Utilization (Frank, 2026-09-24: "it should be down below with the other
+// small cards, and should be smaller itself").
 function householdCompletionHtml(d, who) {
   const byName = Object.fromEntries((d.producers || []).map(p => [p.name, p]));
   const focus = who ? byName[who] : null;
-  const ranked = focus ? [focus] : (d.producers || []);
   const TI = { green: "tg", yellow: "ty", red: "tr" };
-  const tc = (name, key) => TI[((d.tiers || {})[name] || {})[key]] || "";
+  const tc = (name) => TI[((d.tiers || {})[name] || {})["policies_per_hh"]] || "";
   // Resolved policies over resolved HOUSEHOLDS (never over `pol`, which
   // includes the ~50% of sales the join can't place at a household at all
   // -- see digest_config.bundle_classification). Tier-coloured (Frank,
   // 2026-09-23, off industry policies-per-household benchmarks: green
   // >=1.5, yellow 1.1-1.49, red <1.1 -- digest_config.THRESHOLDS
-  // ["policies_per_household"]).
+  // ["policies_per_household"]) and the headline number on this card
+  // (Frank, 2026-09-24) -- cross-sell/new-bundle/coverage are supporting
+  // notes underneath, same role dialsNote plays on the Dials tile.
   const perHh = p => (p.bundle_resolved_households
     ? (p.bundle_resolved / p.bundle_resolved_households) : null);
+  // `tierKey` is the (d.tiers || {}) lookup key -- the producer's own name,
+  // or the lowercase "team" every other panel keys the team row under
+  // (teamLeaderboardHtml's own tt()/tc("team", ...) do the same) -- kept
+  // separate from `label`, the capitalized "Team" actually shown, so this
+  // doesn't repeat the bug where using the display label as the lookup key
+  // silently found no tier data and rendered uncoloured.
+  const card = (label, tierKey, p, cls) => `<div class="tile"${cls ? ` style="border-color:var(--border-strong)"` : ""}>
+    <div class="k">${label}</div>
+    <div class="v ${tc(tierKey)}">${perHh(p) == null ? "—" : perHh(p).toFixed(2)}</div>
+    <div class="n">policies/HH &middot; ${p.cross_sell ?? 0} cross-sell &middot; ${p.new_bundle ?? 0}+ new bundle</div>
+    <div class="n">${p.bundle_resolved ?? 0} of ${p.pol ?? 0} sold matched to a household</div>
+   </div>`;
 
-  const row = p => `<tr><td><span class="who">${pbadge(DOT[p.name] || "#8a877f", p.name)}</span></td>
-    <td class="num">${p.pol ?? 0}</td>
-    <td class="num">${p.cross_sell ?? 0}</td>
-    <td class="num">${p.new_bundle ?? 0}+</td>
-    <td class="num">${p.bundle_resolved ?? 0} of ${p.pol ?? 0}</td>
-    <td class="num ${tc(p.name, "policies_per_hh")}">${perHh(p) == null ? "—" : perHh(p).toFixed(2)}</td></tr>`;
-  const rows = ranked.map(row).join("");
+  const list = (focus ? [focus] : (d.producers || [])).filter(p => (p.pol || 0) > 0);
+  const cards = list.map(p => card(p.name, p.name, p)).join("");
   const T = d.totals || {};
-  const tot = focus ? "" : `<tr class="tot"><td><span class="who">${pbadge(TEAM_DOT, "Team")}</span></td>
-    <td class="num">${T.pol ?? 0}</td>
-    <td class="num">${T.cross_sell ?? 0}</td>
-    <td class="num">${T.new_bundle ?? 0}+</td>
-    <td class="num">${T.bundle_resolved ?? 0} of ${T.pol ?? 0}</td>
-    <td class="num ${tc("team", "policies_per_hh")}">${perHh(T) == null ? "—" : perHh(T).toFixed(2)}</td></tr>`;
+  const teamCard = focus || !(T.pol) ? "" : card("Team", "team", T, true);
+  if (!cards && !teamCard) return "";
 
   return `<div class="sect"><h2>Household Completion</h2>
-   <p class="sd">Cross-sell to an existing household (AgencyZoom's own lead source, every sale) vs. a brand-new bundled household (est. lower bound -- see Matched to Household).</p>
-   <div class="scroll"><table><thead><tr><th>Producer</th><th class="num">Policies Sold</th>
-   <th class="num">Cross-Sell</th><th class="num">New Bundle</th><th class="num">Matched to Household</th>
-   <th class="num">Policies/HH</th></tr></thead>
-   <tbody>${rows}${tot}</tbody></table></div></div>`;
+   <p class="sd">Cross-sell to an existing household (AgencyZoom's own lead source, every sale) vs. a brand-new bundled household (est. lower bound -- see the "matched" note).</p>
+   <div class="tiles">${cards}${teamCard}</div></div>`;
 }
 
 /* Team Leaderboard -- replaces what used to be two separate panels
@@ -1446,11 +1455,14 @@ function digestPanel(d, who) {
   // full-width, last -- it's the OTHER, ops-only email's content, not part
   // of the Sales Digest proper. The live banner, if any, sits above all of
   // it -- it's about right now, not last night.
+  // Household Completion (Frank, 2026-09-24) sits in this column too, right
+  // after Utilization -- same small-tile-row shape, so it reads as one more
+  // card in that family rather than a new kind of section.
   return `${liveBannerHtml(d, who)}
   ${digestDay(d, who)}
   <div class="digestgrid">
     <div>${outcomeBreakdownHtml(d, who)}${taskCompletionHtml(d, who)}${speedPanel(d, who)}</div>
-    <div>${utilizationHtml(d, who)}${coachQualityHtml(d, who)}</div>
+    <div>${utilizationHtml(d, who)}${householdCompletionHtml(d, who)}${coachQualityHtml(d, who)}</div>
   </div>
   ${auditPanel(d, who)}`;
 }
