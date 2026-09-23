@@ -63,6 +63,7 @@ contact regardless -- see build()'s filter, and the COST note above.
 import datetime as dt
 import json
 import pathlib
+import re
 
 import call_summary as CS
 import day_calls
@@ -267,6 +268,12 @@ def _tab(key):
 
 
 def _bool_pair(raw):
+    # The model sometimes answers with a bare true/false instead of the
+    # [bool, reason] pair METHODOLOGY.md asks for -- 12 of 314 cached reads
+    # did, and every one of them used to display "no" whatever it said
+    # (Joaquin Guillen, 2026-09-22: "exit": true shown as "no").
+    if isinstance(raw, bool):
+        return [raw, ""]
     if not isinstance(raw, (list, tuple)) or not raw:
         return [False, ""]
     return [bool(raw[0]), str(raw[1]).strip() if len(raw) > 1 else ""]
@@ -282,6 +289,14 @@ def _calltype(raw):
     is missing or malformed, rather than dropping the field."""
     if isinstance(raw, (list, tuple)) and raw and str(raw[0]).lower() in CALLTYPE_VALUES:
         return [str(raw[0]).lower(), str(raw[1]).strip() if len(raw) > 1 else ""]
+    # Same drift as _bool_pair: 42 of 314 cached reads returned a plain
+    # string -- "service", or "sales -- <reason>" -- which used to fall
+    # through to "sales", so 11 calls Apollo called pure service still got a
+    # card. Read the leading word as the verdict, the rest as the reason.
+    if isinstance(raw, str):
+        m = re.match(r"\s*(sales|service|mixed)\b[\s,.:;\-\u2014\u2013]*(.*)", raw, re.I | re.S)
+        if m:
+            return [m.group(1).lower(), m.group(2).strip()]
     return ["sales", ""]
 
 

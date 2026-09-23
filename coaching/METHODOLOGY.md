@@ -261,7 +261,12 @@ still gets an "m" there, same as on a sales call.
 
 ## Output format
 
-Return ONLY a JSON object, no prose around it, with exactly these keys:
+Return ONLY a JSON object, no prose around it, with exactly these keys.
+
+A field written below as `[x, y]` is a TWO-ELEMENT JSON ARRAY -- the verdict
+AND its reason, never the verdict alone. Right: `"askq": [false, "She asked
+'can I get your date of birth to finish the quote?' although he had called in
+for it"]`. Wrong: `"askq": false`. Same for "calltype", "asks" and "exit".
 
 ```
 "lang"     "Spanish", "English", or "Spanish/English" if the call code-switches
