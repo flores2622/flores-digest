@@ -247,6 +247,14 @@ body {
   padding: 6px 14px; font: inherit; font-weight: 600; font-size: 12px; color: var(--text-secondary); cursor: pointer;
 }
 .subtab.sel { background: var(--text-primary); color: var(--surface); border-color: var(--text-primary); }
+/* Section tabs inside a left-bar Center (Sales Center, Learning Center). An
+   underline strip, so it reads as a level above each page's own pill-style
+   .subtabs rather than as another row of the same thing. */
+.ctabs { display: flex; gap: 4px; border-bottom: 1px solid var(--border); margin: -4px 0 18px; overflow-x: auto; }
+.ctab { background: none; border: none; border-bottom: 2px solid transparent; padding: 8px 14px 9px; margin-bottom: -1px;
+  font: inherit; font-size: 13.5px; font-weight: 600; color: var(--text-muted); cursor: pointer; white-space: nowrap; }
+.ctab.sel { color: var(--text-primary); border-bottom-color: var(--text-primary); }
+.ctab:hover:not(.sel) { color: var(--text-primary); }
 .subtab:hover:not(.sel) { border-color: var(--text-muted); color: var(--text-primary); }
 
 .controls { display: flex; gap: 8px; align-items: center; margin-bottom: 18px; }
@@ -623,15 +631,14 @@ details.sc .scb { padding: 0 12px 12px; }
 </div>
 <div class="shell">
   <nav class="tabs" role="tablist">
-    <button class="tab" role="tab" aria-selected="true"  data-v="digest">Digest</button>
-    <button class="tab" role="tab" aria-selected="false" data-v="coaching">Coaching</button>
+    <button class="tab" role="tab" aria-selected="true"  data-v="salescenter">Sales Center</button>
+    <button class="tab" role="tab" aria-selected="false" data-v="coaching">Coaching Center</button>
     <button class="tab" role="tab" aria-selected="false" data-v="trends">Trends</button>
-    <button class="tab" role="tab" aria-selected="false" data-v="roleplay">Role Play</button>
-    <button class="tab" role="tab" aria-selected="false" data-v="training">Training</button>
-    <button class="tab" role="tab" aria-selected="false" data-v="sales">Sales</button>
+    <button class="tab" role="tab" aria-selected="false" data-v="learning">Learning Center</button>
     <button class="tab" role="tab" aria-selected="false" data-v="service">Service</button>
   </nav>
   <main class="main">
+    <div id="centerbar"></div>
     <div id="view"><div class="empty">Loading…</div></div>
   </main>
 </div>
@@ -757,6 +764,25 @@ const hhmm = secs;
 let DAYS = [];       // date strings from /api/days, newest first
 let cur = null;      // the currently loaded day's full document
 let view = "digest";
+/* Left-bar sections that hold more than one page (Frank, 2026-09-23): the
+   Sales Center is the Digest plus the Sales sheet, the Learning Center is
+   Role Play plus Training. `view` is still the page itself -- every paint()
+   branch below is unchanged -- and the section just remembers which of its
+   pages was last open. */
+const CENTERS = {
+  salescenter: [["digest", "Digest"], ["sales", "Sales"]],
+  learning: [["roleplay", "Role Play"], ["training", "Training"]],
+};
+const centerPick = { salescenter: "digest", learning: "roleplay" };
+const centerOf = v => Object.keys(CENTERS).find(c => CENTERS[c].some(([k]) => k === v)) || v;
+function paintCenterBar() {
+  const c = centerOf(view), bar = $("#centerbar");
+  if (!bar) return;
+  if (!CENTERS[c]) { bar.innerHTML = ""; return; }
+  bar.innerHTML = `<div class="ctabs" role="tablist">${CENTERS[c].map(([k, label]) =>
+    `<button class="ctab${k === view ? " sel" : ""}" role="tab" aria-selected="${k === view}" data-cv="${k}">${label}</button>`).join("")}</div>`;
+  bar.querySelectorAll(".ctab").forEach(b => b.onclick = () => goView(b.dataset.cv));
+}
 // One producer filter shared by the Digest and Coaching tabs. "" = whole
 // agency. This is the roster CLAUDE.md treats as producers (not Debbie or
 // Amanda, who show up in DOT/coaching data but are not tracked as such).
@@ -3730,15 +3756,25 @@ async function loadDay(day) {
   await paint();
 }
 
-$$(".tab").forEach(t => t.onclick = async () => {
-  if (view === "roleplay" && t.dataset.v !== "roleplay") {
+async function goView(next) {
+  if (next === view) return;
+  if (view === "roleplay" && next !== "roleplay") {
     rpStopListening();
     if ("speechSynthesis" in window) window.speechSynthesis.cancel();
     if (rpHistory.length && !rpGrade) await rpSubmitGrade();   // leaving the tab shouldn't leave a session ungraded
   }
-  $$(".tab").forEach(x => x.setAttribute("aria-selected", String(x === t)));
-  view = t.dataset.v; paint();
+  view = next;
+  const c = centerOf(view);
+  if (CENTERS[c]) centerPick[c] = view;
+  $$(".tab").forEach(x => x.setAttribute("aria-selected", String(x.dataset.v === c)));
+  paintCenterBar();
+  paint();
+}
+$$(".tab").forEach(t => t.onclick = () => {
+  const c = t.dataset.v;
+  goView(CENTERS[c] ? centerPick[c] : c);
 });
+paintCenterBar();
 
 (async function init() {
   let days = [];
