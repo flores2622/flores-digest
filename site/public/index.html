@@ -1106,7 +1106,9 @@ function teamLeaderboardHtml(d, who) {
 /* Wins and Losses -- was "What the day says" + "Objections by category" on
    the Digest tab; moved to its own section on the Coaching tab (Frank,
    2026-09-10). Team-level, not meaningful filtered to one producer, same as
-   before. */
+   before. Objections live ONLY in the Coaching tab's own Objections sub-tab
+   now (Frank, 2026-09-23: "leave it only in the objections tab") -- the
+   "Objections by category" table that used to sit here duplicated it. */
 function winsLossesHtml(d, who) {
   if (who) return "";
   const s = d.scan;
@@ -1126,15 +1128,8 @@ function winsLossesHtml(d, who) {
     renewal date on <b>${s.xdate}</b>, and a bundle raised on <b>${s.bundle}</b>.
     <b>${s.timeset} of ${s.of}</b> set a specific callback time — that one is usually the cheapest to fix.</p>
    </div>`;
-  const objs = !(d.objcats && d.objcats.length) ? "" : `
-   <h3>Objections by category</h3>
-   <p class="sd">Won means the objection was addressed and overcome on the call, not merely answered.</p>
-   <div class="scroll"><table><thead><tr><th>Category</th><th class="num">Raised</th><th class="num">Won</th></tr></thead><tbody>
-   ${d.objcats.map(([c, n, w]) => `<tr><td>${c}</td><td class="num">${n}</td>
-     <td class="num">${w ? `<span class="chip c-g">${w}</span>` : `<span class="chip c-r">0</span>`}</td></tr>`).join("")}
-   </tbody></table></div>`;
-  if (!says && !objs) return "";
-  return `<div class="sect"><h2>Wins and Losses</h2>${says}${objs}</div>`;
+  if (!says) return "";
+  return `<div class="sect"><h2>Wins and Losses</h2>${says}</div>`;
 }
 
 /* The next four sections mirror the customized email digest's own panels
