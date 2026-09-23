@@ -369,8 +369,14 @@ def _clean_objs(raw, legacy=None, cap=6):
             score = max(0, min(10, int(round(float(item.get("score"))))))
         except (TypeError, ValueError):
             score = _LEGACY_CHIPT_SCORE.get(item.get("chipt"))
+        # The model's own group when it gave a valid one (METHODOLOGY.md's
+        # "group" key); a card read before that key existed, or an invented
+        # group name, falls back to the keyword rules.
+        group = str(item.get("group") or "").strip()
+        if group not in cfg.OBJECTION_GROUPS:
+            group = cfg.objection_group(cat)
         out.append({
-            "cat": cat, "at": str(item.get("at") or "").strip(),
+            "cat": cat, "group": group, "at": str(item.get("at") or "").strip(),
             "they": they, "theyen": str(item.get("theyen") or "").strip(),
             "you": you, "youen": str(item.get("youen") or "").strip(),
             "noresp": bool(item.get("noresp")),
@@ -713,15 +719,17 @@ def scan(cards):
 
 
 def objcats(cards):
-    """[[category, raised, won], ...] -- "won" means a strong resolution
+    """[[group, raised, won], ...] by objection GROUP (cfg.OBJECTION_GROUPS),
+    not the free-text label -- "won" means a strong resolution
     (score 8+ out of 10), one row per objection now that a card can carry
     several (Frank, 2026-09-15: each objection scored on its own, not one
     shared addressed/overcome verdict for the whole card)."""
     agg = {}
     for c in cards:
         for o in c.get("objs") or []:
-            raised, won = agg.get(o["cat"], (0, 0))
-            agg[o["cat"]] = (raised + 1, won + (1 if (o.get("score") or 0) >= 8 else 0))
+            g = o.get("group") or cfg.objection_group(o["cat"])
+            raised, won = agg.get(g, (0, 0))
+            agg[g] = (raised + 1, won + (1 if (o.get("score") or 0) >= 8 else 0))
     return sorted(([cat, n, w] for cat, (n, w) in agg.items()), key=lambda row: -row[1])
 
 

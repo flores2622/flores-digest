@@ -561,6 +561,51 @@ def leaderboard_score(categories, names, tiebreak):
                       reverse=True)
     return per_cat, totals, standing
 
+# --- objection groups ---------------------------------------------------------
+# Frank, 2026-09-23: "there are so many different objections, but theyre on
+# theyre own, they should be categorized." The coaching model writes a free-text
+# label per objection ("cat"), and 15 days produced 170 distinct labels for 198
+# objections -- "Price too high", "Price higher than current carrier" and
+# "Can't afford it today" each stood alone. Every objection now also carries
+# one of these groups. New cards get it from the model itself (METHODOLOGY.md's
+# "group" key); cards read before that key existed fall back to
+# objection_group() below. The specific "cat" label is kept as the detail.
+OBJECTION_GROUPS = [
+    "Price / Can't Afford", "Bad Timing / Busy", "Already Insured / Satisfied",
+    "Coverage / Eligibility", "Spouse / Decision-Maker",
+    "Missing Info / Confusion", "Not Interested", "Shopping Around / Comparing",
+    "Wants to Wait / Think It Over", "Payment / Billing",
+    "Trust / Bad Experience", "Other",
+]
+# Checked in this order, first match wins -- against the label's first clause
+# (before any "/", which is how the model writes the main objection), then the
+# whole label. Measured against those 170 labels: 3 land in Other.
+_OBJECTION_GROUP_RULES = [
+    ("Spouse / Decision-Maker", r"spous|decision-maker|someone else|family|third-party|daughter handles|wife|husband"),
+    ("Price / Can't Afford", r"price|cheaper|afford|no money|premium.*increase|rate increase|rising premium|down payment|expensive|cost|rate doubled|hardship|double[- ]billing"),
+    ("Shopping Around / Comparing", r"compar|shopping|competitor|competing|other agenc|state farm|allstate|presto|already quoted"),
+    ("Already Insured / Satisfied", r"already insured|satisfied|already renewed|already handled|already has|stay with current|just signed|employer life"),
+    ("Bad Timing / Busy", r"timing|busy|no time|time constraint|limited time|can't talk|driving|at work|working|interrupted|not available|about to travel|distracted|can't engage|can't finish|call back|callback"),
+    ("Wants to Wait / Think It Over", r"wait|defer|think it over|not ready|hasn't decided|indecision|later|in person"),
+    ("Not Interested", r"not interested|not buying|declined|no current need|doesn't want|unsolicited|did not request|doesn't recognize|unclear caller"),
+    ("Coverage / Eligibility", r"coverage|deductible|eligib|violation|ticket|claim|roof|salvage|underwriting|lapse|driver|vehicle|endorsement|minimum|liability|mexico|financed|unavailable|properties|limitation|towing|roadside"),
+    ("Payment / Billing", r"payment|billing|installment|draft|card|bank|refund|6-month"),
+    ("Missing Info / Confusion", r"doesn't know|no documents|confus|unclear|missing|couldn't access|hasn't reviewed|uncertain|wrong property|mid-move|what notice|email|text"),
+    ("Trust / Bad Experience", r"trust|guarantee|bad past|former agent|angry|withheld"),
+]
+
+
+def objection_group(label):
+    """Keyword fallback: which OBJECTION_GROUPS entry a free-text objection
+    label belongs to. Only used when the model didn't supply a valid group."""
+    text = str(label or "").lower()
+    for part in (text.split("/")[0], text):
+        for name, pattern in _OBJECTION_GROUP_RULES:
+            if re.search(pattern, part):
+                return name
+    return "Other"
+
+
 # --- Coach AI (HANDOFF_4 s7) ------------------------------------------------
 # VERIFIED, DO NOT RELITIGATE. Coach AI titles each email with the UTC date at
 # generation, ONE DAY AHEAD of the Arizona day it describes. The email titled

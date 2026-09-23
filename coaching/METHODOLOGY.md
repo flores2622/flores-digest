@@ -275,8 +275,21 @@ Return ONLY a JSON object, no prose around it, with exactly these keys:
            thing the prospect pushed back on, it is its own entry in this
            array, with its own quotes, score, and analysis. Each entry is an
            object with exactly these keys:
-             "cat"      short category name, e.g. "Price higher than current",
-                        "Spousal approval", "Already insured / satisfied"
+             "cat"      short, specific description of THIS objection, e.g.
+                        "Price higher than current carrier", "Spousal
+                        approval", "Already insured / satisfied (just renewed)"
+             "group"    which broad kind of objection it is -- EXACTLY one of
+                        these strings, copied character for character:
+                        "Price / Can't Afford", "Bad Timing / Busy",
+                        "Already Insured / Satisfied", "Coverage / Eligibility",
+                        "Spouse / Decision-Maker", "Missing Info / Confusion",
+                        "Not Interested", "Shopping Around / Comparing",
+                        "Wants to Wait / Think It Over", "Payment / Billing",
+                        "Trust / Bad Experience", "Other". Pick by what the
+                        prospect is really pushing back on: "Needs to ask my
+                        wife, and it's too expensive" is whichever of the two
+                        the prospect led with and kept returning to. Use
+                        "Other" only when none of the rest fits.
              "at"       roughly when in the call (e.g. "4:30" or "~6:00")
              "they"     what the prospect said, as close to verbatim as the
                         transcript allows. BEFORE writing "they" and "you",
