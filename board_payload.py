@@ -233,6 +233,9 @@ def build(day, live=False):
             "inbound": v.get("inbound", 0),
             "hh": v["households_quoted"], "pq": v["premium_quoted"],
             "pol": v["policies"], "ps": v["premium_sold"],
+            "cross_sell": v.get("cross_sell", 0),
+            "new_bundle": v.get("new_bundle", 0),
+            "bundle_resolved": v.get("bundle_resolved", 0),
             "callbacks_prior": v.get("callbacks_prior", 0),
             # insightful_util.pull() writes (pct, total_hhmm, prod_hhmm) --
             # these field names were swapped relative to that order until
@@ -262,6 +265,9 @@ def build(day, live=False):
             "pq": sum(p["pq"] for p in producers),
             "pol": sum(p["pol"] for p in producers),
             "ps": sum(p["ps"] for p in producers),
+            "cross_sell": sum(p["cross_sell"] for p in producers),
+            "new_bundle": sum(p["new_bundle"] for p in producers),
+            "bundle_resolved": sum(p["bundle_resolved"] for p in producers),
             "util": M.get("util_weighted"),
             "talk": team_talk,
             "roleplay": team_rp,

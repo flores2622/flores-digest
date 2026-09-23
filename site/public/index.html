@@ -909,35 +909,55 @@ function digestDay(d, who) {
 
   // Closing Ratio (Frank, 2026-09-22: "add a closing rate table between the
   // sold and utilization cards"; 2026-09-23: "can we do a closing ratio for
-  // households and premium?") -- two rows, each an outcome over the attempt
-  // count that produced it (same funnel-step shape as CLAUDE.md's contact
-  // rate): policies sold over households quoted, and premium sold over
-  // premium quoted. Both purely derived from fields already on `t`, same as
-  // `rate` above -- no backend change. Deliberately UNCOLOURED: every other
-  // tiered figure on this board has a Frank-approved green/yellow/red
-  // threshold (digest_config.THRESHOLDS); these don't yet, and inventing
-  // thresholds here isn't this change's call to make.
+  // households and premium?"; 2026-09-23: "i want it as a tile, not the
+  // visual it has now" -- a table read oddly next to the tile grid above and
+  // below it, so this is now one tile, same "two figures, one box,
+  // slash-separated" shape as Dials/Live, HH/Prem. Quoted and Pol/Prem. Sold.
+  // Each half is an outcome over the attempt count that produced it (same
+  // funnel-step shape as CLAUDE.md's contact rate): policies sold over
+  // households quoted, and premium sold over premium quoted. Both purely
+  // derived from fields already on `t`, same as `rate` above -- no backend
+  // change. Deliberately UNCOLOURED: every other tiered figure on this board
+  // has a Frank-approved green/yellow/red threshold (digest_config.
+  // THRESHOLDS); these don't yet, and inventing thresholds here isn't this
+  // change's call to make.
   const hh = t.hh ?? 0, pol = t.pol ?? 0, pq = t.pq ?? 0, ps = t.ps ?? 0;
   const hhClosingRatio = hh ? (100 * pol / hh) : null;
   const premClosingRatio = pq ? (100 * ps / pq) : null;
-  const closingRatioHtml = `<div class="sect"><h2>Closing Ratio</h2>
-   <p class="sd">Sold &divide; quoted, for households and premium.</p>
-   <table><thead><tr><th></th><th>Quoted</th><th>Sold</th><th>Closing Ratio</th></tr></thead>
-   <tbody>
-     <tr><td>Households</td><td class="num">${hh}</td><td class="num">${pol}</td>
-       <td class="num">${hhClosingRatio == null ? "—" : hhClosingRatio.toFixed(1) + "%"}</td></tr>
-     <tr><td>Premium</td><td class="num">${money(pq)}</td><td class="num">${money(ps)}</td>
-       <td class="num">${premClosingRatio == null ? "—" : premClosingRatio.toFixed(1) + "%"}</td></tr>
-   </tbody></table>
-  </div>`;
-  // Utilization split into its own tile row below the new table (it used to
+  const closingRatioTileHtml = `<div class="tiles"><div class="tile">
+   <div class="k">Closing Ratio</div>
+   <div class="v">${hhClosingRatio == null ? "—" : hhClosingRatio.toFixed(1) + "%"} HH / ${premClosingRatio == null ? "—" : premClosingRatio.toFixed(1) + "%"} Prem</div>
+   <div class="n">${pol} of ${hh} HH &middot; ${money(ps)} of ${money(pq)} prem</div>
+  </div></div>`;
+
+  // Bundling breakdown (Frank, 2026-09-23: "know if they completed an
+  // existing household ... or if they are selling a new bundle/household").
+  // Two DIFFERENT confidence levels sharing one tile, same reason the note
+  // spells each one out rather than trusting the reader to know:
+  //   - Cross-Sell reads AgencyZoom's own lead source on the sale ("Home no
+  //     Auto", "Cross Sell", etc.) -- no join needed, covers every sale.
+  //   - New Bundle needs a policy -> household match that only resolves for
+  //     part of a day's sales (no customerId/leadId on a policy record --
+  //     see digest_config.bundle_classification for the full method and why
+  //     widening the match window makes it WORSE, not better). It is a
+  //     LOWER BOUND, marked with "+" for exactly that reason, and the note
+  //     states its own coverage so it's never read as a complete count.
+  const crossSell = t.cross_sell ?? 0, newBundle = t.new_bundle ?? 0,
+        bundleResolved = t.bundle_resolved ?? 0;
+  const bundleTileHtml = pol ? `<div class="tiles"><div class="tile">
+   <div class="k">Cross-Sell/Bundle</div>
+   <div class="v">${crossSell} Cross-Sell / ${newBundle}+ New Bundle</div>
+   <div class="n">${bundleResolved} of ${pol} sold matched to a household</div>
+  </div></div>` : "";
+  // Utilization split into its own tile row below the new tile (it used to
   // share the tiles array/div with Sold, with nothing between them).
   const utilHtml = t.util != null ? `<div class="tiles"><div class="tile">
    <div class="k">Utilization</div><div class="v${tc("util") ? " " + tc("util") : ""}">${t.util}%</div>
    <div class="n">weighted</div></div></div>` : "";
 
   return `<div class="tiles">${tilesHtml}</div>
-  ${closingRatioHtml}
+  ${closingRatioTileHtml}
+  ${bundleTileHtml}
   ${utilHtml}
   ${teamLeaderboardHtml(d, who)}`;
 }

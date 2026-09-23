@@ -413,6 +413,7 @@ def build_metrics(day):
     xdate_by_lead = {l["id"]: l.get("xDate")
                      for l in leads if l.get("id")}
     pol = json.loads((ROOT / "data/az_policies_all.json").read_text())
+    custs = json.loads((ROOT / "data/az_customers_all.json").read_text())
     smap = cfg.lead_source_map(leads)
     azid = {v["az_id"]: k for k, v in PRODUCERS.items()}
     stage = {int(k): v for k, v in
@@ -509,6 +510,7 @@ def build_metrics(day):
                 titles_by_lead[t["customerId"]].append(t.get("title") or "")
 
     real = cfg.real_sales(day, pol, smap, azid)
+    bundle = cfg.bundle_classification(day, pol, leads, custs, smap, azid)
     # Inbound transcripts, grouped by producer. transcribe_day stored them
     # under the caller's number, so they are already keyed like a dial.
     # RE-SCREENED HERE, not just before download. The transcripts file is a
@@ -759,7 +761,14 @@ def build_metrics(day):
                   # 2026-09-16: "I want everyone else to see she makes renewal
                   # calls, and still the same amount of calls as them").
                   "raw_dials": sum(r["calls"] for r in all_rows),
-                  "raw_numbers": len(all_rows)}
+                  "raw_numbers": len(all_rows),
+                  # Bundling breakdown (Frank, 2026-09-23) -- see
+                  # digest_config.bundle_classification for the full method
+                  # and its caveats. new_bundle is a lower bound: it can
+                  # only be computed for the "resolved" share of policies.
+                  "cross_sell": bundle.get(who, {}).get("cross_sell", 0),
+                  "new_bundle": bundle.get(who, {}).get("new_bundle", 0),
+                  "bundle_resolved": bundle.get(who, {}).get("resolved", 0)}
 
     util, weighted, _ = iu.pull(day)
     _raw_tasks = json.loads((ROOT / f"data/az_tasks_{day}.json").read_text())
