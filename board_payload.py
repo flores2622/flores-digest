@@ -85,36 +85,17 @@ def speed_to_dial(M):
 
 
 def leaderboard(M):
+    """Scored by cfg.leaderboard_score -- the same function the emailed digest
+    uses (panels.leaderboard), so the board and the email always agree."""
     P, coach = M["producers"], M.get("coach") or {}
     names = list(P)
-    cats = []
-    points = {n: 0 for n in names}
-    for label, fn in LEADERBOARD:
-        vals = {n: fn(P[n], coach.get(n, {})) for n in names}
-        order = sorted(names, key=lambda n: vals[n], reverse=True)
-        places = {}
-        for i, n in enumerate(order):
-            # ties share a place, as the email does
-            if i and vals[n] == vals[order[i - 1]]:
-                places[n] = places[order[i - 1]]
-            else:
-                places[n] = i + 1
-            points[n] += max(0, len(names) - places[n])
-        cats.append({"label": label, "values": vals, "places": places})
-    # A tie in total points is broken by cfg.LEADERBOARD_TIEBREAK, in order
-    # (premium sold, then households quoted, then call volume) -- that
-    # constant existed but was never actually consulted here, so a genuine
-    # tie fell back to whatever order producers happened to sit in `P`.
-    # Confirmed against the real published 2026-09-04 board: Lorena Gonzalez
-    # and Sarahi Chin tied at 20 points each, and Lorena showed 1st purely
-    # because she sat earlier in that day's producers dict -- even though
-    # Sarahi's $1,363 premium sold beat Lorena's $1,089 under the declared
-    # rule (Frank, 2026-09-24: "yes, fix it").
-    def sort_key(n):
-        tiebreak = tuple((P[n].get(f) or 0) for f in cfg.LEADERBOARD_TIEBREAK)
-        return (points[n],) + tiebreak
-    return {"categories": cats, "points": points,
-            "order": sorted(names, key=sort_key, reverse=True)}
+    values = [{n: fn(P[n], coach.get(n, {})) for n in names} for _, fn in LEADERBOARD]
+    per_cat, points, order = cfg.leaderboard_score(
+        values, names,
+        {n: tuple((P[n].get(f) or 0) for f in cfg.LEADERBOARD_TIEBREAK) for n in names})
+    cats = [{"label": label, "values": vals, "points": pts}
+            for (label, _), vals, pts in zip(LEADERBOARD, values, per_cat)]
+    return {"categories": cats, "points": points, "order": order}
 
 
 def outcome_breakdown(M):
