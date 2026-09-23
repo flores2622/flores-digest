@@ -808,7 +808,7 @@ let trainingFlipped = false;
 // "cards" (flashcards, above) | "quiz" | "match" -- three study methods over
 // the same deck data, switched via pills above the deck picker (Frank,
 // 2026-09-11: "different interactive study methods").
-let trainingMode = "cards";
+let trainingMode = "ref";
 
 // Quiz: 5 random questions per attempt, each the real front against its own
 // back plus 3 real backs from other cards in the same deck as distractors --
@@ -2735,7 +2735,9 @@ function plainSnippet(text, maxLen) {
   return (lastSpace > 40 ? cut.slice(0, lastSpace) : cut) + "…";
 }
 
-const TRAINING_MODE_LABELS = { cards: "Flashcards", quiz: "Quiz", match: "Match", ref: "Terms & Techniques" };
+// Left-to-right order of the mode pills (Frank, 2026-09-23): reference first,
+// then the three ways to practise it. The leftmost is also what opens.
+const TRAINING_MODE_LABELS = { ref: "Terms & Techniques", cards: "Flashcards", match: "Match", quiz: "Quiz" };
 
 function trainingPanel(data) {
   const decks = data.decks || [];
