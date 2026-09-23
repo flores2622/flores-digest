@@ -277,24 +277,53 @@ def classify(day):
     return out
 
 
-def fetch_notes(lead_ids, az=None):
-    """Cache lead notes to disk -- these drive live-contact and outcome logic."""
+def fetch_notes(lead_ids, az=None, day=None, log=print):
+    """Cache lead notes to disk -- these drive live-contact and outcome logic.
+
+    A CACHED COPY IS ONLY GOOD IF IT WAS FETCHED AFTER `day` ENDED (Frank,
+    2026-09-23). This used to keep any file that existed, forever, so a second
+    build in the same container read each lead's notes as of whenever they were
+    first fetched: on 2026-09-23 a warm container saw none of the notes nine of
+    Sarahi's leads had picked up that morning and scored her 0 live where the
+    scheduled checkpoint, fetching fresh, scored 1. A day still in progress
+    therefore always re-fetches, exactly what a cold container does. A copy
+    fetched after the day ended is complete for it -- evidence() keeps only
+    notes dated that day -- so a past-day rebuild reuses it. `day=None`
+    re-fetches everything.
+
+    A failed fetch never overwrites the cache. It used to write [] in the
+    lead's place, and that empty list then stood for the lead's notes in every
+    later build in the container -- one 429 during the pull was enough.
+    """
     NOTE_CACHE.mkdir(parents=True, exist_ok=True)
     az = az or AgencyZoom()
-    got = {}
-    for i, lid in enumerate(sorted(set(lead_ids))):
+    fresh_after = (dt.datetime.fromisoformat(f"{day}T00:00:00-07:00")
+                   + dt.timedelta(days=1)).timestamp() if day else None
+    got, failed = {}, 0
+    for lid in sorted(set(lead_ids)):
         f = NOTE_CACHE / f"{lid}.json"
-        if f.exists():
-            got[lid] = json.loads(f.read_text())
+        if lid in _FETCHED or (f.exists() and fresh_after is not None
+                               and f.stat().st_mtime >= fresh_after):
+            got[lid] = json.loads(f.read_text()) if f.exists() else []
             continue
         try:
-            n = az.lead_notes(lid)
+            n = az.lead_notes(lid) or []
         except Exception:
-            n = []
+            failed += 1
+            got[lid] = json.loads(f.read_text()) if f.exists() else []
+            continue
         f.write_text(json.dumps(n))
+        _FETCHED.add(lid)
         got[lid] = n
+    if failed:
+        log(f"  notes: {failed} lead(s) could not be fetched -- using the "
+            f"previous copy where there is one")
     return got
 
+
+# Leads fetched fresh by THIS process, so a second fetch_notes() call in the
+# same run does not pay for them twice.
+_FETCHED = set()
 
 if __name__ == "__main__":
     import sys

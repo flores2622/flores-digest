@@ -537,7 +537,7 @@ def build_metrics(day):
             if str(l.get("lastActivityDate") or "").startswith(day):
                 ids.append(l["id"])
     log(f"fetching notes for {len(set(ids))} leads...")
-    day_calls.fetch_notes(ids)
+    day_calls.fetch_notes(ids, day=day, log=log)
 
     az = AgencyZoom()
     QS = re.compile(r"quoted|quotes presented|fsd|pending bind", re.I)
