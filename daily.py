@@ -136,12 +136,26 @@ def pull_sources(day):
         f"{len({r['startTime'][:10] for r in _w if r.get('startTime')})} days")
 
     az = AgencyZoom()
+    # A day that has already ended rebuilds from the AgencyZoom snapshot saved
+    # on that day, if there is one (r2_cache.save_corpus, below) -- the records
+    # its report was built from, not today's. TODAY never reads a snapshot.
+    # Note this leaves the old corpus in data/ afterwards; a later run for
+    # today re-pulls it fresh, as always.
+    snapshot = False
+    if not refresh_today:
+        try:
+            snapshot = r2_cache.load_corpus(day, log=log)
+        except Exception as e:
+            log(f"  AgencyZoom snapshot: load failed ({type(e).__name__}: {e})")
+    if not refresh_today and not snapshot:
+        log(f"  no AgencyZoom snapshot saved for {day} -- rebuilding from "
+            f"TODAY's records, which may have changed since")
     # ALWAYS refetched, never cached (HANDOFF_12 #3, fixed here): this is the
     # corpus that decides whether a sale happened. AgencyZoom's list APIs run
     # at ~90 req/min, nowhere near RingCentral's media throttle, so there is
     # no cost reason to let it go stale -- a re-run in a warm container used
     # to silently serve an hours-old copy and once hid four real sales.
-    for name, fn in [# az_corpus.fetch() has its OWN internal cache check
+    for name, fn in [] if snapshot else [# az_corpus.fetch() has its OWN internal cache check
                      # against this exact file (data/az_leads_all.json) --
                      # force=True is required here or this "always fresh"
                      # loop silently keeps serving the stale copy for leads
@@ -154,13 +168,25 @@ def pull_sources(day):
         log(f"{name}...")
         (ROOT / f"data/{name}.json").write_text(json.dumps(fn()))
 
+    # Keep today's pull as today's snapshot. Every checkpoint overwrites it, so
+    # the nightly build's copy -- the one the report used -- is what remains.
+    # Never allowed to fail the build.
+    if refresh_today:
+        try:
+            r2_cache.save_corpus(day, log=log)
+        except Exception as e:
+            log(f"  AgencyZoom snapshot: save failed ({type(e).__name__}: {e}) "
+                f"-- a later rebuild of {day} will use the records as of then")
+
     # Powers the Sales tab's Lead Source dropdown (Frank, 2026-09-14) --
     # piggybacks on the leads corpus just refetched above, so this list is
     # never staler than it is. Never allowed to fail the day's build: this
-    # is a UI convenience, not a reported figure.
+    # is a UI convenience, not a reported figure. Skipped on a snapshot, which
+    # would publish an old day's list over the live one.
     try:
-        import publish_board
-        publish_board.publish_lead_sources(log=log)
+        if not snapshot:
+            import publish_board
+            publish_board.publish_lead_sources(log=log)
     except Exception as e:
         log(f"  lead sources: publish failed ({type(e).__name__}: {e}) -- "
             f"Sales tab dropdown falls back to empty until the next run")
