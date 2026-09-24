@@ -27,6 +27,11 @@ Everything caches under `data/`, so a re-run resumes rather than restarting.
   groups, what to sell each, and the not-a-sale and cross-sell sets that
   `digest_config` reads. Commercial sources (Leo, Work Comp, the Comm Leads
   lists) are Cerberus's. Frank confirmed the `approach` lines on 2026-09-24.
+  **A staff member's name as a source is Personal network** -- their own,
+  never each other's -- **except Francisco's, which is a Referral**;
+  Instagram / LinkedIn are Social media (Facebook stays Generated); Found us
+  (Google, Farmers.com) is part of Call-in / walk-in (Frank, 2026-09-24).
+  The Sales tab's Premium per Lead Source uses these same groups.
 - **Apollo judges each call against its lead source** (Frank, 2026-09-24).
   `coaching_cards._ask_card` sends `lead_sources.prompt_block()`; METHODOLOGY.md's
   "Lead source" section says how to use it, and the card's `leadfit` verdict
