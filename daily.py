@@ -1055,6 +1055,7 @@ def main():
          ops_only_pdfs=[missed] if missed else [])
     publish_day(day)
     publish_service(day)
+    publish_commercial(day)
 
     # publish_day() -> publish_board.build() -> coaching_cards.build() writes
     # data/coaching_cards_<day>.json, and call_summary.build() above wrote
@@ -1085,6 +1086,18 @@ def publish_service(day):
     except (Exception, SystemExit) as e:
         log(f"service digest failed ({type(e).__name__}: {e}) -- "
             f"the Service tab keeps its last day")
+
+
+def publish_commercial(day):
+    """The Commercial Center's document (commercial_digest.py, Cerberus).
+    Board only, Frank's alone. Runs after the service board and, like it, may
+    never raise: a commercial failure costs that section and nothing else."""
+    try:
+        import commercial_digest
+        commercial_digest.publish(day, log=log)
+    except (Exception, SystemExit) as e:
+        log(f"commercial digest failed ({type(e).__name__}: {e}) -- "
+            f"the Commercial Center keeps its last day")
 
 
 def publish_day(day):
