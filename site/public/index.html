@@ -1314,6 +1314,23 @@ function speedPanel(d, who) {
     <div class="tiles">${cards}</div></div>`;
 }
 
+/* Open leads sitting in "Pipeline" -- integrations drop leads there that
+   belong in 1 Pipeline, and it should be empty (Frank, 2026-09-24). A to-do
+   list: each row links to the lead in AgencyZoom to move it. Day view only;
+   a range has no single end-of-day snapshot to list. */
+function misfiledPanel(d, who) {
+  const all = (d.misfiled || []).filter(r => !who || r.assigned === who);
+  if (!all.length) return "";
+  const rows = all.map(r => `<tr>
+    <td><a href="${AZ_URL.lead}${encodeURIComponent(r.lead_id)}" target="_blank" rel="noopener">${r.lead}</a></td>
+    <td>${r.assigned || "—"}</td><td>${r.stage || ""}</td><td>${r.source || ""}</td>
+    <td class="num">${r.last_activity ? fmtShortDate(r.last_activity) : "—"}</td></tr>`).join("");
+  return `<div class="sect"><h2>Leads to move out of "Pipeline"</h2>
+   <p class="sd">${all.length} open lead${all.length === 1 ? "" : "s"} misfiled in "Pipeline" by an integration. Move each into 1 Pipeline.</p>
+   <div class="scroll"><table><thead><tr><th>Lead</th><th>Assigned</th><th>Stage</th><th>Source</th>
+   <th class="num">Last activity</th></tr></thead><tbody>${rows}</tbody></table></div></div>`;
+}
+
 function recontactPanel(d, who) {
   const all = ((d.recontact || {}).at_risk || []).filter(r => !who || r.producer === who);
   const rows = all.slice(0, 14).map(r => `<tr>
@@ -1491,7 +1508,8 @@ function digestPanel(d, who) {
     <div>${outcomeBreakdownHtml(d, who)}${taskCompletionHtml(d, who)}${speedPanel(d, who)}</div>
     <div>${utilizationHtml(d, who)}${householdCompletionHtml(d, who)}${coachQualityHtml(d, who)}</div>
   </div>
-  ${auditPanel(d, who)}`;
+  ${auditPanel(d, who)}
+  ${misfiledPanel(d, who)}`;
 }
 
 /* ---- Range aggregates (This Week / MTD / YTD / Folio / Custom) ------------
@@ -1937,6 +1955,20 @@ function leadFitHtml(c) {
       <span class="chip ${r ? r[0] : ""}">${r ? r[1] : "Not scored"}</span>
       <span style="color:var(--text-secondary);font-size:12.5px;line-height:1.55">${f[1] || ""}</span></div></div>`;
 }
+/* Did the call do what the lead's pipeline stage called for (Apollo's
+   "stagefit", Frank, 2026-09-24)? Shows where the lead was when the call
+   started and where the producer left it. Nothing on a card read before. */
+function stageFitHtml(c) {
+  const f = c.stagefit;
+  if (!f) return "";
+  const r = RT[f[0]];
+  const b = c.stage_before || "Unknown stage", a = c.stage_after || "";
+  const path = a && a !== b ? `${b} → ${a}` : `${b}${a ? " (not moved)" : ""}`;
+  return `<div class="blk"><div class="bl">Pipeline stage — ${path}</div>
+    <div style="display:flex;gap:10px;align-items:baseline">
+      <span class="chip ${r ? r[0] : ""}">${r ? r[1] : "Not scored"}</span>
+      <span style="color:var(--text-secondary);font-size:12.5px;line-height:1.55">${f[1] || ""}</span></div></div>`;
+}
 function card(c) {
   const objs = c.objs || [];
   // One block per objection -- a card can carry several (Frank, 2026-09-15:
@@ -2008,7 +2040,7 @@ function card(c) {
    <div class="blk"><div class="bl">Strengths and gaps</div><div class="two">
      <div><div class="colh g">What worked</div><ul class="gl g">${(c.good || []).map(([t, dd]) => `<li><b>${t}</b>${dd}</li>`).join("") || `<li style="color:var(--text-muted)">—</li>`}</ul></div>
      <div><div class="colh b">What cost the sale</div><ul class="gl b">${(c.bad || []).map(([t, dd]) => `<li><b>${t}</b>${dd}</li>`).join("") || `<li style="color:var(--text-muted);padding-left:0">Nothing to flag on this call.</li>`}</ul></div>
-   </div>${leadFitHtml(c)}${scorecard(c.score)}${scorecard(c.techniques, TECH_DIMS, "Sales techniques")}</div>
+   </div>${leadFitHtml(c)}${stageFitHtml(c)}${scorecard(c.score)}${scorecard(c.techniques, TECH_DIMS, "Sales techniques")}</div>
    ${spine}
    ${recordingBlk(c)}</details>`;
 }
