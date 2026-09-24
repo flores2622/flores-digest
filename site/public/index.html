@@ -169,8 +169,7 @@
 .ogseg { height: 100%; }
 /* Renewal Outcome Breakdown only: a 2px surface gap between segments, and the
    diagonal hatch that marks a policy-record reading (see OUTCOME_COLORS). */
-:root { --hatch: repeating-linear-gradient(135deg, transparent 0 3px, var(--surface) 3px 5px);
-  --dots: radial-gradient(circle, var(--surface) 0 1px, transparent 1.4px); }
+:root { --hatch: repeating-linear-gradient(135deg, transparent 0 3px, var(--surface) 3px 5px); }
 .rseg { box-sizing: border-box; }
 .rseg + .rseg { border-left: 2px solid var(--surface); }
 .rdot { width: 11px; height: 11px; }
@@ -4021,21 +4020,18 @@ function fmtDur(h) {
    aqua, blue, green; lost = magenta, violet; Unable to Contact (renewed,
    but never discussed with the customer) = yellow. No action: Review if
    needed (added 2026-09-24) = orange, between aqua and blue.
-   A policy-record reading wears its counterpart's colour HATCHED and a read
-   of the rep's note (a "_notes" key) wears it DOTTED, so solid always means
-   the SR's own resolution. Segments are split by a 2px gap and
+   Frank's resolutions are the ONLY outcomes (2026-09-24), whether the SR
+   carried one or the rep's note was read into one. The one hatched segment is
+   a cancellation of a policy already cancelled before the SR was opened:
+   violet, outside the rate. Segments are split by a 2px gap and
    the legend carries every count, which is the relief yellow and aqua need
    for sitting under 3:1 on the light surface. */
 const OUTCOME_COLORS = {
   renewed_as_is: ["--s3"], no_action_review: ["--s2"], renewed_endorsed: ["--s1"], rewrite_accepted: ["--s6"],
   cancelled_rewrite_declined: ["--s5"], cancelled_no_option: ["--s7"], unable_to_contact: ["--s4"],
-  renewed_record: ["--s3", 1], rewritten_record: ["--s6", 1], cancelled_record: ["--s5", 1],
-  already_cancelled: ["--s7", 1], pending_record: ["--s4", 1],
-  no_renewal_record: ["--text-muted", 1], unmatched: ["--text-secondary", 1],
+  cancelled_before_sr: ["--s7", 1],
 };
 const outcomeFill = k => {
-  if (k.endsWith("_notes")) { const [v] = OUTCOME_COLORS[k.slice(0, -6)] || ["--text-muted"];
-    return `background-color:var(${v});background-image:var(--dots);background-size:4px 4px`; }
   const [v, hatch] = OUTCOME_COLORS[k] || ["--text-muted"];
   return `background-color:var(${v})${hatch ? ";background-image:var(--hatch)" : ""}`; };
 function renewalRate(rows, kind) {
@@ -4075,17 +4071,19 @@ function renewalBreakdownHtml(m) {
   const legend = counts.map(([k, l, c]) =>
     `<span class="oleg-item"><span class="pd rdot" style="${outcomeFill(k)}"></span>${l} <b>${c}</b> <span style="color:var(--text-muted)">(${Math.round(100 * c / rows.length)}%)</span></span>`).join("");
   const team = renewalRate(rows, kind);
-  const fromRecord = rows.filter(r => r.source === "record").length;
-  const fromNotes = rows.filter(r => r.source === "notes").length;
+  const bySrc = s => rows.filter(r => r.source === s).length;
+  const src = [[bySrc("resolution"), "closed on the team's own resolution"],
+    [bySrc("notes"), "closed as Completed, outcome read from the rep's note by AI"],
+    [bySrc("no_note"), `closed as Completed with no note, or a note that does not say, so counted as ${label.unable_to_contact || "Unable to Contact/No Show"}`],
+    [bySrc("unread"), "have a note not read yet (counted as Unable to Contact/No Show until the next nightly run reads it)"]].filter(x => x[0]);
   const unnamed = Object.entries(m.unnamed || {});
   return `<div class="sect"><h2>Renewal Outcome Breakdown</h2>
-    <p class="sd">Renewal SRs completed in this period and how each one ended. Retained = renewed (including No action: Review if needed and Unable to Contact, which renewed as is without the renewal being discussed with the customer) or rewrite accepted, over everything with a decided outcome (renewed, rewritten or cancelled). Renewals still ahead, policies already cancelled before the SR was opened, and out-of-date policy records sit outside the rate.</p>
+    <p class="sd">Renewal SRs completed in this period and how each one ended. Retained = renewed (including No action: Review if needed and Unable to Contact/No Show, which renewed as is without the renewal being discussed with the customer) or rewrite accepted, over everything renewed, rewritten or cancelled. A cancellation of a policy already cancelled before the SR was opened (hatched) sits outside the rate.</p>
     <div class="tiles rtiles">${card(rows, pbadge(TEAM_DOT, "Team"), true)}${personCards}</div>
     <h3 style="font-size:12px;text-transform:uppercase;letter-spacing:.06em;color:var(--text-muted);margin:16px 0 6px">By pipeline</h3>
     <div class="tiles rtiles">${pipeCards}</div>
     <div class="oleg">${legend}</div>
-    ${fromNotes ? `<p class="sd" style="margin:10px 0 0">${fromNotes} of ${rows.length} read from the rep's own note by AI (the dotted segments): closed on a resolution that is not a renewal resolution, such as Completed, the usual choice before ${fmtShortDate(m.resolutionsFrom)}.</p>` : ""}
-    ${fromRecord ? `<p class="sd" style="margin:${fromNotes ? 4 : 10}px 0 0">${fromRecord} of ${rows.length} read from the policy's own record (the hatched segments): closed on another resolution with a note that does not say how the renewal ended.</p>` : ""}
+    ${src.length ? `<p class="sd" style="margin:10px 0 0">Of ${rows.length}: ${src.map(([n, t]) => `${n} ${t}`).join("; ")}.</p>` : ""}
     ${unnamed.length ? `<p class="sd" style="margin:6px 0 0;color:#b45309">Closed on a resolution that is not a renewal resolution: ${unnamed.map(([k, n]) => `${k} (${n} SR${n === 1 ? "" : "s"})`).join(", ")}.</p>` : ""}
   </div>`;
 }
@@ -4294,7 +4292,7 @@ function comOutcomesHtml(m) {
     `<span class="oleg-item"><span class="pd rdot" style="${outcomeFill(k)}"></span>${l} <b>${rs.length}</b> <span style="color:var(--text-muted)">(${money(rs.reduce((a, r) => a + (r.premium || 0), 0))})</span></span>`).join("");
   const unnamed = Object.entries(m.unnamed || {});
   return `<div class="sect"><h2>Renewal Outcomes</h2>
-    <p class="sd">Commercial renewal SRs completed in this period and how each ended, with the same renewal resolutions as the service team (then the rep's note, dotted, then the policy record, hatched): retained = renewed (No action and Unable to Contact included, which renewed as is) or rewrite accepted, over everything with a decided outcome. Not a book-wide retention rate.</p>
+    <p class="sd">Commercial renewal SRs completed in this period and how each ended, with the same renewal resolutions as the service team (an SR closed as Completed takes the one its rep's note describes, or Unable to Contact/No Show when the note does not say): retained = renewed (No action and Unable to Contact/No Show included, which renewed as is) or rewrite accepted, over everything renewed, rewritten or cancelled. Not a book-wide retention rate.</p>
     <div class="orow"><div class="orow-head"><span class="who">${pbadge(TEAM_DOT, "Commercial")}</span>
       <span class="on">${rows.length} renewal SR${rows.length === 1 ? "" : "s"}${rt.pct == null ? "" : ` &middot; <b>${rt.pct}%</b> retained (${rt.kept} of ${rt.kept + rt.lost})`}</span></div>
       <div class="otrack">${segs}</div></div>
