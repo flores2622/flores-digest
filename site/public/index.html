@@ -3569,7 +3569,7 @@ function wireSalesSubTabs() {
 // Breakdown sub-tab (Frank, 2026-09-21): the same folio's entries the Log
 // tab is showing (picked via salesFolioPick there), grouped one of three ways.
 // Frank, 2026-09-24: Lead Source and Policy Type draw as PIE charts of
-// premium share, and the Producer view is replaced by "Highest Premium per
+// premium share, and the Producer view is replaced by "Premium per
 // Lead Source" -- every lead source ranked by AVERAGE premium per sale
 // (Frank, 2026-09-24), so the sources bringing the biggest policies read
 // top-down; total premium and sale count ride along on each row. Producer totals still live on the Log
@@ -3577,7 +3577,7 @@ function wireSalesSubTabs() {
 const SALES_BREAKDOWN_DIMS = {
   lead_source: { label: "Lead Source", chart: "pie", key: e => (e.lead_source || "").trim() || "(none logged)" },
   product:     { label: "Policy Type", chart: "pie", key: e => (e.product || "").trim() || "(none logged)" },
-  top_sources: { label: "Highest Premium per Lead Source", chart: "rank", key: e => (e.lead_source || "").trim() || "(none logged)" },
+  top_sources: { label: "Premium per Lead Source", chart: "rank", key: e => (e.lead_source || "").trim() || "(none logged)" },
 };
 // Pie slices take categorical slots --s1..--s7 (validated 8-hue theme, see
 // :root) in premium order; past 7 the smallest fold into a neutral-grey
