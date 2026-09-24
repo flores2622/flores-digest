@@ -616,11 +616,7 @@ details.sc .scb { padding: 0 12px 12px; }
 .gradecard td.gi { width: 180px; font-weight: 600; }
 .histrow { display: flex; justify-content: space-between; gap: 10px; padding: 7px 0; border-bottom: 1px solid var(--border); font-size: 12.5px; }
 .histrow:last-child { border-bottom: none; }
-.rtt { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 12.5px; font-variant-numeric: tabular-nums; }
-.rtt th { text-align: right; font-weight: 500; color: var(--text-muted); font-size: 11px; padding: 3px 0 3px 8px; }
-.rtt td { text-align: right; padding: 4px 0 4px 8px; border-top: 1px solid var(--border); }
-.rtt td:first-child, .rtt th:first-child { text-align: left; padding-left: 0; }
-.rtt td.mut { color: var(--text-muted); }
+
 </style>
 </head>
 <body>
@@ -3521,13 +3517,15 @@ function wireProducerControl() {
    same shared-state pattern rangeMode/producerFilter/coachSubTab already
    use elsewhere in this file. Leaves `cur` completely alone in "day" mode --
    that one is still owned by loadDay(). */
-async function ensureCurForRange() {
-  if (rangeMode === "day") { curRangeLabel = ""; curRangeSub = ""; return null; }
+/* The [from, to] span the shared range control currently means, for any
+   range mode but "day": {from, to, label} or {err}. Shared by the Digest
+   and Coaching (ensureCurForRange) and Athena's Service tab. */
+function rangeBounds() {
   const today = isoDate(azTodayDate());
   let from, to, label;
   if (rangeMode === "folio") {
     const curEnd = folioEndFor(today);
-    if (!curEnd) return "No folio calendar covers today yet.";
+    if (!curEnd) return { err: "No folio calendar covers today yet." };
     const end = folioPick || curEnd;
     from = folioStartFor(end); to = end < today ? end : today;
     label = end === curEnd ? "Folio to Date" : "Folio";
@@ -3538,11 +3536,19 @@ async function ensureCurForRange() {
   } else if (rangeMode === "week") {
     from = weekStart(today); to = today; label = "This Week";
   } else if (rangeMode === "custom") {
-    if (!customFrom || !customTo) return "Pick a start and end date, then Apply.";
+    if (!customFrom || !customTo) return { err: "Pick a start and end date, then Apply." };
     [from, to] = customFrom <= customTo ? [customFrom, customTo] : [customTo, customFrom];
     label = "Custom Range";
   }
-  if (from && from > to) return `That folio hasn't started yet -- it begins ${from}.`;
+  if (from && from > to) return { err: `That folio hasn't started yet -- it begins ${from}.` };
+  return { from, to, label };
+}
+
+async function ensureCurForRange() {
+  if (rangeMode === "day") { curRangeLabel = ""; curRangeSub = ""; return null; }
+  const b = rangeBounds();
+  if (b.err) return b.err;
+  const { from, to, label } = b;
   const docs = await fetchRangeDocs(from || "", to);
   if (!docs.length) return `No reports in ${from || "the start"} → ${to}.`;
   cur = mergeDayDocs(docs); curLive = false;
@@ -3610,10 +3616,7 @@ async function paint() {
     salesLastData = data;
     repaintSales();
   } else if (view === "service") {
-    $("#topsub").textContent = "service team -- Debbie, Amanda and Crystal";
-    v.innerHTML = '<div class="empty">Loading…</div>';
-    await loadService(serviceDay);
-    repaintService();
+    await paintService();
   } else {
     $("#topsub").textContent = "trends across every reporting day";
     v.innerHTML = '<div class="empty">Loading…</div>';
@@ -3621,114 +3624,218 @@ async function paint() {
   }
 }
 
-/* ---- Service tab (Frank, 2026-09-23) -------------------------------------
-   The service team's day: Debbie (CSR) plus Amanda and Crystal (hybrid).
-   Its own document (service/<day>.json, service_digest.py) and its own day
-   picker -- it does not follow the sales range controls, since a service
-   day and a sales day are built separately. Credit on every figure goes to
-   whoever CLOSED the task or ticket. Retention and call-back resolution are
-   placeholders until the next pass lands them. */
-let SERVICE_DAYS = null, serviceDay = null, serviceDoc = null;
-async function loadService(day) {
+/* ---- Athena: the Service tab (Frank, 2026-09-23) -------------------------
+   The service team's numbers -- Debbie (CSR), Amanda and Crystal (hybrid).
+   Athena is the service side's name, as Apollo is sales coaching's. One
+   document per day (service/<day>.json, service_digest.py) holding ROWS --
+   every SR completed, every renewal SR's outcome, every missed service call
+   -- so any range the shared filter picks is added up here and its medians
+   computed over the whole range, never averaged from daily medians. The
+   agency says SR (service request), never "ticket". Credit on every figure
+   goes to whoever COMPLETED the SR or task. */
+let SERVICE_DAYS = null;
+const SVC_CACHE = {};
+async function serviceDays() {
   if (SERVICE_DAYS === null) {
     try {
       const r = await fetch("/api/service", { cache: "no-store" });
       SERVICE_DAYS = r.ok ? ((await r.json()).days || []) : [];
     } catch (_) { SERVICE_DAYS = []; }
   }
-  serviceDay = day || serviceDay || SERVICE_DAYS[0] || null;
-  serviceDoc = null;
-  if (!serviceDay) return;
-  try {
-    const r = await fetch(`/api/service/${serviceDay}`, { cache: "no-store" });
-    if (r.ok) serviceDoc = await r.json();
-  } catch (_) {}
+  return SERVICE_DAYS;
 }
+async function fetchServiceDocs(days) {
+  const out = [];
+  for (const d of days) {
+    if (!(d in SVC_CACHE)) {
+      try {
+        const r = await fetch(`/api/service/${d}`, { cache: "no-store" });
+        SVC_CACHE[d] = r.ok ? await r.json() : null;
+      } catch (_) { SVC_CACHE[d] = null; }
+    }
+    if (SVC_CACHE[d] && SVC_CACHE[d].version === 2) out.push(SVC_CACHE[d]);
+  }
+  return out.sort((x, y) => x.date < y.date ? -1 : 1);
+}
+function mergeServiceDocs(docs) {
+  const last = docs[docs.length - 1];
+  const m = { days: docs.map(x => x.date), team: last.team, pipelines: last.pipelines,
+    tasks: {}, completed: [], renewals: [], unnamed: {}, callbacks: [], util: {},
+    backlog: (last.srs || {}).backlog || {}, lateStages: (last.srs || {}).late_payment_stages || [],
+    outcomes: (last.renewals || {}).outcomes || [], resolutionsFrom: (last.renewals || {}).resolutions_from };
+  for (const x of docs) {
+    for (const [n, t] of Object.entries(x.tasks || {})) {
+      const a = m.tasks[n] || (m.tasks[n] = { due: 0, completed: 0 });
+      a.due += t.due || 0; a.completed += t.completed || 0;
+    }
+    m.completed.push(...((x.srs || {}).completed || []));
+    if (x.renewals) {
+      m.renewals.push(...(x.renewals.rows || []));
+      for (const [k, n] of Object.entries(x.renewals.unnamed || {})) m.unnamed[k] = (m.unnamed[k] || 0) + n;
+    }
+    m.callbacks.push(...(((x.callbacks || {}).rows) || []));
+    for (const [n, u] of Object.entries(x.utilization || {})) {
+      const a = m.util[n] || (m.util[n] = { p: 0, t: 0, hybrid: !!u.hybrid });
+      if (u.tracked) { a.p += u.productive_min || 0; a.t += u.total_min || 0; }
+    }
+  }
+  return m;
+}
+const svcMedian = xs => { const a = xs.filter(x => x != null).sort((p, q) => p - q); if (!a.length) return null;
+  const i = Math.floor(a.length / 2); return a.length % 2 ? a[i] : (a[i - 1] + a[i]) / 2; };
+const svcPctile = (xs, q) => { const a = xs.filter(x => x != null).sort((p, q2) => p - q2); return a.length ? a[Math.min(a.length - 1, Math.floor(a.length * q))] : null; };
 function fmtDur(h) {
   if (h == null) return "—";
   if (h < 1) return Math.max(1, Math.round(h * 60)) + "m";
   if (h < 48) return (Math.round(h * 10) / 10) + "h";
   return (Math.round(h / 24 * 10) / 10) + "d";
 }
-function servicePanel(d) {
-  const T = d.tickets || {}, K = d.tasks || {}, U = d.utilization || {};
-  const CB = d.callbacks, RT = d.retention;
-  const mins = m => m == null ? "—" : (m < 60 ? m + "m" : (Math.round(m / 6) / 10) + "h");
-  const R = T.resolution || {};
-  const team = (d.team || []).map(t => t.name);
+const OUTCOME_COLORS = {
+  renewed_as_is: "#2e9d5b", renewed_endorsed: "#74c48f", rewrite_accepted: "#3b7fc4",
+  cancelled_rewrite_declined: "#d9534f", cancelled_no_option: "#9e2a2a", unable_to_contact: "#d4a72c",
+  renewed_record: "#a8dcb8", rewritten_record: "#a9c9ea", cancelled_record: "#efaaa8", already_cancelled: "#dcc0bf",
+  pending_record: "#c9c4b8", no_renewal_record: "#8a877f", unmatched: "#e2ddd2",
+};
+function renewalRate(rows, kind) {
+  const kept = rows.filter(r => kind[r.outcome] === "kept").length;
+  const lost = rows.filter(r => kind[r.outcome] === "lost").length;
+  return kept + lost ? { pct: Math.round(1000 * kept / (kept + lost)) / 10, kept, lost } : { pct: null, kept, lost };
+}
+function renewalBreakdownHtml(m) {
+  const rows = m.renewals;
+  if (!rows.length) return `<div class="sect"><h2>Renewal Outcome Breakdown</h2><p class="sd">No renewal SRs were completed in this period.</p></div>`;
+  const kind = Object.fromEntries(m.outcomes.map(([k, , c]) => [k, c]));
+  const label = Object.fromEntries(m.outcomes.map(([k, l]) => [k, l]));
+  const busiest = Math.max(1, ...[rows.length]);
+  const bar = (rs, head, width) => {
+    const n = rs.length || 1;
+    const segs = m.outcomes.map(([k, l]) => {
+      const c = rs.filter(r => r.outcome === k).length;
+      return c ? `<span class="ogseg" style="width:${(c / n * 100).toFixed(2)}%;background:${OUTCOME_COLORS[k]}" title="${l}: ${c}"></span>` : "";
+    }).join("");
+    const rt = renewalRate(rs, kind);
+    return `<div class="orow"><div class="orow-head">${head}
+      <span class="on">${rs.length} renewal SR${rs.length === 1 ? "" : "s"}${rt.pct == null ? "" : ` &middot; <b>${rt.pct}%</b> retained (${rt.kept} of ${rt.kept + rt.lost})`}</span></div>
+      <div style="width:${width.toFixed(2)}%"><div class="otrack">${segs}</div></div></div>`;
+  };
+  const people = m.team.map(t => t.name).filter(n => rows.some(r => r.by === n));
+  const others = rows.filter(r => !r.by);
+  const maxPerson = Math.max(1, ...people.map(n => rows.filter(r => r.by === n).length), others.length);
+  const personRows = people.map(n => { const rs = rows.filter(r => r.by === n);
+    return bar(rs, `<span class="who">${pbadge(DOT[n] || TEAM_DOT, n.split(" ")[0])}</span>`, rs.length / maxPerson * 100); }).join("")
+    + (others.length ? bar(others, `<span class="who">${pbadge("#8a877f", "Others")}</span>`, others.length / maxPerson * 100) : "");
+  const pipes = (m.pipelines || []).filter(([, , k]) => k === "renewal").map(([k, l]) => [k, l, rows.filter(r => r.pipeline === k)]).filter(x => x[2].length);
+  const maxPipe = Math.max(1, ...pipes.map(x => x[2].length));
+  const pipeRows = pipes.map(([k, l, rs]) => bar(rs, `<span class="who" style="font-weight:600;font-size:13px">${l}</span>`, rs.length / maxPipe * 100)).join("");
+  const counts = m.outcomes.map(([k, l]) => [k, l, rows.filter(r => r.outcome === k).length]).filter(x => x[2]);
+  const legend = counts.map(([k, l, c]) =>
+    `<span class="oleg-item"><span class="pd" style="background:${OUTCOME_COLORS[k]}"></span>${l} <b>${c}</b> <span style="color:var(--text-muted)">(${Math.round(100 * c / rows.length)}%)</span></span>`).join("");
+  const team = renewalRate(rows, kind);
+  const fromRecord = rows.filter(r => r.source === "record").length;
+  const unnamed = Object.entries(m.unnamed || {});
+  return `<div class="sect"><h2>Renewal Outcome Breakdown</h2>
+    <p class="sd">Renewal SRs completed in this period and how each one ended. Retained = renewed or rewrite accepted, over everything with a decided outcome (renewed, rewritten or cancelled). Unable to Contact, renewals still ahead, policies already cancelled before the SR was opened, and out-of-date policy records sit outside the rate.</p>
+    ${bar(rows, `<span class="who">${pbadge(TEAM_DOT, "Team")}</span>`, 100)}
+    <h3 style="font-size:12px;text-transform:uppercase;letter-spacing:.06em;color:var(--text-muted);margin:16px 0 6px">By who completed it</h3>${personRows}
+    <h3 style="font-size:12px;text-transform:uppercase;letter-spacing:.06em;color:var(--text-muted);margin:16px 0 6px">By pipeline</h3>${pipeRows}
+    <div class="oleg">${legend}</div>
+    ${fromRecord ? `<p class="sd" style="margin:10px 0 0">${fromRecord} of ${rows.length} read from the policy's own record ("policy record" segments): completed before ${fmtShortDate(m.resolutionsFrom)}, when the new renewal resolutions started, or with a resolution not yet named.</p>` : ""}
+    ${unnamed.length ? `<p class="sd" style="margin:6px 0 0;color:#b45309">Resolutions not yet named: ${unnamed.map(([k, n]) => `id ${k} (${n} SR${n === 1 ? "" : "s"})`).join(", ")}.</p>` : ""}
+  </div>`;
+}
+function completionTimeHtml(m) {
+  const rows = (m.pipelines || []).map(([k, l]) => [l, m.completed.filter(r => r.pipeline === k)]).filter(x => x[1].length);
+  if (!rows.length) return "";
+  const tr = rows.map(([l, rs]) => { const hs = rs.map(r => r.hours);
+    return `<tr><td>${l}</td><td class="num">${rs.length}</td><td class="num">${fmtDur(svcMedian(hs))}</td><td class="num">${fmtDur(svcPctile(hs, 0.9))}</td></tr>`; }).join("");
+  const all = m.completed.map(r => r.hours);
+  return `<div class="sect"><h2>Completion Time</h2>
+    <p class="sd">SRs completed in this period, from the day each was created to the day it was completed. Not stage by stage.</p>
+    <div class="scroll"><table><thead><tr><th>Pipeline</th><th class="num">SRs completed</th><th class="num">Median</th><th class="num">90% within</th></tr></thead>
+    <tbody>${tr}<tr class="tot"><td>All service SRs</td><td class="num">${m.completed.length}</td><td class="num">${fmtDur(svcMedian(all))}</td><td class="num">${fmtDur(svcPctile(all, 0.9))}</td></tr></tbody></table></div></div>`;
+}
+function latePaymentsHtml(m) {
+  const st = m.lateStages || [];
+  const done = m.completed.filter(r => r.pipeline === "late_payments");
+  if (!st.length && !done.length) return "";
+  const tr = st.map(x => `<tr><td>${x.stage}</td><td class="num">${x.open}</td><td class="num">${x.days_in_stage.length ? Math.round(svcMedian(x.days_in_stage)) + "d" : "—"}</td><td class="num">${x.days_in_stage.length ? Math.round(x.days_in_stage[x.days_in_stage.length - 1]) + "d" : "—"}</td></tr>`).join("");
+  return `<div class="sect"><h2>Late Payments</h2>
+    <p class="sd">Open Late Payment SRs by stage as of ${fmtShortDate(m.days[m.days.length - 1])}, and how long they have sat in it. ${done.length} completed in this period, median ${fmtDur(svcMedian(done.map(r => r.hours)))} from created to completed.</p>
+    ${tr ? `<div class="scroll"><table><thead><tr><th>Stage</th><th class="num">Open</th><th class="num">Median in stage</th><th class="num">Longest</th></tr></thead><tbody>${tr}</tbody></table></div>` : ""}</div>`;
+}
+function missingDocsHtml(m) {
+  const rs = m.completed.filter(r => r.pipeline === "missing_docs");
+  if (!rs.length) return "";
+  const order = [["selling producer", "Selling producer"], ["service/hybrid rep", "Service / hybrid rep"], ["another producer", "Another producer"], ["producer", "Producer (seller unknown)"], ["other", "Someone else"]];
+  const chips = order.map(([k, l]) => { const n = rs.filter(r => r.handler === k).length;
+    return n ? `<div class="tile"><div class="k">${l}</div><div class="v">${n}</div><div class="n">${Math.round(100 * n / rs.length)}% &middot; median ${fmtDur(svcMedian(rs.filter(r => r.handler === k).map(r => r.hours)))}</div></div>` : ""; }).join("");
+  return `<div class="sect"><h2>Missing Documents</h2>
+    <p class="sd">Contingencies on newly bound policies: ${rs.length} completed in this period, median ${fmtDur(svcMedian(rs.map(r => r.hours)))} from created to completed, and who took care of it. The selling producer is whoever sold the household's policy just before the SR was created.</p>
+    <div class="tiles">${chips}</div></div>`;
+}
+function servicePanel(m) {
+  const team = m.team.map(t => t.name);
   const first = n => n.split(" ")[0];
   const pct = x => x == null ? "—" : Math.round(x) + "%";
-  const closedTeam = team.reduce((a, n) => a + (((T.closed_today || {})[n] || {}).total || 0), 0);
-  const rt = k => (R[k] || {}).team || {};
+  const mins = x => x == null ? "—" : (x < 60 ? Math.round(x) + "m" : (Math.round(x / 6) / 10) + "h");
+  const T = Object.values(m.tasks).reduce((a, t) => ({ due: a.due + t.due, completed: a.completed + t.completed }), { due: 0, completed: 0 });
+  const cbDone = m.callbacks.filter(r => r.minutes != null);
+  const U = team.reduce((a, n) => { const u = m.util[n] || {}; return { p: a.p + (u.p || 0), t: a.t + (u.t || 0) }; }, { p: 0, t: 0 });
   const tiles = `<div class="tiles">
     <div class="tile"><div class="k">Service Tasks Done</div>
-      <div class="v">${(K.team || {}).completed ?? 0}<span style="font-size:15px;color:var(--text-muted)"> / ${(K.team || {}).due ?? 0}</span></div>
-      <div class="n">${pct((K.team || {}).pct)} of service tasks due today</div></div>
-    <div class="tile"><div class="k">Tickets Closed</div>
-      <div class="v">${closedTeam}</div><div class="n">service tickets completed today</div></div>
-    <div class="tile"><div class="k">Change Resolution</div>
-      <div class="v">${fmtDur(rt("changes").median_h)}</div>
-      <div class="n">median, ${rt("changes").n ?? 0} changes &middot; last ${T.window_days || 30} days</div></div>
-    <div class="tile"><div class="k">Renewal Resolution</div>
-      <div class="v">${fmtDur(rt("renewals").median_h)}</div>
-      <div class="n">median, ${rt("renewals").n ?? 0} renewals &middot; last ${T.window_days || 30} days</div></div>
+      <div class="v">${T.completed}<span style="font-size:15px;color:var(--text-muted)"> / ${T.due}</span></div>
+      <div class="n">${T.due ? pct(100 * T.completed / T.due) : "—"} of service tasks due</div></div>
+    <div class="tile"><div class="k">SRs Completed</div>
+      <div class="v">${m.completed.length}</div><div class="n">median ${fmtDur(svcMedian(m.completed.map(r => r.hours)))} created to completed</div></div>
+    <div class="tile"><div class="k">Call-Back Resolution</div>
+      <div class="v">${mins(svcMedian(cbDone.map(r => r.minutes)))}</div>
+      <div class="n">median to the first return call &middot; ${cbDone.length} of ${m.callbacks.length} missed service calls returned same day</div></div>
     <div class="tile"><div class="k">Utilization</div>
-      <div class="v">${pct((U.team || {}).pct)}</div><div class="n">productive / tracked time, whole team</div></div>
+      <div class="v">${U.t ? pct(100 * U.p / U.t) : "—"}</div><div class="n">productive / tracked time, whole team</div></div>
   </div>`;
   const person = n => {
-    const k = K[n] || {}, u = U[n] || {}, c = (T.closed_today || {})[n] || {}, b = (T.backlog || {})[n] || {};
-    const res = key => ((R[key] || {}).by_person || {})[n] || {};
-    const role = ((d.team || []).find(t => t.name === n) || {}).role || "";
+    const k = m.tasks[n] || { due: 0, completed: 0 }, u = m.util[n] || {}, b = m.backlog[n] || {};
+    const mine = m.completed.filter(r => r.by === n);
+    const cb = cbDone.filter(r => r.by === n);
+    const role = (m.team.find(t => t.name === n) || {}).role || "";
     return `<div class="tile">
       <div class="k">${pbadge(DOT[n] || TEAM_DOT, first(n))} <span style="margin-left:4px">${role}</span></div>
-      <div class="n" style="margin-top:8px"><b>${k.completed ?? 0}/${k.due ?? 0}</b> service tasks &middot; <b>${c.total || 0}</b> tickets closed</div>
-      <div class="n"><b>${b.open ?? 0}</b> open tickets &middot; <b>${b.overdue ?? 0}</b> overdue</div>
-      <div class="n">Changes ${fmtDur(res("changes").median_h)} <span style="color:var(--text-muted)">(${res("changes").n || 0})</span> &middot; Renewals ${fmtDur(res("renewals").median_h)} <span style="color:var(--text-muted)">(${res("renewals").n || 0})</span></div>
-      ${CB ? `<div class="n">Call backs <b>${((CB.by_person || {})[n] || {}).returned || 0}</b>${((CB.by_person || {})[n] || {}).median_min != null ? ` &middot; median ${mins(CB.by_person[n].median_min)}` : ""}</div>` : ""}
-      <div class="n">Utilization <b>${pct(u.pct)}</b>${u.total ? ` &middot; ${u.productive} of ${u.total}` : ""}${u.hybrid ? ' <span style="color:var(--text-muted)">&middot; whole day, shared with sales</span>' : ""}</div>
+      <div class="n" style="margin-top:8px"><b>${k.completed}/${k.due}</b> service tasks &middot; <b>${mine.length}</b> SRs completed${mine.length ? ` (median ${fmtDur(svcMedian(mine.map(r => r.hours)))})` : ""}</div>
+      <div class="n"><b>${b.open ?? 0}</b> open SRs &middot; <b>${b.overdue ?? 0}</b> overdue</div>
+      <div class="n">Call backs <b>${cb.length}</b>${cb.length ? ` &middot; median ${mins(svcMedian(cb.map(r => r.minutes)))}` : ""}</div>
+      <div class="n">Utilization <b>${u.t ? pct(100 * u.p / u.t) : "—"}</b>${u.hybrid ? ' <span style="color:var(--text-muted)">&middot; whole day, shared with sales</span>' : ""}</div>
     </div>`;
   };
-  const cbTile = !CB ? "" : `<div class="tile"><div class="k">Call-Back Resolution</div>
-      <div class="v">${mins(CB.median_min)}</div>
-      <div class="n">median to the first return call &middot; ${CB.returned} of ${CB.missed} missed service calls returned today</div>
-      <div class="n">${CB.unreturned} not returned by close${CB.returned_by_others ? ` &middot; ${CB.returned_by_others} returned by someone outside the team` : ""}</div></div>`;
-  const fmtDate = x => { const [y, m, dd] = x.split("-"); return `${+m}/${+dd}`; };
-  const monthName = ym => new Date(ym + "-15T12:00:00").toLocaleString("en-US", { month: "long", year: "numeric" });
-  const rtCol = (v, title, sub, live) => {
-    const row = (label, o, cls) => `<tr><td${cls ? ` class="${cls}"` : ""}>${label}</td><td>${o.households}</td><td>${o.policies}</td><td>${money(o.premium)}</td></tr>`;
-    return `<div class="tile" style="padding-bottom:10px"><div class="k">${title}</div>
-      <div class="v">${v.rate_policies == null ? "—" : v.rate_policies + "%"}<span style="font-size:13px;color:var(--text-muted)"> policies &middot; ${v.rate_premium == null ? "—" : v.rate_premium + "%"} premium</span></div>
-      <div class="n">${sub}${v.rate_policies_floor != null && v.unconfirmed.policies ? ` &middot; ${v.rate_policies_floor}% if every "no renewal on file" is lost` : ""}</div>
-      <table class="rtt"><thead><tr><th></th><th>HH</th><th>Policies</th><th>Premium</th></tr></thead><tbody>
-        ${row("Retained", v.retained)}${row("Rewritten", v.rewritten)}${row("Cancelled", v.cancelled)}
-        ${row("No renewal on file", v.unconfirmed, "mut")}${live ? row("Upcoming", v.upcoming, "mut") : ""}
-        ${row("Endorsed in window", v.endorsed, "mut")}
-        ${v.before_window && v.before_window.policies ? row(`Cancelled earlier (&gt;${RT.window.before}d before)`, v.before_window, "mut") : ""}
-      </tbody></table>
-      <div class="n" style="color:var(--text-muted)">${v.matched} of ${v.total} policies matched to a household${v.by_resolution ? ` &middot; ${v.by_resolution} decided by the renewal SR's resolution` : ""}</div></div>`;
-  };
-  const rtTiles = !RT ? `<div class="tile"><div class="k">Retention</div><div class="v" style="color:var(--text-muted)">—</div><div class="n">Not available for this day.</div></div>`
-    : rtCol(RT.live, "Retention &middot; Live Window", `renewals ${fmtDate(RT.live.from)} &rarr; ${fmtDate(RT.live.to)}, as of today`, true)
-      + rtCol(RT.month, `Retention &middot; ${monthName(RT.month.month)}`, `final &middot; every renewal has had its ${RT.window.after} days`, false);
-  const pending = `<div class="tiles" style="grid-template-columns:repeat(auto-fit,minmax(300px,1fr))">${rtTiles}</div>
-    ${RT && RT.unnamed_resolutions && Object.keys(RT.unnamed_resolutions).length ? `<p class="sd" style="margin:10px 0 0;color:var(--warn, #b45309)">Renewal SR resolutions not yet named: ${Object.entries(RT.unnamed_resolutions).map(([k, n]) => `id ${k} (${n})`).join(", ")} -- counted from the policy records until they are.</p>` : ""}
-    <p class="sd" style="margin:10px 0 0">Window: ${RT ? RT.window.before : 30} days before to ${RT ? RT.window.after : 45} days after each renewal date. Rate = retained + rewritten over everything decided. Cancellation dates are the policy record's last change until the daily AgencyZoom snapshots cover the window.</p>
-    ${cbTile ? `<div class="tiles" style="margin-top:14px">${cbTile}</div>` : ""}`;
   return `<div class="sect"><h2>Service Team</h2>
-    <p class="sd">Credit goes to whoever closed the task or ticket. Resolution time is ticket opened to completed.</p>${tiles}</div>
-    <div class="sect"><h2>By Person</h2><div class="tiles">${team.map(person).join("")}</div></div>
-    <div class="sect"><h2>Retention &amp; Call Backs</h2>${pending}</div>`;
+    <p class="sd">Credit goes to whoever completed the SR or task.</p>${tiles}</div>
+    ${renewalBreakdownHtml(m)}
+    ${completionTimeHtml(m)}
+    ${latePaymentsHtml(m)}
+    ${missingDocsHtml(m)}
+    <div class="sect"><h2>By Person</h2><p class="sd">Open and overdue SRs are as of ${fmtShortDate(m.days[m.days.length - 1])}.</p><div class="tiles">${team.map(person).join("")}</div></div>`;
 }
-function repaintService() {
+async function paintService() {
   const v = $("#view");
-  const days = SERVICE_DAYS || [];
-  const picker = days.length ? `<div class="rangebar" style="margin-bottom:12px"><label style="font-size:12.5px;color:var(--text-secondary)">Day
-      <select id="svcday">${days.map(x => `<option value="${x}"${x === serviceDay ? " selected" : ""}>${x}</option>`).join("")}</select></label></div>` : "";
-  v.innerHTML = picker + (serviceDoc ? servicePanel(serviceDoc)
-    : `<div class="empty">${days.length ? "No service report for this day." : "No service reports yet."}</div>`);
-  if (serviceDoc) $("#topsub").textContent = "service team · " + serviceDoc.label;
-  const sel = $("#svcday");
-  if (sel) sel.onchange = async () => { v.innerHTML = '<div class="empty">Loading…</div>'; await loadService(sel.value); repaintService(); };
+  const controls = rangeControlHtml();
+  v.innerHTML = controls + '<div class="empty">Loading…</div>';
+  wireRangeControl();
+  const all = await serviceDays();
+  let wanted, label;
+  if (rangeMode === "day") {
+    const day = (cur && cur.date) || all[0];
+    wanted = day ? [day] : [];
+    label = day ? new Date(day + "T12:00:00").toLocaleDateString(undefined, { weekday: "long", month: "long", day: "numeric", year: "numeric" }) : "";
+  } else {
+    const b = rangeBounds();
+    if (b.err) { v.innerHTML = controls + `<div class="empty">${b.err}</div>`; wireRangeControl(); return; }
+    wanted = all.filter(d => d >= (b.from || "") && d <= b.to);
+    label = `${b.label} · ${b.from || "the start"} → ${b.to}`;
+  }
+  const docs = await fetchServiceDocs(wanted);
+  $("#topsub").textContent = "Athena · service team" + (label ? " · " + label : "");
+  v.innerHTML = controls + (docs.length ? servicePanel(mergeServiceDocs(docs))
+    : `<div class="empty">No Athena report for ${rangeMode === "day" ? "this day" : "this range"} yet.</div>`);
+  wireRangeControl();
 }
 
 async function loadDay(day) {

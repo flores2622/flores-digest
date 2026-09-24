@@ -166,6 +166,35 @@ of what `service_tickets_live()` asks for, not of AgencyZoom: requesting
 `status: [2]` returns every completed ticket (19,287) with `completeDate` and
 `resolutionDesc`. Screening calls still wants live tickets only. The completed
 set is read by `service_digest.py` alone, for resolution times.
+## Athena -- the service digest
+
+**Athena is the service side's name** (Frank, 2026-09-23), as Apollo is sales
+coaching's. `service_digest.py` builds `service/<day>.json`; the board's
+Service tab renders it. The team is Debbie (CSR) plus Amanda and Crystal
+(hybrid); credit always goes to whoever COMPLETED the SR or task.
+
+- **Say "SR" (service request), never "ticket"** -- on the board and in
+  anything the agency reads.
+- **The pipelines, as the agency uses them** (Frank, 2026-09-23). Only Late
+  Payments is worked stage by stage; for the rest Athena tracks created ->
+  completed and nothing about stages.
+    Personal Renewals        Farmers & Foremost renewals: completion time + outcome %
+    Other 30 day Renewals    Bristol West renewals: same
+    Service Pipeline         changes, endorsements, basic service: completion time
+    Late Payments            stage breakdown + completion time
+    Missing Documents        contingencies on newly bound policies: completion time
+                             + whether the SELLING producer or a service/hybrid rep closed it
+- **The Renewal Outcome Breakdown is not an agency retention rate.** It is the
+  outcomes of the renewal SRs COMPLETED in the filtered period, and a rate
+  among just those. From 2026-09-24 the outcome is the SR's own resolution
+  (Frank's six: Renewed: Accepted as is / Endorsed, Rewrite Accepted,
+  Cancelled: Rewrite Declined, Cancelled, no endorse/rewrite available, Unable
+  to Contact). Old resolution ids were RENAMED, so anything earlier is read
+  from the policy record instead and shown as its own "(policy record)"
+  segments. `RESOLUTION_LABELS` in service_retention.py names each id once, by
+  hand -- `python3 service_retention.py --resolutions` lists them.
+- **Documents hold rows, never medians**, so the board can add any range up.
+
 ## Coach AI
 
 - **The call score is NOT a 0-100 percentage.** Frank, 2026-09-01: a *perfect

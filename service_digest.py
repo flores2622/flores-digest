@@ -1,4 +1,5 @@
-"""Service digest: the service team's day, published to the board's Service tab.
+"""Athena -- the service digest: the service team's day, published to the
+board's Service tab. (Apollo is the sales coaching brain; Athena is service's.)
 
     python3 service_digest.py                  # today, Arizona
     python3 service_digest.py --day 2026-09-22 --dry-run
@@ -10,7 +11,8 @@ service work counts, and her utilization is the whole day, marked hybrid,
 because Insightful cannot split a day into sales and service time.
 
 CREDIT GOES TO WHOEVER CLOSED IT (Frank, 2026-09-23), not the assigned CSR:
-a ticket's `modifiedBy` on completion, a task's `completedBy`.
+an SR's `modifiedBy` on completion, a task's `completedBy`. The agency calls
+them SRs (service requests), never tickets -- the board says SR throughout.
 
 SERVICE TICKET STATUS 2 IS COMPLETED. CLAUDE.md's "no closed state in this
 payload" is about what service_tickets_live() fetches (status [1] only, which
@@ -18,16 +20,15 @@ is right for screening calls against OPEN work). Asking for status [2]
 returns 19,287 completed tickets, each with completeDate and resolutionDesc --
 found 2026-09-23. This module is the only reader of the completed set.
 
-RETENTION across the renewal window lives in service_retention.py (its
-docstring says how each outcome is read). CALL-BACK resolution reuses the
-missed-call audit's own grouping and routing, keeping the service-side calls.
+RENEWAL OUTCOMES -- of the renewal SRs completed that day, what happened --
+live in service_retention.py. CALL-BACK resolution reuses the missed-call
+audit's own grouping and routing, keeping the service-side calls.
 """
 import argparse
 import collections
 import datetime as dt
 import json
 import pathlib
-import statistics
 
 ROOT = pathlib.Path(__file__).resolve().parent
 AZ = dt.timezone(dt.timedelta(hours=-7))
@@ -41,11 +42,25 @@ SERVICE_TEAM = {
 }
 HYBRID_UTIL = {"Crystal Mango"}      # whole-day utilization, shared with sales
 
-# Ticket workflows -> the digest's resolution-time buckets.
+# AgencyZoom service pipelines, as the agency uses them (Frank, 2026-09-23).
+# None of these is worked stage by stage except Late Payments; for the rest
+# Athena tracks start (createDate) to completion (completeDate) only.
+#   (key, board label, AgencyZoom workflowName(s), kind)
+PIPELINES = (
+    ("renewals_ff", "Farmers & Foremost Renewals", {"Personal Renewals"}, "renewal"),
+    ("renewals_bw", "Bristol West Renewals", {"Other 30 day Renewals"}, "renewal"),
+    ("renewals_commercial", "Commercial Renewals", {"Commercial Renewals"}, "renewal"),
+    ("changes", "Changes & Service", {"Service Pipeline"}, "service"),   # changes, endorsements, basic service
+    ("late_payments", "Late Payments", {"Late Payments"}, "late"),       # the one pipeline tracked by stage
+    ("missing_docs", "Missing Documents", {"Missing Documents"}, "docs"),  # contingencies on newly bound policies
+    ("reinstatement", "Reinstatement", {"Reinstatement"}, "other"),
+)
+RENEWALS = {w for _, _, ws, kind in PIPELINES if kind == "renewal" for w in ws}
 CHANGES = {"Service Pipeline"}
-RENEWALS = {"Personal Renewals", "Other 30 day Renewals", "Commercial Renewals"}
-BUCKETS = (("changes", "Changes", CHANGES), ("renewals", "Renewals", RENEWALS))
-TRAILING_DAYS = 30                   # resolution-time window
+
+
+def pipeline_of(workflow):
+    return next((k for k, _, ws, _ in PIPELINES if workflow in ws), "other")
 TICKET_LOOKBACK_DAYS = 365           # how far back the completed pull pages
 
 
@@ -103,6 +118,10 @@ def _hours(a, b):
 
 
 # ---- figures ---------------------------------------------------------------
+# Every section is stored as ROWS or plain counts, never as a median, so the
+# board can add any range of days together and compute the median over the
+# whole range itself (Frank, 2026-09-23: "of the renewal SR's that were
+# COMPLETED that day (or the range of days filtered to)").
 def task_figures(tasks):
     """Service tasks due on the day: per person due (by assignee) and done (by
     whoever completed it). Uses the sales audit's own service test, so a task
@@ -119,51 +138,64 @@ def task_figures(tasks):
                 due[by_id[a["id"]]] += 1
         if t.get("status") == STATUS_COMPLETED and t.get("completedBy") in by_id:
             done[by_id[t["completedBy"]]] += 1
-    out = {}
-    for name in SERVICE_TEAM:
-        d, c = due[name], done[name]
-        out[name] = {"due": d, "completed": c,
-                     "pct": round(100 * c / d, 1) if d else None}
-    td, tc = sum(due.values()), sum(done.values())
-    out["team"] = {"due": td, "completed": tc,
-                   "pct": round(100 * tc / td, 1) if td else None}
+    return {name: {"due": due[name], "completed": done[name]} for name in SERVICE_TEAM}
+
+
+def _seller_index(log=log):
+    """household id -> [(soldDate, agentName)], for Missing Documents: the
+    SR's household is known, its policies (and their selling producer) come
+    from the household map joined to the policy corpus by policy id."""
+    import service_retention as sr
+    agents = {p["id"]: p.get("agentName") for p in
+              json.loads((ROOT / "data/az_policies_all.json").read_text())}
+    out = collections.defaultdict(list)
+    for cid, v in sr.load_household_map(log=log).items():
+        for p in v.get("policies") or []:
+            if p.get("soldDate") and agents.get(p.get("id")):
+                out[cid].append((str(p["soldDate"])[:10], agents[p["id"]]))
     return out
 
 
-def ticket_figures(day, done, live):
-    """Tickets closed today, open backlog, and resolution time (open ->
-    complete) over the trailing window, per bucket and per closer."""
-    lo = (dt.date.fromisoformat(day) - dt.timedelta(days=TRAILING_DAYS - 1)).isoformat()
-    window = [r for r in done if lo <= str(r.get("completeDate") or "")[:10] <= day]
-    today = [r for r in window if str(r.get("completeDate") or "")[:10] == day]
+def _handler(sr_row, sellers):
+    """Missing Documents: who took care of it -- the policy's own selling
+    producer, a service/hybrid rep, or another producer. The seller is whoever
+    sold the household's policy most recently before the SR opened (within
+    60 days): a missing-document SR is opened just after binding."""
+    import digest_config as cfg
+    closer = sr_row.get("modifiedBy")
+    opened = str(sr_row.get("createDate") or "")[:10]
+    lo = (dt.date.fromisoformat(opened) - dt.timedelta(days=60)).isoformat() if opened else ""
+    sold = sorted(x for x in sellers.get(str(sr_row.get("householdId")), []) if lo <= x[0] <= opened)
+    seller = sold[-1][1] if sold else None
+    if seller and closer == seller:
+        kind = "selling producer"
+    elif closer in SERVICE_TEAM:
+        kind = "service/hybrid rep"
+    elif closer in cfg.PRODUCERS:
+        kind = "another producer" if seller else "producer"
+    else:
+        kind = "other"
+    return kind, seller
 
-    def bucket_of(r):
-        wf = r.get("workflowName")
-        return next((k for k, _, s in BUCKETS if wf in s), "other")
 
-    def summary(rows):
-        hs = sorted(h for h in (_hours(r.get("createDate"), r.get("completeDate"))
-                                for r in rows) if h is not None)
-        if not hs:
-            return {"n": 0, "median_h": None, "p90_h": None}
-        return {"n": len(hs), "median_h": round(statistics.median(hs), 1),
-                "p90_h": round(hs[min(len(hs) - 1, int(len(hs) * 0.9))], 1)}
-
-    resolution = {}
-    for key, label, _ in BUCKETS:
-        rows = [r for r in window if bucket_of(r) == key]
-        resolution[key] = {
-            "label": label,
-            "team": summary(rows),
-            "by_person": {n: summary([r for r in rows if _team_name(r.get("modifiedBy")) == n])
-                          for n in SERVICE_TEAM},
-        }
-
-    closed_today = {n: collections.Counter() for n in SERVICE_TEAM}
-    for r in today:
-        n = _team_name(r.get("modifiedBy"))
-        if n:
-            closed_today[n][bucket_of(r)] += 1
+def sr_figures(day, done, live, log=log):
+    """SRs completed on the day -- one row each: which pipeline, who completed
+    it, hours from opened to completed, and for Missing Documents who took
+    care of it -- plus each person's open and overdue SRs at the end of the
+    day, and the Late Payment pipeline's open SRs by stage."""
+    completed, sellers = [], None
+    for r in done:
+        if str(r.get("completeDate") or "")[:10] != day:
+            continue
+        h = _hours(r.get("createDate"), r.get("completeDate"))
+        pipe = pipeline_of(r.get("workflowName"))
+        row = {"by": _team_name(r.get("modifiedBy")), "by_name": r.get("modifiedBy"),
+               "pipeline": pipe, "hours": round(h, 2) if h is not None else None}
+        if pipe == "missing_docs":
+            if sellers is None:
+                sellers = _seller_index(log=log)
+            row["handler"], row["seller"] = _handler(r, sellers)
+        completed.append(row)
 
     by_csr = {v["az_id"]: k for k, v in SERVICE_TEAM.items()}
     backlog = {n: {"open": 0, "overdue": 0} for n in SERVICE_TEAM}
@@ -176,13 +208,27 @@ def ticket_figures(day, done, live):
         if str(t.get("dueDate") or "")[:10] and str(t.get("dueDate"))[:10] < day:
             backlog[n]["overdue"] += 1
 
-    return {
-        "window_days": TRAILING_DAYS,
-        "resolution": resolution,
-        "closed_today": {n: dict(c) | {"total": sum(c.values())}
-                         for n, c in closed_today.items()},
-        "backlog": backlog,
-    }
+    # Late Payments is the one pipeline worked by stage: where the open SRs
+    # sit at the end of the day, and how long they have been there.
+    end = dt.datetime.fromisoformat(f"{day}T23:59:59")
+    stages = collections.defaultdict(list)
+    for t in live:
+        if pipeline_of(t.get("workflowName")) != "late_payments":
+            continue
+        created = str(t.get("createDate") or "")[:10]
+        if created and created > day:
+            continue
+        since = t.get("enterStageTS") or t.get("createDate")
+        try:
+            in_stage = (end - dt.datetime.fromisoformat(str(since)[:19])).total_seconds() / 86400
+        except ValueError:
+            in_stage = None
+        stages[t.get("workflowStageName") or "(no stage)"].append(
+            round(in_stage, 1) if in_stage is not None and in_stage >= 0 else None)
+    late_stages = [{"stage": k, "open": len(v),
+                    "days_in_stage": sorted(x for x in v if x is not None)}
+                   for k, v in sorted(stages.items(), key=lambda kv: -len(kv[1]))]
+    return {"completed": completed, "backlog": backlog, "late_payment_stages": late_stages}
 
 
 # Missed-call buckets (missed_call_audit.route) that are service work. An open
@@ -193,15 +239,14 @@ SERVICE_CALL_BUCKETS = {"customer", "open SR", "no record"}
 def callback_figures(day, recs=None):
     """Call-back resolution: each missed or voicemail call-in to the office
     (grouped per caller per hour, exactly as the missed-call audit does) that
-    routes to service, and the time until the first outbound call back to
-    that number. Credit goes to whoever made the return call. Same-day only:
-    a call missed at 5:20 and returned tomorrow reads as not yet returned.
-    Texts are not counted here -- a hand-typed reply lives on LEAD notes,
-    which a service customer usually does not have."""
+    routes to service, and the minutes until the first outbound call back to
+    that number, credited to whoever made it. Same-day only: a call missed at
+    5:20 and returned tomorrow reads as not returned. Texts are not counted --
+    a hand-typed reply lives on LEAD notes, which a service customer usually
+    does not have."""
     import missed_call_audit as mca
     recs = recs if recs is not None else mca.collect(day, refresh=False)
     idx, *_ = mca.build_index(day)
-    names = set(SERVICE_TEAM)
     rows = []
     for n, calls in mca.group(recs):
         bucket = mca.route(idx.get(n))[0]
@@ -219,20 +264,8 @@ def callback_figures(day, recs=None):
                 back = (t, (r.get("from") or {}).get("name") or "")
         rows.append({"bucket": bucket,
                      "minutes": round((back[0] - last).total_seconds() / 60) if back else None,
-                     "by": back[1] if back else None})
-    done = [r for r in rows if r["minutes"] is not None]
-    med = lambda xs: round(statistics.median(xs)) if xs else None
-    by_person = {}
-    for name in SERVICE_TEAM:
-        mine = [r["minutes"] for r in done if r["by"] == name]
-        by_person[name] = {"returned": len(mine), "median_min": med(mine)}
-    others = [r for r in done if r["by"] not in names]
-    return {"missed": len(rows), "returned": len(done),
-            "unreturned": len(rows) - len(done),
-            "median_min": med([r["minutes"] for r in done]),
-            "returned_by_others": len(others),
-            "by_bucket": dict(collections.Counter(r["bucket"] for r in rows)),
-            "by_person": by_person}
+                     "by": (back[1] if back[1] in SERVICE_TEAM else "other") if back else None})
+    return {"rows": rows}
 
 
 def util_figures(day):
@@ -240,16 +273,14 @@ def util_figures(day):
     util, _, detail = iu.pull(day)
     out = {}
     for name in SERVICE_TEAM:
-        u = util.get(name)
+        u, d = util.get(name), detail.get(name) or {}
         out[name] = {"pct": u[0] if u else None,
                      "total": u[1] if u else None,
                      "productive": u[2] if u else None,
+                     "productive_min": d.get("productive_min"),
+                     "total_min": d.get("total_min"),
                      "hybrid": name in HYBRID_UTIL,
-                     "tracked": bool((detail.get(name) or {}).get("tracked"))}
-    scope = [n for n in SERVICE_TEAM if (detail.get(n) or {}).get("tracked")]
-    pm = sum(detail[n]["productive_min"] for n in scope)
-    tm = sum(detail[n]["total_min"] for n in scope)
-    out["team"] = {"pct": round(100 * pm / tm, 1) if tm else None}
+                     "tracked": bool(d.get("tracked"))}
     return out
 
 
@@ -258,37 +289,42 @@ def build(day, log=log, refresh_households=True):
     live_f = ROOT / f"data/az_service_tickets_{day}.json"
     live = json.loads(live_f.read_text()) if live_f.exists() else []
     done = completed_tickets(day, log=log)
+    # Each section may fail alone: a bad renewal read must not cost the task
+    # and SR cards that are already right.
     try:
         util = util_figures(day)
     except Exception as e:
         log(f"  utilization failed ({type(e).__name__}: {e})")
         util = {}
-    # Each section may fail alone: a bad retention read must not cost the
-    # task and ticket cards that are already right.
     try:
         callbacks = callback_figures(day)
     except Exception as e:
         log(f"  call backs failed ({type(e).__name__}: {e})")
         callbacks = None
     try:
-        import service_retention
-        retention = service_retention.figures(
-            day, json.loads((ROOT / "data/az_policies_all.json").read_text()),
+        import service_retention as sr
+        rows, unnamed = sr.renewal_srs(
+            day, done, json.loads((ROOT / "data/az_policies_all.json").read_text()),
             json.loads((ROOT / "data/az_customers_all.json").read_text()),
-            done, log=log, refresh=refresh_households)
+            log=log, refresh=refresh_households)
+        renewals = {"rows": rows, "unnamed": unnamed,
+                    "resolutions_from": sr.RESOLUTIONS_FROM,
+                    "outcomes": [list(o) for o in sr.OUTCOMES]}
     except Exception as e:
-        log(f"  retention failed ({type(e).__name__}: {e})")
-        retention = None
+        log(f"  renewal outcomes failed ({type(e).__name__}: {e})")
+        renewals = None
     return {
+        "version": 2,
         "date": day,
         "label": dt.date.fromisoformat(day).strftime("%A, %B %-d, %Y"),
         "built_at": dt.datetime.now(AZ).isoformat(timespec="seconds"),
         "team": [{"name": n, "role": v["role"]} for n, v in SERVICE_TEAM.items()],
         "tasks": task_figures(tasks),
-        "tickets": ticket_figures(day, done, live),
-        "utilization": util,
+        "srs": sr_figures(day, done, live, log=log),
+        "pipelines": [[k, label, kind] for k, label, _, kind in PIPELINES],
+        "renewals": renewals,
         "callbacks": callbacks,
-        "retention": retention,
+        "utilization": util,
     }
 
 
