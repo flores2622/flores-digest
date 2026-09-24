@@ -81,9 +81,8 @@ GROUPS = {
     },
     # Frank, 2026-09-24: a staff member's name as the source is that person's
     # own personal network, and each works their own, never each other's.
-    # Francisco's name stays a Referral (STAFF_REFERRAL). No approach line
-    # yet, so Apollo coaches these on the rest of METHODOLOGY.md and Role
-    # Play leaves them out until Frank writes one.
+    # Francisco's name stays a Referral (STAFF_REFERRAL). Approach and
+    # backstory confirmed by Frank, 2026-09-24.
     "personal_network": {
         "label": "Personal network",
         "who": "A staff member's own personal network (a source named after one "
@@ -91,16 +90,28 @@ GROUPS = {
                "network, never someone else's.",
         "products": ANY,
         "existing_household": False, "sale": True, "owner": "apollo",
-        "approach": None,
+        # Role Play: what the prospect knows about how this call came about.
+        "backstory": 'You know the producer personally: a friend, relative or someone from their community. They mentioned they work in insurance and offered to look at your coverage.',
+        "approach": "They know you, not the agency. Lead with the relationship and "
+                    "why you are calling, not a pitch: ask what they have and when "
+                    "it renews, then quote the whole household in one go so they "
+                    "are not passed around. Keep it professional -- a friend with "
+                    "a bad experience will not send anyone else.",
     },
     # Instagram and LinkedIn (Frank, 2026-09-24). Facebook is NOT here: its
-    # leads are purchased and sit with Generated. No leads yet, no approach.
+    # leads are purchased and sit with Generated. No leads yet. Approach and
+    # backstory confirmed by Frank, 2026-09-24.
     "social_media": {
         "label": "Social media",
         "who": "Someone who reached the agency through its Instagram or LinkedIn.",
         "products": ANY,
         "existing_household": False, "sale": True, "owner": "apollo",
-        "approach": None,
+        # Role Play: what the prospect knows about how this call came about.
+        "backstory": 'You follow or found this agency on Instagram or LinkedIn and sent a message asking about insurance. You have not asked for a formal quote yet.',
+        "approach": "They reached out, but lightly: a message or a comment, not a "
+                    "quote request. Respond fast, refer back to the post or message "
+                    "that brought them in, then move to a phone call and discovery. "
+                    "Expect them to know less about what they need than a quote-site lead.",
     },
     "center_of_influence": {
         "label": "Center of influence",
