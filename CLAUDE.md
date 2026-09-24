@@ -28,7 +28,8 @@ Everything caches under `data/`, so a re-run resumes rather than restarting.
   `digest_config` reads. Commercial sources (Leo, Work Comp, the Comm Leads
   lists) are Cerberus's. Frank confirmed the `approach` lines on 2026-09-24.
   **A staff member's name as a source is Personal network** -- their own,
-  never each other's -- **except Francisco's, which is a Referral**;
+  never each other's, and never in Role Play -- **except Francisco's, which
+  is a Referral** (and so can come up in Role Play);
   Instagram / LinkedIn are Social media (Facebook stays Generated); Found us
   (Google, Farmers.com) is part of Call-in / walk-in (Frank, 2026-09-24).
   The Sales tab's Premium per Lead Source uses these same groups.
@@ -52,8 +53,9 @@ Everything caches under `data/`, so a re-run resumes rather than restarting.
   agency stages** (made for an outside texting company): a producer moving a
   lead into one is a mistake Apollo flags. Open leads misfiled in "Pipeline"
   are listed on the Sales Center for someone to move (`pipelines.misfiled`).
-- **Role Play never uses a center of influence or cold / misc lead source**
-  (Frank, 2026-09-24), nor a one-off, commercial, BOB or Rewrite source
+- **Role Play never uses a center of influence, cold / misc or existing
+  client, new purchase lead source** (Frank, 2026-09-24), nor a personal
+  network, one-off, commercial, BOB or Rewrite source
   (`GROUPS[...]["roleplay"]`). That is Role Play only: **calls on those
   sources still get coaching cards** and count in every coaching figure like
   any other call. Role Play draws a session's lead source from the

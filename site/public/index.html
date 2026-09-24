@@ -2413,10 +2413,85 @@ function rpScenarioFor(name, key) {
   const g = LEADSRC_GUIDE.groups[key];
   const product = (LEADSRC_GUIDE.cross_sell_product || {})[lsNorm(name)];
   return { key, label: name ? String(name).trim() : g.label,
-    forCustomer: g.backstory.replace("{product}", CROSS_SELL_WORDS[product] || "a type of"),
+    forCustomer: ((LEADSRC_GUIDE.source_backstory || {})[lsNorm(name)] || g.backstory)
+      .replace("{product}", CROSS_SELL_WORDS[product] || "a type of"),
     tip: g.approach || "" };
 }
+/* Every Role Play scenario has a person on the other end (Frank,
+   2026-09-24: "scenarios need names, occupations, ages, and family
+   status"). Rolled fresh with each scenario, kept believable: the job fits
+   the age, children's ages fit the parent's, and a lead source that means
+   a homeowner or an existing customer gets one. Shown on the debrief and
+   sent to the Worker so the prospect plays that person. */
+const RP_FIRST = {
+  f: ["Maria", "Jessica", "Ana", "Sarah", "Guadalupe", "Ashley", "Veronica", "Emily", "Rosa", "Megan",
+      "Claudia", "Brittany", "Leticia", "Amanda", "Yesenia", "Karen", "Diana", "Stephanie", "Alma", "Rachel"],
+  m: ["Jose", "Michael", "Luis", "David", "Juan", "Chris", "Carlos", "Matthew", "Miguel", "Ryan",
+      "Jesus", "Tyler", "Ricardo", "Brandon", "Alejandro", "Kevin", "Francisco", "Justin", "Ramon", "Daniel"],
+};
+const RP_LAST = ["Garcia", "Martinez", "Lopez", "Hernandez", "Smith", "Johnson", "Ramirez", "Torres", "Williams",
+  "Flores", "Brown", "Rivera", "Morales", "Davis", "Ortiz", "Miller", "Castillo", "Wilson", "Mendoza", "Anderson",
+  "Chavez", "Moore", "Ruiz", "Taylor", "Vasquez", "Thomas", "Romero", "Jackson", "Gutierrez", "White"];
+// [occupation, youngest age, oldest age]
+const RP_JOBS = [
+  ["registered nurse", 24, 63], ["elementary school teacher", 24, 64], ["electrician", 21, 62],
+  ["truck driver", 23, 66], ["retail store manager", 26, 60], ["dental hygienist", 23, 60],
+  ["construction foreman", 28, 62], ["software developer", 23, 55], ["restaurant owner", 30, 66],
+  ["auto mechanic", 20, 64], ["real estate agent", 25, 68], ["office manager", 27, 65],
+  ["firefighter", 22, 55], ["police officer", 23, 55], ["HVAC technician", 21, 62],
+  ["hair stylist", 20, 60], ["warehouse supervisor", 24, 62], ["accountant", 24, 66],
+  ["landscaping business owner", 28, 66], ["medical assistant", 20, 58], ["plumber", 21, 64],
+  ["college student working part-time at a restaurant", 19, 24], ["bank teller", 20, 45],
+  ["retired postal carrier", 60, 78], ["retired teacher", 60, 78], ["retired Air Force mechanic", 55, 76],
+];
+const rpPick = a => a[Math.floor(Math.random() * a.length)];
+const rpInt = (lo, hi) => lo + Math.floor(Math.random() * (hi - lo + 1));
+// Children born when the parent was 20-45, distinct ages, oldest first.
+function rpKids(parentAge, n) {
+  const oldest = Math.min(parentAge - 20, 30), youngest = Math.max(1, parentAge - 45);
+  if (oldest < youngest) return [];
+  const ages = new Set();
+  for (let i = 0; i < n * 4 && ages.size < n; i++) ages.add(rpInt(youngest, oldest));
+  return [...ages].sort((a, b) => b - a);
+}
+function rpKidText(ages) {
+  if (!ages.length) return "";
+  const grown = ages.filter(a => a >= 18).length, young = ages.filter(a => a < 18);
+  const parts = [];
+  if (young.length) parts.push(`${young.length === 1 ? "a" : young.length} kid${young.length === 1 ? "" : "s"} (${young.length > 1 ? young.slice(0, -1).join(", ") + " and " + young[young.length - 1] : young[0]})`);
+  if (grown) parts.push(grown === 1 ? "a grown kid" : `${grown} grown kids`);
+  return parts.join(" and ");
+}
+function rpFamily(age) {
+  const r = Math.random();
+  if (age < 25) return r < 0.55 ? "single" : r < 0.8 ? "lives with a partner" : `single parent of ${rpKidText(rpKids(age, 1))}`;
+  if (age < 60) {
+    if (r < 0.4) { const k = rpKidText(rpKids(age, rpInt(1, 3))); return k ? `married with ${k}` : "married, no kids"; }
+    if (r < 0.55) return "married, no kids";
+    if (r < 0.7) { const k = rpKidText(rpKids(age, rpInt(1, 2))); return k ? `divorced, with ${k}` : "divorced"; }
+    if (r < 0.82) return "single";
+    if (r < 0.92) return "engaged, moving in together this year";
+    const k = rpKidText(rpKids(age, rpInt(2, 3))); return k ? `remarried, a blended family with ${k}` : "remarried";
+  }
+  return r < 0.55 ? "married, grown kids and grandkids" : r < 0.8 ? "widowed, grown kids" : "married, no kids";
+}
+function rpMakeProspect(groupKey) {
+  const sex = Math.random() < 0.5 ? "f" : "m";
+  // A new-purchase or cross-sell lead is an existing homeowner/customer:
+  // skew older and away from the student / part-time roles.
+  const settled = groupKey === "existing_new_purchase" || groupKey === "cross_sell";
+  const jobs = RP_JOBS.filter(([, lo]) => !settled || lo >= 21);
+  const [job, lo, hi] = rpPick(jobs);
+  const age = rpInt(Math.max(lo, settled ? 27 : lo), hi);
+  const p = { name: `${rpPick(RP_FIRST[sex])} ${rpPick(RP_LAST)}`, sex, age, occupation: job, family: rpFamily(age) };
+  p.text = `${p.name}, ${p.age}, ${/^([aeiou]|hvac)/i.test(p.occupation) ? "an" : "a"} ${p.occupation}; ${p.family}.`;
+  return p;
+}
 function pickLeadSource() {
+  const ls = pickLeadSourceOnly();
+  return { ...ls, prospect: rpMakeProspect(ls.key) };
+}
+function pickLeadSourceOnly() {
   const G = LEADSRC_GUIDE;
   const usable = k => G && G.groups[k] && G.groups[k].roleplay && G.groups[k].backstory;
   if (!G || !Object.keys(G.groups).some(usable)) return RP_FALLBACK_LEAD_SOURCE;
@@ -2637,7 +2712,8 @@ function roleplayPanel() {
   return `<div class="sect"><h2>Role Play &middot; ${p.name}</h2>
     <p class="sd">${rpProducer}
       <button class="ghost" id="rpNewScenario" type="button" style="margin-left:6px">new scenario</button>
-      <button class="ghost" id="rpChangeProducer" type="button">change producer</button></p>
+      <button class="ghost" id="rpChangeProducer" type="button">change producer</button>
+      ${rpDebriefButtons()}</p>
     <div class="rpchat">
       <div class="rpmsgs" id="rpMsgs">${msgs}</div>
       ${rpSpeechSupported() ? `<div class="rprow" style="justify-content:center">
@@ -2650,6 +2726,37 @@ function roleplayPanel() {
     ${rpGrade ? gradeCardHtml(rpGrade) : ""}
     ${histHtml}
   </div>`;
+}
+
+/* The debrief, in its own window or as a PDF (Frank, 2026-09-24: "so they
+   can reference it while in the session"). The debrief screen goes away
+   once the call starts, so the render snapshots it (rpDebriefSnapshot) and
+   both buttons -- on the debrief and on the live call -- open that same
+   snapshot: a standalone page carrying this page's own styles and theme.
+   "Save as PDF" opens it and brings up the browser's print dialog, where
+   Save as PDF is the destination. A new scenario takes a new snapshot. */
+let rpDebriefSnapshot = null;
+function rpDebriefButtons() {
+  return rpDebriefSnapshot ? `<button class="ghost" id="rpDebriefWin" type="button">open debrief in new window</button>
+      <button class="ghost" id="rpDebriefPdf" type="button">save debrief as PDF</button>` : "";
+}
+function rpOpenDebrief(print) {
+  const d = rpDebriefSnapshot;
+  if (!d) return;
+  const w = window.open("", "_blank", "width=820,height=900");
+  if (!w) { alert("Your browser blocked the new window -- allow pop-ups for this board and try again."); return; }
+  const css = [...document.querySelectorAll("style")].map(el => el.textContent).join("\n");
+  const theme = document.documentElement.dataset.theme;
+  w.document.open();
+  w.document.write(`<!doctype html><html${theme ? ` data-theme="${theme}"` : ""}><head><meta charset="utf-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1"><title>${d.title} · ${d.producer}</title>
+    <style>${css}
+    body { padding: 20px 24px 40px; max-width: 900px; margin: 0 auto; }
+    @media print { body { padding: 0; } .tile { break-inside: avoid; } }</style></head>
+    <body><div class="sect"><h2>${d.title}</h2><p class="sd">${d.producer}</p>${d.body}</div></body></html>`);
+  w.document.close();
+  w.focus();
+  if (print) setTimeout(() => w.print(), 300);   // let the written page lay out first
 }
 
 /* Pre-call debrief (Frank, 2026-09-11): shown once a persona is picked and
@@ -2681,13 +2788,27 @@ function roleplayDebriefHtml(p) {
   const callGuideHtml = TRAINING_CACHE ? roleplayCallGuideHtml(TRAINING_CACHE, weak)
     : '<p class="sd" style="margin-top:12px">Loading call guide…</p>';
 
+  rpDebriefSnapshot = { title: `Role Play · ${p.name} · Debrief`, producer: rpProducer,
+    body: `<div class="tiles" style="margin-bottom:6px">
+      <div class="tile"><div class="k">Client type</div><div class="v" style="font-size:16px">${p.name}</div><div class="n">${p.blurb}</div></div>
+      <div class="tile"><div class="k">Lead source</div><div class="v" style="font-size:16px">${ls.label}</div><div class="n">${ls.tip}</div></div>
+      ${ls.prospect ? `<div class="tile"><div class="k">Prospect</div><div class="v" style="font-size:16px">${ls.prospect.name}</div>
+        <div class="n">${ls.prospect.age} &middot; ${ls.prospect.occupation}</div><div class="n">${ls.prospect.family}</div></div>` : ""}
+    </div>
+    ${weakHtml}
+    <div class="bl" style="margin-top:16px">Approach checklist</div>
+    <ul class="gl g">${RP_APPROACH_CHECKLIST.map(c => `<li>${c}</li>`).join("")}</ul>
+    ${callGuideHtml}` };
   return `<div class="sect"><h2>Role Play &middot; ${p.name} &middot; Debrief</h2>
     <p class="sd">${rpProducer}
       <button class="ghost" id="rpChangePersona" type="button" style="margin-left:6px">change persona</button>
-      <button class="ghost" id="rpChangeProducer" type="button">change producer</button></p>
+      <button class="ghost" id="rpChangeProducer" type="button">change producer</button>
+      ${rpDebriefButtons()}</p>
     <div class="tiles" style="margin-bottom:6px">
       <div class="tile"><div class="k">Client type</div><div class="v" style="font-size:16px">${p.name}</div><div class="n">${p.blurb}</div></div>
       <div class="tile"><div class="k">Lead source</div><div class="v" style="font-size:16px">${ls.label}</div><div class="n">${ls.tip}</div></div>
+      ${ls.prospect ? `<div class="tile"><div class="k">Prospect</div><div class="v" style="font-size:16px">${ls.prospect.name}</div>
+        <div class="n">${ls.prospect.age} &middot; ${ls.prospect.occupation}</div><div class="n">${ls.prospect.family}</div></div>` : ""}
     </div>
     ${weakHtml}
     <div class="bl" style="margin-top:16px">Approach checklist</div>
@@ -2752,7 +2873,8 @@ async function rpSendTurn(text) {
     const focusObjections = producerWeakSpots(rpWeakFor()).map(([c]) => c);
     const r = await fetch("/api/roleplay/turn", {
       method: "POST", headers: { "content-type": "application/json" },
-      body: JSON.stringify({ persona: rpPersonaKey, history: rpHistory, focus_objections: focusObjections, lead_source: rpLeadSource ? rpLeadSource.forCustomer : "" }),
+      body: JSON.stringify({ persona: rpPersonaKey, history: rpHistory, focus_objections: focusObjections, lead_source: rpLeadSource ? rpLeadSource.forCustomer : "",
+        prospect: rpLeadSource && rpLeadSource.prospect ? rpLeadSource.prospect.text : "" }),
     });
     const body = await r.json();
     if (r.ok && body.reply) {
@@ -2780,6 +2902,7 @@ async function rpSubmitGrade() {
     const r = await fetch("/api/roleplay/grade", {
       method: "POST", headers: { "content-type": "application/json" },
       body: JSON.stringify({ producer: rpProducer, persona: rpPersonaKey, history: rpHistory, lead_source: rpLeadSource ? rpLeadSource.label : "",
+                             prospect: rpLeadSource && rpLeadSource.prospect ? rpLeadSource.prospect.text : "",
                              beta: rpIsBeta(), ...(rpIsBeta() ? { as_producer: rpWeakFor() } : {}) }),
     });
     const body = await r.json();
@@ -2836,6 +2959,10 @@ function wireRoleplayPanel() {
     document.getElementById("view").innerHTML = roleplayPanel();
     wireRoleplayPanel();
   };
+  const dWin = document.getElementById("rpDebriefWin");
+  if (dWin) dWin.onclick = () => rpOpenDebrief(false);
+  const dPdf = document.getElementById("rpDebriefPdf");
+  if (dPdf) dPdf.onclick = () => rpOpenDebrief(true);
   const startCall = document.getElementById("rpStartCall");
   if (startCall) startCall.onclick = () => {
     rpStarted = true;

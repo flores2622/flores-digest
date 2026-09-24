@@ -292,11 +292,16 @@ Judge the move, not the script:
   on Discovery.
 - **Referral**: naming the person who referred them early is the approach.
   If the referrer never comes up, say so. A source named after Francisco
-  Flores is a referral.
+  Flores is a referral or a warm transfer from him.
 - **Personal network** (a source named after any other staff member): that
   person's own network (Frank, 2026-09-24). Each works their own, never
   each other's, so if the producer on the call is not the person the
-  source names, say so in `leadfit`'s detail. No set approach beyond that.
+  source names, say so in `leadfit`'s detail. They know the producer, not
+  the agency: leading with the relationship and quoting the whole household
+  in one go is the approach; an opening pitch is not.
+- **Social media** (Instagram, LinkedIn): a light first touch, not a quote
+  request. The strong move is referring back to what brought them in and
+  getting to a real conversation and discovery.
 - **Call-in / walk-in**, which includes **Found us** (Google, Farmers.com):
   they came to us ready. Answer what they came for, then round out the
   household; a Google or farmers.com request gets called fast.
@@ -305,7 +310,7 @@ Judge the move, not the script:
   partner, it is not a prospect sales call: score the prospect-facing
   dimensions "n" and coach it as a partner call. If it really is the client,
   coach it normally.
-- **Cold / misc, social media, other one-offs, commercial, unknown**: no set approach.
+- **Cold / misc, other one-offs, commercial, unknown**: no set approach.
   Coach the call on the rest of this file alone.
 
 The lead source is a label someone chose in AgencyZoom, and sometimes it is
