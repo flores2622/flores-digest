@@ -4,13 +4,16 @@ FRAMING (Frank, 2026-09-23): not an agency-wide retention rate. Of the
 renewal SRs COMPLETED on a day (or across a filtered range of days), what was
 the outcome -- and the retention rate among just those SRs.
 
-WHERE AN OUTCOME COMES FROM. The SR's own resolution, when it can be read:
-Frank's six renewal resolutions (Renewed: Accepted as is, Renewed: Endorsed,
-Rewrite Accepted, Cancelled: Rewrite Declined, Cancelled, no endorse/rewrite
-available, Unable to Contact), on every renewal SR closed on one of them.
-For an SR closed on anything else the policy record is read, for
-the policy the SR's subject names ("Auto - G014549916"), and is shown as its
-own "(policy record)" segment so the two sources are never blended.
+WHERE AN OUTCOME COMES FROM, in this order:
+  1. the SR's own resolution, when it is one of Frank's seven renewal
+     resolutions (Renewed: Accepted as is, No action: Review if needed,
+     Renewed: Endorsed, Rewrite Accepted, Cancelled: Rewrite Declined,
+     Cancelled, no endorse/rewrite available, Unable to Contact);
+  2. for an SR closed on anything else (Completed), the rep's note, read by
+     the model in renewal_notes.py -- "(rep's notes)" segments;
+  3. when the note says nothing, the policy record for the policy the SR's
+     subject names ("Auto - G014549916") -- "(policy record)" segments.
+Each source has its own segments, so they are never blended.
 
 HOW A POLICY'S OUTCOME IS READ. AgencyZoom keeps one record per policy TERM,
 chained by policyNumber, and the status codes carry no labels. Read off the
@@ -58,11 +61,11 @@ MAX_FETCH = 400
 # ---- renewal SR resolutions (Frank, 2026-09-23) ----------------------------
 # The ONLY resolutions the team uses on renewal tickets from 2026-09-24
 # (RESOLUTIONS_FROM). They are read on EVERY renewal SR, past ones included
-# (Frank, 2026-09-24): the ids that now carry the six names were used for the
+# (Frank, 2026-09-24): the ids that now carry the names were used for the
 # same outcomes before the rename -- 32570's notes are cancellations, 32574's
 # are renewals reviewed with the customer. What RESOLUTIONS_FROM still decides
 # is only which SRs closed on anything ELSE are listed on the Service tab as
-# not one of the six; before it, "Completed" was the normal choice. The names
+# not a renewal resolution; before it, "Completed" was the normal choice. The names
 # and what each counts as are OUTCOMES below.
 RESOLUTIONS_FROM = "2026-09-24"
 # SRs carry resolutionId only; the names come from /v1/api/service-resolutions
@@ -76,9 +79,10 @@ RESOLUTION_LABELS = {
     38308: "Cancelled: Rewrite Declined",
     32570: "Cancelled, no endorse/rewrite available",
     38304: "Unable to Contact",
+    101591: "No action: Review if needed",      # added 2026-09-24
     # Not renewal outcomes. A renewal SR closed on one of these from
     # RESOLUTIONS_FROM falls back to the policy record and is listed on the
-    # Service tab as not one of the six. Completed is kept in AgencyZoom for
+    # Service tab as not a renewal resolution. Completed is kept in AgencyZoom for
     # changes, NOC and missing documents -- never renewals (Frank, 2026-09-24).
     # The other four were DELETED in AgencyZoom on 2026-09-24 and no longer
     # come back from the endpoint; keep them here, since past SRs still carry
@@ -90,6 +94,25 @@ RESOLUTION_LABELS = {
     40108: "Shot Clock Expired",
 }
 _SNAPSHOT = dict(RESOLUTION_LABELS)
+
+# Deleting a resolution in AgencyZoom MOVES every SR that carried it onto
+# another one. Frank's 2026-09-24 clean-up moved Shot Clock Expired (357
+# renewal SRs, none with a note) and Unable to Complete (112: "wrong dates",
+# "took noc payment") onto Unable to Contact, which a renewal SR had carried
+# exactly once before. So on SRs completed before the date here, that id
+# says nothing about the renewal and is read as if it were not a renewal
+# resolution: the rep's note, then the policy record.
+RESOLUTION_VALID_FROM = {38304: "2026-09-24"}
+
+
+def resolution_label(sr):
+    """The resolution name on an SR, or None when its id cannot be trusted
+    for the day the SR was completed (see RESOLUTION_VALID_FROM)."""
+    rid = sr.get("resolutionId")
+    since = RESOLUTION_VALID_FROM.get(rid)
+    if since and _d(sr.get("completeDate")) < since:
+        return None
+    return RESOLUTION_LABELS.get(rid)
 
 
 def load_resolution_labels(az=None, log=print):
@@ -252,11 +275,14 @@ def _rewritten(pn, expiring, household, R, day):
 
 # The Renewal Outcome Breakdown's segments, in display order: (key, label,
 # counts as) -- "kept" and "lost" make the rate, "open" sits outside it. The
-# first six are the team's own resolutions; the rest are the policy-record
-# reading used when an SR was closed on anything else (Completed, Shot Clock
-# Expired, ...).
+# first seven are the team's own renewal resolutions; then the same outcomes
+# read from the rep's note; then the policy-record reading, the last resort
+# for an SR closed on anything else (Completed, Shot Clock Expired, ...).
 OUTCOMES = (
     ("renewed_as_is", "Renewed: Accepted as is", "kept"),
+    # No action (Frank, 2026-09-24): the rep reviewed the renewal and did not
+    # call because the change did not call for it. It renewed as is.
+    ("no_action_review", "No action: Review if needed", "kept"),
     ("renewed_endorsed", "Renewed: Endorsed", "kept"),
     ("rewrite_accepted", "Rewrite Accepted", "kept"),
     ("cancelled_rewrite_declined", "Cancelled: Rewrite Declined", "lost"),
@@ -265,6 +291,16 @@ OUTCOMES = (
     # retained. Its own segment only records that nobody ever discussed the
     # renewal with the customer.
     ("unable_to_contact", "Unable to Contact", "kept"),
+    # The same outcomes read from the rep's note by renewal_notes.py, for an SR
+    # closed on any other resolution (Completed, before 2026-09-24). Their own
+    # segments, so a read never blends with a resolution the team picked.
+    ("renewed_as_is_notes", "Renewed: Accepted as is (rep's notes)", "kept"),
+    ("no_action_review_notes", "No action: Review if needed (rep's notes)", "kept"),
+    ("renewed_endorsed_notes", "Renewed: Endorsed (rep's notes)", "kept"),
+    ("rewrite_accepted_notes", "Rewrite Accepted (rep's notes)", "kept"),
+    ("cancelled_rewrite_declined_notes", "Cancelled: Rewrite Declined (rep's notes)", "lost"),
+    ("cancelled_no_option_notes", "Cancelled, no endorse/rewrite available (rep's notes)", "lost"),
+    ("unable_to_contact_notes", "Unable to Contact (rep's notes)", "kept"),
     ("renewed_record", "Renewed (policy record)", "kept"),
     ("rewritten_record", "Rewritten (policy record)", "kept"),
     ("cancelled_record", "Cancelled (policy record)", "lost"),
@@ -273,7 +309,8 @@ OUTCOMES = (
     ("no_renewal_record", "No renewal on file", "open"),
     ("unmatched", "Policy record not current", "open"),
 )
-_BY_LABEL = {label: key for key, label, _ in OUTCOMES}
+RESOLUTION_KEYS = [k for k, _, _ in OUTCOMES[:7]]
+_BY_LABEL = {label: key for key, label, _ in OUTCOMES if key in RESOLUTION_KEYS}
 _KIND = {key: kind for key, _, kind in OUTCOMES}
 _NORM = lambda x: re.sub(r"[^A-Z0-9]", "", str(x or "").upper())
 
@@ -288,10 +325,11 @@ def _sr_policy(sr, chains):
     return next((c for c in cand if c in chains), None)
 
 
-def sr_outcome(sr, chains, hh, pn2hh, as_of):
+def sr_outcome(sr, chains, hh, pn2hh, as_of, note_key=None):
     """(key, source, policyNumber, premium, line) for one completed renewal SR.
-    The SR's own resolution when it is one of the six; otherwise the policy
-    record, read as of
+    The SR's own resolution when it is one of the seven; else `note_key`, the
+    outcome renewal_notes read from the rep's note; else the policy record,
+    read as of
     `as_of`, for the term renewing nearest the SR's completion."""
     done = _d(sr.get("completeDate"))
     pn = _sr_policy(sr, chains)
@@ -305,9 +343,10 @@ def sr_outcome(sr, chains, hh, pn2hh, as_of):
         term = near[0] if near else None
     premium = float((term or {}).get("premium") or 0)
     line = _line((term or (terms[0] if terms else {})).get("policyTypeName"))
-    label = RESOLUTION_LABELS.get(sr.get("resolutionId"))
-    if label in _BY_LABEL:
-        key = _BY_LABEL[label]
+    label = resolution_label(sr)
+    key, source = (_BY_LABEL[label], "resolution") if label in _BY_LABEL else \
+                  (note_key, "notes") if note_key in RESOLUTION_KEYS else (None, None)
+    if key:
         # A cancel resolution counts as a renewal LOST only on a policy with a
         # term renewing near the SR. Of the 12 SRs resolved "Cancelled, no
         # endorse/rewrite available" 09-15..09-23, 9 were policies the record
@@ -315,13 +354,14 @@ def sr_outcome(sr, chains, hh, pn2hh, as_of):
         # "Cancelled in 2025") and the other 3 had no term renewing anywhere
         # near ("cancelled for noc 10/2025", "not a right policy"). Those fall
         # through to the policy-record reading below, same as any other SR.
+        out_key = key + "_notes" if source == "notes" else key
         if _KIND[key] != "lost":
-            return key, "resolution", pn, premium, line
+            return out_key, source, pn, premium, line
         if term:
             _, when = outcome(term, terms, as_of)
             opened = _d(sr.get("createDate"))
             if not (when and opened and when < _shift(opened, -15)):
-                return key, "resolution", pn, premium, line
+                return out_key, source, pn, premium, line
     if not term and terms:
         # Chains have gaps: G014379316 has no record for the term that ended
         # 2026-09-19, only the one STARTING that day -- which is the renewal.
@@ -354,12 +394,18 @@ def sr_outcome(sr, chains, hh, pn2hh, as_of):
     return "pending_record", "record", pn, premium, line
 
 
+def read_notes(srs, log=print):
+    """renewal_notes.read() for the SRs NOT closed on one of the seven."""
+    import renewal_notes
+    return renewal_notes.read([t for t in srs if resolution_label(t) not in _BY_LABEL], log=log)
+
+
 def renewal_srs(day, done_tickets, policies, customers, az=None, log=print, refresh=True):
     """One row per renewal SR completed on `day`: who completed it, the
     outcome, where the outcome came from, and the policy's premium. Rows, not
     totals, so the board can add any range of days together. Also the
     SRs completed from RESOLUTIONS_FROM on a resolution that is not one of
-    the six renewal outcomes, counted by resolution name."""
+    the seven renewal resolutions, counted by resolution name."""
     from service_digest import RENEWALS, SERVICE_TEAM
     srs = [t for t in done_tickets if t.get("workflowName") in RENEWALS
            and _d(t.get("completeDate")) == day]
@@ -376,6 +422,7 @@ def renewal_srs(day, done_tickets, policies, customers, az=None, log=print, refr
         save_household_map(hh, log=log)
     pn2hh = {_NORM(k): v for k, v in policy_households(hh).items()}
     load_resolution_labels(az=az, log=log)
+    notes = read_notes(srs, log=log)
     rows, unnamed = [], collections.Counter()
     # The policy record is read as of TODAY, not as of the SR's day: renewal
     # SRs are worked before the renewal date, so on the day one closes the
@@ -384,7 +431,8 @@ def renewal_srs(day, done_tickets, policies, customers, az=None, log=print, refr
     today = _dt.datetime.now(_dt.timezone(_dt.timedelta(hours=-7))).date().isoformat()
     as_of = max(day, today)
     for t in srs:
-        key, source, pn, prem, line = sr_outcome(t, chains, hh, pn2hh, as_of)
+        key, source, pn, prem, line = sr_outcome(t, chains, hh, pn2hh, as_of,
+                                                 note_key=notes.get(str(t.get("id"))))
         rid = t.get("resolutionId")
         if day >= RESOLUTIONS_FROM and RESOLUTION_LABELS.get(rid) not in _BY_LABEL:
             unnamed[RESOLUTION_LABELS.get(rid) or ("No resolution" if rid is None else f"id {rid}")] += 1

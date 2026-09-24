@@ -15,7 +15,7 @@ the board can add up any range and take medians over the whole of it:
   completed   every commercial SR COMPLETED that day -- renewal or service
               change, who completed it, hours from created to completed, and
               for a renewal its outcome (service_retention.sr_outcome: the
-              same six resolutions, Unable to Contact retained) and premium;
+              same seven resolutions, then the rep's note, then the policy record) and premium;
   open        every commercial SR open at the end of the day, from that day's
               live SR file (data/az_service_tickets_<day>.json, point in
               time -- never re-fetched for a day already built). None on a
@@ -118,13 +118,15 @@ def completed_rows(day, done, hh, chains, az=None, log=log):
     sr_mod.load_resolution_labels(az=az, log=log)
     today = dt.datetime.now(AZ).date().isoformat()
     as_of = max(day, today)            # the policy record as of today, as Athena reads it
+    notes = sr_mod.read_notes([t for t in srs if _kind(t) == "renewal"], log=log)
     rows, unnamed = [], collections.Counter()
     for t in srs:
         row = _row(t)
         row.update({"by_name": t.get("modifiedBy"), "completed": day,
                     "hours": _hours(t.get("createDate"), t.get("completeDate"))})
         if row["kind"] == "renewal":
-            key, source, pn, prem, _ = sr_mod.sr_outcome(t, chains, hh, pn2hh, as_of)
+            key, source, pn, prem, _ = sr_mod.sr_outcome(t, chains, hh, pn2hh, as_of,
+                                                         note_key=notes.get(str(t.get("id"))))
             _, line, _ = _policy_fields(t, chains)
             rid = t.get("resolutionId")
             label = sr_mod.RESOLUTION_LABELS.get(rid)
