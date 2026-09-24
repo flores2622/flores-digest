@@ -189,8 +189,11 @@ Service tab renders it. The team is Debbie (CSR) plus Amanda and Crystal
   among just those. From 2026-09-24 the outcome is the SR's own resolution
   (Frank's six: Renewed: Accepted as is / Endorsed, Rewrite Accepted,
   Cancelled: Rewrite Declined, Cancelled, no endorse/rewrite available, Unable
-  to Contact). Old resolution ids were RENAMED, so anything earlier is read
-  from the policy record instead and shown as its own "(policy record)"
+  to Contact). **Unable to Contact renewed as is** (Frank, 2026-09-24) -- it
+  only records that nobody discussed the renewal with the customer -- so it
+  counts as RETAINED in the rate, on its own segment. Old
+  resolution ids were RENAMED, so anything earlier is read from the policy
+  record instead and shown as its own "(policy record)"
   segments. `RESOLUTION_LABELS` in service_retention.py names each id once, by
   hand -- `python3 service_retention.py --resolutions` lists them.
 - **Documents hold rows, never medians**, so the board can add any range up.
