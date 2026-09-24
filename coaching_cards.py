@@ -69,6 +69,7 @@ import call_summary as CS
 import day_calls
 import digest_config as cfg
 import panels
+import pipelines
 
 ROOT = pathlib.Path(__file__).resolve().parent
 AZ = dt.timezone(dt.timedelta(hours=-7))
@@ -96,7 +97,7 @@ TECH_DIMS = ["Elevator pitch", "Feel-Felt-Found", "Risk reversal",
              "Social proof", "Trial close", "Takeaway / urgency"]
 
 def _ask_card(model, transcript, notes, seconds, producer, lead, call_count=1,
-              lead_source=""):
+              lead_source="", stage_block=""):
     # The lead source and the agency's approach for it (Frank, 2026-09-24:
     # coaching reads judged by lead source). Facts from lead_sources.py;
     # METHODOLOGY.md's "Lead source" section says how to use them.
@@ -112,6 +113,7 @@ def _ask_card(model, transcript, notes, seconds, producer, lead, call_count=1,
             f"Lead: {lead or '(name unknown)'}\n"
             f"{length_line}\n\n"
             f"{source_block}\n\n"
+            f"{stage_block or 'Pipeline stage: unknown'}\n\n"
             f"Producer's own notes (may be empty):\n{notes or '(none)'}\n\n"
             f"Machine transcript:\n{transcript}"}]
     base = {"model": model, "system": METHODOLOGY, "messages": msg}
@@ -488,6 +490,25 @@ def _call_breakdown(producer, group, raw_dials):
     return out
 
 
+_LEADS_BY_ID = None
+
+
+def _group_stage(group):
+    """(moves, stage_now, sold_today) for a card's rows -- what
+    pipelines.call_stage/prompt_block read. Moves come off the rows (the
+    producer's own MOVE_STAGE notes that day, daily.py); the lead's current
+    stage off the day's lead corpus, which is the end-of-day snapshot."""
+    global _LEADS_BY_ID
+    if _LEADS_BY_ID is None:
+        p = ROOT / "data/az_leads_all.json"
+        _LEADS_BY_ID = ({l.get("id"): l for l in json.loads(p.read_text())}
+                        if p.exists() else {})
+    moves = list(dict.fromkeys(m for r in group for m in (r.get("moves") or [])))
+    lead_id = next((r.get("lead_id") for r in group if r.get("lead_id")), None)
+    now = pipelines.current_stage(_LEADS_BY_ID.get(lead_id))
+    return moves, now, any(r.get("sold_today") for r in group)
+
+
 def _lead_group(leadsrc):
     """The lead-source guide's group label for the card ("" with no source)."""
     import lead_sources
@@ -518,6 +539,10 @@ def _finish_card(d, producer, group, raw_dials, day, transcript, recording_ids):
     # 2026-09-24)? None on a card read before METHODOLOGY.md asked, so the
     # board leaves the row off rather than show a verdict nobody gave.
     leadfit = _clean_score({"x": d.get("leadfit")}, ["x"]).get("x") if "leadfit" in d else None
+    # Did the call do what the lead's stage called for (Frank, 2026-09-24)?
+    # Same None-when-never-asked rule as leadfit.
+    stagefit = _clean_score({"x": d.get("stagefit")}, ["x"]).get("x") if "stagefit" in d else None
+    stage_before, stage_after = pipelines.call_stage(*_group_stage(group))
     cat, catc = _category(group)
     lead = next((r.get("lead") for r in group if r.get("lead")), "") or ""
     # AgencyZoom lead id, straight off the same call_detail rows day_calls.
@@ -577,6 +602,9 @@ def _finish_card(d, producer, group, raw_dials, day, transcript, recording_ids):
         "leadsrc": leadsrc,
         "leadgroup": _lead_group(leadsrc),
         "leadfit": leadfit,
+        "stage_before": stage_before,
+        "stage_after": stage_after,
+        "stagefit": stagefit,
         "lang": str(d.get("lang") or "").strip() or "English",
         "src": "recording",
         "cat": cat, "catc": catc,
@@ -740,7 +768,8 @@ def build(day, log=print):
                 d = _ask_card(model, text[:16000], notes, total_seconds,
                              p.split()[0], lead_name,
                              call_count=len(_distinct_calls(p, grp)),
-                             lead_source=src)
+                             lead_source=src,
+                             stage_block=pipelines.prompt_block(*_group_stage(grp)))
                 cache[gck] = d
             except Exception as e:
                 log(f"    {lead_name}: coaching read failed ({type(e).__name__}) -- no card")

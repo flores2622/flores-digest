@@ -203,6 +203,16 @@ def build(day, log=print, live=False):
         return mod.build(day)
 
     doc = board_payload.build(day, live=live)
+    # Open leads misfiled in "Pipeline" by integrations, for someone to move
+    # into 1 Pipeline (Frank, 2026-09-24). As of this build's lead corpus;
+    # never fails the day.
+    try:
+        import pipelines
+        corpus = ROOT / "data/az_leads_all.json"
+        if corpus.exists():
+            doc["misfiled"] = pipelines.misfiled(json.loads(corpus.read_text()))
+    except Exception as e:
+        log(f"  misfiled leads: skipped ({type(e).__name__}: {e})")
     try:
         import coaching_cards
         generated = coaching_cards.build(day, log=log)
