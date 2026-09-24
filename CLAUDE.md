@@ -18,6 +18,21 @@ Everything caches under `data/`, so a re-run resumes rather than restarting.
 ## The money rules
 
 - **A policy whose lead source is BOB is not a sale.** Already handled.
+- **Neither is Rewrite** (Frank, 2026-09-24). It is kept for the service
+  department from now on. Its one tracked-producer sale was Crystal's $652 on
+  2026-08-20, which leaves Premium Sold on any rebuild of that day. **The
+  published 08-20 stays as it went out** (Frank: "no i dont want it off the
+  board") -- do not rebuild or patch it to drop that sale.
+- **What each lead source means is `lead_sources.py`** (Frank, 2026-09-24): the
+  groups, what to sell each, and the not-a-sale and cross-sell sets that
+  `digest_config` reads. Commercial sources (Leo, Work Comp, the Comm Leads
+  lists) are Cerberus's. Frank confirmed the `approach` lines on 2026-09-24.
+- **Role Play never uses a center of influence or cold / misc lead source**
+  (Frank, 2026-09-24), nor a one-off, commercial, BOB or Rewrite source
+  (`GROUPS[...]["roleplay"]`). That is Role Play only: **calls on those
+  sources still get coaching cards** and count in every coaching figure like
+  any other call. Role Play draws a session's lead source from the
+  producer's own cards over the trailing 4 weeks.
 - **A renewal is not new business.** Neither is servicing, a payment, a claim,
   or chasing paperwork on a policy already sold.
 - **Selling a product the household does not have yet IS new business**, even to

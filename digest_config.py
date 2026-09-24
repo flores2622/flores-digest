@@ -6,6 +6,7 @@ ones that must not be re-asked. Section references below point back at it.
 import collections
 import datetime as dt
 import re
+import lead_sources
 
 # --- time -------------------------------------------------------------------
 AZ_TZ = dt.timezone(dt.timedelta(hours=-7))   # Arizona: UTC-7, never DST
@@ -81,7 +82,13 @@ PLACEHOLDER_SHOW_SALES = True
 #     for that day is $0.
 # Applies everywhere a policy is counted: Premium Sold, policy counts, the
 # leaderboard's premium-sold category and its tie-break, and placeholder sales.
-NON_SALE_LEAD_SOURCES = {"bob"}
+#
+# Rewrite is not a sale either (Frank, 2026-09-24: "we never use, lets exclude
+# from sales so we can use it moving forward in the service dept"). Its past
+# sales were Amanda's, plus Crystal's $652 on 2026-08-20.
+#
+# Both now live in lead_sources.py, the one lead-source guide.
+NON_SALE_LEAD_SOURCES = lead_sources.NOT_A_SALE
 
 
 def lead_source_map(leads):
@@ -94,7 +101,7 @@ def lead_source_map(leads):
 
 
 def is_real_sale(policy, source_map):
-    name = (source_map.get(policy.get("leadSourceId")) or "").strip().lower()
+    name = lead_sources.norm(source_map.get(policy.get("leadSourceId")))
     return name not in NON_SALE_LEAD_SOURCES
 
 
@@ -123,10 +130,10 @@ def real_sales(day, policies, source_map, ids):
 # examples (policy/lead pairs 30339190, 30306924, 30296992, 30261716) where
 # the referred household's asCustomerDate equals the sale date itself, i.e.
 # it brings in a brand-new household, not a cross-sell to an existing one.
-CROSS_SELL_LEAD_SOURCES = {
-    "cross sell", "home no auto", "auto no home", "life cross sell",
-    "existing client purchased a new",
-}
+#
+# Umbrella joined these on 2026-09-24 (Frank: "Umbrella means we are trying to
+# xsell umbrella"). The set is lead_sources.py's existing-household groups.
+CROSS_SELL_LEAD_SOURCES = lead_sources.EXISTING_HOUSEHOLD
 
 # How recently a household must have become a customer, relative to a
 # multi-line sale, to call it a "new bundle" rather than an existing
@@ -140,7 +147,7 @@ NEW_HOUSEHOLD_DAYS = 60
 
 
 def is_cross_sell(policy, source_map):
-    name = (source_map.get(policy.get("leadSourceId")) or "").strip().lower()
+    name = lead_sources.norm(source_map.get(policy.get("leadSourceId")))
     return name in CROSS_SELL_LEAD_SOURCES
 
 

@@ -104,7 +104,11 @@ def publish_lead_sources(cli=None, bucket=None, log=print):
     names = sorted({n for n in cfg.lead_source_map(leads).values() if n})
     if cli is None:
         cli, bucket = _client()
-    body = json.dumps({"sources": names}).encode()
+    # The lead-source guide rides along: which group each source is in, and
+    # what each group means (lead_sources.py). Role Play draws its scenarios
+    # from it; the Sales tab still reads only `sources`.
+    import lead_sources
+    body = json.dumps({"sources": names, **lead_sources.board_map(names)}).encode()
     cli.put_object(Bucket=bucket, Key="leadsources.json", Body=body,
                    ContentType="application/json", CacheControl="no-store")
     log(f"  lead sources: {len(names)} -> r2://{bucket}/leadsources.json")
