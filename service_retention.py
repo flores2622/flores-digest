@@ -1,15 +1,16 @@
-"""Retention across the renewal window, for the service digest.
+"""Renewal SR outcomes, for the service digest's Renewal Outcome Breakdown.
 
-For every policy renewing in a window, what happened between 30 days before
-its renewal date and 45 days after it (Frank, 2026-09-23): retained,
-rewritten, cancelled -- in households, policies and premium -- plus which of
-those households had a change (endorsement) processed in the same window.
-Two views side by side:
+FRAMING (Frank, 2026-09-23): not an agency-wide retention rate. Of the
+renewal SRs COMPLETED on a day (or across a filtered range of days), what was
+the outcome -- and the retention rate among just those SRs.
 
-    live   renewal dates from 45 days ago to 30 days ahead, as things stand
-           today; renewals still ahead of us are "upcoming"
-    month  the last calendar month whose every renewal has had its full 45
-           days, so the outcome is final
+WHERE AN OUTCOME COMES FROM. The SR's own resolution, when it can be read:
+Frank's six renewal resolutions (Renewed: Accepted as is, Renewed: Endorsed,
+Rewrite Accepted, Cancelled: Rewrite Declined, Cancelled, no endorse/rewrite
+available, Unable to Contact) on SRs completed from RESOLUTIONS_FROM. Before
+that -- or for an id not named yet -- the policy record is read instead, for
+the policy the SR's subject names ("Auto - G014549916"), and is shown as its
+own "(policy record)" segment so the two sources are never blended.
 
 HOW A POLICY'S OUTCOME IS READ. AgencyZoom keeps one record per policy TERM,
 chained by policyNumber, and the status codes carry no labels. Read off the
@@ -18,24 +19,17 @@ the renewal premium), 4 = a past term that was replaced, 0 = cancelled -- or a
 superseded duplicate of a term that also exists as a 4, which is why a 0 only
 means cancelled when no live term follows it.
 
-    retained     a term starting on or after the renewal date is 1, 3 or 4
+    renewed      a term starting on or after the renewal date is 1, 3 or 4
     cancelled    the renewal term is 0, or the expiring term is 0 with no
-                 successor; the cancellation must fall inside the window
+                 successor
     rewritten    cancelled or no renewal on file, but the same household took
-                 a new policy number of the same line inside the window
-                 (a rewrite, or a carrier re-numbering the renewal)
-    unconfirmed  the renewal date has passed and nothing follows it yet
-    upcoming     (live view only) renewal date still ahead, not cancelled
-    before_window cancelled MORE than 30 days before renewal: reported on its
-                 own row, outside the rate -- 49 of July's 335 renewals
-                 were, most of them months earlier
+                 a new policy number of the same line from 30 days before to
+                 45 after the renewal (a rewrite, or the carrier re-numbering)
+    no renewal   the renewal date has passed and nothing follows it yet
+    still ahead  the renewal date has not come yet
 
-THERE IS NO CANCELLATION DATE in any AgencyZoom policy payload. The term's
-own modifyDate stands in for it -- the day the record last changed, which for
-a cancelled term is the day it was cancelled or later. That is what keeps a
-policy cancelled in February out of a July renewal's window. From 2026-09-24
-the daily AgencyZoom snapshot (r2_cache.save_corpus) records the day a term
-flips to 0, which is the real date going forward.
+There is no cancellation date in any AgencyZoom policy payload; a term's own
+modifyDate stands in for it where one is needed.
 
 HOUSEHOLDS. Policy records carry no customer or household. The only link is
 /v1/api/customers/{id}/policies, one request per household, so the map
@@ -53,7 +47,6 @@ ROOT = pathlib.Path(__file__).resolve().parent
 MAP_FILE = ROOT / "data/az_household_policies.json"
 MAP_R2_KEY = "cache/az_household_policies.json"
 BEFORE, AFTER = 30, 45                 # the renewal window, in days
-LIVE_BACK, LIVE_AHEAD = 45, 30         # the live view's span of renewal dates
 REFRESH_STALE_DAYS = 30                # every household re-read at least monthly
 REFRESH_BATCH = 150                    # of those, how many per night
 # Hard cap on household reads in one build. The whole book is ~4,100 reads at
@@ -68,26 +61,14 @@ MAX_FETCH = 400
 # deleted -- so an old id now carries a new name that does not describe what
 # was picked when it was used. Resolutions are therefore read only on tickets
 # completed on or after RESOLUTIONS_FROM; everything earlier stays with the
-# policy-chain reading.
+# policy-chain reading. The names and what each counts as are OUTCOMES below.
 RESOLUTIONS_FROM = "2026-09-24"
-RESOLUTION_OUTCOME = {
-    "Renewed: Accepted as is": "retained",
-    "Renewed: Endorsed": "retained",            # and counts as endorsed
-    "Rewrite Accepted": "rewritten",
-    "Cancelled: Rewrite Declined": "cancelled",
-    "Cancelled, no endorse/rewrite available": "cancelled",
-    "Unable to Contact": None,                  # undecided: policy chain decides
-}
-ENDORSED_RESOLUTIONS = {"Renewed: Endorsed"}
 # AgencyZoom's API returns resolutionId only, never the name, and has no lookup
-# for it. Each id is named here once, by hand, the first time a ticket closed
+# for it. Each id is named here once, by hand, the first time an SR closed
 # with it shows up -- the Service tab lists any id it cannot name yet.
 RESOLUTION_LABELS = {}
 
 _HOME = re.compile(r"home|dwelling|\bdp\d?\b|mobile|manufactured|landlord|condo|renter|ho-?\d", re.I)
-CHANGE = re.compile(r"endors|change|add|remov|replac|swap|delet|updat|vehicle|driver|"
-                    r"lienholder|mortgagee|coverage", re.I)
-CANCEL = re.compile(r"cancel|canc\b|non.?renew", re.I)
 
 
 def _d(x):
@@ -190,26 +171,6 @@ def policy_households(hh):
 
 
 # ---- outcomes --------------------------------------------------------------
-def renewals(policies, lo, hi):
-    """One row per policyNumber whose term expires (renews) in [lo, hi]."""
-    chains = collections.defaultdict(list)
-    for p in policies:
-        n = _pn(p.get("policyNumber"))
-        if n:
-            chains[n].append(p)
-    out = []
-    for n, terms in chains.items():
-        exp = [t for t in terms if lo <= _d(t["expiryDate"]) <= hi
-               and _d(t["effectiveDate"]) < _d(t["expiryDate"])]
-        if not exp:
-            continue
-        # A 0 alongside a live copy of the same term is a duplicate, not a
-        # cancellation -- prefer the live copy.
-        exp.sort(key=lambda t: (t["status"] == 0, _d(t.get("createDate"))))
-        out.append((n, exp[0], terms))
-    return out
-
-
 def outcome(expiring, terms, day):
     """(outcome, cancel_date_or_None) for one renewal, as known on `day`."""
     R = _d(expiring["expiryDate"])
@@ -238,7 +199,7 @@ def _rewritten(pn, expiring, household, R, day):
     line = _line(expiring.get("policyTypeName"))
     lo, hi = _shift(R, -BEFORE), min(_shift(R, AFTER), day)
     for p in (household or {}).get("policies") or []:
-        if _pn(p.get("policyNumber")) == pn or _line(p.get("policyTypeName")) != line:
+        if _NORM(p.get("policyNumber")) == _NORM(pn) or _line(p.get("policyTypeName")) != line:
             continue
         start = max(_d(p.get("effectiveDate")), _d(p.get("soldDate")))
         if lo <= start <= hi and p.get("status") != 0:
@@ -246,149 +207,133 @@ def _rewritten(pn, expiring, household, R, day):
     return False
 
 
-def _cohort(policies, hh, pn2hh, lo, hi, day):
-    rows = []
-    for pn, e, terms in renewals(policies, lo, hi):
-        out, when = outcome(e, terms, day)
-        if out == "after_window":
-            continue            # its loss belongs to a later renewal's window
+
+# The Renewal Outcome Breakdown's segments, in display order: (key, label,
+# counts as) -- "kept" and "lost" make the rate, "open" sits outside it. The
+# first six are the team's own resolutions; the rest are the policy-record
+# reading used when an SR carries no nameable resolution (anything completed
+# before RESOLUTIONS_FROM, or an id not named yet).
+OUTCOMES = (
+    ("renewed_as_is", "Renewed: Accepted as is", "kept"),
+    ("renewed_endorsed", "Renewed: Endorsed", "kept"),
+    ("rewrite_accepted", "Rewrite Accepted", "kept"),
+    ("cancelled_rewrite_declined", "Cancelled: Rewrite Declined", "lost"),
+    ("cancelled_no_option", "Cancelled, no endorse/rewrite available", "lost"),
+    ("unable_to_contact", "Unable to Contact", "open"),
+    ("renewed_record", "Renewed (policy record)", "kept"),
+    ("rewritten_record", "Rewritten (policy record)", "kept"),
+    ("cancelled_record", "Cancelled (policy record)", "lost"),
+    ("already_cancelled", "Already cancelled before the SR", "open"),
+    ("pending_record", "Renewal date still ahead", "open"),
+    ("no_renewal_record", "No renewal on file", "open"),
+    ("unmatched", "Policy record not current", "open"),
+)
+_BY_LABEL = {label: key for key, label, _ in OUTCOMES}
+_NORM = lambda x: re.sub(r"[^A-Z0-9]", "", str(x or "").upper())
+
+
+def _sr_policy(sr, chains):
+    """The policy a renewal SR is about. The subject is "<Line> - <number>"
+    (641 of 645 renewal SRs since August match that way); anything else
+    policy-number-shaped in the subject or description is the fallback."""
+    subj = sr.get("subject") or ""
+    cand = [_NORM(x) for x in re.split(r"\s[-\u2013]\s", subj)[1:]]
+    cand += [_NORM(w) for w in re.findall(r"[A-Za-z0-9-]{7,}", subj + " " + (sr.get("serviceDesc") or ""))]
+    return next((c for c in cand if c in chains), None)
+
+
+def sr_outcome(sr, chains, hh, pn2hh, as_of):
+    """(key, source, policyNumber, premium, line) for one completed renewal SR.
+    The SR's own resolution when it can be read (completed on or after
+    RESOLUTIONS_FROM with a named id); otherwise the policy record, read as of
+    `as_of`, for the term renewing nearest the SR's completion."""
+    done = _d(sr.get("completeDate"))
+    pn = _sr_policy(sr, chains)
+    term, terms = None, chains.get(pn) or []
+    if terms:
+        lo, hi = _shift(done, -75), _shift(done, 90)
+        near = [t for t in terms if lo <= _d(t["expiryDate"]) <= hi
+                and _d(t["effectiveDate"]) < _d(t["expiryDate"])]
+        near.sort(key=lambda t: (abs((dt.date.fromisoformat(_d(t["expiryDate"]))
+                                      - dt.date.fromisoformat(done)).days), t["status"] == 0))
+        term = near[0] if near else None
+    premium = float((term or {}).get("premium") or 0)
+    line = _line((term or (terms[0] if terms else {})).get("policyTypeName"))
+    label = RESOLUTION_LABELS.get(sr.get("resolutionId")) if done >= RESOLUTIONS_FROM else None
+    if label in _BY_LABEL:
+        return _BY_LABEL[label], "resolution", pn, premium, line
+    if not term and terms:
+        # Chains have gaps: G014379316 has no record for the term that ended
+        # 2026-09-19, only the one STARTING that day -- which is the renewal.
+        lo, hi = _shift(done, -75), _shift(done, 90)
+        start = [t for t in terms if lo <= _d(t["effectiveDate"]) <= hi and t["status"] in (1, 3, 4)]
+        if start:
+            t = min(start, key=lambda t: _d(t["effectiveDate"]))
+            prem = float(t.get("premium") or 0)
+            key = "pending_record" if _d(t["effectiveDate"]) > as_of else "renewed_record"
+            return key, "record", pn, prem, _line(t.get("policyTypeName"))
+    if not term:
+        # No term renews anywhere near: a policy AgencyZoom stopped updating
+        # (918831825's newest term is 2022-2023, still "in force"), or no
+        # policy number in the SR at all.
+        return "unmatched", "record", pn, premium, line
+    out, when = outcome(term, terms, as_of)
+    # A policy cancelled well before the SR was even opened is a stale SR
+    # being closed out ("Policy was cancelled in 2025"), not a renewal lost:
+    # 9 of the 11 "cancelled" renewal SRs of 09-15..09-22 were exactly that.
+    opened = _d(sr.get("createDate"))
+    if out != "retained" and when and opened and when < _shift(opened, -15):
+        return "already_cancelled", "record", pn, premium, line
+    if out == "retained":
+        return "renewed_record", "record", pn, premium, line
+    if out in ("cancelled", "before_window", "after_window", "unconfirmed"):
         cid = pn2hh.get(pn)
-        R = _d(e["expiryDate"])
-        # A policy with no renewal on file is often one the carrier re-numbered
-        # (the old G01-xxxxxxx-00 style), which looks exactly like a rewrite:
-        # a new number, same line, same household, inside the window.
-        if out in ("cancelled", "unconfirmed") and cid and _rewritten(pn, e, hh.get(cid), R, day):
-            out = "rewritten"
-        rows.append({"policy": pn, "household": cid, "renewal": R, "outcome": out,
-                     "premium": float(e.get("premium") or 0), "line": _line(e.get("policyTypeName")),
-                     "cancelled_on": when})
-    return rows
+        if cid and _rewritten(pn, term, hh.get(cid), _d(term["expiryDate"]), as_of):
+            return "rewritten_record", "record", pn, premium, line
+        return ("no_renewal_record" if out == "unconfirmed" else "cancelled_record"), "record", pn, premium, line
+    return "pending_record", "record", pn, premium, line
 
 
-def _resolution_overrides(rows, done_tickets, day):
-    """{policyNumber: (outcome, label)} from renewal tickets completed on or
-    after RESOLUTIONS_FROM and by `day`, inside that policy's own window.
-    A ticket belongs to a household, not a policy: if its text names one of
-    the household's renewing policy numbers it applies to that one, otherwise
-    to every policy of the household whose window holds the completion.
-    Also returns the ids that could not be named."""
-    from service_digest import RENEWALS
-    by_hh = collections.defaultdict(list)
-    unknown = collections.Counter()
-    for t in done_tickets:
-        c = _d(t.get("completeDate"))
-        if t.get("workflowName") not in RENEWALS or not (RESOLUTIONS_FROM <= c <= day):
-            continue
-        rid = t.get("resolutionId")
-        label = RESOLUTION_LABELS.get(rid)
-        if label is None:
-            if rid is not None:
-                unknown[rid] += 1
-            continue
-        text = re.sub(r"\s+", "", " ".join(str(t.get(k) or "") for k in
-                                           ("subject", "serviceDesc", "resolutionDesc")))
-        by_hh[str(t.get("householdId"))].append((c, label, text))
-    out = {}
-    for r in rows:
-        tix = by_hh.get(r["household"] or "")
-        if not tix:
-            continue
-        lo, hi = _shift(r["renewal"], -BEFORE), min(_shift(r["renewal"], AFTER), day)
-        named = [x for x in tix if r["policy"] in x[2]]
-        for c, label, _ in sorted(named or tix):
-            if lo <= c <= hi:
-                out[r["policy"]] = (RESOLUTION_OUTCOME.get(label), label)
-    return out, dict(unknown)
-
-
-def _endorsed(rows, done_tickets, day):
-    """Households in the cohort with a change ticket completed inside their
-    own renewal window (and by `day`)."""
-    by_hh = collections.defaultdict(list)
-    for t in done_tickets:
-        if t.get("workflowName") != "Service Pipeline":
-            continue
-        text = " ".join(str(t.get(k) or "") for k in ("subject", "serviceDesc", "resolutionDesc"))
-        if CANCEL.search(t.get("subject") or "") or not CHANGE.search(text):
-            continue
-        by_hh[str(t.get("householdId"))].append(_d(t.get("completeDate")))
-    hit = set()
-    for r in rows:
-        lo, hi = _shift(r["renewal"], -BEFORE), min(_shift(r["renewal"], AFTER), day)
-        if r["household"] and any(lo <= c <= hi for c in by_hh.get(r["household"], [])):
-            hit.add(r["policy"])
-    return hit
-
-
-def _summarize(rows, endorsed):
-    def agg(rs):
-        return {"households": len({r["household"] or f"?{r['policy']}" for r in rs}),
-                "policies": len(rs), "premium": round(sum(r["premium"] for r in rs))}
-    by = collections.defaultdict(list)
-    for r in rows:
-        by[r["outcome"]].append(r)
-    out = {k: agg(by.get(k, [])) for k in ("retained", "rewritten", "cancelled",
-                                           "unconfirmed", "upcoming", "before_window")}
-    out["endorsed"] = agg([r for r in rows if r["policy"] in endorsed
-                           and r["outcome"] != "before_window"])
-    decided = out["retained"]["policies"] + out["rewritten"]["policies"] + out["cancelled"]["policies"]
-    kept_prem = out["retained"]["premium"] + out["rewritten"]["premium"]
-    decided_prem = kept_prem + out["cancelled"]["premium"]
-    out["rate_policies"] = round(100 * (decided - out["cancelled"]["policies"]) / decided, 1) if decided else None
-    out["rate_premium"] = round(100 * kept_prem / decided_prem, 1) if decided_prem else None
-    # The same rate with "no renewal on file" counted as lost -- the floor,
-    # since some of those are only a renewal term AgencyZoom has not got yet.
-    worst = decided + out["unconfirmed"]["policies"]
-    out["rate_policies_floor"] = round(100 * (decided - out["cancelled"]["policies"]) / worst, 1) if worst else None
-    in_window = [r for r in rows if r["outcome"] != "before_window"]
-    out["matched"] = sum(1 for r in in_window if r["household"])
-    out["total"] = len(in_window)
-    return out
-
-
-def figures(day, policies, customers, done_tickets, az=None, log=print, refresh=True):
+def renewal_srs(day, done_tickets, policies, customers, az=None, log=print, refresh=True):
+    """One row per renewal SR completed on `day`: who completed it, the
+    outcome, where the outcome came from, and the policy's premium. Rows, not
+    totals, so the board can add any range of days together. Also the
+    resolution ids completed from RESOLUTIONS_FROM that have no name yet."""
+    from service_digest import RENEWALS, SERVICE_TEAM
+    srs = [t for t in done_tickets if t.get("workflowName") in RENEWALS
+           and _d(t.get("completeDate")) == day]
+    chains = collections.defaultdict(list)
+    for p in policies:
+        chains[_NORM(p.get("policyNumber"))].append(p)
     hh = load_household_map(log=log)
-    pn2hh = policy_households(hh)
-    live_lo, live_hi = _shift(day, -LIVE_BACK), _shift(day, LIVE_AHEAD)
-    # Last month whose final renewal has had its full AFTER days.
-    m_end = (dt.date.fromisoformat(day) - dt.timedelta(days=AFTER)).replace(day=1) - dt.timedelta(days=1)
-    m_lo, m_hi = m_end.replace(day=1).isoformat(), m_end.isoformat()
-    if refresh:
-        pre = _cohort(policies, hh, pn2hh, min(live_lo, m_lo), max(live_hi, m_hi), day)
-        must = {r["household"] for r in pre
-                if r["outcome"] in ("cancelled", "unconfirmed") and r["household"]}
+    if refresh and srs:
+        # A rewrite shows up as a NEW policy in the household, which only a
+        # fresh read of that household can see.
+        pn2hh = policy_households(hh)
+        must = {pn2hh.get(_sr_policy(t, chains)) for t in srs} - {None}
         hh = refresh_household_map(hh, customers, must=must, az=az, log=log)
         save_household_map(hh, log=log)
-        pn2hh = policy_households(hh)
-    live = _cohort(policies, hh, pn2hh, live_lo, live_hi, day)
-    month = _cohort(policies, hh, pn2hh, m_lo, m_hi, day)
-    unknown = {}
-    endorsed_by_sr = set()
-    for rows in (live, month):
-        ov, unk = _resolution_overrides(rows, done_tickets, day)
-        unknown.update(unk)
-        for r in rows:
-            if r["policy"] in ov:
-                outc, label = ov[r["policy"]]
-                r["resolution"] = label
-                if label in ENDORSED_RESOLUTIONS:
-                    endorsed_by_sr.add(r["policy"])
-                # The team's own answer outranks the chain reading -- except
-                # before a renewal date, where "retained" is not decided yet.
-                if outc and not (outc == "retained" and r["renewal"] > day):
-                    r["outcome"] = outc
-    return {
-        "window": {"before": BEFORE, "after": AFTER},
-        "live": {"from": live_lo, "to": live_hi,
-                 **_summarize(live, _endorsed(live, done_tickets, day) | endorsed_by_sr),
-                 "by_resolution": sum(1 for r in live if r.get("resolution"))},
-        "month": {"month": m_lo[:7], "from": m_lo, "to": m_hi,
-                  **_summarize(month, _endorsed(month, done_tickets, day) | endorsed_by_sr),
-                  "by_resolution": sum(1 for r in month if r.get("resolution"))},
-        "unnamed_resolutions": unknown,
-        "resolutions_from": RESOLUTIONS_FROM,
-        "cancel_date_note": "modifyDate stands in for the cancellation date until daily snapshots cover the window",
-    }
+    pn2hh = {_NORM(k): v for k, v in policy_households(hh).items()}
+    rows, unnamed = [], collections.Counter()
+    # The policy record is read as of TODAY, not as of the SR's day: renewal
+    # SRs are worked before the renewal date, so on the day one closes the
+    # record almost always says "still ahead". Today it says what happened.
+    import datetime as _dt
+    today = _dt.datetime.now(_dt.timezone(_dt.timedelta(hours=-7))).date().isoformat()
+    as_of = max(day, today)
+    for t in srs:
+        key, source, pn, prem, line = sr_outcome(t, chains, hh, pn2hh, as_of)
+        rid = t.get("resolutionId")
+        if day >= RESOLUTIONS_FROM and rid is not None and rid not in RESOLUTION_LABELS:
+            unnamed[rid] += 1
+        by = t.get("modifiedBy")
+        from service_digest import pipeline_of
+        rows.append({"id": t.get("id"), "pipeline": pipeline_of(t.get("workflowName")),
+                     "by": by if by in SERVICE_TEAM else None,
+                     "by_name": by, "outcome": key, "source": source,
+                     "policy": pn, "premium": round(prem), "line": line,
+                     "name": t.get("name"), "subject": (t.get("subject") or "").strip()})
+    return rows, dict(unnamed)
 
 
 def list_resolutions(done_tickets, since=RESOLUTIONS_FROM):
