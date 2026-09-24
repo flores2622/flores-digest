@@ -279,12 +279,38 @@ def prompt_block(name):
     return "\n".join(lines)
 
 
+# The Sales tab's "Premium per Lead Source" categories (Frank, 2026-09-24):
+# a display grouping for that one chart, NOT Apollo's GROUPS -- coaching
+# still reads the groups above. Differences from GROUPS: a staff member's
+# name is "Personal network" (GROUPS calls it a referral), and social media
+# other than Facebook is its own category (Facebook stays with the internet
+# leads, which is what "generated" is on this chart).
+SALES_CATEGORY = {
+    "cross_sell": "Cross-sell", "existing_new_purchase": "Existing client, new purchase",
+    "generated": "Internet leads", "found_us": "Found us", "winback": "Winback",
+    "referral": "Referral", "center_of_influence": "Centers of influence",
+    "inbound": "Call-in / walk-in", "cold": "Cold / misc", "one_off": "Other one-offs",
+    "commercial": "Commercial", "not_a_sale": "Not a sale", "unclassified": "Unclassified",
+}
+SOCIAL_MEDIA = {"instagram", "linkedin"}   # not facebook -- Frank, 2026-09-24
+
+
+def sales_category(name):
+    n = norm(name)
+    if n in STAFF:
+        return "Personal network"
+    if n in SOCIAL_MEDIA:
+        return "Social media"
+    return SALES_CATEGORY[classify(name)]
+
+
 def board_map(names):
     """{name: group} for the names given, plus the groups themselves, for the
     board (published with the lead-source list; see publish_board)."""
     return {
         # keyed by norm(name); the board normalises the same way
         "source_group": {norm(n): classify(n) for n in names if norm(n)},
+        "sales_category": {norm(n): sales_category(n) for n in names if norm(n)},
         "cross_sell_product": {n: p for n, p in CROSS_SELL_PRODUCT.items() if p},
         "groups": {k: {"label": g["label"], "who": g["who"], "products": g["products"],
                        "approach": g["approach"], "roleplay": g["roleplay"],

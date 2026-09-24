@@ -185,6 +185,11 @@
 .bkleg-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--text-primary); }
 .bkleg-v { font-weight: 600; font-variant-numeric: tabular-nums; text-align: right; }
 .bkleg-p, .bkleg-c { color: var(--text-muted); font-variant-numeric: tabular-nums; text-align: right; }
+.bkrank-src { font-weight: 400; font-size: 11.5px; color: var(--text-muted); margin-left: 6px; }
+#tip:has(.bktip) { max-width: min(460px, calc(100vw - 16px)); }
+.bktip { width: auto; border-collapse: collapse; margin-top: 6px; }
+.bktip td { padding: 2px 0 2px 12px; border: 0; font-size: 11.5px; white-space: nowrap; font-variant-numeric: tabular-nums; text-align: right; }
+.bktip td:first-child { padding-left: 0; text-align: left; }
 .bkrank-n { display: inline-block; min-width: 18px; color: var(--text-muted); font-variant-numeric: tabular-nums; }
 .rtiles { grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); }
 .oleg { display: flex; flex-wrap: wrap; gap: 14px; margin-top: 10px; font-size: 11.5px; color: var(--text-secondary); }
@@ -3570,14 +3575,30 @@ function wireSalesSubTabs() {
 // tab is showing (picked via salesFolioPick there), grouped one of three ways.
 // Frank, 2026-09-24: Lead Source and Policy Type draw as PIE charts of
 // premium share, and the Producer view is replaced by "Premium per
-// Lead Source" -- every lead source ranked by AVERAGE premium per sale
+// Lead Source" -- every lead source CATEGORY ranked by AVERAGE premium per sale
 // (Frank, 2026-09-24), so the sources bringing the biggest policies read
 // top-down; total premium and sale count ride along on each row. Producer totals still live on the Log
 // tab's own Totals pie.
+// Premium per Lead Source groups sources into categories (Frank, 2026-09-24):
+// every center of influence together, social media (not Facebook, which is
+// an internet lead) together, and a staff member's name as the source is
+// "Personal network". The categories are lead_sources.sales_category,
+// published with /api/leadsources; until a publish carries them this falls
+// back to the lead-source group's own label.
+const LEADSRC_CAT_FALLBACK = { generated: "Internet leads", center_of_influence: "Centers of influence" };
+function salesCategoryOf(name) {
+  const raw = (name || "").trim();
+  if (!raw) return "(none logged)";
+  const cats = (LEADSRC_GUIDE || {}).sales_category;
+  if (cats && cats[lsNorm(raw)]) return cats[lsNorm(raw)];
+  if (!LEADSRC_GUIDE) return raw;
+  const key = lsGroupKey(raw);
+  return LEADSRC_CAT_FALLBACK[key] || (LEADSRC_GUIDE.groups[key] || {}).label || raw;
+}
 const SALES_BREAKDOWN_DIMS = {
   lead_source: { label: "Lead Source", chart: "pie", key: e => (e.lead_source || "").trim() || "(none logged)" },
   product:     { label: "Policy Type", chart: "pie", key: e => (e.product || "").trim() || "(none logged)" },
-  top_sources: { label: "Premium per Lead Source", chart: "rank", key: e => (e.lead_source || "").trim() || "(none logged)" },
+  top_sources: { label: "Premium per Lead Source", chart: "rank", key: e => salesCategoryOf(e.lead_source) },
 };
 // Pie slices take categorical slots --s1..--s7 (validated 8-hue theme, see
 // :root) in premium order; past 7 the smallest fold into a neutral-grey
@@ -3590,9 +3611,13 @@ function computeSalesBreakdown(entries, dim) {
   const agg = {};
   for (const e of entries) {
     const key = keyOf(e);
-    const row = agg[key] || (agg[key] = { key, premium: 0, count: 0 });
+    const row = agg[key] || (agg[key] = { key, premium: 0, count: 0, members: {} });
     row.premium += e.premium || 0;
     row.count++;
+    const src = (e.lead_source || "").trim() || "(none logged)";
+    const m = row.members[src] || (row.members[src] = { name: src, premium: 0, count: 0 });
+    m.premium += e.premium || 0;
+    m.count++;
   }
   const rows = Object.values(agg).sort((a, b) => b.premium - a.premium || b.count - a.count);
   if (SALES_BREAKDOWN_DIMS[dim].chart === "rank") {
@@ -3657,15 +3682,22 @@ function salesBreakdownPanel(data) {
     body = `<div class="bkpie-wrap">${salesPieSvg(rows, totalPremium, colorFor)}<div class="bkleg">${legend}</div></div>`;
   } else {
     const busiest = Math.max(...rows.map(r => r.avg), 1);
-    body = rows.map((row, i) => `<div class="orow bkrank" data-tip="${`<b>${row.key}</b><br>${money(row.premium)} &middot; ${salesCount(row.count)} &middot; avg ${money(row.premium / row.count)}`.replace(/"/g, "&quot;")}"><div class="orow-head">
-      <span class="who"><span class="bkrank-n">${i + 1}</span>${row.key}</span>
+    const memberTip = row => {
+      const ms = Object.values(row.members).map(m => ({ ...m, avg: m.premium / m.count }))
+        .sort((a, b) => b.avg - a.avg || b.premium - a.premium);
+      return `<b>${row.key}</b> &middot; ${money(row.avg)} avg &middot; ${salesCount(row.count)}`
+        + `<table class="bktip">${ms.map(m => `<tr><td>${m.name}</td><td>${money(m.avg)} avg</td><td>${salesCount(m.count)}</td><td>${money(m.premium)}</td></tr>`).join("")}</table>`;
+    };
+    body = rows.map((row, i) => { const nsrc = Object.keys(row.members).length;
+      return `<div class="orow bkrank" data-tip="${memberTip(row).replace(/"/g, "&quot;")}"><div class="orow-head">
+      <span class="who"><span class="bkrank-n">${i + 1}</span>${row.key}${nsrc > 1 ? ` <span class="bkrank-src">${nsrc} sources</span>` : ""}</span>
       <span class="on"><b>${money(row.avg)}</b> avg per sale &middot; ${salesCount(row.count)} &middot; ${money(row.premium)} total</span></div>
       <div style="width:${(row.avg / busiest * 100).toFixed(2)}%"><div class="otrack">
-        <span class="ogseg" style="width:100%;background:var(--bar)"></span></div></div></div>`).join("");
+        <span class="ogseg" style="width:100%;background:var(--bar)"></span></div></div></div>`; }).join("");
   }
   const sub = spec.chart === "pie"
     ? `Share of premium by ${spec.label.toLowerCase()}: ${money(totalPremium)} across ${salesCount(entries.length)} in ${where}${otherCount ? `. "Other" folds in the ${otherCount} smallest ${spec.label.toLowerCase()} groups` : ""}.`
-    : `Every lead source ranked by average premium per sale (its premium over its sales) in ${where}: ${money(totalPremium)} across ${salesCount(entries.length)} in all. A source with one sale ranks on that one policy alone.`;
+    : `Lead source categories ranked by average premium per sale (premium over sales) in ${where}: ${money(totalPremium)} across ${salesCount(entries.length)} in all. Hover a row for the lead sources inside it. A category with one sale ranks on that one policy alone.`;
   return `<div class="sect"><h2>Sales breakdown</h2><p class="sd">${sub}</p>${controls}${body}</div>`;
 }
 function wireSalesBreakdownPanel() {
