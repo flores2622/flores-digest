@@ -282,21 +282,26 @@ def prompt_block(name):
 # The Sales tab's "Premium per Lead Source" categories (Frank, 2026-09-24):
 # a display grouping for that one chart, NOT Apollo's GROUPS -- coaching
 # still reads the groups above. Differences from GROUPS: a staff member's
-# name is "Personal network" (GROUPS calls it a referral), and social media
-# other than Facebook is its own category (Facebook stays with the internet
-# leads, which is what "generated" is on this chart).
+# name is "Personal network" (GROUPS calls it a referral) -- each works their
+# own network, never each other's -- EXCEPT Francisco Flores, whose name stays
+# a Referral; social media other than Facebook is its own category (Facebook
+# stays with the internet leads, which is what "generated" is on this chart);
+# and Found us (Google, Farmers.com) is part of Call-in / walk-in.
 SALES_CATEGORY = {
     "cross_sell": "Cross-sell", "existing_new_purchase": "Existing client, new purchase",
-    "generated": "Internet leads", "found_us": "Found us", "winback": "Winback",
+    "generated": "Internet leads", "found_us": "Call-in / walk-in", "winback": "Winback",
     "referral": "Referral", "center_of_influence": "Centers of influence",
     "inbound": "Call-in / walk-in", "cold": "Cold / misc", "one_off": "Other one-offs",
     "commercial": "Commercial", "not_a_sale": "Not a sale", "unclassified": "Unclassified",
 }
 SOCIAL_MEDIA = {"instagram", "linkedin"}   # not facebook -- Frank, 2026-09-24
+STAFF_REFERRAL = {"francisco flores"}      # his name is a referral, not a personal network
 
 
 def sales_category(name):
     n = norm(name)
+    if n in STAFF_REFERRAL:
+        return "Referral"
     if n in STAFF:
         return "Personal network"
     if n in SOCIAL_MEDIA:

@@ -3581,11 +3581,12 @@ function wireSalesSubTabs() {
 // tab's own Totals pie.
 // Premium per Lead Source groups sources into categories (Frank, 2026-09-24):
 // every center of influence together, social media (not Facebook, which is
-// an internet lead) together, and a staff member's name as the source is
-// "Personal network". The categories are lead_sources.sales_category,
+// an internet lead) together, a staff member's name as the source is
+// "Personal network" (Francisco's stays a Referral), and Found us is part of
+// Call-in / walk-in. The categories are lead_sources.sales_category,
 // published with /api/leadsources; until a publish carries them this falls
 // back to the lead-source group's own label.
-const LEADSRC_CAT_FALLBACK = { generated: "Internet leads", center_of_influence: "Centers of influence" };
+const LEADSRC_CAT_FALLBACK = { generated: "Internet leads", center_of_influence: "Centers of influence", found_us: "Call-in / walk-in" };
 function salesCategoryOf(name) {
   const raw = (name || "").trim();
   if (!raw) return "(none logged)";
