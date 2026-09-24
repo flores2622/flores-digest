@@ -460,18 +460,148 @@ def refresh_past_renewals(day, log=log):
     return changed
 
 
+# How far back backfill_missing_days() looks for a working day with no page.
+BACKFILL_BACK_DAYS = 14
+
+
+def _published_days(cli, bucket):
+    keys, token = [], None
+    while True:
+        kw = {"Bucket": bucket, "Prefix": f"{PREFIX}/"}
+        if token:
+            kw["ContinuationToken"] = token
+        r = cli.list_objects_v2(**kw)
+        keys += [o["Key"] for o in r.get("Contents", [])]
+        if not r.get("IsTruncated"):
+            break
+        token = r["NextContinuationToken"]
+    return {k[len(PREFIX) + 1:-5] for k in keys if k.endswith(".json")}
+
+
+def backfill_missing_days(day, log=log):
+    """Build the Service Center page of any recent working day that has none
+    (Frank, 2026-09-24) -- a night the run failed or never happened, as 09-04
+    did. Built from that day's own saved files in the R2 day cache; what was
+    never saved is recreated only where it cannot have changed since:
+
+      completed SRs   today's pull, cut to SRs created in that day's look-back
+                      and completed by the end of it
+      tasks           AgencyZoom, a task completed AFTER the day counted open
+      call log        RingCentral (a past day's calls do not change)
+      open SRs        NOT recreatable -- open SRs close overnight. The page is
+                      built without the backlog and Late Payment stages, and
+                      says so (open_srs_unavailable).
+
+    Weekends are skipped, and so is a weekday with no SR completed (a holiday
+    -- 09-07 had none). Only ever ADDS a page, never touches an existing one."""
+    import publish_board
+    import r2_cache
+    cli, bucket = publish_board._client()
+    have = _published_days(cli, bucket)
+    d0 = dt.date.fromisoformat(day)
+    want = [x.isoformat() for x in (d0 - dt.timedelta(days=i) for i in range(1, BACKFILL_BACK_DAYS + 1))
+            if x.weekday() < 5 and x.isoformat() not in have]
+    if not want:
+        log("  service backfill: no missing days")
+        return []
+    today_done = completed_tickets(day, log=log)
+    rcli, rbucket = r2_cache._client()
+    built = []
+    for d in sorted(want):
+        try:
+            if not any(str(t.get("completeDate") or "")[:10] == d for t in today_done):
+                log(f"  service backfill: {d} had no SR completed -- skipped (holiday?)")
+                continue
+
+            def saved(name):
+                try:
+                    return rcli.get_object(Bucket=rbucket, Key=r2_cache._key(d, name))["Body"].read()
+                except Exception:
+                    return None
+
+            def keep(name, body, upload):
+                (ROOT / "data" / name).write_bytes(body)
+                if not upload:          # already in the day cache
+                    return
+                try:
+                    rcli.put_object(Bucket=rbucket, Key=r2_cache._key(d, name), Body=body,
+                                    ContentType="application/json")
+                except Exception as e:
+                    log(f"  service backfill: {name} not saved to R2 ({type(e).__name__})")
+
+            recreated = []
+            name = f"az_service_tickets_done_{d}.json"
+            body = saved(name)
+            if body is None:
+                lo = (dt.date.fromisoformat(d) - dt.timedelta(days=TICKET_LOOKBACK_DAYS)).isoformat()
+                body = json.dumps([t for t in today_done if lo <= str(t.get("createDate") or "")[:10]
+                                   and str(t.get("completeDate") or "")[:10] <= d]).encode()
+                recreated.append("completed SRs")
+            keep(name, body, "completed SRs" in recreated)
+
+            name = f"az_tasks_{d}.json"
+            body = saved(name)
+            if body is None:
+                from az_client import AgencyZoom
+                from az_tasks import STATUS_COMPLETED
+                tasks = AgencyZoom().tasks(d, d)
+                for t in tasks:
+                    if t.get("status") == STATUS_COMPLETED and str(t.get("completeDate") or "")[:10] > d:
+                        t["status"], t["completedBy"] = 0, None     # done later: open that evening
+                body = json.dumps(tasks).encode()
+                recreated.append("tasks")
+            keep(name, body, "tasks" in recreated)
+
+            for name in (f"rc_raw_{d}.json", f"rc_window_{d}.json"):
+                body = saved(name)
+                if body is None and name.startswith("rc_raw"):
+                    from rc_client import RingCentral
+                    nxt = (dt.date.fromisoformat(d) + dt.timedelta(days=1)).isoformat()
+                    body = json.dumps(RingCentral().call_log(f"{d}T00:00:00-07:00",
+                                                             f"{nxt}T00:00:00-07:00")).encode()
+                    recreated.append("call log")
+                if body is not None:
+                    keep(name, body, name.startswith("rc_raw") and "call log" in recreated)
+
+            name = f"az_service_tickets_{d}.json"
+            live = saved(name)
+            if live is not None:
+                (ROOT / "data" / name).write_bytes(live)
+            else:
+                (ROOT / "data" / name).unlink(missing_ok=True)
+
+            doc = build(d, log=log, refresh_households=False)
+            if live is None:
+                doc["srs"]["backlog"], doc["srs"]["late_payment_stages"] = {}, []
+                doc["open_srs_unavailable"] = ("no end-of-day open-SR snapshot was saved for this "
+                                               "day; backlog and Late Payment stages left out")
+            doc["backfilled"] = {"on": day, "recreated": recreated}
+            publish(d, doc, log=log)
+            built.append(d)
+            log(f"  service backfill: built {d}" + (f" (recreated: {', '.join(recreated)})" if recreated else "")
+                + ("" if live is not None else " -- no open-SR snapshot, backlog left out"))
+        except Exception as e:
+            log(f"  service backfill: {d} failed ({type(e).__name__}: {e})")
+    return built
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--day")
     ap.add_argument("--dry-run", action="store_true")
     ap.add_argument("--refresh-renewals", action="store_true",
                     help="only re-read the renewal outcomes of earlier published days")
+    ap.add_argument("--backfill", action="store_true",
+                    help="only build recent working days that have no page")
     a = ap.parse_args()
     day = a.day or dt.datetime.now(AZ).date().isoformat()
     import os
     os.chdir(ROOT)
     import secrets_load
     secrets_load.load()
+    if a.backfill:
+        backfill_missing_days(day)
+        return
     if a.refresh_renewals:
         refresh_past_renewals(day)
         return

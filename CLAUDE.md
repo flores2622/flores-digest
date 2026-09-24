@@ -308,6 +308,13 @@ Crystal (hybrid); credit always goes to whoever COMPLETED the SR or task.
   renewals**. The deleted ones stay in `RESOLUTION_LABELS` because past SRs
   still carry their ids; do not prune them. `python3 service_retention.py --resolutions`
   prints each id in use with examples.
+- **A missed night builds itself** (`service_digest.backfill_missing_days`,
+  Frank, 2026-09-24): each nightly run builds any weekday of the last 14 with
+  no page, from that day's saved files; completed SRs, tasks (completed after
+  the day = open) and the call log are recreated if they were never saved.
+  Open SRs cannot be -- such a day has no backlog and says so
+  (`open_srs_unavailable`). A weekday with no SR completed is a holiday and
+  skipped. It only ever adds a page. By hand: `python3 service_digest.py --backfill`.
 - **Documents hold rows, never medians**, so the board can add any range up.
 
 ## Cerberus -- Commercial
