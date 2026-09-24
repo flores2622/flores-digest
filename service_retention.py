@@ -78,7 +78,11 @@ RESOLUTION_LABELS = {
     38304: "Unable to Contact",
     # Not renewal outcomes. A renewal SR closed on one of these from
     # RESOLUTIONS_FROM falls back to the policy record and is listed on the
-    # Service tab as not one of the six.
+    # Service tab as not one of the six. Completed is kept in AgencyZoom for
+    # changes, NOC and missing documents -- never renewals (Frank, 2026-09-24).
+    # The other four were DELETED in AgencyZoom on 2026-09-24 and no longer
+    # come back from the endpoint; keep them here, since past SRs still carry
+    # those ids.
     32571: "Completed",
     38303: "Unable to Complete",
     38305: "Cancelled by Carrier",
