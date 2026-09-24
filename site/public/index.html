@@ -371,7 +371,16 @@ h2 {
    duplicate stat box: the report below it already IS the live data (same
    board_payload.build() shape whether the source is a finalized day or
    intraday.py's latest checkpoint), so this only has to say so. */
-.livebanner { font-size: 12.5px; color: var(--text-secondary); border: 1px solid var(--good); border-radius: 8px; padding: 8px 12px; margin-bottom: 16px; }
+.livebanner { font-size: 12.5px; color: var(--text-secondary); margin-bottom: 16px; line-height: 1.5; }
+.livebanner .livenow { font-size: 13px; color: var(--text-primary); font-weight: 600; display: flex; align-items: center; gap: 7px; }
+.livedot { width: 9px; height: 9px; border-radius: 50%; background: var(--livegreen); box-shadow: 0 0 0 3px var(--liveglow), 0 0 10px var(--livegreen); flex: none; }
+.livedot.off { background: var(--text-muted); box-shadow: none; }
+/* Live figures glow green (Frank, 2026-09-24: "whatever does not glow green
+   is not live"). --livegreen is not the tier green: a tier colour is a
+   judgment on the number, the glow only says the number is current. */
+:root { --livegreen: #1fbf5c; --liveglow: rgba(31,191,92,.28); }
+.tile.isLive { border-color: var(--livegreen); box-shadow: 0 0 0 1px var(--livegreen), 0 0 14px var(--liveglow); }
+td.isLive { box-shadow: inset 0 0 0 1px var(--livegreen), inset 0 0 10px var(--liveglow); }
 .liveflags { margin-top: 8px; display: flex; flex-direction: column; gap: 6px; }
 .liveflag { font-size: 12.5px; color: var(--warn); background: var(--surface-raised); border: 1px solid var(--warn); border-radius: 8px; padding: 7px 10px; }
 
@@ -975,18 +984,18 @@ function digestDay(d, who) {
   // 2026-09-23: "I want all 6 cards in 1 row, and they dont need to be the
   // same size if thats needed to make them fit").
   const tiles = [
-    ["Dials", t.dials ?? 0, dialsNote, tc("dials")],
+    ["Dials", t.dials ?? 0, dialsNote, tc("dials"), liveOn(d, "dials")],
     ["Live contacts", t.live ?? 0, rate + "% contact rate", tc("rate")],
-    ["HH/Prem. Quoted", `<span class="${tc("hh")}">${t.hh ?? 0} HH</span><br><span class="${tc("pq")}">${money(t.pq)}</span>`],
+    ["HH/Prem. Quoted", `<span class="${tc("hh")}">${t.hh ?? 0} HH</span><br><span class="${tc("pq")}">${money(t.pq)}</span>`, "", "", liveOn(d, "quotes")],
     // Policies colours on the sale streak (see apply_policy_streak), same
     // tier data the Team Leaderboard table's own Pol column already uses --
     // this tile just wasn't wrapping the number in it (unlike HH/Prem.
     // Quoted right above, which colours both halves).
-    ["Pol/Prem. Sold", `<span class="${tc("pol")}">${t.pol ?? 0} Pol</span><br><span class="${tc("ps")}">${money(t.ps)}</span>`],
+    ["Pol/Prem. Sold", `<span class="${tc("pol")}">${t.pol ?? 0} Pol</span><br><span class="${tc("ps")}">${money(t.ps)}</span>`, "", "", liveOn(d, "sales")],
   ];
-  if (t.util != null) tiles.push(["Utilization", t.util + "%", "weighted", tc("util")]);
-  const tilesHtml = tiles.map(([k, v, n, cls]) =>
-    `<div class="tile"><div class="k">${k}</div><div class="v${cls ? " " + cls : ""}">${v}</div>${n ? `<div class="n">${n}</div>` : ""}</div>`).join("");
+  if (t.util != null) tiles.push(["Utilization", t.util + "%", "weighted", tc("util"), liveOn(d, "util")]);
+  const tilesHtml = tiles.map(([k, v, n, cls, live]) =>
+    `<div class="tile${live ? " isLive" : ""}"><div class="k">${k}</div><div class="v${cls ? " " + cls : ""}">${v}</div>${n ? `<div class="n">${n}</div>` : ""}</div>`).join("");
 
   // Closing Ratio (Frank, 2026-09-22: "add a closing rate table between the
   // sold and utilization cards"; 2026-09-23: "can we do a closing ratio for
@@ -1010,7 +1019,7 @@ function digestDay(d, who) {
   // digest_config.THRESHOLDS["closing_ratio_pct"]) -- both halves share the
   // one scheme, since Frank gave one for "close ratio", not two.
   const pct = v => v == null ? "—" : v.toFixed(1) + "%";
-  const closingRatioTileHtml = `<div class="tile">
+  const closingRatioTileHtml = `<div class="tile${liveOn(d, "closing") ? " isLive" : ""}">
    <div class="k">Closing Ratio</div>
    <div class="v"><span class="${tc("closing_hh")}">${pct(hhClosingRatio)}</span> <span class="n" style="font-weight:400">households</span><br><span class="${tc("closing_pq")}">${pct(premClosingRatio)}</span> <span class="n" style="font-weight:400">premium</span></div>
   </div>`;
@@ -1130,31 +1139,32 @@ function teamLeaderboardHtml(d, who) {
     podium = podiumHtml(lb.order, points);
   }
 
+  const lv = part => liveOn(d, part) ? " isLive" : "";
   const rows = ranked.map((p, i) => `<tr>
     <td><span class="who">${
        !focus && i < 3 ? `<span class="mdl" role="img" aria-label="${["1st", "2nd", "3rd"][i]}">${MEDAL[i]}</span>` : ""}${pbadge(DOT[p.name] || "#8a877f", p.name)}</span></td>
     ${hasRoleplay ? `<td class="num ${tc(p.name, "roleplay")}">${(p.coach || {}).roleplay ?? "—"}</td>` : ""}
-    <td class="num ${tc(p.name, "dials")}">${p.dials ?? 0}${dialsSub(p)}</td>
+    <td class="num ${tc(p.name, "dials")}${lv("dials")}">${p.dials ?? 0}${dialsSub(p)}</td>
     <td class="num ${tc(p.name, "talk")}">${hhmm(p.talk)}</td>
     <td class="num ${tc(p.name, "rate")}">${p.rate ?? 0}% <span style="opacity:.72">(${p.live ?? 0})</span></td>
-    <td class="num ${tc(p.name, "hh")}">${p.hh ?? 0}</td>
-    <td class="num ${tc(p.name, "pq")}">${money(p.pq)}</td>
-    <td class="num ${tc(p.name, "pol")}" title="${polTitle(p.name)}">${p.pol ?? 0}</td>
-    <td class="num ${tc(p.name, "ps")}">${money(p.ps)}</td>
-    ${p.util != null ? `<td class="num ${tc(p.name, "util")}">${p.util}%</td>` : ""}</tr>`).join("");
+    <td class="num ${tc(p.name, "hh")}${lv("quotes")}">${p.hh ?? 0}</td>
+    <td class="num ${tc(p.name, "pq")}${lv("quotes")}">${money(p.pq)}</td>
+    <td class="num ${tc(p.name, "pol")}${lv("sales")}" title="${polTitle(p.name)}">${p.pol ?? 0}</td>
+    <td class="num ${tc(p.name, "ps")}${lv("sales")}">${money(p.ps)}</td>
+    ${p.util != null ? `<td class="num ${tc(p.name, "util")}${lv("util")}">${p.util}%</td>` : ""}</tr>`).join("");
   const tt = k => TI[((d.tiers || {})["team"] || {})[k]] || "";
   const T = d.totals || {};
   const teamRate = T.rate != null ? (+T.rate).toFixed(1) : (T.dials ? (100 * T.live / T.dials).toFixed(1) : "0");   // see digestDay
   const tot = focus ? "" : `<tr class="tot"><td><span class="who">${pbadge(TEAM_DOT, "Team")}</span></td>
     ${hasRoleplay ? `<td class="num ${tt("roleplay")}">${T.roleplay != null ? Math.round(T.roleplay) : "—"}</td>` : ""}
-    <td class="num ${tt("dials")}">${T.dials ?? 0}${dialsSub(T)}</td>
+    <td class="num ${tt("dials")}${lv("dials")}">${T.dials ?? 0}${dialsSub(T)}</td>
     <td class="num ${tt("talk")}">${hhmm(T.talk)}</td>
     <td class="num ${tt("rate")}">${teamRate}% <span style="opacity:.72">(${T.live ?? 0})</span></td>
-    <td class="num ${tt("hh")}">${T.hh ?? 0}</td>
-    <td class="num ${tt("pq")}">${money(T.pq)}</td>
-    <td class="num ${tt("pol")}">${T.pol ?? 0}</td>
-    <td class="num ${tt("ps")}">${money(T.ps)}</td>
-    ${T.util != null ? `<td class="num ${tt("util")}">${T.util}%</td>` : ""}</tr>`;
+    <td class="num ${tt("hh")}${lv("quotes")}">${T.hh ?? 0}</td>
+    <td class="num ${tt("pq")}${lv("quotes")}">${money(T.pq)}</td>
+    <td class="num ${tt("pol")}${lv("sales")}">${T.pol ?? 0}</td>
+    <td class="num ${tt("ps")}${lv("sales")}">${money(T.ps)}</td>
+    ${T.util != null ? `<td class="num ${tt("util")}${lv("util")}">${T.util}%</td>` : ""}</tr>`;
 
   return `<div class="sect"><h2>Team Leaderboard</h2>
    ${podium}
@@ -1271,13 +1281,14 @@ function utilizationHtml(d, who) {
   const tc = (name) => TI[((d.tiers || {})[name] || {})["util"]] || "";
   const list = (focus ? [focus] : (d.producers || [])).filter(p => p.util != null);
   if (!list.length) return "";
+  const ul = liveOn(d, "util") ? " isLive" : "";
   const cards = list.map(p => { const idle = idleFromHHMM(p.util_total, p.util_prod);
-    return `<div class="tile">
+    return `<div class="tile${ul}">
     <div class="k">${p.name}</div><div class="v ${tc(p.name)}">${p.util}%</div>
     <div class="n">${p.util_prod || "—"} productive / ${p.util_total || "—"} tracked</div>
     ${idle ? `<div class="n">${idle} idle</div>` : ""}</div>`; }).join("");
   const T = d.totals || {};
-  const teamCard = focus || T.util == null ? "" : `<div class="tile" style="border-color:var(--border-strong)">
+  const teamCard = focus || T.util == null ? "" : `<div class="tile${ul}"${ul ? "" : ' style="border-color:var(--border-strong)"'}>
     <div class="k">Team</div><div class="v ${TI[((d.tiers || {})["team"] || {})["util"]] || ""}">${T.util}%</div>
     <div class="n">weighted</div></div>`;
   return `<div class="sect"><h2>Utilization and Efficiency</h2>
@@ -1502,6 +1513,10 @@ function pacedTierColor(metric, value, frac) {
 function applyLive(base, L) {
   const d = JSON.parse(JSON.stringify(base));
   if (!L || !L.live) return d;
+  // Which figures are live on this document -- read by liveOn() to make
+  // them glow. closing is live only once both halves are.
+  d.live_parts = ["dials", "sales", "quotes", "util"].filter(k => (L[k] || {}).ok);
+  if ((L.sales || {}).ok && (L.quotes || {}).ok) d.live_parts.push("closing");
   const tiers = d.tiers || (d.tiers = {});
   const T = d.totals || (d.totals = {});
   const ps = d.producers || [];
@@ -1576,32 +1591,19 @@ function applyLive(base, L) {
 }
 
 const fmtClock = iso => iso ? new Date(iso).toLocaleTimeString([], { hour: "numeric", minute: "2-digit", timeZone: "America/Phoenix" }) : "";
+// Just the two times (Frank, 2026-09-24): which figures are live is shown
+// by the green glow on them (liveOn), not spelled out here. Checkpoint
+// warnings (flags) still show -- they are about the data, not about what
+// is live.
+const liveOn = (d, part) => !!(d && d.live_parts && d.live_parts.includes(part));
 function liveBannerHtml(d, who) {
   if (!curLive) return "";
   const L = curLiveData && curLiveData.live ? curLiveData : null;
-  const parts = [["dials", "Dials"], ["sales", "Policies, Premium Sold and cross-sells"],
-    ["quotes", "Households and premium quoted"], ["util", "Utilization"]];
-  const liveNow = L ? parts.filter(([k]) => (L[k] || {}).ok).map(([, n]) => n) : [];
-  const notLive = L ? parts.filter(([k]) => !(L[k] || {}).ok).map(([k, n]) => [n, (L[k] || {}).reason || "unavailable"]) : [];
-  const closingLive = L && (L.sales || {}).ok && (L.quotes || {}).ok;
-  if (closingLive) liveNow.push("Closing ratio");
-  const stale = ["contact rate and live contacts", "talk time", "call outcomes", ...(closingLive ? [] : ["closing ratio"]),
-    "task completion", "speed to dial", "the leaderboard's points", "household completion's bundles", "coaching cards"];
-  const ps = (d.producers || []).filter(p => !who || p.name === who);
-  const unchecked = L && (L.dials || {}).ok ? ps.reduce((s, p) => s + (p.unchecked || 0), 0) : 0;
-  const cp = fmtClock(d.as_of);
+  const any = (d.live_parts || []).length > 0;
   const flags = d.flags || [];
-  const paceNote = d.pace != null ? ` ${Math.round(d.pace * 100)}% through the business day.` : "";
-  const liveLine = liveNow.length
-    ? `<div><b>Live</b>, updated ${fmtClock(L.fetched_at)}: ${liveNow.join(", ")}.</div>`
-    : `<div><b>Live figures aren't available yet</b>${L ? "" : (curLiveData && curLiveData.reason ? ` (${curLiveData.reason})` : "")}; everything below is the checkpoint's.</div>`;
   return `<div class="livebanner">
-    ${liveLine}
-    <div><b>From the ${cp || "last"} checkpoint</b>: ${liveNow.length ? stale.join(", ") : "every figure"}${liveNow.length && notLive.length ? `, ${notLive.map(([n]) => n.toLowerCase()).join(", ")}` : ""}. The next checkpoint updates them.</div>
-    ${liveNow.length && notLive.length ? notLive.map(([n, why]) => `<div class="n">${n} isn't live yet (${why}).</div>`).join("") : ""}
-    ${unchecked ? `<div>${unchecked} dial${unchecked === 1 ? "" : "s"} since the checkpoint went to numbers not checked yet; they count as new business until the next checkpoint checks them.</div>` : ""}
-    ${L && (L.quotes || {}).ok && L.quotes.data.pending ? `<div>${L.quotes.data.pending} lead${L.quotes.data.pending === 1 ? "" : "s"} with activity since the checkpoint still being read for quotes.</div>` : ""}
-    <div>${paceNote.trim()} Tonight's build finalizes the day.</div>
+    <div class="livenow"><span class="livedot${any ? "" : " off"}"></span>${any ? `Live &middot; updated ${fmtClock(L.fetched_at)}` : "Live figures unavailable"}</div>
+    <div>Last checkpoint ${fmtClock(d.as_of) || "—"}</div>
     ${flags.length ? `<div class="liveflags">${flags.map(f => `<div class="liveflag">${f}</div>`).join("")}</div>` : ""}
   </div>`;
 }
