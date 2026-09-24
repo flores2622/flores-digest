@@ -39,6 +39,10 @@
   // every future deploy carries them regardless of dashboard state.
   "vars": {
     "ACCESS_TEAM_DOMAIN": "floresinsuranceagency",
-    "ACCESS_AUD": "46509102362d6d3f7a980163995a9ecda620eaace3733aa53beab032a2538437"
+    "ACCESS_AUD": "46509102362d6d3f7a980163995a9ecda620eaace3733aa53beab032a2538437",
+    // Who may open the Commercial Center (site/worker.js requireCommercial).
+    // Commercial is Frank's alone (2026-09-24). Comma-separated emails, as
+    // Cloudflare Access reports them; empty means nobody.
+    "COMMERCIAL_VIEWERS": "frank@floresinsuranceagency.com"
   }
 }

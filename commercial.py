@@ -39,13 +39,15 @@ RENEWAL_WORKFLOWS = {"Commercial Renewals"}
 SERVICE_WORKFLOWS = {"Service Pipeline"}
 
 # policyTypeName values that are commercial lines, as seen in the household
-# map on 2026-09-24. Anything named "Commercial ..." counts automatically, so a
+# map and the policy corpus on 2026-09-24 (Builders Risk and Excess Liability
+# are named by open Commercial Renewal SRs). Anything named "Commercial ..." counts automatically, so a
 # new commercial type needs no change here. Deliberately NOT commercial:
 # "Umbrella" (personal; "Commercial Umbrella" is caught by name) and "Course
 # of Construction" (a dwelling under construction on Farmers' personal side).
 COMMERCIAL_LINES = {
     "Workers Comp", "General Liability", "Professional Liability",
-    "Liquor Liability", "Bond", "Dealer Bond",
+    "Liquor Liability", "Premise Liability", "Excess Liability",
+    "Builders Risk", "Bond", "Dealer Bond",
 }
 _COMMERCIAL_NAME = re.compile(r"\bcommercial\b", re.I)
 
