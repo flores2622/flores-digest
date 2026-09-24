@@ -201,6 +201,10 @@ of what `service_tickets_live()` asks for, not of AgencyZoom: requesting
 `status: [2]` returns every completed ticket (19,287) with `completeDate` and
 `resolutionDesc`. Screening calls still wants live tickets only. The completed
 set is read by `service_digest.py` alone, for resolution times.
+**A completed SR can leave the completed list** -- reopened (Late Payments SR
+12245539: completed 09-01 by Debbie, reopened 09-24 by Amanda). So
+`service_digest.completed_tickets` adds back anything in the last saved
+day file that a new pull is missing: a past day's completed SRs never shrink.
 ## Athena -- the service digest
 
 **Athena is the service side's name** (Frank, 2026-09-23), as Apollo is sales

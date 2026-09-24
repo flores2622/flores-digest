@@ -101,9 +101,49 @@ def completed_tickets(day, az=None, log=log):
         page += 1
         if len(rows) < 100 or not keep:
             break
+    n_pulled = len(out)
+    out = list({r.get("id"): r for r in out}.values())     # paging can repeat a row
+    # An SR can also LEAVE the completed list: Debbie completed Late Payments
+    # SR 12245539 on 09-01 and Amanda reopened it on 09-24, so every pull from
+    # that afternoon lost it and 09-01's day file read 32 SRs, not 33. It was
+    # completed on 09-01 all the same, so anything in the last saved file that
+    # this pull is missing is added back -- a day's SRs never shrink. If it is
+    # completed again, the fresh copy (new completeDate) wins, above.
+    prev_day, prev = _previous_done(day, log=log)
+    if prev:
+        have = {r.get("id") for r in out}
+        back = [r for r in prev if r.get("id") not in have
+                and str(r.get("createDate") or "")[:10] >= floor]
+        out += back
+        if back:
+            log(f"  completed service tickets: {len(back)} missing from this pull, "
+                f"added back from {prev_day}'s saved file")
+    else:
+        log("  completed service tickets: no earlier saved file to check this pull against")
     f.write_text(json.dumps(out))
-    log(f"  completed service tickets: {len(out)} ({page} pages)")
+    log(f"  completed service tickets: {len(out)} ({page} pages, {n_pulled} rows pulled)")
     return out
+
+
+def _previous_done(day, log=log, back_days=10):
+    """(day, rows) of the most recent completed-SR file saved before `day`,
+    local first and then the R2 day cache -- or (None, None)."""
+    d = dt.date.fromisoformat(day)
+    cli = None
+    for i in range(1, back_days + 1):
+        p_day = (d - dt.timedelta(days=i)).isoformat()
+        name = f"az_service_tickets_done_{p_day}.json"
+        f = ROOT / "data" / name
+        if f.exists():
+            return p_day, json.loads(f.read_text())
+        try:
+            import r2_cache
+            if cli is None:
+                cli, bucket = r2_cache._client()
+            return p_day, json.loads(cli.get_object(Bucket=bucket, Key=r2_cache._key(p_day, name))["Body"].read())
+        except Exception:
+            continue
+    return None, None
 
 
 def _team_name(name):
