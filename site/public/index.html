@@ -2713,7 +2713,8 @@ function roleplayPanel() {
   return `<div class="sect"><h2>Role Play &middot; ${p.name}</h2>
     <p class="sd">${rpProducer}
       <button class="ghost" id="rpNewScenario" type="button" style="margin-left:6px">new scenario</button>
-      <button class="ghost" id="rpChangeProducer" type="button">change producer</button></p>
+      <button class="ghost" id="rpChangeProducer" type="button">change producer</button>
+      ${rpDebriefButtons()}</p>
     <div class="rpchat">
       <div class="rpmsgs" id="rpMsgs">${msgs}</div>
       ${rpSpeechSupported() ? `<div class="rprow" style="justify-content:center">
@@ -2726,6 +2727,37 @@ function roleplayPanel() {
     ${rpGrade ? gradeCardHtml(rpGrade) : ""}
     ${histHtml}
   </div>`;
+}
+
+/* The debrief, in its own window or as a PDF (Frank, 2026-09-24: "so they
+   can reference it while in the session"). The debrief screen goes away
+   once the call starts, so the render snapshots it (rpDebriefSnapshot) and
+   both buttons -- on the debrief and on the live call -- open that same
+   snapshot: a standalone page carrying this page's own styles and theme.
+   "Save as PDF" opens it and brings up the browser's print dialog, where
+   Save as PDF is the destination. A new scenario takes a new snapshot. */
+let rpDebriefSnapshot = null;
+function rpDebriefButtons() {
+  return rpDebriefSnapshot ? `<button class="ghost" id="rpDebriefWin" type="button">open debrief in new window</button>
+      <button class="ghost" id="rpDebriefPdf" type="button">save debrief as PDF</button>` : "";
+}
+function rpOpenDebrief(print) {
+  const d = rpDebriefSnapshot;
+  if (!d) return;
+  const w = window.open("", "_blank", "width=820,height=900");
+  if (!w) { alert("Your browser blocked the new window -- allow pop-ups for this board and try again."); return; }
+  const css = [...document.querySelectorAll("style")].map(el => el.textContent).join("\n");
+  const theme = document.documentElement.dataset.theme;
+  w.document.open();
+  w.document.write(`<!doctype html><html${theme ? ` data-theme="${theme}"` : ""}><head><meta charset="utf-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1"><title>${d.title} · ${d.producer}</title>
+    <style>${css}
+    body { padding: 20px 24px 40px; max-width: 900px; margin: 0 auto; }
+    @media print { body { padding: 0; } .tile { break-inside: avoid; } }</style></head>
+    <body><div class="sect"><h2>${d.title}</h2><p class="sd">${d.producer}</p>${d.body}</div></body></html>`);
+  w.document.close();
+  w.focus();
+  if (print) setTimeout(() => w.print(), 300);   // let the written page lay out first
 }
 
 /* Pre-call debrief (Frank, 2026-09-11): shown once a persona is picked and
@@ -2757,10 +2789,22 @@ function roleplayDebriefHtml(p) {
   const callGuideHtml = TRAINING_CACHE ? roleplayCallGuideHtml(TRAINING_CACHE, weak)
     : '<p class="sd" style="margin-top:12px">Loading call guide…</p>';
 
+  rpDebriefSnapshot = { title: `Role Play · ${p.name} · Debrief`, producer: rpProducer,
+    body: `<div class="tiles" style="margin-bottom:6px">
+      <div class="tile"><div class="k">Client type</div><div class="v" style="font-size:16px">${p.name}</div><div class="n">${p.blurb}</div></div>
+      <div class="tile"><div class="k">Lead source</div><div class="v" style="font-size:16px">${ls.label}</div><div class="n">${ls.tip}</div></div>
+      ${ls.prospect ? `<div class="tile"><div class="k">Prospect</div><div class="v" style="font-size:16px">${ls.prospect.name}</div>
+        <div class="n">${ls.prospect.age} &middot; ${ls.prospect.occupation}</div><div class="n">${ls.prospect.family}</div></div>` : ""}
+    </div>
+    ${weakHtml}
+    <div class="bl" style="margin-top:16px">Approach checklist</div>
+    <ul class="gl g">${RP_APPROACH_CHECKLIST.map(c => `<li>${c}</li>`).join("")}</ul>
+    ${callGuideHtml}` };
   return `<div class="sect"><h2>Role Play &middot; ${p.name} &middot; Debrief</h2>
     <p class="sd">${rpProducer}
       <button class="ghost" id="rpChangePersona" type="button" style="margin-left:6px">change persona</button>
-      <button class="ghost" id="rpChangeProducer" type="button">change producer</button></p>
+      <button class="ghost" id="rpChangeProducer" type="button">change producer</button>
+      ${rpDebriefButtons()}</p>
     <div class="tiles" style="margin-bottom:6px">
       <div class="tile"><div class="k">Client type</div><div class="v" style="font-size:16px">${p.name}</div><div class="n">${p.blurb}</div></div>
       <div class="tile"><div class="k">Lead source</div><div class="v" style="font-size:16px">${ls.label}</div><div class="n">${ls.tip}</div></div>
@@ -2916,6 +2960,10 @@ function wireRoleplayPanel() {
     document.getElementById("view").innerHTML = roleplayPanel();
     wireRoleplayPanel();
   };
+  const dWin = document.getElementById("rpDebriefWin");
+  if (dWin) dWin.onclick = () => rpOpenDebrief(false);
+  const dPdf = document.getElementById("rpDebriefPdf");
+  if (dPdf) dPdf.onclick = () => rpOpenDebrief(true);
   const startCall = document.getElementById("rpStartCall");
   if (startCall) startCall.onclick = () => {
     rpStarted = true;
