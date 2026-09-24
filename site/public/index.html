@@ -631,7 +631,7 @@ details.sc .scb { padding: 0 12px 12px; }
     <button class="tab" role="tab" aria-selected="false" data-v="coaching">Coaching Center</button>
     <button class="tab" role="tab" aria-selected="false" data-v="trends">Trends</button>
     <button class="tab" role="tab" aria-selected="false" data-v="learning">Learning Center</button>
-    <button class="tab" role="tab" aria-selected="false" data-v="service">Service</button>
+    <button class="tab" role="tab" aria-selected="false" data-v="service">Service Center</button>
   </nav>
   <main class="main">
     <div id="centerbar"></div>
@@ -3519,7 +3519,7 @@ function wireProducerControl() {
    that one is still owned by loadDay(). */
 /* The [from, to] span the shared range control currently means, for any
    range mode but "day": {from, to, label} or {err}. Shared by the Digest
-   and Coaching (ensureCurForRange) and Athena's Service tab. */
+   and Coaching (ensureCurForRange) and Athena's Service Center. */
 function rangeBounds() {
   const today = isoDate(azTodayDate());
   let from, to, label;
@@ -3624,8 +3624,8 @@ async function paint() {
   }
 }
 
-/* ---- Athena: the Service tab (Frank, 2026-09-23) -------------------------
-   The service team's numbers -- Debbie (CSR), Amanda and Crystal (hybrid).
+/* ---- Athena: the Service Center (Frank, 2026-09-23) -------------------------
+   The service team's numbers -- Debbie (CSR), Amanda (Ops Mngr) and Crystal (hybrid).
    Athena is the service side's name, as Apollo is sales coaching's. One
    document per day (service/<day>.json, service_digest.py) holding ROWS --
    every SR completed, every renewal SR's outcome, every missed service call
@@ -3773,6 +3773,7 @@ function missingDocsHtml(m) {
     <p class="sd">Contingencies on newly bound policies: ${rs.length} completed in this period, median ${fmtDur(svcMedian(rs.map(r => r.hours)))} from created to completed, and who took care of it. The selling producer is whoever sold the household's policy just before the SR was created.</p>
     <div class="tiles">${chips}</div></div>`;
 }
+const SERVICE_TITLES = { "Amanda Torricellas": "Ops Mngr" };
 function servicePanel(m) {
   const team = m.team.map(t => t.name);
   const first = n => n.split(" ")[0];
@@ -3797,7 +3798,10 @@ function servicePanel(m) {
     const k = m.tasks[n] || { due: 0, completed: 0 }, u = m.util[n] || {}, b = m.backlog[n] || {};
     const mine = m.completed.filter(r => r.by === n);
     const cb = cbDone.filter(r => r.by === n);
-    const role = (m.team.find(t => t.name === n) || {}).role || "";
+    // Titles set here win over the ones stored in each day's document, so a
+    // range ending before a retitle still shows the current one (Amanda was
+    // "Hybrid" in documents built before 2026-09-24).
+    const role = SERVICE_TITLES[n] || (m.team.find(t => t.name === n) || {}).role || "";
     return `<div class="tile">
       <div class="k">${pbadge(DOT[n] || TEAM_DOT, first(n))} <span style="margin-left:4px">${role}</span></div>
       <div class="n" style="margin-top:8px"><b>${k.completed}/${k.due}</b> service tasks &middot; <b>${mine.length}</b> SRs completed${mine.length ? ` (median ${fmtDur(svcMedian(mine.map(r => r.hours)))})` : ""}</div>

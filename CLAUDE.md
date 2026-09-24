@@ -170,8 +170,8 @@ set is read by `service_digest.py` alone, for resolution times.
 
 **Athena is the service side's name** (Frank, 2026-09-23), as Apollo is sales
 coaching's. `service_digest.py` builds `service/<day>.json`; the board's
-Service tab renders it. The team is Debbie (CSR) plus Amanda and Crystal
-(hybrid); credit always goes to whoever COMPLETED the SR or task.
+Service Center renders it. The team is Debbie (CSR) plus Amanda (Ops Mngr) and
+Crystal (hybrid); credit always goes to whoever COMPLETED the SR or task.
 
 - **Say "SR" (service request), never "ticket"** -- on the board and in
   anything the agency reads.
