@@ -28,6 +28,7 @@ or a note read, so it stays the checkpoint's, and the board says so.
 `basis(day)` is published inside the intraday document (publish_board.build,
 live=True only), so the Worker needs nothing but R2 and the three services.
 """
+import datetime as dt
 import json
 import pathlib
 
@@ -83,8 +84,38 @@ def basis(day):
         "not_a_sale": sorted(lead_sources.NOT_A_SALE),
         "existing_household": sorted(lead_sources.EXISTING_HOUSEHOLD),
         "util_exclude": sorted(_util_exclude()),
+        "quotes": _quote_basis(M),
         "business_hours": [f"{cfg.BUSINESS_START_HOUR:02d}:{cfg.BUSINESS_START_MIN:02d}",
                            f"{cfg.BUSINESS_END_HOUR:02d}:{cfg.BUSINESS_END_MIN:02d}"],
+    }
+
+
+def _quote_basis(M):
+    """What the Worker needs to keep households and premium quoted live:
+    the checkpoint's own quoted leads per producer (daily.py's `hh`), when
+    the lead activity was read (anything active since is re-checked), and
+    daily.py's own quote rules as regex source, so the Worker applies the
+    very same patterns rather than a copy that can drift. None for a
+    checkpoint built before daily.py kept the lead ids."""
+    import daily
+    per = {who: (M.get("producers", {}).get(who) or {}) for who in cfg.PRODUCERS}
+    if any("quoted_leads" not in v for v in per.values() if v):
+        return None
+    corpus = ROOT / "data/az_leads_all.json"
+    if not corpus.exists():
+        return None
+    # The lead corpus is refetched at the start of every checkpoint and the
+    # notes are read after it, so everything active from a little before
+    # that fetch on is re-checked; the overlap only costs a re-read, since
+    # leads already counted are skipped.
+    since = dt.datetime.fromtimestamp(corpus.stat().st_mtime, dt.timezone.utc) - dt.timedelta(minutes=10)
+    return {
+        "quoted_leads": {who: v.get("quoted_leads") or [] for who, v in per.items()},
+        # lead lastActivityDate is UTC, "YYYY-MM-DD HH:MM:SS"
+        "activity_since": since.strftime("%Y-%m-%d %H:%M:%S"),
+        "stage_pattern": daily.QUOTED_STAGE.pattern,
+        "presented_pattern": daily._PRESENTED.pattern,
+        "past_pattern": daily._PAST.pattern,
     }
 
 
