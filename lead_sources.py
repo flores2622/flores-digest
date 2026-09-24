@@ -70,8 +70,8 @@ GROUPS = {
     },
     "referral": {
         "label": "Referral",
-        "who": "A customer's referral, or Francisco Flores's (a source named "
-               "after him).",
+        "who": "A customer's referral, or a source named after Francisco Flores: "
+               "a referral or a warm transfer he handed to the producer.",
         "products": ANY,
         "existing_household": False, "sale": True, "owner": "apollo",
         # Role Play: what the prospect knows about how this call came about.
@@ -81,8 +81,9 @@ GROUPS = {
     },
     # Frank, 2026-09-24: a staff member's name as the source is that person's
     # own personal network, and each works their own, never each other's.
-    # Francisco's name stays a Referral (STAFF_REFERRAL). Approach and
-    # backstory confirmed by Frank, 2026-09-24.
+    # Francisco's name is a Referral (STAFF_REFERRAL, below). Approach
+    # confirmed by Frank, 2026-09-24. Never in Role Play (Frank, 2026-09-24):
+    # a producer's own network is not something to practise on a stranger.
     "personal_network": {
         "label": "Personal network",
         "who": "A staff member's own personal network (a source named after one "
@@ -91,7 +92,7 @@ GROUPS = {
         "products": ANY,
         "existing_household": False, "sale": True, "owner": "apollo",
         # Role Play: what the prospect knows about how this call came about.
-        "backstory": 'You know the producer personally: a friend, relative or someone from their community. They mentioned they work in insurance and offered to look at your coverage.',
+        "roleplay": False,
         "approach": "They know you, not the agency. Lead with the relationship and "
                     "why you are calling, not a pitch: ask what they have and when "
                     "it renews, then quote the whole household in one go so they "
@@ -263,6 +264,14 @@ STAFF = {
 # 2026-09-24).
 STAFF_REFERRAL = {"francisco flores"}
 
+# Role Play backstory for one source where its group's own is not right: a
+# Francisco lead is a referral or a warm transfer (Frank, 2026-09-24).
+SOURCE_BACKSTORY = {
+    "francisco flores": "You spoke with Francisco at this agency and he either "
+                        "transferred your call to this producer or passed your "
+                        "information along and told you they would call.",
+}
+
 # "Name at Company" / "Name @ Company" is a center of influence.
 _COI = re.compile(r"\s(at|@)\s", re.I)
 
@@ -332,6 +341,7 @@ def board_map(names):
         "source_group": {norm(n): classify(n) for n in names if norm(n)},
         "sales_category": {norm(n): sales_category(n) for n in names if norm(n)},
         "cross_sell_product": {n: p for n, p in CROSS_SELL_PRODUCT.items() if p},
+        "source_backstory": SOURCE_BACKSTORY,
         "groups": {k: {"label": g["label"], "who": g["who"], "products": g["products"],
                        "approach": g["approach"], "roleplay": g["roleplay"],
                        "backstory": g.get("backstory")}

@@ -28,7 +28,8 @@ Everything caches under `data/`, so a re-run resumes rather than restarting.
   `digest_config` reads. Commercial sources (Leo, Work Comp, the Comm Leads
   lists) are Cerberus's. Frank confirmed the `approach` lines on 2026-09-24.
   **A staff member's name as a source is Personal network** -- their own,
-  never each other's -- **except Francisco's, which is a Referral**;
+  never each other's, and never in Role Play -- **except Francisco's, which
+  is a Referral** (and so can come up in Role Play);
   Instagram / LinkedIn are Social media (Facebook stays Generated); Found us
   (Google, Farmers.com) is part of Call-in / walk-in (Frank, 2026-09-24).
   The Sales tab's Premium per Lead Source uses these same groups.
