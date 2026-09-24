@@ -276,7 +276,9 @@ Crystal (hybrid); credit always goes to whoever COMPLETED the SR or task.
 - **FRANK'S RESOLUTIONS ARE THE ONLY OUTCOMES** (Frank, 2026-09-24: "those
   are the ONLY outcomes i want being used"). No category of ours -- no policy
   record reading, no "Renewal date still ahead", no separate "(rep's notes)"
-  segments. Every renewal SR lands on one of the seven, matched by resolution
+  segments. Every renewal SR lands on one of the eight (the seven above plus
+  **Client Cancelled**, id 101627, added 2026-09-24: cancelled mid term, went
+  to the carrier, or never gave us the chance -- LOST, in the rate), matched by resolution
   ID (`RESOLUTION_KEY_BY_ID`, so a rename in AgencyZoom breaks nothing):
     1. the SR's own resolution;
     2. closed on anything else (Completed): the rep's note, read by the model
