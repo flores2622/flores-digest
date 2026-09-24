@@ -4150,7 +4150,7 @@ function fmtDur(h) {
    needed (added 2026-09-24) = orange, between aqua and blue.
    Frank's resolutions are the ONLY outcomes (2026-09-24), whether the SR
    carried one or the rep's note was read into one. The one hatched segment is
-   a cancellation of a policy already cancelled before the SR was opened:
+   Mid-term Cancellation, a policy already cancelled before the SR was opened:
    violet, outside the rate. Segments are split by a 2px gap and
    the legend carries every count, which is the relief yellow and aqua need
    for sitting under 3:1 on the light surface. */
@@ -4206,7 +4206,7 @@ function renewalBreakdownHtml(m) {
     [bySrc("unread"), "have a note not read yet (counted as Unable to Contact/No Show until the next nightly run reads it)"]].filter(x => x[0]);
   const unnamed = Object.entries(m.unnamed || {});
   return `<div class="sect"><h2>Renewal Outcome Breakdown</h2>
-    <p class="sd">Renewal SRs completed in this period and how each one ended. Retained = renewed (including No action: Review if needed and Unable to Contact/No Show, which renewed as is without the renewal being discussed with the customer) or rewrite accepted, over everything renewed, rewritten or cancelled. A cancellation of a policy already cancelled before the SR was opened (hatched) sits outside the rate.</p>
+    <p class="sd">Renewal SRs completed in this period and how each one ended. Retained = renewed (including No action: Review if needed and Unable to Contact/No Show, which renewed as is without the renewal being discussed with the customer) or rewrite accepted, over everything renewed, rewritten or cancelled. A Mid-term Cancellation (hatched), a policy already cancelled before the SR was opened, sits outside the rate.</p>
     <div class="tiles rtiles">${card(rows, pbadge(TEAM_DOT, "Team"), true)}${personCards}</div>
     <h3 style="font-size:12px;text-transform:uppercase;letter-spacing:.06em;color:var(--text-muted);margin:16px 0 6px">By pipeline</h3>
     <div class="tiles rtiles">${pipeCards}</div>

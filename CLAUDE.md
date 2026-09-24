@@ -278,22 +278,33 @@ Crystal (hybrid); credit always goes to whoever COMPLETED the SR or task.
 - **FRANK'S RESOLUTIONS ARE THE ONLY OUTCOMES** (Frank, 2026-09-24: "those
   are the ONLY outcomes i want being used"). No category of ours -- no policy
   record reading, no "Renewal date still ahead", no separate "(rep's notes)"
-  segments. Every renewal SR lands on one of the eight (the seven above plus
-  **Client Cancelled**, id 101627, added 2026-09-24: cancelled mid term, went
-  to the carrier, or never gave us the chance -- LOST, in the rate), matched by resolution
+  segments. Every renewal SR lands on one of the nine (the seven above plus
+  **Client Cancelled**, id 101627, added 2026-09-24: went to the carrier to
+  cancel, or never gave us the chance -- LOST, in the rate -- and
+  **Mid-term Cancellation**, below), matched by resolution
   ID (`RESOLUTION_KEY_BY_ID`, so a rename in AgencyZoom breaks nothing):
     1. the SR's own resolution;
     2. closed on anything else (Completed): the rep's note, read by the model
-       into one of the seven (`renewal_notes.py`; keyword rules misread
+       into one of the nine (`renewal_notes.py`; keyword rules misread
        "possible deductible options" and "left vm and autos on noc" -- do not
        go back to them);
     3. no note, or a note that does not say: **Unable to Contact/No Show**
        (Frank renamed Unable to Contact to that, 2026-09-24).
-  **The one exception**: a cancellation of a policy already cancelled before
-  the SR was opened -- an old SR closed out ("Cancelled in 2025", "sold home",
-  all 22 cancellations 09-01..09-23) -- shows as cancelled, hatched, OUTSIDE
-  the rate (`cancelled_before_sr`). The policy record is read for that and for
-  the premium, nothing else.
+  **Mid-term Cancellation** (id 101637, Frank added it 2026-09-24: "mid term
+  cancellations, prior cancellations, anything that cancelled prior to
+  renewal SR generating") is an old SR closed out on a policy already
+  cancelled ("Cancelled in 2025", "sold home", all 22 cancellations
+  09-01..09-23). It shows hatched, OUTSIDE the rate (key
+  `cancelled_before_sr`). A cancellation resolution on a policy the record
+  shows cancelled well before the SR was opened lands there too. The policy
+  record is read for that and for the premium, nothing else.
+  **How the notes read** (fixed 2026-09-24 from a spot-check of all 274
+  renewal SRs 09-01..09-23): a bare "renewed" / "reviewed" is No action; a
+  customer who reviewed it with a rep and changed nothing is Accepted as is,
+  even with changes planned for later; bad number / bad email is Unable to
+  Contact; "cancelled in 2025" is Mid-term Cancellation. The read cache is
+  keyed by SR and note, not prompt, so a prompt change reaches only new
+  notes -- re-read old ones by removing just their entries, never the file.
 - **Past days' renewal rows are re-read every night**
   (`service_digest.refresh_past_renewals`, last 120 days): a day's document is
   built once, so without this a note read (or a resolution renamed) after the

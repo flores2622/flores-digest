@@ -446,14 +446,17 @@ def refresh_past_renewals(day, log=log):
                     for k in ("outcome", "source", "policy", "premium", "line"):
                         row[k] = f[k]
                     n += 1
-            if not n:
+            # A resolution added or renamed in AgencyZoom changes the names
+            # every day's legend shows, even where no row's outcome moved.
+            if not n and ren.get("outcomes") == sr.outcomes():
                 continue
             ren["outcomes"] = sr.outcomes()
             doc["renewals_refreshed"] = dt.datetime.now(AZ).isoformat(timespec="seconds")
             cli.put_object(Bucket=bucket, Key=_key(d), Body=json.dumps(doc, default=str).encode(),
                            ContentType="application/json", CacheControl="no-store")
             changed += 1
-            log(f"  renewals: {d} -- {n} SR outcome(s) updated")
+            log(f"  renewals: {d} -- {n} SR outcome(s) updated" if n else
+                f"  renewals: {d} -- outcome names updated")
         except Exception as e:
             log(f"  renewals: {d} not refreshed ({type(e).__name__}: {e})")
     log(f"  renewals: {changed} earlier day(s) republished")
