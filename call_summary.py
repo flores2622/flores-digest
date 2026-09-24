@@ -58,8 +58,15 @@ TIMEOUT = 90
 
 
 
+# The cloud environment carries the key as Flores_ANTHROPIC_API_KEY (Frank,
+# 2026-09-24): Claude Code keeps ANTHROPIC_API_KEY for its own login, so a
+# key saved under that name never reaches the scripts. Found when every
+# 2026-09-24 checkpoint fell back to producer notes with no coaching cards.
+KEY_NAMES = ("ANTHROPIC_API_KEY", "Flores_ANTHROPIC_API_KEY")
+
+
 def _key():
-    return (os.environ.get("ANTHROPIC_API_KEY") or "").strip()
+    return next((os.environ[k].strip() for k in KEY_NAMES if (os.environ.get(k) or "").strip()), "")
 
 
 BRIEF_CALL_SECONDS = 60

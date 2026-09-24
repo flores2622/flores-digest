@@ -1536,6 +1536,31 @@ function applyLive(base, L) {
     team.pol = tierColor("policy_count", T.pol || 0);
     team.ps = T.ps ? "green" : team.pol;
   }
+  if (L.quotes && L.quotes.ok) {
+    const frac = businessFraction((d.live_basis || {}).business_hours);
+    for (const p of ps) {
+      const x = (L.quotes.data.per || {})[p.name]; if (!x) continue;
+      p.hh = (p.hh || 0) + x.hh; p.pq = (p.pq || 0) + x.pq;
+      const row = tiers[p.name] || (tiers[p.name] = {});
+      row.hh = pacedTierColor("households_quoted", p.hh, frac);
+      row.pq = tierColor("premium_quoted_per_hh", p.hh ? p.pq / p.hh : 0);
+    }
+    T.hh = sum("hh"); T.pq = sum("pq");
+    const team = tiers.team || (tiers.team = {});
+    team.hh = pacedTierColor("households_quoted", T.hh / TEAM_SCALE, frac);
+    team.pq = tierColor("premium_quoted_per_hh", T.hh ? T.pq / T.hh : 0);
+    // Both halves of the closing ratio are live now: drop the checkpoint
+    // freeze and recolour it (board_payload's closing_hh / closing_pq).
+    if (L.sales && L.sales.ok) {
+      for (const x of [T, ...ps]) { delete x.cp_pol; delete x.cp_ps; }
+      const close = (x, row) => {
+        row.closing_hh = tierColor("closing_ratio_pct", x.hh ? 100 * (x.pol || 0) / x.hh : null);
+        row.closing_pq = tierColor("closing_ratio_pct", x.pq ? 100 * (x.ps || 0) / x.pq : null);
+      };
+      for (const p of ps) close(p, tiers[p.name] || (tiers[p.name] = {}));
+      close(T, team);
+    }
+  }
   if (L.util && L.util.ok) {
     for (const p of ps) {
       const x = (L.util.data.per || {})[p.name]; if (!x) continue;
@@ -1554,11 +1579,14 @@ const fmtClock = iso => iso ? new Date(iso).toLocaleTimeString([], { hour: "nume
 function liveBannerHtml(d, who) {
   if (!curLive) return "";
   const L = curLiveData && curLiveData.live ? curLiveData : null;
-  const parts = [["dials", "Dials"], ["sales", "Policies, Premium Sold and cross-sells"], ["util", "Utilization"]];
+  const parts = [["dials", "Dials"], ["sales", "Policies, Premium Sold and cross-sells"],
+    ["quotes", "Households and premium quoted"], ["util", "Utilization"]];
   const liveNow = L ? parts.filter(([k]) => (L[k] || {}).ok).map(([, n]) => n) : [];
   const notLive = L ? parts.filter(([k]) => !(L[k] || {}).ok).map(([k, n]) => [n, (L[k] || {}).reason || "unavailable"]) : [];
-  const stale = ["contact rate and live contacts", "talk time", "call outcomes", "households and premium quoted",
-    "closing ratio", "task completion", "speed to dial", "the leaderboard's points", "household completion's bundles", "coaching cards"];
+  const closingLive = L && (L.sales || {}).ok && (L.quotes || {}).ok;
+  if (closingLive) liveNow.push("Closing ratio");
+  const stale = ["contact rate and live contacts", "talk time", "call outcomes", ...(closingLive ? [] : ["closing ratio"]),
+    "task completion", "speed to dial", "the leaderboard's points", "household completion's bundles", "coaching cards"];
   const ps = (d.producers || []).filter(p => !who || p.name === who);
   const unchecked = L && (L.dials || {}).ok ? ps.reduce((s, p) => s + (p.unchecked || 0), 0) : 0;
   const cp = fmtClock(d.as_of);
@@ -1572,6 +1600,7 @@ function liveBannerHtml(d, who) {
     <div><b>From the ${cp || "last"} checkpoint</b>: ${liveNow.length ? stale.join(", ") : "every figure"}${liveNow.length && notLive.length ? `, ${notLive.map(([n]) => n.toLowerCase()).join(", ")}` : ""}. The next checkpoint updates them.</div>
     ${liveNow.length && notLive.length ? notLive.map(([n, why]) => `<div class="n">${n} isn't live yet (${why}).</div>`).join("") : ""}
     ${unchecked ? `<div>${unchecked} dial${unchecked === 1 ? "" : "s"} since the checkpoint went to numbers not checked yet; they count as new business until the next checkpoint checks them.</div>` : ""}
+    ${L && (L.quotes || {}).ok && L.quotes.data.pending ? `<div>${L.quotes.data.pending} lead${L.quotes.data.pending === 1 ? "" : "s"} with activity since the checkpoint still being read for quotes.</div>` : ""}
     <div>${paceNote.trim()} Tonight's build finalizes the day.</div>
     ${flags.length ? `<div class="liveflags">${flags.map(f => `<div class="liveflag">${f}</div>`).join("")}</div>` : ""}
   </div>`;
@@ -1800,6 +1829,7 @@ const THRESHOLDS = {
   task_completion_pct: { green: 100, yellow: 90 },
   utilization_pct: { green: 85, yellow: 80 },
   roleplay_score: { green: 80, yellow: 0 },
+  closing_ratio_pct: { green: 25, yellow: 15 },   // digest_config.THRESHOLDS, for live recolouring
 };
 const TEAM_SCALE = 5; // digest_config.TEAM_SCALE == len(PRODUCERS)
 function tierColor(metric, value) {

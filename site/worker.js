@@ -55,9 +55,15 @@
 import METHODOLOGY_MD from "../coaching/METHODOLOGY.md";
 import ROLEPLAY_MD from "../coaching/ROLEPLAY.md";
 import TRAINING_MD from "../coaching/TRAINING.md";
-import { getLive } from "./live.js";
+import { getLive, scheduledLive } from "./live.js";
 
 export default {
+  // Live figures between checkpoints (site/live.js): the cron in
+  // wrangler.jsonc keeps R2's live/<day>*.json fresh through the business day.
+  async scheduled(event, env, ctx) {
+    ctx.waitUntil(scheduledLive(event, env));
+  },
+
   async fetch(request, env) {
     const url = new URL(request.url);
     const parts = url.pathname.split("/").filter(Boolean);
