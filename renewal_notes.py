@@ -153,7 +153,8 @@ def read(srs, log=print):
                 raise RuntimeError("ANTHROPIC_API_KEY not set")
             model = cs.pick_model()
         except Exception as e:
-            log(f"  renewal notes: not read ({type(e).__name__}: {str(e)[:160]}) -- policy record instead")
+            log(f"  renewal notes: not read ({type(e).__name__}: {str(e)[:160]}) -- "
+                f"counted as Unable to Contact/No Show until a later night reads them")
             model = None
         ids, n_read = list(want), 0
         for i in range(0, len(ids) if model else 0, BATCH):
