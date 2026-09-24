@@ -14,8 +14,8 @@ imports:
                     the household was already a customer.
 
 `approach` is how to work each group; Frank confirmed them on 2026-09-24
-(`APPROACH_CONFIRMED`). `coach` says whether a group's calls are coached
-and used for Role Play at all.
+(`APPROACH_CONFIRMED`). `roleplay` says whether Role Play may use a group as
+a session's lead source. Every lead source is still coached.
 """
 import re
 
@@ -98,7 +98,7 @@ GROUPS = {
                "with the client.",
         "products": "home first, then a cross-sell attempt",
         "existing_household": False, "sale": True, "owner": "apollo",
-        "coach": False,   # Frank, 2026-09-24: we only talk to the referral partner
+        "roleplay": False,   # Frank, 2026-09-24: we only talk to the referral partner
         "approach": None,
     },
     "inbound": {
@@ -118,7 +118,7 @@ GROUPS = {
                "local school fair), Old MVP Leads (the old CRM).",
         "products": ANY,
         "existing_household": False, "sale": True, "owner": "apollo",
-        "coach": False,   # Frank, 2026-09-24: barely used
+        "roleplay": False,   # Frank, 2026-09-24: barely used
         "approach": None,
     },
     "one_off": {
@@ -149,20 +149,19 @@ GROUPS = {
         "who": "A source Frank has not defined yet.",
         "products": None,
         "existing_household": False, "sale": True, "owner": "apollo",
-        # A new source still gets coached until someone classifies it, rather
-        # than silently dropping out of the coaching figures.
-        "coach": True,
         "approach": None,
     },
 }
 
-# Whether a group's calls are coached and used for Role Play. False for
+# Whether Role Play may use a group as a session's lead source. False for
 # centers of influence and cold / misc (Frank, 2026-09-24: "we barely use
 # them and center of influence we dont even talk to the client, only the
 # referral partner"), and for every group with no approach: one-offs,
-# commercial (Cerberus's), not a sale. Unclassified stays coached.
+# commercial (Cerberus's), not a sale, unclassified. This is Role Play only:
+# calls on these sources are still coached like any other (Frank, 2026-09-24:
+# "i want coaching cards still developed for those lead sources").
 for _k, _g in GROUPS.items():
-    _g.setdefault("coach", _g["approach"] is not None)
+    _g.setdefault("roleplay", _g["approach"] is not None)
 
 # Frank read every approach line on 2026-09-24: "all looks good. we can keep
 # building on that later". A new or rewritten line starts False again.
@@ -191,9 +190,8 @@ SOURCES = {
     "winback": "winback", "winback by agencyzoom": "winback",
     # referral
     "existing customer referral": "referral", "referral by agencyzoom": "referral",
-    # center of influence without an "at Company" in the name. Mariah Serna is
-    # being renamed "Mariah @ MRS" in AgencyZoom (Frank, 2026-09-24); the new
-    # name matches the pattern, and the old one stays here for past leads.
+    # centers of influence without an "at Company" in the name (Mariah Serna:
+    # Frank, 2026-09-24)
     "lender no longer in the industry": "center_of_influence",
     "mariah serna": "center_of_influence",
     # inbound
@@ -261,12 +259,6 @@ def group(name):
     return GROUPS[classify(name)]
 
 
-def coached(name):
-    """True when a call on this lead source is coached and can seed Role Play.
-    A call with no lead source at all is coached, as it always has been."""
-    return not norm(name) or GROUPS[classify(name)]["coach"]
-
-
 def board_map(names):
     """{name: group} for the names given, plus the groups themselves, for the
     board (published with the lead-source list; see publish_board)."""
@@ -275,7 +267,7 @@ def board_map(names):
         "source_group": {norm(n): classify(n) for n in names if norm(n)},
         "cross_sell_product": {n: p for n, p in CROSS_SELL_PRODUCT.items() if p},
         "groups": {k: {"label": g["label"], "who": g["who"], "products": g["products"],
-                       "approach": g["approach"], "coach": g["coach"],
+                       "approach": g["approach"], "roleplay": g["roleplay"],
                        "backstory": g.get("backstory")}
                    for k, g in GROUPS.items()},
     }
@@ -307,7 +299,7 @@ def main():
         rows = sorted(by[key], reverse=True)
         print(f"\n{g['label']}  ({len(rows)} sources, {sum(n for n, _ in rows):,} leads)"
               f"  products: {g['products'] or '-'}  owner: {g['owner'] or '-'}"
-              f"  coached: {'yes' if g['coach'] else 'no'}")
+              f"  role play: {'yes' if g['roleplay'] else 'no'}")
         for n, name in rows:
             print(f"   {n:6,d}  {name}")
 

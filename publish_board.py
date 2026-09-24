@@ -206,9 +206,6 @@ def build(day, log=print, live=False):
     try:
         import coaching_cards
         generated = coaching_cards.build(day, log=log)
-        generated, skipped = coaching_cards.split_by_lead_source(generated)
-        if skipped:
-            doc["not_coached_calls"] = skipped
         if generated:
             doc["calls"] = generated
             doc["scan"] = coaching_cards.scan(generated)

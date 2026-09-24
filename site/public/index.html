@@ -1704,7 +1704,6 @@ function mergeDayDocs(docs) {
   let speedNote = "";
   const calls = [];
   const notcoached = [];
-  const notCoachedCalls = [];
   const days = [];
 
   for (const doc of docs) {
@@ -1775,7 +1774,6 @@ function mergeDayDocs(docs) {
 
     for (const c of doc.calls || []) calls.push(c);
     if (doc.notcoached) notcoached.push(`${doc.date}: ${doc.notcoached}`);
-    for (const c of doc.not_coached_calls || []) notCoachedCalls.push(c);
   }
 
   for (const row of Object.values(per)) {
@@ -1844,7 +1842,6 @@ function mergeDayDocs(docs) {
     objcats: Object.values(objcats), scan: hasScan ? scan : null,
     speed_to_dial: speedToDial, calls, tiers,
     notcoached: notcoached.join("; ") || null,
-    not_coached_calls: notCoachedCalls,
   };
 }
 
@@ -1862,7 +1859,7 @@ function folioStartFor(end) {
    known; small enough at current volume to just do this in the browser,
    the same way This Week/Custom range already re-fetch multiple days. */
 let ALL_CALLS_CACHE = null;
-let ALL_CARDS_CACHE = null;   // one row per coached call: {date, who, leadsrc}, for Role Play's lead source
+let ALL_CARDS_CACHE = null;   // one row per coaching card: {date, who, leadsrc}, for Role Play's lead source
 async function fetchAllCalls() {
   if (ALL_CALLS_CACHE) return ALL_CALLS_CACHE;
   await loadLeadSources();
@@ -2081,22 +2078,6 @@ let objFilterCat = "";
 // model's free-text label -- 15 days produced 170 distinct labels for 198
 // objections, so the chart was a list of one-offs (Frank, 2026-09-23: "they
 // should be categorized"). The specific label stays on each card.
-/* Calls on a lead source the agency doesn't coach -- centers of influence
-   (we deal with the referral partner, not the client) and cold / misc,
-   among others (Frank, 2026-09-24). They never become coaching cards, so
-   they are in no figure on this tab; this only says they happened. */
-function notCoachedByLeadHtml(d, sel) {
-  const rows = (d.not_coached_calls || []).filter(c => !sel || c.who === sel);
-  if (!rows.length) return "";
-  const multiDay = (d.days || []).length > 1;
-  const byGroup = {};
-  for (const c of rows) (byGroup[c.group] || (byGroup[c.group] = [])).push(c);
-  const items = Object.entries(byGroup).map(([g, cs]) => `<li><b>${g}</b> (${cs.length}): ${cs.map(c =>
-    `${c.lead || "unknown"} · ${(c.who || "").split(" ")[0]}${multiDay && c.day ? ` · ${fmtShortDate(c.day)}` : ""}${c.leadsrc ? ` · ${c.leadsrc}` : ""}`).join("; ")}</li>`).join("");
-  return `<div class="note" style="border:1px dashed var(--border-strong);border-radius:8px;padding:14px 16px;margin-top:10px">
-    <b>Not coached: lead source.</b> We don't coach these lead sources, so these calls aren't in any figure on this tab.
-    <ul style="margin:6px 0 0 18px;padding:0">${items}</ul></div>`;
-}
 function computeObjCats(cards) {
   const agg = {};
   for (const c of cards) {
@@ -2194,7 +2175,7 @@ function coachingPanel(d, who) {
       : sel ? `No coaching cards for ${sel} ${scope}.` : `No coaching cards ${scope}.`}</div>`;
   }
   return nav + filterBanner + out + (d.notcoached ? `<div class="note" style="border:1px dashed var(--border-strong);border-radius:8px;padding:14px 16px">
-    <b>Not coached, and why.</b> ${d.notcoached}</div>` : "") + notCoachedByLeadHtml(d, sel);
+    <b>Not coached, and why.</b> ${d.notcoached}</div>` : "");
 }
 
 /* ---- Role Play tab ----------------------------------------------------
@@ -2222,7 +2203,7 @@ const RP_PERSONAS = [
    own calls: it picks one of the lead sources behind this producer's coached
    calls over the trailing 4 weeks, so they practise the leads they actually
    work, as often as they work them (Frank, 2026-09-24). Centers of influence,
-   cold / misc and the rest the guide marks as not coached never come up.
+   cold / misc and the rest the guide keeps out of Role Play never come up.
    With no real calls to draw on, any coached group is equally likely; with
    no guide at all (not published yet) it falls back to a plain quote request. */
 const RP_FALLBACK_LEAD_SOURCE = { key: "quote", label: "Quote request",
@@ -2245,7 +2226,7 @@ function rpScenarioFor(name, key) {
 }
 function pickLeadSource() {
   const G = LEADSRC_GUIDE;
-  const usable = k => G && G.groups[k] && G.groups[k].coach && G.groups[k].backstory;
+  const usable = k => G && G.groups[k] && G.groups[k].roleplay && G.groups[k].backstory;
   if (!G || !Object.keys(G.groups).some(usable)) return RP_FALLBACK_LEAD_SOURCE;
   const who = rpWeakFor();
   const { start, end } = objectionWindow4wk();
