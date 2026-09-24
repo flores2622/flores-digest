@@ -58,18 +58,6 @@ GROUPS = {
                     "first real conversation wins. Expect price shopping; get "
                     "current carrier and renewal date, then quote to bundle.",
     },
-    "found_us": {
-        "label": "Found us",
-        "who": "Google (an email via Google, or they said they found us there) "
-               "and Farmers.com (a form on farmers.com that Farmers passes on). "
-               "Not purchased: they looked for an agent.",
-        "products": ANY,
-        "existing_household": False, "sale": True, "owner": "apollo",
-        # Role Play: what the prospect knows about how this call came about.
-        "backstory": 'You found this agency yourself, on Google or through a form on farmers.com, and asked an agent to contact you.',
-        "approach": "Warmer than a purchased lead: they chose an agent. Call fast, "
-                    "confirm what they asked for, then round out the household.",
-    },
     "winback": {
         "label": "Winback",
         "who": "A former customer we are trying to win back.",
@@ -82,14 +70,37 @@ GROUPS = {
     },
     "referral": {
         "label": "Referral",
-        "who": "A customer's referral, or a staff member's own referral or "
-               "network (a source named after one of us).",
+        "who": "A customer's referral, or Francisco Flores's (a source named "
+               "after him).",
         "products": ANY,
         "existing_household": False, "sale": True, "owner": "apollo",
         # Role Play: what the prospect knows about how this call came about.
         "backstory": 'Someone you know, a customer of this agency or someone who works there, gave the producer your number and said they would call.',
         "approach": "Name the person who referred them in the first sentence. The "
                     "trust is borrowed, so follow up the way that person would expect.",
+    },
+    # Frank, 2026-09-24: a staff member's name as the source is that person's
+    # own personal network, and each works their own, never each other's.
+    # Francisco's name stays a Referral (STAFF_REFERRAL). No approach line
+    # yet, so Apollo coaches these on the rest of METHODOLOGY.md and Role
+    # Play leaves them out until Frank writes one.
+    "personal_network": {
+        "label": "Personal network",
+        "who": "A staff member's own personal network (a source named after one "
+               "of us, other than Francisco). Each person works their own "
+               "network, never someone else's.",
+        "products": ANY,
+        "existing_household": False, "sale": True, "owner": "apollo",
+        "approach": None,
+    },
+    # Instagram and LinkedIn (Frank, 2026-09-24). Facebook is NOT here: its
+    # leads are purchased and sit with Generated. No leads yet, no approach.
+    "social_media": {
+        "label": "Social media",
+        "who": "Someone who reached the agency through its Instagram or LinkedIn.",
+        "products": ANY,
+        "existing_household": False, "sale": True, "owner": "apollo",
+        "approach": None,
     },
     "center_of_influence": {
         "label": "Center of influence",
@@ -103,13 +114,18 @@ GROUPS = {
     },
     "inbound": {
         "label": "Call-in / walk-in",
-        "who": "Someone who called or walked in on their own.",
+        # Found us (Google, Farmers.com) is part of this group (Frank,
+        # 2026-09-24): they looked for an agent and came to us themselves.
+        "who": "Someone who came to us on their own: called, walked in, or "
+               "found us on Google or farmers.com (a form Farmers passes on) "
+               "and asked an agent to contact them. Not purchased.",
         "products": ANY,
         "existing_household": False, "sale": True, "owner": "apollo",
         # Role Play: what the prospect knows about how this call came about.
-        "backstory": 'You called the agency yourself because you want a quote.',
+        "backstory": 'You reached out to this agency yourself because you want a quote: you called, or found them on Google or farmers.com and asked for a call.',
         "approach": "They are ready now. Answer the question they came with, then "
-                    "ask what else they have and who insures it.",
+                    "ask what else they have and who insures it. A Google or "
+                    "farmers.com request gets called fast.",
     },
     "cold": {
         "label": "Cold / misc",
@@ -181,11 +197,12 @@ SOURCES = {
     "mav ai": "generated", "alpha media": "generated",
     "arizona insurance reports": "generated", "facebook": "generated",
     # Instagram and LinkedIn share AgencyZoom's Social Media category with
-    # Facebook. Neither has a lead yet (2026-09-24).
-    "instagram": "generated", "linkedin": "generated",
-    # found us
-    "google": "found_us", "farmers.com": "found_us",
-    "found us on google": "found_us",   # the name on some 2026-09 lead records
+    # Facebook but are their own group (social_media, below). Neither has a
+    # lead yet (2026-09-24).
+    "instagram": "social_media", "linkedin": "social_media",
+    # found us -> part of call-in / walk-in (Frank, 2026-09-24)
+    "google": "inbound", "farmers.com": "inbound",
+    "found us on google": "inbound",   # the name on some 2026-09 lead records
     # winback
     "winback": "winback", "winback by agencyzoom": "winback",
     # referral
@@ -231,6 +248,10 @@ STAFF = {
     "eleuterio gutierrez", "tori pletsch",
 }
 
+# Francisco's name as a source is a referral, not a personal network (Frank,
+# 2026-09-24).
+STAFF_REFERRAL = {"francisco flores"}
+
 # "Name at Company" / "Name @ Company" is a center of influence.
 _COI = re.compile(r"\s(at|@)\s", re.I)
 
@@ -248,8 +269,10 @@ def classify(name):
         return "unclassified"
     if n in SOURCES:
         return SOURCES[n]
-    if n in STAFF:
+    if n in STAFF_REFERRAL:
         return "referral"
+    if n in STAFF:
+        return "personal_network"
     if _COI.search(f" {n} "):
         return "center_of_influence"
     return "unclassified"
@@ -279,12 +302,24 @@ def prompt_block(name):
     return "\n".join(lines)
 
 
+# The Sales tab's "Premium per Lead Source" categories (Frank, 2026-09-24).
+# They follow GROUPS one to one -- the chart and Apollo read lead sources
+# the same way -- and only rename two labels for the chart.
+SALES_CATEGORY = {k: g["label"] for k, g in GROUPS.items()}
+SALES_CATEGORY.update({"generated": "Internet leads", "center_of_influence": "Centers of influence"})
+
+
+def sales_category(name):
+    return SALES_CATEGORY[classify(name)]
+
+
 def board_map(names):
     """{name: group} for the names given, plus the groups themselves, for the
     board (published with the lead-source list; see publish_board)."""
     return {
         # keyed by norm(name); the board normalises the same way
         "source_group": {norm(n): classify(n) for n in names if norm(n)},
+        "sales_category": {norm(n): sales_category(n) for n in names if norm(n)},
         "cross_sell_product": {n: p for n, p in CROSS_SELL_PRODUCT.items() if p},
         "groups": {k: {"label": g["label"], "who": g["who"], "products": g["products"],
                        "approach": g["approach"], "roleplay": g["roleplay"],
