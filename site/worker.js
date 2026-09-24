@@ -106,7 +106,7 @@ export default {
           return roleplayGrade(request, env);
         }
         if (parts[2] === "history" && request.method === "GET") {
-          return roleplayHistory(env, url.searchParams.get("producer"));
+          return roleplayHistory(env, url.searchParams.get("producer"), url.searchParams.get("beta") === "1");
         }
       }
 
@@ -942,8 +942,14 @@ async function roleplayGrade(request, env) {
   }
   if (!grade) return json({ error: "grading returned no parsable result" }, 502);
 
+  // BETA (Frank, 2026-09-24): "Beta / testing" sessions -- anyone trying the
+  // system out -- are saved under roleplay-beta/, which nothing that reads a
+  // producer's history or weak spots ever lists. Kept apart until Role Play
+  // is finalized.
+  const beta = body.beta === true;
   const now = new Date();
   const session = {
+    ...(beta ? { beta: true } : {}),
     producer,
     persona: body.persona,
     persona_label: persona.label,
@@ -952,7 +958,8 @@ async function roleplayGrade(request, env) {
     grade,
     created_at: now.toISOString(),
   };
-  const key = `roleplay/${roleplaySlug(producer)}/${now.toISOString()}.json`;
+  const key = beta ? `roleplay-beta/testing/${now.toISOString()}.json`
+                   : `roleplay/${roleplaySlug(producer)}/${now.toISOString()}.json`;
   try {
     await env.BOARD.put(key, JSON.stringify(session), {
       httpMetadata: { contentType: "application/json" },
@@ -966,13 +973,17 @@ async function roleplayGrade(request, env) {
 }
 
 /** GET /api/roleplay/history?producer=X -> {sessions: [...]}
+ *  GET /api/roleplay/history?beta=1     -> every beta/testing session
  *
  * Most recent first, capped at 25. Without a producer filter, lists
  * across everyone -- small volume expected (practice reps, not a
  * once-a-day batch), so a plain list-then-fetch is fine; no rollup file.
  */
-async function roleplayHistory(env, producer) {
-  const prefix = producer ? `roleplay/${roleplaySlug(producer)}/` : "roleplay/";
+async function roleplayHistory(env, producer, beta) {
+  // beta=1 lists every beta session, whoever ran it; never mixed with the
+  // producers' own roleplay/ history.
+  const prefix = beta ? "roleplay-beta/"
+    : producer ? `roleplay/${roleplaySlug(producer)}/` : "roleplay/";
   const keys = [];
   let cursor;
   do {

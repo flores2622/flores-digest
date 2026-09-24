@@ -2300,10 +2300,17 @@ function rpStartListening() {
   try { rec.start(); } catch (_) { rpListening = false; rpUpdateMicUI(); }
 }
 
+// "Beta / testing" (Frank, 2026-09-24): practice runs by anyone trying the
+// system -- saved to the board's beta area, never to a producer's history,
+// and never steered by a producer's weak spots. Until Role Play is final.
+const RP_BETA = "Beta / testing";
+const rpIsBeta = () => rpProducer === RP_BETA;
+
 async function rpFetchHistory() {
   if (!rpProducer) { rpHistoryCache = []; return; }
   try {
-    const r = await fetch(`/api/roleplay/history?producer=${encodeURIComponent(rpProducer)}`, { cache: "no-store" });
+    const q = rpIsBeta() ? "beta=1" : `producer=${encodeURIComponent(rpProducer)}`;
+    const r = await fetch(`/api/roleplay/history?${q}`, { cache: "no-store" });
     const body = r.ok ? await r.json() : { sessions: [] };
     rpHistoryCache = body.sessions || [];
   } catch (_) { rpHistoryCache = []; }
@@ -2333,7 +2340,8 @@ function producerWeakSpots(producer) {
 
 function roleplayPanel() {
   const producerOpts = [`<option value="">Who's practicing?</option>`]
-    .concat(PRODUCER_ROSTER.map(p => `<option value="${p}"${p === rpProducer ? " selected" : ""}>${p}</option>`)).join("");
+    .concat(PRODUCER_ROSTER.map(p => `<option value="${p}"${p === rpProducer ? " selected" : ""}>${p}</option>`))
+    .concat([`<option value="${RP_BETA}"${rpIsBeta() ? " selected" : ""}>Beta / testing (not counted)</option>`]).join("");
 
   if (!rpProducer) {
     return `<div class="sect"><h2>Role Play</h2>
@@ -2357,6 +2365,7 @@ function roleplayPanel() {
       generic ones. <b>Professional</b> cycles through them without giving in easily -- a good place to practice this.</div>` : "";
     return `<div class="sect"><h2>Role Play</h2>
       <p class="sd">Practicing as <b>${rpProducer}</b>. <button class="ghost" id="rpChangeProducer" type="button" style="margin-left:6px">change</button></p>
+      ${rpIsBeta() ? `<div class="note" style="border:1px dashed var(--border-strong);border-radius:8px;padding:10px 14px;margin-bottom:12px"><b>Beta / testing.</b> Graded like any session, but saved to the beta area -- it never counts toward any producer's history or weak spots.</div>` : ""}
       ${recHtml}
       <div class="pcards">${RP_PERSONAS.map(p => `<div class="pcard" data-persona="${p.key}">
         <div class="pn">${p.name}</div><div class="sd" style="margin:4px 0 0">${p.blurb}</div></div>`).join("")}</div></div>
@@ -2367,7 +2376,7 @@ function roleplayPanel() {
   if (!rpStarted) return roleplayDebriefHtml(p);
 
   const msgs = rpHistory.map(m => `<div class="rpmsg ${m.role}">
-    <span class="rl">${m.role === "producer" ? rpProducer.split(" ")[0] : "Prospect"}</span>${m.content}</div>`).join("")
+    <span class="rl">${m.role === "producer" ? (rpIsBeta() ? "Tester" : rpProducer.split(" ")[0]) : "Prospect"}</span>${m.content}</div>`).join("")
     || `<div class="empty" style="padding:20px 0">Say hello to open the call.</div>`;
 
   return `<div class="sect"><h2>Role Play &middot; ${p.name}</h2>
@@ -2515,7 +2524,7 @@ async function rpSubmitGrade() {
   try {
     const r = await fetch("/api/roleplay/grade", {
       method: "POST", headers: { "content-type": "application/json" },
-      body: JSON.stringify({ producer: rpProducer, persona: rpPersonaKey, history: rpHistory, lead_source: rpLeadSource ? rpLeadSource.label : "" }),
+      body: JSON.stringify({ producer: rpProducer, persona: rpPersonaKey, history: rpHistory, lead_source: rpLeadSource ? rpLeadSource.label : "", beta: rpIsBeta() }),
     });
     const body = await r.json();
     if (r.ok && body.grade) rpGrade = body.grade;
