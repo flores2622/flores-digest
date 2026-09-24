@@ -1,5 +1,5 @@
 """Athena -- the service digest: the service team's day, published to the
-board's Service tab. (Apollo is the sales coaching brain; Athena is service's.)
+board's Service Center. (Apollo is the sales coaching brain; Athena is service's.)
 
     python3 service_digest.py                  # today, Arizona
     python3 service_digest.py --day 2026-09-22 --dry-run
