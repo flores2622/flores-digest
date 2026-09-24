@@ -53,8 +53,9 @@ Everything caches under `data/`, so a re-run resumes rather than restarting.
   agency stages** (made for an outside texting company): a producer moving a
   lead into one is a mistake Apollo flags. Open leads misfiled in "Pipeline"
   are listed on the Sales Center for someone to move (`pipelines.misfiled`).
-- **Role Play never uses a center of influence or cold / misc lead source**
-  (Frank, 2026-09-24), nor a one-off, commercial, BOB or Rewrite source
+- **Role Play never uses a center of influence, cold / misc or existing
+  client, new purchase lead source** (Frank, 2026-09-24), nor a personal
+  network, one-off, commercial, BOB or Rewrite source
   (`GROUPS[...]["roleplay"]`). That is Role Play only: **calls on those
   sources still get coaching cards** and count in every coaching figure like
   any other call. Role Play draws a session's lead source from the

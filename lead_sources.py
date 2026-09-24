@@ -40,6 +40,7 @@ GROUPS = {
                "something new, usually a property. We did not market it.",
         "products": "usually home/landlord for the new property, but " + ANY,
         "existing_household": True, "sale": True, "owner": "apollo",
+        "roleplay": False,   # Frank, 2026-09-24: not a Role Play scenario
         # Role Play: what the prospect knows about how this call came about.
         "backstory": 'You are already a customer of this agency. You just bought something new, most likely a property, and you called in to get it covered.',
         "approach": "They came to us, so the job is speed and completeness. Write "
