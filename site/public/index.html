@@ -3448,7 +3448,7 @@ function wireSalesSubTabs() {
 const SALES_BREAKDOWN_DIMS = {
   lead_source: { label: "Lead Source", chart: "pie", key: e => (e.lead_source || "").trim() || "(none logged)" },
   product:     { label: "Policy Type", chart: "pie", key: e => (e.product || "").trim() || "(none logged)" },
-  top_sources: { label: "Highest Premium per Lead Source", chart: "rank", key: e => (e.lead_source || "").trim() || "(none logged)" },
+  top_sources: { label: "Premium per Lead Source", chart: "rank", key: e => (e.lead_source || "").trim() || "(none logged)" },
 };
 // Pie slices take categorical slots --s1..--s7 (validated 8-hue theme, see
 // :root) in premium order; past 7 the smallest fold into a neutral-grey
