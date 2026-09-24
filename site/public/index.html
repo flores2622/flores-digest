@@ -2305,6 +2305,35 @@ function rpStartListening() {
 // and never steered by a producer's weak spots. Until Role Play is final.
 const RP_BETA = "Beta / testing";
 const rpIsBeta = () => rpProducer === RP_BETA;
+// A beta session still runs on REAL activity (Frank, 2026-09-24): it takes
+// on one actual producer's weak spots and rotates to the next producer with
+// every session, so a tester sees what each producer would really be given.
+// The pointer is per browser; it only affects which producer is borrowed.
+let rpBetaAs = "";
+function rpNextBetaProducer() {
+  let i = -1;
+  try { i = parseInt(localStorage.getItem("rpBetaRotate") || "-1", 10); } catch (_) {}
+  const withWeak = PRODUCER_ROSTER.filter(p => producerWeakSpots(p).length);
+  const pool = withWeak.length ? withWeak : PRODUCER_ROSTER;
+  const cur = PRODUCER_ROSTER.indexOf(rpBetaAs);
+  // Next producer in roster order after the last one used, among those with
+  // real weak spots to borrow.
+  const start = cur >= 0 ? cur : i;
+  let next = pool[0];
+  for (let k = 1; k <= PRODUCER_ROSTER.length; k++) {
+    const cand = PRODUCER_ROSTER[(start + k + PRODUCER_ROSTER.length) % PRODUCER_ROSTER.length];
+    if (pool.includes(cand)) { next = cand; break; }
+  }
+  rpBetaAs = next;
+  try { localStorage.setItem("rpBetaRotate", String(PRODUCER_ROSTER.indexOf(next))); } catch (_) {}
+  return next;
+}
+// Whose real weak spots steer this session: the producer practising, or --
+// for a beta session -- the producer it is currently borrowing.
+// Not chosen until the real calls have loaded -- before that nobody has weak
+// spots and the rotation would pick blind.
+const rpWeakFor = () => !rpIsBeta() ? rpProducer
+  : (rpBetaAs || (ALL_CALLS_CACHE ? rpNextBetaProducer() : ""));
 
 async function rpFetchHistory() {
   if (!rpProducer) { rpHistoryCache = []; return; }
@@ -2353,19 +2382,19 @@ function roleplayPanel() {
   const histHtml = rpHistoryCache.length ? `<div class="sect"><h2>Past sessions</h2>
     ${rpHistoryCache.map(s => `<div class="histrow">
       <span>${new Date(s.created_at).toLocaleString(undefined, { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })}
-        · ${(rpPersona(s.persona) || {}).name || s.persona}</span>
+        · ${(rpPersona(s.persona) || {}).name || s.persona}${s.as_producer ? ` · as ${s.as_producer.split(" ")[0]}` : ""}</span>
       <span>${s.grade && s.grade.resolved ? '<span class="chip c-g">resolved</span>' : '<span class="chip c-w">not resolved</span>'}</span>
     </div>`).join("")}</div>` : "";
 
   if (!rpPersonaKey) {
-    const weak = producerWeakSpots(rpProducer);
+    const weak = producerWeakSpots(rpWeakFor());
     const recHtml = weak.length ? `<div class="note" style="border:1px dashed var(--border-strong);border-radius:8px;padding:10px 14px;margin-bottom:12px">
-      <b>Recommended:</b> in the last 4 weeks, ${rpProducer.split(" ")[0]}'s real calls show unresolved objections most often around
+      <b>Recommended:</b> in the last 4 weeks, ${rpWeakFor().split(" ")[0]}'s real calls show unresolved objections most often around
       <b>${weak.map(([c, n]) => `${c} (${n}×)`).join(", ")}</b>. The prospect below will lean on objections like these instead of
       generic ones. <b>Professional</b> cycles through them without giving in easily -- a good place to practice this.</div>` : "";
     return `<div class="sect"><h2>Role Play</h2>
       <p class="sd">Practicing as <b>${rpProducer}</b>. <button class="ghost" id="rpChangeProducer" type="button" style="margin-left:6px">change</button></p>
-      ${rpIsBeta() ? `<div class="note" style="border:1px dashed var(--border-strong);border-radius:8px;padding:10px 14px;margin-bottom:12px"><b>Beta / testing.</b> Graded like any session, but saved to the beta area -- it never counts toward any producer's history or weak spots.</div>` : ""}
+      ${rpIsBeta() ? `<div class="note" style="border:1px dashed var(--border-strong);border-radius:8px;padding:10px 14px;margin-bottom:12px"><b>Beta / testing.</b> This session runs on <b>${rpWeakFor() || "a real producer"}</b>'s real activity -- the objections their calls have been losing on -- and moves to the next producer with each session. Graded like any session, but saved to the beta area: it never counts toward any producer's history or weak spots.</div>` : ""}
       ${recHtml}
       <div class="pcards">${RP_PERSONAS.map(p => `<div class="pcard" data-persona="${p.key}">
         <div class="pn">${p.name}</div><div class="sd" style="margin:4px 0 0">${p.blurb}</div></div>`).join("")}</div></div>
@@ -2406,9 +2435,9 @@ function roleplayPanel() {
 function roleplayDebriefHtml(p) {
   const ls = rpLeadSource || pickLeadSource();
   rpLeadSource = ls;
-  const weak = producerWeakSpots(rpProducer);
+  const weak = producerWeakSpots(rpWeakFor());
   const weakHtml = weak.length ? `<div class="note" style="border:1px dashed var(--border-strong);border-radius:8px;padding:10px 14px;margin-top:12px">
-    <b>Watch for today:</b> ${rpProducer.split(" ")[0]}'s real calls over the last 4 weeks show unresolved objections most often around
+    <b>Watch for today:</b> ${rpWeakFor().split(" ")[0]}'s real calls over the last 4 weeks show unresolved objections most often around
     <b>${weak.map(([c, n]) => `${c} (${n}×)`).join(", ")}</b> -- this prospect will lean on objections like these instead of generic ones.</div>` : "";
 
   // Call guide (Frank, 2026-09-11: moved here from a standalone printable
@@ -2494,7 +2523,7 @@ async function rpSendTurn(text) {
   document.getElementById("view").innerHTML = roleplayPanel();
   wireRoleplayPanel();
   try {
-    const focusObjections = producerWeakSpots(rpProducer).map(([c]) => c);
+    const focusObjections = producerWeakSpots(rpWeakFor()).map(([c]) => c);
     const r = await fetch("/api/roleplay/turn", {
       method: "POST", headers: { "content-type": "application/json" },
       body: JSON.stringify({ persona: rpPersonaKey, history: rpHistory, focus_objections: focusObjections, lead_source: rpLeadSource ? rpLeadSource.forCustomer : "" }),
@@ -2524,10 +2553,12 @@ async function rpSubmitGrade() {
   try {
     const r = await fetch("/api/roleplay/grade", {
       method: "POST", headers: { "content-type": "application/json" },
-      body: JSON.stringify({ producer: rpProducer, persona: rpPersonaKey, history: rpHistory, lead_source: rpLeadSource ? rpLeadSource.label : "", beta: rpIsBeta() }),
+      body: JSON.stringify({ producer: rpProducer, persona: rpPersonaKey, history: rpHistory, lead_source: rpLeadSource ? rpLeadSource.label : "",
+                             beta: rpIsBeta(), ...(rpIsBeta() ? { as_producer: rpWeakFor() } : {}) }),
     });
     const body = await r.json();
     if (r.ok && body.grade) rpGrade = body.grade;
+    if (rpIsBeta()) rpNextBetaProducer();     // next beta session borrows the next producer
     await rpFetchHistory();
   } catch (_) {}
   rpBusy = false;

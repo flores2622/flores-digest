@@ -950,6 +950,8 @@ async function roleplayGrade(request, env) {
   const now = new Date();
   const session = {
     ...(beta ? { beta: true } : {}),
+    // Whose real weak spots the beta session borrowed.
+    ...(beta && typeof body.as_producer === "string" ? { as_producer: body.as_producer.slice(0, 60) } : {}),
     producer,
     persona: body.persona,
     persona_label: persona.label,
