@@ -3409,8 +3409,9 @@ function wireSalesSubTabs() {
 // tab is showing (picked via salesFolioPick there), grouped one of three ways.
 // Frank, 2026-09-24: Lead Source and Policy Type draw as PIE charts of
 // premium share, and the Producer view is replaced by "Highest Premium per
-// Lead Source" -- every lead source ranked by the premium it brought in, so
-// the money-makers read top-down. Producer totals still live on the Log
+// Lead Source" -- every lead source ranked by AVERAGE premium per sale
+// (Frank, 2026-09-24), so the sources bringing the biggest policies read
+// top-down; total premium and sale count ride along on each row. Producer totals still live on the Log
 // tab's own Totals pie.
 const SALES_BREAKDOWN_DIMS = {
   lead_source: { label: "Lead Source", chart: "pie", key: e => (e.lead_source || "").trim() || "(none logged)" },
@@ -3433,7 +3434,12 @@ function computeSalesBreakdown(entries, dim) {
     row.count++;
   }
   const rows = Object.values(agg).sort((a, b) => b.premium - a.premium || b.count - a.count);
-  if (SALES_BREAKDOWN_DIMS[dim].chart === "rank" || rows.length <= 7) return { rows, otherCount: 0 };
+  if (SALES_BREAKDOWN_DIMS[dim].chart === "rank") {
+    for (const r of rows) r.avg = r.premium / r.count;
+    rows.sort((a, b) => b.avg - a.avg || b.premium - a.premium);
+    return { rows, otherCount: 0 };
+  }
+  if (rows.length <= 7) return { rows, otherCount: 0 };
   const top = rows.slice(0, 7);
   const rest = rows.slice(7);
   top.push({ key: "Other", premium: rest.reduce((s, r) => s + r.premium, 0),
@@ -3489,16 +3495,16 @@ function salesBreakdownPanel(data) {
         <span class="bkleg-c">${salesCount(row.count)}</span></div>`).join("");
     body = `<div class="bkpie-wrap">${salesPieSvg(rows, totalPremium, colorFor)}<div class="bkleg">${legend}</div></div>`;
   } else {
-    const busiest = Math.max(...rows.map(r => r.premium), 1);
+    const busiest = Math.max(...rows.map(r => r.avg), 1);
     body = rows.map((row, i) => `<div class="orow bkrank" data-tip="${`<b>${row.key}</b><br>${money(row.premium)} &middot; ${salesCount(row.count)} &middot; avg ${money(row.premium / row.count)}`.replace(/"/g, "&quot;")}"><div class="orow-head">
       <span class="who"><span class="bkrank-n">${i + 1}</span>${row.key}</span>
-      <span class="on"><b>${money(row.premium)}</b> &middot; ${pctOf(row.premium)}% &middot; ${salesCount(row.count)} &middot; avg ${money(row.premium / row.count)}</span></div>
-      <div style="width:${(row.premium / busiest * 100).toFixed(2)}%"><div class="otrack">
+      <span class="on"><b>${money(row.avg)}</b> avg per sale &middot; ${salesCount(row.count)} &middot; ${money(row.premium)} total</span></div>
+      <div style="width:${(row.avg / busiest * 100).toFixed(2)}%"><div class="otrack">
         <span class="ogseg" style="width:100%;background:var(--bar)"></span></div></div></div>`).join("");
   }
   const sub = spec.chart === "pie"
     ? `Share of premium by ${spec.label.toLowerCase()}: ${money(totalPremium)} across ${salesCount(entries.length)} in ${where}${otherCount ? `. "Other" folds in the ${otherCount} smallest ${spec.label.toLowerCase()} groups` : ""}.`
-    : `Every lead source ranked by the premium it brought in: ${money(totalPremium)} across ${salesCount(entries.length)} in ${where}. Avg = premium per sale.`;
+    : `Every lead source ranked by average premium per sale (its premium over its sales) in ${where}: ${money(totalPremium)} across ${salesCount(entries.length)} in all. A source with one sale ranks on that one policy alone.`;
   return `<div class="sect"><h2>Sales breakdown</h2><p class="sd">${sub}</p>${controls}${body}</div>`;
 }
 function wireSalesBreakdownPanel() {
