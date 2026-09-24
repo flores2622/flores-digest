@@ -4,16 +4,16 @@ FRAMING (Frank, 2026-09-23): not an agency-wide retention rate. Of the
 renewal SRs COMPLETED on a day (or across a filtered range of days), what was
 the outcome -- and the retention rate among just those SRs.
 
-WHERE AN OUTCOME COMES FROM, in this order:
-  1. the SR's own resolution, when it is one of Frank's seven renewal
-     resolutions (Renewed: Accepted as is, No action: Review if needed,
-     Renewed: Endorsed, Rewrite Accepted, Cancelled: Rewrite Declined,
-     Cancelled, no endorse/rewrite available, Unable to Contact);
+WHERE AN OUTCOME COMES FROM. Frank's resolutions are the ONLY outcomes
+(Frank, 2026-09-24) -- Renewed: Accepted as is, No action: Review if needed,
+Renewed: Endorsed, Rewrite Accepted, Cancelled: Rewrite Declined, Cancelled,
+no endorse/rewrite available, Unable to Contact/No Show -- read in this order:
+  1. the SR's own resolution, matched by id (RESOLUTION_KEY_BY_ID);
   2. for an SR closed on anything else (Completed), the rep's note, read by
-     the model in renewal_notes.py -- "(rep's notes)" segments;
-  3. when the note says nothing, the policy record for the policy the SR's
-     subject names ("Auto - G014549916") -- "(policy record)" segments.
-Each source has its own segments, so they are never blended.
+     the model in renewal_notes.py into one of the eight;
+  3. no note, or a note that does not say: Unable to Contact/No Show.
+The policy record is read only to tell a cancellation that came before the SR
+was opened (shown as cancelled, outside the rate) and for the premium.
 
 HOW A POLICY'S OUTCOME IS READ. AgencyZoom keeps one record per policy TERM,
 chained by policyNumber, and the status codes carry no labels. Read off the
@@ -22,14 +22,9 @@ the renewal premium), 4 = a past term that was replaced, 0 = cancelled -- or a
 superseded duplicate of a term that also exists as a 4, which is why a 0 only
 means cancelled when no live term follows it.
 
-    renewed      a term starting on or after the renewal date is 1, 3 or 4
-    cancelled    the renewal term is 0, or the expiring term is 0 with no
-                 successor
-    rewritten    cancelled or no renewal on file, but the same household took
-                 a new policy number of the same line from 30 days before to
-                 45 after the renewal (a rewrite, or the carrier re-numbering)
-    no renewal   the renewal date has passed and nothing follows it yet
-    still ahead  the renewal date has not come yet
+outcome() reads a term as retained, cancelled (and when), or not yet decided;
+only its cancellation date is used now, to tell a cancellation that came
+before the SR was opened.
 
 There is no cancellation date in any AgencyZoom policy payload; a term's own
 modifyDate stands in for it where one is needed.
@@ -78,8 +73,9 @@ RESOLUTION_LABELS = {
     38307: "Rewrite Accepted",
     38308: "Cancelled: Rewrite Declined",
     32570: "Cancelled, no endorse/rewrite available",
-    38304: "Unable to Contact",
+    38304: "Unable to Contact/No Show",         # renamed 2026-09-24
     101591: "No action: Review if needed",      # added 2026-09-24
+    101627: "Client Cancelled",                 # added 2026-09-24
     # Not renewal outcomes. A renewal SR closed on one of these from
     # RESOLUTIONS_FROM falls back to the policy record and is listed on the
     # Service tab as not a renewal resolution. Completed is kept in AgencyZoom for
@@ -260,24 +256,12 @@ def outcome(expiring, terms, day):
     return "cancelled", when
 
 
-def _rewritten(pn, expiring, household, R, day):
-    line = _line(expiring.get("policyTypeName"))
-    lo, hi = _shift(R, -BEFORE), min(_shift(R, AFTER), day)
-    for p in (household or {}).get("policies") or []:
-        if _NORM(p.get("policyNumber")) == _NORM(pn) or _line(p.get("policyTypeName")) != line:
-            continue
-        start = max(_d(p.get("effectiveDate")), _d(p.get("soldDate")))
-        if lo <= start <= hi and p.get("status") != 0:
-            return True
-    return False
-
-
 
 # The Renewal Outcome Breakdown's segments, in display order: (key, label,
-# counts as) -- "kept" and "lost" make the rate, "open" sits outside it. The
-# first seven are the team's own renewal resolutions; then the same outcomes
-# read from the rep's note; then the policy-record reading, the last resort
-# for an SR closed on anything else (Completed, Shot Clock Expired, ...).
+# counts as) -- "kept" and "lost" make the rate, "open" sits outside it.
+# FRANK'S RESOLUTIONS ARE THE ONLY OUTCOMES (Frank, 2026-09-24): every renewal
+# SR lands on one of the eight below, never on a category of ours. The label
+# here is the fallback; the board shows AgencyZoom's current name (outcomes()).
 OUTCOMES = (
     ("renewed_as_is", "Renewed: Accepted as is", "kept"),
     # No action (Frank, 2026-09-24): the rep reviewed the renewal and did not
@@ -287,31 +271,46 @@ OUTCOMES = (
     ("rewrite_accepted", "Rewrite Accepted", "kept"),
     ("cancelled_rewrite_declined", "Cancelled: Rewrite Declined", "lost"),
     ("cancelled_no_option", "Cancelled, no endorse/rewrite available", "lost"),
-    # Unable to Contact RENEWED as is (Frank, 2026-09-24) and counts as
-    # retained. Its own segment only records that nobody ever discussed the
-    # renewal with the customer.
-    ("unable_to_contact", "Unable to Contact", "kept"),
-    # The same outcomes read from the rep's note by renewal_notes.py, for an SR
-    # closed on any other resolution (Completed, before 2026-09-24). Their own
-    # segments, so a read never blends with a resolution the team picked.
-    ("renewed_as_is_notes", "Renewed: Accepted as is (rep's notes)", "kept"),
-    ("no_action_review_notes", "No action: Review if needed (rep's notes)", "kept"),
-    ("renewed_endorsed_notes", "Renewed: Endorsed (rep's notes)", "kept"),
-    ("rewrite_accepted_notes", "Rewrite Accepted (rep's notes)", "kept"),
-    ("cancelled_rewrite_declined_notes", "Cancelled: Rewrite Declined (rep's notes)", "lost"),
-    ("cancelled_no_option_notes", "Cancelled, no endorse/rewrite available (rep's notes)", "lost"),
-    ("unable_to_contact_notes", "Unable to Contact (rep's notes)", "kept"),
-    ("renewed_record", "Renewed (policy record)", "kept"),
-    ("rewritten_record", "Rewritten (policy record)", "kept"),
-    ("cancelled_record", "Cancelled (policy record)", "lost"),
-    ("already_cancelled", "Already cancelled before the SR", "open"),
-    ("pending_record", "Renewal date still ahead", "open"),
-    ("no_renewal_record", "No renewal on file", "open"),
-    ("unmatched", "Policy record not current", "open"),
+    # Client Cancelled (Frank, 2026-09-24): cancelled mid term, went to the
+    # carrier directly, or never gave us the chance to review or retain. A
+    # lost renewal, in the rate.
+    ("client_cancelled", "Client Cancelled", "lost"),
+    # Unable to Contact (renamed Unable to Contact/No Show, 2026-09-24) RENEWED
+    # as is and counts as retained. It is also the outcome of a renewal SR
+    # whose note is missing or says nothing (Frank, 2026-09-24).
+    ("unable_to_contact", "Unable to Contact/No Show", "kept"),
+    # A cancellation on a policy already cancelled before the SR was opened --
+    # an old SR closed out ("Cancelled in 2025"), 9 of the 12 cancellations
+    # 09-15..09-23. Shown as cancelled, OUTSIDE the rate (Frank, 2026-09-24).
+    ("cancelled_before_sr", "Cancelled before the SR was opened", "open"),
 )
-RESOLUTION_KEYS = [k for k, _, _ in OUTCOMES[:7]]
-_BY_LABEL = {label: key for key, label, _ in OUTCOMES if key in RESOLUTION_KEYS}
+# Matched by resolution ID, never by name, so a rename in AgencyZoom cannot
+# drop an outcome.
+RESOLUTION_KEY_BY_ID = {
+    32574: "renewed_as_is", 101591: "no_action_review", 32575: "renewed_endorsed",
+    38307: "rewrite_accepted", 38308: "cancelled_rewrite_declined",
+    32570: "cancelled_no_option", 101627: "client_cancelled", 38304: "unable_to_contact",
+}
+RESOLUTION_KEYS = list(RESOLUTION_KEY_BY_ID.values())
 _KIND = {key: kind for key, _, kind in OUTCOMES}
+_ID_BY_KEY = {k: i for i, k in RESOLUTION_KEY_BY_ID.items()}
+
+
+def outcomes():
+    """OUTCOMES for a document, with each resolution's current AgencyZoom name."""
+    return [[k, RESOLUTION_LABELS.get(_ID_BY_KEY.get(k)) or l, c] for k, l, c in OUTCOMES]
+
+
+def resolution_key(sr):
+    """The outcome key of the SR's own resolution, or None when it is not one
+    of the eight -- or not trusted for that day (RESOLUTION_VALID_FROM)."""
+    rid = sr.get("resolutionId")
+    since = RESOLUTION_VALID_FROM.get(rid)
+    if since and _d(sr.get("completeDate")) < since:
+        return None
+    return RESOLUTION_KEY_BY_ID.get(rid)
+
+
 _NORM = lambda x: re.sub(r"[^A-Z0-9]", "", str(x or "").upper())
 
 
@@ -326,11 +325,15 @@ def _sr_policy(sr, chains):
 
 
 def sr_outcome(sr, chains, hh, pn2hh, as_of, note_key=None):
-    """(key, source, policyNumber, premium, line) for one completed renewal SR.
-    The SR's own resolution when it is one of the seven; else `note_key`, the
-    outcome renewal_notes read from the rep's note; else the policy record,
-    read as of
-    `as_of`, for the term renewing nearest the SR's completion."""
+    """(key, source, policyNumber, premium, line) for one completed renewal SR,
+    always one of Frank's resolutions (OUTCOMES):
+      1. the SR's own resolution, when it is one of the eight   source "resolution"
+      2. else `note_key`, what renewal_notes read from the note  source "notes"
+      3. else Unable to Contact/No Show -- no note, or a note that does not
+         say (Frank, 2026-09-24)                                 source "no_note"
+         ... or a note not read yet (the read failed)            source "unread"
+    The policy record only decides whether a cancellation came before the SR
+    was opened (cancelled_before_sr, outside the rate), and gives the premium."""
     done = _d(sr.get("completeDate"))
     pn = _sr_policy(sr, chains)
     term, terms = None, chains.get(pn) or []
@@ -343,61 +346,37 @@ def sr_outcome(sr, chains, hh, pn2hh, as_of, note_key=None):
         term = near[0] if near else None
     premium = float((term or {}).get("premium") or 0)
     line = _line((term or (terms[0] if terms else {})).get("policyTypeName"))
-    label = resolution_label(sr)
-    key, source = (_BY_LABEL[label], "resolution") if label in _BY_LABEL else \
-                  (note_key, "notes") if note_key in RESOLUTION_KEYS else (None, None)
-    if key:
-        # A cancel resolution counts as a renewal LOST only on a policy with a
-        # term renewing near the SR. Of the 12 SRs resolved "Cancelled, no
-        # endorse/rewrite available" 09-15..09-23, 9 were policies the record
-        # shows cancelled well before the SR was opened (stale SRs closed out,
-        # "Cancelled in 2025") and the other 3 had no term renewing anywhere
-        # near ("cancelled for noc 10/2025", "not a right policy"). Those fall
-        # through to the policy-record reading below, same as any other SR.
-        out_key = key + "_notes" if source == "notes" else key
-        if _KIND[key] != "lost":
-            return out_key, source, pn, premium, line
+    key = resolution_key(sr)
+    source = "resolution"
+    if not key:
+        import renewal_notes
+        if note_key in RESOLUTION_KEYS:
+            key, source = note_key, "notes"
+        elif renewal_notes.clean(sr.get("resolutionDesc")) and note_key is None:
+            key, source = "unable_to_contact", "unread"
+        else:
+            key, source = "unable_to_contact", "no_note"
+    if _KIND[key] == "lost":
+        # A cancellation counts as a renewal LOST only on a policy with a term
+        # renewing near the SR, not cancelled well before the SR was opened.
+        # Of the 12 SRs resolved "Cancelled, no endorse/rewrite available"
+        # 09-15..09-23, 9 were policies cancelled long before ("Cancelled in
+        # 2025") and 3 had no term renewing anywhere near ("cancelled for noc
+        # 10/2025", "not a right policy").
+        stale = not term
         if term:
             _, when = outcome(term, terms, as_of)
             opened = _d(sr.get("createDate"))
-            if not (when and opened and when < _shift(opened, -15)):
-                return out_key, source, pn, premium, line
-    if not term and terms:
-        # Chains have gaps: G014379316 has no record for the term that ended
-        # 2026-09-19, only the one STARTING that day -- which is the renewal.
-        lo, hi = _shift(done, -75), _shift(done, 90)
-        start = [t for t in terms if lo <= _d(t["effectiveDate"]) <= hi and t["status"] in (1, 3, 4)]
-        if start:
-            t = min(start, key=lambda t: _d(t["effectiveDate"]))
-            prem = float(t.get("premium") or 0)
-            key = "pending_record" if _d(t["effectiveDate"]) > as_of else "renewed_record"
-            return key, "record", pn, prem, _line(t.get("policyTypeName"))
-    if not term:
-        # No term renews anywhere near: a policy AgencyZoom stopped updating
-        # (918831825's newest term is 2022-2023, still "in force"), or no
-        # policy number in the SR at all.
-        return "unmatched", "record", pn, premium, line
-    out, when = outcome(term, terms, as_of)
-    # A policy cancelled well before the SR was even opened is a stale SR
-    # being closed out ("Policy was cancelled in 2025"), not a renewal lost:
-    # 9 of the 11 "cancelled" renewal SRs of 09-15..09-22 were exactly that.
-    opened = _d(sr.get("createDate"))
-    if out != "retained" and when and opened and when < _shift(opened, -15):
-        return "already_cancelled", "record", pn, premium, line
-    if out == "retained":
-        return "renewed_record", "record", pn, premium, line
-    if out in ("cancelled", "before_window", "after_window", "unconfirmed"):
-        cid = pn2hh.get(pn)
-        if cid and _rewritten(pn, term, hh.get(cid), _d(term["expiryDate"]), as_of):
-            return "rewritten_record", "record", pn, premium, line
-        return ("no_renewal_record" if out == "unconfirmed" else "cancelled_record"), "record", pn, premium, line
-    return "pending_record", "record", pn, premium, line
+            stale = bool(when and opened and when < _shift(opened, -15))
+        if stale:
+            return "cancelled_before_sr", source, pn, premium, line
+    return key, source, pn, premium, line
 
 
 def read_notes(srs, log=print):
-    """renewal_notes.read() for the SRs NOT closed on one of the seven."""
+    """renewal_notes.read() for the SRs NOT closed on one of the eight."""
     import renewal_notes
-    return renewal_notes.read([t for t in srs if resolution_label(t) not in _BY_LABEL], log=log)
+    return renewal_notes.read([t for t in srs if not resolution_key(t)], log=log)
 
 
 def renewal_srs(day, done_tickets, policies, customers, az=None, log=print, refresh=True):
@@ -405,7 +384,7 @@ def renewal_srs(day, done_tickets, policies, customers, az=None, log=print, refr
     outcome, where the outcome came from, and the policy's premium. Rows, not
     totals, so the board can add any range of days together. Also the
     SRs completed from RESOLUTIONS_FROM on a resolution that is not one of
-    the seven renewal resolutions, counted by resolution name."""
+    the eight renewal resolutions, counted by resolution name."""
     from service_digest import RENEWALS, SERVICE_TEAM
     srs = [t for t in done_tickets if t.get("workflowName") in RENEWALS
            and _d(t.get("completeDate")) == day]
@@ -434,7 +413,7 @@ def renewal_srs(day, done_tickets, policies, customers, az=None, log=print, refr
         key, source, pn, prem, line = sr_outcome(t, chains, hh, pn2hh, as_of,
                                                  note_key=notes.get(str(t.get("id"))))
         rid = t.get("resolutionId")
-        if day >= RESOLUTIONS_FROM and RESOLUTION_LABELS.get(rid) not in _BY_LABEL:
+        if day >= RESOLUTIONS_FROM and not resolution_key(t):
             unnamed[RESOLUTION_LABELS.get(rid) or ("No resolution" if rid is None else f"id {rid}")] += 1
         by = t.get("modifiedBy")
         from service_digest import pipeline_of

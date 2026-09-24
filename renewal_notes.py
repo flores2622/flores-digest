@@ -10,9 +10,9 @@ rules were tried first and misread too much to use: "possible deductible
 options" is not an endorsement, "possible BW rewrite if customer calls" is not
 a rewrite, "left vm and autos on noc" is not a cancellation.
 
-ORDER. The SR's own resolution wins; then this read; then the policy record.
-A read shows on the board as its own "(rep's notes)" segment, never blended
-with a resolution the team actually picked.
+ORDER. The SR's own resolution wins; then this read; a note that is missing
+or says nothing is Unable to Contact/No Show (Frank, 2026-09-24). Frank's
+resolutions are the only outcomes on the board.
 
 COST. The second paid step after call_summary.py: one model call per batch of
 up to BATCH notes. Every read is kept by SR id and note text (data/ plus an R2
@@ -44,9 +44,12 @@ CHOICES = {
                                   "offered and declined, and the policy is cancelling.",
     "cancelled_no_option": "Cancelled, no endorse/rewrite available -- the policy "
                            "is cancelling or has cancelled.",
-    "unable_to_contact": "Unable to Contact -- the rep tried to reach the customer "
-                         "(voicemail, no answer, bad number) and could not; it "
-                         "renewed as is.",
+    "client_cancelled": "Client Cancelled -- the client cancelled mid term, went to "
+                        "the carrier directly to cancel, or never gave us the chance "
+                        "to review or retain the policy.",
+    "unable_to_contact": "Unable to Contact/No Show -- the rep tried to reach the "
+                         "customer (voicemail, no answer, bad number) or they did "
+                         "not show, and it renewed as is.",
     "unclear": "The note does not say what happened to the renewal.",
 }
 
@@ -128,8 +131,9 @@ def _ask(cs, model, chunk):
 
 
 def read(srs, log=print):
-    """{sr id: choice or None} for these SRs, reading only notes not already
-    read. Any failure leaves the rest to the policy record -- never raises."""
+    """{sr id: choice} for these SRs' notes, "unclear" included, reading only
+    notes not already read. An SR missing from the result has no note, or its
+    read failed (retried next night) -- never raises."""
     cache = load(log=log)
     want = {}
     for t in srs:
@@ -149,7 +153,8 @@ def read(srs, log=print):
                 raise RuntimeError("ANTHROPIC_API_KEY not set")
             model = cs.pick_model()
         except Exception as e:
-            log(f"  renewal notes: not read ({type(e).__name__}: {str(e)[:160]}) -- policy record instead")
+            log(f"  renewal notes: not read ({type(e).__name__}: {str(e)[:160]}) -- "
+                f"counted as Unable to Contact/No Show until a later night reads them")
             model = None
         ids, n_read = list(want), 0
         for i in range(0, len(ids) if model else 0, BATCH):
@@ -171,7 +176,7 @@ def read(srs, log=print):
     for t in srs:
         sid, note = str(t.get("id")), clean(t.get("resolutionDesc"))
         hit = cache.get(sid)
-        if note and hit and hit.get("h") == _h(note) and hit.get("choice") != "unclear":
-            out[sid] = hit["choice"]
+        if note and hit and hit.get("h") == _h(note):
+            out[sid] = hit["choice"]          # "unclear" included: read, says nothing
     return out
 
