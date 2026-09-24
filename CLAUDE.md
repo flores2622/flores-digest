@@ -191,15 +191,16 @@ Crystal (hybrid); credit always goes to whoever COMPLETED the SR or task.
   Cancelled: Rewrite Declined, Cancelled, no endorse/rewrite available, Unable
   to Contact). **Unable to Contact renewed as is** (Frank, 2026-09-24) -- it
   only records that nobody discussed the renewal with the customer -- so it
-  counts as RETAINED in the rate, on its own segment. Old
-  resolution ids were RENAMED, so anything earlier is read from the policy
-  record instead and shown as its own "(policy record)"
+  counts as RETAINED in the rate, on its own segment. **The six are read on
+  PAST SRs too** (Frank, 2026-09-24): the ids now carrying those names meant
+  the same outcomes before the rename. An SR closed on any other resolution is
+  read from the policy record and shown as its own "(policy record)"
   segments. **Resolution names come from `/v1/api/service-resolutions`**
   (found 2026-09-24), re-read every build; `RESOLUTION_LABELS` is that list as
   of 2026-09-24, the fallback. A renewal SR closed from 2026-09-24 on anything
   else (Completed, Shot Clock Expired, Unable to Complete, Cancelled by
-  Carrier/Client) falls back to the policy record and is listed on the Service
-  tab as not one of the six. `python3 service_retention.py --resolutions`
+  Carrier/Client) is also listed on the Service Center as not one of the six;
+  before that date "Completed" was the normal choice, so it is not flagged. `python3 service_retention.py --resolutions`
   prints each id in use with examples.
 - **Documents hold rows, never medians**, so the board can add any range up.
 
