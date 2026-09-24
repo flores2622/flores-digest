@@ -1086,6 +1086,14 @@ def publish_service(day):
     except (Exception, SystemExit) as e:
         log(f"service digest failed ({type(e).__name__}: {e}) -- "
             f"the Service tab keeps its last day")
+    # Earlier days' renewal outcomes, re-read now that their renewal dates may
+    # have passed (and, once, from the reps' notes). Separate try: it must
+    # never cost today's document.
+    try:
+        import service_digest
+        service_digest.refresh_past_renewals(day, log=log)
+    except (Exception, SystemExit) as e:
+        log(f"renewal refresh failed ({type(e).__name__}: {e}) -- earlier days keep their outcomes")
 
 
 def publish_commercial(day):

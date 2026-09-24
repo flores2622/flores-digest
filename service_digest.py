@@ -353,16 +353,88 @@ def publish(day, doc=None, log=log):
     return _key(day)
 
 
+# How far back refresh_past_renewals() re-reads published days. Renewal SRs
+# are worked ~45 days before the renewal date (median 44, 09-15..09-23), and
+# a cancellation or rewrite shows in the record up to 45 days after it.
+REFRESH_BACK_DAYS = 120
+
+
+def refresh_past_renewals(day, log=log):
+    """Re-derive the renewal outcome of every SR on the published days before
+    `day`, and republish a day only if one changed.
+
+    A day's document is built once, so its renewal rows froze at the policy
+    record as of that night -- an SR worked 44 days early read "Renewal date
+    still ahead" for good (found 2026-09-24). This re-reads ONLY the renewal
+    rows' outcome and where it came from (the rep's note, then the record as
+    of today); every other section, and which SRs are in the day, stay exactly
+    as first built -- the point-in-time rule for live SRs is untouched."""
+    import commercial
+    import publish_board
+    import service_retention as sr
+    done = completed_tickets(day, log=log)
+    com_any, _ = commercial.households(sr.load_household_map(log=log))
+    done = [t for t in done if not commercial.is_commercial_sr(t, com_any)]
+    pol = json.loads((ROOT / "data/az_policies_all.json").read_text())
+    cus = json.loads((ROOT / "data/az_customers_all.json").read_text())
+    floor = (dt.date.fromisoformat(day) - dt.timedelta(days=REFRESH_BACK_DAYS)).isoformat()
+    cli, bucket = publish_board._client()
+    keys, token = [], None
+    while True:
+        kw = {"Bucket": bucket, "Prefix": f"{PREFIX}/"}
+        if token:
+            kw["ContinuationToken"] = token
+        r = cli.list_objects_v2(**kw)
+        keys += [o["Key"] for o in r.get("Contents", [])]
+        if not r.get("IsTruncated"):
+            break
+        token = r["NextContinuationToken"]
+    days = sorted(k[len(PREFIX) + 1:-5] for k in keys if k.endswith(".json"))
+    changed = 0
+    for d in [x for x in days if floor <= x < day]:
+        try:
+            doc = json.loads(cli.get_object(Bucket=bucket, Key=_key(d))["Body"].read())
+            ren = doc.get("renewals") or {}
+            if not ren.get("rows"):
+                continue
+            fresh, _ = sr.renewal_srs(d, done, pol, cus, log=log, refresh=False)
+            fresh = {r["id"]: r for r in fresh}
+            n = 0
+            for row in ren["rows"]:
+                f = fresh.get(row["id"])
+                if f and (f["outcome"], f["source"]) != (row["outcome"], row["source"]):
+                    for k in ("outcome", "source", "policy", "premium", "line"):
+                        row[k] = f[k]
+                    n += 1
+            if not n:
+                continue
+            ren["outcomes"] = [list(o) for o in sr.OUTCOMES]
+            doc["renewals_refreshed"] = dt.datetime.now(AZ).isoformat(timespec="seconds")
+            cli.put_object(Bucket=bucket, Key=_key(d), Body=json.dumps(doc, default=str).encode(),
+                           ContentType="application/json", CacheControl="no-store")
+            changed += 1
+            log(f"  renewals: {d} -- {n} SR outcome(s) updated")
+        except Exception as e:
+            log(f"  renewals: {d} not refreshed ({type(e).__name__}: {e})")
+    log(f"  renewals: {changed} earlier day(s) republished")
+    return changed
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--day")
     ap.add_argument("--dry-run", action="store_true")
+    ap.add_argument("--refresh-renewals", action="store_true",
+                    help="only re-read the renewal outcomes of earlier published days")
     a = ap.parse_args()
     day = a.day or dt.datetime.now(AZ).date().isoformat()
     import os
     os.chdir(ROOT)
     import secrets_load
     secrets_load.load()
+    if a.refresh_renewals:
+        refresh_past_renewals(day)
+        return
     doc = build(day)
     if a.dry_run:
         print(json.dumps(doc, indent=1, default=str))

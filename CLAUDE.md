@@ -210,13 +210,30 @@ Crystal (hybrid); credit always goes to whoever COMPLETED the SR or task.
   among just those. From 2026-09-24 the outcome is the SR's own resolution
   (Frank's six: Renewed: Accepted as is / Endorsed, Rewrite Accepted,
   Cancelled: Rewrite Declined, Cancelled, no endorse/rewrite available, Unable
-  to Contact). **Unable to Contact renewed as is** (Frank, 2026-09-24) -- it
-  only records that nobody discussed the renewal with the customer -- so it
-  counts as RETAINED in the rate, on its own segment. **The six are read on
+  to Contact) plus a seventh, **No action: Review if needed** (id 101591,
+  added 2026-09-24: the rep reviewed the renewal and did not call because the
+  change did not call for it). **Unable to Contact and No action both renewed
+  as is** (Frank, 2026-09-24) -- nobody discussed the renewal with the
+  customer -- so both count as RETAINED in the rate, each on its own segment. **The six are read on
   PAST SRs too** (Frank, 2026-09-24): the ids now carrying those names meant
-  the same outcomes before the rename. An SR closed on any other resolution is
-  read from the policy record and shown as its own "(policy record)"
-  segments. **Resolution names come from `/v1/api/service-resolutions`**
+  the same outcomes before the rename. **Except Unable to Contact before
+  2026-09-24** (`RESOLUTION_VALID_FROM`): deleting a resolution in AgencyZoom
+  MOVES its SRs onto another, and the clean-up moved Shot Clock Expired (357
+  renewal SRs) and Unable to Complete (112) onto Unable to Contact, which had
+  been used once. Never trust an id's history after a deletion without
+  checking the counts.
+- **For an SR closed on any other resolution (Completed), the rep's note is
+  read by the model** (`renewal_notes.py`, Frank, 2026-09-24) into one of the
+  seven, shown as dotted "(rep's notes)" segments; a note that does not say
+  falls to the policy record, hatched "(policy record)" segments. Solid is
+  always the team's own resolution. Keyword rules were tried first and misread
+  "possible deductible options", "possible rewrite if customer calls" and
+  "left vm and autos on noc" -- do not go back to them.
+- **Past days' renewal rows are re-read every night**
+  (`service_digest.refresh_past_renewals`, last 120 days): a day's document is
+  built once, so without this an SR worked 44 days early read "Renewal date
+  still ahead" forever. Only each row's outcome and source change; which SRs
+  are in a day, and every other section, stay as first built. **Resolution names come from `/v1/api/service-resolutions`**
   (found 2026-09-24), re-read every build; `RESOLUTION_LABELS` is that list as
   of 2026-09-24, the fallback. A renewal SR closed from 2026-09-24 on anything
   else (Completed, Shot Clock Expired, Unable to Complete, Cancelled by
@@ -326,8 +343,11 @@ current" -- another reason the six matter here.
 
 ## Cost
 
-Transcription is local and free. **The Anthropic API read in `call_summary.py`
-is the only paid step** — roughly one call per live contact per day. Changing
+Transcription is local and free. **The Anthropic API reads in `call_summary.py`
+and `renewal_notes.py` are the only paid steps** — roughly one call per live
+contact per day, plus one call per 25 renewal SR notes (each SR's note is read
+once and kept in `data/renewal_note_reads.json` and its R2 copy; only an edited
+note is read again -- never delete that cache casually). Changing
 the prompt means deleting `data/callsum_<day>.json`, which re-reads everything.
 Do not do that casually, and never in a loop while iterating on wording.
 
