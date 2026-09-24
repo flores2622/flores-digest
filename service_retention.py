@@ -8,7 +8,7 @@ WHERE AN OUTCOME COMES FROM. The SR's own resolution, when it can be read:
 Frank's six renewal resolutions (Renewed: Accepted as is, Renewed: Endorsed,
 Rewrite Accepted, Cancelled: Rewrite Declined, Cancelled, no endorse/rewrite
 available, Unable to Contact) on SRs completed from RESOLUTIONS_FROM. Before
-that -- or for an id not named yet -- the policy record is read instead, for
+that -- or on a resolution that is not one of the six -- the policy record is read, for
 the policy the SR's subject names ("Auto - G014549916"), and is shown as its
 own "(policy record)" segment so the two sources are never blended.
 
@@ -63,10 +63,46 @@ MAX_FETCH = 400
 # completed on or after RESOLUTIONS_FROM; everything earlier stays with the
 # policy-chain reading. The names and what each counts as are OUTCOMES below.
 RESOLUTIONS_FROM = "2026-09-24"
-# AgencyZoom's API returns resolutionId only, never the name, and has no lookup
-# for it. Each id is named here once, by hand, the first time an SR closed
-# with it shows up -- the Service tab lists any id it cannot name yet.
-RESOLUTION_LABELS = {}
+# SRs carry resolutionId only; the names come from /v1/api/service-resolutions
+# (found 2026-09-24), re-read every build by load_resolution_labels() so a
+# rename in AgencyZoom is picked up. This is that endpoint's list on
+# 2026-09-24, kept as the fallback when the read fails.
+RESOLUTION_LABELS = {
+    32574: "Renewed: Accepted as is",
+    32575: "Renewed: Endorsed",
+    38307: "Rewrite Accepted",
+    38308: "Cancelled: Rewrite Declined",
+    32570: "Cancelled, no endorse/rewrite available",
+    38304: "Unable to Contact",
+    # Not renewal outcomes. A renewal SR closed on one of these from
+    # RESOLUTIONS_FROM falls back to the policy record and is listed on the
+    # Service tab as not one of the six.
+    32571: "Completed",
+    38303: "Unable to Complete",
+    38305: "Cancelled by Carrier",
+    38306: "Cancelled by Client",
+    40108: "Shot Clock Expired",
+}
+_SNAPSHOT = dict(RESOLUTION_LABELS)
+
+
+def load_resolution_labels(az=None, log=print):
+    """Refresh RESOLUTION_LABELS in place from AgencyZoom. A name that no
+    longer matches the snapshot is logged: renaming a resolution changes what
+    every SR already closed on it reads as."""
+    try:
+        if az is None:
+            from az_client import AgencyZoom
+            az = AgencyZoom()
+        live = {int(r["id"]): r["name"].strip() for r in az.get("/v1/api/service-resolutions") or []}
+    except Exception as e:
+        log(f"  resolution names: using the 2026-09-24 list ({type(e).__name__}: {e})")
+        return RESOLUTION_LABELS
+    for rid, name in live.items():
+        if rid in _SNAPSHOT and _SNAPSHOT[rid] != name:
+            log(f"  resolution {rid} RENAMED in AgencyZoom: {_SNAPSHOT[rid]!r} -> {name!r}")
+    RESOLUTION_LABELS.update(live)
+    return RESOLUTION_LABELS
 
 _HOME = re.compile(r"home|dwelling|\bdp\d?\b|mobile|manufactured|landlord|condo|renter|ho-?\d", re.I)
 
@@ -301,7 +337,8 @@ def renewal_srs(day, done_tickets, policies, customers, az=None, log=print, refr
     """One row per renewal SR completed on `day`: who completed it, the
     outcome, where the outcome came from, and the policy's premium. Rows, not
     totals, so the board can add any range of days together. Also the
-    resolution ids completed from RESOLUTIONS_FROM that have no name yet."""
+    SRs completed from RESOLUTIONS_FROM on a resolution that is not one of
+    the six renewal outcomes, counted by resolution name."""
     from service_digest import RENEWALS, SERVICE_TEAM
     srs = [t for t in done_tickets if t.get("workflowName") in RENEWALS
            and _d(t.get("completeDate")) == day]
@@ -317,6 +354,7 @@ def renewal_srs(day, done_tickets, policies, customers, az=None, log=print, refr
         hh = refresh_household_map(hh, customers, must=must, az=az, log=log)
         save_household_map(hh, log=log)
     pn2hh = {_NORM(k): v for k, v in policy_households(hh).items()}
+    load_resolution_labels(az=az, log=log)
     rows, unnamed = [], collections.Counter()
     # The policy record is read as of TODAY, not as of the SR's day: renewal
     # SRs are worked before the renewal date, so on the day one closes the
@@ -327,8 +365,8 @@ def renewal_srs(day, done_tickets, policies, customers, az=None, log=print, refr
     for t in srs:
         key, source, pn, prem, line = sr_outcome(t, chains, hh, pn2hh, as_of)
         rid = t.get("resolutionId")
-        if day >= RESOLUTIONS_FROM and rid is not None and rid not in RESOLUTION_LABELS:
-            unnamed[rid] += 1
+        if day >= RESOLUTIONS_FROM and RESOLUTION_LABELS.get(rid) not in _BY_LABEL:
+            unnamed[RESOLUTION_LABELS.get(rid) or ("No resolution" if rid is None else f"id {rid}")] += 1
         by = t.get("modifiedBy")
         from service_digest import pipeline_of
         rows.append({"id": t.get("id"), "pipeline": pipeline_of(t.get("workflowName")),
@@ -348,7 +386,7 @@ def list_resolutions(done_tickets, since=RESOLUTIONS_FROM):
         if t.get("workflowName") in RENEWALS and _d(t.get("completeDate")) >= since:
             by[t.get("resolutionId")].append(t)
     for rid, ts in sorted(by.items(), key=lambda x: -len(x[1])):
-        print(f"id {rid}: {len(ts)} ticket(s), named: {RESOLUTION_LABELS.get(rid, '-- not yet --')}")
+        print(f"id {rid}: {len(ts)} SR(s), {RESOLUTION_LABELS.get(rid, '-- unknown id --')}")
         for t in ts[:2]:
             note = re.sub(r"\s+", " ", re.sub("<[^>]+>", " ", t.get("resolutionDesc") or ""))[:80]
             print(f"    {t.get('name')} | {t.get('subject')} | closed {_d(t.get('completeDate'))}"
@@ -367,4 +405,5 @@ if __name__ == "__main__":
         import datetime as _dt
         since = sys.argv[sys.argv.index("--since") + 1] if "--since" in sys.argv else RESOLUTIONS_FROM
         today = _dt.datetime.now(_dt.timezone(_dt.timedelta(hours=-7))).date().isoformat()
+        load_resolution_labels()
         list_resolutions(completed_tickets(today), since)
