@@ -929,6 +929,15 @@ function leadSourceInstruction(backstory) {
   return `\n\nBackstory context for how this call came about: ${backstory} If the producer asks how you were contacted or why you're on the phone, answer consistently with this -- but it does not change which objections you raise, how hard you hold them, or anything else about your difficulty level above.`;
 }
 
+/** Appended when the frontend sends prospect -- who this prospect IS (Frank,
+ * 2026-09-24: scenarios need names, occupations, ages and family status),
+ * rolled per scenario on the board and shown to the producer on the debrief.
+ * Identity only: it never changes the objections or how hard they hold. */
+function prospectInstruction(profile) {
+  if (!profile) return "";
+  return `\n\nWho you are: ${profile} Answer as this person -- your name, age, job and household are these, and your coverage needs follow from them (a household with kids or a new driver, a business owner's tools, a retiree's fixed income). Share them naturally when the producer asks during discovery, not all at once. None of this changes which objections you raise or how hard you hold them.`;
+}
+
 /** POST /api/roleplay/turn {persona, history, focus_objections} -> {reply}
  *
  * `history` is the growing [{role: "producer"|"prospect", content}, ...]
@@ -962,7 +971,9 @@ async function roleplayTurn(request, env) {
     ? body.focus_objections.filter((c) => typeof c === "string").slice(0, 3)
     : [];
   const leadSource = typeof body.lead_source === "string" ? body.lead_source.slice(0, 500) : "";
-  const system = persona.system + focusObjectionInstruction(focusObjections) + leadSourceInstruction(leadSource);
+  const prospect = typeof body.prospect === "string" ? body.prospect.slice(0, 300) : "";
+  const system = persona.system + focusObjectionInstruction(focusObjections) + leadSourceInstruction(leadSource)
+    + prospectInstruction(prospect);
 
   try {
     const reply = await callClaude(env, { system, messages, maxTokens: 300 });
@@ -1026,6 +1037,7 @@ async function roleplayGrade(request, env) {
     persona: body.persona,
     persona_label: persona.label,
     lead_source: typeof body.lead_source === "string" ? body.lead_source.slice(0, 200) : "",
+    ...(typeof body.prospect === "string" && body.prospect ? { prospect: body.prospect.slice(0, 300) } : {}),
     history,
     grade,
     created_at: now.toISOString(),

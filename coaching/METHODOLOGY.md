@@ -283,7 +283,7 @@ Judge the move, not the script:
 - **Existing client, new purchase**: they came to us about something they
   just bought. Speed and completeness come first, then a look at the rest of
   the household.
-- **Generated / purchased** and **Found us**: a stranger who asked for a
+- **Generated / purchased**: a stranger who asked for a
   quote, often from several agents. Re-establishing why the producer is
   calling, and discovery (current carrier, premium, renewal date), matter
   most, because price shopping is the expected objection.
@@ -291,9 +291,20 @@ Judge the move, not the script:
   left before quoting. A producer who quotes without asking is a "w" or "m"
   on Discovery.
 - **Referral**: naming the person who referred them early is the approach.
-  If the referrer never comes up, say so.
-- **Call-in / walk-in**: they came to us ready. Answer what they came for,
-  then round out the household.
+  If the referrer never comes up, say so. A source named after Francisco
+  Flores is a referral or a warm transfer from him.
+- **Personal network** (a source named after any other staff member): that
+  person's own network (Frank, 2026-09-24). Each works their own, never
+  each other's, so if the producer on the call is not the person the
+  source names, say so in `leadfit`'s detail. They know the producer, not
+  the agency: leading with the relationship and quoting the whole household
+  in one go is the approach; an opening pitch is not.
+- **Social media** (Instagram, LinkedIn): a light first touch, not a quote
+  request. The strong move is referring back to what brought them in and
+  getting to a real conversation and discovery.
+- **Call-in / walk-in**, which includes **Found us** (Google, Farmers.com):
+  they came to us ready. Answer what they came for, then round out the
+  household; a Google or farmers.com request gets called fast.
 - **Center of influence**: the agency deals with the loan officer or
   realtor, not the client. If the other person on the call is that referral
   partner, it is not a prospect sales call: score the prospect-facing

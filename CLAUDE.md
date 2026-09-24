@@ -27,6 +27,12 @@ Everything caches under `data/`, so a re-run resumes rather than restarting.
   groups, what to sell each, and the not-a-sale and cross-sell sets that
   `digest_config` reads. Commercial sources (Leo, Work Comp, the Comm Leads
   lists) are Cerberus's. Frank confirmed the `approach` lines on 2026-09-24.
+  **A staff member's name as a source is Personal network** -- their own,
+  never each other's, and never in Role Play -- **except Francisco's, which
+  is a Referral** (and so can come up in Role Play);
+  Instagram / LinkedIn are Social media (Facebook stays Generated); Found us
+  (Google, Farmers.com) is part of Call-in / walk-in (Frank, 2026-09-24).
+  The Sales tab's Premium per Lead Source uses these same groups.
 - **Apollo judges each call against its lead source** (Frank, 2026-09-24).
   `coaching_cards._ask_card` sends `lead_sources.prompt_block()`; METHODOLOGY.md's
   "Lead source" section says how to use it, and the card's `leadfit` verdict
@@ -47,8 +53,9 @@ Everything caches under `data/`, so a re-run resumes rather than restarting.
   agency stages** (made for an outside texting company): a producer moving a
   lead into one is a mistake Apollo flags. Open leads misfiled in "Pipeline"
   are listed on the Sales Center for someone to move (`pipelines.misfiled`).
-- **Role Play never uses a center of influence or cold / misc lead source**
-  (Frank, 2026-09-24), nor a one-off, commercial, BOB or Rewrite source
+- **Role Play never uses a center of influence, cold / misc or existing
+  client, new purchase lead source** (Frank, 2026-09-24), nor a personal
+  network, one-off, commercial, BOB or Rewrite source
   (`GROUPS[...]["roleplay"]`). That is Role Play only: **calls on those
   sources still get coaching cards** and count in every coaching figure like
   any other call. Role Play draws a session's lead source from the
@@ -281,17 +288,30 @@ Crystal (hybrid); credit always goes to whoever COMPLETED the SR or task.
   renewal SRs) and Unable to Complete (112) onto Unable to Contact, which had
   been used once. Never trust an id's history after a deletion without
   checking the counts.
-- **For an SR closed on any other resolution (Completed), the rep's note is
-  read by the model** (`renewal_notes.py`, Frank, 2026-09-24) into one of the
-  seven, shown as dotted "(rep's notes)" segments; a note that does not say
-  falls to the policy record, hatched "(policy record)" segments. Solid is
-  always the team's own resolution. Keyword rules were tried first and misread
-  "possible deductible options", "possible rewrite if customer calls" and
-  "left vm and autos on noc" -- do not go back to them.
+- **FRANK'S RESOLUTIONS ARE THE ONLY OUTCOMES** (Frank, 2026-09-24: "those
+  are the ONLY outcomes i want being used"). No category of ours -- no policy
+  record reading, no "Renewal date still ahead", no separate "(rep's notes)"
+  segments. Every renewal SR lands on one of the eight (the seven above plus
+  **Client Cancelled**, id 101627, added 2026-09-24: cancelled mid term, went
+  to the carrier, or never gave us the chance -- LOST, in the rate), matched by resolution
+  ID (`RESOLUTION_KEY_BY_ID`, so a rename in AgencyZoom breaks nothing):
+    1. the SR's own resolution;
+    2. closed on anything else (Completed): the rep's note, read by the model
+       into one of the seven (`renewal_notes.py`; keyword rules misread
+       "possible deductible options" and "left vm and autos on noc" -- do not
+       go back to them);
+    3. no note, or a note that does not say: **Unable to Contact/No Show**
+       (Frank renamed Unable to Contact to that, 2026-09-24).
+  **The one exception**: a cancellation of a policy already cancelled before
+  the SR was opened -- an old SR closed out ("Cancelled in 2025", "sold home",
+  all 22 cancellations 09-01..09-23) -- shows as cancelled, hatched, OUTSIDE
+  the rate (`cancelled_before_sr`). The policy record is read for that and for
+  the premium, nothing else.
 - **Past days' renewal rows are re-read every night**
   (`service_digest.refresh_past_renewals`, last 120 days): a day's document is
-  built once, so without this an SR worked 44 days early read "Renewal date
-  still ahead" forever. Only each row's outcome and source change; which SRs
+  built once, so without this a note read (or a resolution renamed) after the
+  night a day was built would never reach it. Only each row's outcome and
+  source change; which SRs
   are in a day, and every other section, stay as first built. **Resolution names come from `/v1/api/service-resolutions`**
   (found 2026-09-24), re-read every build; `RESOLUTION_LABELS` is that list as
   of 2026-09-24, the fallback. A renewal SR closed from 2026-09-24 on anything
@@ -303,6 +323,13 @@ Crystal (hybrid); credit always goes to whoever COMPLETED the SR or task.
   renewals**. The deleted ones stay in `RESOLUTION_LABELS` because past SRs
   still carry their ids; do not prune them. `python3 service_retention.py --resolutions`
   prints each id in use with examples.
+- **A missed night builds itself** (`service_digest.backfill_missing_days`,
+  Frank, 2026-09-24): each nightly run builds any weekday of the last 14 with
+  no page, from that day's saved files; completed SRs, tasks (completed after
+  the day = open) and the call log are recreated if they were never saved.
+  Open SRs cannot be -- such a day has no backlog and says so
+  (`open_srs_unavailable`). A weekday with no SR completed is a holiday and
+  skipped. It only ever adds a page. By hand: `python3 service_digest.py --backfill`.
 - **Documents hold rows, never medians**, so the board can add any range up.
 
 ## Cerberus -- Commercial

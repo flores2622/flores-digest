@@ -169,8 +169,7 @@
 .ogseg { height: 100%; }
 /* Renewal Outcome Breakdown only: a 2px surface gap between segments, and the
    diagonal hatch that marks a policy-record reading (see OUTCOME_COLORS). */
-:root { --hatch: repeating-linear-gradient(135deg, transparent 0 3px, var(--surface) 3px 5px);
-  --dots: radial-gradient(circle, var(--surface) 0 1px, transparent 1.4px); }
+:root { --hatch: repeating-linear-gradient(135deg, transparent 0 3px, var(--surface) 3px 5px); }
 .rseg { box-sizing: border-box; }
 .rseg + .rseg { border-left: 2px solid var(--surface); }
 .rdot { width: 11px; height: 11px; }
@@ -185,6 +184,11 @@
 .bkleg-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--text-primary); }
 .bkleg-v { font-weight: 600; font-variant-numeric: tabular-nums; text-align: right; }
 .bkleg-p, .bkleg-c { color: var(--text-muted); font-variant-numeric: tabular-nums; text-align: right; }
+.bkrank-src { font-weight: 400; font-size: 11.5px; color: var(--text-muted); margin-left: 6px; }
+#tip:has(.bktip) { max-width: min(460px, calc(100vw - 16px)); }
+.bktip { width: auto; border-collapse: collapse; margin-top: 6px; }
+.bktip td { padding: 2px 0 2px 12px; border: 0; font-size: 11.5px; white-space: nowrap; font-variant-numeric: tabular-nums; text-align: right; }
+.bktip td:first-child { padding-left: 0; text-align: left; }
 .bkrank-n { display: inline-block; min-width: 18px; color: var(--text-muted); font-variant-numeric: tabular-nums; }
 .rtiles { grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); }
 .oleg { display: flex; flex-wrap: wrap; gap: 14px; margin-top: 10px; font-size: 11.5px; color: var(--text-secondary); }
@@ -2439,10 +2443,85 @@ function rpScenarioFor(name, key) {
   const g = LEADSRC_GUIDE.groups[key];
   const product = (LEADSRC_GUIDE.cross_sell_product || {})[lsNorm(name)];
   return { key, label: name ? String(name).trim() : g.label,
-    forCustomer: g.backstory.replace("{product}", CROSS_SELL_WORDS[product] || "a type of"),
+    forCustomer: ((LEADSRC_GUIDE.source_backstory || {})[lsNorm(name)] || g.backstory)
+      .replace("{product}", CROSS_SELL_WORDS[product] || "a type of"),
     tip: g.approach || "" };
 }
+/* Every Role Play scenario has a person on the other end (Frank,
+   2026-09-24: "scenarios need names, occupations, ages, and family
+   status"). Rolled fresh with each scenario, kept believable: the job fits
+   the age, children's ages fit the parent's, and a lead source that means
+   a homeowner or an existing customer gets one. Shown on the debrief and
+   sent to the Worker so the prospect plays that person. */
+const RP_FIRST = {
+  f: ["Maria", "Jessica", "Ana", "Sarah", "Guadalupe", "Ashley", "Veronica", "Emily", "Rosa", "Megan",
+      "Claudia", "Brittany", "Leticia", "Amanda", "Yesenia", "Karen", "Diana", "Stephanie", "Alma", "Rachel"],
+  m: ["Jose", "Michael", "Luis", "David", "Juan", "Chris", "Carlos", "Matthew", "Miguel", "Ryan",
+      "Jesus", "Tyler", "Ricardo", "Brandon", "Alejandro", "Kevin", "Francisco", "Justin", "Ramon", "Daniel"],
+};
+const RP_LAST = ["Garcia", "Martinez", "Lopez", "Hernandez", "Smith", "Johnson", "Ramirez", "Torres", "Williams",
+  "Flores", "Brown", "Rivera", "Morales", "Davis", "Ortiz", "Miller", "Castillo", "Wilson", "Mendoza", "Anderson",
+  "Chavez", "Moore", "Ruiz", "Taylor", "Vasquez", "Thomas", "Romero", "Jackson", "Gutierrez", "White"];
+// [occupation, youngest age, oldest age]
+const RP_JOBS = [
+  ["registered nurse", 24, 63], ["elementary school teacher", 24, 64], ["electrician", 21, 62],
+  ["truck driver", 23, 66], ["retail store manager", 26, 60], ["dental hygienist", 23, 60],
+  ["construction foreman", 28, 62], ["software developer", 23, 55], ["restaurant owner", 30, 66],
+  ["auto mechanic", 20, 64], ["real estate agent", 25, 68], ["office manager", 27, 65],
+  ["firefighter", 22, 55], ["police officer", 23, 55], ["HVAC technician", 21, 62],
+  ["hair stylist", 20, 60], ["warehouse supervisor", 24, 62], ["accountant", 24, 66],
+  ["landscaping business owner", 28, 66], ["medical assistant", 20, 58], ["plumber", 21, 64],
+  ["college student working part-time at a restaurant", 19, 24], ["bank teller", 20, 45],
+  ["retired postal carrier", 60, 78], ["retired teacher", 60, 78], ["retired Air Force mechanic", 55, 76],
+];
+const rpPick = a => a[Math.floor(Math.random() * a.length)];
+const rpInt = (lo, hi) => lo + Math.floor(Math.random() * (hi - lo + 1));
+// Children born when the parent was 20-45, distinct ages, oldest first.
+function rpKids(parentAge, n) {
+  const oldest = Math.min(parentAge - 20, 30), youngest = Math.max(1, parentAge - 45);
+  if (oldest < youngest) return [];
+  const ages = new Set();
+  for (let i = 0; i < n * 4 && ages.size < n; i++) ages.add(rpInt(youngest, oldest));
+  return [...ages].sort((a, b) => b - a);
+}
+function rpKidText(ages) {
+  if (!ages.length) return "";
+  const grown = ages.filter(a => a >= 18).length, young = ages.filter(a => a < 18);
+  const parts = [];
+  if (young.length) parts.push(`${young.length === 1 ? "a" : young.length} kid${young.length === 1 ? "" : "s"} (${young.length > 1 ? young.slice(0, -1).join(", ") + " and " + young[young.length - 1] : young[0]})`);
+  if (grown) parts.push(grown === 1 ? "a grown kid" : `${grown} grown kids`);
+  return parts.join(" and ");
+}
+function rpFamily(age) {
+  const r = Math.random();
+  if (age < 25) return r < 0.55 ? "single" : r < 0.8 ? "lives with a partner" : `single parent of ${rpKidText(rpKids(age, 1))}`;
+  if (age < 60) {
+    if (r < 0.4) { const k = rpKidText(rpKids(age, rpInt(1, 3))); return k ? `married with ${k}` : "married, no kids"; }
+    if (r < 0.55) return "married, no kids";
+    if (r < 0.7) { const k = rpKidText(rpKids(age, rpInt(1, 2))); return k ? `divorced, with ${k}` : "divorced"; }
+    if (r < 0.82) return "single";
+    if (r < 0.92) return "engaged, moving in together this year";
+    const k = rpKidText(rpKids(age, rpInt(2, 3))); return k ? `remarried, a blended family with ${k}` : "remarried";
+  }
+  return r < 0.55 ? "married, grown kids and grandkids" : r < 0.8 ? "widowed, grown kids" : "married, no kids";
+}
+function rpMakeProspect(groupKey) {
+  const sex = Math.random() < 0.5 ? "f" : "m";
+  // A new-purchase or cross-sell lead is an existing homeowner/customer:
+  // skew older and away from the student / part-time roles.
+  const settled = groupKey === "existing_new_purchase" || groupKey === "cross_sell";
+  const jobs = RP_JOBS.filter(([, lo]) => !settled || lo >= 21);
+  const [job, lo, hi] = rpPick(jobs);
+  const age = rpInt(Math.max(lo, settled ? 27 : lo), hi);
+  const p = { name: `${rpPick(RP_FIRST[sex])} ${rpPick(RP_LAST)}`, sex, age, occupation: job, family: rpFamily(age) };
+  p.text = `${p.name}, ${p.age}, ${/^([aeiou]|hvac)/i.test(p.occupation) ? "an" : "a"} ${p.occupation}; ${p.family}.`;
+  return p;
+}
 function pickLeadSource() {
+  const ls = pickLeadSourceOnly();
+  return { ...ls, prospect: rpMakeProspect(ls.key) };
+}
+function pickLeadSourceOnly() {
   const G = LEADSRC_GUIDE;
   const usable = k => G && G.groups[k] && G.groups[k].roleplay && G.groups[k].backstory;
   if (!G || !Object.keys(G.groups).some(usable)) return RP_FALLBACK_LEAD_SOURCE;
@@ -2663,7 +2742,8 @@ function roleplayPanel() {
   return `<div class="sect"><h2>Role Play &middot; ${p.name}</h2>
     <p class="sd">${rpProducer}
       <button class="ghost" id="rpNewScenario" type="button" style="margin-left:6px">new scenario</button>
-      <button class="ghost" id="rpChangeProducer" type="button">change producer</button></p>
+      <button class="ghost" id="rpChangeProducer" type="button">change producer</button>
+      ${rpDebriefButtons()}</p>
     <div class="rpchat">
       <div class="rpmsgs" id="rpMsgs">${msgs}</div>
       ${rpSpeechSupported() ? `<div class="rprow" style="justify-content:center">
@@ -2676,6 +2756,37 @@ function roleplayPanel() {
     ${rpGrade ? gradeCardHtml(rpGrade) : ""}
     ${histHtml}
   </div>`;
+}
+
+/* The debrief, in its own window or as a PDF (Frank, 2026-09-24: "so they
+   can reference it while in the session"). The debrief screen goes away
+   once the call starts, so the render snapshots it (rpDebriefSnapshot) and
+   both buttons -- on the debrief and on the live call -- open that same
+   snapshot: a standalone page carrying this page's own styles and theme.
+   "Save as PDF" opens it and brings up the browser's print dialog, where
+   Save as PDF is the destination. A new scenario takes a new snapshot. */
+let rpDebriefSnapshot = null;
+function rpDebriefButtons() {
+  return rpDebriefSnapshot ? `<button class="ghost" id="rpDebriefWin" type="button">open debrief in new window</button>
+      <button class="ghost" id="rpDebriefPdf" type="button">save debrief as PDF</button>` : "";
+}
+function rpOpenDebrief(print) {
+  const d = rpDebriefSnapshot;
+  if (!d) return;
+  const w = window.open("", "_blank", "width=820,height=900");
+  if (!w) { alert("Your browser blocked the new window -- allow pop-ups for this board and try again."); return; }
+  const css = [...document.querySelectorAll("style")].map(el => el.textContent).join("\n");
+  const theme = document.documentElement.dataset.theme;
+  w.document.open();
+  w.document.write(`<!doctype html><html${theme ? ` data-theme="${theme}"` : ""}><head><meta charset="utf-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1"><title>${d.title} · ${d.producer}</title>
+    <style>${css}
+    body { padding: 20px 24px 40px; max-width: 900px; margin: 0 auto; }
+    @media print { body { padding: 0; } .tile { break-inside: avoid; } }</style></head>
+    <body><div class="sect"><h2>${d.title}</h2><p class="sd">${d.producer}</p>${d.body}</div></body></html>`);
+  w.document.close();
+  w.focus();
+  if (print) setTimeout(() => w.print(), 300);   // let the written page lay out first
 }
 
 /* Pre-call debrief (Frank, 2026-09-11): shown once a persona is picked and
@@ -2707,13 +2818,27 @@ function roleplayDebriefHtml(p) {
   const callGuideHtml = TRAINING_CACHE ? roleplayCallGuideHtml(TRAINING_CACHE, weak)
     : '<p class="sd" style="margin-top:12px">Loading call guide…</p>';
 
+  rpDebriefSnapshot = { title: `Role Play · ${p.name} · Debrief`, producer: rpProducer,
+    body: `<div class="tiles" style="margin-bottom:6px">
+      <div class="tile"><div class="k">Client type</div><div class="v" style="font-size:16px">${p.name}</div><div class="n">${p.blurb}</div></div>
+      <div class="tile"><div class="k">Lead source</div><div class="v" style="font-size:16px">${ls.label}</div><div class="n">${ls.tip}</div></div>
+      ${ls.prospect ? `<div class="tile"><div class="k">Prospect</div><div class="v" style="font-size:16px">${ls.prospect.name}</div>
+        <div class="n">${ls.prospect.age} &middot; ${ls.prospect.occupation}</div><div class="n">${ls.prospect.family}</div></div>` : ""}
+    </div>
+    ${weakHtml}
+    <div class="bl" style="margin-top:16px">Approach checklist</div>
+    <ul class="gl g">${RP_APPROACH_CHECKLIST.map(c => `<li>${c}</li>`).join("")}</ul>
+    ${callGuideHtml}` };
   return `<div class="sect"><h2>Role Play &middot; ${p.name} &middot; Debrief</h2>
     <p class="sd">${rpProducer}
       <button class="ghost" id="rpChangePersona" type="button" style="margin-left:6px">change persona</button>
-      <button class="ghost" id="rpChangeProducer" type="button">change producer</button></p>
+      <button class="ghost" id="rpChangeProducer" type="button">change producer</button>
+      ${rpDebriefButtons()}</p>
     <div class="tiles" style="margin-bottom:6px">
       <div class="tile"><div class="k">Client type</div><div class="v" style="font-size:16px">${p.name}</div><div class="n">${p.blurb}</div></div>
       <div class="tile"><div class="k">Lead source</div><div class="v" style="font-size:16px">${ls.label}</div><div class="n">${ls.tip}</div></div>
+      ${ls.prospect ? `<div class="tile"><div class="k">Prospect</div><div class="v" style="font-size:16px">${ls.prospect.name}</div>
+        <div class="n">${ls.prospect.age} &middot; ${ls.prospect.occupation}</div><div class="n">${ls.prospect.family}</div></div>` : ""}
     </div>
     ${weakHtml}
     <div class="bl" style="margin-top:16px">Approach checklist</div>
@@ -2778,7 +2903,8 @@ async function rpSendTurn(text) {
     const focusObjections = producerWeakSpots(rpWeakFor()).map(([c]) => c);
     const r = await fetch("/api/roleplay/turn", {
       method: "POST", headers: { "content-type": "application/json" },
-      body: JSON.stringify({ persona: rpPersonaKey, history: rpHistory, focus_objections: focusObjections, lead_source: rpLeadSource ? rpLeadSource.forCustomer : "" }),
+      body: JSON.stringify({ persona: rpPersonaKey, history: rpHistory, focus_objections: focusObjections, lead_source: rpLeadSource ? rpLeadSource.forCustomer : "",
+        prospect: rpLeadSource && rpLeadSource.prospect ? rpLeadSource.prospect.text : "" }),
     });
     const body = await r.json();
     if (r.ok && body.reply) {
@@ -2806,6 +2932,7 @@ async function rpSubmitGrade() {
     const r = await fetch("/api/roleplay/grade", {
       method: "POST", headers: { "content-type": "application/json" },
       body: JSON.stringify({ producer: rpProducer, persona: rpPersonaKey, history: rpHistory, lead_source: rpLeadSource ? rpLeadSource.label : "",
+                             prospect: rpLeadSource && rpLeadSource.prospect ? rpLeadSource.prospect.text : "",
                              beta: rpIsBeta(), ...(rpIsBeta() ? { as_producer: rpWeakFor() } : {}) }),
     });
     const body = await r.json();
@@ -2862,6 +2989,10 @@ function wireRoleplayPanel() {
     document.getElementById("view").innerHTML = roleplayPanel();
     wireRoleplayPanel();
   };
+  const dWin = document.getElementById("rpDebriefWin");
+  if (dWin) dWin.onclick = () => rpOpenDebrief(false);
+  const dPdf = document.getElementById("rpDebriefPdf");
+  if (dPdf) dPdf.onclick = () => rpOpenDebrief(true);
   const startCall = document.getElementById("rpStartCall");
   if (startCall) startCall.onclick = () => {
     rpStarted = true;
@@ -3600,14 +3731,32 @@ function wireSalesSubTabs() {
 // tab is showing (picked via salesFolioPick there), grouped one of three ways.
 // Frank, 2026-09-24: Lead Source and Policy Type draw as PIE charts of
 // premium share, and the Producer view is replaced by "Premium per
-// Lead Source" -- every lead source ranked by AVERAGE premium per sale
+// Lead Source" -- every lead source CATEGORY ranked by AVERAGE premium per sale
 // (Frank, 2026-09-24), so the sources bringing the biggest policies read
 // top-down; total premium and sale count ride along on each row. Producer totals still live on the Log
 // tab's own Totals pie.
+// Premium per Lead Source groups sources into categories (Frank, 2026-09-24):
+// every center of influence together, social media (not Facebook, which is
+// an internet lead) together, a staff member's name as the source is
+// "Personal network" (Francisco's stays a Referral), and Found us is part of
+// Call-in / walk-in. The categories are lead_sources.sales_category -- the
+// same groups Apollo reads -- published with /api/leadsources; until a
+// publish carries them this falls back to the lead-source group's own label
+// (found_us is only in guides published before these groups changed).
+const LEADSRC_CAT_FALLBACK = { generated: "Internet leads", center_of_influence: "Centers of influence", found_us: "Call-in / walk-in" };
+function salesCategoryOf(name) {
+  const raw = (name || "").trim();
+  if (!raw) return "(none logged)";
+  const cats = (LEADSRC_GUIDE || {}).sales_category;
+  if (cats && cats[lsNorm(raw)]) return cats[lsNorm(raw)];
+  if (!LEADSRC_GUIDE) return raw;
+  const key = lsGroupKey(raw);
+  return LEADSRC_CAT_FALLBACK[key] || (LEADSRC_GUIDE.groups[key] || {}).label || raw;
+}
 const SALES_BREAKDOWN_DIMS = {
   lead_source: { label: "Lead Source", chart: "pie", key: e => (e.lead_source || "").trim() || "(none logged)" },
   product:     { label: "Policy Type", chart: "pie", key: e => (e.product || "").trim() || "(none logged)" },
-  top_sources: { label: "Premium per Lead Source", chart: "rank", key: e => (e.lead_source || "").trim() || "(none logged)" },
+  top_sources: { label: "Premium per Lead Source", chart: "rank", key: e => salesCategoryOf(e.lead_source) },
 };
 // Pie slices take categorical slots --s1..--s7 (validated 8-hue theme, see
 // :root) in premium order; past 7 the smallest fold into a neutral-grey
@@ -3620,9 +3769,13 @@ function computeSalesBreakdown(entries, dim) {
   const agg = {};
   for (const e of entries) {
     const key = keyOf(e);
-    const row = agg[key] || (agg[key] = { key, premium: 0, count: 0 });
+    const row = agg[key] || (agg[key] = { key, premium: 0, count: 0, members: {} });
     row.premium += e.premium || 0;
     row.count++;
+    const src = (e.lead_source || "").trim() || "(none logged)";
+    const m = row.members[src] || (row.members[src] = { name: src, premium: 0, count: 0 });
+    m.premium += e.premium || 0;
+    m.count++;
   }
   const rows = Object.values(agg).sort((a, b) => b.premium - a.premium || b.count - a.count);
   if (SALES_BREAKDOWN_DIMS[dim].chart === "rank") {
@@ -3687,15 +3840,22 @@ function salesBreakdownPanel(data) {
     body = `<div class="bkpie-wrap">${salesPieSvg(rows, totalPremium, colorFor)}<div class="bkleg">${legend}</div></div>`;
   } else {
     const busiest = Math.max(...rows.map(r => r.avg), 1);
-    body = rows.map((row, i) => `<div class="orow bkrank" data-tip="${`<b>${row.key}</b><br>${money(row.premium)} &middot; ${salesCount(row.count)} &middot; avg ${money(row.premium / row.count)}`.replace(/"/g, "&quot;")}"><div class="orow-head">
-      <span class="who"><span class="bkrank-n">${i + 1}</span>${row.key}</span>
+    const memberTip = row => {
+      const ms = Object.values(row.members).map(m => ({ ...m, avg: m.premium / m.count }))
+        .sort((a, b) => b.avg - a.avg || b.premium - a.premium);
+      return `<b>${row.key}</b> &middot; ${money(row.avg)} avg &middot; ${salesCount(row.count)}`
+        + `<table class="bktip">${ms.map(m => `<tr><td>${m.name}</td><td>${money(m.avg)} avg</td><td>${salesCount(m.count)}</td><td>${money(m.premium)}</td></tr>`).join("")}</table>`;
+    };
+    body = rows.map((row, i) => { const nsrc = Object.keys(row.members).length;
+      return `<div class="orow bkrank" data-tip="${memberTip(row).replace(/"/g, "&quot;")}"><div class="orow-head">
+      <span class="who"><span class="bkrank-n">${i + 1}</span>${row.key}${nsrc > 1 ? ` <span class="bkrank-src">${nsrc} sources</span>` : ""}</span>
       <span class="on"><b>${money(row.avg)}</b> avg per sale &middot; ${salesCount(row.count)} &middot; ${money(row.premium)} total</span></div>
       <div style="width:${(row.avg / busiest * 100).toFixed(2)}%"><div class="otrack">
-        <span class="ogseg" style="width:100%;background:var(--bar)"></span></div></div></div>`).join("");
+        <span class="ogseg" style="width:100%;background:var(--bar)"></span></div></div></div>`; }).join("");
   }
   const sub = spec.chart === "pie"
     ? `Share of premium by ${spec.label.toLowerCase()}: ${money(totalPremium)} across ${salesCount(entries.length)} in ${where}${otherCount ? `. "Other" folds in the ${otherCount} smallest ${spec.label.toLowerCase()} groups` : ""}.`
-    : `Every lead source ranked by average premium per sale (its premium over its sales) in ${where}: ${money(totalPremium)} across ${salesCount(entries.length)} in all. A source with one sale ranks on that one policy alone.`;
+    : `Lead source categories ranked by average premium per sale (premium over sales) in ${where}: ${money(totalPremium)} across ${salesCount(entries.length)} in all. Hover a row for the lead sources inside it. A category with one sale ranks on that one policy alone.`;
   return `<div class="sect"><h2>Sales breakdown</h2><p class="sd">${sub}</p>${controls}${body}</div>`;
 }
 function wireSalesBreakdownPanel() {
@@ -4014,24 +4174,22 @@ function fmtDur(h) {
    resolutions take six distinct board categorical slots, ordered so every
    neighbour in the stack passes the palette validator in both modes (worst
    adjacent CVD dE 17.6 light / 13.0 dark, normal-vision 24.0 / 19.7): kept =
-   aqua, blue, green; lost = magenta, violet; Unable to Contact (renewed,
+   aqua, blue, green; lost = magenta, violet, and red for Client Cancelled
+   (added 2026-09-24); Unable to Contact (renewed,
    but never discussed with the customer) = yellow. No action: Review if
    needed (added 2026-09-24) = orange, between aqua and blue.
-   A policy-record reading wears its counterpart's colour HATCHED and a read
-   of the rep's note (a "_notes" key) wears it DOTTED, so solid always means
-   the SR's own resolution. Segments are split by a 2px gap and
+   Frank's resolutions are the ONLY outcomes (2026-09-24), whether the SR
+   carried one or the rep's note was read into one. The one hatched segment is
+   a cancellation of a policy already cancelled before the SR was opened:
+   violet, outside the rate. Segments are split by a 2px gap and
    the legend carries every count, which is the relief yellow and aqua need
    for sitting under 3:1 on the light surface. */
 const OUTCOME_COLORS = {
   renewed_as_is: ["--s3"], no_action_review: ["--s2"], renewed_endorsed: ["--s1"], rewrite_accepted: ["--s6"],
-  cancelled_rewrite_declined: ["--s5"], cancelled_no_option: ["--s7"], unable_to_contact: ["--s4"],
-  renewed_record: ["--s3", 1], rewritten_record: ["--s6", 1], cancelled_record: ["--s5", 1],
-  already_cancelled: ["--s7", 1], pending_record: ["--s4", 1],
-  no_renewal_record: ["--text-muted", 1], unmatched: ["--text-secondary", 1],
+  cancelled_rewrite_declined: ["--s5"], cancelled_no_option: ["--s7"], client_cancelled: ["--s8"], unable_to_contact: ["--s4"],
+  cancelled_before_sr: ["--s7", 1],
 };
 const outcomeFill = k => {
-  if (k.endsWith("_notes")) { const [v] = OUTCOME_COLORS[k.slice(0, -6)] || ["--text-muted"];
-    return `background-color:var(${v});background-image:var(--dots);background-size:4px 4px`; }
   const [v, hatch] = OUTCOME_COLORS[k] || ["--text-muted"];
   return `background-color:var(${v})${hatch ? ";background-image:var(--hatch)" : ""}`; };
 function renewalRate(rows, kind) {
@@ -4071,17 +4229,19 @@ function renewalBreakdownHtml(m) {
   const legend = counts.map(([k, l, c]) =>
     `<span class="oleg-item"><span class="pd rdot" style="${outcomeFill(k)}"></span>${l} <b>${c}</b> <span style="color:var(--text-muted)">(${Math.round(100 * c / rows.length)}%)</span></span>`).join("");
   const team = renewalRate(rows, kind);
-  const fromRecord = rows.filter(r => r.source === "record").length;
-  const fromNotes = rows.filter(r => r.source === "notes").length;
+  const bySrc = s => rows.filter(r => r.source === s).length;
+  const src = [[bySrc("resolution"), "closed on the team's own resolution"],
+    [bySrc("notes"), "closed as Completed, outcome read from the rep's note by AI"],
+    [bySrc("no_note"), `closed as Completed with no note, or a note that does not say, so counted as ${label.unable_to_contact || "Unable to Contact/No Show"}`],
+    [bySrc("unread"), "have a note not read yet (counted as Unable to Contact/No Show until the next nightly run reads it)"]].filter(x => x[0]);
   const unnamed = Object.entries(m.unnamed || {});
   return `<div class="sect"><h2>Renewal Outcome Breakdown</h2>
-    <p class="sd">Renewal SRs completed in this period and how each one ended. Retained = renewed (including No action: Review if needed and Unable to Contact, which renewed as is without the renewal being discussed with the customer) or rewrite accepted, over everything with a decided outcome (renewed, rewritten or cancelled). Renewals still ahead, policies already cancelled before the SR was opened, and out-of-date policy records sit outside the rate.</p>
+    <p class="sd">Renewal SRs completed in this period and how each one ended. Retained = renewed (including No action: Review if needed and Unable to Contact/No Show, which renewed as is without the renewal being discussed with the customer) or rewrite accepted, over everything renewed, rewritten or cancelled. A cancellation of a policy already cancelled before the SR was opened (hatched) sits outside the rate.</p>
     <div class="tiles rtiles">${card(rows, pbadge(TEAM_DOT, "Team"), true)}${personCards}</div>
     <h3 style="font-size:12px;text-transform:uppercase;letter-spacing:.06em;color:var(--text-muted);margin:16px 0 6px">By pipeline</h3>
     <div class="tiles rtiles">${pipeCards}</div>
     <div class="oleg">${legend}</div>
-    ${fromNotes ? `<p class="sd" style="margin:10px 0 0">${fromNotes} of ${rows.length} read from the rep's own note by AI (the dotted segments): closed on a resolution that is not a renewal resolution, such as Completed, the usual choice before ${fmtShortDate(m.resolutionsFrom)}.</p>` : ""}
-    ${fromRecord ? `<p class="sd" style="margin:${fromNotes ? 4 : 10}px 0 0">${fromRecord} of ${rows.length} read from the policy's own record (the hatched segments): closed on another resolution with a note that does not say how the renewal ended.</p>` : ""}
+    ${src.length ? `<p class="sd" style="margin:10px 0 0">Of ${rows.length}: ${src.map(([n, t]) => `${n} ${t}`).join("; ")}.</p>` : ""}
     ${unnamed.length ? `<p class="sd" style="margin:6px 0 0;color:#b45309">Closed on a resolution that is not a renewal resolution: ${unnamed.map(([k, n]) => `${k} (${n} SR${n === 1 ? "" : "s"})`).join(", ")}.</p>` : ""}
   </div>`;
 }
@@ -4290,7 +4450,7 @@ function comOutcomesHtml(m) {
     `<span class="oleg-item"><span class="pd rdot" style="${outcomeFill(k)}"></span>${l} <b>${rs.length}</b> <span style="color:var(--text-muted)">(${money(rs.reduce((a, r) => a + (r.premium || 0), 0))})</span></span>`).join("");
   const unnamed = Object.entries(m.unnamed || {});
   return `<div class="sect"><h2>Renewal Outcomes</h2>
-    <p class="sd">Commercial renewal SRs completed in this period and how each ended, with the same renewal resolutions as the service team (then the rep's note, dotted, then the policy record, hatched): retained = renewed (No action and Unable to Contact included, which renewed as is) or rewrite accepted, over everything with a decided outcome. Not a book-wide retention rate.</p>
+    <p class="sd">Commercial renewal SRs completed in this period and how each ended, with the same renewal resolutions as the service team (an SR closed as Completed takes the one its rep's note describes, or Unable to Contact/No Show when the note does not say): retained = renewed (No action and Unable to Contact/No Show included, which renewed as is) or rewrite accepted, over everything renewed, rewritten or cancelled. Not a book-wide retention rate.</p>
     <div class="orow"><div class="orow-head"><span class="who">${pbadge(TEAM_DOT, "Commercial")}</span>
       <span class="on">${rows.length} renewal SR${rows.length === 1 ? "" : "s"}${rt.pct == null ? "" : ` &middot; <b>${rt.pct}%</b> retained (${rt.kept} of ${rt.kept + rt.lost})`}</span></div>
       <div class="otrack">${segs}</div></div>

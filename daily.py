@@ -1094,6 +1094,13 @@ def publish_service(day):
     except (Exception, SystemExit) as e:
         log(f"service digest failed ({type(e).__name__}: {e}) -- "
             f"the Service tab keeps its last day")
+    # A recent working day with no page (a night the run failed or never
+    # happened) is built from its saved files. Separate try, like the rest.
+    try:
+        import service_digest
+        service_digest.backfill_missing_days(day, log=log)
+    except (Exception, SystemExit) as e:
+        log(f"service backfill failed ({type(e).__name__}: {e}) -- missing days stay missing")
     # Earlier days' renewal outcomes, re-read now that their renewal dates may
     # have passed (and, once, from the reps' notes). Separate try: it must
     # never cost today's document.
