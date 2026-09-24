@@ -156,25 +156,33 @@ SOURCES = {
     "smart financial live transfer": "generated", "enterprise": "generated",
     "mav ai": "generated", "alpha media": "generated",
     "arizona insurance reports": "generated", "facebook": "generated",
+    # Instagram and LinkedIn share AgencyZoom's Social Media category with
+    # Facebook. Neither has a lead yet (2026-09-24).
+    "instagram": "generated", "linkedin": "generated",
     # found us
     "google": "found_us", "farmers.com": "found_us",
     # winback
     "winback": "winback", "winback by agencyzoom": "winback",
     # referral
     "existing customer referral": "referral", "referral by agencyzoom": "referral",
-    # center of influence without an "at Company" in the name
+    # center of influence without an "at Company" in the name. Mariah Serna is
+    # being renamed "Mariah @ MRS" in AgencyZoom (Frank, 2026-09-24); the new
+    # name matches the pattern, and the old one stays here for past leads.
     "lender no longer in the industry": "center_of_influence",
+    "mariah serna": "center_of_influence",
     # inbound
     "call-in": "inbound", "walk-in": "inbound",
     # cold / misc
     "cold lead": "cold", "fig qnt": "cold", "crane benefit fair": "cold",
     "old mvp leads": "cold",
+    "utv expo": "cold",   # an event booth, like Crane; no leads yet
     # other one-offs
     "hometown quotes": "one_off", "x": "one_off", "other lead": "one_off",
     # commercial -> Cerberus
     "leo": "commercial", "work comp": "commercial",
     "district comm leads": "commercial", "agent promoter comm leads": "commercial",
     "rcfbh group life": "commercial",
+    "kraft lake": "commercial",   # AgencyZoom's Commercial Leads category; no leads yet
     # not a sale
     "bob": "not_a_sale", "rewrite": "not_a_sale",
 }
@@ -187,11 +195,16 @@ CROSS_SELL_PRODUCT = {
 
 # Staff whose name used as a lead source means their own referral or network.
 # Current and past team; a new hire's name as a source lands in "unclassified"
-# until it is added here.
+# until it is added here. Former staff per Frank, 2026-09-24: Adrian
+# Alcantara, Anastasia Perez, Michelle Garcia, Veronica Rodriguez, Maria Medina.
 STAFF = {
     "frank flores", "francisco flores", "veronica flores", "amanda torricellas",
     "debbie aguilera", "crystal mango", "lorena gonzalez", "mike olvera",
     "coral barwick", "sarahi chin",
+    "adrian alcantara", "anastasia perez", "michelle garcia",
+    "veronica rodriguez", "maria medina",
+    # in AgencyZoom's Team category, no leads yet
+    "eleuterio gutierrez", "tori pletsch",
 }
 
 # "Name at Company" / "Name @ Company" is a center of influence.
