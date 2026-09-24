@@ -27,6 +27,12 @@ Everything caches under `data/`, so a re-run resumes rather than restarting.
   groups, what to sell each, and the not-a-sale and cross-sell sets that
   `digest_config` reads. Commercial sources (Leo, Work Comp, the Comm Leads
   lists) are Cerberus's. Frank confirmed the `approach` lines on 2026-09-24.
+- **Apollo judges each call against its lead source** (Frank, 2026-09-24).
+  `coaching_cards._ask_card` sends `lead_sources.prompt_block()`; METHODOLOGY.md's
+  "Lead source" section says how to use it, and the card's `leadfit` verdict
+  is the result. Only reads made from 2026-09-24 on carry it: the card cache
+  is keyed by call, not prompt, so past cards are not re-read (and must not
+  be, for cost).
 - **Role Play never uses a center of influence or cold / misc lead source**
   (Frank, 2026-09-24), nor a one-off, commercial, BOB or Rewrite source
   (`GROUPS[...]["roleplay"]`). That is Role Play only: **calls on those

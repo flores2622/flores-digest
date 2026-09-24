@@ -95,7 +95,14 @@ DIMS = ["Opening & identification", "Discovery", "Current premium captured",
 TECH_DIMS = ["Elevator pitch", "Feel-Felt-Found", "Risk reversal",
              "Social proof", "Trial close", "Takeaway / urgency"]
 
-def _ask_card(model, transcript, notes, seconds, producer, lead, call_count=1):
+def _ask_card(model, transcript, notes, seconds, producer, lead, call_count=1,
+              lead_source=""):
+    # The lead source and the agency's approach for it (Frank, 2026-09-24:
+    # coaching reads judged by lead source). Facts from lead_sources.py;
+    # METHODOLOGY.md's "Lead source" section says how to use them.
+    import lead_sources
+    source_block = lead_sources.prompt_block(lead_source) or \
+        "Lead source: unknown (the call did not resolve to a lead with a source)"
     length_line = (f"Call length: {seconds} seconds" if call_count == 1 else
                    f"Total length across {call_count} calls with this same lead "
                    f"today: {seconds} seconds -- read the transcript below as ONE "
@@ -104,6 +111,7 @@ def _ask_card(model, transcript, notes, seconds, producer, lead, call_count=1):
             f"Producer on this call: {producer}\n"
             f"Lead: {lead or '(name unknown)'}\n"
             f"{length_line}\n\n"
+            f"{source_block}\n\n"
             f"Producer's own notes (may be empty):\n{notes or '(none)'}\n\n"
             f"Machine transcript:\n{transcript}"}]
     base = {"model": model, "system": METHODOLOGY, "messages": msg}
@@ -441,6 +449,12 @@ def _call_breakdown(producer, group, raw_dials):
     return out
 
 
+def _lead_group(leadsrc):
+    """The lead-source guide's group label for the card ("" with no source)."""
+    import lead_sources
+    return lead_sources.group(leadsrc)["label"] if leadsrc.strip() else ""
+
+
 def _finish_card(d, producer, group, raw_dials, day, transcript, recording_ids):
     """Merge the model's judgment with everything already known from the
     pipeline. Every mechanical field below is cheaper and more reliable to
@@ -461,6 +475,10 @@ def _finish_card(d, producer, group, raw_dials, day, transcript, recording_ids):
     # [False, ""], on a card read before METHODOLOGY.md had the key, so the
     # board can leave the row off rather than claim "no" it never checked.
     exit_ = _bool_pair(d.get("exit")) if "exit" in d else None
+    # Did the producer work the lead the way its source calls for (Frank,
+    # 2026-09-24)? None on a card read before METHODOLOGY.md asked, so the
+    # board leaves the row off rather than show a verdict nobody gave.
+    leadfit = _clean_score({"x": d.get("leadfit")}, ["x"]).get("x") if "leadfit" in d else None
     cat, catc = _category(group)
     lead = next((r.get("lead") for r in group if r.get("lead")), "") or ""
     # AgencyZoom lead id, straight off the same call_detail rows day_calls.
@@ -518,6 +536,8 @@ def _finish_card(d, producer, group, raw_dials, day, transcript, recording_ids):
         # AgencyZoom's own leadSourceName, not the Google Sheet's (Frank,
         # 2026-09-12) -- blank when the call never resolved to a lead record.
         "leadsrc": leadsrc,
+        "leadgroup": _lead_group(leadsrc),
+        "leadfit": leadfit,
         "lang": str(d.get("lang") or "").strip() or "English",
         "src": "recording",
         "cat": cat, "catc": catc,
@@ -676,10 +696,12 @@ def build(day, log=print):
             notes = " / ".join(
                 n for n in ((r.get("note_producer") or "").replace("&middot;", ";").strip()
                             for r in grp) if n)
+            src = next((r.get("lead_source") for r in grp if r.get("lead_source")), "") or ""
             try:
                 d = _ask_card(model, text[:16000], notes, total_seconds,
                              p.split()[0], lead_name,
-                             call_count=len(_distinct_calls(p, grp)))
+                             call_count=len(_distinct_calls(p, grp)),
+                             lead_source=src)
                 cache[gck] = d
             except Exception as e:
                 log(f"    {lead_name}: coaching read failed ({type(e).__name__}) -- no card")

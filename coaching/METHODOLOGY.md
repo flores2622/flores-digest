@@ -259,6 +259,54 @@ still gets an "m" there, same as on a sales call.
   says "let me put a note in the system for X" and either does or visibly
   skips it). Do not guess at what happened after the call ended.
 
+## Lead source (Frank, 2026-09-24)
+
+Every call arrives with a "Lead source" block: the AgencyZoom lead source,
+its group, who that lead is, what to sell them, and how the agency works
+that kind of lead. The block comes from `lead_sources.py`, the agency's
+lead-source guide, and those lines are Frank's. Do not re-derive them.
+
+Read the call knowing who the producer was talking to. The lead source
+changes what a good call looks like, not the standards in the rest of this
+file. **The approach line says what to accomplish, not words to recite.** A
+producer who got a Home no Auto customer talking about their autos did the
+job however they phrased it; never mark someone down for not using the
+approach line's own wording, and never quote it back as the "right" line.
+Judge the move, not the script:
+
+- **Cross-sell** (Home no Auto, Auto no Home, Life Cross Sell, Umbrella,
+  Cross Sell): the household is already ours, and the missing product IS
+  the call. "Bundle / cross-sell raised" is judged on the product the source
+  names: a Home no Auto call that never gets to the autos is an "m" there,
+  whatever else went well. "I already have insurance with you" is not a
+  reason to stop; per Core judgment a cross-sell is new business.
+- **Existing client, new purchase**: they came to us about something they
+  just bought. Speed and completeness come first, then a look at the rest of
+  the household.
+- **Generated / purchased** and **Found us**: a stranger who asked for a
+  quote, often from several agents. Re-establishing why the producer is
+  calling, and discovery (current carrier, premium, renewal date), matter
+  most, because price shopping is the expected objection.
+- **Winback**: a former customer. The strong move is finding out why they
+  left before quoting. A producer who quotes without asking is a "w" or "m"
+  on Discovery.
+- **Referral**: naming the person who referred them early is the approach.
+  If the referrer never comes up, say so.
+- **Call-in / walk-in**: they came to us ready. Answer what they came for,
+  then round out the household.
+- **Center of influence**: the agency deals with the loan officer or
+  realtor, not the client. If the other person on the call is that referral
+  partner, it is not a prospect sales call: score the prospect-facing
+  dimensions "n" and coach it as a partner call. If it really is the client,
+  coach it normally.
+- **Cold / misc, other one-offs, commercial, unknown**: no set approach.
+  Coach the call on the rest of this file alone.
+
+The lead source is a label someone chose in AgencyZoom, and sometimes it is
+wrong. If the call plainly contradicts it (a "Home no Auto" lead whose
+autos are already with us, a "Winback" who was never a customer), coach
+what actually happened and say so in `leadfit`'s detail.
+
 ## Output format
 
 Return ONLY a JSON object, no prose around it, with exactly these keys.
@@ -439,6 +487,15 @@ for it"]`. Wrong: `"askq": false`. Same for "calltype", "asks" and "exit".
            must be traceable to something actually said, quoted or closely
            paraphrased in the detail sentence. If you can't point to it, it's
            "m" or "n", not "s".
+"leadfit"  [letter, one-sentence detail]: did the producer work this lead the
+           way its source calls for (see "Lead source" above)? Same
+           s/w/m/n letters as "score": "s" did what the approach calls for,
+           and the detail quotes it; "w" attempted it thinly; "m" a clear
+           chance to work the lead its way went by; "n" when the source has
+           no set approach, the source is unknown, or the call gave no chance
+           (a pure service call, or a center-of-influence call with the
+           referral partner). Name the source's own move in the detail, e.g.
+           "Never raised the autos on a Home no Auto lead".
 "spine"    an array of 4-8 [time, colour, headline, detail] entries walking
            through the call in order. "time" is a rough mm:ss into the call.
            "colour" is "g" (this moment went well), "y" (mixed/questionable),
@@ -455,7 +512,9 @@ for it"]`. Wrong: `"askq": false`. Same for "calltype", "asks" and "exit".
 
 - Category badge (Sold / Quoted / Contacted / Dead), lead source, and time of
   day are computed separately from structured data, not by you — you do not
-  need to and should not try to infer them. This is a DIFFERENT axis from
+  need to and should not try to infer them. The lead source IS given to you
+  (the "Lead source" block) so you can judge the call against it; do not
+  guess one when it says unknown. This is a DIFFERENT axis from
   `calltype` (sales/service/mixed): the badge is a deal-stage outcome computed
   mechanically outside this prompt; `calltype` is your own judgment of what
   kind of call this was, made from the transcript alone. A call can be
@@ -475,6 +534,9 @@ for it"]`. Wrong: `"askq": false`. Same for "calltype", "asks" and "exit".
   checklist. If a dimension consistently doesn't fit how coaching
   conversations actually go, that's something to change here, not something
   to work around per-call.
+- "leadfit" (Frank, 2026-09-24) is new and unproven. Watch whether it
+  simply repeats "Bundle / cross-sell raised" on cross-sell calls, and
+  whether a wrong AgencyZoom source gets coached as if it were right.
 - "techniques" (Frank, 2026-09-10) is new and unproven -- it asks the same
   model that already reads the call to also recognize named sales techniques
   (elevator pitch, feel-felt-found, risk reversal, and similar) rather than
