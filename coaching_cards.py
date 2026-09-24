@@ -713,6 +713,29 @@ def build(day, log=print):
     return cards
 
 
+def split_by_lead_source(cards):
+    """(coached, not_coached). A call on a lead source the guide marks as not
+    coached -- a center of influence or cold / misc (Frank, 2026-09-24: "we
+    barely use them and center of influence we dont even talk to the client,
+    only the referral partner"), a one-off, a commercial source, a BOB or
+    Rewrite -- leaves the coaching cards entirely, so it cannot reach scan(),
+    objcats(), the objection chart or Role Play's weak spots. What is left
+    of it is one line naming the call and why, for the Coaching Center's note."""
+    import lead_sources
+    coached, skipped = [], []
+    for c in cards or []:
+        src = c.get("leadsrc") or ""
+        if lead_sources.coached(src):
+            coached.append(c)
+            continue
+        skipped.append({
+            "day": c.get("day"), "who": c.get("who"), "lead": c.get("lead"),
+            "lead_id": c.get("lead_id"), "time": c.get("time"),
+            "leadsrc": src.strip(), "group": lead_sources.group(src)["label"],
+        })
+    return coached, skipped
+
+
 def scan(cards):
     """The "What the day says" cross-call figures digestDay renders, computed
     straight off the generated cards -- mechanical, not a model read."""

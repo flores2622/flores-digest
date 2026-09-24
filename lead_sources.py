@@ -13,9 +13,9 @@ imports:
   * EXISTING_HOUSEHOLD  the cross-sell sources, where AgencyZoom's own label says
                     the household was already a customer.
 
-`approach` is Apollo's DRAFT for each group. Nothing reads it until Frank
-confirms it (`approach_confirmed`). Coaching reads, Role Play and the Sales
-Center must not quote an unconfirmed line as agency policy.
+`approach` is how to work each group; Frank confirmed them on 2026-09-24
+(`APPROACH_CONFIRMED`). `coach` says whether a group's calls are coached
+and used for Role Play at all.
 """
 import re
 
@@ -28,6 +28,8 @@ GROUPS = {
         "who": "An existing household missing a product. We marketed the gap to them.",
         "products": "the product the source names (see CROSS_SELL_PRODUCT)",
         "existing_household": True, "sale": True, "owner": "apollo",
+        # Role Play: what the prospect knows about how this call came about.
+        "backstory": 'You are already a customer of this agency for one policy. The producer is calling about {product} coverage you do not have with them yet.',
         "approach": "They already trust us. Open with the policy they have, then "
                     "the gap: 'we insure your home, who has your autos?' Quote "
                     "the missing line and show the bundle saving.",
@@ -38,6 +40,8 @@ GROUPS = {
                "something new, usually a property. We did not market it.",
         "products": "usually home/landlord for the new property, but " + ANY,
         "existing_household": True, "sale": True, "owner": "apollo",
+        # Role Play: what the prospect knows about how this call came about.
+        "backstory": 'You are already a customer of this agency. You just bought something new, most likely a property, and you called in to get it covered.',
         "approach": "They came to us, so the job is speed and completeness. Write "
                     "the new item, then review the household for anything else "
                     "it lacks.",
@@ -48,6 +52,8 @@ GROUPS = {
                "for a quote somewhere.",
         "products": ANY,
         "existing_household": False, "sale": True, "owner": "apollo",
+        # Role Play: what the prospect knows about how this call came about.
+        "backstory": 'A day or two ago you asked for an insurance quote online, on a comparison or quote site, and gave your number. Several agents may be calling you.',
         "approach": "Speed to lead. They have usually asked several agents, so the "
                     "first real conversation wins. Expect price shopping; get "
                     "current carrier and renewal date, then quote to bundle.",
@@ -59,6 +65,8 @@ GROUPS = {
                "Not purchased: they looked for an agent.",
         "products": ANY,
         "existing_household": False, "sale": True, "owner": "apollo",
+        # Role Play: what the prospect knows about how this call came about.
+        "backstory": 'You found this agency yourself, on Google or through a form on farmers.com, and asked an agent to contact you.',
         "approach": "Warmer than a purchased lead: they chose an agent. Call fast, "
                     "confirm what they asked for, then round out the household.",
     },
@@ -67,6 +75,8 @@ GROUPS = {
         "who": "A former customer we are trying to win back.",
         "products": ANY,
         "existing_household": False, "sale": True, "owner": "apollo",
+        # Role Play: what the prospect knows about how this call came about.
+        "backstory": 'You used to insure with this agency and moved to another company. The producer is calling to win you back.',
         "approach": "Find out why they left before quoting. Lead with what has "
                     "changed since, and quote what they had plus anything missing.",
     },
@@ -76,24 +86,28 @@ GROUPS = {
                "network (a source named after one of us).",
         "products": ANY,
         "existing_household": False, "sale": True, "owner": "apollo",
+        # Role Play: what the prospect knows about how this call came about.
+        "backstory": 'Someone you know, a customer of this agency or someone who works there, gave the producer your number and said they would call.',
         "approach": "Name the person who referred them in the first sentence. The "
                     "trust is borrowed, so follow up the way that person would expect.",
     },
     "center_of_influence": {
         "label": "Center of influence",
         "who": "A mortgage loan officer or realtor (\"Name at Company\"). They "
-               "refer us the home on a purchase.",
+               "refer us the home on a purchase, and we deal with them, not "
+               "with the client.",
         "products": "home first, then a cross-sell attempt",
         "existing_household": False, "sale": True, "owner": "apollo",
-        "approach": "The closing date drives it. Bind the home on time and keep the "
-                    "loan officer or realtor informed. Once the home is settled, "
-                    "offer autos and the rest.",
+        "coach": False,   # Frank, 2026-09-24: we only talk to the referral partner
+        "approach": None,
     },
     "inbound": {
         "label": "Call-in / walk-in",
         "who": "Someone who called or walked in on their own.",
         "products": ANY,
         "existing_household": False, "sale": True, "owner": "apollo",
+        # Role Play: what the prospect knows about how this call came about.
+        "backstory": 'You called the agency yourself because you want a quote.',
         "approach": "They are ready now. Answer the question they came with, then "
                     "ask what else they have and who insures it.",
     },
@@ -104,9 +118,8 @@ GROUPS = {
                "local school fair), Old MVP Leads (the old CRM).",
         "products": ANY,
         "existing_household": False, "sale": True, "owner": "apollo",
-        "approach": "They did not ask to hear from us today. Give a reason for the "
-                    "call in the first line and expect voicemail; persistence "
-                    "matters more than the script.",
+        "coach": False,   # Frank, 2026-09-24: barely used
+        "approach": None,
     },
     "one_off": {
         "label": "Other one-offs",
@@ -136,12 +149,24 @@ GROUPS = {
         "who": "A source Frank has not defined yet.",
         "products": None,
         "existing_household": False, "sale": True, "owner": "apollo",
+        # A new source still gets coached until someone classifies it, rather
+        # than silently dropping out of the coaching figures.
+        "coach": True,
         "approach": None,
     },
 }
 
-# Flip a group to True once Frank has read its approach line and agreed to it.
-APPROACH_CONFIRMED = {k: False for k in GROUPS}
+# Whether a group's calls are coached and used for Role Play. False for
+# centers of influence and cold / misc (Frank, 2026-09-24: "we barely use
+# them and center of influence we dont even talk to the client, only the
+# referral partner"), and for every group with no approach: one-offs,
+# commercial (Cerberus's), not a sale. Unclassified stays coached.
+for _k, _g in GROUPS.items():
+    _g.setdefault("coach", _g["approach"] is not None)
+
+# Frank read every approach line on 2026-09-24: "all looks good. we can keep
+# building on that later". A new or rewritten line starts False again.
+APPROACH_CONFIRMED = {k: g["approach"] is not None for k, g in GROUPS.items()}
 
 # Normalised name (see norm) -> group. Everything not listed here is decided
 # by the patterns in classify().
@@ -161,6 +186,7 @@ SOURCES = {
     "instagram": "generated", "linkedin": "generated",
     # found us
     "google": "found_us", "farmers.com": "found_us",
+    "found us on google": "found_us",   # the name on some 2026-09 lead records
     # winback
     "winback": "winback", "winback by agencyzoom": "winback",
     # referral
@@ -235,6 +261,26 @@ def group(name):
     return GROUPS[classify(name)]
 
 
+def coached(name):
+    """True when a call on this lead source is coached and can seed Role Play.
+    A call with no lead source at all is coached, as it always has been."""
+    return not norm(name) or GROUPS[classify(name)]["coach"]
+
+
+def board_map(names):
+    """{name: group} for the names given, plus the groups themselves, for the
+    board (published with the lead-source list; see publish_board)."""
+    return {
+        # keyed by norm(name); the board normalises the same way
+        "source_group": {norm(n): classify(n) for n in names if norm(n)},
+        "cross_sell_product": {n: p for n, p in CROSS_SELL_PRODUCT.items() if p},
+        "groups": {k: {"label": g["label"], "who": g["who"], "products": g["products"],
+                       "approach": g["approach"], "coach": g["coach"],
+                       "backstory": g.get("backstory")}
+                   for k, g in GROUPS.items()},
+    }
+
+
 def cross_sell_product(name):
     return CROSS_SELL_PRODUCT.get(norm(name))
 
@@ -260,7 +306,8 @@ def main():
             continue
         rows = sorted(by[key], reverse=True)
         print(f"\n{g['label']}  ({len(rows)} sources, {sum(n for n, _ in rows):,} leads)"
-              f"  products: {g['products'] or '-'}  owner: {g['owner'] or '-'}")
+              f"  products: {g['products'] or '-'}  owner: {g['owner'] or '-'}"
+              f"  coached: {'yes' if g['coach'] else 'no'}")
         for n, name in rows:
             print(f"   {n:6,d}  {name}")
 
