@@ -319,12 +319,51 @@ def _clean_pairs(raw, cap=6):
     return out
 
 
+# The model sometimes keys the scorecards in shorthand instead of the exact
+# names METHODOLOGY.md asks for -- "opening", "crm", "next_step", "fff",
+# "trial_close", or a full name in lower case. 27 of 343 cached reads did (a
+# survey of every read in R2, 2026-09-24), and every such dimension used to be
+# dropped, leaving the card's scorecard empty or "not scored". Each alias
+# below is one actually seen in those reads, compared after _norm_key.
+SCORE_ALIASES = {
+    "Opening & identification": ("opening",),
+    "Discovery": ("discovery",),
+    "Current premium captured": ("premium", "premiumcaptured", "currentpremium"),
+    "Renewal / X-date captured": ("renewal", "renewalcaptured", "renewaldate", "xdate"),
+    "Product knowledge": ("product",),
+    "Presenting numbers": ("numbers", "numberspresented"),
+    "Bundle / cross-sell raised": ("bundle", "crosssell", "bundlecrosssell"),
+    "Next step specificity": ("nextstep",),
+    "CRM after the call": ("crm", "crmafter"),
+    "Elevator pitch": ("elevator", "pitch"),
+    "Feel-Felt-Found": ("fff", "feltfound"),
+    "Risk reversal": ("risk",),
+    "Social proof": ("social",),
+    "Trial close": ("trial",),
+    "Takeaway / urgency": ("urgency", "takeaway"),
+}
+
+
+def _norm_key(k):
+    return re.sub(r"[^a-z0-9]", "", str(k).lower())
+
+
 def _clean_score(raw, dims=DIMS):
     out = {}
     if not isinstance(raw, dict):
         return out
+    by_norm = {}
+    for k, e in raw.items():
+        by_norm.setdefault(_norm_key(k), e)
     for dim in dims:
+        # The exact name wins; then the name in any case/punctuation; then a
+        # shorthand the model has been seen to use for it.
         e = raw.get(dim)
+        if e is None:
+            for alias in (_norm_key(dim),) + SCORE_ALIASES.get(dim, ()):
+                if alias in by_norm:
+                    e = by_norm[alias]
+                    break
         if isinstance(e, (list, tuple)) and e and str(e[0]).lower() in ("s", "w", "m", "n"):
             out[dim] = [str(e[0]).lower(), str(e[1]).strip() if len(e) > 1 else ""]
     return out
