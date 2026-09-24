@@ -42,6 +42,11 @@ Everything caches under `data/`, so a re-run resumes rather than restarting.
   `stagefit`. The day's MOVE_STAGE notes arrive NEWEST FIRST, and a stage
   name can contain " to " (Ready to Present) -- `pipelines.parse_move` and
   `_chronological` handle both; do not split moves on the first " to ".
+  **Lender Referral** holds accounts a center of influence sent us, so they
+  skip the full automation. **IL Interested and Transfer Pending are not
+  agency stages** (made for an outside texting company): a producer moving a
+  lead into one is a mistake Apollo flags. Open leads misfiled in "Pipeline"
+  are listed on the Sales Center for someone to move (`pipelines.misfiled`).
 - **Role Play never uses a center of influence or cold / misc lead source**
   (Frank, 2026-09-24), nor a one-off, commercial, BOB or Rewrite source
   (`GROUPS[...]["roleplay"]`). That is Role Play only: **calls on those

@@ -64,10 +64,27 @@ STAGES = {
                         "on the quote.",
     "FSD (Pending Bind)": "Future sale date: sold, pending bind.",
 }
-# Same purpose, shorter name in the other pipelines. "Quoted" there is read as
-# Quotes Presented: numbers were given and this is the follow-up.
+# Same purpose, shorter name in the other pipelines (Frank confirmed,
+# 2026-09-24): "Quoted" is Quotes Presented, "Contacted" is Contacted, In
+# Progress.
 STAGES["Contacted"] = STAGES["Contacted, In Progress"]
 STAGES["Quoted"] = STAGES["Quotes Presented"]
+# 1 Pipeline's holding stage for centers of influence (Frank, 2026-09-24).
+STAGES["Lender Referral"] = ("An account a center of influence (a loan officer or "
+                             "realtor) sent us, held here so it does not go through "
+                             "the full automation process.")
+# Life Pipeline's own stages, read as they sound (Frank, 2026-09-24).
+STAGES["Applications"] = "The life application is being taken or has been submitted."
+STAGES["Med. Records Needed"] = "The carrier needs medical records before it decides."
+STAGES["Approved"] = "The carrier approved the life policy."
+
+# Stages made for an outside company that texted our leads for us; the agency
+# never uses them itself (Frank, 2026-09-24: "Crystal used it on accident").
+# A producer moving a lead INTO one is a mistake to flag.
+NOT_OURS = {"IL Interested", "Transfer Pending"}
+for _s in NOT_OURS:
+    STAGES[_s] = ("Not an agency stage: made for an outside texting company. A "
+                  "producer moving a lead here did it by mistake.")
 
 # Where a move can end that is not a stage.
 EXITS = {
@@ -205,12 +222,37 @@ def prompt_block(moves, stage_now="", sold_today=False):
     parsed = _chronological([m for m in (parse_move(x) for x in moves or ()) if m])
     for m in parsed:
         why = f" (loss reason: {m['loss_reason']})" if m["loss_reason"] else ""
+        if split(m["to"])[1] in NOT_OURS:
+            why += " -- NOT an agency stage (made for an outside texting company); moving a lead here is a mistake"
         lines.append(f"Producer moved it today: {m['from']} -> {m['to']}{why}")
     if sold_today:
         lines.append("The lead is marked sold today.")
     elif not parsed:
         lines.append("No stage move on this lead today.")
     return "\n".join(lines)
+
+
+def misfiled(leads):
+    """Open leads sitting in "Pipeline", which integrations fill by mistake
+    and which should be empty (Frank, 2026-09-24): one row each, for the
+    Sales Center's list of leads to move into 1 Pipeline."""
+    rows = []
+    for l in leads or ():
+        if l.get("status") != 0:
+            continue
+        p, stage = split(current_stage(l))
+        if p != "Pipeline":
+            continue
+        rows.append({
+            "lead_id": l.get("id"),
+            "lead": " ".join(x for x in (l.get("firstname"), l.get("lastname")) if x) or "(no name)",
+            "assigned": " ".join(x for x in (l.get("assignToFirstname"), l.get("assignToLastname")) if x),
+            "stage": stage,
+            "source": (l.get("leadSourceName") or "").strip(),
+            "last_activity": str(l.get("lastActivityDate") or "")[:10],
+        })
+    rows.sort(key=lambda r: r["last_activity"], reverse=True)
+    return rows
 
 
 def main():

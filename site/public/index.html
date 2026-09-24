@@ -1314,6 +1314,23 @@ function speedPanel(d, who) {
     <div class="tiles">${cards}</div></div>`;
 }
 
+/* Open leads sitting in "Pipeline" -- integrations drop leads there that
+   belong in 1 Pipeline, and it should be empty (Frank, 2026-09-24). A to-do
+   list: each row links to the lead in AgencyZoom to move it. Day view only;
+   a range has no single end-of-day snapshot to list. */
+function misfiledPanel(d, who) {
+  const all = (d.misfiled || []).filter(r => !who || r.assigned === who);
+  if (!all.length) return "";
+  const rows = all.map(r => `<tr>
+    <td><a href="${AZ_URL.lead}${encodeURIComponent(r.lead_id)}" target="_blank" rel="noopener">${r.lead}</a></td>
+    <td>${r.assigned || "—"}</td><td>${r.stage || ""}</td><td>${r.source || ""}</td>
+    <td class="num">${r.last_activity ? fmtShortDate(r.last_activity) : "—"}</td></tr>`).join("");
+  return `<div class="sect"><h2>Leads to move out of "Pipeline"</h2>
+   <p class="sd">${all.length} open lead${all.length === 1 ? "" : "s"} misfiled in "Pipeline" by an integration. Move each into 1 Pipeline.</p>
+   <div class="scroll"><table><thead><tr><th>Lead</th><th>Assigned</th><th>Stage</th><th>Source</th>
+   <th class="num">Last activity</th></tr></thead><tbody>${rows}</tbody></table></div></div>`;
+}
+
 function recontactPanel(d, who) {
   const all = ((d.recontact || {}).at_risk || []).filter(r => !who || r.producer === who);
   const rows = all.slice(0, 14).map(r => `<tr>
@@ -1491,7 +1508,8 @@ function digestPanel(d, who) {
     <div>${outcomeBreakdownHtml(d, who)}${taskCompletionHtml(d, who)}${speedPanel(d, who)}</div>
     <div>${utilizationHtml(d, who)}${householdCompletionHtml(d, who)}${coachQualityHtml(d, who)}</div>
   </div>
-  ${auditPanel(d, who)}`;
+  ${auditPanel(d, who)}
+  ${misfiledPanel(d, who)}`;
 }
 
 /* ---- Range aggregates (This Week / MTD / YTD / Folio / Custom) ------------

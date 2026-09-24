@@ -346,6 +346,14 @@ What the stage asks of the call:
 - **1-2 Leads Not Quoted**: the first job is getting them quoted at all.
 - **FSD (Pending Bind)**: sold, pending bind. Lock the bind details and date;
   do not reopen the sale.
+- **Lender Referral**: an account a center of influence sent us, held so it
+  skips the full automation. Coach the call as that referral (see "Center of
+  influence" under Lead source).
+- **Life Pipeline** stages (Applications, Med. Records Needed, Approved) mean
+  what they say; the call should move the life application forward.
+- **IL Interested / Transfer Pending** are not agency stages: they were made
+  for an outside texting company. A producer moving a lead INTO either one did
+  it by mistake: flag it, whatever the call was.
 - A commercial or AZ Sun pipeline is Frank's: coach the call on the rest of
   this file and score `stagefit` "n". An unknown stage, or one with no set
   meaning, is also "n".
