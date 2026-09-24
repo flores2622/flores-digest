@@ -307,6 +307,56 @@ wrong. If the call plainly contradicts it (a "Home no Auto" lead whose
 autos are already with us, a "Winback" who was never a customer), coach
 what actually happened and say so in `leadfit`'s detail.
 
+## Pipeline and stage (Frank, 2026-09-24)
+
+Every call also arrives with where the lead was in the sale: the AgencyZoom
+pipeline and stage when the call started, what that stage means, and every
+stage move the producer made on the lead that day. It comes from
+`pipelines.py`, and the meanings are Frank's. Do not re-derive them.
+
+The pipelines producers work:
+- **1 Pipeline**: every new or updated lead comes into New here. ("Pipeline"
+  is read the same way; integrations drop leads there by mistake.)
+- **1-1 QNC** (Quotes Not Closed): quoted last time we talked, did not close.
+- **1-2 Leads Not Quoted**: never reached, or declined even being quoted.
+- **Life Pipeline**: life insurance leads.
+Stages with the same name mean the same thing in every pipeline; the lead is
+just there for a different reason.
+
+What the stage asks of the call:
+- **New**: if the producer gets hold of them, the goal is the one-call close:
+  keep them on the phone and go all the way to sold. A move to Contacted or
+  Quotes Presented instead is fine only when something real stopped the
+  close on this call (missing info, a decision-maker who is not there). Say
+  what stopped it, or that nothing did.
+- **New 1st / 2nd / 3rd Cycle**: Smart-Cycled back in for another attempt;
+  after the 3rd the lead is deaded if it never advances. A live conversation
+  on a later cycle is a rare chance, so treat it as one: getting the lead to
+  advance (a quote, a real next step) is the job.
+- **Contacted, In Progress / Contacted**: we reached them before and are
+  working a quote or waiting on info. The call should collect what is
+  missing and move toward presenting, not restart from scratch.
+- **Ready to Present**: the quote is ready but held for a specific reason.
+  The call should clear that reason and present.
+- **Quotes Presented / Quoted**: numbers were given and this is the follow-up.
+  The call is a close attempt: handle what stopped the last one and ask for
+  the sale. Starting discovery over is a miss.
+- **1-1 QNC**: they were quoted and it did not close. Find out what stopped
+  it, re-quote if something changed, and close.
+- **1-2 Leads Not Quoted**: the first job is getting them quoted at all.
+- **FSD (Pending Bind)**: sold, pending bind. Lock the bind details and date;
+  do not reopen the sale.
+- A commercial or AZ Sun pipeline is Frank's: coach the call on the rest of
+  this file and score `stagefit` "n". An unknown stage, or one with no set
+  meaning, is also "n".
+
+**Check the day's moves against the call.** A move is what the producer told
+the CRM happened. When the transcript disagrees, it is a flag: moved to
+Quotes Presented but no price was given; moved to Smart-Cycle or Dead after
+a live conversation with real interest; a loss reason the call does not
+support; a lead left in New after a real conversation. A move that matches
+the call needs no comment.
+
 ## Output format
 
 Return ONLY a JSON object, no prose around it, with exactly these keys.
@@ -496,6 +546,14 @@ for it"]`. Wrong: `"askq": false`. Same for "calltype", "asks" and "exit".
            (a pure service call, or a center-of-influence call with the
            referral partner). Name the source's own move in the detail, e.g.
            "Never raised the autos on a Home no Auto lead".
+"stagefit" [letter, one-sentence detail]: did the call do what the lead's
+           stage called for (see "Pipeline and stage" above)? Same s/w/m/n
+           letters: "s" did it, quoted in the detail; "w" attempted thinly;
+           "m" the stage's job was there to do and was not done (a
+           Quotes Presented follow-up that never asked for the sale); "n"
+           when the stage is unknown, has no set meaning, is a commercial /
+           AZ Sun pipeline, or the call gave no chance. When a stage move
+           today contradicts the call, say so here AND add a flag.
 "spine"    an array of 4-8 [time, colour, headline, detail] entries walking
            through the call in order. "time" is a rough mm:ss into the call.
            "colour" is "g" (this moment went well), "y" (mixed/questionable),
@@ -534,6 +592,10 @@ for it"]`. Wrong: `"askq": false`. Same for "calltype", "asks" and "exit".
   checklist. If a dimension consistently doesn't fit how coaching
   conversations actually go, that's something to change here, not something
   to work around per-call.
+- "stagefit" (Frank, 2026-09-24) is new and unproven. The stage "when the
+  call started" is the first move's origin, or the end-of-day stage when
+  there was no move; a move made hours before the call reads as if it came
+  after. Watch for that before trusting a mismatch flag.
 - "leadfit" (Frank, 2026-09-24) is new and unproven. Watch whether it
   simply repeats "Bundle / cross-sell raised" on cross-sell calls, and
   whether a wrong AgencyZoom source gets coached as if it were right.

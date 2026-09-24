@@ -33,6 +33,15 @@ Everything caches under `data/`, so a re-run resumes rather than restarting.
   is the result. Only reads made from 2026-09-24 on carry it: the card cache
   is keyed by call, not prompt, so past cards are not re-read (and must not
   be, for cost).
+- **What each sales pipeline and stage means is `pipelines.py`** (Frank,
+  2026-09-24). Producers work 1 Pipeline, 1-1 QNC (quotes not closed), 1-2
+  Leads Not Quoted and Life Pipeline; "Pipeline" is 1 Pipeline misfiled by
+  integrations and should be empty; anything commercial or AZ Sun is
+  Cerberus's; every other pipeline is unused. Apollo gets the lead's stage
+  when the call started plus the producer's moves that day, and scores
+  `stagefit`. The day's MOVE_STAGE notes arrive NEWEST FIRST, and a stage
+  name can contain " to " (Ready to Present) -- `pipelines.parse_move` and
+  `_chronological` handle both; do not split moves on the first " to ".
 - **Role Play never uses a center of influence or cold / misc lead source**
   (Frank, 2026-09-24), nor a one-off, commercial, BOB or Rewrite source
   (`GROUPS[...]["roleplay"]`). That is Role Play only: **calls on those
