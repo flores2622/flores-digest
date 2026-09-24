@@ -44,6 +44,9 @@ CHOICES = {
                                   "offered and declined, and the policy is cancelling.",
     "cancelled_no_option": "Cancelled, no endorse/rewrite available -- the policy "
                            "is cancelling or has cancelled.",
+    "client_cancelled": "Client Cancelled -- the client cancelled mid term, went to "
+                        "the carrier directly to cancel, or never gave us the chance "
+                        "to review or retain the policy.",
     "unable_to_contact": "Unable to Contact/No Show -- the rep tried to reach the "
                          "customer (voicemail, no answer, bad number) or they did "
                          "not show, and it renewed as is.",

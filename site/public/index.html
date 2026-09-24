@@ -4017,7 +4017,8 @@ function fmtDur(h) {
    resolutions take six distinct board categorical slots, ordered so every
    neighbour in the stack passes the palette validator in both modes (worst
    adjacent CVD dE 17.6 light / 13.0 dark, normal-vision 24.0 / 19.7): kept =
-   aqua, blue, green; lost = magenta, violet; Unable to Contact (renewed,
+   aqua, blue, green; lost = magenta, violet, and red for Client Cancelled
+   (added 2026-09-24); Unable to Contact (renewed,
    but never discussed with the customer) = yellow. No action: Review if
    needed (added 2026-09-24) = orange, between aqua and blue.
    Frank's resolutions are the ONLY outcomes (2026-09-24), whether the SR
@@ -4028,7 +4029,7 @@ function fmtDur(h) {
    for sitting under 3:1 on the light surface. */
 const OUTCOME_COLORS = {
   renewed_as_is: ["--s3"], no_action_review: ["--s2"], renewed_endorsed: ["--s1"], rewrite_accepted: ["--s6"],
-  cancelled_rewrite_declined: ["--s5"], cancelled_no_option: ["--s7"], unable_to_contact: ["--s4"],
+  cancelled_rewrite_declined: ["--s5"], cancelled_no_option: ["--s7"], client_cancelled: ["--s8"], unable_to_contact: ["--s4"],
   cancelled_before_sr: ["--s7", 1],
 };
 const outcomeFill = k => {
