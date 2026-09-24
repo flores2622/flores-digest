@@ -167,6 +167,13 @@
 .on { color: var(--text-muted); }
 .otrack { display: flex; height: 14px; border-radius: 4px; overflow: hidden; background: var(--bar-track); }
 .ogseg { height: 100%; }
+/* Renewal Outcome Breakdown only: a 2px surface gap between segments, and the
+   diagonal hatch that marks a policy-record reading (see OUTCOME_COLORS). */
+:root { --hatch: repeating-linear-gradient(135deg, transparent 0 3px, var(--surface) 3px 5px); }
+.rseg { box-sizing: border-box; }
+.rseg + .rseg { border-left: 2px solid var(--surface); }
+.rdot { width: 11px; height: 11px; }
+.rtiles { grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); }
 .oleg { display: flex; flex-wrap: wrap; gap: 14px; margin-top: 10px; font-size: 11.5px; color: var(--text-secondary); }
 .oleg-item { display: flex; align-items: center; gap: 5px; }
 /* Objection chart -- Live Contact Detail's own top-of-tab bar chart (Frank,
@@ -3735,12 +3742,26 @@ function fmtDur(h) {
   if (h < 48) return (Math.round(h * 10) / 10) + "h";
   return (Math.round(h / 24 * 10) / 10) + "d";
 }
+/* Renewal outcome colours (Frank, 2026-09-24: the old greens-for-renewed /
+   reds-for-cancelled shades were too alike to tell apart). The six team
+   resolutions take six distinct board categorical slots, ordered so every
+   neighbour in the stack passes the palette validator in both modes (worst
+   adjacent CVD dE 17.6 light / 13.0 dark, normal-vision 24.0 / 19.7): kept =
+   aqua, blue, green; lost = magenta, violet; Unable to Contact (renewed,
+   but never discussed with the customer) = yellow.
+   A policy-record reading wears its counterpart's colour HATCHED, so solid
+   always means the SR's own resolution. Segments are split by a 2px gap and
+   the legend carries every count, which is the relief yellow and aqua need
+   for sitting under 3:1 on the light surface. */
 const OUTCOME_COLORS = {
-  renewed_as_is: "#2e9d5b", renewed_endorsed: "#74c48f", rewrite_accepted: "#3b7fc4",
-  cancelled_rewrite_declined: "#d9534f", cancelled_no_option: "#9e2a2a", unable_to_contact: "#d4a72c",
-  renewed_record: "#a8dcb8", rewritten_record: "#a9c9ea", cancelled_record: "#efaaa8", already_cancelled: "#dcc0bf",
-  pending_record: "#c9c4b8", no_renewal_record: "#8a877f", unmatched: "#e2ddd2",
+  renewed_as_is: ["--s3"], renewed_endorsed: ["--s1"], rewrite_accepted: ["--s6"],
+  cancelled_rewrite_declined: ["--s5"], cancelled_no_option: ["--s7"], unable_to_contact: ["--s4"],
+  renewed_record: ["--s3", 1], rewritten_record: ["--s6", 1], cancelled_record: ["--s5", 1],
+  already_cancelled: ["--s7", 1], pending_record: ["--s4", 1],
+  no_renewal_record: ["--text-muted", 1], unmatched: ["--text-secondary", 1],
 };
+const outcomeFill = k => { const [v, hatch] = OUTCOME_COLORS[k] || ["--text-muted"];
+  return `background-color:var(${v})${hatch ? ";background-image:var(--hatch)" : ""}`; };
 function renewalRate(rows, kind) {
   const kept = rows.filter(r => kind[r.outcome] === "kept").length;
   const lost = rows.filter(r => kind[r.outcome] === "lost").length;
@@ -3751,40 +3772,42 @@ function renewalBreakdownHtml(m) {
   if (!rows.length) return `<div class="sect"><h2>Renewal Outcome Breakdown</h2><p class="sd">No renewal SRs were completed in this period.</p></div>`;
   const kind = Object.fromEntries(m.outcomes.map(([k, , c]) => [k, c]));
   const label = Object.fromEntries(m.outcomes.map(([k, l]) => [k, l]));
-  const busiest = Math.max(1, ...[rows.length]);
-  const bar = (rs, head, width) => {
+  // Small cards, same .tile shape as the Sales Digest's Utilization and Speed
+  // to Dial cards (Frank, 2026-09-24): name, retained % as the big figure,
+  // the SR count under it, and that card's own outcome bar at full width.
+  const card = (rs, head, team) => {
     const n = rs.length || 1;
     const segs = m.outcomes.map(([k, l]) => {
       const c = rs.filter(r => r.outcome === k).length;
-      return c ? `<span class="ogseg" style="width:${(c / n * 100).toFixed(2)}%;background:${OUTCOME_COLORS[k]}" title="${l}: ${c}"></span>` : "";
+      return c ? `<span class="ogseg rseg" style="width:${(c / n * 100).toFixed(2)}%;${outcomeFill(k)}" title="${l}: ${c}"></span>` : "";
     }).join("");
     const rt = renewalRate(rs, kind);
-    return `<div class="orow"><div class="orow-head">${head}
-      <span class="on">${rs.length} renewal SR${rs.length === 1 ? "" : "s"}${rt.pct == null ? "" : ` &middot; <b>${rt.pct}%</b> retained (${rt.kept} of ${rt.kept + rt.lost})`}</span></div>
-      <div style="width:${width.toFixed(2)}%"><div class="otrack">${segs}</div></div></div>`;
+    return `<div class="tile"${team ? ' style="border-color:var(--border-strong)"' : ""}>
+      <div class="k">${head}</div>
+      <div class="v">${rt.pct == null ? "—" : rt.pct + "%"}</div>
+      <div class="n">retained${rt.pct == null ? "" : ` &middot; ${rt.kept} of ${rt.kept + rt.lost}`}</div>
+      <div class="n">${rs.length} renewal SR${rs.length === 1 ? "" : "s"}</div>
+      <div class="otrack" style="margin-top:10px">${segs}</div></div>`;
   };
   const people = m.team.map(t => t.name).filter(n => rows.some(r => r.by === n));
   const others = rows.filter(r => !r.by);
-  const maxPerson = Math.max(1, ...people.map(n => rows.filter(r => r.by === n).length), others.length);
-  const personRows = people.map(n => { const rs = rows.filter(r => r.by === n);
-    return bar(rs, `<span class="who">${pbadge(DOT[n] || TEAM_DOT, n.split(" ")[0])}</span>`, rs.length / maxPerson * 100); }).join("")
-    + (others.length ? bar(others, `<span class="who">${pbadge("#8a877f", "Others")}</span>`, others.length / maxPerson * 100) : "");
+  const personCards = people.map(n => card(rows.filter(r => r.by === n), pbadge(DOT[n] || TEAM_DOT, n.split(" ")[0]))).join("")
+    + (others.length ? card(others, pbadge("#8a877f", "Others")) : "");
   const pipes = (m.pipelines || []).filter(([, , k]) => k === "renewal").map(([k, l]) => [k, l, rows.filter(r => r.pipeline === k)]).filter(x => x[2].length);
-  const maxPipe = Math.max(1, ...pipes.map(x => x[2].length));
-  const pipeRows = pipes.map(([k, l, rs]) => bar(rs, `<span class="who" style="font-weight:600;font-size:13px">${l}</span>`, rs.length / maxPipe * 100)).join("");
+  const pipeCards = pipes.map(([k, l, rs]) => card(rs, l)).join("");
   const counts = m.outcomes.map(([k, l]) => [k, l, rows.filter(r => r.outcome === k).length]).filter(x => x[2]);
   const legend = counts.map(([k, l, c]) =>
-    `<span class="oleg-item"><span class="pd" style="background:${OUTCOME_COLORS[k]}"></span>${l} <b>${c}</b> <span style="color:var(--text-muted)">(${Math.round(100 * c / rows.length)}%)</span></span>`).join("");
+    `<span class="oleg-item"><span class="pd rdot" style="${outcomeFill(k)}"></span>${l} <b>${c}</b> <span style="color:var(--text-muted)">(${Math.round(100 * c / rows.length)}%)</span></span>`).join("");
   const team = renewalRate(rows, kind);
   const fromRecord = rows.filter(r => r.source === "record").length;
   const unnamed = Object.entries(m.unnamed || {});
   return `<div class="sect"><h2>Renewal Outcome Breakdown</h2>
     <p class="sd">Renewal SRs completed in this period and how each one ended. Retained = renewed (including Unable to Contact, which renewed as is but the renewal was never discussed with the customer) or rewrite accepted, over everything with a decided outcome (renewed, rewritten or cancelled). Renewals still ahead, policies already cancelled before the SR was opened, and out-of-date policy records sit outside the rate.</p>
-    ${bar(rows, `<span class="who">${pbadge(TEAM_DOT, "Team")}</span>`, 100)}
-    <h3 style="font-size:12px;text-transform:uppercase;letter-spacing:.06em;color:var(--text-muted);margin:16px 0 6px">By who completed it</h3>${personRows}
-    <h3 style="font-size:12px;text-transform:uppercase;letter-spacing:.06em;color:var(--text-muted);margin:16px 0 6px">By pipeline</h3>${pipeRows}
+    <div class="tiles rtiles">${card(rows, pbadge(TEAM_DOT, "Team"), true)}${personCards}</div>
+    <h3 style="font-size:12px;text-transform:uppercase;letter-spacing:.06em;color:var(--text-muted);margin:16px 0 6px">By pipeline</h3>
+    <div class="tiles rtiles">${pipeCards}</div>
     <div class="oleg">${legend}</div>
-    ${fromRecord ? `<p class="sd" style="margin:10px 0 0">${fromRecord} of ${rows.length} read from the policy's own record ("policy record" segments): closed on a resolution that is not one of the six renewal resolutions, such as Completed, the usual choice before ${fmtShortDate(m.resolutionsFrom)}.</p>` : ""}
+    ${fromRecord ? `<p class="sd" style="margin:10px 0 0">${fromRecord} of ${rows.length} read from the policy's own record (the hatched segments): closed on a resolution that is not one of the six renewal resolutions, such as Completed, the usual choice before ${fmtShortDate(m.resolutionsFrom)}.</p>` : ""}
     ${unnamed.length ? `<p class="sd" style="margin:6px 0 0;color:#b45309">Closed on a resolution that is not one of the six renewal resolutions: ${unnamed.map(([k, n]) => `${k} (${n} SR${n === 1 ? "" : "s"})`).join(", ")}.</p>` : ""}
   </div>`;
 }
