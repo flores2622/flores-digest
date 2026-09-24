@@ -7,8 +7,8 @@ the outcome -- and the retention rate among just those SRs.
 WHERE AN OUTCOME COMES FROM. The SR's own resolution, when it can be read:
 Frank's six renewal resolutions (Renewed: Accepted as is, Renewed: Endorsed,
 Rewrite Accepted, Cancelled: Rewrite Declined, Cancelled, no endorse/rewrite
-available, Unable to Contact) on SRs completed from RESOLUTIONS_FROM. Before
-that -- or on a resolution that is not one of the six -- the policy record is read, for
+available, Unable to Contact), on every renewal SR closed on one of them.
+For an SR closed on anything else the policy record is read, for
 the policy the SR's subject names ("Auto - G014549916"), and is shown as its
 own "(policy record)" segment so the two sources are never blended.
 
@@ -56,12 +56,14 @@ REFRESH_BATCH = 150                    # of those, how many per night
 MAX_FETCH = 400
 
 # ---- renewal SR resolutions (Frank, 2026-09-23) ----------------------------
-# The ONLY resolutions the team uses on renewal tickets from 2026-09-24. Frank
-# renamed some old choices and added others, and the old ones could not all be
-# deleted -- so an old id now carries a new name that does not describe what
-# was picked when it was used. Resolutions are therefore read only on tickets
-# completed on or after RESOLUTIONS_FROM; everything earlier stays with the
-# policy-chain reading. The names and what each counts as are OUTCOMES below.
+# The ONLY resolutions the team uses on renewal tickets from 2026-09-24
+# (RESOLUTIONS_FROM). They are read on EVERY renewal SR, past ones included
+# (Frank, 2026-09-24): the ids that now carry the six names were used for the
+# same outcomes before the rename -- 32570's notes are cancellations, 32574's
+# are renewals reviewed with the customer. What RESOLUTIONS_FROM still decides
+# is only which SRs closed on anything ELSE are listed on the Service tab as
+# not one of the six; before it, "Completed" was the normal choice. The names
+# and what each counts as are OUTCOMES below.
 RESOLUTIONS_FROM = "2026-09-24"
 # SRs carry resolutionId only; the names come from /v1/api/service-resolutions
 # (found 2026-09-24), re-read every build by load_resolution_labels() so a
@@ -247,8 +249,8 @@ def _rewritten(pn, expiring, household, R, day):
 # The Renewal Outcome Breakdown's segments, in display order: (key, label,
 # counts as) -- "kept" and "lost" make the rate, "open" sits outside it. The
 # first six are the team's own resolutions; the rest are the policy-record
-# reading used when an SR carries no nameable resolution (anything completed
-# before RESOLUTIONS_FROM, or an id not named yet).
+# reading used when an SR was closed on anything else (Completed, Shot Clock
+# Expired, ...).
 OUTCOMES = (
     ("renewed_as_is", "Renewed: Accepted as is", "kept"),
     ("renewed_endorsed", "Renewed: Endorsed", "kept"),
@@ -268,6 +270,7 @@ OUTCOMES = (
     ("unmatched", "Policy record not current", "open"),
 )
 _BY_LABEL = {label: key for key, label, _ in OUTCOMES}
+_KIND = {key: kind for key, _, kind in OUTCOMES}
 _NORM = lambda x: re.sub(r"[^A-Z0-9]", "", str(x or "").upper())
 
 
@@ -283,8 +286,8 @@ def _sr_policy(sr, chains):
 
 def sr_outcome(sr, chains, hh, pn2hh, as_of):
     """(key, source, policyNumber, premium, line) for one completed renewal SR.
-    The SR's own resolution when it can be read (completed on or after
-    RESOLUTIONS_FROM with a named id); otherwise the policy record, read as of
+    The SR's own resolution when it is one of the six; otherwise the policy
+    record, read as of
     `as_of`, for the term renewing nearest the SR's completion."""
     done = _d(sr.get("completeDate"))
     pn = _sr_policy(sr, chains)
@@ -298,9 +301,23 @@ def sr_outcome(sr, chains, hh, pn2hh, as_of):
         term = near[0] if near else None
     premium = float((term or {}).get("premium") or 0)
     line = _line((term or (terms[0] if terms else {})).get("policyTypeName"))
-    label = RESOLUTION_LABELS.get(sr.get("resolutionId")) if done >= RESOLUTIONS_FROM else None
+    label = RESOLUTION_LABELS.get(sr.get("resolutionId"))
     if label in _BY_LABEL:
-        return _BY_LABEL[label], "resolution", pn, premium, line
+        key = _BY_LABEL[label]
+        # A cancel resolution counts as a renewal LOST only on a policy with a
+        # term renewing near the SR. Of the 12 SRs resolved "Cancelled, no
+        # endorse/rewrite available" 09-15..09-23, 9 were policies the record
+        # shows cancelled well before the SR was opened (stale SRs closed out,
+        # "Cancelled in 2025") and the other 3 had no term renewing anywhere
+        # near ("cancelled for noc 10/2025", "not a right policy"). Those fall
+        # through to the policy-record reading below, same as any other SR.
+        if _KIND[key] != "lost":
+            return key, "resolution", pn, premium, line
+        if term:
+            _, when = outcome(term, terms, as_of)
+            opened = _d(sr.get("createDate"))
+            if not (when and opened and when < _shift(opened, -15)):
+                return key, "resolution", pn, premium, line
     if not term and terms:
         # Chains have gaps: G014379316 has no record for the term that ended
         # 2026-09-19, only the one STARTING that day -- which is the renewal.
