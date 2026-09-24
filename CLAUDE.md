@@ -186,8 +186,10 @@ because the prefetch broke.
 kept live** (Frank, 2026-09-24: "just live data where its already at on
 everything possible, and the header up there specifying what is stale from
 the last hourly run"). No separate live strip: the Worker's `/api/live/<day>`
-(`site/live.js`) is written into the same document the page renders, and the
-header lists what is live and what is the checkpoint's.
+(`site/live.js`) is written into the same document the page renders. The
+header shows only "Live · updated <time>" and "Last checkpoint <time>";
+**a live figure has a pulsing green glow** (tiles, leaderboard cells, utilization cards),
+and anything without the glow is the checkpoint's (Frank, 2026-09-24).
 
 - **Dials** extend the checkpoint's OWN verdicts (`live_board.basis`, carried
   in the intraday document as `live_basis`), never re-decide them: excluded
@@ -198,10 +200,23 @@ header lists what is live and what is the checkpoint's.
 - **Sales** are AgencyZoom policies by agentId + soldDate minus
   `lead_sources.NOT_A_SALE`, the same rule as `is_real_sale`.
 - **Utilization** is `insightful_util.pull()`'s formula.
+- **Households and premium quoted** are daily.py's own three rules (quoteDate
+  today; a producer's move into a quoted stage; a producer's note delivering
+  a quote), applied only to leads active since the checkpoint, newest first,
+  on top of the checkpoint's own `quoted_leads`. The regexes travel in
+  `live_basis.quotes` from daily.py itself (`QUOTED_STAGE`, `_PRESENTED`,
+  `_PAST`) -- never retype them in JS. A lead is re-read only when its
+  lastActivityDate moves. The closing ratio is live once both sales and
+  quotes are.
+- **A one-minute Worker cron** (wrangler.jsonc, business hours) refreshes
+  the parts in batches sized for the free plan's 50 outside requests per
+  run: even minutes dials/sales/utilization, odd minutes up to 30 lead
+  reads. AgencyZoom 429s on bursts of note reads; a failed part keeps its
+  last good answer for the same checkpoint instead of blanking the board.
 - **Contact rate stays the checkpoint's.** The board uses the document's own
   `rate`, never live contacts over live dials -- live dials over a stale
-  numerator would read as a collapsing rate. The closing ratio also stays the
-  checkpoint's (`cp_pol`/`cp_ps`).
+  numerator would read as a collapsing rate. The closing ratio falls back to
+  the checkpoint's (`cp_pol`/`cp_ps`) whenever quotes are not live.
 - The Worker needs its own secrets, set in Cloudflare (Workers & Pages ->
   flores-board -> Settings -> Variables and Secrets, type Secret):
   `RC_CLIENT_ID`, `RC_CLIENT_SECRET`, `RC_SERVER_URL`, `RC_JWT`,

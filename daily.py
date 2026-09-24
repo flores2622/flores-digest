@@ -540,7 +540,7 @@ def build_metrics(day):
     day_calls.fetch_notes(ids, day=day, log=log)
 
     az = AgencyZoom()
-    QS = re.compile(r"quoted|quotes presented|fsd|pending bind", re.I)
+    QS = QUOTED_STAGE
     hh = collections.defaultdict(set)
     for l in leads:
         if str(l.get("quoteDate") or "").startswith(day):
@@ -806,6 +806,10 @@ def build_metrics(day):
         M[who] = {"dials": dials_kept, "callbacks_prior": prior_callbacks,
                   "call_detail": sorted(detail, key=lambda d: -d["seconds"]),
                   "households_quoted": len(hh.get(who, ())),
+                  # WHICH leads, so the board can keep households quoted
+                  # live between checkpoints without recounting these
+                  # (live_board.basis, Frank 2026-09-24).
+                  "quoted_leads": sorted(hh.get(who, ())),
                   "premium_quoted": round(tot),
                   "policies": n_sold, "premium_sold": round(prem),
                   # ALL dialled numbers, including the ones classify() excluded
@@ -863,6 +867,10 @@ def build_metrics(day):
     finalize.apply(out)
     (ROOT / f"data/metrics_{day}.json").write_text(json.dumps(out, indent=1, default=str))
     return out
+
+# A MOVE_STAGE into one of these stages counts the lead as a household quoted
+# (matched on the stage only, never the pipeline -- see build_metrics).
+QUOTED_STAGE = re.compile(r"quoted|quotes presented|fsd|pending bind", re.I)
 
 # A note counts as a quote ONLY when the quote is delivered in that message.
 # The team's outreach is saturated with the word "quote" -- solicitation
