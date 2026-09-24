@@ -186,8 +186,10 @@ because the prefetch broke.
 kept live** (Frank, 2026-09-24: "just live data where its already at on
 everything possible, and the header up there specifying what is stale from
 the last hourly run"). No separate live strip: the Worker's `/api/live/<day>`
-(`site/live.js`) is written into the same document the page renders, and the
-header lists what is live and what is the checkpoint's.
+(`site/live.js`) is written into the same document the page renders. The
+header shows only "Live · updated <time>" and "Last checkpoint <time>";
+**a live figure has a pulsing green glow** (tiles, leaderboard cells, utilization cards),
+and anything without the glow is the checkpoint's (Frank, 2026-09-24).
 
 - **Dials** extend the checkpoint's OWN verdicts (`live_board.basis`, carried
   in the intraday document as `live_basis`), never re-decide them: excluded
