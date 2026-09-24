@@ -18,6 +18,14 @@ Everything caches under `data/`, so a re-run resumes rather than restarting.
 ## The money rules
 
 - **A policy whose lead source is BOB is not a sale.** Already handled.
+- **Neither is Rewrite** (Frank, 2026-09-24). It is kept for the service
+  department from now on. Its one tracked-producer sale was Crystal's $652 on
+  2026-08-20, which leaves Premium Sold on any rebuild of that day.
+- **What each lead source means is `lead_sources.py`** (Frank, 2026-09-24): the
+  groups, what to sell each, and the not-a-sale and cross-sell sets that
+  `digest_config` reads. Commercial sources (Leo, Work Comp, the Comm Leads
+  lists) are Cerberus's. The `approach` lines are Apollo's drafts, and nothing
+  quotes one until `APPROACH_CONFIRMED` says Frank agreed to it.
 - **A renewal is not new business.** Neither is servicing, a payment, a claim,
   or chasing paperwork on a policy already sold.
 - **Selling a product the household does not have yet IS new business**, even to
