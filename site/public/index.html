@@ -174,6 +174,18 @@
 .rseg { box-sizing: border-box; }
 .rseg + .rseg { border-left: 2px solid var(--surface); }
 .rdot { width: 11px; height: 11px; }
+/* Sales > Breakdown: pie + legend side by side, wrapping under on a phone. */
+.bkpie-wrap { display: flex; gap: 28px; flex-wrap: wrap; align-items: center; }
+.bkpie { flex: none; max-width: 100%; height: auto; }
+.bkpie path, .bkpie circle { cursor: default; }
+.bkpie path:hover, .bkpie circle:hover { opacity: .85; }
+.bkleg { flex: 1 1 280px; display: flex; flex-direction: column; gap: 7px; font-size: 12.5px; min-width: 0; }
+.bkleg-row { display: grid; grid-template-columns: 10px minmax(0, 1fr) auto 38px 58px; gap: 8px; align-items: center; }
+.bkleg-row i { width: 10px; height: 10px; border-radius: 2px; }
+.bkleg-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--text-primary); }
+.bkleg-v { font-weight: 600; font-variant-numeric: tabular-nums; text-align: right; }
+.bkleg-p, .bkleg-c { color: var(--text-muted); font-variant-numeric: tabular-nums; text-align: right; }
+.bkrank-n { display: inline-block; min-width: 18px; color: var(--text-muted); font-variant-numeric: tabular-nums; }
 .rtiles { grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); }
 .oleg { display: flex; flex-wrap: wrap; gap: 14px; margin-top: 10px; font-size: 11.5px; color: var(--text-secondary); }
 .oleg-item { display: flex; align-items: center; gap: 5px; }
@@ -3394,23 +3406,23 @@ function wireSalesSubTabs() {
 }
 
 // Breakdown sub-tab (Frank, 2026-09-21): the same folio's entries the Log
-// tab is showing (picked via salesFolioPick there), grouped one of three
-// ways and drawn as a bar chart -- same row/track shape as the Digest tab's
-// own Call Outcome Breakdown (.orow/.otrack/.ogseg/.oleg) so this reads as
-// the same chart language, not a new one. Bar length is total premium
-// (this tool's headline number); sale count rides along as the row's own
-// label, same as outcomeBreakdownHtml's dial count.
+// tab is showing (picked via salesFolioPick there), grouped one of three ways.
+// Frank, 2026-09-24: Lead Source and Policy Type draw as PIE charts of
+// premium share, and the Producer view is replaced by "Highest Premium per
+// Lead Source" -- every lead source ranked by the premium it brought in, so
+// the money-makers read top-down. Producer totals still live on the Log
+// tab's own Totals pie.
 const SALES_BREAKDOWN_DIMS = {
-  lead_source: { label: "Lead Source", key: e => (e.lead_source || "").trim() || "(none logged)" },
-  product:     { label: "Policy Type", key: e => (e.product || "").trim() || "(none logged)" },
-  // salesGroupName folds Coral/Sarahi into "The Insurance Icons" here too --
-  // same Sales-only team grouping salesTotalsHtml uses.
-  producer:    { label: "Producer",    key: e => salesGroupName(e.producer) || "(none logged)" },
+  lead_source: { label: "Lead Source", chart: "pie", key: e => (e.lead_source || "").trim() || "(none logged)" },
+  product:     { label: "Policy Type", chart: "pie", key: e => (e.product || "").trim() || "(none logged)" },
+  top_sources: { label: "Highest Premium per Lead Source", chart: "rank", key: e => (e.lead_source || "").trim() || "(none logged)" },
 };
-// Categorical slots --s1..--s7 (validated 8-hue theme, see :root); slot 8
-// is left for "Other" to stay a neutral grey rather than a hue with no real
-// identity behind it (Lead Source/Policy Type are open-ended and can run
-// well past 7 distinct values -- Producer never does, so it never folds).
+// Pie slices take categorical slots --s1..--s7 (validated 8-hue theme, see
+// :root) in premium order; past 7 the smallest fold into a neutral-grey
+// "Other" -- a pie is an all-pairs chart, so slices never run past the
+// palette, and every slice is also named with its $ and % in the legend.
+// The ranked view never folds: it is one series in one colour, so a long
+// tail costs rows, not legibility.
 function computeSalesBreakdown(entries, dim) {
   const keyOf = SALES_BREAKDOWN_DIMS[dim].key;
   const agg = {};
@@ -3420,13 +3432,32 @@ function computeSalesBreakdown(entries, dim) {
     row.premium += e.premium || 0;
     row.count++;
   }
-  const rows = Object.values(agg).sort((a, b) => b.premium - a.premium);
-  if (dim === "producer" || rows.length <= 7) return { rows, otherCount: 0 };
+  const rows = Object.values(agg).sort((a, b) => b.premium - a.premium || b.count - a.count);
+  if (SALES_BREAKDOWN_DIMS[dim].chart === "rank" || rows.length <= 7) return { rows, otherCount: 0 };
   const top = rows.slice(0, 7);
   const rest = rows.slice(7);
   top.push({ key: "Other", premium: rest.reduce((s, r) => s + r.premium, 0),
              count: rest.reduce((s, r) => s + r.count, 0), other: true });
   return { rows: top, otherCount: rest.length };
+}
+const salesCount = n => `${n} sale${n === 1 ? "" : "s"}`;
+// SVG pie: one <path> per slice, split by a 2px surface-coloured stroke,
+// each with its own hover tooltip (wired in wireSalesBreakdownPanel).
+function salesPieSvg(rows, total, colorFor) {
+  const R = 100, C = 105;
+  let acc = 0;
+  const pt = f => [C + R * Math.sin(2 * Math.PI * f), C - R * Math.cos(2 * Math.PI * f)].map(v => v.toFixed(2));
+  const paths = rows.map((row, i) => {
+    const f = total ? row.premium / total : 0;
+    if (f <= 0) return "";
+    const tipHtml = `<b>${row.key}</b><br>${money(row.premium)} &middot; ${Math.round(f * 100)}% &middot; ${salesCount(row.count)}`;
+    const attrs = `fill="${colorFor(row, i)}" stroke="var(--surface)" stroke-width="2" data-tip="${tipHtml.replace(/"/g, "&quot;")}"`;
+    if (f >= 0.9999) return `<circle cx="${C}" cy="${C}" r="${R}" ${attrs}/>`;
+    const [x0, y0] = pt(acc), [x1, y1] = pt(acc + f);
+    acc += f;
+    return `<path d="M${C},${C} L${x0},${y0} A${R},${R} 0 ${f > 0.5 ? 1 : 0} 1 ${x1},${y1} Z" ${attrs}/>`;
+  }).join("");
+  return `<svg class="bkpie" viewBox="0 0 210 210" width="210" height="210" role="img" aria-label="Premium share">${paths}</svg>`;
 }
 function salesBreakdownPanel(data) {
   const entries = data.entries || [];
@@ -3434,47 +3465,46 @@ function salesBreakdownPanel(data) {
   const curEnd = folioEndFor(today);
   const viewingEnd = data.folio_end || curEnd;
   const isCurrent = !curEnd || viewingEnd === curEnd;
-  const dim = salesBreakdownDim;
+  if (!SALES_BREAKDOWN_DIMS[salesBreakdownDim]) salesBreakdownDim = "lead_source";
+  const dim = salesBreakdownDim, spec = SALES_BREAKDOWN_DIMS[dim];
   const { rows, otherCount } = computeSalesBreakdown(entries, dim);
   const totalPremium = entries.reduce((s, e) => s + (e.premium || 0), 0);
   const dimOpts = Object.entries(SALES_BREAKDOWN_DIMS).map(([k, v]) =>
     `<option value="${k}"${k === dim ? " selected" : ""}>${v.label}</option>`).join("");
+  const controls = `<div class="controls" style="margin-bottom:14px"><select id="salesBkDim" aria-label="Breakdown dimension">${dimOpts}</select></div>`;
 
   if (!rows.length) {
-    return `<div class="sect"><h2>Sales breakdown</h2>
-     <div class="controls" style="margin-bottom:14px"><select id="salesBkDim" aria-label="Breakdown dimension">${dimOpts}</select></div>
+    return `<div class="sect"><h2>Sales breakdown</h2>${controls}
      <div class="empty">${isCurrent ? "Nothing logged yet this folio." : "Nothing was logged in this folio."}</div></div>`;
   }
+  const where = isCurrent ? "the current folio" : `the folio ending ${fmtMDY(viewingEnd)}`;
+  const pctOf = v => totalPremium ? Math.round(v / totalPremium * 100) : 0;
 
-  const busiest = Math.max(...rows.map(r => r.premium), 1);
-  const colorFor = (row, i) => dim === "producer" ? (DOT[row.key] || "#8a877f")
-    : row.other ? "var(--text-muted)" : `var(--s${i + 1})`;
-  const barRows = rows.map((row, i) => {
-    const color = colorFor(row, i);
-    const label = dim === "producer" ? pbadge(color, row.key)
-      : `<span class="who"><span class="pd" style="background:${color}"></span>${row.key}</span>`;
-    return `<div class="orow"><div class="orow-head">
-      ${label}
-      <span class="on">${money(row.premium)} · ${row.count} sale${row.count === 1 ? "" : "s"}</span></div>
+  let body;
+  if (spec.chart === "pie") {
+    const colorFor = (row, i) => row.other ? "var(--text-muted)" : `var(--s${i + 1})`;
+    const legend = rows.map((row, i) => `<div class="bkleg-row">
+        <i style="background:${colorFor(row, i)}"></i><span class="bkleg-name">${row.key}</span>
+        <span class="bkleg-v">${money(row.premium)}</span><span class="bkleg-p">${pctOf(row.premium)}%</span>
+        <span class="bkleg-c">${salesCount(row.count)}</span></div>`).join("");
+    body = `<div class="bkpie-wrap">${salesPieSvg(rows, totalPremium, colorFor)}<div class="bkleg">${legend}</div></div>`;
+  } else {
+    const busiest = Math.max(...rows.map(r => r.premium), 1);
+    body = rows.map((row, i) => `<div class="orow bkrank" data-tip="${`<b>${row.key}</b><br>${money(row.premium)} &middot; ${salesCount(row.count)} &middot; avg ${money(row.premium / row.count)}`.replace(/"/g, "&quot;")}"><div class="orow-head">
+      <span class="who"><span class="bkrank-n">${i + 1}</span>${row.key}</span>
+      <span class="on"><b>${money(row.premium)}</b> &middot; ${pctOf(row.premium)}% &middot; ${salesCount(row.count)} &middot; avg ${money(row.premium / row.count)}</span></div>
       <div style="width:${(row.premium / busiest * 100).toFixed(2)}%"><div class="otrack">
-        <span class="ogseg" style="width:100%;background:${color}" title="${row.key}: ${money(row.premium)}, ${row.count} sale${row.count === 1 ? "" : "s"}"></span>
-      </div></div></div>`;
-  }).join("");
-  const legend = dim === "producer" ? "" : `<div class="oleg">${rows.map((row, i) =>
-    `<span class="oleg-item"><span class="pd" style="background:${colorFor(row, i)}"></span>${row.key}</span>`).join("")}</div>`;
-
-  return `<div class="sect"><h2>Sales breakdown</h2>
-   <p class="sd">${money(totalPremium)} across ${entries.length} sale${entries.length === 1 ? "" : "s"} in ${isCurrent ? "the current folio" : `the folio ending ${fmtMDY(viewingEnd)}`}${
-     otherCount ? `. "Other" folds in the ${otherCount} smallest ${SALES_BREAKDOWN_DIMS[dim].label.toLowerCase()} groups` : ""}.</p>
-   <div class="controls" style="margin-bottom:14px">
-     <select id="salesBkDim" aria-label="Breakdown dimension">${dimOpts}</select>
-   </div>
-   ${barRows}${legend}
-  </div>`;
+        <span class="ogseg" style="width:100%;background:var(--bar)"></span></div></div></div>`).join("");
+  }
+  const sub = spec.chart === "pie"
+    ? `Share of premium by ${spec.label.toLowerCase()}: ${money(totalPremium)} across ${salesCount(entries.length)} in ${where}${otherCount ? `. "Other" folds in the ${otherCount} smallest ${spec.label.toLowerCase()} groups` : ""}.`
+    : `Every lead source ranked by the premium it brought in: ${money(totalPremium)} across ${salesCount(entries.length)} in ${where}. Avg = premium per sale.`;
+  return `<div class="sect"><h2>Sales breakdown</h2><p class="sd">${sub}</p>${controls}${body}</div>`;
 }
 function wireSalesBreakdownPanel() {
   const sel = $("#salesBkDim");
   if (sel) sel.onchange = () => { salesBreakdownDim = sel.value; repaintSales(); };
+  document.querySelectorAll("#view [data-tip]").forEach(el => hoverable(el, el.dataset.tip));
 }
 
 async function trendsPanel() {
