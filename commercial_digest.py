@@ -15,7 +15,7 @@ the board can add up any range and take medians over the whole of it:
   completed   every commercial SR COMPLETED that day -- renewal or service
               change, who completed it, hours from created to completed, and
               for a renewal its outcome (service_retention.sr_outcome: the
-              same seven resolutions, then the rep's note, then the policy record) and premium;
+              same seven resolutions, then the rep's note, then Unable to Contact/No Show) and premium;
   open        every commercial SR open at the end of the day, from that day's
               live SR file (data/az_service_tickets_<day>.json, point in
               time -- never re-fetched for a day already built). None on a
@@ -130,7 +130,7 @@ def completed_rows(day, done, hh, chains, az=None, log=log):
             _, line, _ = _policy_fields(t, chains)
             rid = t.get("resolutionId")
             label = sr_mod.RESOLUTION_LABELS.get(rid)
-            if day >= sr_mod.RESOLUTIONS_FROM and label not in sr_mod._BY_LABEL:
+            if day >= sr_mod.RESOLUTIONS_FROM and not sr_mod.resolution_key(t):
                 unnamed[label or ("No resolution" if rid is None else f"id {rid}")] += 1
             row.update({"outcome": key, "source": source, "policy": pn,
                         "premium": round(prem), "line": line})
@@ -162,7 +162,7 @@ def open_rows(day, live, hh, chains):
 
 def _outcomes():
     import service_retention as sr_mod
-    return [list(o) for o in sr_mod.OUTCOMES], sr_mod.RESOLUTIONS_FROM
+    return sr_mod.outcomes(), sr_mod.RESOLUTIONS_FROM
 
 
 def build(day, done=None, live=None, log=log):

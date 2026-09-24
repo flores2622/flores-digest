@@ -363,7 +363,7 @@ def build(day, log=log, refresh_households=True):
             log=log, refresh=refresh_households)
         renewals = {"rows": rows, "unnamed": unnamed,
                     "resolutions_from": sr.RESOLUTIONS_FROM,
-                    "outcomes": [list(o) for o in sr.OUTCOMES]}
+                    "outcomes": sr.outcomes()}
     except Exception as e:
         log(f"  renewal outcomes failed ({type(e).__name__}: {e})")
         renewals = None
@@ -448,7 +448,7 @@ def refresh_past_renewals(day, log=log):
                     n += 1
             if not n:
                 continue
-            ren["outcomes"] = [list(o) for o in sr.OUTCOMES]
+            ren["outcomes"] = sr.outcomes()
             doc["renewals_refreshed"] = dt.datetime.now(AZ).isoformat(timespec="seconds")
             cli.put_object(Bucket=bucket, Key=_key(d), Body=json.dumps(doc, default=str).encode(),
                            ContentType="application/json", CacheControl="no-store")
