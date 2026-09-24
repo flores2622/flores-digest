@@ -3734,7 +3734,7 @@ function renewalBreakdownHtml(m) {
   const fromRecord = rows.filter(r => r.source === "record").length;
   const unnamed = Object.entries(m.unnamed || {});
   return `<div class="sect"><h2>Renewal Outcome Breakdown</h2>
-    <p class="sd">Renewal SRs completed in this period and how each one ended. Retained = renewed or rewrite accepted, over everything with a decided outcome (renewed, rewritten or cancelled). Unable to Contact, renewals still ahead, policies already cancelled before the SR was opened, and out-of-date policy records sit outside the rate.</p>
+    <p class="sd">Renewal SRs completed in this period and how each one ended. Retained = renewed or rewrite accepted, over everything with a decided outcome (renewed, rewritten or cancelled). Unable to Contact (renewed as is, but the renewal was never discussed with the customer), renewals still ahead, policies already cancelled before the SR was opened, and out-of-date policy records sit outside the rate.</p>
     ${bar(rows, `<span class="who">${pbadge(TEAM_DOT, "Team")}</span>`, 100)}
     <h3 style="font-size:12px;text-transform:uppercase;letter-spacing:.06em;color:var(--text-muted);margin:16px 0 6px">By who completed it</h3>${personRows}
     <h3 style="font-size:12px;text-transform:uppercase;letter-spacing:.06em;color:var(--text-muted);margin:16px 0 6px">By pipeline</h3>${pipeRows}

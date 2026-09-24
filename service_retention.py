@@ -219,6 +219,9 @@ OUTCOMES = (
     ("rewrite_accepted", "Rewrite Accepted", "kept"),
     ("cancelled_rewrite_declined", "Cancelled: Rewrite Declined", "lost"),
     ("cancelled_no_option", "Cancelled, no endorse/rewrite available", "lost"),
+    # Unable to Contact DID renew as is (Frank, 2026-09-24). The resolution
+    # records that nobody ever discussed the renewal with the customer, and it
+    # stays outside the rate on purpose -- Frank's call, not an unknown outcome.
     ("unable_to_contact", "Unable to Contact", "open"),
     ("renewed_record", "Renewed (policy record)", "kept"),
     ("rewritten_record", "Rewritten (policy record)", "kept"),
