@@ -118,21 +118,63 @@ export function dialDeltas(basis, recs) {
 /* ---- sales: AgencyZoom -------------------------------------------------- */
 
 const AZ = "https://app.agencyzoom.com";
-let azJwt = null, azJwtExp = 0;
+/* ONE AgencyZoom login, shared. The timer runs every minute and Cloudflare
+   starts each run fresh, so a per-run login meant ~30 logins an hour -- and
+   on 2026-09-24 AgencyZoom began refusing the Worker's logins (403) within
+   an hour, while the same account still logged in fine from the nightly
+   run's machine. So: the token (24 h TTL) is kept in R2 and reused by every
+   run until it nears expiry; parallel calls in one run share one login; and
+   a refused login pauses AgencyZoom for AZ_PAUSE_MINUTES instead of retrying
+   every minute. worker-private/ is never served by any route. */
+const AZ_TOKEN_KEY = "worker-private/az_token.json";
+const AZ_PAUSE_KEY = "worker-private/az_pause.json";
+export const AZ_PAUSE_MINUTES = 30;
+let azJwt = null, azJwtExp = 0, azLogin = null;
+export function _resetAzForTests() { azJwt = null; azJwtExp = 0; azLogin = null; }
+const azClock = ms => new Date(ms).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", timeZone: "America/Phoenix" });
+
 async function azToken(env, fetchFn) {
   if (azJwt && Date.now() < azJwtExp) return azJwt;
-  const r = await fetchFn(`${AZ}/v1/api/auth/login`, {
-    method: "POST", headers: { "content-type": "application/json" },
-    body: JSON.stringify({ username: env.AZ_USERNAME, password: env.AZ_PASSWORD }),
-  });
-  if (!r.ok) throw new Error(`AgencyZoom login ${r.status}`);
-  azJwt = (await r.json()).jwt;
-  azJwtExp = Date.now() + 12 * 3600 * 1000;
-  return azJwt;
+  if (azLogin) return azLogin;
+  azLogin = (async () => {
+    const R2 = env.BOARD;
+    if (R2) {
+      const saved = await R2.get(AZ_TOKEN_KEY);
+      if (saved !== null) {
+        const t = await saved.json();
+        if (t.jwt && Date.now() < t.exp) { azJwt = t.jwt; azJwtExp = t.exp; return azJwt; }
+      }
+      const paused = await R2.get(AZ_PAUSE_KEY);
+      if (paused !== null) {
+        const x = await paused.json();
+        if (Date.now() < x.until) throw new Error(`AgencyZoom paused until ${azClock(x.until)} after a refused login (${x.status})`);
+      }
+    }
+    const r = await fetchFn(`${AZ}/v1/api/auth/login`, {
+      method: "POST", headers: { "content-type": "application/json" },
+      body: JSON.stringify({ username: env.AZ_USERNAME, password: env.AZ_PASSWORD }),
+    });
+    if (!r.ok) {
+      if (R2 && (r.status === 403 || r.status === 429)) {
+        await R2.put(AZ_PAUSE_KEY, JSON.stringify({ until: Date.now() + AZ_PAUSE_MINUTES * 60000, status: r.status, at: new Date().toISOString() }));
+      }
+      throw new Error(`AgencyZoom login ${r.status}`);
+    }
+    azJwt = (await r.json()).jwt;
+    azJwtExp = Date.now() + 20 * 3600 * 1000;      // AgencyZoom's is 24 h; renew early
+    if (R2) await R2.put(AZ_TOKEN_KEY, JSON.stringify({ jwt: azJwt, exp: azJwtExp }));
+    return azJwt;
+  })();
+  try { return await azLogin; } finally { azLogin = null; }
+}
+async function azForget(env) {
+  azJwt = null; azJwtExp = 0;
+  if (env.BOARD) await env.BOARD.delete(AZ_TOKEN_KEY);
 }
 async function azGet(env, path, fetchFn, init = {}) {
   const tok = await azToken(env, fetchFn);
   const r = await fetchFn(`${AZ}${path}`, { ...init, headers: { ...(init.headers || {}), authorization: `Bearer ${tok}`, "content-type": "application/json" } });
+  if (r.status === 401) await azForget(env);          // the saved login stopped working: log in afresh next time
   if (!r.ok) { const e = new Error(`AgencyZoom ${path} ${r.status}`); e.status = r.status; throw e; }
   return r.json();
 }

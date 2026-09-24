@@ -213,6 +213,13 @@ and anything without the glow is the checkpoint's (Frank, 2026-09-24).
   run: even minutes dials/sales/utilization, odd minutes up to 30 lead
   reads. AgencyZoom 429s on bursts of note reads; a failed part keeps its
   last good answer for the same checkpoint instead of blanking the board.
+- **The Worker logs in to AgencyZoom ONCE a day, not once a run.** A per-run
+  login meant ~30 an hour, and on 2026-09-24 AgencyZoom began refusing the
+  Worker's logins (403) within the hour while the same account still worked
+  from the nightly run's machine. The token lives in R2 at
+  `worker-private/az_token.json` (served by no route) and is shared by every
+  run; a refused login pauses AgencyZoom for 30 minutes
+  (`worker-private/az_pause.json`) instead of retrying every minute.
 - **Contact rate stays the checkpoint's.** The board uses the document's own
   `rate`, never live contacts over live dials -- live dials over a stale
   numerator would read as a collapsing rate. The closing ratio falls back to
