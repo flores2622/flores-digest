@@ -203,6 +203,16 @@ def build(day, log=print, live=False):
         return mod.build(day)
 
     doc = board_payload.build(day, live=live)
+    # What the Worker needs to keep dials, sales and utilization live between
+    # checkpoints (live_board.py). Checkpoints only: a finished day is final.
+    if live:
+        try:
+            import live_board
+            b = live_board.basis(day)
+            if b:
+                doc["live_basis"] = b
+        except Exception as e:
+            log(f"  live basis: skipped ({type(e).__name__}: {e})")
     # Open leads misfiled in "Pipeline" by integrations, for someone to move
     # into 1 Pipeline (Frank, 2026-09-24). As of this build's lead corpus;
     # never fails the day.

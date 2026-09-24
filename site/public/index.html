@@ -938,7 +938,11 @@ function digestDay(d, who) {
   // from their own row instead, since "the team's numbers" is not what
   // filtering to one person means.
   const t = focus || d.totals || {};
-  const rate = focus ? (focus.rate ?? 0) : (t.dials ? (100 * t.live / t.dials).toFixed(1) : "0");
+  // The document's own rate (checkpoint, finished day or range), never
+  // recomputed here: between checkpoints the dials are live but the live
+  // contacts are not, and dividing one by the other would read as a
+  // collapsing contact rate (2026-09-24).
+  const rate = focus ? (focus.rate ?? 0) : (t.rate != null ? (+t.rate).toFixed(1) : (t.dials ? (100 * t.live / t.dials).toFixed(1) : "0"));
   const TI = { green: "tg", yellow: "ty", red: "tr" };
   const tc = key => TI[((d.tiers || {})[who || "team"] || {})[key]] || "";
   // Households Quoted and Premium Quoted share one tile (and likewise
@@ -991,7 +995,10 @@ function digestDay(d, who) {
   // policies sold over households quoted, and premium sold over premium
   // quoted. Both purely derived from fields already on `t`, same as `rate`
   // above -- no backend change.
-  const hh = t.hh ?? 0, pol = t.pol ?? 0, pq = t.pq ?? 0, ps = t.ps ?? 0;
+  // Between checkpoints Policies/Premium Sold are live but the quotes are
+  // not, so the ratio stays wholly the checkpoint's (`cp_pol`/`cp_ps`, kept
+  // by applyLive) rather than a live sale over a stale quote count.
+  const hh = t.hh ?? 0, pol = t.cp_pol ?? t.pol ?? 0, pq = t.pq ?? 0, ps = t.cp_ps ?? t.ps ?? 0;
   const hhClosingRatio = hh ? (100 * pol / hh) : null;
   const premClosingRatio = pq ? (100 * ps / pq) : null;
   // Tier-coloured (Frank, 2026-09-23, off industry cross-sell close-rate
@@ -1133,7 +1140,7 @@ function teamLeaderboardHtml(d, who) {
     ${p.util != null ? `<td class="num ${tc(p.name, "util")}">${p.util}%</td>` : ""}</tr>`).join("");
   const tt = k => TI[((d.tiers || {})["team"] || {})[k]] || "";
   const T = d.totals || {};
-  const teamRate = T.dials ? (100 * T.live / T.dials).toFixed(1) : "0";
+  const teamRate = T.rate != null ? (+T.rate).toFixed(1) : (T.dials ? (100 * T.live / T.dials).toFixed(1) : "0");   // see digestDay
   const tot = focus ? "" : `<tr class="tot"><td><span class="who">${pbadge(TEAM_DOT, "Team")}</span></td>
     ${hasRoleplay ? `<td class="num ${tt("roleplay")}">${T.roleplay != null ? Math.round(T.roleplay) : "—"}</td>` : ""}
     <td class="num ${tt("dials")}">${T.dials ?? 0}${dialsSub(T)}</td>
@@ -1458,20 +1465,142 @@ let curLive = false;
  * tripped sanity_gate.py flags. Team-level only (Frank's board, not a
  * per-producer breakdown), so it's gated the same way winsLossesHtml() is:
  * skip entirely on a producer filter. */
+/* ---- Live figures between checkpoints (Frank, 2026-09-24: "just live data
+   where its already at on everything possible, and the header up there
+   specifying what is stale from the last hourly run") ----------------------
+   A checkpoint is the checked figure. /api/live/<day> (site/live.js) keeps
+   dials, sales and utilization current from RingCentral, AgencyZoom and
+   Insightful by the same rules, and they are written straight into the same
+   document the whole page already renders -- no separate strip. Everything
+   that needs a transcript or a note read stays the checkpoint's, and this
+   header says which. */
+let curCheckpoint = null;   // today's checkpoint as published, before any live overlay
+let curLiveData = null;     // the last /api/live answer
+let livePollTimer = null;
+const LIVE_POLL_MS = 120000;
+const azTodayIso = () => new Date(Date.now() - 7 * 3600 * 1000).toISOString().slice(0, 10);
+
+function businessFraction(hours) {
+  const [s, e] = (hours || ["08:35", "17:15"]).map(t => t.split(":").map(Number));
+  const az = new Date(Date.now() - 7 * 3600 * 1000);
+  const mins = az.getUTCHours() * 60 + az.getUTCMinutes();
+  const a = s[0] * 60 + s[1], b = e[0] * 60 + e[1];
+  return Math.max(0, Math.min(1, (mins - a) / (b - a)));
+}
+function pacedTierColor(metric, value, frac) {
+  const t = THRESHOLDS[metric];
+  return value >= t.green * frac ? "green" : value >= t.yellow * frac ? "yellow" : "red";
+}
+
+/* The checkpoint with the live figures written in, tiers recoloured by the
+   same rules the server uses (board_payload._producer_tiers for dials and
+   utilization, publish_board.apply_policy_streak for a sale). */
+function applyLive(base, L) {
+  const d = JSON.parse(JSON.stringify(base));
+  if (!L || !L.live) return d;
+  const tiers = d.tiers || (d.tiers = {});
+  const T = d.totals || (d.totals = {});
+  const ps = d.producers || [];
+  const sum = k => ps.reduce((s, p) => s + (p[k] || 0), 0);
+  if (L.dials && L.dials.ok) {
+    for (const p of ps) {
+      const x = L.dials.data[p.name]; if (!x) continue;
+      p.dials = (p.dials || 0) + x.dials;
+      p.total_dials = (p.total_dials || 0) + x.total_dials;
+      p.raw_dials = (p.raw_dials || 0) + x.raw_dials;
+      p.unchecked = x.unchecked;
+    }
+    T.dials = sum("dials"); T.total_dials = sum("total_dials"); T.raw_dials = sum("raw_dials");
+    const frac = businessFraction((d.live_basis || {}).business_hours);
+    d.pace = Math.round(frac * 1000) / 1000;
+    for (const p of ps) (tiers[p.name] || (tiers[p.name] = {})).dials = pacedTierColor("call_volume", p.dials || 0, frac);
+    (tiers.team || (tiers.team = {})).dials = pacedTierColor("call_volume", (T.dials || 0) / TEAM_SCALE, frac);
+  }
+  if (L.sales && L.sales.ok) {
+    const streak = d.policy_streak || (d.policy_streak = {});
+    T.cp_pol = T.pol || 0; T.cp_ps = T.ps || 0;   // the closing ratio keeps the checkpoint's
+    for (const p of ps) {
+      const x = L.sales.data[p.name]; if (!x) continue;
+      p.cp_pol = p.pol || 0; p.cp_ps = p.ps || 0;
+      p.pol = x.pol; p.ps = x.ps; p.cross_sell = x.cross_sell;
+      const row = tiers[p.name] || (tiers[p.name] = {});
+      if (p.pol > 0) { streak[p.name] = 0; row.pol = "green"; }
+      if (p.ps) row.ps = "green";
+    }
+    T.pol = sum("pol"); T.ps = sum("ps"); T.cross_sell = sum("cross_sell");
+    const team = tiers.team || (tiers.team = {});
+    team.pol = tierColor("policy_count", T.pol || 0);
+    team.ps = T.ps ? "green" : team.pol;
+  }
+  if (L.util && L.util.ok) {
+    for (const p of ps) {
+      const x = (L.util.data.per || {})[p.name]; if (!x) continue;
+      [p.util, p.util_total, p.util_prod] = x;
+      (tiers[p.name] || (tiers[p.name] = {})).util = tierColor("utilization_pct", p.util);
+    }
+    if (L.util.data.team != null) {
+      T.util = L.util.data.team;
+      (tiers.team || (tiers.team = {})).util = tierColor("utilization_pct", T.util);
+    }
+  }
+  return d;
+}
+
+const fmtClock = iso => iso ? new Date(iso).toLocaleTimeString([], { hour: "numeric", minute: "2-digit", timeZone: "America/Phoenix" }) : "";
 function liveBannerHtml(d, who) {
-  if (who || !curLive) return "";
-  const asOf = d.as_of ?
-    new Date(d.as_of).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" }) : "";
+  if (!curLive) return "";
+  const L = curLiveData && curLiveData.live ? curLiveData : null;
+  const parts = [["dials", "Dials"], ["sales", "Policies, Premium Sold and cross-sells"], ["util", "Utilization"]];
+  const liveNow = L ? parts.filter(([k]) => (L[k] || {}).ok).map(([, n]) => n) : [];
+  const notLive = L ? parts.filter(([k]) => !(L[k] || {}).ok).map(([k, n]) => [n, (L[k] || {}).reason || "unavailable"]) : [];
+  const stale = ["contact rate and live contacts", "talk time", "call outcomes", "households and premium quoted",
+    "closing ratio", "task completion", "speed to dial", "the leaderboard's points", "household completion's bundles", "coaching cards"];
+  const ps = (d.producers || []).filter(p => !who || p.name === who);
+  const unchecked = L && (L.dials || {}).ok ? ps.reduce((s, p) => s + (p.unchecked || 0), 0) : 0;
+  const cp = fmtClock(d.as_of);
   const flags = d.flags || [];
-  // d.pace (0-1, board_payload.build()'s live-only fraction of the business
-  // day elapsed) is what Dials/Households Quoted are coloured against right
-  // now instead of the full-day goal -- shown here so the colour makes sense.
-  const paceNote = d.pace != null ? `, ${Math.round(d.pace * 100)}% through the business day` : "";
+  const paceNote = d.pace != null ? ` ${Math.round(d.pace * 100)}% through the business day.` : "";
+  const liveLine = liveNow.length
+    ? `<div><b>Live</b>, updated ${fmtClock(L.fetched_at)}: ${liveNow.join(", ")}.</div>`
+    : `<div><b>Live figures aren't available yet</b>${L ? "" : (curLiveData && curLiveData.reason ? ` (${curLiveData.reason})` : "")}; everything below is the checkpoint's.</div>`;
   return `<div class="livebanner">
-    <div>Live${asOf ? ` — last checkpoint ${asOf}` : ""}${paceNote}, still updating through the day. Tonight's build finalizes it.</div>
+    ${liveLine}
+    <div><b>From the ${cp || "last"} checkpoint</b>: ${liveNow.length ? stale.join(", ") : "every figure"}${liveNow.length && notLive.length ? `, ${notLive.map(([n]) => n.toLowerCase()).join(", ")}` : ""}. The next checkpoint updates them.</div>
+    ${liveNow.length && notLive.length ? notLive.map(([n, why]) => `<div class="n">${n} isn't live yet (${why}).</div>`).join("") : ""}
+    ${unchecked ? `<div>${unchecked} dial${unchecked === 1 ? "" : "s"} since the checkpoint went to numbers not checked yet; they count as new business until the next checkpoint checks them.</div>` : ""}
+    <div>${paceNote.trim()} Tonight's build finalizes the day.</div>
     ${flags.length ? `<div class="liveflags">${flags.map(f => `<div class="liveflag">${f}</div>`).join("")}</div>` : ""}
   </div>`;
 }
+
+/* Fetch the live figures for today's checkpoint and write them into `cur`.
+   A newer checkpoint than the one on screen is reloaded first. Repaints only
+   the Digest, so an open Sales form or coaching card is never reset. */
+async function refreshLive(day) {
+  if (!curLive || !curCheckpoint || day !== azTodayIso()) return;
+  let L = null;
+  try {
+    const r = await fetch(`/api/live/${day}`, { cache: "no-store" });
+    if (r.ok) L = await r.json();
+  } catch (_) {}
+  if (!L) return;
+  if (L.checkpoint && L.checkpoint !== curCheckpoint.as_of) {
+    try {
+      const ir = await fetch(`/api/intraday/${day}`, { cache: "no-store" });
+      if (ir.ok) curCheckpoint = await ir.json();
+    } catch (_) {}
+  }
+  if (!cur || cur.date !== day || rangeMode !== "day") return;   // moved on while this was in flight
+  curLiveData = L;
+  cur = applyLive(curCheckpoint, L.checkpoint === curCheckpoint.as_of ? L : null);
+  if (view === "digest") await paint();
+}
+function startLivePoll(day) {
+  stopLivePoll();
+  if (day !== azTodayIso()) return;
+  livePollTimer = setInterval(() => { if (!document.hidden) refreshLive(day); }, LIVE_POLL_MS);
+}
+function stopLivePoll() { if (livePollTimer) { clearInterval(livePollTimer); livePollTimer = null; } }
 
 function digestPanel(d, who) {
   // Two-column card layout below the leaderboard, matching the email's own
@@ -4184,7 +4313,7 @@ async function paintCommercial() {
 async function loadDay(day) {
   rangeMode = "day";
   $("#view").innerHTML = '<div class="empty">Loading…</div>';
-  cur = null; curLive = false;
+  cur = null; curLive = false; curCheckpoint = null; curLiveData = null; stopLivePoll();
   try {
     const r = await fetch(`/api/days/${day}`, { cache: "no-store" });
     if (r.ok) cur = await r.json();
@@ -4201,11 +4330,12 @@ async function loadDay(day) {
     // fallback for exactly this shape (no `calls` array).
     try {
       const ir = await fetch(`/api/intraday/${day}`, { cache: "no-store" });
-      if (ir.ok) { cur = await ir.json(); curLive = true; }
+      if (ir.ok) { cur = await ir.json(); curLive = true; curCheckpoint = cur; }
     } catch (_) {}
   }
   if (!cur) { $("#view").innerHTML = '<div class="empty">No report for this day yet.</div>'; $("#topsub").textContent = day; return; }
   await paint();
+  if (curLive) { await refreshLive(day); startLivePoll(day); }
 }
 
 async function goView(next) {
