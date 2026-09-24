@@ -194,8 +194,13 @@ Service tab renders it. The team is Debbie (CSR) plus Amanda and Crystal
   counts as RETAINED in the rate, on its own segment. Old
   resolution ids were RENAMED, so anything earlier is read from the policy
   record instead and shown as its own "(policy record)"
-  segments. `RESOLUTION_LABELS` in service_retention.py names each id once, by
-  hand -- `python3 service_retention.py --resolutions` lists them.
+  segments. **Resolution names come from `/v1/api/service-resolutions`**
+  (found 2026-09-24), re-read every build; `RESOLUTION_LABELS` is that list as
+  of 2026-09-24, the fallback. A renewal SR closed from 2026-09-24 on anything
+  else (Completed, Shot Clock Expired, Unable to Complete, Cancelled by
+  Carrier/Client) falls back to the policy record and is listed on the Service
+  tab as not one of the six. `python3 service_retention.py --resolutions`
+  prints each id in use with examples.
 - **Documents hold rows, never medians**, so the board can add any range up.
 
 ## Coach AI

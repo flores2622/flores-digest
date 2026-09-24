@@ -3739,8 +3739,8 @@ function renewalBreakdownHtml(m) {
     <h3 style="font-size:12px;text-transform:uppercase;letter-spacing:.06em;color:var(--text-muted);margin:16px 0 6px">By who completed it</h3>${personRows}
     <h3 style="font-size:12px;text-transform:uppercase;letter-spacing:.06em;color:var(--text-muted);margin:16px 0 6px">By pipeline</h3>${pipeRows}
     <div class="oleg">${legend}</div>
-    ${fromRecord ? `<p class="sd" style="margin:10px 0 0">${fromRecord} of ${rows.length} read from the policy's own record ("policy record" segments): completed before ${fmtShortDate(m.resolutionsFrom)}, when the new renewal resolutions started, or with a resolution not yet named.</p>` : ""}
-    ${unnamed.length ? `<p class="sd" style="margin:6px 0 0;color:#b45309">Resolutions not yet named: ${unnamed.map(([k, n]) => `id ${k} (${n} SR${n === 1 ? "" : "s"})`).join(", ")}.</p>` : ""}
+    ${fromRecord ? `<p class="sd" style="margin:10px 0 0">${fromRecord} of ${rows.length} read from the policy's own record ("policy record" segments): completed before ${fmtShortDate(m.resolutionsFrom)}, when the new renewal resolutions started, or closed on a resolution that is not one of the six.</p>` : ""}
+    ${unnamed.length ? `<p class="sd" style="margin:6px 0 0;color:#b45309">Closed on a resolution that is not one of the six renewal resolutions: ${unnamed.map(([k, n]) => `${k} (${n} SR${n === 1 ? "" : "s"})`).join(", ")}.</p>` : ""}
   </div>`;
 }
 function completionTimeHtml(m) {
