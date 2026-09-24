@@ -221,6 +221,16 @@ The service team's work on a commercial household (payments, a business
 owner's personal lines) stays in Athena. Commercial renewals use the same six
 resolutions, Unable to Contact retained, and the section is visible to Frank only.
 
+**The Commercial Center** (Frank named it, 2026-09-24): `commercial_digest.py`
+builds `commercial/<day>.json` from `daily.py` after the service board (board
+only, never raises) -- rows of every commercial SR completed that day, plus
+the open queue at the end of the day from that day's live SR file. The
+Worker's `/api/commercial` answers only the emails in `COMMERCIAL_VIEWERS`
+(wrangler.jsonc); the left-bar entry stays hidden for everyone else. Most
+commercial policy chains stop being updated in AgencyZoom, so a renewal SR
+closed on anything but the six resolutions usually reads "Policy record not
+current" -- another reason the six matter here.
+
 ## Coach AI
 
 - **The call score is NOT a 0-100 percentage.** Frank, 2026-09-01: a *perfect

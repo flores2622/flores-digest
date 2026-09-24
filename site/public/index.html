@@ -228,6 +228,8 @@ body {
   padding: 9px 12px; font: inherit; font-weight: 600; font-size: 13px; color: var(--text-muted);
   cursor: pointer; text-align: left; width: 100%;
 }
+.tab[hidden] { display: none; }
+.comtab th.t, .comtab td.t { text-align: left; }
 .tab[aria-selected="true"] { color: var(--text-primary); border-left-color: var(--text-primary); background: var(--surface-raised); }
 .tab:hover { color: var(--text-primary); }
 @media (max-width: 760px) {
@@ -632,6 +634,7 @@ details.sc .scb { padding: 0 12px 12px; }
     <button class="tab" role="tab" aria-selected="false" data-v="trends">Trends</button>
     <button class="tab" role="tab" aria-selected="false" data-v="learning">Learning Center</button>
     <button class="tab" role="tab" aria-selected="false" data-v="service">Service Center</button>
+    <button class="tab" role="tab" aria-selected="false" data-v="commercial" hidden>Commercial Center</button>
   </nav>
   <main class="main">
     <div id="centerbar"></div>
@@ -3617,6 +3620,8 @@ async function paint() {
     repaintSales();
   } else if (view === "service") {
     await paintService();
+  } else if (view === "commercial") {
+    await paintCommercial();
   } else {
     $("#topsub").textContent = "trends across every reporting day";
     v.innerHTML = '<div class="empty">Loading…</div>';
@@ -3842,6 +3847,162 @@ async function paintService() {
   wireRangeControl();
 }
 
+/* ---- Cerberus: the Commercial Center (Frank, 2026-09-24) --------------------
+   Commercial is Frank's alone. One document per day (commercial/<day>.json,
+   commercial_digest.py) holding ROWS -- every commercial SR completed that
+   day, and every one still open at the end of it -- so any range is added up
+   here, like Athena's. The Worker serves /api/commercial to Frank only; the
+   left-bar entry stays hidden unless that request succeeds (initCommercial).
+   What counts as commercial is commercial.py: the Commercial Renewals
+   workflow, plus Frank's own Service Pipeline SRs on a commercial household.
+   The open queue leads -- it is the work. */
+let COMMERCIAL_DAYS = null;
+const COM_CACHE = {};
+const cesc = s => String(s == null ? "" : s).replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
+async function initCommercial() {
+  try {
+    const r = await fetch("/api/commercial", { cache: "no-store" });
+    if (!r.ok) return;
+    COMMERCIAL_DAYS = (await r.json()).days || [];
+    const t = $('.tab[data-v="commercial"]');
+    if (t) t.hidden = false;
+  } catch (_) {}
+}
+async function fetchCommercialDocs(days) {
+  const out = [];
+  for (const d of days) {
+    if (!(d in COM_CACHE)) {
+      try {
+        const r = await fetch(`/api/commercial/${d}`, { cache: "no-store" });
+        COM_CACHE[d] = r.ok ? await r.json() : null;
+      } catch (_) { COM_CACHE[d] = null; }
+    }
+    if (COM_CACHE[d] && COM_CACHE[d].version === 1) out.push(COM_CACHE[d]);
+  }
+  return out.sort((x, y) => x.date < y.date ? -1 : 1);
+}
+function mergeCommercialDocs(docs) {
+  // The open queue is a point-in-time snapshot: the newest day in the range
+  // that has one. Completed rows add up across the whole range.
+  const withQueue = docs.filter(x => Array.isArray(x.open));
+  const q = withQueue[withQueue.length - 1];
+  const last = docs[docs.length - 1];
+  const m = { days: docs.map(x => x.date), completed: [], unnamed: {},
+    open: q ? q.open : null, asOf: q ? q.date : null,
+    outcomes: last.outcomes || [], resolutionsFrom: last.resolutions_from };
+  for (const x of docs) {
+    m.completed.push(...(x.completed || []));
+    for (const [k, n] of Object.entries(x.unnamed || {})) m.unnamed[k] = (m.unnamed[k] || 0) + n;
+  }
+  return m;
+}
+const COM_KIND = { renewal: "Commercial Renewals", service: "Service changes" };
+const comDays = (a, b) => Math.round((new Date(b + "T12:00:00") - new Date(a + "T12:00:00")) / 864e5);
+function comQueueHtml(m) {
+  if (!m.open) return `<div class="sect"><h2>Open Queue</h2><p class="sd">No open-SR snapshot in this range.</p></div>`;
+  const asOf = m.asOf, soon = addDays(asOf, 30);
+  const o = m.open;
+  const overdue = o.filter(r => r.due && r.due < asOf);
+  const dueSoon = o.filter(r => r.due && r.due >= asOf && r.due <= soon);
+  const ages = o.map(r => r.created ? comDays(r.created, asOf) : null);
+  const prem = o.reduce((a, r) => a + (r.premium || 0), 0);
+  const priced = o.filter(r => r.premium).length;
+  const ren = o.filter(r => r.kind === "renewal").length;
+  const tiles = `<div class="tiles">
+    <div class="tile"><div class="k">Open SRs</div><div class="v">${o.length}</div>
+      <div class="n">${ren} renewal${ren === 1 ? "" : "s"} &middot; ${o.length - ren} service change${o.length - ren === 1 ? "" : "s"}</div></div>
+    <div class="tile"><div class="k">Past Due</div><div class="v">${overdue.length}</div>
+      <div class="n">${o.length ? Math.round(100 * overdue.length / o.length) : 0}% of open SRs</div></div>
+    <div class="tile"><div class="k">Due in 30 Days</div><div class="v">${dueSoon.length}</div>
+      <div class="n">through ${fmtShortDate(soon)}</div></div>
+    <div class="tile"><div class="k">Age</div><div class="v">${ages.length ? Math.round(svcMedian(ages)) + "d" : "—"}</div>
+      <div class="n">median since created &middot; oldest ${ages.length ? Math.max(...ages.filter(x => x != null)) + "d" : "—"}</div></div>
+    <div class="tile"><div class="k">Premium on the Line</div><div class="v">${money(prem)}</div>
+      <div class="n">current term, ${priced} of ${ren} open renewals matched to a policy</div></div>
+  </div><div style="height:12px"></div>`;
+  const groups = {};
+  for (const r of o) (groups[r.kind + "\u0000" + r.stage] = groups[r.kind + "\u0000" + r.stage] || []).push(r);
+  const stageRows = Object.entries(groups).sort((a, b) => b[1].length - a[1].length).map(([k, rs]) => {
+    const [kind, stage] = k.split("\u0000");
+    return `<tr><td>${COM_KIND[kind]}</td><td class="t">${cesc(stage)}</td><td class="num">${rs.length}</td>
+      <td class="num">${rs.filter(r => r.due && r.due < asOf).length}</td>
+      <td class="num">${Math.round(svcMedian(rs.map(r => r.created ? comDays(r.created, asOf) : null)) || 0)}d</td></tr>`;
+  }).join("");
+  const list = o.slice().sort((a, b) => (a.due || "9999") < (b.due || "9999") ? -1 : 1).map(r => {
+    const late = r.due && r.due < asOf;
+    return `<tr><td>${cesc(r.name)}<div style="font-size:11.5px;color:var(--text-muted)">${cesc(r.subject)}</div></td>
+      <td class="t">${r.kind === "renewal" ? cesc(r.line || "—") : "Service change"}</td>
+      <td class="num">${r.premium ? money(r.premium) : "—"}</td><td class="t">${cesc(r.stage)}</td>
+      <td class="num">${r.created ? comDays(r.created, asOf) + "d" : "—"}</td>
+      <td class="num"${late ? ' style="color:#b45309;font-weight:600"' : ""}>${r.due ? fmtMDY(r.due) : "—"}${late ? ` &middot; ${comDays(r.due, asOf)}d late` : ""}</td></tr>`;
+  }).join("");
+  return `<div class="sect"><h2>Open Queue</h2>
+    <p class="sd">Every commercial SR open at the end of ${fmtShortDate(asOf)}: the Commercial Renewals pipeline, plus Frank's own Service Pipeline SRs for commercial households.</p>${tiles}
+    <div class="scroll"><table class="comtab"><thead><tr><th>Pipeline</th><th class="t">Stage</th><th class="num">Open</th><th class="num">Past due</th><th class="num">Median age</th></tr></thead><tbody>${stageRows}</tbody></table></div>
+    <h3 style="font-size:12px;text-transform:uppercase;letter-spacing:.06em;color:var(--text-muted);margin:16px 0 6px">Every open SR, soonest due first</h3>
+    <div class="scroll" style="max-height:520px;overflow-y:auto"><table class="comtab"><thead><tr><th>Account</th><th class="t">Line</th><th class="num">Premium</th><th class="t">Stage</th><th class="num">Age</th><th class="num">Due</th></tr></thead><tbody>${list}</tbody></table></div></div>`;
+}
+function comOutcomesHtml(m) {
+  const rows = m.completed.filter(r => r.kind === "renewal");
+  if (!rows.length) return `<div class="sect"><h2>Renewal Outcomes</h2><p class="sd">No commercial renewal SRs were completed in this period.</p></div>`;
+  const kind = Object.fromEntries(m.outcomes.map(([k, , c]) => [k, c]));
+  const segs = m.outcomes.map(([k, l]) => { const c = rows.filter(r => r.outcome === k).length;
+    return c ? `<span class="ogseg" style="width:${(c / rows.length * 100).toFixed(2)}%;background:${OUTCOME_COLORS[k]}" title="${l}: ${c}"></span>` : ""; }).join("");
+  const rt = renewalRate(rows, kind);
+  const legend = m.outcomes.map(([k, l]) => [k, l, rows.filter(r => r.outcome === k)]).filter(x => x[2].length).map(([k, l, rs]) =>
+    `<span class="oleg-item"><span class="pd" style="background:${OUTCOME_COLORS[k]}"></span>${l} <b>${rs.length}</b> <span style="color:var(--text-muted)">(${money(rs.reduce((a, r) => a + (r.premium || 0), 0))})</span></span>`).join("");
+  const unnamed = Object.entries(m.unnamed || {});
+  return `<div class="sect"><h2>Renewal Outcomes</h2>
+    <p class="sd">Commercial renewal SRs completed in this period and how each ended, with the same six resolutions as the service team: retained = renewed (Unable to Contact included, which renewed as is) or rewrite accepted, over everything with a decided outcome. Not a book-wide retention rate.</p>
+    <div class="orow"><div class="orow-head"><span class="who">${pbadge(TEAM_DOT, "Commercial")}</span>
+      <span class="on">${rows.length} renewal SR${rows.length === 1 ? "" : "s"}${rt.pct == null ? "" : ` &middot; <b>${rt.pct}%</b> retained (${rt.kept} of ${rt.kept + rt.lost})`}</span></div>
+      <div class="otrack">${segs}</div></div>
+    <div class="oleg">${legend}</div>
+    ${unnamed.length ? `<p class="sd" style="margin:6px 0 0;color:#b45309">Closed on a resolution that is not one of the six renewal resolutions: ${unnamed.map(([k, n]) => `${cesc(k)} (${n})`).join(", ")}.</p>` : ""}</div>`;
+}
+function comCompletedHtml(m) {
+  const rs = m.completed;
+  if (!rs.length) return `<div class="sect"><h2>Completed</h2><p class="sd">No commercial SRs were completed in this period.</p></div>`;
+  const tr = ["renewal", "service"].map(k => [k, rs.filter(r => r.kind === k)]).filter(x => x[1].length).map(([k, xs]) => { const hs = xs.map(r => r.hours);
+    return `<tr><td>${COM_KIND[k]}</td><td class="num">${xs.length}</td><td class="num">${fmtDur(svcMedian(hs))}</td><td class="num">${fmtDur(svcPctile(hs, 0.9))}</td></tr>`; }).join("");
+  const label = Object.fromEntries(m.outcomes.map(([k, l]) => [k, l]));
+  const list = rs.slice().sort((a, b) => a.completed < b.completed ? 1 : -1).map(r =>
+    `<tr><td>${fmtMDY(r.completed)}</td><td class="t">${cesc(r.name)}<div style="font-size:11.5px;color:var(--text-muted)">${cesc(r.subject)}</div></td>
+      <td class="t">${r.kind === "renewal" ? cesc(label[r.outcome] || r.outcome) : "Service change"}</td><td class="num">${fmtDur(r.hours)}</td><td class="t">${cesc((r.by_name || "—").split(" ")[0])}</td></tr>`).join("");
+  return `<div class="sect"><h2>Completed</h2>
+    <p class="sd">Commercial SRs completed in this period, from the day each was created to the day it was completed.</p>
+    <div class="scroll"><table><thead><tr><th>Pipeline</th><th class="num">Completed</th><th class="num">Median</th><th class="num">90% within</th></tr></thead>
+    <tbody>${tr}</tbody></table></div>
+    <div class="scroll" style="margin-top:12px"><table class="comtab"><thead><tr><th>Completed</th><th class="t">Account</th><th class="t">Outcome</th><th class="num">Took</th><th class="t">By</th></tr></thead><tbody>${list}</tbody></table></div></div>`;
+}
+async function paintCommercial() {
+  const v = $("#view");
+  const controls = rangeControlHtml();
+  v.innerHTML = controls + '<div class="empty">Loading…</div>';
+  wireRangeControl();
+  const all = COMMERCIAL_DAYS || [];
+  let wanted, label;
+  if (rangeMode === "day") {
+    const day = (cur && cur.date) || all[0];
+    wanted = day ? [day] : [];
+    label = day ? new Date(day + "T12:00:00").toLocaleDateString(undefined, { weekday: "long", month: "long", day: "numeric", year: "numeric" }) : "";
+  } else {
+    const b = rangeBounds();
+    if (b.err) { v.innerHTML = controls + `<div class="empty">${b.err}</div>`; wireRangeControl(); return; }
+    wanted = all.filter(d => d >= (b.from || "") && d <= b.to);
+    label = `${b.label} · ${b.from || "the start"} → ${b.to}`;
+  }
+  const docs = await fetchCommercialDocs(wanted);
+  $("#topsub").textContent = "Cerberus · commercial" + (label ? " · " + label : "");
+  if (!docs.length) {
+    v.innerHTML = controls + `<div class="empty">No Cerberus report for ${rangeMode === "day" ? "this day" : "this range"} yet.</div>`;
+  } else {
+    const m = mergeCommercialDocs(docs);
+    v.innerHTML = controls + comQueueHtml(m) + comOutcomesHtml(m) + comCompletedHtml(m);
+  }
+  wireRangeControl();
+}
+
 async function loadDay(day) {
   rangeMode = "day";
   $("#view").innerHTML = '<div class="empty">Loading…</div>';
@@ -3915,6 +4076,7 @@ paintCenterBar();
     return;
   }
   DAYS = days;
+  initCommercial();   // unhides the Commercial Center for Frank only
   await loadDay(days[0]);
 })();
 </script>

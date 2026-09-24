@@ -86,6 +86,14 @@ export default {
         if (parts.length === 3) return getService(env, parts[2]);
       }
 
+      if (parts[1] === "commercial") {
+        // Frank's alone (2026-09-24): a second gate on top of Access.
+        const deny = requireCommercial(request, env);
+        if (deny) return deny;
+        if (parts.length === 2) return listCommercial(env);
+        if (parts.length === 3) return getCommercial(env, parts[2]);
+      }
+
       if (parts[1] === "recordings" && parts.length === 4) {
         return getRecording(request, env, parts[2], parts[3]);
       }
@@ -239,6 +247,40 @@ async function getService(env, day) {
   const obj = await env.BOARD.get(`service/${day}.json`);
   if (obj === null) {
     return json({ error: "no service report for this day", day }, 404);
+  }
+  return new Response(obj.body, {
+    headers: {
+      "content-type": "application/json; charset=utf-8",
+      "cache-control": "no-store",
+    },
+  });
+}
+
+/** GET /api/commercial -> { days: [...] }, newest first -- every day
+ * commercial_digest.py (Cerberus) has published. Same walk as listService. */
+async function listCommercial(env) {
+  const days = [];
+  let cursor;
+  do {
+    const listed = await env.BOARD.list({ prefix: "commercial/", cursor });
+    for (const o of listed.objects) {
+      const m = o.key.match(/^commercial\/(\d{4}-\d{2}-\d{2})\.json$/);
+      if (m) days.push(m[1]);
+    }
+    cursor = listed.truncated ? listed.cursor : undefined;
+  } while (cursor);
+  days.sort().reverse();
+  return json({ days });
+}
+
+/** GET /api/commercial/:day -> the Commercial Center's document for that day. */
+async function getCommercial(env, day) {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(day)) {
+    return json({ error: "bad day" }, 400);
+  }
+  const obj = await env.BOARD.get(`commercial/${day}.json`);
+  if (obj === null) {
+    return json({ error: "no commercial report for this day", day }, 404);
   }
   return new Response(obj.body, {
     headers: {
@@ -582,6 +624,9 @@ function json(body, status) {
    ------------------------------------------------------------------------- */
 
 let jwksCache = { keys: null, at: 0 };
+// The verified Access payload of each request that passed requireAccess(),
+// for the few routes that also care WHO is asking (requireCommercial).
+const ACCESS_IDENTITY = new WeakMap();
 const JWKS_TTL_MS = 60 * 60 * 1000;   // Access rotates keys ~every 6 weeks
 
 async function requireAccess(request, env) {
@@ -608,11 +653,26 @@ async function requireAccess(request, env) {
   try {
     const payload = await verifyJwt(token, team, aud);
     if (!payload) return json({ error: "not authenticated" }, 403);
+    ACCESS_IDENTITY.set(request, payload);
   } catch (_) {
     // Never surface the reason: a verification oracle is a gift to whoever is
     // probing. The Worker's own logs carry the detail if it is ever needed.
     return json({ error: "not authenticated" }, 403);
   }
+  return null;
+}
+
+/* The Commercial Center is Frank's alone (2026-09-24). Only the emails in
+   COMMERCIAL_VIEWERS (wrangler.jsonc, comma-separated) get /api/commercial;
+   everyone else behind Access gets a 403, and the board keeps the section's
+   left-bar entry hidden for them. Unset means nobody -- closed, never open.
+   Must run AFTER requireAccess(): the email is the verified token's, never a
+   header a client could set. */
+function requireCommercial(request, env) {
+  const who = String((ACCESS_IDENTITY.get(request) || {}).email || "").toLowerCase();
+  const allowed = String(env.COMMERCIAL_VIEWERS || "").toLowerCase()
+    .split(",").map((x) => x.trim()).filter(Boolean);
+  if (!who || !allowed.includes(who)) return json({ error: "not permitted" }, 403);
   return null;
 }
 
