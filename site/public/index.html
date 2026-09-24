@@ -1859,15 +1859,18 @@ function folioStartFor(end) {
    known; small enough at current volume to just do this in the browser,
    the same way This Week/Custom range already re-fetch multiple days. */
 let ALL_CALLS_CACHE = null;
+let ALL_CARDS_CACHE = null;   // one row per coaching card: {date, who, leadsrc}, for Role Play's lead source
 async function fetchAllCalls() {
   if (ALL_CALLS_CACHE) return ALL_CALLS_CACHE;
-  const out = [];
+  await loadLeadSources();
+  const out = [], cards = [];
   for (const d of DAYS) {
     try {
       const r = await fetch(`/api/days/${d}`, { cache: "no-store" });
       if (!r.ok) continue;
       const doc = await r.json();
       for (const c of (doc.calls || [])) {
+        cards.push({ date: d, who: c.who, leadsrc: c.leadsrc || "" });
         for (const o of (c.objs || [])) {
           out.push({ date: d, who: c.who, lead: c.lead, cat: o.cat, group: o.group,
                     score: o.score, addressed: o.addressed });
@@ -1875,6 +1878,7 @@ async function fetchAllCalls() {
       }
     } catch (_) {}
   }
+  ALL_CARDS_CACHE = cards;
   ALL_CALLS_CACHE = out;
   return out;
 }
@@ -2194,27 +2198,47 @@ const RP_PERSONAS = [
 // knowing "the type of client, how they should approach the call, what the
 // lead source is") so producers practice adjusting their open to the
 // source, the same way they have to on a real call.
-const LEAD_SOURCES = [
-  { key: "website",  label: "Website quote request",
-    forCustomer: "You filled out a quote request on the agency's website within the last day or two, giving your name and number for a callback.",
-    tip: "They asked for this call -- confirm what they requested and get straight to discovery, don't re-sell them on needing insurance." },
-  { key: "referral", label: "Referral from an existing client",
-    forCustomer: "A friend or family member who is already a customer of this agency gave the producer your number and told you someone would call.",
-    tip: "Name-drop the referral early -- it buys trust fast and shortens the opening." },
-  { key: "renewal",  label: "Renewal reminder (policy expiring soon)",
-    forCustomer: "Your current auto/home policy renews within the next couple of weeks and you got a reminder that an agent would reach out.",
-    tip: "Lead with the renewal date and get their current premium -- this is the easiest discovery ask of any source." },
-  { key: "crosssell", label: "Cross-sell (existing policyholder, new product)",
-    forCustomer: "You are already an insurance customer of this agency for one policy, and the producer is calling about a different type of coverage you don't have yet.",
-    tip: "This is new business even though they're a long-time customer -- don't let \"I already have insurance with you\" end the call, that's not a real objection here." },
-  { key: "socialad", label: "Facebook / Instagram lead ad",
-    forCustomer: "You clicked a quote ad on social media a day or two ago, mostly out of curiosity about the price, and gave your number.",
-    tip: "Cold-ish -- they may barely remember clicking. Re-establish why you're calling fast, then move into discovery before they lose interest." },
-  { key: "coldlist", label: "Inbound call -- shopping around",
-    forCustomer: "You called in yourself asking for a quote because you're currently shopping multiple companies for a better price.",
-    tip: "They called YOU -- the motivation is already there. Don't waste it on a long pitch; get current premium and X-date, then move to close." },
-];
-function pickLeadSource() { return LEAD_SOURCES[Math.floor(Math.random() * LEAD_SOURCES.length)]; }
+/* Role Play's lead source comes from the agency's real lead-source guide
+   (lead_sources.py, published with /api/leadsources) and from the producer's
+   own calls: it picks one of the lead sources behind this producer's coached
+   calls over the trailing 4 weeks, so they practise the leads they actually
+   work, as often as they work them (Frank, 2026-09-24). Centers of influence,
+   cold / misc and the rest the guide keeps out of Role Play never come up.
+   With no real calls to draw on, any coached group is equally likely; with
+   no guide at all (not published yet) it falls back to a plain quote request. */
+const RP_FALLBACK_LEAD_SOURCE = { key: "quote", label: "Quote request",
+  forCustomer: "You asked this agency for an insurance quote and gave your number for a callback.",
+  tip: "They asked for this call -- confirm what they requested and get straight to discovery." };
+let LEADSRC_GUIDE = null;   // {source_group, cross_sell_product, groups} from /api/leadsources
+const lsNorm = n => String(n || "").trim().replace(/!+$/, "").trim().replace(/\s+/g, " ").toLowerCase();
+function lsGroupKey(name) {
+  const n = lsNorm(name);
+  if (!n || !LEADSRC_GUIDE) return "unclassified";
+  return LEADSRC_GUIDE.source_group[n] || (/\s(at|@)\s/i.test(` ${n} `) ? "center_of_influence" : "unclassified");
+}
+const CROSS_SELL_WORDS = { auto: "auto", home: "homeowners", life: "life insurance", umbrella: "umbrella" };
+function rpScenarioFor(name, key) {
+  const g = LEADSRC_GUIDE.groups[key];
+  const product = (LEADSRC_GUIDE.cross_sell_product || {})[lsNorm(name)];
+  return { key, label: name ? String(name).trim() : g.label,
+    forCustomer: g.backstory.replace("{product}", CROSS_SELL_WORDS[product] || "a type of"),
+    tip: g.approach || "" };
+}
+function pickLeadSource() {
+  const G = LEADSRC_GUIDE;
+  const usable = k => G && G.groups[k] && G.groups[k].roleplay && G.groups[k].backstory;
+  if (!G || !Object.keys(G.groups).some(usable)) return RP_FALLBACK_LEAD_SOURCE;
+  const who = rpWeakFor();
+  const { start, end } = objectionWindow4wk();
+  const real = (ALL_CARDS_CACHE || []).filter(c => c.who === who && c.leadsrc
+    && c.date >= start && c.date <= end && usable(lsGroupKey(c.leadsrc)));
+  if (real.length) {
+    const c = real[Math.floor(Math.random() * real.length)];
+    return rpScenarioFor(c.leadsrc, lsGroupKey(c.leadsrc));
+  }
+  const keys = Object.keys(G.groups).filter(usable);
+  return rpScenarioFor("", keys[Math.floor(Math.random() * keys.length)]);
+}
 // The 4-5 things every call needs regardless of persona or lead source --
 // condensed from coaching/METHODOLOGY.md's 9-dimension framework and
 // coaching/TRAINING.md, not re-derived here; keep those three in sync if
@@ -2440,7 +2464,7 @@ function roleplayPanel() {
    before the live chat starts, so the producer walks in knowing the client
    type, the lead source, and how to approach the call -- everything a
    manager would tell them before handing over a real lead. rpLeadSource is
-   flavor/backstory only (see LEAD_SOURCES above), never the objection
+   flavor/backstory only (see pickLeadSource above), never the objection
    script -- that stays server-side and out of the client entirely. */
 function roleplayDebriefHtml(p) {
   const ls = rpLeadSource || pickLeadSource();
@@ -3058,6 +3082,7 @@ async function loadLeadSources() {
     const r = await fetch("/api/leadsources", { cache: "no-store" });
     const body = r.ok ? await r.json() : { sources: [] };
     salesLeadSourceCache = body.sources || [];
+    if (body.groups && body.source_group) LEADSRC_GUIDE = body;
   } catch (_) { salesLeadSourceCache = []; }
   return salesLeadSourceCache;
 }
