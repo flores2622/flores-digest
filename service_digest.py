@@ -44,13 +44,15 @@ SERVICE_TEAM = {
 HYBRID_UTIL = {"Crystal Mango"}      # whole-day utilization, shared with sales
 
 # AgencyZoom service pipelines, as the agency uses them (Frank, 2026-09-23).
+# Commercial Renewals is not one of them: commercial is Frank's alone and lives
+# in Cerberus (commercial.py), and build() drops every commercial SR before
+# any figure is read (Frank, 2026-09-24).
 # None of these is worked stage by stage except Late Payments; for the rest
 # Athena tracks start (createDate) to completion (completeDate) only.
 #   (key, board label, AgencyZoom workflowName(s), kind)
 PIPELINES = (
     ("renewals_ff", "Farmers & Foremost Renewals", {"Personal Renewals"}, "renewal"),
     ("renewals_bw", "Bristol West Renewals", {"Other 30 day Renewals"}, "renewal"),
-    ("renewals_commercial", "Commercial Renewals", {"Commercial Renewals"}, "renewal"),
     ("changes", "Changes & Service", {"Service Pipeline"}, "service"),   # changes, endorsements, basic service
     ("late_payments", "Late Payments", {"Late Payments"}, "late"),       # the one pipeline tracked by stage
     ("missing_docs", "Missing Documents", {"Missing Documents"}, "docs"),  # contingencies on newly bound policies
@@ -237,14 +239,16 @@ def sr_figures(day, done, live, log=log):
 SERVICE_CALL_BUCKETS = {"customer", "open SR", "no record"}
 
 
-def callback_figures(day, recs=None):
+def callback_figures(day, recs=None, commercial_only=frozenset()):
     """Call-back resolution: each missed or voicemail call-in to the office
     (grouped per caller per hour, exactly as the missed-call audit does) that
     routes to service, and the minutes until the first outbound call back to
     that number, credited to whoever made it. Same-day only: a call missed at
     5:20 and returned tomorrow reads as not returned. Texts are not counted --
     a hand-typed reply lives on LEAD notes, which a service customer usually
-    does not have."""
+    does not have. A caller from a commercial-only household is Cerberus's,
+    not the team's, and is left out (Frank, 2026-09-24)."""
+    import commercial
     import missed_call_audit as mca
     recs = recs if recs is not None else mca.collect(day, refresh=False)
     idx, *_ = mca.build_index(day)
@@ -252,6 +256,8 @@ def callback_figures(day, recs=None):
     for n, calls in mca.group(recs):
         bucket = mca.route(idx.get(n))[0]
         if bucket not in SERVICE_CALL_BUCKETS:
+            continue
+        if commercial.is_commercial_caller(idx.get(n), commercial_only):
             continue
         last = mca.parse(calls[-1]["startTime"])
         back = None
@@ -290,6 +296,13 @@ def build(day, log=log, refresh_households=True):
     live_f = ROOT / f"data/az_service_tickets_{day}.json"
     live = json.loads(live_f.read_text()) if live_f.exists() else []
     done = completed_tickets(day, log=log)
+    # Commercial work is Cerberus's (commercial.py): it leaves every figure
+    # below, SRs, renewal outcomes and call backs alike.
+    import commercial
+    import service_retention
+    com_any, com_only = commercial.households(service_retention.load_household_map(log=log))
+    done = [t for t in done if not commercial.is_commercial_sr(t, com_any)]
+    live = [t for t in live if not commercial.is_commercial_sr(t, com_any)]
     # Each section may fail alone: a bad renewal read must not cost the task
     # and SR cards that are already right.
     try:
@@ -298,7 +311,7 @@ def build(day, log=log, refresh_households=True):
         log(f"  utilization failed ({type(e).__name__}: {e})")
         util = {}
     try:
-        callbacks = callback_figures(day)
+        callbacks = callback_figures(day, commercial_only=com_only)
     except Exception as e:
         log(f"  call backs failed ({type(e).__name__}: {e})")
         callbacks = None

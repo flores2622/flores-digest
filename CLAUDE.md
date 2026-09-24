@@ -204,6 +204,23 @@ Crystal (hybrid); credit always goes to whoever COMPLETED the SR or task.
   prints each id in use with examples.
 - **Documents hold rows, never medians**, so the board can add any range up.
 
+## Cerberus -- Commercial
+
+**Cerberus is Commercial's name** (Frank, 2026-09-24), beside Apollo and
+Athena. **Commercial is Frank's alone**, so nothing commercial touches anyone
+else's numbers. `commercial.py` is the one definition, imported by Athena to
+exclude and by Cerberus to count:
+- every SR in the **Commercial Renewals** workflow, whoever completed it;
+- a **commercial service change**: a Service Pipeline SR on a household holding
+  a commercial policy, COMPLETED by Frank (open: assigned to him, CSR 82589).
+  AgencyZoom has no commercial service pipeline; the household is the only
+  signal. The completer decides -- Amanda closing Frank's SR makes it hers;
+- **call backs** from a commercial-ONLY household leave Athena's counts.
+
+The service team's work on a commercial household (payments, a business
+owner's personal lines) stays in Athena. Commercial renewals use the same six
+resolutions, Unable to Contact retained, and the section is visible to Frank only.
+
 ## Coach AI
 
 - **The call score is NOT a 0-100 percentage.** Frank, 2026-09-01: a *perfect
