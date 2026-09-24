@@ -200,7 +200,11 @@ Crystal (hybrid); credit always goes to whoever COMPLETED the SR or task.
   of 2026-09-24, the fallback. A renewal SR closed from 2026-09-24 on anything
   else (Completed, Shot Clock Expired, Unable to Complete, Cancelled by
   Carrier/Client) is also listed on the Service Center as not one of the six;
-  before that date "Completed" was the normal choice, so it is not flagged. `python3 service_retention.py --resolutions`
+  before that date "Completed" was the normal choice, so it is not flagged.
+  On 2026-09-24 Frank deleted every other resolution in AgencyZoom except
+  **Completed, which is for changes, NOC and missing documents -- not
+  renewals**. The deleted ones stay in `RESOLUTION_LABELS` because past SRs
+  still carry their ids; do not prune them. `python3 service_retention.py --resolutions`
   prints each id in use with examples.
 - **Documents hold rows, never medians**, so the board can add any range up.
 
