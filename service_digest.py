@@ -1,11 +1,12 @@
 """Athena -- the service digest: the service team's day, published to the
-board's Service tab. (Apollo is the sales coaching brain; Athena is service's.)
+board's Service Center. (Apollo is the sales coaching brain; Athena is service's.)
 
     python3 service_digest.py                  # today, Arizona
     python3 service_digest.py --day 2026-09-22 --dry-run
 
-THE TEAM (Frank, 2026-09-23): Debbie Aguilera (CSR) and the two hybrids,
-Amanda Torricellas and Crystal Mango. Amanda is fully in this digest -- she is
+THE TEAM (Frank, 2026-09-23): Debbie Aguilera (CSR), Amanda Torricellas
+(Ops Mngr, titled so on the board from 2026-09-24) and Crystal Mango
+(hybrid). Amanda is fully in this digest -- she is
 deliberately not tracked on the sales side. Crystal is on both: here only her
 service work counts, and her utilization is the whole day, marked hybrid,
 because Insightful cannot split a day into sales and service time.
@@ -37,7 +38,7 @@ PREFIX = "service"
 # name -> AgencyZoom user id (the same id is the CSR id on tickets).
 SERVICE_TEAM = {
     "Debbie Aguilera": {"az_id": 83597, "role": "CSR"},
-    "Amanda Torricellas": {"az_id": 105006, "role": "Hybrid"},
+    "Amanda Torricellas": {"az_id": 105006, "role": "Ops Mngr"},
     "Crystal Mango": {"az_id": 174445, "role": "Hybrid"},
 }
 HYBRID_UTIL = {"Crystal Mango"}      # whole-day utilization, shared with sales
