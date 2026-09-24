@@ -26,7 +26,7 @@ GROUPS = {
     "cross_sell": {
         "label": "Cross-sell",
         "who": "An existing household missing a product. We marketed the gap to them.",
-        "products": "the product the source names (see CROSS_SELL_PRODUCT)",
+        "products": "the product the source names; for plain Cross Sell, whatever the household is missing",
         "existing_household": True, "sale": True, "owner": "apollo",
         # Role Play: what the prospect knows about how this call came about.
         "backstory": 'You are already a customer of this agency for one policy. The producer is calling about {product} coverage you do not have with them yet.',
@@ -257,6 +257,26 @@ def classify(name):
 
 def group(name):
     return GROUPS[classify(name)]
+
+
+def prompt_block(name):
+    """What Apollo is told about a call's lead source (coaching_cards), or ""
+    when the call never resolved to a lead with a source. Plain facts from
+    this guide; how to use them is coaching/METHODOLOGY.md's "Lead source"
+    section."""
+    if not norm(name):
+        return ""
+    key = classify(name)
+    g = GROUPS[key]
+    lines = [f"Lead source: {str(name).strip()} (group: {g['label']})",
+             f"Who this lead is: {g['who']}"]
+    if g["products"]:
+        product = cross_sell_product(name)
+        lines.append(f"What to sell: {product if product else g['products']}")
+    lines.append("How the agency works this lead: "
+                 + (g["approach"] if g["approach"] and APPROACH_CONFIRMED.get(key)
+                    else "no set approach for this lead source"))
+    return "\n".join(lines)
 
 
 def board_map(names):
