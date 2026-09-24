@@ -55,6 +55,7 @@
 import METHODOLOGY_MD from "../coaching/METHODOLOGY.md";
 import ROLEPLAY_MD from "../coaching/ROLEPLAY.md";
 import TRAINING_MD from "../coaching/TRAINING.md";
+import { getLive } from "./live.js";
 
 export default {
   async fetch(request, env) {
@@ -77,6 +78,9 @@ export default {
         return getMonth(env, parts[2]);
       }
 
+      if (parts[1] === "live" && parts.length === 3) {
+        return getLive(env, parts[2]);
+      }
       if (parts[1] === "intraday" && parts.length === 3) {
         return getIntraday(env, parts[2]);
       }

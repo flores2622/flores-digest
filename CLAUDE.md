@@ -173,6 +173,34 @@ If `hourly.py` fails for any reason, **just run `daily.py`** — it does its own
 downloading and the day still goes out, only later. Never skip the digest
 because the prefetch broke.
 
+## Live figures between checkpoints
+
+**Today's board is the last checkpoint, with dials, sales and utilization
+kept live** (Frank, 2026-09-24: "just live data where its already at on
+everything possible, and the header up there specifying what is stale from
+the last hourly run"). No separate live strip: the Worker's `/api/live/<day>`
+(`site/live.js`) is written into the same document the page renders, and the
+header lists what is live and what is the checkpoint's.
+
+- **Dials** extend the checkpoint's OWN verdicts (`live_board.basis`, carried
+  in the intraday document as `live_basis`), never re-decide them: excluded
+  numbers stay excluded, a duplicate-lead number adds attempts only, and a
+  number no checkpoint has checked counts as new business until one does
+  (the header says how many). Record ids, not times, mark what the
+  checkpoint saw.
+- **Sales** are AgencyZoom policies by agentId + soldDate minus
+  `lead_sources.NOT_A_SALE`, the same rule as `is_real_sale`.
+- **Utilization** is `insightful_util.pull()`'s formula.
+- **Contact rate stays the checkpoint's.** The board uses the document's own
+  `rate`, never live contacts over live dials -- live dials over a stale
+  numerator would read as a collapsing rate. The closing ratio also stays the
+  checkpoint's (`cp_pol`/`cp_ps`).
+- The Worker needs its own secrets, set in Cloudflare (Workers & Pages ->
+  flores-board -> Settings -> Variables and Secrets, type Secret):
+  `RC_CLIENT_ID`, `RC_CLIENT_SECRET`, `RC_SERVER_URL`, `RC_JWT`,
+  `AZ_USERNAME`, `AZ_PASSWORD`, `INSIGHTFUL_TOKEN`. A missing one leaves that
+  part on the checkpoint and the header names it.
+
 ## Service ticket status is DELETED/LIVE, not OPEN/CLOSED
 
 **Corrected 2026-09-02 — do not revert to the 2026-09-01 understanding.**
