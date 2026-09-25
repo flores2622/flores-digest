@@ -376,6 +376,88 @@ a live conversation with real interest; a loss reason the call does not
 support; a lead left in New after a real conversation. A move that matches
 the call needs no comment.
 
+## Follow-ups and call backs (Frank, 2026-09-25)
+
+Every call also arrives with a "Lead history (before today)" block: which
+way today's call went, how often the number was dialled in the last 30
+days, the quotes on file, earlier coaching cards on this lead, and the
+lead's recent notes (TRAQ's auto-summaries of past calls are labelled as
+such). Read it before the transcript. It is how you tell a first
+conversation from a follow-up, and it is what the producer should have been
+building on.
+
+**Decide `flow` first**, from the history, the stage and the call itself:
+- **first**: the first real conversation with this lead (no quote on file,
+  no earlier card, no earlier conversation in the notes).
+- **follow-up**: the producer calling back on work already started -- a
+  quote on file, an earlier conversation, a Contacted / Ready to Present /
+  Quotes Presented / Quoted stage.
+- **call back**: the lead returning the producer's call, message or quote
+  -- INCLUDING a lead who calls in about a quote or conversation already on
+  file. "Today's call: the lead called in" says who dialled, not the flow:
+  a call-in about a quote sent yesterday is a call back.
+- **call in**: the lead calling in on their own with NO work in progress (no
+  quote on file, no earlier conversation).
+
+**The follow-up structure** (Frank's; call backs use the same, see below):
+1. **Reconnect and assume the sale up front.** Name, agency, the last
+   conversation -- and an assumptive close in the same breath, so a ready
+   customer can finish in minutes: "Hi Ana, it's Mike with Farmers, I'm
+   calling to get your auto policy started on the $812 quote I sent
+   Tuesday -- do you have your card handy?" If they are ready, close right
+   there. If not, whatever holds them back surfaces in the first thirty
+   seconds instead of the last.
+2. **Check where they are**: did they review it, has anything changed.
+3. **Handle what stalled it**: the objection or reason from last time (the
+   history often names it -- a spouse, a price, a renewal date).
+4. **Re-present only what is needed**: the numbers, briefly, against what
+   they pay now. Not the whole quote again.
+5. **Assume the sale again** at the end if it did not close up front.
+6. **If it still does not close**: a dated, specific next step.
+
+**A call back** (they returned our call): thank them for calling back, then
+straight into step 1 -- why we called, with the assumptive close. They
+called us, so there is no reason to warm up.
+
+**A call in** with no work in progress is a first conversation that came to
+us: coach it as one (see Lead source, "Call-in / walk-in").
+
+**Scoring a follow-up or call back** -- its own scorecard, `fuscore`, one
+entry per step above, replacing the nine-dimension `score` (Frank,
+2026-09-25: "follow ups should have their own score card"). The quote is
+already done, so nothing asks whether the quote was assumed; the SALE is
+assumed three times -- at the start, while fighting objections, and at the
+end. Same s/w/m/n letters as everywhere else:
+- **Reconnect & assumed the sale up front**: named themselves and the last
+  conversation, and assumed the sale in the same opening ("I'm calling to
+  get your policy started on the quote from Tuesday -- do you have your card
+  handy?"). A full cold introduction to someone already quoted is "w"; an
+  opening that asks whether they are still interested is "m".
+- **Checked where they are**: did they review it, has anything changed.
+  Starting discovery over from scratch is "w"; confirming what changed is "s".
+- **Handled what stalled it, assuming the sale**: dealt with the objection
+  or reason from last time (the history usually names it) and came out of
+  it assuming the sale, not asking whether they want to go ahead. "n" only
+  when nothing stalled it and no objection came up.
+- **Re-presented only what's needed**: the numbers, briefly, against what
+  they pay now -- not the whole quote again.
+- **Assumed the sale at the end**: if it did not close up front, assumed it
+  again to finish ("let's get this started today"), not "let me know". "n"
+  when it already closed up front.
+- **Dated next step**: if it still did not close, a dated, specific next
+  step; if it closed, the wrap-up (payment, signing, effective date).
+
+On a follow-up or call back also return `assume`: whether the sale was
+assumed at each of the three moments. `askq` does not apply (return
+[null, "the quote is already done"]); `asks` is true only when the sale was
+assumed at every moment that came up. `score` (the nine dimensions) is
+returned as {} -- `fuscore` replaces it -- and "Bundle / cross-sell raised"
+still matters: say so in `bad` when a follow-up never raised the missing
+product.
+
+On a first conversation or a call in, return `score` as always and leave
+`fuscore` and `assume` out.
+
 ## Output format
 
 Return ONLY a JSON object, no prose around it, with exactly these keys.
@@ -573,6 +655,21 @@ for it"]`. Wrong: `"askq": false`. Same for "calltype", "asks" and "exit".
            when the stage is unknown, has no set meaning, is a commercial /
            AZ Sun pipeline, or the call gave no chance. When a stage move
            today contradicts the call, say so here AND add a flag.
+"flow"     [one of "first"/"follow-up"/"call back"/"call in", one-sentence
+           reason from the Lead history or the call] -- see "Follow-ups and
+           call backs". Decide it before scoring the nine dimensions.
+"fuscore"  FOLLOW-UP / CALL BACK ONLY: an object scoring EXACTLY these 6
+           steps, same [letter, one-sentence detail] shape as "score":
+           "Reconnect & assumed the sale up front", "Checked where they are",
+           "Handled what stalled it, assuming the sale", "Re-presented only
+           what's needed", "Assumed the sale at the end", "Dated next step".
+           Criteria in "Follow-ups and call backs". Leave it out on a first
+           conversation or a call in.
+"assume"   FOLLOW-UP / CALL BACK ONLY: {"start": [bool, quote-based reason],
+           "objections": [bool or null, reason], "end": [bool, reason]} --
+           was the SALE assumed at the start, while handling objections, and
+           at the end. "objections" is [null, "..."] when none was raised;
+           "end" is true when it already closed up front.
 "spine"    an array of 4-8 [time, colour, headline, detail] entries walking
            through the call in order. "time" is a rough mm:ss into the call.
            "colour" is "g" (this moment went well), "y" (mixed/questionable),
@@ -601,9 +698,13 @@ for it"]`. Wrong: `"askq": false`. Same for "calltype", "asks" and "exit".
   "techniques" below: watch whether a call that's genuinely mixed (starts as
   a payment call, drifts into a real cross-sell attempt) gets called "mixed"
   rather than forced into "sales" or "service" for convenience.
-- There is no cross-call memory yet: each card is written from one call in
-  isolation, even when the same lead was called multiple times in the same
-  day or across days.
+- Cross-call memory (2026-09-25) is the "Lead history" block: earlier
+  coaching cards on the lead (30 days), its notes and quotes. It is only as
+  good as the notes producers write; a quote with no note says nothing about
+  what was discussed. AgencyZoom keeps no date on a quote.
+- "flow" / "fuscore" / "assume" (Frank, 2026-09-25) are new and unproven. Watch that
+  a first call on a lead with an old quote from years ago is not coached as
+  a follow-up, and that a follow-up's "n" for discovery is not over-used.
 - The 9 call-structure dimensions started as a fixed list ported from the
   pre-automation cards; as of 2026-09-10 each one has real per-dimension
   criteria (see "The 9-dimension call-structure framework") and is meant to
