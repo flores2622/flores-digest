@@ -1054,13 +1054,20 @@ def main():
     #
     # To hold a send: commit a SEND_HOLD file with a line saying why.
     # To release it: delete the file in the same merge that lands the fix.
+    #
+    # The hold stops the EMAIL only. The boards still build (Frank,
+    # 2026-09-24: "i still want the board to build") -- the Service and
+    # Commercial Centers are board-only and a held night must not cost them a
+    # day. What writes outside the board (sales log, AgencyZoom tasks) is
+    # skipped with the email.
     hold = ROOT / "SEND_HOLD"
-    if hold.exists():
-        log(f"SEND_HOLD present, built but NOT sending -- "
-            f"{hold.read_text().strip()[:200]}")
-        return
-    send(day, html, [p for p in (notes, rec) if p], audience=a.audience,
-         ops_only_pdfs=[missed] if missed else [])
+    held = hold.exists()
+    if held:
+        log(f"SEND_HOLD present, NOT sending -- {hold.read_text().strip()[:200]} "
+            f"-- the boards still build")
+    else:
+        send(day, html, [p for p in (notes, rec) if p], audience=a.audience,
+             ops_only_pdfs=[missed] if missed else [])
     publish_day(day)
     publish_service(day)
     publish_commercial(day)
@@ -1079,6 +1086,9 @@ def main():
     import r2_cache
     r2_cache.sync_up_day(day, log=log)
 
+    if held:
+        log("SEND_HOLD: sales log and missed-call tasks skipped with the email")
+        return
     sync_sales_log(day)
     make_missed_call_tasks(day)
 
@@ -1121,6 +1131,14 @@ def publish_commercial(day):
     except (Exception, SystemExit) as e:
         log(f"commercial digest failed ({type(e).__name__}: {e}) -- "
             f"the Commercial Center keeps its last day")
+    # Earlier days' commercial renewal outcomes, re-read like the Service
+    # Center's. Separate try: it must never cost today's document.
+    try:
+        import commercial_digest
+        commercial_digest.refresh_past_renewals(day, log=log)
+    except (Exception, SystemExit) as e:
+        log(f"commercial renewal refresh failed ({type(e).__name__}: {e}) -- "
+            f"earlier days keep their outcomes")
 
 
 def publish_day(day):

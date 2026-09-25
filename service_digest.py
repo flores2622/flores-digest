@@ -464,10 +464,10 @@ def refresh_past_renewals(day, log=log):
 BACKFILL_BACK_DAYS = 14
 
 
-def _published_days(cli, bucket):
+def _published_days(cli, bucket, prefix=PREFIX):
     keys, token = [], None
     while True:
-        kw = {"Bucket": bucket, "Prefix": f"{PREFIX}/"}
+        kw = {"Bucket": bucket, "Prefix": f"{prefix}/"}
         if token:
             kw["ContinuationToken"] = token
         r = cli.list_objects_v2(**kw)
@@ -475,7 +475,7 @@ def _published_days(cli, bucket):
         if not r.get("IsTruncated"):
             break
         token = r["NextContinuationToken"]
-    return {k[len(PREFIX) + 1:-5] for k in keys if k.endswith(".json")}
+    return {k[len(prefix) + 1:-5] for k in keys if k.endswith(".json")}
 
 
 def backfill_missing_days(day, log=log):
