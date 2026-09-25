@@ -277,8 +277,10 @@ Crystal (hybrid); credit always goes to whoever COMPLETED the SR or task.
     Other 30 day Renewals    Bristol West renewals: same
     Service Pipeline         changes, endorsements, basic service: completion time
     Late Payments            stage breakdown + completion time
-    Missing Documents        contingencies on newly bound policies: completion time
-                             + whether the SELLING producer or a service/hybrid rep closed it
+    Contingencies            any contingency pending on a policy (AgencyZoom's "Missing
+                             Documents", renamed by Frank 2026-09-24; key missing_docs):
+                             completion time + whether the SELLING producer or a
+                             service/hybrid rep closed it
 - **The Renewal Outcome Breakdown is not an agency retention rate.** It is the
   outcomes of the renewal SRs COMPLETED in the filtered period, and a rate
   among just those. From 2026-09-24 the outcome is the SR's own resolution
@@ -299,22 +301,33 @@ Crystal (hybrid); credit always goes to whoever COMPLETED the SR or task.
 - **FRANK'S RESOLUTIONS ARE THE ONLY OUTCOMES** (Frank, 2026-09-24: "those
   are the ONLY outcomes i want being used"). No category of ours -- no policy
   record reading, no "Renewal date still ahead", no separate "(rep's notes)"
-  segments. Every renewal SR lands on one of the eight (the seven above plus
-  **Client Cancelled**, id 101627, added 2026-09-24: cancelled mid term, went
-  to the carrier, or never gave us the chance -- LOST, in the rate), matched by resolution
+  segments. Every renewal SR lands on one of the nine (the seven above plus
+  **Client Cancelled**, id 101627, added 2026-09-24: went to the carrier to
+  cancel, or never gave us the chance -- LOST, in the rate -- and
+  **Mid-term Cancellation**, below), matched by resolution
   ID (`RESOLUTION_KEY_BY_ID`, so a rename in AgencyZoom breaks nothing):
     1. the SR's own resolution;
     2. closed on anything else (Completed): the rep's note, read by the model
-       into one of the seven (`renewal_notes.py`; keyword rules misread
+       into one of the nine (`renewal_notes.py`; keyword rules misread
        "possible deductible options" and "left vm and autos on noc" -- do not
        go back to them);
     3. no note, or a note that does not say: **Unable to Contact/No Show**
        (Frank renamed Unable to Contact to that, 2026-09-24).
-  **The one exception**: a cancellation of a policy already cancelled before
-  the SR was opened -- an old SR closed out ("Cancelled in 2025", "sold home",
-  all 22 cancellations 09-01..09-23) -- shows as cancelled, hatched, OUTSIDE
-  the rate (`cancelled_before_sr`). The policy record is read for that and for
-  the premium, nothing else.
+  **Mid-term Cancellation** (id 101637, Frank added it 2026-09-24: "mid term
+  cancellations, prior cancellations, anything that cancelled prior to
+  renewal SR generating") is an old SR closed out on a policy already
+  cancelled ("Cancelled in 2025", "sold home", all 22 cancellations
+  09-01..09-23). It shows hatched, OUTSIDE the rate (key
+  `cancelled_before_sr`). A cancellation resolution on a policy the record
+  shows cancelled well before the SR was opened lands there too. The policy
+  record is read for that and for the premium, nothing else.
+  **How the notes read** (fixed 2026-09-24 from a spot-check of all 274
+  renewal SRs 09-01..09-23): a bare "renewed" / "reviewed" is No action; a
+  customer who reviewed it with a rep and changed nothing is Accepted as is,
+  even with changes planned for later; bad number / bad email is Unable to
+  Contact; "cancelled in 2025" is Mid-term Cancellation. The read cache is
+  keyed by SR and note, not prompt, so a prompt change reaches only new
+  notes -- re-read old ones by removing just their entries, never the file.
 - **Past days' renewal rows are re-read every night**
   (`service_digest.refresh_past_renewals`, last 120 days): a day's document is
   built once, so without this a note read (or a resolution renamed) after the
@@ -331,6 +344,21 @@ Crystal (hybrid); credit always goes to whoever COMPLETED the SR or task.
   renewals**. The deleted ones stay in `RESOLUTION_LABELS` because past SRs
   still carry their ids; do not prune them. `python3 service_retention.py --resolutions`
   prints each id in use with examples.
+- **Every pipeline has its own daily outcome breakdown** (Frank, 2026-09-24):
+  of the SRs COMPLETED that day, how each ended -- Renewals (above), plus
+  **Late Payments** (Paid / Cancelled for non-pay / Client cancelled / Unable
+  to Contact / Other; "saved" = paid over paid or cancelled), **Service
+  Pipeline** (Change made / Policy cancelled / Other service / Not done /
+  Unable to Contact; no rate) and **Contingencies** (Cleared / Policy
+  cancelled / Closed, not cleared / Unable to Contact; "cleared" rate). These
+  SRs are all closed on Completed, so **the outcome is read from the rep's
+  note** ("go based off of the notes for now") by `service_notes.py`, its own
+  cache `data/service_note_reads.json` + R2 copy, never the renewal one. No
+  note is "No note". These are categories of ours: if Frank adds AgencyZoom
+  resolutions for these pipelines, match them by id first. Each completed row
+  now carries its SR `id`, `outcome` and `source`; the nightly refresh adds
+  them to earlier days, matching old rows (built without an id) by who
+  completed the SR and its hours.
 - **A missed night builds itself** (`service_digest.backfill_missing_days`,
   Frank, 2026-09-24): each nightly run builds any weekday of the last 14 with
   no page, from that day's saved files; completed SRs, tasks (completed after
@@ -441,8 +469,8 @@ reached for once, e.g. 6836965 created 2025-08-03).
 
 ## Cost
 
-Transcription is local and free. **The Anthropic API reads in `call_summary.py`
-and `renewal_notes.py` are the only paid steps** — roughly one call per live
+Transcription is local and free. **The Anthropic API reads in `call_summary.py`,
+`renewal_notes.py` and `service_notes.py` are the only paid steps** — roughly one call per live
 contact per day, plus one call per 25 renewal SR notes (each SR's note is read
 once and kept in `data/renewal_note_reads.json` and its R2 copy; only an edited
 note is read again -- never delete that cache casually). Changing

@@ -4160,7 +4160,8 @@ function mergeServiceDocs(docs) {
   const m = { days: docs.map(x => x.date), team: last.team, pipelines: last.pipelines,
     tasks: {}, completed: [], renewals: [], unnamed: {}, callbacks: [], util: {},
     backlog: (last.srs || {}).backlog || {}, lateStages: (last.srs || {}).late_payment_stages || [],
-    outcomes: (last.renewals || {}).outcomes || [], resolutionsFrom: (last.renewals || {}).resolutions_from };
+    outcomes: (last.renewals || {}).outcomes || [], resolutionsFrom: (last.renewals || {}).resolutions_from,
+    srOutcomes: Object.assign({}, ...docs.map(x => (x.srs || {}).outcomes || {})) };
   for (const x of docs) {
     for (const [n, t] of Object.entries(x.tasks || {})) {
       const a = m.tasks[n] || (m.tasks[n] = { due: 0, completed: 0 });
@@ -4199,7 +4200,7 @@ function fmtDur(h) {
    needed (added 2026-09-24) = orange, between aqua and blue.
    Frank's resolutions are the ONLY outcomes (2026-09-24), whether the SR
    carried one or the rep's note was read into one. The one hatched segment is
-   a cancellation of a policy already cancelled before the SR was opened:
+   Mid-term Cancellation, a policy already cancelled before the SR was opened:
    violet, outside the rate. Segments are split by a 2px gap and
    the legend carries every count, which is the relief yellow and aqua need
    for sitting under 3:1 on the light surface. */
@@ -4255,7 +4256,7 @@ function renewalBreakdownHtml(m) {
     [bySrc("unread"), "have a note not read yet (counted as Unable to Contact/No Show until the next nightly run reads it)"]].filter(x => x[0]);
   const unnamed = Object.entries(m.unnamed || {});
   return `<div class="sect"><h2>Renewal Outcome Breakdown</h2>
-    <p class="sd">Renewal SRs completed in this period and how each one ended. Retained = renewed (including No action: Review if needed and Unable to Contact/No Show, which renewed as is without the renewal being discussed with the customer) or rewrite accepted, over everything renewed, rewritten or cancelled. A cancellation of a policy already cancelled before the SR was opened (hatched) sits outside the rate.</p>
+    <p class="sd">Renewal SRs completed in this period and how each one ended. Retained = renewed (including No action: Review if needed and Unable to Contact/No Show, which renewed as is without the renewal being discussed with the customer) or rewrite accepted, over everything renewed, rewritten or cancelled. A Mid-term Cancellation (hatched), a policy already cancelled before the SR was opened, sits outside the rate.</p>
     <div class="tiles rtiles">${card(rows, pbadge(TEAM_DOT, "Team"), true)}${personCards}</div>
     <h3 style="font-size:12px;text-transform:uppercase;letter-spacing:.06em;color:var(--text-muted);margin:16px 0 6px">By pipeline</h3>
     <div class="tiles rtiles">${pipeCards}</div>
@@ -4263,6 +4264,56 @@ function renewalBreakdownHtml(m) {
     ${src.length ? `<p class="sd" style="margin:10px 0 0">Of ${rows.length}: ${src.map(([n, t]) => `${n} ${t}`).join("; ")}.</p>` : ""}
     ${unnamed.length ? `<p class="sd" style="margin:6px 0 0;color:#b45309">Closed on a resolution that is not a renewal resolution: ${unnamed.map(([k, n]) => `${k} (${n} SR${n === 1 ? "" : "s"})`).join(", ")}.</p>` : ""}
   </div>`;
+}
+/* SR outcome breakdowns for Service Pipeline, Late Payments and Contingencies
+   (Frank, 2026-09-24): of the SRs completed in the period, how each ended --
+   read from the rep's note (service_notes.py), since every one is closed on
+   Completed. Categories of ours until Frank adds resolutions for them. Same
+   cards as the Renewal Outcome Breakdown; Late Payments shows the share
+   saved (paid over paid or cancelled), Contingencies the share cleared, and
+   Service Pipeline only the split. Colours: one categorical slot per outcome
+   within each pipeline, No note in the muted grey. */
+const SR_OUTCOME_COLORS = {
+  late_payments: { paid: "--s3", cancelled_nonpay: "--s5", client_cancelled: "--s8", unable_to_contact: "--s4", other: "--s2" },
+  changes: { change_made: "--s1", policy_cancelled: "--s7", other_service: "--s2", not_done: "--s5", unable_to_contact: "--s4" },
+  missing_docs: { cleared: "--s3", policy_cancelled: "--s8", not_cleared: "--s2", unable_to_contact: "--s4" },
+};
+const SR_OUTCOME_SECTIONS = [
+  ["late_payments", "Late Payment Outcomes", "saved", "Late Payment SRs completed in this period and how each one ended. Saved = paid, over everything paid or cancelled."],
+  ["changes", "Service Pipeline Outcomes", null, "Changes and basic service SRs completed in this period and how each one ended."],
+  ["missing_docs", "Contingency Outcomes", "cleared", "Contingency SRs completed in this period and how each one ended. Cleared = the contingency was cleared, over everything cleared or cancelled."],
+];
+function srOutcomeHtml(m, pipe, title, rateWord, blurb) {
+  const outs = (m.srOutcomes || {})[pipe];
+  const rows = m.completed.filter(r => r.pipeline === pipe && r.outcome);
+  if (!outs || !rows.length) return "";
+  const kind = Object.fromEntries(outs.map(([k, , c]) => [k, c]));
+  const fill = k => `background-color:var(${(SR_OUTCOME_COLORS[pipe] || {})[k] || "--text-muted"})`;
+  const rate = rs => { const g = rs.filter(r => kind[r.outcome] === "good").length, b = rs.filter(r => kind[r.outcome] === "bad").length;
+    return g + b ? { pct: Math.round(1000 * g / (g + b)) / 10, g, b } : { pct: null, g, b }; };
+  const card = (rs, head, team) => {
+    const segs = outs.map(([k, l]) => { const c = rs.filter(r => r.outcome === k).length;
+      return c ? `<span class="ogseg rseg" style="width:${(c / rs.length * 100).toFixed(2)}%;${fill(k)}" title="${l}: ${c}"></span>` : ""; }).join("");
+    const top = outs.map(([k, l]) => [l, rs.filter(r => r.outcome === k).length]).sort((a, b) => b[1] - a[1])[0];
+    const rt = rate(rs);
+    const big = rateWord ? (rt.pct == null ? "—" : rt.pct + "%") : rs.length;
+    const sub = rateWord ? `${rateWord}${rt.pct == null ? "" : ` &middot; ${rt.g} of ${rt.g + rt.b}`}` : `SR${rs.length === 1 ? "" : "s"} &middot; most: ${top[0]}`;
+    return `<div class="tile"${team ? ' style="border-color:var(--border-strong)"' : ""}>
+      <div class="k">${head}</div><div class="v">${big}</div><div class="n">${sub}</div>
+      ${rateWord ? `<div class="n">${rs.length} SR${rs.length === 1 ? "" : "s"}</div>` : ""}
+      <div class="otrack" style="margin-top:10px">${segs}</div></div>`;
+  };
+  const people = m.team.map(t => t.name).filter(n => rows.some(r => r.by === n));
+  const others = rows.filter(r => !r.by);
+  const cards = card(rows, pbadge(TEAM_DOT, "Team"), true)
+    + people.map(n => card(rows.filter(r => r.by === n), pbadge(DOT[n] || TEAM_DOT, n.split(" ")[0]))).join("")
+    + (others.length ? card(others, pbadge("#8a877f", "Others")) : "");
+  const legend = outs.map(([k, l]) => [k, l, rows.filter(r => r.outcome === k).length]).filter(x => x[2]).map(([k, l, c]) =>
+    `<span class="oleg-item"><span class="pd rdot" style="${fill(k)}"></span>${l} <b>${c}</b> <span style="color:var(--text-muted)">(${Math.round(100 * c / rows.length)}%)</span></span>`).join("");
+  const noted = rows.filter(r => r.source === "notes").length, unread = rows.filter(r => r.source === "unread").length;
+  return `<div class="sect"><h2>${title}</h2><p class="sd">${blurb}</p>
+    <div class="tiles rtiles">${cards}</div><div class="oleg">${legend}</div>
+    <p class="sd" style="margin:10px 0 0">Of ${rows.length}: ${noted} read from the rep's note by AI${unread ? `; ${unread} with a note not read yet (shown as No note until the next nightly run)` : ""}. These SRs are closed as Completed, so the note is where the outcome is written.</p></div>`;
 }
 function completionTimeHtml(m) {
   const rows = (m.pipelines || []).map(([k, l]) => [l, m.completed.filter(r => r.pipeline === k)]).filter(x => x[1].length);
@@ -4290,8 +4341,8 @@ function missingDocsHtml(m) {
   const order = [["selling producer", "Selling producer"], ["service/hybrid rep", "Service / hybrid rep"], ["another producer", "Another producer"], ["producer", "Producer (seller unknown)"], ["other", "Someone else"]];
   const chips = order.map(([k, l]) => { const n = rs.filter(r => r.handler === k).length;
     return n ? `<div class="tile"><div class="k">${l}</div><div class="v">${n}</div><div class="n">${Math.round(100 * n / rs.length)}% &middot; median ${fmtDur(svcMedian(rs.filter(r => r.handler === k).map(r => r.hours)))}</div></div>` : ""; }).join("");
-  return `<div class="sect"><h2>Missing Documents</h2>
-    <p class="sd">Contingencies on newly bound policies: ${rs.length} completed in this period, median ${fmtDur(svcMedian(rs.map(r => r.hours)))} from created to completed, and who took care of it. The selling producer is whoever sold the household's policy just before the SR was created.</p>
+  return `<div class="sect"><h2>Contingencies</h2>
+    <p class="sd">Any contingency pending on a policy: ${rs.length} completed in this period, median ${fmtDur(svcMedian(rs.map(r => r.hours)))} from created to completed, and who took care of it. The selling producer is whoever sold the household's policy just before the SR was created.</p>
     <div class="tiles">${chips}</div></div>`;
 }
 const SERVICE_TITLES = { "Amanda Torricellas": "Ops Mngr" };
@@ -4334,6 +4385,7 @@ function servicePanel(m) {
   return `<div class="sect"><h2>Service Team</h2>
     <p class="sd">Credit goes to whoever completed the SR or task.</p>${tiles}</div>
     ${renewalBreakdownHtml(m)}
+    ${SR_OUTCOME_SECTIONS.map(([p, t, w, b]) => srOutcomeHtml(m, p, t, w, b)).join("")}
     ${completionTimeHtml(m)}
     ${latePaymentsHtml(m)}
     ${missingDocsHtml(m)}
