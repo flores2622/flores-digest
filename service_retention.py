@@ -7,13 +7,14 @@ the outcome -- and the retention rate among just those SRs.
 WHERE AN OUTCOME COMES FROM. Frank's resolutions are the ONLY outcomes
 (Frank, 2026-09-24) -- Renewed: Accepted as is, No action: Review if needed,
 Renewed: Endorsed, Rewrite Accepted, Cancelled: Rewrite Declined, Cancelled,
-no endorse/rewrite available, Unable to Contact/No Show -- read in this order:
+no endorse/rewrite available, Client Cancelled, Unable to Contact/No Show and
+Mid-term Cancellation -- read in this order:
   1. the SR's own resolution, matched by id (RESOLUTION_KEY_BY_ID);
   2. for an SR closed on anything else (Completed), the rep's note, read by
-     the model in renewal_notes.py into one of the eight;
+     the model in renewal_notes.py into one of them;
   3. no note, or a note that does not say: Unable to Contact/No Show.
 The policy record is read only to tell a cancellation that came before the SR
-was opened (shown as cancelled, outside the rate) and for the premium.
+was opened (Mid-term Cancellation, outside the rate) and for the premium.
 
 HOW A POLICY'S OUTCOME IS READ. AgencyZoom keeps one record per policy TERM,
 chained by policyNumber, and the status codes carry no labels. Read off the
@@ -76,6 +77,7 @@ RESOLUTION_LABELS = {
     38304: "Unable to Contact/No Show",         # renamed 2026-09-24
     101591: "No action: Review if needed",      # added 2026-09-24
     101627: "Client Cancelled",                 # added 2026-09-24
+    101637: "Mid-term Cancellation",            # added 2026-09-24
     # Not renewal outcomes. A renewal SR closed on one of these from
     # RESOLUTIONS_FROM falls back to the policy record and is listed on the
     # Service tab as not a renewal resolution. Completed is kept in AgencyZoom for
@@ -260,7 +262,7 @@ def outcome(expiring, terms, day):
 # The Renewal Outcome Breakdown's segments, in display order: (key, label,
 # counts as) -- "kept" and "lost" make the rate, "open" sits outside it.
 # FRANK'S RESOLUTIONS ARE THE ONLY OUTCOMES (Frank, 2026-09-24): every renewal
-# SR lands on one of the eight below, never on a category of ours. The label
+# SR lands on one of the nine below, never on a category of ours. The label
 # here is the fallback; the board shows AgencyZoom's current name (outcomes()).
 OUTCOMES = (
     ("renewed_as_is", "Renewed: Accepted as is", "kept"),
@@ -271,18 +273,22 @@ OUTCOMES = (
     ("rewrite_accepted", "Rewrite Accepted", "kept"),
     ("cancelled_rewrite_declined", "Cancelled: Rewrite Declined", "lost"),
     ("cancelled_no_option", "Cancelled, no endorse/rewrite available", "lost"),
-    # Client Cancelled (Frank, 2026-09-24): cancelled mid term, went to the
-    # carrier directly, or never gave us the chance to review or retain. A
-    # lost renewal, in the rate.
+    # Client Cancelled (Frank, 2026-09-24): went to the carrier directly to
+    # cancel, or never gave us the chance to review or retain. A lost
+    # renewal, in the rate. A policy cancelled mid term, before the SR, is
+    # Mid-term Cancellation instead.
     ("client_cancelled", "Client Cancelled", "lost"),
     # Unable to Contact (renamed Unable to Contact/No Show, 2026-09-24) RENEWED
     # as is and counts as retained. It is also the outcome of a renewal SR
     # whose note is missing or says nothing (Frank, 2026-09-24).
     ("unable_to_contact", "Unable to Contact/No Show", "kept"),
-    # A cancellation on a policy already cancelled before the SR was opened --
-    # an old SR closed out ("Cancelled in 2025"), 9 of the 12 cancellations
-    # 09-15..09-23. Shown as cancelled, OUTSIDE the rate (Frank, 2026-09-24).
-    ("cancelled_before_sr", "Cancelled before the SR was opened", "open"),
+    # Mid-term Cancellation (Frank, 2026-09-24, id 101637): the policy was
+    # already cancelled -- mid term, or any time -- before the renewal SR was
+    # generated, so an old SR closed out ("Cancelled in 2025", "sold home").
+    # Also where a cancellation resolution lands when the policy record shows
+    # it cancelled well before the SR was opened. Shown as cancelled, OUTSIDE
+    # the rate.
+    ("cancelled_before_sr", "Mid-term Cancellation", "open"),
 )
 # Matched by resolution ID, never by name, so a rename in AgencyZoom cannot
 # drop an outcome.
@@ -290,6 +296,7 @@ RESOLUTION_KEY_BY_ID = {
     32574: "renewed_as_is", 101591: "no_action_review", 32575: "renewed_endorsed",
     38307: "rewrite_accepted", 38308: "cancelled_rewrite_declined",
     32570: "cancelled_no_option", 101627: "client_cancelled", 38304: "unable_to_contact",
+    101637: "cancelled_before_sr",
 }
 RESOLUTION_KEYS = list(RESOLUTION_KEY_BY_ID.values())
 _KIND = {key: kind for key, _, kind in OUTCOMES}
@@ -303,7 +310,7 @@ def outcomes():
 
 def resolution_key(sr):
     """The outcome key of the SR's own resolution, or None when it is not one
-    of the eight -- or not trusted for that day (RESOLUTION_VALID_FROM)."""
+    of the nine -- or not trusted for that day (RESOLUTION_VALID_FROM)."""
     rid = sr.get("resolutionId")
     since = RESOLUTION_VALID_FROM.get(rid)
     if since and _d(sr.get("completeDate")) < since:
@@ -327,7 +334,7 @@ def _sr_policy(sr, chains):
 def sr_outcome(sr, chains, hh, pn2hh, as_of, note_key=None):
     """(key, source, policyNumber, premium, line) for one completed renewal SR,
     always one of Frank's resolutions (OUTCOMES):
-      1. the SR's own resolution, when it is one of the eight   source "resolution"
+      1. the SR's own resolution, when it is one of the nine    source "resolution"
       2. else `note_key`, what renewal_notes read from the note  source "notes"
       3. else Unable to Contact/No Show -- no note, or a note that does not
          say (Frank, 2026-09-24)                                 source "no_note"
@@ -350,6 +357,10 @@ def sr_outcome(sr, chains, hh, pn2hh, as_of, note_key=None):
     source = "resolution"
     if not key:
         import renewal_notes
+        if note_key == "cancelled_before_sr":
+            # the note itself says the policy was gone before this renewal
+            # ("Policy cancelled in 2025", SR 12498281, 09-02)
+            return "cancelled_before_sr", "notes", pn, premium, line
         if note_key in RESOLUTION_KEYS:
             key, source = note_key, "notes"
         elif renewal_notes.clean(sr.get("resolutionDesc")) and note_key is None:
@@ -374,7 +385,7 @@ def sr_outcome(sr, chains, hh, pn2hh, as_of, note_key=None):
 
 
 def read_notes(srs, log=print):
-    """renewal_notes.read() for the SRs NOT closed on one of the eight."""
+    """renewal_notes.read() for the SRs NOT closed on one of the nine."""
     import renewal_notes
     return renewal_notes.read([t for t in srs if not resolution_key(t)], log=log)
 
@@ -384,7 +395,7 @@ def renewal_srs(day, done_tickets, policies, customers, az=None, log=print, refr
     outcome, where the outcome came from, and the policy's premium. Rows, not
     totals, so the board can add any range of days together. Also the
     SRs completed from RESOLUTIONS_FROM on a resolution that is not one of
-    the eight renewal resolutions, counted by resolution name."""
+    the nine renewal resolutions, counted by resolution name."""
     from service_digest import RENEWALS, SERVICE_TEAM
     srs = [t for t in done_tickets if t.get("workflowName") in RENEWALS
            and _d(t.get("completeDate")) == day]

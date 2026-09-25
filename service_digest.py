@@ -55,7 +55,11 @@ PIPELINES = (
     ("renewals_bw", "Bristol West Renewals", {"Other 30 day Renewals"}, "renewal"),
     ("changes", "Changes & Service", {"Service Pipeline"}, "service"),   # changes, endorsements, basic service
     ("late_payments", "Late Payments", {"Late Payments"}, "late"),       # the one pipeline tracked by stage
-    ("missing_docs", "Missing Documents", {"Missing Documents"}, "docs"),  # contingencies on newly bound policies
+    # Contingencies: any contingency pending on a policy. AgencyZoom's
+    # "Missing Documents" workflow, renamed by Frank 2026-09-24 -- the list
+    # endpoint returns the new name on every SR, old ones included. The key
+    # stays missing_docs so earlier days' rows still add up with new ones.
+    ("missing_docs", "Contingencies", {"Contingencies", "Missing Documents"}, "docs"),
     ("reinstatement", "Reinstatement", {"Reinstatement"}, "other"),
 )
 RENEWALS = {w for _, _, ws, kind in PIPELINES if kind == "renewal" for w in ws}
@@ -221,23 +225,52 @@ def _handler(sr_row, sellers):
     return kind, seller
 
 
+def sr_outcomes(srs, log=log):
+    """{sr id: (outcome, source)} for the Service Pipeline, Late Payments and
+    Contingencies SRs among `srs`, read from the reps' notes (service_notes.py,
+    Frank, 2026-09-24). Never raises: a failed read leaves those SRs out."""
+    import service_notes as sn
+    out = {}
+    try:
+        by_pipe = collections.defaultdict(list)
+        for t in srs:
+            pipe = pipeline_of(t.get("workflowName"))
+            if pipe in sn.OUTCOMES:
+                by_pipe[pipe].append(t)
+        for pipe, ts in by_pipe.items():
+            reads = sn.read(pipe, ts, log=log)
+            for t in ts:
+                out[t.get("id")] = sn.sr_outcome(pipe, t, reads.get(str(t.get("id"))))
+    except Exception as e:
+        log(f"  SR outcomes failed ({type(e).__name__}: {e})")
+    return out
+
+
+def sr_outcome_labels():
+    import service_notes as sn
+    return {pipe: sn.outcomes(pipe) for pipe in sn.OUTCOMES}
+
+
 def sr_figures(day, done, live, log=log):
-    """SRs completed on the day -- one row each: which pipeline, who completed
-    it, hours from opened to completed, and for Missing Documents who took
-    care of it -- plus each person's open and overdue SRs at the end of the
-    day, and the Late Payment pipeline's open SRs by stage."""
+    """SRs completed on the day -- one row each: the SR, which pipeline, who
+    completed it, hours from opened to completed, for Contingencies who took
+    care of it, and for Service Pipeline, Late Payments and Contingencies how
+    it ended (sr_outcomes) -- plus each person's open and overdue SRs at the
+    end of the day, and the Late Payment pipeline's open SRs by stage."""
     completed, sellers = [], None
-    for r in done:
-        if str(r.get("completeDate") or "")[:10] != day:
-            continue
+    day_srs = [r for r in done if str(r.get("completeDate") or "")[:10] == day]
+    ended = sr_outcomes(day_srs, log=log)
+    for r in day_srs:
         h = _hours(r.get("createDate"), r.get("completeDate"))
         pipe = pipeline_of(r.get("workflowName"))
-        row = {"by": _team_name(r.get("modifiedBy")), "by_name": r.get("modifiedBy"),
+        row = {"id": r.get("id"), "by": _team_name(r.get("modifiedBy")), "by_name": r.get("modifiedBy"),
                "pipeline": pipe, "hours": round(h, 2) if h is not None else None}
         if pipe == "missing_docs":
             if sellers is None:
                 sellers = _seller_index(log=log)
             row["handler"], row["seller"] = _handler(r, sellers)
+        if r.get("id") in ended:
+            row["outcome"], row["source"] = ended[r.get("id")]
         completed.append(row)
 
     by_csr = {v["az_id"]: k for k, v in SERVICE_TEAM.items()}
@@ -271,7 +304,8 @@ def sr_figures(day, done, live, log=log):
     late_stages = [{"stage": k, "open": len(v),
                     "days_in_stage": sorted(x for x in v if x is not None)}
                    for k, v in sorted(stages.items(), key=lambda kv: -len(kv[1]))]
-    return {"completed": completed, "backlog": backlog, "late_payment_stages": late_stages}
+    return {"completed": completed, "outcomes": sr_outcome_labels(),
+            "backlog": backlog, "late_payment_stages": late_stages}
 
 
 # Missed-call buckets (missed_call_audit.route) that are service work. An open
@@ -430,44 +464,109 @@ def refresh_past_renewals(day, log=log):
             break
         token = r["NextContinuationToken"]
     days = sorted(k[len(PREFIX) + 1:-5] for k in keys if k.endswith(".json"))
-    changed = 0
+    changed, sellers = 0, None
     for d in [x for x in days if floor <= x < day]:
         try:
             doc = json.loads(cli.get_object(Bucket=bucket, Key=_key(d))["Body"].read())
+            n, names = 0, False
             ren = doc.get("renewals") or {}
-            if not ren.get("rows"):
+            if ren.get("rows"):
+                fresh, _ = sr.renewal_srs(d, done, pol, cus, log=log, refresh=False)
+                fresh = {r["id"]: r for r in fresh}
+                for row in ren["rows"]:
+                    f = fresh.get(row["id"])
+                    if f and (f["outcome"], f["source"]) != (row["outcome"], row["source"]):
+                        for k in ("outcome", "source", "policy", "premium", "line"):
+                            row[k] = f[k]
+                        n += 1
+                # A resolution added or renamed in AgencyZoom changes the names
+                # every day's legend shows, even where no row's outcome moved.
+                if ren.get("outcomes") != sr.outcomes():
+                    ren["outcomes"], names = sr.outcomes(), True
+            if sellers is None:
+                sellers = _seller_index(log=log)
+            m, sr_names = refresh_completed_outcomes(d, doc, done, sellers, log=log)
+            if not (n or names or m or sr_names):
                 continue
-            fresh, _ = sr.renewal_srs(d, done, pol, cus, log=log, refresh=False)
-            fresh = {r["id"]: r for r in fresh}
-            n = 0
-            for row in ren["rows"]:
-                f = fresh.get(row["id"])
-                if f and (f["outcome"], f["source"]) != (row["outcome"], row["source"]):
-                    for k in ("outcome", "source", "policy", "premium", "line"):
-                        row[k] = f[k]
-                    n += 1
-            if not n:
-                continue
-            ren["outcomes"] = sr.outcomes()
             doc["renewals_refreshed"] = dt.datetime.now(AZ).isoformat(timespec="seconds")
             cli.put_object(Bucket=bucket, Key=_key(d), Body=json.dumps(doc, default=str).encode(),
                            ContentType="application/json", CacheControl="no-store")
             changed += 1
-            log(f"  renewals: {d} -- {n} SR outcome(s) updated")
+            log(f"  refresh: {d} -- {n} renewal outcome(s), {m} other SR row change(s)"
+                + (", outcome names updated" if names or sr_names else ""))
         except Exception as e:
             log(f"  renewals: {d} not refreshed ({type(e).__name__}: {e})")
     log(f"  renewals: {changed} earlier day(s) republished")
     return changed
 
 
+def refresh_completed_outcomes(d, doc, done, sellers, log=log):
+    """For one earlier day's document: every completed Service Pipeline, Late
+    Payments and Contingencies row's outcome, as refresh_past_renewals does
+    for renewals. Rows built before 2026-09-24 carry no SR id, so each is
+    matched to that day's SR by who completed it and its hours (both come
+    from the SR itself); a Contingencies SR built while the pipeline was
+    missed after its rename (pipeline "other") gets its pipeline and who took
+    care of it. Which SRs are in the day, and who each is credited to, never
+    change. Returns (rows
+    changed, outcome names changed)."""
+    srs_doc = doc.get("srs") or {}
+    rows = srs_doc.get("completed") or []
+    day_srs = [t for t in done if str(t.get("completeDate") or "")[:10] == d]
+    by_id = {t.get("id"): t for t in day_srs}
+    free = collections.defaultdict(list)
+    for t in day_srs:
+        h = _hours(t.get("createDate"), t.get("completeDate"))
+        free[(t.get("modifiedBy"), round(h, 2) if h is not None else None)].append(t)
+    used = {r["id"] for r in rows if r.get("id") in by_id}
+    ended = sr_outcomes(day_srs, log=log)
+    n = 0
+    for row in rows:
+        t = by_id.get(row.get("id"))
+        if t is None:
+            cand = [x for x in free.get((row.get("by_name"), row.get("hours")), [])
+                    if x.get("id") not in used]
+            if not cand:
+                # Someone edited the SR since (its modifiedBy moved): the
+                # pipeline and hours alone. The row keeps who was credited.
+                cand = [x for k, xs in free.items() if k[1] == row.get("hours") for x in xs
+                        if x.get("id") not in used
+                        and pipeline_of(x.get("workflowName")) in (row.get("pipeline"), "missing_docs")]
+            if not cand:
+                continue
+            t = cand[0]
+            used.add(t.get("id"))
+            row["id"] = t.get("id")
+            n += 1
+        pipe = pipeline_of(t.get("workflowName"))
+        if row.get("pipeline") != pipe:
+            row["pipeline"] = pipe
+            n += 1
+        if pipe == "missing_docs" and "handler" not in row:
+            row["handler"], row["seller"] = _handler(t, sellers)
+            n += 1
+        e = ended.get(t.get("id"))
+        if e and (row.get("outcome"), row.get("source")) != e:
+            row["outcome"], row["source"] = e
+            n += 1
+    names = srs_doc.get("outcomes") != sr_outcome_labels()
+    if names and "srs" in doc:
+        srs_doc["outcomes"] = sr_outcome_labels()
+    # Pipeline names too (Missing Documents became Contingencies, 2026-09-24).
+    pipes = [[k, label, kind] for k, label, _, kind in PIPELINES]
+    if doc.get("pipelines") != pipes:
+        doc["pipelines"], names = pipes, True
+    return n, names
+
+
 # How far back backfill_missing_days() looks for a working day with no page.
 BACKFILL_BACK_DAYS = 14
 
 
-def _published_days(cli, bucket):
+def _published_days(cli, bucket, prefix=PREFIX):
     keys, token = [], None
     while True:
-        kw = {"Bucket": bucket, "Prefix": f"{PREFIX}/"}
+        kw = {"Bucket": bucket, "Prefix": f"{prefix}/"}
         if token:
             kw["ContinuationToken"] = token
         r = cli.list_objects_v2(**kw)
@@ -475,7 +574,7 @@ def _published_days(cli, bucket):
         if not r.get("IsTruncated"):
             break
         token = r["NextContinuationToken"]
-    return {k[len(PREFIX) + 1:-5] for k in keys if k.endswith(".json")}
+    return {k[len(prefix) + 1:-5] for k in keys if k.endswith(".json")}
 
 
 def backfill_missing_days(day, log=log):

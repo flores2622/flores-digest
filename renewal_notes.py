@@ -29,7 +29,7 @@ CACHE_R2_KEY = "cache/renewal_note_reads.json"
 BATCH = 25
 
 # What the model may answer, and what each means -- the team's own renewal
-# resolutions, in Frank's words. "unclear" keeps the policy-record reading.
+# resolutions, in Frank's words. "unclear" is Unable to Contact/No Show.
 CHOICES = {
     "renewed_as_is": "Renewed: Accepted as is -- the rep spoke with the customer "
                      "about the renewal and they kept it without changes.",
@@ -44,12 +44,16 @@ CHOICES = {
                                   "offered and declined, and the policy is cancelling.",
     "cancelled_no_option": "Cancelled, no endorse/rewrite available -- the policy "
                            "is cancelling or has cancelled.",
-    "client_cancelled": "Client Cancelled -- the client cancelled mid term, went to "
-                        "the carrier directly to cancel, or never gave us the chance "
-                        "to review or retain the policy.",
+    "client_cancelled": "Client Cancelled -- the client is cancelling at this "
+                        "renewal: went to the carrier directly to cancel, or never "
+                        "gave us the chance to review or retain the policy.",
     "unable_to_contact": "Unable to Contact/No Show -- the rep tried to reach the "
                          "customer (voicemail, no answer, bad number) or they did "
                          "not show, and it renewed as is.",
+    "cancelled_before_sr": "Mid-term Cancellation -- the policy was already "
+                           "cancelled before this renewal SR was generated: "
+                           "cancelled mid term or in an earlier year, the home "
+                           "sold, moved to another agent.",
     "unclear": "The note does not say what happened to the renewal.",
 }
 
@@ -63,11 +67,22 @@ Rules:
 - Only what the note says HAPPENED counts. An idea for later -- "possible \
 deductible options", "possible rewrite if customer calls", "will make sure we \
 have a cross-sell lead" -- is not a change; judge the rest of the note.
-- "Review if needed" with no conversation is no_action_review. A cross-sell \
-or FFR call that also reviewed the renewal and the customer kept it is \
-renewed_as_is (or renewed_endorsed if a change was made).
-- A policy already cancelled long ago, a duplicate SR, a wrong policy, or a \
-payment note with nothing about the renewal is unclear.
+- "Review if needed" with no conversation is no_action_review. So is a note \
+that only says the policy renewed or was reviewed ("renewed", "reviewed", \
+"already reviewed") and says nothing about talking to the customer.
+- The customer reviewed the renewal with a rep -- in person, by phone, by \
+text or email -- and nothing was changed is renewed_as_is, even when changes \
+are planned for later. A cross-sell or FFR call that also reviewed the renewal \
+and the customer kept it is renewed_as_is (or renewed_endorsed if a change \
+was made).
+- A customer who cannot be reached -- bad number, bad email, a postcard sent \
+instead -- is unable_to_contact, even if the note also says review if needed.
+- A policy already cancelled before the SR -- "cancelled in 2025", "policy \
+cancelled 1/2026", "sold home", "transferred to a different agent" -- is \
+cancelled_before_sr. cancelled_no_option is only a policy cancelling at THIS \
+renewal.
+- A duplicate SR, a wrong policy, a policy that does not renew this term, or \
+a payment note with nothing about the renewal is unclear.
 - When in doubt, answer unclear.
 
 Return ONLY a JSON object mapping each id to one choice, e.g. \

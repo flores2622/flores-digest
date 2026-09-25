@@ -201,6 +201,87 @@ def publish(day, doc=None, log=log):
     return _key(day)
 
 
+REFRESH_BACK_DAYS = 365     # every commercial day on the board (back to 2026-01); only ~13 renewal SRs in all
+
+
+def refresh_past_renewals(day, log=log):
+    """Re-derive the outcome of every commercial renewal SR on the published
+    days before `day`, and republish a day only if one changed -- the same
+    nightly re-read the Service Center gets (Frank, 2026-09-24). A day's
+    document froze its rows on the night it was built, so a note read, a
+    resolution picked or renamed later, never reached it. Only each renewal
+    row's outcome and where it came from change; which SRs are in a day, the
+    service changes and the open queue stay exactly as first built."""
+    import publish_board
+    import service_digest
+    import service_retention as sr_mod
+    done = service_digest.completed_tickets(day, log=log)
+    hh = sr_mod.load_household_map(log=log)
+    chains = _chains(json.loads((ROOT / "data/az_policies_all.json").read_text()))
+    floor = (dt.date.fromisoformat(day) - dt.timedelta(days=REFRESH_BACK_DAYS)).isoformat()
+    cli, bucket = publish_board._client()
+    days = sorted(d for d in service_digest._published_days(cli, bucket, prefix=PREFIX)
+                  if floor <= d < day)
+    docs = {}
+    for d in days:
+        try:
+            docs[d] = json.loads(cli.get_object(Bucket=bucket, Key=_key(d))["Body"].read())
+        except Exception as e:
+            log(f"  commercial renewals: {d} not read ({type(e).__name__})")
+    # Commercial renewal SRs can be much older than the nightly pull's year
+    # (6836965, created 2025-08-03, completed 2026-04-14). If a row on Frank's
+    # old categories is missing from the pull, reach back once to its SR.
+    keys = {k for k, _, _ in sr_mod.OUTCOMES}
+    have = {t.get("id") for t in done}
+    stale = [r for doc in docs.values() for r in doc.get("completed") or []
+             if r.get("kind") == "renewal" and r.get("id") not in have and r.get("outcome") not in keys]
+    if stale:
+        oldest = min(_d(r.get("created")) or day for r in stale)
+        from az_client import AgencyZoom
+        az, page, extra = AgencyZoom(), 0, []
+        while True:
+            rows = (az.service_tickets({"status": [2], "page": page, "pageSize": 100}) or {}).get("serviceTickets") or []
+            keep = [r for r in rows if _d(r.get("createDate")) >= oldest]
+            extra += [r for r in keep if r.get("id") not in have]
+            page += 1
+            if len(rows) < 100 or not keep:
+                break
+        done = done + extra
+        log(f"  commercial renewals: {len(stale)} older SR(s) not in tonight's pull -- "
+            f"reached back to {oldest} ({page} pages)")
+    changed = 0
+    for d in days:
+        if d not in docs:
+            continue
+        try:
+            doc = docs[d]
+            rows = [r for r in doc.get("completed") or [] if r.get("kind") == "renewal"]
+            if not rows:
+                continue
+            fresh, _ = completed_rows(d, done, hh, chains, log=log)
+            fresh = {r["id"]: r for r in fresh if r.get("kind") == "renewal"}
+            n = 0
+            for row in rows:
+                f = fresh.get(row["id"])
+                if f and (f.get("outcome"), f.get("source")) != (row.get("outcome"), row.get("source")):
+                    for k in ("outcome", "source", "policy", "premium", "line"):
+                        row[k] = f.get(k)
+                    n += 1
+            outcomes, _ = _outcomes()
+            if not n and doc.get("outcomes") == outcomes:
+                continue
+            doc["outcomes"] = outcomes
+            doc["renewals_refreshed"] = dt.datetime.now(AZ).isoformat(timespec="seconds")
+            cli.put_object(Bucket=bucket, Key=_key(d), Body=json.dumps(doc, default=str).encode(),
+                           ContentType="application/json", CacheControl="no-store")
+            changed += 1
+            log(f"  commercial renewals: {d} -- {n} SR outcome(s) updated")
+        except Exception as e:
+            log(f"  commercial renewals: {d} not refreshed ({type(e).__name__}: {e})")
+    log(f"  commercial renewals: {changed} earlier day(s) republished")
+    return changed
+
+
 def backfill(since, until, log=log):
     """Publish every weekday from `since` to `until`: completed rows from one
     pull of the completed set, the open queue only where that day's live SR
@@ -242,6 +323,8 @@ def main():
     ap.add_argument("--day")
     ap.add_argument("--dry-run", action="store_true")
     ap.add_argument("--backfill", metavar="SINCE")
+    ap.add_argument("--refresh-renewals", action="store_true",
+                    help="only re-read the renewal outcomes of earlier published days")
     a = ap.parse_args()
     day = a.day or dt.datetime.now(AZ).date().isoformat()
     import os
@@ -250,6 +333,9 @@ def main():
     secrets_load.load()
     if a.backfill:
         backfill(a.backfill, day)
+        return
+    if a.refresh_renewals:
+        refresh_past_renewals(day)
         return
     doc = build(day)
     if a.dry_run:
