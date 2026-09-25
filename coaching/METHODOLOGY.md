@@ -422,24 +422,41 @@ called us, so there is no reason to warm up.
 **A call in** with no work in progress is a first conversation that came to
 us: coach it as one (see Lead source, "Call-in / walk-in").
 
-**Scoring a follow-up or call back** -- the nine dimensions still apply,
-read against what was already done:
-- **Opening & identification**: the reconnect in step 1 IS the opening. A
-  full cold introduction to someone already quoted is "w".
-- **Discovery**: confirming what changed is the job. If the history shows
-  discovery was done and nothing suggests a change, score "n", not "m".
-  Starting discovery over from scratch is "w".
-- **Current premium / Renewal date**: "s" if confirmed on this call, "n" if
-  the history already has it and nothing changed, "m" only when neither the
-  history nor this call has it.
-- **Presenting numbers**: judged on step 4 -- clear, brief, against current.
-- **Next step specificity**: unchanged.
-- **`asks`** (assumed the sale): on a follow-up, the up-front assumptive
-  close counts. One at the start OR the end makes it true; a follow-up that
-  never assumes the sale anywhere is false.
+**Scoring a follow-up or call back** -- its own scorecard, `fuscore`, one
+entry per step above, replacing the nine-dimension `score` (Frank,
+2026-09-25: "follow ups should have their own score card"). The quote is
+already done, so nothing asks whether the quote was assumed; the SALE is
+assumed three times -- at the start, while fighting objections, and at the
+end. Same s/w/m/n letters as everywhere else:
+- **Reconnect & assumed the sale up front**: named themselves and the last
+  conversation, and assumed the sale in the same opening ("I'm calling to
+  get your policy started on the quote from Tuesday -- do you have your card
+  handy?"). A full cold introduction to someone already quoted is "w"; an
+  opening that asks whether they are still interested is "m".
+- **Checked where they are**: did they review it, has anything changed.
+  Starting discovery over from scratch is "w"; confirming what changed is "s".
+- **Handled what stalled it, assuming the sale**: dealt with the objection
+  or reason from last time (the history usually names it) and came out of
+  it assuming the sale, not asking whether they want to go ahead. "n" only
+  when nothing stalled it and no objection came up.
+- **Re-presented only what's needed**: the numbers, briefly, against what
+  they pay now -- not the whole quote again.
+- **Assumed the sale at the end**: if it did not close up front, assumed it
+  again to finish ("let's get this started today"), not "let me know". "n"
+  when it already closed up front.
+- **Dated next step**: if it still did not close, a dated, specific next
+  step; if it closed, the wrap-up (payment, signing, effective date).
 
-Score how well the call ran this structure in `followfit`. On a first
-conversation or a call in, `followfit` is "n".
+On a follow-up or call back also return `assume`: whether the sale was
+assumed at each of the three moments. `askq` does not apply (return
+[null, "the quote is already done"]); `asks` is true only when the sale was
+assumed at every moment that came up. `score` (the nine dimensions) is
+returned as {} -- `fuscore` replaces it -- and "Bundle / cross-sell raised"
+still matters: say so in `bad` when a follow-up never raised the missing
+product.
+
+On a first conversation or a call in, return `score` as always and leave
+`fuscore` and `assume` out.
 
 ## Output format
 
@@ -641,14 +658,18 @@ for it"]`. Wrong: `"askq": false`. Same for "calltype", "asks" and "exit".
 "flow"     [one of "first"/"follow-up"/"call back"/"call in", one-sentence
            reason from the Lead history or the call] -- see "Follow-ups and
            call backs". Decide it before scoring the nine dimensions.
-"followfit" [letter, one-sentence detail]: on a follow-up or call back, did
-           the call run the agency's structure -- reconnect with an
-           up-front assumptive close, check where they are, handle what
-           stalled it, re-present only what is needed, assume the sale
-           again, a dated next step? Same s/w/m/n letters: "s" ran it, the
-           detail quoting the up-front close; "w" parts of it; "m" treated
-           the follow-up like a first call, or never assumed the sale; "n"
-           on a first conversation or a call in.
+"fuscore"  FOLLOW-UP / CALL BACK ONLY: an object scoring EXACTLY these 6
+           steps, same [letter, one-sentence detail] shape as "score":
+           "Reconnect & assumed the sale up front", "Checked where they are",
+           "Handled what stalled it, assuming the sale", "Re-presented only
+           what's needed", "Assumed the sale at the end", "Dated next step".
+           Criteria in "Follow-ups and call backs". Leave it out on a first
+           conversation or a call in.
+"assume"   FOLLOW-UP / CALL BACK ONLY: {"start": [bool, quote-based reason],
+           "objections": [bool or null, reason], "end": [bool, reason]} --
+           was the SALE assumed at the start, while handling objections, and
+           at the end. "objections" is [null, "..."] when none was raised;
+           "end" is true when it already closed up front.
 "spine"    an array of 4-8 [time, colour, headline, detail] entries walking
            through the call in order. "time" is a rough mm:ss into the call.
            "colour" is "g" (this moment went well), "y" (mixed/questionable),
@@ -681,7 +702,7 @@ for it"]`. Wrong: `"askq": false`. Same for "calltype", "asks" and "exit".
   coaching cards on the lead (30 days), its notes and quotes. It is only as
   good as the notes producers write; a quote with no note says nothing about
   what was discussed. AgencyZoom keeps no date on a quote.
-- "flow" / "followfit" (Frank, 2026-09-25) are new and unproven. Watch that
+- "flow" / "fuscore" / "assume" (Frank, 2026-09-25) are new and unproven. Watch that
   a first call on a lead with an old quote from years ago is not coached as
   a follow-up, and that a follow-up's "n" for discovery is not over-used.
 - The 9 call-structure dimensions started as a fixed list ported from the
