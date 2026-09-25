@@ -33,6 +33,13 @@ Everything caches under `data/`, so a re-run resumes rather than restarting.
   Instagram / LinkedIn are Social media (Facebook stays Generated); Found us
   (Google, Farmers.com) is part of Call-in / walk-in (Frank, 2026-09-24).
   The Sales tab's Premium per Lead Source uses these same groups.
+- **The Sales sheet names products the way the team types them** (Frank,
+  2026-09-25: "we only have 2 auto products. Farmers and BW"):
+  `sales_log_auto.product_name` turns an auto-added row's AgencyZoom policy
+  type into Farmers-Auto / BW-Auto / Farmers-Home / Foremost-MH / ... by
+  carrier id (Farmers 484668, 484654, 1030958; BW 186, 2448054; Foremost
+  102, 262). The nightly sync re-applies it to the last 14 days' auto rows,
+  never to a row a person typed or edited.
 - **Apollo judges each call against its lead source** (Frank, 2026-09-24).
   `coaching_cards._ask_card` sends `lead_sources.prompt_block()`; METHODOLOGY.md's
   "Lead source" section says how to use it, and the card's `leadfit` verdict
