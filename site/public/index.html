@@ -191,6 +191,10 @@
 .bktip td:first-child { padding-left: 0; text-align: left; }
 .bkrank-n { display: inline-block; min-width: 18px; color: var(--text-muted); font-variant-numeric: tabular-nums; }
 .rtiles { grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); }
+.rh3 { font-size: 12px; text-transform: uppercase; letter-spacing: .06em; color: var(--text-muted); margin: 16px 0 6px; }
+.rtable th, .rtable td { text-align: left; vertical-align: top; }
+.rtable th.num, .rtable td.num { text-align: right; }
+.rfilters { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin: 0 0 10px; }
 .oleg { display: flex; flex-wrap: wrap; gap: 14px; margin-top: 10px; font-size: 11.5px; color: var(--text-secondary); }
 .oleg-item { display: flex; align-items: center; gap: 5px; }
 /* Objection chart -- Live Contact Detail's own top-of-tab bar chart (Frank,
@@ -821,8 +825,9 @@ let view = "digest";
 const CENTERS = {
   salescenter: [["digest", "Digest"], ["sales", "Sales"]],
   learning: [["roleplay", "Role Play"], ["training", "Training"]],
+  service: [["service", "Service Digest"], ["renewals", "Renewals"]],
 };
-const centerPick = { salescenter: "digest", learning: "roleplay" };
+const centerPick = { salescenter: "digest", learning: "roleplay", service: "service" };
 const centerOf = v => Object.keys(CENTERS).find(c => CENTERS[c].some(([k]) => k === v)) || v;
 function paintCenterBar() {
   const c = centerOf(view), bar = $("#centerbar");
@@ -4113,6 +4118,8 @@ async function paint() {
     repaintSales();
   } else if (view === "service") {
     await paintService();
+  } else if (view === "renewals") {
+    await paintRenewals();
   } else if (view === "commercial") {
     await paintCommercial();
   } else {
@@ -4315,6 +4322,20 @@ function srOutcomeHtml(m, pipe, title, rateWord, blurb) {
     <div class="tiles rtiles">${cards}</div><div class="oleg">${legend}</div>
     <p class="sd" style="margin:10px 0 0">Of ${rows.length}: ${noted} read from the rep's note by AI${unread ? `; ${unread} with a note not read yet (shown as No note until the next nightly run)` : ""}. These SRs are closed as Completed, so the note is where the outcome is written.</p></div>`;
 }
+/* Renewal outcomes and retention live on the Renewals tab (Frank, 2026-09-25):
+   a renewal SR closes ~45 days before the renewal, so the day it closed says
+   what the rep did, not whether the customer stayed. The digest keeps only
+   the work done. */
+function renewalWorkedHtml(m) {
+  const rows = m.renewals;
+  if (!rows.length) return "";
+  const kind = Object.fromEntries(m.outcomes.map(([k, , c]) => [k, c]));
+  const label = Object.fromEntries(m.outcomes.map(([k, l]) => [k, l]));
+  const by = m.team.map(t => t.name).map(n => [n, rows.filter(r => r.by === n).length]).filter(x => x[1]);
+  const counts = m.outcomes.map(([k, l]) => [l, rows.filter(r => r.outcome === k).length]).filter(x => x[1]);
+  return `<div class="sect"><h2>Renewal SRs Worked</h2>
+    <p class="sd"><b>${rows.length}</b> renewal SR${rows.length === 1 ? "" : "s"} closed in this period${by.length ? ` (${by.map(([n, c]) => `${n.split(" ")[0]} ${c}`).join(", ")})` : ""}: ${counts.map(([l, c]) => `${l} ${c}`).join(" · ")}. Whether those customers stayed is on the <a href="#" onclick="goView('renewals');return false">Renewals tab</a>.</p></div>`;
+}
 function completionTimeHtml(m) {
   const rows = (m.pipelines || []).map(([k, l]) => [l, m.completed.filter(r => r.pipeline === k)]).filter(x => x[1].length);
   if (!rows.length) return "";
@@ -4384,7 +4405,7 @@ function servicePanel(m) {
   };
   return `<div class="sect"><h2>Service Team</h2>
     <p class="sd">Credit goes to whoever completed the SR or task.</p>${tiles}</div>
-    ${renewalBreakdownHtml(m)}
+    ${renewalWorkedHtml(m)}
     ${SR_OUTCOME_SECTIONS.map(([p, t, w, b]) => srOutcomeHtml(m, p, t, w, b)).join("")}
     ${completionTimeHtml(m)}
     ${latePaymentsHtml(m)}
@@ -4413,6 +4434,155 @@ async function paintService() {
   v.innerHTML = controls + (docs.length ? servicePanel(mergeServiceDocs(docs))
     : `<div class="empty">No Athena report for ${rangeMode === "day" ? "this day" : "this range"} yet.</div>`);
   wireRangeControl();
+}
+
+/* ---- Athena: Renewals (Frank, 2026-09-25) -----------------------------------
+   One rolling report, rebuilt every night by renewal_report.py and served by
+   /api/renewals: every personal-lines policy renewing in the last four weeks
+   (what happened: retained, lost, mid-term, not confirmed yet) and in the
+   next 45 days (how the renewal SR was worked, and how at risk it is).
+   Service is not tracked day by day like sales (Frank: "we just need more of
+   a live or updating renewal and retention report"), so the Service
+   Digest's date filter does not apply here. Lost counts the policy record as
+   well as the team's SRs ("if the policy reads cancelled ... its still
+   cancelled"); a mid-term cancellation sits outside the rate. */
+const REN_STATUS = {
+  retained: ["Retained", "--s3"], lost: ["Lost", "--s8"],
+  unconfirmed: ["Not confirmed yet", "--text-muted"], mid_term: ["Mid-term Cancellation", "--s7", 1],
+};
+const REN_WORKED = [
+  ["discussed", "Reviewed with customer"], ["no_action", "No action: Review if needed"],
+  ["not_reached", "Unable to Contact/No Show"], ["open", "Renewal SR still open"],
+  ["none", "No renewal SR"], ["other", "Closed on a cancellation"],
+];
+const REN_FLAGS = {
+  no_sr: ["No renewal SR yet", "c-n"], sr_open: ["SR open", "c-n"], no_action: ["No action: not discussed", "c-w"],
+  not_reached: ["Not reached", "c-w"],
+  late_payment_open: ["Late payment open", "c-r"], cancel_sr: ["Cancellation SR on household", "c-r"],
+};
+const REN_RISK = { high: ["High", "c-r"], medium: ["Medium", "c-w"], low: ["Low", "c-g"] };
+const renFilter = { risk: "", pipe: "", who: "", worked: "" };
+let RENEWALS_DOC = null;
+const renWorked = r => {
+  const s = r.sr;
+  if (!s) return "none";
+  if (s.state === "open") return "open";
+  if (["renewed_as_is", "renewed_endorsed", "rewrite_accepted"].includes(s.outcome)) return "discussed";
+  if (s.outcome === "no_action_review") return "no_action";
+  if (s.outcome === "unable_to_contact") return "not_reached";
+  return "other";
+};
+const renRate = rs => { const k = rs.filter(r => r.status === "retained").length, l = rs.filter(r => r.status === "lost").length;
+  return { k, l, pct: k + l ? Math.round(1000 * k / (k + l)) / 10 : null }; };
+const renFill = st => { const [, v, hatch] = REN_STATUS[st] || [, "--text-muted"];
+  return `background-color:var(${v})${hatch ? ";background-image:var(--hatch)" : ""}`; };
+const renDate = d => d ? new Date(d + "T12:00:00").toLocaleDateString(undefined, { month: "short", day: "numeric" }) : "—";
+const renMoney = x => x == null ? "—" : "$" + Math.round(x).toLocaleString();
+function renCard(rs, head, strong) {
+  const rt = renRate(rs), n = rs.length || 1;
+  const segs = Object.keys(REN_STATUS).map(st => { const c = rs.filter(r => r.status === st).length;
+    return c ? `<span class="ogseg rseg" style="width:${(c / n * 100).toFixed(2)}%;${renFill(st)}" title="${REN_STATUS[st][0]}: ${c}"></span>` : ""; }).join("");
+  const unc = rs.filter(r => r.status === "unconfirmed").length, mid = rs.filter(r => r.status === "mid_term").length;
+  return `<div class="tile"${strong ? ' style="border-color:var(--border-strong)"' : ""}>
+    <div class="k">${head}</div><div class="v">${rt.pct == null ? "—" : rt.pct + "%"}</div>
+    <div class="n">retained${rt.pct == null ? "" : ` &middot; ${rt.k} of ${rt.k + rt.l}`}${rt.l ? ` &middot; <b>${rt.l} lost</b>` : ""}</div>
+    <div class="n">${rs.length} renewal${rs.length === 1 ? "" : "s"}${unc ? ` &middot; ${unc} not confirmed` : ""}${mid ? ` &middot; ${mid} mid-term` : ""}</div>
+    <div class="otrack" style="margin-top:10px">${segs}</div></div>`;
+}
+function renSrCell(r, label) {
+  const s = r.sr;
+  if (!s) return '<span style="color:var(--text-muted)">none</span>';
+  if (s.state === "open") return `open${s.stage ? ` &middot; ${cesc(s.stage)}` : ""}${s.by ? ` <span style="color:var(--text-muted)">(${cesc(s.by.split(" ")[0])})</span>` : ""}`;
+  return `${cesc(label[s.outcome] || s.outcome)} <span style="color:var(--text-muted)">${cesc((s.by || "").split(" ")[0])} ${renDate(s.done)}</span>`
+    + (s.note ? `<div style="font-size:11.5px;color:var(--text-muted);max-width:340px">${cesc(s.note.slice(0, 140))}</div>` : "");
+}
+function renewalsPanel(doc) {
+  const label = Object.fromEntries((doc.sr_outcomes || []).map(([k, l]) => [k, l]));
+  const pipeName = Object.fromEntries(doc.pipelines || []);
+  const past = doc.rows.filter(r => r.kind === "past");
+  const up = doc.rows.filter(r => r.kind === "upcoming");
+  const ahead = up.filter(r => r.status === "upcoming");
+  const gone = up.filter(r => r.status === "mid_term").length;
+  const lost = doc.rows.filter(r => r.status === "lost");
+  const rt = renRate(past);
+  const discussed = ahead.filter(r => renWorked(r) === "discussed").length;
+  const high = ahead.filter(r => r.risk === "high").length;
+  const tiles = `<div class="tiles">
+    <div class="tile" style="border-color:var(--border-strong)"><div class="k">Retention · last 4 weeks</div>
+      <div class="v">${rt.pct == null ? "—" : rt.pct + "%"}</div><div class="n">${rt.k} of ${rt.k + rt.l} renewals kept</div></div>
+    <div class="tile"><div class="k">Lost</div><div class="v">${rt.l}</div><div class="n">renewed ${renDate(past.length ? past[0].renewal : null)} – ${renDate(doc.as_of)}</div></div>
+    <div class="tile"><div class="k">Not confirmed yet</div><div class="v">${past.filter(r => r.status === "unconfirmed").length}</div><div class="n">no next term or cancellation on record yet</div></div>
+    <div class="tile"><div class="k">Coming up · ${doc.upcoming_days} days</div><div class="v">${ahead.length}</div>
+      <div class="n">${ahead.length ? Math.round(100 * discussed / ahead.length) : 0}% reviewed with the customer</div></div>
+    <div class="tile"><div class="k">High risk</div><div class="v" style="color:var(--bad)">${high}</div><div class="n">not discussed, with a warning sign</div></div>
+  </div>`;
+  // Weeks by renewal date, Monday first, oldest to newest.
+  const wk = d => { const x = new Date(d + "T12:00:00"); x.setDate(x.getDate() - ((x.getDay() + 6) % 7)); return x.toISOString().slice(0, 10); };
+  const weeks = [...new Set(past.map(r => wk(r.renewal)))].sort();
+  const weekCards = weeks.map((w, i) => renCard(past.filter(r => wk(r.renewal) === w),
+    `Week of ${renDate(w)}${i === weeks.length - 1 ? " · settling" : ""}`)).join("");
+  const worked = REN_WORKED.map(([k, l]) => [l, past.filter(r => renWorked(r) === k)]).filter(x => x[1].length);
+  const workedCards = worked.map(([l, rs]) => renCard(rs, l)).join("");
+  const pipeCards = (doc.pipelines || []).map(([k, l]) => [l, past.filter(r => r.pipeline === k)]).filter(x => x[1].length).map(([l, rs]) => renCard(rs, l)).join("");
+  const people = (doc.team || []).filter(n => past.some(r => r.sr && r.sr.by === n));
+  const personCards = people.map(n => renCard(past.filter(r => r.sr && r.sr.by === n), pbadge(DOT[n] || TEAM_DOT, n.split(" ")[0]))).join("")
+    + (past.some(r => !r.sr || !people.includes(r.sr.by)) ? renCard(past.filter(r => !r.sr || !people.includes(r.sr.by)), pbadge("#8a877f", "Others / no SR")) : "");
+  const legend = Object.entries(REN_STATUS).map(([k, [l]]) => { const c = past.filter(r => r.status === k).length;
+    return c ? `<span class="oleg-item"><span class="pd rdot" style="${renFill(k)}"></span>${l} <b>${c}</b></span>` : ""; }).join("");
+  const lostRows = lost.sort((a, b) => a.renewal < b.renewal ? -1 : 1).map(r => `<tr>
+    <td>${renDate(r.renewal)}${r.kind === "upcoming" ? ' <span class="chip c-n">ahead</span>' : ""}</td><td>${cesc(r.name || "—")}</td>
+    <td>${cesc(r.type)} <span style="color:var(--text-muted)">${cesc(r.policy)}</span></td><td class="num">${renMoney(r.premium)}</td>
+    <td>${renSrCell(r, label)}</td><td>${cesc(r.how.join(", "))}${r.cancel_date ? ` <span style="color:var(--text-muted)">${renDate(r.cancel_date)}</span>` : ""}
+      ${r.cancel_srs.length ? `<div style="font-size:11.5px;color:var(--text-muted)">${cesc(r.cancel_srs[0].note)}</div>` : ""}</td></tr>`).join("");
+  // Coming up, filtered.
+  const f = renFilter;
+  const whoOpts = [...new Set(ahead.map(r => r.sr && r.sr.by).filter(Boolean))].sort();
+  const shown = ahead.filter(r => (!f.risk || r.risk === f.risk) && (!f.pipe || r.pipeline === f.pipe)
+    && (!f.who || (r.sr && r.sr.by) === f.who) && (!f.worked || renWorked(r) === f.worked))
+    .sort((a, b) => ({ high: 0, medium: 1, low: 2 }[a.risk] - { high: 0, medium: 1, low: 2 }[b.risk]) || (a.renewal < b.renewal ? -1 : 1));
+  const sel = (id, cur, opts, all) => `<select id="${id}">${[["", all], ...opts].map(([v, l]) => `<option value="${v}"${v === cur ? " selected" : ""}>${l}</option>`).join("")}</select>`;
+  const upRows = shown.map(r => `<tr>
+    <td>${renDate(r.renewal)}</td><td>${cesc(r.name || "—")}</td>
+    <td>${cesc(r.type)} <span style="color:var(--text-muted)">${cesc(r.policy)}</span><div style="font-size:11.5px;color:var(--text-muted)">${cesc(pipeName[r.pipeline] || "")}</div></td>
+    <td class="num">${r.renewal_premium != null ? `${renMoney(r.renewal_premium)}<div style="font-size:11.5px;color:var(--text-muted)">issued renewal</div>` : renMoney(r.premium)}</td>
+    <td>${renSrCell(r, label)}</td>
+    <td>${r.flags.filter(x => REN_FLAGS[x]).map(x => `<span class="chip ${REN_FLAGS[x][1]}" style="margin:0 4px 3px 0">${REN_FLAGS[x][0]}</span>`).join("")}</td>
+    <td><span class="chip ${REN_RISK[r.risk][1]}">${REN_RISK[r.risk][0]}</span></td></tr>`).join("");
+  return `<div class="sect"><h2>Renewals</h2>
+    <p class="sd">Every personal-lines policy that renewed in the last ${doc.past_days} days or renews in the next ${doc.upcoming_days}, from AgencyZoom's policy records and the team's SRs. Rebuilt every night · as of ${renDate(doc.as_of)}.</p>${tiles}</div>
+    <div class="sect"><h2>Retention · last 4 weeks</h2>
+    <p class="sd">By the week each policy renewed. Retained = a next term on record, a rewrite, or Rewrite Accepted on the renewal SR. Lost = the policy record shows it cancelled, a Late Payment or Service Pipeline SR cancelled it, or the renewal SR was closed on a cancellation. Rate = retained over retained plus lost. A Mid-term Cancellation (hatched, cancelled more than 30 days before the renewal) and a renewal not confirmed yet sit outside the rate. The newest week is still settling: AgencyZoom's policy records lag by a few weeks.</p>
+    <div class="tiles rtiles">${weekCards}</div><div class="oleg">${legend}</div>
+    <h3 class="rh3">By how the renewal SR was worked</h3><div class="tiles rtiles">${workedCards}</div>
+    <h3 class="rh3">By pipeline</h3><div class="tiles rtiles">${pipeCards}</div>
+    <h3 class="rh3">By who worked the renewal SR</h3><div class="tiles rtiles">${personCards}</div></div>
+    <div class="sect"><h2>Lost</h2><p class="sd">Every renewal lost in the last 4 weeks, and any renewal still ahead that has already cancelled, with how we know.</p>
+    ${lostRows ? `<div class="scroll"><table class="rtable"><thead><tr><th>Renews</th><th>Customer</th><th>Policy</th><th class="num">Premium</th><th>Renewal SR</th><th>How we know</th></tr></thead><tbody>${lostRows}</tbody></table></div>` : '<p class="sd">None.</p>'}</div>
+    <div class="sect"><h2>Coming up · next ${doc.upcoming_days} days</h2>
+    <p class="sd">High = not yet discussed with the customer (no renewal SR, the SR still open, No action or Unable to Contact) and a warning sign: an open Late Payment SR or a cancellation SR on the household. Medium = not discussed and renewing within ${doc.soon_days} days, or discussed with a warning sign.${gone ? ` ${gone} more policies renewing in this window were already cancelled mid term and are left out.` : ""}</p>
+    <div class="rfilters">${sel("renRisk", f.risk, [["high", "High risk"], ["medium", "Medium risk"], ["low", "Low risk"]], "Any risk")}
+      ${sel("renPipe", f.pipe, doc.pipelines || [], "Both pipelines")}
+      ${sel("renWorked", f.worked, REN_WORKED.filter(([k]) => ahead.some(r => renWorked(r) === k)), "However worked")}
+      ${sel("renWho", f.who, whoOpts.map(n => [n, n]), "Anyone")}
+      <span style="color:var(--text-muted);font-size:12.5px">${shown.length} of ${ahead.length}</span></div>
+    <div class="scroll"><table class="rtable"><thead><tr><th>Renews</th><th>Customer</th><th>Policy</th><th class="num">Premium</th><th>Renewal SR</th><th>Flags</th><th>Risk</th></tr></thead><tbody>${upRows}</tbody></table></div></div>`;
+}
+async function paintRenewals() {
+  const v = $("#view");
+  $("#topsub").textContent = "Athena · renewals · the last 4 weeks and the next 45 days";
+  if (!RENEWALS_DOC) {
+    v.innerHTML = '<div class="empty">Loading…</div>';
+    try {
+      const r = await fetch("/api/renewals", { cache: "no-store" });
+      RENEWALS_DOC = r.ok ? await r.json() : null;
+    } catch (_) { RENEWALS_DOC = null; }
+  }
+  if (!RENEWALS_DOC) { v.innerHTML = '<div class="empty">No renewal report yet. It is built every night.</div>'; return; }
+  v.innerHTML = renewalsPanel(RENEWALS_DOC);
+  [["renRisk", "risk"], ["renPipe", "pipe"], ["renWorked", "worked"], ["renWho", "who"]].forEach(([id, k]) => {
+    const el = document.getElementById(id);
+    if (el) el.onchange = () => { renFilter[k] = el.value; paintRenewals(); };
+  });
 }
 
 /* ---- Cerberus: the Commercial Center (Frank, 2026-09-24) --------------------

@@ -96,6 +96,10 @@ export default {
         if (parts.length === 3) return getService(env, parts[2]);
       }
 
+      if (parts[1] === "renewals" && parts.length === 2) {
+        return getRenewals(env);
+      }
+
       if (parts[1] === "commercial") {
         // Frank's alone (2026-09-24): a second gate on top of Access.
         const deny = requireCommercial(request, env);
@@ -258,6 +262,19 @@ async function getService(env, day) {
   if (obj === null) {
     return json({ error: "no service report for this day", day }, 404);
   }
+  return new Response(obj.body, {
+    headers: {
+      "content-type": "application/json; charset=utf-8",
+      "cache-control": "no-store",
+    },
+  });
+}
+
+/** GET /api/renewals -> the Renewals tab's rolling report (renewal_report.py),
+ * rebuilt every night: the last four weeks' renewals and the next 45 days'. */
+async function getRenewals(env) {
+  const obj = await env.BOARD.get("renewals/current.json");
+  if (obj === null) return json({ error: "no renewal report yet" }, 404);
   return new Response(obj.body, {
     headers: {
       "content-type": "application/json; charset=utf-8",
