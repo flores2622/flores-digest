@@ -271,8 +271,10 @@ Crystal (hybrid); credit always goes to whoever COMPLETED the SR or task.
     Other 30 day Renewals    Bristol West renewals: same
     Service Pipeline         changes, endorsements, basic service: completion time
     Late Payments            stage breakdown + completion time
-    Missing Documents        contingencies on newly bound policies: completion time
-                             + whether the SELLING producer or a service/hybrid rep closed it
+    Contingencies            any contingency pending on a policy (AgencyZoom's "Missing
+                             Documents", renamed by Frank 2026-09-24; key missing_docs):
+                             completion time + whether the SELLING producer or a
+                             service/hybrid rep closed it
 - **The Renewal Outcome Breakdown is not an agency retention rate.** It is the
   outcomes of the renewal SRs COMPLETED in the filtered period, and a rate
   among just those. From 2026-09-24 the outcome is the SR's own resolution
@@ -336,6 +338,21 @@ Crystal (hybrid); credit always goes to whoever COMPLETED the SR or task.
   renewals**. The deleted ones stay in `RESOLUTION_LABELS` because past SRs
   still carry their ids; do not prune them. `python3 service_retention.py --resolutions`
   prints each id in use with examples.
+- **Every pipeline has its own daily outcome breakdown** (Frank, 2026-09-24):
+  of the SRs COMPLETED that day, how each ended -- Renewals (above), plus
+  **Late Payments** (Paid / Cancelled for non-pay / Client cancelled / Unable
+  to Contact / Other; "saved" = paid over paid or cancelled), **Service
+  Pipeline** (Change made / Policy cancelled / Other service / Not done /
+  Unable to Contact; no rate) and **Contingencies** (Cleared / Policy
+  cancelled / Closed, not cleared / Unable to Contact; "cleared" rate). These
+  SRs are all closed on Completed, so **the outcome is read from the rep's
+  note** ("go based off of the notes for now") by `service_notes.py`, its own
+  cache `data/service_note_reads.json` + R2 copy, never the renewal one. No
+  note is "No note". These are categories of ours: if Frank adds AgencyZoom
+  resolutions for these pipelines, match them by id first. Each completed row
+  now carries its SR `id`, `outcome` and `source`; the nightly refresh adds
+  them to earlier days, matching old rows (built without an id) by who
+  completed the SR and its hours.
 - **A missed night builds itself** (`service_digest.backfill_missing_days`,
   Frank, 2026-09-24): each nightly run builds any weekday of the last 14 with
   no page, from that day's saved files; completed SRs, tasks (completed after
@@ -442,8 +459,8 @@ current" -- another reason the six matter here.
 
 ## Cost
 
-Transcription is local and free. **The Anthropic API reads in `call_summary.py`
-and `renewal_notes.py` are the only paid steps** — roughly one call per live
+Transcription is local and free. **The Anthropic API reads in `call_summary.py`,
+`renewal_notes.py` and `service_notes.py` are the only paid steps** — roughly one call per live
 contact per day, plus one call per 25 renewal SR notes (each SR's note is read
 once and kept in `data/renewal_note_reads.json` and its R2 copy; only an edited
 note is read again -- never delete that cache casually). Changing
