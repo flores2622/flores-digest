@@ -880,11 +880,16 @@ QUOTED_STAGE = re.compile(r"quoted|quotes presented|fsd|pending bind", re.I)
 # did not happen on it, and the follow-up templates repeat daily until the
 # customer replies, so one quote would be recounted every day it is chased.
 # Frank confirmed this reading against the 2026-08-14 notes.
+# Plurals count the same (Frank, 2026-09-24: "here are the quotes should
+# count as quote presented") -- "here are the quotes", "these are your
+# quotes", "your quotes are attached". This pattern also travels to the
+# board's live count (live_board.basis), so it stays JS-compatible.
 _PRESENTED = re.compile(
-    r"this is (?:a|an|the|your)[^.!?]{0,40}\bquote\b"
-    r"|here (?:is|are) (?:a|the|your)[^.!?]{0,40}\bquote\b"
-    r"|(?:your |the )?quote is attached"
-    r"|attach(?:ed|ing)[^.!?]{0,25}\bquote\b", re.I)
+    r"this is (?:a|an|the|your)[^.!?]{0,40}\bquotes?\b"
+    r"|these are (?:the|your)[^.!?]{0,40}\bquotes\b"
+    r"|here (?:is|are) (?:a|the|your)[^.!?]{0,40}\bquotes?\b"
+    r"|(?:your |the )?quotes? (?:is|are) attached"
+    r"|attach(?:ed|ing)[^.!?]{0,25}\bquotes?\b", re.I)
 _PAST = re.compile(
     r"sent you|i sent|week ago|haven'?t heard back|chance to review", re.I)
 

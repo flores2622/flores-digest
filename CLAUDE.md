@@ -211,7 +211,8 @@ and anything without the glow is the checkpoint's (Frank, 2026-09-24).
   a quote), applied only to leads active since the checkpoint, newest first,
   on top of the checkpoint's own `quoted_leads`. The regexes travel in
   `live_basis.quotes` from daily.py itself (`QUOTED_STAGE`, `_PRESENTED`,
-  `_PAST`) -- never retype them in JS. A lead is re-read only when its
+  `_PAST`) -- never retype them in JS. Plurals count ("here are the
+  quotes", "your quotes are attached"; Frank, 2026-09-24). A lead is re-read only when its
   lastActivityDate moves. The closing ratio is live once both sales and
   quotes are.
 - **A one-minute Worker cron** (wrangler.jsonc, business hours) refreshes
