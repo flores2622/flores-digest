@@ -1124,6 +1124,14 @@ def publish_service(day):
         service_digest.refresh_past_renewals(day, log=log)
     except (Exception, SystemExit) as e:
         log(f"renewal refresh failed ({type(e).__name__}: {e}) -- earlier days keep their outcomes")
+    # The Renewals tab (renewal_report.py, Frank 2026-09-25): the rolling
+    # last-4-weeks retention and next-45-days risk report, rebuilt nightly
+    # from the policy records and the day's open SRs. Separate try, like the rest.
+    try:
+        import renewal_report
+        renewal_report.publish(day, log=log)
+    except (Exception, SystemExit) as e:
+        log(f"renewal report failed ({type(e).__name__}: {e}) -- the Renewals tab keeps last night's")
 
 
 def publish_commercial(day):

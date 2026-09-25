@@ -191,6 +191,10 @@
 .bktip td:first-child { padding-left: 0; text-align: left; }
 .bkrank-n { display: inline-block; min-width: 18px; color: var(--text-muted); font-variant-numeric: tabular-nums; }
 .rtiles { grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); }
+.rh3 { font-size: 12px; text-transform: uppercase; letter-spacing: .06em; color: var(--text-muted); margin: 16px 0 6px; }
+.rtable th, .rtable td { text-align: left; vertical-align: top; }
+.rtable th.num, .rtable td.num { text-align: right; }
+.rfilters { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin: 0 0 10px; }
 .oleg { display: flex; flex-wrap: wrap; gap: 14px; margin-top: 10px; font-size: 11.5px; color: var(--text-secondary); }
 .oleg-item { display: flex; align-items: center; gap: 5px; }
 /* Objection chart -- Live Contact Detail's own top-of-tab bar chart (Frank,
@@ -276,7 +280,11 @@ body {
 /* Section tabs inside a left-bar Center (Sales Center, Learning Center). An
    underline strip, so it reads as a level above each page's own pill-style
    .subtabs rather than as another row of the same thing. */
-.ctabs { display: flex; gap: 4px; border-bottom: 1px solid var(--border); margin: -4px 0 18px; overflow-x: auto; }
+/* Never a scroll box (Frank, 2026-09-25: "the sales center header has a
+   scroll"): the selected tab's underline sits 1px below the strip on purpose,
+   and overflow-x:auto turned that 1px into a scrollbar. The tabs wrap on a
+   narrow screen instead. */
+.ctabs { display: flex; flex-wrap: wrap; gap: 4px; border-bottom: 1px solid var(--border); margin: -4px 0 18px; }
 .ctab { background: none; border: none; border-bottom: 2px solid transparent; padding: 8px 14px 9px; margin-bottom: -1px;
   font: inherit; font-size: 13.5px; font-weight: 600; color: var(--text-muted); cursor: pointer; white-space: nowrap; }
 .ctab.sel { color: var(--text-primary); border-bottom-color: var(--text-primary); }
@@ -529,15 +537,6 @@ tbody tr:hover { background: color-mix(in oklab, var(--bar) 7%, transparent); }
 .hero p:last-child { margin-bottom: 0; }
 .q { font-style: italic; }
 
-/* Trend line. */
-.trend { width: 100%; height: 200px; display: block; }
-.trend .grid { stroke: var(--grid); stroke-width: 1; }
-.trend .axis { fill: var(--text-muted); font-size: 11px; }
-.trend .ln { fill: none; stroke: var(--bar); stroke-width: 2; stroke-linejoin: round; stroke-linecap: round; }
-.trend .dot { fill: var(--bar); stroke: var(--surface); stroke-width: 2; }
-.trend .hit { fill: transparent; cursor: crosshair; }
-.spark { display: flex; align-items: flex-end; gap: 3px; height: 34px; }
-.spark i { display: block; width: 9px; background: var(--bar); border-radius: 1px 1px 0 0; min-height: 2px; }
 
 #tip {
   position: fixed; pointer-events: none; opacity: 0; transition: opacity .1s;
@@ -681,7 +680,6 @@ details.sc .scb { padding: 0 12px 12px; }
   <nav class="tabs" role="tablist">
     <button class="tab" role="tab" aria-selected="true"  data-v="salescenter">Sales Center</button>
     <button class="tab" role="tab" aria-selected="false" data-v="coaching">Coaching Center</button>
-    <button class="tab" role="tab" aria-selected="false" data-v="trends">Trends</button>
     <button class="tab" role="tab" aria-selected="false" data-v="learning">Learning Center</button>
     <button class="tab" role="tab" aria-selected="false" data-v="service">Service Center</button>
     <button class="tab" role="tab" aria-selected="false" data-v="commercial" hidden>Commercial Center</button>
@@ -818,16 +816,37 @@ let view = "digest";
    Role Play plus Training. `view` is still the page itself -- every paint()
    branch below is unchanged -- and the section just remembers which of its
    pages was last open. */
+// Every left-bar entry gets the same header (Frank, 2026-09-25: "all
+// sections follow this format, the main header, with those bubbles if we
+// have sub sections within them"): the underlined page tabs, then each
+// page's own pill-style .subtabs for anything inside it. A Center with one
+// page shows just that one tab.
 const CENTERS = {
   salescenter: [["digest", "Digest"], ["sales", "Sales"]],
+  coaching: [["coaching", "Coaching"]],
   learning: [["roleplay", "Role Play"], ["training", "Training"]],
+  service: [["service", "Service Digest"], ["renewals", "Renewals"]],
+  commercial: [["commercial", "Commercial"]],
 };
-const centerPick = { salescenter: "digest", learning: "roleplay" };
+const centerPick = Object.fromEntries(Object.entries(CENTERS).map(([c, pages]) => [c, pages[0][0]]));
 const centerOf = v => Object.keys(CENTERS).find(c => CENTERS[c].some(([k]) => k === v)) || v;
 function paintCenterBar() {
   const c = centerOf(view), bar = $("#centerbar");
   if (!bar) return;
   if (!CENTERS[c]) { bar.innerHTML = ""; return; }
+  // Coaching Center's header tabs are its three views of one page (Frank,
+  // 2026-09-25: "i want those bubbles to be tabs on the main header,
+  // Cards>Objections>Wins and Losses"), switched by coachSubTab.
+  if (c === "coaching") {
+    bar.innerHTML = `<div class="ctabs" role="tablist">${COACH_TABS.map(([k, label]) =>
+      `<button class="ctab${k === coachSubTab ? " sel" : ""}" role="tab" aria-selected="${k === coachSubTab}" data-st="${k}">${label}</button>`).join("")}</div>`;
+    bar.querySelectorAll(".ctab").forEach(b => b.onclick = () => {
+      coachSubTab = b.dataset.st;
+      if (view !== "coaching") { goView("coaching"); return; }
+      if (cur) repaintCoaching(); else paintCenterBar();
+    });
+    return;
+  }
   bar.innerHTML = `<div class="ctabs" role="tablist">${CENTERS[c].map(([k, label]) =>
     `<button class="ctab${k === view ? " sel" : ""}" role="tab" aria-selected="${k === view}" data-cv="${k}">${label}</button>`).join("")}</div>`;
   bar.querySelectorAll(".ctab").forEach(b => b.onclick = () => goView(b.dataset.cv));
@@ -897,7 +916,7 @@ const SALES_LOGGER_ROSTER = [...PRODUCER_ROSTER, "Amanda Torricellas"];
 // for a collective goal." Combined ONLY in the Sales tab's aggregate views
 // (Totals tiles/pie, Breakdown's Producer chart) -- every individual sale
 // row still names who actually logged it, and every other screen (Coaching,
-// Digest, leaderboard, Trends) keeps Coral and Sarahi separate, since
+// Digest, leaderboard) keeps Coral and Sarahi separate, since
 // nothing outside salesTotalsHtml/computeSalesBreakdown reads this map.
 const SALES_TEAM_GROUPS = { "Coral Barwick": "The Insurance Icons", "Sarahi Chin": "The Insurance Icons" };
 const salesGroupName = name => (name && SALES_TEAM_GROUPS[name]) || name;
@@ -2302,7 +2321,8 @@ function recordingBlk(c) {
   </details>` : "";
   return `<div class="blk"><div class="bl">Recording &amp; transcript</div>${players}${tx}</div>`;
 }
-// Three sub-tabs within the Coaching tab (Frank, 2026-09-10, correcting an
+// Three views within the Coaching tab, shown as the Center's header tabs
+// (paintCenterBar, COACH_TABS) (Frank, 2026-09-10, correcting an
 // earlier misread of this same request, then 2026-09-17: "I want the
 // cards, wins and losses, and the objection data to be tabs within the
 // category"). "Cards" is the per-call coaching cards. "Wins and Losses"
@@ -2311,19 +2331,7 @@ function recordingBlk(c) {
 // click there still jumps to "Cards" (see wireObjectionChart) since
 // that's the only place the filtered cards can show.
 let coachSubTab = "detail";
-function coachSubTabsHtml() {
-  return `<div class="subtabs">
-    <button class="subtab${coachSubTab === "detail" ? " sel" : ""}" data-st="detail" type="button">Cards</button>
-    <button class="subtab${coachSubTab === "wins" ? " sel" : ""}" data-st="wins" type="button">Wins and Losses</button>
-    <button class="subtab${coachSubTab === "objections" ? " sel" : ""}" data-st="objections" type="button">Objections</button>
-  </div>`;
-}
-function wireCoachSubTabs() {
-  document.querySelectorAll(".subtab").forEach(el => el.onclick = () => {
-    coachSubTab = el.dataset.st;
-    repaintCoaching();
-  });
-}
+const COACH_TABS = [["detail", "Cards"], ["objections", "Objections"], ["wins", "Wins and Losses"]];
 
 // A legend used to sit here explaining each outcome chip's meaning. Removed
 // (Frank, 2026-09-16: "since the full description is on the badge, we dont
@@ -2378,7 +2386,8 @@ function objectionChartHtml(objData, scopedCount) {
 }
 function repaintCoaching() {
   document.getElementById("view").innerHTML = rangeControlHtml() + producerControlHtml() + rangeHeaderHtml() + coachingPanel(cur, producerFilter);
-  wireRangeControl(); wireProducerControl(); wireCoachSubTabs(); wireObjectionChart();
+  wireRangeControl(); wireProducerControl(); wireObjectionChart();
+  paintCenterBar();   // an objection click can switch the header tab
 }
 function wireObjectionChart() {
   document.querySelectorAll(".objrow").forEach(el => el.onclick = () => {
@@ -2397,7 +2406,7 @@ function coachingPanel(d, who) {
   // selected.
   const order = ["Lorena Gonzalez", "Crystal Mango", "Mike Olvera", "Coral Barwick", "Sarahi Chin"];
   const sel = who && order.includes(who) ? who : "";
-  const nav = coachSubTabsHtml();
+  const nav = "";
 
   if (coachSubTab === "wins") {
     return nav + (winsLossesHtml(d, sel) || `<div class="empty">Nothing to show for this day.</div>`);
@@ -3061,83 +3070,6 @@ function wireRoleplayPanel() {
   if (mic) { mic.onclick = () => { rpListening ? rpStopListening() : rpStartListening(); }; rpUpdateMicUI(); }
 }
 
-/* ---- Trends tab ------------------------------------------------------------
-   Built from the month rollups' own `trend` arrays (already computed nightly
-   by publish_board.publish_month) rather than fetching every day's full
-   document -- that keeps this tab to one small read per month instead of
-   megabytes of R2 reads on every page load. The rollup doesn't carry the
-   per-day "time set" figure the original artifact's Trends table had, so
-   that column isn't reproducible here.
-
-   NOT cached across visits (removed 2026-09-17, Frank: "11 reporting days
-   is half the business month. it still says not enough days"). The old
-   `if (TREND_CACHE) return TREND_CACHE` locked in whatever the trend
-   looked like the first time this tab was opened in a given browser
-   session and never refreshed it again -- a tab left open from earlier in
-   the day, before that day (or any new day since) was published, kept
-   showing "not enough days on file" forever after, even once the real
-   month rollup had 11+ real entries (confirmed directly against
-   /api/months/2026-09, which was already correct). Re-fetching the
-   month rollup on every visit is still cheap -- it's the one small
-   monthly-rollup read this comment already describes, not a full day
-   document -- so there's no real cost to dropping the cache. */
-async function loadTrend() {
-  const months = [...new Set(DAYS.map(d => d.slice(0, 7)))].sort();
-  const rows = [];
-  for (const m of months) {
-    try {
-      const r = await fetch(`/api/months/${m}`, { cache: "no-store" });
-      if (!r.ok) continue;
-      const doc = await r.json();
-      for (const t of (doc.trend || [])) rows.push(t);
-    } catch (_) {}
-  }
-  rows.sort((a, b) => a.date < b.date ? -1 : 1);
-  return rows;
-}
-function lineChart(points, fmt, tipFn) {
-  const W = 720, H = 200, L = 44, R = 12, T = 14, B = 26;
-  const xs = i => L + (points.length < 2 ? (W - L - R) / 2 : i * (W - L - R) / (points.length - 1));
-  const vals = points.map(p => p.v);
-  const hi = Math.max(...vals, 0), lo = Math.min(...vals, 0);
-  const span = (hi - lo) || 1;
-  const ys = v => T + (H - T - B) * (1 - (v - lo) / span);
-  const ns = "http://www.w3.org/2000/svg";
-  const svg = document.createElementNS(ns, "svg");
-  svg.setAttribute("class", "trend"); svg.setAttribute("viewBox", `0 0 ${W} ${H}`); svg.setAttribute("preserveAspectRatio", "none");
-  for (const frac of [0, 0.5, 1]) {
-    const v = lo + span * frac, y = ys(v);
-    const g = document.createElementNS(ns, "line");
-    g.setAttribute("class", "grid"); g.setAttribute("x1", L); g.setAttribute("x2", W - R); g.setAttribute("y1", y); g.setAttribute("y2", y);
-    svg.append(g);
-    const t = document.createElementNS(ns, "text");
-    t.setAttribute("class", "axis"); t.setAttribute("x", 4); t.setAttribute("y", y + 4);
-    t.textContent = fmt(Math.round(v * 10) / 10);
-    svg.append(t);
-  }
-  const path = document.createElementNS(ns, "path");
-  path.setAttribute("class", "ln");
-  path.setAttribute("d", points.map((p, i) => `${i ? "L" : "M"}${xs(i)},${ys(p.v)}`).join(" "));
-  svg.append(path);
-  points.forEach((p, i) => {
-    const c = document.createElementNS(ns, "circle");
-    c.setAttribute("class", "dot"); c.setAttribute("cx", xs(i)); c.setAttribute("cy", ys(p.v)); c.setAttribute("r", 4);
-    svg.append(c);
-    const lab = document.createElementNS(ns, "text");
-    lab.setAttribute("class", "axis"); lab.setAttribute("x", xs(i)); lab.setAttribute("y", H - 8); lab.setAttribute("text-anchor", "middle");
-    lab.textContent = p.label;
-    svg.append(lab);
-    const hit = document.createElementNS(ns, "rect");
-    hit.setAttribute("class", "hit");
-    hit.setAttribute("x", xs(i) - (W - L - R) / (2 * Math.max(1, points.length - 1)));
-    hit.setAttribute("y", 0);
-    hit.setAttribute("width", (W - L - R) / Math.max(1, points.length - 1));
-    hit.setAttribute("height", H);
-    hoverable(hit, tipFn(p));
-    svg.append(hit);
-  });
-  return svg.outerHTML;
-}
 /* ---- Training tab: Apollo's flashcard decks (coaching/TRAINING.md) -------- */
 
 async function loadTraining() {
@@ -3911,37 +3843,6 @@ function wireSalesBreakdownPanel() {
   document.querySelectorAll("#view [data-tip]").forEach(el => hoverable(el, el.dataset.tip));
 }
 
-async function trendsPanel() {
-  const ds = await loadTrend();
-  if (ds.length < 2) return `<div class="empty">
-    <div style="font-weight:600;font-size:15px;margin-bottom:6px">Not enough days on file yet</div>
-    <p style="max-width:44ch;margin:0 auto;font-size:12.5px;line-height:1.6">Trends need at least two reporting
-    days. A line through one point would be a decoration, not a finding.</p></div>`;
-  const mx = Math.max(...ds.map(x => x.rate || 0), 1), mxs = Math.max(...ds.map(x => x.ps || 0), 1);
-  const spark = (vals, max) => `<div class="spark">${vals.map(v =>
-    `<i style="height:${Math.max(2, Math.round(v / max * 34))}px" title="${v}"></i>`).join("")}</div>`;
-  // Same team tiering the Digest tab colours by (Frank, 2026-09-17: "make
-  // it follow team tiered coloring") -- each day's own tiers, as rolled
-  // up server-side by publish_month, not recomputed here.
-  const TI = { green: "tg", yellow: "ty", red: "tr" };
-  const tt = (x, key) => TI[(x.tiers || {})[key]] || "";
-  const rows = ds.map(x => `<tr>
-    <td>${new Date(x.date + "T12:00:00").toLocaleDateString(undefined, { weekday: "short", month: "short", day: "numeric" })}</td>
-    <td class="num ${tt(x, "dials")}">${x.dials ?? 0}${dialsSub(x)}</td><td class="num">${x.live ?? 0}</td>
-    <td class="num ${tt(x, "rate")}">${(x.rate ?? 0).toFixed ? x.rate.toFixed(1) : x.rate}%</td>
-    <td class="num ${tt(x, "pq")}">${money(x.pq)}</td><td class="num ${tt(x, "ps")}">${money(x.ps)}</td></tr>`).join("");
-  return `<div class="sect"><h2>Across ${ds.length} reporting days</h2>
-   <p class="sd">Oldest first. Too few days to call anything a trend — this is the record, not a forecast.</p>
-   <div class="tiles">
-     <div class="tile"><div class="k">Contact rate</div>${spark(ds.map(x => x.rate || 0), mx)}
-       <div class="n">${(ds[0].rate ?? 0)}% → ${(ds[ds.length - 1].rate ?? 0)}%</div></div>
-     <div class="tile"><div class="k">Premium sold</div>${spark(ds.map(x => x.ps || 0), mxs)}
-       <div class="n">${money(ds[0].ps)} → ${money(ds[ds.length - 1].ps)}</div></div>
-   </div>
-   <div class="scroll"><table><thead><tr><th>Day</th><th class="num">Dials</th><th class="num">Live</th>
-    <th class="num">Rate</th><th class="num">Quoted</th><th class="num">Sold</th></tr></thead><tbody>${rows}</tbody></table></div></div>`;
-}
-
 /* ---- shell / paint --------------------------------------------------------- */
 function $$(s) { return Array.from(document.querySelectorAll(s)); }
 
@@ -4021,8 +3922,7 @@ function wireRangeControl() {
 }
 
 /* Shared producer filter: whole agency or one person, kept in sync between
-   the Digest and Coaching tabs (Trends doesn't use it -- no per-producer
-   trend data exists yet). */
+   the Digest and Coaching tabs. */
 function producerControlHtml() {
   const opts = [`<option value=""${producerFilter ? "" : " selected"}>Whole Agency</option>`]
     .concat(PRODUCER_ROSTER.map(p => `<option value="${p}"${p === producerFilter ? " selected" : ""}>${p}</option>`));
@@ -4107,13 +4007,13 @@ async function paint() {
     }
     v.innerHTML = controls + rangeHeaderHtml() + (cur ? coachingPanel(cur, producerFilter) : '<div class="empty">Loading…</div>');
     wireRangeControl(); wireProducerControl();
-    wireCoachSubTabs(); wireObjectionChart();
+    wireObjectionChart();
     if (cur && !ALL_CALLS_CACHE) {
       fetchAllCalls().then(() => {
         if (view !== "coaching") return;   // navigated away before this landed
         v.innerHTML = controls + rangeHeaderHtml() + coachingPanel(cur, producerFilter);
         wireRangeControl(); wireProducerControl();
-        wireCoachSubTabs(); wireObjectionChart();
+        wireObjectionChart();
       });
     }
   } else if (view === "roleplay") {
@@ -4141,12 +4041,10 @@ async function paint() {
     repaintSales();
   } else if (view === "service") {
     await paintService();
+  } else if (view === "renewals") {
+    await paintRenewals();
   } else if (view === "commercial") {
     await paintCommercial();
-  } else {
-    $("#topsub").textContent = "trends across every reporting day";
-    v.innerHTML = '<div class="empty">Loading…</div>';
-    v.innerHTML = await trendsPanel();
   }
 }
 
@@ -4343,6 +4241,20 @@ function srOutcomeHtml(m, pipe, title, rateWord, blurb) {
     <div class="tiles rtiles">${cards}</div><div class="oleg">${legend}</div>
     <p class="sd" style="margin:10px 0 0">Of ${rows.length}: ${noted} read from the rep's note by AI${unread ? `; ${unread} with a note not read yet (shown as No note until the next nightly run)` : ""}. These SRs are closed as Completed, so the note is where the outcome is written.</p></div>`;
 }
+/* Renewal outcomes and retention live on the Renewals tab (Frank, 2026-09-25):
+   a renewal SR closes ~45 days before the renewal, so the day it closed says
+   what the rep did, not whether the customer stayed. The digest keeps only
+   the work done. */
+function renewalWorkedHtml(m) {
+  const rows = m.renewals;
+  if (!rows.length) return "";
+  const kind = Object.fromEntries(m.outcomes.map(([k, , c]) => [k, c]));
+  const label = Object.fromEntries(m.outcomes.map(([k, l]) => [k, l]));
+  const by = m.team.map(t => t.name).map(n => [n, rows.filter(r => r.by === n).length]).filter(x => x[1]);
+  const counts = m.outcomes.map(([k, l]) => [l, rows.filter(r => r.outcome === k).length]).filter(x => x[1]);
+  return `<div class="sect"><h2>Renewal SRs Worked</h2>
+    <p class="sd"><b>${rows.length}</b> renewal SR${rows.length === 1 ? "" : "s"} closed in this period${by.length ? ` (${by.map(([n, c]) => `${n.split(" ")[0]} ${c}`).join(", ")})` : ""}: ${counts.map(([l, c]) => `${l} ${c}`).join(" · ")}. Whether those customers stayed is on the <a href="#" onclick="goView('renewals');return false">Renewals tab</a>.</p></div>`;
+}
 function completionTimeHtml(m) {
   const rows = (m.pipelines || []).map(([k, l]) => [l, m.completed.filter(r => r.pipeline === k)]).filter(x => x[1].length);
   if (!rows.length) return "";
@@ -4412,7 +4324,7 @@ function servicePanel(m) {
   };
   return `<div class="sect"><h2>Service Team</h2>
     <p class="sd">Credit goes to whoever completed the SR or task.</p>${tiles}</div>
-    ${renewalBreakdownHtml(m)}
+    ${renewalWorkedHtml(m)}
     ${SR_OUTCOME_SECTIONS.map(([p, t, w, b]) => srOutcomeHtml(m, p, t, w, b)).join("")}
     ${completionTimeHtml(m)}
     ${latePaymentsHtml(m)}
@@ -4441,6 +4353,155 @@ async function paintService() {
   v.innerHTML = controls + (docs.length ? servicePanel(mergeServiceDocs(docs))
     : `<div class="empty">No Athena report for ${rangeMode === "day" ? "this day" : "this range"} yet.</div>`);
   wireRangeControl();
+}
+
+/* ---- Athena: Renewals (Frank, 2026-09-25) -----------------------------------
+   One rolling report, rebuilt every night by renewal_report.py and served by
+   /api/renewals: every personal-lines policy renewing in the last four weeks
+   (what happened: retained, lost, mid-term, not confirmed yet) and in the
+   next 45 days (how the renewal SR was worked, and how at risk it is).
+   Service is not tracked day by day like sales (Frank: "we just need more of
+   a live or updating renewal and retention report"), so the Service
+   Digest's date filter does not apply here. Lost counts the policy record as
+   well as the team's SRs ("if the policy reads cancelled ... its still
+   cancelled"); a mid-term cancellation sits outside the rate. */
+const REN_STATUS = {
+  retained: ["Retained", "--s3"], lost: ["Lost", "--s8"],
+  unconfirmed: ["Not confirmed yet", "--text-muted"], mid_term: ["Mid-term Cancellation", "--s7", 1],
+};
+const REN_WORKED = [
+  ["discussed", "Reviewed with customer"], ["no_action", "No action: Review if needed"],
+  ["not_reached", "Unable to Contact/No Show"], ["open", "Renewal SR still open"],
+  ["none", "No renewal SR"], ["other", "Closed on a cancellation"],
+];
+const REN_FLAGS = {
+  no_sr: ["No renewal SR yet", "c-n"], sr_open: ["SR open", "c-n"], no_action: ["No action: not discussed", "c-w"],
+  not_reached: ["Not reached", "c-w"],
+  late_payment_open: ["Late payment open", "c-r"], cancel_sr: ["Cancellation SR on household", "c-r"],
+};
+const REN_RISK = { high: ["High", "c-r"], medium: ["Medium", "c-w"], low: ["Low", "c-g"] };
+const renFilter = { risk: "", pipe: "", who: "", worked: "" };
+let RENEWALS_DOC = null;
+const renWorked = r => {
+  const s = r.sr;
+  if (!s) return "none";
+  if (s.state === "open") return "open";
+  if (["renewed_as_is", "renewed_endorsed", "rewrite_accepted"].includes(s.outcome)) return "discussed";
+  if (s.outcome === "no_action_review") return "no_action";
+  if (s.outcome === "unable_to_contact") return "not_reached";
+  return "other";
+};
+const renRate = rs => { const k = rs.filter(r => r.status === "retained").length, l = rs.filter(r => r.status === "lost").length;
+  return { k, l, pct: k + l ? Math.round(1000 * k / (k + l)) / 10 : null }; };
+const renFill = st => { const [, v, hatch] = REN_STATUS[st] || [, "--text-muted"];
+  return `background-color:var(${v})${hatch ? ";background-image:var(--hatch)" : ""}`; };
+const renDate = d => d ? new Date(d + "T12:00:00").toLocaleDateString(undefined, { month: "short", day: "numeric" }) : "—";
+const renMoney = x => x == null ? "—" : "$" + Math.round(x).toLocaleString();
+function renCard(rs, head, strong) {
+  const rt = renRate(rs), n = rs.length || 1;
+  const segs = Object.keys(REN_STATUS).map(st => { const c = rs.filter(r => r.status === st).length;
+    return c ? `<span class="ogseg rseg" style="width:${(c / n * 100).toFixed(2)}%;${renFill(st)}" title="${REN_STATUS[st][0]}: ${c}"></span>` : ""; }).join("");
+  const unc = rs.filter(r => r.status === "unconfirmed").length, mid = rs.filter(r => r.status === "mid_term").length;
+  return `<div class="tile"${strong ? ' style="border-color:var(--border-strong)"' : ""}>
+    <div class="k">${head}</div><div class="v">${rt.pct == null ? "—" : rt.pct + "%"}</div>
+    <div class="n">retained${rt.pct == null ? "" : ` &middot; ${rt.k} of ${rt.k + rt.l}`}${rt.l ? ` &middot; <b>${rt.l} lost</b>` : ""}</div>
+    <div class="n">${rs.length} renewal${rs.length === 1 ? "" : "s"}${unc ? ` &middot; ${unc} not confirmed` : ""}${mid ? ` &middot; ${mid} mid-term` : ""}</div>
+    <div class="otrack" style="margin-top:10px">${segs}</div></div>`;
+}
+function renSrCell(r, label) {
+  const s = r.sr;
+  if (!s) return '<span style="color:var(--text-muted)">none</span>';
+  if (s.state === "open") return `open${s.stage ? ` &middot; ${cesc(s.stage)}` : ""}${s.by ? ` <span style="color:var(--text-muted)">(${cesc(s.by.split(" ")[0])})</span>` : ""}`;
+  return `${cesc(label[s.outcome] || s.outcome)} <span style="color:var(--text-muted)">${cesc((s.by || "").split(" ")[0])} ${renDate(s.done)}</span>`
+    + (s.note ? `<div style="font-size:11.5px;color:var(--text-muted);max-width:340px">${cesc(s.note.slice(0, 140))}</div>` : "");
+}
+function renewalsPanel(doc) {
+  const label = Object.fromEntries((doc.sr_outcomes || []).map(([k, l]) => [k, l]));
+  const pipeName = Object.fromEntries(doc.pipelines || []);
+  const past = doc.rows.filter(r => r.kind === "past");
+  const up = doc.rows.filter(r => r.kind === "upcoming");
+  const ahead = up.filter(r => r.status === "upcoming");
+  const gone = up.filter(r => r.status === "mid_term").length;
+  const lost = doc.rows.filter(r => r.status === "lost");
+  const rt = renRate(past);
+  const discussed = ahead.filter(r => renWorked(r) === "discussed").length;
+  const high = ahead.filter(r => r.risk === "high").length;
+  const tiles = `<div class="tiles">
+    <div class="tile" style="border-color:var(--border-strong)"><div class="k">Retention · last 4 weeks</div>
+      <div class="v">${rt.pct == null ? "—" : rt.pct + "%"}</div><div class="n">${rt.k} of ${rt.k + rt.l} renewals kept</div></div>
+    <div class="tile"><div class="k">Lost</div><div class="v">${rt.l}</div><div class="n">renewed ${renDate(past.length ? past[0].renewal : null)} – ${renDate(doc.as_of)}</div></div>
+    <div class="tile"><div class="k">Not confirmed yet</div><div class="v">${past.filter(r => r.status === "unconfirmed").length}</div><div class="n">no next term or cancellation on record yet</div></div>
+    <div class="tile"><div class="k">Coming up · ${doc.upcoming_days} days</div><div class="v">${ahead.length}</div>
+      <div class="n">${ahead.length ? Math.round(100 * discussed / ahead.length) : 0}% reviewed with the customer</div></div>
+    <div class="tile"><div class="k">High risk</div><div class="v" style="color:var(--bad)">${high}</div><div class="n">not discussed, with a warning sign</div></div>
+  </div>`;
+  // Weeks by renewal date, Monday first, oldest to newest.
+  const wk = d => { const x = new Date(d + "T12:00:00"); x.setDate(x.getDate() - ((x.getDay() + 6) % 7)); return x.toISOString().slice(0, 10); };
+  const weeks = [...new Set(past.map(r => wk(r.renewal)))].sort();
+  const weekCards = weeks.map((w, i) => renCard(past.filter(r => wk(r.renewal) === w),
+    `Week of ${renDate(w)}${i === weeks.length - 1 ? " · settling" : ""}`)).join("");
+  const worked = REN_WORKED.map(([k, l]) => [l, past.filter(r => renWorked(r) === k)]).filter(x => x[1].length);
+  const workedCards = worked.map(([l, rs]) => renCard(rs, l)).join("");
+  const pipeCards = (doc.pipelines || []).map(([k, l]) => [l, past.filter(r => r.pipeline === k)]).filter(x => x[1].length).map(([l, rs]) => renCard(rs, l)).join("");
+  const people = (doc.team || []).filter(n => past.some(r => r.sr && r.sr.by === n));
+  const personCards = people.map(n => renCard(past.filter(r => r.sr && r.sr.by === n), pbadge(DOT[n] || TEAM_DOT, n.split(" ")[0]))).join("")
+    + (past.some(r => !r.sr || !people.includes(r.sr.by)) ? renCard(past.filter(r => !r.sr || !people.includes(r.sr.by)), pbadge("#8a877f", "Others / no SR")) : "");
+  const legend = Object.entries(REN_STATUS).map(([k, [l]]) => { const c = past.filter(r => r.status === k).length;
+    return c ? `<span class="oleg-item"><span class="pd rdot" style="${renFill(k)}"></span>${l} <b>${c}</b></span>` : ""; }).join("");
+  const lostRows = lost.sort((a, b) => a.renewal < b.renewal ? -1 : 1).map(r => `<tr>
+    <td>${renDate(r.renewal)}${r.kind === "upcoming" ? ' <span class="chip c-n">ahead</span>' : ""}</td><td>${cesc(r.name || "—")}</td>
+    <td>${cesc(r.type)} <span style="color:var(--text-muted)">${cesc(r.policy)}</span></td><td class="num">${renMoney(r.premium)}</td>
+    <td>${renSrCell(r, label)}</td><td>${cesc(r.how.join(", "))}${r.cancel_date ? ` <span style="color:var(--text-muted)">${renDate(r.cancel_date)}</span>` : ""}
+      ${r.cancel_srs.length ? `<div style="font-size:11.5px;color:var(--text-muted)">${cesc(r.cancel_srs[0].note)}</div>` : ""}</td></tr>`).join("");
+  // Coming up, filtered.
+  const f = renFilter;
+  const whoOpts = [...new Set(ahead.map(r => r.sr && r.sr.by).filter(Boolean))].sort();
+  const shown = ahead.filter(r => (!f.risk || r.risk === f.risk) && (!f.pipe || r.pipeline === f.pipe)
+    && (!f.who || (r.sr && r.sr.by) === f.who) && (!f.worked || renWorked(r) === f.worked))
+    .sort((a, b) => ({ high: 0, medium: 1, low: 2 }[a.risk] - { high: 0, medium: 1, low: 2 }[b.risk]) || (a.renewal < b.renewal ? -1 : 1));
+  const sel = (id, cur, opts, all) => `<select id="${id}">${[["", all], ...opts].map(([v, l]) => `<option value="${v}"${v === cur ? " selected" : ""}>${l}</option>`).join("")}</select>`;
+  const upRows = shown.map(r => `<tr>
+    <td>${renDate(r.renewal)}</td><td>${cesc(r.name || "—")}</td>
+    <td>${cesc(r.type)} <span style="color:var(--text-muted)">${cesc(r.policy)}</span><div style="font-size:11.5px;color:var(--text-muted)">${cesc(pipeName[r.pipeline] || "")}</div></td>
+    <td class="num">${r.renewal_premium != null ? `${renMoney(r.renewal_premium)}<div style="font-size:11.5px;color:var(--text-muted)">issued renewal</div>` : renMoney(r.premium)}</td>
+    <td>${renSrCell(r, label)}</td>
+    <td>${r.flags.filter(x => REN_FLAGS[x]).map(x => `<span class="chip ${REN_FLAGS[x][1]}" style="margin:0 4px 3px 0">${REN_FLAGS[x][0]}</span>`).join("")}</td>
+    <td><span class="chip ${REN_RISK[r.risk][1]}">${REN_RISK[r.risk][0]}</span></td></tr>`).join("");
+  return `<div class="sect"><h2>Renewals</h2>
+    <p class="sd">Every personal-lines policy that renewed in the last ${doc.past_days} days or renews in the next ${doc.upcoming_days}, from AgencyZoom's policy records and the team's SRs. Rebuilt every night · as of ${renDate(doc.as_of)}.</p>${tiles}</div>
+    <div class="sect"><h2>Retention · last 4 weeks</h2>
+    <p class="sd">By the week each policy renewed. Retained = a next term on record, a rewrite, or Rewrite Accepted on the renewal SR. Lost = the policy record shows it cancelled, a Late Payment or Service Pipeline SR cancelled it, or the renewal SR was closed on a cancellation. Rate = retained over retained plus lost. A Mid-term Cancellation (hatched, cancelled more than 30 days before the renewal) and a renewal not confirmed yet sit outside the rate. The newest week is still settling: AgencyZoom's policy records lag by a few weeks.</p>
+    <div class="tiles rtiles">${weekCards}</div><div class="oleg">${legend}</div>
+    <h3 class="rh3">By how the renewal SR was worked</h3><div class="tiles rtiles">${workedCards}</div>
+    <h3 class="rh3">By pipeline</h3><div class="tiles rtiles">${pipeCards}</div>
+    <h3 class="rh3">By who worked the renewal SR</h3><div class="tiles rtiles">${personCards}</div></div>
+    <div class="sect"><h2>Lost</h2><p class="sd">Every renewal lost in the last 4 weeks, and any renewal still ahead that has already cancelled, with how we know.</p>
+    ${lostRows ? `<div class="scroll"><table class="rtable"><thead><tr><th>Renews</th><th>Customer</th><th>Policy</th><th class="num">Premium</th><th>Renewal SR</th><th>How we know</th></tr></thead><tbody>${lostRows}</tbody></table></div>` : '<p class="sd">None.</p>'}</div>
+    <div class="sect"><h2>Coming up · next ${doc.upcoming_days} days</h2>
+    <p class="sd">High = not yet discussed with the customer (no renewal SR, the SR still open, No action or Unable to Contact) and a warning sign: an open Late Payment SR or a cancellation SR on the household. Medium = not discussed and renewing within ${doc.soon_days} days, or discussed with a warning sign.${gone ? ` ${gone} more policies renewing in this window were already cancelled mid term and are left out.` : ""}</p>
+    <div class="rfilters">${sel("renRisk", f.risk, [["high", "High risk"], ["medium", "Medium risk"], ["low", "Low risk"]], "Any risk")}
+      ${sel("renPipe", f.pipe, doc.pipelines || [], "Both pipelines")}
+      ${sel("renWorked", f.worked, REN_WORKED.filter(([k]) => ahead.some(r => renWorked(r) === k)), "However worked")}
+      ${sel("renWho", f.who, whoOpts.map(n => [n, n]), "Anyone")}
+      <span style="color:var(--text-muted);font-size:12.5px">${shown.length} of ${ahead.length}</span></div>
+    <div class="scroll"><table class="rtable"><thead><tr><th>Renews</th><th>Customer</th><th>Policy</th><th class="num">Premium</th><th>Renewal SR</th><th>Flags</th><th>Risk</th></tr></thead><tbody>${upRows}</tbody></table></div></div>`;
+}
+async function paintRenewals() {
+  const v = $("#view");
+  $("#topsub").textContent = "Athena · renewals · the last 4 weeks and the next 45 days";
+  if (!RENEWALS_DOC) {
+    v.innerHTML = '<div class="empty">Loading…</div>';
+    try {
+      const r = await fetch("/api/renewals", { cache: "no-store" });
+      RENEWALS_DOC = r.ok ? await r.json() : null;
+    } catch (_) { RENEWALS_DOC = null; }
+  }
+  if (!RENEWALS_DOC) { v.innerHTML = '<div class="empty">No renewal report yet. It is built every night.</div>'; return; }
+  v.innerHTML = renewalsPanel(RENEWALS_DOC);
+  [["renRisk", "risk"], ["renPipe", "pipe"], ["renWorked", "worked"], ["renWho", "who"]].forEach(([id, k]) => {
+    const el = document.getElementById(id);
+    if (el) el.onchange = () => { renFilter[k] = el.value; paintRenewals(); };
+  });
 }
 
 /* ---- Cerberus: the Commercial Center (Frank, 2026-09-24) --------------------

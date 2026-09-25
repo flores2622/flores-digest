@@ -377,6 +377,30 @@ Crystal (hybrid); credit always goes to whoever COMPLETED the SR or task.
   now carries its SR `id`, `outcome` and `source`; the nightly refresh adds
   them to earlier days, matching old rows (built without an id) by who
   completed the SR and its hours.
+- **The Renewals tab is its own report** (Frank, 2026-09-25: "service cant be
+  tracked daily the same as sales"). `renewal_report.py` builds
+  `renewals/current.json` (and a dated copy) every night from `daily.py`
+  after the service board; the Worker serves it at `/api/renewals`, and the
+  Service Center's second tab renders it. The Service Digest keeps only a
+  count of renewal SRs worked. It covers every personal-lines policy TERM
+  (commercial and life left out) renewing in the last 28 days -- what
+  happened -- and the next 45 -- how the renewal SR was worked, and risk.
+  **The policy record counts** here (Frank, 2026-09-25: "if the policy reads
+  cancelled but no SR has that outcome ... its still cancelled"), beside the
+  team's SRs: lost = the record shows it cancelled from 30 days before the
+  renewal on, a Late Payment / Service Pipeline cancellation SR ties to it,
+  or the renewal SR closed on a lost resolution; retained = a next term, a
+  same-line rewrite, or Rewrite Accepted on the renewal SR (a rewrite cancels
+  the old policy by design). **Mid-term Cancellation stays out of the rate**
+  ("no mid term are not considered in the rate"), and so does "not confirmed
+  yet" (the records lag). A cancellation SR carries a household, never a
+  policy (a Late Payment SR's description is a billing table), so it ties
+  only when the household has ONE renewal near it, or one of the line its
+  note names; otherwise it is a risk flag. **No premium-change figure**:
+  AgencyZoom terms carry stale premiums and disagree with the reps' own "low
+  increase" notes (540881890: $382 -> $1,080), so risk uses the SRs only
+  (not discussed + an open Late Payment or cancellation SR on the household).
+  The renewal-SR outcome columns in `service/<day>.json` stay as before.
 - **A missed night builds itself** (`service_digest.backfill_missing_days`,
   Frank, 2026-09-24): each nightly run builds any weekday of the last 14 with
   no page, from that day's saved files; completed SRs, tasks (completed after
