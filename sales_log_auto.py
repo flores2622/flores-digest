@@ -62,6 +62,7 @@ distinctly -- see index.html's card rendering.
 import datetime as dt
 import json
 import pathlib
+import re
 import uuid
 
 import digest_config as cfg
@@ -93,6 +94,51 @@ def _term(effective, expiry):
         return ""
     months = round((d2 - d1).days / 30.44)
     return f"{months}mo" if months > 0 else ""
+
+
+# Product names as the team types them on the sheet ("Farmers-Auto",
+# "BW-Auto", "Foremost-MH"), not AgencyZoom's bare policy type (Frank,
+# 2026-09-25: the Breakdown showed three auto options -- "Auto" from these
+# auto-added rows beside Farmers-Auto and BW-Auto -- "we only have 2 auto
+# products"). The carrier decides, read off the policy corpus 2026-09-25:
+#   Farmers  484668, 484654, and 1030958 ("Standard Auto" on 9-digit numbers,
+#            still sold 2026-08; not Bristol West's G01- numbers)
+#   BW       186, 2448054 (every G01- policy number)
+#   Foremost 102, 262
+# Anything else keeps AgencyZoom's own name.
+CARRIER = {484668: "Farmers", 484654: "Farmers", 1030958: "Farmers",
+           186: "BW", 2448054: "BW", 102: "Foremost", 262: "Foremost"}
+_AUTO_TYPES = re.compile(r"auto", re.I)
+_TOY_TYPES = re.compile(r"atv|motorcycle|trailer|boat|watercraft|motor home|\brv\b|golf cart|toy", re.I)
+
+
+def product_name(p):
+    """The sheet's product name for one AgencyZoom policy record."""
+    raw = str(p.get("policyTypeName") or "").strip()
+    carrier = CARRIER.get(p.get("carrierId"))
+    if not carrier or not raw:
+        return raw
+    if carrier == "BW":
+        return "BW-Auto" if _AUTO_TYPES.search(raw) else f"BW-{raw}"
+    if _AUTO_TYPES.search(raw):
+        return f"{carrier}-Auto"
+    if carrier == "Foremost":
+        if re.search(r"mobile|manufactured", raw, re.I):
+            return "Foremost-MH"
+        if re.search(r"landlord|dp\d|dwelling", raw, re.I):
+            return "Foremost-Landlord"
+        if _TOY_TYPES.search(raw):
+            return "Foremost-Toys"
+        if re.search(r"vacant", raw, re.I):
+            return "Foremost-Vacant"
+        if re.search(r"home|ho-?\d", raw, re.I):
+            return "Foremost-Home"
+    if carrier == "Farmers":
+        if re.search(r"homeowner|^home$|ho-?\d", raw, re.I):
+            return "Farmers-Home"
+        if re.search(r"term|life", raw, re.I):
+            return "Farmers-Life"
+    return f"{carrier}-{raw}"
 
 
 def _customer_name(cust):
@@ -133,7 +179,7 @@ def build_entries(day, policies, leads, customers, source_map, ids):
             "az_customer_id": az_customer_id,
             "lead_source": (source_map.get(p.get("leadSourceId")) or "").strip(),
             "policy_number": str(p.get("policyNumber") or ""),
-            "product": str(p.get("policyTypeName") or ""),
+            "product": product_name(p),
             "premium": float(p["premium"]) if p.get("premium") is not None else None,
             "term": _term(p.get("effectiveDate"), p.get("expiryDate")),
             "date_sold": _date10(p.get("soldDate")),
@@ -212,10 +258,58 @@ def sync_day(day, log=print, dry_run=False):
     return added
 
 
+def fix_products(log=print, dry_run=False, since=None):
+    """One pass over every saleslog/<day>.json (from `since` on, when given):
+    an auto-added entry whose
+    product is still AgencyZoom's raw policy type gets the sheet's name
+    (product_name). An entry someone has since edited, or typed by hand, is
+    left alone -- the same never-overwrite-a-person rule as sync_day. Run
+    nightly over the last two weeks too, so a sale newer than that night's
+    policy snapshot (Amanda's 553727161, sold 09-24) is named once the
+    snapshot catches up."""
+    import publish_board
+    by_id = {p.get("id"): p for p in json.loads((ROOT / "data/az_policies_all.json").read_text())}
+    cli, bucket = publish_board._client()
+    keys, token = [], None
+    while True:
+        kw = {"Bucket": bucket, "Prefix": "saleslog/"}
+        if token:
+            kw["ContinuationToken"] = token
+        r = cli.list_objects_v2(**kw)
+        keys += [o["Key"] for o in r.get("Contents", []) if o["Key"].endswith(".json")
+                 and (since is None or o["Key"][9:19] >= since)]
+        if not r.get("IsTruncated"):
+            break
+        token = r["NextContinuationToken"]
+    total = 0
+    for key in sorted(keys):
+        doc = json.loads(cli.get_object(Bucket=bucket, Key=key)["Body"].read())
+        n = 0
+        for e in doc.get("entries") or []:
+            p = by_id.get(e.get("az_policy_id"))
+            if e.get("source") != "auto" or p is None:
+                continue
+            if e.get("product") == str(p.get("policyTypeName") or "") and product_name(p) != e.get("product"):
+                log(f"  {key[9:19]} {e.get('policy_number')}: {e.get('product')!r} -> {product_name(p)!r}")
+                e["product"] = product_name(p)
+                n += 1
+        if n and not dry_run:
+            cli.put_object(Bucket=bucket, Key=key, Body=json.dumps(doc).encode(),
+                           ContentType="application/json", CacheControl="no-store")
+        total += n
+    if total or since is None:
+        log(f"  sales log products: {total} auto-added entr{'y' if total == 1 else 'ies'} renamed"
+            + (" [dry-run, not written]" if dry_run else ""))
+    return total
+
+
 if __name__ == "__main__":
     import sys
     import secrets_load
     secrets_load.load()
+    if "--fix-products" in sys.argv:
+        fix_products(dry_run="--dry-run" in sys.argv)
+        sys.exit(0)
     d = sys.argv[1] if len(sys.argv) > 1 else dt.datetime.now(
         dt.timezone(dt.timedelta(hours=-7))).date().isoformat()
     sync_day(d, dry_run="--dry-run" in sys.argv)

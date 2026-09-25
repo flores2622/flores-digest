@@ -1195,6 +1195,8 @@ def sync_sales_log(day):
     try:
         import sales_log_auto
         sales_log_auto.sync_day(day, log=log)
+        since = (dt.date.fromisoformat(day) - dt.timedelta(days=14)).isoformat()
+        sales_log_auto.fix_products(log=log, since=since)
     except (Exception, SystemExit) as e:
         log(f"sales log auto failed ({type(e).__name__}: {e}) -- "
             f"the digest already sent, so nothing else is affected")
