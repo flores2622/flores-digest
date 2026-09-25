@@ -37,17 +37,39 @@ SKIP_NOTE_TYPES = {"CALL", "auto_unenroll_automation"}   # call-log rows: the di
 TRAQ = re.compile(r"traq call|app\.traq\.ai", re.I)
 
 
-def direction(group):
-    """How today's conversation(s) with this lead came about."""
+def direction_key(group):
+    """"dialled", "call back" (the lead returned the producer's call) or
+    "call in" (the lead called in on their own) -- WHO dialled, which is not
+    what the call was for: a call back can be a first conversation, a call
+    to finish the quote, or a follow-up (Frank, 2026-09-25). Apollo decides
+    that (`flow`) from the stage and the history."""
     inbound = [r for r in group if r.get("inbound")]
     outbound = [r for r in group if not r.get("inbound")]
     if any(r.get("callback_seconds") for r in outbound) or any(r.get("kind") == "callback" for r in inbound):
-        return "a call back: the producer dialled and the lead returned the call"
-    if inbound and not outbound:
-        return "the lead called in (who dialled, not the flow -- check the history for work in progress)"
-    if inbound:
-        return "the producer dialled, and the lead also called in"
-    return "the producer dialled the lead"
+        return "call back"
+    return "call in" if inbound else "dialled"
+
+
+def answered(group):
+    """True when the producer picked up an inbound call on this lead today --
+    a call back or a call-in, most likely on their direct line -- so the
+    greeting is scored (Frank, 2026-09-25)."""
+    return direction_key(group) != "dialled"
+
+
+def direction(group):
+    """How today's conversation(s) with this lead came about, for Apollo."""
+    key = direction_key(group)
+    dialled_too = any(not r.get("inbound") for r in group)
+    if key == "call back":
+        text = "a call back: the producer dialled and the lead returned the call"
+    elif key == "call in":
+        text = ("the producer dialled, and the lead also called in" if dialled_too
+                else "the lead called in")
+    else:
+        return "the producer dialled the lead"
+    return (text + " -- the producer ANSWERED an inbound call, so score `greeting`. "
+            "Who dialled is not the flow: decide `flow` from the stage and the history")
 
 
 class Context:
