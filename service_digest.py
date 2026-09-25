@@ -265,6 +265,7 @@ def sr_figures(day, done, live, log=log):
         pipe = pipeline_of(r.get("workflowName"))
         row = {"id": r.get("id"), "by": _team_name(r.get("modifiedBy")), "by_name": r.get("modifiedBy"),
                "pipeline": pipe, "hours": round(h, 2) if h is not None else None}
+        row.update(sr_detail(r))
         if pipe == "missing_docs":
             if sellers is None:
                 sellers = _seller_index(log=log)
@@ -275,13 +276,22 @@ def sr_figures(day, done, live, log=log):
 
     by_csr = {v["az_id"]: k for k, v in SERVICE_TEAM.items()}
     backlog = {n: {"open": 0, "overdue": 0} for n in SERVICE_TEAM}
+    open_rows = []
     for t in live:
         n = by_csr.get(t.get("csr"))
         created = str(t.get("createDate") or "")[:10]
-        if not n or (created and created > day):
+        if created and created > day:
+            continue
+        overdue = bool(str(t.get("dueDate") or "")[:10] and str(t.get("dueDate"))[:10] < day)
+        if pipeline_of(t.get("workflowName")) == "late_payments" or n:
+            open_rows.append(dict(sr_detail(t), id=t.get("id"), by=n,
+                                  pipeline=pipeline_of(t.get("workflowName")),
+                                  stage=t.get("workflowStageName"),
+                                  due=str(t.get("dueDate") or "")[:10] or None, overdue=overdue))
+        if not n:
             continue
         backlog[n]["open"] += 1
-        if str(t.get("dueDate") or "")[:10] and str(t.get("dueDate"))[:10] < day:
+        if overdue:
             backlog[n]["overdue"] += 1
 
     # Late Payments is the one pipeline worked by stage: where the open SRs
@@ -305,7 +315,42 @@ def sr_figures(day, done, live, log=log):
                     "days_in_stage": sorted(x for x in v if x is not None)}
                    for k, v in sorted(stages.items(), key=lambda kv: -len(kv[1]))]
     return {"completed": completed, "outcomes": sr_outcome_labels(),
-            "backlog": backlog, "late_payment_stages": late_stages}
+            "backlog": backlog, "late_payment_stages": late_stages, "open_rows": open_rows}
+
+
+def sr_detail(r):
+    """What a board list needs to name an SR and open its customer in
+    AgencyZoom (Frank, 2026-09-25: every Service Center card lists what it
+    counts). householdId IS the AgencyZoom customer id (6,760 of 6,760)."""
+    import re as _re
+    note = _re.sub(r"\s+", " ", _re.sub(r"<[^>]+>", " ", r.get("resolutionDesc") or "")).strip()
+    return {"name": (r.get("name") or " ".join(x for x in (r.get("householdFirstname"),
+                                                         r.get("householdLastname")) if x) or None),
+            "household": r.get("householdId"), "subject": (r.get("subject") or "").strip() or None,
+            "created": str(r.get("createDate") or "")[:10] or None,
+            "done": str(r.get("completeDate") or "")[:10] or None,
+            "note": note[:200] or None}
+
+
+def task_rows(tasks):
+    """Every service task due on the day, one row each, for the board's list:
+    title, assignees, whether and by whom it was completed, and the customer
+    or lead it is on (AgencyZoom link)."""
+    from az_tasks import STATUS_COMPLETED, service_reason
+    by_id = {v["az_id"]: k for k, v in SERVICE_TEAM.items()}
+    out = []
+    for t in tasks:
+        if not service_reason(t):
+            continue
+        who = [by_id[a["id"]] for a in t.get("assignees") or [] if a.get("id") in by_id]
+        done_by = by_id.get(t.get("completedBy")) if t.get("status") == STATUS_COMPLETED else None
+        if not who and not done_by:
+            continue
+        out.append({"id": t.get("id"), "title": (t.get("title") or "").strip(), "assignees": who,
+                    "done": t.get("status") == STATUS_COMPLETED, "done_by": done_by,
+                    "customer": t.get("customerName"), "customer_id": t.get("customerId"),
+                    "customer_type": t.get("customerType")})
+    return out
 
 
 # Missed-call buckets (missed_call_audit.route) that are service work. An open
@@ -343,9 +388,18 @@ def callback_figures(day, recs=None, commercial_only=frozenset()):
             t = mca.parse(r.get("startTime"))
             if t and last and t > last and (back is None or t < back[0]):
                 back = (t, (r.get("from") or {}).get("name") or "")
+        hit = idx.get(n) or {}
+        cust = (hit.get("cust") or [None])[0]
+        lead = (hit.get("lead") or [None])[0] if not cust else None
         rows.append({"bucket": bucket,
                      "minutes": round((back[0] - last).total_seconds() / 60) if back else None,
-                     "by": (back[1] if back[1] in SERVICE_TEAM else "other") if back else None})
+                     "by": (back[1] if back[1] in SERVICE_TEAM else "other") if back else None,
+                     "number": n, "calls": len(calls),
+                     "name": mca.name_for(hit, ((calls[-1].get("from") or {}).get("name"))),
+                     "missed": calls[-1].get("startTime"), "back_at": back[0].isoformat() if back else None,
+                     "back_by": back[1] if back else None,
+                     "link_kind": "customer" if cust else ("lead" if lead else None),
+                     "link_id": (cust or lead or {}).get("id")})
     return {"rows": rows}
 
 
@@ -408,6 +462,7 @@ def build(day, log=log, refresh_households=True):
         "built_at": dt.datetime.now(AZ).isoformat(timespec="seconds"),
         "team": [{"name": n, "role": v["role"]} for n, v in SERVICE_TEAM.items()],
         "tasks": task_figures(tasks),
+        "task_rows": task_rows(tasks),
         "srs": sr_figures(day, done, live, log=log),
         "pipelines": [[k, label, kind] for k, label, _, kind in PIPELINES],
         "renewals": renewals,
@@ -559,6 +614,91 @@ def refresh_completed_outcomes(d, doc, done, sellers, log=log):
     return n, names
 
 
+def add_list_details(day, log=log, pool=()):
+    """Give a page built before 2026-09-25 the rows its cards now list (SR
+    names and links, service tasks, open SRs, call backs), from that day's
+    saved files in the R2 day cache. Only ever ADDS detail: every count on the
+    page stays as it is, and a part whose recomputed rows would not match the
+    page's own count is left alone and logged. Returns what was added."""
+    import publish_board
+    import r2_cache
+    import commercial
+    import service_retention as sr
+    cli, bucket = publish_board._client()
+    rcli, rbucket = r2_cache._client()
+    doc = json.loads(cli.get_object(Bucket=bucket, Key=_key(day))["Body"].read())
+
+    def saved(name):
+        try:
+            body = rcli.get_object(Bucket=rbucket, Key=r2_cache._key(day, name))["Body"].read()
+        except Exception:
+            return None
+        (ROOT / "data" / name).write_bytes(body)
+        return json.loads(body)
+
+    added = []
+    done = saved(f"az_service_tickets_done_{day}.json") or []
+    # `pool`: a later pull, for a day whose saved file is an early copy (the
+    # 09-24 file lacked 22 of that day's SRs). Details only -- never counts.
+    by_id = {t.get("id"): t for t in list(pool) + done}
+    srs = doc.get("srs") or {}
+    rows = srs.get("completed") or []
+    if rows and all(r.get("id") in by_id for r in rows):
+        for r in rows:
+            for k, v in sr_detail(by_id[r["id"]]).items():
+                r.setdefault(k, v)
+        added.append(f"{len(rows)} SRs")
+    elif rows:
+        log(f"  lists: {day} SRs -- {sum(r.get('id') not in by_id for r in rows)} not in the saved file, left as is")
+    ren = (doc.get("renewals") or {}).get("rows") or []
+    for r in ren:
+        t = by_id.get(r.get("id"))
+        if t:
+            r.setdefault("household", t.get("householdId"))
+            r.setdefault("done", str(t.get("completeDate") or "")[:10])
+            r.setdefault("note", sr_detail(t)["note"])
+
+    com_any, com_only = commercial.households(sr.load_household_map(log=lambda *a: None))
+    live = saved(f"az_service_tickets_{day}.json")
+    if live is not None and "open_rows" not in srs:
+        live = [t for t in live if not commercial.is_commercial_sr(t, com_any)]
+        fresh = sr_figures(day, [], live, log=lambda *a: None)
+        if fresh["backlog"] == srs.get("backlog"):
+            srs["open_rows"] = fresh["open_rows"]
+            added.append(f"{len(fresh['open_rows'])} open SRs")
+        else:
+            log(f"  lists: {day} open SRs -- backlog would differ, left as is")
+
+    tasks = saved(f"az_tasks_{day}.json")
+    if tasks is not None and "task_rows" not in doc:
+        if task_figures(tasks) == doc.get("tasks"):
+            doc["task_rows"] = task_rows(tasks)
+            added.append(f"{len(doc['task_rows'])} tasks")
+        else:
+            log(f"  lists: {day} tasks -- counts would differ, left as is")
+
+    cb = doc.get("callbacks") or {}
+    if saved(f"rc_raw_{day}.json") is not None and cb.get("rows") and not any("number" in r for r in cb["rows"]):
+        try:
+            fresh = callback_figures(day, commercial_only=com_only)["rows"]
+            key = lambda rs: sorted((str(r.get("bucket")), -1 if r.get("minutes") is None else r["minutes"],
+                                     str(r.get("by"))) for r in rs)
+            if key(fresh) == key(cb["rows"]):
+                cb["rows"] = fresh
+                added.append(f"{len(fresh)} call backs")
+            else:
+                log(f"  lists: {day} call backs -- would differ, left as is")
+        except Exception as e:
+            log(f"  lists: {day} call backs not added ({type(e).__name__}: {e})")
+
+    if added:
+        doc["lists_added"] = dt.datetime.now(AZ).isoformat(timespec="seconds")
+        cli.put_object(Bucket=bucket, Key=_key(day), Body=json.dumps(doc, default=str).encode(),
+                       ContentType="application/json", CacheControl="no-store")
+        log(f"  lists: {day} -- added {', '.join(added)}")
+    return added
+
+
 # How far back backfill_missing_days() looks for a working day with no page.
 BACKFILL_BACK_DAYS = 14
 
@@ -690,6 +830,8 @@ def main():
     ap.add_argument("--dry-run", action="store_true")
     ap.add_argument("--refresh-renewals", action="store_true",
                     help="only re-read the renewal outcomes of earlier published days")
+    ap.add_argument("--add-lists", action="store_true",
+                    help="add the cards' list rows to every published day that lacks them")
     ap.add_argument("--backfill", action="store_true",
                     help="only build recent working days that have no page")
     a = ap.parse_args()
@@ -700,6 +842,14 @@ def main():
     secrets_load.load()
     if a.backfill:
         backfill_missing_days(day)
+        return
+    if a.add_lists:
+        import publish_board
+        cli, bucket = publish_board._client()
+        today = dt.datetime.now(AZ).date().isoformat()
+        pool = completed_tickets(today)
+        for d in sorted(_published_days(cli, bucket)):
+            add_list_details(d, pool=pool)
         return
     if a.refresh_renewals:
         refresh_past_renewals(day)
