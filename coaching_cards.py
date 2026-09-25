@@ -97,7 +97,7 @@ TECH_DIMS = ["Elevator pitch", "Feel-Felt-Found", "Risk reversal",
              "Social proof", "Trial close", "Takeaway / urgency"]
 
 def _ask_card(model, transcript, notes, seconds, producer, lead, call_count=1,
-              lead_source="", stage_block=""):
+              lead_source="", stage_block="", history_block=""):
     # The lead source and the agency's approach for it (Frank, 2026-09-24:
     # coaching reads judged by lead source). Facts from lead_sources.py;
     # METHODOLOGY.md's "Lead source" section says how to use them.
@@ -114,6 +114,7 @@ def _ask_card(model, transcript, notes, seconds, producer, lead, call_count=1,
             f"{length_line}\n\n"
             f"{source_block}\n\n"
             f"{stage_block or 'Pipeline stage: unknown'}\n\n"
+            f"{history_block or 'Lead history (before today): unavailable'}\n\n"
             f"Producer's own notes (may be empty):\n{notes or '(none)'}\n\n"
             f"Machine transcript:\n{transcript}"}]
     base = {"model": model, "system": METHODOLOGY, "messages": msg}
@@ -287,6 +288,21 @@ def _bool_pair(raw):
     if not isinstance(raw, (list, tuple)) or not raw:
         return [False, ""]
     return [bool(raw[0]), str(raw[1]).strip() if len(raw) > 1 else ""]
+
+
+FLOW_VALUES = ("first", "follow-up", "call back", "call in")
+
+
+def _flow(raw):
+    """Apollo's [kind, reason] for how this conversation sits in the sale;
+    None when missing or malformed, so the card simply leaves it off."""
+    if isinstance(raw, (list, tuple)) and raw and str(raw[0]).lower() in FLOW_VALUES:
+        return [str(raw[0]).lower(), str(raw[1]).strip() if len(raw) > 1 else ""]
+    if isinstance(raw, str):
+        m = re.match(r"\s*(first|follow-up|call back|call in)\b[\s,.:;\-\u2014\u2013]*(.*)", raw, re.I | re.S)
+        if m:
+            return [m.group(1).lower(), m.group(2).strip()]
+    return None
 
 
 CALLTYPE_VALUES = ("sales", "service", "mixed")
@@ -490,6 +506,17 @@ def _call_breakdown(producer, group, raw_dials):
     return out
 
 
+def _history(producer, group, day, ctx, log=print):
+    """lead_history.block, never raising: a card is still worth reading
+    without its history."""
+    try:
+        import lead_history
+        return lead_history.block(group, day, ctx)
+    except Exception as e:
+        log(f"    lead history: skipped ({type(e).__name__}: {e})")
+        return ""
+
+
 _LEADS_BY_ID = None
 
 
@@ -543,6 +570,11 @@ def _finish_card(d, producer, group, raw_dials, day, transcript, recording_ids):
     # Same None-when-never-asked rule as leadfit.
     stagefit = _clean_score({"x": d.get("stagefit")}, ["x"]).get("x") if "stagefit" in d else None
     stage_before, stage_after = pipelines.call_stage(*_group_stage(group))
+    # First conversation, follow-up, call back or call in, and whether a
+    # follow-up / call back ran the agency's structure (Frank, 2026-09-25).
+    # None on a card read before METHODOLOGY.md asked.
+    flow = _flow(d.get("flow")) if "flow" in d else None
+    followfit = _clean_score({"x": d.get("followfit")}, ["x"]).get("x") if "followfit" in d else None
     cat, catc = _category(group)
     lead = next((r.get("lead") for r in group if r.get("lead")), "") or ""
     # AgencyZoom lead id, straight off the same call_detail rows day_calls.
@@ -605,6 +637,8 @@ def _finish_card(d, producer, group, raw_dials, day, transcript, recording_ids):
         "stage_before": stage_before,
         "stage_after": stage_after,
         "stagefit": stagefit,
+        "flow": flow,
+        "followfit": followfit,
         "lang": str(d.get("lang") or "").strip() or "English",
         "src": "recording",
         "cat": cat, "catc": catc,
@@ -750,6 +784,10 @@ def build(day, log=print):
 
     if todo:
         model = CS.pick_model()
+        # What came before this call (lead_history.py): loaded once, only
+        # when a card is actually being read.
+        import lead_history
+        history_ctx = lead_history.Context(day, log=log)
         log(f"  writing {len(todo)} coaching cards with {model}...")
         for i, (p, grp) in enumerate(todo, 1):
             gck = _group_ck(p, grp)
@@ -769,7 +807,8 @@ def build(day, log=print):
                              p.split()[0], lead_name,
                              call_count=len(_distinct_calls(p, grp)),
                              lead_source=src,
-                             stage_block=pipelines.prompt_block(*_group_stage(grp)))
+                             stage_block=pipelines.prompt_block(*_group_stage(grp)),
+                             history_block=_history(p, grp, day, history_ctx, log))
                 cache[gck] = d
             except Exception as e:
                 log(f"    {lead_name}: coaching read failed ({type(e).__name__}) -- no card")

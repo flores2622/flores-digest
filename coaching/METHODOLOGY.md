@@ -376,6 +376,71 @@ a live conversation with real interest; a loss reason the call does not
 support; a lead left in New after a real conversation. A move that matches
 the call needs no comment.
 
+## Follow-ups and call backs (Frank, 2026-09-25)
+
+Every call also arrives with a "Lead history (before today)" block: which
+way today's call went, how often the number was dialled in the last 30
+days, the quotes on file, earlier coaching cards on this lead, and the
+lead's recent notes (TRAQ's auto-summaries of past calls are labelled as
+such). Read it before the transcript. It is how you tell a first
+conversation from a follow-up, and it is what the producer should have been
+building on.
+
+**Decide `flow` first**, from the history, the stage and the call itself:
+- **first**: the first real conversation with this lead (no quote on file,
+  no earlier card, no earlier conversation in the notes).
+- **follow-up**: the producer calling back on work already started -- a
+  quote on file, an earlier conversation, a Contacted / Ready to Present /
+  Quotes Presented / Quoted stage.
+- **call back**: the lead returning the producer's call, message or quote
+  -- INCLUDING a lead who calls in about a quote or conversation already on
+  file. "Today's call: the lead called in" says who dialled, not the flow:
+  a call-in about a quote sent yesterday is a call back.
+- **call in**: the lead calling in on their own with NO work in progress (no
+  quote on file, no earlier conversation).
+
+**The follow-up structure** (Frank's; call backs use the same, see below):
+1. **Reconnect and assume the sale up front.** Name, agency, the last
+   conversation -- and an assumptive close in the same breath, so a ready
+   customer can finish in minutes: "Hi Ana, it's Mike with Farmers, I'm
+   calling to get your auto policy started on the $812 quote I sent
+   Tuesday -- do you have your card handy?" If they are ready, close right
+   there. If not, whatever holds them back surfaces in the first thirty
+   seconds instead of the last.
+2. **Check where they are**: did they review it, has anything changed.
+3. **Handle what stalled it**: the objection or reason from last time (the
+   history often names it -- a spouse, a price, a renewal date).
+4. **Re-present only what is needed**: the numbers, briefly, against what
+   they pay now. Not the whole quote again.
+5. **Assume the sale again** at the end if it did not close up front.
+6. **If it still does not close**: a dated, specific next step.
+
+**A call back** (they returned our call): thank them for calling back, then
+straight into step 1 -- why we called, with the assumptive close. They
+called us, so there is no reason to warm up.
+
+**A call in** with no work in progress is a first conversation that came to
+us: coach it as one (see Lead source, "Call-in / walk-in").
+
+**Scoring a follow-up or call back** -- the nine dimensions still apply,
+read against what was already done:
+- **Opening & identification**: the reconnect in step 1 IS the opening. A
+  full cold introduction to someone already quoted is "w".
+- **Discovery**: confirming what changed is the job. If the history shows
+  discovery was done and nothing suggests a change, score "n", not "m".
+  Starting discovery over from scratch is "w".
+- **Current premium / Renewal date**: "s" if confirmed on this call, "n" if
+  the history already has it and nothing changed, "m" only when neither the
+  history nor this call has it.
+- **Presenting numbers**: judged on step 4 -- clear, brief, against current.
+- **Next step specificity**: unchanged.
+- **`asks`** (assumed the sale): on a follow-up, the up-front assumptive
+  close counts. One at the start OR the end makes it true; a follow-up that
+  never assumes the sale anywhere is false.
+
+Score how well the call ran this structure in `followfit`. On a first
+conversation or a call in, `followfit` is "n".
+
 ## Output format
 
 Return ONLY a JSON object, no prose around it, with exactly these keys.
@@ -573,6 +638,17 @@ for it"]`. Wrong: `"askq": false`. Same for "calltype", "asks" and "exit".
            when the stage is unknown, has no set meaning, is a commercial /
            AZ Sun pipeline, or the call gave no chance. When a stage move
            today contradicts the call, say so here AND add a flag.
+"flow"     [one of "first"/"follow-up"/"call back"/"call in", one-sentence
+           reason from the Lead history or the call] -- see "Follow-ups and
+           call backs". Decide it before scoring the nine dimensions.
+"followfit" [letter, one-sentence detail]: on a follow-up or call back, did
+           the call run the agency's structure -- reconnect with an
+           up-front assumptive close, check where they are, handle what
+           stalled it, re-present only what is needed, assume the sale
+           again, a dated next step? Same s/w/m/n letters: "s" ran it, the
+           detail quoting the up-front close; "w" parts of it; "m" treated
+           the follow-up like a first call, or never assumed the sale; "n"
+           on a first conversation or a call in.
 "spine"    an array of 4-8 [time, colour, headline, detail] entries walking
            through the call in order. "time" is a rough mm:ss into the call.
            "colour" is "g" (this moment went well), "y" (mixed/questionable),
@@ -601,9 +677,13 @@ for it"]`. Wrong: `"askq": false`. Same for "calltype", "asks" and "exit".
   "techniques" below: watch whether a call that's genuinely mixed (starts as
   a payment call, drifts into a real cross-sell attempt) gets called "mixed"
   rather than forced into "sales" or "service" for convenience.
-- There is no cross-call memory yet: each card is written from one call in
-  isolation, even when the same lead was called multiple times in the same
-  day or across days.
+- Cross-call memory (2026-09-25) is the "Lead history" block: earlier
+  coaching cards on the lead (30 days), its notes and quotes. It is only as
+  good as the notes producers write; a quote with no note says nothing about
+  what was discussed. AgencyZoom keeps no date on a quote.
+- "flow" / "followfit" (Frank, 2026-09-25) are new and unproven. Watch that
+  a first call on a lead with an old quote from years ago is not coached as
+  a follow-up, and that a follow-up's "n" for discovery is not over-used.
 - The 9 call-structure dimensions started as a fixed list ported from the
   pre-automation cards; as of 2026-09-10 each one has real per-dimension
   criteria (see "The 9-dimension call-structure framework") and is meant to

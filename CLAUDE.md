@@ -53,6 +53,16 @@ Everything caches under `data/`, so a re-run resumes rather than restarting.
   agency stages** (made for an outside texting company): a producer moving a
   lead into one is a mistake Apollo flags. Open leads misfiled in "Pipeline"
   are listed on the Sales Center for someone to move (`pipelines.misfiled`).
+- **Apollo coaches follow-ups and call backs as their own kind of call**
+  (Frank, 2026-09-25). Every read gets `lead_history.block()`: today's call
+  direction, dials to the number in the last 30 days, the quotes on file,
+  earlier coaching cards on the lead (R2 days/, 30 days) and its notes
+  before today. Apollo decides `flow` (first / follow-up / call back / call
+  in -- a call-in about a quote already sent is a CALL BACK) and scores
+  `followfit` against Frank's structure: reconnect WITH AN UP-FRONT
+  ASSUMPTIVE CLOSE, check where they are, handle what stalled it, re-present
+  only what is needed, assume the sale again, a dated next step. Discovery,
+  premium and renewal date already in the history are "n", not "m".
 - **Role Play never uses a center of influence, cold / misc or existing
   client, new purchase lead source** (Frank, 2026-09-24), nor a personal
   network, one-off, commercial, BOB or Rewrite source
