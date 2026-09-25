@@ -33,6 +33,13 @@ Everything caches under `data/`, so a re-run resumes rather than restarting.
   Instagram / LinkedIn are Social media (Facebook stays Generated); Found us
   (Google, Farmers.com) is part of Call-in / walk-in (Frank, 2026-09-24).
   The Sales tab's Premium per Lead Source uses these same groups.
+- **The Sales sheet names products the way the team types them** (Frank,
+  2026-09-25: "we only have 2 auto products. Farmers and BW"):
+  `sales_log_auto.product_name` turns an auto-added row's AgencyZoom policy
+  type into Farmers-Auto / BW-Auto / Farmers-Home / Foremost-MH / ... by
+  carrier id (Farmers 484668, 484654, 1030958; BW 186, 2448054; Foremost
+  102, 262). The nightly sync re-applies it to the last 14 days' auto rows,
+  never to a row a person typed or edited.
 - **Apollo judges each call against its lead source** (Frank, 2026-09-24).
   `coaching_cards._ask_card` sends `lead_sources.prompt_block()`; METHODOLOGY.md's
   "Lead source" section says how to use it, and the card's `leadfit` verdict
@@ -419,6 +426,14 @@ Crystal (hybrid); credit always goes to whoever COMPLETED the SR or task.
   (`open_srs_unavailable`). A weekday with no SR completed is a holiday and
   skipped. It only ever adds a page. By hand: `python3 service_digest.py --backfill`.
 - **Documents hold rows, never medians**, so the board can add any range up.
+  **Every card opens the rows it counts** (Frank, 2026-09-25), so the rows
+  carry what a list needs: SRs name, household (= the AgencyZoom customer
+  id), subject, dates and the rep's note (`sr_detail`); `task_rows`;
+  `srs.open_rows` (every open SR at the end of the day, team or Late
+  Payments); call backs with caller, times and a customer/lead link. Pages
+  built before 2026-09-25 got theirs from their saved files
+  (`python3 service_digest.py --add-lists`, which only adds detail and
+  never changes a count).
 
 ## Cerberus -- Commercial
 

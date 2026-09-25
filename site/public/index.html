@@ -668,6 +668,14 @@ details.sc .scb { padding: 0 12px 12px; }
 .histrow { display: flex; justify-content: space-between; gap: 10px; padding: 7px 0; border-bottom: 1px solid var(--border); font-size: 12.5px; }
 .histrow:last-child { border-bottom: none; }
 
+/* Renewals tab: the top cards open their list (Frank, 2026-09-25). */
+.tile.rdrill { cursor: pointer; transition: border-color .15s, box-shadow .15s; }
+.tile.rdrill:hover { border-color: var(--border-strong); }
+.tile.rdrill:focus-visible { outline: 2px solid var(--s1); outline-offset: 2px; }
+.tile.rdrill.on { border-color: var(--s1); box-shadow: 0 0 0 1px var(--s1) inset; }
+tr.rdrill-row { cursor: pointer; }
+tr.rdrill-row:hover td { background: var(--surface-2, rgba(127,127,127,.08)); }
+tr.rdrill-row.on td { box-shadow: inset 0 -2px 0 var(--s1); }
 </style>
 </head>
 <body>
@@ -4102,7 +4110,8 @@ async function fetchServiceDocs(days) {
 function mergeServiceDocs(docs) {
   const last = docs[docs.length - 1];
   const m = { days: docs.map(x => x.date), team: last.team, pipelines: last.pipelines,
-    tasks: {}, completed: [], renewals: [], unnamed: {}, callbacks: [], util: {},
+    tasks: {}, completed: [], renewals: [], unnamed: {}, callbacks: [], util: {}, taskRows: [],
+    openRows: (last.srs || {}).open_rows || null,
     backlog: (last.srs || {}).backlog || {}, lateStages: (last.srs || {}).late_payment_stages || [],
     outcomes: (last.renewals || {}).outcomes || [], resolutionsFrom: (last.renewals || {}).resolutions_from,
     srOutcomes: Object.assign({}, ...docs.map(x => (x.srs || {}).outcomes || {})) };
@@ -4111,12 +4120,13 @@ function mergeServiceDocs(docs) {
       const a = m.tasks[n] || (m.tasks[n] = { due: 0, completed: 0 });
       a.due += t.due || 0; a.completed += t.completed || 0;
     }
-    m.completed.push(...((x.srs || {}).completed || []));
+    m.completed.push(...((x.srs || {}).completed || []).map(r => r.done ? r : Object.assign({ done: x.date }, r)));
+    m.taskRows.push(...(x.task_rows || []).map(r => Object.assign({ day: x.date }, r)));
     if (x.renewals) {
       m.renewals.push(...(x.renewals.rows || []));
       for (const [k, n] of Object.entries(x.renewals.unnamed || {})) m.unnamed[k] = (m.unnamed[k] || 0) + n;
     }
-    m.callbacks.push(...(((x.callbacks || {}).rows) || []));
+    m.callbacks.push(...(((x.callbacks || {}).rows) || []).map(r => Object.assign({ day: x.date }, r)));
     for (const [n, u] of Object.entries(x.utilization || {})) {
       const a = m.util[n] || (m.util[n] = { p: 0, t: 0, hybrid: !!u.hybrid });
       if (u.tracked) { a.p += u.productive_min || 0; a.t += u.total_min || 0; }
@@ -4235,28 +4245,28 @@ function srOutcomeHtml(m, pipe, title, rateWord, blurb) {
   const fill = k => `background-color:var(${(SR_OUTCOME_COLORS[pipe] || {})[k] || "--text-muted"})`;
   const rate = rs => { const g = rs.filter(r => kind[r.outcome] === "good").length, b = rs.filter(r => kind[r.outcome] === "bad").length;
     return g + b ? { pct: Math.round(1000 * g / (g + b)) / 10, g, b } : { pct: null, g, b }; };
-  const card = (rs, head, team) => {
+  const card = (rs, head, team, dk) => {
     const segs = outs.map(([k, l]) => { const c = rs.filter(r => r.outcome === k).length;
       return c ? `<span class="ogseg rseg" style="width:${(c / rs.length * 100).toFixed(2)}%;${fill(k)}" title="${l}: ${c}"></span>` : ""; }).join("");
     const top = outs.map(([k, l]) => [l, rs.filter(r => r.outcome === k).length]).sort((a, b) => b[1] - a[1])[0];
     const rt = rate(rs);
     const big = rateWord ? (rt.pct == null ? "—" : rt.pct + "%") : rs.length;
     const sub = rateWord ? `${rateWord}${rt.pct == null ? "" : ` &middot; ${rt.g} of ${rt.g + rt.b}`}` : `SR${rs.length === 1 ? "" : "s"} &middot; most: ${top[0]}`;
-    return `<div class="tile"${team ? ' style="border-color:var(--border-strong)"' : ""}>
+    return `<div${sdk(dk)}${team ? ' style="border-color:var(--border-strong)"' : ""}>
       <div class="k">${head}</div><div class="v">${big}</div><div class="n">${sub}</div>
       ${rateWord ? `<div class="n">${rs.length} SR${rs.length === 1 ? "" : "s"}</div>` : ""}
       <div class="otrack" style="margin-top:10px">${segs}</div></div>`;
   };
   const people = m.team.map(t => t.name).filter(n => rows.some(r => r.by === n));
   const others = rows.filter(r => !r.by);
-  const cards = card(rows, pbadge(TEAM_DOT, "Team"), true)
-    + people.map(n => card(rows.filter(r => r.by === n), pbadge(DOT[n] || TEAM_DOT, n.split(" ")[0]))).join("")
-    + (others.length ? card(others, pbadge("#8a877f", "Others")) : "");
+  const cards = card(rows, pbadge(TEAM_DOT, "Team"), true, `out:${pipe}:team`)
+    + people.map(n => card(rows.filter(r => r.by === n), pbadge(DOT[n] || TEAM_DOT, n.split(" ")[0]), false, `out:${pipe}:${n}`)).join("")
+    + (others.length ? card(others, pbadge("#8a877f", "Others"), false, `out:${pipe}:others`) : "");
   const legend = outs.map(([k, l]) => [k, l, rows.filter(r => r.outcome === k).length]).filter(x => x[2]).map(([k, l, c]) =>
     `<span class="oleg-item"><span class="pd rdot" style="${fill(k)}"></span>${l} <b>${c}</b> <span style="color:var(--text-muted)">(${Math.round(100 * c / rows.length)}%)</span></span>`).join("");
   const noted = rows.filter(r => r.source === "notes").length, unread = rows.filter(r => r.source === "unread").length;
   return `<div class="sect"><h2>${title}</h2><p class="sd">${blurb}</p>
-    <div class="tiles rtiles">${cards}</div><div class="oleg">${legend}</div>
+    <div class="tiles rtiles">${cards}</div>${svcDrillFor(m, ["out:" + pipe])}<div class="oleg">${legend}</div>
     <p class="sd" style="margin:10px 0 0">Of ${rows.length}: ${noted} read from the rep's note by AI${unread ? `; ${unread} with a note not read yet (shown as No note until the next nightly run)` : ""}. These SRs are closed as Completed, so the note is where the outcome is written.</p></div>`;
 }
 /* Renewal outcomes and retention live on the Renewals tab (Frank, 2026-09-25):
@@ -4271,39 +4281,131 @@ function renewalWorkedHtml(m) {
   const by = m.team.map(t => t.name).map(n => [n, rows.filter(r => r.by === n).length]).filter(x => x[1]);
   const counts = m.outcomes.map(([k, l]) => [l, rows.filter(r => r.outcome === k).length]).filter(x => x[1]);
   return `<div class="sect"><h2>Renewal SRs Worked</h2>
-    <p class="sd"><b>${rows.length}</b> renewal SR${rows.length === 1 ? "" : "s"} closed in this period${by.length ? ` (${by.map(([n, c]) => `${n.split(" ")[0]} ${c}`).join(", ")})` : ""}: ${counts.map(([l, c]) => `${l} ${c}`).join(" · ")}. Whether those customers stayed is on the <a href="#" onclick="goView('renewals');return false">Renewals tab</a>.</p></div>`;
+    <p class="sd"><a href="#" data-sdrill="renewals"><b>${rows.length}</b> renewal SR${rows.length === 1 ? "" : "s"}</a> closed in this period${by.length ? ` (${by.map(([n, c]) => `${n.split(" ")[0]} ${c}`).join(", ")})` : ""}: ${counts.map(([l, c]) => `${l} ${c}`).join(" · ")}. Whether those customers stayed is on the <a href="#" onclick="goView('renewals');return false">Renewals tab</a>.</p>${svcDrillFor(m, ["renewals"])}</div>`;
 }
 function completionTimeHtml(m) {
-  const rows = (m.pipelines || []).map(([k, l]) => [l, m.completed.filter(r => r.pipeline === k)]).filter(x => x[1].length);
+  const rows = (m.pipelines || []).map(([k, l]) => [l, m.completed.filter(r => r.pipeline === k), k]).filter(x => x[1].length);
   if (!rows.length) return "";
-  const tr = rows.map(([l, rs]) => { const hs = rs.map(r => r.hours);
-    return `<tr><td>${l}</td><td class="num">${rs.length}</td><td class="num">${fmtDur(svcMedian(hs))}</td><td class="num">${fmtDur(svcPctile(hs, 0.9))}</td></tr>`; }).join("");
+  const tr = rows.map(([l, rs, k]) => { const hs = rs.map(r => r.hours);
+    return `<tr class="rdrill-row${svcDrill === "pipe:" + k ? " on" : ""}" data-sdrill="pipe:${k}" tabindex="0"><td>${l}</td><td class="num">${rs.length}</td><td class="num">${fmtDur(svcMedian(hs))}</td><td class="num">${fmtDur(svcPctile(hs, 0.9))}</td></tr>`; }).join("");
   const all = m.completed.map(r => r.hours);
   return `<div class="sect"><h2>Completion Time</h2>
     <p class="sd">SRs completed in this period, from the day each was created to the day it was completed. Not stage by stage.</p>
     <div class="scroll"><table><thead><tr><th>Pipeline</th><th class="num">SRs completed</th><th class="num">Median</th><th class="num">90% within</th></tr></thead>
-    <tbody>${tr}<tr class="tot"><td>All service SRs</td><td class="num">${m.completed.length}</td><td class="num">${fmtDur(svcMedian(all))}</td><td class="num">${fmtDur(svcPctile(all, 0.9))}</td></tr></tbody></table></div></div>`;
+    <tbody>${tr}<tr class="tot"><td>All service SRs</td><td class="num">${m.completed.length}</td><td class="num">${fmtDur(svcMedian(all))}</td><td class="num">${fmtDur(svcPctile(all, 0.9))}</td></tr></tbody></table></div>${svcDrillFor(m, ["pipe"])}</div>`;
 }
 function latePaymentsHtml(m) {
   const st = m.lateStages || [];
   const done = m.completed.filter(r => r.pipeline === "late_payments");
   if (!st.length && !done.length) return "";
-  const tr = st.map(x => `<tr><td>${x.stage}</td><td class="num">${x.open}</td><td class="num">${x.days_in_stage.length ? Math.round(svcMedian(x.days_in_stage)) + "d" : "—"}</td><td class="num">${x.days_in_stage.length ? Math.round(x.days_in_stage[x.days_in_stage.length - 1]) + "d" : "—"}</td></tr>`).join("");
+  const tr = st.map(x => `<tr class="rdrill-row${svcDrill === "stage:" + x.stage ? " on" : ""}" data-sdrill="stage:${cesc(x.stage)}" tabindex="0"><td>${x.stage}</td><td class="num">${x.open}</td><td class="num">${x.days_in_stage.length ? Math.round(svcMedian(x.days_in_stage)) + "d" : "—"}</td><td class="num">${x.days_in_stage.length ? Math.round(x.days_in_stage[x.days_in_stage.length - 1]) + "d" : "—"}</td></tr>`).join("");
   return `<div class="sect"><h2>Late Payments</h2>
     <p class="sd">Open Late Payment SRs by stage as of ${fmtShortDate(m.days[m.days.length - 1])}, and how long they have sat in it. ${done.length} completed in this period, median ${fmtDur(svcMedian(done.map(r => r.hours)))} from created to completed.</p>
-    ${tr ? `<div class="scroll"><table><thead><tr><th>Stage</th><th class="num">Open</th><th class="num">Median in stage</th><th class="num">Longest</th></tr></thead><tbody>${tr}</tbody></table></div>` : ""}</div>`;
+    ${tr ? `<div class="scroll"><table><thead><tr><th>Stage</th><th class="num">Open</th><th class="num">Median in stage</th><th class="num">Longest</th></tr></thead><tbody>${tr}</tbody></table></div>` : ""}${svcDrillFor(m, ["stage"])}</div>`;
 }
 function missingDocsHtml(m) {
   const rs = m.completed.filter(r => r.pipeline === "missing_docs");
   if (!rs.length) return "";
   const order = [["selling producer", "Selling producer"], ["service/hybrid rep", "Service / hybrid rep"], ["another producer", "Another producer"], ["producer", "Producer (seller unknown)"], ["other", "Someone else"]];
   const chips = order.map(([k, l]) => { const n = rs.filter(r => r.handler === k).length;
-    return n ? `<div class="tile"><div class="k">${l}</div><div class="v">${n}</div><div class="n">${Math.round(100 * n / rs.length)}% &middot; median ${fmtDur(svcMedian(rs.filter(r => r.handler === k).map(r => r.hours)))}</div></div>` : ""; }).join("");
+    return n ? `<div${sdk("hand:" + k)}><div class="k">${l}</div><div class="v">${n}</div><div class="n">${Math.round(100 * n / rs.length)}% &middot; median ${fmtDur(svcMedian(rs.filter(r => r.handler === k).map(r => r.hours)))}</div></div>` : ""; }).join("");
   return `<div class="sect"><h2>Contingencies</h2>
     <p class="sd">Any contingency pending on a policy: ${rs.length} completed in this period, median ${fmtDur(svcMedian(rs.map(r => r.hours)))} from created to completed, and who took care of it. The selling producer is whoever sold the household's policy just before the SR was created.</p>
-    <div class="tiles">${chips}</div></div>`;
+    <div class="tiles">${chips}</div>${svcDrillFor(m, ["hand"])}</div>`;
 }
 const SERVICE_TITLES = { "Amanda Torricellas": "Ops Mngr" };
+/* Every Service Center card opens the list of what it counts (Frank,
+   2026-09-25), like the Renewals cards: SRs, service tasks, call backs, open
+   SRs. Names open the customer (or lead) in AgencyZoom. A range built before
+   the documents carried list rows says so instead of showing a short list. */
+let svcDrill = "";
+const svcLink = (kind, id, name) => id ? `<a href="${AZ_URL[kind] || AZ_URL.customer}${encodeURIComponent(id)}" target="_blank" rel="noopener">${cesc(name || "—")}</a>` : cesc(name || "—");
+const svcTime = iso => iso ? new Date(iso).toLocaleString(undefined, { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" }) : "—";
+const svcFirst = n => n ? cesc(n.split(" ")[0]) : "—";
+function svcSrTable(rs, m, withOutcome) {
+  if (!rs.length) return '<p class="sd">None.</p>';
+  if (!rs.some(r => r.name || r.household)) return '<p class="sd">These days were built before SRs were listed here; the names show from the next rebuild.</p>';
+  const pipeName = Object.fromEntries((m.pipelines || []).map(([k, l]) => [k, l]));
+  const outLabel = Object.assign({}, ...Object.values(m.srOutcomes || {}).map(o => Object.fromEntries(o.map(([k, l]) => [k, l]))),
+    Object.fromEntries((m.outcomes || []).map(([k, l]) => [k, l])));
+  const renOut = Object.fromEntries((m.renewals || []).map(r => [r.id, r.outcome]));
+  const rows = [...rs].sort((a, b) => (b.done || "").localeCompare(a.done || "")).map(r => `<tr>
+    <td>${renDate(r.done)}</td><td>${svcLink("customer", r.household, r.name)}</td>
+    <td>${cesc(r.subject || "")}<div style="font-size:11.5px;color:var(--text-muted)">${cesc(pipeName[r.pipeline] || r.pipeline || "")}</div></td>
+    <td>${svcFirst(r.by || r.by_name)}</td><td class="num">${fmtDur(r.hours)}</td>
+    ${withOutcome ? `<td>${cesc(outLabel[r.outcome || renOut[r.id]] || r.outcome || renOut[r.id] || "—")}</td>` : ""}
+    <td style="max-width:360px;font-size:12px;color:var(--text-muted)">${cesc(r.note || "")}</td></tr>`).join("");
+  return `<div class="scroll"><table class="rtable"><thead><tr><th>Completed</th><th>Customer</th><th>SR</th><th>By</th><th class="num">Took</th>${withOutcome ? "<th>Outcome</th>" : ""}<th>Rep's note</th></tr></thead><tbody>${rows}</tbody></table></div>`;
+}
+function svcTaskTable(rs) {
+  if (!rs.length) return '<p class="sd">None.</p>';
+  const rows = [...rs].sort((a, b) => (a.done - b.done) || (b.day || "").localeCompare(a.day || "")).map(r => `<tr>
+    <td>${renDate(r.day)}</td><td>${cesc(r.title)}</td>
+    <td>${svcLink(r.customer_type === "lead" ? "lead" : "customer", r.customer_id, r.customer)}</td>
+    <td>${r.assignees.map(svcFirst).join(", ") || "—"}</td>
+    <td>${r.done ? `<span class="chip c-g">Done</span> ${svcFirst(r.done_by)}` : '<span class="chip c-r">Not done</span>'}</td></tr>`).join("");
+  return `<div class="scroll"><table class="rtable"><thead><tr><th>Due</th><th>Task</th><th>Customer</th><th>Assigned</th><th>Status</th></tr></thead><tbody>${rows}</tbody></table></div>`;
+}
+function svcCallbackTable(rs) {
+  if (!rs.length) return '<p class="sd">None.</p>';
+  if (!rs.some(r => r.number)) return '<p class="sd">These days were built before call backs were listed here; the callers show from the next rebuild.</p>';
+  const rows = [...rs].sort((a, b) => (a.minutes == null) - (b.minutes == null) || (b.missed || "").localeCompare(a.missed || "")).map(r => `<tr>
+    <td>${svcTime(r.missed)}</td><td>${svcLink(r.link_kind, r.link_id, r.name || r.number)}<div style="font-size:11.5px;color:var(--text-muted)">${cesc(r.number || "")}${r.calls > 1 ? ` &middot; ${r.calls} calls` : ""} &middot; ${cesc(r.bucket || "")}</div></td>
+    <td>${r.minutes != null ? `${svcTime(r.back_at)} <span style="color:var(--text-muted)">${svcFirst(r.back_by)}</span>` : '<span class="chip c-r">Not returned same day</span>'}</td>
+    <td class="num">${r.minutes != null ? (r.minutes < 60 ? r.minutes + "m" : (Math.round(r.minutes / 6) / 10) + "h") : "—"}</td></tr>`).join("");
+  return `<div class="scroll"><table class="rtable"><thead><tr><th>Missed</th><th>Caller</th><th>Returned</th><th class="num">After</th></tr></thead><tbody>${rows}</tbody></table></div>`;
+}
+function svcOpenTable(rs, m) {
+  if (!rs) return '<p class="sd">This day was built before open SRs were listed here; they show from the next rebuild.</p>';
+  if (!rs.length) return '<p class="sd">None.</p>';
+  const pipeName = Object.fromEntries((m.pipelines || []).map(([k, l]) => [k, l]));
+  const rows = [...rs].sort((a, b) => (b.overdue - a.overdue) || (a.due || "9").localeCompare(b.due || "9")).map(r => `<tr>
+    <td>${svcLink("customer", r.household, r.name)}</td>
+    <td>${cesc(r.subject || "")}<div style="font-size:11.5px;color:var(--text-muted)">${cesc(pipeName[r.pipeline] || r.pipeline || "")}${r.stage ? ` &middot; ${cesc(r.stage)}` : ""}</div></td>
+    <td>${svcFirst(r.by)}</td><td>${renDate(r.created)}</td>
+    <td>${r.due ? renDate(r.due) : "—"}${r.overdue ? ' <span class="chip c-r">Overdue</span>' : ""}</td></tr>`).join("");
+  return `<div class="scroll"><table class="rtable"><thead><tr><th>Customer</th><th>SR</th><th>Assigned</th><th>Opened</th><th>Due</th></tr></thead><tbody>${rows}</tbody></table></div>`;
+}
+function svcDrillList(title, what, body) {
+  return `<div class="rdrill-list"><div style="display:flex;justify-content:space-between;align-items:baseline;gap:12px;margin:14px 0 6px">
+    <h3 class="rh3" style="margin:0">${title}</h3><a href="#" data-sdrill-close style="font-size:12.5px">Close</a></div>
+    ${what ? `<p class="sd" style="margin:0 0 6px">${what}</p>` : ""}${body}</div>`;
+}
+// The list for the open card, or "" -- placed right under the cards it belongs to.
+function svcDrillFor(m, keys) {
+  const k = svcDrill;
+  if (!k || !keys.some(p => k === p || k.startsWith(p + ":"))) return "";
+  const [kind, a, b] = k.split(":");
+  const per = n => n === "team" ? (() => true) : n === "others" ? (r => !r.by) : (r => r.by === n);
+  const who = n => n === "team" ? "Team" : n === "others" ? "Others" : n.split(" ")[0];
+  const pipeName = Object.fromEntries((m.pipelines || []).map(([x, l]) => [x, l]));
+  const cbDone = m.callbacks.filter(r => r.minutes != null);
+  const n = x => `${x.length} `;
+  if (kind === "tasks") return svcDrillList(`Service Tasks · ${n(m.taskRows)}due`, "Every service task due in this period, not done first.", svcTaskTable(m.taskRows));
+  if (kind === "srs") return svcDrillList(`SRs Completed · ${m.completed.length}`, "Every service SR completed in this period, newest first.", svcSrTable(m.completed, m, true));
+  if (kind === "callbacks") return svcDrillList(`Missed Service Calls · ${m.callbacks.length}`, `${cbDone.length} returned the same day. Not returned first.`, svcCallbackTable(m.callbacks));
+  if (kind === "renewals") return svcDrillList(`Renewal SRs Worked · ${m.renewals.length}`, "", svcSrTable(m.renewals, m, true));
+  if (kind === "out") { const rs = m.completed.filter(r => r.pipeline === a && r.outcome).filter(per(b));
+    return svcDrillList(`${pipeName[a] || a} · ${who(b)} · ${rs.length}`, "", svcSrTable(rs, m, true)); }
+  if (kind === "pipe") { const rs = m.completed.filter(r => r.pipeline === a);
+    return svcDrillList(`${pipeName[a] || a} · ${rs.length} completed`, "", svcSrTable(rs, m, true)); }
+  if (kind === "hand") { const rs = m.completed.filter(r => r.pipeline === "missing_docs" && r.handler === a);
+    return svcDrillList(`Contingencies · ${a} · ${rs.length}`, "", svcSrTable(rs, m, false)); }
+  if (kind === "stage") { const rs = m.openRows ? m.openRows.filter(r => r.pipeline === "late_payments" && (r.stage || "(no stage)") === a) : null;
+    return svcDrillList(`Late Payments open · ${cesc(a)}${rs ? ` · ${rs.length}` : ""}`, `As of ${fmtShortDate(m.days[m.days.length - 1])}.`, svcOpenTable(rs, m)); }
+  if (kind === "person") {
+    const srs = m.completed.filter(r => r.by === a), tasks = m.taskRows.filter(r => r.assignees.includes(a) || r.done_by === a);
+    const open = m.openRows ? m.openRows.filter(r => r.by === a) : null;
+    const cbs = m.callbacks.filter(r => r.by === a);
+    return svcDrillList(`${cesc(a)}`, "", `<h3 class="rh3">SRs completed · ${srs.length}</h3>${svcSrTable(srs, m, true)}
+      <h3 class="rh3">Service tasks · ${tasks.length}</h3>${svcTaskTable(tasks)}
+      <h3 class="rh3">Open SRs${open ? ` · ${open.length}` : ""} <span style="font-weight:400;text-transform:none;letter-spacing:0">as of ${fmtShortDate(m.days[m.days.length - 1])}</span></h3>${svcOpenTable(open, m)}
+      <h3 class="rh3">Call backs · ${cbs.length}</h3>${svcCallbackTable(cbs)}`);
+  }
+  return "";
+}
+// A card that opens a list: wraps a tile's attributes.
+const sdk = (k, extra) => ` data-sdrill="${k}" role="button" tabindex="0" class="tile rdrill${svcDrill === k ? " on" : ""}${extra ? " " + extra : ""}"`;
 function servicePanel(m) {
   const team = m.team.map(t => t.name);
   const first = n => n.split(" ")[0];
@@ -4313,17 +4415,17 @@ function servicePanel(m) {
   const cbDone = m.callbacks.filter(r => r.minutes != null);
   const U = team.reduce((a, n) => { const u = m.util[n] || {}; return { p: a.p + (u.p || 0), t: a.t + (u.t || 0) }; }, { p: 0, t: 0 });
   const tiles = `<div class="tiles">
-    <div class="tile"><div class="k">Service Tasks Done</div>
+    <div${sdk("tasks")}><div class="k">Service Tasks Done</div>
       <div class="v">${T.completed}<span style="font-size:15px;color:var(--text-muted)"> / ${T.due}</span></div>
       <div class="n">${T.due ? pct(100 * T.completed / T.due) : "—"} of service tasks due</div></div>
-    <div class="tile"><div class="k">SRs Completed</div>
+    <div${sdk("srs")}><div class="k">SRs Completed</div>
       <div class="v">${m.completed.length}</div><div class="n">median ${fmtDur(svcMedian(m.completed.map(r => r.hours)))} created to completed</div></div>
-    <div class="tile"><div class="k">Call-Back Resolution</div>
+    <div${sdk("callbacks")}><div class="k">Call-Back Resolution</div>
       <div class="v">${mins(svcMedian(cbDone.map(r => r.minutes)))}</div>
       <div class="n">median to the first return call &middot; ${cbDone.length} of ${m.callbacks.length} missed service calls returned same day</div></div>
     <div class="tile"><div class="k">Utilization</div>
       <div class="v">${U.t ? pct(100 * U.p / U.t) : "—"}</div><div class="n">productive / tracked time, whole team</div></div>
-  </div>`;
+  </div>${svcDrillFor(m, ["tasks", "srs", "callbacks"])}`;
   const person = n => {
     const k = m.tasks[n] || { due: 0, completed: 0 }, u = m.util[n] || {}, b = m.backlog[n] || {};
     const mine = m.completed.filter(r => r.by === n);
@@ -4332,7 +4434,7 @@ function servicePanel(m) {
     // range ending before a retitle still shows the current one (Amanda was
     // "Hybrid" in documents built before 2026-09-24).
     const role = SERVICE_TITLES[n] || (m.team.find(t => t.name === n) || {}).role || "";
-    return `<div class="tile">
+    return `<div${sdk("person:" + n)}>
       <div class="k">${pbadge(DOT[n] || TEAM_DOT, first(n))} <span style="margin-left:4px">${role}</span></div>
       <div class="n" style="margin-top:8px"><b>${k.completed}/${k.due}</b> service tasks &middot; <b>${mine.length}</b> SRs completed${mine.length ? ` (median ${fmtDur(svcMedian(mine.map(r => r.hours)))})` : ""}</div>
       <div class="n"><b>${b.open ?? 0}</b> open SRs &middot; <b>${b.overdue ?? 0}</b> overdue</div>
@@ -4347,7 +4449,7 @@ function servicePanel(m) {
     ${completionTimeHtml(m)}
     ${latePaymentsHtml(m)}
     ${missingDocsHtml(m)}
-    <div class="sect"><h2>By Person</h2><p class="sd">Open and overdue SRs are as of ${fmtShortDate(m.days[m.days.length - 1])}.</p><div class="tiles">${team.map(person).join("")}</div></div>`;
+    <div class="sect"><h2>By Person</h2><p class="sd">Open and overdue SRs are as of ${fmtShortDate(m.days[m.days.length - 1])}.</p><div class="tiles">${team.map(person).join("")}</div>${svcDrillFor(m, ["person"])}</div>`;
 }
 async function paintService() {
   const v = $("#view");
@@ -4368,9 +4470,21 @@ async function paintService() {
   }
   const docs = await fetchServiceDocs(wanted);
   $("#topsub").textContent = "Athena · service team" + (label ? " · " + label : "");
-  v.innerHTML = controls + (docs.length ? servicePanel(mergeServiceDocs(docs))
-    : `<div class="empty">No Athena report for ${rangeMode === "day" ? "this day" : "this range"} yet.</div>`);
-  wireRangeControl();
+  const merged = docs.length ? mergeServiceDocs(docs) : null;
+  const paint = () => {
+    const y = window.scrollY;
+    v.innerHTML = controls + (merged ? servicePanel(merged)
+      : `<div class="empty">No Athena report for ${rangeMode === "day" ? "this day" : "this range"} yet.</div>`);
+    wireRangeControl();
+    v.querySelectorAll("[data-sdrill]").forEach(el => {
+      const go = e => { if (e) e.preventDefault(); svcDrill = svcDrill === el.dataset.sdrill ? "" : el.dataset.sdrill; paint(); };
+      el.onclick = go;
+      el.onkeydown = e => { if (e.key === "Enter" || e.key === " ") go(e); };
+    });
+    v.querySelectorAll("[data-sdrill-close]").forEach(el => el.onclick = e => { e.preventDefault(); svcDrill = ""; paint(); });
+    window.scrollTo(0, y);
+  };
+  paint();
 }
 
 /* ---- Athena: Renewals (Frank, 2026-09-25) -----------------------------------
@@ -4399,6 +4513,9 @@ const REN_FLAGS = {
 };
 const REN_RISK = { high: ["High", "c-r"], medium: ["Medium", "c-w"], low: ["Low", "c-g"] };
 const renFilter = { risk: "", pipe: "", who: "", worked: "" };
+// Which top card's list is open (Frank, 2026-09-25: each card opens the
+// renewals it counts, so they can be looked up). "" = none.
+let renDrill = "";
 let RENEWALS_DOC = null;
 const renWorked = r => {
   const s = r.sr;
@@ -4433,6 +4550,28 @@ function renSrCell(r, label) {
   return `${cesc(label[s.outcome] || s.outcome)} <span style="color:var(--text-muted)">${cesc((s.by || "").split(" ")[0])} ${renDate(s.done)}</span>`
     + (s.note ? `<div style="font-size:11.5px;color:var(--text-muted);max-width:340px">${cesc(s.note.slice(0, 140))}</div>` : "");
 }
+function renCustomer(r) {
+  const name = cesc(r.name || "—");
+  return r.household ? `<a href="${AZ_URL.customer}${encodeURIComponent(r.household)}" target="_blank" rel="noopener">${name}</a>` : name;
+}
+function renDrillHtml([title, what, rs], label, pipeName) {
+  const upcoming = rs.some(r => r.kind === "upcoming");
+  const sorted = [...rs].sort((a, b) => a.renewal < b.renewal ? -1 : a.renewal > b.renewal ? 1 : 0);
+  const rows = sorted.map(r => `<tr>
+    <td>${renDate(r.renewal)}</td><td>${renCustomer(r)}</td>
+    <td>${cesc(r.type)} <span style="color:var(--text-muted)">${cesc(r.policy)}</span><div style="font-size:11.5px;color:var(--text-muted)">${cesc(pipeName[r.pipeline] || "")}</div></td>
+    <td class="num">${renMoney(r.renewal_premium != null ? r.renewal_premium : r.premium)}</td>
+    <td><span class="pd rdot" style="${renFill(r.status)}"></span> ${cesc((REN_STATUS[r.status] || [r.status === "upcoming" ? "Coming up" : r.status])[0])}
+      ${r.how && r.how.length && r.status !== "upcoming" ? `<div style="font-size:11.5px;color:var(--text-muted)">${cesc(r.how.join(", "))}${r.cancel_date ? ` ${renDate(r.cancel_date)}` : ""}</div>` : ""}</td>
+    <td>${renSrCell(r, label)}</td>
+    ${upcoming ? `<td>${(r.flags || []).filter(x => REN_FLAGS[x]).map(x => `<span class="chip ${REN_FLAGS[x][1]}" style="margin:0 4px 3px 0">${REN_FLAGS[x][0]}</span>`).join("")}</td>
+    <td>${r.risk ? `<span class="chip ${REN_RISK[r.risk][1]}">${REN_RISK[r.risk][0]}</span>` : ""}</td>` : ""}</tr>`).join("");
+  return `<div class="rdrill-list"><div style="display:flex;justify-content:space-between;align-items:baseline;gap:12px;margin:14px 0 6px">
+    <h3 class="rh3" style="margin:0">${title} · ${rs.length} renewal${rs.length === 1 ? "" : "s"}</h3>
+    <a href="#" data-drill-close style="font-size:12.5px">Close</a></div>
+    <p class="sd" style="margin:0 0 6px">${what}. Customer names open the customer in AgencyZoom.</p>
+    ${rs.length ? `<div class="scroll"><table class="rtable"><thead><tr><th>Renews</th><th>Customer</th><th>Policy</th><th class="num">Premium</th><th>Status</th><th>Renewal SR</th>${upcoming ? "<th>Flags</th><th>Risk</th>" : ""}</tr></thead><tbody>${rows}</tbody></table></div>` : '<p class="sd">None.</p>'}</div>`;
+}
 function renewalsPanel(doc) {
   const label = Object.fromEntries((doc.sr_outcomes || []).map(([k, l]) => [k, l]));
   const pipeName = Object.fromEntries(doc.pipelines || []);
@@ -4444,15 +4583,26 @@ function renewalsPanel(doc) {
   const rt = renRate(past);
   const discussed = ahead.filter(r => renWorked(r) === "discussed").length;
   const high = ahead.filter(r => r.risk === "high").length;
+  // Each card opens the list of exactly the renewals it counts.
+  const drills = {
+    rate: ["Retention · last 4 weeks", "every renewal in the rate: retained and lost",
+           past.filter(r => r.status === "retained" || r.status === "lost")],
+    lost: ["Lost", "renewals lost in the last 4 weeks", past.filter(r => r.status === "lost")],
+    unconfirmed: ["Not confirmed yet", "no next term or cancellation on record yet", past.filter(r => r.status === "unconfirmed")],
+    ahead: [`Coming up · ${doc.upcoming_days} days`, "renewing in the next " + doc.upcoming_days + " days", ahead],
+    high: ["High risk", "not discussed, with a warning sign", ahead.filter(r => r.risk === "high")],
+  };
+  const dt = (k, inner, style) => `<div class="tile rdrill${renDrill === k ? " on" : ""}" data-drill="${k}" role="button" tabindex="0"
+    title="Show these ${drills[k][2].length} renewals"${style ? ` style="${style}"` : ""}>${inner}</div>`;
   const tiles = `<div class="tiles">
-    <div class="tile" style="border-color:var(--border-strong)"><div class="k">Retention · last 4 weeks</div>
-      <div class="v">${rt.pct == null ? "—" : rt.pct + "%"}</div><div class="n">${rt.k} of ${rt.k + rt.l} renewals kept</div></div>
-    <div class="tile"><div class="k">Lost</div><div class="v">${rt.l}</div><div class="n">renewed ${renDate(past.length ? past[0].renewal : null)} – ${renDate(doc.as_of)}</div></div>
-    <div class="tile"><div class="k">Not confirmed yet</div><div class="v">${past.filter(r => r.status === "unconfirmed").length}</div><div class="n">no next term or cancellation on record yet</div></div>
-    <div class="tile"><div class="k">Coming up · ${doc.upcoming_days} days</div><div class="v">${ahead.length}</div>
-      <div class="n">${ahead.length ? Math.round(100 * discussed / ahead.length) : 0}% reviewed with the customer</div></div>
-    <div class="tile"><div class="k">High risk</div><div class="v" style="color:var(--bad)">${high}</div><div class="n">not discussed, with a warning sign</div></div>
-  </div>`;
+    ${dt("rate", `<div class="k">Retention · last 4 weeks</div>
+      <div class="v">${rt.pct == null ? "—" : rt.pct + "%"}</div><div class="n">${rt.k} of ${rt.k + rt.l} renewals kept</div>`, "border-color:var(--border-strong)")}
+    ${dt("lost", `<div class="k">Lost</div><div class="v">${rt.l}</div><div class="n">renewed ${renDate(past.length ? past[0].renewal : null)} – ${renDate(doc.as_of)}</div>`)}
+    ${dt("unconfirmed", `<div class="k">Not confirmed yet</div><div class="v">${past.filter(r => r.status === "unconfirmed").length}</div><div class="n">no next term or cancellation on record yet</div>`)}
+    ${dt("ahead", `<div class="k">Coming up · ${doc.upcoming_days} days</div><div class="v">${ahead.length}</div>
+      <div class="n">${ahead.length ? Math.round(100 * discussed / ahead.length) : 0}% reviewed with the customer</div>`)}
+    ${dt("high", `<div class="k">High risk</div><div class="v" style="color:var(--bad)">${high}</div><div class="n">not discussed, with a warning sign</div>`)}
+  </div>${renDrill && drills[renDrill] ? renDrillHtml(drills[renDrill], label, pipeName) : ""}`;
   // Weeks by renewal date, Monday first, oldest to newest.
   const wk = d => { const x = new Date(d + "T12:00:00"); x.setDate(x.getDate() - ((x.getDay() + 6) % 7)); return x.toISOString().slice(0, 10); };
   const weeks = [...new Set(past.map(r => wk(r.renewal)))].sort();
@@ -4516,6 +4666,13 @@ async function paintRenewals() {
   }
   if (!RENEWALS_DOC) { v.innerHTML = '<div class="empty">No renewal report yet. It is built every night.</div>'; return; }
   v.innerHTML = renewalsPanel(RENEWALS_DOC);
+  v.querySelectorAll("[data-drill]").forEach(el => {
+    const go = () => { renDrill = renDrill === el.dataset.drill ? "" : el.dataset.drill; paintRenewals(); };
+    el.onclick = go;
+    el.onkeydown = e => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); go(); } };
+  });
+  const close = v.querySelector("[data-drill-close]");
+  if (close) close.onclick = e => { e.preventDefault(); renDrill = ""; paintRenewals(); };
   [["renRisk", "risk"], ["renPipe", "pipe"], ["renWorked", "worked"], ["renWho", "who"]].forEach(([id, k]) => {
     const el = document.getElementById(id);
     if (el) el.onchange = () => { renFilter[k] = el.value; paintRenewals(); };
