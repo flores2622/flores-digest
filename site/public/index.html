@@ -276,7 +276,11 @@ body {
 /* Section tabs inside a left-bar Center (Sales Center, Learning Center). An
    underline strip, so it reads as a level above each page's own pill-style
    .subtabs rather than as another row of the same thing. */
-.ctabs { display: flex; gap: 4px; border-bottom: 1px solid var(--border); margin: -4px 0 18px; overflow-x: auto; }
+/* Never a scroll box (Frank, 2026-09-25: "the sales center header has a
+   scroll"): the selected tab's underline sits 1px below the strip on purpose,
+   and overflow-x:auto turned that 1px into a scrollbar. The tabs wrap on a
+   narrow screen instead. */
+.ctabs { display: flex; flex-wrap: wrap; gap: 4px; border-bottom: 1px solid var(--border); margin: -4px 0 18px; }
 .ctab { background: none; border: none; border-bottom: 2px solid transparent; padding: 8px 14px 9px; margin-bottom: -1px;
   font: inherit; font-size: 13.5px; font-weight: 600; color: var(--text-muted); cursor: pointer; white-space: nowrap; }
 .ctab.sel { color: var(--text-primary); border-bottom-color: var(--text-primary); }
@@ -818,11 +822,20 @@ let view = "digest";
    Role Play plus Training. `view` is still the page itself -- every paint()
    branch below is unchanged -- and the section just remembers which of its
    pages was last open. */
+// Every left-bar entry gets the same header (Frank, 2026-09-25: "all
+// sections follow this format, the main header, with those bubbles if we
+// have sub sections within them"): the underlined page tabs, then each
+// page's own pill-style .subtabs for anything inside it. A Center with one
+// page shows just that one tab.
 const CENTERS = {
   salescenter: [["digest", "Digest"], ["sales", "Sales"]],
+  coaching: [["coaching", "Coaching"]],
+  trends: [["trends", "Trends"]],
   learning: [["roleplay", "Role Play"], ["training", "Training"]],
+  service: [["service", "Service"]],
+  commercial: [["commercial", "Commercial"]],
 };
-const centerPick = { salescenter: "digest", learning: "roleplay" };
+const centerPick = Object.fromEntries(Object.entries(CENTERS).map(([c, pages]) => [c, pages[0][0]]));
 const centerOf = v => Object.keys(CENTERS).find(c => CENTERS[c].some(([k]) => k === v)) || v;
 function paintCenterBar() {
   const c = centerOf(view), bar = $("#centerbar");
