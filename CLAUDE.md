@@ -416,6 +416,14 @@ Crystal (hybrid); credit always goes to whoever COMPLETED the SR or task.
   (`open_srs_unavailable`). A weekday with no SR completed is a holiday and
   skipped. It only ever adds a page. By hand: `python3 service_digest.py --backfill`.
 - **Documents hold rows, never medians**, so the board can add any range up.
+  **Every card opens the rows it counts** (Frank, 2026-09-25), so the rows
+  carry what a list needs: SRs name, household (= the AgencyZoom customer
+  id), subject, dates and the rep's note (`sr_detail`); `task_rows`;
+  `srs.open_rows` (every open SR at the end of the day, team or Late
+  Payments); call backs with caller, times and a customer/lead link. Pages
+  built before 2026-09-25 got theirs from their saved files
+  (`python3 service_digest.py --add-lists`, which only adds detail and
+  never changes a count).
 
 ## Cerberus -- Commercial
 

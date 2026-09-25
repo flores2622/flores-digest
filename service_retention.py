@@ -432,7 +432,9 @@ def renewal_srs(day, done_tickets, policies, customers, az=None, log=print, refr
                      "by": by if by in SERVICE_TEAM else None,
                      "by_name": by, "outcome": key, "source": source,
                      "policy": pn, "premium": round(prem), "line": line,
-                     "name": t.get("name"), "subject": (t.get("subject") or "").strip()})
+                     "name": t.get("name"), "subject": (t.get("subject") or "").strip(),
+                     "household": t.get("householdId"), "done": _d(t.get("completeDate")),
+                     "note": re.sub(r"\s+", " ", re.sub(r"<[^>]+>", " ", t.get("resolutionDesc") or "")).strip()[:200] or None})
     return rows, dict(unnamed)
 
 
