@@ -533,15 +533,6 @@ tbody tr:hover { background: color-mix(in oklab, var(--bar) 7%, transparent); }
 .hero p:last-child { margin-bottom: 0; }
 .q { font-style: italic; }
 
-/* Trend line. */
-.trend { width: 100%; height: 200px; display: block; }
-.trend .grid { stroke: var(--grid); stroke-width: 1; }
-.trend .axis { fill: var(--text-muted); font-size: 11px; }
-.trend .ln { fill: none; stroke: var(--bar); stroke-width: 2; stroke-linejoin: round; stroke-linecap: round; }
-.trend .dot { fill: var(--bar); stroke: var(--surface); stroke-width: 2; }
-.trend .hit { fill: transparent; cursor: crosshair; }
-.spark { display: flex; align-items: flex-end; gap: 3px; height: 34px; }
-.spark i { display: block; width: 9px; background: var(--bar); border-radius: 1px 1px 0 0; min-height: 2px; }
 
 #tip {
   position: fixed; pointer-events: none; opacity: 0; transition: opacity .1s;
@@ -685,7 +676,6 @@ details.sc .scb { padding: 0 12px 12px; }
   <nav class="tabs" role="tablist">
     <button class="tab" role="tab" aria-selected="true"  data-v="salescenter">Sales Center</button>
     <button class="tab" role="tab" aria-selected="false" data-v="coaching">Coaching Center</button>
-    <button class="tab" role="tab" aria-selected="false" data-v="trends">Trends</button>
     <button class="tab" role="tab" aria-selected="false" data-v="learning">Learning Center</button>
     <button class="tab" role="tab" aria-selected="false" data-v="service">Service Center</button>
     <button class="tab" role="tab" aria-selected="false" data-v="commercial" hidden>Commercial Center</button>
@@ -830,7 +820,6 @@ let view = "digest";
 const CENTERS = {
   salescenter: [["digest", "Digest"], ["sales", "Sales"]],
   coaching: [["coaching", "Coaching"]],
-  trends: [["trends", "Trends"]],
   learning: [["roleplay", "Role Play"], ["training", "Training"]],
   service: [["service", "Service"]],
   commercial: [["commercial", "Commercial"]],
@@ -841,6 +830,19 @@ function paintCenterBar() {
   const c = centerOf(view), bar = $("#centerbar");
   if (!bar) return;
   if (!CENTERS[c]) { bar.innerHTML = ""; return; }
+  // Coaching Center's header tabs are its three views of one page (Frank,
+  // 2026-09-25: "i want those bubbles to be tabs on the main header,
+  // Cards>Objections>Wins and Losses"), switched by coachSubTab.
+  if (c === "coaching") {
+    bar.innerHTML = `<div class="ctabs" role="tablist">${COACH_TABS.map(([k, label]) =>
+      `<button class="ctab${k === coachSubTab ? " sel" : ""}" role="tab" aria-selected="${k === coachSubTab}" data-st="${k}">${label}</button>`).join("")}</div>`;
+    bar.querySelectorAll(".ctab").forEach(b => b.onclick = () => {
+      coachSubTab = b.dataset.st;
+      if (view !== "coaching") { goView("coaching"); return; }
+      if (cur) repaintCoaching(); else paintCenterBar();
+    });
+    return;
+  }
   bar.innerHTML = `<div class="ctabs" role="tablist">${CENTERS[c].map(([k, label]) =>
     `<button class="ctab${k === view ? " sel" : ""}" role="tab" aria-selected="${k === view}" data-cv="${k}">${label}</button>`).join("")}</div>`;
   bar.querySelectorAll(".ctab").forEach(b => b.onclick = () => goView(b.dataset.cv));
@@ -910,7 +912,7 @@ const SALES_LOGGER_ROSTER = [...PRODUCER_ROSTER, "Amanda Torricellas"];
 // for a collective goal." Combined ONLY in the Sales tab's aggregate views
 // (Totals tiles/pie, Breakdown's Producer chart) -- every individual sale
 // row still names who actually logged it, and every other screen (Coaching,
-// Digest, leaderboard, Trends) keeps Coral and Sarahi separate, since
+// Digest, leaderboard) keeps Coral and Sarahi separate, since
 // nothing outside salesTotalsHtml/computeSalesBreakdown reads this map.
 const SALES_TEAM_GROUPS = { "Coral Barwick": "The Insurance Icons", "Sarahi Chin": "The Insurance Icons" };
 const salesGroupName = name => (name && SALES_TEAM_GROUPS[name]) || name;
@@ -2287,7 +2289,8 @@ function recordingBlk(c) {
   </details>` : "";
   return `<div class="blk"><div class="bl">Recording &amp; transcript</div>${players}${tx}</div>`;
 }
-// Three sub-tabs within the Coaching tab (Frank, 2026-09-10, correcting an
+// Three views within the Coaching tab, shown as the Center's header tabs
+// (paintCenterBar, COACH_TABS) (Frank, 2026-09-10, correcting an
 // earlier misread of this same request, then 2026-09-17: "I want the
 // cards, wins and losses, and the objection data to be tabs within the
 // category"). "Cards" is the per-call coaching cards. "Wins and Losses"
@@ -2296,19 +2299,7 @@ function recordingBlk(c) {
 // click there still jumps to "Cards" (see wireObjectionChart) since
 // that's the only place the filtered cards can show.
 let coachSubTab = "detail";
-function coachSubTabsHtml() {
-  return `<div class="subtabs">
-    <button class="subtab${coachSubTab === "detail" ? " sel" : ""}" data-st="detail" type="button">Cards</button>
-    <button class="subtab${coachSubTab === "wins" ? " sel" : ""}" data-st="wins" type="button">Wins and Losses</button>
-    <button class="subtab${coachSubTab === "objections" ? " sel" : ""}" data-st="objections" type="button">Objections</button>
-  </div>`;
-}
-function wireCoachSubTabs() {
-  document.querySelectorAll(".subtab").forEach(el => el.onclick = () => {
-    coachSubTab = el.dataset.st;
-    repaintCoaching();
-  });
-}
+const COACH_TABS = [["detail", "Cards"], ["objections", "Objections"], ["wins", "Wins and Losses"]];
 
 // A legend used to sit here explaining each outcome chip's meaning. Removed
 // (Frank, 2026-09-16: "since the full description is on the badge, we dont
@@ -2363,7 +2354,8 @@ function objectionChartHtml(objData, scopedCount) {
 }
 function repaintCoaching() {
   document.getElementById("view").innerHTML = rangeControlHtml() + producerControlHtml() + rangeHeaderHtml() + coachingPanel(cur, producerFilter);
-  wireRangeControl(); wireProducerControl(); wireCoachSubTabs(); wireObjectionChart();
+  wireRangeControl(); wireProducerControl(); wireObjectionChart();
+  paintCenterBar();   // an objection click can switch the header tab
 }
 function wireObjectionChart() {
   document.querySelectorAll(".objrow").forEach(el => el.onclick = () => {
@@ -2382,7 +2374,7 @@ function coachingPanel(d, who) {
   // selected.
   const order = ["Lorena Gonzalez", "Crystal Mango", "Mike Olvera", "Coral Barwick", "Sarahi Chin"];
   const sel = who && order.includes(who) ? who : "";
-  const nav = coachSubTabsHtml();
+  const nav = "";
 
   if (coachSubTab === "wins") {
     return nav + (winsLossesHtml(d, sel) || `<div class="empty">Nothing to show for this day.</div>`);
@@ -3046,83 +3038,6 @@ function wireRoleplayPanel() {
   if (mic) { mic.onclick = () => { rpListening ? rpStopListening() : rpStartListening(); }; rpUpdateMicUI(); }
 }
 
-/* ---- Trends tab ------------------------------------------------------------
-   Built from the month rollups' own `trend` arrays (already computed nightly
-   by publish_board.publish_month) rather than fetching every day's full
-   document -- that keeps this tab to one small read per month instead of
-   megabytes of R2 reads on every page load. The rollup doesn't carry the
-   per-day "time set" figure the original artifact's Trends table had, so
-   that column isn't reproducible here.
-
-   NOT cached across visits (removed 2026-09-17, Frank: "11 reporting days
-   is half the business month. it still says not enough days"). The old
-   `if (TREND_CACHE) return TREND_CACHE` locked in whatever the trend
-   looked like the first time this tab was opened in a given browser
-   session and never refreshed it again -- a tab left open from earlier in
-   the day, before that day (or any new day since) was published, kept
-   showing "not enough days on file" forever after, even once the real
-   month rollup had 11+ real entries (confirmed directly against
-   /api/months/2026-09, which was already correct). Re-fetching the
-   month rollup on every visit is still cheap -- it's the one small
-   monthly-rollup read this comment already describes, not a full day
-   document -- so there's no real cost to dropping the cache. */
-async function loadTrend() {
-  const months = [...new Set(DAYS.map(d => d.slice(0, 7)))].sort();
-  const rows = [];
-  for (const m of months) {
-    try {
-      const r = await fetch(`/api/months/${m}`, { cache: "no-store" });
-      if (!r.ok) continue;
-      const doc = await r.json();
-      for (const t of (doc.trend || [])) rows.push(t);
-    } catch (_) {}
-  }
-  rows.sort((a, b) => a.date < b.date ? -1 : 1);
-  return rows;
-}
-function lineChart(points, fmt, tipFn) {
-  const W = 720, H = 200, L = 44, R = 12, T = 14, B = 26;
-  const xs = i => L + (points.length < 2 ? (W - L - R) / 2 : i * (W - L - R) / (points.length - 1));
-  const vals = points.map(p => p.v);
-  const hi = Math.max(...vals, 0), lo = Math.min(...vals, 0);
-  const span = (hi - lo) || 1;
-  const ys = v => T + (H - T - B) * (1 - (v - lo) / span);
-  const ns = "http://www.w3.org/2000/svg";
-  const svg = document.createElementNS(ns, "svg");
-  svg.setAttribute("class", "trend"); svg.setAttribute("viewBox", `0 0 ${W} ${H}`); svg.setAttribute("preserveAspectRatio", "none");
-  for (const frac of [0, 0.5, 1]) {
-    const v = lo + span * frac, y = ys(v);
-    const g = document.createElementNS(ns, "line");
-    g.setAttribute("class", "grid"); g.setAttribute("x1", L); g.setAttribute("x2", W - R); g.setAttribute("y1", y); g.setAttribute("y2", y);
-    svg.append(g);
-    const t = document.createElementNS(ns, "text");
-    t.setAttribute("class", "axis"); t.setAttribute("x", 4); t.setAttribute("y", y + 4);
-    t.textContent = fmt(Math.round(v * 10) / 10);
-    svg.append(t);
-  }
-  const path = document.createElementNS(ns, "path");
-  path.setAttribute("class", "ln");
-  path.setAttribute("d", points.map((p, i) => `${i ? "L" : "M"}${xs(i)},${ys(p.v)}`).join(" "));
-  svg.append(path);
-  points.forEach((p, i) => {
-    const c = document.createElementNS(ns, "circle");
-    c.setAttribute("class", "dot"); c.setAttribute("cx", xs(i)); c.setAttribute("cy", ys(p.v)); c.setAttribute("r", 4);
-    svg.append(c);
-    const lab = document.createElementNS(ns, "text");
-    lab.setAttribute("class", "axis"); lab.setAttribute("x", xs(i)); lab.setAttribute("y", H - 8); lab.setAttribute("text-anchor", "middle");
-    lab.textContent = p.label;
-    svg.append(lab);
-    const hit = document.createElementNS(ns, "rect");
-    hit.setAttribute("class", "hit");
-    hit.setAttribute("x", xs(i) - (W - L - R) / (2 * Math.max(1, points.length - 1)));
-    hit.setAttribute("y", 0);
-    hit.setAttribute("width", (W - L - R) / Math.max(1, points.length - 1));
-    hit.setAttribute("height", H);
-    hoverable(hit, tipFn(p));
-    svg.append(hit);
-  });
-  return svg.outerHTML;
-}
 /* ---- Training tab: Apollo's flashcard decks (coaching/TRAINING.md) -------- */
 
 async function loadTraining() {
@@ -3896,37 +3811,6 @@ function wireSalesBreakdownPanel() {
   document.querySelectorAll("#view [data-tip]").forEach(el => hoverable(el, el.dataset.tip));
 }
 
-async function trendsPanel() {
-  const ds = await loadTrend();
-  if (ds.length < 2) return `<div class="empty">
-    <div style="font-weight:600;font-size:15px;margin-bottom:6px">Not enough days on file yet</div>
-    <p style="max-width:44ch;margin:0 auto;font-size:12.5px;line-height:1.6">Trends need at least two reporting
-    days. A line through one point would be a decoration, not a finding.</p></div>`;
-  const mx = Math.max(...ds.map(x => x.rate || 0), 1), mxs = Math.max(...ds.map(x => x.ps || 0), 1);
-  const spark = (vals, max) => `<div class="spark">${vals.map(v =>
-    `<i style="height:${Math.max(2, Math.round(v / max * 34))}px" title="${v}"></i>`).join("")}</div>`;
-  // Same team tiering the Digest tab colours by (Frank, 2026-09-17: "make
-  // it follow team tiered coloring") -- each day's own tiers, as rolled
-  // up server-side by publish_month, not recomputed here.
-  const TI = { green: "tg", yellow: "ty", red: "tr" };
-  const tt = (x, key) => TI[(x.tiers || {})[key]] || "";
-  const rows = ds.map(x => `<tr>
-    <td>${new Date(x.date + "T12:00:00").toLocaleDateString(undefined, { weekday: "short", month: "short", day: "numeric" })}</td>
-    <td class="num ${tt(x, "dials")}">${x.dials ?? 0}${dialsSub(x)}</td><td class="num">${x.live ?? 0}</td>
-    <td class="num ${tt(x, "rate")}">${(x.rate ?? 0).toFixed ? x.rate.toFixed(1) : x.rate}%</td>
-    <td class="num ${tt(x, "pq")}">${money(x.pq)}</td><td class="num ${tt(x, "ps")}">${money(x.ps)}</td></tr>`).join("");
-  return `<div class="sect"><h2>Across ${ds.length} reporting days</h2>
-   <p class="sd">Oldest first. Too few days to call anything a trend — this is the record, not a forecast.</p>
-   <div class="tiles">
-     <div class="tile"><div class="k">Contact rate</div>${spark(ds.map(x => x.rate || 0), mx)}
-       <div class="n">${(ds[0].rate ?? 0)}% → ${(ds[ds.length - 1].rate ?? 0)}%</div></div>
-     <div class="tile"><div class="k">Premium sold</div>${spark(ds.map(x => x.ps || 0), mxs)}
-       <div class="n">${money(ds[0].ps)} → ${money(ds[ds.length - 1].ps)}</div></div>
-   </div>
-   <div class="scroll"><table><thead><tr><th>Day</th><th class="num">Dials</th><th class="num">Live</th>
-    <th class="num">Rate</th><th class="num">Quoted</th><th class="num">Sold</th></tr></thead><tbody>${rows}</tbody></table></div></div>`;
-}
-
 /* ---- shell / paint --------------------------------------------------------- */
 function $$(s) { return Array.from(document.querySelectorAll(s)); }
 
@@ -4006,8 +3890,7 @@ function wireRangeControl() {
 }
 
 /* Shared producer filter: whole agency or one person, kept in sync between
-   the Digest and Coaching tabs (Trends doesn't use it -- no per-producer
-   trend data exists yet). */
+   the Digest and Coaching tabs. */
 function producerControlHtml() {
   const opts = [`<option value=""${producerFilter ? "" : " selected"}>Whole Agency</option>`]
     .concat(PRODUCER_ROSTER.map(p => `<option value="${p}"${p === producerFilter ? " selected" : ""}>${p}</option>`));
@@ -4092,13 +3975,13 @@ async function paint() {
     }
     v.innerHTML = controls + rangeHeaderHtml() + (cur ? coachingPanel(cur, producerFilter) : '<div class="empty">Loading…</div>');
     wireRangeControl(); wireProducerControl();
-    wireCoachSubTabs(); wireObjectionChart();
+    wireObjectionChart();
     if (cur && !ALL_CALLS_CACHE) {
       fetchAllCalls().then(() => {
         if (view !== "coaching") return;   // navigated away before this landed
         v.innerHTML = controls + rangeHeaderHtml() + coachingPanel(cur, producerFilter);
         wireRangeControl(); wireProducerControl();
-        wireCoachSubTabs(); wireObjectionChart();
+        wireObjectionChart();
       });
     }
   } else if (view === "roleplay") {
@@ -4128,10 +4011,6 @@ async function paint() {
     await paintService();
   } else if (view === "commercial") {
     await paintCommercial();
-  } else {
-    $("#topsub").textContent = "trends across every reporting day";
-    v.innerHTML = '<div class="empty">Loading…</div>';
-    v.innerHTML = await trendsPanel();
   }
 }
 
