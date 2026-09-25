@@ -668,6 +668,11 @@ details.sc .scb { padding: 0 12px 12px; }
 .histrow { display: flex; justify-content: space-between; gap: 10px; padding: 7px 0; border-bottom: 1px solid var(--border); font-size: 12.5px; }
 .histrow:last-child { border-bottom: none; }
 
+/* Renewals tab: the top cards open their list (Frank, 2026-09-25). */
+.tile.rdrill { cursor: pointer; transition: border-color .15s, box-shadow .15s; }
+.tile.rdrill:hover { border-color: var(--border-strong); }
+.tile.rdrill:focus-visible { outline: 2px solid var(--s1); outline-offset: 2px; }
+.tile.rdrill.on { border-color: var(--s1); box-shadow: 0 0 0 1px var(--s1) inset; }
 </style>
 </head>
 <body>
@@ -4353,6 +4358,9 @@ const REN_FLAGS = {
 };
 const REN_RISK = { high: ["High", "c-r"], medium: ["Medium", "c-w"], low: ["Low", "c-g"] };
 const renFilter = { risk: "", pipe: "", who: "", worked: "" };
+// Which top card's list is open (Frank, 2026-09-25: each card opens the
+// renewals it counts, so they can be looked up). "" = none.
+let renDrill = "";
 let RENEWALS_DOC = null;
 const renWorked = r => {
   const s = r.sr;
@@ -4387,6 +4395,28 @@ function renSrCell(r, label) {
   return `${cesc(label[s.outcome] || s.outcome)} <span style="color:var(--text-muted)">${cesc((s.by || "").split(" ")[0])} ${renDate(s.done)}</span>`
     + (s.note ? `<div style="font-size:11.5px;color:var(--text-muted);max-width:340px">${cesc(s.note.slice(0, 140))}</div>` : "");
 }
+function renCustomer(r) {
+  const name = cesc(r.name || "—");
+  return r.household ? `<a href="${AZ_URL.customer}${encodeURIComponent(r.household)}" target="_blank" rel="noopener">${name}</a>` : name;
+}
+function renDrillHtml([title, what, rs], label, pipeName) {
+  const upcoming = rs.some(r => r.kind === "upcoming");
+  const sorted = [...rs].sort((a, b) => a.renewal < b.renewal ? -1 : a.renewal > b.renewal ? 1 : 0);
+  const rows = sorted.map(r => `<tr>
+    <td>${renDate(r.renewal)}</td><td>${renCustomer(r)}</td>
+    <td>${cesc(r.type)} <span style="color:var(--text-muted)">${cesc(r.policy)}</span><div style="font-size:11.5px;color:var(--text-muted)">${cesc(pipeName[r.pipeline] || "")}</div></td>
+    <td class="num">${renMoney(r.renewal_premium != null ? r.renewal_premium : r.premium)}</td>
+    <td><span class="pd rdot" style="${renFill(r.status)}"></span> ${cesc((REN_STATUS[r.status] || [r.status === "upcoming" ? "Coming up" : r.status])[0])}
+      ${r.how && r.how.length && r.status !== "upcoming" ? `<div style="font-size:11.5px;color:var(--text-muted)">${cesc(r.how.join(", "))}${r.cancel_date ? ` ${renDate(r.cancel_date)}` : ""}</div>` : ""}</td>
+    <td>${renSrCell(r, label)}</td>
+    ${upcoming ? `<td>${(r.flags || []).filter(x => REN_FLAGS[x]).map(x => `<span class="chip ${REN_FLAGS[x][1]}" style="margin:0 4px 3px 0">${REN_FLAGS[x][0]}</span>`).join("")}</td>
+    <td>${r.risk ? `<span class="chip ${REN_RISK[r.risk][1]}">${REN_RISK[r.risk][0]}</span>` : ""}</td>` : ""}</tr>`).join("");
+  return `<div class="rdrill-list"><div style="display:flex;justify-content:space-between;align-items:baseline;gap:12px;margin:14px 0 6px">
+    <h3 class="rh3" style="margin:0">${title} · ${rs.length} renewal${rs.length === 1 ? "" : "s"}</h3>
+    <a href="#" data-drill-close style="font-size:12.5px">Close</a></div>
+    <p class="sd" style="margin:0 0 6px">${what}. Customer names open the customer in AgencyZoom.</p>
+    ${rs.length ? `<div class="scroll"><table class="rtable"><thead><tr><th>Renews</th><th>Customer</th><th>Policy</th><th class="num">Premium</th><th>Status</th><th>Renewal SR</th>${upcoming ? "<th>Flags</th><th>Risk</th>" : ""}</tr></thead><tbody>${rows}</tbody></table></div>` : '<p class="sd">None.</p>'}</div>`;
+}
 function renewalsPanel(doc) {
   const label = Object.fromEntries((doc.sr_outcomes || []).map(([k, l]) => [k, l]));
   const pipeName = Object.fromEntries(doc.pipelines || []);
@@ -4398,15 +4428,26 @@ function renewalsPanel(doc) {
   const rt = renRate(past);
   const discussed = ahead.filter(r => renWorked(r) === "discussed").length;
   const high = ahead.filter(r => r.risk === "high").length;
+  // Each card opens the list of exactly the renewals it counts.
+  const drills = {
+    rate: ["Retention · last 4 weeks", "every renewal in the rate: retained and lost",
+           past.filter(r => r.status === "retained" || r.status === "lost")],
+    lost: ["Lost", "renewals lost in the last 4 weeks", past.filter(r => r.status === "lost")],
+    unconfirmed: ["Not confirmed yet", "no next term or cancellation on record yet", past.filter(r => r.status === "unconfirmed")],
+    ahead: [`Coming up · ${doc.upcoming_days} days`, "renewing in the next " + doc.upcoming_days + " days", ahead],
+    high: ["High risk", "not discussed, with a warning sign", ahead.filter(r => r.risk === "high")],
+  };
+  const dt = (k, inner, style) => `<div class="tile rdrill${renDrill === k ? " on" : ""}" data-drill="${k}" role="button" tabindex="0"
+    title="Show these ${drills[k][2].length} renewals"${style ? ` style="${style}"` : ""}>${inner}</div>`;
   const tiles = `<div class="tiles">
-    <div class="tile" style="border-color:var(--border-strong)"><div class="k">Retention · last 4 weeks</div>
-      <div class="v">${rt.pct == null ? "—" : rt.pct + "%"}</div><div class="n">${rt.k} of ${rt.k + rt.l} renewals kept</div></div>
-    <div class="tile"><div class="k">Lost</div><div class="v">${rt.l}</div><div class="n">renewed ${renDate(past.length ? past[0].renewal : null)} – ${renDate(doc.as_of)}</div></div>
-    <div class="tile"><div class="k">Not confirmed yet</div><div class="v">${past.filter(r => r.status === "unconfirmed").length}</div><div class="n">no next term or cancellation on record yet</div></div>
-    <div class="tile"><div class="k">Coming up · ${doc.upcoming_days} days</div><div class="v">${ahead.length}</div>
-      <div class="n">${ahead.length ? Math.round(100 * discussed / ahead.length) : 0}% reviewed with the customer</div></div>
-    <div class="tile"><div class="k">High risk</div><div class="v" style="color:var(--bad)">${high}</div><div class="n">not discussed, with a warning sign</div></div>
-  </div>`;
+    ${dt("rate", `<div class="k">Retention · last 4 weeks</div>
+      <div class="v">${rt.pct == null ? "—" : rt.pct + "%"}</div><div class="n">${rt.k} of ${rt.k + rt.l} renewals kept</div>`, "border-color:var(--border-strong)")}
+    ${dt("lost", `<div class="k">Lost</div><div class="v">${rt.l}</div><div class="n">renewed ${renDate(past.length ? past[0].renewal : null)} – ${renDate(doc.as_of)}</div>`)}
+    ${dt("unconfirmed", `<div class="k">Not confirmed yet</div><div class="v">${past.filter(r => r.status === "unconfirmed").length}</div><div class="n">no next term or cancellation on record yet</div>`)}
+    ${dt("ahead", `<div class="k">Coming up · ${doc.upcoming_days} days</div><div class="v">${ahead.length}</div>
+      <div class="n">${ahead.length ? Math.round(100 * discussed / ahead.length) : 0}% reviewed with the customer</div>`)}
+    ${dt("high", `<div class="k">High risk</div><div class="v" style="color:var(--bad)">${high}</div><div class="n">not discussed, with a warning sign</div>`)}
+  </div>${renDrill && drills[renDrill] ? renDrillHtml(drills[renDrill], label, pipeName) : ""}`;
   // Weeks by renewal date, Monday first, oldest to newest.
   const wk = d => { const x = new Date(d + "T12:00:00"); x.setDate(x.getDate() - ((x.getDay() + 6) % 7)); return x.toISOString().slice(0, 10); };
   const weeks = [...new Set(past.map(r => wk(r.renewal)))].sort();
@@ -4470,6 +4511,13 @@ async function paintRenewals() {
   }
   if (!RENEWALS_DOC) { v.innerHTML = '<div class="empty">No renewal report yet. It is built every night.</div>'; return; }
   v.innerHTML = renewalsPanel(RENEWALS_DOC);
+  v.querySelectorAll("[data-drill]").forEach(el => {
+    const go = () => { renDrill = renDrill === el.dataset.drill ? "" : el.dataset.drill; paintRenewals(); };
+    el.onclick = go;
+    el.onkeydown = e => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); go(); } };
+  });
+  const close = v.querySelector("[data-drill-close]");
+  if (close) close.onclick = e => { e.preventDefault(); renDrill = ""; paintRenewals(); };
   [["renRisk", "risk"], ["renPipe", "pipe"], ["renWorked", "worked"], ["renWho", "who"]].forEach(([id, k]) => {
     const el = document.getElementById(id);
     if (el) el.onchange = () => { renFilter[k] = el.value; paintRenewals(); };
