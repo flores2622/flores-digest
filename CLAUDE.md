@@ -165,6 +165,12 @@ before.
     ~6:10  daily.py starts         transcription already done
     ~7:00  both emails sent
 
+**`SEND_HOLD` stops the email only** (Frank, 2026-09-24: "i still want the
+board to build"). A held night still publishes the Sales, Service and
+Commercial boards and saves the day to R2; it skips the sales-log sync and the
+AgencyZoom missed-call tasks along with the email. `--no-send` (hand rebuilds)
+still stops before anything is published.
+
 A stall still means the log has not advanced in ~5 minutes, or repeated "rate
 limited" lines. Judge it on progress, not on elapsed time.
 
@@ -387,7 +393,11 @@ Worker's `/api/commercial` answers only the emails in `COMMERCIAL_VIEWERS`
 (wrangler.jsonc); the left-bar entry stays hidden for everyone else. Most
 commercial policy chains stop being updated in AgencyZoom, so a renewal SR
 closed on anything but the six resolutions usually reads "Policy record not
-current" -- another reason the six matter here.
+current" -- another reason the six matter here. **Its renewal outcomes follow
+Athena's rules exactly** (Frank's resolutions only) and are re-read every night
+like the Service Center's (`commercial_digest.refresh_past_renewals`, every
+day on the board, back 365 days; an SR older than the nightly pull's year is
+reached for once, e.g. 6836965 created 2025-08-03).
 
 ## Coach AI
 
