@@ -47,6 +47,9 @@ CHOICES = {
     "client_cancelled": "Client Cancelled -- the client cancelled mid term, went to "
                         "the carrier directly to cancel, or never gave us the chance "
                         "to review or retain the policy.",
+    "cancelled_before_sr": "The policy was ALREADY cancelled before this renewal came "
+                           "up -- cancelled last year, home sold, moved to another agent -- "
+                           "and the SR is only being closed out.",
     "unable_to_contact": "Unable to Contact/No Show -- the rep tried to reach the "
                          "customer (voicemail, no answer, bad number) or they did "
                          "not show, and it renewed as is.",
@@ -66,8 +69,11 @@ have a cross-sell lead" -- is not a change; judge the rest of the note.
 - "Review if needed" with no conversation is no_action_review. A cross-sell \
 or FFR call that also reviewed the renewal and the customer kept it is \
 renewed_as_is (or renewed_endorsed if a change was made).
-- A policy already cancelled long ago, a duplicate SR, a wrong policy, or a \
-payment note with nothing about the renewal is unclear.
+- A policy that had already cancelled before this renewal came up ("cancelled \
+in 2025", "sold home", "transferred to another agent") is cancelled_before_sr, \
+not unclear.
+- A duplicate SR, a wrong policy, or a payment note with nothing about the \
+renewal is unclear.
 - When in doubt, answer unclear.
 
 Return ONLY a JSON object mapping each id to one choice, e.g. \

@@ -350,6 +350,10 @@ def sr_outcome(sr, chains, hh, pn2hh, as_of, note_key=None):
     source = "resolution"
     if not key:
         import renewal_notes
+        if note_key == "cancelled_before_sr":
+            # the note itself says the policy was gone before this renewal
+            # ("Policy cancelled in 2025", SR 12498281, 09-02)
+            return "cancelled_before_sr", "notes", pn, premium, line
         if note_key in RESOLUTION_KEYS:
             key, source = note_key, "notes"
         elif renewal_notes.clean(sr.get("resolutionDesc")) and note_key is None:
