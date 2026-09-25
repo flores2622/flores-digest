@@ -1231,7 +1231,7 @@ function winsLossesHtml(d, who) {
    <p class="sd">Two patterns that only show up across calls, not within one.</p>
    <div class="hero">
     <div class="hl">The opening asks permission</div>
-    <p><b>${s.asked_open} of ${s.of}</b> coached calls opened by asking for the opportunity —
+    <p><b>${s.asked_open} of ${s.of_first ?? s.of}</b> first-conversation calls opened by asking for the opportunity —
     the <b>${s.assumed_open}</b> that opened assumptively, with the work already done, are where the
     committed next steps came from.</p>
    </div>
@@ -1935,7 +1935,7 @@ function mergeDayDocs(docs) {
   const taskBuckets = {};
   const taskRows = {};
   const objcats = {};
-  const scan = { of: 0, asked_open: 0, assumed_open: 0, priced: 0, closed: 0, premium: 0, xdate: 0, bundle: 0, timeset: 0 };
+  const scan = { of: 0, of_first: 0, asked_open: 0, assumed_open: 0, priced: 0, closed: 0, premium: 0, xdate: 0, bundle: 0, timeset: 0 };
   let hasScan = false;
   const speedPer = {};   // name -> pooled raw per-lead response seconds across every day
   let speedNote = "";
@@ -1996,7 +1996,9 @@ function mergeDayDocs(docs) {
 
     if (doc.scan) {
       hasScan = true;
-      for (const k of Object.keys(scan)) scan[k] += doc.scan[k] || 0;
+      // A day built before follow-ups had their own scorecard has no of_first;
+      // every card on it was scored as a first conversation, so it is `of`.
+      for (const k of Object.keys(scan)) scan[k] += (k === "of_first" ? (doc.scan.of_first ?? doc.scan.of) : doc.scan[k]) || 0;
     }
 
     const s = doc.speed_to_dial;
@@ -2176,6 +2178,30 @@ function leadFitHtml(c) {
 /* Did the call do what the lead's pipeline stage called for (Apollo's
    "stagefit", Frank, 2026-09-24)? Shows where the lead was when the call
    started and where the producer left it. Nothing on a card read before. */
+/* Follow-ups and call backs (Frank, 2026-09-25): Apollo's `flow` (first /
+   follow-up / call back / call in) as a chip in the card header, and on a
+   follow-up or call back how well it ran the structure -- reconnect with an
+   up-front assumptive close, handle what stalled it, assume the sale again.
+   Nothing on a card read before Apollo was asked. */
+const FLOW_LABELS = { first: "first call", "follow-up": "follow-up", "call back": "call back", "call in": "call in" };
+function flowChipHtml(c) {
+  const f = c.flow;
+  if (!f || f[0] === "first") return "";
+  return `<span class="ctype" title="${(f[1] || "").replace(/"/g, "&quot;")}">${FLOW_LABELS[f[0]] || f[0]}</span>`;
+}
+// The follow-up scorecard (coaching_cards.FU_DIMS, Frank, 2026-09-25): the
+// agreed steps, in order, replacing DIMS on a follow-up or call back card.
+const FU_DIMS = ["Reconnect & assumed the sale up front", "Checked where they are",
+  "Handled what stalled it, assuming the sale", "Re-presented only what's needed",
+  "Assumed the sale at the end", "Dated next step"];
+/* A follow-up assumes the SALE three times -- start, objections, end --
+   and never the quote, which is already done (Frank, 2026-09-25). */
+function assumeRowsHtml(a) {
+  const bdg = v => v ? `<span class="chip c-g">yes</span>` : `<span class="chip c-r">no</span>`;
+  const row = (label, v) => !v ? "" : `<tr><td class="k">${label}</td><td class="v">${
+    v[0] == null ? `<span class="chip">n/a</span>` : bdg(v[0])}</td><td>${v[1] || ""}</td></tr>`;
+  return row("Assumed the sale up front", a.start) + row("…while handling objections", a.objections) + row("…at the end", a.end);
+}
 function stageFitHtml(c) {
   const f = c.stagefit;
   if (!f) return "";
@@ -2240,15 +2266,15 @@ function card(c) {
        : (c.lead || "")}</div>
        <div class="cmeta">${c.who || ""} · ${fmtShortDate(c.day)}${c.time ? ` ${c.time}` : ""} · ${durCell} · ${c.lang || ""} · ${c.src || ""}${c.leadsrc ? ` · ${c.leadsrc}` : ""}</div>
        ${callRowHtml}</div>
-       ${!multiCall ? `<span class="cat ${c.catc ? `cat-${c.catc}` : ""}">${c.cat || ""}</span>` : ""}${c.calltype && c.calltype[0] !== "sales" ? `<span class="ctype ctype-${c.calltype[0]}" title="${c.calltype[1] || ""}">${c.calltype[0]}</span>` : ""}<span class="ctog" aria-hidden="true">▸</span></div>
+       ${!multiCall ? `<span class="cat ${c.catc ? `cat-${c.catc}` : ""}">${c.cat || ""}</span>` : ""}${c.calltype && c.calltype[0] !== "sales" ? `<span class="ctype ctype-${c.calltype[0]}" title="${c.calltype[1] || ""}">${c.calltype[0]}</span>` : ""}${flowChipHtml(c)}<span class="ctog" aria-hidden="true">▸</span></div>
      <div class="sum">${c.summary || ""}</div>
      ${(c.flags && c.flags.length) || (c.exit && c.exit[0]) ? `<div style="margin-top:8px">${
        c.exit && c.exit[0] ? `<span class="flag red" title="${c.exit[1] || ""}">Producer ended the call</span>` : ""}${
        (c.flags || []).map(f => `<span class="flag">${f}</span>`).join("")}</div>` : ""}
    </summary>
-   ${c.askq ? `<div class="blk"><div class="bl">The Assumption</div><table class="askt">
-     <tr><td class="k">Assumed the quote</td><td class="v">${bdg(c.askq[0])}</td><td>${c.askq[1] || ""}</td></tr>
-     <tr><td class="k">Assumed the sale</td><td class="v">${bdg((c.asks || [])[0])}</td><td>${(c.asks || [])[1] || ""}</td></tr>${
+   ${c.askq || c.assume ? `<div class="blk"><div class="bl">The Assumption</div><table class="askt">
+     ${c.assume ? assumeRowsHtml(c.assume) : `<tr><td class="k">Assumed the quote</td><td class="v">${bdg(c.askq[0])}</td><td>${c.askq[1] || ""}</td></tr>
+     <tr><td class="k">Assumed the sale</td><td class="v">${bdg((c.asks || [])[0])}</td><td>${(c.asks || [])[1] || ""}</td></tr>`}${
      // Inverted on purpose: "yes" here is the red flag (Frank, 2026-09-23).
      c.exit ? `<tr><td class="k">Ended the call themselves</td><td class="v">${c.exit[0]
        ? `<span class="chip c-r">yes</span>` : `<span class="chip c-g">no</span>`}</td><td>${c.exit[1] || ""}</td></tr>` : ""}</table>
@@ -2258,7 +2284,9 @@ function card(c) {
    <div class="blk"><div class="bl">Strengths and gaps</div><div class="two">
      <div><div class="colh g">What worked</div><ul class="gl g">${(c.good || []).map(([t, dd]) => `<li><b>${t}</b>${dd}</li>`).join("") || `<li style="color:var(--text-muted)">—</li>`}</ul></div>
      <div><div class="colh b">What cost the sale</div><ul class="gl b">${(c.bad || []).map(([t, dd]) => `<li><b>${t}</b>${dd}</li>`).join("") || `<li style="color:var(--text-muted);padding-left:0">Nothing to flag on this call.</li>`}</ul></div>
-   </div>${leadFitHtml(c)}${stageFitHtml(c)}${scorecard(c.score)}${scorecard(c.techniques, TECH_DIMS, "Sales techniques")}</div>
+   </div>${leadFitHtml(c)}${stageFitHtml(c)}${c.fuscore && Object.keys(c.fuscore).length
+     ? scorecard(c.fuscore, FU_DIMS, (c.flow && c.flow[0] === "call back" ? "Call back" : "Follow-up") + " scorecard")
+     : scorecard(c.score)}${scorecard(c.techniques, TECH_DIMS, "Sales techniques")}</div>
    ${spine}
    ${recordingBlk(c)}</details>`;
 }

@@ -96,8 +96,18 @@ DIMS = ["Opening & identification", "Discovery", "Current premium captured",
 TECH_DIMS = ["Elevator pitch", "Feel-Felt-Found", "Risk reversal",
              "Social proof", "Trial close", "Takeaway / urgency"]
 
+# A follow-up or call back has its own scorecard (Frank, 2026-09-25: "follow
+# ups should have their own score card ... based off of the steps we just
+# decided on") -- the steps in METHODOLOGY.md's "Follow-ups and call backs",
+# in order, replacing DIMS on those cards. The quote is already done, so
+# nothing here asks whether it was assumed; the SALE is assumed three times.
+FU_DIMS = ["Reconnect & assumed the sale up front", "Checked where they are",
+           "Handled what stalled it, assuming the sale", "Re-presented only what's needed",
+           "Assumed the sale at the end", "Dated next step"]
+FU_FLOWS = ("follow-up", "call back")
+
 def _ask_card(model, transcript, notes, seconds, producer, lead, call_count=1,
-              lead_source="", stage_block=""):
+              lead_source="", stage_block="", history_block=""):
     # The lead source and the agency's approach for it (Frank, 2026-09-24:
     # coaching reads judged by lead source). Facts from lead_sources.py;
     # METHODOLOGY.md's "Lead source" section says how to use them.
@@ -114,6 +124,7 @@ def _ask_card(model, transcript, notes, seconds, producer, lead, call_count=1,
             f"{length_line}\n\n"
             f"{source_block}\n\n"
             f"{stage_block or 'Pipeline stage: unknown'}\n\n"
+            f"{history_block or 'Lead history (before today): unavailable'}\n\n"
             f"Producer's own notes (may be empty):\n{notes or '(none)'}\n\n"
             f"Machine transcript:\n{transcript}"}]
     base = {"model": model, "system": METHODOLOGY, "messages": msg}
@@ -289,6 +300,36 @@ def _bool_pair(raw):
     return [bool(raw[0]), str(raw[1]).strip() if len(raw) > 1 else ""]
 
 
+FLOW_VALUES = ("first", "follow-up", "call back", "call in")
+
+
+def _flow(raw):
+    """Apollo's [kind, reason] for how this conversation sits in the sale;
+    None when missing or malformed, so the card simply leaves it off."""
+    if isinstance(raw, (list, tuple)) and raw and str(raw[0]).lower() in FLOW_VALUES:
+        return [str(raw[0]).lower(), str(raw[1]).strip() if len(raw) > 1 else ""]
+    if isinstance(raw, str):
+        m = re.match(r"\s*(first|follow-up|call back|call in)\b[\s,.:;\-\u2014\u2013]*(.*)", raw, re.I | re.S)
+        if m:
+            return [m.group(1).lower(), m.group(2).strip()]
+    return None
+
+
+def _assume(raw):
+    """{"start", "objections", "end"} -> [bool|None, reason]. "objections" is
+    None when no objection was raised (nothing to assume through)."""
+    out = {}
+    if not isinstance(raw, dict):
+        return None
+    for k in ("start", "objections", "end"):
+        v = raw.get(k)
+        if isinstance(v, (list, tuple)) and v and v[0] is None:
+            out[k] = [None, str(v[1]).strip() if len(v) > 1 else ""]
+        elif v is not None:
+            out[k] = _bool_pair(v)
+    return out or None
+
+
 CALLTYPE_VALUES = ("sales", "service", "mixed")
 
 
@@ -343,6 +384,12 @@ SCORE_ALIASES = {
     "Social proof": ("social",),
     "Trial close": ("trial",),
     "Takeaway / urgency": ("urgency", "takeaway"),
+    "Reconnect & assumed the sale up front": ("reconnect", "reconnectassumed", "upfront", "assumedupfront"),
+    "Checked where they are": ("checked", "checkwheretheyare", "wheretheyare"),
+    "Handled what stalled it, assuming the sale": ("stalled", "handledstalled", "handledwhatstalledit"),
+    "Re-presented only what's needed": ("represented", "represent", "representedonlywhatsneeded"),
+    "Assumed the sale at the end": ("assumedend", "assumedtheend", "end"),
+    "Dated next step": ("nextstep", "datednextstep"),
 }
 
 
@@ -490,6 +537,17 @@ def _call_breakdown(producer, group, raw_dials):
     return out
 
 
+def _history(producer, group, day, ctx, log=print):
+    """lead_history.block, never raising: a card is still worth reading
+    without its history."""
+    try:
+        import lead_history
+        return lead_history.block(group, day, ctx)
+    except Exception as e:
+        log(f"    lead history: skipped ({type(e).__name__}: {e})")
+        return ""
+
+
 _LEADS_BY_ID = None
 
 
@@ -543,6 +601,18 @@ def _finish_card(d, producer, group, raw_dials, day, transcript, recording_ids):
     # Same None-when-never-asked rule as leadfit.
     stagefit = _clean_score({"x": d.get("stagefit")}, ["x"]).get("x") if "stagefit" in d else None
     stage_before, stage_after = pipelines.call_stage(*_group_stage(group))
+    # First conversation, follow-up, call back or call in, and whether a
+    # follow-up / call back ran the agency's structure (Frank, 2026-09-25).
+    # None on a card read before METHODOLOGY.md asked.
+    flow = _flow(d.get("flow")) if "flow" in d else None
+    followup = bool(flow and flow[0] in FU_FLOWS)
+    # On a follow-up or call back: the follow-up scorecard, and whether the
+    # SALE was assumed at each of the three moments (start, objections, end)
+    # in place of "assumed the quote" -- the quote is already done.
+    fuscore = _clean_score(d.get("fuscore"), FU_DIMS) if followup else None
+    assume = _assume(d.get("assume")) if followup and "assume" in d else None
+    if followup:
+        askq = None
     cat, catc = _category(group)
     lead = next((r.get("lead") for r in group if r.get("lead")), "") or ""
     # AgencyZoom lead id, straight off the same call_detail rows day_calls.
@@ -605,6 +675,9 @@ def _finish_card(d, producer, group, raw_dials, day, transcript, recording_ids):
         "stage_before": stage_before,
         "stage_after": stage_after,
         "stagefit": stagefit,
+        "flow": flow,
+        "fuscore": fuscore,
+        "assume": assume,
         "lang": str(d.get("lang") or "").strip() or "English",
         "src": "recording",
         "cat": cat, "catc": catc,
@@ -616,7 +689,9 @@ def _finish_card(d, producer, group, raw_dials, day, transcript, recording_ids):
         "objs": _clean_objs(d.get("objs"), d.get("obj")),
         "good": _clean_pairs(d.get("good")),
         "bad": _clean_pairs(d.get("bad")),
-        "score": _clean_score(d.get("score")),
+        # A follow-up is scored on fuscore alone; any nine-dimension score the
+        # model still returns would count in scan() as if it were a first call.
+        "score": {} if fuscore else _clean_score(d.get("score")),
         "techniques": _clean_score(d.get("techniques"), TECH_DIMS),
         "spine": _clean_spine(d.get("spine")),
         "flags": [str(f).strip() for f in (d.get("flags") or []) if str(f).strip()][:6],
@@ -750,6 +825,10 @@ def build(day, log=print):
 
     if todo:
         model = CS.pick_model()
+        # What came before this call (lead_history.py): loaded once, only
+        # when a card is actually being read.
+        import lead_history
+        history_ctx = lead_history.Context(day, log=log)
         log(f"  writing {len(todo)} coaching cards with {model}...")
         for i, (p, grp) in enumerate(todo, 1):
             gck = _group_ck(p, grp)
@@ -769,7 +848,8 @@ def build(day, log=print):
                              p.split()[0], lead_name,
                              call_count=len(_distinct_calls(p, grp)),
                              lead_source=src,
-                             stage_block=pipelines.prompt_block(*_group_stage(grp)))
+                             stage_block=pipelines.prompt_block(*_group_stage(grp)),
+                             history_block=_history(p, grp, day, history_ctx, log))
                 cache[gck] = d
             except Exception as e:
                 log(f"    {lead_name}: coaching read failed ({type(e).__name__}) -- no card")
@@ -812,6 +892,9 @@ def scan(cards):
         return sum(1 for c in cards if (c.get("score") or {}).get(dim, ["", ""])[0] == "s")
     return {
         "of": len(cards),
+        # "Assumed the quote" only exists on a first conversation; a
+        # follow-up's quote is already done (Frank, 2026-09-25).
+        "of_first": sum(1 for c in cards if c.get("askq")),
         "asked_open": sum(1 for c in cards if c.get("askq") and c["askq"][0] is False),
         "assumed_open": sum(1 for c in cards if c.get("askq") and c["askq"][0] is True),
         # A quote went out ON THIS CALL -- sold, or quoted today whether
@@ -824,7 +907,8 @@ def scan(cards):
         "premium": strong("Current premium captured"),
         "xdate": strong("Renewal / X-date captured"),
         "bundle": strong("Bundle / cross-sell raised"),
-        "timeset": strong("Next step specificity"),
+        "timeset": strong("Next step specificity") + sum(
+            1 for c in cards if (c.get("fuscore") or {}).get("Dated next step", ["", ""])[0] == "s"),
     }
 
 
