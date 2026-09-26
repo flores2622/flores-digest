@@ -64,12 +64,22 @@ Everything caches under `data/`, so a re-run resumes rather than restarting.
   (Frank, 2026-09-25). Every read gets `lead_history.block()`: today's call
   direction, dials to the number in the last 30 days, the quotes on file,
   earlier coaching cards on the lead (R2 days/, 30 days) and its notes
-  before today. Apollo decides `flow` (first / follow-up / call back / call
-  in -- a call-in about a quote already sent is a CALL BACK) and scores
-  `followfit` against Frank's structure: reconnect WITH AN UP-FRONT
-  ASSUMPTIVE CLOSE, check where they are, handle what stalled it, re-present
-  only what is needed, assume the sale again, a dated next step. Discovery,
-  premium and renewal date already in the history are "n", not "m".
+  before today. **`flow` is what the call was FOR, not who dialled** ("a
+  call back doesnt necessarily have to be a follow up"): first / finish
+  quote / follow-up, from the stage (New etc. / Contacted, In Progress or
+  Ready to Present / Quotes Presented, Quoted, 1-1 QNC), then the history.
+  Who dialled is the card's own `direction` (dialled / call back / call in,
+  `lead_history.direction_key`). A follow-up gets the six-step `fuscore`
+  (reconnect WITH AN UP-FRONT ASSUMPTIVE CLOSE ... dated next step) and
+  `assume` (the sale at the start, through objections, at the end) instead
+  of the nine dimensions and "assumed the quote"; first and finish-quote
+  calls keep the nine, with what the history already captured as "n".
+  **A call the producer ANSWERED scores `greeting`**: on their direct line,
+  the caller's name when they knew who it was, "This is Mike, how can I
+  help?" when they didn't, never the front desk's "thank you for calling
+  Farmers". Apollo quotes the call's first sentence and who said it; when
+  the caller spoke first the pick-up wasn't recorded and the code makes it
+  "n" (`coaching_cards._greeting`) -- the model guessed otherwise.
 - **Role Play never uses a center of influence, cold / misc or existing
   client, new purchase lead source** (Frank, 2026-09-24), nor a personal
   network, one-off, commercial, BOB or Rewrite source

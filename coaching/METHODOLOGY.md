@@ -386,20 +386,33 @@ such). Read it before the transcript. It is how you tell a first
 conversation from a follow-up, and it is what the producer should have been
 building on.
 
-**Decide `flow` first**, from the history, the stage and the call itself:
-- **first**: the first real conversation with this lead (no quote on file,
-  no earlier card, no earlier conversation in the notes).
-- **follow-up**: the producer calling back on work already started -- a
-  quote on file, an earlier conversation, a Contacted / Ready to Present /
-  Quotes Presented / Quoted stage.
-- **call back**: the lead returning the producer's call, message or quote
-  -- INCLUDING a lead who calls in about a quote or conversation already on
-  file. "Today's call: the lead called in" says who dialled, not the flow:
-  a call-in about a quote sent yesterday is a call back.
-- **call in**: the lead calling in on their own with NO work in progress (no
-  quote on file, no earlier conversation).
+**Decide `flow` first: what the call was FOR, not who dialled** (Frank,
+2026-09-25: "a call back doesnt necessarily have to be a follow up"). The
+Lead history's "Today's call" line says who dialled -- the producer, a lead
+returning the producer's call, or a lead calling in -- and that is recorded
+on the card separately. `flow` is one of three, read from the stage the lead
+was in when the call started (see "Pipeline and stage"), then the history,
+then the call itself:
+- **first**: the first real conversation with this lead. Stage New, a New
+  cycle, Lender Referral or 1-2 Leads Not Quoted, with no quote on file and
+  no earlier conversation in the cards or notes. A lead returning a missed
+  dial and talking to us for the first time is a FIRST conversation, not a
+  follow-up; so is a new customer calling in.
+- **finish quote**: an earlier conversation started the quote, and this
+  call is to finish it -- the lead now has the information (the VINs, the
+  declarations page, a date of birth, the other driver), so the producer
+  finishes discovery and gets the quote out, or presents a quote that was
+  ready and waiting. Stage Contacted, In Progress or Ready to Present.
+- **follow-up**: a quote was already presented and the producer is working
+  it to a close. Stage Quotes Presented, Quoted, or anything in 1-1 QNC.
 
-**The follow-up structure** (Frank's; call backs use the same, see below):
+The stage is the first signal, but a stage is often never moved: when the
+history contradicts it (a lead still in New with quotes on file and an
+earlier card where they were presented), go by the history -- that call is
+a follow-up -- and say so in `stagefit`. FSD (Pending Bind) is already sold;
+a call there is usually paperwork, which `calltype` covers.
+
+**The follow-up structure** (Frank's):
 1. **Reconnect and assume the sale up front.** Name, agency, the last
    conversation -- and an assumptive close in the same breath, so a ready
    customer can finish in minutes: "Hi Ana, it's Mike with Farmers, I'm
@@ -415,14 +428,47 @@ building on.
 5. **Assume the sale again** at the end if it did not close up front.
 6. **If it still does not close**: a dated, specific next step.
 
-**A call back** (they returned our call): thank them for calling back, then
-straight into step 1 -- why we called, with the assumptive close. They
-called us, so there is no reason to warm up.
+**Finishing the quote** is coached on the nine dimensions like a first
+conversation, but the history counts: whatever an earlier call already
+captured (current premium, renewal date, household) is "n" on this card, not
+"m", so long as it was not worth re-checking. The opening reconnects to the
+last conversation ("Hi Ana, it's Mike -- you were getting me the VINs, do you
+have them?"), not a cold introduction, and the producer assumes the quote
+and then the sale as on any first call.
 
-**A call in** with no work in progress is a first conversation that came to
-us: coach it as one (see Lead source, "Call-in / walk-in").
+**A call back or call-in on a follow-up**: they called us, so there is no
+reason to warm up -- thank them for calling back and go straight into step
+1, the reconnect with the assumptive close.
 
-**Scoring a follow-up or call back** -- its own scorecard, `fuscore`, one
+**The greeting on a call the producer ANSWERED** (Frank, 2026-09-25). A
+call back, and most call-ins that reach a producer, come in on the
+producer's own direct line -- not the front desk. The front desk's script
+("Thank you for calling Farmers Insurance, how can I help you?") is wrong
+there. When the "Today's call" line says the producer answered an inbound
+call, return `greeting`, in three parts:
+1. `first` and `by`: the FIRST sentence of the inbound call, verbatim,
+   and who said it -- "producer" or "caller". Check who is speaking: a
+   greeting that names the producer ("Hi Crystal") is the caller's, and so
+   is the caller explaining why they called. When `by` is "caller", or the
+   call opens mid-conversation ("I'm doing good"), the pick-up was not
+   recorded and nothing is scored -- never infer the greeting from how the
+   rest of the call went.
+2. `knew`: could the producer have known who was calling -- they had
+   dialled that number today, the front desk announced the transfer, or
+   they use the caller's name straight away.
+3. `score`: [letter, one-sentence detail], judged on the producer's `first`
+   sentence alone:
+   - **Did not know who it was**: "This is Mike, how can I help?" is "s" --
+     exactly as Frank put it. The agency name is NOT needed: it is their
+     own line. The front-desk script is "m"; anything else ("Hello?") "w".
+   - **Knew who it was**: greeting the caller BY NAME and getting to the
+     point is "s" ("Hi Ana, it's Mike -- thanks for calling me back, I've
+     got your quote right here"); "This is Mike, how can I help?" to
+     someone they had just dialled is "w"; the front-desk script is "m".
+On a card with two calls, this is the inbound one. Leave `greeting` out
+when the producer only dialled.
+
+**Scoring a follow-up** -- its own scorecard, `fuscore`, one
 entry per step above, replacing the nine-dimension `score` (Frank,
 2026-09-25: "follow ups should have their own score card"). The quote is
 already done, so nothing asks whether the quote was assumed; the SALE is
@@ -447,7 +493,7 @@ end. Same s/w/m/n letters as everywhere else:
 - **Dated next step**: if it still did not close, a dated, specific next
   step; if it closed, the wrap-up (payment, signing, effective date).
 
-On a follow-up or call back also return `assume`: whether the sale was
+On a follow-up also return `assume`: whether the sale was
 assumed at each of the three moments. `askq` does not apply (return
 [null, "the quote is already done"]); `asks` is true only when the sale was
 assumed at every moment that came up. `score` (the nine dimensions) is
@@ -455,8 +501,8 @@ returned as {} -- `fuscore` replaces it -- and "Bundle / cross-sell raised"
 still matters: say so in `bad` when a follow-up never raised the missing
 product.
 
-On a first conversation or a call in, return `score` as always and leave
-`fuscore` and `assume` out.
+On a first conversation or a call to finish the quote, return `score` as
+always and leave `fuscore` and `assume` out -- whoever dialled.
 
 ## Output format
 
@@ -655,17 +701,24 @@ for it"]`. Wrong: `"askq": false`. Same for "calltype", "asks" and "exit".
            when the stage is unknown, has no set meaning, is a commercial /
            AZ Sun pipeline, or the call gave no chance. When a stage move
            today contradicts the call, say so here AND add a flag.
-"flow"     [one of "first"/"follow-up"/"call back"/"call in", one-sentence
-           reason from the Lead history or the call] -- see "Follow-ups and
-           call backs". Decide it before scoring the nine dimensions.
-"fuscore"  FOLLOW-UP / CALL BACK ONLY: an object scoring EXACTLY these 6
+"flow"     [one of "first"/"finish quote"/"follow-up", one-sentence reason
+           naming the stage or the history that decided it] -- what the
+           call was FOR, not who dialled; see "Follow-ups and call backs".
+           Decide it before scoring anything else.
+"greeting" ONLY when the Lead history says the producer ANSWERED an inbound
+           call: {"first": the inbound call's first sentence verbatim, "by":
+           "producer" or "caller", "knew": true/false, "score": [letter
+           s/w/m/n, one-sentence detail]} -- see "The greeting on a
+           call the producer ANSWERED". Leave it out when the producer only
+           dialled.
+"fuscore"  FOLLOW-UP ONLY: an object scoring EXACTLY these 6
            steps, same [letter, one-sentence detail] shape as "score":
            "Reconnect & assumed the sale up front", "Checked where they are",
            "Handled what stalled it, assuming the sale", "Re-presented only
            what's needed", "Assumed the sale at the end", "Dated next step".
            Criteria in "Follow-ups and call backs". Leave it out on a first
-           conversation or a call in.
-"assume"   FOLLOW-UP / CALL BACK ONLY: {"start": [bool, quote-based reason],
+           conversation or a call to finish the quote.
+"assume"   FOLLOW-UP ONLY: {"start": [bool, quote-based reason],
            "objections": [bool or null, reason], "end": [bool, reason]} --
            was the SALE assumed at the start, while handling objections, and
            at the end. "objections" is [null, "..."] when none was raised;
@@ -702,9 +755,12 @@ for it"]`. Wrong: `"askq": false`. Same for "calltype", "asks" and "exit".
   coaching cards on the lead (30 days), its notes and quotes. It is only as
   good as the notes producers write; a quote with no note says nothing about
   what was discussed. AgencyZoom keeps no date on a quote.
-- "flow" / "fuscore" / "assume" (Frank, 2026-09-25) are new and unproven. Watch that
-  a first call on a lead with an old quote from years ago is not coached as
-  a follow-up, and that a follow-up's "n" for discovery is not over-used.
+- "flow" / "fuscore" / "assume" / "greeting" (Frank, 2026-09-25) are new and
+  unproven. Watch that a first call on a lead with an old quote from years
+  ago is not coached as a follow-up, that a call back from a lead we never
+  reached is coached as a first conversation, that "n" for discovery on a
+  follow-up or a finish-quote call is not over-used, and that `greeting`
+  reads the producer's pick-up line, not the lead's.
 - The 9 call-structure dimensions started as a fixed list ported from the
   pre-automation cards; as of 2026-09-10 each one has real per-dimension
   criteria (see "The 9-dimension call-structure framework") and is meant to

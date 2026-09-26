@@ -69,6 +69,7 @@ import call_summary as CS
 import day_calls
 import digest_config as cfg
 import panels
+import lead_history
 import pipelines
 
 ROOT = pathlib.Path(__file__).resolve().parent
@@ -96,15 +97,18 @@ DIMS = ["Opening & identification", "Discovery", "Current premium captured",
 TECH_DIMS = ["Elevator pitch", "Feel-Felt-Found", "Risk reversal",
              "Social proof", "Trial close", "Takeaway / urgency"]
 
-# A follow-up or call back has its own scorecard (Frank, 2026-09-25: "follow
-# ups should have their own score card ... based off of the steps we just
-# decided on") -- the steps in METHODOLOGY.md's "Follow-ups and call backs",
-# in order, replacing DIMS on those cards. The quote is already done, so
-# nothing here asks whether it was assumed; the SALE is assumed three times.
+# A follow-up has its own scorecard (Frank, 2026-09-25: "follow ups should
+# have their own score card ... based off of the steps we just decided on")
+# -- the steps in METHODOLOGY.md's "Follow-ups and call backs", in order,
+# replacing DIMS on those cards. The quote is already done, so nothing here
+# asks whether it was assumed; the SALE is assumed three times. A call back
+# is scored on this only when it IS a follow-up: "a call back doesnt
+# necessarily have to be a follow up" (Frank, 2026-09-25) -- `flow` is what
+# the call was for, and who dialled is `direction`.
 FU_DIMS = ["Reconnect & assumed the sale up front", "Checked where they are",
            "Handled what stalled it, assuming the sale", "Re-presented only what's needed",
            "Assumed the sale at the end", "Dated next step"]
-FU_FLOWS = ("follow-up", "call back")
+FU_FLOWS = ("follow-up",)
 
 def _ask_card(model, transcript, notes, seconds, producer, lead, call_count=1,
               lead_source="", stage_block="", history_block=""):
@@ -300,19 +304,30 @@ def _bool_pair(raw):
     return [bool(raw[0]), str(raw[1]).strip() if len(raw) > 1 else ""]
 
 
-FLOW_VALUES = ("first", "follow-up", "call back", "call in")
+# What the call was FOR, whoever dialled (Frank, 2026-09-25): a first
+# conversation, a call to finish the quote now that the info is in, or a
+# follow-up on a quote already presented.
+FLOW_VALUES = ("first", "finish quote", "follow-up")
+# Read before the call's purpose was split from who dialled: a "call back"
+# was then always coached as a follow-up, a "call in" as a first call.
+_OLD_FLOWS = {"call back": "follow-up", "call in": "first"}
 
 
 def _flow(raw):
-    """Apollo's [kind, reason] for how this conversation sits in the sale;
-    None when missing or malformed, so the card simply leaves it off."""
-    if isinstance(raw, (list, tuple)) and raw and str(raw[0]).lower() in FLOW_VALUES:
-        return [str(raw[0]).lower(), str(raw[1]).strip() if len(raw) > 1 else ""]
-    if isinstance(raw, str):
-        m = re.match(r"\s*(first|follow-up|call back|call in)\b[\s,.:;\-\u2014\u2013]*(.*)", raw, re.I | re.S)
+    """Apollo's [kind, reason] for what this conversation was for in the
+    sale; None when missing or malformed, so the card simply leaves it off."""
+    kind, why = None, ""
+    if isinstance(raw, (list, tuple)) and raw:
+        kind, why = str(raw[0]).strip().lower(), str(raw[1]).strip() if len(raw) > 1 else ""
+    elif isinstance(raw, str):
+        m = re.match(r"\s*(first|finish(?:ing)? (?:the )?quote|follow-up|call back|call in)\b[\s,.:;\-\u2014\u2013]*(.*)",
+                     raw, re.I | re.S)
         if m:
-            return [m.group(1).lower(), m.group(2).strip()]
-    return None
+            kind, why = m.group(1).lower(), m.group(2).strip()
+    if kind and kind.startswith("finish"):
+        kind = "finish quote"
+    kind = _OLD_FLOWS.get(kind, kind)
+    return [kind, why] if kind in FLOW_VALUES else None
 
 
 def _assume(raw):
@@ -328,6 +343,27 @@ def _assume(raw):
         elif v is not None:
             out[k] = _bool_pair(v)
     return out or None
+
+
+def _greeting(raw):
+    """[letter, detail] for the pick-up line on an answered call. Apollo
+    quotes the call's first sentence and says who said it; when that is the
+    caller, the pick-up was not recorded and the greeting is "n" whatever
+    letter came back -- on the first reads the model scored a caller's "Hi
+    Crystal", and a call opening with the caller's own words, as the
+    producer's greeting."""
+    if isinstance(raw, dict):
+        first = str(raw.get("first") or raw.get("line") or "").strip()
+        by = str(raw.get("by") or "producer").strip().lower()
+        sc = _clean_score({"x": raw.get("score")}, ["x"]).get("x")
+        if not first or by != "producer":
+            return ["n", "The pick-up wasn't recorded: the call opens with the caller."]
+        if not sc:
+            return None
+        if sc[0] == "n":
+            return sc
+        return [sc[0], f"\u201c{first}\u201d \u2014 {sc[1]}" if sc[1] else f"\u201c{first}\u201d"]
+    return _clean_score({"x": raw}, ["x"]).get("x")
 
 
 CALLTYPE_VALUES = ("sales", "service", "mixed")
@@ -541,7 +577,6 @@ def _history(producer, group, day, ctx, log=print):
     """lead_history.block, never raising: a card is still worth reading
     without its history."""
     try:
-        import lead_history
         return lead_history.block(group, day, ctx)
     except Exception as e:
         log(f"    lead history: skipped ({type(e).__name__}: {e})")
@@ -601,12 +636,16 @@ def _finish_card(d, producer, group, raw_dials, day, transcript, recording_ids):
     # Same None-when-never-asked rule as leadfit.
     stagefit = _clean_score({"x": d.get("stagefit")}, ["x"]).get("x") if "stagefit" in d else None
     stage_before, stage_after = pipelines.call_stage(*_group_stage(group))
-    # First conversation, follow-up, call back or call in, and whether a
-    # follow-up / call back ran the agency's structure (Frank, 2026-09-25).
-    # None on a card read before METHODOLOGY.md asked.
+    # What the call was for -- first conversation, finishing the quote, or a
+    # follow-up -- decided from the stage and history, not from who dialled
+    # (Frank, 2026-09-25). None on a card read before METHODOLOGY.md asked.
     flow = _flow(d.get("flow")) if "flow" in d else None
     followup = bool(flow and flow[0] in FU_FLOWS)
-    # On a follow-up or call back: the follow-up scorecard, and whether the
+    direction = lead_history.direction_key(group)
+    # A call the producer answered: a direct, by-name greeting, not the
+    # front desk's "thanks for calling Farmers" (Frank, 2026-09-25).
+    greeting = _greeting(d.get("greeting")) if lead_history.answered(group) and "greeting" in d else None
+    # On a follow-up: the follow-up scorecard, and whether the
     # SALE was assumed at each of the three moments (start, objections, end)
     # in place of "assumed the quote" -- the quote is already done.
     fuscore = _clean_score(d.get("fuscore"), FU_DIMS) if followup else None
@@ -676,6 +715,8 @@ def _finish_card(d, producer, group, raw_dials, day, transcript, recording_ids):
         "stage_after": stage_after,
         "stagefit": stagefit,
         "flow": flow,
+        "direction": direction,
+        "greeting": greeting,
         "fuscore": fuscore,
         "assume": assume,
         "lang": str(d.get("lang") or "").strip() or "English",
@@ -827,7 +868,6 @@ def build(day, log=print):
         model = CS.pick_model()
         # What came before this call (lead_history.py): loaded once, only
         # when a card is actually being read.
-        import lead_history
         history_ctx = lead_history.Context(day, log=log)
         log(f"  writing {len(todo)} coaching cards with {model}...")
         for i, (p, grp) in enumerate(todo, 1):
@@ -909,6 +949,10 @@ def scan(cards):
         "bundle": strong("Bundle / cross-sell raised"),
         "timeset": strong("Next step specificity") + sum(
             1 for c in cards if (c.get("fuscore") or {}).get("Dated next step", ["", ""])[0] == "s"),
+        # Calls the producer answered, and how many opened direct and by name
+        # (Frank, 2026-09-25).
+        "greet_of": sum(1 for c in cards if c.get("greeting") and c["greeting"][0] != "n"),
+        "greet_ok": sum(1 for c in cards if (c.get("greeting") or ["", ""])[0] == "s"),
     }
 
 
