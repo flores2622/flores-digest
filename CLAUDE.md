@@ -502,6 +502,11 @@ Crystal (hybrid); credit always goes to whoever COMPLETED the SR or task.
   shows them: completed in the last 28 days per person and pipeline, created
   to completed, and the open ones. The documents still hold every row; the
   split is made on the board, so every published day splits the same way.
+  **Renewal tasks go with them** (Frank, 2026-09-27: "I see renewal tasks in
+  the list"): a task whose title says renewal ("♾️Personal Renewal 30 Days",
+  its shot clock reminder, "Renewal we have renewal info") leaves Service
+  Tasks Done and is counted on the Renewals tab; the counts are rebuilt from
+  `task_rows`, which reproduce `task_figures` exactly (09-01..09-25).
   **Cancellations to check** (the "not dated" flag) moved to the Renewals
   tab too, from `renewal_report`'s `sr.flag`.
 - **The Renewals tab is its own report** (Frank, 2026-09-25: "service cant be
