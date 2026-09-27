@@ -502,6 +502,15 @@ tr.tot td { font-weight: 700; background: var(--surface); }
 tbody tr:hover { background: color-mix(in oklab, var(--bar) 7%, transparent); }
 .scroll { overflow-x: auto; border: 1px solid var(--border); border-radius: 8px; }
 .scroll table { min-width: 640px; }
+.msgt td.said, .msgt th.said { min-width: 220px; white-space: normal; text-align: left; color: var(--text-secondary); }
+.msgt .said-m { display: none; }
+@media (max-width: 600px) {
+  .scroll table.msgt { min-width: 0; }
+  .msgt td.said, .msgt th.said { display: none; }
+  .msgt .said-m { display: block; margin-top: 4px; font-size: 12px; line-height: 1.5; color: var(--text-secondary); }
+}
+.msgd > summary { cursor: pointer; font-size: 12.5px; color: var(--text-secondary); margin-bottom: 8px; }
+td.num.msgbad { color: var(--bad); font-weight: 600; }
 /* Inside a .digestgrid column (526px, half the main column's width) that
    640px floor is exactly what forces a scrollbar on a table that would
    otherwise fit -- Frank, 2026-09-12: "i have to scroll on the task
@@ -830,7 +839,7 @@ let view = "digest";
 // page's own pill-style .subtabs for anything inside it. A Center with one
 // page shows just that one tab.
 const CENTERS = {
-  salescenter: [["digest", "Digest"], ["sales", "Sales"]],
+  salescenter: [["digest", "Digest"], ["sales", "Sales"], ["messages", "Texts & Emails"]],
   coaching: [["coaching", "Coaching"]],
   learning: [["roleplay", "Role Play"], ["training", "Training"]],
   service: [["service", "Service Digest"], ["renewals", "Renewals"]],
@@ -1415,6 +1424,100 @@ function misfiledPanel(d, who) {
    <th class="num">Last activity</th></tr></thead><tbody>${rows}</tbody></table></div></div>`;
 }
 
+/* ---- Texts & Emails (messages.py, Frank, 2026-09-27) ----------------------
+   What each producer sent by text and email themselves (automations counted
+   apart, never credited), how many leads wrote back, the replies waiting on
+   an answer and how fast the answered ones were -- from the lead notes, one
+   row per reply, so a range adds its rows up and takes the median over all
+   of them. A lead's own words are outside text: always escaped. */
+const MSG_KEYS = ["texts", "emails", "auto_texts", "auto_emails", "leads", "wrote_back", "replies",
+  "answered", "unanswered", "acks", "optouts", "quotes", "quotes_opened", "bad"];
+function fmtMins(m) {
+  if (m == null) return "—";
+  if (m < 60) return `${m}m`;
+  const h = Math.floor(m / 60), r = m % 60;
+  return h < 24 ? `${h}h${r ? ` ${r}m` : ""}` : `${Math.round(h / 24)}d`;
+}
+function messagesPanel(d, who) {
+  const M = d.messages;
+  if (!M) return `<div class="sect"><h2>Texts &amp; Emails</h2>
+    <p class="sd">No text and email figures for ${d.date ? "this day" : "this range"} — they start with the 2026-09-28 run.</p></div>`;
+  const names = PRODUCER_ROSTER.filter(n => !who || n === who);
+  const per = M.producers || {};
+  const sum = k => names.reduce((a, n) => a + ((per[n] || {})[k] || 0), 0);
+  const replies = (M.replies || []).filter(r => names.includes(r.who));
+  const answered = replies.filter(r => r.minutes != null);
+  const med = xs => xs.length ? median(xs) : null;
+  const waiting = replies.filter(r => r.minutes == null && !r.ack && !r.optout);
+  const leads = sum("leads"), back = sum("wrote_back");
+  const tiles = [
+    ["Texts sent", sum("texts"), `${sum("auto_texts")} more by automation`],
+    ["Emails sent", sum("emails"), `${sum("auto_emails")} more by automation`],
+    ["Wrote back", leads ? `${Math.round(100 * back / leads)}%` : "—", `${back} of ${leads} lead${leads === 1 ? "" : "s"} messaged, same day`],
+    ["Time to answer", fmtMins(med(answered.map(r => r.minutes))), `median of ${answered.length} repl${answered.length === 1 ? "y" : "ies"} answered`],
+    ["Waiting on us", waiting.length, `repl${waiting.length === 1 ? "y" : "ies"} with no answer by end of day`],
+    ["Quotes sent", sum("quotes"), `by email or text · ${sum("quotes_opened")} opened`],
+  ].map(([k, v, n]) => `<div class="tile"><div class="k">${k}</div><div class="v">${v}</div><div class="n">${n}</div></div>`).join("");
+  const table = names.map(n => {
+    const p = per[n] || {}, a = answered.filter(r => r.who === n).map(r => r.minutes);
+    return `<tr><td><span class="who">${pbadge(DOT[n] || "#8a877f", n.split(" ")[0])}</span></td>
+      <td class="num">${p.texts || 0}</td><td class="num">${p.emails || 0}</td><td class="num">${p.leads || 0}</td>
+      <td class="num">${p.leads ? `${p.wrote_back || 0} (${Math.round(100 * (p.wrote_back || 0) / p.leads)}%)` : "—"}</td>
+      <td class="num">${p.replies || 0}</td><td class="num">${fmtMins(med(a))}</td>
+      <td class="num${p.unanswered ? " msgbad" : ""}">${p.unanswered || 0}</td>
+      <td class="num">${p.quotes || 0}${p.quotes ? ` (${p.quotes_opened || 0} opened)` : ""}</td>
+      <td class="num">${(p.auto_texts || 0) + (p.auto_emails || 0)}</td></tr>`;
+  }).join("");
+  const leadLink = r => `<a href="${AZ_URL.lead}${encodeURIComponent(r.lead_id)}" target="_blank" rel="noopener">${cesc(r.lead)}</a>`;
+  const when = r => `${d.date ? "" : fmtShortDate(r.day) + " "}${cesc(r.at)}`;
+  const saidM = r => `<div class="said-m">${cesc(r.said)}</div>`;
+  const waitRows = waiting.map(r => `<tr><td>${leadLink(r)}${saidM(r)}</td>
+    <td><span class="who">${pbadge(DOT[r.who] || "#8a877f", r.who.split(" ")[0])}</span></td>
+    <td class="num">${when(r)}</td><td>${r.channel}</td><td class="said">${cesc(r.said)}</td></tr>`).join("");
+  const ansRows = answered.slice().sort((a, b) => b.minutes - a.minutes).map(r => `<tr><td>${leadLink(r)}${saidM(r)}</td>
+    <td><span class="who">${pbadge(DOT[r.who] || "#8a877f", r.who.split(" ")[0])}</span></td>
+    <td class="num">${when(r)}</td><td class="num">${fmtMins(r.minutes)}</td>
+    <td>${r.via || ""}${r.answered_by && r.answered_by !== r.who ? ` · ${cesc(r.answered_by.split(" ")[0])}` : ""}</td>
+    <td class="said">${cesc(r.said)}</td></tr>`).join("");
+  const quotes = (M.quotes || []).filter(r => names.includes(r.who));
+  const qRows = quotes.map(r => `<tr><td>${leadLink(r)}</td>
+    <td><span class="who">${pbadge(DOT[r.who] || "#8a877f", r.who.split(" ")[0])}</span></td>
+    <td class="num">${when(r)}</td><td>${r.channel}</td><td>${cesc(r.subject || "")}</td>
+    <td>${r.opened == null ? "—" : r.opened ? `<span class="chip c-g">opened</span>` : `<span class="chip c-n">not yet</span>`}</td></tr>`).join("");
+  const bad = (M.bad_contact || []).filter(r => names.includes(r.who));
+  const bRows = bad.map(r => `<tr><td>${leadLink(r)}</td>
+    <td><span class="who">${pbadge(DOT[r.who] || "#8a877f", r.who.split(" ")[0])}</span></td>
+    <td>${r.channel}</td><td>${cesc(r.reason)}</td></tr>`).join("");
+  const opt = sum("optouts");
+  return `<div class="sect"><h2>Texts &amp; Emails</h2>
+    <p class="sd">What the producers typed and sent themselves, from the notes on each lead. Automation texts and
+    template emails are counted apart and never credited. A reply is answered by the next text, email or call
+    to that person; one that came in while the office was closed starts the clock at 8:30.${opt ? ` ${opt} lead${opt === 1 ? "" : "s"} asked to stop.` : ""}</p>
+    <div class="tiles">${tiles}</div></div>
+   ${waitRows ? `<div class="sect"><h2>Waiting on an answer</h2>
+    <p class="sd">Leads who wrote in and got no text, email or call back by the end of the day.</p>
+    <div class="scroll"><table class="msgt"><thead><tr><th>Lead</th><th>Producer</th><th class="num">When</th><th>By</th><th class="said">What they said</th></tr></thead>
+    <tbody>${waitRows}</tbody></table></div></div>` : ""}
+   <div class="sect"><h2>By producer</h2>
+    <div class="scroll"><table><thead><tr><th>Producer</th><th class="num">Texts</th><th class="num">Emails</th>
+    <th class="num">Leads</th><th class="num">Wrote back</th><th class="num">Replies</th><th class="num">Time to answer</th>
+    <th class="num">Unanswered</th><th class="num">Quotes sent</th><th class="num">Automation</th></tr></thead>
+    <tbody>${table}</tbody></table></div></div>
+   ${ansRows ? `<div class="sect"><h2>Replies answered</h2>
+    <details class="msgd"><summary>Show all ${answered.length}, slowest first</summary>
+    <div class="scroll"><table class="msgt"><thead><tr><th>Lead</th><th>Producer</th><th class="num">When</th><th class="num">Answered in</th><th>How</th><th class="said">What they said</th></tr></thead>
+    <tbody>${ansRows}</tbody></table></div></details></div>` : ""}
+   ${qRows ? `<div class="sect"><h2>Quotes sent by email or text</h2>
+    <p class="sd">A quote sent this way was not presented on a call. Email opens are AgencyZoom's own tracking, as of that
+    night's run; texts have none.</p>
+    <div class="scroll"><table class="msgt"><thead><tr><th>Lead</th><th>Producer</th><th class="num">When</th><th>By</th><th>Subject</th><th>Opened</th></tr></thead>
+    <tbody>${qRows}</tbody></table></div></div>` : ""}
+   ${bRows ? `<div class="sect"><h2>Bad contact info</h2>
+    <p class="sd">Emails that bounced and texts that failed — the number or address needs fixing on the lead.</p>
+    <div class="scroll"><table><thead><tr><th>Lead</th><th>Producer</th><th>By</th><th>Reason</th></tr></thead>
+    <tbody>${bRows}</tbody></table></div></div>` : ""}`;
+}
+
 function recontactPanel(d, who) {
   const all = ((d.recontact || {}).at_risk || []).filter(r => !who || r.producer === who);
   const rows = all.slice(0, 14).map(r => `<tr>
@@ -1951,12 +2054,24 @@ function mergeDayDocs(docs) {
   const calls = [];
   const notcoached = [];
   const days = [];
+  // Texts & Emails: counts add up, rows concatenate (medians are taken over
+  // the rows by messagesPanel, never averaged from daily ones).
+  const msgPer = {}, msgRows = { replies: [], quotes: [], bad_contact: [] };
+  let hasMsg = false;
 
   for (const doc of docs) {
     if (!doc) continue;
     days.push(doc.date);
     const t = doc.totals || {};
     for (const k of NUM) totals[k] += t[k] || 0;
+    if (doc.messages) {
+      hasMsg = true;
+      for (const [n, p] of Object.entries(doc.messages.producers || {})) {
+        const row = msgPer[n] || (msgPer[n] = {});
+        for (const k of MSG_KEYS) row[k] = (row[k] || 0) + (p[k] || 0);
+      }
+      for (const k of Object.keys(msgRows)) msgRows[k].push(...(doc.messages[k] || []));
+    }
     if (t.tasks) { taskTotals.total += t.tasks.total || 0; taskTotals.completed += t.tasks.completed || 0; }
 
     for (const p of doc.producers || []) {
@@ -2090,6 +2205,7 @@ function mergeDayDocs(docs) {
     objcats: Object.values(objcats), scan: hasScan ? scan : null,
     speed_to_dial: speedToDial, calls, tiers,
     notcoached: notcoached.join("; ") || null,
+    messages: hasMsg ? { producers: msgPer, ...msgRows } : null,
   };
 }
 
@@ -4016,6 +4132,14 @@ async function paint() {
     $("#topsub").textContent = cur ? (cur.label || cur.date) + " · " + ((cur.calls || []).length ? (cur.calls.length + " coached calls") : "stats only") + (curLive ? " · live" : "") : (err || "");
     v.innerHTML = controls + (err ? `<div class="empty">${err}</div>`
       : rangeHeaderHtml() + (cur ? digestPanel(cur, producerFilter) : '<div class="empty">Loading…</div>'));
+    wireRangeControl(); wireProducerControl();
+  } else if (view === "messages") {
+    if (rangeMode !== "day") v.innerHTML = rangeControlHtml() + producerControlHtml() + '<div class="empty">Loading…</div>';
+    const err = await ensureCurForRange();
+    const controls = rangeControlHtml() + producerControlHtml();
+    $("#topsub").textContent = cur ? (cur.label || cur.date) + " · texts and emails" : (err || "");
+    v.innerHTML = controls + (err ? `<div class="empty">${err}</div>`
+      : rangeHeaderHtml() + (cur ? messagesPanel(cur, producerFilter) : '<div class="empty">Loading…</div>'));
     wireRangeControl(); wireProducerControl();
   } else if (view === "coaching") {
     if (rangeMode !== "day") v.innerHTML = rangeControlHtml() + producerControlHtml() + '<div class="empty">Loading…</div>';
