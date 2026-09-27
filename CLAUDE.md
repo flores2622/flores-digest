@@ -281,7 +281,8 @@ and anything without the glow is the checkpoint's (Frank, 2026-09-24).
 **`messages.py` builds the Sales Center's Texts & Emails page** (Frank,
 2026-09-27), into the day document's `messages`, from the lead notes the run
 already downloads. Leads only; a customer's texts are Athena's.
-- **Who sent it:** TEXT/EMAIL notes carry `attr.outbound`; a text with
+- **Who sent it:** TEXT/EMAIL notes carry `attr.outbound` (True/False on a
+  text, 1/0 on an email -- `messages._inbound` reads both); a text with
   `attr.triggerRuleId` is an AgencyZoom automation. **Emails have no
   automation marker**: a template subject (`TEMPLATE_SUBJECTS`, plus any
   subject sent to 5+ leads that night, lead's first name stripped) is
@@ -494,6 +495,25 @@ Crystal (hybrid); credit always goes to whoever COMPLETED the SR or task.
   Open SRs cannot be -- such a day has no backlog and says so
   (`open_srs_unavailable`). A weekday with no SR completed is a holiday and
   skipped. It only ever adds a page. By hand: `python3 service_digest.py --backfill`.
+- **Texts and emails with customers are `service_messages.py`** (Frank,
+  2026-09-27: mirror the Sales Center's), the document's `messages` key and
+  the Service Center's Texts & Emails section. **Texts come from RingCentral's
+  message store** (`rc_client.texts`, every text on Debbie's, Amanda's and
+  Crystal's own lines, saved as `data/rc_texts_<day>.json` + R2 day cache),
+  **never AgencyZoom's TEXT notes**: AgencyZoom sends through those same
+  lines, so reading both counts each text twice. **Emails come from
+  AgencyZoom** notes on the customer's lead records (RingCentral has none;
+  Outlook is not seen). RingCentral marks nothing as automation, so a body
+  one person sent to 5+ numbers in 30 days (name and numbers taken out) is
+  automation, counted apart; a picture or PDF is always typed. Only numbers
+  that route to service count (`missed_call_audit.route`: customer, open SR);
+  leads are Apollo's, commercial-only households Cerberus's, and a number
+  AgencyZoom does not know is counted but never listed. Replies, answers and
+  the window follow `messages.py`. **Card, bank and social security numbers
+  are removed before anything is stored** (`messages.redact`, both sides) --
+  customers text card numbers to pay. Past days: `python3 service_messages.py
+  --backfill 2026-09-01 [end]` (adds only `messages`, backs up under
+  `backups/<today>-service-messages-backfill/`).
 - **Documents hold rows, never medians**, so the board can add any range up.
   **Every card opens the rows it counts** (Frank, 2026-09-25), so the rows
   carry what a list needs: SRs name, household (= the AgencyZoom customer

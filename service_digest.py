@@ -443,6 +443,13 @@ def build(day, log=log, refresh_households=True):
     except Exception as e:
         log(f"  call backs failed ({type(e).__name__}: {e})")
         callbacks = None
+    # Texts and emails with customers (service_messages.py, Frank 2026-09-27).
+    try:
+        import service_messages
+        messages = service_messages.build(day, commercial_only=com_only, log=log)
+    except Exception as e:
+        log(f"  texts and emails failed ({type(e).__name__}: {e})")
+        messages = None
     try:
         import service_retention as sr
         rows, unnamed = sr.renewal_srs(
@@ -467,6 +474,7 @@ def build(day, log=log, refresh_households=True):
         "pipelines": [[k, label, kind] for k, label, _, kind in PIPELINES],
         "renewals": renewals,
         "callbacks": callbacks,
+        "messages": messages,
         "utilization": util,
     }
 
