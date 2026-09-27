@@ -616,6 +616,13 @@ details.sc .scb { padding: 0 12px 12px; }
 .tlx b { display: block; }
 .tlx span { color: var(--text-secondary); }
 .cat .catx { font-weight: 500; opacity: .85; }
+/* A card's left edge is what the call was for (flowEdge). The hover strip
+   sits over the edge itself, so hovering the colour names it. */
+.cchead { position: relative; }
+.flowedge { position: absolute; left: -10px; top: 0; bottom: 0; width: 10px; cursor: help; }
+.flowleg { display: flex; flex-wrap: wrap; gap: 14px; align-items: center; font-size: 12px; color: var(--text-secondary); margin: 0 0 12px; }
+.flowleg span { display: inline-flex; align-items: center; gap: 6px; }
+.flowleg i { width: 10px; height: 16px; border-radius: 2px; display: inline-block; }
 .cat { display: inline-block; font-size: 9.5px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.03em; padding: 2px 8px; border-radius: 10px; white-space: nowrap; color: #16150f; }
 /* Same nine-way outcome as the emailed Call Detail panel's own .g1-.g9
    (report_template.html) -- copied here rather than computed, since the
@@ -2352,18 +2359,28 @@ function leadFitHtml(c) {
    first call the producer dialled shows no chip; nor does a card read
    before Apollo was asked. */
 const FLOW_LABELS = { first: "first conversation", "finish quote": "finishing the quote", "follow-up": "follow-up" };
-// The card's call-type words ([label, why]) for its one combined badge
-// (outcomeBadgeHtml): direction, then the flow. "follow-up" is dropped
-// when the outcome already says it ("Quote follow up, lost").
-function flowParts(c, catc) {
-  const f = c.flow;
-  if (!f) return [];
+// Who dialled, for the card's combined badge (outcomeBadgeHtml). What the
+// call was FOR -- first conversation / finishing the quote / follow-up --
+// is the card's coloured left edge instead (flowEdge; Frank, 2026-09-25:
+// "make the left tab color coded to those 3 stages ... I dont want it as a
+// badge").
+function flowParts(c) {
   const dir = c.direction === "call back" || c.direction === "call in" ? c.direction : "";
-  const out = [];
-  if (dir) out.push([dir, ""]);
-  const followInOutcome = /^followup_/.test(catc || "");
-  if (f[0] !== "first" && !(f[0] === "follow-up" && followInOutcome)) out.push([FLOW_LABELS[f[0]] || f[0], f[1] || ""]);
-  return out;
+  return dir ? [[dir, ""]] : [];
+}
+// Blue / orange / aqua: the board's first three categorical slots, the only
+// three that stay apart for every pair in both modes. A card read before
+// Apollo was asked for `flow` gets a plain edge. Named in the legend above
+// the cards and on hover of the card's edge, so it is never colour alone.
+const FLOW_EDGE = { first: "--s1", "finish quote": "--s2", "follow-up": "--s3" };
+function flowEdge(c) {
+  const k = (c.flow || [])[0];
+  return FLOW_EDGE[k] ? { color: `var(${FLOW_EDGE[k]})`, label: FLOW_LABELS[k], why: (c.flow || [])[1] || "" }
+    : { color: "var(--border-strong)", label: "", why: "" };
+}
+function flowLegendHtml() {
+  return `<div class="flowleg">Left edge: ${Object.entries(FLOW_EDGE).map(([k, v]) =>
+    `<span><i style="background:var(${v})"></i>${FLOW_LABELS[k]}</span>`).join("")}</div>`;
 }
 /* One badge per call (Frank, 2026-09-25: "we need to combine/consolidate
    these badges"): the outcome pill carries the call type after a dot --
@@ -2456,15 +2473,17 @@ function card(c) {
       <span class="cdur">${(c.call_times || [])[i] || ""}</span>
       ${outcomeBadgeHtml(call.cat, call.catc, [[call.kind || "", ""]])}</span>`).join("")}</div>` : "";
   const typeParts = c.calltype && c.calltype[0] !== "sales" ? [[c.calltype[0], c.calltype[1] || ""]] : [];
+  const edge = flowEdge(c);
   return `<details class="ccard">
-   <summary class="blk cchead" style="border-left:4px solid ${c.tab || "var(--border-strong)"}">
+   <summary class="blk cchead" style="border-left:10px solid ${edge.color}">
+     ${edge.label ? `<span class="flowedge" title="${escAttr(edge.label + (edge.why ? ": " + edge.why : ""))}" aria-label="${escAttr(edge.label)}"></span>` : ""}
      <div class="chead"><div><div class="cname">${c.lead_id
        ? `<a href="${AZ_URL.lead}${encodeURIComponent(c.lead_id)}" target="_blank" rel="noopener" onclick="event.stopPropagation()">${c.lead || ""}</a>`
        : (c.lead || "")}</div>
        <div class="cmeta">${c.who || ""} · ${fmtShortDate(c.day)}${c.time ? ` ${c.time}` : ""} · ${durCell} · ${c.lang || ""} · ${c.src || ""}${c.leadsrc ? ` · ${c.leadsrc}` : ""}</div>
        ${callRowHtml}</div>
-       ${!multiCall ? outcomeBadgeHtml(c.cat, c.catc, [...typeParts, ...flowParts(c, c.catc)])
-         : [...typeParts, ...flowParts(c, "")].map(([l, why]) => `<span class="ctype" title="${escAttr(why)}">${l}</span>`).join("")}<span class="ctog" aria-hidden="true">▸</span></div>
+       ${!multiCall ? outcomeBadgeHtml(c.cat, c.catc, [...typeParts, ...flowParts(c)])
+         : [...typeParts, ...flowParts(c)].map(([l, why]) => `<span class="ctype" title="${escAttr(why)}">${l}</span>`).join("")}<span class="ctog" aria-hidden="true">▸</span></div>
      <div class="sum">${c.summary || ""}</div>
      ${(c.flags && c.flags.length) || (c.exit && c.exit[0]) ? `<div style="margin-top:8px">${
        c.exit && c.exit[0] ? `<span class="flag red" title="${c.exit[1] || ""}">Producer ended the call</span>` : ""}${
@@ -2655,7 +2674,7 @@ function coachingPanel(d, who) {
     out = `<div class="empty">${objFilterCat ? `No coaching cards carrying "${objFilterCat}"${sel ? ` for ${sel}` : ""} ${scope}.`
       : sel ? `No coaching cards for ${sel} ${scope}.` : `No coaching cards ${scope}.`}</div>`;
   }
-  return nav + filterBanner + out + (d.notcoached ? `<div class="note" style="border:1px dashed var(--border-strong);border-radius:8px;padding:14px 16px">
+  return nav + filterBanner + (shown ? flowLegendHtml() : "") + out + (d.notcoached ? `<div class="note" style="border:1px dashed var(--border-strong);border-radius:8px;padding:14px 16px">
     <b>Not coached, and why.</b> ${d.notcoached}</div>` : "");
 }
 
