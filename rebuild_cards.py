@@ -111,9 +111,12 @@ def _failed_reads(day, cards, old_cards):
             if (r.get("summary") or {}).get("source") == "recording" and r.get("lead_id") is not None:
                 groups.setdefault((who, r["lead_id"]), []).append(r)
     have = {(c.get("who"), c.get("lead_id")) for c in cards}
+    # Also an old card for a call the saved rows do not know at all (09-14's
+    # rows hold 3 of its 6 carded calls): it cannot be read again, so it
+    # stays as it was.
     return [c for c in old_cards if (c.get("who"), c.get("lead_id")) not in have
-            and (c.get("who"), c.get("lead_id")) in groups
-            and cc._group_ck(c.get("who"), groups[(c.get("who"), c.get("lead_id"))]) not in cache]
+            and ((c.get("who"), c.get("lead_id")) not in groups
+                 or cc._group_ck(c.get("who"), groups[(c.get("who"), c.get("lead_id"))]) not in cache)]
 
 
 def _readable_rows(day, log):
@@ -198,11 +201,11 @@ def rebuild(day, publish=False, reuse=False, repair=False, log=print):
     # read for); one that fails again keeps its old card.
     kept_old = _failed_reads(day, cards or [], old_doc.get("calls") or []) if cards else []
     if kept_old:
-        log(f"  {day}: {len(kept_old)} read(s) failed -- retrying")
+        log(f"  {day}: {len(kept_old)} old card(s) without a new read -- retrying any failed read")
         cards = coaching_cards.build(day, log=log)
         kept_old = _failed_reads(day, cards or [], old_doc.get("calls") or [])
         if kept_old:
-            log(f"  {day}: keeping {len(kept_old)} old card(s) whose read failed twice: "
+            log(f"  {day}: keeping {len(kept_old)} old card(s) that could not be read again: "
                 + ", ".join(c.get("lead") or "?" for c in kept_old))
             cards = (cards or []) + kept_old
     if cards:
