@@ -530,8 +530,8 @@ def refresh_past_renewals(day, log=log):
                 fresh = {r["id"]: r for r in fresh}
                 for row in ren["rows"]:
                     f = fresh.get(row["id"])
-                    if f and (f["outcome"], f["source"]) != (row["outcome"], row["source"]):
-                        for k in ("outcome", "source", "policy", "premium", "line"):
+                    if f and (f["outcome"], f["source"], f.get("flag")) != (row["outcome"], row["source"], row.get("flag")):
+                        for k in ("outcome", "source", "policy", "premium", "line", "flag"):
                             row[k] = f[k]
                         n += 1
                 # A resolution added or renamed in AgencyZoom changes the names

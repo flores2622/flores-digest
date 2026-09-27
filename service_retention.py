@@ -384,6 +384,46 @@ def sr_outcome(sr, chains, hh, pn2hh, as_of, note_key=None):
     return key, source, pn, premium, line
 
 
+# A Mid-term Cancellation is only as good as the date behind it (Frank,
+# 2026-09-27, on Alan Garcia Cabrera): AgencyZoom has no cancellation date,
+# and a policy record never changed after it was loaded (modifyDate on the
+# day of createDate) dates nothing -- G015059251 was "changed" 06-26, the day
+# its 02-16 term was loaded, and it was really lost at its 08-16 renewal.
+# Such SRs keep their outcome but are FLAGGED for someone to check:
+#   "not dated"            the record dates nothing and the note gives no
+#                          date or reason (a year, a m/d date, sold, transferred)
+#   "after the SR opened"  the note's own date is on or after the day the
+#                          renewal SR opened (Paloma Juarez: cancelled 07-24,
+#                          SR opened 07-15) -- a cancellation during the renewal
+_DATED = re.compile(r"\b(19|20)\d\d\b|\b\d{1,2}/\d{2,4}\b|\bsold\b|\bsell(ing)?\b|\btransferred\b", re.I)
+
+
+def _note_dates(note):
+    out = []
+    for m, d, y in re.findall(r"\b(\d{1,2})/(\d{1,2})/(\d{2,4})\b", note or ""):
+        y = int(y) + (2000 if len(y) == 2 else 0)
+        try:
+            out.append(dt.date(y, int(m), int(d)).isoformat())
+        except ValueError:
+            pass
+    return out
+
+
+def cancel_flag(sr, chains, pn):
+    """Why a Mid-term Cancellation needs a date check, or None."""
+    note = re.sub(r"\s+", " ", re.sub(r"<[^>]+>", " ", sr.get("resolutionDesc") or "")).strip()
+    opened = _d(sr.get("createDate"))
+    if opened and any(x >= opened for x in _note_dates(note)):
+        return "after the SR opened"
+    done = _d(sr.get("completeDate"))
+    lo, hi = _shift(done, -75), _shift(done, 90)
+    near = [t for t in chains.get(pn) or [] if lo <= _d(t["expiryDate"]) <= hi
+            and _d(t["effectiveDate"]) < _d(t["expiryDate"])]
+    if near and all(_d(t.get("modifyDate")) == _d(t.get("createDate")) for t in near) and not _DATED.search(note):
+        return "not dated"
+    return None
+
+
 def read_notes(srs, log=print):
     """renewal_notes.read() for the SRs NOT closed on one of the nine."""
     import renewal_notes
@@ -432,6 +472,7 @@ def renewal_srs(day, done_tickets, policies, customers, az=None, log=print, refr
                      "by": by if by in SERVICE_TEAM else None,
                      "by_name": by, "outcome": key, "source": source,
                      "policy": pn, "premium": round(prem), "line": line,
+                     "flag": cancel_flag(t, chains, pn) if key == "cancelled_before_sr" else None,
                      "name": t.get("name"), "subject": (t.get("subject") or "").strip(),
                      "household": t.get("householdId"), "done": _d(t.get("completeDate")),
                      "note": re.sub(r"\s+", " ", re.sub(r"<[^>]+>", " ", t.get("resolutionDesc") or "")).strip()[:200] or None})

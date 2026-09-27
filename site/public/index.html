@@ -4280,8 +4280,10 @@ function renewalWorkedHtml(m) {
   const label = Object.fromEntries(m.outcomes.map(([k, l]) => [k, l]));
   const by = m.team.map(t => t.name).map(n => [n, rows.filter(r => r.by === n).length]).filter(x => x[1]);
   const counts = m.outcomes.map(([k, l]) => [l, rows.filter(r => r.outcome === k).length]).filter(x => x[1]);
+  const flagged = rows.filter(r => r.flag);
   return `<div class="sect"><h2>Renewal SRs Worked</h2>
-    <p class="sd"><a href="#" data-sdrill="renewals"><b>${rows.length}</b> renewal SR${rows.length === 1 ? "" : "s"}</a> closed in this period${by.length ? ` (${by.map(([n, c]) => `${n.split(" ")[0]} ${c}`).join(", ")})` : ""}: ${counts.map(([l, c]) => `${l} ${c}`).join(" · ")}. Whether those customers stayed is on the <a href="#" onclick="goView('renewals');return false">Renewals tab</a>.</p>${svcDrillFor(m, ["renewals"])}</div>`;
+    <p class="sd"><a href="#" data-sdrill="renewals"><b>${rows.length}</b> renewal SR${rows.length === 1 ? "" : "s"}</a> closed in this period${by.length ? ` (${by.map(([n, c]) => `${n.split(" ")[0]} ${c}`).join(", ")})` : ""}: ${counts.map(([l, c]) => `${l} ${c}`).join(" · ")}. Whether those customers stayed is on the <a href="#" onclick="goView('renewals');return false">Renewals tab</a>.</p>
+    ${flagged.length ? `<p class="sd" style="margin:6px 0 0;color:var(--warn, #b45309)"><a href="#" data-sdrill="renflag"><b>${flagged.length}</b> cancellation${flagged.length === 1 ? "" : "s"} to check</a>: counted as Mid-term Cancellation, but nothing shows the policy cancelled before the renewal SR opened, or the note dates it after. If it cancelled during the renewal, change the SR's resolution to Client Cancelled.</p>` : ""}${svcDrillFor(m, ["renewals", "renflag"])}</div>`;
 }
 function completionTimeHtml(m) {
   const rows = (m.pipelines || []).map(([k, l]) => [l, m.completed.filter(r => r.pipeline === k), k]).filter(x => x[1].length);
@@ -4385,6 +4387,9 @@ function svcDrillFor(m, keys) {
   if (kind === "srs") return svcDrillList(`SRs Completed · ${m.completed.length}`, "Every service SR completed in this period, newest first.", svcSrTable(m.completed, m, true));
   if (kind === "callbacks") return svcDrillList(`Missed Service Calls · ${m.callbacks.length}`, `${cbDone.length} returned the same day. Not returned first.`, svcCallbackTable(m.callbacks));
   if (kind === "renewals") return svcDrillList(`Renewal SRs Worked · ${m.renewals.length}`, "", svcSrTable(m.renewals, m, true));
+  if (kind === "renflag") { const rs = m.renewals.filter(r => r.flag);
+    return svcDrillList(`Cancellations to check · ${rs.length}`, "Each is counted as Mid-term Cancellation, outside the retention rate. Not dated = AgencyZoom's policy record has not changed since it was loaded, so it gives no cancellation date, and the note gives none either. After the SR opened = the note's own date is on or after the day the renewal SR opened.",
+      svcSrTable(rs.map(r => Object.assign({}, r, { note: `[${r.flag === "not dated" ? "Not dated" : "After the SR opened"}] ${r.note || ""}` })), m, true)); }
   if (kind === "out") { const rs = m.completed.filter(r => r.pipeline === a && r.outcome).filter(per(b));
     return svcDrillList(`${pipeName[a] || a} · ${who(b)} · ${rs.length}`, "", svcSrTable(rs, m, true)); }
   if (kind === "pipe") { const rs = m.completed.filter(r => r.pipeline === a);
