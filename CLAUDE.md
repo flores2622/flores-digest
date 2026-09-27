@@ -276,6 +276,23 @@ and anything without the glow is the checkpoint's (Frank, 2026-09-24).
   `AZ_USERNAME`, `AZ_PASSWORD`, `INSIGHTFUL_TOKEN`. A missing one leaves that
   part on the checkpoint and the header names it.
 
+## The Digest's cards open their rows
+
+**Every card on the Sales Center's Digest opens the list it counts** (Frank,
+2026-09-27: "like we did on the service digest"): Dials, Live contacts,
+HH/Prem. Quoted, Pol/Prem. Sold, Closing Ratio, Speed to Dial, Speed to
+Reply and the Call Outcome Breakdown's segments and legend.
+`digest_rows.py` puts the rows in the day document's `rows` (dials,
+contacts, quoted, sold, sold_leads, speed); no figure on the page comes
+from them, and the lists must agree with the cards: a call-in is a
+conversation but sits OUTSIDE the contact rate, so the Live contacts list
+says "N in the contact rate · M call-ins". daily.py keeps the premium quoted
+per lead (`quoted_premium`) and `speed_rows` -- the same first-dial rule as
+`speed_to_dial`, so the list matches the tile. Policy records carry no
+customer, so Sold lists the leads marked sold beside the policies. Past days:
+`python3 digest_rows.py --backfill 2026-09-01` from R2's saved inputs (no
+quoted premium, and no quoted list before 2026-09-24's `quoted_leads`).
+
 ## Texts and emails
 
 **`messages.py` builds the Sales Center's Texts & Emails page** (Frank,
