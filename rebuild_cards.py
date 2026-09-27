@@ -43,14 +43,21 @@ INPUTS = ("metrics", "fulltx", "audiorefs", "rc_raw", "rc_window", "coaching_car
 
 
 def _pull_inputs(cli, bucket, day, log):
+    """The day's inputs from R2 -- unless the local copy is newer (a
+    `daily.py --day <day> --no-send` just rebuilt it and stopped before its
+    last upload, 09-03 on 2026-09-27)."""
     for name in INPUTS:
         key = f"cache/{day}/{name}_{day}.json"
+        local = ROOT / f"data/{name}_{day}.json"
         try:
-            body = cli.get_object(Bucket=bucket, Key=key)["Body"].read()
+            obj = cli.get_object(Bucket=bucket, Key=key)
         except Exception:
-            log(f"  {day}: no {name} in R2")
+            log(f"  {day}: no {name} in R2" + (" -- using the local copy" if local.exists() else ""))
             continue
-        (ROOT / f"data/{name}_{day}.json").write_bytes(body)
+        if local.exists() and local.stat().st_mtime > obj["LastModified"].timestamp():
+            log(f"  {day}: local {name} is newer than R2's -- kept")
+            continue
+        local.write_bytes(obj["Body"].read())
 
 
 def _from_old_cards(day, old_cards, log):
@@ -111,9 +118,12 @@ def _failed_reads(day, cards, old_cards):
             if (r.get("summary") or {}).get("source") == "recording" and r.get("lead_id") is not None:
                 groups.setdefault((who, r["lead_id"]), []).append(r)
     have = {(c.get("who"), c.get("lead_id")) for c in cards}
+    # Also an old card for a call the saved rows do not know at all (09-14's
+    # rows hold 3 of its 6 carded calls): it cannot be read again, so it
+    # stays as it was.
     return [c for c in old_cards if (c.get("who"), c.get("lead_id")) not in have
-            and (c.get("who"), c.get("lead_id")) in groups
-            and cc._group_ck(c.get("who"), groups[(c.get("who"), c.get("lead_id"))]) not in cache]
+            and ((c.get("who"), c.get("lead_id")) not in groups
+                 or cc._group_ck(c.get("who"), groups[(c.get("who"), c.get("lead_id"))]) not in cache)]
 
 
 def _readable_rows(day, log):
@@ -187,9 +197,12 @@ def rebuild(day, publish=False, reuse=False, repair=False, log=print):
     _refresh_moves(day, log)
     _from_old_cards(day, old_doc.get("calls") or [], log)
     _readable_rows(day, log)
-    if kept is not None:
-        old_cache_path.write_bytes(kept)     # this script's own new reads
-        if repair:
+    if reuse:
+        # This script's own reads: the local copy, or -- in a fresh
+        # container -- the one a publish put back in R2 (just pulled).
+        if kept is not None:
+            old_cache_path.write_bytes(kept)
+        if repair and old_cache_path.exists():
             _drop_bad_reads(old_cache_path, log, day)
     elif old_cache_path.exists():
         old_cache_path.unlink()              # read every call again
@@ -198,11 +211,11 @@ def rebuild(day, publish=False, reuse=False, repair=False, log=print):
     # read for); one that fails again keeps its old card.
     kept_old = _failed_reads(day, cards or [], old_doc.get("calls") or []) if cards else []
     if kept_old:
-        log(f"  {day}: {len(kept_old)} read(s) failed -- retrying")
+        log(f"  {day}: {len(kept_old)} old card(s) without a new read -- retrying any failed read")
         cards = coaching_cards.build(day, log=log)
         kept_old = _failed_reads(day, cards or [], old_doc.get("calls") or [])
         if kept_old:
-            log(f"  {day}: keeping {len(kept_old)} old card(s) whose read failed twice: "
+            log(f"  {day}: keeping {len(kept_old)} old card(s) that could not be read again: "
                 + ", ".join(c.get("lead") or "?" for c in kept_old))
             cards = (cards or []) + kept_old
     if cards:

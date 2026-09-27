@@ -197,6 +197,7 @@
 .rfilters { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin: 0 0 10px; }
 .oleg { display: flex; flex-wrap: wrap; gap: 14px; margin-top: 10px; font-size: 11.5px; color: var(--text-secondary); }
 .oleg-item { display: flex; align-items: center; gap: 5px; }
+.oleg-item.rdrill-on, .oleg-item.on { text-decoration: underline; text-underline-offset: 3px; font-weight: 600; }
 /* Objection chart -- Live Contact Detail's own top-of-tab bar chart (Frank,
    2026-09-17), same bar-row shape as .orow/.otrack above but each row is a
    clickable filter, not just a display. */
@@ -343,6 +344,7 @@ h2 {
    column, same as it already does outside this grid. Collapses to one
    column under the same width other narrow layouts in this file use. */
 .digestgrid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 20px; align-items: start; }
+.digestgrid > div { min-width: 0; }   /* an open card list scrolls inside its column instead of widening it */
 @media (max-width: 720px) { .digestgrid { grid-template-columns: 1fr; } }
 
 /* Stat tiles. */
@@ -1055,8 +1057,9 @@ function digestDay(d, who) {
     ["Pol/Prem. Sold", `<span class="${tc("pol")}">${t.pol ?? 0} Pol</span><br><span class="${tc("ps")}">${money(t.ps)}</span>`, "", "", liveOn(d, "sales")],
   ];
   if (t.util != null) tiles.push(["Utilization", t.util + "%", "weighted", tc("util"), liveOn(d, "util")]);
+  const DRILL = { "Dials": "dials", "Live contacts": "contacts", "HH/Prem. Quoted": "quoted", "Pol/Prem. Sold": "sold" };
   const tilesHtml = tiles.map(([k, v, n, cls, live]) =>
-    `<div class="tile${live ? " isLive" : ""}"><div class="k">${k}</div><div class="v${cls ? " " + cls : ""}">${v}</div>${n ? `<div class="n">${n}</div>` : ""}</div>`).join("");
+    `<div${DRILL[k] ? ddk(DRILL[k], `tile${live ? " isLive" : ""}`) : ` class="tile${live ? " isLive" : ""}"`}><div class="k">${k}</div><div class="v${cls ? " " + cls : ""}">${v}</div>${n ? `<div class="n">${n}</div>` : ""}</div>`).join("");
 
   // Closing Ratio (Frank, 2026-09-22: "add a closing rate table between the
   // sold and utilization cards"; 2026-09-23: "can we do a closing ratio for
@@ -1080,12 +1083,13 @@ function digestDay(d, who) {
   // digest_config.THRESHOLDS["closing_ratio_pct"]) -- both halves share the
   // one scheme, since Frank gave one for "close ratio", not two.
   const pct = v => v == null ? "—" : v.toFixed(1) + "%";
-  const closingRatioTileHtml = `<div class="tile${liveOn(d, "closing") ? " isLive" : ""}">
+  const closingRatioTileHtml = `<div${ddk("closing", `tile${liveOn(d, "closing") ? " isLive" : ""}`)}>
    <div class="k">Closing Ratio</div>
    <div class="v"><span class="${tc("closing_hh")}">${pct(hhClosingRatio)}</span> <span class="n" style="font-weight:400">households</span><br><span class="${tc("closing_pq")}">${pct(premClosingRatio)}</span> <span class="n" style="font-weight:400">premium</span></div>
   </div>`;
 
   return `<div class="tiles tiles-6">${tilesHtml}${closingRatioTileHtml}</div>
+  ${digDrillFor(d, who, ["dials", "contacts", "quoted", "sold", "closing"])}
   ${teamLeaderboardHtml(d, who)}`;
 }
 
@@ -1325,7 +1329,7 @@ function outcomeBreakdownHtml(d, who) {
     const segs = OUTCOME_SEGMENTS.map(([label, cvar]) => {
       const n = o[label] || 0;
       if (!n) return "";
-      return `<span class="ogseg" style="width:${(n / total * 100).toFixed(2)}%;background:var(${cvar})" title="${label}: ${n}"></span>`;
+      return `<span class="ogseg" data-ddrill="outcome:${label}:${name}" role="button" tabindex="0" style="width:${(n / total * 100).toFixed(2)}%;background:var(${cvar});cursor:pointer" title="${label}: ${n} (click for the list)"></span>`;
     }).join("");
     return `<div class="orow"><div class="orow-head">
       <span class="who">${pbadge(DOT[name] || "#8a877f", name)}</span>
@@ -1333,9 +1337,9 @@ function outcomeBreakdownHtml(d, who) {
       <div style="width:${(vol / busiest * 100).toFixed(2)}%"><div class="otrack">${segs}</div></div></div>`;
   }).join("");
   const legend = OUTCOME_SEGMENTS.map(([label, cvar]) =>
-    `<span class="oleg-item"><span class="pd" style="background:var(${cvar})"></span>${label}</span>`).join("");
+    `<span class="oleg-item${digDrill === "outcome:" + label ? " on" : ""}" data-ddrill="outcome:${label}" role="button" tabindex="0" style="cursor:pointer"><span class="pd" style="background:var(${cvar})"></span>${label}</span>`).join("");
   return `<div class="sect"><h2>Call Outcome Breakdown</h2>
-   ${rows}<div class="oleg">${legend}</div></div>`;
+   ${rows}<div class="oleg">${legend}</div>${digDrillFor(d, who, ["outcome"])}</div>`;
 }
 
 // Idle = tracked minus productive, straight from the two "HH:MM" strings
@@ -1408,11 +1412,11 @@ function speedPanel(d, who) {
     <p class="sd">No internet leads were assigned today, so there is nothing to time.</p></div>`;
   const entries = who ? Object.entries(s.per || {}).filter(([n]) => n === who) : Object.entries(s.per || {});
   const cards = entries.map(([n, v]) => `
-    <div class="tile"><div class="k">${pbadge(DOT[n] || "#8a877f", n.split(" ")[0])}</div>
+    <div${ddk("speed:" + n)}><div class="k">${pbadge(DOT[n] || "#8a877f", n.split(" ")[0])}</div>
       <div class="v">${hhmm(v.median)}</div>
       <div class="n">median · ${v.n} lead${v.n > 1 ? "s" : ""}</div>
       <div class="n" style="margin-top:5px">quickest ${hhmm(v.quickest)} · longest ${hhmm(v.longest)}</div></div>`).join("")
-   + (!who && s.team ? `<div class="tile" style="border-color:var(--border-strong);background:var(--surface)">
+   + (!who && s.team ? `<div${ddk("speed:team")} style="border-color:var(--border-strong);background:var(--surface)">
       <div class="k">Team</div><div class="v">${hhmm(s.team.median)}</div>
       <div class="n">median of all ${s.team.n} leads</div>
       <div class="n" style="margin-top:5px">quickest ${hhmm(s.team.quickest)} · longest ${hhmm(s.team.longest)}</div></div>` : "");
@@ -1420,7 +1424,100 @@ function speedPanel(d, who) {
     <p class="sd">No internet leads assigned to ${who} today.</p></div>`;
   return `<div class="sect"><h2>Speed to Dial</h2>
     <p class="sd">${s.note || ""} Producers with no internet leads are not shown.</p>
-    <div class="tiles">${cards}</div></div>`;
+    <div class="tiles">${cards}</div>${digDrillFor(d, who, ["speed"])}</div>`;
+}
+
+/* ---- Digest cards open the rows they count (digest_rows.py, Frank,
+   2026-09-27: "make the cards clickable to expand to more info, like we did
+   on the service digest"). Same shape as the Service Center: click a card,
+   its list opens right under the cards it belongs to; click again or Close
+   to shut it. The day document's `rows` are the calls, leads and policies
+   the figures are made of -- a card's number never changes here. A range
+   adds every day's rows together. */
+let digDrill = "";
+const ddk = (k, cls) => ` data-ddrill="${k}" role="button" tabindex="0" class="${cls || "tile"} rdrill${digDrill === k ? " on" : ""}"`;
+const digWho = r => `<span class="who">${pbadge(DOT[r.who] || "#8a877f", (r.who || "").split(" ")[0])}</span>`;
+const digLead = r => r.lead_id ? `<a href="${AZ_URL.lead}${encodeURIComponent(r.lead_id)}" target="_blank" rel="noopener">${cesc(r.lead)}</a>` : cesc(r.lead || "—");
+const digDay = (d, r) => d.date ? "" : `<td class="num">${r.day ? fmtShortDate(r.day) : ""}</td>`;
+const digDayTh = d => d.date ? "" : `<th class="num">Day</th>`;
+function digTable(d, head, rows) {
+  if (!rows.length) return `<p class="sd" style="margin:4px 0 0">Nothing to list.</p>`;
+  return `<div class="scroll"><table class="msgt"><thead><tr>${digDayTh(d)}${head}</tr></thead><tbody>${rows.join("")}</tbody></table></div>`;
+}
+function digDrillList(title, what, body) {
+  return `<div class="rdrill-list"><div style="display:flex;justify-content:space-between;align-items:baseline;gap:12px;margin:14px 0 6px">
+    <h3 class="rh3" style="margin:0">${title}</h3><a href="#" data-ddrill-close style="font-size:12.5px">Close</a></div>
+    ${what ? `<p class="sd" style="margin:0 0 6px">${what}</p>` : ""}${body}</div>`;
+}
+const DIG_NO_ROWS = `<p class="sd" style="margin:4px 0 0">The list behind this card was not kept for this day (lists start 2026-09-27; earlier days get them from their saved call data where it was kept).</p>`;
+function digDrillFor(d, who, keys) {
+  const k = digDrill;
+  if (!k || !keys.some(p => k === p || k.startsWith(p + ":"))) return "";
+  const R = d.rows;
+  if (!R) return digDrillList("", "", DIG_NO_ROWS);
+  const [kind, a, b] = k.split(":");
+  const mine = rs => (rs || []).filter(r => !who || r.who === who);
+  const secs = s => s >= 60 ? `${Math.floor(s / 60)}m ${String(s % 60).padStart(2, "0")}s` : `${s}s`;
+  if (kind === "dials" || kind === "outcome") {
+    let rs = mine(R.dials);
+    if (kind === "outcome") rs = rs.filter(r => r.outcome === a && (!b || r.who === b));
+    rs = rs.slice().sort((x, y) => (x.who || "").localeCompare(y.who || "") || (x.outcome || "").localeCompare(y.outcome || ""));
+    const tr = rs.map(r => `<tr>${digDay(d, r)}<td>${digWho(r)}</td><td>${digLead(r)}</td><td class="num">…${cesc(r.last4)}</td>
+      <td>${cesc(r.outcome)}${r.callback ? " · called back" : ""}</td><td class="num">${r.attempts}</td><td class="num">${r.talk ? secs(r.talk) : "—"}</td></tr>`);
+    const title = kind === "outcome" ? `${cesc(a)}${b ? ` · ${cesc(b.split(" ")[0])}` : ""} · ${rs.length}` : `Dials · ${rs.length} numbers`;
+    return digDrillList(title, kind === "outcome" ? "" : "Every new-business number dialled, one row per number; attempts is how many times it was dialled.",
+      digTable(d, `<th>Producer</th><th>Lead</th><th class="num">Phone</th><th>Outcome</th><th class="num">Attempts</th><th class="num">Talk</th>`, tr));
+  }
+  if (kind === "contacts") {
+    const rs = mine(R.contacts).slice().sort((x, y) => (y.counted !== false) - (x.counted !== false) || y.seconds - x.seconds);
+    const counted = rs.filter(r => r.counted !== false).length, outside = rs.length - counted;
+    const tr = rs.map(r => `<tr>${digDay(d, r)}<td>${digWho(r)}</td><td>${digLead(r)}</td><td>${cesc(r.source)}</td><td class="num">${secs(r.seconds)}</td>
+      <td>${r.inbound ? (r.kind === "callback" ? "call back" : "call in") : "dialled"}${r.counted === false ? `<div class="n" style="font-size:11px;color:var(--text-muted)">outside the rate</div>` : ""}</td><td class="said">${cesc(r.summary || r.note || "")}</td></tr>`);
+    return digDrillList(`Live contacts · ${counted} in the contact rate${outside ? ` · ${outside} call-in${outside === 1 ? "" : "s"}` : ""}`,
+      "Every conversation, longest first. A call-in the producer answered is a conversation but sits outside the contact rate, which counts only the producer's own dials.",
+      digTable(d, `<th>Producer</th><th>Lead</th><th>Source</th><th class="num">On the phone</th><th>How</th><th class="said">What happened</th>`, tr));
+  }
+  if (kind === "quoted" || kind === "closing") {
+    const rs = mine(R.quoted);
+    if (!rs.length && (d.totals || {}).hh) return digDrillList(kind === "closing" ? "Closing ratio" : "Households quoted", "", DIG_NO_ROWS);
+    const soldIds = new Set(mine(R.sold_leads).map(r => r.lead_id));
+    const tr = rs.map(r => `<tr>${digDay(d, r)}<td>${digWho(r)}</td><td>${digLead(r)}</td><td>${cesc(r.source)}</td>
+      <td class="num">${r.premium === "" || r.premium == null ? "—" : money(r.premium)}</td>${kind === "closing" ? `<td>${soldIds.has(r.lead_id) ? `<span class="chip c-g">sold</span>` : ""}</td>` : ""}</tr>`);
+    return digDrillList(`Households quoted · ${rs.length}`, kind === "closing" ? "Sold marks a household quoted that was also marked sold the same day." : "",
+      digTable(d, `<th>Producer</th><th>Lead</th><th>Source</th><th class="num">Premium quoted</th>${kind === "closing" ? "<th>Sold</th>" : ""}`, tr)
+      + (kind === "closing" ? digDrillSold(d, mine) : ""));
+  }
+  if (kind === "sold") return digDrillList(`Policies sold · ${mine(R.sold).length}`, "", digDrillSold(d, mine));
+  if (kind === "speed") {
+    const rs = mine(R.speed).filter(r => a === "team" || r.who === a).sort((x, y) => y.secs - x.secs);
+    const clock = iso => iso ? new Date(iso).toLocaleTimeString([], { hour: "numeric", minute: "2-digit", timeZone: "America/Phoenix" }) : "";
+    const tr = rs.map(r => `<tr>${digDay(d, r)}<td>${digWho(r)}</td><td>${digLead(r)}</td><td>${cesc(r.source)}</td>
+      <td class="num">${clock(r.arrived)}</td><td class="num">${clock(r.dialled)}</td><td class="num">${hhmm(r.secs)}</td></tr>`);
+    return digDrillList(`Speed to dial · ${a === "team" ? "Team" : cesc(a.split(" ")[0])} · ${rs.length} lead${rs.length === 1 ? "" : "s"}`, "Slowest first.",
+      rs.length || !(d.speed_to_dial) ? digTable(d, `<th>Dialled by</th><th>Lead</th><th>Source</th><th class="num">Arrived</th><th class="num">First dial</th><th class="num">Speed</th>`, tr) : DIG_NO_ROWS);
+  }
+  if (kind === "reply") {
+    const M = d.messages || {};
+    const rs = (M.replies || []).filter(r => !r.ack && !r.optout && (!who || r.who === who) && (a === "team" || r.who === a))
+      .sort((x, y) => (x.minutes == null ? 1e9 : x.minutes) < (y.minutes == null ? 1e9 : y.minutes) ? 1 : -1);
+    const tr = rs.map(r => `<tr>${digDay(d, r)}<td>${digWho(r)}</td><td>${digLead(r)}</td><td class="num">${cesc(r.at)}</td>
+      <td class="num ${replyTier(r.minutes)}">${r.minutes == null ? "waiting" : fmtMins(r.minutes)}</td><td>${r.via || ""}</td><td class="said">${cesc(r.said)}</td></tr>`);
+    return digDrillList(`Replies · ${a === "team" ? "Team" : cesc(a.split(" ")[0])} · ${rs.length}`, "Waiting first, then slowest answered.",
+      digTable(d, `<th>Producer</th><th>Lead</th><th class="num">When</th><th class="num">Answered in</th><th>How</th><th class="said">What they said</th>`, tr));
+  }
+  return "";
+}
+function digDrillSold(d, mine) {
+  const R = d.rows || {};
+  const ps = mine(R.sold), ls = mine(R.sold_leads);
+  const tr = ps.map(r => `<tr>${digDay(d, r)}<td>${digWho(r)}</td><td>${cesc(r.product)}</td><td>${cesc(r.policy)}</td>
+    <td class="num">${money(r.premium)}</td><td>${cesc(r.source)}</td><td class="num">${r.effective ? fmtShortDate(r.effective) : ""}</td></tr>`);
+  const lr = ls.map(r => `<tr>${digDay(d, r)}<td>${digWho(r)}</td><td>${digLead(r)}</td><td>${cesc(r.source)}</td></tr>`);
+  return `<h3 class="rh3" style="margin-top:10px">Policies · ${ps.length}</h3>
+    ${digTable(d, `<th>Producer</th><th>Product</th><th>Policy</th><th class="num">Premium</th><th>Lead source</th><th class="num">Effective</th>`, tr)}
+    <h3 class="rh3" style="margin-top:10px">Leads marked sold · ${ls.length}</h3>
+    <p class="sd" style="margin:0 0 6px">AgencyZoom's policy records carry no customer, so the leads marked sold that day are listed beside them.</p>
+    ${digTable(d, `<th>Producer</th><th>Lead</th><th>Source</th>`, lr)}`;
 }
 
 /* Speed to Reply (Frank, 2026-09-27): how fast a lead's text or email got an
@@ -1440,7 +1537,7 @@ function speedReplyPanel(d, who) {
     <p class="sd">No lead wrote in by text or email${who ? ` to ${who}` : ""} that needed an answer.</p></div>`;
   const tile = (label, rs, team) => {
     const m = rs.filter(r => r.minutes != null).map(r => r.minutes), wait = rs.length - m.length;
-    return `<div class="tile"${team ? ' style="border-color:var(--border-strong);background:var(--surface)"' : ""}>
+    return `<div${ddk("reply:" + (team ? "team" : rs[0].who))}${team ? ' style="border-color:var(--border-strong);background:var(--surface)"' : ""}>
       <div class="k">${label}</div><div class="v"><span class="${replyTier(m.length ? median(m) : null)}">${fmtMins(m.length ? median(m) : null)}</span></div>
       <div class="n">median · ${m.length} answered</div>
       <div class="n" style="margin-top:5px">${m.length ? `quickest ${fmtMins(Math.min(...m))} · longest ${fmtMins(Math.max(...m))}` : "none answered"}</div>
@@ -1453,7 +1550,7 @@ function speedReplyPanel(d, who) {
     <p class="sd">Time from a lead's text or email to the next text, email or call back; one that came in while the
     office was closed starts at 8:30. Green is 15 minutes or less, red over an hour.
     <a href="#" data-goview="messages">See who is waiting</a>.</p>
-    <div class="tiles">${cards}</div></div>`;
+    <div class="tiles">${cards}</div>${digDrillFor(d, who, ["reply"])}</div>`;
 }
 
 /* Open leads sitting in "Pipeline" -- integrations drop leads there that
@@ -2107,12 +2204,19 @@ function mergeDayDocs(docs) {
   // the rows by messagesPanel, never averaged from daily ones).
   const msgPer = {}, msgRows = { replies: [], quotes: [], bad_contact: [] };
   let hasMsg = false;
+  // The Digest cards' lists: every day's rows, tagged with their day.
+  const digRows = { dials: [], contacts: [], quoted: [], sold: [], sold_leads: [], speed: [] };
+  let hasRows = false;
 
   for (const doc of docs) {
     if (!doc) continue;
     days.push(doc.date);
     const t = doc.totals || {};
     for (const k of NUM) totals[k] += t[k] || 0;
+    if (doc.rows) {
+      hasRows = true;
+      for (const k of Object.keys(digRows)) digRows[k].push(...(doc.rows[k] || []).map(r => ({ ...r, day: doc.date })));
+    }
     if (doc.messages) {
       hasMsg = true;
       for (const [n, p] of Object.entries(doc.messages.producers || {})) {
@@ -2255,6 +2359,7 @@ function mergeDayDocs(docs) {
     speed_to_dial: speedToDial, calls, tiers,
     notcoached: notcoached.join("; ") || null,
     messages: hasMsg ? { producers: msgPer, ...msgRows } : null,
+    rows: hasRows ? digRows : null,
   };
 }
 
@@ -4214,6 +4319,12 @@ async function paint() {
       : rangeHeaderHtml() + (cur ? digestPanel(cur, producerFilter) : '<div class="empty">Loading…</div>'));
     wireRangeControl(); wireProducerControl();
     v.querySelectorAll("[data-goview]").forEach(a => a.onclick = e => { e.preventDefault(); goView(a.dataset.goview); });
+    v.querySelectorAll("[data-ddrill]").forEach(el => {
+      const go = e => { if (e) e.preventDefault(); digDrill = digDrill === el.dataset.ddrill ? "" : el.dataset.ddrill; paint(); };
+      el.onclick = go;
+      el.onkeydown = e => { if (e.key === "Enter" || e.key === " ") go(e); };
+    });
+    v.querySelectorAll("[data-ddrill-close]").forEach(el => el.onclick = e => { e.preventDefault(); digDrill = ""; paint(); });
   } else if (view === "messages") {
     if (rangeMode !== "day") v.innerHTML = rangeControlHtml() + producerControlHtml() + '<div class="empty">Loading…</div>';
     const err = await ensureCurForRange();
