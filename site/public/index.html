@@ -615,6 +615,7 @@ details.sc .scb { padding: 0 12px 12px; }
 .tlx { padding: 5px 0 11px 4px; font-size: 12px; line-height: 1.5; }
 .tlx b { display: block; }
 .tlx span { color: var(--text-secondary); }
+.cat .catx { font-weight: 500; opacity: .85; }
 .cat { display: inline-block; font-size: 9.5px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.03em; padding: 2px 8px; border-radius: 10px; white-space: nowrap; color: #16150f; }
 /* Same nine-way outcome as the emailed Call Detail panel's own .g1-.g9
    (report_template.html) -- copied here rather than computed, since the
@@ -2351,13 +2352,30 @@ function leadFitHtml(c) {
    first call the producer dialled shows no chip; nor does a card read
    before Apollo was asked. */
 const FLOW_LABELS = { first: "first conversation", "finish quote": "finishing the quote", "follow-up": "follow-up" };
-function flowChipHtml(c) {
+// The card's call-type words ([label, why]) for its one combined badge
+// (outcomeBadgeHtml): direction, then the flow. "follow-up" is dropped
+// when the outcome already says it ("Quote follow up, lost").
+function flowParts(c, catc) {
   const f = c.flow;
-  if (!f) return "";
+  if (!f) return [];
   const dir = c.direction === "call back" || c.direction === "call in" ? c.direction : "";
-  if (f[0] === "first" && !dir) return "";
-  const label = (dir ? dir + " · " : "") + (FLOW_LABELS[f[0]] || f[0]);
-  return `<span class="ctype" title="${(f[1] || "").replace(/"/g, "&quot;")}">${label}</span>`;
+  const out = [];
+  if (dir) out.push([dir, ""]);
+  const followInOutcome = /^followup_/.test(catc || "");
+  if (f[0] !== "first" && !(f[0] === "follow-up" && followInOutcome)) out.push([FLOW_LABELS[f[0]] || f[0], f[1] || ""]);
+  return out;
+}
+/* One badge per call (Frank, 2026-09-25: "we need to combine/consolidate
+   these badges"): the outcome pill carries the call type after a dot --
+   service/mixed, call in / call back, first conversation / finishing the
+   quote / follow-up -- instead of a second grey pill beside it. The hover
+   says why each part is there. */
+const escAttr = t => String(t || "").replace(/"/g, "&quot;");
+function outcomeBadgeHtml(cat, catc, extras) {
+  extras = extras.filter(([l]) => l);
+  const title = extras.map(([l, why]) => why ? `${l}: ${why}` : "").filter(Boolean).join("\n");
+  return `<span class="cat ${catc ? `cat-${catc}` : ""}"${title ? ` title="${escAttr(title)}"` : ""}>${cat || ""}${
+    extras.length ? `<span class="catx"> &middot; ${extras.map(([l]) => l).join(" &middot; ")}</span>` : ""}</span>`;
 }
 /* On a call the producer answered, the greeting leads whichever scorecard
    the card has: by name and direct, never the front desk's "thanks for
@@ -2435,8 +2453,9 @@ function card(c) {
     : [{ cat: c.cat, catc: c.catc, kind: c.callback_kind || "" }];
   const multiCall = calls.length > 1;
   const callRowHtml = multiCall ? `<div class="callrow">${calls.map((call, i) => `<span class="callchip">
-      ${call.kind ? `<span class="badge-slot ctype">${call.kind}</span>` : ""}<span class="cdur">${(c.call_times || [])[i] || ""}</span>
-      <span class="cat ${call.catc ? `cat-${call.catc}` : ""}">${call.cat || ""}</span></span>`).join("")}</div>` : "";
+      <span class="cdur">${(c.call_times || [])[i] || ""}</span>
+      ${outcomeBadgeHtml(call.cat, call.catc, [[call.kind || "", ""]])}</span>`).join("")}</div>` : "";
+  const typeParts = c.calltype && c.calltype[0] !== "sales" ? [[c.calltype[0], c.calltype[1] || ""]] : [];
   return `<details class="ccard">
    <summary class="blk cchead" style="border-left:4px solid ${c.tab || "var(--border-strong)"}">
      <div class="chead"><div><div class="cname">${c.lead_id
@@ -2444,7 +2463,8 @@ function card(c) {
        : (c.lead || "")}</div>
        <div class="cmeta">${c.who || ""} · ${fmtShortDate(c.day)}${c.time ? ` ${c.time}` : ""} · ${durCell} · ${c.lang || ""} · ${c.src || ""}${c.leadsrc ? ` · ${c.leadsrc}` : ""}</div>
        ${callRowHtml}</div>
-       ${!multiCall ? `<span class="cat ${c.catc ? `cat-${c.catc}` : ""}">${c.cat || ""}</span>` : ""}${c.calltype && c.calltype[0] !== "sales" ? `<span class="ctype ctype-${c.calltype[0]}" title="${c.calltype[1] || ""}">${c.calltype[0]}</span>` : ""}${flowChipHtml(c)}<span class="ctog" aria-hidden="true">▸</span></div>
+       ${!multiCall ? outcomeBadgeHtml(c.cat, c.catc, [...typeParts, ...flowParts(c, c.catc)])
+         : [...typeParts, ...flowParts(c, "")].map(([l, why]) => `<span class="ctype" title="${escAttr(why)}">${l}</span>`).join("")}<span class="ctog" aria-hidden="true">▸</span></div>
      <div class="sum">${c.summary || ""}</div>
      ${(c.flags && c.flags.length) || (c.exit && c.exit[0]) ? `<div style="margin-top:8px">${
        c.exit && c.exit[0] ? `<span class="flag red" title="${c.exit[1] || ""}">Producer ended the call</span>` : ""}${
