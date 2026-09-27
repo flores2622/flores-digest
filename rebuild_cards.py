@@ -116,6 +116,29 @@ def _failed_reads(day, cards, old_cards):
             and cc._group_ck(c.get("who"), groups[(c.get("who"), c.get("lead_id"))]) not in cache]
 
 
+def _readable_rows(day, log):
+    """A row the night filed under its producer note only because the model
+    could not be reached (09-17: no API key in that run, 24 of 28 live
+    contacts) is read like any other when its transcript is on file."""
+    import call_summary as CS
+    fx_path = ROOT / f"data/fulltx_{day}.json"
+    if not fx_path.exists():
+        return
+    fx = json.loads(fx_path.read_text())
+    mpath = ROOT / f"data/metrics_{day}.json"
+    M = json.loads(mpath.read_text())
+    n = 0
+    for who, v in (M.get("producers") or {}).items():
+        for r in v.get("call_detail") or []:
+            s = r.get("summary") or {}
+            if s.get("source") != "recording" and fx.get(CS._ck(who, r["number"])):
+                r["summary"] = {**s, "source": "recording"}
+                n += 1
+    if n:
+        mpath.write_text(json.dumps(M))
+        log(f"  {day}: {n} conversation(s) with a transcript but no read that night -- read now")
+
+
 def _refresh_moves(day, log):
     """Every call row's stage moves, re-read from the notes across every lead
     record on its number (what outbound rows always had; inbound rows had
@@ -163,6 +186,7 @@ def rebuild(day, publish=False, reuse=False, repair=False, log=print):
         pass
     _refresh_moves(day, log)
     _from_old_cards(day, old_doc.get("calls") or [], log)
+    _readable_rows(day, log)
     if kept is not None:
         old_cache_path.write_bytes(kept)     # this script's own new reads
         if repair:
