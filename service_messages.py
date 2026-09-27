@@ -65,13 +65,28 @@ _ACK_WORDS = {"ok", "okay", "okey", "k", "kk", "thanks", "thank", "thx", "you", 
               "appreciate", "sweet", "alright", "all", "right", "np", "sure", "igualmente", "you're", "welcome"}
 
 
+_ACK_WORDS |= {"sii", "no", "hay", "problema", "sure", "fine", "that", "is", "that's", "muy", "i'm", "im",
+               "awesome", "ya", "ahh", "oh", "wonderful", "excellent", "excelente", "claro", "bueno", "will"}
+# A phone's tapback on one of our texts ("Liked “...”", "Le encantó “...”").
+_TAPBACK = re.compile(r"^\s*(liked|loved|laughed at|emphasized|disliked|questioned|reacted \S+ to|"
+                      r"le gustó|le encantó|le encanto|le gusto|se rió de|enfatizó|destacó)\s*[“\"']", re.I)
+_THANKS = re.compile(r"\b(thanks?|thank you|thx|ty|gracias|grasias|appreciate)\b", re.I)
+
+
 def is_ack(t):
+    """Nothing to answer: an ok, a thank-you, a tapback. A thank-you with a
+    short sentence and no question ("Thank you! I'll check my email when I
+    get home") is one too."""
     t = str(t or "").strip()
     if not t:
         return False
+    if _TAPBACK.match(t):
+        return True
     words = re.findall(r"[a-záéíóúñ']+", t.lower())
-    return bool(msg.ACK.match(t)) or (0 < len(words) <= 8 and all(w in _ACK_WORDS for w in words)
-                                     and not re.search(r"\?", t))
+    if "?" in t:
+        return False
+    return bool(msg.ACK.match(t)) or (0 < len(words) <= 8 and all(w in _ACK_WORDS for w in words)) \
+        or (bool(_THANKS.search(t)) and len(words) <= 14)
 
 
 def log(*a):
@@ -264,9 +279,12 @@ def build(day, idx=None, commercial_only=frozenset(), log=log, download_notes=Tr
     tmpl = msg.TEMPLATE_SUBJECTS | {k for k, v in subj_leads.items() if k and len(v) >= msg.LEARN_TEMPLATE_LEADS}
     seen = set()
     for n, lid, x, at, a, by, reply, key in email_rows:
-        if at < start or x.get("id") in seen:
+        # Duplicate lead records on one number carry the same email; notes
+        # have no id, so it is the same email by time, subject and sender.
+        dup = (n, x.get("createDate"), str(a.get("emailSubject") or ""), by, msg._inbound(a))
+        if at < start or dup in seen:
             continue
-        seen.add(x.get("id"))          # duplicate lead records on one number
+        seen.add(dup)
         if msg._inbound(a):
             kind = "in"
         else:
@@ -353,7 +371,8 @@ def build(day, idx=None, commercial_only=frozenset(), log=log, download_notes=Tr
                 before = [t for t in evs if t["kind"] in ("sent", "auto", "producer") and t["type"] == "EMAIL" and t["at"] < e["at"]]
                 partner = before[-1]["by"] if before else None
             ans = next((t for t in touches if ends(t) >= e["at"]), None)
-            stop = ans["at"] if ans and ans["at"] > e["at"] else e["at"]
+            # Unanswered: every message after it is the same wait.
+            stop = (ans["at"] if ans["at"] > e["at"] else e["at"]) if ans else end
             run = [x for x in evs[i:] if x["kind"] == "in" and x["at"] <= max(stop, e["at"]) and x["at"] <= end] or [e]
             i = evs.index(run[-1]) + 1
             if partner not in stats:

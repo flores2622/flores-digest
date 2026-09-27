@@ -355,7 +355,8 @@ def build(day, log=print):
             before = [t for t in evs if t["kind"] == "sent" and t["at"] < e["at"]]
             partner = before[-1]["by"] if before and before[-1]["by"] else own
             ans = next((t for t in touches if ends(t) >= e["at"]), None)
-            stop = ans["at"] if ans and ans["at"] > e["at"] else e["at"]
+            # Unanswered: every message after it is the same wait.
+            stop = (ans["at"] if ans["at"] > e["at"] else e["at"]) if ans else end
             run = [x for x in evs[i:] if x["kind"] == "in" and x["at"] <= max(stop, e["at"]) and x["at"] <= end] or [e]
             i = evs.index(run[-1]) + 1
             if partner not in producers:
