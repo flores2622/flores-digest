@@ -449,15 +449,81 @@ def sr_texts(srs, log=print):
         return {}
 
 
-def read_notes(srs, log=print, texts=None):
-    """renewal_notes.read() for the SRs NOT closed on one of the nine, with
-    the customer's texts beside each note (Frank, 2026-09-27: "i want the
-    texts to be used to help decide")."""
+# What the texts may do to what the note says (Frank, 2026-09-27: "i want
+# the texts to be used to help decide"). They only add what a note cannot
+# know: the customer's own word that they are leaving (or sold it, or it was
+# already gone), or that the renewal was talked over with them. They never
+# make a clear note vaguer -- a text about a payment is not a renewal talk.
+_NOT_DISCUSSED = {None, "unclear", "unable_to_contact", "no_action_review"}
+
+
+def _gone_before_open(sr, lines):
+    """True when the customer's first text saying the policy is gone came
+    before the renewal SR opened -- the same date rule as the rep's note
+    (Frank, 2026-09-27): gone before = Mid-term Cancellation, outside the
+    rate; on or after = cancelled DURING the renewal, lost. Richard Burns,
+    SR opened 08-09, "I switched to geico already" 08-19: lost."""
+    import renewal_notes
+    opened = _d((sr or {}).get("createDate"))
+    if not (opened and lines):
+        return False
+    for m in re.finditer(r"^(\d\d)-(\d\d) \S+ customer: (.*)$", lines, re.M):
+        if renewal_notes._GONE_WORDS.search(m.group(3)):
+            y = int(opened[:4])
+            when = f"{y:04d}-{m.group(1)}-{m.group(2)}"
+            if when > _shift(opened, 300):      # a December SR, a January text
+                when = f"{y - 1:04d}-{m.group(1)}-{m.group(2)}"
+            return when < opened
+    return False
+
+
+def with_texts(note_key, text_key, sr=None, lines=None):
+    if text_key in ("leaving", "already_cancelled"):
+        if note_key in {"sold_moved", "cancelled_no_option", "cancelled_rewrite_declined"}:
+            return note_key                        # the rep already said how it ended
+        return "cancelled_before_sr" if _gone_before_open(sr, lines) else "client_cancelled"
+    if text_key == "sold_moved":
+        return "sold_moved"
+    if text_key == "discussed_kept" and note_key in _NOT_DISCUSSED:
+        return "renewed_as_is"
+    if text_key == "discussed_changed" and note_key in _NOT_DISCUSSED:
+        # An endorsement needs the change on record; over a note that says
+        # there was nothing to change ("no premium change, review if needed"
+        # -- Karen Greenwood asked about a 2-pay plan) it is a renewal talked
+        # over, kept as is.
+        return "renewed_endorsed" if note_key in (None, "unclear") else "renewed_as_is"
+    return note_key
+
+
+def _reads(srs, log=print, texts=None):
+    """(note reads, text reads) for the SRs NOT closed on one of the nine."""
     import renewal_notes
     srs = [t for t in srs if not resolution_key(t)]
     if texts is None:
         texts = sr_texts(srs, log=log)
-    return renewal_notes.read(srs, log=log, texts=texts)
+    notes = renewal_notes.read(srs, log=log)
+    try:
+        tx = renewal_notes.read_texts(srs, texts, log=log)
+    except Exception as e:
+        log(f"  renewal texts: not read ({type(e).__name__}: {str(e)[:120]}) -- notes alone")
+        tx = {}
+    return notes, tx
+
+
+def read_notes(srs, log=print, texts=None):
+    """{sr id: outcome key} from the rep's note, then the customer's texts
+    (with_texts), for the SRs NOT closed on one of the nine."""
+    srs = [t for t in srs if not resolution_key(t)]
+    if texts is None:
+        texts = sr_texts(srs, log=log)
+    notes, tx = _reads(srs, log=log, texts=texts)
+    by_id = {str(t.get("id")): t for t in srs}
+    out = {}
+    for sid in set(notes) | set(tx):
+        k = with_texts(notes.get(sid), tx.get(sid), by_id.get(sid), texts.get(sid))
+        if k is not None:
+            out[sid] = k
+    return out
 
 
 def renewal_srs(day, done_tickets, policies, customers, az=None, log=print, refresh=True):
@@ -483,7 +549,11 @@ def renewal_srs(day, done_tickets, policies, customers, az=None, log=print, refr
     pn2hh = {_NORM(k): v for k, v in policy_households(hh).items()}
     load_resolution_labels(az=az, log=log)
     texts = sr_texts(srs, log=log)
-    notes = read_notes(srs, log=log, texts=texts)
+    by_note, by_text = _reads(srs, log=log, texts=texts)
+    by_id = {str(t.get("id")): t for t in srs}
+    notes = {sid: k for sid in set(by_note) | set(by_text)
+             for k in [with_texts(by_note.get(sid), by_text.get(sid), by_id.get(sid), texts.get(sid))]
+             if k is not None}
     rows, unnamed = [], collections.Counter()
     # The policy record is read as of TODAY, not as of the SR's day: renewal
     # SRs are worked before the renewal date, so on the day one closes the
@@ -495,9 +565,8 @@ def renewal_srs(day, done_tickets, policies, customers, az=None, log=print, refr
         tx = texts.get(str(t.get("id")))
         key, source, pn, prem, line = sr_outcome(t, chains, hh, pn2hh, as_of,
                                                  note_key=notes.get(str(t.get("id"))))
-        import renewal_notes as _rn
-        read_with = (_rn.load().get(str(t.get("id"))) or {}).get("h")
-        if source == "notes" and tx and read_with == _rn._h(_rn._basis(_rn.clean(t.get("resolutionDesc")), tx)):
+        sid = str(t.get("id"))
+        if source == "notes" and notes.get(sid) != by_note.get(sid):
             source = "notes+texts" if _note_text(t) else "texts"
         rid = t.get("resolutionId")
         if day >= RESOLUTIONS_FROM and not resolution_key(t):

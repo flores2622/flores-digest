@@ -400,19 +400,33 @@ Crystal (hybrid); credit always goes to whoever COMPLETED the SR or task.
        go back to them);
     3. no note, or a note that does not say: **Unable to Contact/No Show**
        (Frank renamed Unable to Contact to that, 2026-09-24).
-  **The customer's texts are read with the note** (Frank, 2026-09-27: "i
-  want the texts to be used to help decide ... it should be built in"):
-  `service_messages.renewal_texts` hands step 2 every text between the
-  customer's numbers and the service lines from the SR's createDate to 3
-  days after it closed, when the customer wrote back or someone typed to
-  them (automation alone adds nothing). Their own words outweigh a bare
-  "renewed" -- Isaiah Tullis, noted "renewed" 09-22, texted 09-23 "We've
-  decided to switch insurance providers". An SR with texts and no note is
-  read from them. Source `notes+texts` / `texts`; each row keeps `texts`.
-  The texts come from `data/rc_texts_archive.json` (+ R2 copy, 240 days,
-  topped up every 12 hours). The read cache key is note + texts, so new
-  texts mean a new read; **until that read is made (it failed), the note's
-  own earlier read stands** -- never a fall to Unable to Contact.
+  **The customer's texts help decide** (Frank, 2026-09-27: "i want the
+  texts to be used to help decide ... it should be built in"):
+  `service_messages.renewal_texts` gathers every text between the customer's
+  numbers and the service lines from the SR's createDate to 3 days after it
+  closed (only when the customer wrote back or someone typed to them), and
+  `renewal_notes.read_texts` reads them ON THEIR OWN into leaving /
+  sold_moved / already_cancelled / discussed_kept / discussed_changed /
+  other. `service_retention.with_texts` then applies them to the note's read
+  by rule: leaving -> Client Cancelled, sold -> Sold/Moved, already gone ->
+  Mid-term Cancellation, a renewal talked over -> Accepted as is (Endorsed
+  if a change was made) -- the last two only over No action, Unable to
+  Contact or a note that does not say. **Never one prompt with note and texts
+  together**: tried 2026-09-27, the model let payment and ID-card texts turn
+  "Already reviewed" into "unclear" and No action into Unable to Contact (22
+  of 61 SRs). **Checked in code, not only asked** (`renewal_notes._guard`):
+  leaving / sold / already cancelled need the CUSTOMER's own text to say so
+  (cancel, switch, sold, moved ...) -- Kenneth Lansford's "Stop" to a
+  bundling text is not leaving, a rep's non-payment warning is not a
+  cancellation; a renewal "talked over" needs a customer text; texts make an
+  Endorsed only where there is no note (over "no premium change, review if
+  needed" it is Accepted as is). Gone before the SR opened (the customer's
+  first such text, or the policy record) is Mid-term; on or after is Client
+  Cancelled, lost -- the note's date rule. Isaiah Tullis (noted "renewed"
+  09-22, texted 09-23 "We've decided to switch insurance providers") is the case. Source `notes+texts`
+  / `texts` when the texts changed it; each row keeps `texts`. The texts come
+  from `data/rc_texts_archive.json` (+ R2 copy, 240 days, topped up every 12
+  hours); text reads share the note cache under `tx:<id>`.
   **Mid-term Cancellation** (id 101637, Frank added it 2026-09-24: "mid term
   cancellations, prior cancellations, anything that cancelled prior to
   renewal SR generating") is an old SR closed out on a policy already
