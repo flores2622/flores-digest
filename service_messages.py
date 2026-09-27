@@ -89,6 +89,11 @@ def is_ack(t):
         or (bool(_THANKS.search(t)) and len(words) <= 14)
 
 
+# A message about a renewal: the reminders ("your Auto policy is scheduled to
+# renew soon"), and anything the customer or a rep says about it.
+RENEWAL_WORDS = re.compile(r"\brenew|\brenov|\brenuev", re.I)
+
+
 def log(*a):
     print(*a, flush=True)
 
@@ -319,6 +324,11 @@ def build(day, idx=None, commercial_only=frozenset(), log=log, download_notes=Tr
         evs.sort(key=lambda e: e["at"])
         b = bucket(n)
         mine = b in SERVICE_BUCKETS
+        # Renewal business (Frank, 2026-09-27: "everything should be
+        # separated"): every SR the customer has open is a renewal SR, or the
+        # message itself is about the renewal.
+        import service_digest as _sd
+        ren_caller = _sd.renewal_caller(idx.get(n))
         who_link = link(n) if mine else None
 
         # --- what went out today -------------------------------------------
@@ -347,7 +357,9 @@ def build(day, idx=None, commercial_only=frozenset(), log=log, download_notes=Tr
                 if (p, n) not in texted:
                     texted.add((p, n))
                     stats[p]["customers"] += 1
-            sent_rows.append(dict(who_link, who=p, day=day, at=e["at"].strftime("%H:%M"),
+            sent_rows.append(dict(who_link, who=p, day=day, at=e["at"].strftime("%H:%M"), number=n,
+                                  renewal=ren_caller or bool(RENEWAL_WORDS.search(e.get("subject") or "")
+                                                             or RENEWAL_WORDS.search(e["text"] or "")),
                                   channel="text" if e["type"] == "TEXT" else "email",
                                   auto=e["kind"] == "auto", failed=e["kind"] == "failed" or e.get("bounced", False),
                                   media=bool(e.get("media")),
@@ -380,7 +392,12 @@ def build(day, idx=None, commercial_only=frozenset(), log=log, download_notes=Tr
             said = " / ".join(x["text"] or ("(picture)" if x.get("media") else "") for x in run if x["text"] or x.get("media"))[:SAID]
             optout = any(msg.OPT_OUT.match(x["text"] or "") for x in run)
             ack = not optout and all(is_ack(x["text"]) for x in run if x["text"]) and any(x["text"] for x in run)
-            row = dict(who_link, who=partner, day=day, number=n,
+            # A reply is renewal business when the customer's words are, or
+            # it answers a text of ours about the renewal (a reminder).
+            last_out = next((t for t in reversed(evs[:evs.index(e)]) if t["kind"] in ("sent", "auto")), None)
+            ren = ren_caller or any(RENEWAL_WORDS.search(x["text"] or "") for x in run) or bool(
+                last_out and RENEWAL_WORDS.search((last_out.get("subject") or "") + " " + (last_out["text"] or "")))
+            row = dict(who_link, who=partner, day=day, number=n, renewal=ren,
                        at=e["at"].strftime("%H:%M") if e["at"].date().isoformat() == day else e["at"].strftime("%m-%d %H:%M"),
                        channel="email" if e["type"] == "EMAIL" else "text", said=said, messages=len(run),
                        optout=optout, ack=ack, answered_by=None, via=None, minutes=None)

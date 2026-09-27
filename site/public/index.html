@@ -4383,6 +4383,28 @@ function splitRenewals(m) {
   m.taskRows = m.taskRows.filter(r => !RENEWAL_TASK.test(r.title || ""));
   m.tasks = taskCounts(m.taskRows, team);
   m.renewalTaskCounts = taskCounts(m.renewalTasks, team);
+  // Call backs and texts & emails with a customer whose open SRs are all
+  // renewal SRs, or a message about the renewal (service_digest.
+  // renewal_caller, service_messages.RENEWAL_WORDS). Per-person message
+  // counts are rebuilt from the rows so each side adds up on its own.
+  m.renewalCallbacks = m.callbacks.filter(r => r.renewal);
+  m.callbacks = m.callbacks.filter(r => !r.renewal);
+  const msgSide = keep => {
+    const sent = m.msg.sent.filter(r => !!r.renewal === keep), people = {};
+    for (const n of team) people[n] = { texts: 0, emails: 0, auto_texts: 0, auto_emails: 0, customers: 0 };
+    const seen = new Set();
+    for (const r of sent) {
+      const p = people[r.who]; if (!p) continue;
+      const ch = r.channel === "text" ? "texts" : "emails";
+      if (r.auto) { p["auto_" + ch]++; continue; }
+      p[ch]++;
+      const k = r.who + "|" + (r.number || r.link_id || r.name);
+      if (!seen.has(k)) { seen.add(k); p.customers++; }
+    }
+    return { days: m.msg.days, people, sent, replies: m.msg.replies.filter(r => !!r.renewal === keep) };
+  };
+  m.renewalMsg = msgSide(true);
+  m.msg = msgSide(false);
   m.renewalDone = m.completed.filter(ren);
   m.completed = m.completed.filter(r => !ren(r));
   if (m.openRows) {
@@ -5045,6 +5067,23 @@ async function loadRenewalWork() {
   RENEWAL_WORK = docs.length ? splitRenewals(mergeServiceDocs(docs)) : null;
   return RENEWAL_WORK;
 }
+// Renewal call backs and texts (Frank, 2026-09-27: "everything should be
+// separated if possible") -- the Service Digest's cards, for renewal business.
+function renCommsTiles(m, dk) {
+  const cb = m.renewalCallbacks || [], cbDone = cb.filter(r => r.minutes != null);
+  const M = m.renewalMsg || { replies: [], sent: [] };
+  const need = M.replies.filter(r => !r.ack && !r.optout), ans = need.filter(r => r.minutes != null);
+  const typed = M.sent.filter(r => r.channel === "text" && !r.auto), auto = M.sent.filter(r => r.channel === "text" && r.auto);
+  const med = x => x.length ? Math.round(median(x)) : null;
+  return (cb.length ? dk("rw:cb", `<div class="k">Renewal Call Backs</div>
+      <div class="v"><span class="${replyTier(med(cbDone.map(r => r.minutes)))}">${fmtMins(med(cbDone.map(r => r.minutes)))}</span></div>
+      <div class="n">median to the first return call &middot; ${cbDone.length} of ${cb.length} returned same day</div>`) : "")
+    + (M.sent.length ? dk("rw:sent", `<div class="k">Renewal Texts Sent</div><div class="v">${typed.length}</div>
+      <div class="n">typed &middot; ${auto.length} more by automation</div>`) : "")
+    + (need.length ? dk("rw:replies", `<div class="k">Renewal Speed to Reply</div>
+      <div class="v"><span class="${replyTier(med(ans.map(r => r.minutes)))}">${fmtMins(med(ans.map(r => r.minutes)))}</span></div>
+      <div class="n">median &middot; ${ans.length} of ${need.length} answered${need.length - ans.length ? ` &middot; <b style="color:var(--bad)">${need.length - ans.length} waiting</b>` : ""}</div>`) : "");
+}
 function renewalWorkHtml(m) {
   if (!m) return "";
   const rs = m.renewalDone, open = m.renewalOpen;
@@ -5060,6 +5099,7 @@ function renewalWorkHtml(m) {
   const tiles = `<div class="tiles">
     ${dk("rw:done", `<div class="k">Renewal SRs Completed</div><div class="v">${rs.length}</div><div class="n">median ${hrs(rs)} created to completed</div>`, "border-color:var(--border-strong)")}
     ${dk("rw:tasks", `<div class="k">Renewal Tasks Done</div><div class="v">${m.renewalTasks.filter(r => r.done).length}<span style="font-size:15px;color:var(--text-muted)"> / ${m.renewalTasks.length}</span></div><div class="n">${m.renewalTasks.length ? Math.round(100 * m.renewalTasks.filter(r => r.done).length / m.renewalTasks.length) : 0}% of renewal tasks due</div>`)}
+    ${renCommsTiles(m, dk)}
     ${open ? dk("rw:open", `<div class="k">Open Renewal SRs</div><div class="v">${open.length}</div><div class="n">${open.filter(r => r.overdue).length} overdue &middot; as of ${fmtShortDate(m.days[m.days.length - 1])}</div>`) : ""}
     ${team.filter(n => rs.some(r => r.by === n) || (open || []).some(r => r.by === n) || (m.renewalTaskCounts[n] || {}).due).map(person).join("")}
     ${others.length ? dk("rw:person:others", `<div class="k">${pbadge("#8a877f", "Others")}</div><div class="v">${others.length}</div><div class="n">completed &middot; median ${hrs(others)}</div>`) : ""}
@@ -5075,6 +5115,9 @@ function renewalWorkHtml(m) {
       <h3 class="rh3" style="margin:0">${t}</h3><a href="#" data-drill-close style="font-size:12.5px">Close</a></div>${what ? `<p class="sd" style="margin:0 0 6px">${what}</p>` : ""}`;
     if (kind === "done") list = head(`Renewal SRs Completed · ${rs.length}`, "Newest first, with the outcome each counts as.") + svcSrTable(rs, m, true) + "</div>";
     if (kind === "tasks") list = head(`Renewal Tasks · ${m.renewalTasks.length} due`, "Every renewal task due in the last " + REN_WORK_DAYS + " days, not done first.") + svcTaskTable(m.renewalTasks) + "</div>";
+    if (kind === "cb") list = head(`Renewal Call Backs · ${m.renewalCallbacks.length}`, "Missed calls from customers whose open SRs are all renewal SRs. Not returned first.") + svcCallbackTable(m.renewalCallbacks) + "</div>";
+    if (kind === "sent") list = head(`Renewal Texts & Emails · ${m.renewalMsg.sent.filter(r => !r.auto).length} typed, ${m.renewalMsg.sent.filter(r => r.auto).length} automation`, "To customers whose open SRs are all renewal SRs, or about the renewal. Typed first.") + svcSentTable(m.renewalMsg.sent, m) + "</div>";
+    if (kind === "replies") list = head(`Renewal Customer Messages · ${m.renewalMsg.replies.length}`, "Waiting first, then slowest answered.") + svcReplyTable(m.renewalMsg.replies, m) + "</div>";
     if (kind === "open") list = head(`Open Renewal SRs · ${open.length}`, `As of ${fmtShortDate(m.days[m.days.length - 1])}.`) + svcOpenTable(open, m) + "</div>";
     if (kind === "pipe") { const x = rs.filter(r => r.pipeline === a); list = head(`${cesc((pipes.find(p => p[0] === a) || [, a])[1])} · ${x.length} completed`) + svcSrTable(x, m, true) + "</div>"; }
     if (kind === "person") { const x = a === "others" ? others : rs.filter(r => r.by === a), o = open && a !== "others" ? open.filter(r => r.by === a) : null;
@@ -5082,7 +5125,7 @@ function renewalWorkHtml(m) {
       list = head(a === "others" ? "Others" : cesc(a)) + `<h3 class="rh3">Completed · ${x.length}</h3>${svcSrTable(x, m, true)}${o ? `<h3 class="rh3">Open · ${o.length}</h3>${svcOpenTable(o, m)}` : ""}${a !== "others" ? `<h3 class="rh3">Renewal tasks · ${tk.length}</h3>${svcTaskTable(tk)}` : ""}</div>`; }
   }
   return `<div class="sect"><h2>Renewal SR Work</h2>
-    <p class="sd">Renewal SRs and renewal tasks, ${fmtShortDate(m.days[0])} – ${fmtShortDate(m.days[m.days.length - 1])}: the SRs completed, from the day each was created to the day it was completed, and the ones still open; the renewal tasks due, and how many were done. Credit goes to whoever completed the SR or task. None of these are in the Service Digest.</p>
+    <p class="sd">Renewal SRs, tasks, call backs and texts, ${fmtShortDate(m.days[0])} – ${fmtShortDate(m.days[m.days.length - 1])}: the SRs completed, from the day each was created to the day it was completed, and the ones still open; the renewal tasks due, and how many were done; and the call backs, texts and emails with customers whose open SRs are all renewal SRs, or about the renewal. Credit goes to whoever completed the SR or task. None of these are in the Service Digest.</p>
     ${tiles}${renDrill.startsWith("rw:") && !renDrill.startsWith("rw:pipe:") ? list : ""}
     ${tr ? `<div class="scroll"><table><thead><tr><th>Pipeline</th><th class="num">Completed</th><th class="num">Median</th><th class="num">90% within</th></tr></thead><tbody>${tr}</tbody></table></div>` : ""}
     ${renDrill.startsWith("rw:pipe:") ? list : ""}</div>`;

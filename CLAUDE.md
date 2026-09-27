@@ -507,6 +507,15 @@ Crystal (hybrid); credit always goes to whoever COMPLETED the SR or task.
   its shot clock reminder, "Renewal we have renewal info") leaves Service
   Tasks Done and is counted on the Renewals tab; the counts are rebuilt from
   `task_rows`, which reproduce `task_figures` exactly (09-01..09-25).
+  **Call backs, texts and emails too** (Frank, 2026-09-27: "everything should
+  be separated if possible"): a number is renewal business when every SR it
+  has open at the end of the day is a renewal SR (`service_digest.
+  renewal_caller`); a text or email also is when it mentions the renewal
+  (`service_messages.RENEWAL_WORDS` -- the reminders), and so is a reply to
+  one. Rows carry `renewal`; the board splits them and rebuilds the message
+  counts from the rows. Utilization cannot be split (Insightful measures the
+  whole day). 09-01..09-25 were flagged from their saved files (backups
+  under `backups/2026-09-27-renewal-split/`).
   **Cancellations to check** (the "not dated" flag) moved to the Renewals
   tab too, from `renewal_report`'s `sr.flag`.
 - **The Renewals tab is its own report** (Frank, 2026-09-25: "service cant be

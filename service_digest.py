@@ -66,6 +66,16 @@ RENEWALS = {w for _, _, ws, kind in PIPELINES if kind == "renewal" for w in ws}
 CHANGES = {"Service Pipeline"}
 
 
+def renewal_caller(hit):
+    """Is this number's business a renewal? True when the caller has SRs
+    open at the end of the day and EVERY one is a renewal SR (Frank,
+    2026-09-27: "everything should be separated if possible"). A customer
+    with nothing open, or with a Late Payment or change open beside the
+    renewal, stays service."""
+    open_srs = [t for t in (hit or {}).get("tix") or [] if t.get("status") == 1]
+    return bool(open_srs) and all(t.get("workflowName") in RENEWALS for t in open_srs)
+
+
 def pipeline_of(workflow):
     return next((k for k, _, ws, _ in PIPELINES if workflow in ws), "other")
 TICKET_LOOKBACK_DAYS = 365           # how far back the completed pull pages
@@ -391,7 +401,7 @@ def callback_figures(day, recs=None, commercial_only=frozenset()):
         hit = idx.get(n) or {}
         cust = (hit.get("cust") or [None])[0]
         lead = (hit.get("lead") or [None])[0] if not cust else None
-        rows.append({"bucket": bucket,
+        rows.append({"bucket": bucket, "renewal": renewal_caller(idx.get(n)),
                      "minutes": round((back[0] - last).total_seconds() / 60) if back else None,
                      "by": (back[1] if back[1] in SERVICE_TEAM else "other") if back else None,
                      "number": n, "calls": len(calls),
