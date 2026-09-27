@@ -378,7 +378,14 @@ Crystal (hybrid); credit always goes to whoever COMPLETED the SR or task.
   transferred) or "after the SR opened" (the note's own date is on or after
   the renewal SR's createDate -- Paloma Juarez, cancelled 07-24, SR 07-15).
   The outcome stays as is; the Service Center lists them as cancellations to
-  check. Do not count them as lost without Frank.
+  check. Do not count them as lost without Frank. **But a note that dates the
+  cancellation on or after the renewal SR opened is not flagged -- it is a
+  cancellation DURING the renewal and the team's cancel resolution stands,
+  LOST** (Frank, 2026-09-27: "you put notes that clearly state what
+  happened" -- Paloma Juarez 07-24, Eduardo Sanchez 09-22, Luis
+  Alvarez-Hernandez 09-02). **Cancelled: Sold/Moved** (id 101638, added
+  2026-09-27) is its own outcome, OUTSIDE the rate, on the Service Center and
+  the Renewals tab (status `sold_moved`) alike.
 - **Past days' renewal rows are re-read every night**
   (`service_digest.refresh_past_renewals`, last 120 days): a day's document is
   built once, so without this a note read (or a resolution renamed) after the
