@@ -190,9 +190,12 @@ def rebuild(day, publish=False, reuse=False, repair=False, log=print):
     _refresh_moves(day, log)
     _from_old_cards(day, old_doc.get("calls") or [], log)
     _readable_rows(day, log)
-    if kept is not None:
-        old_cache_path.write_bytes(kept)     # this script's own new reads
-        if repair:
+    if reuse:
+        # This script's own reads: the local copy, or -- in a fresh
+        # container -- the one a publish put back in R2 (just pulled).
+        if kept is not None:
+            old_cache_path.write_bytes(kept)
+        if repair and old_cache_path.exists():
             _drop_bad_reads(old_cache_path, log, day)
     elif old_cache_path.exists():
         old_cache_path.unlink()              # read every call again
