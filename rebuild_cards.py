@@ -10,6 +10,8 @@ a card (CLAUDE.md, Cost). This is the deliberate exception, day by day:
     python3 rebuild_cards.py 2026-09-01 2026-09-25 --publish   # oldest first
     python3 rebuild_cards.py --days 2026-09-01,2026-09-04 --publish
     python3 rebuild_cards.py 2026-09-22 --publish --reuse  # publish a test run's reads
+    python3 rebuild_cards.py 2026-09-01 2026-09-25 --publish --repair
+        # re-read only follow-ups missing their scorecard, and failed reads
 
 For each day:
   1. the day's own inputs come back from R2's cache/<day>/ (call rows,
@@ -81,6 +83,39 @@ def _keep_recordings(cards, old_cards):
             c["recording_ids"] = by[(c.get("who"), c.get("lead_id"))]
 
 
+def _drop_bad_reads(path, log, day):
+    """--repair: forget the reads a run before the follow-up retry left
+    without their follow-up scorecard, so only those calls are read again."""
+    import coaching_cards as cc
+    cache = json.loads(path.read_text())
+    bad = [k for k, d in cache.items()
+           if (cc._flow(d.get("flow")) or [""])[0] in cc.FU_FLOWS
+           and len(cc._clean_score(d.get("fuscore"), cc.FU_DIMS)) < 3]
+    for k in bad:
+        del cache[k]
+    path.write_text(json.dumps(cache, indent=1))
+    log(f"  {day}: {len(bad)} follow-up read(s) without their scorecard will be read again")
+
+
+def _failed_reads(day, cards, old_cards):
+    """Old cards whose call has no new read at all -- the read failed (a
+    model answer that was not valid JSON, Joseph Valentine 2026-09-22) --
+    rather than being read again as a pure service call. Those old cards
+    stay on the page instead of silently disappearing."""
+    import coaching_cards as cc
+    M = json.loads((ROOT / f"data/metrics_{day}.json").read_text())
+    cache = json.loads((ROOT / f"data/coaching_cards_{day}.json").read_text())
+    groups = {}
+    for who, v in (M.get("producers") or {}).items():
+        for r in v.get("call_detail") or []:
+            if (r.get("summary") or {}).get("source") == "recording" and r.get("lead_id") is not None:
+                groups.setdefault((who, r["lead_id"]), []).append(r)
+    have = {(c.get("who"), c.get("lead_id")) for c in cards}
+    return [c for c in old_cards if (c.get("who"), c.get("lead_id")) not in have
+            and (c.get("who"), c.get("lead_id")) in groups
+            and cc._group_ck(c.get("who"), groups[(c.get("who"), c.get("lead_id"))]) not in cache]
+
+
 def _refresh_moves(day, log):
     """Every call row's stage moves, re-read from the notes across every lead
     record on its number (what outbound rows always had; inbound rows had
@@ -105,7 +140,7 @@ def _refresh_moves(day, log):
     log(f"  {day}: stage moves re-read ({changed} row(s) changed)")
 
 
-def rebuild(day, publish=False, reuse=False, log=print):
+def rebuild(day, publish=False, reuse=False, repair=False, log=print):
     """`reuse` publishes the reads a previous run of this script left in
     data/coaching_cards_<day>.json instead of paying for them again."""
     import coaching_cards
@@ -117,13 +152,35 @@ def rebuild(day, publish=False, reuse=False, log=print):
     old_cache = old_cache_path.read_bytes() if old_cache_path.exists() else None
     old_doc_raw = cli.get_object(Bucket=bucket, Key=f"days/{day}.json")["Body"].read()
     old_doc = json.loads(old_doc_raw)
+    # The page as it was BEFORE any rebuild, when a backup exists: a second
+    # run (a retry) must compare against the original cards, not its own.
+    try:
+        pages = [o["Key"] for o in cli.list_objects_v2(Bucket=bucket, Prefix="backups/").get("Contents", [])
+                 if o["Key"].endswith(f"-card-rebuild/days/{day}.json")]
+        if pages:
+            old_doc = json.loads(cli.get_object(Bucket=bucket, Key=sorted(pages)[0])["Body"].read())
+    except Exception:
+        pass
     _refresh_moves(day, log)
     _from_old_cards(day, old_doc.get("calls") or [], log)
     if kept is not None:
         old_cache_path.write_bytes(kept)     # this script's own new reads
+        if repair:
+            _drop_bad_reads(old_cache_path, log, day)
     elif old_cache_path.exists():
         old_cache_path.unlink()              # read every call again
     cards = coaching_cards.build(day, log=log)
+    # A read that failed is retried once (build only re-reads calls it has no
+    # read for); one that fails again keeps its old card.
+    kept_old = _failed_reads(day, cards or [], old_doc.get("calls") or []) if cards else []
+    if kept_old:
+        log(f"  {day}: {len(kept_old)} read(s) failed -- retrying")
+        cards = coaching_cards.build(day, log=log)
+        kept_old = _failed_reads(day, cards or [], old_doc.get("calls") or [])
+        if kept_old:
+            log(f"  {day}: keeping {len(kept_old)} old card(s) whose read failed twice: "
+                + ", ".join(c.get("lead") or "?" for c in kept_old))
+            cards = (cards or []) + kept_old
     if cards:
         _keep_recordings(cards, old_doc.get("calls") or [])
     if not cards:
@@ -175,7 +232,8 @@ def main(argv):
     start = args[0]
     end = args[1] if len(args) > 1 else start
     publish = "--publish" in argv
-    reuse = "--reuse" in argv
+    reuse = "--reuse" in argv or "--repair" in argv
+    repair = "--repair" in argv
     import publish_board
     cli, bucket = publish_board._client()
     days, token = [], None
@@ -190,7 +248,7 @@ def main(argv):
         token = page.get("NextContinuationToken")
     for day in sorted(d for d in days if start <= d <= end and (only is None or d in only)):
         try:
-            rebuild(day, publish=publish, reuse=reuse, log=lambda m: print(m, flush=True))
+            rebuild(day, publish=publish, reuse=reuse, repair=repair, log=lambda m: print(m, flush=True))
         except Exception as e:
             print(f"  {day}: FAILED ({type(e).__name__}: {e}) -- left as it was", flush=True)
 
