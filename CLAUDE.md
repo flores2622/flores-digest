@@ -400,6 +400,19 @@ Crystal (hybrid); credit always goes to whoever COMPLETED the SR or task.
        go back to them);
     3. no note, or a note that does not say: **Unable to Contact/No Show**
        (Frank renamed Unable to Contact to that, 2026-09-24).
+  **The customer's texts are read with the note** (Frank, 2026-09-27: "i
+  want the texts to be used to help decide ... it should be built in"):
+  `service_messages.renewal_texts` hands step 2 every text between the
+  customer's numbers and the service lines from the SR's createDate to 3
+  days after it closed, when the customer wrote back or someone typed to
+  them (automation alone adds nothing). Their own words outweigh a bare
+  "renewed" -- Isaiah Tullis, noted "renewed" 09-22, texted 09-23 "We've
+  decided to switch insurance providers". An SR with texts and no note is
+  read from them. Source `notes+texts` / `texts`; each row keeps `texts`.
+  The texts come from `data/rc_texts_archive.json` (+ R2 copy, 240 days,
+  topped up every 12 hours). The read cache key is note + texts, so new
+  texts mean a new read; **until that read is made (it failed), the note's
+  own earlier read stands** -- never a fall to Unable to Contact.
   **Mid-term Cancellation** (id 101637, Frank added it 2026-09-24: "mid term
   cancellations, prior cancellations, anything that cancelled prior to
   renewal SR generating") is an old SR closed out on a policy already

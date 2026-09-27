@@ -88,6 +88,21 @@ of it or moved ("got rid of the ATV", "sold the car", "moved out of state") \
 is sold_moved.
 - A duplicate SR, a wrong policy, a policy that does not renew this term, or \
 a payment note with nothing about the renewal is unclear.
+- Some items also carry the customer's TEXTS with the agency while the SR \
+was open (after "Texts:", oldest first; "customer" is the customer, a first \
+name is the agency's rep, "(automation)" is an automatic reminder, not a \
+person). Use them with the note -- the customer's own words about the \
+renewal outweigh a bare note like "renewed" or "review if needed":
+  - the customer says they are switching companies, cancelling, or already \
+bought elsewhere at this renewal -> client_cancelled (sold the car / moved \
+-> sold_moved), whatever the note says;
+  - the customer talked the renewal over with a rep by text (asked about it, \
+the price, payment dates, coverage) and kept it -> renewed_as_is, or \
+renewed_endorsed if the texts or note show a change actually made;
+  - texts about something else (a payment, ID cards, a claim) do not make \
+the renewal discussed -- judge the note alone;
+  - automation texts with no customer reply are not a conversation;
+  - an item with texts but no note: answer from the texts, or unclear.
 - When in doubt, answer unclear.
 
 Return ONLY a JSON object mapping each id to one choice, e.g. \
@@ -150,22 +165,37 @@ def _ask(cs, model, chunk):
     return got
 
 
-def read(srs, log=print):
+def _basis(note, texts):
+    """What a read was made from, for the cache key. With no texts it is the
+    note alone, so every read made before texts were added still holds."""
+    return note if not texts else f"{note}\n--texts--\n{texts}"
+
+
+def read(srs, log=print, texts=None):
     """{sr id: choice} for these SRs' notes, "unclear" included, reading only
-    notes not already read. An SR missing from the result has no note, or its
-    read failed (retried next night) -- never raises."""
+    notes not already read. `texts` is {sr id: the customer's texts while
+    the SR was open} (service_messages.renewal_texts): read beside the note,
+    and an SR with texts but no note is read from them. An SR missing from
+    the result has neither, or its read failed (retried next night) --
+    never raises."""
     cache = load(log=log)
+    texts = texts or {}
     want = {}
     for t in srs:
         note = clean(t.get("resolutionDesc"))
-        if not note:
-            continue
         sid = str(t.get("id"))
+        tx = texts.get(sid) or ""
+        if not note and not tx:
+            continue
+        basis = _basis(note, tx)
         hit = cache.get(sid)
-        if hit and hit.get("h") == _h(note):
+        if hit and hit.get("h") == _h(basis):
             continue
         subj = (t.get("subject") or "").strip()
-        want[sid] = ((f"{subj}: {note}" if subj else note)[:1500], note)
+        item = (f"{subj}: {note}" if subj else note) or f"{subj}: (no note)"
+        if tx:
+            item = f"{item[:1200]}\nTexts:\n{tx[-2500:]}"
+        want[sid] = (item[:4000], basis)
     if want:
         try:
             import call_summary as cs
@@ -195,8 +225,13 @@ def read(srs, log=print):
     out = {}
     for t in srs:
         sid, note = str(t.get("id")), clean(t.get("resolutionDesc"))
+        tx = texts.get(sid) or ""
         hit = cache.get(sid)
-        if note and hit and hit.get("h") == _h(note):
+        if (note or tx) and hit and hit.get("h") == _h(_basis(note, tx)):
             out[sid] = hit["choice"]          # "unclear" included: read, says nothing
+        elif note and hit and hit.get("h") == _h(note):
+            # Texts arrived but that read has not been made yet (it failed):
+            # the note's own read stands until it is.
+            out[sid] = hit["choice"]
     return out
 

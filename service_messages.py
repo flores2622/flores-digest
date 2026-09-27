@@ -410,6 +410,133 @@ def build(day, idx=None, commercial_only=frozenset(), log=log, download_notes=Tr
 
 
 
+# ---- the text archive, for renewal outcomes --------------------------------
+# Renewal SRs are read with the customer's texts beside the rep's note (Frank,
+# 2026-09-27: "i want the texts to be used to help decide"), and a renewal SR
+# is open ~45 days, with past days re-read for 120 -- longer than any one
+# day's window. So every text on the service lines is kept in one archive
+# (data/ + an R2 copy, like the note reads), topped up from RingCentral at
+# most every ARCHIVE_STALE_HOURS and trimmed to ARCHIVE_DAYS. Stored redacted.
+ARCHIVE_FILE = ROOT / "data/rc_texts_archive.json"
+ARCHIVE_R2_KEY = "cache/rc_texts_archive.json"
+ARCHIVE_DAYS = 240
+ARCHIVE_STALE_HOURS = 12
+ARCHIVE_SEED_FROM = "2026-03-01"
+TEXT_WINDOW_AFTER = 3        # days after the SR closed that still count
+
+
+def _z(t):
+    return t.astimezone(dt.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+
+
+def load_archive(log=log):
+    if ARCHIVE_FILE.exists():
+        return json.loads(ARCHIVE_FILE.read_text())
+    try:
+        import publish_board
+        cli, bucket = publish_board._client()
+        body = cli.get_object(Bucket=bucket, Key=ARCHIVE_R2_KEY)["Body"].read()
+        ARCHIVE_FILE.parent.mkdir(exist_ok=True)
+        ARCHIVE_FILE.write_bytes(body)
+        return json.loads(body)
+    except Exception:
+        return {"texts": [], "updated": None}
+
+
+def update_archive(log=log, force=False):
+    """Top the archive up from RingCentral (from the newest text it holds,
+    less a day, so late delivery statuses land) and trim it. Never raises:
+    a failed pull keeps the archive as it was."""
+    arc = load_archive(log=log)
+    now = dt.datetime.now(AZ)
+    upd = arc.get("updated")
+    if not force and upd and now - dt.datetime.fromisoformat(upd) < dt.timedelta(hours=ARCHIVE_STALE_HOURS):
+        return arc
+    try:
+        from rc_client import RingCentral
+        rc = RingCentral()
+        last = max((t["at"] for t in arc["texts"]), default=None)
+        since = (dt.datetime.fromisoformat(last.replace("Z", "+00:00")) - dt.timedelta(days=1)) if last \
+            else dt.datetime.fromisoformat(ARCHIVE_SEED_FROM + "T00:00:00-07:00")
+        names = {eid: v["name"] for eid, v in rc.roster().items()}
+        got = {t["id"]: t for t in arc["texts"]}
+        n0 = len(got)
+        for eid, who in names.items():
+            if who in _team():
+                for r in rc.texts(eid, _z(since), _z(now + dt.timedelta(minutes=5))):
+                    s = _slim(r, who)
+                    got[s["id"]] = s
+        cut = _z(now - dt.timedelta(days=ARCHIVE_DAYS))
+        arc = {"texts": sorted((t for t in got.values() if t["at"] >= cut), key=lambda t: t["at"]),
+               "updated": now.isoformat(timespec="seconds")}
+        ARCHIVE_FILE.parent.mkdir(exist_ok=True)
+        ARCHIVE_FILE.write_text(json.dumps(arc))
+        try:
+            import publish_board
+            cli, bucket = publish_board._client()
+            cli.put_object(Bucket=bucket, Key=ARCHIVE_R2_KEY, Body=ARCHIVE_FILE.read_bytes(),
+                           ContentType="application/json")
+        except Exception as e:
+            log(f"  text archive: R2 copy not saved ({type(e).__name__})")
+        log(f"  text archive: {len(arc['texts']) - n0:+d} texts, {len(arc['texts'])} kept")
+    except Exception as e:
+        log(f"  text archive: not topped up ({type(e).__name__}: {str(e)[:120]}) -- using what it has")
+    return arc
+
+
+def renewal_texts(srs, log=log):
+    """{sr id: the customer's texts with the service lines while the SR was
+    open (created -> completed + TEXT_WINDOW_AFTER days)}, oldest first, one
+    line each, for renewal_notes.read(). Only SRs where the customer wrote
+    back or someone typed to them: automation alone is no conversation and
+    adds nothing to a read."""
+    if not srs:
+        return {}
+    arc = update_archive(log=log)
+    try:
+        custs = {str(c["id"]): c for c in json.loads((ROOT / "data/az_customers_all.json").read_text())}
+    except Exception:
+        return {}
+    sent_to = collections.defaultdict(set)
+    by_num = collections.defaultdict(list)
+    for t in arc["texts"]:
+        if not t.get("number"):
+            continue
+        by_num[t["number"]].append(t)
+        if not t["in"] and not t["media"] and t["text"]:
+            sent_to[(t["who"], _norm_body(t["text"]))].add(t["number"])
+    templates = {k for k, v in sent_to.items() if len(v) >= TEMPLATE_NUMBERS}
+    out = {}
+    for sr in srs:
+        c = custs.get(str(sr.get("householdId")))
+        if not c:
+            continue
+        nums = {norm(c.get("phone")), norm(c.get("secondaryPhone"))} - {None}
+        lo = str(sr.get("createDate") or sr.get("completeDate") or "")[:10]
+        done = str(sr.get("completeDate") or "")[:10]
+        if not (lo and done):
+            continue
+        hi = (dt.date.fromisoformat(done) + dt.timedelta(days=TEXT_WINDOW_AFTER)).isoformat()
+        lines, real = [], False
+        for t in sorted((t for n in nums for t in by_num.get(n, ())), key=lambda t: t["at"]):
+            at = dt.datetime.fromisoformat(t["at"].replace("Z", "+00:00")).astimezone(AZ)
+            if not (lo <= at.date().isoformat() <= hi):
+                continue
+            body = t["text"] or ("(picture)" if t["media"] else "")
+            if not body:
+                continue
+            if t["in"]:
+                who, real = "customer", True
+            elif not t["media"] and (t["who"], _norm_body(t["text"])) in templates:
+                who = f"{t['who'].split()[0]} (automation)"
+            else:
+                who, real = t["who"].split()[0], True
+            lines.append(f"{at:%m-%d %H:%M} {who}: {body[:300]}")
+        if real:
+            out[str(sr.get("id"))] = "\n".join(lines[-30:])
+    return out
+
+
 def _saved(cli, bucket, day, name):
     """A day file from data/, else from the R2 day cache (saved there too)."""
     f = ROOT / "data" / name

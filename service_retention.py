@@ -438,10 +438,26 @@ def cancel_flag(sr, chains, pn):
     return None
 
 
-def read_notes(srs, log=print):
-    """renewal_notes.read() for the SRs NOT closed on one of the nine."""
+def sr_texts(srs, log=print):
+    """The customer's texts while each SR was open (service_messages), for
+    the SRs NOT closed on one of the nine -- {} when they cannot be read."""
+    try:
+        import service_messages
+        return service_messages.renewal_texts([t for t in srs if not resolution_key(t)], log=log)
+    except Exception as e:
+        log(f"  renewal texts: not read ({type(e).__name__}: {str(e)[:120]}) -- notes alone")
+        return {}
+
+
+def read_notes(srs, log=print, texts=None):
+    """renewal_notes.read() for the SRs NOT closed on one of the nine, with
+    the customer's texts beside each note (Frank, 2026-09-27: "i want the
+    texts to be used to help decide")."""
     import renewal_notes
-    return renewal_notes.read([t for t in srs if not resolution_key(t)], log=log)
+    srs = [t for t in srs if not resolution_key(t)]
+    if texts is None:
+        texts = sr_texts(srs, log=log)
+    return renewal_notes.read(srs, log=log, texts=texts)
 
 
 def renewal_srs(day, done_tickets, policies, customers, az=None, log=print, refresh=True):
@@ -466,7 +482,8 @@ def renewal_srs(day, done_tickets, policies, customers, az=None, log=print, refr
         save_household_map(hh, log=log)
     pn2hh = {_NORM(k): v for k, v in policy_households(hh).items()}
     load_resolution_labels(az=az, log=log)
-    notes = read_notes(srs, log=log)
+    texts = sr_texts(srs, log=log)
+    notes = read_notes(srs, log=log, texts=texts)
     rows, unnamed = [], collections.Counter()
     # The policy record is read as of TODAY, not as of the SR's day: renewal
     # SRs are worked before the renewal date, so on the day one closes the
@@ -475,8 +492,13 @@ def renewal_srs(day, done_tickets, policies, customers, az=None, log=print, refr
     today = _dt.datetime.now(_dt.timezone(_dt.timedelta(hours=-7))).date().isoformat()
     as_of = max(day, today)
     for t in srs:
+        tx = texts.get(str(t.get("id")))
         key, source, pn, prem, line = sr_outcome(t, chains, hh, pn2hh, as_of,
                                                  note_key=notes.get(str(t.get("id"))))
+        import renewal_notes as _rn
+        read_with = (_rn.load().get(str(t.get("id"))) or {}).get("h")
+        if source == "notes" and tx and read_with == _rn._h(_rn._basis(_rn.clean(t.get("resolutionDesc")), tx)):
+            source = "notes+texts" if _note_text(t) else "texts"
         rid = t.get("resolutionId")
         if day >= RESOLUTIONS_FROM and not resolution_key(t):
             unnamed[RESOLUTION_LABELS.get(rid) or ("No resolution" if rid is None else f"id {rid}")] += 1
@@ -489,7 +511,8 @@ def renewal_srs(day, done_tickets, policies, customers, az=None, log=print, refr
                      "flag": cancel_flag(t, chains, pn) if key == "cancelled_before_sr" else None,
                      "name": t.get("name"), "subject": (t.get("subject") or "").strip(),
                      "household": t.get("householdId"), "done": _d(t.get("completeDate")),
-                     "note": re.sub(r"\s+", " ", re.sub(r"<[^>]+>", " ", t.get("resolutionDesc") or "")).strip()[:200] or None})
+                     "note": re.sub(r"\s+", " ", re.sub(r"<[^>]+>", " ", t.get("resolutionDesc") or "")).strip()[:200] or None,
+                     "texts": tx[-1500:] if tx else None})
     return rows, dict(unnamed)
 
 
