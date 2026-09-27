@@ -136,6 +136,21 @@ class RingCentral:
             page += 1
 
 
+    def texts(self, ext_id, date_from, date_to):
+        """Every SMS/MMS on one extension's own lines between two instants,
+        both directions (service_messages.py). Works per extension with the
+        admin JWT; pages by navigation.nextPage, not page numbers."""
+        recs, url = [], f"/restapi/v1.0/account/~/extension/{ext_id}/message-store"
+        params = {"messageType": "SMS", "dateFrom": date_from, "dateTo": date_to, "perPage": 250}
+        while True:
+            j = self.get(url, **params) if params else self.get(url)
+            recs.extend(j.get("records", []))
+            url = ((j.get("navigation") or {}).get("nextPage") or {}).get("uri")
+            if not url:
+                return recs
+            params = None
+
+
 def owner_ext_id(rec):
     """Owner extension for a call-log record.
 
