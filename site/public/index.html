@@ -4322,8 +4322,28 @@ function mergeServiceDocs(docs) {
    The documents still hold every row; the split is made here, so every day
    already published splits the same way. */
 const RENEWAL_PIPES = new Set(["renewals_ff", "renewals_bw"]);
+// Renewal tasks by title: "♾️Personal Renewal 30 Days", its shot clock
+// reminder, "contact customer", "Renewal we have renewal info" -- nothing else
+// the team is given says renewal (every task title, 09-01..09-25).
+const RENEWAL_TASK = /renewal/i;
+// Due per assignee, done per whoever completed it -- task_figures' own count,
+// which the rows reproduce exactly (09-01..09-25).
+function taskCounts(rows, team) {
+  const t = {};
+  for (const n of team) t[n] = { due: 0, completed: 0 };
+  for (const r of rows) {
+    for (const a of r.assignees || []) if (t[a]) t[a].due++;
+    if (r.done && t[r.done_by]) t[r.done_by].completed++;
+  }
+  return t;
+}
 function splitRenewals(m) {
   const ren = r => RENEWAL_PIPES.has(r.pipeline);
+  const team = m.team.map(t => t.name);
+  m.renewalTasks = m.taskRows.filter(r => RENEWAL_TASK.test(r.title || ""));
+  m.taskRows = m.taskRows.filter(r => !RENEWAL_TASK.test(r.title || ""));
+  m.tasks = taskCounts(m.taskRows, team);
+  m.renewalTaskCounts = taskCounts(m.renewalTasks, team);
   m.renewalDone = m.completed.filter(ren);
   m.completed = m.completed.filter(r => !ren(r));
   if (m.openRows) {
@@ -4995,12 +5015,14 @@ function renewalWorkHtml(m) {
   const person = n => { const mine = rs.filter(r => r.by === n), o = open ? open.filter(r => r.by === n) : null;
     return dk("rw:person:" + n, `<div class="k">${pbadge(DOT[n] || TEAM_DOT, n.split(" ")[0])}</div>
       <div class="v">${mine.length}</div><div class="n">completed${mine.length ? ` &middot; median ${hrs(mine)}` : ""}</div>
-      ${o ? `<div class="n"><b>${o.length}</b> open &middot; <b${o.some(r => r.overdue) ? ' style="color:var(--bad)"' : ""}>${o.filter(r => r.overdue).length}</b> overdue</div>` : ""}`); };
+      ${o ? `<div class="n"><b>${o.length}</b> open &middot; <b${o.some(r => r.overdue) ? ' style="color:var(--bad)"' : ""}>${o.filter(r => r.overdue).length}</b> overdue</div>` : ""}
+      <div class="n">Renewal tasks <b>${(m.renewalTaskCounts[n] || {}).completed || 0}/${(m.renewalTaskCounts[n] || {}).due || 0}</b></div>`); };
   const others = rs.filter(r => !team.includes(r.by));
   const tiles = `<div class="tiles">
     ${dk("rw:done", `<div class="k">Renewal SRs Completed</div><div class="v">${rs.length}</div><div class="n">median ${hrs(rs)} created to completed</div>`, "border-color:var(--border-strong)")}
+    ${dk("rw:tasks", `<div class="k">Renewal Tasks Done</div><div class="v">${m.renewalTasks.filter(r => r.done).length}<span style="font-size:15px;color:var(--text-muted)"> / ${m.renewalTasks.length}</span></div><div class="n">${m.renewalTasks.length ? Math.round(100 * m.renewalTasks.filter(r => r.done).length / m.renewalTasks.length) : 0}% of renewal tasks due</div>`)}
     ${open ? dk("rw:open", `<div class="k">Open Renewal SRs</div><div class="v">${open.length}</div><div class="n">${open.filter(r => r.overdue).length} overdue &middot; as of ${fmtShortDate(m.days[m.days.length - 1])}</div>`) : ""}
-    ${team.filter(n => rs.some(r => r.by === n) || (open || []).some(r => r.by === n)).map(person).join("")}
+    ${team.filter(n => rs.some(r => r.by === n) || (open || []).some(r => r.by === n) || (m.renewalTaskCounts[n] || {}).due).map(person).join("")}
     ${others.length ? dk("rw:person:others", `<div class="k">${pbadge("#8a877f", "Others")}</div><div class="v">${others.length}</div><div class="n">completed &middot; median ${hrs(others)}</div>`) : ""}
   </div>`;
   const pipes = (m.pipelines || []).filter(([k]) => RENEWAL_PIPES.has(k)).map(([k, l]) => [k, l, rs.filter(r => r.pipeline === k)]).filter(x => x[2].length);
@@ -5013,13 +5035,15 @@ function renewalWorkHtml(m) {
     const head = (t, what) => `<div class="rdrill-list"><div style="display:flex;justify-content:space-between;align-items:baseline;gap:12px;margin:14px 0 6px">
       <h3 class="rh3" style="margin:0">${t}</h3><a href="#" data-drill-close style="font-size:12.5px">Close</a></div>${what ? `<p class="sd" style="margin:0 0 6px">${what}</p>` : ""}`;
     if (kind === "done") list = head(`Renewal SRs Completed · ${rs.length}`, "Newest first, with the outcome each counts as.") + svcSrTable(rs, m, true) + "</div>";
+    if (kind === "tasks") list = head(`Renewal Tasks · ${m.renewalTasks.length} due`, "Every renewal task due in the last " + REN_WORK_DAYS + " days, not done first.") + svcTaskTable(m.renewalTasks) + "</div>";
     if (kind === "open") list = head(`Open Renewal SRs · ${open.length}`, `As of ${fmtShortDate(m.days[m.days.length - 1])}.`) + svcOpenTable(open, m) + "</div>";
     if (kind === "pipe") { const x = rs.filter(r => r.pipeline === a); list = head(`${cesc((pipes.find(p => p[0] === a) || [, a])[1])} · ${x.length} completed`) + svcSrTable(x, m, true) + "</div>"; }
     if (kind === "person") { const x = a === "others" ? others : rs.filter(r => r.by === a), o = open && a !== "others" ? open.filter(r => r.by === a) : null;
-      list = head(a === "others" ? "Others" : cesc(a)) + `<h3 class="rh3">Completed · ${x.length}</h3>${svcSrTable(x, m, true)}${o ? `<h3 class="rh3">Open · ${o.length}</h3>${svcOpenTable(o, m)}` : ""}</div>`; }
+      const tk = a === "others" ? [] : m.renewalTasks.filter(r => (r.assignees || []).includes(a) || r.done_by === a);
+      list = head(a === "others" ? "Others" : cesc(a)) + `<h3 class="rh3">Completed · ${x.length}</h3>${svcSrTable(x, m, true)}${o ? `<h3 class="rh3">Open · ${o.length}</h3>${svcOpenTable(o, m)}` : ""}${a !== "others" ? `<h3 class="rh3">Renewal tasks · ${tk.length}</h3>${svcTaskTable(tk)}` : ""}</div>`; }
   }
   return `<div class="sect"><h2>Renewal SR Work</h2>
-    <p class="sd">The renewal SRs the team completed in the last ${REN_WORK_DAYS} days (${fmtShortDate(m.days[0])} – ${fmtShortDate(m.days[m.days.length - 1])}), from the day each was created to the day it was completed, and the ones still open. Credit goes to whoever completed the SR. These are not in the Service Digest.</p>
+    <p class="sd">Renewal SRs and renewal tasks, ${fmtShortDate(m.days[0])} – ${fmtShortDate(m.days[m.days.length - 1])}: the SRs completed, from the day each was created to the day it was completed, and the ones still open; the renewal tasks due, and how many were done. Credit goes to whoever completed the SR or task. None of these are in the Service Digest.</p>
     ${tiles}${renDrill.startsWith("rw:") && !renDrill.startsWith("rw:pipe:") ? list : ""}
     ${tr ? `<div class="scroll"><table><thead><tr><th>Pipeline</th><th class="num">Completed</th><th class="num">Median</th><th class="num">90% within</th></tr></thead><tbody>${tr}</tbody></table></div>` : ""}
     ${renDrill.startsWith("rw:pipe:") ? list : ""}</div>`;
