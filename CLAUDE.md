@@ -294,6 +294,14 @@ already downloads. Leads only; a customer's texts are Athena's.
   (`messages.active_leads`) -- lastActivityDate is UTC.
 - Quotes sent are `daily.quote_presented` or an email attachment; opens are
   AgencyZoom's tracking as of that night. Rows, never medians.
+- **Past days: `python3 messages.py --backfill 2026-09-01 [end]`** (Frank,
+  2026-09-27). Notes hold a lead's whole history, so it reads every producer
+  lead active since the start (paced, ~1,800 leads for September), backs each
+  R2 day up under `backups/<today>-messages-backfill/` and adds ONLY the
+  `messages` key -- every other figure stays as it went out. A day that
+  already has one is left alone (`--force` rebuilds). Past days have no RC
+  call log on disk, so call backs come from AgencyZoom's CALL notes only, and
+  email opens are as of the backfill.
 
 ## Service ticket status is DELETED/LIVE, not OPEN/CLOSED
 
