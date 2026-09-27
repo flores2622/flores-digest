@@ -617,6 +617,14 @@ details.sc .scb { padding: 0 12px 12px; }
 .tlx { padding: 5px 0 11px 4px; font-size: 12px; line-height: 1.5; }
 .tlx b { display: block; }
 .tlx span { color: var(--text-secondary); }
+.cat .catx { font-weight: 500; opacity: .85; }
+/* A card's left edge is what the call was for (flowEdge). The hover strip
+   sits over the edge itself, so hovering the colour names it. */
+.cchead { position: relative; }
+.flowedge { position: absolute; left: -10px; top: 0; bottom: 0; width: 10px; cursor: help; }
+.flowleg { display: flex; flex-wrap: wrap; gap: 14px; align-items: center; font-size: 12px; color: var(--text-secondary); margin: 0 0 12px; }
+.flowleg span { display: inline-flex; align-items: center; gap: 6px; }
+.flowleg i { width: 10px; height: 16px; border-radius: 2px; display: inline-block; }
 .cat { display: inline-block; font-size: 9.5px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.03em; padding: 2px 8px; border-radius: 10px; white-space: nowrap; color: #16150f; }
 /* Same nine-way outcome as the emailed Call Detail panel's own .g1-.g9
    (report_template.html) -- copied here rather than computed, since the
@@ -2456,13 +2464,40 @@ function leadFitHtml(c) {
    first call the producer dialled shows no chip; nor does a card read
    before Apollo was asked. */
 const FLOW_LABELS = { first: "first conversation", "finish quote": "finishing the quote", "follow-up": "follow-up" };
-function flowChipHtml(c) {
-  const f = c.flow;
-  if (!f) return "";
+// Who dialled, for the card's combined badge (outcomeBadgeHtml). What the
+// call was FOR -- first conversation / finishing the quote / follow-up --
+// is the card's coloured left edge instead (flowEdge; Frank, 2026-09-25:
+// "make the left tab color coded to those 3 stages ... I dont want it as a
+// badge").
+function flowParts(c) {
   const dir = c.direction === "call back" || c.direction === "call in" ? c.direction : "";
-  if (f[0] === "first" && !dir) return "";
-  const label = (dir ? dir + " · " : "") + (FLOW_LABELS[f[0]] || f[0]);
-  return `<span class="ctype" title="${(f[1] || "").replace(/"/g, "&quot;")}">${label}</span>`;
+  return dir ? [[dir, ""]] : [];
+}
+// Blue / orange / aqua: the board's first three categorical slots, the only
+// three that stay apart for every pair in both modes. A card read before
+// Apollo was asked for `flow` gets a plain edge. Named in the legend above
+// the cards and on hover of the card's edge, so it is never colour alone.
+const FLOW_EDGE = { first: "--s1", "finish quote": "--s2", "follow-up": "--s3" };
+function flowEdge(c) {
+  const k = (c.flow || [])[0];
+  return FLOW_EDGE[k] ? { color: `var(${FLOW_EDGE[k]})`, label: FLOW_LABELS[k], why: (c.flow || [])[1] || "" }
+    : { color: "var(--border-strong)", label: "", why: "" };
+}
+function flowLegendHtml() {
+  return `<div class="flowleg">Left edge: ${Object.entries(FLOW_EDGE).map(([k, v]) =>
+    `<span><i style="background:var(${v})"></i>${FLOW_LABELS[k]}</span>`).join("")}</div>`;
+}
+/* One badge per call (Frank, 2026-09-25: "we need to combine/consolidate
+   these badges"): the outcome pill carries the call type after a dot --
+   service/mixed, call in / call back, first conversation / finishing the
+   quote / follow-up -- instead of a second grey pill beside it. The hover
+   says why each part is there. */
+const escAttr = t => String(t || "").replace(/"/g, "&quot;");
+function outcomeBadgeHtml(cat, catc, extras) {
+  extras = extras.filter(([l]) => l);
+  const title = extras.map(([l, why]) => why ? `${l}: ${why}` : "").filter(Boolean).join("\n");
+  return `<span class="cat ${catc ? `cat-${catc}` : ""}"${title ? ` title="${escAttr(title)}"` : ""}>${cat || ""}${
+    extras.length ? `<span class="catx"> &middot; ${extras.map(([l]) => l).join(" &middot; ")}</span>` : ""}</span>`;
 }
 /* On a call the producer answered, the greeting leads whichever scorecard
    the card has: by name and direct, never the front desk's "thanks for
@@ -2540,16 +2575,20 @@ function card(c) {
     : [{ cat: c.cat, catc: c.catc, kind: c.callback_kind || "" }];
   const multiCall = calls.length > 1;
   const callRowHtml = multiCall ? `<div class="callrow">${calls.map((call, i) => `<span class="callchip">
-      ${call.kind ? `<span class="badge-slot ctype">${call.kind}</span>` : ""}<span class="cdur">${(c.call_times || [])[i] || ""}</span>
-      <span class="cat ${call.catc ? `cat-${call.catc}` : ""}">${call.cat || ""}</span></span>`).join("")}</div>` : "";
+      <span class="cdur">${(c.call_times || [])[i] || ""}</span>
+      ${outcomeBadgeHtml(call.cat, call.catc, [[call.kind || "", ""]])}</span>`).join("")}</div>` : "";
+  const typeParts = c.calltype && c.calltype[0] !== "sales" ? [[c.calltype[0], c.calltype[1] || ""]] : [];
+  const edge = flowEdge(c);
   return `<details class="ccard">
-   <summary class="blk cchead" style="border-left:4px solid ${c.tab || "var(--border-strong)"}">
+   <summary class="blk cchead" style="border-left:10px solid ${edge.color}">
+     ${edge.label ? `<span class="flowedge" title="${escAttr(edge.label + (edge.why ? ": " + edge.why : ""))}" aria-label="${escAttr(edge.label)}"></span>` : ""}
      <div class="chead"><div><div class="cname">${c.lead_id
        ? `<a href="${AZ_URL.lead}${encodeURIComponent(c.lead_id)}" target="_blank" rel="noopener" onclick="event.stopPropagation()">${c.lead || ""}</a>`
        : (c.lead || "")}</div>
        <div class="cmeta">${c.who || ""} · ${fmtShortDate(c.day)}${c.time ? ` ${c.time}` : ""} · ${durCell} · ${c.lang || ""} · ${c.src || ""}${c.leadsrc ? ` · ${c.leadsrc}` : ""}</div>
        ${callRowHtml}</div>
-       ${!multiCall ? `<span class="cat ${c.catc ? `cat-${c.catc}` : ""}">${c.cat || ""}</span>` : ""}${c.calltype && c.calltype[0] !== "sales" ? `<span class="ctype ctype-${c.calltype[0]}" title="${c.calltype[1] || ""}">${c.calltype[0]}</span>` : ""}${flowChipHtml(c)}<span class="ctog" aria-hidden="true">▸</span></div>
+       ${!multiCall ? outcomeBadgeHtml(c.cat, c.catc, [...typeParts, ...flowParts(c)])
+         : [...typeParts, ...flowParts(c)].map(([l, why]) => `<span class="ctype" title="${escAttr(why)}">${l}</span>`).join("")}<span class="ctog" aria-hidden="true">▸</span></div>
      <div class="sum">${c.summary || ""}</div>
      ${(c.flags && c.flags.length) || (c.exit && c.exit[0]) ? `<div style="margin-top:8px">${
        c.exit && c.exit[0] ? `<span class="flag red" title="${c.exit[1] || ""}">Producer ended the call</span>` : ""}${
@@ -2740,7 +2779,7 @@ function coachingPanel(d, who) {
     out = `<div class="empty">${objFilterCat ? `No coaching cards carrying "${objFilterCat}"${sel ? ` for ${sel}` : ""} ${scope}.`
       : sel ? `No coaching cards for ${sel} ${scope}.` : `No coaching cards ${scope}.`}</div>`;
   }
-  return nav + filterBanner + out + (d.notcoached ? `<div class="note" style="border:1px dashed var(--border-strong);border-radius:8px;padding:14px 16px">
+  return nav + filterBanner + (shown ? flowLegendHtml() : "") + out + (d.notcoached ? `<div class="note" style="border:1px dashed var(--border-strong);border-radius:8px;padding:14px 16px">
     <b>Not coached, and why.</b> ${d.notcoached}</div>` : "");
 }
 
@@ -4426,6 +4465,28 @@ function mergeServiceDocs(docs) {
   }
   return m;
 }
+/* A service digest and a renewal digest (Frank, 2026-09-27: "we need to
+   separate the renewal SR's from the service SR's"): renewal SRs leave every
+   Service Digest figure -- SRs completed, completion time, each person's
+   open and overdue -- and are worked on the Renewals tab (renewalWorkHtml).
+   The documents still hold every row; the split is made here, so every day
+   already published splits the same way. */
+const RENEWAL_PIPES = new Set(["renewals_ff", "renewals_bw"]);
+function splitRenewals(m) {
+  const ren = r => RENEWAL_PIPES.has(r.pipeline);
+  m.renewalDone = m.completed.filter(ren);
+  m.completed = m.completed.filter(r => !ren(r));
+  if (m.openRows) {
+    m.renewalOpen = m.openRows.filter(ren);
+    m.openRows = m.openRows.filter(r => !ren(r));
+    // Open and overdue per person, from the rows, so renewal SRs leave them.
+    const b = {};
+    for (const t of m.team) b[t.name] = { open: 0, overdue: 0 };
+    for (const r of m.openRows) if (b[r.by]) { b[r.by].open++; if (r.overdue) b[r.by].overdue++; }
+    m.backlog = b;
+  }
+  return m;
+}
 const svcMedian = xs => { const a = xs.filter(x => x != null).sort((p, q) => p - q); if (!a.length) return null;
   const i = Math.floor(a.length / 2); return a.length % 2 ? a[i] : (a[i - 1] + a[i]) / 2; };
 const svcPctile = (xs, q) => { const a = xs.filter(x => x != null).sort((p, q2) => p - q2); return a.length ? a[Math.min(a.length - 1, Math.floor(a.length * q))] : null; };
@@ -4567,18 +4628,6 @@ function srOutcomeHtml(m, pipe, title, rateWord, blurb) {
    a renewal SR closes ~45 days before the renewal, so the day it closed says
    what the rep did, not whether the customer stayed. The digest keeps only
    the work done. */
-function renewalWorkedHtml(m) {
-  const rows = m.renewals;
-  if (!rows.length) return "";
-  const kind = Object.fromEntries(m.outcomes.map(([k, , c]) => [k, c]));
-  const label = Object.fromEntries(m.outcomes.map(([k, l]) => [k, l]));
-  const by = m.team.map(t => t.name).map(n => [n, rows.filter(r => r.by === n).length]).filter(x => x[1]);
-  const counts = m.outcomes.map(([k, l]) => [l, rows.filter(r => r.outcome === k).length]).filter(x => x[1]);
-  const flagged = rows.filter(r => r.flag);
-  return `<div class="sect"><h2>Renewal SRs Worked</h2>
-    <p class="sd"><a href="#" data-sdrill="renewals"><b>${rows.length}</b> renewal SR${rows.length === 1 ? "" : "s"}</a> closed in this period${by.length ? ` (${by.map(([n, c]) => `${n.split(" ")[0]} ${c}`).join(", ")})` : ""}: ${counts.map(([l, c]) => `${l} ${c}`).join(" · ")}. Whether those customers stayed is on the <a href="#" onclick="goView('renewals');return false">Renewals tab</a>.</p>
-    ${flagged.length ? `<p class="sd" style="margin:6px 0 0;color:var(--warn, #b45309)"><a href="#" data-sdrill="renflag"><b>${flagged.length}</b> cancellation${flagged.length === 1 ? "" : "s"} to check</a>: counted as Mid-term Cancellation, but nothing shows the policy cancelled before the renewal SR opened, or the note dates it after. If it cancelled during the renewal, change the SR's resolution to Client Cancelled.</p>` : ""}${svcDrillFor(m, ["renewals", "renflag"])}</div>`;
-}
 function completionTimeHtml(m) {
   const rows = (m.pipelines || []).map(([k, l]) => [l, m.completed.filter(r => r.pipeline === k), k]).filter(x => x[1].length);
   if (!rows.length) return "";
@@ -4743,10 +4792,6 @@ function svcDrillFor(m, keys) {
   if (kind === "cbwho") { const rs = m.callbacks.filter(r => a === "others" ? r.by === "other" : r.by === a);
     return svcDrillList(`${a === "others" ? "Others" : cesc(a.split(" ")[0])} · ${rs.length} call back${rs.length === 1 ? "" : "s"}`, a === "others" ? "Returned by someone outside the service team." : "", svcCallbackTable(rs)); }
   if (kind === "callbacks") return svcDrillList(`Missed Service Calls · ${m.callbacks.length}`, `${cbDone.length} returned the same day. Not returned first.`, svcCallbackTable(m.callbacks));
-  if (kind === "renewals") return svcDrillList(`Renewal SRs Worked · ${m.renewals.length}`, "", svcSrTable(m.renewals, m, true));
-  if (kind === "renflag") { const rs = m.renewals.filter(r => r.flag);
-    return svcDrillList(`Cancellations to check · ${rs.length}`, "Each is counted as Mid-term Cancellation, outside the retention rate. Not dated = AgencyZoom's policy record has not changed since it was loaded, so it gives no cancellation date, and the note gives none either. After the SR opened = the note's own date is on or after the day the renewal SR opened.",
-      svcSrTable(rs.map(r => Object.assign({}, r, { note: `[${r.flag === "not dated" ? "Not dated" : "After the SR opened"}] ${r.note || ""}` })), m, true)); }
   if (kind === "out") { const rs = m.completed.filter(r => r.pipeline === a && r.outcome).filter(per(b));
     return svcDrillList(`${pipeName[a] || a} · ${who(b)} · ${rs.length}`, "", svcSrTable(rs, m, true)); }
   if (kind === "pipe") { const rs = m.completed.filter(r => r.pipeline === a);
@@ -4848,7 +4893,6 @@ function servicePanel(m) {
   return `<div class="sect"><h2>Service Team</h2>
     <p class="sd">Credit goes to whoever completed the SR or task.</p>${tiles}</div>
     ${svcMessagesHtml(m)}
-    ${renewalWorkedHtml(m)}
     ${SR_OUTCOME_SECTIONS.map(([p, t, w, b]) => srOutcomeHtml(m, p, t, w, b)).join("")}
     ${completionTimeHtml(m)}
     ${latePaymentsHtml(m)}
@@ -4874,7 +4918,7 @@ async function paintService() {
   }
   const docs = await fetchServiceDocs(wanted);
   $("#topsub").textContent = "Athena · service team" + (label ? " · " + label : "");
-  const merged = docs.length ? mergeServiceDocs(docs) : null;
+  const merged = docs.length ? splitRenewals(mergeServiceDocs(docs)) : null;
   const paint = () => {
     const y = window.scrollY;
     v.innerHTML = controls + (merged ? servicePanel(merged)
@@ -4977,7 +5021,21 @@ function renDrillHtml([title, what, rs], label, pipeName) {
     <p class="sd" style="margin:0 0 6px">${what}. Customer names open the customer in AgencyZoom.</p>
     ${rs.length ? `<div class="scroll"><table class="rtable"><thead><tr><th>Renews</th><th>Customer</th><th>Policy</th><th class="num">Premium</th><th>Status</th><th>Renewal SR</th>${upcoming ? "<th>Flags</th><th>Risk</th>" : ""}</tr></thead><tbody>${rows}</tbody></table></div>` : '<p class="sd">None.</p>'}</div>`;
 }
-function renewalsPanel(doc) {
+/* Cancellations to check (Frank, 2026-09-27: "flag them"; moved here from
+   the Service Center with the rest of renewals): a renewal SR counted as
+   Mid-term Cancellation that nothing dates -- AgencyZoom's policy record
+   never changed after it was loaded and the rep's note gives no date. */
+function renFlagHtml(doc, label) {
+  const rs = doc.rows.filter(r => r.sr && r.sr.flag).sort((a, b) => a.renewal < b.renewal ? -1 : 1);
+  if (!rs.length) return "";
+  const rows = rs.map(r => `<tr><td>${renDate(r.renewal)}</td><td>${renCustomer(r)}</td>
+    <td>${cesc(r.type)} <span style="color:var(--text-muted)">${cesc(r.policy)}</span></td>
+    <td>${renSrCell(r, label)}</td></tr>`).join("");
+  return `<div class="sect"><h2>Cancellations to check</h2>
+    <p class="sd" style="color:var(--warn, #b45309)">${rs.length} renewal SR${rs.length === 1 ? "" : "s"} counted as Mid-term Cancellation, outside the rate, but nothing shows the policy cancelled before the renewal SR opened: AgencyZoom's policy record has not changed since it was loaded, and the note gives no date. If it cancelled during the renewal, change the SR's resolution to Client Cancelled.</p>
+    <div class="scroll"><table class="rtable"><thead><tr><th>Renews</th><th>Customer</th><th>Policy</th><th>Renewal SR</th></tr></thead><tbody>${rows}</tbody></table></div></div>`;
+}
+function renewalsPanel(doc, workHtml = "") {
   const label = Object.fromEntries((doc.sr_outcomes || []).map(([k, l]) => [k, l]));
   const pipeName = Object.fromEntries(doc.pipelines || []);
   const past = doc.rows.filter(r => r.kind === "past");
@@ -5042,6 +5100,7 @@ function renewalsPanel(doc) {
     <td><span class="chip ${REN_RISK[r.risk][1]}">${REN_RISK[r.risk][0]}</span></td></tr>`).join("");
   return `<div class="sect"><h2>Renewals</h2>
     <p class="sd">Every personal-lines policy that renewed in the last ${doc.past_days} days or renews in the next ${doc.upcoming_days}, from AgencyZoom's policy records and the team's SRs. Rebuilt every night · as of ${renDate(doc.as_of)}.</p>${tiles}</div>
+    ${workHtml}
     <div class="sect"><h2>Retention · last 4 weeks</h2>
     <p class="sd">By the week each policy renewed. Retained = a next term on record, a rewrite, or Rewrite Accepted on the renewal SR. Lost = the policy record shows it cancelled, a Late Payment or Service Pipeline SR cancelled it, or the renewal SR was closed on a cancellation. Rate = retained over retained plus lost. A Mid-term Cancellation (hatched, cancelled more than 30 days before the renewal) and a renewal not confirmed yet sit outside the rate. The newest week is still settling: AgencyZoom's policy records lag by a few weeks.</p>
     <div class="tiles rtiles">${weekCards}</div><div class="oleg">${legend}</div>
@@ -5050,6 +5109,7 @@ function renewalsPanel(doc) {
     <h3 class="rh3">By who worked the renewal SR</h3><div class="tiles rtiles">${personCards}</div></div>
     <div class="sect"><h2>Lost</h2><p class="sd">Every renewal lost in the last 4 weeks, and any renewal still ahead that has already cancelled, with how we know.</p>
     ${lostRows ? `<div class="scroll"><table class="rtable"><thead><tr><th>Renews</th><th>Customer</th><th>Policy</th><th class="num">Premium</th><th>Renewal SR</th><th>How we know</th></tr></thead><tbody>${lostRows}</tbody></table></div>` : '<p class="sd">None.</p>'}</div>
+    ${renFlagHtml(doc, label)}
     <div class="sect"><h2>Coming up · next ${doc.upcoming_days} days</h2>
     <p class="sd">High = not yet discussed with the customer (no renewal SR, the SR still open, No action or Unable to Contact) and a warning sign: an open Late Payment SR or a cancellation SR on the household. Medium = not discussed and renewing within ${doc.soon_days} days, or discussed with a warning sign.${gone ? ` ${gone} more policies renewing in this window were already cancelled mid term and are left out.` : ""}</p>
     <div class="rfilters">${sel("renRisk", f.risk, [["high", "High risk"], ["medium", "Medium risk"], ["low", "Low risk"]], "Any risk")}
@@ -5058,6 +5118,61 @@ function renewalsPanel(doc) {
       ${sel("renWho", f.who, whoOpts.map(n => [n, n]), "Anyone")}
       <span style="color:var(--text-muted);font-size:12.5px">${shown.length} of ${ahead.length}</span></div>
     <div class="scroll"><table class="rtable"><thead><tr><th>Renews</th><th>Customer</th><th>Policy</th><th class="num">Premium</th><th>Renewal SR</th><th>Flags</th><th>Risk</th></tr></thead><tbody>${upRows}</tbody></table></div></div>`;
+}
+/* Renewal SR Work (Frank, 2026-09-27: "a service digest and a renewal
+   digest"): the renewal SRs the Service Digest no longer counts -- completed
+   in the last 4 weeks, per person and per pipeline, with how long each took
+   from created to completed, and the open ones as of the latest day. From
+   the same daily documents as the Service Digest, so the figures agree. */
+const REN_WORK_DAYS = 28;
+let RENEWAL_WORK = null;
+async function loadRenewalWork() {
+  if (RENEWAL_WORK) return RENEWAL_WORK;
+  const all = await serviceDays();
+  const last = all.length ? [...all].sort().pop() : null;
+  if (!last) return null;
+  const from = new Date(last + "T12:00:00"); from.setDate(from.getDate() - REN_WORK_DAYS + 1);
+  const docs = await fetchServiceDocs(all.filter(d => d >= from.toISOString().slice(0, 10) && d <= last));
+  RENEWAL_WORK = docs.length ? splitRenewals(mergeServiceDocs(docs)) : null;
+  return RENEWAL_WORK;
+}
+function renewalWorkHtml(m) {
+  if (!m) return "";
+  const rs = m.renewalDone, open = m.renewalOpen;
+  const hrs = x => fmtDur(svcMedian(x.map(r => r.hours)));
+  const dk = (k, inner, style) => `<div class="tile rdrill${renDrill === k ? " on" : ""}" data-drill="${k}" role="button" tabindex="0"${style ? ` style="${style}"` : ""}>${inner}</div>`;
+  const team = m.team.map(t => t.name);
+  const person = n => { const mine = rs.filter(r => r.by === n), o = open ? open.filter(r => r.by === n) : null;
+    return dk("rw:person:" + n, `<div class="k">${pbadge(DOT[n] || TEAM_DOT, n.split(" ")[0])}</div>
+      <div class="v">${mine.length}</div><div class="n">completed${mine.length ? ` &middot; median ${hrs(mine)}` : ""}</div>
+      ${o ? `<div class="n"><b>${o.length}</b> open &middot; <b${o.some(r => r.overdue) ? ' style="color:var(--bad)"' : ""}>${o.filter(r => r.overdue).length}</b> overdue</div>` : ""}`); };
+  const others = rs.filter(r => !team.includes(r.by));
+  const tiles = `<div class="tiles">
+    ${dk("rw:done", `<div class="k">Renewal SRs Completed</div><div class="v">${rs.length}</div><div class="n">median ${hrs(rs)} created to completed</div>`, "border-color:var(--border-strong)")}
+    ${open ? dk("rw:open", `<div class="k">Open Renewal SRs</div><div class="v">${open.length}</div><div class="n">${open.filter(r => r.overdue).length} overdue &middot; as of ${fmtShortDate(m.days[m.days.length - 1])}</div>`) : ""}
+    ${team.filter(n => rs.some(r => r.by === n) || (open || []).some(r => r.by === n)).map(person).join("")}
+    ${others.length ? dk("rw:person:others", `<div class="k">${pbadge("#8a877f", "Others")}</div><div class="v">${others.length}</div><div class="n">completed &middot; median ${hrs(others)}</div>`) : ""}
+  </div>`;
+  const pipes = (m.pipelines || []).filter(([k]) => RENEWAL_PIPES.has(k)).map(([k, l]) => [k, l, rs.filter(r => r.pipeline === k)]).filter(x => x[2].length);
+  const tr = pipes.map(([k, l, x]) => { const h = x.map(r => r.hours);
+    return `<tr class="rdrill-row${renDrill === "rw:pipe:" + k ? " on" : ""}" data-drill="rw:pipe:${k}" tabindex="0"><td>${l}</td><td class="num">${x.length}</td><td class="num">${fmtDur(svcMedian(h))}</td><td class="num">${fmtDur(svcPctile(h, 0.9))}</td></tr>`; }).join("");
+  let list = "";
+  if (renDrill.startsWith("rw:")) {
+    const rest = renDrill.slice(3), i = rest.indexOf(":");
+    const kind = i < 0 ? rest : rest.slice(0, i), a = i < 0 ? "" : rest.slice(i + 1);
+    const head = (t, what) => `<div class="rdrill-list"><div style="display:flex;justify-content:space-between;align-items:baseline;gap:12px;margin:14px 0 6px">
+      <h3 class="rh3" style="margin:0">${t}</h3><a href="#" data-drill-close style="font-size:12.5px">Close</a></div>${what ? `<p class="sd" style="margin:0 0 6px">${what}</p>` : ""}`;
+    if (kind === "done") list = head(`Renewal SRs Completed · ${rs.length}`, "Newest first, with the outcome each counts as.") + svcSrTable(rs, m, true) + "</div>";
+    if (kind === "open") list = head(`Open Renewal SRs · ${open.length}`, `As of ${fmtShortDate(m.days[m.days.length - 1])}.`) + svcOpenTable(open, m) + "</div>";
+    if (kind === "pipe") { const x = rs.filter(r => r.pipeline === a); list = head(`${cesc((pipes.find(p => p[0] === a) || [, a])[1])} · ${x.length} completed`) + svcSrTable(x, m, true) + "</div>"; }
+    if (kind === "person") { const x = a === "others" ? others : rs.filter(r => r.by === a), o = open && a !== "others" ? open.filter(r => r.by === a) : null;
+      list = head(a === "others" ? "Others" : cesc(a)) + `<h3 class="rh3">Completed · ${x.length}</h3>${svcSrTable(x, m, true)}${o ? `<h3 class="rh3">Open · ${o.length}</h3>${svcOpenTable(o, m)}` : ""}</div>`; }
+  }
+  return `<div class="sect"><h2>Renewal SR Work</h2>
+    <p class="sd">The renewal SRs the team completed in the last ${REN_WORK_DAYS} days (${fmtShortDate(m.days[0])} – ${fmtShortDate(m.days[m.days.length - 1])}), from the day each was created to the day it was completed, and the ones still open. Credit goes to whoever completed the SR. These are not in the Service Digest.</p>
+    ${tiles}${renDrill.startsWith("rw:") && !renDrill.startsWith("rw:pipe:") ? list : ""}
+    ${tr ? `<div class="scroll"><table><thead><tr><th>Pipeline</th><th class="num">Completed</th><th class="num">Median</th><th class="num">90% within</th></tr></thead><tbody>${tr}</tbody></table></div>` : ""}
+    ${renDrill.startsWith("rw:pipe:") ? list : ""}</div>`;
 }
 async function paintRenewals() {
   const v = $("#view");
@@ -5069,8 +5184,12 @@ async function paintRenewals() {
       RENEWALS_DOC = r.ok ? await r.json() : null;
     } catch (_) { RENEWALS_DOC = null; }
   }
-  if (!RENEWALS_DOC) { v.innerHTML = '<div class="empty">No renewal report yet. It is built every night.</div>'; return; }
-  v.innerHTML = renewalsPanel(RENEWALS_DOC);
+  let work = null;
+  try { work = await loadRenewalWork(); } catch (_) { work = null; }
+  if (!RENEWALS_DOC && !work) { v.innerHTML = '<div class="empty">No renewal report yet. It is built every night.</div>'; return; }
+  const y = window.scrollY;
+  v.innerHTML = RENEWALS_DOC ? renewalsPanel(RENEWALS_DOC, renewalWorkHtml(work)) : renewalWorkHtml(work);
+  window.scrollTo(0, y);
   v.querySelectorAll("[data-drill]").forEach(el => {
     const go = () => { renDrill = renDrill === el.dataset.drill ? "" : el.dataset.drill; paintRenewals(); };
     el.onclick = go;
