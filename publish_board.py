@@ -223,6 +223,15 @@ def build(day, log=print, live=False):
             doc["misfiled"] = pipelines.misfiled(json.loads(corpus.read_text()))
     except Exception as e:
         log(f"  misfiled leads: skipped ({type(e).__name__}: {e})")
+    # The rows behind each Digest card, so every card opens its list (Frank,
+    # 2026-09-27). Rows only -- no figure on the page comes from them.
+    try:
+        import digest_rows
+        r = digest_rows.build(day, log=log)
+        if r:
+            doc["rows"] = r
+    except Exception as e:
+        log(f"  digest rows: skipped ({type(e).__name__}: {e})")
     # Texts and emails: sent, replies, how fast they were answered (Frank,
     # 2026-09-27). From the notes already on disk; never fails the day.
     try:
