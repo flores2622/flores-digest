@@ -363,6 +363,17 @@ Crystal (hybrid); credit always goes to whoever COMPLETED the SR or task.
   Contact; "cancelled in 2025" is Mid-term Cancellation. The read cache is
   keyed by SR and note, not prompt, so a prompt change reaches only new
   notes -- re-read old ones by removing just their entries, never the file.
+- **A Mid-term Cancellation is flagged when nothing dates it** (Frank,
+  2026-09-27: "flag them"). AgencyZoom has no cancellation date, and a policy
+  record never changed after it was loaded (modifyDate on createDate's day)
+  dates nothing -- Alan Garcia Cabrera's G015059251 read "changed 06-26", the
+  day its 02-16 term was loaded; he was lost at the 08-16 renewal (late
+  payment 08-21, Win Back 09-22). `service_retention.cancel_flag` marks the
+  row "not dated" (that record, and a note with no year / date / sold /
+  transferred) or "after the SR opened" (the note's own date is on or after
+  the renewal SR's createDate -- Paloma Juarez, cancelled 07-24, SR 07-15).
+  The outcome stays as is; the Service Center lists them as cancellations to
+  check. Do not count them as lost without Frank.
 - **Past days' renewal rows are re-read every night**
   (`service_digest.refresh_past_renewals`, last 120 days): a day's document is
   built once, so without this a note read (or a resolution renamed) after the
