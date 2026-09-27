@@ -4629,6 +4629,8 @@ function svcDrillFor(m, keys) {
   const n = x => `${x.length} `;
   if (kind === "tasks") return svcDrillList(`Service Tasks · ${n(m.taskRows)}due`, "Every service task due in this period, not done first.", svcTaskTable(m.taskRows));
   if (kind === "srs") return svcDrillList(`SRs Completed · ${m.completed.length}`, "Every service SR completed in this period, newest first.", svcSrTable(m.completed, m, true));
+  if (kind === "cbwho") { const rs = m.callbacks.filter(r => a === "others" ? r.by === "other" : r.by === a);
+    return svcDrillList(`${a === "others" ? "Others" : cesc(a.split(" ")[0])} · ${rs.length} call back${rs.length === 1 ? "" : "s"}`, a === "others" ? "Returned by someone outside the service team." : "", svcCallbackTable(rs)); }
   if (kind === "callbacks") return svcDrillList(`Missed Service Calls · ${m.callbacks.length}`, `${cbDone.length} returned the same day. Not returned first.`, svcCallbackTable(m.callbacks));
   if (kind === "renewals") return svcDrillList(`Renewal SRs Worked · ${m.renewals.length}`, "", svcSrTable(m.renewals, m, true));
   if (kind === "renflag") { const rs = m.renewals.filter(r => r.flag);
@@ -4669,6 +4671,30 @@ function svcDrillFor(m, keys) {
 }
 // A card that opens a list: wraps a tile's attributes.
 const sdk = (k, extra) => ` data-sdrill="${k}" role="button" tabindex="0" class="tile rdrill${svcDrill === k ? " on" : ""}${extra ? " " + extra : ""}"`;
+/* Speed to Call Back by person (Frank, 2026-09-27: "the same way you did it
+   for the reply back time"): under the team's Call-Back Resolution card, one
+   card per person -- median minutes from the missed call to their return
+   call, quickest and longest, green at 15 minutes or less, red over an hour
+   (REPLY_GOAL). A call is credited to whoever called back; one never
+   returned belongs to nobody, so it shows on the team card only. */
+function callbackSpeedHtml(m) {
+  const done = m.callbacks.filter(r => r.minutes != null);
+  if (!done.length) return "";
+  const card = (key, label, rs) => { const x = rs.map(r => r.minutes);
+    return `<div${sdk("cbwho:" + key)}><div class="k">${label}</div>
+      <div class="v"><span class="${replyTier(median(x))}">${fmtMins(Math.round(median(x)))}</span></div>
+      <div class="n">median &middot; ${x.length} returned</div>
+      <div class="n" style="margin-top:5px">quickest ${fmtMins(Math.min(...x))} &middot; longest ${fmtMins(Math.max(...x))}</div></div>`; };
+  const team = m.team.map(t => t.name);
+  const cards = team.map(n => [n, done.filter(r => r.by === n)]).filter(([, rs]) => rs.length)
+    .map(([n, rs]) => card(n, pbadge(DOT[n] || TEAM_DOT, n.split(" ")[0]), rs)).join("");
+  const others = done.filter(r => r.by === "other");
+  const waiting = m.callbacks.length - done.length;
+  return `<h3 class="rh3" style="margin-top:14px">Speed to Call Back by person</h3>
+    <p class="sd" style="margin:0 0 6px">From a missed service call to the first call back, credited to whoever made it.
+    Green is 15 minutes or less, red over an hour.${waiting ? ` ${waiting} not returned the same day (on the team card above).` : ""}</p>
+    <div class="tiles">${cards}${others.length ? card("others", pbadge("#8a877f", "Others"), others) : ""}</div>${svcDrillFor(m, ["cbwho"])}`;
+}
 function servicePanel(m) {
   const team = m.team.map(t => t.name);
   const first = n => n.split(" ")[0];
@@ -4684,11 +4710,11 @@ function servicePanel(m) {
     <div${sdk("srs")}><div class="k">SRs Completed</div>
       <div class="v">${m.completed.length}</div><div class="n">median ${fmtDur(svcMedian(m.completed.map(r => r.hours)))} created to completed</div></div>
     <div${sdk("callbacks")}><div class="k">Call-Back Resolution</div>
-      <div class="v">${mins(svcMedian(cbDone.map(r => r.minutes)))}</div>
+      <div class="v"><span class="${replyTier(svcMedian(cbDone.map(r => r.minutes)))}">${fmtMins(cbDone.length ? Math.round(svcMedian(cbDone.map(r => r.minutes))) : null)}</span></div>
       <div class="n">median to the first return call &middot; ${cbDone.length} of ${m.callbacks.length} missed service calls returned same day</div></div>
     <div class="tile"><div class="k">Utilization</div>
       <div class="v">${U.t ? pct(100 * U.p / U.t) : "—"}</div><div class="n">productive / tracked time, whole team</div></div>
-  </div>${svcDrillFor(m, ["tasks", "srs", "callbacks"])}`;
+  </div>${svcDrillFor(m, ["tasks", "srs", "callbacks"])}${callbackSpeedHtml(m)}`;
   const person = n => {
     const k = m.tasks[n] || { due: 0, completed: 0 }, u = m.util[n] || {}, b = m.backlog[n] || {};
     const mine = m.completed.filter(r => r.by === n);
