@@ -50,6 +50,8 @@ CHOICES = {
     "unable_to_contact": "Unable to Contact/No Show -- the rep tried to reach the "
                          "customer (voicemail, no answer, bad number) or they did "
                          "not show, and it renewed as is.",
+    "sold_moved": "Cancelled: Sold/Moved -- the policy is cancelling at this renewal "
+                  "because the customer sold the vehicle, home or item, or moved.",
     "cancelled_before_sr": "Mid-term Cancellation -- the policy was already "
                            "cancelled before this renewal SR was generated: "
                            "cancelled mid term or in an earlier year, the home "
@@ -78,9 +80,12 @@ was made).
 - A customer who cannot be reached -- bad number, bad email, a postcard sent \
 instead -- is unable_to_contact, even if the note also says review if needed.
 - A policy already cancelled before the SR -- "cancelled in 2025", "policy \
-cancelled 1/2026", "sold home", "transferred to a different agent" -- is \
-cancelled_before_sr. cancelled_no_option is only a policy cancelling at THIS \
-renewal.
+cancelled 1/2026", "home sold last year", "transferred to a different agent" -- \
+is cancelled_before_sr. cancelled_no_option is only a policy cancelling at \
+THIS renewal.
+- A policy cancelling at this renewal because the customer sold it, got rid \
+of it or moved ("got rid of the ATV", "sold the car", "moved out of state") \
+is sold_moved.
 - A duplicate SR, a wrong policy, a policy that does not renew this term, or \
 a payment note with nothing about the renewal is unclear.
 - When in doubt, answer unclear.
