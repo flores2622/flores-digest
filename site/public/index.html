@@ -1185,6 +1185,11 @@ function teamLeaderboardHtml(d, who) {
   const ranked = focus ? [focus] : ((lb.order) || (d.producers || []).map(p => p.name))
                    .map(n => byName[n]).filter(Boolean);
   const hasRoleplay = ranked.some(p => (p.coach || {}).roleplay != null);
+  // What each producer typed and sent themselves (messages.py), automation
+  // left out; no goal colour until Frank sets one (2026-09-27).
+  const MP = (d.messages || {}).producers || null;
+  const msgCell = r => MP ? `<td class="num">${r ? `${r.texts || 0} / ${r.emails || 0}` : "0 / 0"}</td>` : "";
+  const msgTeam = MP ? Object.values(MP).reduce((a, r) => ({ texts: a.texts + (r.texts || 0), emails: a.emails + (r.emails || 0) }), { texts: 0, emails: 0 }) : null;
 
   let podium = "";
   if (!focus && lb.order && lb.order.length > 1) {
@@ -1200,6 +1205,7 @@ function teamLeaderboardHtml(d, who) {
     <td class="num ${tc(p.name, "dials")}${lv("dials")}">${p.dials ?? 0}${dialsSub(p)}</td>
     <td class="num ${tc(p.name, "talk")}">${hhmm(p.talk)}</td>
     <td class="num ${tc(p.name, "rate")}">${p.rate ?? 0}% <span style="opacity:.72">(${p.live ?? 0})</span></td>
+    ${msgCell(MP && MP[p.name])}
     <td class="num ${tc(p.name, "hh")}${lv("quotes")}">${p.hh ?? 0}</td>
     <td class="num ${tc(p.name, "pq")}${lv("quotes")}">${money(p.pq)}</td>
     <td class="num ${tc(p.name, "pol")}${lv("sales")}" title="${polTitle(p.name)}">${p.pol ?? 0}</td>
@@ -1213,6 +1219,7 @@ function teamLeaderboardHtml(d, who) {
     <td class="num ${tt("dials")}${lv("dials")}">${T.dials ?? 0}${dialsSub(T)}</td>
     <td class="num ${tt("talk")}">${hhmm(T.talk)}</td>
     <td class="num ${tt("rate")}">${teamRate}% <span style="opacity:.72">(${T.live ?? 0})</span></td>
+    ${msgCell(msgTeam)}
     <td class="num ${tt("hh")}${lv("quotes")}">${T.hh ?? 0}</td>
     <td class="num ${tt("pq")}${lv("quotes")}">${money(T.pq)}</td>
     <td class="num ${tt("pol")}${lv("sales")}">${T.pol ?? 0}</td>
@@ -1223,6 +1230,7 @@ function teamLeaderboardHtml(d, who) {
    ${podium}
    <div class="scroll"><table><thead><tr><th>Producer</th>${hasRoleplay ? "<th class=\"num\">Role Play</th>" : ""}
    <th class="num">Call Volume</th><th class="num">Avg Talk Time</th><th class="num">Contact Rate</th>
+   ${MP ? `<th class="num" title="Texts and emails the producer typed and sent themselves; automation not counted">Texts / Emails</th>` : ""}
    <th class="num">Households Quoted</th><th class="num">Premium Quoted</th>
    <th class="num">Policies</th><th class="num">Premium Sold</th>
    ${ranked.some(p => p.util != null) ? "<th class=\"num\">Utilization</th>" : ""}</tr></thead>
@@ -1407,6 +1415,39 @@ function speedPanel(d, who) {
     <div class="tiles">${cards}</div></div>`;
 }
 
+/* Speed to Reply (Frank, 2026-09-27): how fast a lead's text or email got an
+   answer -- the next typed text, email or call -- in the same card shape as
+   Speed to Dial, with the replies still waiting at the end of the day. From
+   messages.py's rows, so a range takes its medians over every reply. The
+   waiting list itself is on the Texts & Emails page. */
+// Frank's targets (2026-09-27): 15 minutes or less green, over an hour red.
+const REPLY_GOAL = { green: 15, red: 60 };
+const replyTier = m => m == null ? "" : m <= REPLY_GOAL.green ? "tg" : m > REPLY_GOAL.red ? "tr" : "ty";
+function speedReplyPanel(d, who) {
+  const M = d.messages;
+  if (!M) return "";
+  const names = PRODUCER_ROSTER.filter(n => !who || n === who);
+  const rows = (M.replies || []).filter(r => names.includes(r.who) && !r.ack && !r.optout);
+  if (!rows.length) return `<div class="sect"><h2>Speed to Reply</h2>
+    <p class="sd">No lead wrote in by text or email${who ? ` to ${who}` : ""} that needed an answer.</p></div>`;
+  const tile = (label, rs, team) => {
+    const m = rs.filter(r => r.minutes != null).map(r => r.minutes), wait = rs.length - m.length;
+    return `<div class="tile"${team ? ' style="border-color:var(--border-strong);background:var(--surface)"' : ""}>
+      <div class="k">${label}</div><div class="v"><span class="${replyTier(m.length ? median(m) : null)}">${fmtMins(m.length ? median(m) : null)}</span></div>
+      <div class="n">median · ${m.length} answered</div>
+      <div class="n" style="margin-top:5px">${m.length ? `quickest ${fmtMins(Math.min(...m))} · longest ${fmtMins(Math.max(...m))}` : "none answered"}</div>
+      ${wait ? `<div class="n" style="margin-top:5px;color:var(--bad);font-weight:600">${wait} waiting</div>` : ""}</div>`;
+  };
+  const cards = names.map(n => [n, rows.filter(r => r.who === n)]).filter(([, rs]) => rs.length)
+    .map(([n, rs]) => tile(pbadge(DOT[n] || "#8a877f", n.split(" ")[0]), rs)).join("")
+    + (!who ? tile("Team", rows, true) : "");
+  return `<div class="sect"><h2>Speed to Reply</h2>
+    <p class="sd">Time from a lead's text or email to the next text, email or call back; one that came in while the
+    office was closed starts at 8:30. Green is 15 minutes or less, red over an hour.
+    <a href="#" data-goview="messages">See who is waiting</a>.</p>
+    <div class="tiles">${cards}</div></div>`;
+}
+
 /* Open leads sitting in "Pipeline" -- integrations drop leads there that
    belong in 1 Pipeline, and it should be empty (Frank, 2026-09-24). A to-do
    list: each row links to the lead in AgencyZoom to move it. Day view only;
@@ -1454,7 +1495,7 @@ function messagesPanel(d, who) {
     ["Texts sent", sum("texts"), `${sum("auto_texts")} more by automation`],
     ["Emails sent", sum("emails"), `${sum("auto_emails")} more by automation`],
     ["Wrote back", leads ? `${Math.round(100 * back / leads)}%` : "—", `${back} of ${leads} lead${leads === 1 ? "" : "s"} messaged, same day`],
-    ["Time to answer", fmtMins(med(answered.map(r => r.minutes))), `median of ${answered.length} repl${answered.length === 1 ? "y" : "ies"} answered`],
+    ["Time to answer", `<span class="${replyTier(med(answered.map(r => r.minutes)))}">${fmtMins(med(answered.map(r => r.minutes)))}</span>`, `median of ${answered.length} repl${answered.length === 1 ? "y" : "ies"} answered`],
     ["Waiting on us", waiting.length, `repl${waiting.length === 1 ? "y" : "ies"} with no answer by end of day`],
     ["Quotes sent", sum("quotes"), `by email or text · ${sum("quotes_opened")} opened`],
   ].map(([k, v, n]) => `<div class="tile"><div class="k">${k}</div><div class="v">${v}</div><div class="n">${n}</div></div>`).join("");
@@ -1463,7 +1504,7 @@ function messagesPanel(d, who) {
     return `<tr><td><span class="who">${pbadge(DOT[n] || "#8a877f", n.split(" ")[0])}</span></td>
       <td class="num">${p.texts || 0}</td><td class="num">${p.emails || 0}</td><td class="num">${p.leads || 0}</td>
       <td class="num">${p.leads ? `${p.wrote_back || 0} (${Math.round(100 * (p.wrote_back || 0) / p.leads)}%)` : "—"}</td>
-      <td class="num">${p.replies || 0}</td><td class="num">${fmtMins(med(a))}</td>
+      <td class="num">${p.replies || 0}</td><td class="num ${replyTier(med(a))}">${fmtMins(med(a))}</td>
       <td class="num${p.unanswered ? " msgbad" : ""}">${p.unanswered || 0}</td>
       <td class="num">${p.quotes || 0}${p.quotes ? ` (${p.quotes_opened || 0} opened)` : ""}</td>
       <td class="num">${(p.auto_texts || 0) + (p.auto_emails || 0)}</td></tr>`;
@@ -1476,7 +1517,7 @@ function messagesPanel(d, who) {
     <td class="num">${when(r)}</td><td>${r.channel}</td><td class="said">${cesc(r.said)}</td></tr>`).join("");
   const ansRows = answered.slice().sort((a, b) => b.minutes - a.minutes).map(r => `<tr><td>${leadLink(r)}${saidM(r)}</td>
     <td><span class="who">${pbadge(DOT[r.who] || "#8a877f", r.who.split(" ")[0])}</span></td>
-    <td class="num">${when(r)}</td><td class="num">${fmtMins(r.minutes)}</td>
+    <td class="num">${when(r)}</td><td class="num ${replyTier(r.minutes)}">${fmtMins(r.minutes)}</td>
     <td>${r.via || ""}${r.answered_by && r.answered_by !== r.who ? ` · ${cesc(r.answered_by.split(" ")[0])}` : ""}</td>
     <td class="said">${cesc(r.said)}</td></tr>`).join("");
   const quotes = (M.quotes || []).filter(r => names.includes(r.who));
@@ -1834,7 +1875,7 @@ function digestPanel(d, who) {
   return `${liveBannerHtml(d, who)}
   ${digestDay(d, who)}
   <div class="digestgrid">
-    <div>${outcomeBreakdownHtml(d, who)}${taskCompletionHtml(d, who)}${speedPanel(d, who)}</div>
+    <div>${outcomeBreakdownHtml(d, who)}${taskCompletionHtml(d, who)}${speedPanel(d, who)}${speedReplyPanel(d, who)}</div>
     <div>${utilizationHtml(d, who)}${householdCompletionHtml(d, who)}${coachQualityHtml(d, who)}</div>
   </div>
   ${auditPanel(d, who)}
@@ -4133,6 +4174,7 @@ async function paint() {
     v.innerHTML = controls + (err ? `<div class="empty">${err}</div>`
       : rangeHeaderHtml() + (cur ? digestPanel(cur, producerFilter) : '<div class="empty">Loading…</div>'));
     wireRangeControl(); wireProducerControl();
+    v.querySelectorAll("[data-goview]").forEach(a => a.onclick = e => { e.preventDefault(); goView(a.dataset.goview); });
   } else if (view === "messages") {
     if (rangeMode !== "day") v.innerHTML = rangeControlHtml() + producerControlHtml() + '<div class="empty">Loading…</div>';
     const err = await ensureCurForRange();

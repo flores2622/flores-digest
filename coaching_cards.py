@@ -586,11 +586,23 @@ def _history(producer, group, day, ctx, log=print):
 _LEADS_BY_ID = None
 
 
-def _group_stage(group):
+def _corpus_day():
+    """The Arizona day the lead snapshot was taken -- a card for an earlier
+    day cannot read the lead's stage off it."""
+    p = ROOT / "data/az_leads_all.json"
+    if not p.exists():
+        return ""
+    return dt.datetime.fromtimestamp(p.stat().st_mtime, dt.timezone(dt.timedelta(hours=-7))).date().isoformat()
+
+
+def _group_stage(group, day=None):
     """(moves, stage_now, sold_today) for a card's rows -- what
     pipelines.call_stage/prompt_block read. Moves come off the rows (the
     producer's own MOVE_STAGE notes that day, daily.py); the lead's current
-    stage off the day's lead corpus, which is the end-of-day snapshot."""
+    stage off the day's lead corpus, which is the end-of-day snapshot. For a
+    day OLDER than the snapshot (a rebuild, Frank 2026-09-27) the stage is
+    read off the lead's own move history as of that day instead -- the
+    snapshot would give where the lead sits today."""
     global _LEADS_BY_ID
     if _LEADS_BY_ID is None:
         p = ROOT / "data/az_leads_all.json"
@@ -599,6 +611,10 @@ def _group_stage(group):
     moves = list(dict.fromkeys(m for r in group for m in (r.get("moves") or [])))
     lead_id = next((r.get("lead_id") for r in group if r.get("lead_id")), None)
     now = pipelines.current_stage(_LEADS_BY_ID.get(lead_id))
+    if day and day < _corpus_day():
+        import live_contact as lc
+        ids = list(dict.fromkeys(r.get("lead_id") for r in group if r.get("lead_id")))
+        now = pipelines.stage_as_of([n for i in ids for n in lc.load_notes(i)], day) or now
     return moves, now, any(r.get("sold_today") for r in group)
 
 
@@ -635,7 +651,7 @@ def _finish_card(d, producer, group, raw_dials, day, transcript, recording_ids):
     # Did the call do what the lead's stage called for (Frank, 2026-09-24)?
     # Same None-when-never-asked rule as leadfit.
     stagefit = _clean_score({"x": d.get("stagefit")}, ["x"]).get("x") if "stagefit" in d else None
-    stage_before, stage_after = pipelines.call_stage(*_group_stage(group))
+    stage_before, stage_after = pipelines.call_stage(*_group_stage(group, day))
     # What the call was for -- first conversation, finishing the quote, or a
     # follow-up -- decided from the stage and history, not from who dialled
     # (Frank, 2026-09-25). None on a card read before METHODOLOGY.md asked.
@@ -868,7 +884,7 @@ def build(day, log=print):
         model = CS.pick_model()
         # What came before this call (lead_history.py): loaded once, only
         # when a card is actually being read.
-        history_ctx = lead_history.Context(day, log=log)
+        history_ctx = lead_history.Context(day, log=log, past=day < _corpus_day())
         log(f"  writing {len(todo)} coaching cards with {model}...")
         for i, (p, grp) in enumerate(todo, 1):
             gck = _group_ck(p, grp)
@@ -888,7 +904,7 @@ def build(day, log=print):
                              p.split()[0], lead_name,
                              call_count=len(_distinct_calls(p, grp)),
                              lead_source=src,
-                             stage_block=pipelines.prompt_block(*_group_stage(grp)),
+                             stage_block=pipelines.prompt_block(*_group_stage(grp, day)),
                              history_block=_history(p, grp, day, history_ctx, log))
                 cache[gck] = d
             except Exception as e:
