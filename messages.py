@@ -373,8 +373,105 @@ def build(day, log=print):
             "replies": replies, "quotes": quotes, "bad_contact": bad}
 
 
+def _fetch_notes_paced(lead_ids, fresh_after, log=print, pause=0.35):
+    """Download notes for many leads without tripping AgencyZoom's burst
+    limit (it 429s on bursts of note reads). A copy fetched after
+    `fresh_after` is kept; a failed fetch keeps the old copy."""
+    import time
+    from az_client import AgencyZoom
+    az = AgencyZoom()
+    lc.NOTE_DIR.mkdir(parents=True, exist_ok=True)
+    got = failed = 0
+    for i, lid in enumerate(sorted(set(lead_ids)), 1):
+        f = lc.NOTE_DIR / f"{lid}.json"
+        if f.exists() and f.stat().st_mtime >= fresh_after:
+            continue
+        try:
+            f.write_text(json.dumps(az.lead_notes(lid) or []))
+            got += 1
+        except Exception:
+            failed += 1
+        if i % 200 == 0:
+            log(f"    notes: {i} of {len(set(lead_ids))} checked")
+        time.sleep(pause)
+    log(f"  notes: {got} downloaded" + (f", {failed} failed (old copy kept)" if failed else ""))
+
+
+def backfill(start, end=None, refresh=True, force=False, log=print):
+    """Add `messages` to the published day documents from `start` to `end`
+    (Frank, 2026-09-27: "anyway to build it back to 9/1?").
+
+    Notes hold a lead's whole history, so reading them now recovers any past
+    day's texts and emails. Which leads had messages on a past day cannot be
+    told from today's lead snapshot, so every producer lead with activity
+    since the window before `start` is read. Each day document is backed up
+    under backups/<today>-messages-backfill/ first, and only its `messages`
+    key is added: every other figure stays exactly as it went out. Past
+    days have no RingCentral call log on disk, so a call back is seen only
+    through AgencyZoom's own CALL notes; email opens are as of now, not as
+    of that night."""
+    import time
+    import publish_board
+    end = end or (dt.date.today() - dt.timedelta(days=1)).isoformat()
+    if refresh:
+        import az_corpus
+        leads = az_corpus.fetch(force=True)
+        log(f"  lead snapshot refreshed: {len(leads):,} leads")
+    else:
+        leads = json.loads((ROOT / "data/az_leads_all.json").read_text())
+    azid = {v["az_id"] for v in cfg.PRODUCERS.values()}
+    since = window(start)[0].astimezone(dt.timezone.utc).strftime("%Y-%m-%d %H:%M:%S")
+    ids = [l["id"] for l in leads if l.get("assignedTo") in azid
+           and str(l.get("lastActivityDate") or "") >= since]
+    log(f"  {len(ids):,} producer leads active since {start}")
+    _fetch_notes_paced(ids, fresh_after=time.time() - 6 * 3600, log=log)
+
+    cli, bucket = publish_board._client()
+    keys, token = [], None
+    while True:
+        kw = {"Bucket": bucket, "Prefix": "days/2026-"}
+        if token:
+            kw["ContinuationToken"] = token
+        page = cli.list_objects_v2(**kw)
+        keys += [o["Key"] for o in page.get("Contents", [])]
+        if not page.get("IsTruncated"):
+            break
+        token = page.get("NextContinuationToken")
+    days = sorted(m.group(1) for k in keys
+                  for m in [re.match(r"^days/(\d{4}-\d{2}-\d{2})\.json$", k)] if m
+                  and start <= m.group(1) <= end)
+    stamp = dt.date.today().isoformat()
+    done = []
+    for day in days:
+        key = f"days/{day}.json"
+        raw = cli.get_object(Bucket=bucket, Key=key)["Body"].read()
+        doc = json.loads(raw)
+        if doc.get("messages") and not force:
+            log(f"  {day}: already has texts and emails, left as is")
+            continue
+        m = build(day, log=log)
+        if not m:
+            log(f"  {day}: nothing to add")
+            continue
+        backup = f"backups/{stamp}-messages-backfill/{key}"
+        try:
+            cli.head_object(Bucket=bucket, Key=backup)
+        except Exception:
+            cli.put_object(Bucket=bucket, Key=backup, Body=raw, ContentType="application/json")
+        doc["messages"] = m
+        cli.put_object(Bucket=bucket, Key=key, Body=json.dumps(doc, default=str).encode(),
+                       ContentType="application/json", CacheControl="no-store")
+        done.append(day)
+    log(f"  backfilled {len(done)} day(s): {', '.join(done) or 'none'}")
+    return done
+
+
 if __name__ == "__main__":
     import sys
+    if sys.argv[1:2] == ["--backfill"]:
+        backfill(sys.argv[2], sys.argv[3] if len(sys.argv) > 3 else None,
+                 refresh="--no-refresh" not in sys.argv, force="--force" in sys.argv)
+        sys.exit(0)
     d = build(sys.argv[1] if len(sys.argv) > 1 else dt.date.today().isoformat())
     if not d:
         print("nothing to read")

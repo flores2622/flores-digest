@@ -185,6 +185,28 @@ def current_stage(lead):
     return _stage_map().get(str((lead or {}).get("workflowStageId") or ""), "")
 
 
+def stage_as_of(notes, day):
+    """Where a lead sat at the end of `day`, from its MOVE_STAGE notes, for a
+    day rebuilt later (the lead snapshot only knows where it sits NOW): the
+    stage the last move on or before `day` ended in; else the stage the
+    first move after it started from; else "" (never moved -- the caller
+    keeps the current stage). Notes are Arizona-local."""
+    import live_contact as lc
+    moves = []
+    for n in notes or ():
+        if n.get("type") != "MOVE_STAGE":
+            continue
+        m = parse_move(lc._move_stage_parts(lc._text(n.get("body")))[0])
+        if m:
+            moves.append((str(n.get("createDate") or ""), m))
+    moves.sort(key=lambda x: x[0])
+    before = [m for t, m in moves if t[:10] <= day]
+    if before:
+        return before[-1]["to"]
+    after = [m for t, m in moves if t[:10] > day]
+    return after[0]["from"] if after else ""
+
+
 def _chronological(parsed):
     """The day's moves oldest first. Notes arrive newest first (Sarahi's
     Patricia Acosta, 2026-09-22: "Ready to Present to Smart-Cycle" listed

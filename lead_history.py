@@ -76,8 +76,11 @@ class Context:
     """Per-day sources, loaded once per coaching build and only when a card
     is being read."""
 
-    def __init__(self, day, log=print):
+    def __init__(self, day, log=print, past=False):
         self.day = day
+        # A day rebuilt after the fact: AgencyZoom keeps no date on a quote,
+        # so today's list could hold quotes made after that day's call.
+        self.past = past
         self.log = log
         self._dials = None
         self._cards = None
@@ -158,8 +161,12 @@ def block(group, day, ctx):
         lines.append("No AgencyZoom lead record, so no quotes, earlier cards or notes to show.")
         return _render(lines)
 
-    qs = ctx.quotes(lead_id)
-    if qs is None:
+    qs = None if ctx.past else ctx.quotes(lead_id)
+    if ctx.past:
+        lines.append("Quotes on file: left out -- this day was rebuilt later, and AgencyZoom keeps no "
+                     "quote date, so today's list could hold quotes made after this call. Go by the "
+                     "notes and earlier cards for what was quoted before it.")
+    elif qs is None:
         lines.append("Quotes on file: unavailable.")
     elif not qs:
         lines.append("Quotes on file: none.")

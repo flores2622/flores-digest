@@ -45,7 +45,14 @@ Everything caches under `data/`, so a re-run resumes rather than restarting.
   "Lead source" section says how to use it, and the card's `leadfit` verdict
   is the result. Only reads made from 2026-09-24 on carry it: the card cache
   is keyed by call, not prompt, so past cards are not re-read (and must not
-  be, for cost).
+  be, for cost) -- **except by `rebuild_cards.py`, run only when Frank asks**
+  (he did for 09-01..09-25 on 2026-09-27). It re-reads a day from R2's
+  cache/<day>/ inputs, re-reads stage moves from the notes, takes the lead's
+  stage THEN from its move history (`pipelines.stage_as_of`; the lead
+  snapshot only knows where it sits now) and leaves quotes out of the lead
+  history (no quote date). `--publish` backs up the page and the old card
+  cache under `backups/<today>-card-rebuild/` and swaps only `calls`, `scan`
+  and `objcats`.
 - **What each sales pipeline and stage means is `pipelines.py`** (Frank,
   2026-09-24). Producers work 1 Pipeline, 1-1 QNC (quotes not closed), 1-2
   Leads Not Quoted and Life Pipeline; "Pipeline" is 1 Pipeline misfiled by
@@ -294,6 +301,19 @@ already downloads. Leads only; a customer's texts are Athena's.
   (`messages.active_leads`) -- lastActivityDate is UTC.
 - Quotes sent are `daily.quote_presented` or an email attachment; opens are
   AgencyZoom's tracking as of that night. Rows, never medians.
+- **On the Digest** (Frank, 2026-09-27; the email is unchanged): a **Speed to
+  Reply** card beside Speed to Dial -- median time to answer per producer,
+  green at 15 minutes or less, red over an hour (`REPLY_GOAL`), with the
+  replies still waiting -- and a leaderboard **Texts / Emails** column of what
+  each producer typed themselves, uncoloured until Frank sets a goal.
+- **Past days: `python3 messages.py --backfill 2026-09-01 [end]`** (Frank,
+  2026-09-27). Notes hold a lead's whole history, so it reads every producer
+  lead active since the start (paced, ~1,800 leads for September), backs each
+  R2 day up under `backups/<today>-messages-backfill/` and adds ONLY the
+  `messages` key -- every other figure stays as it went out. A day that
+  already has one is left alone (`--force` rebuilds). Past days have no RC
+  call log on disk, so call backs come from AgencyZoom's CALL notes only, and
+  email opens are as of the backfill.
 
 ## Service ticket status is DELETED/LIVE, not OPEN/CLOSED
 
