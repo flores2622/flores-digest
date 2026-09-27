@@ -9,7 +9,8 @@ text and email on the lead as a note, beside the calls:
   TEXT   attr.outbound   True = we sent it, False = the lead's reply
          attr.triggerRuleId set = sent by an AgencyZoom automation
          createdBy       the producer (blank on a reply)
-  EMAIL  attr.outbound   as above; createdBy is the mailbox (the producer)
+  EMAIL  attr.outbound   1 / 0, not True / False (checked 2026-09-27; `_inbound`
+                         reads both); createdBy is the mailbox (the producer)
          attr.attachments, lastOpenDate, bounced
   TEXT-FAILED            a text that did not go through
 
@@ -150,12 +151,34 @@ def active_leads(leads, day):
     return out
 
 
+# Card, bank and social security numbers customers text or email in to pay
+# (2026-09-24: a full card number, texted to pay a bill). Never stored: the
+# day document is on the board. A run of 9+ digits (spaces and dashes
+# allowed) is any of them; a 3-4 digit code right after "cvv" / "code" /
+# "exp" goes too.
+_LONG_DIGITS = re.compile(r"(?<!\d)(?:\d[ \-.]?){8,}\d(?!\d)")
+_SSN = re.compile(r"(?<!\d)\d{3}-\d{2}-\d{4}(?!\d)")
+_CODE = re.compile(r"(?i)\b(cvv|cvc|csc|security code|c[oó]digo|code|exp(iration)?|vence)\b[\s:#]*\d[\d/ ]{1,6}")
+
+
+def redact(t):
+    t = _SSN.sub("[number removed]", str(t or ""))
+    t = _LONG_DIGITS.sub("[number removed]", t)
+    return re.sub(r"  +", " ", _CODE.sub(lambda m: m.group(1) + " [removed] ", t)).strip()
+
+
+def _inbound(attr):
+    """The lead wrote to us. TEXT notes say outbound False, EMAIL notes 0 --
+    `is False` alone read every emailed reply as one the producer sent."""
+    return "outbound" in attr and attr["outbound"] is not None and not attr["outbound"]
+
+
 def _text(n):
     a = n.get("attr") or {}
     body = a.get("emailSnippet") if n.get("type") == "EMAIL" and a.get("emailSnippet") else n.get("body")
     t = re.sub(r"\s+", " ", re.sub(r"<[^>]+>", " ", str(body or ""))).strip()
     t = re.sub(r"&nbsp;", " ", t).replace("&#39;", "'").replace("&quot;", '"').replace("&amp;", "&")
-    return _EMAIL_QUOTE.sub("", t).strip()
+    return redact(_EMAIL_QUOTE.sub("", t).strip())
 
 
 def _subject_key(n, first):
@@ -217,7 +240,7 @@ def build(day, log=print):
                 continue
             raw.append((lid, key, n, at))
             a = n.get("attr") or {}
-            if t == "EMAIL" and a.get("outbound") is False:
+            if t == "EMAIL" and _inbound(a):
                 wrote_in[lid].append(at)
     def real_reply(lid, n, at):
         return _is_reply_subject(n) and any(w < at for w in wrote_in.get(lid, ()))
@@ -238,12 +261,12 @@ def build(day, log=print):
             # lead made counts as answering them only if it was a real
             # conversation; any call the producer made back counts.
             m = re.search(r"Duration:\s*(\d+)", str(n.get("body") or ""))
-            ev.update(kind="call", dur=int(m.group(1)) if m else 0, inbound=a.get("outbound") is False)
+            ev.update(kind="call", dur=int(m.group(1)) if m else 0, inbound=_inbound(a))
             if ev["inbound"] and ev["dur"] < CONVERSATION_SECONDS:
                 continue
         elif t == "TEXT-FAILED":
             ev["kind"] = "failed"
-        elif a.get("outbound") is False:
+        elif _inbound(a):
             ev["kind"] = "in"
         elif t == "TEXT":
             ev["kind"] = "auto" if a.get("triggerRuleId") else "sent"

@@ -4277,6 +4277,7 @@ function mergeServiceDocs(docs) {
   const last = docs[docs.length - 1];
   const m = { days: docs.map(x => x.date), team: last.team, pipelines: last.pipelines,
     tasks: {}, completed: [], renewals: [], unnamed: {}, callbacks: [], util: {}, taskRows: [],
+    msg: { days: 0, people: {}, replies: [], sent: [] },
     openRows: (last.srs || {}).open_rows || null,
     backlog: (last.srs || {}).backlog || {}, lateStages: (last.srs || {}).late_payment_stages || [],
     outcomes: (last.renewals || {}).outcomes || [], resolutionsFrom: (last.renewals || {}).resolutions_from,
@@ -4293,6 +4294,15 @@ function mergeServiceDocs(docs) {
       for (const [k, n] of Object.entries(x.renewals.unnamed || {})) m.unnamed[k] = (m.unnamed[k] || 0) + n;
     }
     m.callbacks.push(...(((x.callbacks || {}).rows) || []).map(r => Object.assign({ day: x.date }, r)));
+    if (x.messages) {
+      m.msg.days++;
+      for (const [n, c] of Object.entries(x.messages.people || {})) {
+        const a = m.msg.people[n] || (m.msg.people[n] = {});
+        for (const [k, v] of Object.entries(c)) a[k] = (a[k] || 0) + v;
+      }
+      m.msg.replies.push(...(x.messages.replies || []));
+      m.msg.sent.push(...(x.messages.sent || []));
+    }
     for (const [n, u] of Object.entries(x.utilization || {})) {
       const a = m.util[n] || (m.util[n] = { p: 0, t: 0, hybrid: !!u.hybrid });
       if (u.tracked) { a.p += u.productive_min || 0; a.t += u.total_min || 0; }
@@ -4534,6 +4544,67 @@ function svcOpenTable(rs, m) {
     <td>${r.due ? renDate(r.due) : "—"}${r.overdue ? ' <span class="chip c-r">Overdue</span>' : ""}</td></tr>`).join("");
   return `<div class="scroll"><table class="rtable"><thead><tr><th>Customer</th><th>SR</th><th>Assigned</th><th>Opened</th><th>Due</th></tr></thead><tbody>${rows}</tbody></table></div>`;
 }
+/* Texts & Emails with customers (service_messages.py, Frank 2026-09-27),
+   the Sales Center's Texts & Emails mirrored: texts from RingCentral (every
+   text on each person's own line), emails from AgencyZoom. Automation is
+   counted apart and never credited; only numbers that route to service (a
+   customer, an open SR) count. A customer's own words are outside text:
+   always escaped. */
+const svcMsgWhen = (r, m) => `${m.days.length > 1 ? renDate(r.day) + " " : ""}${cesc(r.at)}`;
+function svcReplyTable(rs, m) {
+  if (!rs.length) return '<p class="sd">None.</p>';
+  const rows = [...rs].sort((a, b) => (a.minutes == null) - (b.minutes == null) || (b.minutes || 0) - (a.minutes || 0)).map(r => `<tr>
+    <td>${svcMsgWhen(r, m)}</td><td>${svcLink(r.link_kind, r.link_id, r.name)}<div style="font-size:11.5px;color:var(--text-muted)">${cesc(fmtPhone(r.number))} &middot; ${cesc(r.channel)}${r.messages > 1 ? ` &middot; ${r.messages} messages` : ""}</div></td>
+    <td>${svcFirst(r.who)}</td><td style="max-width:360px;font-size:12.5px">${cesc(r.said)}</td>
+    <td>${r.optout ? '<span class="chip c-n">Asked to stop</span>' : r.ack ? '<span class="chip c-n">Nothing to answer</span>' : r.minutes != null ? `${cesc(r.via || "")} <span style="color:var(--text-muted)">${svcFirst(r.answered_by)}</span>` : '<span class="chip c-r">Waiting</span>'}</td>
+    <td class="num ${replyTier(r.minutes)}">${r.minutes != null ? fmtMins(r.minutes) : "—"}</td></tr>`).join("");
+  return `<div class="scroll"><table class="rtable"><thead><tr><th>When</th><th>Customer</th><th>Line</th><th>What they said</th><th>Answered</th><th class="num">After</th></tr></thead><tbody>${rows}</tbody></table></div>`;
+}
+function svcSentTable(rs, m) {
+  if (!rs.length) return '<p class="sd">None.</p>';
+  const rows = [...rs].sort((a, b) => a.auto - b.auto || (b.day || "").localeCompare(a.day || "") || (b.at || "").localeCompare(a.at || "")).map(r => `<tr>
+    <td>${svcMsgWhen(r, m)}</td><td>${svcLink(r.link_kind, r.link_id, r.name)}</td><td>${svcFirst(r.who)}</td>
+    <td>${cesc(r.channel)}${r.auto ? ' <span class="chip c-n">Automation</span>' : ""}${r.failed ? ' <span class="chip c-r">Not delivered</span>' : ""}${r.media ? ' <span class="chip c-n">Picture / file</span>' : ""}</td>
+    <td style="max-width:420px;font-size:12.5px;color:var(--text-muted)">${cesc(r.text || "")}</td></tr>`).join("");
+  return `<div class="scroll"><table class="rtable"><thead><tr><th>Sent</th><th>Customer</th><th>By</th><th>How</th><th>Message</th></tr></thead><tbody>${rows}</tbody></table></div>`;
+}
+function svcMessagesHtml(m) {
+  const M = m.msg;
+  if (!M.days) return `<div class="sect"><h2>Texts &amp; Emails</h2><p class="sd">No text and email figures for ${m.days.length > 1 ? "this range" : "this day"}.</p></div>`;
+  const team = m.team.map(t => t.name);
+  const sum = k => team.reduce((a, n) => a + ((M.people[n] || {})[k] || 0), 0);
+  const need = M.replies.filter(r => !r.ack && !r.optout);
+  const ans = need.filter(r => r.minutes != null), wait = need.filter(r => r.minutes == null);
+  const med = rs => rs.length ? median(rs.map(r => r.minutes)) : null;
+  const part = M.days < m.days.length ? ` Only ${M.days} of the ${m.days.length} days in this range have them.` : "";
+  const tiles = `<div class="tiles">
+    <div${sdk("msg:sent")}><div class="k">Texts Sent</div><div class="v">${sum("texts")}</div>
+      <div class="n">typed to ${sum("customers")} customer${sum("customers") === 1 ? "" : "s"} &middot; ${sum("auto_texts")} more by automation</div></div>
+    <div${sdk("msg:emails")}><div class="k">Emails Sent</div><div class="v">${sum("emails")}</div>
+      <div class="n">through AgencyZoom &middot; ${sum("auto_emails")} more by automation</div></div>
+    <div${sdk("msg:answered")}><div class="k">Speed to Reply</div>
+      <div class="v"><span class="${replyTier(med(ans))}">${fmtMins(med(ans))}</span></div>
+      <div class="n">median &middot; ${ans.length} of ${need.length} customer message${need.length === 1 ? "" : "s"} answered</div></div>
+    <div${sdk("msg:waiting")}><div class="k">Waiting on Us</div>
+      <div class="v"${wait.length ? ' style="color:var(--bad)"' : ""}>${wait.length}</div>
+      <div class="n">no text, email or call back by the end of the day</div></div>
+  </div>`;
+  const cards = team.map(n => [n, need.filter(r => r.who === n)]).filter(([, rs]) => rs.length).map(([n, rs]) => {
+    const a = rs.filter(r => r.minutes != null), w = rs.length - a.length;
+    return `<div${sdk("msg:who:" + n)}><div class="k">${pbadge(DOT[n] || TEAM_DOT, n.split(" ")[0])}</div>
+      <div class="v"><span class="${replyTier(med(a))}">${fmtMins(med(a))}</span></div>
+      <div class="n">median &middot; ${a.length} answered</div>
+      ${w ? `<div class="n" style="margin-top:5px;color:var(--bad);font-weight:600">${w} waiting</div>` : ""}</div>`;
+  }).join("");
+  return `<div class="sect"><h2>Texts &amp; Emails</h2>
+    <p class="sd">What the team typed to customers and how fast a customer's text or email got an answer: the next
+    typed text, email or call back. Texts are every text on each person's own RingCentral line; emails are the ones
+    sent through AgencyZoom (Outlook is not seen). Automation is counted apart and never credited. Only customers and
+    anyone with an open SR count; leads are the Sales Center's. A message that came in while the office was closed
+    starts at 8:30. Green is 15 minutes or less, red over an hour.${part}</p>
+    ${tiles}${svcDrillFor(m, ["msg:sent", "msg:emails", "msg:answered", "msg:waiting"])}
+    ${cards ? `<h3 class="rh3" style="margin-top:14px">Speed to Reply by person</h3><div class="tiles">${cards}</div>${svcDrillFor(m, ["msg:who"])}` : ""}</div>`;
+}
 function svcDrillList(title, what, body) {
   return `<div class="rdrill-list"><div style="display:flex;justify-content:space-between;align-items:baseline;gap:12px;margin:14px 0 6px">
     <h3 class="rh3" style="margin:0">${title}</h3><a href="#" data-sdrill-close style="font-size:12.5px">Close</a></div>
@@ -4564,6 +4635,18 @@ function svcDrillFor(m, keys) {
     return svcDrillList(`Contingencies · ${a} · ${rs.length}`, "", svcSrTable(rs, m, false)); }
   if (kind === "stage") { const rs = m.openRows ? m.openRows.filter(r => r.pipeline === "late_payments" && (r.stage || "(no stage)") === a) : null;
     return svcDrillList(`Late Payments open · ${cesc(a)}${rs ? ` · ${rs.length}` : ""}`, `As of ${fmtShortDate(m.days[m.days.length - 1])}.`, svcOpenTable(rs, m)); }
+  if (kind === "msg") {
+    const M = m.msg, need = M.replies.filter(r => !r.ack && !r.optout);
+    if (a === "sent") { const rs = M.sent.filter(r => r.channel === "text");
+      return svcDrillList(`Texts · ${rs.filter(r => !r.auto).length} typed, ${rs.filter(r => r.auto).length} automation`, "Every text to a customer on the service lines, typed first.", svcSentTable(rs, m)); }
+    if (a === "emails") { const rs = M.sent.filter(r => r.channel === "email");
+      return svcDrillList(`Emails · ${rs.filter(r => !r.auto).length} typed, ${rs.filter(r => r.auto).length} automation`, "Every email to a customer sent through AgencyZoom, typed first.", svcSentTable(rs, m)); }
+    if (a === "answered") return svcDrillList(`Customer messages · ${M.replies.length}`, "Waiting first, then slowest answered. \"Nothing to answer\" is an ok or a thank you.", svcReplyTable(M.replies, m));
+    if (a === "waiting") { const rs = need.filter(r => r.minutes == null);
+      return svcDrillList(`Waiting on us · ${rs.length}`, "Customers who texted or emailed and got no text, email or call back by the end of the day.", svcReplyTable(rs, m)); }
+    if (a === "who") { const rs = M.replies.filter(r => r.who === b);
+      return svcDrillList(`${cesc(b.split(" ")[0])} · ${rs.length} customer messages`, "", svcReplyTable(rs, m)); }
+  }
   if (kind === "person") {
     const srs = m.completed.filter(r => r.by === a), tasks = m.taskRows.filter(r => r.assignees.includes(a) || r.done_by === a);
     const open = m.openRows ? m.openRows.filter(r => r.by === a) : null;
@@ -4571,7 +4654,9 @@ function svcDrillFor(m, keys) {
     return svcDrillList(`${cesc(a)}`, "", `<h3 class="rh3">SRs completed · ${srs.length}</h3>${svcSrTable(srs, m, true)}
       <h3 class="rh3">Service tasks · ${tasks.length}</h3>${svcTaskTable(tasks)}
       <h3 class="rh3">Open SRs${open ? ` · ${open.length}` : ""} <span style="font-weight:400;text-transform:none;letter-spacing:0">as of ${fmtShortDate(m.days[m.days.length - 1])}</span></h3>${svcOpenTable(open, m)}
-      <h3 class="rh3">Call backs · ${cbs.length}</h3>${svcCallbackTable(cbs)}`);
+      <h3 class="rh3">Call backs · ${cbs.length}</h3>${svcCallbackTable(cbs)}
+      <h3 class="rh3">Customer texts &amp; emails · ${m.msg.replies.filter(r => r.who === a).length}</h3>${svcReplyTable(m.msg.replies.filter(r => r.who === a), m)}
+      <h3 class="rh3">Sent · ${m.msg.sent.filter(r => r.who === a && !r.auto).length} typed</h3>${svcSentTable(m.msg.sent.filter(r => r.who === a), m)}`);
   }
   return "";
 }
@@ -4610,11 +4695,15 @@ function servicePanel(m) {
       <div class="n" style="margin-top:8px"><b>${k.completed}/${k.due}</b> service tasks &middot; <b>${mine.length}</b> SRs completed${mine.length ? ` (median ${fmtDur(svcMedian(mine.map(r => r.hours)))})` : ""}</div>
       <div class="n"><b>${b.open ?? 0}</b> open SRs &middot; <b>${b.overdue ?? 0}</b> overdue</div>
       <div class="n">Call backs <b>${cb.length}</b>${cb.length ? ` &middot; median ${mins(svcMedian(cb.map(r => r.minutes)))}` : ""}</div>
+      ${m.msg.days ? (() => { const p = m.msg.people[n] || {}, need = m.msg.replies.filter(r => r.who === n && !r.ack && !r.optout),
+        a = need.filter(r => r.minutes != null).map(r => r.minutes), w = need.length - a.length;
+        return `<div class="n">Texts <b>${p.texts || 0}</b> &middot; Emails <b>${p.emails || 0}</b> &middot; Reply ${a.length ? `median <b class="${replyTier(median(a))}">${fmtMins(median(a))}</b>` : "<b>—</b>"}${w ? ` &middot; <b style="color:var(--bad)">${w} waiting</b>` : ""}</div>`; })() : ""}
       <div class="n">Utilization <b>${u.t ? pct(100 * u.p / u.t) : "—"}</b>${u.hybrid ? ' <span style="color:var(--text-muted)">&middot; whole day, shared with sales</span>' : ""}</div>
     </div>`;
   };
   return `<div class="sect"><h2>Service Team</h2>
     <p class="sd">Credit goes to whoever completed the SR or task.</p>${tiles}</div>
+    ${svcMessagesHtml(m)}
     ${renewalWorkedHtml(m)}
     ${SR_OUTCOME_SECTIONS.map(([p, t, w, b]) => srOutcomeHtml(m, p, t, w, b)).join("")}
     ${completionTimeHtml(m)}
