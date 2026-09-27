@@ -74,6 +74,11 @@ Everything caches under `data/`, so a re-run resumes rather than restarting.
   `assume` (the sale at the start, through objections, at the end) instead
   of the nine dimensions and "assumed the quote"; first and finish-quote
   calls keep the nine, with what the history already captured as "n".
+  **A quote emailed or texted after a call counts as presented** (Frank,
+  2026-09-27), so the next call is a follow-up; **ending a finish-quote call
+  to send the quote instead of presenting it is a flagged bad habit**.
+  Inbound rows carry the producer's stage moves like outbound ones (they
+  were `[]`, so a call back read the end-of-day stage as its start).
   **A call the producer ANSWERED scores `greeting`**: on their direct line,
   the caller's name when they knew who it was, "This is Mike, how can I
   help?" when they didn't, never the front desk's "thank you for calling

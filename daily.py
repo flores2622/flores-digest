@@ -742,7 +742,15 @@ def build_metrics(day):
                                     .startswith(day)),
                 "smartcycle_days": _smartcycle_days(
                     xdate_by_lead.get(lead_id), day),
-                "moves": []})
+                # The producer's stage moves on this lead today, across every
+                # record on the number, as outbound rows carry them. Left
+                # empty, a call back read the END-of-day stage as where the
+                # call started: Joaquin Guillen, 2026-09-22, "started in
+                # Quoted" when Lorena moved him there from New 3rd Cycle half
+                # an hour after the call (Frank, 2026-09-27).
+                "moves": [m["move"] for m in lc.evidence(
+                    [l.get("id") for l in lead_ix.get(e["to"], []) if l.get("id")]
+                    or [lead_id], day, who)["stage_moves"]] if lead_id else []})
 
         tot = 0
         for lid in hh.get(who, ()):
