@@ -269,6 +269,32 @@ and anything without the glow is the checkpoint's (Frank, 2026-09-24).
   `AZ_USERNAME`, `AZ_PASSWORD`, `INSIGHTFUL_TOKEN`. A missing one leaves that
   part on the checkpoint and the header names it.
 
+## Texts and emails
+
+**`messages.py` builds the Sales Center's Texts & Emails page** (Frank,
+2026-09-27), into the day document's `messages`, from the lead notes the run
+already downloads. Leads only; a customer's texts are Athena's.
+- **Who sent it:** TEXT/EMAIL notes carry `attr.outbound`; a text with
+  `attr.triggerRuleId` is an AgencyZoom automation. **Emails have no
+  automation marker**: a template subject (`TEMPLATE_SUBJECTS`, plus any
+  subject sent to 5+ leads that night, lead's first name stripped) is
+  automation unless it has an attachment, or is a "Re:" to a lead who had
+  emailed us first -- drips send "Re: Your insurance quote options" to look
+  like replies. Automation is counted apart and never credited.
+- **A reply belongs to whoever last typed to that person** (else the lead's
+  producer); someone else's -- Debbie on a payment -- is service and stays
+  out. It is answered by the next typed text or email, any call back (the
+  RC call log or AgencyZoom's CALL notes), or a call the lead made that was
+  still going when the text arrived (30s+). One row per wait; "ok" / "thanks"
+  and STOP are counted but never listed as waiting.
+- **Replies are windowed from the office's close the business day before**
+  (5:30 PM) to 5:30 PM, so evening and weekend replies land on the next
+  business day; the clock starts at 8:30 for a reply that came in closed.
+  daily.py downloads notes for every producer lead active in that window
+  (`messages.active_leads`) -- lastActivityDate is UTC.
+- Quotes sent are `daily.quote_presented` or an email attachment; opens are
+  AgencyZoom's tracking as of that night. Rows, never medians.
+
 ## Service ticket status is DELETED/LIVE, not OPEN/CLOSED
 
 **Corrected 2026-09-02 — do not revert to the 2026-09-01 understanding.**

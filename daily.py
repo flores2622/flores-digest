@@ -528,6 +528,12 @@ def build_metrics(day):
     ids = [r["lead_id"] for rs in rows.values() for r in rs if r["lead_id"]]
     # at-risk pool: post-contact, active, touched in the last 30 days
     cutoff = (dt.date.fromisoformat(day) - dt.timedelta(days=30)).isoformat()
+    # Leads with a text or email since the office closed the business day
+    # before, so a lead who only texted (or was only texted) is read for
+    # messages.py (Frank, 2026-09-27). lastActivityDate is UTC; the plain
+    # startswith(day) below misses everything after 5 PM Arizona.
+    import messages
+    ids += messages.active_leads([l for l in leads if l.get("assignedTo") in azid], day)
     for l in leads:
         if l.get("assignedTo") in azid and str(l.get("lastActivityDate") or "")[:10] >= cutoff:
             s = stage.get(l.get("workflowStageId"), "")

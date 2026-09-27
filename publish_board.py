@@ -223,6 +223,15 @@ def build(day, log=print, live=False):
             doc["misfiled"] = pipelines.misfiled(json.loads(corpus.read_text()))
     except Exception as e:
         log(f"  misfiled leads: skipped ({type(e).__name__}: {e})")
+    # Texts and emails: sent, replies, how fast they were answered (Frank,
+    # 2026-09-27). From the notes already on disk; never fails the day.
+    try:
+        import messages
+        m = messages.build(day, log=log)
+        if m:
+            doc["messages"] = m
+    except Exception as e:
+        log(f"  messages: skipped ({type(e).__name__}: {e})")
     try:
         import coaching_cards
         generated = coaching_cards.build(day, log=log)
