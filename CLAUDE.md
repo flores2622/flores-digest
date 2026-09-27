@@ -239,8 +239,8 @@ and anything without the glow is the checkpoint's (Frank, 2026-09-24).
 - **Dials** extend the checkpoint's OWN verdicts (`live_board.basis`, carried
   in the intraday document as `live_basis`), never re-decide them: excluded
   numbers stay excluded, a duplicate-lead number adds attempts only, and a
-  number no checkpoint has checked counts as new business until one does
-  (the header says how many). Record ids, not times, mark what the
+  number no checkpoint has checked counts as new business until one does.
+  Record ids, not times, mark what the
   checkpoint saw.
 - **Sales** are AgencyZoom policies by agentId + soldDate minus
   `lead_sources.NOT_A_SALE`, the same rule as `is_real_sale`.
@@ -274,7 +274,10 @@ and anything without the glow is the checkpoint's (Frank, 2026-09-24).
   flores-board -> Settings -> Variables and Secrets, type Secret):
   `RC_CLIENT_ID`, `RC_CLIENT_SECRET`, `RC_SERVER_URL`, `RC_JWT`,
   `AZ_USERNAME`, `AZ_PASSWORD`, `INSIGHTFUL_TOKEN`. A missing one leaves that
-  part on the checkpoint and the header names it.
+  part on the checkpoint, so it simply does not glow. **The header never
+  lists what is or is not live, or why** (Frank, 2026-09-25: "I know whats
+  flashing green is live, and whats not flashing green is not") -- do not
+  add that back.
 
 ## Texts and emails
 
