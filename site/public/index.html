@@ -4290,6 +4290,11 @@ function mergeServiceDocs(docs) {
     m.completed.push(...((x.srs || {}).completed || []).map(r => r.done ? r : Object.assign({ done: x.date }, r)));
     m.taskRows.push(...(x.task_rows || []).map(r => Object.assign({ day: x.date }, r)));
     if (x.renewals) {
+      // An SR closed, reopened and closed again sits on both days' pages
+      // (12876591: No action 09-24, Sold/Moved 09-25): docs are in date
+      // order, so the later close replaces the earlier one.
+      const again = new Set((x.renewals.rows || []).map(r => r.id));
+      m.renewals = m.renewals.filter(r => !again.has(r.id));
       m.renewals.push(...(x.renewals.rows || []));
       for (const [k, n] of Object.entries(x.renewals.unnamed || {})) m.unnamed[k] = (m.unnamed[k] || 0) + n;
     }
@@ -4382,6 +4387,8 @@ function renewalBreakdownHtml(m) {
   const bySrc = s => rows.filter(r => r.source === s).length;
   const src = [[bySrc("resolution"), "closed on the team's own resolution"],
     [bySrc("notes"), "closed as Completed, outcome read from the rep's note by AI"],
+    [bySrc("notes+texts"), "closed as Completed, outcome read by AI from the rep's note and the customer's texts"],
+    [bySrc("texts"), "closed as Completed with no note, outcome read by AI from the customer's texts"],
     [bySrc("no_note"), `closed as Completed with no note, or a note that does not say, so counted as ${label.unable_to_contact || "Unable to Contact/No Show"}`],
     [bySrc("unread"), "have a note not read yet (counted as Unable to Contact/No Show until the next nightly run reads it)"]].filter(x => x[0]);
   const unnamed = Object.entries(m.unnamed || {});
@@ -4512,7 +4519,7 @@ function svcSrTable(rs, m, withOutcome) {
     <td>${cesc(r.subject || "")}<div style="font-size:11.5px;color:var(--text-muted)">${cesc(pipeName[r.pipeline] || r.pipeline || "")}</div></td>
     <td>${svcFirst(r.by || r.by_name)}</td><td class="num">${fmtDur(r.hours)}</td>
     ${withOutcome ? `<td>${cesc(outLabel[r.outcome || renOut[r.id]] || r.outcome || renOut[r.id] || "—")}</td>` : ""}
-    <td style="max-width:360px;font-size:12px;color:var(--text-muted)">${cesc(r.note || "")}</td></tr>`).join("");
+    <td style="max-width:360px;font-size:12px;color:var(--text-muted)">${cesc(r.note || "")}${r.texts ? `<details style="margin-top:4px"><summary style="cursor:pointer">Texts${r.source === "texts" || r.source === "notes+texts" ? " (used for the outcome)" : ""}</summary><div style="white-space:pre-wrap;margin-top:4px">${cesc(r.texts)}</div></details>` : ""}</td></tr>`).join("");
   return `<div class="scroll"><table class="rtable"><thead><tr><th>Completed</th><th>Customer</th><th>SR</th><th>By</th><th class="num">Took</th>${withOutcome ? "<th>Outcome</th>" : ""}<th>Rep's note</th></tr></thead><tbody>${rows}</tbody></table></div>`;
 }
 function svcTaskTable(rs) {
