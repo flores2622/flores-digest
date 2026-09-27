@@ -8,6 +8,10 @@ a card (CLAUDE.md, Cost). This is the deliberate exception, day by day:
     python3 rebuild_cards.py 2026-09-22                # read, compare, publish nothing
     python3 rebuild_cards.py 2026-09-22 --publish      # ...and put the new cards on the board
     python3 rebuild_cards.py 2026-09-01 2026-09-25 --publish   # oldest first
+    python3 rebuild_cards.py --days 2026-09-01,2026-09-04 --publish
+    python3 rebuild_cards.py 2026-09-22 --publish --reuse  # publish a test run's reads
+    python3 rebuild_cards.py 2026-09-01 2026-09-25 --publish --repair
+        # re-read only follow-ups missing their scorecard, and failed reads
 
 For each day:
   1. the day's own inputs come back from R2's cache/<day>/ (call rows,
@@ -49,6 +53,92 @@ def _pull_inputs(cli, bucket, day, log):
         (ROOT / f"data/{name}_{day}.json").write_bytes(body)
 
 
+def _from_old_cards(day, old_cards, log):
+    """A day whose full transcripts were never saved to R2 (09-10, 09-14)
+    gets them back from its own published cards, which carry the text each
+    was read from -- matched to the call rows by producer and lead."""
+    import call_summary as CS
+    fx_path = ROOT / f"data/fulltx_{day}.json"
+    if fx_path.exists():
+        return
+    M = json.loads((ROOT / f"data/metrics_{day}.json").read_text())
+    by = {(c.get("who"), c.get("lead_id")): c.get("transcript") for c in old_cards if c.get("transcript")}
+    fx, done = {}, set()
+    for who, v in (M.get("producers") or {}).items():
+        for r in v.get("call_detail") or []:
+            k = (who, r.get("lead_id"))
+            if k in by and k not in done:
+                fx[CS._ck(who, r["number"])] = by[k]
+                done.add(k)
+    fx_path.write_text(json.dumps(fx))
+    log(f"  {day}: no saved transcripts -- {len(fx)} taken from the published cards")
+
+
+def _keep_recordings(cards, old_cards):
+    """A rebuilt card keeps the old card's "listen to the call" ids when this
+    day's recordings list was never saved (09-08, 09-11, 09-14)."""
+    by = {(c.get("who"), c.get("lead_id")): c.get("recording_ids") for c in old_cards if c.get("recording_ids")}
+    for c in cards:
+        if not c.get("recording_ids") and (c.get("who"), c.get("lead_id")) in by:
+            c["recording_ids"] = by[(c.get("who"), c.get("lead_id"))]
+
+
+def _drop_bad_reads(path, log, day):
+    """--repair: forget the reads a run before the follow-up retry left
+    without their follow-up scorecard, so only those calls are read again."""
+    import coaching_cards as cc
+    cache = json.loads(path.read_text())
+    bad = [k for k, d in cache.items()
+           if (cc._flow(d.get("flow")) or [""])[0] in cc.FU_FLOWS
+           and len(cc._clean_score(d.get("fuscore"), cc.FU_DIMS)) < 3]
+    for k in bad:
+        del cache[k]
+    path.write_text(json.dumps(cache, indent=1))
+    log(f"  {day}: {len(bad)} follow-up read(s) without their scorecard will be read again")
+
+
+def _failed_reads(day, cards, old_cards):
+    """Old cards whose call has no new read at all -- the read failed (a
+    model answer that was not valid JSON, Joseph Valentine 2026-09-22) --
+    rather than being read again as a pure service call. Those old cards
+    stay on the page instead of silently disappearing."""
+    import coaching_cards as cc
+    M = json.loads((ROOT / f"data/metrics_{day}.json").read_text())
+    cache = json.loads((ROOT / f"data/coaching_cards_{day}.json").read_text())
+    groups = {}
+    for who, v in (M.get("producers") or {}).items():
+        for r in v.get("call_detail") or []:
+            if (r.get("summary") or {}).get("source") == "recording" and r.get("lead_id") is not None:
+                groups.setdefault((who, r["lead_id"]), []).append(r)
+    have = {(c.get("who"), c.get("lead_id")) for c in cards}
+    return [c for c in old_cards if (c.get("who"), c.get("lead_id")) not in have
+            and (c.get("who"), c.get("lead_id")) in groups
+            and cc._group_ck(c.get("who"), groups[(c.get("who"), c.get("lead_id"))]) not in cache]
+
+
+def _readable_rows(day, log):
+    """A row the night filed under its producer note only because the model
+    could not be reached (09-17: no API key in that run, 24 of 28 live
+    contacts) is read like any other when its transcript is on file."""
+    import call_summary as CS
+    fx_path = ROOT / f"data/fulltx_{day}.json"
+    if not fx_path.exists():
+        return
+    fx = json.loads(fx_path.read_text())
+    mpath = ROOT / f"data/metrics_{day}.json"
+    M = json.loads(mpath.read_text())
+    n = 0
+    for who, v in (M.get("producers") or {}).items():
+        for r in v.get("call_detail") or []:
+            s = r.get("summary") or {}
+            if s.get("source") != "recording" and fx.get(CS._ck(who, r["number"])):
+                r["summary"] = {**s, "source": "recording"}
+                n += 1
+    if n:
+        mpath.write_text(json.dumps(M))
+        log(f"  {day}: {n} conversation(s) with a transcript but no read that night -- read now")
+
+
 def _refresh_moves(day, log):
     """Every call row's stage moves, re-read from the notes across every lead
     record on its number (what outbound rows always had; inbound rows had
@@ -73,19 +163,50 @@ def _refresh_moves(day, log):
     log(f"  {day}: stage moves re-read ({changed} row(s) changed)")
 
 
-def rebuild(day, publish=False, log=print):
+def rebuild(day, publish=False, reuse=False, repair=False, log=print):
+    """`reuse` publishes the reads a previous run of this script left in
+    data/coaching_cards_<day>.json instead of paying for them again."""
     import coaching_cards
     import publish_board
     cli, bucket = publish_board._client()
-    _pull_inputs(cli, bucket, day, log)
     old_cache_path = ROOT / f"data/coaching_cards_{day}.json"
+    kept = old_cache_path.read_bytes() if reuse and old_cache_path.exists() else None
+    _pull_inputs(cli, bucket, day, log)
     old_cache = old_cache_path.read_bytes() if old_cache_path.exists() else None
     old_doc_raw = cli.get_object(Bucket=bucket, Key=f"days/{day}.json")["Body"].read()
     old_doc = json.loads(old_doc_raw)
+    # The page as it was BEFORE any rebuild, when a backup exists: a second
+    # run (a retry) must compare against the original cards, not its own.
+    try:
+        pages = [o["Key"] for o in cli.list_objects_v2(Bucket=bucket, Prefix="backups/").get("Contents", [])
+                 if o["Key"].endswith(f"-card-rebuild/days/{day}.json")]
+        if pages:
+            old_doc = json.loads(cli.get_object(Bucket=bucket, Key=sorted(pages)[0])["Body"].read())
+    except Exception:
+        pass
     _refresh_moves(day, log)
-    if old_cache_path.exists():
+    _from_old_cards(day, old_doc.get("calls") or [], log)
+    _readable_rows(day, log)
+    if kept is not None:
+        old_cache_path.write_bytes(kept)     # this script's own new reads
+        if repair:
+            _drop_bad_reads(old_cache_path, log, day)
+    elif old_cache_path.exists():
         old_cache_path.unlink()              # read every call again
     cards = coaching_cards.build(day, log=log)
+    # A read that failed is retried once (build only re-reads calls it has no
+    # read for); one that fails again keeps its old card.
+    kept_old = _failed_reads(day, cards or [], old_doc.get("calls") or []) if cards else []
+    if kept_old:
+        log(f"  {day}: {len(kept_old)} read(s) failed -- retrying")
+        cards = coaching_cards.build(day, log=log)
+        kept_old = _failed_reads(day, cards or [], old_doc.get("calls") or [])
+        if kept_old:
+            log(f"  {day}: keeping {len(kept_old)} old card(s) whose read failed twice: "
+                + ", ".join(c.get("lead") or "?" for c in kept_old))
+            cards = (cards or []) + kept_old
+    if cards:
+        _keep_recordings(cards, old_doc.get("calls") or [])
     if not cards:
         log(f"  {day}: no cards came back -- nothing changed")
         if old_cache is not None:
@@ -127,9 +248,16 @@ def rebuild(day, publish=False, log=print):
 
 def main(argv):
     args = [a for a in argv if not a.startswith("--")]
+    only = None
+    if "--days" in argv:
+        only = set(argv[argv.index("--days") + 1].split(","))
+        args = [a for a in args if a != argv[argv.index("--days") + 1]]
+        args = [min(only), max(only)]
     start = args[0]
     end = args[1] if len(args) > 1 else start
     publish = "--publish" in argv
+    reuse = "--reuse" in argv or "--repair" in argv
+    repair = "--repair" in argv
     import publish_board
     cli, bucket = publish_board._client()
     days, token = [], None
@@ -142,9 +270,9 @@ def main(argv):
         if not page.get("IsTruncated"):
             break
         token = page.get("NextContinuationToken")
-    for day in sorted(d for d in days if start <= d <= end):
+    for day in sorted(d for d in days if start <= d <= end and (only is None or d in only)):
         try:
-            rebuild(day, publish=publish, log=lambda m: print(m, flush=True))
+            rebuild(day, publish=publish, reuse=reuse, repair=repair, log=lambda m: print(m, flush=True))
         except Exception as e:
             print(f"  {day}: FAILED ({type(e).__name__}: {e}) -- left as it was", flush=True)
 

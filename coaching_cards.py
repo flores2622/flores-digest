@@ -150,6 +150,23 @@ def _ask_card(model, transcript, notes, seconds, producer, lead, call_count=1,
         d = CS._extract(resp)
     if d is None:
         raise ValueError("no JSON in response")
+    # A follow-up read that left out its own scorecard (2 of 9 on 2026-09-22's
+    # rebuild -- the model filled the nine-point `score` instead) is asked
+    # once more, with its own answer in front of it.
+    f = _flow(d.get("flow")) if "flow" in d else None
+    if f and f[0] in FU_FLOWS and len(_clean_score(d.get("fuscore"), FU_DIMS)) < 3:
+        fix = msg + [{"role": "assistant", "content": json.dumps(d, ensure_ascii=False)},
+                     {"role": "user", "content":
+                      "You set flow to follow-up but did not score `fuscore`. Return the whole JSON "
+                      "object again, the same read, with `fuscore` scoring the six follow-up steps, "
+                      "`assume` for the three moments, and `score` as {} (see \"Scoring a follow-up\")."}]
+        try:
+            d2 = CS._extract(CS._post(dict(base, messages=fix, max_tokens=RETRY_TOKENS,
+                                           thinking={"type": "disabled"})))
+        except Exception:
+            d2 = None
+        if d2 and len(_clean_score(d2.get("fuscore"), FU_DIMS)) >= 3:
+            d = d2
     return d
 
 

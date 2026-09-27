@@ -67,9 +67,19 @@ OFFICE_CLOSE = (17, 30)     # "the office closes at 5:30" (CLAUDE.md)
 # reply (the lead wrote back) but never listed as waiting on an answer.
 ACK = re.compile(r"^\s*(ok(ay)?|k|thanks?|thank you( so much)?|ty|gracias|muchas gracias|"
                  r"perfect|perfecto|sounds good|great|👍|🙏|❤️|😊)[\s!.,👍🙏😊❤️]*$", re.I)
+# A short "you too" / "thank you again" -- no question in it -- is an
+# acknowledgement too (2026-09-27, a September spot-check).
+ACK_SHORT = re.compile(r"^\s*(ok(ay)?|thanks?|thank you|gracias|grx|you too|same to you|igualmente|"
+                       r"have a (good|great|nice)|perfect|perfecto|sounds good)\b", re.I)
 # The lead asking us to stop: counted, never waiting on an answer.
 OPT_OUT = re.compile(r"^\s*(stop( all)?|unsubscribe|cancel|end|quit|alto|baja|"
-                     r"stop texting( me)?|no more texts?)\s*[.!]*\s*$", re.I)
+                     r"stop texting( me)?|no more texts?)\s*[.!]*\s*$"
+                     r"|(please )?(do not|don'?t|dont) (reach out|contact|text|call|message|email)( to)?( me)?( anymore| again)"
+                     r"|stop (texting|calling|contacting|messaging)|remove me|take me off|unsubscribe", re.I)
+# The lead saying we have the wrong person: bad contact info, not a reply
+# waiting on us ("I dont know who that is! Never ever heard that name").
+WRONG = re.compile(r"wrong (number|person)|(don'?t|dont|do not) know who (that|this) is|"
+                   r"never (ever )?heard (of )?(that|this) name|n[uú]mero equivocado", re.I)
 # Quoted history under an email reply ("On Tue, Jul 14 ... wrote:").
 _EMAIL_QUOTE = re.compile(r"\s(On|El) [^<>]{5,80}(wrote|escribió):.*$", re.S)
 
@@ -298,6 +308,16 @@ def build(day, log=print):
     except Exception as e:
         log(f"  messages: no call log for answers by phone ({type(e).__name__})")
 
+    # The same message on two duplicate lead records is one message.
+    for key in list(events):
+        seen, keep = set(), []
+        for e in sorted(events[key], key=lambda e: e["at"]):
+            sig = (e["at"].isoformat()[:16], e["kind"], e["type"], e.get("text", "")[:80], e.get("by", ""))
+            if sig not in seen:
+                seen.add(sig)
+                keep.append(e)
+        events[key] = keep
+
     stats = {p: collections.Counter() for p in cfg.PRODUCERS}
     replies, quotes, bad = [], [], []
     for key, evs in events.items():
@@ -355,16 +375,27 @@ def build(day, log=print):
             before = [t for t in evs if t["kind"] == "sent" and t["at"] < e["at"]]
             partner = before[-1]["by"] if before and before[-1]["by"] else own
             ans = next((t for t in touches if ends(t) >= e["at"]), None)
-            # Unanswered: every message after it is the same wait.
-            stop = (ans["at"] if ans["at"] > e["at"] else e["at"]) if ans else end
+            # Nothing answered it: every message to the end of the window is the
+            # same wait (Nery Pulido, 2026-09-10: two texts a minute apart).
+            stop = end if ans is None else (ans["at"] if ans["at"] > e["at"] else e["at"])
             run = [x for x in evs[i:] if x["kind"] == "in" and x["at"] <= max(stop, e["at"]) and x["at"] <= end] or [e]
             i = evs.index(run[-1]) + 1
             if partner not in producers:
                 continue
             said = " / ".join(x["text"] for x in run if x["text"])[:300]
+            optout = any(OPT_OUT.search(x["text"] or "") for x in run)
+            wrong = not optout and any(WRONG.search(x["text"] or "") for x in run)
+            ack = not optout and not wrong and all(
+                ACK.match(x["text"] or "") or (ACK_SHORT.match(x["text"] or "") and "?" not in x["text"]
+                                               and len(x["text"].split()) <= 6)
+                for x in run if x["text"])
+            if wrong:
+                stats[partner]["bad"] += 1
+                bad.append({"who": partner, "lead": lead, "lead_id": e["lead_id"], "day": day,
+                            "channel": "email" if e["type"] == "EMAIL" else "text",
+                            "reason": "wrong person (the lead said so): " + said[:80]})
+                continue
             stats[partner]["replies"] += 1
-            optout = any(OPT_OUT.match(x["text"] or "") for x in run)
-            ack = not optout and all(ACK.match(x["text"] or "") for x in run if x["text"])
             row = {"who": partner, "lead": lead, "lead_id": e["lead_id"], "day": day,
                    "at": e["at"].strftime("%H:%M") if e["at"].date().isoformat() == day else e["at"].strftime("%m-%d %H:%M"),
                    "channel": "email" if e["type"] == "EMAIL" else "text",
