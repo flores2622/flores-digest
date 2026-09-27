@@ -768,8 +768,31 @@ def _finish_card(d, producer, group, raw_dials, day, transcript, recording_ids):
         "score": {} if fuscore else _clean_score(d.get("score")),
         "techniques": _clean_score(d.get("techniques"), TECH_DIMS),
         "spine": _clean_spine(d.get("spine")),
-        "flags": [str(f).strip() for f in (d.get("flags") or []) if str(f).strip()][:6],
+        **_clean_flags(d.get("flags")),
     }
+
+
+def _clean_flags(raw):
+    """`flags` stays a list of strings (what every card already has), with
+    `flag_groups` beside it: each flag's category from cfg.FLAG_GROUPS, or
+    None when the model gave none or an invented one -- the board then
+    guesses from the wording, as it does for cards read before the list."""
+    import digest_config as cfg
+    flags, groups = [], []
+    for f in raw or []:
+        if isinstance(f, (list, tuple)) and f:
+            text, group = str(f[0]).strip(), str(f[1]).strip() if len(f) > 1 else ""
+        elif isinstance(f, dict):
+            text, group = str(f.get("text") or "").strip(), str(f.get("group") or "").strip()
+        else:
+            text, group = str(f).strip(), ""
+        if not text:
+            continue
+        flags.append(text)
+        groups.append(group if group in cfg.FLAG_GROUPS else None)
+        if len(flags) == 6:
+            break
+    return {"flags": flags, "flag_groups": groups}
 
 
 def _distinct_calls(producer, group):
