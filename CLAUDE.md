@@ -533,12 +533,17 @@ Crystal (hybrid); credit always goes to whoever COMPLETED the SR or task.
   counts from the rows. Utilization cannot be split (Insightful measures the
   whole day). 09-01..09-25 were flagged from their saved files (backups
   under `backups/2026-09-27-renewal-split/`).
-- **Both tabs take the Sales Digest's date filter** (Frank, 2026-09-27:
-  "the only numbers I want displayed for a rolling 4 weeks is the retention
-  rate"). On the Renewals tab, Renewal SR Work, Lost and Not confirmed
-  follow it (Lost and Not confirmed by the day the policy renewed, within
-  the report's 28 days); the retention rate and its breakdown stay the
-  rolling 4 weeks, and Coming up the next 45 days.
+- **Both tabs take the Sales Digest's date filter** (Frank, 2026-09-27).
+  On the Renewals tab, Renewal SR Work, Lost and Not confirmed follow it
+  (Lost and Not confirmed by the day the policy renewed); Coming up stays
+  the next 45 days.
+- **Three retention rates** (Frank, 2026-09-27: "build all three"): the
+  **settled 4 weeks** (renewals 14-41 days ago, `REN_SETTLE_DAYS`; the
+  newest two weeks show as settling, and the breakdowns by week, how worked,
+  pipeline and person are these four weeks), the **date filter's period**,
+  and the **last 12 months** -- the one to set beside Farmers'. So
+  `renewal_report.PAST_DAYS` is 365 (the report is ~2.4 MB). A year measured
+  2026-09-27: losses do not show up late; only "not confirmed" settles.
   **Cancellations to check** (the "not dated" flag) moved to the Renewals
   tab too, from `renewal_report`'s `sr.flag`.
 - **The Renewals tab is its own report** (Frank, 2026-09-25: "service cant be
@@ -547,7 +552,7 @@ Crystal (hybrid); credit always goes to whoever COMPLETED the SR or task.
   after the service board; the Worker serves it at `/api/renewals`, and the
   Service Center's second tab renders it. The Service Digest keeps only a
   count of renewal SRs worked. It covers every personal-lines policy TERM
-  (commercial and life left out) renewing in the last 28 days -- what
+  (commercial and life left out) renewing in the last 365 days -- what
   happened -- and the next 45 -- how the renewal SR was worked, and risk.
   **The policy record counts** here (Frank, 2026-09-25: "if the policy reads
   cancelled but no SR has that outcome ... its still cancelled"), beside the

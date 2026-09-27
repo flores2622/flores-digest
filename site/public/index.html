@@ -5022,6 +5022,9 @@ const renWorked = r => {
   if (s.outcome === "unable_to_contact") return "not_reached";
   return "other";
 };
+// A renewal counts in the settled rate once it is two weeks past: the newest
+// two weeks still have renewals not on the record yet.
+const REN_SETTLE_DAYS = 14;
 const renRate = rs => { const k = rs.filter(r => r.status === "retained").length, l = rs.filter(r => r.status === "lost").length;
   return { k, l, pct: k + l ? Math.round(1000 * k / (k + l)) / 10 : null }; };
 const renFill = st => { const [, v, hatch] = REN_STATUS[st] || [, "--text-muted"];
@@ -5097,13 +5100,25 @@ function renewalsPanel(doc, workHtml = "", rb = null) {
   const lostIn = pastIn.filter(r => r.status === "lost");
   const firstRen = past.length ? past.reduce((a, r) => r.renewal < a ? r.renewal : a, past[0].renewal) : null;
   const rangeNote = rb && rb.from && firstRen && rb.from < firstRen ? ` This report holds renewals from ${renDate(firstRen)} on.` : "";
-  const rt = renRate(past);
+  // Three retention rates (Frank, 2026-09-27: "build all three"):
+  //   settled  renewals 14-41 days ago -- the last 4 weeks that have had two
+  //            weeks to show on the record; the newest two weeks are settling
+  //   range    renewals in the date filter's period
+  //   year     renewals in the last 365 days, the one to set beside Farmers'
+  const ago = r => Math.round((new Date(doc.as_of + "T12:00:00") - new Date(r.renewal + "T12:00:00")) / 864e5);
+  const settled = past.filter(r => ago(r) >= REN_SETTLE_DAYS && ago(r) < REN_SETTLE_DAYS + 28);
+  const settling = past.filter(r => ago(r) < REN_SETTLE_DAYS);
+  const year = past.filter(r => ago(r) < 365);
+  const rt = renRate(settled), rr = renRate(pastIn), ry = renRate(year);
+  const span = rs => rs.length ? `${renDate(rs.reduce((a, r) => r.renewal < a ? r.renewal : a, rs[0].renewal))} – ${renDate(rs.reduce((a, r) => r.renewal > a ? r.renewal : a, rs[0].renewal))}` : "";
+  const inRate = rs => rs.filter(r => r.status === "retained" || r.status === "lost");
   const discussed = ahead.filter(r => renWorked(r) === "discussed").length;
   const high = ahead.filter(r => r.risk === "high").length;
   // Each card opens the list of exactly the renewals it counts.
   const drills = {
-    rate: ["Retention · last 4 weeks", "every renewal in the rate: retained and lost",
-           past.filter(r => r.status === "retained" || r.status === "lost")],
+    rate: ["Retention · settled 4 weeks", "renewed " + span(settled) + ", retained and lost", inRate(settled)],
+    rrange: ["Retention · this period", "renewed in the date filter's period, retained and lost", inRate(pastIn)],
+    ryear: ["Retention · 12 months", "renewed " + span(year) + ", retained and lost", inRate(year)],
     lost: ["Lost", "renewals lost in this period", lostIn],
     unconfirmed: ["Not confirmed yet", "no next term or cancellation on record yet", pastIn.filter(r => r.status === "unconfirmed")],
     ahead: [`Coming up · ${doc.upcoming_days} days`, "renewing in the next " + doc.upcoming_days + " days", ahead],
@@ -5112,26 +5127,34 @@ function renewalsPanel(doc, workHtml = "", rb = null) {
   const dt = (k, inner, style) => `<div class="tile rdrill${renDrill === k ? " on" : ""}" data-drill="${k}" role="button" tabindex="0"
     title="Show these ${drills[k][2].length} renewals"${style ? ` style="${style}"` : ""}>${inner}</div>`;
   const tiles = `<div class="tiles">
-    ${dt("rate", `<div class="k">Retention · last 4 weeks</div>
-      <div class="v">${rt.pct == null ? "—" : rt.pct + "%"}</div><div class="n">${rt.k} of ${rt.k + rt.l} renewals kept</div>`, "border-color:var(--border-strong)")}
+    ${dt("rate", `<div class="k">Retention · settled 4 weeks</div>
+      <div class="v">${rt.pct == null ? "—" : rt.pct + "%"}</div><div class="n">${rt.k} of ${rt.k + rt.l} kept &middot; renewed ${span(settled)}</div>`, "border-color:var(--border-strong)")}
+    ${dt("rrange", `<div class="k">Retention · this period</div>
+      <div class="v">${rr.pct == null ? "—" : rr.pct + "%"}</div><div class="n">${rr.k} of ${rr.k + rr.l} kept &middot; renewed in the date filter's period</div>`)}
+    ${dt("ryear", `<div class="k">Retention · 12 months</div>
+      <div class="v">${ry.pct == null ? "—" : ry.pct + "%"}</div><div class="n">${ry.k} of ${ry.k + ry.l} kept &middot; to compare with Farmers' figures</div>`)}
     ${dt("lost", `<div class="k">Lost</div><div class="v">${lostIn.length}</div><div class="n">renewed in this period</div>`)}
     ${dt("unconfirmed", `<div class="k">Not confirmed yet</div><div class="v">${pastIn.filter(r => r.status === "unconfirmed").length}</div><div class="n">renewed in this period, no next term or cancellation on record yet</div>`)}
     ${dt("ahead", `<div class="k">Coming up · ${doc.upcoming_days} days</div><div class="v">${ahead.length}</div>
       <div class="n">${ahead.length ? Math.round(100 * discussed / ahead.length) : 0}% reviewed with the customer</div>`)}
     ${dt("high", `<div class="k">High risk</div><div class="v" style="color:var(--bad)">${high}</div><div class="n">not discussed, with a warning sign</div>`)}
   </div>${renDrill && drills[renDrill] ? renDrillHtml(drills[renDrill], label, pipeName) : ""}`;
-  // Weeks by renewal date, Monday first, oldest to newest.
+  // Weeks by renewal date, Monday first, oldest to newest: the settled four
+  // weeks and the two still settling. The breakdowns below are the settled
+  // four weeks -- the rate's own renewals.
   const wk = d => { const x = new Date(d + "T12:00:00"); x.setDate(x.getDate() - ((x.getDay() + 6) % 7)); return x.toISOString().slice(0, 10); };
-  const weeks = [...new Set(past.map(r => wk(r.renewal)))].sort();
-  const weekCards = weeks.map((w, i) => renCard(past.filter(r => wk(r.renewal) === w),
-    `Week of ${renDate(w)}${i === weeks.length - 1 ? " · settling" : ""}`)).join("");
-  const worked = REN_WORKED.map(([k, l]) => [l, past.filter(r => renWorked(r) === k)]).filter(x => x[1].length);
+  const recent = settled.concat(settling);
+  const weeks = [...new Set(recent.map(r => wk(r.renewal)))].sort();
+  const weekCards = weeks.map(w => { const rs = recent.filter(r => wk(r.renewal) === w);
+    return renCard(rs, `Week of ${renDate(w)}${rs.some(r => ago(r) < REN_SETTLE_DAYS) ? " · settling" : ""}`); }).join("");
+  const base = settled;
+  const worked = REN_WORKED.map(([k, l]) => [l, base.filter(r => renWorked(r) === k)]).filter(x => x[1].length);
   const workedCards = worked.map(([l, rs]) => renCard(rs, l)).join("");
-  const pipeCards = (doc.pipelines || []).map(([k, l]) => [l, past.filter(r => r.pipeline === k)]).filter(x => x[1].length).map(([l, rs]) => renCard(rs, l)).join("");
-  const people = (doc.team || []).filter(n => past.some(r => r.sr && r.sr.by === n));
-  const personCards = people.map(n => renCard(past.filter(r => r.sr && r.sr.by === n), pbadge(DOT[n] || TEAM_DOT, n.split(" ")[0]))).join("")
-    + (past.some(r => !r.sr || !people.includes(r.sr.by)) ? renCard(past.filter(r => !r.sr || !people.includes(r.sr.by)), pbadge("#8a877f", "Others / no SR")) : "");
-  const legend = Object.entries(REN_STATUS).map(([k, [l]]) => { const c = past.filter(r => r.status === k).length;
+  const pipeCards = (doc.pipelines || []).map(([k, l]) => [l, base.filter(r => r.pipeline === k)]).filter(x => x[1].length).map(([l, rs]) => renCard(rs, l)).join("");
+  const people = (doc.team || []).filter(n => base.some(r => r.sr && r.sr.by === n));
+  const personCards = people.map(n => renCard(base.filter(r => r.sr && r.sr.by === n), pbadge(DOT[n] || TEAM_DOT, n.split(" ")[0]))).join("")
+    + (base.some(r => !r.sr || !people.includes(r.sr.by)) ? renCard(base.filter(r => !r.sr || !people.includes(r.sr.by)), pbadge("#8a877f", "Others / no SR")) : "");
+  const legend = Object.entries(REN_STATUS).map(([k, [l]]) => { const c = recent.filter(r => r.status === k).length;
     return c ? `<span class="oleg-item"><span class="pd rdot" style="${renFill(k)}"></span>${l} <b>${c}</b></span>` : ""; }).join("");
   const lostRows = lost.sort((a, b) => a.renewal < b.renewal ? -1 : 1).map(r => `<tr>
     <td>${renDate(r.renewal)}${r.kind === "upcoming" ? ' <span class="chip c-n">ahead</span>' : ""}</td><td>${cesc(r.name || "—")}</td>
@@ -5153,10 +5176,10 @@ function renewalsPanel(doc, workHtml = "", rb = null) {
     <td>${r.flags.filter(x => REN_FLAGS[x]).map(x => `<span class="chip ${REN_FLAGS[x][1]}" style="margin:0 4px 3px 0">${REN_FLAGS[x][0]}</span>`).join("")}</td>
     <td><span class="chip ${REN_RISK[r.risk][1]}">${REN_RISK[r.risk][0]}</span></td></tr>`).join("");
   return `<div class="sect"><h2>Renewals</h2>
-    <p class="sd">Every personal-lines policy that renewed in the last ${doc.past_days} days or renews in the next ${doc.upcoming_days}, from AgencyZoom's policy records and the team's SRs. Rebuilt every night · as of ${renDate(doc.as_of)}. The retention rate is always the last 4 weeks; everything else follows the date filter, except Coming up.${rangeNote}</p>${tiles}</div>
+    <p class="sd">Every personal-lines policy that renewed in the last ${doc.past_days} days or renews in the next ${doc.upcoming_days}, from AgencyZoom's policy records and the team's SRs. Rebuilt every night · as of ${renDate(doc.as_of)}. Three retention rates: the settled 4 weeks (renewals 2 to 6 weeks ago), the date filter's period, and the last 12 months. Everything else follows the date filter, except Coming up.${rangeNote}</p>${tiles}</div>
     ${workHtml}
-    <div class="sect"><h2>Retention · last 4 weeks</h2>
-    <p class="sd">By the week each policy renewed. Retained = a next term on record, a rewrite, or Rewrite Accepted on the renewal SR. Lost = the policy record shows it cancelled, a Late Payment or Service Pipeline SR cancelled it, or the renewal SR was closed on a cancellation. Rate = retained over retained plus lost. A Mid-term Cancellation (hatched, cancelled more than 30 days before the renewal) and a renewal not confirmed yet sit outside the rate. The newest week is still settling: AgencyZoom's policy records lag by a few weeks.</p>
+    <div class="sect"><h2>Retention · settled 4 weeks</h2>
+    <p class="sd">By the week each policy renewed: the four weeks in the settled rate, and the newest two, still settling (a renewal counts once it is two weeks past). Retained = a next term on record, a rewrite, or Rewrite Accepted on the renewal SR. Lost = the policy record shows it cancelled, a Late Payment or Service Pipeline SR cancelled it, or the renewal SR was closed on a cancellation. Rate = retained over retained plus lost. A Mid-term Cancellation (hatched, cancelled more than 30 days before the renewal) and a renewal not confirmed yet sit outside the rate. The breakdowns by how the SR was worked, pipeline and person are the settled four weeks.</p>
     <div class="tiles rtiles">${weekCards}</div><div class="oleg">${legend}</div>
     <h3 class="rh3">By how the renewal SR was worked</h3><div class="tiles rtiles">${workedCards}</div>
     <h3 class="rh3">By pipeline</h3><div class="tiles rtiles">${pipeCards}</div>

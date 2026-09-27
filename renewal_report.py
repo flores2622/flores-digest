@@ -69,7 +69,13 @@ ROOT = pathlib.Path(__file__).resolve().parent
 AZ = dt.timezone(dt.timedelta(hours=-7))
 PREFIX = "renewals"
 UPCOMING_DAYS = 45
-PAST_DAYS = 28
+# A year back (Frank, 2026-09-27): the board shows three retention rates --
+# the settled 4 weeks (renewals 14-41 days ago), the date filter's period,
+# and the last 12 months, the one to set beside Farmers' own figures. A year
+# of renewals measured 2026-09-27: losses do NOT show up late (a renewal two
+# months back reads the same rate as last week's); only "not confirmed"
+# settles, ~6% in the first six weeks to ~3% after.
+PAST_DAYS = 365
 SOON_DAYS = 21
 # Carrier ids whose renewals the Personal Renewals workflow carries (read off
 # 3,300 renewal SRs, 2026-09-25): Farmers 484668, 102, 262, 484654.
