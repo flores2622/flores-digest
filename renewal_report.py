@@ -234,6 +234,11 @@ def build(day, done=None, live=None, log=log):
         if rec == "before_window" or sr_key == "cancelled_before_sr":
             status, cancel_date = "mid_term", when
             how.append("policy record" if rec == "before_window" else "renewal SR")
+        # Cancelled: Sold/Moved stays out of the rate like a mid-term one
+        # (Frank, 2026-09-27), even when the policy record reads cancelled.
+        if status is None and sr_key == "sold_moved":
+            status, cancel_date = "sold_moved", when if rec == "cancelled" else None
+            how.append("renewal SR")
         if status is None and rec == "cancelled":
             status, cancel_date = "lost", when
             how.append("policy record")

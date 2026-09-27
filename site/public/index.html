@@ -4161,7 +4161,7 @@ function fmtDur(h) {
 const OUTCOME_COLORS = {
   renewed_as_is: ["--s3"], no_action_review: ["--s2"], renewed_endorsed: ["--s1"], rewrite_accepted: ["--s6"],
   cancelled_rewrite_declined: ["--s5"], cancelled_no_option: ["--s7"], client_cancelled: ["--s8"], unable_to_contact: ["--s4"],
-  cancelled_before_sr: ["--s7", 1],
+  cancelled_before_sr: ["--s7", 1], sold_moved: ["--text-muted", 1],
 };
 const outcomeFill = k => {
   const [v, hatch] = OUTCOME_COLORS[k] || ["--text-muted"];
@@ -4505,6 +4505,7 @@ async function paintService() {
 const REN_STATUS = {
   retained: ["Retained", "--s3"], lost: ["Lost", "--s8"],
   unconfirmed: ["Not confirmed yet", "--text-muted"], mid_term: ["Mid-term Cancellation", "--s7", 1],
+  sold_moved: ["Cancelled: Sold/Moved", "--text-muted", 1],
 };
 const REN_WORKED = [
   ["discussed", "Reviewed with customer"], ["no_action", "No action: Review if needed"],

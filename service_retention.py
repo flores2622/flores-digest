@@ -288,6 +288,10 @@ OUTCOMES = (
     # Also where a cancellation resolution lands when the policy record shows
     # it cancelled well before the SR was opened. Shown as cancelled, OUTSIDE
     # the rate.
+    # Cancelled: Sold/Moved (id 101638, Frank added it 2026-09-27): the
+    # customer sold the vehicle or home, or moved. Outside the rate (Frank:
+    # "outside the rate") -- the team could not have kept it.
+    ("sold_moved", "Cancelled: Sold/Moved", "open"),
     ("cancelled_before_sr", "Mid-term Cancellation", "open"),
 )
 # Matched by resolution ID, never by name, so a rename in AgencyZoom cannot
@@ -296,7 +300,7 @@ RESOLUTION_KEY_BY_ID = {
     32574: "renewed_as_is", 101591: "no_action_review", 32575: "renewed_endorsed",
     38307: "rewrite_accepted", 38308: "cancelled_rewrite_declined",
     32570: "cancelled_no_option", 101627: "client_cancelled", 38304: "unable_to_contact",
-    101637: "cancelled_before_sr",
+    101637: "cancelled_before_sr", 101638: "sold_moved",
 }
 RESOLUTION_KEYS = list(RESOLUTION_KEY_BY_ID.values())
 _KIND = {key: kind for key, _, kind in OUTCOMES}
@@ -379,6 +383,15 @@ def sr_outcome(sr, chains, hh, pn2hh, as_of, note_key=None):
             _, when = outcome(term, terms, as_of)
             opened = _d(sr.get("createDate"))
             stale = bool(when and opened and when < _shift(opened, -15))
+        # The rep's note wins over the record (Frank, 2026-09-27: "notes that
+        # clearly state what happened"): a cancellation the note dates on or
+        # after the day the renewal SR opened happened DURING the renewal --
+        # the team's cancel resolution stands, lost. Paloma Juarez (insured's
+        # request 07-24, SR 07-15), Eduardo Sanchez (cancelled as of his 09-22
+        # renewal, bought elsewhere), Luis Alvarez-Hernandez (noc 09-02).
+        opened = _d(sr.get("createDate"))
+        if stale and opened and any(x >= opened for x in _note_dates(_note_text(sr))):
+            stale = False
         if stale:
             return "cancelled_before_sr", source, pn, premium, line
     return key, source, pn, premium, line
@@ -389,12 +402,10 @@ def sr_outcome(sr, chains, hh, pn2hh, as_of, note_key=None):
 # and a policy record never changed after it was loaded (modifyDate on the
 # day of createDate) dates nothing -- G015059251 was "changed" 06-26, the day
 # its 02-16 term was loaded, and it was really lost at its 08-16 renewal.
-# Such SRs keep their outcome but are FLAGGED for someone to check:
-#   "not dated"            the record dates nothing and the note gives no
-#                          date or reason (a year, a m/d date, sold, transferred)
-#   "after the SR opened"  the note's own date is on or after the day the
-#                          renewal SR opened (Paloma Juarez: cancelled 07-24,
-#                          SR opened 07-15) -- a cancellation during the renewal
+# Such SRs keep their outcome but are FLAGGED "not dated" for someone to
+# check: the record dates nothing and the note gives no date or reason (a
+# year, a m/d date, sold, transferred). A note whose date is on or after the
+# SR opened is not flagged -- it counts as lost (see sr_outcome).
 _DATED = re.compile(r"\b(19|20)\d\d\b|\b\d{1,2}/\d{2,4}\b|\bsold\b|\bsell(ing)?\b|\btransferred\b", re.I)
 
 
@@ -409,12 +420,15 @@ def _note_dates(note):
     return out
 
 
+def _note_text(sr):
+    return re.sub(r"\s+", " ", re.sub(r"<[^>]+>", " ", sr.get("resolutionDesc") or "")).strip()
+
+
 def cancel_flag(sr, chains, pn):
-    """Why a Mid-term Cancellation needs a date check, or None."""
-    note = re.sub(r"\s+", " ", re.sub(r"<[^>]+>", " ", sr.get("resolutionDesc") or "")).strip()
-    opened = _d(sr.get("createDate"))
-    if opened and any(x >= opened for x in _note_dates(note)):
-        return "after the SR opened"
+    """Why a Mid-term Cancellation needs a date check, or None. (A note that
+    dates the cancellation during the renewal no longer lands here at all --
+    sr_outcome keeps the team's cancel resolution, lost.)"""
+    note = _note_text(sr)
     done = _d(sr.get("completeDate"))
     lo, hi = _shift(done, -75), _shift(done, 90)
     near = [t for t in chains.get(pn) or [] if lo <= _d(t["expiryDate"]) <= hi
