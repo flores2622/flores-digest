@@ -404,7 +404,10 @@ then the call itself:
   finishes discovery and gets the quote out, or presents a quote that was
   ready and waiting. Stage Contacted, In Progress or Ready to Present.
 - **follow-up**: a quote was already presented and the producer is working
-  it to a close. Stage Quotes Presented, Quoted, or anything in 1-1 QNC.
+  it to a close. Stage Quotes Presented, Quoted, or anything in 1-1 QNC. A
+  quote sent by email or text after an earlier call COUNTS as presented
+  (Frank, 2026-09-27: "he is a quote presented, she just didnt present it
+  on that call"), so the next call on that lead is a follow-up.
 
 The stage is the first signal, but a stage is often never moved: when the
 history contradicts it (a lead still in New with quotes on file and an
@@ -435,6 +438,18 @@ captured (current premium, renewal date, household) is "n" on this card, not
 last conversation ("Hi Ana, it's Mike -- you were getting me the VINs, do you
 have them?"), not a cold introduction, and the producer assumes the quote
 and then the sale as on any first call.
+
+**Getting off the phone to send the quote is the bad habit** (Frank,
+2026-09-27). Once the info is in, the quote is presented ON the call -- with
+the customer still there to close. A producer who finishes the intake, ends
+the call ("I'll send it over shortly"), and then emails or texts the quote
+has passed up the close. The sign is a move into Quoted / Quotes Presented
+today with no numbers said on the call (Lorena and Joaquin Guillen,
+2026-09-22: intake finished, off the phone, moved to Quoted and the quotes
+emailed half an hour later). Score "Presenting numbers" "m", name it in
+`bad`, and flag "Quote sent instead of presented". A quote that genuinely
+could not be finished on the call (a carrier that needs time, a manager's
+sign-off) is not this -- say what held it.
 
 **A call back or call-in on a follow-up**: they called us, so there is no
 reason to warm up -- thank them for calling back and go straight into step
