@@ -43,14 +43,21 @@ INPUTS = ("metrics", "fulltx", "audiorefs", "rc_raw", "rc_window", "coaching_car
 
 
 def _pull_inputs(cli, bucket, day, log):
+    """The day's inputs from R2 -- unless the local copy is newer (a
+    `daily.py --day <day> --no-send` just rebuilt it and stopped before its
+    last upload, 09-03 on 2026-09-27)."""
     for name in INPUTS:
         key = f"cache/{day}/{name}_{day}.json"
+        local = ROOT / f"data/{name}_{day}.json"
         try:
-            body = cli.get_object(Bucket=bucket, Key=key)["Body"].read()
+            obj = cli.get_object(Bucket=bucket, Key=key)
         except Exception:
-            log(f"  {day}: no {name} in R2")
+            log(f"  {day}: no {name} in R2" + (" -- using the local copy" if local.exists() else ""))
             continue
-        (ROOT / f"data/{name}_{day}.json").write_bytes(body)
+        if local.exists() and local.stat().st_mtime > obj["LastModified"].timestamp():
+            log(f"  {day}: local {name} is newer than R2's -- kept")
+            continue
+        local.write_bytes(obj["Body"].read())
 
 
 def _from_old_cards(day, old_cards, log):
