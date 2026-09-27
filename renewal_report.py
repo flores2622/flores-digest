@@ -212,7 +212,9 @@ def build(day, done=None, live=None, log=log):
                                                 note_key=notes.get(str(s.get("id"))))
                 sr_row = {"id": s.get("id"), "state": "done", "outcome": key, "source": source,
                           "by": s.get("modifiedBy"), "done": sr._d(s.get("completeDate")),
-                          "note": rn.clean(s.get("resolutionDesc"))[:240]}
+                          "note": rn.clean(s.get("resolutionDesc"))[:240],
+                          "flag": sr.cancel_flag(s, chains, sr._sr_policy(s, chains))
+                          if key == "cancelled_before_sr" else None}
             else:
                 by = next((n for n, v in sd.SERVICE_TEAM.items() if v["az_id"] == _i(s.get("csr"))), None)
                 sr_row = {"id": s.get("id"), "state": "open", "stage": s.get("workflowStageName"),
