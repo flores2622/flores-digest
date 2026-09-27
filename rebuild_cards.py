@@ -8,6 +8,8 @@ a card (CLAUDE.md, Cost). This is the deliberate exception, day by day:
     python3 rebuild_cards.py 2026-09-22                # read, compare, publish nothing
     python3 rebuild_cards.py 2026-09-22 --publish      # ...and put the new cards on the board
     python3 rebuild_cards.py 2026-09-01 2026-09-25 --publish   # oldest first
+    python3 rebuild_cards.py --days 2026-09-01,2026-09-04 --publish
+    python3 rebuild_cards.py 2026-09-22 --publish --reuse  # publish a test run's reads
 
 For each day:
   1. the day's own inputs come back from R2's cache/<day>/ (call rows,
@@ -49,6 +51,36 @@ def _pull_inputs(cli, bucket, day, log):
         (ROOT / f"data/{name}_{day}.json").write_bytes(body)
 
 
+def _from_old_cards(day, old_cards, log):
+    """A day whose full transcripts were never saved to R2 (09-10, 09-14)
+    gets them back from its own published cards, which carry the text each
+    was read from -- matched to the call rows by producer and lead."""
+    import call_summary as CS
+    fx_path = ROOT / f"data/fulltx_{day}.json"
+    if fx_path.exists():
+        return
+    M = json.loads((ROOT / f"data/metrics_{day}.json").read_text())
+    by = {(c.get("who"), c.get("lead_id")): c.get("transcript") for c in old_cards if c.get("transcript")}
+    fx, done = {}, set()
+    for who, v in (M.get("producers") or {}).items():
+        for r in v.get("call_detail") or []:
+            k = (who, r.get("lead_id"))
+            if k in by and k not in done:
+                fx[CS._ck(who, r["number"])] = by[k]
+                done.add(k)
+    fx_path.write_text(json.dumps(fx))
+    log(f"  {day}: no saved transcripts -- {len(fx)} taken from the published cards")
+
+
+def _keep_recordings(cards, old_cards):
+    """A rebuilt card keeps the old card's "listen to the call" ids when this
+    day's recordings list was never saved (09-08, 09-11, 09-14)."""
+    by = {(c.get("who"), c.get("lead_id")): c.get("recording_ids") for c in old_cards if c.get("recording_ids")}
+    for c in cards:
+        if not c.get("recording_ids") and (c.get("who"), c.get("lead_id")) in by:
+            c["recording_ids"] = by[(c.get("who"), c.get("lead_id"))]
+
+
 def _refresh_moves(day, log):
     """Every call row's stage moves, re-read from the notes across every lead
     record on its number (what outbound rows always had; inbound rows had
@@ -73,19 +105,27 @@ def _refresh_moves(day, log):
     log(f"  {day}: stage moves re-read ({changed} row(s) changed)")
 
 
-def rebuild(day, publish=False, log=print):
+def rebuild(day, publish=False, reuse=False, log=print):
+    """`reuse` publishes the reads a previous run of this script left in
+    data/coaching_cards_<day>.json instead of paying for them again."""
     import coaching_cards
     import publish_board
     cli, bucket = publish_board._client()
-    _pull_inputs(cli, bucket, day, log)
     old_cache_path = ROOT / f"data/coaching_cards_{day}.json"
+    kept = old_cache_path.read_bytes() if reuse and old_cache_path.exists() else None
+    _pull_inputs(cli, bucket, day, log)
     old_cache = old_cache_path.read_bytes() if old_cache_path.exists() else None
     old_doc_raw = cli.get_object(Bucket=bucket, Key=f"days/{day}.json")["Body"].read()
     old_doc = json.loads(old_doc_raw)
     _refresh_moves(day, log)
-    if old_cache_path.exists():
+    _from_old_cards(day, old_doc.get("calls") or [], log)
+    if kept is not None:
+        old_cache_path.write_bytes(kept)     # this script's own new reads
+    elif old_cache_path.exists():
         old_cache_path.unlink()              # read every call again
     cards = coaching_cards.build(day, log=log)
+    if cards:
+        _keep_recordings(cards, old_doc.get("calls") or [])
     if not cards:
         log(f"  {day}: no cards came back -- nothing changed")
         if old_cache is not None:
@@ -127,9 +167,15 @@ def rebuild(day, publish=False, log=print):
 
 def main(argv):
     args = [a for a in argv if not a.startswith("--")]
+    only = None
+    if "--days" in argv:
+        only = set(argv[argv.index("--days") + 1].split(","))
+        args = [a for a in args if a != argv[argv.index("--days") + 1]]
+        args = [min(only), max(only)]
     start = args[0]
     end = args[1] if len(args) > 1 else start
     publish = "--publish" in argv
+    reuse = "--reuse" in argv
     import publish_board
     cli, bucket = publish_board._client()
     days, token = [], None
@@ -142,9 +188,9 @@ def main(argv):
         if not page.get("IsTruncated"):
             break
         token = page.get("NextContinuationToken")
-    for day in sorted(d for d in days if start <= d <= end):
+    for day in sorted(d for d in days if start <= d <= end and (only is None or d in only)):
         try:
-            rebuild(day, publish=publish, log=lambda m: print(m, flush=True))
+            rebuild(day, publish=publish, reuse=reuse, log=lambda m: print(m, flush=True))
         except Exception as e:
             print(f"  {day}: FAILED ({type(e).__name__}: {e}) -- left as it was", flush=True)
 
