@@ -2488,11 +2488,12 @@ function flowParts(c) {
   const dir = c.direction === "call back" || c.direction === "call in" ? c.direction : "";
   return dir ? [[dir, ""]] : [];
 }
-// Blue / orange / aqua: the board's first three categorical slots, the only
-// three that stay apart for every pair in both modes. A card read before
+// Blue / yellow / pink (slots 1, 4, 5). Not green for follow-up -- it read as
+// sold (Frank, 2026-09-28). Without green or aqua, this and yellow / pink /
+// violet are the only threes that stay apart for every pair in both modes. A card read before
 // Apollo was asked for `flow` gets a plain edge. Named in the legend above
 // the cards and on hover of the card's edge, so it is never colour alone.
-const FLOW_EDGE = { first: "--s1", "finish quote": "--s2", "follow-up": "--s3" };
+const FLOW_EDGE = { first: "--s1", "finish quote": "--s4", "follow-up": "--s5" };
 function flowEdge(c) {
   const k = (c.flow || [])[0];
   return FLOW_EDGE[k] ? { color: `var(${FLOW_EDGE[k]})`, label: FLOW_LABELS[k], why: (c.flow || [])[1] || "" }
