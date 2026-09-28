@@ -1092,7 +1092,7 @@ function digestDay(d, who) {
   const hhSold = hhSoldOf(d, focus ? focus.name : "");
   const tiles = [
     ["Dials", t.dials ?? 0, dialsNote, tc("dials"), liveOn(d, "dials")],
-    ["Live contacts", t.live ?? 0, rate + "% contact rate", tc("rate")],
+    ["Live contacts", t.live ?? 0, rate + "% contact rate", tc("rate"), liveOn(d, "contacts")],
     ["HH/Prem. Quoted", `<span class="${tc("hh")}">${t.hh ?? 0} HH</span><br><span class="${tc("pq")}">${money(t.pq)}</span>`,
       t.hh ? `avg ${money(t.pq / t.hh)} per HH` : "", "", liveOn(d, "quotes")],
     // Policies colours on the sale streak (see apply_policy_streak), same
@@ -1280,7 +1280,7 @@ function teamLeaderboardHtml(d, who) {
   // What each producer typed and sent themselves (messages.py), automation
   // left out; no goal colour until Frank sets one (2026-09-27).
   const MP = (d.messages || {}).producers || null;
-  const msgCell = r => MP ? `<td class="num">${r ? `${r.texts || 0} / ${r.emails || 0}` : "0 / 0"}</td>` : "";
+  const msgCell = r => MP ? `<td class="num${liveOn(d, "messages") ? " isLive" : ""}">${r ? `${r.texts || 0} / ${r.emails || 0}` : "0 / 0"}</td>` : "";
   const msgTeam = MP ? Object.values(MP).reduce((a, r) => ({ texts: a.texts + (r.texts || 0), emails: a.emails + (r.emails || 0) }), { texts: 0, emails: 0 }) : null;
   // Quote sent instead of kept on the phone (Frank, 2026-09-28: "add the
   // send-the-quote stat per producer to the leaderboard"): calls where the
@@ -1307,8 +1307,8 @@ function teamLeaderboardHtml(d, who) {
        !focus && i < 3 ? `<span class="mdl" role="img" aria-label="${["1st", "2nd", "3rd"][i]}">${MEDAL[i]}</span>` : ""}${pbadge(DOT[p.name] || "#8a877f", p.name)}</span></td>
     ${hasRoleplay ? `<td class="num ${tc(p.name, "roleplay")}"${lbRankTag(d, "Role Play", p.name)}>${(p.coach || {}).roleplay ?? "—"}${p.rp_missed ? `<span style="display:block;color:var(--text-muted);font-weight:400;white-space:nowrap;font-size:10.5px" title="Days worked with no role play -- each counts as 0 in the ranking">${p.rp_missed} missed</span>` : ""}</td>` : ""}
     <td class="num ${tc(p.name, "dials")}${lv("dials")}"${lbRankTag(d, "Call Volume", p.name)}>${p.dials ?? 0}${dialsSub(p)}</td>
-    <td class="num ${tc(p.name, "talk")}"${lbRankTag(d, "Avg Talk Time", p.name)}>${hhmm(p.talk)}</td>
-    <td class="num ${tc(p.name, "rate")}"${lbRankTag(d, "Contact Rate", p.name)}>${p.rate ?? 0}% <span style="opacity:.72">(${p.live ?? 0})</span></td>
+    <td class="num ${tc(p.name, "talk")}${lv("contacts")}"${lbRankTag(d, "Avg Talk Time", p.name)}>${hhmm(p.talk)}</td>
+    <td class="num ${tc(p.name, "rate")}${lv("contacts")}"${lbRankTag(d, "Contact Rate", p.name)}>${p.rate ?? 0}% <span style="opacity:.72">(${p.live ?? 0})</span></td>
     ${msgCell(MP && MP[p.name])}
     ${soCell(SO.filter(c => c.who === p.name))}
     <td class="num ${tc(p.name, "hh")}${lv("quotes")}"${lbRankTag(d, "Households Quoted", p.name)}>${p.hh ?? 0}</td>
@@ -1322,8 +1322,8 @@ function teamLeaderboardHtml(d, who) {
   const tot = focus ? "" : `<tr class="tot"><td><span class="who">${pbadge(TEAM_DOT, "Team")}</span></td>
     ${hasRoleplay ? `<td class="num ${tt("roleplay")}">${T.roleplay != null ? Math.round(T.roleplay) : "—"}</td>` : ""}
     <td class="num ${tt("dials")}${lv("dials")}">${T.dials ?? 0}${dialsSub(T)}</td>
-    <td class="num ${tt("talk")}">${hhmm(T.talk)}</td>
-    <td class="num ${tt("rate")}">${teamRate}% <span style="opacity:.72">(${T.live ?? 0})</span></td>
+    <td class="num ${tt("talk")}${lv("contacts")}">${hhmm(T.talk)}</td>
+    <td class="num ${tt("rate")}${lv("contacts")}">${teamRate}% <span style="opacity:.72">(${T.live ?? 0})</span></td>
     ${msgCell(msgTeam)}
     ${soCell(SO)}
     <td class="num ${tt("hh")}${lv("quotes")}">${T.hh ?? 0}</td>
@@ -1713,9 +1713,10 @@ function speedReplyPanel(d, who) {
   const rows = (M.replies || []).filter(r => names.includes(r.who) && !r.ack && !r.optout);
   if (!rows.length) return `<div class="sect"><h2>Speed to Reply</h2>
     <p class="sd">No lead wrote in by text or email${who ? ` to ${who}` : ""} that needed an answer.</p></div>`;
+  const live = liveOn(d, "messages") ? " isLive" : "";
   const tile = (label, rs, team) => {
     const m = rs.filter(r => r.minutes != null).map(r => r.minutes), wait = rs.length - m.length;
-    return `<div${ddk("reply:" + (team ? "team" : rs[0].who))}${team ? ' style="border-color:var(--border-strong);background:var(--surface)"' : ""}>
+    return `<div${ddk("reply:" + (team ? "team" : rs[0].who), "tile" + live)}${team ? ' style="border-color:var(--border-strong);background:var(--surface)"' : ""}>
       <div class="k">${label}</div><div class="v"><span class="${replyTier(m.length ? median(m) : null)}">${fmtMins(m.length ? median(m) : null)}</span></div>
       <div class="n">median · ${m.length} answered</div>
       <div class="n" style="margin-top:5px">${m.length ? `quickest ${fmtMins(Math.min(...m))} · longest ${fmtMins(Math.max(...m))}` : "none answered"}</div>
@@ -1781,7 +1782,7 @@ function messagesPanel(d, who) {
     ["Time to answer", `<span class="${replyTier(med(answered.map(r => r.minutes)))}">${fmtMins(med(answered.map(r => r.minutes)))}</span>`, `median of ${answered.length} repl${answered.length === 1 ? "y" : "ies"} answered`],
     ["Waiting on us", waiting.length, `repl${waiting.length === 1 ? "y" : "ies"} with no answer by end of day`],
     ["Quotes sent", sum("quotes"), `by email or text · ${sum("quotes_opened")} opened`],
-  ].map(([k, v, n]) => `<div class="tile"><div class="k">${k}</div><div class="v">${v}</div><div class="n">${n}</div></div>`).join("");
+  ].map(([k, v, n]) => `<div class="tile${liveOn(d, "messages") ? " isLive" : ""}"><div class="k">${k}</div><div class="v">${v}</div><div class="n">${n}</div></div>`).join("");
   const table = names.map(n => {
     const p = per[n] || {}, a = answered.filter(r => r.who === n).map(r => r.minutes);
     return `<tr><td><span class="who">${pbadge(DOT[n] || "#8a877f", n.split(" ")[0])}</span></td>
@@ -1992,7 +1993,11 @@ function applyLive(base, L) {
   if (!L || !L.live) return d;
   // Which figures are live on this document -- read by liveOn() to make
   // them glow. closing is live only once both halves are.
-  d.live_parts = ["dials", "sales", "quotes", "util"].filter(k => (L[k] || {}).ok);
+  d.live_parts = ["dials", "sales", "quotes", "util", "messages"].filter(k => (L[k] || {}).ok);
+  // Contacts ride on the live dial count: a live numerator over the
+  // checkpoint's dials would overstate the rate.
+  const contactsOn = (L.contacts || {}).ok && (L.dials || {}).ok && !!(d.live_basis || {}).talk;
+  if (contactsOn) d.live_parts.push("contacts");
   // Households sold ride with sales (site/live.js soldLeadsToday).
   if ((L.sales || {}).ok && (L.sold || {}).ok) {
     d.live_parts.push("hhsold");
@@ -2005,7 +2010,8 @@ function applyLive(base, L) {
   const ps = d.producers || [];
   // The checkpoint's own figures, so the leaderboard can be re-ranked on
   // what the live parts add (liveRerank, below).
-  const LB_FIELDS = { "Call Volume": "dials", "Households Quoted": "hh", "Premium Quoted": "pq", "Premium Sold": "ps" };
+  const LB_FIELDS = { "Call Volume": "dials", "Avg Talk Time": "talk", "Contact Rate": "rate",
+    "Households Quoted": "hh", "Premium Quoted": "pq", "Premium Sold": "ps" };
   const before = Object.fromEntries(ps.map(p => [p.name, Object.fromEntries(Object.values(LB_FIELDS).map(k => [k, p[k] || 0]))]));
   const sum = k => ps.reduce((s, p) => s + (p[k] || 0), 0);
   if (L.dials && L.dials.ok) {
@@ -2021,6 +2027,54 @@ function applyLive(base, L) {
     d.pace = Math.round(frac * 1000) / 1000;
     for (const p of ps) (tiers[p.name] || (tiers[p.name] = {})).dials = pacedTierColor("call_volume", p.dials || 0, frac);
     (tiers.team || (tiers.team = {})).dials = pacedTierColor("call_volume", (T.dials || 0) / TEAM_SCALE, frac);
+  }
+  if (contactsOn) {
+    // Provisional between checkpoints (live_notes.contactDeltas): the next
+    // checkpoint reads the recordings and settles each one. Avg Talk Time is
+    // finalize._totals's -- seconds over every conversation, inbound too --
+    // and the team's is board_payload._team_talk_and_roleplay's.
+    const TB = d.live_basis.talk;
+    for (const p of ps) {
+      const x = L.contacts.data[p.name], b = TB[p.name]; if (!x || !b) continue;
+      p.live = (p.live || 0) + x.live;
+      const secs = b.seconds + x.seconds, n = b.conversations + x.conversations;
+      p.talk = n ? Math.round(secs / n) : 0;
+      p.rate = p.dials ? Math.round(1000 * p.live / p.dials) / 10 : 0;
+      p.provisional = x.provisional;
+      const row = tiers[p.name] || (tiers[p.name] = {});
+      row.rate = tierColor("contact_rate_pct", p.rate);
+      row.talk = tierColor("avg_talk_min", p.talk / 60);
+    }
+    T.live = sum("live");
+    T.rate = T.dials ? Math.round(1000 * T.live / T.dials) / 10 : 0;
+    T.talk = T.live ? Math.floor(ps.reduce((s, p) => s + (p.talk || 0) * (p.live || 0), 0) / T.live) : 0;
+    const team = tiers.team || (tiers.team = {});
+    team.rate = tierColor("contact_rate_pct", T.rate);
+    team.talk = tierColor("avg_talk_min", T.talk / 60);
+  }
+  if (L.messages && L.messages.ok && d.messages) {
+    // messages.build's figures carried on from the checkpoint
+    // (live_notes.messageDeltas): counts added, new reply rows, and the
+    // replies it left waiting now answered.
+    const M = d.messages, D = L.messages.data;
+    const per = M.producers || (M.producers = {});
+    for (const [who, add] of Object.entries(D.producers || {})) {
+      const row = per[who] || (per[who] = {});
+      for (const [k, v] of Object.entries(add)) row[k] = (row[k] || 0) + v;
+    }
+    M.replies = M.replies || [];
+    for (const u of D.updates || []) {
+      const r = M.replies.find(r => String(r.lead_id) === String(u.lead_id) && r.at === u.at && r.minutes == null);
+      if (!r) continue;
+      if (u.minutes != null) Object.assign(r, { answered_by: u.answered_by, via: u.via, minutes: u.minutes });
+      if (u.add_messages) {
+        r.messages = (r.messages || 1) + u.add_messages;
+        r.said = [r.said, u.add_said].filter(Boolean).join(" / ").slice(0, 300);
+      }
+    }
+    M.replies.push(...(D.replies || []));
+    M.quotes = [...(M.quotes || []), ...(D.quotes || [])];
+    M.bad_contact = [...(M.bad_contact || []), ...(D.bad_contact || [])];
   }
   if (L.sales && L.sales.ok) {
     const streak = d.policy_streak || (d.policy_streak = {});
@@ -2147,7 +2201,7 @@ async function refreshLive(day) {
   if (!cur || cur.date !== day || rangeMode !== "day") return;   // moved on while this was in flight
   curLiveData = L;
   cur = applyLive(curCheckpoint, L.checkpoint === curCheckpoint.as_of ? L : null);
-  if (view === "digest") await paint();
+  if (view === "digest" || view === "messages") await paint();
 }
 function startLivePoll(day) {
   stopLivePoll();
