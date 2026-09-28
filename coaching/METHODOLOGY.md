@@ -82,6 +82,23 @@ close HERE ONLY.
   it, and make `summary` say who called whom. (Frank, 2026-09-23: Joaquin
   Guillen called in for his quote and Lorena still asked permission piece by
   piece -- "you already have the green light. GO.")
+- Assuming the quote means assuming it gets built AND presented ON THIS
+  CALL, with the prospect still there to close. A producer who offers,
+  before or during discovery, to put the quote together and SEND it ("el
+  presupuesto se lo puedo hacer y enviar para que compare", "I can send you
+  a quick quote and you can review it", "I'll text you the options") has
+  planned the exit before the first question: score `askq` false, name it in
+  `bad` as setting up the send instead of the presentation, and make
+  `askfix` keep them on the line ("Let's get your numbers right now while I
+  have you -- who's driving the cars?"). That is not assumptive even though
+  no permission was asked. A prospect who asks for it by email first is an
+  objection to work, not a green light to go ("I can have it for you in
+  five minutes while we're on the phone"); agreeing straight away scores the
+  same. If the call then ends with the quote sent rather than presented,
+  "Getting off the phone to send the quote" below applies as well. (Frank,
+  2026-09-28, Lorena and Eva Moraila 09-01: "from the getgo setting the
+  expectation that shes going to send the quote, its an early sign shes
+  already trying to get off the phone".)
 - The PRODUCER ending the call is a red flag in its own right. "I'll let you
   go", "I'll send you the quotes", "I'll give you a call back" -- said while
   the prospect had raised no objection, not asked to go, and not said they
@@ -540,7 +557,9 @@ for it"]`. Wrong: `"askq": false`. Same for "calltype", "asks" and "exit".
            offered, and how it ended. Name what the prospect actually said.
 "askq"     [boolean, one-sentence quote-based justification] -- did the
            producer ASSUME the quote/discovery work would happen, rather than
-           ask permission for it? true = assumptive, false = asked permission.
+           ask permission for it? true = assumptive, false = asked permission,
+           OR set the quote up to be sent rather than presented on this call
+           (see Core judgment).
 "asks"     [boolean, one-sentence quote-based justification] -- did the
            producer ASSUME the close (a start date, a payment method, "let's
            get this done"), rather than ask whether the prospect wants to buy?

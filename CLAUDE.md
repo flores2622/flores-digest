@@ -81,6 +81,10 @@ Everything caches under `data/`, so a re-run resumes rather than restarting.
   `assume` (the sale at the start, through objections, at the end) instead
   of the nine dimensions and "assumed the quote"; first and finish-quote
   calls keep the nine, with what the history already captured as "n".
+  **Offering to SEND the quote is not assuming it** (Frank, 2026-09-28):
+  assuming the quote means building and presenting it on the call; a
+  producer who sets up from the start that she'll put it together and send
+  it (Lorena, Eva Moraila 09-01) scores `askq` false -- an early exit.
   **A quote emailed or texted after a call counts as presented** (Frank,
   2026-09-27), so the next call is a follow-up; **ending a finish-quote call
   to send the quote instead of presenting it is a flagged bad habit**.
