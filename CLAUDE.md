@@ -559,7 +559,9 @@ Crystal (hybrid); credit always goes to whoever COMPLETED the SR or task.
   `renewal_report.PAST_DAYS` is 365 (the report is ~2.4 MB). A year measured
   2026-09-27: losses do not show up late; only "not confirmed" settles.
   **Cancellations to check** (the "not dated" flag) moved to the Renewals
-  tab too, from `renewal_report`'s `sr.flag`.
+  tab too, from `renewal_report`'s `sr.flag`: a dropdown, closed until
+  clicked, following the date filter by the day the policy renewed (Frank,
+  2026-09-28).
 - **The Renewals tab is its own report** (Frank, 2026-09-25: "service cant be
   tracked daily the same as sales"). `renewal_report.py` builds
   `renewals/current.json` (and a dated copy) every night from `daily.py`
