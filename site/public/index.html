@@ -1278,6 +1278,17 @@ function teamLeaderboardHtml(d, who) {
   const MP = (d.messages || {}).producers || null;
   const msgCell = r => MP ? `<td class="num">${r ? `${r.texts || 0} / ${r.emails || 0}` : "0 / 0"}</td>` : "";
   const msgTeam = MP ? Object.values(MP).reduce((a, r) => ({ texts: a.texts + (r.texts || 0), emails: a.emails + (r.emails || 0) }), { texts: 0, emails: 0 }) : null;
+  // Quote sent instead of kept on the phone (Frank, 2026-09-28: "add the
+  // send-the-quote stat per producer to the leaderboard"): calls where the
+  // producer offered on their own to send it, of the calls where a quote came
+  // up -- the same count as Wins and Losses. Shown, not scored.
+  const SO = (d.calls || []).filter(c => c.sendoff && c.sendoff[0]);
+  const soCell = list => {
+    if (!SO.length) return "";
+    if (!list.length) return `<td class="num">—</td>`;
+    const n = list.filter(c => c.sendoff[0] === "producer").length;
+    return `<td class="num">${n} <span style="opacity:.72">of ${list.length}</span></td>`;
+  };
 
   let podium = "";
   if (!focus && lb.order && lb.order.length > 1) {
@@ -1295,6 +1306,7 @@ function teamLeaderboardHtml(d, who) {
     <td class="num ${tc(p.name, "talk")}"${lbRankTag(d, "Avg Talk Time", p.name)}>${hhmm(p.talk)}</td>
     <td class="num ${tc(p.name, "rate")}"${lbRankTag(d, "Contact Rate", p.name)}>${p.rate ?? 0}% <span style="opacity:.72">(${p.live ?? 0})</span></td>
     ${msgCell(MP && MP[p.name])}
+    ${soCell(SO.filter(c => c.who === p.name))}
     <td class="num ${tc(p.name, "hh")}${lv("quotes")}"${lbRankTag(d, "Households Quoted", p.name)}>${p.hh ?? 0}</td>
     <td class="num ${tc(p.name, "pq")}${lv("quotes")}"${lbRankTag(d, "Premium Quoted", p.name)}>${money(p.pq)}</td>
     <td class="num ${tc(p.name, "pol")}${lv(hhCol ? "closing" : "sales")}" title="${polTitle(p.name)}">${hhCol ? `${hhSoldOf(d, p.name)} <span style="opacity:.72">(${p.pol ?? 0} pol)</span>` : (p.pol ?? 0)}</td>
@@ -1309,6 +1321,7 @@ function teamLeaderboardHtml(d, who) {
     <td class="num ${tt("talk")}">${hhmm(T.talk)}</td>
     <td class="num ${tt("rate")}">${teamRate}% <span style="opacity:.72">(${T.live ?? 0})</span></td>
     ${msgCell(msgTeam)}
+    ${soCell(SO)}
     <td class="num ${tt("hh")}${lv("quotes")}">${T.hh ?? 0}</td>
     <td class="num ${tt("pq")}${lv("quotes")}">${money(T.pq)}</td>
     <td class="num ${tt("pol")}${lv(hhCol ? "closing" : "sales")}">${hhCol ? `${hhSoldOf(d, "")} <span style="opacity:.72">(${T.pol ?? 0} pol)</span>` : (T.pol ?? 0)}</td>
@@ -1321,6 +1334,7 @@ function teamLeaderboardHtml(d, who) {
    <div class="scroll"><table><thead><tr><th>Producer</th>${hasRoleplay ? "<th class=\"num\">Role Play</th>" : ""}
    <th class="num">Call Volume</th><th class="num">Avg Talk Time</th><th class="num">Contact Rate</th>
    ${MP ? `<th class="num" title="Texts and emails the producer typed and sent themselves; automation not counted">Texts / Emails</th>` : ""}
+   ${SO.length ? `<th class="num" title="Calls where the producer offered on their own to send the quote instead of keeping the lead on the phone, of the calls where a quote came up">Sent the Quote</th>` : ""}
    <th class="num">Households Quoted</th><th class="num">Premium Quoted</th>
    <th class="num">${hhCol ? "HH Sold" : "Policies"}</th><th class="num">Premium Sold</th>
    ${ranked.some(p => p.util != null) ? "<th class=\"num\">Utilization</th>" : ""}</tr></thead>
