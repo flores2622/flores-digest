@@ -115,6 +115,22 @@ close HERE ONLY.
   you in five minutes while we're on the phone"); agreeing straight away is
   false. If the call then ends with the quote sent rather than presented,
   "Getting off the phone to send the quote" below applies as well.
+- WHAT THE FIX SOUNDS LIKE: KEEP THEM ON THE PHONE (Frank, 2026-09-28: "I
+  want them to try and keep them on the phone, so not 30 seconds, more like
+  2-5 mins to finish a quote up ... why email? unless the client said
+  theyre busy or cant right now i want them keeping them on the phone").
+  Every `askfix` and objection `fix` line aims at finishing the quote ON
+  THIS CALL: a few minutes of discovery and the numbers presented while the
+  lead is still there ("Give me a few minutes and I'll have your real
+  numbers right here while we're on the phone -- what are you paying now,
+  and who drives the cars?"). Say what it takes -- a few minutes -- never
+  "30 seconds". Never suggest emailing or texting the quote, or promising
+  numbers by a later day, as the better version: not when the producer
+  offered it, and not when the prospect asked for email without saying
+  they were short of time ("I can have that for you in a few minutes right
+  here, then I'll email you a copy"). Only a prospect who said they were
+  busy or could not talk right now gets a different fix: a specific better
+  time, or send it while holding them for a brief discovery.
 - ALWAYS ASSUME, NEVER ASK (Frank, 2026-09-28: "they should not be asking
   for any permission at all. always assuming, never asking"). Every
   permission-seeking line scores `askq` / `asks` false, however softly it
@@ -633,7 +649,7 @@ for it"]`. Wrong: `"askq": false`. Same for "calltype", "asks" and "exit".
            sending the quote: "no". Quote the producer's line in the reason.
 "askfix"   one sentence: what an assumptive version of this call's weakest
            moment would have sounded like. Empty string if askq and asks are
-           each true or null.
+           each true or null. See "What the fix sounds like" below.
 "exit"     [boolean, one-sentence quote-based justification] -- did the
            PRODUCER end the call while the prospect had raised no objection,
            not asked to go, and not said they had to leave? Quote the
@@ -726,6 +742,7 @@ for it"]`. Wrong: `"askq": false`. Same for "calltype", "asks" and "exit".
                         understand the moment.
              "fix"      an array of 1-3 alternative lines the producer could
                         have said instead, in the same language as the call
+                        (see "What the fix sounds like" below)
 - "good"   an array of [short title, one-sentence detail] pairs -- specific
            things that worked. Empty array if genuinely nothing stands out.
 - "bad"    an array of [short title, one-sentence detail] pairs -- specific

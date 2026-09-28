@@ -101,6 +101,10 @@ Everything caches under `data/`, so a re-run resumes rather than restarting.
   calls. Apollo returns it from 2026-09-28; earlier cards got it from
   `sendoff.py --backfill` (one short read per card over its transcript --
   nothing else on the card changed).
+  **The card's fix lines keep them on the phone** (Frank, 2026-09-28):
+  `askfix` and each objection's `fix` finish the quote on the call -- a few
+  minutes, never "30 seconds" -- and never suggest emailing or texting it
+  unless the prospect said they were busy.
   **A quote emailed or texted after a call counts as presented** (Frank,
   2026-09-27), so the next call is a follow-up; **ending a finish-quote call
   to send the quote instead of presenting it is a flagged bad habit**.
