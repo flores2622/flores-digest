@@ -331,7 +331,7 @@ const SOLD_LEAD_PAGES = 5;
 export async function soldLeadsToday(env, day, basis, fetchFn = fetch) {
   const since = `${day} 07:00:00`;   // midnight Arizona (UTC-7), in UTC
   const byAz = Object.fromEntries(Object.entries(basis.producers || {}).map(([n, v]) => [String(v.az_id), n]));
-  const per = {}, seen = new Set();
+  const per = {}, seen = new Set(), raw = [];
   let complete = false;
   for (let page = 0; page < SOLD_LEAD_PAGES; page++) {
     const jl = await azGet(env, "/v1/api/leads/list", fetchFn, {
@@ -341,14 +341,111 @@ export async function soldLeadsToday(env, day, basis, fetchFn = fetch) {
     for (const l of ls) {
       if (String(l.lastActivityDate || "") < since || seen.has(l.id)) continue;
       seen.add(l.id);
+      if (l.status !== 2 || !String(l.soldDate || "").startsWith(day)) continue;
+      // Everyone's, for the Sales sheet's name match (syncSalesLog), which
+      // covers Amanda too; never stored or served.
+      raw.push({ agentId: l.assignedTo, leadSourceId: l.leadSourceId, household: l.convertedHouseholdId ?? null,
+        name: [l.firstname, l.lastname].map(x => String(x || "").trim()).filter(Boolean).join(" ") });
       const who = byAz[String(l.assignedTo)];
-      if (!who || l.status !== 2 || !String(l.soldDate || "").startsWith(day)) continue;
+      if (!who) continue;
       (per[who] || (per[who] = [])).push({ lead_id: l.id, household: l.convertedHouseholdId ?? null,
         lead: [l.firstname, l.lastname].map(x => String(x || "").trim()).filter(Boolean).join(" ") });
     }
     if (!ls.length || String(ls[ls.length - 1].lastActivityDate || "") < since) { complete = true; break; }
   }
-  return { per, complete };
+  return { per, complete, _raw: raw };
+}
+
+/* ---- the Sales sheet --------------------------------------------------- */
+
+/* sales_log_auto.product_name, line for line (keep in step): the sheet's
+   product name for a policy, by carrier id (basis.saleslog.carrier). */
+export function productName(p, carriers) {
+  const raw = String(p.policyTypeName || "").trim();
+  const carrier = (carriers || {})[String(p.carrierId)];
+  if (!carrier || !raw) return raw;
+  const auto = /auto/i.test(raw);
+  if (carrier === "BW") return auto ? "BW-Auto" : `BW-${raw}`;
+  if (auto) return `${carrier}-Auto`;
+  if (carrier === "Foremost") {
+    if (/mobile|manufactured/i.test(raw)) return "Foremost-MH";
+    if (/landlord|dp\d|dwelling/i.test(raw)) return "Foremost-Landlord";
+    if (/atv|motorcycle|trailer|boat|watercraft|motor home|\brv\b|golf cart|toy/i.test(raw)) return "Foremost-Toys";
+    if (/vacant/i.test(raw)) return "Foremost-Vacant";
+    if (/home|ho-?\d/i.test(raw)) return "Foremost-Home";
+  }
+  if (carrier === "Farmers") {
+    if (/homeowner|^home$|ho-?\d/i.test(raw)) return "Farmers-Home";
+    if (/term|life/i.test(raw)) return "Farmers-Life";
+  }
+  return `${carrier}-${raw}`;
+}
+function termOf(eff, exp) {
+  const e = String(eff || "").slice(0, 10), x = String(exp || "").slice(0, 10);
+  if (!e || !x) return "";
+  const days = (Date.parse(x + "T00:00:00Z") - Date.parse(e + "T00:00:00Z")) / 86400000;
+  if (!Number.isFinite(days)) return "";
+  const months = Math.round(days / 30.44);
+  return months > 0 ? `${months}mo` : "";
+}
+
+/* sales_log_auto.build_entries: one row per real sale today by a producer
+   or Amanda. The name comes from the one lead marked sold today with the
+   same agent and lead source, else it stays blank -- the nightly match
+   reads the customer record instead, so a name here can be the lead's
+   spelling of the same person. */
+export function salesLogEntries(day, basis, policies, sourceNames, soldRaw) {
+  const sl = basis.saleslog || {};
+  const ids = sl.ids || {};
+  const notSale = new Set(basis.not_a_sale || []);
+  const out = [];
+  for (const p of policies) {
+    if (!String(p.soldDate || "").startsWith(day)) continue;
+    const who = ids[String(p.agentId)];
+    if (!who || notSale.has(norm(sourceNames[p.leadSourceId]))) continue;
+    const cands = (soldRaw || []).filter(l => String(l.agentId) === String(p.agentId)
+      && String(l.leadSourceId) === String(p.leadSourceId));
+    const one = cands.length === 1 ? cands[0] : null;
+    out.push({
+      producer: who,
+      client_name: one && one.household != null ? one.name : "",
+      az_customer_id: one && one.household != null ? String(one.household) : "",
+      lead_source: String(sourceNames[p.leadSourceId] || "").trim(),
+      policy_number: String(p.policyNumber || ""),
+      product: productName(p, sl.carrier),
+      premium: p.premium != null ? Number(p.premium) : null,
+      term: termOf(p.effectiveDate, p.expiryDate),
+      date_sold: String(p.soldDate || "").slice(0, 10),
+      effective_date: String(p.effectiveDate || "").slice(0, 10),
+      az_policy_id: p.id,
+    });
+  }
+  return out;
+}
+
+/* sales_log_auto.sync_day's rules on saleslog/<day>.json: only ever adds --
+   never a policy already on the sheet (az_policy_id), never one a person
+   typed by hand (their policy number) -- so the checkpoints and the nightly
+   run find it there and skip it. Read right before the write, and written
+   only when something is new. */
+export async function syncSalesLog(env, day, basis, policies, sourceNames, soldRaw) {
+  const cands = salesLogEntries(day, basis, policies, sourceNames, soldRaw);
+  if (!cands.length) return 0;
+  const key = `saleslog/${day}.json`;
+  const doc = (await r2json(env, key)) || { day, entries: [] };
+  const have = new Set(doc.entries.filter(e => e.az_policy_id != null).map(e => String(e.az_policy_id)));
+  const typed = new Set(doc.entries.filter(e => e.policy_number && e.az_policy_id == null).map(e => e.policy_number));
+  let added = 0;
+  for (const c of cands) {
+    if (c.az_policy_id != null && have.has(String(c.az_policy_id))) continue;
+    if (c.policy_number && typed.has(c.policy_number)) continue;
+    doc.entries.push({ ...c, id: crypto.randomUUID(), created_at: new Date().toISOString(), day,
+      docs_signed: "", review_sent: false, notes: "Auto-added from AgencyZoom", source: "auto" });
+    if (c.az_policy_id != null) have.add(String(c.az_policy_id));
+    added++;
+  }
+  if (added) await r2put(env, key, doc);
+  return added;
 }
 
 async function azLeadsActiveSince(env, since, fetchFn) {
@@ -440,16 +537,19 @@ const part = async (env, key, fn) => {
 /* Dials, sales (policies and the leads marked sold) and utilization: a
    handful of requests, refreshed together. */
 export async function computeFast(env, day, basis, fetchFn = fetch) {
+  const inputs = {};   // for syncSalesLog; never stored
   const [dials, sales, util, sold] = await Promise.all([
     part(env, "dials", async () => dialDeltas(basis, await rcCallLog(env, day, fetchFn))),
     part(env, "sales", async () => {
       const [pols, names] = await Promise.all([azPoliciesSold(env, day, fetchFn), azLeadSources(env, fetchFn)]);
+      inputs.policies = pols; inputs.names = names;
       return salesFrom(basis, pols, names);
     }),
     part(env, "util", async () => insightfulUtil(env, day, basis, fetchFn)),
     part(env, "sold", async () => soldLeadsToday(env, day, basis, fetchFn)),
   ]);
-  return { fetched_at: new Date().toISOString(), dials, sales, util, sold };
+  if (sold.ok) { inputs.soldRaw = sold.data._raw; delete sold.data._raw; }
+  return { fetched_at: new Date().toISOString(), dials, sales, util, sold, _inputs: inputs };
 }
 
 /* Households and premium quoted: one batch of lead reads, carried on from
@@ -467,7 +567,8 @@ export async function computeQuotes(env, day, basis, memo, fetchFn = fetch) {
 // Kept for callers/tests that want every part in one go.
 export async function computeLive(env, day, basis, fetchFn = fetch, memo = null) {
   const [fast, q] = await Promise.all([computeFast(env, day, basis, fetchFn), computeQuotes(env, day, basis, memo, fetchFn)]);
-  return { day, ...fast, quotes: q.quotes, _memo: q.memo };
+  const { _inputs, ...rest } = fast;
+  return { day, ...rest, quotes: q.quotes, _memo: q.memo };
 }
 
 const keys = day => ({ fast: `live/${day}.json`, quotes: `live/${day}-quotes.json`, memo: `live/${day}-quote-reads.json` });
@@ -500,7 +601,16 @@ function keepGood(prev, next, cp, parts) {
 async function refreshFast(env, day, cp) {
   const k = keys(day);
   const prev = await r2json(env, k.fast);
-  const out = keepGood(prev, { checkpoint: cp.as_of, ...(await computeFast(env, day, cp.basis)) }, cp, ["dials", "sales", "util", "sold"]);
+  const { _inputs, ...fast } = await computeFast(env, day, cp.basis);
+  // A live sale goes on the Sales sheet in the same refresh that puts it on
+  // the board (Frank, 2026-09-28). Only with this run's own policies and
+  // sold leads -- a sold-lead read that failed would leave names blank that
+  // it could have filled -- and never at the board's expense.
+  if (cp.basis.saleslog && fast.sales.ok && fast.sold.ok && _inputs.policies) {
+    try { await syncSalesLog(env, day, cp.basis, _inputs.policies, _inputs.names, _inputs.soldRaw); }
+    catch (e) { console.log(`sales sheet sync failed: ${e && e.message || e}`); }
+  }
+  const out = keepGood(prev, { checkpoint: cp.as_of, ...fast }, cp, ["dials", "sales", "util", "sold"]);
   await r2put(env, k.fast, out);
   return out;
 }

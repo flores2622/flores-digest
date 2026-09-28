@@ -33,6 +33,7 @@ import json
 import pathlib
 
 import day_calls
+import sales_log_auto
 import digest_config as cfg
 import lead_sources
 
@@ -84,6 +85,12 @@ def basis(day):
         "not_a_sale": sorted(lead_sources.NOT_A_SALE),
         "existing_household": sorted(lead_sources.EXISTING_HOUSEHOLD),
         "util_exclude": sorted(_util_exclude()),
+        # The Sales sheet's auto rows (sales_log_auto), so the Worker adds a
+        # live sale to the sheet with the same people and product names.
+        "saleslog": {
+            "ids": {str(k): v for k, v in sales_log_auto._ids().items()},
+            "carrier": {str(k): v for k, v in sales_log_auto.CARRIER.items()},
+        },
         "quotes": _quote_basis(M),
         "business_hours": [f"{cfg.BUSINESS_START_HOUR:02d}:{cfg.BUSINESS_START_MIN:02d}",
                            f"{cfg.BUSINESS_END_HOUR:02d}:{cfg.BUSINESS_END_MIN:02d}"],

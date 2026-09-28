@@ -302,6 +302,15 @@ and anything without the glow is the checkpoint's (Frank, 2026-09-24).
   for the day; the checkpoint's `rows.sold_leads` are added only if the read
   stopped at the page cap.
 - **Utilization** is `insightful_util.pull()`'s formula.
+- **A live sale goes on the Sales sheet in the same refresh** (Frank,
+  2026-09-28: "the sales on the leaderboard are live, but the sales werent
+  added to the sales sheet"). `site/live.js syncSalesLog` applies
+  `sales_log_auto.sync_day`'s rules to `saleslog/<day>.json`: producers and
+  Amanda (`live_basis.saleslog.ids`), BOB / Rewrite left out, product names
+  by carrier (`productName` mirrors `product_name` -- keep them in step),
+  only ever adding, never a policy already there or typed by hand. The name
+  is the one lead marked sold today with the same agent and lead source,
+  else blank.
 - **Households and premium quoted** are daily.py's own three rules (quoteDate
   today; a producer's move into a quoted stage; a producer's note delivering
   a quote), applied only to leads active since the checkpoint, newest first,
