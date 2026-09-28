@@ -546,6 +546,12 @@ td.num.msgbad { color: var(--bad); font-weight: 600; }
 .hero .hl { font-weight: 700; font-size: 15px; margin-bottom: 6px; }
 .hero p { margin: 0 0 9px; font-size: 12.5px; line-height: 1.6; color: var(--text-secondary); }
 .hero p:last-child { margin-bottom: 0; }
+.soper { display: flex; flex-wrap: wrap; gap: 6px 14px; }
+.sonm { white-space: nowrap; }
+.solist summary { cursor: pointer; font-size: 12.5px; font-weight: 600; }
+.solist ul { list-style: none; margin: 8px 0 0; padding: 0; }
+.solist li { border-top: 1px solid var(--border); padding: 7px 0; font-size: 12.5px; line-height: 1.5; color: var(--text-secondary); }
+.sowho { display: block; font-size: 11.5px; color: var(--text-muted); font-weight: 600; }
 .q { font-style: italic; }
 
 
@@ -1264,12 +1270,42 @@ function teamLeaderboardHtml(d, who) {
    before. Objections live ONLY in the Coaching tab's own Objections sub-tab
    now (Frank, 2026-09-23: "leave it only in the objections tab") -- the
    "Objections by category" table that used to sit here duplicated it. */
+/* Quote sent instead of kept on the phone (Frank, 2026-09-28: "how many
+   times the producers offer to send the quote on their own instead of
+   keeping that lead on the phone"). Counted off each card's `sendoff` --
+   Apollo's own read from 2026-09-28, sendoff.py's one-question read before
+   that. "busy" and "asked" are listed apart: sending to a prospect who said
+   they had no time is the Busy objection's to score, not this. */
+const SENDOFF_ORDER = ["Lorena Gonzalez", "Crystal Mango", "Mike Olvera", "Coral Barwick", "Sarahi Chin"];
+function sendOffHtml(d) {
+  const all = (d.calls || []).filter(c => c.sendoff && c.sendoff[0]);
+  if (!all.length) return "";
+  const esc = t => String(t || "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+  const mine = all.filter(c => c.sendoff[0] === "producer");
+  const busy = all.filter(c => c.sendoff[0] === "busy").length, asked = all.filter(c => c.sendoff[0] === "asked").length;
+  const per = SENDOFF_ORDER.map(n => {
+    const of = all.filter(c => c.who === n).length;
+    return of ? `<span class="sonm">${n.split(" ")[0]} <b>${mine.filter(c => c.who === n).length}</b> of ${of}</span>` : "";
+  }).filter(Boolean).join("");
+  const day = c => (c._day || d.date || "").slice(5).replace("-", "/");
+  const list = mine.slice().sort((a, b) => (a.who > b.who) - (a.who < b.who) || ((a._day || "") > (b._day || "")) - ((a._day || "") < (b._day || "")))
+    .map(c => `<li><span class="sowho">${day(c)} · ${esc((c.who || "").split(" ")[0])} · ${esc(c.lead)}</span>${esc(c.sendoff[1])}</li>`).join("");
+  return `
+   <div class="hero">
+    <div class="hl">Sending the quote instead of keeping them on the phone</div>
+    <p><b>${mine.length} of ${all.length}</b> calls where a quote came up, the producer offered on their own to send it
+    by email or text instead of presenting it with the lead still on the line.
+    ${busy || asked ? `Apart from those: ${busy} sent after the prospect said they were busy${asked ? `, ${asked} because the prospect asked for email first` : ""}.` : ""}</p>
+    <p class="soper">${per}</p>
+    ${mine.length ? `<details class="solist"><summary>The ${mine.length} call${mine.length === 1 ? "" : "s"}</summary><ul>${list}</ul></details>` : ""}
+   </div>`;
+}
 function winsLossesHtml(d, who) {
   if (who) return "";
   const s = d.scan;
   const sold = (d.calls || []).filter(c => c.catc === "sold_on_call").map(c => c.lead);
   const says = !s ? "" : `
-   <p class="sd">Two patterns that only show up across calls, not within one.</p>
+   <p class="sd">Patterns that only show up across calls, not within one.</p>
    <div class="hero">
     <div class="hl">The opening asks permission</div>
     <p><b>${s.asked_open} of ${s.of_first ?? s.of}</b> calls with the quote still to do opened by asking for the opportunity —
@@ -1282,7 +1318,7 @@ function winsLossesHtml(d, who) {
     call${sold.length ? ` — ${sold.join(", ")}` : ""}. Current premium was captured on <b>${s.premium}</b>, a
     renewal date on <b>${s.xdate}</b>, and a bundle raised on <b>${s.bundle}</b>.
     <b>${s.timeset} of ${s.of}</b> set a specific callback time — that one is usually the cheapest to fix.</p>
-   </div>${s.greet_of ? `
+   </div>${sendOffHtml(d)}${s.greet_of ? `
    <div class="hero">
     <div class="hl">Picking up their own line</div>
     <p><b>${s.greet_ok} of ${s.greet_of}</b> call backs and call-ins the producers answered opened direct — the caller's
@@ -2303,7 +2339,7 @@ function mergeDayDocs(docs) {
       }
     }
 
-    for (const c of doc.calls || []) calls.push(c);
+    for (const c of doc.calls || []) { c._day = doc.date; calls.push(c); }
     if (doc.notcoached) notcoached.push(`${doc.date}: ${doc.notcoached}`);
   }
 

@@ -115,6 +115,22 @@ close HERE ONLY.
   you in five minutes while we're on the phone"); agreeing straight away is
   false. If the call then ends with the quote sent rather than presented,
   "Getting off the phone to send the quote" below applies as well.
+- WHAT THE FIX SOUNDS LIKE: KEEP THEM ON THE PHONE (Frank, 2026-09-28: "I
+  want them to try and keep them on the phone, so not 30 seconds, more like
+  2-5 mins to finish a quote up ... why email? unless the client said
+  theyre busy or cant right now i want them keeping them on the phone").
+  Every `askfix` and objection `fix` line aims at finishing the quote ON
+  THIS CALL: a few minutes of discovery and the numbers presented while the
+  lead is still there ("Give me a few minutes and I'll have your real
+  numbers right here while we're on the phone -- what are you paying now,
+  and who drives the cars?"). Say what it takes -- a few minutes -- never
+  "30 seconds". Never suggest emailing or texting the quote, or promising
+  numbers by a later day, as the better version: not when the producer
+  offered it, and not when the prospect asked for email without saying
+  they were short of time ("I can have that for you in a few minutes right
+  here, then I'll email you a copy"). Only a prospect who said they were
+  busy or could not talk right now gets a different fix: a specific better
+  time, or send it while holding them for a brief discovery.
 - ALWAYS ASSUME, NEVER ASK (Frank, 2026-09-28: "they should not be asking
   for any permission at all. always assuming, never asking"). Every
   permission-seeking line scores `askq` / `asks` false, however softly it
@@ -139,6 +155,14 @@ close HERE ONLY.
   you back") HAD the chance: that is false. So is a call where the producer
   simply never tried. The same rule gives `assume`'s "start" and "end" null
   on a follow-up whose opening or close was never reached or recorded.
+  An OBJECTION is not a lack of chance. "I'd rather wait until my renewal",
+  "I already bought with someone else", "just email it to me" are the
+  moment to work, not a reason the close could not be assumed: when the
+  call ends on one, or on the producer's own "I'll send it" / "I'll call you
+  back", `asks` is false, and so is `askq` if the quote never got built.
+  Null is only for a call that physically never got there -- cut off,
+  dropped, too short, not recorded, or a prospect who said they could not
+  talk or had no time right now (the Busy objection scores that).
 - The PRODUCER ending the call is a red flag in its own right. "I'll let you
   go", "I'll send you the quotes", "I'll give you a call back" -- said while
   the prospect had raised no objection, not asked to go, and not said they
@@ -606,9 +630,34 @@ for it"]`. Wrong: `"askq": false`. Same for "calltype", "asks" and "exit".
            "let's get this done"), rather than ask whether the prospect wants
            to buy? null when the call never reached a point where the sale
            could be assumed.
+"sendoff"  [verdict or null, one-sentence justification quoting the line]
+           -- did the quote get SENT instead of kept on the phone (Frank,
+           2026-09-28: "how many times the producers offer to send the quote
+           on their own instead of keeping that lead on the phone")? The
+           verdict is EXACTLY one of:
+             "producer"  the producer offered, on their own, to send the quote
+                         (or updated numbers) by email or text instead of
+                         building and presenting it with the lead still on
+                         the line -- the prospect had not said they were busy
+                         or short of time, and had not asked for it that way
+                         first. "Let me put it together and send it to you",
+                         "I'll text you the options", "¿qué tal si te mando la
+                         cotización?", "I'll email it over shortly".
+             "busy"      it was sent (or offered) after the prospect said they
+                         were busy / had no time -- the Bad Timing / Busy
+                         objection scores how that was handled.
+             "asked"     the prospect asked for it by email or text first,
+                         without saying they were short of time.
+             "no"        the quote came up and stayed on the phone -- numbers
+                         presented live, or discovery still going when the
+                         call ended for a reason that was not the producer's.
+           null when no quote came up at all (service, a no before any
+           quoting, a call cut off before it). Sending documents, an
+           application or an e-sign link for a sale made on the call is not
+           sending the quote: "no". Quote the producer's line in the reason.
 "askfix"   one sentence: what an assumptive version of this call's weakest
            moment would have sounded like. Empty string if askq and asks are
-           each true or null.
+           each true or null. See "What the fix sounds like" below.
 "exit"     [boolean, one-sentence quote-based justification] -- did the
            PRODUCER end the call while the prospect had raised no objection,
            not asked to go, and not said they had to leave? Quote the
@@ -701,6 +750,7 @@ for it"]`. Wrong: `"askq": false`. Same for "calltype", "asks" and "exit".
                         understand the moment.
              "fix"      an array of 1-3 alternative lines the producer could
                         have said instead, in the same language as the call
+                        (see "What the fix sounds like" below)
 - "good"   an array of [short title, one-sentence detail] pairs -- specific
            things that worked. Empty array if genuinely nothing stands out.
 - "bad"    an array of [short title, one-sentence detail] pairs -- specific
