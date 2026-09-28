@@ -82,6 +82,63 @@ close HERE ONLY.
   it, and make `summary` say who called whom. (Frank, 2026-09-23: Joaquin
   Guillen called in for his quote and Lorena still asked permission piece by
   piece -- "you already have the green light. GO.")
+- Assuming the quote means assuming it gets built AND presented ON THIS
+  CALL, with the prospect still there to close. A producer who offers,
+  before or during discovery, to put the quote together and SEND it ("el
+  presupuesto se lo puedo hacer y enviar para que compare", "I can send you
+  a quick quote and you can review it", "I'll text you the options") has
+  planned the exit before the first question: score `askq` false, name it in
+  `bad` as setting up the send instead of the presentation, and make
+  `askfix` keep them on the line ("Let's get your numbers right now while I
+  have you -- who's driving the cars?"). That is not assumptive even though
+  no permission was asked. (Frank, 2026-09-28, Lorena and Eva Moraila 09-01:
+  "from the getgo setting the expectation that shes going to send the quote,
+  its an early sign shes already trying to get off the phone".)
+  **Sending is only for a prospect who says they are busy or have no time**
+  (Frank, 2026-09-28), and how the producer handles that is scored as
+  OVERCOMING THE OBJECTION ("that should be part of attempting to overcome
+  that objection"): "busy" / "no time" / "I'm at work" is its own `objs`
+  entry, group "Bad Timing / Busy", and the producer's answer is that
+  entry's `you`, `score`, `anal` and `fix`. The two answers that work: get a
+  better time to speak -- a specific time the prospect agrees to, not "I'll
+  call you later" -- or offer to send the quote AND hold them on the phone
+  for a brief discovery ("I'll send it over -- two quick questions so the
+  numbers are right: who's on the policy with you?"). Either scores that
+  objection well. Taking "I'm busy" and hanging up on "I'll send it" with
+  neither is a dropped objection: score it low (2-4), flag it "Objection
+  dropped", and put both answers in `fix`. On such a call, offering to send
+  is not the set-up-the-send miss above: `askq` is judged on the rest of the
+  call, or null when the time objection ended it before the quote came up
+  (No chance to assume) -- the objection's entry carries the coaching.
+  A prospect who asks for it by email WITHOUT saying they are short of time
+  is not a reason to send: that is an objection to work in `objs` ("I can have it for
+  you in five minutes while we're on the phone"); agreeing straight away is
+  false. If the call then ends with the quote sent rather than presented,
+  "Getting off the phone to send the quote" below applies as well.
+- ALWAYS ASSUME, NEVER ASK (Frank, 2026-09-28: "they should not be asking
+  for any permission at all. always assuming, never asking"). Every
+  permission-seeking line scores `askq` / `asks` false, however softly it
+  is put: "I wanted to see if I can send you a quote", "can I get you some
+  quotes?", "would it be okay if...", "did you want me to...", "if it's okay
+  with you I can...", "would you like to get started?". A question about
+  whether to do the work, or whether they want to buy, is asking -- never
+  read it as a "courtesy heads-up" or "assumptive framing even though phrased
+  as a question". It counts against them one way only: soft asking is not
+  half-assuming.
+- NO CHANCE TO ASSUME is null, not false (Frank, 2026-09-28: "If there was
+  no opportunity to even assume bc the call cut off or was too short, it
+  shouldnt count against them"). `askq` is [null, reason] when the call
+  ended before the producer reached the quote at all -- cut off or dropped,
+  the prospect hung up or said they could not talk, the recording stops at
+  the transfer, the transcript is unreadable at that point, or the prospect
+  declined before the producer said anything about quoting. `asks` is
+  [null, reason] when the call ended the same way before any point where
+  the close could be assumed. But a producer who got there and asked
+  permission, pitched with permission-seeking words before the "no", or
+  ended or deferred the call themselves ("I'll send it over", "I'll call
+  you back") HAD the chance: that is false. So is a call where the producer
+  simply never tried. The same rule gives `assume`'s "start" and "end" null
+  on a follow-up whose opening or close was never reached or recorded.
 - The PRODUCER ending the call is a red flag in its own right. "I'll let you
   go", "I'll send you the quotes", "I'll give you a call back" -- said while
   the prospect had raised no objection, not asked to go, and not said they
@@ -540,13 +597,18 @@ for it"]`. Wrong: `"askq": false`. Same for "calltype", "asks" and "exit".
            offered, and how it ended. Name what the prospect actually said.
 "askq"     [boolean, one-sentence quote-based justification] -- did the
            producer ASSUME the quote/discovery work would happen, rather than
-           ask permission for it? true = assumptive, false = asked permission.
-"asks"     [boolean, one-sentence quote-based justification] -- did the
-           producer ASSUME the close (a start date, a payment method, "let's
-           get this done"), rather than ask whether the prospect wants to buy?
+           ask permission for it? true = assumptive, false = asked permission,
+           OR set the quote up to be sent rather than presented on this call
+           (see Core judgment). null when the call never gave them the chance
+           (see "No chance to assume" in Core judgment).
+"asks"     [boolean or null, one-sentence quote-based justification] -- did
+           the producer ASSUME the close (a start date, a payment method,
+           "let's get this done"), rather than ask whether the prospect wants
+           to buy? null when the call never reached a point where the sale
+           could be assumed.
 "askfix"   one sentence: what an assumptive version of this call's weakest
-           moment would have sounded like. Empty string if both askq and asks
-           are already true.
+           moment would have sounded like. Empty string if askq and asks are
+           each true or null.
 "exit"     [boolean, one-sentence quote-based justification] -- did the
            PRODUCER end the call while the prospect had raised no objection,
            not asked to go, and not said they had to leave? Quote the
@@ -737,7 +799,9 @@ for it"]`. Wrong: `"askq": false`. Same for "calltype", "asks" and "exit".
            "objections": [bool or null, reason], "end": [bool, reason]} --
            was the SALE assumed at the start, while handling objections, and
            at the end. "objections" is [null, "..."] when none was raised;
-           "end" is true when it already closed up front.
+           "end" is true when it already closed up front; "start" / "end" are
+           [null, "..."] when that part of the call never happened or was not
+           recorded (No chance to assume).
 "spine"    an array of 4-8 [time, colour, headline, detail] entries walking
            through the call in order. "time" is a rough mm:ss into the call.
            "colour" is "g" (this moment went well), "y" (mixed/questionable),

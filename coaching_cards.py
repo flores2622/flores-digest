@@ -321,6 +321,13 @@ def _bool_pair(raw):
     return [bool(raw[0]), str(raw[1]).strip() if len(raw) > 1 else ""]
 
 
+def _verdict(raw):
+    """_bool_pair, but a null verdict stays None: no chance to assume."""
+    if isinstance(raw, (list, tuple)) and raw and raw[0] is None:
+        return [None, str(raw[1]).strip() if len(raw) > 1 else ""]
+    return _bool_pair(raw)
+
+
 # What the call was FOR, whoever dialled (Frank, 2026-09-25): a first
 # conversation, a call to finish the quote now that the info is in, or a
 # follow-up on a quote already presented.
@@ -355,10 +362,8 @@ def _assume(raw):
         return None
     for k in ("start", "objections", "end"):
         v = raw.get(k)
-        if isinstance(v, (list, tuple)) and v and v[0] is None:
-            out[k] = [None, str(v[1]).strip() if len(v) > 1 else ""]
-        elif v is not None:
-            out[k] = _bool_pair(v)
+        if v is not None:
+            out[k] = _verdict(v)
     return out or None
 
 
@@ -654,8 +659,11 @@ def _finish_card(d, producer, group, raw_dials, day, transcript, recording_ids):
     since they describe the same person either way; `dur`/`time` combine
     across all of them.
     """
-    askq = _bool_pair(d.get("askq"))
-    asks = _bool_pair(d.get("asks"))
+    # [None, reason] when the call never gave the producer the chance --
+    # cut off, too short, declined before the quote came up -- so it counts
+    # neither way (Frank, 2026-09-28: "it shouldnt count against them").
+    askq = _verdict(d.get("askq"))
+    asks = _verdict(d.get("asks"))
     # The producer ending a call with no objection, request to go, or time
     # constraint standing in the way (Frank, 2026-09-23). None, not
     # [False, ""], on a card read before METHODOLOGY.md had the key, so the
@@ -990,7 +998,9 @@ def scan(cards):
         "of": len(cards),
         # "Assumed the quote" only exists on a first conversation; a
         # follow-up's quote is already done (Frank, 2026-09-25).
-        "of_first": sum(1 for c in cards if c.get("askq")),
+        # A call that never reached the quote (askq [None, ...]) is in
+        # neither count (Frank, 2026-09-28).
+        "of_first": sum(1 for c in cards if c.get("askq") and c["askq"][0] is not None),
         "asked_open": sum(1 for c in cards if c.get("askq") and c["askq"][0] is False),
         "assumed_open": sum(1 for c in cards if c.get("askq") and c["askq"][0] is True),
         # A quote went out ON THIS CALL -- sold, or quoted today whether
