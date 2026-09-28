@@ -155,6 +155,14 @@ close HERE ONLY.
   you back") HAD the chance: that is false. So is a call where the producer
   simply never tried. The same rule gives `assume`'s "start" and "end" null
   on a follow-up whose opening or close was never reached or recorded.
+  An OBJECTION is not a lack of chance. "I'd rather wait until my renewal",
+  "I already bought with someone else", "just email it to me" are the
+  moment to work, not a reason the close could not be assumed: when the
+  call ends on one, or on the producer's own "I'll send it" / "I'll call you
+  back", `asks` is false, and so is `askq` if the quote never got built.
+  Null is only for a call that physically never got there -- cut off,
+  dropped, too short, not recorded, or a prospect who said they could not
+  talk or had no time right now (the Busy objection scores that).
 - The PRODUCER ending the call is a red flag in its own right. "I'll let you
   go", "I'll send you the quotes", "I'll give you a call back" -- said while
   the prospect had raised no objection, not asked to go, and not said they

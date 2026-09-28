@@ -105,6 +105,10 @@ Everything caches under `data/`, so a re-run resumes rather than restarting.
   `askfix` and each objection's `fix` finish the quote on the call -- a few
   minutes, never "30 seconds" -- and never suggest emailing or texting it
   unless the prospect said they were busy.
+  September's first and finish-quote cards were re-judged under these rules
+  by `assume_reread.py --backfill` (Frank asked, 2026-09-28): one short read
+  per card, replacing only `askq` / `asks` / `askfix` and the day's `scan`
+  (backups under `backups/2026-09-28-assume-reread/`).
   **A quote emailed or texted after a call counts as presented** (Frank,
   2026-09-27), so the next call is a follow-up; **ending a finish-quote call
   to send the quote instead of presenting it is a flagged bad habit**.
@@ -747,7 +751,7 @@ reached for once, e.g. 6836965 created 2025-08-03).
 
 Transcription is local and free. **The Anthropic API reads in `call_summary.py`,
 `renewal_notes.py` and `service_notes.py` are the only paid steps** (plus
-`sendoff.py --backfill`, run once for September) — roughly one call per live
+`sendoff.py` and `assume_reread.py --backfill`, each run once for September) — roughly one call per live
 contact per day, plus one call per 25 renewal SR notes (each SR's note is read
 once and kept in `data/renewal_note_reads.json` and its R2 copy; only an edited
 note is read again -- never delete that cache casually). Changing
