@@ -1228,7 +1228,7 @@ function teamLeaderboardHtml(d, who) {
   const rows = ranked.map((p, i) => `<tr>
     <td><span class="who">${
        !focus && i < 3 ? `<span class="mdl" role="img" aria-label="${["1st", "2nd", "3rd"][i]}">${MEDAL[i]}</span>` : ""}${pbadge(DOT[p.name] || "#8a877f", p.name)}</span></td>
-    ${hasRoleplay ? `<td class="num ${tc(p.name, "roleplay")}">${(p.coach || {}).roleplay ?? "—"}</td>` : ""}
+    ${hasRoleplay ? `<td class="num ${tc(p.name, "roleplay")}">${(p.coach || {}).roleplay ?? "—"}${p.rp_missed ? ` <br><span style="color:var(--text-muted);font-weight:400;white-space:nowrap;font-size:11px" title="Days worked with no role play -- each counts as 0 in the ranking">${p.rp_missed} missed</span>` : ""}</td>` : ""}
     <td class="num ${tc(p.name, "dials")}${lv("dials")}">${p.dials ?? 0}${dialsSub(p)}</td>
     <td class="num ${tc(p.name, "talk")}">${hhmm(p.talk)}</td>
     <td class="num ${tc(p.name, "rate")}">${p.rate ?? 0}% <span style="opacity:.72">(${p.live ?? 0})</span></td>
@@ -2402,6 +2402,9 @@ function mergeDayDocs(docs) {
     delete row.coach_calls; delete row.coach_score_wsum; delete row.coach_sentiment_wsum;
     row._rp_sum = row.coach_roleplay_sum; row._rp_n = row.coach_roleplay_n;
     row.rp_scored = row.rp_scored_n ? row.rp_scored_sum / row.rp_scored_n : 0;
+    // Worked days with role play figures for someone but none for them
+    // (Frank, 2026-09-28: "put next to the avg how many days were missed").
+    row.rp_missed = row.rp_scored_n - row.coach_roleplay_n;
     delete row.coach_roleplay_sum; delete row.coach_roleplay_n; delete row.rp_scored_sum; delete row.rp_scored_n;
   }
 
