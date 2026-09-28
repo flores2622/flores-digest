@@ -744,10 +744,24 @@ for it"]`. Wrong: `"askq": false`. Same for "calltype", "asks" and "exit".
            "r" (this moment went badly), or "n" (neutral/informational, e.g.
            a gap in the recording). "headline" is a few words; "detail" is one
            sentence or empty string.
-"flags"    an array of short strings (2-6 words each) for anything a manager
-           should notice at a glance -- a stage/pipeline mismatch, a promise
-           the producer can't keep, a compliance concern, an unusually good
-           or bad moment. Empty array if nothing stands out.
+"flags"    an array of [text, group] pairs for anything a manager should
+           notice at a glance -- a stage/pipeline mismatch, a promise the
+           producer can't keep, a compliance concern, an unusually good or
+           bad moment. "text" is 2-6 words, specific to this call. "group"
+           is EXACTLY one of these strings, copied character for character
+           (Frank, 2026-09-27):
+             bad:     "No next step", "Quote not presented",
+                      "Discovery missed", "Approach skipped" (the lead
+                      source's own approach, e.g. a referrer never named or a
+                      winback never asked why they left), "Objection dropped",
+                      "Call cut short", "Stage / pipeline mistake",
+                      "Compliance"
+             neutral: "Cross-sell in progress", "Callback set" (a real,
+                      dated callback), "Pipeline note"
+             good:    "Strong moment"
+           A callback with no date or no detail is "No next step", not
+           "Callback set". Do not add a flag for the producer ending the call
+           -- that is "exit". Empty array if nothing stands out.
 ```
 
 ## Known gaps in this v1 (things NOT yet handled)
