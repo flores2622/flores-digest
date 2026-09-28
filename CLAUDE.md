@@ -730,7 +730,12 @@ Crystal (hybrid); credit always goes to whoever COMPLETED the SR or task.
   document -- roles, who handles what, the note standard, the daily checklist,
   the team expectations -- and the only place to change it; each day carries
   it as `playbook`. Roles: **Service Lead = Amanda, Service Team Member =
-  Crystal, Front Desk = Debbie** (`ROLE_OF`). `service_audit.py` reads every
+  Crystal, Front Desk = Debbie** (`ROLE_OF`). **Crystal and Amanda sell**
+  (`SELLS`; Frank, 2026-09-28: "she can do the opportunity herself, amanda as
+  well. Debbie is the only one that would identify and pass to any
+  producer"): the playbook's "identify opportunities to pass to a producer" is
+  Debbie's line; theirs is "work the opportunities that come up" (quoted, a
+  lead set, or passed -- versus not noted). `service_audit.py` reads every
   completed SR against it (request type from her "Who handles what" table,
   which of Who / What / Why / Outcome / Next step the note leaves out, a
   sales opportunity passed or not, escalated), cached by SR + note text in
