@@ -264,20 +264,20 @@ even has a chance to call back."*
 | Sarahi, Amanda, Coral, Mike | 9:00 AM – 5:30 PM |
 | Everyone | lunch 12:00 – 1:00 |
 
-**Runs — hourly at :55, 8:55 AM to 4:55 PM Arizona, Monday–Friday. Nine a
-day, one routine. No Saturday.** (Frank, 2026-09-28: "run it on :55
-hourly".) It replaced seven routines on Frank's earlier ten times (8:35-ish,
-9:50, 10:55, 11:45, 1-4 PM, 4:45, 5:15): one schedule rule can only fire at
-one minute past the hour, so odd minutes each needed their own routine.
+**Runs — one routine, hourly at :55 from 8:55 AM to 5:55 PM Arizona,
+Monday–Friday. No Saturday.** (Frank, 2026-09-28: "run it on :55 hourly", then
+"1 routine that takes care of the whole day".)
 
-    55 15-23 * * 1-5    UTC  ->  8:55, 9:55, 10:55, 11:55 AM,
-                                 12:55, 1:55, 2:55, 3:55, 4:55 PM AZ
+    CRON_TZ=America/Phoenix 55 8-17 * * 1-5
 
-**There is no separate evening run.** The 5:35 PM nightly digest is the day's
-last run: `daily.py` creates the rest of the day's missed-call tasks itself
-(`make_missed_call_tasks`, after the email; a SEND_HOLD night skips them), so
-the old 4:45 and 5:15 runs are gone. Calls after the nightly roll into the
-next morning's 8:55 run.
+8:55 AM–4:55 PM are checkpoints (`intraday.py`, then `missed_call_tasks.py
+--live`). **5:55 PM is the final run**: it reads Coach AI (whose reports Frank
+moved to 5:30 PM) and runs `daily.py`, which creates the rest of the day's
+missed-call tasks itself (`make_missed_call_tasks`, after the email; a
+SEND_HOLD night skips them). Calls after the final roll into the next
+morning's 8:55 run. It replaced seven routines on Frank's earlier ten times
+(8:35-ish, 9:50, 10:55, 11:45, 1-4 PM, 4:45, 5:15) plus the 5:35 PM nightly;
+the CRON_TZ prefix is what lets one rule cover weekdays in Arizona time.
 
 The 12:55 run lands at the end of lunch (12:00-1:00), where the old 1:00 run
 did, so tasks are waiting when people come back.
@@ -290,8 +290,8 @@ runs before they did anything; the routine now runs `git fetch origin main &&
 git checkout main && git merge --ff-only origin/main`, and stops and reports if
 that is refused.
 
-Arizona does not observe DST, so AZ = UTC-7 all year. The seven old routines
-are disabled, not deleted.
+Arizona does not observe DST, so AZ = UTC-7 all year. The old routines are
+disabled, not deleted.
 
 **No per-assignee gating anywhere.** Frank, 09-01: *"its okay for the late
 staff on the early time, it can be there for them when they come in."* The 8:55

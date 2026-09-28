@@ -219,6 +219,20 @@ on or before the day and was not already closed before it.
 
 ## THE RUN STARTS AT 5:35 PM AND PREFETCHES FIRST
 
+**ONE ROUTINE RUNS THE WHOLE DAY** (Frank, 2026-09-28: "I want to consolidate
+and have 1 routine that takes care of the whole day"). "Flores daily: hourly
+checkpoints + 5:55 PM final (AZ)" fires `CRON_TZ=America/Phoenix 55 8-17 * *
+1-5`: 8:55 AM-4:55 PM are checkpoints (`intraday.py`, then
+`missed_call_tasks.py --live`), and **5:55 PM is the final run** -- Coach AI
+from Gmail into `data/coach_<day>.json`, then `daily.py`, which sends, publishes
+the boards and creates the rest of the day's missed-call tasks. It skips the
+final if `publish_board.day_is_finalized` is already true. It runs in the
+environment that holds the secrets (no credentials in the prompt) with Gmail
+on the routine. The 5:35 PM "Flores Daily Sales Digest" routine and the seven
+per-time missed-call routines are disabled, not deleted. The prefetch section
+below describes that retired 5:35 flow; `hourly.py` is not needed at 5:55
+because the checkpoints have already cached the day.
+
 **This overrides the scheduled-task prompt, which still describes a single
 6:45 PM `python3 daily.py` and is stale.** Changed 2026-09-01.
 
