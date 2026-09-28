@@ -328,6 +328,19 @@ def _verdict(raw):
     return _bool_pair(raw)
 
 
+SENDOFF_KINDS = ("producer", "busy", "asked", "no")
+
+
+def _sendoff(raw):
+    """[kind, reason] -- did the quote get sent instead of presented on the
+    call, and whose idea was it (Frank, 2026-09-28). kind is one of
+    SENDOFF_KINDS; None when no quote came up, or the read left it out."""
+    if not isinstance(raw, (list, tuple)) or not raw or raw[0] is None:
+        return None
+    kind = str(raw[0]).strip().lower()
+    return [kind, str(raw[1]).strip() if len(raw) > 1 else ""] if kind in SENDOFF_KINDS else None
+
+
 # What the call was FOR, whoever dialled (Frank, 2026-09-25): a first
 # conversation, a call to finish the quote now that the info is in, or a
 # follow-up on a quote already presented.
@@ -767,6 +780,8 @@ def _finish_card(d, producer, group, raw_dials, day, transcript, recording_ids):
         "calltype": _calltype(d.get("calltype")),
         "summary": str(d.get("summary") or "").strip(),
         "askq": askq, "asks": asks, "exit": exit_,
+        # Quote sent instead of presented, and whose idea (Frank, 2026-09-28).
+        "sendoff": _sendoff(d.get("sendoff")),
         "askfix": str(d.get("askfix") or "").strip(),
         "objs": _clean_objs(d.get("objs"), d.get("obj")),
         "good": _clean_pairs(d.get("good")),

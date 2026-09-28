@@ -93,6 +93,14 @@ Everything caches under `data/`, so a re-run resumes rather than restarting.
   soft. **No chance to assume is null, not false** -- cut off, too short,
   hung up, not recorded -- and counts neither way (`scan`'s `of_first`
   leaves it out).
+  **Quote sent instead of kept on the phone** (Frank, 2026-09-28) is each
+  card's `sendoff`: "producer" (offered on their own), "busy" (the prospect
+  said they had no time -- the Busy objection's to score), "asked" (the
+  prospect asked for email first), "no", or null (no quote came up).
+  Coaching Center > Wins and Losses counts it per producer and lists the
+  calls. Apollo returns it from 2026-09-28; earlier cards got it from
+  `sendoff.py --backfill` (one short read per card over its transcript --
+  nothing else on the card changed).
   **A quote emailed or texted after a call counts as presented** (Frank,
   2026-09-27), so the next call is a follow-up; **ending a finish-quote call
   to send the quote instead of presenting it is a flagged bad habit**.
@@ -734,7 +742,8 @@ reached for once, e.g. 6836965 created 2025-08-03).
 ## Cost
 
 Transcription is local and free. **The Anthropic API reads in `call_summary.py`,
-`renewal_notes.py` and `service_notes.py` are the only paid steps** — roughly one call per live
+`renewal_notes.py` and `service_notes.py` are the only paid steps** (plus
+`sendoff.py --backfill`, run once for September) — roughly one call per live
 contact per day, plus one call per 25 renewal SR notes (each SR's note is read
 once and kept in `data/renewal_note_reads.json` and its R2 copy; only an edited
 note is read again -- never delete that cache casually). Changing

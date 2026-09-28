@@ -606,6 +606,31 @@ for it"]`. Wrong: `"askq": false`. Same for "calltype", "asks" and "exit".
            "let's get this done"), rather than ask whether the prospect wants
            to buy? null when the call never reached a point where the sale
            could be assumed.
+"sendoff"  [verdict or null, one-sentence justification quoting the line]
+           -- did the quote get SENT instead of kept on the phone (Frank,
+           2026-09-28: "how many times the producers offer to send the quote
+           on their own instead of keeping that lead on the phone")? The
+           verdict is EXACTLY one of:
+             "producer"  the producer offered, on their own, to send the quote
+                         (or updated numbers) by email or text instead of
+                         building and presenting it with the lead still on
+                         the line -- the prospect had not said they were busy
+                         or short of time, and had not asked for it that way
+                         first. "Let me put it together and send it to you",
+                         "I'll text you the options", "¿qué tal si te mando la
+                         cotización?", "I'll email it over shortly".
+             "busy"      it was sent (or offered) after the prospect said they
+                         were busy / had no time -- the Bad Timing / Busy
+                         objection scores how that was handled.
+             "asked"     the prospect asked for it by email or text first,
+                         without saying they were short of time.
+             "no"        the quote came up and stayed on the phone -- numbers
+                         presented live, or discovery still going when the
+                         call ended for a reason that was not the producer's.
+           null when no quote came up at all (service, a no before any
+           quoting, a call cut off before it). Sending documents, an
+           application or an e-sign link for a sale made on the call is not
+           sending the quote: "no". Quote the producer's line in the reason.
 "askfix"   one sentence: what an assumptive version of this call's weakest
            moment would have sounded like. Empty string if askq and asks are
            each true or null.
