@@ -2280,6 +2280,7 @@ function mergeDayDocs(docs) {
     }
     if (t.tasks) { taskTotals.total += t.tasks.total || 0; taskTotals.completed += t.tasks.completed || 0; }
 
+    const dayHasRp = (doc.producers || []).some(p => (p.coach || {}).roleplay);
     for (const p of doc.producers || []) {
       const row = per[p.name] || (per[p.name] = {
         name: p.name, days: 0, talk_secs: 0, util_total_secs: 0, util_prod_secs: 0,
@@ -2306,8 +2307,12 @@ function mergeDayDocs(docs) {
         row.coach_calls += c.calls || 0;
         row.coach_score_wsum += (c.score || 0) * (c.calls || 0);
         row.coach_sentiment_wsum += (c.sentiment || 0) * (c.calls || 0);
-        if (c.roleplay) { row.coach_roleplay_sum += c.roleplay; row.coach_roleplay_n++; }
       }
+      // A day without a role play counts as a 0 in the range average (Frank,
+      // 2026-09-28: "the 0's arent counting into their avg") -- but only on a
+      // day that HAS role play figures for someone, so a day the Coach AI
+      // email never came in is left out rather than scored 0 for everyone.
+      if (dayHasRp) { row.coach_roleplay_sum += (p.coach || {}).roleplay || 0; row.coach_roleplay_n++; }
     }
 
     for (const [name, segs] of Object.entries(doc.outcomes || {})) {
@@ -2356,15 +2361,16 @@ function mergeDayDocs(docs) {
     }
     delete row.util_total_secs; delete row.util_prod_secs;
     if (row.tasks.total) row.tasks.pct = Math.round(1000 * row.tasks.completed / row.tasks.total) / 10;
-    if (row.coach_calls) {
+    if (row.coach_calls || row.coach_roleplay_n) {
       row.coach = {
         calls: row.coach_calls,
-        score: Math.round(row.coach_score_wsum / row.coach_calls),
-        sentiment: Math.round(row.coach_sentiment_wsum / row.coach_calls),
+        score: row.coach_calls ? Math.round(row.coach_score_wsum / row.coach_calls) : 0,
+        sentiment: row.coach_calls ? Math.round(row.coach_sentiment_wsum / row.coach_calls) : 0,
         roleplay: row.coach_roleplay_n ? Math.round(row.coach_roleplay_sum / row.coach_roleplay_n) : null,
       };
     }
     delete row.coach_calls; delete row.coach_score_wsum; delete row.coach_sentiment_wsum;
+    row._rp_sum = row.coach_roleplay_sum; row._rp_n = row.coach_roleplay_n;
     delete row.coach_roleplay_sum; delete row.coach_roleplay_n;
   }
 
@@ -2392,11 +2398,14 @@ function mergeDayDocs(docs) {
   // avg talk time or avg role play for the team").
   const teamLive = finalProducers.reduce((s, p) => s + (p.live || 0), 0);
   const teamTalkSecs = finalProducers.reduce((s, p) => s + (p.talk || 0) * (p.live || 0), 0);
-  const recordedRp = finalProducers.map(p => (p.coach || {}).roleplay).filter(Boolean);
+  // Team role play is every producer-day with role play figures, 0s included
+  // -- the same days each producer's own average counts.
+  const rpSum = Object.values(per).reduce((a, r) => a + (r._rp_sum || 0), 0);
+  const rpN = Object.values(per).reduce((a, r) => a + (r._rp_n || 0), 0);
   const finalTotals = {
     ...totals,
     talk: teamLive ? Math.floor(teamTalkSecs / teamLive) : 0,
-    roleplay: recordedRp.length ? recordedRp.reduce((a, b) => a + b, 0) / recordedRp.length : null,
+    roleplay: rpN ? rpSum / rpN : null,
     tasks: taskTotals.total ? taskTotals : null,
   };
   const businessDays = days.filter(Boolean).length;
