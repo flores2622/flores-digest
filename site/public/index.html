@@ -547,6 +547,12 @@ td.num.msgbad { color: var(--bad); font-weight: 600; }
 .hero p { margin: 0 0 9px; font-size: 12.5px; line-height: 1.6; color: var(--text-secondary); }
 .hero p:last-child { margin-bottom: 0; }
 .soper { display: flex; flex-wrap: wrap; gap: 6px 14px; }
+.ast td.num { white-space: nowrap; }
+.aspct { color: var(--text-muted); font-size: 11px; margin-left: 5px; }
+.aslists { margin-top: 10px; }
+.aslists .solist { margin-top: 6px; }
+.asfix { display: block; color: var(--text-muted); font-size: 12px; margin-top: 3px; }
+@media (max-width: 520px) { .aspct { display: none; } .ast th, .ast td { padding-left: 8px; padding-right: 8px; } }
 .sonm { white-space: nowrap; }
 .solist summary { cursor: pointer; font-size: 12.5px; font-weight: 600; }
 .solist ul { list-style: none; margin: 8px 0 0; padding: 0; }
@@ -1271,6 +1277,58 @@ function teamLeaderboardHtml(d, who) {
    before. Objections live ONLY in the Coaching tab's own Objections sub-tab
    now (Frank, 2026-09-23: "leave it only in the objections tab") -- the
    "Objections by category" table that used to sit here duplicated it. */
+/* Every assumption stat in one place (Frank, 2026-09-28: "add all
+   assumption stats to wins and losses"): the quote assumed on first and
+   finish-quote calls, the sale assumed on every call, and a follow-up's
+   sale assumed up front, through objections and at the end -- per producer
+   and team, off each card's own verdicts. n/a (the call never gave them the
+   chance) counts neither way. Replaces "The opening asks permission",
+   which was the quote figure alone. */
+const ASSUME_MEASURES = [
+  ["quote", "Quote", "Assumed the quote", c => c.askq],
+  ["sale", "Sale", "Assumed the sale", c => c.asks],
+  ["start", "Follow-up: up front", "Follow-ups: assumed the sale up front", c => (c.assume || {}).start],
+  ["obj", "…through objections", "Follow-ups: assumed the sale through objections", c => (c.assume || {}).objections],
+  ["end", "…at the end", "Follow-ups: assumed the sale at the end", c => (c.assume || {}).end],
+];
+function assumeStatsHtml(d) {
+  const calls = d.calls || [];
+  if (!calls.some(c => c.askq || c.asks || c.assume)) return "";
+  const esc = t => String(t || "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+  const judged = (list, get) => list.filter(c => { const v = get(c); return v && v[0] != null; });
+  const cell = (list, get) => {
+    const j = judged(list, get);
+    if (!j.length) return `<td class="num">—</td>`;
+    const y = j.filter(c => get(c)[0] === true).length;
+    return `<td class="num"><b>${y}</b> of ${j.length}<span class="aspct">${Math.round(100 * y / j.length)}%</span></td>`;
+  };
+  const names = SENDOFF_ORDER.filter(n => calls.some(c => c.who === n));
+  const rows = names.map(n => `<tr><td>${n.split(" ")[0]}</td>${ASSUME_MEASURES.map(m => cell(calls.filter(c => c.who === n), m[3])).join("")}</tr>`).join("");
+  const team = `<tr class="tot"><td>Team</td>${ASSUME_MEASURES.map(m => cell(calls, m[3])).join("")}</tr>`;
+  const day = c => (c._day || d.date || "").slice(5).replace("-", "/");
+  const lists = ASSUME_MEASURES.map(([k, , title, get]) => {
+    const j = judged(calls, get);
+    if (!j.length) return "";
+    const y = j.filter(c => get(c)[0] === true).length;
+    const items = j.slice().sort((a, b) => (get(a)[0] === get(b)[0] ? 0 : get(a)[0] ? 1 : -1)
+        || (a.who > b.who) - (a.who < b.who) || ((a._day || "") > (b._day || "")) - ((a._day || "") < (b._day || "")))
+      .map(c => `<li><span class="sowho">${day(c)} · ${esc((c.who || "").split(" ")[0])} · ${esc(c.lead)}
+         <span class="chip ${get(c)[0] ? "c-g" : "c-r"}">${get(c)[0] ? "assumed" : "did not"}</span></span>${esc(get(c)[1])}${
+         !get(c)[0] && c.askfix && (k === "quote" || k === "sale") ? `<span class="asfix">Assumptive version: ${esc(c.askfix)}</span>` : ""}</li>`).join("");
+    return `<details class="solist"><summary>${title} — ${y} of ${j.length}</summary><ul>${items}</ul></details>`;
+  }).join("");
+  return `
+   <div class="hero">
+    <div class="hl">Assuming the quote and the sale</div>
+    <p>Always assume, never ask. The quote is judged on first conversations and calls to finish the quote; the sale on every
+    call; a follow-up's sale up front, while handling objections, and at the end. A call that never gave them the chance
+    (cut off, too short, not recorded, no objection raised) counts neither way.</p>
+    <div class="scroll"><table class="ast"><thead><tr><th>Producer</th>${ASSUME_MEASURES.map(m => `<th class="num">${m[1]}</th>`).join("")}</tr></thead>
+    <tbody>${rows}${team}</tbody></table></div>
+    <div class="aslists">${lists}</div>
+   </div>`;
+}
+
 /* Quote sent instead of kept on the phone (Frank, 2026-09-28: "how many
    times the producers offer to send the quote on their own instead of
    keeping that lead on the phone"). Counted off each card's `sendoff` --
@@ -1307,12 +1365,7 @@ function winsLossesHtml(d, who) {
   const sold = (d.calls || []).filter(c => c.catc === "sold_on_call").map(c => c.lead);
   const says = !s ? "" : `
    <p class="sd">Patterns that only show up across calls, not within one.</p>
-   <div class="hero">
-    <div class="hl">The opening asks permission</div>
-    <p><b>${s.asked_open} of ${s.of_first ?? s.of}</b> calls with the quote still to do opened by asking for the opportunity —
-    the <b>${s.assumed_open}</b> that opened assumptively, with the work already done, are where the
-    committed next steps came from.</p>
-   </div>
+${assumeStatsHtml(d)}
    <div class="hero">
     <div class="hl">Prices on the table against asks made</div>
     <p><b>${s.priced}</b> of ${s.of} calls put a real price in front of someone. <b>${s.closed}</b> closed on the
