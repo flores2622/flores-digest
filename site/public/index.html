@@ -1266,6 +1266,9 @@ function teamLeaderboardHtml(d, who) {
   const MEDAL = ["\u{1F3C6}", "\u{1F948}", "\u{1F949}"];
   const streak = d.policy_streak || {};
   const polTitle = n => {
+    // A household marked sold today, or a live policy, is a sale today even
+    // before the checkpoint's streak knows it.
+    if (d.date && ((byName[n] || {}).pol > 0 || (hhSoldOf(d, "") != null && hhSoldOf(d, n) > 0))) return "sold today";
     const g = streak[n];
     return g === 0 ? "sold today" : g == null ? "no sale on record"
          : g + " business day" + (g === 1 ? "" : "s") + " without a sale";
@@ -2000,6 +2003,10 @@ function applyLive(base, L) {
   const tiers = d.tiers || (d.tiers = {});
   const T = d.totals || (d.totals = {});
   const ps = d.producers || [];
+  // The checkpoint's own figures, so the leaderboard can be re-ranked on
+  // what the live parts add (liveRerank, below).
+  const LB_FIELDS = { "Call Volume": "dials", "Households Quoted": "hh", "Premium Quoted": "pq", "Premium Sold": "ps" };
+  const before = Object.fromEntries(ps.map(p => [p.name, Object.fromEntries(Object.values(LB_FIELDS).map(k => [k, p[k] || 0]))]));
   const sum = k => ps.reduce((s, p) => s + (p[k] || 0), 0);
   if (L.dials && L.dials.ok) {
     for (const p of ps) {
@@ -2067,7 +2074,39 @@ function applyLive(base, L) {
       (tiers.team || (tiers.team = {})).util = tierColor("utilization_pct", T.util);
     }
   }
+  liveRerank(d, before, LB_FIELDS);
   return d;
+}
+/* The standing, the podium and every leaderboard hover follow the live
+   figures (Frank, 2026-09-28: "the hover for the leaderboard is not live,
+   the actual data is"). Each live category's checkpoint value moves by
+   exactly what the live overlay changed the producer's figure by, then the
+   same scoring (rankLeaderboard) runs again; categories with nothing live
+   (role play, talk time, contact rate) keep the checkpoint's values. */
+function liveRerank(d, before, fields) {
+  const lb = d.leaderboard;
+  if (!lb || !lb.categories || !lb.categories.length) return;
+  const names = Object.keys(lb.points || {});
+  if (names.length < 2) return;
+  const byName = Object.fromEntries((d.producers || []).map(p => [p.name, p]));
+  let moved = false;
+  for (const cat of lb.categories) {
+    const k = fields[cat.label];
+    if (!k || !cat.values) continue;
+    for (const n of names) {
+      const p = byName[n], b = before[n];
+      if (!p || !b) continue;
+      const delta = (p[k] || 0) - b[k];
+      if (delta) { cat.values[n] = (cat.values[n] || 0) + delta; moved = true; }
+    }
+  }
+  if (!moved) return;
+  const val = label => (lb.categories.find(c => c.label === label) || {}).values || {};
+  const tb = ["Premium Sold", "Households Quoted", "Call Volume"].map(val);
+  const res = rankLeaderboard(names, lb.categories.map(c => c.values || {}),
+    Object.fromEntries(names.map(n => [n, tb.map(v => v[n] || 0)])));
+  lb.points = res.points; lb.order = res.order;
+  lb.categories.forEach((c, i) => { c.points = res.perCat[i]; });
 }
 
 const fmtClock = iso => iso ? new Date(iso).toLocaleTimeString([], { hour: "numeric", minute: "2-digit", timeZone: "America/Phoenix" }) : "";
