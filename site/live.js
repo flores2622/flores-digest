@@ -350,6 +350,18 @@ export async function quotedLive(env, day, basis, memo, fetchFn = fetch) {
   const producerAz = new Set(Object.values(basis.producers || {}).map(v => String(v.az_id)));
   const rank = l => (String(l.enterStageDate || "") >= q.activity_since ? 0 : producerAz.has(String(l.assignedTo)) ? 1 : 2);
   const active = (await azLeadsActiveSince(env, q.activity_since, fetchFn)).sort((a, b) => rank(a) - rank(b));
+  // Leads marked sold today, for households sold (Frank, 2026-09-28: "i
+  // would prefer HH"). A lead marked sold moved its activity, so it is in
+  // this list already -- no extra request. The board adds these to the
+  // checkpoint's own rows.sold_leads, one per household.
+  const byAz = Object.fromEntries(Object.entries(basis.producers || {}).map(([n, v]) => [String(v.az_id), n]));
+  const sold = {};
+  for (const l of active) {
+    const who = byAz[String(l.assignedTo)];
+    if (!who || l.status !== 2 || !String(l.soldDate || "").startsWith(day)) continue;
+    (sold[who] || (sold[who] = [])).push({ lead_id: l.id, household: l.convertedHouseholdId ?? null,
+      lead: [l.firstname, l.lastname].map(x => String(x || "").trim()).filter(Boolean).join(" ") });
+  }
   for (const l of active) {
     const id = String(l.id), was = prev[id];
     if (was && was.act === l.lastActivityDate) { leads[id] = was; continue; }
@@ -387,7 +399,7 @@ export async function quotedLive(env, day, basis, memo, fetchFn = fetch) {
     for (const w of fresh) { per[w].hh++; per[w].pq += v.prem; per[w].new_leads.push(Number(id)); }
   }
   for (const v of Object.values(per)) v.pq = Math.round(v.pq);
-  return { data: { per, pending, looked_at: Object.keys(leads).length }, memo: { checkpoint_since: q.activity_since, leads } };
+  return { data: { per, sold, pending, looked_at: Object.keys(leads).length }, memo: { checkpoint_since: q.activity_since, leads } };
 }
 
 /* ---- the route --------------------------------------------------------- */

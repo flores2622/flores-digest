@@ -1028,6 +1028,26 @@ function hoverable(node, html) {
    Policies has no colour: its only rule is the per-producer sale streak,
    which has no team-wide equivalent (see publish_board.apply_policy_streak's
    own comment). */
+/* Households sold (Frank, 2026-09-28: "we keep displaying HH quoted, but
+   Policies sold, it needs to be one or the other. i would prefer HH"): the
+   leads marked sold (rows.sold_leads, plus any the live refresh found since
+   the checkpoint), one per household per day -- duplicate lead records are
+   pervasive, so the lead's household id when it has one, else its name.
+   Premium Sold is still the policies' own premium. null when the document
+   has no sold-lead rows (days before digest_rows), so the old Policies
+   display stands there. */
+function hhSoldOf(d, name) {
+  const R = d.rows;
+  if (!R || !R.sold_leads) return null;
+  const keys = new Set();
+  const add = (r, who) => {
+    if (name && who !== name) return;
+    keys.add(`${r.day || d.date || ""}|${r.household != null ? "h" + r.household : "n" + String(r.lead || r.lead_id || "").toLowerCase()}`);
+  };
+  for (const r of R.sold_leads) add(r, r.who);
+  for (const [w, list] of Object.entries(d.live_sold || {})) for (const r of list) add(r, w);
+  return keys.size;
+}
 function digestDay(d, who) {
   const byName = Object.fromEntries((d.producers || []).map(p => [p.name, p]));
   const focus = who ? byName[who] : null;
@@ -1067,18 +1087,25 @@ function digestDay(d, who) {
   // 2026-09-23), PLUS Closing Ratio as a 6th tile in the SAME row (Frank,
   // 2026-09-23: "I want all 6 cards in 1 row, and they dont need to be the
   // same size if thats needed to make them fit").
+  const hhSold = hhSoldOf(d, focus ? focus.name : "");
   const tiles = [
     ["Dials", t.dials ?? 0, dialsNote, tc("dials"), liveOn(d, "dials")],
     ["Live contacts", t.live ?? 0, rate + "% contact rate", tc("rate")],
-    ["HH/Prem. Quoted", `<span class="${tc("hh")}">${t.hh ?? 0} HH</span><br><span class="${tc("pq")}">${money(t.pq)}</span>`, "", "", liveOn(d, "quotes")],
+    ["HH/Prem. Quoted", `<span class="${tc("hh")}">${t.hh ?? 0} HH</span><br><span class="${tc("pq")}">${money(t.pq)}</span>`,
+      t.hh ? `avg ${money(t.pq / t.hh)} per HH` : "", "", liveOn(d, "quotes")],
     // Policies colours on the sale streak (see apply_policy_streak), same
     // tier data the Team Leaderboard table's own Pol column already uses --
     // this tile just wasn't wrapping the number in it (unlike HH/Prem.
     // Quoted right above, which colours both halves).
-    ["Pol/Prem. Sold", `<span class="${tc("pol")}">${t.pol ?? 0} Pol</span><br><span class="${tc("ps")}">${money(t.ps)}</span>`, "", "", liveOn(d, "sales")],
+    hhSold == null
+      ? ["Pol/Prem. Sold", `<span class="${tc("pol")}">${t.pol ?? 0} Pol</span><br><span class="${tc("ps")}">${money(t.ps)}</span>`, "", "", liveOn(d, "sales")]
+      // Households sold come from the lead reads, premium from the policies:
+      // it glows only when both are live.
+      : ["HH/Prem. Sold", `<span class="${tc("pol")}">${hhSold} HH</span><br><span class="${tc("ps")}">${money(t.ps)}</span>`,
+         `${t.pol ?? 0} polic${(t.pol ?? 0) === 1 ? "y" : "ies"}${hhSold ? ` &middot; ${((t.pol || 0) / hhSold).toFixed(1)} per HH` : ""}`, "", liveOn(d, "closing")],
   ];
   if (t.util != null) tiles.push(["Utilization", t.util + "%", "weighted", tc("util"), liveOn(d, "util")]);
-  const DRILL = { "Dials": "dials", "Live contacts": "contacts", "HH/Prem. Quoted": "quoted", "Pol/Prem. Sold": "sold" };
+  const DRILL = { "Dials": "dials", "Live contacts": "contacts", "HH/Prem. Quoted": "quoted", "Pol/Prem. Sold": "sold", "HH/Prem. Sold": "sold" };
   const tilesHtml = tiles.map(([k, v, n, cls, live]) =>
     `<div${DRILL[k] ? ddk(DRILL[k], `tile${live ? " isLive" : ""}`) : ` class="tile${live ? " isLive" : ""}"`}><div class="k">${k}</div><div class="v${cls ? " " + cls : ""}">${v}</div>${n ? `<div class="n">${n}</div>` : ""}</div>`).join("");
 
@@ -1097,7 +1124,11 @@ function digestDay(d, who) {
   // not, so the ratio stays wholly the checkpoint's (`cp_pol`/`cp_ps`, kept
   // by applyLive) rather than a live sale over a stale quote count.
   const hh = t.hh ?? 0, pol = t.cp_pol ?? t.pol ?? 0, pq = t.pq ?? 0, ps = t.cp_ps ?? t.ps ?? 0;
-  const hhClosingRatio = hh ? (100 * pol / hh) : null;
+  // Households: households sold over households quoted -- the same unit on
+  // both sides (Frank, 2026-09-28), where the document has sold-lead rows.
+  const hhClosingRatio = hh ? (100 * (hhSold ?? pol) / hh) : null;
+  const closingHhTier = hhSold != null && hhClosingRatio != null
+    ? (TI[tierColor("closing_ratio_pct", hhClosingRatio)] || "") : tc("closing_hh");
   const premClosingRatio = pq ? (100 * ps / pq) : null;
   // Tier-coloured (Frank, 2026-09-23, off industry cross-sell close-rate
   // research: green >=25%, yellow 15-24.99%, red <15% -- see
@@ -1106,7 +1137,7 @@ function digestDay(d, who) {
   const pct = v => v == null ? "—" : v.toFixed(1) + "%";
   const closingRatioTileHtml = `<div${ddk("closing", `tile${liveOn(d, "closing") ? " isLive" : ""}`)}>
    <div class="k">Closing Ratio</div>
-   <div class="v"><span class="${tc("closing_hh")}">${pct(hhClosingRatio)}</span> <span class="n" style="font-weight:400">households</span><br><span class="${tc("closing_pq")}">${pct(premClosingRatio)}</span> <span class="n" style="font-weight:400">premium</span></div>
+   <div class="v"><span class="${closingHhTier}">${pct(hhClosingRatio)}</span> <span class="n" style="font-weight:400">households</span><br><span class="${tc("closing_pq")}">${pct(premClosingRatio)}</span> <span class="n" style="font-weight:400">premium</span></div>
   </div>`;
 
   return `<div class="tiles tiles-6">${tilesHtml}${closingRatioTileHtml}</div>
@@ -1266,6 +1297,7 @@ function teamLeaderboardHtml(d, who) {
   }
 
   const lv = part => liveOn(d, part) ? " isLive" : "";
+  const hhCol = hhSoldOf(d, "") != null;
   const rows = ranked.map((p, i) => `<tr>
     <td><span class="who">${
        !focus && i < 3 ? `<span class="mdl" role="img" aria-label="${["1st", "2nd", "3rd"][i]}">${MEDAL[i]}</span>` : ""}${pbadge(DOT[p.name] || "#8a877f", p.name)}</span></td>
@@ -1277,7 +1309,7 @@ function teamLeaderboardHtml(d, who) {
     ${soCell(SO.filter(c => c.who === p.name))}
     <td class="num ${tc(p.name, "hh")}${lv("quotes")}"${lbRankTag(d, "Households Quoted", p.name)}>${p.hh ?? 0}</td>
     <td class="num ${tc(p.name, "pq")}${lv("quotes")}"${lbRankTag(d, "Premium Quoted", p.name)}>${money(p.pq)}</td>
-    <td class="num ${tc(p.name, "pol")}${lv("sales")}" title="${polTitle(p.name)}">${p.pol ?? 0}</td>
+    <td class="num ${tc(p.name, "pol")}${lv(hhCol ? "closing" : "sales")}" title="${polTitle(p.name)}">${hhCol ? `${hhSoldOf(d, p.name)} <span style="opacity:.72">(${p.pol ?? 0} pol)</span>` : (p.pol ?? 0)}</td>
     <td class="num ${tc(p.name, "ps")}${lv("sales")}"${lbRankTag(d, "Premium Sold", p.name)}>${money(p.ps)}</td>
     ${p.util != null ? `<td class="num ${tc(p.name, "util")}${lv("util")}">${p.util}%</td>` : ""}</tr>`).join("");
   const tt = k => TI[((d.tiers || {})["team"] || {})[k]] || "";
@@ -1292,7 +1324,7 @@ function teamLeaderboardHtml(d, who) {
     ${soCell(SO)}
     <td class="num ${tt("hh")}${lv("quotes")}">${T.hh ?? 0}</td>
     <td class="num ${tt("pq")}${lv("quotes")}">${money(T.pq)}</td>
-    <td class="num ${tt("pol")}${lv("sales")}">${T.pol ?? 0}</td>
+    <td class="num ${tt("pol")}${lv(hhCol ? "closing" : "sales")}">${hhCol ? `${hhSoldOf(d, "")} <span style="opacity:.72">(${T.pol ?? 0} pol)</span>` : (T.pol ?? 0)}</td>
     <td class="num ${tt("ps")}${lv("sales")}">${money(T.ps)}</td>
     ${T.util != null ? `<td class="num ${tt("util")}${lv("util")}">${T.util}%</td>` : ""}</tr>`;
 
@@ -1304,7 +1336,7 @@ function teamLeaderboardHtml(d, who) {
    ${MP ? `<th class="num" title="Texts and emails the producer typed and sent themselves; automation not counted">Texts / Emails</th>` : ""}
    ${SO.length ? `<th class="num" title="Calls where the producer offered on their own to send the quote instead of keeping the lead on the phone, of the calls where a quote came up">Sent the Quote</th>` : ""}
    <th class="num">Households Quoted</th><th class="num">Premium Quoted</th>
-   <th class="num">Policies</th><th class="num">Premium Sold</th>
+   <th class="num">${hhCol ? "HH Sold" : "Policies"}</th><th class="num">Premium Sold</th>
    ${ranked.some(p => p.util != null) ? "<th class=\"num\">Utilization</th>" : ""}</tr></thead>
    <tbody>${rows}${tot}</tbody></table></div></div>`;
 }
@@ -1993,6 +2025,7 @@ function applyLive(base, L) {
     team.ps = T.ps ? "green" : team.pol;
   }
   if (L.quotes && L.quotes.ok) {
+    d.live_sold = L.quotes.data.sold || {};
     const frac = businessFraction((d.live_basis || {}).business_hours);
     for (const p of ps) {
       const x = (L.quotes.data.per || {})[p.name]; if (!x) continue;
