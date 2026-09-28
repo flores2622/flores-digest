@@ -1253,7 +1253,7 @@ function teamLeaderboardHtml(d, who) {
     <td class="num ${tt("ps")}${lv("sales")}">${money(T.ps)}</td>
     ${T.util != null ? `<td class="num ${tt("util")}${lv("util")}">${T.util}%</td>` : ""}</tr>`;
 
-  const rangeNote = !focus && lb.days > 1 ? `<p class="sd">Each day's leaderboard points added up over ${lb.days} reporting days.</p>` : "";
+  const rangeNote = !focus && lb.averaged ? `<p class="sd">Ranked on the ${lb.days} reporting days: each producer's per-day averages over the days they worked, scored like a single day. For the ranking a missed role play counts as 0; the Role Play column is the average of the sessions they did.</p>` : "";
   return `<div class="sect"><h2>Team Leaderboard</h2>
    ${rangeNote}${podium}
    <div class="scroll"><table><thead><tr><th>Producer</th>${hasRoleplay ? "<th class=\"num\">Role Play</th>" : ""}
@@ -2133,15 +2133,11 @@ function secsToHHMM(s) {
    tiered by multiplying the daily goal by the number of BUSINESS days
    being filtered") -- see rangeProducerTiers/rangeTeamTiers just below,
    a straight JS mirror of digest_config.THRESHOLDS/tier() and
-   board_payload._producer_tiers/_team_tiers. The leaderboard is each
-   day's own points ADDED UP (Frank, 2026-09-28: "I want to see a
-   leaderboard for date ranges as well") -- every day was already scored by
-   digest_config.leaderboard_score, the one scoring function the email and
-   the board share, so the range standing is the sum of those daily points,
-   ties broken like a single day (premium sold, households quoted, dials,
-   over the range). Still OMITTED: policy_streak colouring, a day-to-day
-   sale streak with no meaning stretched across a range; polTitle() falls
-   back to "no sale on record".
+   board_payload._producer_tiers/_team_tiers. The leaderboard is RE-RANKED
+   on the range's per-day averages (Frank, 2026-09-28) -- see the
+   leaderboard block at the end of this function. Still OMITTED:
+   policy_streak colouring, a day-to-day sale streak with no meaning
+   stretched across a range; polTitle() falls back to "no sale on record".
 
    Talk time, utilization and Coach AI score/sentiment are all reweighted
    from the underlying totals (seconds, call counts), not averaged day to
@@ -2235,6 +2231,31 @@ function rangeTeamTiers(totals, businessDays) {
   if (ttp != null) out.tasks = tierColor("task_completion_pct", ttp || 0);
   return out;
 }
+// A straight JS mirror of digest_config.leaderboard_score (keep in step):
+// per category, 5-4-3-2-1 by value, a tie takes the LOWEST place it occupies,
+// no activity scores 0 but still takes its place; standing by total points,
+// then the tiebreak values, highest first.
+const LEADERBOARD_POINTS = [5, 4, 3, 2, 1];
+function rankLeaderboard(names, categories, tiebreak) {
+  const place = i => LEADERBOARD_POINTS[i] || 0;
+  const points = Object.fromEntries(names.map(n => [n, 0]));
+  for (const vals of categories) {
+    const v = Object.fromEntries(names.map(n => [n, vals[n] || 0]));
+    const order = [...names].sort((a, b) => v[b] - v[a]);
+    for (let i = 0; i < order.length;) {
+      let j = i;
+      while (j + 1 < order.length && v[order[j + 1]] === v[order[i]]) j++;
+      for (const n of order.slice(i, j + 1)) points[n] += v[n] ? place(j) : 0;
+      i = j + 1;
+    }
+  }
+  const order = [...names].sort((a, b) => {
+    if (points[b] !== points[a]) return points[b] - points[a];
+    for (let k = 0; k < tiebreak[a].length; k++) if (tiebreak[b][k] !== tiebreak[a][k]) return tiebreak[b][k] - tiebreak[a][k];
+    return 0;
+  });
+  return { points, order };
+}
 function mergeDayDocs(docs) {
   const NUM = ["dials", "live", "hh", "pq", "ps", "pol"];
   const totals = Object.fromEntries(NUM.map(k => [k, 0]));
@@ -2280,10 +2301,11 @@ function mergeDayDocs(docs) {
     }
     if (t.tasks) { taskTotals.total += t.tasks.total || 0; taskTotals.completed += t.tasks.completed || 0; }
 
+    const dayHasRp = (doc.producers || []).some(p => (p.coach || {}).roleplay);
     for (const p of doc.producers || []) {
       const row = per[p.name] || (per[p.name] = {
         name: p.name, days: 0, talk_secs: 0, util_total_secs: 0, util_prod_secs: 0,
-        coach_calls: 0, coach_score_wsum: 0, coach_sentiment_wsum: 0, coach_roleplay_sum: 0, coach_roleplay_n: 0,
+        coach_calls: 0, coach_score_wsum: 0, coach_sentiment_wsum: 0, coach_roleplay_sum: 0, coach_roleplay_n: 0, rp_scored_sum: 0, rp_scored_n: 0, worked: 0,
         tasks: { total: 0, completed: 0 }, ...Object.fromEntries(NUM.map(k => [k, 0])),
       });
       for (const k of NUM) row[k] += p[k] || 0;
@@ -2306,8 +2328,21 @@ function mergeDayDocs(docs) {
         row.coach_calls += c.calls || 0;
         row.coach_score_wsum += (c.score || 0) * (c.calls || 0);
         row.coach_sentiment_wsum += (c.sentiment || 0) * (c.calls || 0);
-        if (c.roleplay) { row.coach_roleplay_sum += c.roleplay; row.coach_roleplay_n++; }
       }
+      // Role play, two ways (Frank, 2026-09-28: "I want it to hurt their
+      // points but not average. i do want to see the true avg between
+      // sessions"). The Role Play figure shown is the average of the sessions
+      // they actually did; the leaderboard ranks on rp_scored, where a day
+      // WITHOUT a role play counts as 0 -- only on a day they worked that has
+      // role play figures for someone, so neither a day off nor a day the
+      // Coach AI email never came in costs anything.
+      const rp = (p.coach || {}).roleplay;
+      if (rp) { row.coach_roleplay_sum += rp; row.coach_roleplay_n++; }
+      // A day worked, for the range leaderboard's per-day averages. A day
+      // off is not a missed role play.
+      const worked = !!(p.total_dials || p.dials || p.live || p.hh || p.pol || p.ps || rp);
+      if (worked) row.worked++;
+      if (dayHasRp && worked) { row.rp_scored_sum += rp || 0; row.rp_scored_n++; }
     }
 
     for (const [name, segs] of Object.entries(doc.outcomes || {})) {
@@ -2356,16 +2391,18 @@ function mergeDayDocs(docs) {
     }
     delete row.util_total_secs; delete row.util_prod_secs;
     if (row.tasks.total) row.tasks.pct = Math.round(1000 * row.tasks.completed / row.tasks.total) / 10;
-    if (row.coach_calls) {
+    if (row.coach_calls || row.coach_roleplay_n) {
       row.coach = {
         calls: row.coach_calls,
-        score: Math.round(row.coach_score_wsum / row.coach_calls),
-        sentiment: Math.round(row.coach_sentiment_wsum / row.coach_calls),
+        score: row.coach_calls ? Math.round(row.coach_score_wsum / row.coach_calls) : 0,
+        sentiment: row.coach_calls ? Math.round(row.coach_sentiment_wsum / row.coach_calls) : 0,
         roleplay: row.coach_roleplay_n ? Math.round(row.coach_roleplay_sum / row.coach_roleplay_n) : null,
       };
     }
     delete row.coach_calls; delete row.coach_score_wsum; delete row.coach_sentiment_wsum;
-    delete row.coach_roleplay_sum; delete row.coach_roleplay_n;
+    row._rp_sum = row.coach_roleplay_sum; row._rp_n = row.coach_roleplay_n;
+    row.rp_scored = row.rp_scored_n ? row.rp_scored_sum / row.rp_scored_n : 0;
+    delete row.coach_roleplay_sum; delete row.coach_roleplay_n; delete row.rp_scored_sum; delete row.rp_scored_n;
   }
 
   totals.rate = totals.dials ? Math.round(1000 * totals.live / totals.dials) / 10 : 0;
@@ -2392,30 +2429,36 @@ function mergeDayDocs(docs) {
   // avg talk time or avg role play for the team").
   const teamLive = finalProducers.reduce((s, p) => s + (p.live || 0), 0);
   const teamTalkSecs = finalProducers.reduce((s, p) => s + (p.talk || 0) * (p.live || 0), 0);
-  const recordedRp = finalProducers.map(p => (p.coach || {}).roleplay).filter(Boolean);
+  // Team role play is the average of every session anyone did.
+  const rpSum = Object.values(per).reduce((a, r) => a + (r._rp_sum || 0), 0);
+  const rpN = Object.values(per).reduce((a, r) => a + (r._rp_n || 0), 0);
   const finalTotals = {
     ...totals,
     talk: teamLive ? Math.floor(teamTalkSecs / teamLive) : 0,
-    roleplay: recordedRp.length ? recordedRp.reduce((a, b) => a + b, 0) / recordedRp.length : null,
+    roleplay: rpN ? rpSum / rpN : null,
     tasks: taskTotals.total ? taskTotals : null,
   };
   const businessDays = days.filter(Boolean).length;
   const tiers = businessDays ? Object.fromEntries(finalProducers.map(p => [p.name, rangeProducerTiers(p, businessDays)])) : {};
   if (businessDays) tiers.team = rangeTeamTiers(finalTotals, businessDays);
 
-  const lbPoints = {};
-  let lbDays = 0;
-  for (const doc of docs) {
-    const pts = (doc.leaderboard || {}).points;
-    if (!pts) continue;
-    lbDays++;
-    for (const [n, v] of Object.entries(pts)) lbPoints[n] = (lbPoints[n] || 0) + (v || 0);
-  }
-  const perByName = Object.fromEntries(finalProducers.map(p => [p.name, p]));
-  const lbOrder = Object.keys(lbPoints).filter(n => perByName[n]).sort((a, b) =>
-    (lbPoints[b] - lbPoints[a]) || ((perByName[b].ps || 0) - (perByName[a].ps || 0))
-    || ((perByName[b].hh || 0) - (perByName[a].hh || 0)) || ((perByName[b].dials || 0) - (perByName[a].dials || 0)));
-  const leaderboard = lbDays ? { points: lbPoints, order: lbOrder, days: lbDays } : null;
+  // Range leaderboard (Frank, 2026-09-28: "re-rank on averages"): the same
+  // seven categories and 5-4-3-2-1 scoring as a single day
+  // (digest_config.leaderboard_score, mirrored in rankLeaderboard), fed each
+  // producer's figures over the range -- counts as per-day averages over the
+  // days they worked, so a day off costs nothing; rates as the range's own;
+  // role play as rp_scored, where a missed role play day is a 0.
+  const perDay = (p, k) => p.worked ? (p[k] || 0) / p.worked : 0;
+  const lbCats = [
+    p => p.rp_scored || 0, p => perDay(p, "dials"), p => p.talk || 0, p => p.rate || 0,
+    p => perDay(p, "hh"), p => perDay(p, "pq"), p => perDay(p, "ps"),
+  ];
+  const ranked = finalProducers.filter(p => p.worked);
+  const leaderboard = ranked.length > 1 ? {
+    ...rankLeaderboard(ranked.map(p => p.name), lbCats.map(fn => Object.fromEntries(ranked.map(p => [p.name, fn(p)]))),
+      Object.fromEntries(ranked.map(p => [p.name, [perDay(p, "ps"), perDay(p, "hh"), perDay(p, "dials")]]))),
+    days: days.filter(Boolean).length, averaged: true,
+  } : null;
 
   return {
     date: null, days: days.filter(Boolean),
