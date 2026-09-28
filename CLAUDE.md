@@ -227,8 +227,8 @@ because the prefetch broke.
 
 ## Live figures between checkpoints
 
-**Today's board is the last checkpoint, with dials, sales and utilization
-kept live** (Frank, 2026-09-24: "just live data where its already at on
+**Today's board is the last checkpoint, with dials, sales, utilization,
+quotes, contacts, talk time and texts & emails kept live** (Frank, 2026-09-24: "just live data where its already at on
 everything possible, and the header up there specifying what is stale from
 the last hourly run"). No separate live strip: the Worker's `/api/live/<day>`
 (`site/live.js`) is written into the same document the page renders. The
@@ -256,8 +256,8 @@ and anything without the glow is the checkpoint's (Frank, 2026-09-24).
   quotes are.
 - **A one-minute Worker cron** (wrangler.jsonc, business hours) refreshes
   the parts in batches sized for the free plan's 50 outside requests per
-  run: even minutes dials/sales/utilization, odd minutes up to 30 lead
-  reads. AgencyZoom 429s on bursts of note reads; a failed part keeps its
+  run: even minutes dials/contacts/sales/utilization, odd minutes up to 30
+  lead reads (quotes, contact evidence and messages from the same reads). AgencyZoom 429s on bursts of note reads; a failed part keeps its
   last good answer for the same checkpoint instead of blanking the board.
 - **The Worker logs in to AgencyZoom ONCE a day, not once a run.** A per-run
   login meant ~30 an hour, and on 2026-09-24 AgencyZoom began refusing the
@@ -266,10 +266,34 @@ and anything without the glow is the checkpoint's (Frank, 2026-09-24).
   `worker-private/az_token.json` (served by no route) and is shared by every
   run; a refused login pauses AgencyZoom for 30 minutes
   (`worker-private/az_pause.json`) instead of retrying every minute.
-- **Contact rate stays the checkpoint's.** The board uses the document's own
-  `rate`, never live contacts over live dials -- live dials over a stale
-  numerator would read as a collapsing rate. The closing ratio falls back to
-  the checkpoint's (`cp_pol`/`cp_ps`) whenever quotes are not live.
+- **Contact rate, live contacts and Avg Talk Time are live too** (Frank,
+  2026-09-28: "avg talk time, contact rate, and texts and emails should all
+  be live as well"), and they are PROVISIONAL: the Worker cannot hear a
+  recording, so a dial since the checkpoint is judged by `is_live`'s order
+  with the recording left out -- a producer note stating contact, a
+  no-contact note, an outcome note, TRAQ's voicemail summary, RingCentral's
+  disposition -- then, with nothing written, a leg of 60s or more
+  (`live_board.PROVISIONAL_LIVE_SECONDS`; measured 09-22..09-25: day totals
+  27/12/12/13 against the recordings' 31/11/11/13, about a third of the
+  individual calls wrong either way). The next checkpoint reads the
+  recordings and settles every one. A counted number is judged only on its
+  new legs and the notes written since; an excluded one stays excluded; a
+  call back turns its dial live; any other answered call-in adds talk time,
+  never a contact. The rate is live contacts over LIVE dials, so it is live
+  only when dials are. The notes come from the quotes part's own reads
+  (dialled leads first), so it costs no extra AgencyZoom requests.
+  `site/live_notes.js contactDeltas`; the checkpoint's side is
+  `live_basis.live` / `.talk` / `.contact`.
+- **Texts & emails are live** the same way (`live_notes.messageDeltas`,
+  `live_basis.messages` from `messages.build(live=True)`): the checkpoint
+  hands over, per person, the newest note it read, who last typed to them,
+  who has messaged them today and the reply still waiting; the Worker adds
+  only what is newer, by messages.py's own patterns and templates. Checked
+  against a full rebuild at 12 checkpoint times on 09-23 and 09-25: every
+  count and reply row identical, except one tie between two producers'
+  duplicate lead records, which Python breaks by corpus order the Worker
+  cannot see (the next checkpoint fixes it). The closing ratio falls back
+  to the checkpoint's (`cp_pol`/`cp_ps`) whenever quotes are not live.
 - The Worker needs its own secrets, set in Cloudflare (Workers & Pages ->
   flores-board -> Settings -> Variables and Secrets, type Secret):
   `RC_CLIENT_ID`, `RC_CLIENT_SECRET`, `RC_SERVER_URL`, `RC_JWT`,

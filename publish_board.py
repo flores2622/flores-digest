@@ -227,9 +227,12 @@ def build(day, log=print, live=False):
     # 2026-09-27). From the notes already on disk; never fails the day.
     try:
         import messages
-        m = messages.build(day, log=log)
+        m = messages.build(day, log=log, live=live)
         if m:
+            carry = m.pop("_live", None)
             doc["messages"] = m
+            if carry and "live_basis" in doc:
+                doc["live_basis"]["messages"] = carry
     except Exception as e:
         log(f"  messages: skipped ({type(e).__name__}: {e})")
     try:
