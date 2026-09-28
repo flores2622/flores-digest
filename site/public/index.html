@@ -1253,8 +1253,9 @@ function teamLeaderboardHtml(d, who) {
     <td class="num ${tt("ps")}${lv("sales")}">${money(T.ps)}</td>
     ${T.util != null ? `<td class="num ${tt("util")}${lv("util")}">${T.util}%</td>` : ""}</tr>`;
 
+  const rangeNote = !focus && lb.days > 1 ? `<p class="sd">Each day's leaderboard points added up over ${lb.days} reporting days.</p>` : "";
   return `<div class="sect"><h2>Team Leaderboard</h2>
-   ${podium}
+   ${rangeNote}${podium}
    <div class="scroll"><table><thead><tr><th>Producer</th>${hasRoleplay ? "<th class=\"num\">Role Play</th>" : ""}
    <th class="num">Call Volume</th><th class="num">Avg Talk Time</th><th class="num">Contact Rate</th>
    ${MP ? `<th class="num" title="Texts and emails the producer typed and sent themselves; automation not counted">Texts / Emails</th>` : ""}
@@ -2132,14 +2133,15 @@ function secsToHHMM(s) {
    tiered by multiplying the daily goal by the number of BUSINESS days
    being filtered") -- see rangeProducerTiers/rangeTeamTiers just below,
    a straight JS mirror of digest_config.THRESHOLDS/tier() and
-   board_payload._producer_tiers/_team_tiers. Still OMITTED: leaderboard.
-   order/points and policy_streak coloring, which aren't goal thresholds
-   at all -- one's a ranked-points system, the other a day-to-day sale
-   streak -- and have no meaning stretched across a range. Every renderer
-   that reads them already degrades gracefully without them:
-   teamLeaderboardHtml falls back to producers[] order with no podium/
-   medals, and polTitle() falls back to "no sale on record" -- confirmed
-   by reading each one, not assumed.
+   board_payload._producer_tiers/_team_tiers. The leaderboard is each
+   day's own points ADDED UP (Frank, 2026-09-28: "I want to see a
+   leaderboard for date ranges as well") -- every day was already scored by
+   digest_config.leaderboard_score, the one scoring function the email and
+   the board share, so the range standing is the sum of those daily points,
+   ties broken like a single day (premium sold, households quoted, dials,
+   over the range). Still OMITTED: policy_streak colouring, a day-to-day
+   sale streak with no meaning stretched across a range; polTitle() falls
+   back to "no sale on record".
 
    Talk time, utilization and Coach AI score/sentiment are all reweighted
    from the underlying totals (seconds, call counts), not averaged day to
@@ -2401,9 +2403,23 @@ function mergeDayDocs(docs) {
   const tiers = businessDays ? Object.fromEntries(finalProducers.map(p => [p.name, rangeProducerTiers(p, businessDays)])) : {};
   if (businessDays) tiers.team = rangeTeamTiers(finalTotals, businessDays);
 
+  const lbPoints = {};
+  let lbDays = 0;
+  for (const doc of docs) {
+    const pts = (doc.leaderboard || {}).points;
+    if (!pts) continue;
+    lbDays++;
+    for (const [n, v] of Object.entries(pts)) lbPoints[n] = (lbPoints[n] || 0) + (v || 0);
+  }
+  const perByName = Object.fromEntries(finalProducers.map(p => [p.name, p]));
+  const lbOrder = Object.keys(lbPoints).filter(n => perByName[n]).sort((a, b) =>
+    (lbPoints[b] - lbPoints[a]) || ((perByName[b].ps || 0) - (perByName[a].ps || 0))
+    || ((perByName[b].hh || 0) - (perByName[a].hh || 0)) || ((perByName[b].dials || 0) - (perByName[a].dials || 0)));
+  const leaderboard = lbDays ? { points: lbPoints, order: lbOrder, days: lbDays } : null;
+
   return {
     date: null, days: days.filter(Boolean),
-    totals: finalTotals,
+    totals: finalTotals, leaderboard,
     producers: finalProducers,
     outcomes, task_audit: { buckets: taskBuckets, rows: taskRows },
     objcats: Object.values(objcats), scan: hasScan ? scan : null,
