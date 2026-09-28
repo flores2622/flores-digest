@@ -321,6 +321,36 @@ export function quotedBy(lead, notes, day, basis, rx) {
   return out;
 }
 
+/* Households sold (Frank, 2026-09-28): every lead marked sold today, read in
+   the same refresh as the policies so the HH/Prem. Sold tile is live
+   whenever sales are. Leads come newest activity first (lastActivityDate is
+   UTC; marking a lead sold moves it), paged back to the start of the
+   Arizona day. `complete` is false only if the page cap stopped it short,
+   and then the board also keeps the checkpoint's own sold-lead rows. */
+const SOLD_LEAD_PAGES = 5;
+export async function soldLeadsToday(env, day, basis, fetchFn = fetch) {
+  const since = `${day} 07:00:00`;   // midnight Arizona (UTC-7), in UTC
+  const byAz = Object.fromEntries(Object.entries(basis.producers || {}).map(([n, v]) => [String(v.az_id), n]));
+  const per = {}, seen = new Set();
+  let complete = false;
+  for (let page = 0; page < SOLD_LEAD_PAGES; page++) {
+    const jl = await azGet(env, "/v1/api/leads/list", fetchFn, {
+      method: "POST", body: JSON.stringify({ page, pageSize: 100, sort: "lastActivityDate", order: "desc" }),
+    });
+    const ls = jl.leads || [];
+    for (const l of ls) {
+      if (String(l.lastActivityDate || "") < since || seen.has(l.id)) continue;
+      seen.add(l.id);
+      const who = byAz[String(l.assignedTo)];
+      if (!who || l.status !== 2 || !String(l.soldDate || "").startsWith(day)) continue;
+      (per[who] || (per[who] = [])).push({ lead_id: l.id, household: l.convertedHouseholdId ?? null,
+        lead: [l.firstname, l.lastname].map(x => String(x || "").trim()).filter(Boolean).join(" ") });
+    }
+    if (!ls.length || String(ls[ls.length - 1].lastActivityDate || "") < since) { complete = true; break; }
+  }
+  return { per, complete };
+}
+
 async function azLeadsActiveSince(env, since, fetchFn) {
   const out = [], seen = new Set();
   for (let page = 0; page < 5; page++) {
@@ -350,18 +380,6 @@ export async function quotedLive(env, day, basis, memo, fetchFn = fetch) {
   const producerAz = new Set(Object.values(basis.producers || {}).map(v => String(v.az_id)));
   const rank = l => (String(l.enterStageDate || "") >= q.activity_since ? 0 : producerAz.has(String(l.assignedTo)) ? 1 : 2);
   const active = (await azLeadsActiveSince(env, q.activity_since, fetchFn)).sort((a, b) => rank(a) - rank(b));
-  // Leads marked sold today, for households sold (Frank, 2026-09-28: "i
-  // would prefer HH"). A lead marked sold moved its activity, so it is in
-  // this list already -- no extra request. The board adds these to the
-  // checkpoint's own rows.sold_leads, one per household.
-  const byAz = Object.fromEntries(Object.entries(basis.producers || {}).map(([n, v]) => [String(v.az_id), n]));
-  const sold = {};
-  for (const l of active) {
-    const who = byAz[String(l.assignedTo)];
-    if (!who || l.status !== 2 || !String(l.soldDate || "").startsWith(day)) continue;
-    (sold[who] || (sold[who] = [])).push({ lead_id: l.id, household: l.convertedHouseholdId ?? null,
-      lead: [l.firstname, l.lastname].map(x => String(x || "").trim()).filter(Boolean).join(" ") });
-  }
   for (const l of active) {
     const id = String(l.id), was = prev[id];
     if (was && was.act === l.lastActivityDate) { leads[id] = was; continue; }
@@ -399,7 +417,7 @@ export async function quotedLive(env, day, basis, memo, fetchFn = fetch) {
     for (const w of fresh) { per[w].hh++; per[w].pq += v.prem; per[w].new_leads.push(Number(id)); }
   }
   for (const v of Object.values(per)) v.pq = Math.round(v.pq);
-  return { data: { per, sold, pending, looked_at: Object.keys(leads).length }, memo: { checkpoint_since: q.activity_since, leads } };
+  return { data: { per, pending, looked_at: Object.keys(leads).length }, memo: { checkpoint_since: q.activity_since, leads } };
 }
 
 /* ---- the route --------------------------------------------------------- */
@@ -409,6 +427,7 @@ const NEEDS = {
   sales: ["AZ_USERNAME", "AZ_PASSWORD"],
   util: ["INSIGHTFUL_TOKEN"],
   quotes: ["AZ_USERNAME", "AZ_PASSWORD"],
+  sold: ["AZ_USERNAME", "AZ_PASSWORD"],
 };
 
 const part = async (env, key, fn) => {
@@ -418,17 +437,19 @@ const part = async (env, key, fn) => {
   catch (e) { return { ok: false, reason: String(e && e.message || e) }; }
 };
 
-/* Dials, sales and utilization: a handful of requests, refreshed together. */
+/* Dials, sales (policies and the leads marked sold) and utilization: a
+   handful of requests, refreshed together. */
 export async function computeFast(env, day, basis, fetchFn = fetch) {
-  const [dials, sales, util] = await Promise.all([
+  const [dials, sales, util, sold] = await Promise.all([
     part(env, "dials", async () => dialDeltas(basis, await rcCallLog(env, day, fetchFn))),
     part(env, "sales", async () => {
       const [pols, names] = await Promise.all([azPoliciesSold(env, day, fetchFn), azLeadSources(env, fetchFn)]);
       return salesFrom(basis, pols, names);
     }),
     part(env, "util", async () => insightfulUtil(env, day, basis, fetchFn)),
+    part(env, "sold", async () => soldLeadsToday(env, day, basis, fetchFn)),
   ]);
-  return { fetched_at: new Date().toISOString(), dials, sales, util };
+  return { fetched_at: new Date().toISOString(), dials, sales, util, sold };
 }
 
 /* Households and premium quoted: one batch of lead reads, carried on from
@@ -479,7 +500,7 @@ function keepGood(prev, next, cp, parts) {
 async function refreshFast(env, day, cp) {
   const k = keys(day);
   const prev = await r2json(env, k.fast);
-  const out = keepGood(prev, { checkpoint: cp.as_of, ...(await computeFast(env, day, cp.basis)) }, cp, ["dials", "sales", "util"]);
+  const out = keepGood(prev, { checkpoint: cp.as_of, ...(await computeFast(env, day, cp.basis)) }, cp, ["dials", "sales", "util", "sold"]);
   await r2put(env, k.fast, out);
   return out;
 }
@@ -507,7 +528,7 @@ export async function getLive(env, day) {
     fresh(quotes, cp.as_of, QUOTES_STALE_SECONDS) ? quotes : refreshQuotes(env, day, cp),
   ]);
   return jsonResp({ live: true, day, checkpoint: cp.as_of, fetched_at: f.fetched_at,
-    dials: f.dials, sales: f.sales, util: f.util, quotes: q.quotes, quotes_fetched_at: q.fetched_at }, 200);
+    dials: f.dials, sales: f.sales, util: f.util, sold: f.sold, quotes: q.quotes, quotes_fetched_at: q.fetched_at }, 200);
 }
 
 /* Worker cron (wrangler.jsonc, every minute in business hours): even minutes

@@ -1044,7 +1044,9 @@ function hhSoldOf(d, name) {
     if (name && who !== name) return;
     keys.add(`${r.day || d.date || ""}|${r.household != null ? "h" + r.household : "n" + String(r.lead || r.lead_id || "").toLowerCase()}`);
   };
-  for (const r of R.sold_leads) add(r, r.who);
+  // Live, the whole day's sold leads are read at once, so that list stands on
+  // its own; the checkpoint's rows are added only if the read stopped short.
+  if (!(d.live_sold && d.live_sold_complete)) for (const r of R.sold_leads) add(r, r.who);
   for (const [w, list] of Object.entries(d.live_sold || {})) for (const r of list) add(r, w);
   return keys.size;
 }
@@ -1099,10 +1101,9 @@ function digestDay(d, who) {
     // Quoted right above, which colours both halves).
     hhSold == null
       ? ["Pol/Prem. Sold", `<span class="${tc("pol")}">${t.pol ?? 0} Pol</span><br><span class="${tc("ps")}">${money(t.ps)}</span>`, "", "", liveOn(d, "sales")]
-      // Households sold come from the lead reads, premium from the policies:
-      // it glows only when both are live.
+      // Households sold and premium sold come from the same refresh.
       : ["HH/Prem. Sold", `<span class="${tc("pol")}">${hhSold} HH</span><br><span class="${tc("ps")}">${money(t.ps)}</span>`,
-         `${t.pol ?? 0} polic${(t.pol ?? 0) === 1 ? "y" : "ies"}${hhSold ? ` &middot; ${((t.pol || 0) / hhSold).toFixed(1)} per HH` : ""}`, "", liveOn(d, "closing")],
+         `${t.pol ?? 0} polic${(t.pol ?? 0) === 1 ? "y" : "ies"}${hhSold ? ` &middot; ${((t.pol || 0) / hhSold).toFixed(1)} per HH` : ""}`, "", liveOn(d, "hhsold")],
   ];
   if (t.util != null) tiles.push(["Utilization", t.util + "%", "weighted", tc("util"), liveOn(d, "util")]);
   const DRILL = { "Dials": "dials", "Live contacts": "contacts", "HH/Prem. Quoted": "quoted", "Pol/Prem. Sold": "sold", "HH/Prem. Sold": "sold" };
@@ -1309,7 +1310,7 @@ function teamLeaderboardHtml(d, who) {
     ${soCell(SO.filter(c => c.who === p.name))}
     <td class="num ${tc(p.name, "hh")}${lv("quotes")}"${lbRankTag(d, "Households Quoted", p.name)}>${p.hh ?? 0}</td>
     <td class="num ${tc(p.name, "pq")}${lv("quotes")}"${lbRankTag(d, "Premium Quoted", p.name)}>${money(p.pq)}</td>
-    <td class="num ${tc(p.name, "pol")}${lv(hhCol ? "closing" : "sales")}" title="${polTitle(p.name)}">${hhCol ? `${hhSoldOf(d, p.name)} <span style="opacity:.72">(${p.pol ?? 0} pol)</span>` : (p.pol ?? 0)}</td>
+    <td class="num ${tc(p.name, "pol")}${lv(hhCol ? "hhsold" : "sales")}" title="${polTitle(p.name)}">${hhCol ? `${hhSoldOf(d, p.name)} <span style="opacity:.72">(${p.pol ?? 0} pol)</span>` : (p.pol ?? 0)}</td>
     <td class="num ${tc(p.name, "ps")}${lv("sales")}"${lbRankTag(d, "Premium Sold", p.name)}>${money(p.ps)}</td>
     ${p.util != null ? `<td class="num ${tc(p.name, "util")}${lv("util")}">${p.util}%</td>` : ""}</tr>`).join("");
   const tt = k => TI[((d.tiers || {})["team"] || {})[k]] || "";
@@ -1324,7 +1325,7 @@ function teamLeaderboardHtml(d, who) {
     ${soCell(SO)}
     <td class="num ${tt("hh")}${lv("quotes")}">${T.hh ?? 0}</td>
     <td class="num ${tt("pq")}${lv("quotes")}">${money(T.pq)}</td>
-    <td class="num ${tt("pol")}${lv(hhCol ? "closing" : "sales")}">${hhCol ? `${hhSoldOf(d, "")} <span style="opacity:.72">(${T.pol ?? 0} pol)</span>` : (T.pol ?? 0)}</td>
+    <td class="num ${tt("pol")}${lv(hhCol ? "hhsold" : "sales")}">${hhCol ? `${hhSoldOf(d, "")} <span style="opacity:.72">(${T.pol ?? 0} pol)</span>` : (T.pol ?? 0)}</td>
     <td class="num ${tt("ps")}${lv("sales")}">${money(T.ps)}</td>
     ${T.util != null ? `<td class="num ${tt("util")}${lv("util")}">${T.util}%</td>` : ""}</tr>`;
 
@@ -1989,7 +1990,13 @@ function applyLive(base, L) {
   // Which figures are live on this document -- read by liveOn() to make
   // them glow. closing is live only once both halves are.
   d.live_parts = ["dials", "sales", "quotes", "util"].filter(k => (L[k] || {}).ok);
-  if ((L.sales || {}).ok && (L.quotes || {}).ok) d.live_parts.push("closing");
+  // Households sold ride with sales (site/live.js soldLeadsToday).
+  if ((L.sales || {}).ok && (L.sold || {}).ok) {
+    d.live_parts.push("hhsold");
+    d.live_sold = L.sold.data.per || {};
+    d.live_sold_complete = !!L.sold.data.complete;
+  }
+  if ((L.sales || {}).ok && (L.quotes || {}).ok && (L.sold || {}).ok) d.live_parts.push("closing");
   const tiers = d.tiers || (d.tiers = {});
   const T = d.totals || (d.totals = {});
   const ps = d.producers || [];
@@ -2025,7 +2032,6 @@ function applyLive(base, L) {
     team.ps = T.ps ? "green" : team.pol;
   }
   if (L.quotes && L.quotes.ok) {
-    d.live_sold = L.quotes.data.sold || {};
     const frac = businessFraction((d.live_basis || {}).business_hours);
     for (const p of ps) {
       const x = (L.quotes.data.per || {})[p.name]; if (!x) continue;
