@@ -332,6 +332,14 @@ and anything without the glow is the checkpoint's (Frank, 2026-09-24).
   `worker-private/az_token.json` (served by no route) and is shared by every
   run; a refused login pauses AgencyZoom for 30 minutes
   (`worker-private/az_pause.json`) instead of retrying every minute.
+  **So does a refused REQUEST** (2026-09-28): from 2:29 PM every AgencyZoom
+  call from the Worker got 403 -- sales, households sold, quotes and texts
+  all stopped glowing -- while the same saved token answered 200 from the
+  nightly run's machine (any User-Agent). AgencyZoom (nginx, not Cloudflare)
+  was refusing the addresses the Worker calls from, not the login, and the
+  Worker kept asking ~40 times every two minutes. A 403 now pauses every
+  AgencyZoom part for 30 minutes (`site/live.js azGet`); the board keeps
+  each part's last good answer for the checkpoint meanwhile.
 - **Contact rate, live contacts and Avg Talk Time are live too** (Frank,
   2026-09-28: "avg talk time, contact rate, and texts and emails should all
   be live as well"), and they are PROVISIONAL: the Worker cannot hear a

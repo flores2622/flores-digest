@@ -180,10 +180,34 @@ async function azForget(env) {
   azJwt = null; azJwtExp = 0;
   if (env.BOARD) await env.BOARD.delete(AZ_TOKEN_KEY);
 }
+/* A REFUSED REQUEST PAUSES AGENCYZOOM TOO, not only a refused login. On
+   2026-09-28 every AgencyZoom request from the Worker began returning 403 at
+   2:29 PM -- sales, sold households, quotes and messages all went dark --
+   while the very same token worked from the nightly run's machine: a block
+   on the addresses the Worker calls from, not on the login. The Worker kept
+   asking ~40 times every two minutes all afternoon. Now a 403 pauses every
+   AgencyZoom part for AZ_PAUSE_MINUTES, like a refused login; the board
+   keeps each part's last good answer meanwhile (keepGood). */
+let azPauseSeen = { at: 0, until: 0 };
+async function azPausedUntil(env) {
+  if (!env.BOARD) return 0;
+  if (Date.now() - azPauseSeen.at < 20000) return azPauseSeen.until;   // once per run, not per request
+  const o = await env.BOARD.get(AZ_PAUSE_KEY);
+  azPauseSeen = { at: Date.now(), until: o === null ? 0 : ((await o.json()).until || 0) };
+  return azPauseSeen.until;
+}
+export function _resetAzPauseForTests() { azPauseSeen = { at: 0, until: 0 }; }
 async function azGet(env, path, fetchFn, init = {}) {
+  const until = await azPausedUntil(env);
+  if (Date.now() < until) throw new Error(`AgencyZoom paused until ${azClock(until)} after a refused request`);
   const tok = await azToken(env, fetchFn);
   const r = await fetchFn(`${AZ}${path}`, { ...init, headers: { ...(init.headers || {}), authorization: `Bearer ${tok}`, "content-type": "application/json" } });
   if (r.status === 401) await azForget(env);          // the saved login stopped working: log in afresh next time
+  if (r.status === 403 && env.BOARD) {
+    const x = { until: Date.now() + AZ_PAUSE_MINUTES * 60000, status: 403, path, at: new Date().toISOString() };
+    await env.BOARD.put(AZ_PAUSE_KEY, JSON.stringify(x));
+    azPauseSeen = { at: Date.now(), until: x.until };
+  }
   if (!r.ok) { const e = new Error(`AgencyZoom ${path} ${r.status}`); e.status = r.status; throw e; }
   return r.json();
 }
