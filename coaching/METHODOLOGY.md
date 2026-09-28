@@ -123,7 +123,11 @@ close HERE ONLY.
   THIS CALL: a few minutes of discovery and the numbers presented while the
   lead is still there ("Give me a few minutes and I'll have your real
   numbers right here while we're on the phone -- what are you paying now,
-  and who drives the cars?"). Say what it takes -- a few minutes -- never
+  and who drives the cars?"). Documents the prospect has to send are
+  sent while they are still on the line and reviewed together ("Snap a
+  picture of your dec page and text it to me right now -- I'll stay on and
+  we'll go through it together"), never "send it over and I'll call you
+  back". Say what it takes -- a few minutes -- never
   "30 seconds". Never suggest emailing or texting the quote, or promising
   numbers by a later day, as the better version: not when the producer
   offered it, and not when the prospect asked for email without saying
@@ -668,7 +672,13 @@ for it"]`. Wrong: `"askq": false`. Same for "calltype", "asks" and "exit".
            photo of their ID card: that is discovery, and what we want
            (Frank, 2026-09-28, Coral and Randell Otis 09-25: "she was asking
            him to send her his docs so she could review what he has"). Judge
-           only what the producer said about getting OUR quote to THEM.
+           only what the producer said about getting OUR quote to THEM. But
+           the review happens ON THE PHONE: "send it to me now and I'll go
+           through it with you while we're on the line". Asking for the
+           documents and then ending with "I'll review it and call you back"
+           is the producer getting off the phone -- "producer" (Frank,
+           2026-09-28, Randell Otis: "she should review it with him on the
+           phone, thats her trying to get her off the phone").
            Quote the producer's line in the reason.
 "askfix"   one sentence: what an assumptive version of this call's weakest
            moment would have sounded like. Empty string if askq and asks are

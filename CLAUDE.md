@@ -98,10 +98,12 @@ Everything caches under `data/`, so a re-run resumes rather than restarting.
   said they had no time -- the Busy objection's to score), "asked" (the
   prospect asked for email first), "no", or null (no quote came up). "producer" includes "I'll have the numbers for you tomorrow" / "let me work
   on it and call you back". **Asking the prospect to send US their documents
-  (dec page, current policy, VINs) is discovery, "no"** (Frank, 2026-09-28,
-  Coral / Randell Otis 09-25 -- set by hand after two misreads; the 56
+  (dec page, current policy, VINs) is discovery** (Frank, 2026-09-28; the 56
   "producer" verdicts were re-read under this, backups under
-  `backups/2026-09-28-sendoff-recheck/`).
+  `backups/2026-09-28-sendoff-recheck/`) -- **but the review happens on the
+  phone**: asking for them and ending with "I'll review it and call you
+  back" is getting off the phone, "producer" (Coral / Randell Otis 09-25:
+  "she should review it with him on the phone").
   Coaching Center > Wins and Losses counts it per producer and lists the
   calls. **Every assumption stat is there too** (Frank, 2026-09-28): the quote,
   the sale, and a follow-up's up front / objections / end, per producer and
