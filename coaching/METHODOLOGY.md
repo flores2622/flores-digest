@@ -641,9 +641,11 @@ for it"]`. Wrong: `"askq": false`. Same for "calltype", "asks" and "exit".
            on their own instead of keeping that lead on the phone")? The
            verdict is EXACTLY one of:
              "producer"  the producer offered, on their own, to send the quote
-                         (or updated numbers) by email or text instead of
-                         building and presenting it with the lead still on
-                         the line -- the prospect had not said they were busy
+                         (or updated numbers) by email or text, or to get
+                         back to them with the numbers later ("I'll have it
+                         ready for you tomorrow", "let me work on it and call
+                         you back"), instead of building and presenting it
+                         with the lead still on the line -- the prospect had not said they were busy
                          or short of time, and had not asked for it that way
                          first. "Let me put it together and send it to you",
                          "I'll text you the options", "¿qué tal si te mando la
@@ -656,10 +658,18 @@ for it"]`. Wrong: `"askq": false`. Same for "calltype", "asks" and "exit".
              "no"        the quote came up and stayed on the phone -- numbers
                          presented live, or discovery still going when the
                          call ended for a reason that was not the producer's.
+                         A producer asking the prospect for THEIR documents
+                         is "no" here, never "asked".
            null when no quote came up at all (service, a no before any
            quoting, a call cut off before it). Sending documents, an
            application or an e-sign link for a sale made on the call is not
-           sending the quote: "no". Quote the producer's line in the reason.
+           sending the quote: "no". Nor is asking the PROSPECT to send US
+           something -- their declarations page, current policy, VINs, a
+           photo of their ID card: that is discovery, and what we want
+           (Frank, 2026-09-28, Coral and Randell Otis 09-25: "she was asking
+           him to send her his docs so she could review what he has"). Judge
+           only what the producer said about getting OUR quote to THEM.
+           Quote the producer's line in the reason.
 "askfix"   one sentence: what an assumptive version of this call's weakest
            moment would have sounded like. Empty string if askq and asks are
            each true or null. See "What the fix sounds like" below.
