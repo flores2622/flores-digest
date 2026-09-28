@@ -242,18 +242,23 @@ survives between them, and a scheduled session cannot push to the repository to
 carry it either. Both were measured on 2026-09-01. Do not rebuild the separate
 hourly schedule until one of those two facts changes.
 
-**Coach AI is the reason for the wait, not the reason to start late.** Those
-emails arrive around 6:00 PM Arizona. Step 1 takes roughly 25-30 minutes from a
-5:35 start, so they are normally there by the time it finishes. If they are not,
-wait for them rather than writing zeros — there is time now, which there was not
-before.
+**Coach AI's emails arrive at 5:30 PM Arizona** (Frank moved their send time
+from 6:30 on 2026-09-28). Until then they landed at 6:30 every night
+(measured 09-22..09-25: 01:30 UTC), and the nightly sat idle for most of an
+hour waiting for them -- the digest went out 6:42-6:56, 12-26 minutes after
+they arrived. The recordings, transcripts, call summaries and coaching cards
+are NOT the slow part: the hourly checkpoints (`intraday.py`) build all of
+them through the day into R2's cache/<day>/, so by 5:21 PM nearly every
+recording is already there and the nightly only adds the last half hour's.
+If the emails have not arrived, wait for them rather than writing zeros.
 
 **Timing to expect.**
 
-    5:35   hourly.py starts        ~25-30 min, downloads pace at 8/min
-    ~6:05  Coach AI figures        wait if they have not landed
-    ~6:10  daily.py starts         transcription already done
-    ~7:00  both emails sent
+    5:30   Coach AI emails land
+    5:35   hourly.py starts        a few minutes: only the calls since the last checkpoint
+    ~5:40  Coach AI figures        already in the mailbox
+    ~5:45  daily.py starts         transcription and cards already cached
+    ~6:00-6:15  both emails sent   (was 6:42-6:56 with Coach AI at 6:30)
 
 **`SEND_HOLD` stops the email only** (Frank, 2026-09-24: "i still want the
 board to build"). A held night still publishes the Sales, Service and
