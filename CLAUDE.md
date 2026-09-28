@@ -548,8 +548,9 @@ Crystal (hybrid); credit always goes to whoever COMPLETED the SR or task.
 - **Renewal Outcome Breakdown on the Renewals tab** (Frank, 2026-09-28: "the
   same way we display the call outcome breakdown on the sales digest. Per
   CSR rep and a total"): `renOutcomeHtml` -- a bar per person who completed
-  renewal SRs in the date filter's period, plus Team, each as long as its
-  count and split by Frank's resolutions; segments and legend open the SRs.
+  renewal SRs in the date filter's period, scaled to the busiest, split by
+  Frank's resolutions; the team is a totals line, not a bar ("so the
+  producer bars are the main focus"). Segments and legend open the SRs.
 - **Three retention rates** (Frank, 2026-09-27: "build all three"): the
   **settled 4 weeks** (renewals 14-41 days ago, `REN_SETTLE_DAYS`; the
   newest two weeks show as settling, and the breakdowns by week, how worked,

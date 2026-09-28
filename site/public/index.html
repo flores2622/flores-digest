@@ -5276,17 +5276,21 @@ function renOutcomeHtml(m) {
     .sort((a, b) => b[1].length - a[1].length);
   const others = rows.filter(r => !team.includes(r.by));
   if (others.length) groups.push(["others", others]);
-  const most = Math.max(rows.length, 1);
+  // The bars are the reps (Frank, 2026-09-28: "for the team instead of the
+  // bar, just give me the totals"), scaled to the busiest one.
+  const most = Math.max(...groups.map(([, rs]) => rs.length), 1);
   const bar = (key, head, rs, strong) => {
     const segs = m.outcomes.map(([k, l]) => { const c = rs.filter(r => r.outcome === k).length;
       return c ? `<span class="ogseg rseg" data-drill="ro:${k}:${key}" role="button" tabindex="0" style="width:${(c / rs.length * 100).toFixed(2)}%;${outcomeFill(k)};cursor:pointer" title="${cesc(l)}: ${c} (click for the list)"></span>` : ""; }).join("");
     const rt = renewalRate(rs, kind);
     return `<div class="orow"><div class="orow-head"><span class="who">${head}</span>
       <span class="on">${rs.length} renewal SR${rs.length === 1 ? "" : "s"} completed${rt.pct == null ? "" : ` &middot; ${rt.pct}% retained`}</span></div>
-      <div style="width:${(rs.length / most * 100).toFixed(2)}%"><div class="otrack"${strong ? ' style="height:16px"' : ""}>${segs}</div></div></div>`;
+      <div style="width:${(rs.length / most * 100).toFixed(2)}%"><div class="otrack">${segs}</div></div></div>`;
   };
-  const bars = bar("team", pbadge(TEAM_DOT, "Team"), rows, true)
-    + groups.map(([n, rs]) => bar(n, n === "others" ? pbadge("#8a877f", "Others") : pbadge(DOT[n] || TEAM_DOT, n.split(" ")[0]), rs)).join("");
+  const tr = renewalRate(rows, kind);
+  const totals = `<div class="orow-head" style="margin:4px 0 12px"><span class="who">${pbadge(TEAM_DOT, "Team")}</span>
+    <span class="on"><b>${rows.length}</b> renewal SR${rows.length === 1 ? "" : "s"} completed${tr.pct == null ? "" : ` &middot; <b>${tr.pct}%</b> retained (${tr.kept} of ${tr.kept + tr.lost})`}</span></div>`;
+  const bars = totals + groups.map(([n, rs]) => bar(n, n === "others" ? pbadge("#8a877f", "Others") : pbadge(DOT[n] || TEAM_DOT, n.split(" ")[0]), rs)).join("");
   const legend = m.outcomes.map(([k, l]) => [k, l, rows.filter(r => r.outcome === k).length]).filter(x => x[2]).map(([k, l, c]) =>
     `<span class="oleg-item${renDrill === "ro:" + k ? " on" : ""}" data-drill="ro:${k}" role="button" tabindex="0" style="cursor:pointer"><span class="pd rdot" style="${outcomeFill(k)}"></span>${cesc(l)} <b>${c}</b> <span style="color:var(--text-muted)">(${Math.round(100 * c / rows.length)}%)</span></span>`).join("");
   let list = "";
