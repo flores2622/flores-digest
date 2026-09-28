@@ -5174,15 +5174,21 @@ function renDrillHtml([title, what, rs], label, pipeName) {
    the Service Center with the rest of renewals): a renewal SR counted as
    Mid-term Cancellation that nothing dates -- AgencyZoom's policy record
    never changed after it was loaded and the rep's note gives no date. */
-function renFlagHtml(doc, label) {
-  const rs = doc.rows.filter(r => r.sr && r.sr.flag).sort((a, b) => a.renewal < b.renewal ? -1 : 1);
+// Stays open across repaints (a card click repaints the tab) once opened.
+let renFlagOpen = false;
+// Follows the date filter, by the day the policy renewed, like Lost (Frank,
+// 2026-09-28) -- the report holds a year, so unfiltered it was 79 long.
+function renFlagHtml(doc, label, inRange = () => true) {
+  const rs = doc.rows.filter(r => r.sr && r.sr.flag && inRange(r)).sort((a, b) => a.renewal < b.renewal ? -1 : 1);
   if (!rs.length) return "";
   const rows = rs.map(r => `<tr><td>${renDate(r.renewal)}</td><td>${renCustomer(r)}</td>
     <td>${cesc(r.type)} <span style="color:var(--text-muted)">${cesc(r.policy)}</span></td>
     <td>${renSrCell(r, label)}</td></tr>`).join("");
-  return `<div class="sect"><h2>Cancellations to check</h2>
-    <p class="sd" style="color:var(--warn, #b45309)">${rs.length} renewal SR${rs.length === 1 ? "" : "s"} counted as Mid-term Cancellation, outside the rate, but nothing shows the policy cancelled before the renewal SR opened: AgencyZoom's policy record has not changed since it was loaded, and the note gives no date. If it cancelled during the renewal, change the SR's resolution to Client Cancelled.</p>
-    <div class="scroll"><table class="rtable"><thead><tr><th>Renews</th><th>Customer</th><th>Policy</th><th>Renewal SR</th></tr></thead><tbody>${rows}</tbody></table></div></div>`;
+  // A dropdown (Frank, 2026-09-28): closed until clicked, count on the label.
+  return `<div class="sect"><details class="msgd"${renFlagOpen ? " open" : ""} ontoggle="renFlagOpen=this.open">
+    <summary style="cursor:pointer"><h2 style="display:inline">Cancellations to check</h2> <span class="chip c-w" style="margin-left:6px">${rs.length}</span></summary>
+    <p class="sd" style="color:var(--warn, #b45309);margin-top:8px">${rs.length} renewal SR${rs.length === 1 ? "" : "s"} renewing in this period counted as Mid-term Cancellation, outside the rate, but nothing shows the policy cancelled before the renewal SR opened: AgencyZoom's policy record has not changed since it was loaded, and the note gives no date. If it cancelled during the renewal, change the SR's resolution to Client Cancelled.</p>
+    <div class="scroll"><table class="rtable"><thead><tr><th>Renews</th><th>Customer</th><th>Policy</th><th>Renewal SR</th></tr></thead><tbody>${rows}</tbody></table></div></details></div>`;
 }
 function renewalsPanel(doc, workHtml = "", rb = null) {
   const label = Object.fromEntries((doc.sr_outcomes || []).map(([k, l]) => [k, l]));
@@ -5285,7 +5291,7 @@ function renewalsPanel(doc, workHtml = "", rb = null) {
     <h3 class="rh3">By who worked the renewal SR</h3><div class="tiles rtiles">${personCards}</div></div>
     <div class="sect"><h2>Lost</h2><p class="sd">Every renewal lost in this period, and any renewal still ahead that has already cancelled, with how we know.${rangeNote}</p>
     ${lostRows ? `<div class="scroll"><table class="rtable"><thead><tr><th>Renews</th><th>Customer</th><th>Policy</th><th class="num">Premium</th><th>Renewal SR</th><th>How we know</th></tr></thead><tbody>${lostRows}</tbody></table></div>` : '<p class="sd">None.</p>'}</div>
-    ${renFlagHtml(doc, label)}
+    ${renFlagHtml(doc, label, inRange)}
     <div class="sect"><h2>Coming up · next ${doc.upcoming_days} days</h2>
     <p class="sd">High = not yet discussed with the customer (no renewal SR, the SR still open, No action or Unable to Contact) and a warning sign: an open Late Payment SR or a cancellation SR on the household. Medium = not discussed and renewing within ${doc.soon_days} days, or discussed with a warning sign.${gone ? ` ${gone} more policies renewing in this window were already cancelled mid term and are left out.` : ""}</p>
     <div class="rfilters">${sel("renRisk", f.risk, [["high", "High risk"], ["medium", "Medium risk"], ["low", "Low risk"]], "Any risk")}
