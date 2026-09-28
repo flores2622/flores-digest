@@ -332,6 +332,21 @@ customer, so Sold lists the leads marked sold beside the policies. Past days:
 `python3 digest_rows.py --backfill 2026-09-01` from R2's saved inputs (no
 quoted premium, and no quoted list before 2026-09-24's `quoted_leads`).
 
+## Date ranges on the Digest
+
+**The range leaderboard is re-ranked on averages** (Frank, 2026-09-28):
+the same seven categories and 5-4-3-2-1 scoring as a single day
+(`rankLeaderboard` on the board, a mirror of `digest_config.
+leaderboard_score` -- keep them in step; checked equal on 200 random
+cases), fed each producer's range figures: dials, households quoted,
+premium quoted and premium sold as **per-day averages over the days they
+worked** (a day off costs nothing), talk time and contact rate as the
+range's own. **Role play is shown one way and ranked another**: the Role
+Play column is the true average of the sessions they did; the ranking
+uses `rp_scored`, where a day they WORKED without a role play counts as 0
+("hurt their points but not average"). A day off, or a day with no role
+play figures for anyone (no Coach AI email), counts neither way.
+
 ## Texts and emails
 
 **`messages.py` builds the Sales Center's Texts & Emails page** (Frank,
