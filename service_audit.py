@@ -47,10 +47,11 @@ note. For EACH item answer:
              client ("low increase, review if needed") answers who (no one was
              contacted) and why (the stated reason). An empty note is missing
              all five. Judge the NOTE, not the subject line.
-  opp        "passed" if the note says a sales opportunity went to a producer
-             or a lead was made; "missed" if the conversation shows one (a new
-             vehicle, a home purchase, a new driver, asking about other
-             coverage) and the note does not say it was passed; else "none"
+  opp        "passed" if the note says a sales opportunity was acted on --
+             passed to a producer, a lead made, or quoted by the rep (some reps
+             sell); "missed" if the conversation shows one (a new vehicle, a
+             home purchase, a new driver, asking about other coverage) and the
+             note does not say it was acted on; else "none"
   escalated  true if the note says it went to the Service Lead, a producer or
              Frank for a decision
 

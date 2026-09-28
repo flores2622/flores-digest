@@ -66,6 +66,12 @@ ROLES = {
     },
 }
 ROLE_OF = {"Amanda Torricellas": "lead", "Crystal Mango": "member", "Debbie Aguilera": "front_desk"}
+# Who sells (Frank, 2026-09-28: "Crystal is a hybrid position and also sells so
+# she can do the opportunity herself, amanda as well. Debbie is the only one
+# that would identify and pass to any producer"). The playbook's "identify
+# opportunities that should be passed to a producer" is Debbie's; Crystal and
+# Amanda work the opportunity themselves -- a quote, a lead, or passing it on.
+SELLS = {"Amanda Torricellas", "Crystal Mango"}
 
 # Who handles what -- the playbook's table, as the request types an SR is
 # read into (service_audit.py). Owner: "service" (Front Desk or any Service
@@ -169,6 +175,7 @@ def as_doc():
     """The playbook as the board reads it (each service day's `playbook`)."""
     return {"purpose": PURPOSE, "standard": STANDARD, "roles": ROLES, "role_of": ROLE_OF,
             "request_types": {k: list(v) for k, v in REQUEST_TYPES.items()}, "routine": sorted(ROUTINE),
+            "sells": sorted(SELLS),
             "when_in_doubt": WHEN_IN_DOUBT, "note_parts": NOTE_PARTS, "good_note": GOOD_NOTE,
             "vague_note": VAGUE_NOTE, "service_vs_sales": SERVICE_VS_SALES, "communication": COMMUNICATION,
             "priority": PRIORITY, "checklist": CHECKLIST, "expectations": EXPECTATIONS, "closing": CLOSING}

@@ -5265,7 +5265,8 @@ function svcDrillFor(m, keys) {
     if (key === "team_notes") return sr("Team · notes not meeting the standard", m.completed.filter(r => r.audit && r.audit.missing.length));
     if (key === "routine") return sr(`${first} · routine requests`, mine.filter(r => r.audit && routine.has(r.audit.type)), "Requests the playbook gives to the Service Team or Front Desk.");
     if (key === "complex") return sr(`${first} · complex, sensitive or escalated`, mine.filter(r => r.audit && (!routine.has(r.audit.type) || r.audit.escalated)));
-    if (key === "opp") return sr(`${first} · opportunities`, mine.filter(r => r.audit && r.audit.opp !== "none"), "Passed to a producer, or came up and not passed.");
+    if (key === "opp") return sr(`${first} · opportunities`, mine.filter(r => r.audit && r.audit.opp !== "none"),
+      (PB.sells || ["Amanda Torricellas", "Crystal Mango"]).includes(n) ? "Opportunities that came up: worked (quoted, a lead set, or passed), or not noted." : "Passed to a producer, or came up and not passed.");
     if (key === "billing") return sr(`${first} · billing`, mine.filter(r => r.pipeline === "late_payments" || (r.audit && r.audit.type === "basic_billing")));
     if (key === "noc") return sr(`${first} · NOC / admin`, mine.filter(r => r.audit && r.audit.type === "noc"));
     if (key === "srs") return sr(`${first} · SRs completed`, mine);
@@ -5342,7 +5343,7 @@ function svcCreatedTable(rs, m) {
 // SR rows with what the playbook read found, in the note column.
 const withAudit = (rs, typeLabel) => rs.map(r => { const a = r.audit; if (!a) return r;
   const bits = [typeLabel[a.type] || a.type, a.missing.length ? "Missing: " + a.missing.map(k => PART_LABEL[k] || k).join(", ") : "Meets the note standard",
-    a.opp === "passed" ? "Opportunity passed to a producer" : a.opp === "missed" ? "Opportunity not passed" : "", a.escalated ? "Escalated" : ""].filter(Boolean);
+    a.opp === "passed" ? "Opportunity acted on" : a.opp === "missed" ? "Opportunity not noted as worked" : "", a.escalated ? "Escalated" : ""].filter(Boolean);
   return Object.assign({}, r, { note: `[${bits.join(" · ")}] ${r.note || ""}` }); });
 function roleMeasures(m, n) {
   const PB = m.playbook, role = PB.role_of[n], team = m.team.map(t => t.name);
@@ -5355,6 +5356,12 @@ function roleMeasures(m, n) {
   const pct = (a, t) => t ? Math.round(100 * a / t) + "%" : "—";
   const med = x => x.length ? fmtMins(Math.round(median(x))) : "—";
   const L = (label, value, key) => ({ label, value, key });
+  const oppOf = (label, doneWord, missWord) => { const ps = aud.filter(r => r.audit.opp === "passed"), ms = aud.filter(r => r.audit.opp === "missed");
+    return L(label, `<b>${ps.length}</b> ${doneWord} &middot; <b${ms.length ? ' style="color:var(--warn, #b45309)"' : ""}>${ms.length}</b> ${missWord}`, "opp"); };
+  // Pages built before 2026-09-28's change don't carry `sells`.
+  const sellsSet = new Set((m.playbook || {}).sells || ["Amanda Torricellas", "Crystal Mango"]);
+  const oppAny = sellsSet.has(n) ? oppOf("Work the opportunities that come up", "worked (quoted, lead set or passed)", "not noted")
+    : oppOf("Identify opportunities for a producer", "passed", "not passed");
   const notes = L("Maintain accurate notes", aud.length ? `<b>${pct(meets.length, aud.length)}</b> meet the note standard (${meets.length} of ${aud.length})` : "—", "notes");
   if (role === "lead") {
     const openAll = team.reduce((a, x) => a + ((m.backlog[x] || {}).open || 0), 0), overAll = team.reduce((a, x) => a + ((m.backlog[x] || {}).overdue || 0), 0);
@@ -5367,6 +5374,7 @@ function roleMeasures(m, n) {
       L("Complex or sensitive service, escalations", `<b>${cx.length}</b> SR${cx.length === 1 ? "" : "s"}`, "complex"),
       L("Monitor missed calls and texts", `<b${m.callbacks.some(r => r.minutes == null) ? ' style="color:var(--bad)"' : ""}>${m.callbacks.filter(r => r.minutes == null).length}</b> missed calls not returned &middot; <b>${m.msg.replies.filter(r => !r.ack && !r.optout && r.minutes == null).length}</b> customer texts waiting (team)`, "watch"),
       L("Audit service notes", teamAud.length ? `team <b>${pct(teamMeets.length, teamAud.length)}</b> meet the note standard` : "—", "team_notes"),
+      oppAny,
       notes,
     ];
   }
@@ -5381,16 +5389,20 @@ function roleMeasures(m, n) {
       L("Assist with basic billing", `<b>${billing.length}</b> billing / late payment SRs completed`, "billing"),
       L("Handle NOCs and administrative tasks", `<b>${noc.length}</b> NOC / admin SRs &middot; tasks <b>${k.completed}/${k.due}</b>`, "noc"),
       L("Missed calls returned", `<b>${cb.length}</b>${cb.length ? ` &middot; median ${med(cb.map(r => r.minutes))}` : ""}`, "cb"),
+      oppAny,
       notes,
     ];
   }
   const passed = aud.filter(r => r.audit.opp === "passed"), missed = aud.filter(r => r.audit.opp === "missed");
+  // Crystal and Amanda sell, so they work an opportunity themselves; only the
+  // Front Desk passes one to a producer (Frank, 2026-09-28).
+  const oppLine = oppAny;
   return [
     L("Handle routine policy service", `<b>${mine.length}</b> SRs completed${mine.length ? ` &middot; median ${fmtDur(svcMedian(mine.map(r => r.hours)))}` : ""}`, "srs"),
     L("Complete assigned tasks", `<b>${k.completed}/${k.due}</b> service tasks`, "tasks"),
     L("Follow up on outstanding items", `<b>${b.open ?? 0}</b> open SRs &middot; <b${b.overdue ? ' style="color:var(--bad)"' : ""}>${b.overdue ?? 0}</b> overdue`, "open"),
     L("Return calls and texts", `call backs <b>${cb.length}</b>${cb.length ? ` (median ${med(cb.map(r => r.minutes))})` : ""} &middot; replies <b>${ans.length}</b>${ans.length ? ` (median ${med(ans.map(r => r.minutes))})` : ""}${need.length - ans.length ? ` &middot; <b style="color:var(--bad)">${need.length - ans.length} waiting</b>` : ""}`, "reply"),
-    L("Identify opportunities for a producer", `<b>${passed.length}</b> passed &middot; <b${missed.length ? ' style="color:var(--warn, #b45309)"' : ""}>${missed.length}</b> not passed`, "opp"),
+    oppLine,
     notes,
   ];
 }
