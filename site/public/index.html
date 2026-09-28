@@ -4542,6 +4542,28 @@ function splitRenewals(m) {
   m.taskRows = m.taskRows.filter(r => !RENEWAL_TASK.test(r.title || ""));
   m.tasks = taskCounts(m.taskRows, team);
   m.renewalTaskCounts = taskCounts(m.renewalTasks, team);
+  // Call backs and texts & emails with a customer whose open SRs are all
+  // renewal SRs, or a message about the renewal (service_digest.
+  // renewal_caller, service_messages.RENEWAL_WORDS). Per-person message
+  // counts are rebuilt from the rows so each side adds up on its own.
+  m.renewalCallbacks = m.callbacks.filter(r => r.renewal);
+  m.callbacks = m.callbacks.filter(r => !r.renewal);
+  const msgSide = keep => {
+    const sent = m.msg.sent.filter(r => !!r.renewal === keep), people = {};
+    for (const n of team) people[n] = { texts: 0, emails: 0, auto_texts: 0, auto_emails: 0, customers: 0 };
+    const seen = new Set();
+    for (const r of sent) {
+      const p = people[r.who]; if (!p) continue;
+      const ch = r.channel === "text" ? "texts" : "emails";
+      if (r.auto) { p["auto_" + ch]++; continue; }
+      p[ch]++;
+      const k = r.who + "|" + (r.number || r.link_id || r.name);
+      if (!seen.has(k)) { seen.add(k); p.customers++; }
+    }
+    return { days: m.msg.days, people, sent, replies: m.msg.replies.filter(r => !!r.renewal === keep) };
+  };
+  m.renewalMsg = msgSide(true);
+  m.msg = msgSide(false);
   m.renewalDone = m.completed.filter(ren);
   m.completed = m.completed.filter(r => !ren(r));
   if (m.openRows) {
@@ -4967,23 +4989,27 @@ function servicePanel(m) {
     ${missingDocsHtml(m)}
     <div class="sect"><h2>By Person</h2><p class="sd">Open and overdue SRs are as of ${fmtShortDate(m.days[m.days.length - 1])}.</p><div class="tiles">${team.map(person).join("")}</div>${svcDrillFor(m, ["person"])}</div>`;
 }
+// The Sales Digest's date filter, as service days (the Service Digest and the
+// Renewals tab share it -- Frank, 2026-09-27).
+function serviceRangeDays(all) {
+  if (rangeMode === "day") {
+    const day = (cur && cur.date) || all[0];
+    return { wanted: day ? [day] : [],
+             label: day ? new Date(day + "T12:00:00").toLocaleDateString(undefined, { weekday: "long", month: "long", day: "numeric", year: "numeric" }) : "" };
+  }
+  const b = rangeBounds();
+  if (b.err) return { err: b.err };
+  return { wanted: all.filter(d => d >= (b.from || "") && d <= b.to), label: `${b.label} · ${b.from || "the start"} → ${b.to}` };
+}
 async function paintService() {
   const v = $("#view");
   const controls = rangeControlHtml();
   v.innerHTML = controls + '<div class="empty">Loading…</div>';
   wireRangeControl();
   const all = await serviceDays();
-  let wanted, label;
-  if (rangeMode === "day") {
-    const day = (cur && cur.date) || all[0];
-    wanted = day ? [day] : [];
-    label = day ? new Date(day + "T12:00:00").toLocaleDateString(undefined, { weekday: "long", month: "long", day: "numeric", year: "numeric" }) : "";
-  } else {
-    const b = rangeBounds();
-    if (b.err) { v.innerHTML = controls + `<div class="empty">${b.err}</div>`; wireRangeControl(); return; }
-    wanted = all.filter(d => d >= (b.from || "") && d <= b.to);
-    label = `${b.label} · ${b.from || "the start"} → ${b.to}`;
-  }
+  const rg = serviceRangeDays(all);
+  if (rg.err) { v.innerHTML = controls + `<div class="empty">${rg.err}</div>`; wireRangeControl(); return; }
+  const { wanted, label } = rg;
   const docs = await fetchServiceDocs(wanted);
   $("#topsub").textContent = "Athena · service team" + (label ? " · " + label : "");
   const merged = docs.length ? splitRenewals(mergeServiceDocs(docs)) : null;
@@ -5009,8 +5035,9 @@ async function paintService() {
    (what happened: retained, lost, mid-term, not confirmed yet) and in the
    next 45 days (how the renewal SR was worked, and how at risk it is).
    Service is not tracked day by day like sales (Frank: "we just need more of
-   a live or updating renewal and retention report"), so the Service
-   Digest's date filter does not apply here. Lost counts the policy record as
+   a live or updating renewal and retention report"). The date filter is the
+   Sales Digest's (Frank, 2026-09-27); only the retention rate stays the
+   rolling 4 weeks, and Coming up the next 45 days. Lost counts the policy record as
    well as the team's SRs ("if the policy reads cancelled ... its still
    cancelled"); a mid-term cancellation sits outside the rate. */
 const REN_STATUS = {
@@ -5043,6 +5070,9 @@ const renWorked = r => {
   if (s.outcome === "unable_to_contact") return "not_reached";
   return "other";
 };
+// A renewal counts in the settled rate once it is two weeks past: the newest
+// two weeks still have renewals not on the record yet.
+const REN_SETTLE_DAYS = 14;
 const renRate = rs => { const k = rs.filter(r => r.status === "retained").length, l = rs.filter(r => r.status === "lost").length;
   return { k, l, pct: k + l ? Math.round(1000 * k / (k + l)) / 10 : null }; };
 const renFill = st => { const [, v, hatch] = REN_STATUS[st] || [, "--text-muted"];
@@ -5103,49 +5133,76 @@ function renFlagHtml(doc, label) {
     <p class="sd" style="color:var(--warn, #b45309)">${rs.length} renewal SR${rs.length === 1 ? "" : "s"} counted as Mid-term Cancellation, outside the rate, but nothing shows the policy cancelled before the renewal SR opened: AgencyZoom's policy record has not changed since it was loaded, and the note gives no date. If it cancelled during the renewal, change the SR's resolution to Client Cancelled.</p>
     <div class="scroll"><table class="rtable"><thead><tr><th>Renews</th><th>Customer</th><th>Policy</th><th>Renewal SR</th></tr></thead><tbody>${rows}</tbody></table></div></div>`;
 }
-function renewalsPanel(doc, workHtml = "") {
+function renewalsPanel(doc, workHtml = "", rb = null) {
   const label = Object.fromEntries((doc.sr_outcomes || []).map(([k, l]) => [k, l]));
   const pipeName = Object.fromEntries(doc.pipelines || []);
   const past = doc.rows.filter(r => r.kind === "past");
   const up = doc.rows.filter(r => r.kind === "upcoming");
   const ahead = up.filter(r => r.status === "upcoming");
   const gone = up.filter(r => r.status === "mid_term").length;
-  const lost = doc.rows.filter(r => r.status === "lost");
-  const rt = renRate(past);
+  // Only the retention rate (and its breakdown) is the rolling 4 weeks; Lost
+  // and Not confirmed follow the date filter, by the day the policy renewed.
+  const inRange = r => !rb || ((!rb.from || r.renewal >= rb.from) && (!rb.to || r.renewal <= rb.to));
+  const pastIn = past.filter(inRange);
+  const lost = doc.rows.filter(r => r.status === "lost" && (r.kind === "upcoming" || inRange(r)));
+  const lostIn = pastIn.filter(r => r.status === "lost");
+  const firstRen = past.length ? past.reduce((a, r) => r.renewal < a ? r.renewal : a, past[0].renewal) : null;
+  const rangeNote = rb && rb.from && firstRen && rb.from < firstRen ? ` This report holds renewals from ${renDate(firstRen)} on.` : "";
+  // Three retention rates (Frank, 2026-09-27: "build all three"):
+  //   settled  renewals 14-41 days ago -- the last 4 weeks that have had two
+  //            weeks to show on the record; the newest two weeks are settling
+  //   range    renewals in the date filter's period
+  //   year     renewals in the last 365 days, the one to set beside Farmers'
+  const ago = r => Math.round((new Date(doc.as_of + "T12:00:00") - new Date(r.renewal + "T12:00:00")) / 864e5);
+  const settled = past.filter(r => ago(r) >= REN_SETTLE_DAYS && ago(r) < REN_SETTLE_DAYS + 28);
+  const settling = past.filter(r => ago(r) < REN_SETTLE_DAYS);
+  const year = past.filter(r => ago(r) < 365);
+  const rt = renRate(settled), rr = renRate(pastIn), ry = renRate(year);
+  const span = rs => rs.length ? `${renDate(rs.reduce((a, r) => r.renewal < a ? r.renewal : a, rs[0].renewal))} – ${renDate(rs.reduce((a, r) => r.renewal > a ? r.renewal : a, rs[0].renewal))}` : "";
+  const inRate = rs => rs.filter(r => r.status === "retained" || r.status === "lost");
   const discussed = ahead.filter(r => renWorked(r) === "discussed").length;
   const high = ahead.filter(r => r.risk === "high").length;
   // Each card opens the list of exactly the renewals it counts.
   const drills = {
-    rate: ["Retention · last 4 weeks", "every renewal in the rate: retained and lost",
-           past.filter(r => r.status === "retained" || r.status === "lost")],
-    lost: ["Lost", "renewals lost in the last 4 weeks", past.filter(r => r.status === "lost")],
-    unconfirmed: ["Not confirmed yet", "no next term or cancellation on record yet", past.filter(r => r.status === "unconfirmed")],
+    rate: ["Retention · settled 4 weeks", "renewed " + span(settled) + ", retained and lost", inRate(settled)],
+    rrange: ["Retention · this period", "renewed in the date filter's period, retained and lost", inRate(pastIn)],
+    ryear: ["Retention · 12 months", "renewed " + span(year) + ", retained and lost", inRate(year)],
+    lost: ["Lost", "renewals lost in this period", lostIn],
+    unconfirmed: ["Not confirmed yet", "no next term or cancellation on record yet", pastIn.filter(r => r.status === "unconfirmed")],
     ahead: [`Coming up · ${doc.upcoming_days} days`, "renewing in the next " + doc.upcoming_days + " days", ahead],
     high: ["High risk", "not discussed, with a warning sign", ahead.filter(r => r.risk === "high")],
   };
   const dt = (k, inner, style) => `<div class="tile rdrill${renDrill === k ? " on" : ""}" data-drill="${k}" role="button" tabindex="0"
     title="Show these ${drills[k][2].length} renewals"${style ? ` style="${style}"` : ""}>${inner}</div>`;
   const tiles = `<div class="tiles">
-    ${dt("rate", `<div class="k">Retention · last 4 weeks</div>
-      <div class="v">${rt.pct == null ? "—" : rt.pct + "%"}</div><div class="n">${rt.k} of ${rt.k + rt.l} renewals kept</div>`, "border-color:var(--border-strong)")}
-    ${dt("lost", `<div class="k">Lost</div><div class="v">${rt.l}</div><div class="n">renewed ${renDate(past.length ? past[0].renewal : null)} – ${renDate(doc.as_of)}</div>`)}
-    ${dt("unconfirmed", `<div class="k">Not confirmed yet</div><div class="v">${past.filter(r => r.status === "unconfirmed").length}</div><div class="n">no next term or cancellation on record yet</div>`)}
+    ${dt("rate", `<div class="k">Retention · settled 4 weeks</div>
+      <div class="v">${rt.pct == null ? "—" : rt.pct + "%"}</div><div class="n">${rt.k} of ${rt.k + rt.l} kept &middot; renewed ${span(settled)}</div>`, "border-color:var(--border-strong)")}
+    ${dt("rrange", `<div class="k">Retention · this period</div>
+      <div class="v">${rr.pct == null ? "—" : rr.pct + "%"}</div><div class="n">${rr.k} of ${rr.k + rr.l} kept &middot; renewed in the date filter's period</div>`)}
+    ${dt("ryear", `<div class="k">Retention · 12 months</div>
+      <div class="v">${ry.pct == null ? "—" : ry.pct + "%"}</div><div class="n">${ry.k} of ${ry.k + ry.l} kept &middot; to compare with Farmers' figures</div>`)}
+    ${dt("lost", `<div class="k">Lost</div><div class="v">${lostIn.length}</div><div class="n">renewed in this period</div>`)}
+    ${dt("unconfirmed", `<div class="k">Not confirmed yet</div><div class="v">${pastIn.filter(r => r.status === "unconfirmed").length}</div><div class="n">renewed in this period, no next term or cancellation on record yet</div>`)}
     ${dt("ahead", `<div class="k">Coming up · ${doc.upcoming_days} days</div><div class="v">${ahead.length}</div>
       <div class="n">${ahead.length ? Math.round(100 * discussed / ahead.length) : 0}% reviewed with the customer</div>`)}
     ${dt("high", `<div class="k">High risk</div><div class="v" style="color:var(--bad)">${high}</div><div class="n">not discussed, with a warning sign</div>`)}
   </div>${renDrill && drills[renDrill] ? renDrillHtml(drills[renDrill], label, pipeName) : ""}`;
-  // Weeks by renewal date, Monday first, oldest to newest.
+  // Weeks by renewal date, Monday first, oldest to newest: the settled four
+  // weeks and the two still settling. The breakdowns below are the settled
+  // four weeks -- the rate's own renewals.
   const wk = d => { const x = new Date(d + "T12:00:00"); x.setDate(x.getDate() - ((x.getDay() + 6) % 7)); return x.toISOString().slice(0, 10); };
-  const weeks = [...new Set(past.map(r => wk(r.renewal)))].sort();
-  const weekCards = weeks.map((w, i) => renCard(past.filter(r => wk(r.renewal) === w),
-    `Week of ${renDate(w)}${i === weeks.length - 1 ? " · settling" : ""}`)).join("");
-  const worked = REN_WORKED.map(([k, l]) => [l, past.filter(r => renWorked(r) === k)]).filter(x => x[1].length);
+  const recent = settled.concat(settling);
+  const weeks = [...new Set(recent.map(r => wk(r.renewal)))].sort();
+  const weekCards = weeks.map(w => { const rs = recent.filter(r => wk(r.renewal) === w);
+    return renCard(rs, `Week of ${renDate(w)}${rs.some(r => ago(r) < REN_SETTLE_DAYS) ? " · settling" : ""}`); }).join("");
+  const base = settled;
+  const worked = REN_WORKED.map(([k, l]) => [l, base.filter(r => renWorked(r) === k)]).filter(x => x[1].length);
   const workedCards = worked.map(([l, rs]) => renCard(rs, l)).join("");
-  const pipeCards = (doc.pipelines || []).map(([k, l]) => [l, past.filter(r => r.pipeline === k)]).filter(x => x[1].length).map(([l, rs]) => renCard(rs, l)).join("");
-  const people = (doc.team || []).filter(n => past.some(r => r.sr && r.sr.by === n));
-  const personCards = people.map(n => renCard(past.filter(r => r.sr && r.sr.by === n), pbadge(DOT[n] || TEAM_DOT, n.split(" ")[0]))).join("")
-    + (past.some(r => !r.sr || !people.includes(r.sr.by)) ? renCard(past.filter(r => !r.sr || !people.includes(r.sr.by)), pbadge("#8a877f", "Others / no SR")) : "");
-  const legend = Object.entries(REN_STATUS).map(([k, [l]]) => { const c = past.filter(r => r.status === k).length;
+  const pipeCards = (doc.pipelines || []).map(([k, l]) => [l, base.filter(r => r.pipeline === k)]).filter(x => x[1].length).map(([l, rs]) => renCard(rs, l)).join("");
+  const people = (doc.team || []).filter(n => base.some(r => r.sr && r.sr.by === n));
+  const personCards = people.map(n => renCard(base.filter(r => r.sr && r.sr.by === n), pbadge(DOT[n] || TEAM_DOT, n.split(" ")[0]))).join("")
+    + (base.some(r => !r.sr || !people.includes(r.sr.by)) ? renCard(base.filter(r => !r.sr || !people.includes(r.sr.by)), pbadge("#8a877f", "Others / no SR")) : "");
+  const legend = Object.entries(REN_STATUS).map(([k, [l]]) => { const c = recent.filter(r => r.status === k).length;
     return c ? `<span class="oleg-item"><span class="pd rdot" style="${renFill(k)}"></span>${l} <b>${c}</b></span>` : ""; }).join("");
   const lostRows = lost.sort((a, b) => a.renewal < b.renewal ? -1 : 1).map(r => `<tr>
     <td>${renDate(r.renewal)}${r.kind === "upcoming" ? ' <span class="chip c-n">ahead</span>' : ""}</td><td>${cesc(r.name || "—")}</td>
@@ -5167,15 +5224,15 @@ function renewalsPanel(doc, workHtml = "") {
     <td>${r.flags.filter(x => REN_FLAGS[x]).map(x => `<span class="chip ${REN_FLAGS[x][1]}" style="margin:0 4px 3px 0">${REN_FLAGS[x][0]}</span>`).join("")}</td>
     <td><span class="chip ${REN_RISK[r.risk][1]}">${REN_RISK[r.risk][0]}</span></td></tr>`).join("");
   return `<div class="sect"><h2>Renewals</h2>
-    <p class="sd">Every personal-lines policy that renewed in the last ${doc.past_days} days or renews in the next ${doc.upcoming_days}, from AgencyZoom's policy records and the team's SRs. Rebuilt every night · as of ${renDate(doc.as_of)}.</p>${tiles}</div>
+    <p class="sd">Every personal-lines policy that renewed in the last ${doc.past_days} days or renews in the next ${doc.upcoming_days}, from AgencyZoom's policy records and the team's SRs. Rebuilt every night · as of ${renDate(doc.as_of)}. Three retention rates: the settled 4 weeks (renewals 2 to 6 weeks ago), the date filter's period, and the last 12 months. Everything else follows the date filter, except Coming up.${rangeNote}</p>${tiles}</div>
     ${workHtml}
-    <div class="sect"><h2>Retention · last 4 weeks</h2>
-    <p class="sd">By the week each policy renewed. Retained = a next term on record, a rewrite, or Rewrite Accepted on the renewal SR. Lost = the policy record shows it cancelled, a Late Payment or Service Pipeline SR cancelled it, or the renewal SR was closed on a cancellation. Rate = retained over retained plus lost. A Mid-term Cancellation (hatched, cancelled more than 30 days before the renewal) and a renewal not confirmed yet sit outside the rate. The newest week is still settling: AgencyZoom's policy records lag by a few weeks.</p>
+    <div class="sect"><h2>Retention · settled 4 weeks</h2>
+    <p class="sd">By the week each policy renewed: the four weeks in the settled rate, and the newest two, still settling (a renewal counts once it is two weeks past). Retained = a next term on record, a rewrite, or Rewrite Accepted on the renewal SR. Lost = the policy record shows it cancelled, a Late Payment or Service Pipeline SR cancelled it, or the renewal SR was closed on a cancellation. Rate = retained over retained plus lost. A Mid-term Cancellation (hatched, cancelled more than 30 days before the renewal) and a renewal not confirmed yet sit outside the rate. The breakdowns by how the SR was worked, pipeline and person are the settled four weeks.</p>
     <div class="tiles rtiles">${weekCards}</div><div class="oleg">${legend}</div>
     <h3 class="rh3">By how the renewal SR was worked</h3><div class="tiles rtiles">${workedCards}</div>
     <h3 class="rh3">By pipeline</h3><div class="tiles rtiles">${pipeCards}</div>
     <h3 class="rh3">By who worked the renewal SR</h3><div class="tiles rtiles">${personCards}</div></div>
-    <div class="sect"><h2>Lost</h2><p class="sd">Every renewal lost in the last 4 weeks, and any renewal still ahead that has already cancelled, with how we know.</p>
+    <div class="sect"><h2>Lost</h2><p class="sd">Every renewal lost in this period, and any renewal still ahead that has already cancelled, with how we know.${rangeNote}</p>
     ${lostRows ? `<div class="scroll"><table class="rtable"><thead><tr><th>Renews</th><th>Customer</th><th>Policy</th><th class="num">Premium</th><th>Renewal SR</th><th>How we know</th></tr></thead><tbody>${lostRows}</tbody></table></div>` : '<p class="sd">None.</p>'}</div>
     ${renFlagHtml(doc, label)}
     <div class="sect"><h2>Coming up · next ${doc.upcoming_days} days</h2>
@@ -5192,17 +5249,33 @@ function renewalsPanel(doc, workHtml = "") {
    in the last 4 weeks, per person and per pipeline, with how long each took
    from created to completed, and the open ones as of the latest day. From
    the same daily documents as the Service Digest, so the figures agree. */
-const REN_WORK_DAYS = 28;
-let RENEWAL_WORK = null;
-async function loadRenewalWork() {
-  if (RENEWAL_WORK) return RENEWAL_WORK;
-  const all = await serviceDays();
-  const last = all.length ? [...all].sort().pop() : null;
-  if (!last) return null;
-  const from = new Date(last + "T12:00:00"); from.setDate(from.getDate() - REN_WORK_DAYS + 1);
-  const docs = await fetchServiceDocs(all.filter(d => d >= from.toISOString().slice(0, 10) && d <= last));
-  RENEWAL_WORK = docs.length ? splitRenewals(mergeServiceDocs(docs)) : null;
-  return RENEWAL_WORK;
+// Follows the date filter (Frank, 2026-09-27: "the only numbers I want
+// displayed for a rolling 4 weeks is the retention rate").
+const RENEWAL_WORK = {};
+async function loadRenewalWork(wanted) {
+  const k = wanted.join(",");
+  if (!(k in RENEWAL_WORK)) {
+    const docs = await fetchServiceDocs(wanted);
+    RENEWAL_WORK[k] = docs.length ? splitRenewals(mergeServiceDocs(docs)) : null;
+  }
+  return RENEWAL_WORK[k];
+}
+// Renewal call backs and texts (Frank, 2026-09-27: "everything should be
+// separated if possible") -- the Service Digest's cards, for renewal business.
+function renCommsTiles(m, dk) {
+  const cb = m.renewalCallbacks || [], cbDone = cb.filter(r => r.minutes != null);
+  const M = m.renewalMsg || { replies: [], sent: [] };
+  const need = M.replies.filter(r => !r.ack && !r.optout), ans = need.filter(r => r.minutes != null);
+  const typed = M.sent.filter(r => r.channel === "text" && !r.auto), auto = M.sent.filter(r => r.channel === "text" && r.auto);
+  const med = x => x.length ? Math.round(median(x)) : null;
+  return (cb.length ? dk("rw:cb", `<div class="k">Renewal Call Backs</div>
+      <div class="v"><span class="${replyTier(med(cbDone.map(r => r.minutes)))}">${fmtMins(med(cbDone.map(r => r.minutes)))}</span></div>
+      <div class="n">median to the first return call &middot; ${cbDone.length} of ${cb.length} returned same day</div>`) : "")
+    + (M.sent.length ? dk("rw:sent", `<div class="k">Renewal Texts Sent</div><div class="v">${typed.length}</div>
+      <div class="n">typed &middot; ${auto.length} more by automation</div>`) : "")
+    + (need.length ? dk("rw:replies", `<div class="k">Renewal Speed to Reply</div>
+      <div class="v"><span class="${replyTier(med(ans.map(r => r.minutes)))}">${fmtMins(med(ans.map(r => r.minutes)))}</span></div>
+      <div class="n">median &middot; ${ans.length} of ${need.length} answered${need.length - ans.length ? ` &middot; <b style="color:var(--bad)">${need.length - ans.length} waiting</b>` : ""}</div>`) : "");
 }
 function renewalWorkHtml(m) {
   if (!m) return "";
@@ -5219,6 +5292,7 @@ function renewalWorkHtml(m) {
   const tiles = `<div class="tiles">
     ${dk("rw:done", `<div class="k">Renewal SRs Completed</div><div class="v">${rs.length}</div><div class="n">median ${hrs(rs)} created to completed</div>`, "border-color:var(--border-strong)")}
     ${dk("rw:tasks", `<div class="k">Renewal Tasks Done</div><div class="v">${m.renewalTasks.filter(r => r.done).length}<span style="font-size:15px;color:var(--text-muted)"> / ${m.renewalTasks.length}</span></div><div class="n">${m.renewalTasks.length ? Math.round(100 * m.renewalTasks.filter(r => r.done).length / m.renewalTasks.length) : 0}% of renewal tasks due</div>`)}
+    ${renCommsTiles(m, dk)}
     ${open ? dk("rw:open", `<div class="k">Open Renewal SRs</div><div class="v">${open.length}</div><div class="n">${open.filter(r => r.overdue).length} overdue &middot; as of ${fmtShortDate(m.days[m.days.length - 1])}</div>`) : ""}
     ${team.filter(n => rs.some(r => r.by === n) || (open || []).some(r => r.by === n) || (m.renewalTaskCounts[n] || {}).due).map(person).join("")}
     ${others.length ? dk("rw:person:others", `<div class="k">${pbadge("#8a877f", "Others")}</div><div class="v">${others.length}</div><div class="n">completed &middot; median ${hrs(others)}</div>`) : ""}
@@ -5233,22 +5307,25 @@ function renewalWorkHtml(m) {
     const head = (t, what) => `<div class="rdrill-list"><div style="display:flex;justify-content:space-between;align-items:baseline;gap:12px;margin:14px 0 6px">
       <h3 class="rh3" style="margin:0">${t}</h3><a href="#" data-drill-close style="font-size:12.5px">Close</a></div>${what ? `<p class="sd" style="margin:0 0 6px">${what}</p>` : ""}`;
     if (kind === "done") list = head(`Renewal SRs Completed · ${rs.length}`, "Newest first, with the outcome each counts as.") + svcSrTable(rs, m, true) + "</div>";
-    if (kind === "tasks") list = head(`Renewal Tasks · ${m.renewalTasks.length} due`, "Every renewal task due in the last " + REN_WORK_DAYS + " days, not done first.") + svcTaskTable(m.renewalTasks) + "</div>";
+    if (kind === "tasks") list = head(`Renewal Tasks · ${m.renewalTasks.length} due`, "Every renewal task due in this period, not done first.") + svcTaskTable(m.renewalTasks) + "</div>";
+    if (kind === "cb") list = head(`Renewal Call Backs · ${m.renewalCallbacks.length}`, "Missed calls from customers whose open SRs are all renewal SRs. Not returned first.") + svcCallbackTable(m.renewalCallbacks) + "</div>";
+    if (kind === "sent") list = head(`Renewal Texts & Emails · ${m.renewalMsg.sent.filter(r => !r.auto).length} typed, ${m.renewalMsg.sent.filter(r => r.auto).length} automation`, "To customers whose open SRs are all renewal SRs, or about the renewal. Typed first.") + svcSentTable(m.renewalMsg.sent, m) + "</div>";
+    if (kind === "replies") list = head(`Renewal Customer Messages · ${m.renewalMsg.replies.length}`, "Waiting first, then slowest answered.") + svcReplyTable(m.renewalMsg.replies, m) + "</div>";
     if (kind === "open") list = head(`Open Renewal SRs · ${open.length}`, `As of ${fmtShortDate(m.days[m.days.length - 1])}.`) + svcOpenTable(open, m) + "</div>";
     if (kind === "pipe") { const x = rs.filter(r => r.pipeline === a); list = head(`${cesc((pipes.find(p => p[0] === a) || [, a])[1])} · ${x.length} completed`) + svcSrTable(x, m, true) + "</div>"; }
     if (kind === "person") { const x = a === "others" ? others : rs.filter(r => r.by === a), o = open && a !== "others" ? open.filter(r => r.by === a) : null;
       const tk = a === "others" ? [] : m.renewalTasks.filter(r => (r.assignees || []).includes(a) || r.done_by === a);
       list = head(a === "others" ? "Others" : cesc(a)) + `<h3 class="rh3">Completed · ${x.length}</h3>${svcSrTable(x, m, true)}${o ? `<h3 class="rh3">Open · ${o.length}</h3>${svcOpenTable(o, m)}` : ""}${a !== "others" ? `<h3 class="rh3">Renewal tasks · ${tk.length}</h3>${svcTaskTable(tk)}` : ""}</div>`; }
   }
-  return `<div class="sect"><h2>Renewal SR Work</h2>
-    <p class="sd">Renewal SRs and renewal tasks, ${fmtShortDate(m.days[0])} – ${fmtShortDate(m.days[m.days.length - 1])}: the SRs completed, from the day each was created to the day it was completed, and the ones still open; the renewal tasks due, and how many were done. Credit goes to whoever completed the SR or task. None of these are in the Service Digest.</p>
+  return `<div class="sect"><h2>Renewal SR Work${m.label ? ` <span style="font-weight:400;text-transform:none;letter-spacing:0;color:var(--text-muted)">· ${cesc(m.label)}</span>` : ""}</h2>
+    <p class="sd">Renewal SRs, tasks, call backs and texts, ${fmtShortDate(m.days[0])} – ${fmtShortDate(m.days[m.days.length - 1])}: the SRs completed, from the day each was created to the day it was completed, and the ones still open; the renewal tasks due, and how many were done; and the call backs, texts and emails with customers whose open SRs are all renewal SRs, or about the renewal. Credit goes to whoever completed the SR or task. None of these are in the Service Digest.</p>
     ${tiles}${renDrill.startsWith("rw:") && !renDrill.startsWith("rw:pipe:") ? list : ""}
     ${tr ? `<div class="scroll"><table><thead><tr><th>Pipeline</th><th class="num">Completed</th><th class="num">Median</th><th class="num">90% within</th></tr></thead><tbody>${tr}</tbody></table></div>` : ""}
     ${renDrill.startsWith("rw:pipe:") ? list : ""}</div>`;
 }
 async function paintRenewals() {
   const v = $("#view");
-  $("#topsub").textContent = "Athena · renewals · the last 4 weeks and the next 45 days";
+  $("#topsub").textContent = "Athena · renewals";
   if (!RENEWALS_DOC) {
     v.innerHTML = '<div class="empty">Loading…</div>';
     try {
@@ -5256,11 +5333,22 @@ async function paintRenewals() {
       RENEWALS_DOC = r.ok ? await r.json() : null;
     } catch (_) { RENEWALS_DOC = null; }
   }
+  const controls = rangeControlHtml();
+  const rg = serviceRangeDays(await serviceDays());
   let work = null;
-  try { work = await loadRenewalWork(); } catch (_) { work = null; }
-  if (!RENEWALS_DOC && !work) { v.innerHTML = '<div class="empty">No renewal report yet. It is built every night.</div>'; return; }
+  if (!rg.err) {
+    try { work = await loadRenewalWork(rg.wanted); } catch (_) { work = null; }
+    if (work) work.label = rg.label;
+    $("#topsub").textContent = "Athena · renewals" + (rg.label ? " · " + rg.label : "");
+  }
+  const workHtml = rg.err ? `<div class="sect"><h2>Renewal SR Work</h2><p class="sd">${rg.err}</p></div>`
+    : work ? renewalWorkHtml(work) : `<div class="sect"><h2>Renewal SR Work</h2><p class="sd">No Athena report for ${rangeMode === "day" ? "this day" : "this range"} yet.</p></div>`;
+  if (!RENEWALS_DOC && !work) { v.innerHTML = controls + '<div class="empty">No renewal report yet. It is built every night.</div>'; wireRangeControl(); return; }
   const y = window.scrollY;
-  v.innerHTML = RENEWALS_DOC ? renewalsPanel(RENEWALS_DOC, renewalWorkHtml(work)) : renewalWorkHtml(work);
+  const day = rg.wanted && rg.wanted[0];
+  const rb = rg.err ? null : rangeMode === "day" ? (day ? { from: day, to: day } : null) : rangeBounds();
+  v.innerHTML = controls + (RENEWALS_DOC ? renewalsPanel(RENEWALS_DOC, workHtml, rb) : workHtml);
+  wireRangeControl();
   window.scrollTo(0, y);
   v.querySelectorAll("[data-drill]").forEach(el => {
     const go = () => { renDrill = renDrill === el.dataset.drill ? "" : el.dataset.drill; paintRenewals(); };
