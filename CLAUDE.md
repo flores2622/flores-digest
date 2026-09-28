@@ -108,7 +108,10 @@ Everything caches under `data/`, so a re-run resumes rather than restarting.
   September's first and finish-quote cards were re-judged under these rules
   by `assume_reread.py --backfill` (Frank asked, 2026-09-28): one short read
   per card, replacing only `askq` / `asks` / `askfix` and the day's `scan`
-  (backups under `backups/2026-09-28-assume-reread/`).
+  (backups under `backups/2026-09-28-assume-reread/`). Follow-ups the same
+  way with `--followups` (Frank, 2026-09-28: "re-read the follow-ups too"):
+  `assume`, `asks`, `askfix` and the three scorecard lines about assuming
+  the sale (`assume_reread.FU_ASSUME`), backups under `...-assume-reread-fu/`.
   **A quote emailed or texted after a call counts as presented** (Frank,
   2026-09-27), so the next call is a follow-up; **ending a finish-quote call
   to send the quote instead of presenting it is a flagged bad habit**.
