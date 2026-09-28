@@ -197,6 +197,7 @@
 .rfilters { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin: 0 0 10px; }
 .oleg { display: flex; flex-wrap: wrap; gap: 14px; margin-top: 10px; font-size: 11.5px; color: var(--text-secondary); }
 .oleg-item { display: flex; align-items: center; gap: 5px; }
+.oleg-item.rdrill-on, .oleg-item.on { text-decoration: underline; text-underline-offset: 3px; font-weight: 600; }
 /* Objection chart -- Live Contact Detail's own top-of-tab bar chart (Frank,
    2026-09-17), same bar-row shape as .orow/.otrack above but each row is a
    clickable filter, not just a display. */
@@ -343,6 +344,7 @@ h2 {
    column, same as it already does outside this grid. Collapses to one
    column under the same width other narrow layouts in this file use. */
 .digestgrid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 20px; align-items: start; }
+.digestgrid > div { min-width: 0; }   /* an open card list scrolls inside its column instead of widening it */
 @media (max-width: 720px) { .digestgrid { grid-template-columns: 1fr; } }
 
 /* Stat tiles. */
@@ -544,6 +546,18 @@ td.num.msgbad { color: var(--bad); font-weight: 600; }
 .hero .hl { font-weight: 700; font-size: 15px; margin-bottom: 6px; }
 .hero p { margin: 0 0 9px; font-size: 12.5px; line-height: 1.6; color: var(--text-secondary); }
 .hero p:last-child { margin-bottom: 0; }
+.soper { display: flex; flex-wrap: wrap; gap: 6px 14px; }
+.ast td.num { white-space: nowrap; }
+.aspct { color: var(--text-muted); font-size: 11px; margin-left: 5px; }
+.aslists { margin-top: 10px; }
+.aslists .solist { margin-top: 6px; }
+.asfix { display: block; color: var(--text-muted); font-size: 12px; margin-top: 3px; }
+@media (max-width: 520px) { .aspct { display: none; } .ast th, .ast td { padding-left: 8px; padding-right: 8px; } }
+.sonm { white-space: nowrap; }
+.solist summary { cursor: pointer; font-size: 12.5px; font-weight: 600; }
+.solist ul { list-style: none; margin: 8px 0 0; padding: 0; }
+.solist li { border-top: 1px solid var(--border); padding: 7px 0; font-size: 12.5px; line-height: 1.5; color: var(--text-secondary); }
+.sowho { display: block; font-size: 11.5px; color: var(--text-muted); font-weight: 600; }
 .q { font-style: italic; }
 
 
@@ -615,6 +629,22 @@ details.sc .scb { padding: 0 12px 12px; }
 .tlx { padding: 5px 0 11px 4px; font-size: 12px; line-height: 1.5; }
 .tlx b { display: block; }
 .tlx span { color: var(--text-secondary); }
+.cat .catx { font-weight: 500; opacity: .85; }
+/* A card's left edge is what the call was for (flowEdge). The hover strip
+   sits over the edge itself, so hovering the colour names it. */
+.cchead { position: relative; }
+/* Lightly tinted and striped, like the hatched outcome badges (Frank,
+   2026-09-27): light stripes of the flow colour over the card's surface,
+   with a solid line of the colour on the inside edge in place of the
+   badge's border. --fc is the flow colour, set per card. */
+.flowedge { position: absolute; left: -10px; top: 0; bottom: 0; width: 10px; cursor: help;
+  background: repeating-linear-gradient(45deg, color-mix(in srgb, var(--fc) 38%, var(--surface-raised)) 0 4px, var(--surface-raised) 4px 8px);
+  box-shadow: inset -2px 0 0 var(--fc); }
+.flowleg i { --fc: currentColor; background: repeating-linear-gradient(45deg, color-mix(in srgb, var(--fc) 38%, var(--surface-raised)) 0 3px, var(--surface-raised) 3px 6px) !important;
+  box-shadow: inset -2px 0 0 var(--fc); }
+.flowleg { display: flex; flex-wrap: wrap; gap: 14px; align-items: center; font-size: 12px; color: var(--text-secondary); margin: 0 0 12px; }
+.flowleg span { display: inline-flex; align-items: center; gap: 6px; }
+.flowleg i { width: 10px; height: 16px; border-radius: 2px; display: inline-block; border: 1px solid var(--border); }
 .cat { display: inline-block; font-size: 9.5px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.03em; padding: 2px 8px; border-radius: 10px; white-space: nowrap; color: #16150f; }
 /* Same nine-way outcome as the emailed Call Detail panel's own .g1-.g9
    (report_template.html) -- copied here rather than computed, since the
@@ -646,6 +676,7 @@ details.sc .scb { padding: 0 12px 12px; }
 .cdur { font-size: 11px; color: var(--text-muted); }
 .flag { display: inline-block; font-size: 10px; font-weight: 500; padding: 1px 6px; border-radius: 3px; background: var(--warnbg); color: var(--warn); margin: 0 4px 3px 0; }
 .flag.red { background: var(--badbg); color: var(--bad); }
+.flag.green { background: var(--goodbg); color: var(--good); }
 .chip { display: inline-block; font-size: 9.5px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em; padding: 2px 7px; border-radius: 3px; white-space: nowrap; }
 .c-g { background: var(--goodbg); color: var(--good); border: 1px solid var(--goodbd); }
 .c-w { background: var(--warnbg); color: var(--warn); border: 1px solid var(--warnbd); }
@@ -997,6 +1028,28 @@ function hoverable(node, html) {
    Policies has no colour: its only rule is the per-producer sale streak,
    which has no team-wide equivalent (see publish_board.apply_policy_streak's
    own comment). */
+/* Households sold (Frank, 2026-09-28: "we keep displaying HH quoted, but
+   Policies sold, it needs to be one or the other. i would prefer HH"): the
+   leads marked sold (rows.sold_leads, plus any the live refresh found since
+   the checkpoint), one per household per day -- duplicate lead records are
+   pervasive, so the lead's household id when it has one, else its name.
+   Premium Sold is still the policies' own premium. null when the document
+   has no sold-lead rows (days before digest_rows), so the old Policies
+   display stands there. */
+function hhSoldOf(d, name) {
+  const R = d.rows;
+  if (!R || !R.sold_leads) return null;
+  const keys = new Set();
+  const add = (r, who) => {
+    if (name && who !== name) return;
+    keys.add(`${r.day || d.date || ""}|${r.household != null ? "h" + r.household : "n" + String(r.lead || r.lead_id || "").toLowerCase()}`);
+  };
+  // Live, the whole day's sold leads are read at once, so that list stands on
+  // its own; the checkpoint's rows are added only if the read stopped short.
+  if (!(d.live_sold && d.live_sold_complete)) for (const r of R.sold_leads) add(r, r.who);
+  for (const [w, list] of Object.entries(d.live_sold || {})) for (const r of list) add(r, w);
+  return keys.size;
+}
 function digestDay(d, who) {
   const byName = Object.fromEntries((d.producers || []).map(p => [p.name, p]));
   const focus = who ? byName[who] : null;
@@ -1036,19 +1089,26 @@ function digestDay(d, who) {
   // 2026-09-23), PLUS Closing Ratio as a 6th tile in the SAME row (Frank,
   // 2026-09-23: "I want all 6 cards in 1 row, and they dont need to be the
   // same size if thats needed to make them fit").
+  const hhSold = hhSoldOf(d, focus ? focus.name : "");
   const tiles = [
     ["Dials", t.dials ?? 0, dialsNote, tc("dials"), liveOn(d, "dials")],
     ["Live contacts", t.live ?? 0, rate + "% contact rate", tc("rate"), liveOn(d, "contacts")],
-    ["HH/Prem. Quoted", `<span class="${tc("hh")}">${t.hh ?? 0} HH</span><br><span class="${tc("pq")}">${money(t.pq)}</span>`, "", "", liveOn(d, "quotes")],
+    ["HH/Prem. Quoted", `<span class="${tc("hh")}">${t.hh ?? 0} HH</span><br><span class="${tc("pq")}">${money(t.pq)}</span>`,
+      t.hh ? `avg ${money(t.pq / t.hh)} per HH` : "", "", liveOn(d, "quotes")],
     // Policies colours on the sale streak (see apply_policy_streak), same
     // tier data the Team Leaderboard table's own Pol column already uses --
     // this tile just wasn't wrapping the number in it (unlike HH/Prem.
     // Quoted right above, which colours both halves).
-    ["Pol/Prem. Sold", `<span class="${tc("pol")}">${t.pol ?? 0} Pol</span><br><span class="${tc("ps")}">${money(t.ps)}</span>`, "", "", liveOn(d, "sales")],
+    hhSold == null
+      ? ["Pol/Prem. Sold", `<span class="${tc("pol")}">${t.pol ?? 0} Pol</span><br><span class="${tc("ps")}">${money(t.ps)}</span>`, "", "", liveOn(d, "sales")]
+      // Households sold and premium sold come from the same refresh.
+      : ["HH/Prem. Sold", `<span class="${tc("pol")}">${hhSold} HH</span><br><span class="${tc("ps")}">${money(t.ps)}</span>`,
+         `${t.pol ?? 0} polic${(t.pol ?? 0) === 1 ? "y" : "ies"}${hhSold ? ` &middot; ${((t.pol || 0) / hhSold).toFixed(1)} per HH` : ""}`, "", liveOn(d, "hhsold")],
   ];
   if (t.util != null) tiles.push(["Utilization", t.util + "%", "weighted", tc("util"), liveOn(d, "util")]);
+  const DRILL = { "Dials": "dials", "Live contacts": "contacts", "HH/Prem. Quoted": "quoted", "Pol/Prem. Sold": "sold", "HH/Prem. Sold": "sold" };
   const tilesHtml = tiles.map(([k, v, n, cls, live]) =>
-    `<div class="tile${live ? " isLive" : ""}"><div class="k">${k}</div><div class="v${cls ? " " + cls : ""}">${v}</div>${n ? `<div class="n">${n}</div>` : ""}</div>`).join("");
+    `<div${DRILL[k] ? ddk(DRILL[k], `tile${live ? " isLive" : ""}`) : ` class="tile${live ? " isLive" : ""}"`}><div class="k">${k}</div><div class="v${cls ? " " + cls : ""}">${v}</div>${n ? `<div class="n">${n}</div>` : ""}</div>`).join("");
 
   // Closing Ratio (Frank, 2026-09-22: "add a closing rate table between the
   // sold and utilization cards"; 2026-09-23: "can we do a closing ratio for
@@ -1065,19 +1125,24 @@ function digestDay(d, who) {
   // not, so the ratio stays wholly the checkpoint's (`cp_pol`/`cp_ps`, kept
   // by applyLive) rather than a live sale over a stale quote count.
   const hh = t.hh ?? 0, pol = t.cp_pol ?? t.pol ?? 0, pq = t.pq ?? 0, ps = t.cp_ps ?? t.ps ?? 0;
-  const hhClosingRatio = hh ? (100 * pol / hh) : null;
+  // Households: households sold over households quoted -- the same unit on
+  // both sides (Frank, 2026-09-28), where the document has sold-lead rows.
+  const hhClosingRatio = hh ? (100 * (hhSold ?? pol) / hh) : null;
+  const closingHhTier = hhSold != null && hhClosingRatio != null
+    ? (TI[tierColor("closing_ratio_pct", hhClosingRatio)] || "") : tc("closing_hh");
   const premClosingRatio = pq ? (100 * ps / pq) : null;
   // Tier-coloured (Frank, 2026-09-23, off industry cross-sell close-rate
   // research: green >=25%, yellow 15-24.99%, red <15% -- see
   // digest_config.THRESHOLDS["closing_ratio_pct"]) -- both halves share the
   // one scheme, since Frank gave one for "close ratio", not two.
   const pct = v => v == null ? "—" : v.toFixed(1) + "%";
-  const closingRatioTileHtml = `<div class="tile${liveOn(d, "closing") ? " isLive" : ""}">
+  const closingRatioTileHtml = `<div${ddk("closing", `tile${liveOn(d, "closing") ? " isLive" : ""}`)}>
    <div class="k">Closing Ratio</div>
-   <div class="v"><span class="${tc("closing_hh")}">${pct(hhClosingRatio)}</span> <span class="n" style="font-weight:400">households</span><br><span class="${tc("closing_pq")}">${pct(premClosingRatio)}</span> <span class="n" style="font-weight:400">premium</span></div>
+   <div class="v"><span class="${closingHhTier}">${pct(hhClosingRatio)}</span> <span class="n" style="font-weight:400">households</span><br><span class="${tc("closing_pq")}">${pct(premClosingRatio)}</span> <span class="n" style="font-weight:400">premium</span></div>
   </div>`;
 
   return `<div class="tiles tiles-6">${tilesHtml}${closingRatioTileHtml}</div>
+  ${digDrillFor(d, who, ["dials", "contacts", "quoted", "sold", "closing"])}
   ${teamLeaderboardHtml(d, who)}`;
 }
 
@@ -1169,6 +1234,30 @@ function dialsSub(row) {
   ].filter(Boolean).join(", ");
   return parts ? ` <span style="opacity:.72">(${parts})</span>` : "";
 }
+/* Each scored figure's place and points in its own category, under the
+   figure's hover (Frank, 2026-09-28: "I dont want to be guessing who was
+   first in what category"). From d.leaderboard.categories -- board_payload.
+   leaderboard() on a day, rankLeaderboard on a range -- so it is exactly
+   what the standing adds up. A tie shares the lowest place it covers
+   ("T-2nd"); no activity is 0 points. Policies is not a scored category. */
+const LB_PLACE = { 5: "1st", 4: "2nd", 3: "3rd", 2: "4th", 1: "5th" };
+// A title attribute, so hovering the number tells its place (Frank,
+// 2026-09-28: "i dont want it displayed, do it if I hover over the number").
+function lbRankTag(d, label, name) {
+  const cat = ((d.leaderboard || {}).categories || []).find(c => c.label === label);
+  if (!cat || !cat.points || !(name in cat.points)) return "";
+  const pts = cat.points[name] || 0;
+  if (!pts) return ` title="${label}: no activity, 0 points"`;
+  const tie = Object.entries(cat.points).some(([n, v]) => n !== name && v === pts);
+  const place = (tie ? "tied " : "") + (LB_PLACE[pts] || "");
+  // On a range the table shows totals but the ranking is per day worked, so
+  // the hover says what was actually ranked.
+  const v = (d.leaderboard || {}).averaged && cat.values ? cat.values[name] : null;
+  const PER_DAY = { "Call Volume": x => x.toFixed(1) + " dials", "Households Quoted": x => x.toFixed(1) + " households",
+    "Premium Quoted": x => money(x), "Premium Sold": x => money(x) };
+  const ranked = v != null && PER_DAY[label] ? ` (ranked on ${PER_DAY[label](v)} per day worked)` : "";
+  return ` title="${label}: ${place}, ${pts} point${pts === 1 ? "" : "s"}${ranked}"`;
+}
 function teamLeaderboardHtml(d, who) {
   const byName = Object.fromEntries((d.producers || []).map(p => [p.name, p]));
   const focus = who ? byName[who] : null;
@@ -1177,6 +1266,9 @@ function teamLeaderboardHtml(d, who) {
   const MEDAL = ["\u{1F3C6}", "\u{1F948}", "\u{1F949}"];
   const streak = d.policy_streak || {};
   const polTitle = n => {
+    // A household marked sold today, or a live policy, is a sale today even
+    // before the checkpoint's streak knows it.
+    if (d.date && ((byName[n] || {}).pol > 0 || (hhSoldOf(d, "") != null && hhSoldOf(d, n) > 0))) return "sold today";
     const g = streak[n];
     return g === 0 ? "sold today" : g == null ? "no sale on record"
          : g + " business day" + (g === 1 ? "" : "s") + " without a sale";
@@ -1190,6 +1282,17 @@ function teamLeaderboardHtml(d, who) {
   const MP = (d.messages || {}).producers || null;
   const msgCell = r => MP ? `<td class="num${liveOn(d, "messages") ? " isLive" : ""}">${r ? `${r.texts || 0} / ${r.emails || 0}` : "0 / 0"}</td>` : "";
   const msgTeam = MP ? Object.values(MP).reduce((a, r) => ({ texts: a.texts + (r.texts || 0), emails: a.emails + (r.emails || 0) }), { texts: 0, emails: 0 }) : null;
+  // Quote sent instead of kept on the phone (Frank, 2026-09-28: "add the
+  // send-the-quote stat per producer to the leaderboard"): calls where the
+  // producer offered on their own to send it, of the calls where a quote came
+  // up -- the same count as Wins and Losses. Shown, not scored.
+  const SO = (d.calls || []).filter(c => c.sendoff && c.sendoff[0]);
+  const soCell = list => {
+    if (!SO.length) return "";
+    if (!list.length) return `<td class="num">—</td>`;
+    const n = list.filter(c => c.sendoff[0] === "producer").length;
+    return `<td class="num">${n} <span style="opacity:.72">of ${list.length}</span></td>`;
+  };
 
   let podium = "";
   if (!focus && lb.order && lb.order.length > 1) {
@@ -1198,18 +1301,20 @@ function teamLeaderboardHtml(d, who) {
   }
 
   const lv = part => liveOn(d, part) ? " isLive" : "";
+  const hhCol = hhSoldOf(d, "") != null;
   const rows = ranked.map((p, i) => `<tr>
     <td><span class="who">${
        !focus && i < 3 ? `<span class="mdl" role="img" aria-label="${["1st", "2nd", "3rd"][i]}">${MEDAL[i]}</span>` : ""}${pbadge(DOT[p.name] || "#8a877f", p.name)}</span></td>
-    ${hasRoleplay ? `<td class="num ${tc(p.name, "roleplay")}">${(p.coach || {}).roleplay ?? "—"}</td>` : ""}
-    <td class="num ${tc(p.name, "dials")}${lv("dials")}">${p.dials ?? 0}${dialsSub(p)}</td>
-    <td class="num ${tc(p.name, "talk")}${lv("contacts")}">${hhmm(p.talk)}</td>
-    <td class="num ${tc(p.name, "rate")}${lv("contacts")}">${p.rate ?? 0}% <span style="opacity:.72">(${p.live ?? 0})</span></td>
+    ${hasRoleplay ? `<td class="num ${tc(p.name, "roleplay")}"${lbRankTag(d, "Role Play", p.name)}>${(p.coach || {}).roleplay ?? "—"}${p.rp_missed ? `<span style="display:block;color:var(--text-muted);font-weight:400;white-space:nowrap;font-size:10.5px" title="Days worked with no role play -- each counts as 0 in the ranking">${p.rp_missed} missed</span>` : ""}</td>` : ""}
+    <td class="num ${tc(p.name, "dials")}${lv("dials")}"${lbRankTag(d, "Call Volume", p.name)}>${p.dials ?? 0}${dialsSub(p)}</td>
+    <td class="num ${tc(p.name, "talk")}${lv("contacts")}"${lbRankTag(d, "Avg Talk Time", p.name)}>${hhmm(p.talk)}</td>
+    <td class="num ${tc(p.name, "rate")}${lv("contacts")}"${lbRankTag(d, "Contact Rate", p.name)}>${p.rate ?? 0}% <span style="opacity:.72">(${p.live ?? 0})</span></td>
     ${msgCell(MP && MP[p.name])}
-    <td class="num ${tc(p.name, "hh")}${lv("quotes")}">${p.hh ?? 0}</td>
-    <td class="num ${tc(p.name, "pq")}${lv("quotes")}">${money(p.pq)}</td>
-    <td class="num ${tc(p.name, "pol")}${lv("sales")}" title="${polTitle(p.name)}">${p.pol ?? 0}</td>
-    <td class="num ${tc(p.name, "ps")}${lv("sales")}">${money(p.ps)}</td>
+    ${soCell(SO.filter(c => c.who === p.name))}
+    <td class="num ${tc(p.name, "hh")}${lv("quotes")}"${lbRankTag(d, "Households Quoted", p.name)}>${p.hh ?? 0}</td>
+    <td class="num ${tc(p.name, "pq")}${lv("quotes")}"${lbRankTag(d, "Premium Quoted", p.name)}>${money(p.pq)}</td>
+    <td class="num ${tc(p.name, "pol")}${lv(hhCol ? "hhsold" : "sales")}" title="${polTitle(p.name)}">${hhCol ? `${hhSoldOf(d, p.name)} <span style="opacity:.72">(${p.pol ?? 0} pol)</span>` : (p.pol ?? 0)}</td>
+    <td class="num ${tc(p.name, "ps")}${lv("sales")}"${lbRankTag(d, "Premium Sold", p.name)}>${money(p.ps)}</td>
     ${p.util != null ? `<td class="num ${tc(p.name, "util")}${lv("util")}">${p.util}%</td>` : ""}</tr>`).join("");
   const tt = k => TI[((d.tiers || {})["team"] || {})[k]] || "";
   const T = d.totals || {};
@@ -1220,19 +1325,22 @@ function teamLeaderboardHtml(d, who) {
     <td class="num ${tt("talk")}${lv("contacts")}">${hhmm(T.talk)}</td>
     <td class="num ${tt("rate")}${lv("contacts")}">${teamRate}% <span style="opacity:.72">(${T.live ?? 0})</span></td>
     ${msgCell(msgTeam)}
+    ${soCell(SO)}
     <td class="num ${tt("hh")}${lv("quotes")}">${T.hh ?? 0}</td>
     <td class="num ${tt("pq")}${lv("quotes")}">${money(T.pq)}</td>
-    <td class="num ${tt("pol")}${lv("sales")}">${T.pol ?? 0}</td>
+    <td class="num ${tt("pol")}${lv(hhCol ? "hhsold" : "sales")}">${hhCol ? `${hhSoldOf(d, "")} <span style="opacity:.72">(${T.pol ?? 0} pol)</span>` : (T.pol ?? 0)}</td>
     <td class="num ${tt("ps")}${lv("sales")}">${money(T.ps)}</td>
     ${T.util != null ? `<td class="num ${tt("util")}${lv("util")}">${T.util}%</td>` : ""}</tr>`;
 
+  const rangeNote = !focus && lb.averaged ? `<p class="sd">Ranked on the ${lb.days} reporting days: each producer's per-day averages over the days they worked, scored like a single day. For the ranking a missed role play counts as 0; the Role Play column is the average of the sessions they did.</p>` : "";
   return `<div class="sect"><h2>Team Leaderboard</h2>
-   ${podium}
+   ${rangeNote}${podium}
    <div class="scroll"><table><thead><tr><th>Producer</th>${hasRoleplay ? "<th class=\"num\">Role Play</th>" : ""}
    <th class="num">Call Volume</th><th class="num">Avg Talk Time</th><th class="num">Contact Rate</th>
    ${MP ? `<th class="num" title="Texts and emails the producer typed and sent themselves; automation not counted">Texts / Emails</th>` : ""}
+   ${SO.length ? `<th class="num" title="Calls where the producer offered on their own to send the quote instead of keeping the lead on the phone, of the calls where a quote came up">Sent the Quote</th>` : ""}
    <th class="num">Households Quoted</th><th class="num">Premium Quoted</th>
-   <th class="num">Policies</th><th class="num">Premium Sold</th>
+   <th class="num">${hhCol ? "HH Sold" : "Policies"}</th><th class="num">Premium Sold</th>
    ${ranked.some(p => p.util != null) ? "<th class=\"num\">Utilization</th>" : ""}</tr></thead>
    <tbody>${rows}${tot}</tbody></table></div></div>`;
 }
@@ -1243,25 +1351,102 @@ function teamLeaderboardHtml(d, who) {
    before. Objections live ONLY in the Coaching tab's own Objections sub-tab
    now (Frank, 2026-09-23: "leave it only in the objections tab") -- the
    "Objections by category" table that used to sit here duplicated it. */
+/* Every assumption stat in one place (Frank, 2026-09-28: "add all
+   assumption stats to wins and losses"): the quote assumed on first and
+   finish-quote calls, the sale assumed on every call, and a follow-up's
+   sale assumed up front, through objections and at the end -- per producer
+   and team, off each card's own verdicts. n/a (the call never gave them the
+   chance) counts neither way. Replaces "The opening asks permission",
+   which was the quote figure alone. */
+const ASSUME_MEASURES = [
+  ["quote", "Quote", "Assumed the quote", c => c.askq],
+  ["sale", "Sale", "Assumed the sale", c => c.asks],
+  ["start", "Follow-up: up front", "Follow-ups: assumed the sale up front", c => (c.assume || {}).start],
+  ["obj", "…through objections", "Follow-ups: assumed the sale through objections", c => (c.assume || {}).objections],
+  ["end", "…at the end", "Follow-ups: assumed the sale at the end", c => (c.assume || {}).end],
+];
+function assumeStatsHtml(d) {
+  const calls = d.calls || [];
+  if (!calls.some(c => c.askq || c.asks || c.assume)) return "";
+  const esc = t => String(t || "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+  const judged = (list, get) => list.filter(c => { const v = get(c); return v && v[0] != null; });
+  const cell = (list, get) => {
+    const j = judged(list, get);
+    if (!j.length) return `<td class="num">—</td>`;
+    const y = j.filter(c => get(c)[0] === true).length;
+    return `<td class="num"><b>${y}</b> of ${j.length}<span class="aspct">${Math.round(100 * y / j.length)}%</span></td>`;
+  };
+  const names = SENDOFF_ORDER.filter(n => calls.some(c => c.who === n));
+  const rows = names.map(n => `<tr><td>${n.split(" ")[0]}</td>${ASSUME_MEASURES.map(m => cell(calls.filter(c => c.who === n), m[3])).join("")}</tr>`).join("");
+  const team = `<tr class="tot"><td>Team</td>${ASSUME_MEASURES.map(m => cell(calls, m[3])).join("")}</tr>`;
+  const day = c => (c._day || d.date || "").slice(5).replace("-", "/");
+  const lists = ASSUME_MEASURES.map(([k, , title, get]) => {
+    const j = judged(calls, get);
+    if (!j.length) return "";
+    const y = j.filter(c => get(c)[0] === true).length;
+    const items = j.slice().sort((a, b) => (get(a)[0] === get(b)[0] ? 0 : get(a)[0] ? 1 : -1)
+        || (a.who > b.who) - (a.who < b.who) || ((a._day || "") > (b._day || "")) - ((a._day || "") < (b._day || "")))
+      .map(c => `<li><span class="sowho">${day(c)} · ${esc((c.who || "").split(" ")[0])} · ${esc(c.lead)}
+         <span class="chip ${get(c)[0] ? "c-g" : "c-r"}">${get(c)[0] ? "assumed" : "did not"}</span></span>${esc(get(c)[1])}${
+         !get(c)[0] && c.askfix && (k === "quote" || k === "sale") ? `<span class="asfix">Assumptive version: ${esc(c.askfix)}</span>` : ""}</li>`).join("");
+    return `<details class="solist"><summary>${title} — ${y} of ${j.length}</summary><ul>${items}</ul></details>`;
+  }).join("");
+  return `
+   <div class="hero">
+    <div class="hl">Assuming the quote and the sale</div>
+    <p>Always assume, never ask. The quote is judged on first conversations and calls to finish the quote; the sale on every
+    call; a follow-up's sale up front, while handling objections, and at the end. A call that never gave them the chance
+    (cut off, too short, not recorded, no objection raised) counts neither way.</p>
+    <div class="scroll"><table class="ast"><thead><tr><th>Producer</th>${ASSUME_MEASURES.map(m => `<th class="num">${m[1]}</th>`).join("")}</tr></thead>
+    <tbody>${rows}${team}</tbody></table></div>
+    <div class="aslists">${lists}</div>
+   </div>`;
+}
+
+/* Quote sent instead of kept on the phone (Frank, 2026-09-28: "how many
+   times the producers offer to send the quote on their own instead of
+   keeping that lead on the phone"). Counted off each card's `sendoff` --
+   Apollo's own read from 2026-09-28, sendoff.py's one-question read before
+   that. "busy" and "asked" are listed apart: sending to a prospect who said
+   they had no time is the Busy objection's to score, not this. */
+const SENDOFF_ORDER = ["Lorena Gonzalez", "Crystal Mango", "Mike Olvera", "Coral Barwick", "Sarahi Chin"];
+function sendOffHtml(d) {
+  const all = (d.calls || []).filter(c => c.sendoff && c.sendoff[0]);
+  if (!all.length) return "";
+  const esc = t => String(t || "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+  const mine = all.filter(c => c.sendoff[0] === "producer");
+  const busy = all.filter(c => c.sendoff[0] === "busy").length, asked = all.filter(c => c.sendoff[0] === "asked").length;
+  const per = SENDOFF_ORDER.map(n => {
+    const of = all.filter(c => c.who === n).length;
+    return of ? `<span class="sonm">${n.split(" ")[0]} <b>${mine.filter(c => c.who === n).length}</b> of ${of}</span>` : "";
+  }).filter(Boolean).join("");
+  const day = c => (c._day || d.date || "").slice(5).replace("-", "/");
+  const list = mine.slice().sort((a, b) => (a.who > b.who) - (a.who < b.who) || ((a._day || "") > (b._day || "")) - ((a._day || "") < (b._day || "")))
+    .map(c => `<li><span class="sowho">${day(c)} · ${esc((c.who || "").split(" ")[0])} · ${esc(c.lead)}</span>${esc(c.sendoff[1])}</li>`).join("");
+  return `
+   <div class="hero">
+    <div class="hl">Sending the quote instead of keeping them on the phone</div>
+    <p><b>${mine.length} of ${all.length}</b> calls where a quote came up, the producer offered on their own to send it
+    by email or text instead of presenting it with the lead still on the line.
+    ${busy || asked ? `Apart from those: ${busy} sent after the prospect said they were busy${asked ? `, ${asked} because the prospect asked for email first` : ""}.` : ""}</p>
+    <p class="soper">${per}</p>
+    ${mine.length ? `<details class="solist"><summary>The ${mine.length} call${mine.length === 1 ? "" : "s"}</summary><ul>${list}</ul></details>` : ""}
+   </div>`;
+}
 function winsLossesHtml(d, who) {
   if (who) return "";
   const s = d.scan;
   const sold = (d.calls || []).filter(c => c.catc === "sold_on_call").map(c => c.lead);
   const says = !s ? "" : `
-   <p class="sd">Two patterns that only show up across calls, not within one.</p>
-   <div class="hero">
-    <div class="hl">The opening asks permission</div>
-    <p><b>${s.asked_open} of ${s.of_first ?? s.of}</b> calls with the quote still to do opened by asking for the opportunity —
-    the <b>${s.assumed_open}</b> that opened assumptively, with the work already done, are where the
-    committed next steps came from.</p>
-   </div>
+   <p class="sd">Patterns that only show up across calls, not within one.</p>
+${assumeStatsHtml(d)}
    <div class="hero">
     <div class="hl">Prices on the table against asks made</div>
     <p><b>${s.priced}</b> of ${s.of} calls put a real price in front of someone. <b>${s.closed}</b> closed on the
     call${sold.length ? ` — ${sold.join(", ")}` : ""}. Current premium was captured on <b>${s.premium}</b>, a
     renewal date on <b>${s.xdate}</b>, and a bundle raised on <b>${s.bundle}</b>.
     <b>${s.timeset} of ${s.of}</b> set a specific callback time — that one is usually the cheapest to fix.</p>
-   </div>${s.greet_of ? `
+   </div>${sendOffHtml(d)}${s.greet_of ? `
    <div class="hero">
     <div class="hl">Picking up their own line</div>
     <p><b>${s.greet_ok} of ${s.greet_of}</b> call backs and call-ins the producers answered opened direct — the caller's
@@ -1317,7 +1502,7 @@ function outcomeBreakdownHtml(d, who) {
     const segs = OUTCOME_SEGMENTS.map(([label, cvar]) => {
       const n = o[label] || 0;
       if (!n) return "";
-      return `<span class="ogseg" style="width:${(n / total * 100).toFixed(2)}%;background:var(${cvar})" title="${label}: ${n}"></span>`;
+      return `<span class="ogseg" data-ddrill="outcome:${label}:${name}" role="button" tabindex="0" style="width:${(n / total * 100).toFixed(2)}%;background:var(${cvar});cursor:pointer" title="${label}: ${n} (click for the list)"></span>`;
     }).join("");
     return `<div class="orow"><div class="orow-head">
       <span class="who">${pbadge(DOT[name] || "#8a877f", name)}</span>
@@ -1325,9 +1510,9 @@ function outcomeBreakdownHtml(d, who) {
       <div style="width:${(vol / busiest * 100).toFixed(2)}%"><div class="otrack">${segs}</div></div></div>`;
   }).join("");
   const legend = OUTCOME_SEGMENTS.map(([label, cvar]) =>
-    `<span class="oleg-item"><span class="pd" style="background:var(${cvar})"></span>${label}</span>`).join("");
+    `<span class="oleg-item${digDrill === "outcome:" + label ? " on" : ""}" data-ddrill="outcome:${label}" role="button" tabindex="0" style="cursor:pointer"><span class="pd" style="background:var(${cvar})"></span>${label}</span>`).join("");
   return `<div class="sect"><h2>Call Outcome Breakdown</h2>
-   ${rows}<div class="oleg">${legend}</div></div>`;
+   ${rows}<div class="oleg">${legend}</div>${digDrillFor(d, who, ["outcome"])}</div>`;
 }
 
 // Idle = tracked minus productive, straight from the two "HH:MM" strings
@@ -1400,11 +1585,11 @@ function speedPanel(d, who) {
     <p class="sd">No internet leads were assigned today, so there is nothing to time.</p></div>`;
   const entries = who ? Object.entries(s.per || {}).filter(([n]) => n === who) : Object.entries(s.per || {});
   const cards = entries.map(([n, v]) => `
-    <div class="tile"><div class="k">${pbadge(DOT[n] || "#8a877f", n.split(" ")[0])}</div>
+    <div${ddk("speed:" + n)}><div class="k">${pbadge(DOT[n] || "#8a877f", n.split(" ")[0])}</div>
       <div class="v">${hhmm(v.median)}</div>
       <div class="n">median · ${v.n} lead${v.n > 1 ? "s" : ""}</div>
       <div class="n" style="margin-top:5px">quickest ${hhmm(v.quickest)} · longest ${hhmm(v.longest)}</div></div>`).join("")
-   + (!who && s.team ? `<div class="tile" style="border-color:var(--border-strong);background:var(--surface)">
+   + (!who && s.team ? `<div${ddk("speed:team")} style="border-color:var(--border-strong);background:var(--surface)">
       <div class="k">Team</div><div class="v">${hhmm(s.team.median)}</div>
       <div class="n">median of all ${s.team.n} leads</div>
       <div class="n" style="margin-top:5px">quickest ${hhmm(s.team.quickest)} · longest ${hhmm(s.team.longest)}</div></div>` : "");
@@ -1412,7 +1597,105 @@ function speedPanel(d, who) {
     <p class="sd">No internet leads assigned to ${who} today.</p></div>`;
   return `<div class="sect"><h2>Speed to Dial</h2>
     <p class="sd">${s.note || ""} Producers with no internet leads are not shown.</p>
-    <div class="tiles">${cards}</div></div>`;
+    <div class="tiles">${cards}</div>${digDrillFor(d, who, ["speed"])}</div>`;
+}
+
+/* ---- Digest cards open the rows they count (digest_rows.py, Frank,
+   2026-09-27: "make the cards clickable to expand to more info, like we did
+   on the service digest"). Same shape as the Service Center: click a card,
+   its list opens right under the cards it belongs to; click again or Close
+   to shut it. The day document's `rows` are the calls, leads and policies
+   the figures are made of -- a card's number never changes here. A range
+   adds every day's rows together. */
+let digDrill = "";
+const ddk = (k, cls) => ` data-ddrill="${k}" role="button" tabindex="0" class="${cls || "tile"} rdrill${digDrill === k ? " on" : ""}"`;
+const digWho = r => `<span class="who">${pbadge(DOT[r.who] || "#8a877f", (r.who || "").split(" ")[0])}</span>`;
+const digLead = r => r.lead_id ? `<a href="${AZ_URL.lead}${encodeURIComponent(r.lead_id)}" target="_blank" rel="noopener">${cesc(r.lead)}</a>` : cesc(r.lead || "—");
+const digDay = (d, r) => d.date ? "" : `<td class="num">${r.day ? fmtShortDate(r.day) : ""}</td>`;
+const digDayTh = d => d.date ? "" : `<th class="num">Day</th>`;
+function digTable(d, head, rows) {
+  if (!rows.length) return `<p class="sd" style="margin:4px 0 0">Nothing to list.</p>`;
+  return `<div class="scroll"><table class="msgt"><thead><tr>${digDayTh(d)}${head}</tr></thead><tbody>${rows.join("")}</tbody></table></div>`;
+}
+let digRebuiltNote = "";
+function digDrillList(title, what, body) {
+  return `<div class="rdrill-list">${digRebuiltNote}<div style="display:flex;justify-content:space-between;align-items:baseline;gap:12px;margin:14px 0 6px">
+    <h3 class="rh3" style="margin:0">${title}</h3><a href="#" data-ddrill-close style="font-size:12.5px">Close</a></div>
+    ${what ? `<p class="sd" style="margin:0 0 6px">${what}</p>` : ""}${body}</div>`;
+}
+const DIG_NO_ROWS = `<p class="sd" style="margin:4px 0 0">The list behind this card was not kept for this day (lists start 2026-09-27; earlier days get them from their saved call data where it was kept).</p>`;
+function digDrillFor(d, who, keys) {
+  const k = digDrill;
+  if (!k || !keys.some(p => k === p || k.startsWith(p + ":"))) return "";
+  const R = d.rows;
+  if (!R) return digDrillList("", "", DIG_NO_ROWS);
+  // 09-03, 09-04, 09-16 lost their call data and were rebuilt from
+  // RingCentral on 2026-09-27 against today's AgencyZoom records.
+  const rb = d.date ? (R.rebuilt ? [d.date] : []) : (R.rebuilt_days || []);
+  digRebuiltNote = rb.length ? `<p class="sd" style="margin:10px 0 0;color:var(--warn, #b45309)">${rb.map(fmtShortDate).join(", ")}: this list was rebuilt from RingCentral on 9/27 against today's AgencyZoom records, so it can differ from the card's figure, which stays as it went out.</p>` : "";
+  const [kind, a, b] = k.split(":");
+  const mine = rs => (rs || []).filter(r => !who || r.who === who);
+  const secs = s => s >= 60 ? `${Math.floor(s / 60)}m ${String(s % 60).padStart(2, "0")}s` : `${s}s`;
+  if (kind === "dials" || kind === "outcome") {
+    let rs = mine(R.dials);
+    if (kind === "outcome") rs = rs.filter(r => r.outcome === a && (!b || r.who === b));
+    rs = rs.slice().sort((x, y) => (x.who || "").localeCompare(y.who || "") || (x.outcome || "").localeCompare(y.outcome || ""));
+    const tr = rs.map(r => `<tr>${digDay(d, r)}<td>${digWho(r)}</td><td>${digLead(r)}</td><td class="num">…${cesc(r.last4)}</td>
+      <td>${cesc(r.outcome)}${r.callback ? " · called back" : ""}</td><td class="num">${r.attempts}</td><td class="num">${r.talk ? secs(r.talk) : "—"}</td></tr>`);
+    const title = kind === "outcome" ? `${cesc(a)}${b ? ` · ${cesc(b.split(" ")[0])}` : ""} · ${rs.length}` : `Dials · ${rs.length} numbers`;
+    return digDrillList(title, kind === "outcome" ? "" : "Every new-business number dialled, one row per number; attempts is how many times it was dialled.",
+      digTable(d, `<th>Producer</th><th>Lead</th><th class="num">Phone</th><th>Outcome</th><th class="num">Attempts</th><th class="num">Talk</th>`, tr));
+  }
+  if (kind === "contacts") {
+    const rs = mine(R.contacts).slice().sort((x, y) => (y.counted !== false) - (x.counted !== false) || y.seconds - x.seconds);
+    const counted = rs.filter(r => r.counted !== false).length, outside = rs.length - counted;
+    const tr = rs.map(r => `<tr>${digDay(d, r)}<td>${digWho(r)}</td><td>${digLead(r)}</td><td>${cesc(r.source)}</td><td class="num">${secs(r.seconds)}</td>
+      <td>${r.inbound ? (r.kind === "callback" ? "call back" : "call in") : "dialled"}${r.counted === false ? `<div class="n" style="font-size:11px;color:var(--text-muted)">outside the rate</div>` : ""}</td><td class="said">${cesc(r.summary || r.note || "")}</td></tr>`);
+    return digDrillList(`Live contacts · ${counted} in the contact rate${outside ? ` · ${outside} call-in${outside === 1 ? "" : "s"}` : ""}`,
+      "Every conversation, longest first. A call-in the producer answered is a conversation but sits outside the contact rate, which counts only the producer's own dials.",
+      digTable(d, `<th>Producer</th><th>Lead</th><th>Source</th><th class="num">On the phone</th><th>How</th><th class="said">What happened</th>`, tr));
+  }
+  if (kind === "quoted" || kind === "closing") {
+    const rs = mine(R.quoted);
+    if (!rs.length && (d.totals || {}).hh) return digDrillList(kind === "closing" ? "Closing ratio" : "Households quoted", "", DIG_NO_ROWS);
+    const soldIds = new Set(mine(R.sold_leads).map(r => r.lead_id));
+    const tr = rs.map(r => `<tr>${digDay(d, r)}<td>${digWho(r)}</td><td>${digLead(r)}</td><td>${cesc(r.source)}</td>
+      <td class="num">${r.premium === "" || r.premium == null ? "—" : money(r.premium)}</td>${kind === "closing" ? `<td>${soldIds.has(r.lead_id) ? `<span class="chip c-g">sold</span>` : ""}</td>` : ""}</tr>`);
+    return digDrillList(`Households quoted · ${rs.length}`, kind === "closing" ? "Sold marks a household quoted that was also marked sold the same day." : "",
+      digTable(d, `<th>Producer</th><th>Lead</th><th>Source</th><th class="num">Premium quoted</th>${kind === "closing" ? "<th>Sold</th>" : ""}`, tr)
+      + (kind === "closing" ? digDrillSold(d, mine) : ""));
+  }
+  if (kind === "sold") return digDrillList(`Policies sold · ${mine(R.sold).length}`, "", digDrillSold(d, mine));
+  if (kind === "speed") {
+    const rs = mine(R.speed).filter(r => a === "team" || r.who === a).sort((x, y) => y.secs - x.secs);
+    const clock = iso => iso ? new Date(iso).toLocaleTimeString([], { hour: "numeric", minute: "2-digit", timeZone: "America/Phoenix" }) : "";
+    const tr = rs.map(r => `<tr>${digDay(d, r)}<td>${digWho(r)}</td><td>${digLead(r)}</td><td>${cesc(r.source)}</td>
+      <td class="num">${clock(r.arrived)}</td><td class="num">${clock(r.dialled)}</td><td class="num">${hhmm(r.secs)}</td></tr>`);
+    return digDrillList(`Speed to dial · ${a === "team" ? "Team" : cesc(a.split(" ")[0])} · ${rs.length} lead${rs.length === 1 ? "" : "s"}`, "Slowest first.",
+      rs.length || !(d.speed_to_dial) ? digTable(d, `<th>Dialled by</th><th>Lead</th><th>Source</th><th class="num">Arrived</th><th class="num">First dial</th><th class="num">Speed</th>`, tr) : DIG_NO_ROWS);
+  }
+  if (kind === "reply") {
+    const M = d.messages || {};
+    const rs = (M.replies || []).filter(r => !r.ack && !r.optout && (!who || r.who === who) && (a === "team" || r.who === a))
+      .sort((x, y) => (x.minutes == null ? 1e9 : x.minutes) < (y.minutes == null ? 1e9 : y.minutes) ? 1 : -1);
+    const tr = rs.map(r => `<tr>${digDay(d, r)}<td>${digWho(r)}</td><td>${digLead(r)}</td><td class="num">${cesc(r.at)}</td>
+      <td class="num ${replyTier(r.minutes)}">${r.minutes == null ? "waiting" : fmtMins(r.minutes)}</td><td>${r.via || ""}</td><td class="said">${cesc(r.said)}</td></tr>`);
+    return digDrillList(`Replies · ${a === "team" ? "Team" : cesc(a.split(" ")[0])} · ${rs.length}`, "Waiting first, then slowest answered.",
+      digTable(d, `<th>Producer</th><th>Lead</th><th class="num">When</th><th class="num">Answered in</th><th>How</th><th class="said">What they said</th>`, tr));
+  }
+  return "";
+}
+function digDrillSold(d, mine) {
+  const R = d.rows || {};
+  const ps = mine(R.sold), ls = mine(R.sold_leads);
+  const tr = ps.map(r => `<tr>${digDay(d, r)}<td>${digWho(r)}</td><td>${cesc(r.product)}</td><td>${cesc(r.policy)}</td>
+    <td class="num">${money(r.premium)}</td><td>${cesc(r.source)}</td><td class="num">${r.effective ? fmtShortDate(r.effective) : ""}</td></tr>`);
+  const lr = ls.map(r => `<tr>${digDay(d, r)}<td>${digWho(r)}</td><td>${digLead(r)}</td><td>${cesc(r.source)}</td></tr>`);
+  return `<h3 class="rh3" style="margin-top:10px">Policies · ${ps.length}</h3>
+    ${digTable(d, `<th>Producer</th><th>Product</th><th>Policy</th><th class="num">Premium</th><th>Lead source</th><th class="num">Effective</th>`, tr)}
+    <h3 class="rh3" style="margin-top:10px">Leads marked sold · ${ls.length}</h3>
+    <p class="sd" style="margin:0 0 6px">AgencyZoom's policy records carry no customer, so the leads marked sold that day are listed beside them.</p>
+    ${digTable(d, `<th>Producer</th><th>Lead</th><th>Source</th>`, lr)}`;
 }
 
 /* Speed to Reply (Frank, 2026-09-27): how fast a lead's text or email got an
@@ -1433,7 +1716,7 @@ function speedReplyPanel(d, who) {
   const live = liveOn(d, "messages") ? " isLive" : "";
   const tile = (label, rs, team) => {
     const m = rs.filter(r => r.minutes != null).map(r => r.minutes), wait = rs.length - m.length;
-    return `<div class="tile${live}"${team ? ' style="border-color:var(--border-strong);background:var(--surface)"' : ""}>
+    return `<div${ddk("reply:" + (team ? "team" : rs[0].who), "tile" + live)}${team ? ' style="border-color:var(--border-strong);background:var(--surface)"' : ""}>
       <div class="k">${label}</div><div class="v"><span class="${replyTier(m.length ? median(m) : null)}">${fmtMins(m.length ? median(m) : null)}</span></div>
       <div class="n">median · ${m.length} answered</div>
       <div class="n" style="margin-top:5px">${m.length ? `quickest ${fmtMins(Math.min(...m))} · longest ${fmtMins(Math.max(...m))}` : "none answered"}</div>
@@ -1446,7 +1729,7 @@ function speedReplyPanel(d, who) {
     <p class="sd">Time from a lead's text or email to the next text, email or call back; one that came in while the
     office was closed starts at 8:30. Green is 15 minutes or less, red over an hour.
     <a href="#" data-goview="messages">See who is waiting</a>.</p>
-    <div class="tiles">${cards}</div></div>`;
+    <div class="tiles">${cards}</div>${digDrillFor(d, who, ["reply"])}</div>`;
 }
 
 /* Open leads sitting in "Pipeline" -- integrations drop leads there that
@@ -1715,10 +1998,21 @@ function applyLive(base, L) {
   // checkpoint's dials would overstate the rate.
   const contactsOn = (L.contacts || {}).ok && (L.dials || {}).ok && !!(d.live_basis || {}).talk;
   if (contactsOn) d.live_parts.push("contacts");
-  if ((L.sales || {}).ok && (L.quotes || {}).ok) d.live_parts.push("closing");
+  // Households sold ride with sales (site/live.js soldLeadsToday).
+  if ((L.sales || {}).ok && (L.sold || {}).ok) {
+    d.live_parts.push("hhsold");
+    d.live_sold = L.sold.data.per || {};
+    d.live_sold_complete = !!L.sold.data.complete;
+  }
+  if ((L.sales || {}).ok && (L.quotes || {}).ok && (L.sold || {}).ok) d.live_parts.push("closing");
   const tiers = d.tiers || (d.tiers = {});
   const T = d.totals || (d.totals = {});
   const ps = d.producers || [];
+  // The checkpoint's own figures, so the leaderboard can be re-ranked on
+  // what the live parts add (liveRerank, below).
+  const LB_FIELDS = { "Call Volume": "dials", "Avg Talk Time": "talk", "Contact Rate": "rate",
+    "Households Quoted": "hh", "Premium Quoted": "pq", "Premium Sold": "ps" };
+  const before = Object.fromEntries(ps.map(p => [p.name, Object.fromEntries(Object.values(LB_FIELDS).map(k => [k, p[k] || 0]))]));
   const sum = k => ps.reduce((s, p) => s + (p[k] || 0), 0);
   if (L.dials && L.dials.ok) {
     for (const p of ps) {
@@ -1834,7 +2128,39 @@ function applyLive(base, L) {
       (tiers.team || (tiers.team = {})).util = tierColor("utilization_pct", T.util);
     }
   }
+  liveRerank(d, before, LB_FIELDS);
   return d;
+}
+/* The standing, the podium and every leaderboard hover follow the live
+   figures (Frank, 2026-09-28: "the hover for the leaderboard is not live,
+   the actual data is"). Each live category's checkpoint value moves by
+   exactly what the live overlay changed the producer's figure by, then the
+   same scoring (rankLeaderboard) runs again; categories with nothing live
+   (role play, talk time, contact rate) keep the checkpoint's values. */
+function liveRerank(d, before, fields) {
+  const lb = d.leaderboard;
+  if (!lb || !lb.categories || !lb.categories.length) return;
+  const names = Object.keys(lb.points || {});
+  if (names.length < 2) return;
+  const byName = Object.fromEntries((d.producers || []).map(p => [p.name, p]));
+  let moved = false;
+  for (const cat of lb.categories) {
+    const k = fields[cat.label];
+    if (!k || !cat.values) continue;
+    for (const n of names) {
+      const p = byName[n], b = before[n];
+      if (!p || !b) continue;
+      const delta = (p[k] || 0) - b[k];
+      if (delta) { cat.values[n] = (cat.values[n] || 0) + delta; moved = true; }
+    }
+  }
+  if (!moved) return;
+  const val = label => (lb.categories.find(c => c.label === label) || {}).values || {};
+  const tb = ["Premium Sold", "Households Quoted", "Call Volume"].map(val);
+  const res = rankLeaderboard(names, lb.categories.map(c => c.values || {}),
+    Object.fromEntries(names.map(n => [n, tb.map(v => v[n] || 0)])));
+  lb.points = res.points; lb.order = res.order;
+  lb.categories.forEach((c, i) => { c.points = res.perCat[i]; });
 }
 
 const fmtClock = iso => iso ? new Date(iso).toLocaleTimeString([], { hour: "numeric", minute: "2-digit", timeZone: "America/Phoenix" }) : "";
@@ -2030,14 +2356,11 @@ function secsToHHMM(s) {
    tiered by multiplying the daily goal by the number of BUSINESS days
    being filtered") -- see rangeProducerTiers/rangeTeamTiers just below,
    a straight JS mirror of digest_config.THRESHOLDS/tier() and
-   board_payload._producer_tiers/_team_tiers. Still OMITTED: leaderboard.
-   order/points and policy_streak coloring, which aren't goal thresholds
-   at all -- one's a ranked-points system, the other a day-to-day sale
-   streak -- and have no meaning stretched across a range. Every renderer
-   that reads them already degrades gracefully without them:
-   teamLeaderboardHtml falls back to producers[] order with no podium/
-   medals, and polTitle() falls back to "no sale on record" -- confirmed
-   by reading each one, not assumed.
+   board_payload._producer_tiers/_team_tiers. The leaderboard is RE-RANKED
+   on the range's per-day averages (Frank, 2026-09-28) -- see the
+   leaderboard block at the end of this function. Still OMITTED:
+   policy_streak colouring, a day-to-day sale streak with no meaning
+   stretched across a range; polTitle() falls back to "no sale on record".
 
    Talk time, utilization and Coach AI score/sentiment are all reweighted
    from the underlying totals (seconds, call counts), not averaged day to
@@ -2131,6 +2454,34 @@ function rangeTeamTiers(totals, businessDays) {
   if (ttp != null) out.tasks = tierColor("task_completion_pct", ttp || 0);
   return out;
 }
+// A straight JS mirror of digest_config.leaderboard_score (keep in step):
+// per category, 5-4-3-2-1 by value, a tie takes the LOWEST place it occupies,
+// no activity scores 0 but still takes its place; standing by total points,
+// then the tiebreak values, highest first.
+const LEADERBOARD_POINTS = [5, 4, 3, 2, 1];
+function rankLeaderboard(names, categories, tiebreak) {
+  const place = i => LEADERBOARD_POINTS[i] || 0;
+  const points = Object.fromEntries(names.map(n => [n, 0]));
+  const perCat = [];
+  for (const vals of categories) {
+    const v = Object.fromEntries(names.map(n => [n, vals[n] || 0]));
+    const pts = {};
+    perCat.push(pts);
+    const order = [...names].sort((a, b) => v[b] - v[a]);
+    for (let i = 0; i < order.length;) {
+      let j = i;
+      while (j + 1 < order.length && v[order[j + 1]] === v[order[i]]) j++;
+      for (const n of order.slice(i, j + 1)) { pts[n] = v[n] ? place(j) : 0; points[n] += pts[n]; }
+      i = j + 1;
+    }
+  }
+  const order = [...names].sort((a, b) => {
+    if (points[b] !== points[a]) return points[b] - points[a];
+    for (let k = 0; k < tiebreak[a].length; k++) if (tiebreak[b][k] !== tiebreak[a][k]) return tiebreak[b][k] - tiebreak[a][k];
+    return 0;
+  });
+  return { points, order, perCat };
+}
 function mergeDayDocs(docs) {
   const NUM = ["dials", "live", "hh", "pq", "ps", "pol"];
   const totals = Object.fromEntries(NUM.map(k => [k, 0]));
@@ -2152,12 +2503,20 @@ function mergeDayDocs(docs) {
   // the rows by messagesPanel, never averaged from daily ones).
   const msgPer = {}, msgRows = { replies: [], quotes: [], bad_contact: [] };
   let hasMsg = false;
+  // The Digest cards' lists: every day's rows, tagged with their day.
+  const digRows = { dials: [], contacts: [], quoted: [], sold: [], sold_leads: [], speed: [], rebuilt_days: [] };
+  let hasRows = false;
 
   for (const doc of docs) {
     if (!doc) continue;
     days.push(doc.date);
     const t = doc.totals || {};
     for (const k of NUM) totals[k] += t[k] || 0;
+    if (doc.rows) {
+      hasRows = true;
+      if (doc.rows.rebuilt) (digRows.rebuilt_days = digRows.rebuilt_days || []).push(doc.date);
+      for (const k of Object.keys(digRows)) if (k !== "rebuilt_days") digRows[k].push(...(doc.rows[k] || []).map(r => ({ ...r, day: doc.date })));
+    }
     if (doc.messages) {
       hasMsg = true;
       for (const [n, p] of Object.entries(doc.messages.producers || {})) {
@@ -2168,10 +2527,11 @@ function mergeDayDocs(docs) {
     }
     if (t.tasks) { taskTotals.total += t.tasks.total || 0; taskTotals.completed += t.tasks.completed || 0; }
 
+    const dayHasRp = (doc.producers || []).some(p => (p.coach || {}).roleplay);
     for (const p of doc.producers || []) {
       const row = per[p.name] || (per[p.name] = {
         name: p.name, days: 0, talk_secs: 0, util_total_secs: 0, util_prod_secs: 0,
-        coach_calls: 0, coach_score_wsum: 0, coach_sentiment_wsum: 0, coach_roleplay_sum: 0, coach_roleplay_n: 0,
+        coach_calls: 0, coach_score_wsum: 0, coach_sentiment_wsum: 0, coach_roleplay_sum: 0, coach_roleplay_n: 0, rp_scored_sum: 0, rp_scored_n: 0, worked: 0,
         tasks: { total: 0, completed: 0 }, ...Object.fromEntries(NUM.map(k => [k, 0])),
       });
       for (const k of NUM) row[k] += p[k] || 0;
@@ -2194,8 +2554,21 @@ function mergeDayDocs(docs) {
         row.coach_calls += c.calls || 0;
         row.coach_score_wsum += (c.score || 0) * (c.calls || 0);
         row.coach_sentiment_wsum += (c.sentiment || 0) * (c.calls || 0);
-        if (c.roleplay) { row.coach_roleplay_sum += c.roleplay; row.coach_roleplay_n++; }
       }
+      // Role play, two ways (Frank, 2026-09-28: "I want it to hurt their
+      // points but not average. i do want to see the true avg between
+      // sessions"). The Role Play figure shown is the average of the sessions
+      // they actually did; the leaderboard ranks on rp_scored, where a day
+      // WITHOUT a role play counts as 0 -- only on a day they worked that has
+      // role play figures for someone, so neither a day off nor a day the
+      // Coach AI email never came in costs anything.
+      const rp = (p.coach || {}).roleplay;
+      if (rp) { row.coach_roleplay_sum += rp; row.coach_roleplay_n++; }
+      // A day worked, for the range leaderboard's per-day averages. A day
+      // off is not a missed role play.
+      const worked = !!(p.total_dials || p.dials || p.live || p.hh || p.pol || p.ps || rp);
+      if (worked) row.worked++;
+      if (dayHasRp && worked) { row.rp_scored_sum += rp || 0; row.rp_scored_n++; }
     }
 
     for (const [name, segs] of Object.entries(doc.outcomes || {})) {
@@ -2229,7 +2602,7 @@ function mergeDayDocs(docs) {
       }
     }
 
-    for (const c of doc.calls || []) calls.push(c);
+    for (const c of doc.calls || []) { c._day = doc.date; calls.push(c); }
     if (doc.notcoached) notcoached.push(`${doc.date}: ${doc.notcoached}`);
   }
 
@@ -2244,16 +2617,21 @@ function mergeDayDocs(docs) {
     }
     delete row.util_total_secs; delete row.util_prod_secs;
     if (row.tasks.total) row.tasks.pct = Math.round(1000 * row.tasks.completed / row.tasks.total) / 10;
-    if (row.coach_calls) {
+    if (row.coach_calls || row.coach_roleplay_n) {
       row.coach = {
         calls: row.coach_calls,
-        score: Math.round(row.coach_score_wsum / row.coach_calls),
-        sentiment: Math.round(row.coach_sentiment_wsum / row.coach_calls),
+        score: row.coach_calls ? Math.round(row.coach_score_wsum / row.coach_calls) : 0,
+        sentiment: row.coach_calls ? Math.round(row.coach_sentiment_wsum / row.coach_calls) : 0,
         roleplay: row.coach_roleplay_n ? Math.round(row.coach_roleplay_sum / row.coach_roleplay_n) : null,
       };
     }
     delete row.coach_calls; delete row.coach_score_wsum; delete row.coach_sentiment_wsum;
-    delete row.coach_roleplay_sum; delete row.coach_roleplay_n;
+    row._rp_sum = row.coach_roleplay_sum; row._rp_n = row.coach_roleplay_n;
+    row.rp_scored = row.rp_scored_n ? row.rp_scored_sum / row.rp_scored_n : 0;
+    // Worked days with role play figures for someone but none for them
+    // (Frank, 2026-09-28: "put next to the avg how many days were missed").
+    row.rp_missed = row.rp_scored_n - row.coach_roleplay_n;
+    delete row.coach_roleplay_sum; delete row.coach_roleplay_n; delete row.rp_scored_sum; delete row.rp_scored_n;
   }
 
   totals.rate = totals.dials ? Math.round(1000 * totals.live / totals.dials) / 10 : 0;
@@ -2280,26 +2658,51 @@ function mergeDayDocs(docs) {
   // avg talk time or avg role play for the team").
   const teamLive = finalProducers.reduce((s, p) => s + (p.live || 0), 0);
   const teamTalkSecs = finalProducers.reduce((s, p) => s + (p.talk || 0) * (p.live || 0), 0);
-  const recordedRp = finalProducers.map(p => (p.coach || {}).roleplay).filter(Boolean);
+  // Team role play is the average of every session anyone did.
+  const rpSum = Object.values(per).reduce((a, r) => a + (r._rp_sum || 0), 0);
+  const rpN = Object.values(per).reduce((a, r) => a + (r._rp_n || 0), 0);
   const finalTotals = {
     ...totals,
     talk: teamLive ? Math.floor(teamTalkSecs / teamLive) : 0,
-    roleplay: recordedRp.length ? recordedRp.reduce((a, b) => a + b, 0) / recordedRp.length : null,
+    roleplay: rpN ? rpSum / rpN : null,
     tasks: taskTotals.total ? taskTotals : null,
   };
   const businessDays = days.filter(Boolean).length;
   const tiers = businessDays ? Object.fromEntries(finalProducers.map(p => [p.name, rangeProducerTiers(p, businessDays)])) : {};
   if (businessDays) tiers.team = rangeTeamTiers(finalTotals, businessDays);
 
+  // Range leaderboard (Frank, 2026-09-28: "re-rank on averages"): the same
+  // seven categories and 5-4-3-2-1 scoring as a single day
+  // (digest_config.leaderboard_score, mirrored in rankLeaderboard), fed each
+  // producer's figures over the range -- counts as per-day averages over the
+  // days they worked, so a day off costs nothing; rates as the range's own;
+  // role play as rp_scored, where a missed role play day is a 0.
+  const perDay = (p, k) => p.worked ? (p[k] || 0) / p.worked : 0;
+  const LB_LABELS = ["Role Play", "Call Volume", "Avg Talk Time", "Contact Rate", "Households Quoted", "Premium Quoted", "Premium Sold"];
+  const lbCats = [
+    p => p.rp_scored || 0, p => perDay(p, "dials"), p => p.talk || 0, p => p.rate || 0,
+    p => perDay(p, "hh"), p => perDay(p, "pq"), p => perDay(p, "ps"),
+  ];
+  const ranked = finalProducers.filter(p => p.worked);
+  const lbVals = lbCats.map(fn => Object.fromEntries(ranked.map(p => [p.name, fn(p)])));
+  const lbRes = ranked.length > 1 ? rankLeaderboard(ranked.map(p => p.name), lbVals,
+      Object.fromEntries(ranked.map(p => [p.name, [perDay(p, "ps"), perDay(p, "hh"), perDay(p, "dials")]]))) : null;
+  const leaderboard = lbRes ? {
+    points: lbRes.points, order: lbRes.order,
+    categories: LB_LABELS.map((label, i) => ({ label, points: lbRes.perCat[i], values: lbVals[i] })),
+    days: days.filter(Boolean).length, averaged: true,
+  } : null;
+
   return {
     date: null, days: days.filter(Boolean),
-    totals: finalTotals,
+    totals: finalTotals, leaderboard,
     producers: finalProducers,
     outcomes, task_audit: { buckets: taskBuckets, rows: taskRows },
     objcats: Object.values(objcats), scan: hasScan ? scan : null,
     speed_to_dial: speedToDial, calls, tiers,
     notcoached: notcoached.join("; ") || null,
     messages: hasMsg ? { producers: msgPer, ...msgRows } : null,
+    rows: hasRows ? digRows : null,
   };
 }
 
@@ -2404,13 +2807,89 @@ function leadFitHtml(c) {
    first call the producer dialled shows no chip; nor does a card read
    before Apollo was asked. */
 const FLOW_LABELS = { first: "first conversation", "finish quote": "finishing the quote", "follow-up": "follow-up" };
-function flowChipHtml(c) {
-  const f = c.flow;
-  if (!f) return "";
+// Who dialled, for the card's combined badge (outcomeBadgeHtml). What the
+// call was FOR -- first conversation / finishing the quote / follow-up --
+// is the card's coloured left edge instead (flowEdge; Frank, 2026-09-25:
+// "make the left tab color coded to those 3 stages ... I dont want it as a
+// badge").
+function flowParts(c) {
   const dir = c.direction === "call back" || c.direction === "call in" ? c.direction : "";
-  if (f[0] === "first" && !dir) return "";
-  const label = (dir ? dir + " · " : "") + (FLOW_LABELS[f[0]] || f[0]);
-  return `<span class="ctype" title="${(f[1] || "").replace(/"/g, "&quot;")}">${label}</span>`;
+  return dir ? [[dir, ""]] : [];
+}
+// Blue / yellow / pink (slots 1, 4, 5). Not green for follow-up -- it read as
+// sold (Frank, 2026-09-28). Without green or aqua, this and yellow / pink /
+// violet are the only threes that stay apart for every pair in both modes. A card read before
+// Apollo was asked for `flow` gets a plain edge. Named in the legend above
+// the cards and on hover of the card's edge, so it is never colour alone.
+const FLOW_EDGE = { first: "--s1", "finish quote": "--s4", "follow-up": "--s5" };
+function flowEdge(c) {
+  const k = (c.flow || [])[0];
+  return FLOW_EDGE[k] ? { color: `var(${FLOW_EDGE[k]})`, label: FLOW_LABELS[k], why: (c.flow || [])[1] || "" }
+    : { color: "var(--border-strong)", label: "", why: "" };
+}
+function flowLegendHtml() {
+  return `<div class="flowleg">Left edge: ${Object.entries(FLOW_EDGE).map(([k, v]) =>
+    `<span><i style="--fc:var(${v})"></i>${FLOW_LABELS[k]}</span>`).join("")}</div>`;
+}
+/* One badge per call (Frank, 2026-09-25: "we need to combine/consolidate
+   these badges"): the outcome pill carries the call type after a dot --
+   service/mixed, call in / call back, first conversation / finishing the
+   quote / follow-up -- instead of a second grey pill beside it. The hover
+   says why each part is there. */
+const escAttr = t => String(t || "").replace(/"/g, "&quot;");
+function outcomeBadgeHtml(cat, catc, extras) {
+  extras = extras.filter(([l]) => l);
+  const title = extras.map(([l, why]) => why ? `${l}: ${why}` : "").filter(Boolean).join("\n");
+  return `<span class="cat ${catc ? `cat-${catc}` : ""}"${title ? ` title="${escAttr(title)}"` : ""}>${cat || ""}${
+    extras.length ? `<span class="catx"> &middot; ${extras.map(([l]) => l).join(" &middot; ")}</span>` : ""}</span>`;
+}
+/* Card flags, one badge per CATEGORY (Frank, 2026-09-27: "consolidate or
+   categorize, as well as tint with yellow red or green depending of if the
+   note is good bad or neutral"). Apollo names the category on cards read
+   from 2026-09-27 (c.flag_groups, digest_config.FLAG_GROUPS -- keep the two
+   lists in step); older cards get the best guess from the wording below
+   (Frank chose that over a paid re-read). "Producer ended the call" (exit)
+   joins Call cut short. Hover lists Apollo's own words for that category. */
+const FLAG_GROUPS = {
+  "No next step": "bad", "Quote not presented": "bad", "Discovery missed": "bad",
+  "Approach skipped": "bad", "Objection dropped": "bad", "Call cut short": "bad",
+  "Stage / pipeline mistake": "bad", "Compliance": "bad",
+  "Cross-sell in progress": "neutral", "Callback set": "neutral", "Pipeline note": "neutral",
+  "Strong moment": "good",
+};
+// First match wins, so the specific bad readings come before the neutral
+// ones (and an objection before a next step: "Spousal objection dropped
+// without follow-up" is the objection): "Callback set with no concrete details" is No next step, and
+// "Moved to Smart-Cycle with no re-presentation" is Quote not presented.
+const FLAG_GUESS = [
+  ["Compliance", /complian|disclos|consent|do not call|\bdnc\b|licens|recorded line/i],
+  ["Objection dropped", /objection|spous|decision-?maker|unaddressed concern/i],
+  ["No next step", /next step|no (concrete|specific|clear) (detail|date|plan|time)|no date|undated|vague|open invitation|no (follow[- ]?up|callback) (set|scheduled|date)|without (a )?(date|follow)/i],
+  ["Quote not presented", /present|re-?presentation|no quote|quote (never|not) (landed|sent|given)|resent|instead of presenting|numbers? (never|not) (shown|reviewed|given)/i],
+  ["Approach skipped", /approach|never named|referr(er|al)|why (they|she|he) left/i],
+  ["Discovery missed", /discovery|not captured|unconfirmed|renewal date|x-?date|current (carrier|premium|coverage)|never asked|didn'?t ask|no cross-?sell|cross-?sell (not|never)/i],
+  ["Call cut short", /ended the call|short (call|check-?in)|cut short|hung up|under a minute|abrupt|rushed/i],
+  ["Stage / pipeline mistake", /stage|pipeline|smart-?cycle|misfiled|il interested|transfer pending|moved (to|into)/i],
+  ["Callback set", /call ?back (set|scheduled|booked)|callback (set|scheduled|booked)|appointment set/i],
+  ["Cross-sell in progress", /cross-?sell|bundle|second (line|policy)/i],
+  ["Strong moment", /strong|excellent|great|well[- ]handled|handled well|clean|nailed|turned around|overcame|won the|closed (the sale|it)|sold on the call|assumptive close/i],
+];
+function flagGroupOf(text, given) {
+  if (given && FLAG_GROUPS[given]) return given;
+  const hit = FLAG_GUESS.find(([, rx]) => rx.test(text || ""));
+  return hit ? hit[0] : "";
+}
+function flagBadgesHtml(c) {
+  const groups = new Map();   // category -> [texts], in first-seen order
+  const add = (g, t) => { if (!groups.has(g)) groups.set(g, []); if (t) groups.get(g).push(t); };
+  if (c.exit && c.exit[0]) add("Call cut short", "Producer ended the call" + (c.exit[1] ? `: ${c.exit[1]}` : ""));
+  (c.flags || []).forEach((f, i) => add(flagGroupOf(f, (c.flag_groups || [])[i]) || f, f));
+  const cls = { bad: "red", neutral: "", good: "green" };
+  return [...groups].map(([g, texts]) => {
+    const tone = FLAG_GROUPS[g] || "neutral";   // an uncategorised flag shows its own words, neutral
+    const tip = texts.filter(t => t !== g).join("\n");
+    return `<span class="flag ${cls[tone]}"${tip ? ` title="${escAttr(tip)}"` : ""}>${g}${texts.length > 1 ? ` <b>&times;${texts.length}</b>` : ""}</span>`;
+  }).join("");
 }
 /* On a call the producer answered, the greeting leads whichever scorecard
    the card has: by name and direct, never the front desk's "thanks for
@@ -2488,20 +2967,23 @@ function card(c) {
     : [{ cat: c.cat, catc: c.catc, kind: c.callback_kind || "" }];
   const multiCall = calls.length > 1;
   const callRowHtml = multiCall ? `<div class="callrow">${calls.map((call, i) => `<span class="callchip">
-      ${call.kind ? `<span class="badge-slot ctype">${call.kind}</span>` : ""}<span class="cdur">${(c.call_times || [])[i] || ""}</span>
-      <span class="cat ${call.catc ? `cat-${call.catc}` : ""}">${call.cat || ""}</span></span>`).join("")}</div>` : "";
+      <span class="cdur">${(c.call_times || [])[i] || ""}</span>
+      ${outcomeBadgeHtml(call.cat, call.catc, [[call.kind || "", ""]])}</span>`).join("")}</div>` : "";
+  const typeParts = c.calltype && c.calltype[0] !== "sales" ? [[c.calltype[0], c.calltype[1] || ""]] : [];
+  const edge = flowEdge(c);
   return `<details class="ccard">
-   <summary class="blk cchead" style="border-left:4px solid ${c.tab || "var(--border-strong)"}">
+   <summary class="blk cchead" style="border-left:10px solid transparent">
+     <span class="flowedge" style="--fc:${edge.color}"${edge.label ? ` title="${escAttr(edge.label + (edge.why ? ": " + edge.why : ""))}" aria-label="${escAttr(edge.label)}"` : ""}></span>
      <div class="chead"><div><div class="cname">${c.lead_id
        ? `<a href="${AZ_URL.lead}${encodeURIComponent(c.lead_id)}" target="_blank" rel="noopener" onclick="event.stopPropagation()">${c.lead || ""}</a>`
        : (c.lead || "")}</div>
        <div class="cmeta">${c.who || ""} · ${fmtShortDate(c.day)}${c.time ? ` ${c.time}` : ""} · ${durCell} · ${c.lang || ""} · ${c.src || ""}${c.leadsrc ? ` · ${c.leadsrc}` : ""}</div>
        ${callRowHtml}</div>
-       ${!multiCall ? `<span class="cat ${c.catc ? `cat-${c.catc}` : ""}">${c.cat || ""}</span>` : ""}${c.calltype && c.calltype[0] !== "sales" ? `<span class="ctype ctype-${c.calltype[0]}" title="${c.calltype[1] || ""}">${c.calltype[0]}</span>` : ""}${flowChipHtml(c)}<span class="ctog" aria-hidden="true">▸</span></div>
+       ${!multiCall ? outcomeBadgeHtml(c.cat, c.catc, [...typeParts, ...flowParts(c)])
+         : [...typeParts, ...flowParts(c)].map(([l, why]) => `<span class="ctype" title="${escAttr(why)}">${l}</span>`).join("")}<span class="ctog" aria-hidden="true">▸</span></div>
      <div class="sum">${c.summary || ""}</div>
      ${(c.flags && c.flags.length) || (c.exit && c.exit[0]) ? `<div style="margin-top:8px">${
-       c.exit && c.exit[0] ? `<span class="flag red" title="${c.exit[1] || ""}">Producer ended the call</span>` : ""}${
-       (c.flags || []).map(f => `<span class="flag">${f}</span>`).join("")}</div>` : ""}
+       flagBadgesHtml(c)}</div>` : ""}
    </summary>
    ${c.askq || c.assume ? `<div class="blk"><div class="bl">The Assumption</div><table class="askt">
      ${c.assume ? assumeRowsHtml(c.assume) : `<tr><td class="k">Assumed the quote</td><td class="v">${bdg(c.askq[0])}</td><td>${c.askq[1] || ""}</td></tr>
@@ -2688,7 +3170,7 @@ function coachingPanel(d, who) {
     out = `<div class="empty">${objFilterCat ? `No coaching cards carrying "${objFilterCat}"${sel ? ` for ${sel}` : ""} ${scope}.`
       : sel ? `No coaching cards for ${sel} ${scope}.` : `No coaching cards ${scope}.`}</div>`;
   }
-  return nav + filterBanner + out + (d.notcoached ? `<div class="note" style="border:1px dashed var(--border-strong);border-radius:8px;padding:14px 16px">
+  return nav + filterBanner + (shown ? flowLegendHtml() : "") + out + (d.notcoached ? `<div class="note" style="border:1px dashed var(--border-strong);border-radius:8px;padding:14px 16px">
     <b>Not coached, and why.</b> ${d.notcoached}</div>` : "");
 }
 
@@ -4228,6 +4710,12 @@ async function paint() {
       : rangeHeaderHtml() + (cur ? digestPanel(cur, producerFilter) : '<div class="empty">Loading…</div>'));
     wireRangeControl(); wireProducerControl();
     v.querySelectorAll("[data-goview]").forEach(a => a.onclick = e => { e.preventDefault(); goView(a.dataset.goview); });
+    v.querySelectorAll("[data-ddrill]").forEach(el => {
+      const go = e => { if (e) e.preventDefault(); digDrill = digDrill === el.dataset.ddrill ? "" : el.dataset.ddrill; paint(); };
+      el.onclick = go;
+      el.onkeydown = e => { if (e.key === "Enter" || e.key === " ") go(e); };
+    });
+    v.querySelectorAll("[data-ddrill-close]").forEach(el => el.onclick = e => { e.preventDefault(); digDrill = ""; paint(); });
   } else if (view === "messages") {
     if (rangeMode !== "day") v.innerHTML = rangeControlHtml() + producerControlHtml() + '<div class="empty">Loading…</div>';
     const err = await ensureCurForRange();
@@ -4331,6 +4819,7 @@ function mergeServiceDocs(docs) {
   const m = { days: docs.map(x => x.date), team: last.team, pipelines: last.pipelines,
     tasks: {}, completed: [], renewals: [], unnamed: {}, callbacks: [], util: {}, taskRows: [],
     msg: { days: 0, people: {}, replies: [], sent: [] },
+    front: { days: 0, calls: [], created: [] }, playbook: null,
     openRows: (last.srs || {}).open_rows || null,
     backlog: (last.srs || {}).backlog || {}, lateStages: (last.srs || {}).late_payment_stages || [],
     outcomes: (last.renewals || {}).outcomes || [], resolutionsFrom: (last.renewals || {}).resolutions_from,
@@ -4352,6 +4841,12 @@ function mergeServiceDocs(docs) {
       for (const [k, n] of Object.entries(x.renewals.unnamed || {})) m.unnamed[k] = (m.unnamed[k] || 0) + n;
     }
     m.callbacks.push(...(((x.callbacks || {}).rows) || []).map(r => Object.assign({ day: x.date }, r)));
+    if (x.front) {
+      m.front.days++;
+      m.front.calls.push(...(x.front.calls || []).map(r => Object.assign({ day: x.date }, r)));
+      m.front.created.push(...(x.front.created || []).map(r => Object.assign({ day: x.date }, r)));
+    }
+    if (x.playbook) m.playbook = x.playbook;
     if (x.messages) {
       m.msg.days++;
       for (const [n, c] of Object.entries(x.messages.people || {})) {
@@ -4375,8 +4870,51 @@ function mergeServiceDocs(docs) {
    The documents still hold every row; the split is made here, so every day
    already published splits the same way. */
 const RENEWAL_PIPES = new Set(["renewals_ff", "renewals_bw"]);
+// Renewal tasks by title: "♾️Personal Renewal 30 Days", its shot clock
+// reminder, "contact customer", "Renewal we have renewal info" -- nothing else
+// the team is given says renewal (every task title, 09-01..09-25).
+const RENEWAL_TASK = /renewal/i;
+// Due per assignee, done per whoever completed it -- task_figures' own count,
+// which the rows reproduce exactly (09-01..09-25).
+function taskCounts(rows, team) {
+  const t = {};
+  for (const n of team) t[n] = { due: 0, completed: 0 };
+  for (const r of rows) {
+    for (const a of r.assignees || []) if (t[a]) t[a].due++;
+    if (r.done && t[r.done_by]) t[r.done_by].completed++;
+  }
+  return t;
+}
 function splitRenewals(m) {
   const ren = r => RENEWAL_PIPES.has(r.pipeline);
+  const team = m.team.map(t => t.name);
+  m.renewalTasks = m.taskRows.filter(r => RENEWAL_TASK.test(r.title || ""));
+  m.taskRows = m.taskRows.filter(r => !RENEWAL_TASK.test(r.title || ""));
+  m.tasks = taskCounts(m.taskRows, team);
+  m.renewalTaskCounts = taskCounts(m.renewalTasks, team);
+  // Call backs and texts & emails with a customer whose open SRs are all
+  // renewal SRs, or a message about the renewal (service_digest.
+  // renewal_caller, service_messages.RENEWAL_WORDS). Per-person message
+  // counts are rebuilt from the rows so each side adds up on its own.
+  m.front.created = m.front.created.filter(r => !ren(r));
+  m.renewalCallbacks = m.callbacks.filter(r => r.renewal);
+  m.callbacks = m.callbacks.filter(r => !r.renewal);
+  const msgSide = keep => {
+    const sent = m.msg.sent.filter(r => !!r.renewal === keep), people = {};
+    for (const n of team) people[n] = { texts: 0, emails: 0, auto_texts: 0, auto_emails: 0, customers: 0 };
+    const seen = new Set();
+    for (const r of sent) {
+      const p = people[r.who]; if (!p) continue;
+      const ch = r.channel === "text" ? "texts" : "emails";
+      if (r.auto) { p["auto_" + ch]++; continue; }
+      p[ch]++;
+      const k = r.who + "|" + (r.number || r.link_id || r.name);
+      if (!seen.has(k)) { seen.add(k); p.customers++; }
+    }
+    return { days: m.msg.days, people, sent, replies: m.msg.replies.filter(r => !!r.renewal === keep) };
+  };
+  m.renewalMsg = msgSide(true);
+  m.msg = msgSide(false);
   m.renewalDone = m.completed.filter(ren);
   m.completed = m.completed.filter(r => !ren(r));
   if (m.openRows) {
@@ -4715,6 +5253,31 @@ function svcDrillFor(m, keys) {
     if (a === "who") { const rs = M.replies.filter(r => r.who === b);
       return svcDrillList(`${cesc(b.split(" ")[0])} · ${rs.length} customer messages`, "", svcReplyTable(rs, m)); }
   }
+  if (kind === "role" || kind === "notes") {
+    const PB = m.playbook || {}, typeLabel = Object.fromEntries(Object.entries(PB.request_types || {}).map(([k, [l]]) => [k, l]));
+    const routine = new Set(PB.routine || []);
+    const sr = (title, rs, what) => svcDrillList(`${title} · ${rs.length}`, what || "", svcSrTable(withAudit(rs, typeLabel), m, true));
+    if (kind === "notes") { const rs = m.completed.filter(r => r.audit && r.audit.missing.includes(a));
+      return sr(`Notes missing ${PART_LABEL[a] || a}`, rs, "Each SR's note, with the parts of the standard it leaves out."); }
+    const n = a, key = b, first = cesc(n.split(" ")[0]);
+    const mine = m.completed.filter(r => r.by === n);
+    if (key === "notes") return sr(`${first} · notes`, mine.filter(r => r.audit).sort((x, y) => y.audit.missing.length - x.audit.missing.length), "Missing parts first.");
+    if (key === "team_notes") return sr("Team · notes not meeting the standard", m.completed.filter(r => r.audit && r.audit.missing.length));
+    if (key === "routine") return sr(`${first} · routine requests`, mine.filter(r => r.audit && routine.has(r.audit.type)), "Requests the playbook gives to the Service Team or Front Desk.");
+    if (key === "complex") return sr(`${first} · complex, sensitive or escalated`, mine.filter(r => r.audit && (!routine.has(r.audit.type) || r.audit.escalated)));
+    if (key === "opp") return sr(`${first} · opportunities`, mine.filter(r => r.audit && r.audit.opp !== "none"), "Passed to a producer, or came up and not passed.");
+    if (key === "billing") return sr(`${first} · billing`, mine.filter(r => r.pipeline === "late_payments" || (r.audit && r.audit.type === "basic_billing")));
+    if (key === "noc") return sr(`${first} · NOC / admin`, mine.filter(r => r.audit && r.audit.type === "noc"));
+    if (key === "srs") return sr(`${first} · SRs completed`, mine);
+    if (key === "calls") return svcDrillList(`${first} · calls answered · ${m.front.calls.filter(r => r.who === n).length}`, "Inbound calls this person picked up first.", svcCallTable(m.front.calls.filter(r => r.who === n), m));
+    if (key === "created") return svcDrillList(`${first} · SRs created · ${m.front.created.filter(r => r.by === n).length}`, "", svcCreatedTable(m.front.created.filter(r => r.by === n), m));
+    if (key === "tasks") { const t = m.taskRows.filter(r => r.assignees.includes(n) || r.done_by === n); return svcDrillList(`${first} · service tasks · ${t.length}`, "", svcTaskTable(t)); }
+    if (key === "open") { const o = m.openRows ? m.openRows.filter(r => r.by === n) : null; return svcDrillList(`${first} · open SRs${o ? " · " + o.length : ""}`, "", svcOpenTable(o, m)); }
+    if (key === "cb") return svcDrillList(`${first} · call backs`, "", svcCallbackTable(m.callbacks.filter(r => r.by === n)));
+    if (key === "reply") return svcDrillList(`${first} · calls and texts`, "", `<h3 class="rh3">Call backs</h3>${svcCallbackTable(m.callbacks.filter(r => r.by === n))}<h3 class="rh3">Customer texts &amp; emails</h3>${svcReplyTable(m.msg.replies.filter(r => r.who === n), m)}`);
+    if (key === "workload") { const o = m.openRows ? m.openRows.filter(r => r.overdue) : null; return svcDrillList(`Team · overdue SRs${o ? " · " + o.length : ""}`, "Every overdue SR on the team, as of the latest day.", svcOpenTable(o, m)); }
+    if (key === "watch") return svcDrillList("Team · waiting on us", "", `<h3 class="rh3">Missed calls not returned</h3>${svcCallbackTable(m.callbacks.filter(r => r.minutes == null))}<h3 class="rh3">Customer texts waiting</h3>${svcReplyTable(m.msg.replies.filter(r => !r.ack && !r.optout && r.minutes == null), m)}`);
+  }
   if (kind === "person") {
     const srs = m.completed.filter(r => r.by === a), tasks = m.taskRows.filter(r => r.assignees.includes(a) || r.done_by === a);
     const open = m.openRows ? m.openRows.filter(r => r.by === a) : null;
@@ -4753,6 +5316,133 @@ function callbackSpeedHtml(m) {
     <p class="sd" style="margin:0 0 6px">From a missed service call to the first call back, credited to whoever made it.
     Green is 15 minutes or less, red over an hour.${waiting ? ` ${waiting} not returned the same day (on the team card above).` : ""}</p>
     <div class="tiles">${cards}${others.length ? card("others", pbadge("#8a877f", "Others"), others) : ""}</div>${svcDrillFor(m, ["cbwho"])}`;
+}
+/* ---- The Service Playbook (Amanda, head of service; Frank, 2026-09-28) ------
+   service_playbook.py is her document; each day's `playbook` carries it here.
+   By Role gives each person the measures of their own role's
+   responsibilities, in her words; the Note Standard checks every completed
+   SR's note for Who / What / Why / Outcome / Next step (service_audit.py). */
+const PART_LABEL = { who: "Who", what: "What", why: "Why", outcome: "Outcome", next_step: "Next step" };
+function svcCallTable(rs, m) {
+  if (!rs.length) return '<p class="sd">None.</p>';
+  const rows = [...rs].sort((a, b) => (b.at || "").localeCompare(a.at || "")).map(r => `<tr>
+    <td>${svcTime(r.at)}</td><td>${cesc(fmtPhone(r.number))}</td><td>${svcFirst(r.who)}</td>
+    <td class="num">${fmtMins(Math.round((r.seconds || 0) / 60))}</td></tr>`).join("");
+  return `<div class="scroll"><table class="rtable"><thead><tr><th>Answered</th><th>Caller</th><th>By</th><th class="num">On the line</th></tr></thead><tbody>${rows}</tbody></table></div>`;
+}
+function svcCreatedTable(rs, m) {
+  if (!rs.length) return '<p class="sd">None.</p>';
+  const pipeName = Object.fromEntries((m.pipelines || []).map(([k, l]) => [k, l]));
+  const rows = [...rs].sort((a, b) => (b.day || "").localeCompare(a.day || "")).map(r => `<tr>
+    <td>${renDate(r.day)}</td><td>${svcLink("customer", r.household, r.name)}</td>
+    <td>${cesc(r.subject || "")}<div style="font-size:11.5px;color:var(--text-muted)">${cesc(pipeName[r.pipeline] || r.pipeline || "")}</div></td>
+    <td>${cesc(r.assigned || "—")}</td></tr>`).join("");
+  return `<div class="scroll"><table class="rtable"><thead><tr><th>Created</th><th>Customer</th><th>SR</th><th>Assigned to</th></tr></thead><tbody>${rows}</tbody></table></div>`;
+}
+// SR rows with what the playbook read found, in the note column.
+const withAudit = (rs, typeLabel) => rs.map(r => { const a = r.audit; if (!a) return r;
+  const bits = [typeLabel[a.type] || a.type, a.missing.length ? "Missing: " + a.missing.map(k => PART_LABEL[k] || k).join(", ") : "Meets the note standard",
+    a.opp === "passed" ? "Opportunity passed to a producer" : a.opp === "missed" ? "Opportunity not passed" : "", a.escalated ? "Escalated" : ""].filter(Boolean);
+  return Object.assign({}, r, { note: `[${bits.join(" · ")}] ${r.note || ""}` }); });
+function roleMeasures(m, n) {
+  const PB = m.playbook, role = PB.role_of[n], team = m.team.map(t => t.name);
+  const routine = new Set(PB.routine || []);
+  const mine = m.completed.filter(r => r.by === n), aud = mine.filter(r => r.audit);
+  const meets = aud.filter(r => !r.audit.missing.length);
+  const k = m.tasks[n] || { due: 0, completed: 0 }, b = m.backlog[n] || {};
+  const cb = m.callbacks.filter(r => r.by === n && r.minutes != null);
+  const need = m.msg.replies.filter(r => r.who === n && !r.ack && !r.optout), ans = need.filter(r => r.minutes != null);
+  const pct = (a, t) => t ? Math.round(100 * a / t) + "%" : "—";
+  const med = x => x.length ? fmtMins(Math.round(median(x))) : "—";
+  const L = (label, value, key) => ({ label, value, key });
+  const notes = L("Maintain accurate notes", aud.length ? `<b>${pct(meets.length, aud.length)}</b> meet the note standard (${meets.length} of ${aud.length})` : "—", "notes");
+  if (role === "lead") {
+    const openAll = team.reduce((a, x) => a + ((m.backlog[x] || {}).open || 0), 0), overAll = team.reduce((a, x) => a + ((m.backlog[x] || {}).overdue || 0), 0);
+    const busiest = team.map(x => [x, (m.backlog[x] || {}).open || 0]).sort((a, c) => c[1] - a[1])[0];
+    const rout = aud.filter(r => routine.has(r.audit.type)), cx = aud.filter(r => !routine.has(r.audit.type) || r.audit.escalated);
+    const teamAud = m.completed.filter(r => r.audit), teamMeets = teamAud.filter(r => !r.audit.missing.length);
+    return [
+      L("Monitor the overall service workload", `<b>${openAll}</b> open SRs on the team, <b${overAll ? ' style="color:var(--bad)"' : ""}>${overAll}</b> overdue${busiest && busiest[1] ? ` &middot; most with ${cesc(busiest[0].split(" ")[0])} (${busiest[1]})` : ""}`, "workload"),
+      L("Not the default person for every request", aud.length ? `<b>${pct(rout.length, aud.length)}</b> of her SRs were routine work the team handles (${rout.length} of ${aud.length})` : "—", "routine"),
+      L("Complex or sensitive service, escalations", `<b>${cx.length}</b> SR${cx.length === 1 ? "" : "s"}`, "complex"),
+      L("Monitor missed calls and texts", `<b${m.callbacks.some(r => r.minutes == null) ? ' style="color:var(--bad)"' : ""}>${m.callbacks.filter(r => r.minutes == null).length}</b> missed calls not returned &middot; <b>${m.msg.replies.filter(r => !r.ack && !r.optout && r.minutes == null).length}</b> customer texts waiting (team)`, "watch"),
+      L("Audit service notes", teamAud.length ? `team <b>${pct(teamMeets.length, teamAud.length)}</b> meet the note standard` : "—", "team_notes"),
+      notes,
+    ];
+  }
+  if (role === "front_desk") {
+    const calls = m.front.calls.filter(r => r.who === n), allCalls = m.front.calls.length;
+    const created = m.front.created.filter(r => r.by === n);
+    const billing = mine.filter(r => r.pipeline === "late_payments" || (r.audit && r.audit.type === "basic_billing"));
+    const noc = mine.filter(r => r.audit && r.audit.type === "noc");
+    return [
+      L("Answer incoming calls", m.front.days ? `<b>${calls.length}</b> answered${allCalls ? ` &middot; ${pct(calls.length, allCalls)} of the team's` : ""}` : "—", "calls"),
+      L("Assign service requests", m.front.days ? `<b>${created.length}</b> SRs created and assigned` : "—", "created"),
+      L("Assist with basic billing", `<b>${billing.length}</b> billing / late payment SRs completed`, "billing"),
+      L("Handle NOCs and administrative tasks", `<b>${noc.length}</b> NOC / admin SRs &middot; tasks <b>${k.completed}/${k.due}</b>`, "noc"),
+      L("Missed calls returned", `<b>${cb.length}</b>${cb.length ? ` &middot; median ${med(cb.map(r => r.minutes))}` : ""}`, "cb"),
+      notes,
+    ];
+  }
+  const passed = aud.filter(r => r.audit.opp === "passed"), missed = aud.filter(r => r.audit.opp === "missed");
+  return [
+    L("Handle routine policy service", `<b>${mine.length}</b> SRs completed${mine.length ? ` &middot; median ${fmtDur(svcMedian(mine.map(r => r.hours)))}` : ""}`, "srs"),
+    L("Complete assigned tasks", `<b>${k.completed}/${k.due}</b> service tasks`, "tasks"),
+    L("Follow up on outstanding items", `<b>${b.open ?? 0}</b> open SRs &middot; <b${b.overdue ? ' style="color:var(--bad)"' : ""}>${b.overdue ?? 0}</b> overdue`, "open"),
+    L("Return calls and texts", `call backs <b>${cb.length}</b>${cb.length ? ` (median ${med(cb.map(r => r.minutes))})` : ""} &middot; replies <b>${ans.length}</b>${ans.length ? ` (median ${med(ans.map(r => r.minutes))})` : ""}${need.length - ans.length ? ` &middot; <b style="color:var(--bad)">${need.length - ans.length} waiting</b>` : ""}`, "reply"),
+    L("Identify opportunities for a producer", `<b>${passed.length}</b> passed &middot; <b${missed.length ? ' style="color:var(--warn, #b45309)"' : ""}>${missed.length}</b> not passed`, "opp"),
+    notes,
+  ];
+}
+function roleCardsHtml(m) {
+  const PB = m.playbook;
+  if (!PB) return "";
+  const order = Object.keys(PB.roles);    // the playbook's own order: Lead, Team Member, Front Desk
+  const team = m.team.map(t => t.name).filter(n => PB.role_of[n])
+    .sort((x, y) => order.indexOf(PB.role_of[x]) - order.indexOf(PB.role_of[y]));
+  const card = n => { const R = PB.roles[PB.role_of[n]];
+    const lines = roleMeasures(m, n).map(x => `<div class="n rline${svcDrill === `role:${n}:${x.key}` ? " on" : ""}" data-sdrill="role:${n}:${x.key}" role="button" tabindex="0" style="cursor:pointer;margin-top:6px">
+      <span style="color:var(--text-muted)">${cesc(x.label)}</span><br>${x.value}</div>`).join("");
+    return `<div class="tile" style="text-align:left">
+      <div class="k">${pbadge(DOT[n] || TEAM_DOT, n.split(" ")[0])} <span style="margin-left:4px">${cesc(R.title)}</span></div>
+      <div class="n" style="margin-top:6px;font-style:italic">${cesc(R.primary)}</div>${lines}
+      <div class="n" style="margin-top:10px;font-size:11.5px;color:var(--text-muted)">${cesc(R.expectation)}</div>
+      <div class="n" style="margin-top:6px"><a href="#" data-sdrill="person:${cesc(n)}">Everything ${cesc(n.split(" ")[0])} worked</a></div></div>`; };
+  return `<div class="sect"><h2>By Role</h2>
+    <p class="sd">Each person against their own role in the Service Playbook. Open and overdue SRs are as of ${fmtShortDate(m.days[m.days.length - 1])}. Click a line for its list.</p>
+    <div class="tiles">${team.map(card).join("")}</div>${svcDrillFor(m, ["role", "person"])}</div>`;
+}
+function noteStandardHtml(m) {
+  const PB = m.playbook;
+  const aud = m.completed.filter(r => r.audit);
+  if (!PB || !aud.length) return "";
+  const meets = aud.filter(r => !r.audit.missing.length);
+  const parts = Object.keys(PART_LABEL).map(k => [k, aud.filter(r => r.audit.missing.includes(k)).length]);
+  const chips = parts.map(([k, c]) => `<div${sdk("notes:" + k)}><div class="k">${PART_LABEL[k]}</div><div class="v">${c}</div><div class="n">note${c === 1 ? "" : "s"} missing it &middot; ${Math.round(100 * c / aud.length)}%</div></div>`).join("");
+  return `<div class="sect"><h2>Note Standard</h2>
+    <p class="sd">Every note should answer Who? What? Why? Outcome? Next step? so the next person can pick up where you left off. <b>${Math.round(100 * meets.length / aud.length)}%</b> of the ${aud.length} service SRs completed in this period meet it; each note is read against the playbook by AI.
+    Good: <i>"${cesc(PB.good_note)}"</i> Too vague: <i>"${cesc(PB.vague_note)}"</i></p>
+    <div class="tiles">${chips}</div>${svcDrillFor(m, ["notes"])}</div>`;
+}
+function playbookHtml(m) {
+  const PB = m.playbook;
+  if (!PB) return "";
+  const roleCols = Object.values(PB.roles).map(R => `<div class="tile" style="text-align:left"><div class="k">${cesc(R.title)}</div>
+    <div class="n" style="font-style:italic;margin:6px 0">${cesc(R.primary)}</div>
+    <ul style="margin:0 0 6px 18px;padding:0;font-size:12.5px">${R.responsibilities.map(x => `<li>${cesc(x)}</li>`).join("")}</ul>
+    <div class="n" style="font-size:12px"><b>Expectation:</b> ${cesc(R.expectation)}</div></div>`).join("");
+  const who = Object.values(PB.request_types).map(([l, o]) => `<tr><td>${cesc(l)}</td><td>${cesc({ service: "Service", front_desk: "Front Desk / Service", lead: "Service Lead / Producer", producer: "Producer", frank: "Frank" }[o] || o)}</td></tr>`).join("");
+  const exp = Object.entries(PB.expectations).map(([k, v]) => `<li><b>${cesc(k)}.</b> ${cesc(v)}</li>`).join("");
+  return `<div class="sect"><details class="msgd"><summary style="cursor:pointer"><h2 style="display:inline">Service Playbook</h2> <span style="color:var(--text-muted);font-size:12.5px">what each role owns, as Amanda wrote it</span></summary>
+    <p class="sd" style="margin-top:8px">${cesc(PB.purpose)}</p>
+    <p class="sd"><b>Our Service Standard:</b> ${cesc(PB.standard)}. Every client should feel heard, helped, and confident that their request is being handled.</p>
+    <div class="tiles">${roleCols}</div>
+    <h3 class="rh3">Who handles what</h3>
+    <div class="scroll"><table class="rtable"><thead><tr><th>Request</th><th>Primary responsibility</th></tr></thead><tbody>${who}</tbody></table></div>
+    <p class="sd">${cesc(PB.when_in_doubt)}</p>
+    <h3 class="rh3">Service vs. sales</h3><p class="sd">${cesc(PB.service_vs_sales)}</p>
+    <h3 class="rh3">Our team expectations</h3><ul style="margin:0 0 6px 18px;padding:0;font-size:13px">${exp}</ul>
+    <p class="sd"><i>${cesc(PB.closing)}</i></p></details></div>`;
 }
 function servicePanel(m) {
   const team = m.team.map(t => t.name);
@@ -4793,14 +5483,27 @@ function servicePanel(m) {
       <div class="n">Utilization <b>${u.t ? pct(100 * u.p / u.t) : "—"}</b>${u.hybrid ? ' <span style="color:var(--text-muted)">&middot; whole day, shared with sales</span>' : ""}</div>
     </div>`;
   };
-  return `<div class="sect"><h2>Service Team</h2>
+  return `${playbookHtml(m)}<div class="sect"><h2>Service Team</h2>
     <p class="sd">Credit goes to whoever completed the SR or task.</p>${tiles}</div>
+    ${m.playbook ? roleCardsHtml(m) + noteStandardHtml(m) : ""}
     ${svcMessagesHtml(m)}
     ${SR_OUTCOME_SECTIONS.map(([p, t, w, b]) => srOutcomeHtml(m, p, t, w, b)).join("")}
     ${completionTimeHtml(m)}
     ${latePaymentsHtml(m)}
     ${missingDocsHtml(m)}
-    <div class="sect"><h2>By Person</h2><p class="sd">Open and overdue SRs are as of ${fmtShortDate(m.days[m.days.length - 1])}.</p><div class="tiles">${team.map(person).join("")}</div>${svcDrillFor(m, ["person"])}</div>`;
+    ${m.playbook ? "" : `<div class="sect"><h2>By Person</h2><p class="sd">Open and overdue SRs are as of ${fmtShortDate(m.days[m.days.length - 1])}.</p><div class="tiles">${team.map(person).join("")}</div>${svcDrillFor(m, ["person"])}</div>`}`;
+}
+// The Sales Digest's date filter, as service days (the Service Digest and the
+// Renewals tab share it -- Frank, 2026-09-27).
+function serviceRangeDays(all) {
+  if (rangeMode === "day") {
+    const day = (cur && cur.date) || all[0];
+    return { wanted: day ? [day] : [],
+             label: day ? new Date(day + "T12:00:00").toLocaleDateString(undefined, { weekday: "long", month: "long", day: "numeric", year: "numeric" }) : "" };
+  }
+  const b = rangeBounds();
+  if (b.err) return { err: b.err };
+  return { wanted: all.filter(d => d >= (b.from || "") && d <= b.to), label: `${b.label} · ${b.from || "the start"} → ${b.to}` };
 }
 async function paintService() {
   const v = $("#view");
@@ -4808,17 +5511,9 @@ async function paintService() {
   v.innerHTML = controls + '<div class="empty">Loading…</div>';
   wireRangeControl();
   const all = await serviceDays();
-  let wanted, label;
-  if (rangeMode === "day") {
-    const day = (cur && cur.date) || all[0];
-    wanted = day ? [day] : [];
-    label = day ? new Date(day + "T12:00:00").toLocaleDateString(undefined, { weekday: "long", month: "long", day: "numeric", year: "numeric" }) : "";
-  } else {
-    const b = rangeBounds();
-    if (b.err) { v.innerHTML = controls + `<div class="empty">${b.err}</div>`; wireRangeControl(); return; }
-    wanted = all.filter(d => d >= (b.from || "") && d <= b.to);
-    label = `${b.label} · ${b.from || "the start"} → ${b.to}`;
-  }
+  const rg = serviceRangeDays(all);
+  if (rg.err) { v.innerHTML = controls + `<div class="empty">${rg.err}</div>`; wireRangeControl(); return; }
+  const { wanted, label } = rg;
   const docs = await fetchServiceDocs(wanted);
   $("#topsub").textContent = "Athena · service team" + (label ? " · " + label : "");
   const merged = docs.length ? splitRenewals(mergeServiceDocs(docs)) : null;
@@ -4844,8 +5539,9 @@ async function paintService() {
    (what happened: retained, lost, mid-term, not confirmed yet) and in the
    next 45 days (how the renewal SR was worked, and how at risk it is).
    Service is not tracked day by day like sales (Frank: "we just need more of
-   a live or updating renewal and retention report"), so the Service
-   Digest's date filter does not apply here. Lost counts the policy record as
+   a live or updating renewal and retention report"). The date filter is the
+   Sales Digest's (Frank, 2026-09-27); only the retention rate stays the
+   rolling 4 weeks, and Coming up the next 45 days. Lost counts the policy record as
    well as the team's SRs ("if the policy reads cancelled ... its still
    cancelled"); a mid-term cancellation sits outside the rate. */
 const REN_STATUS = {
@@ -4878,6 +5574,9 @@ const renWorked = r => {
   if (s.outcome === "unable_to_contact") return "not_reached";
   return "other";
 };
+// A renewal counts in the settled rate once it is two weeks past: the newest
+// two weeks still have renewals not on the record yet.
+const REN_SETTLE_DAYS = 14;
 const renRate = rs => { const k = rs.filter(r => r.status === "retained").length, l = rs.filter(r => r.status === "lost").length;
   return { k, l, pct: k + l ? Math.round(1000 * k / (k + l)) / 10 : null }; };
 const renFill = st => { const [, v, hatch] = REN_STATUS[st] || [, "--text-muted"];
@@ -4928,59 +5627,92 @@ function renDrillHtml([title, what, rs], label, pipeName) {
    the Service Center with the rest of renewals): a renewal SR counted as
    Mid-term Cancellation that nothing dates -- AgencyZoom's policy record
    never changed after it was loaded and the rep's note gives no date. */
-function renFlagHtml(doc, label) {
-  const rs = doc.rows.filter(r => r.sr && r.sr.flag).sort((a, b) => a.renewal < b.renewal ? -1 : 1);
+// Stays open across repaints (a card click repaints the tab) once opened.
+let renFlagOpen = false;
+// Follows the date filter, by the day the policy renewed, like Lost (Frank,
+// 2026-09-28) -- the report holds a year, so unfiltered it was 79 long.
+function renFlagHtml(doc, label, inRange = () => true) {
+  const rs = doc.rows.filter(r => r.sr && r.sr.flag && inRange(r)).sort((a, b) => a.renewal < b.renewal ? -1 : 1);
   if (!rs.length) return "";
   const rows = rs.map(r => `<tr><td>${renDate(r.renewal)}</td><td>${renCustomer(r)}</td>
     <td>${cesc(r.type)} <span style="color:var(--text-muted)">${cesc(r.policy)}</span></td>
     <td>${renSrCell(r, label)}</td></tr>`).join("");
-  return `<div class="sect"><h2>Cancellations to check</h2>
-    <p class="sd" style="color:var(--warn, #b45309)">${rs.length} renewal SR${rs.length === 1 ? "" : "s"} counted as Mid-term Cancellation, outside the rate, but nothing shows the policy cancelled before the renewal SR opened: AgencyZoom's policy record has not changed since it was loaded, and the note gives no date. If it cancelled during the renewal, change the SR's resolution to Client Cancelled.</p>
-    <div class="scroll"><table class="rtable"><thead><tr><th>Renews</th><th>Customer</th><th>Policy</th><th>Renewal SR</th></tr></thead><tbody>${rows}</tbody></table></div></div>`;
+  // A dropdown (Frank, 2026-09-28): closed until clicked, count on the label.
+  return `<div class="sect"><details class="msgd"${renFlagOpen ? " open" : ""} ontoggle="renFlagOpen=this.open">
+    <summary style="cursor:pointer"><h2 style="display:inline">Cancellations to check</h2> <span class="chip c-w" style="margin-left:6px">${rs.length}</span></summary>
+    <p class="sd" style="color:var(--warn, #b45309);margin-top:8px">${rs.length} renewal SR${rs.length === 1 ? "" : "s"} renewing in this period counted as Mid-term Cancellation, outside the rate, but nothing shows the policy cancelled before the renewal SR opened: AgencyZoom's policy record has not changed since it was loaded, and the note gives no date. If it cancelled during the renewal, change the SR's resolution to Client Cancelled.</p>
+    <div class="scroll"><table class="rtable"><thead><tr><th>Renews</th><th>Customer</th><th>Policy</th><th>Renewal SR</th></tr></thead><tbody>${rows}</tbody></table></div></details></div>`;
 }
-function renewalsPanel(doc, workHtml = "") {
+function renewalsPanel(doc, workHtml = "", rb = null) {
   const label = Object.fromEntries((doc.sr_outcomes || []).map(([k, l]) => [k, l]));
   const pipeName = Object.fromEntries(doc.pipelines || []);
   const past = doc.rows.filter(r => r.kind === "past");
   const up = doc.rows.filter(r => r.kind === "upcoming");
   const ahead = up.filter(r => r.status === "upcoming");
   const gone = up.filter(r => r.status === "mid_term").length;
-  const lost = doc.rows.filter(r => r.status === "lost");
-  const rt = renRate(past);
+  // Only the retention rate (and its breakdown) is the rolling 4 weeks; Lost
+  // and Not confirmed follow the date filter, by the day the policy renewed.
+  const inRange = r => !rb || ((!rb.from || r.renewal >= rb.from) && (!rb.to || r.renewal <= rb.to));
+  const pastIn = past.filter(inRange);
+  const lost = doc.rows.filter(r => r.status === "lost" && (r.kind === "upcoming" || inRange(r)));
+  const lostIn = pastIn.filter(r => r.status === "lost");
+  const firstRen = past.length ? past.reduce((a, r) => r.renewal < a ? r.renewal : a, past[0].renewal) : null;
+  const rangeNote = rb && rb.from && firstRen && rb.from < firstRen ? ` This report holds renewals from ${renDate(firstRen)} on.` : "";
+  // Three retention rates (Frank, 2026-09-27: "build all three"):
+  //   settled  renewals 14-41 days ago -- the last 4 weeks that have had two
+  //            weeks to show on the record; the newest two weeks are settling
+  //   range    renewals in the date filter's period
+  //   year     renewals in the last 365 days, the one to set beside Farmers'
+  const ago = r => Math.round((new Date(doc.as_of + "T12:00:00") - new Date(r.renewal + "T12:00:00")) / 864e5);
+  const settled = past.filter(r => ago(r) >= REN_SETTLE_DAYS && ago(r) < REN_SETTLE_DAYS + 28);
+  const settling = past.filter(r => ago(r) < REN_SETTLE_DAYS);
+  const year = past.filter(r => ago(r) < 365);
+  const rt = renRate(settled), rr = renRate(pastIn), ry = renRate(year);
+  const span = rs => rs.length ? `${renDate(rs.reduce((a, r) => r.renewal < a ? r.renewal : a, rs[0].renewal))} – ${renDate(rs.reduce((a, r) => r.renewal > a ? r.renewal : a, rs[0].renewal))}` : "";
+  const inRate = rs => rs.filter(r => r.status === "retained" || r.status === "lost");
   const discussed = ahead.filter(r => renWorked(r) === "discussed").length;
   const high = ahead.filter(r => r.risk === "high").length;
   // Each card opens the list of exactly the renewals it counts.
   const drills = {
-    rate: ["Retention · last 4 weeks", "every renewal in the rate: retained and lost",
-           past.filter(r => r.status === "retained" || r.status === "lost")],
-    lost: ["Lost", "renewals lost in the last 4 weeks", past.filter(r => r.status === "lost")],
-    unconfirmed: ["Not confirmed yet", "no next term or cancellation on record yet", past.filter(r => r.status === "unconfirmed")],
+    rate: ["Retention · settled 4 weeks", "renewed " + span(settled) + ", retained and lost", inRate(settled)],
+    rrange: ["Retention · this period", "renewed in the date filter's period, retained and lost", inRate(pastIn)],
+    ryear: ["Retention · 12 months", "renewed " + span(year) + ", retained and lost", inRate(year)],
+    lost: ["Lost", "renewals lost in this period", lostIn],
+    unconfirmed: ["Not confirmed yet", "no next term or cancellation on record yet", pastIn.filter(r => r.status === "unconfirmed")],
     ahead: [`Coming up · ${doc.upcoming_days} days`, "renewing in the next " + doc.upcoming_days + " days", ahead],
     high: ["High risk", "not discussed, with a warning sign", ahead.filter(r => r.risk === "high")],
   };
   const dt = (k, inner, style) => `<div class="tile rdrill${renDrill === k ? " on" : ""}" data-drill="${k}" role="button" tabindex="0"
     title="Show these ${drills[k][2].length} renewals"${style ? ` style="${style}"` : ""}>${inner}</div>`;
   const tiles = `<div class="tiles">
-    ${dt("rate", `<div class="k">Retention · last 4 weeks</div>
-      <div class="v">${rt.pct == null ? "—" : rt.pct + "%"}</div><div class="n">${rt.k} of ${rt.k + rt.l} renewals kept</div>`, "border-color:var(--border-strong)")}
-    ${dt("lost", `<div class="k">Lost</div><div class="v">${rt.l}</div><div class="n">renewed ${renDate(past.length ? past[0].renewal : null)} – ${renDate(doc.as_of)}</div>`)}
-    ${dt("unconfirmed", `<div class="k">Not confirmed yet</div><div class="v">${past.filter(r => r.status === "unconfirmed").length}</div><div class="n">no next term or cancellation on record yet</div>`)}
+    ${dt("rate", `<div class="k">Retention · settled 4 weeks</div>
+      <div class="v">${rt.pct == null ? "—" : rt.pct + "%"}</div><div class="n">${rt.k} of ${rt.k + rt.l} kept &middot; renewed ${span(settled)}</div>`, "border-color:var(--border-strong)")}
+    ${dt("rrange", `<div class="k">Retention · this period</div>
+      <div class="v">${rr.pct == null ? "—" : rr.pct + "%"}</div><div class="n">${rr.k} of ${rr.k + rr.l} kept &middot; renewed in the date filter's period</div>`)}
+    ${dt("ryear", `<div class="k">Retention · 12 months</div>
+      <div class="v">${ry.pct == null ? "—" : ry.pct + "%"}</div><div class="n">${ry.k} of ${ry.k + ry.l} kept &middot; to compare with Farmers' figures</div>`)}
+    ${dt("lost", `<div class="k">Lost</div><div class="v">${lostIn.length}</div><div class="n">renewed in this period</div>`)}
+    ${dt("unconfirmed", `<div class="k">Not confirmed yet</div><div class="v">${pastIn.filter(r => r.status === "unconfirmed").length}</div><div class="n">renewed in this period, no next term or cancellation on record yet</div>`)}
     ${dt("ahead", `<div class="k">Coming up · ${doc.upcoming_days} days</div><div class="v">${ahead.length}</div>
       <div class="n">${ahead.length ? Math.round(100 * discussed / ahead.length) : 0}% reviewed with the customer</div>`)}
     ${dt("high", `<div class="k">High risk</div><div class="v" style="color:var(--bad)">${high}</div><div class="n">not discussed, with a warning sign</div>`)}
   </div>${renDrill && drills[renDrill] ? renDrillHtml(drills[renDrill], label, pipeName) : ""}`;
-  // Weeks by renewal date, Monday first, oldest to newest.
+  // Weeks by renewal date, Monday first, oldest to newest: the settled four
+  // weeks and the two still settling. The breakdowns below are the settled
+  // four weeks -- the rate's own renewals.
   const wk = d => { const x = new Date(d + "T12:00:00"); x.setDate(x.getDate() - ((x.getDay() + 6) % 7)); return x.toISOString().slice(0, 10); };
-  const weeks = [...new Set(past.map(r => wk(r.renewal)))].sort();
-  const weekCards = weeks.map((w, i) => renCard(past.filter(r => wk(r.renewal) === w),
-    `Week of ${renDate(w)}${i === weeks.length - 1 ? " · settling" : ""}`)).join("");
-  const worked = REN_WORKED.map(([k, l]) => [l, past.filter(r => renWorked(r) === k)]).filter(x => x[1].length);
+  const recent = settled.concat(settling);
+  const weeks = [...new Set(recent.map(r => wk(r.renewal)))].sort();
+  const weekCards = weeks.map(w => { const rs = recent.filter(r => wk(r.renewal) === w);
+    return renCard(rs, `Week of ${renDate(w)}${rs.some(r => ago(r) < REN_SETTLE_DAYS) ? " · settling" : ""}`); }).join("");
+  const base = settled;
+  const worked = REN_WORKED.map(([k, l]) => [l, base.filter(r => renWorked(r) === k)]).filter(x => x[1].length);
   const workedCards = worked.map(([l, rs]) => renCard(rs, l)).join("");
-  const pipeCards = (doc.pipelines || []).map(([k, l]) => [l, past.filter(r => r.pipeline === k)]).filter(x => x[1].length).map(([l, rs]) => renCard(rs, l)).join("");
-  const people = (doc.team || []).filter(n => past.some(r => r.sr && r.sr.by === n));
-  const personCards = people.map(n => renCard(past.filter(r => r.sr && r.sr.by === n), pbadge(DOT[n] || TEAM_DOT, n.split(" ")[0]))).join("")
-    + (past.some(r => !r.sr || !people.includes(r.sr.by)) ? renCard(past.filter(r => !r.sr || !people.includes(r.sr.by)), pbadge("#8a877f", "Others / no SR")) : "");
-  const legend = Object.entries(REN_STATUS).map(([k, [l]]) => { const c = past.filter(r => r.status === k).length;
+  const pipeCards = (doc.pipelines || []).map(([k, l]) => [l, base.filter(r => r.pipeline === k)]).filter(x => x[1].length).map(([l, rs]) => renCard(rs, l)).join("");
+  const people = (doc.team || []).filter(n => base.some(r => r.sr && r.sr.by === n));
+  const personCards = people.map(n => renCard(base.filter(r => r.sr && r.sr.by === n), pbadge(DOT[n] || TEAM_DOT, n.split(" ")[0]))).join("")
+    + (base.some(r => !r.sr || !people.includes(r.sr.by)) ? renCard(base.filter(r => !r.sr || !people.includes(r.sr.by)), pbadge("#8a877f", "Others / no SR")) : "");
+  const legend = Object.entries(REN_STATUS).map(([k, [l]]) => { const c = recent.filter(r => r.status === k).length;
     return c ? `<span class="oleg-item"><span class="pd rdot" style="${renFill(k)}"></span>${l} <b>${c}</b></span>` : ""; }).join("");
   const lostRows = lost.sort((a, b) => a.renewal < b.renewal ? -1 : 1).map(r => `<tr>
     <td>${renDate(r.renewal)}${r.kind === "upcoming" ? ' <span class="chip c-n">ahead</span>' : ""}</td><td>${cesc(r.name || "—")}</td>
@@ -5002,17 +5734,17 @@ function renewalsPanel(doc, workHtml = "") {
     <td>${r.flags.filter(x => REN_FLAGS[x]).map(x => `<span class="chip ${REN_FLAGS[x][1]}" style="margin:0 4px 3px 0">${REN_FLAGS[x][0]}</span>`).join("")}</td>
     <td><span class="chip ${REN_RISK[r.risk][1]}">${REN_RISK[r.risk][0]}</span></td></tr>`).join("");
   return `<div class="sect"><h2>Renewals</h2>
-    <p class="sd">Every personal-lines policy that renewed in the last ${doc.past_days} days or renews in the next ${doc.upcoming_days}, from AgencyZoom's policy records and the team's SRs. Rebuilt every night · as of ${renDate(doc.as_of)}.</p>${tiles}</div>
+    <p class="sd">Every personal-lines policy that renewed in the last ${doc.past_days} days or renews in the next ${doc.upcoming_days}, from AgencyZoom's policy records and the team's SRs. Rebuilt every night · as of ${renDate(doc.as_of)}. Three retention rates: the settled 4 weeks (renewals 2 to 6 weeks ago), the date filter's period, and the last 12 months. Everything else follows the date filter, except Coming up.${rangeNote}</p>${tiles}</div>
     ${workHtml}
-    <div class="sect"><h2>Retention · last 4 weeks</h2>
-    <p class="sd">By the week each policy renewed. Retained = a next term on record, a rewrite, or Rewrite Accepted on the renewal SR. Lost = the policy record shows it cancelled, a Late Payment or Service Pipeline SR cancelled it, or the renewal SR was closed on a cancellation. Rate = retained over retained plus lost. A Mid-term Cancellation (hatched, cancelled more than 30 days before the renewal) and a renewal not confirmed yet sit outside the rate. The newest week is still settling: AgencyZoom's policy records lag by a few weeks.</p>
+    <div class="sect"><h2>Retention · settled 4 weeks</h2>
+    <p class="sd">By the week each policy renewed: the four weeks in the settled rate, and the newest two, still settling (a renewal counts once it is two weeks past). Retained = a next term on record, a rewrite, or Rewrite Accepted on the renewal SR. Lost = the policy record shows it cancelled, a Late Payment or Service Pipeline SR cancelled it, or the renewal SR was closed on a cancellation. Rate = retained over retained plus lost. A Mid-term Cancellation (hatched, cancelled more than 30 days before the renewal) and a renewal not confirmed yet sit outside the rate. The breakdowns by how the SR was worked, pipeline and person are the settled four weeks.</p>
     <div class="tiles rtiles">${weekCards}</div><div class="oleg">${legend}</div>
     <h3 class="rh3">By how the renewal SR was worked</h3><div class="tiles rtiles">${workedCards}</div>
     <h3 class="rh3">By pipeline</h3><div class="tiles rtiles">${pipeCards}</div>
     <h3 class="rh3">By who worked the renewal SR</h3><div class="tiles rtiles">${personCards}</div></div>
-    <div class="sect"><h2>Lost</h2><p class="sd">Every renewal lost in the last 4 weeks, and any renewal still ahead that has already cancelled, with how we know.</p>
+    <div class="sect"><h2>Lost</h2><p class="sd">Every renewal lost in this period, and any renewal still ahead that has already cancelled, with how we know.${rangeNote}</p>
     ${lostRows ? `<div class="scroll"><table class="rtable"><thead><tr><th>Renews</th><th>Customer</th><th>Policy</th><th class="num">Premium</th><th>Renewal SR</th><th>How we know</th></tr></thead><tbody>${lostRows}</tbody></table></div>` : '<p class="sd">None.</p>'}</div>
-    ${renFlagHtml(doc, label)}
+    ${renFlagHtml(doc, label, inRange)}
     <div class="sect"><h2>Coming up · next ${doc.upcoming_days} days</h2>
     <p class="sd">High = not yet discussed with the customer (no renewal SR, the SR still open, No action or Unable to Contact) and a warning sign: an open Late Payment SR or a cancellation SR on the household. Medium = not discussed and renewing within ${doc.soon_days} days, or discussed with a warning sign.${gone ? ` ${gone} more policies renewing in this window were already cancelled mid term and are left out.` : ""}</p>
     <div class="rfilters">${sel("renRisk", f.risk, [["high", "High risk"], ["medium", "Medium risk"], ["low", "Low risk"]], "Any risk")}
@@ -5027,17 +5759,78 @@ function renewalsPanel(doc, workHtml = "") {
    in the last 4 weeks, per person and per pipeline, with how long each took
    from created to completed, and the open ones as of the latest day. From
    the same daily documents as the Service Digest, so the figures agree. */
-const REN_WORK_DAYS = 28;
-let RENEWAL_WORK = null;
-async function loadRenewalWork() {
-  if (RENEWAL_WORK) return RENEWAL_WORK;
-  const all = await serviceDays();
-  const last = all.length ? [...all].sort().pop() : null;
-  if (!last) return null;
-  const from = new Date(last + "T12:00:00"); from.setDate(from.getDate() - REN_WORK_DAYS + 1);
-  const docs = await fetchServiceDocs(all.filter(d => d >= from.toISOString().slice(0, 10) && d <= last));
-  RENEWAL_WORK = docs.length ? splitRenewals(mergeServiceDocs(docs)) : null;
-  return RENEWAL_WORK;
+// Follows the date filter (Frank, 2026-09-27: "the only numbers I want
+// displayed for a rolling 4 weeks is the retention rate").
+const RENEWAL_WORK = {};
+async function loadRenewalWork(wanted) {
+  const k = wanted.join(",");
+  if (!(k in RENEWAL_WORK)) {
+    const docs = await fetchServiceDocs(wanted);
+    RENEWAL_WORK[k] = docs.length ? splitRenewals(mergeServiceDocs(docs)) : null;
+  }
+  return RENEWAL_WORK[k];
+}
+/* Renewal Outcome Breakdown (Frank, 2026-09-28: "the same way we display
+   the call outcome breakdown on the sales digest. Per CSR rep and a total"):
+   one bar per person who completed renewal SRs in the period, and the team,
+   each as long as its count and split by Frank's resolutions; every segment
+   and legend item opens its SRs. Retained % sits beside the count. */
+function renOutcomeHtml(m) {
+  if (!m) return "";
+  const rows = m.renewals || [];
+  if (!rows.length) return `<div class="sect"><h2>Renewal Outcome Breakdown</h2><p class="sd">No renewal SRs were completed in this period.</p></div>`;
+  const kind = Object.fromEntries(m.outcomes.map(([k, , c]) => [k, c]));
+  const label = Object.fromEntries(m.outcomes.map(([k, l]) => [k, l]));
+  const team = m.team.map(t => t.name);
+  const groups = team.map(n => [n, rows.filter(r => r.by === n)]).filter(([, rs]) => rs.length)
+    .sort((a, b) => b[1].length - a[1].length);
+  const others = rows.filter(r => !team.includes(r.by));
+  if (others.length) groups.push(["others", others]);
+  // The bars are the reps (Frank, 2026-09-28: "for the team instead of the
+  // bar, just give me the totals"), scaled to the busiest one.
+  const most = Math.max(...groups.map(([, rs]) => rs.length), 1);
+  const bar = (key, head, rs, strong) => {
+    const segs = m.outcomes.map(([k, l]) => { const c = rs.filter(r => r.outcome === k).length;
+      return c ? `<span class="ogseg rseg" data-drill="ro:${k}:${key}" role="button" tabindex="0" style="width:${(c / rs.length * 100).toFixed(2)}%;${outcomeFill(k)};cursor:pointer" title="${cesc(l)}: ${c} (click for the list)"></span>` : ""; }).join("");
+    const rt = renewalRate(rs, kind);
+    return `<div class="orow"><div class="orow-head"><span class="who">${head}</span>
+      <span class="on">${rs.length} renewal SR${rs.length === 1 ? "" : "s"} completed${rt.pct == null ? "" : ` &middot; ${rt.pct}% retained`}</span></div>
+      <div style="width:${(rs.length / most * 100).toFixed(2)}%"><div class="otrack">${segs}</div></div></div>`;
+  };
+  const tr = renewalRate(rows, kind);
+  const totals = `<div class="orow-head" style="margin:4px 0 12px"><span class="who">${pbadge(TEAM_DOT, "Team")}</span>
+    <span class="on"><b>${rows.length}</b> renewal SR${rows.length === 1 ? "" : "s"} completed${tr.pct == null ? "" : ` &middot; <b>${tr.pct}%</b> retained (${tr.kept} of ${tr.kept + tr.lost})`}</span></div>`;
+  const bars = totals + groups.map(([n, rs]) => bar(n, n === "others" ? pbadge("#8a877f", "Others") : pbadge(DOT[n] || TEAM_DOT, n.split(" ")[0]), rs)).join("");
+  const legend = m.outcomes.map(([k, l]) => [k, l, rows.filter(r => r.outcome === k).length]).filter(x => x[2]).map(([k, l, c]) =>
+    `<span class="oleg-item${renDrill === "ro:" + k ? " on" : ""}" data-drill="ro:${k}" role="button" tabindex="0" style="cursor:pointer"><span class="pd rdot" style="${outcomeFill(k)}"></span>${cesc(l)} <b>${c}</b> <span style="color:var(--text-muted)">(${Math.round(100 * c / rows.length)}%)</span></span>`).join("");
+  let list = "";
+  if (renDrill.startsWith("ro:")) {
+    const [, k, who] = renDrill.split(":");
+    const rs = rows.filter(r => r.outcome === k && (!who || who === "team" || (who === "others" ? !team.includes(r.by) : r.by === who)));
+    list = `<div class="rdrill-list"><div style="display:flex;justify-content:space-between;align-items:baseline;gap:12px;margin:14px 0 6px">
+      <h3 class="rh3" style="margin:0">${cesc(label[k] || k)}${who && who !== "team" ? ` · ${who === "others" ? "Others" : cesc(who.split(" ")[0])}` : ""} · ${rs.length}</h3>
+      <a href="#" data-drill-close style="font-size:12.5px">Close</a></div>${svcSrTable(rs, m, true)}</div>`;
+  }
+  return `<div class="sect"><h2>Renewal Outcome Breakdown${m.label ? ` <span style="font-weight:400;text-transform:none;letter-spacing:0;color:var(--text-muted)">· ${cesc(m.label)}</span>` : ""}</h2>
+    <p class="sd">Renewal SRs completed in this period and how each one ended, by whoever completed it. Retained = renewed (No action and Unable to Contact/No Show included) or rewrite accepted, over everything renewed, rewritten or cancelled; Mid-term Cancellation and Sold/Moved (hatched) sit outside it. Click a segment or the legend for the list.</p>
+    ${bars}<div class="oleg">${legend}</div>${list}</div>`;
+}
+// Renewal call backs and texts (Frank, 2026-09-27: "everything should be
+// separated if possible") -- the Service Digest's cards, for renewal business.
+function renCommsTiles(m, dk) {
+  const cb = m.renewalCallbacks || [], cbDone = cb.filter(r => r.minutes != null);
+  const M = m.renewalMsg || { replies: [], sent: [] };
+  const need = M.replies.filter(r => !r.ack && !r.optout), ans = need.filter(r => r.minutes != null);
+  const typed = M.sent.filter(r => r.channel === "text" && !r.auto), auto = M.sent.filter(r => r.channel === "text" && r.auto);
+  const med = x => x.length ? Math.round(median(x)) : null;
+  return (cb.length ? dk("rw:cb", `<div class="k">Renewal Call Backs</div>
+      <div class="v"><span class="${replyTier(med(cbDone.map(r => r.minutes)))}">${fmtMins(med(cbDone.map(r => r.minutes)))}</span></div>
+      <div class="n">median to the first return call &middot; ${cbDone.length} of ${cb.length} returned same day</div>`) : "")
+    + (M.sent.length ? dk("rw:sent", `<div class="k">Renewal Texts Sent</div><div class="v">${typed.length}</div>
+      <div class="n">typed &middot; ${auto.length} more by automation</div>`) : "")
+    + (need.length ? dk("rw:replies", `<div class="k">Renewal Speed to Reply</div>
+      <div class="v"><span class="${replyTier(med(ans.map(r => r.minutes)))}">${fmtMins(med(ans.map(r => r.minutes)))}</span></div>
+      <div class="n">median &middot; ${ans.length} of ${need.length} answered${need.length - ans.length ? ` &middot; <b style="color:var(--bad)">${need.length - ans.length} waiting</b>` : ""}</div>`) : "");
 }
 function renewalWorkHtml(m) {
   if (!m) return "";
@@ -5048,12 +5841,15 @@ function renewalWorkHtml(m) {
   const person = n => { const mine = rs.filter(r => r.by === n), o = open ? open.filter(r => r.by === n) : null;
     return dk("rw:person:" + n, `<div class="k">${pbadge(DOT[n] || TEAM_DOT, n.split(" ")[0])}</div>
       <div class="v">${mine.length}</div><div class="n">completed${mine.length ? ` &middot; median ${hrs(mine)}` : ""}</div>
-      ${o ? `<div class="n"><b>${o.length}</b> open &middot; <b${o.some(r => r.overdue) ? ' style="color:var(--bad)"' : ""}>${o.filter(r => r.overdue).length}</b> overdue</div>` : ""}`); };
+      ${o ? `<div class="n"><b>${o.length}</b> open &middot; <b${o.some(r => r.overdue) ? ' style="color:var(--bad)"' : ""}>${o.filter(r => r.overdue).length}</b> overdue</div>` : ""}
+      <div class="n">Renewal tasks <b>${(m.renewalTaskCounts[n] || {}).completed || 0}/${(m.renewalTaskCounts[n] || {}).due || 0}</b></div>`); };
   const others = rs.filter(r => !team.includes(r.by));
   const tiles = `<div class="tiles">
     ${dk("rw:done", `<div class="k">Renewal SRs Completed</div><div class="v">${rs.length}</div><div class="n">median ${hrs(rs)} created to completed</div>`, "border-color:var(--border-strong)")}
+    ${dk("rw:tasks", `<div class="k">Renewal Tasks Done</div><div class="v">${m.renewalTasks.filter(r => r.done).length}<span style="font-size:15px;color:var(--text-muted)"> / ${m.renewalTasks.length}</span></div><div class="n">${m.renewalTasks.length ? Math.round(100 * m.renewalTasks.filter(r => r.done).length / m.renewalTasks.length) : 0}% of renewal tasks due</div>`)}
+    ${renCommsTiles(m, dk)}
     ${open ? dk("rw:open", `<div class="k">Open Renewal SRs</div><div class="v">${open.length}</div><div class="n">${open.filter(r => r.overdue).length} overdue &middot; as of ${fmtShortDate(m.days[m.days.length - 1])}</div>`) : ""}
-    ${team.filter(n => rs.some(r => r.by === n) || (open || []).some(r => r.by === n)).map(person).join("")}
+    ${team.filter(n => rs.some(r => r.by === n) || (open || []).some(r => r.by === n) || (m.renewalTaskCounts[n] || {}).due).map(person).join("")}
     ${others.length ? dk("rw:person:others", `<div class="k">${pbadge("#8a877f", "Others")}</div><div class="v">${others.length}</div><div class="n">completed &middot; median ${hrs(others)}</div>`) : ""}
   </div>`;
   const pipes = (m.pipelines || []).filter(([k]) => RENEWAL_PIPES.has(k)).map(([k, l]) => [k, l, rs.filter(r => r.pipeline === k)]).filter(x => x[2].length);
@@ -5066,20 +5862,25 @@ function renewalWorkHtml(m) {
     const head = (t, what) => `<div class="rdrill-list"><div style="display:flex;justify-content:space-between;align-items:baseline;gap:12px;margin:14px 0 6px">
       <h3 class="rh3" style="margin:0">${t}</h3><a href="#" data-drill-close style="font-size:12.5px">Close</a></div>${what ? `<p class="sd" style="margin:0 0 6px">${what}</p>` : ""}`;
     if (kind === "done") list = head(`Renewal SRs Completed · ${rs.length}`, "Newest first, with the outcome each counts as.") + svcSrTable(rs, m, true) + "</div>";
+    if (kind === "tasks") list = head(`Renewal Tasks · ${m.renewalTasks.length} due`, "Every renewal task due in this period, not done first.") + svcTaskTable(m.renewalTasks) + "</div>";
+    if (kind === "cb") list = head(`Renewal Call Backs · ${m.renewalCallbacks.length}`, "Missed calls from customers whose open SRs are all renewal SRs. Not returned first.") + svcCallbackTable(m.renewalCallbacks) + "</div>";
+    if (kind === "sent") list = head(`Renewal Texts & Emails · ${m.renewalMsg.sent.filter(r => !r.auto).length} typed, ${m.renewalMsg.sent.filter(r => r.auto).length} automation`, "To customers whose open SRs are all renewal SRs, or about the renewal. Typed first.") + svcSentTable(m.renewalMsg.sent, m) + "</div>";
+    if (kind === "replies") list = head(`Renewal Customer Messages · ${m.renewalMsg.replies.length}`, "Waiting first, then slowest answered.") + svcReplyTable(m.renewalMsg.replies, m) + "</div>";
     if (kind === "open") list = head(`Open Renewal SRs · ${open.length}`, `As of ${fmtShortDate(m.days[m.days.length - 1])}.`) + svcOpenTable(open, m) + "</div>";
     if (kind === "pipe") { const x = rs.filter(r => r.pipeline === a); list = head(`${cesc((pipes.find(p => p[0] === a) || [, a])[1])} · ${x.length} completed`) + svcSrTable(x, m, true) + "</div>"; }
     if (kind === "person") { const x = a === "others" ? others : rs.filter(r => r.by === a), o = open && a !== "others" ? open.filter(r => r.by === a) : null;
-      list = head(a === "others" ? "Others" : cesc(a)) + `<h3 class="rh3">Completed · ${x.length}</h3>${svcSrTable(x, m, true)}${o ? `<h3 class="rh3">Open · ${o.length}</h3>${svcOpenTable(o, m)}` : ""}</div>`; }
+      const tk = a === "others" ? [] : m.renewalTasks.filter(r => (r.assignees || []).includes(a) || r.done_by === a);
+      list = head(a === "others" ? "Others" : cesc(a)) + `<h3 class="rh3">Completed · ${x.length}</h3>${svcSrTable(x, m, true)}${o ? `<h3 class="rh3">Open · ${o.length}</h3>${svcOpenTable(o, m)}` : ""}${a !== "others" ? `<h3 class="rh3">Renewal tasks · ${tk.length}</h3>${svcTaskTable(tk)}` : ""}</div>`; }
   }
-  return `<div class="sect"><h2>Renewal SR Work</h2>
-    <p class="sd">The renewal SRs the team completed in the last ${REN_WORK_DAYS} days (${fmtShortDate(m.days[0])} – ${fmtShortDate(m.days[m.days.length - 1])}), from the day each was created to the day it was completed, and the ones still open. Credit goes to whoever completed the SR. These are not in the Service Digest.</p>
+  return `<div class="sect"><h2>Renewal SR Work${m.label ? ` <span style="font-weight:400;text-transform:none;letter-spacing:0;color:var(--text-muted)">· ${cesc(m.label)}</span>` : ""}</h2>
+    <p class="sd">Renewal SRs, tasks, call backs and texts, ${fmtShortDate(m.days[0])} – ${fmtShortDate(m.days[m.days.length - 1])}: the SRs completed, from the day each was created to the day it was completed, and the ones still open; the renewal tasks due, and how many were done; and the call backs, texts and emails with customers whose open SRs are all renewal SRs, or about the renewal. Credit goes to whoever completed the SR or task. None of these are in the Service Digest.</p>
     ${tiles}${renDrill.startsWith("rw:") && !renDrill.startsWith("rw:pipe:") ? list : ""}
     ${tr ? `<div class="scroll"><table><thead><tr><th>Pipeline</th><th class="num">Completed</th><th class="num">Median</th><th class="num">90% within</th></tr></thead><tbody>${tr}</tbody></table></div>` : ""}
     ${renDrill.startsWith("rw:pipe:") ? list : ""}</div>`;
 }
 async function paintRenewals() {
   const v = $("#view");
-  $("#topsub").textContent = "Athena · renewals · the last 4 weeks and the next 45 days";
+  $("#topsub").textContent = "Athena · renewals";
   if (!RENEWALS_DOC) {
     v.innerHTML = '<div class="empty">Loading…</div>';
     try {
@@ -5087,11 +5888,22 @@ async function paintRenewals() {
       RENEWALS_DOC = r.ok ? await r.json() : null;
     } catch (_) { RENEWALS_DOC = null; }
   }
+  const controls = rangeControlHtml();
+  const rg = serviceRangeDays(await serviceDays());
   let work = null;
-  try { work = await loadRenewalWork(); } catch (_) { work = null; }
-  if (!RENEWALS_DOC && !work) { v.innerHTML = '<div class="empty">No renewal report yet. It is built every night.</div>'; return; }
+  if (!rg.err) {
+    try { work = await loadRenewalWork(rg.wanted); } catch (_) { work = null; }
+    if (work) work.label = rg.label;
+    $("#topsub").textContent = "Athena · renewals" + (rg.label ? " · " + rg.label : "");
+  }
+  const workHtml = rg.err ? `<div class="sect"><h2>Renewal SR Work</h2><p class="sd">${rg.err}</p></div>`
+    : work ? renewalWorkHtml(work) + renOutcomeHtml(work) : `<div class="sect"><h2>Renewal SR Work</h2><p class="sd">No Athena report for ${rangeMode === "day" ? "this day" : "this range"} yet.</p></div>`;
+  if (!RENEWALS_DOC && !work) { v.innerHTML = controls + '<div class="empty">No renewal report yet. It is built every night.</div>'; wireRangeControl(); return; }
   const y = window.scrollY;
-  v.innerHTML = RENEWALS_DOC ? renewalsPanel(RENEWALS_DOC, renewalWorkHtml(work)) : renewalWorkHtml(work);
+  const day = rg.wanted && rg.wanted[0];
+  const rb = rg.err ? null : rangeMode === "day" ? (day ? { from: day, to: day } : null) : rangeBounds();
+  v.innerHTML = controls + (RENEWALS_DOC ? renewalsPanel(RENEWALS_DOC, workHtml, rb) : workHtml);
+  wireRangeControl();
   window.scrollTo(0, y);
   v.querySelectorAll("[data-drill]").forEach(el => {
     const go = () => { renDrill = renDrill === el.dataset.drill ? "" : el.dataset.drill; paintRenewals(); };

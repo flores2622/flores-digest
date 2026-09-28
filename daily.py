@@ -759,12 +759,14 @@ def build_metrics(day):
                     or [lead_id], day, who)["stage_moves"]] if lead_id else []})
 
         tot = 0
+        qprem = {}
         for lid in hh.get(who, ()):
             try:
                 qs = az.quotes(lid) or []
             except Exception:
                 qs = []
             arr = qs.get("quotes") if isinstance(qs, dict) else qs
+            qprem[str(lid)] = round(sum(float(q.get("premium") or 0) for q in (arr or [])))
             tot += sum(float(q.get("premium") or 0) for q in (arr or []))
         n_sold, prem = real.get(who, (0, 0.0))
         # ONE PERSON, ONE CONTACT. Keying on (producer, number) is right for
@@ -824,6 +826,9 @@ def build_metrics(day):
                   # live between checkpoints without recounting these
                   # (live_board.basis, Frank 2026-09-24).
                   "quoted_leads": sorted(hh.get(who, ())),
+                  # Premium quoted per lead, for the Digest card's list
+                  # (digest_rows.py, Frank 2026-09-27). Same quotes as `tot`.
+                  "quoted_premium": qprem,
                   "premium_quoted": round(tot),
                   "policies": n_sold, "premium_sold": round(prem),
                   # ALL dialled numbers, including the ones classify() excluded
@@ -912,6 +917,39 @@ def quote_presented(body):
     """True when the note delivers a quote rather than asking for or chasing one."""
     b = re.sub(r"\s+", " ", re.sub(r"<[^>]+>", " ", str(body or "")))
     return bool(_PRESENTED.search(b)) and not _PAST.search(b)
+def speed_rows(day, leads, dials):
+    """One row per internet lead that arrived on `day` and was dialled: who
+    dialled it first, when it arrived, when it was dialled, and the seconds
+    between -- the rows speed_to_dial summarises, kept for the Digest card's
+    list (digest_rows.py, Frank 2026-09-27)."""
+    from az_corpus import e164
+    first = {}
+    for w, bynum in dials.items():
+        for num, calls in bynum.items():
+            t = min(c["startTime"] for c in calls)
+            first.setdefault(num, (w, t))     # exactly as speed_to_dial, so the list matches the tile
+    rows = []
+    for l in leads:
+        src = (l.get("leadSourceName") or "").lower()
+        if not any(k in src for k in ("surequote", "mav ai", "mav")):
+            continue
+        if not str(l.get("createDate") or "").startswith(day):
+            continue
+        hit = first.get(e164(l.get("phone")))
+        if not hit:
+            continue
+        c = dt.datetime.fromisoformat(str(l["createDate"]).replace(" ", "T")).replace(
+            tzinfo=dt.timezone.utc)
+        d = dt.datetime.fromisoformat(hit[1].replace("Z", "+00:00"))
+        s = (d - c).total_seconds()
+        if s > 0:
+            rows.append({"who": hit[0], "lead_id": l.get("id"),
+                         "lead": f"{(l.get('firstname') or '').strip()} {(l.get('lastname') or '').strip()}".strip(),
+                         "source": (l.get("leadSourceName") or "").strip(),
+                         "arrived": c.isoformat(), "dialled": d.isoformat(), "secs": int(s)})
+    return rows
+
+
 def speed_to_dial(day, leads, dials):
     from az_corpus import e164
     from digest_config import PRODUCERS

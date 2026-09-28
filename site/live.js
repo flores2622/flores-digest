@@ -330,6 +330,133 @@ export function quotedBy(lead, notes, day, basis, rx) {
   return out;
 }
 
+/* Households sold (Frank, 2026-09-28): every lead marked sold today, read in
+   the same refresh as the policies so the HH/Prem. Sold tile is live
+   whenever sales are. Leads come newest activity first (lastActivityDate is
+   UTC; marking a lead sold moves it), paged back to the start of the
+   Arizona day. `complete` is false only if the page cap stopped it short,
+   and then the board also keeps the checkpoint's own sold-lead rows. */
+const SOLD_LEAD_PAGES = 5;
+export async function soldLeadsToday(env, day, basis, fetchFn = fetch) {
+  const since = `${day} 07:00:00`;   // midnight Arizona (UTC-7), in UTC
+  const byAz = Object.fromEntries(Object.entries(basis.producers || {}).map(([n, v]) => [String(v.az_id), n]));
+  const per = {}, seen = new Set(), raw = [];
+  let complete = false;
+  for (let page = 0; page < SOLD_LEAD_PAGES; page++) {
+    const jl = await azGet(env, "/v1/api/leads/list", fetchFn, {
+      method: "POST", body: JSON.stringify({ page, pageSize: 100, sort: "lastActivityDate", order: "desc" }),
+    });
+    const ls = jl.leads || [];
+    for (const l of ls) {
+      if (String(l.lastActivityDate || "") < since || seen.has(l.id)) continue;
+      seen.add(l.id);
+      if (l.status !== 2 || !String(l.soldDate || "").startsWith(day)) continue;
+      // Everyone's, for the Sales sheet's name match (syncSalesLog), which
+      // covers Amanda too; never stored or served.
+      raw.push({ agentId: l.assignedTo, leadSourceId: l.leadSourceId, household: l.convertedHouseholdId ?? null,
+        name: [l.firstname, l.lastname].map(x => String(x || "").trim()).filter(Boolean).join(" ") });
+      const who = byAz[String(l.assignedTo)];
+      if (!who) continue;
+      (per[who] || (per[who] = [])).push({ lead_id: l.id, household: l.convertedHouseholdId ?? null,
+        lead: [l.firstname, l.lastname].map(x => String(x || "").trim()).filter(Boolean).join(" ") });
+    }
+    if (!ls.length || String(ls[ls.length - 1].lastActivityDate || "") < since) { complete = true; break; }
+  }
+  return { per, complete, _raw: raw };
+}
+
+/* ---- the Sales sheet --------------------------------------------------- */
+
+/* sales_log_auto.product_name, line for line (keep in step): the sheet's
+   product name for a policy, by carrier id (basis.saleslog.carrier). */
+export function productName(p, carriers) {
+  const raw = String(p.policyTypeName || "").trim();
+  const carrier = (carriers || {})[String(p.carrierId)];
+  if (!carrier || !raw) return raw;
+  const auto = /auto/i.test(raw);
+  if (carrier === "BW") return auto ? "BW-Auto" : `BW-${raw}`;
+  if (auto) return `${carrier}-Auto`;
+  if (carrier === "Foremost") {
+    if (/mobile|manufactured/i.test(raw)) return "Foremost-MH";
+    if (/landlord|dp\d|dwelling/i.test(raw)) return "Foremost-Landlord";
+    if (/atv|motorcycle|trailer|boat|watercraft|motor home|\brv\b|golf cart|toy/i.test(raw)) return "Foremost-Toys";
+    if (/vacant/i.test(raw)) return "Foremost-Vacant";
+    if (/home|ho-?\d/i.test(raw)) return "Foremost-Home";
+  }
+  if (carrier === "Farmers") {
+    if (/homeowner|^home$|ho-?\d/i.test(raw)) return "Farmers-Home";
+    if (/term|life/i.test(raw)) return "Farmers-Life";
+  }
+  return `${carrier}-${raw}`;
+}
+function termOf(eff, exp) {
+  const e = String(eff || "").slice(0, 10), x = String(exp || "").slice(0, 10);
+  if (!e || !x) return "";
+  const days = (Date.parse(x + "T00:00:00Z") - Date.parse(e + "T00:00:00Z")) / 86400000;
+  if (!Number.isFinite(days)) return "";
+  const months = Math.round(days / 30.44);
+  return months > 0 ? `${months}mo` : "";
+}
+
+/* sales_log_auto.build_entries: one row per real sale today by a producer
+   or Amanda. The name comes from the one lead marked sold today with the
+   same agent and lead source, else it stays blank -- the nightly match
+   reads the customer record instead, so a name here can be the lead's
+   spelling of the same person. */
+export function salesLogEntries(day, basis, policies, sourceNames, soldRaw) {
+  const sl = basis.saleslog || {};
+  const ids = sl.ids || {};
+  const notSale = new Set(basis.not_a_sale || []);
+  const out = [];
+  for (const p of policies) {
+    if (!String(p.soldDate || "").startsWith(day)) continue;
+    const who = ids[String(p.agentId)];
+    if (!who || notSale.has(norm(sourceNames[p.leadSourceId]))) continue;
+    const cands = (soldRaw || []).filter(l => String(l.agentId) === String(p.agentId)
+      && String(l.leadSourceId) === String(p.leadSourceId));
+    const one = cands.length === 1 ? cands[0] : null;
+    out.push({
+      producer: who,
+      client_name: one && one.household != null ? one.name : "",
+      az_customer_id: one && one.household != null ? String(one.household) : "",
+      lead_source: String(sourceNames[p.leadSourceId] || "").trim(),
+      policy_number: String(p.policyNumber || ""),
+      product: productName(p, sl.carrier),
+      premium: p.premium != null ? Number(p.premium) : null,
+      term: termOf(p.effectiveDate, p.expiryDate),
+      date_sold: String(p.soldDate || "").slice(0, 10),
+      effective_date: String(p.effectiveDate || "").slice(0, 10),
+      az_policy_id: p.id,
+    });
+  }
+  return out;
+}
+
+/* sales_log_auto.sync_day's rules on saleslog/<day>.json: only ever adds --
+   never a policy already on the sheet (az_policy_id), never one a person
+   typed by hand (their policy number) -- so the checkpoints and the nightly
+   run find it there and skip it. Read right before the write, and written
+   only when something is new. */
+export async function syncSalesLog(env, day, basis, policies, sourceNames, soldRaw) {
+  const cands = salesLogEntries(day, basis, policies, sourceNames, soldRaw);
+  if (!cands.length) return 0;
+  const key = `saleslog/${day}.json`;
+  const doc = (await r2json(env, key)) || { day, entries: [] };
+  const have = new Set(doc.entries.filter(e => e.az_policy_id != null).map(e => String(e.az_policy_id)));
+  const typed = new Set(doc.entries.filter(e => e.policy_number && e.az_policy_id == null).map(e => e.policy_number));
+  let added = 0;
+  for (const c of cands) {
+    if (c.az_policy_id != null && have.has(String(c.az_policy_id))) continue;
+    if (c.policy_number && typed.has(c.policy_number)) continue;
+    doc.entries.push({ ...c, id: crypto.randomUUID(), created_at: new Date().toISOString(), day,
+      docs_signed: "", review_sent: false, notes: "Auto-added from AgencyZoom", source: "auto" });
+    if (c.az_policy_id != null) have.add(String(c.az_policy_id));
+    added++;
+  }
+  if (added) await r2put(env, key, doc);
+  return added;
+}
+
 async function azLeadsActiveSince(env, since, fetchFn) {
   const out = [], seen = new Set();
   for (let page = 0; page < 5; page++) {
@@ -429,6 +556,7 @@ const NEEDS = {
   quotes: ["AZ_USERNAME", "AZ_PASSWORD"],
   messages: ["AZ_USERNAME", "AZ_PASSWORD"],
   contacts: ["RC_CLIENT_ID", "RC_CLIENT_SECRET", "RC_SERVER_URL", "RC_JWT"],
+  sold: ["AZ_USERNAME", "AZ_PASSWORD"],
 };
 
 const part = async (env, key, fn) => {
@@ -438,13 +566,15 @@ const part = async (env, key, fn) => {
   catch (e) { return { ok: false, reason: String(e && e.message || e) }; }
 };
 
-/* Dials, contacts and talk time, sales and utilization: a handful of
-   requests, refreshed together. `evidence` is the last quotes pass's read of
-   the lead notes (live/<day>-quotes.json). */
+/* Dials, contacts and talk time, sales (policies and the leads marked
+   sold) and utilization: a handful of requests, refreshed together.
+   `evidence` is the last quotes pass's read of the lead notes
+   (live/<day>-quotes.json). */
 export async function computeFast(env, day, basis, fetchFn = fetch, evidence = null) {
+  const inputs = {};   // for syncSalesLog; never stored
   let log = null;
   const callLog = async () => (log || (log = rcCallLog(env, day, fetchFn)));
-  const [dials, contacts, sales, util] = await Promise.all([
+  const [dials, contacts, sales, util, sold] = await Promise.all([
     part(env, "dials", async () => dialDeltas(basis, await callLog())),
     part(env, "contacts", async () => {
       if (!basis.contact || !basis.talk) throw new Error("needs a checkpoint built after this update");
@@ -452,15 +582,18 @@ export async function computeFast(env, day, basis, fetchFn = fetch, evidence = n
     }),
     part(env, "sales", async () => {
       const [pols, names] = await Promise.all([azPoliciesSold(env, day, fetchFn), azLeadSources(env, fetchFn)]);
+      inputs.policies = pols; inputs.names = names;
       return salesFrom(basis, pols, names);
     }),
     part(env, "util", async () => insightfulUtil(env, day, basis, fetchFn)),
+    part(env, "sold", async () => soldLeadsToday(env, day, basis, fetchFn)),
   ]);
+  if (sold.ok) { inputs.soldRaw = sold.data._raw; delete sold.data._raw; }
   // Today's dials, for the messages part: a call back answers a lead's text
   // (messages.build reads the same call log).
   let calls = null;
   if (log) try { calls = dialTouches(basis, await log); } catch (_) {}
-  return { fetched_at: new Date().toISOString(), dials, contacts, sales, util, calls };
+  return { fetched_at: new Date().toISOString(), dials, contacts, sales, util, sold, calls, _inputs: inputs };
 }
 
 function dialTouches(basis, recs) {
@@ -493,7 +626,8 @@ export async function computeQuotes(env, day, basis, memo, fetchFn = fetch, want
 // Kept for callers/tests that want every part in one go.
 export async function computeLive(env, day, basis, fetchFn = fetch, memo = null) {
   const [fast, q] = await Promise.all([computeFast(env, day, basis, fetchFn), computeQuotes(env, day, basis, memo, fetchFn)]);
-  return { day, ...fast, quotes: q.quotes, messages: q.messages, _memo: q.memo };
+  const { _inputs, ...rest } = fast;
+  return { day, ...rest, quotes: q.quotes, messages: q.messages, _memo: q.memo };
 }
 
 const keys = day => ({ fast: `live/${day}.json`, quotes: `live/${day}-quotes.json`, memo: `live/${day}-quote-reads.json` });
@@ -527,7 +661,16 @@ async function refreshFast(env, day, cp) {
   const k = keys(day);
   const [prev, q] = await Promise.all([r2json(env, k.fast), r2json(env, k.quotes)]);
   const evidence = q && q.checkpoint === cp.as_of ? q.evidence : null;
-  const out = keepGood(prev, { checkpoint: cp.as_of, ...(await computeFast(env, day, cp.basis, fetch, evidence)) }, cp, ["dials", "contacts", "sales", "util"]);
+  const { _inputs, ...fast } = await computeFast(env, day, cp.basis, fetch, evidence);
+  // A live sale goes on the Sales sheet in the same refresh that puts it on
+  // the board (Frank, 2026-09-28). Only with this run's own policies and
+  // sold leads -- a sold-lead read that failed would leave names blank that
+  // it could have filled -- and never at the board's expense.
+  if (cp.basis.saleslog && fast.sales.ok && fast.sold.ok && _inputs.policies) {
+    try { await syncSalesLog(env, day, cp.basis, _inputs.policies, _inputs.names, _inputs.soldRaw); }
+    catch (e) { console.log(`sales sheet sync failed: ${e && e.message || e}`); }
+  }
+  const out = keepGood(prev, { checkpoint: cp.as_of, ...fast }, cp, ["dials", "contacts", "sales", "util", "sold"]);
   if (!out.calls && prev && prev.checkpoint === cp.as_of) out.calls = prev.calls;
   // The numbers dialled since the checkpoint, so the next quotes pass reads
   // their leads' notes first.
@@ -564,7 +707,7 @@ export async function getLive(env, day) {
     fresh(quotes, cp.as_of, QUOTES_STALE_SECONDS) ? quotes : refreshQuotes(env, day, cp),
   ]);
   return jsonResp({ live: true, day, checkpoint: cp.as_of, fetched_at: f.fetched_at,
-    dials: f.dials, contacts: f.contacts, sales: f.sales, util: f.util,
+    dials: f.dials, contacts: f.contacts, sales: f.sales, util: f.util, sold: f.sold,
     quotes: q.quotes, messages: q.messages, quotes_fetched_at: q.fetched_at }, 200);
 }
 

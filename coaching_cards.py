@@ -321,6 +321,26 @@ def _bool_pair(raw):
     return [bool(raw[0]), str(raw[1]).strip() if len(raw) > 1 else ""]
 
 
+def _verdict(raw):
+    """_bool_pair, but a null verdict stays None: no chance to assume."""
+    if isinstance(raw, (list, tuple)) and raw and raw[0] is None:
+        return [None, str(raw[1]).strip() if len(raw) > 1 else ""]
+    return _bool_pair(raw)
+
+
+SENDOFF_KINDS = ("producer", "busy", "asked", "no")
+
+
+def _sendoff(raw):
+    """[kind, reason] -- did the quote get sent instead of presented on the
+    call, and whose idea was it (Frank, 2026-09-28). kind is one of
+    SENDOFF_KINDS; None when no quote came up, or the read left it out."""
+    if not isinstance(raw, (list, tuple)) or not raw or raw[0] is None:
+        return None
+    kind = str(raw[0]).strip().lower()
+    return [kind, str(raw[1]).strip() if len(raw) > 1 else ""] if kind in SENDOFF_KINDS else None
+
+
 # What the call was FOR, whoever dialled (Frank, 2026-09-25): a first
 # conversation, a call to finish the quote now that the info is in, or a
 # follow-up on a quote already presented.
@@ -355,10 +375,8 @@ def _assume(raw):
         return None
     for k in ("start", "objections", "end"):
         v = raw.get(k)
-        if isinstance(v, (list, tuple)) and v and v[0] is None:
-            out[k] = [None, str(v[1]).strip() if len(v) > 1 else ""]
-        elif v is not None:
-            out[k] = _bool_pair(v)
+        if v is not None:
+            out[k] = _verdict(v)
     return out or None
 
 
@@ -654,8 +672,11 @@ def _finish_card(d, producer, group, raw_dials, day, transcript, recording_ids):
     since they describe the same person either way; `dur`/`time` combine
     across all of them.
     """
-    askq = _bool_pair(d.get("askq"))
-    asks = _bool_pair(d.get("asks"))
+    # [None, reason] when the call never gave the producer the chance --
+    # cut off, too short, declined before the quote came up -- so it counts
+    # neither way (Frank, 2026-09-28: "it shouldnt count against them").
+    askq = _verdict(d.get("askq"))
+    asks = _verdict(d.get("asks"))
     # The producer ending a call with no objection, request to go, or time
     # constraint standing in the way (Frank, 2026-09-23). None, not
     # [False, ""], on a card read before METHODOLOGY.md had the key, so the
@@ -759,6 +780,8 @@ def _finish_card(d, producer, group, raw_dials, day, transcript, recording_ids):
         "calltype": _calltype(d.get("calltype")),
         "summary": str(d.get("summary") or "").strip(),
         "askq": askq, "asks": asks, "exit": exit_,
+        # Quote sent instead of presented, and whose idea (Frank, 2026-09-28).
+        "sendoff": _sendoff(d.get("sendoff")),
         "askfix": str(d.get("askfix") or "").strip(),
         "objs": _clean_objs(d.get("objs"), d.get("obj")),
         "good": _clean_pairs(d.get("good")),
@@ -768,8 +791,31 @@ def _finish_card(d, producer, group, raw_dials, day, transcript, recording_ids):
         "score": {} if fuscore else _clean_score(d.get("score")),
         "techniques": _clean_score(d.get("techniques"), TECH_DIMS),
         "spine": _clean_spine(d.get("spine")),
-        "flags": [str(f).strip() for f in (d.get("flags") or []) if str(f).strip()][:6],
+        **_clean_flags(d.get("flags")),
     }
+
+
+def _clean_flags(raw):
+    """`flags` stays a list of strings (what every card already has), with
+    `flag_groups` beside it: each flag's category from cfg.FLAG_GROUPS, or
+    None when the model gave none or an invented one -- the board then
+    guesses from the wording, as it does for cards read before the list."""
+    import digest_config as cfg
+    flags, groups = [], []
+    for f in raw or []:
+        if isinstance(f, (list, tuple)) and f:
+            text, group = str(f[0]).strip(), str(f[1]).strip() if len(f) > 1 else ""
+        elif isinstance(f, dict):
+            text, group = str(f.get("text") or "").strip(), str(f.get("group") or "").strip()
+        else:
+            text, group = str(f).strip(), ""
+        if not text:
+            continue
+        flags.append(text)
+        groups.append(group if group in cfg.FLAG_GROUPS else None)
+        if len(flags) == 6:
+            break
+    return {"flags": flags, "flag_groups": groups}
 
 
 def _distinct_calls(producer, group):
@@ -967,7 +1013,9 @@ def scan(cards):
         "of": len(cards),
         # "Assumed the quote" only exists on a first conversation; a
         # follow-up's quote is already done (Frank, 2026-09-25).
-        "of_first": sum(1 for c in cards if c.get("askq")),
+        # A call that never reached the quote (askq [None, ...]) is in
+        # neither count (Frank, 2026-09-28).
+        "of_first": sum(1 for c in cards if c.get("askq") and c["askq"][0] is not None),
         "asked_open": sum(1 for c in cards if c.get("askq") and c["askq"][0] is False),
         "assumed_open": sum(1 for c in cards if c.get("askq") and c["askq"][0] is True),
         # A quote went out ON THIS CALL -- sold, or quoted today whether

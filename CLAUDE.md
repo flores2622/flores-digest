@@ -81,6 +81,49 @@ Everything caches under `data/`, so a re-run resumes rather than restarting.
   `assume` (the sale at the start, through objections, at the end) instead
   of the nine dimensions and "assumed the quote"; first and finish-quote
   calls keep the nine, with what the history already captured as "n".
+  **Offering to SEND the quote is not assuming it** (Frank, 2026-09-28):
+  assuming the quote means building and presenting it on the call; a
+  producer who sets up from the start that she'll put it together and send
+  it (Lorena, Eva Moraila 09-01) scores `askq` false -- an early exit.
+  Sending is only for a prospect who says they are busy, and that is scored
+  as overcoming a "Bad Timing / Busy" objection (`objs`): a better, specific
+  time to talk, or send it AND hold them for a brief discovery, scores well;
+  "I'll send it" and hanging up is a dropped objection.
+  **Always assume, never ask**: any permission-seeking line is false, however
+  soft. **No chance to assume is null, not false** -- cut off, too short,
+  hung up, not recorded -- and counts neither way (`scan`'s `of_first`
+  leaves it out).
+  **Quote sent instead of kept on the phone** (Frank, 2026-09-28) is each
+  card's `sendoff`: "producer" (offered on their own), "busy" (the prospect
+  said they had no time -- the Busy objection's to score), "asked" (the
+  prospect asked for email first), "no", or null (no quote came up). "producer" includes "I'll have the numbers for you tomorrow" / "let me work
+  on it and call you back". **Asking the prospect to send US their documents
+  (dec page, current policy, VINs) is discovery** (Frank, 2026-09-28; the 56
+  "producer" verdicts were re-read under this, backups under
+  `backups/2026-09-28-sendoff-recheck/`) -- **but the review happens on the
+  phone**: asking for them and ending with "I'll review it and call you
+  back" is getting off the phone, "producer" (Coral / Randell Otis 09-25:
+  "she should review it with him on the phone").
+  Coaching Center > Wins and Losses counts it per producer and lists the
+  calls. **Every assumption stat is there too** (Frank, 2026-09-28): the quote,
+  the sale, and a follow-up's up front / objections / end, per producer and
+  team, off each card's own verdicts (n/a counts neither way), each with its
+  calls listed. It replaced "The opening asks permission". The Digest's
+  leaderboard shows the same count per producer as **Sent the Quote**
+  ("N of M", shown, not scored -- Frank, 2026-09-28). Apollo returns it from 2026-09-28; earlier cards got it from
+  `sendoff.py --backfill` (one short read per card over its transcript --
+  nothing else on the card changed).
+  **The card's fix lines keep them on the phone** (Frank, 2026-09-28):
+  `askfix` and each objection's `fix` finish the quote on the call -- a few
+  minutes, never "30 seconds" -- and never suggest emailing or texting it
+  unless the prospect said they were busy.
+  September's first and finish-quote cards were re-judged under these rules
+  by `assume_reread.py --backfill` (Frank asked, 2026-09-28): one short read
+  per card, replacing only `askq` / `asks` / `askfix` and the day's `scan`
+  (backups under `backups/2026-09-28-assume-reread/`). Follow-ups the same
+  way with `--followups` (Frank, 2026-09-28: "re-read the follow-ups too"):
+  `assume`, `asks`, `askfix` and the three scorecard lines about assuming
+  the sale (`assume_reread.FU_ASSUME`), backups under `...-assume-reread-fu/`.
   **A quote emailed or texted after a call counts as presented** (Frank,
   2026-09-27), so the next call is a follow-up; **ending a finish-quote call
   to send the quote instead of presenting it is a flagged bad habit**.
@@ -92,6 +135,14 @@ Everything caches under `data/`, so a re-run resumes rather than restarting.
   Farmers". Apollo quotes the call's first sentence and who said it; when
   the caller spoke first the pick-up wasn't recorded and the code makes it
   "n" (`coaching_cards._greeting`) -- the model guessed otherwise.
+- **Card flags are categorised** (Frank, 2026-09-27): Apollo names each
+  flag's category from `digest_config.FLAG_GROUPS` (No next step, Quote not
+  presented, Discovery missed, Approach skipped, Objection dropped, Call cut
+  short, Stage / pipeline mistake, Compliance = red; Cross-sell in progress,
+  Callback set, Pipeline note = yellow; Strong moment = green), stored as
+  `flag_groups` beside `flags`. The board shows each category once per card
+  with Apollo's words on hover. Cards read before that are **guessed from the
+  wording on the board** (`FLAG_GUESS`, Frank chose that over a paid re-read).
 - **Role Play never uses a center of influence, cold / misc or existing
   client, new purchase lead source** (Frank, 2026-09-24), nor a personal
   network, one-off, commercial, BOB or Rewrite source
@@ -244,7 +295,22 @@ and anything without the glow is the checkpoint's (Frank, 2026-09-24).
   checkpoint saw.
 - **Sales** are AgencyZoom policies by agentId + soldDate minus
   `lead_sources.NOT_A_SALE`, the same rule as `is_real_sale`.
+- **Households sold** ride with sales (Frank, 2026-09-28): the same even-minute
+  refresh reads every lead marked sold today (`site/live.js soldLeadsToday`,
+  leads newest activity first back to Arizona midnight, up to 5 pages), so
+  HH/Prem. Sold glows whenever sales are live. That list stands on its own
+  for the day; the checkpoint's `rows.sold_leads` are added only if the read
+  stopped at the page cap.
 - **Utilization** is `insightful_util.pull()`'s formula.
+- **A live sale goes on the Sales sheet in the same refresh** (Frank,
+  2026-09-28: "the sales on the leaderboard are live, but the sales werent
+  added to the sales sheet"). `site/live.js syncSalesLog` applies
+  `sales_log_auto.sync_day`'s rules to `saleslog/<day>.json`: producers and
+  Amanda (`live_basis.saleslog.ids`), BOB / Rewrite left out, product names
+  by carrier (`productName` mirrors `product_name` -- keep them in step),
+  only ever adding, never a policy already there or typed by hand. The name
+  is the one lead marked sold today with the same agent and lead source,
+  else blank.
 - **Households and premium quoted** are daily.py's own three rules (quoteDate
   today; a producer's move into a quoted stage; a producer's note delivering
   a quote), applied only to leads active since the checkpoint, newest first,
@@ -302,6 +368,53 @@ and anything without the glow is the checkpoint's (Frank, 2026-09-24).
   lists what is or is not live, or why** (Frank, 2026-09-25: "I know whats
   flashing green is live, and whats not flashing green is not") -- do not
   add that back.
+
+## The Digest's cards open their rows
+
+**Every card on the Sales Center's Digest opens the list it counts** (Frank,
+2026-09-27: "like we did on the service digest"): Dials, Live contacts,
+HH/Prem. Quoted, Pol/Prem. Sold, Closing Ratio, Speed to Dial, Speed to
+Reply and the Call Outcome Breakdown's segments and legend.
+`digest_rows.py` puts the rows in the day document's `rows` (dials,
+contacts, quoted, sold, sold_leads, speed); no figure on the page comes
+from them, and the lists must agree with the cards: a call-in is a
+conversation but sits OUTSIDE the contact rate, so the Live contacts list
+says "N in the contact rate · M call-ins". daily.py keeps the premium quoted
+per lead (`quoted_premium`) and `speed_rows` -- the same first-dial rule as
+`speed_to_dial`, so the list matches the tile. Policy records carry no
+customer, so Sold lists the leads marked sold beside the policies. Past days:
+`python3 digest_rows.py --backfill 2026-09-01` from R2's saved inputs (no
+quoted premium, and no quoted list before 2026-09-24's `quoted_leads`).
+
+## Date ranges on the Digest
+
+**The range leaderboard is re-ranked on averages** (Frank, 2026-09-28):
+the same seven categories and 5-4-3-2-1 scoring as a single day
+(`rankLeaderboard` on the board, a mirror of `digest_config.
+leaderboard_score` -- keep them in step; checked equal on 200 random
+cases), fed each producer's range figures: dials, households quoted,
+premium quoted and premium sold as **per-day averages over the days they
+worked** (a day off costs nothing), talk time and contact rate as the
+range's own. **Role play is shown one way and ranked another**: the Role
+Play column is the true average of the sessions they did; the ranking
+uses `rp_scored`, where a day they WORKED without a role play counts as 0
+("hurt their points but not average"). A day off, or a day with no role
+play figures for anyone (no Coach AI email), counts neither way.
+
+## Households, not policies, on the Digest
+
+**Sold is counted in households, like quoted** (Frank, 2026-09-28: "it
+needs to be one or the other. i would prefer HH"). The board's **HH/Prem.
+Sold** tile, the leaderboard's **HH Sold** column and the Closing Ratio's
+households half (households sold over households quoted) count the leads
+marked sold (`rows.sold_leads`; live, the sales refresh's own read of
+today's sold leads), one per household per day -- `household` is the lead's
+convertedHouseholdId, else its name, since duplicate lead records are
+pervasive. **Premium Sold is still the policies' own premium** and the
+policy count still shows beside it (policies per HH). A lead can be marked
+sold a few days off its policy's soldDate, so a day can show a household
+with no policy or the reverse. A day with no sold-lead rows keeps the old
+Policies display. The emailed digest is unchanged.
 
 ## Texts and emails
 
@@ -526,15 +639,48 @@ Crystal (hybrid); credit always goes to whoever COMPLETED the SR or task.
   shows them: completed in the last 28 days per person and pipeline, created
   to completed, and the open ones. The documents still hold every row; the
   split is made on the board, so every published day splits the same way.
+  **Renewal tasks go with them** (Frank, 2026-09-27: "I see renewal tasks in
+  the list"): a task whose title says renewal ("♾️Personal Renewal 30 Days",
+  its shot clock reminder, "Renewal we have renewal info") leaves Service
+  Tasks Done and is counted on the Renewals tab; the counts are rebuilt from
+  `task_rows`, which reproduce `task_figures` exactly (09-01..09-25).
+  **Call backs, texts and emails too** (Frank, 2026-09-27: "everything should
+  be separated if possible"): a number is renewal business when every SR it
+  has open at the end of the day is a renewal SR (`service_digest.
+  renewal_caller`); a text or email also is when it mentions the renewal
+  (`service_messages.RENEWAL_WORDS` -- the reminders), and so is a reply to
+  one. Rows carry `renewal`; the board splits them and rebuilds the message
+  counts from the rows. Utilization cannot be split (Insightful measures the
+  whole day). 09-01..09-25 were flagged from their saved files (backups
+  under `backups/2026-09-27-renewal-split/`).
+- **Both tabs take the Sales Digest's date filter** (Frank, 2026-09-27).
+  On the Renewals tab, Renewal SR Work, Lost and Not confirmed follow it
+  (Lost and Not confirmed by the day the policy renewed); Coming up stays
+  the next 45 days.
+- **Renewal Outcome Breakdown on the Renewals tab** (Frank, 2026-09-28: "the
+  same way we display the call outcome breakdown on the sales digest. Per
+  CSR rep and a total"): `renOutcomeHtml` -- a bar per person who completed
+  renewal SRs in the date filter's period, scaled to the busiest, split by
+  Frank's resolutions; the team is a totals line, not a bar ("so the
+  producer bars are the main focus"). Segments and legend open the SRs.
+- **Three retention rates** (Frank, 2026-09-27: "build all three"): the
+  **settled 4 weeks** (renewals 14-41 days ago, `REN_SETTLE_DAYS`; the
+  newest two weeks show as settling, and the breakdowns by week, how worked,
+  pipeline and person are these four weeks), the **date filter's period**,
+  and the **last 12 months** -- the one to set beside Farmers'. So
+  `renewal_report.PAST_DAYS` is 365 (the report is ~2.4 MB). A year measured
+  2026-09-27: losses do not show up late; only "not confirmed" settles.
   **Cancellations to check** (the "not dated" flag) moved to the Renewals
-  tab too, from `renewal_report`'s `sr.flag`.
+  tab too, from `renewal_report`'s `sr.flag`: a dropdown, closed until
+  clicked, following the date filter by the day the policy renewed (Frank,
+  2026-09-28).
 - **The Renewals tab is its own report** (Frank, 2026-09-25: "service cant be
   tracked daily the same as sales"). `renewal_report.py` builds
   `renewals/current.json` (and a dated copy) every night from `daily.py`
   after the service board; the Worker serves it at `/api/renewals`, and the
   Service Center's second tab renders it. The Service Digest keeps only a
   count of renewal SRs worked. It covers every personal-lines policy TERM
-  (commercial and life left out) renewing in the last 28 days -- what
+  (commercial and life left out) renewing in the last 365 days -- what
   happened -- and the next 45 -- how the renewal SR was worked, and risk.
   **The policy record counts** here (Frank, 2026-09-25: "if the policy reads
   cancelled but no SR has that outcome ... its still cancelled"), beside the
@@ -578,6 +724,26 @@ Crystal (hybrid); credit always goes to whoever COMPLETED the SR or task.
   customers text card numbers to pay. Past days: `python3 service_messages.py
   --backfill 2026-09-01 [end]` (adds only `messages`, backs up under
   `backups/<today>-service-messages-backfill/`).
+- **Amanda's Service Playbook is how Athena judges the service team**
+  (Frank, 2026-09-28: "Teach Athena this and build the digest to be focused
+  on their own roles and responsibilities"). `service_playbook.py` is her
+  document -- roles, who handles what, the note standard, the daily checklist,
+  the team expectations -- and the only place to change it; each day carries
+  it as `playbook`. Roles: **Service Lead = Amanda, Service Team Member =
+  Crystal, Front Desk = Debbie** (`ROLE_OF`). `service_audit.py` reads every
+  completed SR against it (request type from her "Who handles what" table,
+  which of Who / What / Why / Outcome / Next step the note leaves out, a
+  sales opportunity passed or not, escalated), cached by SR + note text in
+  `data/service_audit_reads.json` + R2 -- a paid read, never delete it
+  casually. A renewal reviewed without contacting the client ("low increase,
+  review if needed") answers who and why. `front_figures` adds the Front
+  Desk's rows: inbound calls each team member picked up first, and the SRs
+  each created. The Service Digest's **By Role** cards give each person the
+  measures of their own role's responsibilities in her words (the Lead's
+  "not the default person" is the share of her SRs that were routine), and
+  **Note Standard** counts the missing parts. Past days: `python3
+  service_digest.py --add-roles 2026-09-01 2026-09-25` (backs up under
+  `backups/<today>-roles/`).
 - **Documents hold rows, never medians**, so the board can add any range up.
   **Every card opens the rows it counts** (Frank, 2026-09-25), so the rows
   carry what a list needs: SRs name, household (= the AgencyZoom customer
@@ -690,7 +856,8 @@ reached for once, e.g. 6836965 created 2025-08-03).
 ## Cost
 
 Transcription is local and free. **The Anthropic API reads in `call_summary.py`,
-`renewal_notes.py` and `service_notes.py` are the only paid steps** — roughly one call per live
+`renewal_notes.py` and `service_notes.py` are the only paid steps** (plus
+`sendoff.py` and `assume_reread.py --backfill`, each run once for September) — roughly one call per live
 contact per day, plus one call per 25 renewal SR notes (each SR's note is read
 once and kept in `data/renewal_note_reads.json` and its R2 copy; only an edited
 note is read again -- never delete that cache casually). Changing

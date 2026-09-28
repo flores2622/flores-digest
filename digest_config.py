@@ -577,6 +577,20 @@ def leaderboard_score(categories, names, tiebreak):
 # one of these groups. New cards get it from the model itself (METHODOLOGY.md's
 # "group" key); cards read before that key existed fall back to
 # objection_group() below. The specific "cat" label is kept as the detail.
+# Coaching card flag categories and their tone (Frank, 2026-09-27: "consolidate
+# or categorize, as well as tint with yellow red or green"). Apollo names one
+# per flag (METHODOLOGY.md's "flags"); the board shows each category once per
+# card, coloured by tone, with Apollo's own wording on hover. KEEP IN STEP
+# with FLAG_GROUPS in site/public/index.html, which also guesses a category
+# for cards read before this list existed.
+FLAG_GROUPS = {
+    "No next step": "bad", "Quote not presented": "bad", "Discovery missed": "bad",
+    "Approach skipped": "bad", "Objection dropped": "bad", "Call cut short": "bad",
+    "Stage / pipeline mistake": "bad", "Compliance": "bad",
+    "Cross-sell in progress": "neutral", "Callback set": "neutral", "Pipeline note": "neutral",
+    "Strong moment": "good",
+}
+
 OBJECTION_GROUPS = [
     "Price / Can't Afford", "Bad Timing / Busy", "Already Insured / Satisfied",
     "Coverage / Eligibility", "Spouse / Decision-Maker",
