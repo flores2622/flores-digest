@@ -362,6 +362,21 @@ uses `rp_scored`, where a day they WORKED without a role play counts as 0
 ("hurt their points but not average"). A day off, or a day with no role
 play figures for anyone (no Coach AI email), counts neither way.
 
+## Households, not policies, on the Digest
+
+**Sold is counted in households, like quoted** (Frank, 2026-09-28: "it
+needs to be one or the other. i would prefer HH"). The board's **HH/Prem.
+Sold** tile, the leaderboard's **HH Sold** column and the Closing Ratio's
+households half (households sold over households quoted) count the leads
+marked sold (`rows.sold_leads`, plus any the live refresh finds since the
+checkpoint), one per household per day -- `household` is the lead's
+convertedHouseholdId, else its name, since duplicate lead records are
+pervasive. **Premium Sold is still the policies' own premium** and the
+policy count still shows beside it (policies per HH). A lead can be marked
+sold a few days off its policy's soldDate, so a day can show a household
+with no policy or the reverse. A day with no sold-lead rows keeps the old
+Policies display. The emailed digest is unchanged.
+
 ## Texts and emails
 
 **`messages.py` builds the Sales Center's Texts & Emails page** (Frank,

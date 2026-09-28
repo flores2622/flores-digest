@@ -102,7 +102,10 @@ def build(day, log=print):
     for l in leads:
         who = azid.get(l.get("assignedTo"))
         if who and l.get("status") == 2 and str(l.get("soldDate") or "").startswith(day):
+            # household: so the board counts households sold, not lead records
+            # -- duplicate lead records are pervasive (Frank, 2026-09-28).
             out["sold_leads"].append({"who": who, "lead": _name(l), "lead_id": l.get("id"),
+                                      "household": l.get("convertedHouseholdId"),
                                       "source": (l.get("leadSourceName") or "").strip()})
     try:
         import daily
