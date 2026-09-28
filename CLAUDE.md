@@ -92,6 +92,14 @@ Everything caches under `data/`, so a re-run resumes rather than restarting.
   Farmers". Apollo quotes the call's first sentence and who said it; when
   the caller spoke first the pick-up wasn't recorded and the code makes it
   "n" (`coaching_cards._greeting`) -- the model guessed otherwise.
+- **Card flags are categorised** (Frank, 2026-09-27): Apollo names each
+  flag's category from `digest_config.FLAG_GROUPS` (No next step, Quote not
+  presented, Discovery missed, Approach skipped, Objection dropped, Call cut
+  short, Stage / pipeline mistake, Compliance = red; Cross-sell in progress,
+  Callback set, Pipeline note = yellow; Strong moment = green), stored as
+  `flag_groups` beside `flags`. The board shows each category once per card
+  with Apollo's words on hover. Cards read before that are **guessed from the
+  wording on the board** (`FLAG_GUESS`, Frank chose that over a paid re-read).
 - **Role Play never uses a center of influence, cold / misc or existing
   client, new purchase lead source** (Frank, 2026-09-24), nor a personal
   network, one-off, commercial, BOB or Rewrite source
