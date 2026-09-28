@@ -101,7 +101,9 @@ Everything caches under `data/`, so a re-run resumes rather than restarting.
   calls. **Every assumption stat is there too** (Frank, 2026-09-28): the quote,
   the sale, and a follow-up's up front / objections / end, per producer and
   team, off each card's own verdicts (n/a counts neither way), each with its
-  calls listed. It replaced "The opening asks permission". Apollo returns it from 2026-09-28; earlier cards got it from
+  calls listed. It replaced "The opening asks permission". The Digest's
+  leaderboard shows the same count per producer as **Sent the Quote**
+  ("N of M", shown, not scored -- Frank, 2026-09-28). Apollo returns it from 2026-09-28; earlier cards got it from
   `sendoff.py --backfill` (one short read per card over its transcript --
   nothing else on the card changed).
   **The card's fix lines keep them on the phone** (Frank, 2026-09-28):
