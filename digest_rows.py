@@ -137,11 +137,16 @@ def backfill(start, end=None, force=False, log=print):
         if doc.get("rows") and not force:
             continue
         for name in ("metrics", "rc_raw"):
+            local = ROOT / f"data/{name}_{day}.json"
             try:
-                body = cli.get_object(Bucket=bucket, Key=f"cache/{day}/{name}_{day}.json")["Body"].read()
-                (ROOT / f"data/{name}_{day}.json").write_bytes(body)
+                obj = cli.get_object(Bucket=bucket, Key=f"cache/{day}/{name}_{day}.json")
             except Exception:
-                pass
+                continue
+            # A newer local copy (a --no-send rebuild that stopped before its
+            # last upload) is never replaced by R2's older one.
+            if local.exists() and local.stat().st_mtime > obj["LastModified"].timestamp():
+                continue
+            local.write_bytes(obj["Body"].read())
         try:
             rows = build(day, log=log)
         except Exception as e:

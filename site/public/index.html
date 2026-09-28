@@ -621,10 +621,18 @@ details.sc .scb { padding: 0 12px 12px; }
 /* A card's left edge is what the call was for (flowEdge). The hover strip
    sits over the edge itself, so hovering the colour names it. */
 .cchead { position: relative; }
-.flowedge { position: absolute; left: -10px; top: 0; bottom: 0; width: 10px; cursor: help; }
+/* Lightly tinted and striped, like the hatched outcome badges (Frank,
+   2026-09-27): light stripes of the flow colour over the card's surface,
+   with a solid line of the colour on the inside edge in place of the
+   badge's border. --fc is the flow colour, set per card. */
+.flowedge { position: absolute; left: -10px; top: 0; bottom: 0; width: 10px; cursor: help;
+  background: repeating-linear-gradient(45deg, color-mix(in srgb, var(--fc) 38%, var(--surface-raised)) 0 4px, var(--surface-raised) 4px 8px);
+  box-shadow: inset -2px 0 0 var(--fc); }
+.flowleg i { --fc: currentColor; background: repeating-linear-gradient(45deg, color-mix(in srgb, var(--fc) 38%, var(--surface-raised)) 0 3px, var(--surface-raised) 3px 6px) !important;
+  box-shadow: inset -2px 0 0 var(--fc); }
 .flowleg { display: flex; flex-wrap: wrap; gap: 14px; align-items: center; font-size: 12px; color: var(--text-secondary); margin: 0 0 12px; }
 .flowleg span { display: inline-flex; align-items: center; gap: 6px; }
-.flowleg i { width: 10px; height: 16px; border-radius: 2px; display: inline-block; }
+.flowleg i { width: 10px; height: 16px; border-radius: 2px; display: inline-block; border: 1px solid var(--border); }
 .cat { display: inline-block; font-size: 9.5px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.03em; padding: 2px 8px; border-radius: 10px; white-space: nowrap; color: #16150f; }
 /* Same nine-way outcome as the emailed Call Detail panel's own .g1-.g9
    (report_template.html) -- copied here rather than computed, since the
@@ -1445,8 +1453,9 @@ function digTable(d, head, rows) {
   if (!rows.length) return `<p class="sd" style="margin:4px 0 0">Nothing to list.</p>`;
   return `<div class="scroll"><table class="msgt"><thead><tr>${digDayTh(d)}${head}</tr></thead><tbody>${rows.join("")}</tbody></table></div>`;
 }
+let digRebuiltNote = "";
 function digDrillList(title, what, body) {
-  return `<div class="rdrill-list"><div style="display:flex;justify-content:space-between;align-items:baseline;gap:12px;margin:14px 0 6px">
+  return `<div class="rdrill-list">${digRebuiltNote}<div style="display:flex;justify-content:space-between;align-items:baseline;gap:12px;margin:14px 0 6px">
     <h3 class="rh3" style="margin:0">${title}</h3><a href="#" data-ddrill-close style="font-size:12.5px">Close</a></div>
     ${what ? `<p class="sd" style="margin:0 0 6px">${what}</p>` : ""}${body}</div>`;
 }
@@ -1456,6 +1465,10 @@ function digDrillFor(d, who, keys) {
   if (!k || !keys.some(p => k === p || k.startsWith(p + ":"))) return "";
   const R = d.rows;
   if (!R) return digDrillList("", "", DIG_NO_ROWS);
+  // 09-03, 09-04, 09-16 lost their call data and were rebuilt from
+  // RingCentral on 2026-09-27 against today's AgencyZoom records.
+  const rb = d.date ? (R.rebuilt ? [d.date] : []) : (R.rebuilt_days || []);
+  digRebuiltNote = rb.length ? `<p class="sd" style="margin:10px 0 0;color:var(--warn, #b45309)">${rb.map(fmtShortDate).join(", ")}: this list was rebuilt from RingCentral on 9/27 against today's AgencyZoom records, so it can differ from the card's figure, which stays as it went out.</p>` : "";
   const [kind, a, b] = k.split(":");
   const mine = rs => (rs || []).filter(r => !who || r.who === who);
   const secs = s => s >= 60 ? `${Math.floor(s / 60)}m ${String(s % 60).padStart(2, "0")}s` : `${s}s`;
@@ -2206,7 +2219,7 @@ function mergeDayDocs(docs) {
   const msgPer = {}, msgRows = { replies: [], quotes: [], bad_contact: [] };
   let hasMsg = false;
   // The Digest cards' lists: every day's rows, tagged with their day.
-  const digRows = { dials: [], contacts: [], quoted: [], sold: [], sold_leads: [], speed: [] };
+  const digRows = { dials: [], contacts: [], quoted: [], sold: [], sold_leads: [], speed: [], rebuilt_days: [] };
   let hasRows = false;
 
   for (const doc of docs) {
@@ -2216,7 +2229,8 @@ function mergeDayDocs(docs) {
     for (const k of NUM) totals[k] += t[k] || 0;
     if (doc.rows) {
       hasRows = true;
-      for (const k of Object.keys(digRows)) digRows[k].push(...(doc.rows[k] || []).map(r => ({ ...r, day: doc.date })));
+      if (doc.rows.rebuilt) (digRows.rebuilt_days = digRows.rebuilt_days || []).push(doc.date);
+      for (const k of Object.keys(digRows)) if (k !== "rebuilt_days") digRows[k].push(...(doc.rows[k] || []).map(r => ({ ...r, day: doc.date })));
     }
     if (doc.messages) {
       hasMsg = true;
@@ -2474,11 +2488,12 @@ function flowParts(c) {
   const dir = c.direction === "call back" || c.direction === "call in" ? c.direction : "";
   return dir ? [[dir, ""]] : [];
 }
-// Blue / orange / aqua: the board's first three categorical slots, the only
-// three that stay apart for every pair in both modes. A card read before
+// Blue / yellow / pink (slots 1, 4, 5). Not green for follow-up -- it read as
+// sold (Frank, 2026-09-28). Without green or aqua, this and yellow / pink /
+// violet are the only threes that stay apart for every pair in both modes. A card read before
 // Apollo was asked for `flow` gets a plain edge. Named in the legend above
 // the cards and on hover of the card's edge, so it is never colour alone.
-const FLOW_EDGE = { first: "--s1", "finish quote": "--s2", "follow-up": "--s3" };
+const FLOW_EDGE = { first: "--s1", "finish quote": "--s4", "follow-up": "--s5" };
 function flowEdge(c) {
   const k = (c.flow || [])[0];
   return FLOW_EDGE[k] ? { color: `var(${FLOW_EDGE[k]})`, label: FLOW_LABELS[k], why: (c.flow || [])[1] || "" }
@@ -2486,7 +2501,7 @@ function flowEdge(c) {
 }
 function flowLegendHtml() {
   return `<div class="flowleg">Left edge: ${Object.entries(FLOW_EDGE).map(([k, v]) =>
-    `<span><i style="background:var(${v})"></i>${FLOW_LABELS[k]}</span>`).join("")}</div>`;
+    `<span><i style="--fc:var(${v})"></i>${FLOW_LABELS[k]}</span>`).join("")}</div>`;
 }
 /* One badge per call (Frank, 2026-09-25: "we need to combine/consolidate
    these badges"): the outcome pill carries the call type after a dot --
@@ -2629,8 +2644,8 @@ function card(c) {
   const typeParts = c.calltype && c.calltype[0] !== "sales" ? [[c.calltype[0], c.calltype[1] || ""]] : [];
   const edge = flowEdge(c);
   return `<details class="ccard">
-   <summary class="blk cchead" style="border-left:10px solid ${edge.color}">
-     ${edge.label ? `<span class="flowedge" title="${escAttr(edge.label + (edge.why ? ": " + edge.why : ""))}" aria-label="${escAttr(edge.label)}"></span>` : ""}
+   <summary class="blk cchead" style="border-left:10px solid transparent">
+     <span class="flowedge" style="--fc:${edge.color}"${edge.label ? ` title="${escAttr(edge.label + (edge.why ? ": " + edge.why : ""))}" aria-label="${escAttr(edge.label)}"` : ""}></span>
      <div class="chead"><div><div class="cname">${c.lead_id
        ? `<a href="${AZ_URL.lead}${encodeURIComponent(c.lead_id)}" target="_blank" rel="noopener" onclick="event.stopPropagation()">${c.lead || ""}</a>`
        : (c.lead || "")}</div>
