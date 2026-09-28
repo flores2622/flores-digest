@@ -691,6 +691,26 @@ Crystal (hybrid); credit always goes to whoever COMPLETED the SR or task.
   customers text card numbers to pay. Past days: `python3 service_messages.py
   --backfill 2026-09-01 [end]` (adds only `messages`, backs up under
   `backups/<today>-service-messages-backfill/`).
+- **Amanda's Service Playbook is how Athena judges the service team**
+  (Frank, 2026-09-28: "Teach Athena this and build the digest to be focused
+  on their own roles and responsibilities"). `service_playbook.py` is her
+  document -- roles, who handles what, the note standard, the daily checklist,
+  the team expectations -- and the only place to change it; each day carries
+  it as `playbook`. Roles: **Service Lead = Amanda, Service Team Member =
+  Crystal, Front Desk = Debbie** (`ROLE_OF`). `service_audit.py` reads every
+  completed SR against it (request type from her "Who handles what" table,
+  which of Who / What / Why / Outcome / Next step the note leaves out, a
+  sales opportunity passed or not, escalated), cached by SR + note text in
+  `data/service_audit_reads.json` + R2 -- a paid read, never delete it
+  casually. A renewal reviewed without contacting the client ("low increase,
+  review if needed") answers who and why. `front_figures` adds the Front
+  Desk's rows: inbound calls each team member picked up first, and the SRs
+  each created. The Service Digest's **By Role** cards give each person the
+  measures of their own role's responsibilities in her words (the Lead's
+  "not the default person" is the share of her SRs that were routine), and
+  **Note Standard** counts the missing parts. Past days: `python3
+  service_digest.py --add-roles 2026-09-01 2026-09-25` (backs up under
+  `backups/<today>-roles/`).
 - **Documents hold rows, never medians**, so the board can add any range up.
   **Every card opens the rows it counts** (Frank, 2026-09-25), so the rows
   carry what a list needs: SRs name, household (= the AgencyZoom customer

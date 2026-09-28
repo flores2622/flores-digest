@@ -4765,6 +4765,7 @@ function mergeServiceDocs(docs) {
   const m = { days: docs.map(x => x.date), team: last.team, pipelines: last.pipelines,
     tasks: {}, completed: [], renewals: [], unnamed: {}, callbacks: [], util: {}, taskRows: [],
     msg: { days: 0, people: {}, replies: [], sent: [] },
+    front: { days: 0, calls: [], created: [] }, playbook: null,
     openRows: (last.srs || {}).open_rows || null,
     backlog: (last.srs || {}).backlog || {}, lateStages: (last.srs || {}).late_payment_stages || [],
     outcomes: (last.renewals || {}).outcomes || [], resolutionsFrom: (last.renewals || {}).resolutions_from,
@@ -4786,6 +4787,12 @@ function mergeServiceDocs(docs) {
       for (const [k, n] of Object.entries(x.renewals.unnamed || {})) m.unnamed[k] = (m.unnamed[k] || 0) + n;
     }
     m.callbacks.push(...(((x.callbacks || {}).rows) || []).map(r => Object.assign({ day: x.date }, r)));
+    if (x.front) {
+      m.front.days++;
+      m.front.calls.push(...(x.front.calls || []).map(r => Object.assign({ day: x.date }, r)));
+      m.front.created.push(...(x.front.created || []).map(r => Object.assign({ day: x.date }, r)));
+    }
+    if (x.playbook) m.playbook = x.playbook;
     if (x.messages) {
       m.msg.days++;
       for (const [n, c] of Object.entries(x.messages.people || {})) {
@@ -4835,6 +4842,7 @@ function splitRenewals(m) {
   // renewal SRs, or a message about the renewal (service_digest.
   // renewal_caller, service_messages.RENEWAL_WORDS). Per-person message
   // counts are rebuilt from the rows so each side adds up on its own.
+  m.front.created = m.front.created.filter(r => !ren(r));
   m.renewalCallbacks = m.callbacks.filter(r => r.renewal);
   m.callbacks = m.callbacks.filter(r => !r.renewal);
   const msgSide = keep => {
@@ -5191,6 +5199,31 @@ function svcDrillFor(m, keys) {
     if (a === "who") { const rs = M.replies.filter(r => r.who === b);
       return svcDrillList(`${cesc(b.split(" ")[0])} · ${rs.length} customer messages`, "", svcReplyTable(rs, m)); }
   }
+  if (kind === "role" || kind === "notes") {
+    const PB = m.playbook || {}, typeLabel = Object.fromEntries(Object.entries(PB.request_types || {}).map(([k, [l]]) => [k, l]));
+    const routine = new Set(PB.routine || []);
+    const sr = (title, rs, what) => svcDrillList(`${title} · ${rs.length}`, what || "", svcSrTable(withAudit(rs, typeLabel), m, true));
+    if (kind === "notes") { const rs = m.completed.filter(r => r.audit && r.audit.missing.includes(a));
+      return sr(`Notes missing ${PART_LABEL[a] || a}`, rs, "Each SR's note, with the parts of the standard it leaves out."); }
+    const n = a, key = b, first = cesc(n.split(" ")[0]);
+    const mine = m.completed.filter(r => r.by === n);
+    if (key === "notes") return sr(`${first} · notes`, mine.filter(r => r.audit).sort((x, y) => y.audit.missing.length - x.audit.missing.length), "Missing parts first.");
+    if (key === "team_notes") return sr("Team · notes not meeting the standard", m.completed.filter(r => r.audit && r.audit.missing.length));
+    if (key === "routine") return sr(`${first} · routine requests`, mine.filter(r => r.audit && routine.has(r.audit.type)), "Requests the playbook gives to the Service Team or Front Desk.");
+    if (key === "complex") return sr(`${first} · complex, sensitive or escalated`, mine.filter(r => r.audit && (!routine.has(r.audit.type) || r.audit.escalated)));
+    if (key === "opp") return sr(`${first} · opportunities`, mine.filter(r => r.audit && r.audit.opp !== "none"), "Passed to a producer, or came up and not passed.");
+    if (key === "billing") return sr(`${first} · billing`, mine.filter(r => r.pipeline === "late_payments" || (r.audit && r.audit.type === "basic_billing")));
+    if (key === "noc") return sr(`${first} · NOC / admin`, mine.filter(r => r.audit && r.audit.type === "noc"));
+    if (key === "srs") return sr(`${first} · SRs completed`, mine);
+    if (key === "calls") return svcDrillList(`${first} · calls answered · ${m.front.calls.filter(r => r.who === n).length}`, "Inbound calls this person picked up first.", svcCallTable(m.front.calls.filter(r => r.who === n), m));
+    if (key === "created") return svcDrillList(`${first} · SRs created · ${m.front.created.filter(r => r.by === n).length}`, "", svcCreatedTable(m.front.created.filter(r => r.by === n), m));
+    if (key === "tasks") { const t = m.taskRows.filter(r => r.assignees.includes(n) || r.done_by === n); return svcDrillList(`${first} · service tasks · ${t.length}`, "", svcTaskTable(t)); }
+    if (key === "open") { const o = m.openRows ? m.openRows.filter(r => r.by === n) : null; return svcDrillList(`${first} · open SRs${o ? " · " + o.length : ""}`, "", svcOpenTable(o, m)); }
+    if (key === "cb") return svcDrillList(`${first} · call backs`, "", svcCallbackTable(m.callbacks.filter(r => r.by === n)));
+    if (key === "reply") return svcDrillList(`${first} · calls and texts`, "", `<h3 class="rh3">Call backs</h3>${svcCallbackTable(m.callbacks.filter(r => r.by === n))}<h3 class="rh3">Customer texts &amp; emails</h3>${svcReplyTable(m.msg.replies.filter(r => r.who === n), m)}`);
+    if (key === "workload") { const o = m.openRows ? m.openRows.filter(r => r.overdue) : null; return svcDrillList(`Team · overdue SRs${o ? " · " + o.length : ""}`, "Every overdue SR on the team, as of the latest day.", svcOpenTable(o, m)); }
+    if (key === "watch") return svcDrillList("Team · waiting on us", "", `<h3 class="rh3">Missed calls not returned</h3>${svcCallbackTable(m.callbacks.filter(r => r.minutes == null))}<h3 class="rh3">Customer texts waiting</h3>${svcReplyTable(m.msg.replies.filter(r => !r.ack && !r.optout && r.minutes == null), m)}`);
+  }
   if (kind === "person") {
     const srs = m.completed.filter(r => r.by === a), tasks = m.taskRows.filter(r => r.assignees.includes(a) || r.done_by === a);
     const open = m.openRows ? m.openRows.filter(r => r.by === a) : null;
@@ -5229,6 +5262,133 @@ function callbackSpeedHtml(m) {
     <p class="sd" style="margin:0 0 6px">From a missed service call to the first call back, credited to whoever made it.
     Green is 15 minutes or less, red over an hour.${waiting ? ` ${waiting} not returned the same day (on the team card above).` : ""}</p>
     <div class="tiles">${cards}${others.length ? card("others", pbadge("#8a877f", "Others"), others) : ""}</div>${svcDrillFor(m, ["cbwho"])}`;
+}
+/* ---- The Service Playbook (Amanda, head of service; Frank, 2026-09-28) ------
+   service_playbook.py is her document; each day's `playbook` carries it here.
+   By Role gives each person the measures of their own role's
+   responsibilities, in her words; the Note Standard checks every completed
+   SR's note for Who / What / Why / Outcome / Next step (service_audit.py). */
+const PART_LABEL = { who: "Who", what: "What", why: "Why", outcome: "Outcome", next_step: "Next step" };
+function svcCallTable(rs, m) {
+  if (!rs.length) return '<p class="sd">None.</p>';
+  const rows = [...rs].sort((a, b) => (b.at || "").localeCompare(a.at || "")).map(r => `<tr>
+    <td>${svcTime(r.at)}</td><td>${cesc(fmtPhone(r.number))}</td><td>${svcFirst(r.who)}</td>
+    <td class="num">${fmtMins(Math.round((r.seconds || 0) / 60))}</td></tr>`).join("");
+  return `<div class="scroll"><table class="rtable"><thead><tr><th>Answered</th><th>Caller</th><th>By</th><th class="num">On the line</th></tr></thead><tbody>${rows}</tbody></table></div>`;
+}
+function svcCreatedTable(rs, m) {
+  if (!rs.length) return '<p class="sd">None.</p>';
+  const pipeName = Object.fromEntries((m.pipelines || []).map(([k, l]) => [k, l]));
+  const rows = [...rs].sort((a, b) => (b.day || "").localeCompare(a.day || "")).map(r => `<tr>
+    <td>${renDate(r.day)}</td><td>${svcLink("customer", r.household, r.name)}</td>
+    <td>${cesc(r.subject || "")}<div style="font-size:11.5px;color:var(--text-muted)">${cesc(pipeName[r.pipeline] || r.pipeline || "")}</div></td>
+    <td>${cesc(r.assigned || "—")}</td></tr>`).join("");
+  return `<div class="scroll"><table class="rtable"><thead><tr><th>Created</th><th>Customer</th><th>SR</th><th>Assigned to</th></tr></thead><tbody>${rows}</tbody></table></div>`;
+}
+// SR rows with what the playbook read found, in the note column.
+const withAudit = (rs, typeLabel) => rs.map(r => { const a = r.audit; if (!a) return r;
+  const bits = [typeLabel[a.type] || a.type, a.missing.length ? "Missing: " + a.missing.map(k => PART_LABEL[k] || k).join(", ") : "Meets the note standard",
+    a.opp === "passed" ? "Opportunity passed to a producer" : a.opp === "missed" ? "Opportunity not passed" : "", a.escalated ? "Escalated" : ""].filter(Boolean);
+  return Object.assign({}, r, { note: `[${bits.join(" · ")}] ${r.note || ""}` }); });
+function roleMeasures(m, n) {
+  const PB = m.playbook, role = PB.role_of[n], team = m.team.map(t => t.name);
+  const routine = new Set(PB.routine || []);
+  const mine = m.completed.filter(r => r.by === n), aud = mine.filter(r => r.audit);
+  const meets = aud.filter(r => !r.audit.missing.length);
+  const k = m.tasks[n] || { due: 0, completed: 0 }, b = m.backlog[n] || {};
+  const cb = m.callbacks.filter(r => r.by === n && r.minutes != null);
+  const need = m.msg.replies.filter(r => r.who === n && !r.ack && !r.optout), ans = need.filter(r => r.minutes != null);
+  const pct = (a, t) => t ? Math.round(100 * a / t) + "%" : "—";
+  const med = x => x.length ? fmtMins(Math.round(median(x))) : "—";
+  const L = (label, value, key) => ({ label, value, key });
+  const notes = L("Maintain accurate notes", aud.length ? `<b>${pct(meets.length, aud.length)}</b> meet the note standard (${meets.length} of ${aud.length})` : "—", "notes");
+  if (role === "lead") {
+    const openAll = team.reduce((a, x) => a + ((m.backlog[x] || {}).open || 0), 0), overAll = team.reduce((a, x) => a + ((m.backlog[x] || {}).overdue || 0), 0);
+    const busiest = team.map(x => [x, (m.backlog[x] || {}).open || 0]).sort((a, c) => c[1] - a[1])[0];
+    const rout = aud.filter(r => routine.has(r.audit.type)), cx = aud.filter(r => !routine.has(r.audit.type) || r.audit.escalated);
+    const teamAud = m.completed.filter(r => r.audit), teamMeets = teamAud.filter(r => !r.audit.missing.length);
+    return [
+      L("Monitor the overall service workload", `<b>${openAll}</b> open SRs on the team, <b${overAll ? ' style="color:var(--bad)"' : ""}>${overAll}</b> overdue${busiest && busiest[1] ? ` &middot; most with ${cesc(busiest[0].split(" ")[0])} (${busiest[1]})` : ""}`, "workload"),
+      L("Not the default person for every request", aud.length ? `<b>${pct(rout.length, aud.length)}</b> of her SRs were routine work the team handles (${rout.length} of ${aud.length})` : "—", "routine"),
+      L("Complex or sensitive service, escalations", `<b>${cx.length}</b> SR${cx.length === 1 ? "" : "s"}`, "complex"),
+      L("Monitor missed calls and texts", `<b${m.callbacks.some(r => r.minutes == null) ? ' style="color:var(--bad)"' : ""}>${m.callbacks.filter(r => r.minutes == null).length}</b> missed calls not returned &middot; <b>${m.msg.replies.filter(r => !r.ack && !r.optout && r.minutes == null).length}</b> customer texts waiting (team)`, "watch"),
+      L("Audit service notes", teamAud.length ? `team <b>${pct(teamMeets.length, teamAud.length)}</b> meet the note standard` : "—", "team_notes"),
+      notes,
+    ];
+  }
+  if (role === "front_desk") {
+    const calls = m.front.calls.filter(r => r.who === n), allCalls = m.front.calls.length;
+    const created = m.front.created.filter(r => r.by === n);
+    const billing = mine.filter(r => r.pipeline === "late_payments" || (r.audit && r.audit.type === "basic_billing"));
+    const noc = mine.filter(r => r.audit && r.audit.type === "noc");
+    return [
+      L("Answer incoming calls", m.front.days ? `<b>${calls.length}</b> answered${allCalls ? ` &middot; ${pct(calls.length, allCalls)} of the team's` : ""}` : "—", "calls"),
+      L("Assign service requests", m.front.days ? `<b>${created.length}</b> SRs created and assigned` : "—", "created"),
+      L("Assist with basic billing", `<b>${billing.length}</b> billing / late payment SRs completed`, "billing"),
+      L("Handle NOCs and administrative tasks", `<b>${noc.length}</b> NOC / admin SRs &middot; tasks <b>${k.completed}/${k.due}</b>`, "noc"),
+      L("Missed calls returned", `<b>${cb.length}</b>${cb.length ? ` &middot; median ${med(cb.map(r => r.minutes))}` : ""}`, "cb"),
+      notes,
+    ];
+  }
+  const passed = aud.filter(r => r.audit.opp === "passed"), missed = aud.filter(r => r.audit.opp === "missed");
+  return [
+    L("Handle routine policy service", `<b>${mine.length}</b> SRs completed${mine.length ? ` &middot; median ${fmtDur(svcMedian(mine.map(r => r.hours)))}` : ""}`, "srs"),
+    L("Complete assigned tasks", `<b>${k.completed}/${k.due}</b> service tasks`, "tasks"),
+    L("Follow up on outstanding items", `<b>${b.open ?? 0}</b> open SRs &middot; <b${b.overdue ? ' style="color:var(--bad)"' : ""}>${b.overdue ?? 0}</b> overdue`, "open"),
+    L("Return calls and texts", `call backs <b>${cb.length}</b>${cb.length ? ` (median ${med(cb.map(r => r.minutes))})` : ""} &middot; replies <b>${ans.length}</b>${ans.length ? ` (median ${med(ans.map(r => r.minutes))})` : ""}${need.length - ans.length ? ` &middot; <b style="color:var(--bad)">${need.length - ans.length} waiting</b>` : ""}`, "reply"),
+    L("Identify opportunities for a producer", `<b>${passed.length}</b> passed &middot; <b${missed.length ? ' style="color:var(--warn, #b45309)"' : ""}>${missed.length}</b> not passed`, "opp"),
+    notes,
+  ];
+}
+function roleCardsHtml(m) {
+  const PB = m.playbook;
+  if (!PB) return "";
+  const order = Object.keys(PB.roles);    // the playbook's own order: Lead, Team Member, Front Desk
+  const team = m.team.map(t => t.name).filter(n => PB.role_of[n])
+    .sort((x, y) => order.indexOf(PB.role_of[x]) - order.indexOf(PB.role_of[y]));
+  const card = n => { const R = PB.roles[PB.role_of[n]];
+    const lines = roleMeasures(m, n).map(x => `<div class="n rline${svcDrill === `role:${n}:${x.key}` ? " on" : ""}" data-sdrill="role:${n}:${x.key}" role="button" tabindex="0" style="cursor:pointer;margin-top:6px">
+      <span style="color:var(--text-muted)">${cesc(x.label)}</span><br>${x.value}</div>`).join("");
+    return `<div class="tile" style="text-align:left">
+      <div class="k">${pbadge(DOT[n] || TEAM_DOT, n.split(" ")[0])} <span style="margin-left:4px">${cesc(R.title)}</span></div>
+      <div class="n" style="margin-top:6px;font-style:italic">${cesc(R.primary)}</div>${lines}
+      <div class="n" style="margin-top:10px;font-size:11.5px;color:var(--text-muted)">${cesc(R.expectation)}</div>
+      <div class="n" style="margin-top:6px"><a href="#" data-sdrill="person:${cesc(n)}">Everything ${cesc(n.split(" ")[0])} worked</a></div></div>`; };
+  return `<div class="sect"><h2>By Role</h2>
+    <p class="sd">Each person against their own role in the Service Playbook. Open and overdue SRs are as of ${fmtShortDate(m.days[m.days.length - 1])}. Click a line for its list.</p>
+    <div class="tiles">${team.map(card).join("")}</div>${svcDrillFor(m, ["role", "person"])}</div>`;
+}
+function noteStandardHtml(m) {
+  const PB = m.playbook;
+  const aud = m.completed.filter(r => r.audit);
+  if (!PB || !aud.length) return "";
+  const meets = aud.filter(r => !r.audit.missing.length);
+  const parts = Object.keys(PART_LABEL).map(k => [k, aud.filter(r => r.audit.missing.includes(k)).length]);
+  const chips = parts.map(([k, c]) => `<div${sdk("notes:" + k)}><div class="k">${PART_LABEL[k]}</div><div class="v">${c}</div><div class="n">note${c === 1 ? "" : "s"} missing it &middot; ${Math.round(100 * c / aud.length)}%</div></div>`).join("");
+  return `<div class="sect"><h2>Note Standard</h2>
+    <p class="sd">Every note should answer Who? What? Why? Outcome? Next step? so the next person can pick up where you left off. <b>${Math.round(100 * meets.length / aud.length)}%</b> of the ${aud.length} service SRs completed in this period meet it; each note is read against the playbook by AI.
+    Good: <i>"${cesc(PB.good_note)}"</i> Too vague: <i>"${cesc(PB.vague_note)}"</i></p>
+    <div class="tiles">${chips}</div>${svcDrillFor(m, ["notes"])}</div>`;
+}
+function playbookHtml(m) {
+  const PB = m.playbook;
+  if (!PB) return "";
+  const roleCols = Object.values(PB.roles).map(R => `<div class="tile" style="text-align:left"><div class="k">${cesc(R.title)}</div>
+    <div class="n" style="font-style:italic;margin:6px 0">${cesc(R.primary)}</div>
+    <ul style="margin:0 0 6px 18px;padding:0;font-size:12.5px">${R.responsibilities.map(x => `<li>${cesc(x)}</li>`).join("")}</ul>
+    <div class="n" style="font-size:12px"><b>Expectation:</b> ${cesc(R.expectation)}</div></div>`).join("");
+  const who = Object.values(PB.request_types).map(([l, o]) => `<tr><td>${cesc(l)}</td><td>${cesc({ service: "Service", front_desk: "Front Desk / Service", lead: "Service Lead / Producer", producer: "Producer", frank: "Frank" }[o] || o)}</td></tr>`).join("");
+  const exp = Object.entries(PB.expectations).map(([k, v]) => `<li><b>${cesc(k)}.</b> ${cesc(v)}</li>`).join("");
+  return `<div class="sect"><details class="msgd"><summary style="cursor:pointer"><h2 style="display:inline">Service Playbook</h2> <span style="color:var(--text-muted);font-size:12.5px">what each role owns, as Amanda wrote it</span></summary>
+    <p class="sd" style="margin-top:8px">${cesc(PB.purpose)}</p>
+    <p class="sd"><b>Our Service Standard:</b> ${cesc(PB.standard)}. Every client should feel heard, helped, and confident that their request is being handled.</p>
+    <div class="tiles">${roleCols}</div>
+    <h3 class="rh3">Who handles what</h3>
+    <div class="scroll"><table class="rtable"><thead><tr><th>Request</th><th>Primary responsibility</th></tr></thead><tbody>${who}</tbody></table></div>
+    <p class="sd">${cesc(PB.when_in_doubt)}</p>
+    <h3 class="rh3">Service vs. sales</h3><p class="sd">${cesc(PB.service_vs_sales)}</p>
+    <h3 class="rh3">Our team expectations</h3><ul style="margin:0 0 6px 18px;padding:0;font-size:13px">${exp}</ul>
+    <p class="sd"><i>${cesc(PB.closing)}</i></p></details></div>`;
 }
 function servicePanel(m) {
   const team = m.team.map(t => t.name);
@@ -5269,14 +5429,15 @@ function servicePanel(m) {
       <div class="n">Utilization <b>${u.t ? pct(100 * u.p / u.t) : "—"}</b>${u.hybrid ? ' <span style="color:var(--text-muted)">&middot; whole day, shared with sales</span>' : ""}</div>
     </div>`;
   };
-  return `<div class="sect"><h2>Service Team</h2>
+  return `${playbookHtml(m)}<div class="sect"><h2>Service Team</h2>
     <p class="sd">Credit goes to whoever completed the SR or task.</p>${tiles}</div>
+    ${m.playbook ? roleCardsHtml(m) + noteStandardHtml(m) : ""}
     ${svcMessagesHtml(m)}
     ${SR_OUTCOME_SECTIONS.map(([p, t, w, b]) => srOutcomeHtml(m, p, t, w, b)).join("")}
     ${completionTimeHtml(m)}
     ${latePaymentsHtml(m)}
     ${missingDocsHtml(m)}
-    <div class="sect"><h2>By Person</h2><p class="sd">Open and overdue SRs are as of ${fmtShortDate(m.days[m.days.length - 1])}.</p><div class="tiles">${team.map(person).join("")}</div>${svcDrillFor(m, ["person"])}</div>`;
+    ${m.playbook ? "" : `<div class="sect"><h2>By Person</h2><p class="sd">Open and overdue SRs are as of ${fmtShortDate(m.days[m.days.length - 1])}.</p><div class="tiles">${team.map(person).join("")}</div>${svcDrillFor(m, ["person"])}</div>`}`;
 }
 // The Sales Digest's date filter, as service days (the Service Digest and the
 // Renewals tab share it -- Frank, 2026-09-27).
