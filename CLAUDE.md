@@ -85,6 +85,14 @@ Everything caches under `data/`, so a re-run resumes rather than restarting.
   assuming the quote means building and presenting it on the call; a
   producer who sets up from the start that she'll put it together and send
   it (Lorena, Eva Moraila 09-01) scores `askq` false -- an early exit.
+  Sending is only for a prospect who says they are busy, and that is scored
+  as overcoming a "Bad Timing / Busy" objection (`objs`): a better, specific
+  time to talk, or send it AND hold them for a brief discovery, scores well;
+  "I'll send it" and hanging up is a dropped objection.
+  **Always assume, never ask**: any permission-seeking line is false, however
+  soft. **No chance to assume is null, not false** -- cut off, too short,
+  hung up, not recorded -- and counts neither way (`scan`'s `of_first`
+  leaves it out).
   **A quote emailed or texted after a call counts as presented** (Frank,
   2026-09-27), so the next call is a follow-up; **ending a finish-quote call
   to send the quote instead of presenting it is a flagged bad habit**.
