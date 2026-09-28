@@ -119,6 +119,11 @@
 :root[data-theme="dark"] .ty { color: var(--warn); }
 :root[data-theme="dark"] .tr { color: var(--bad); }
 .mdl { font-size: 14px; line-height: 1; margin-right: 5px; }
+/* A figure's place in its leaderboard category (lbRankTag): its own line
+   under the figure, in ink, never the tier colour. 1st gets a gold tint. */
+.lbrank { display: block; margin-top: 2px; font-size: 10.5px; font-weight: 500; color: var(--text-muted); white-space: nowrap; }
+.lbrank.r5 { color: var(--gold); font-weight: 700; }
+.lbrank.r0 { opacity: .7; }
 .ptrack { flex: 1; height: 10px; border-radius: 5px; background: var(--surface); border: 1px solid var(--border-strong); overflow: hidden; }
 .pfill { height: 100%; border-radius: 5px; }
 
@@ -1196,6 +1201,28 @@ function dialsSub(row) {
   ].filter(Boolean).join(", ");
   return parts ? ` <span style="opacity:.72">(${parts})</span>` : "";
 }
+/* Each scored figure's place and points in its own category, under the
+   figure (Frank, 2026-09-28: "I dont want to be guessing who was first in
+   what category"). From d.leaderboard.categories -- board_payload.
+   leaderboard() on a day, rankLeaderboard on a range -- so it is exactly
+   what the standing adds up. A tie shares the lowest place it covers
+   ("T-2nd"); no activity is 0 points. Policies is not a scored category. */
+const LB_PLACE = { 5: "1st", 4: "2nd", 3: "3rd", 2: "4th", 1: "5th" };
+function lbRankTag(d, label, name) {
+  const cat = ((d.leaderboard || {}).categories || []).find(c => c.label === label);
+  if (!cat || !cat.points || !(name in cat.points)) return "";
+  const pts = cat.points[name] || 0;
+  if (!pts) return `<span class="lbrank r0" title="${label}: no activity, 0 points">0 pts</span>`;
+  const tie = Object.entries(cat.points).some(([n, v]) => n !== name && v === pts);
+  const place = (tie ? "T-" : "") + (LB_PLACE[pts] || "");
+  // On a range the table shows totals but the ranking is per day worked, so
+  // the hover says what was actually ranked.
+  const v = (d.leaderboard || {}).averaged && cat.values ? cat.values[name] : null;
+  const PER_DAY = { "Call Volume": x => x.toFixed(1) + " dials", "Households Quoted": x => x.toFixed(1) + " households",
+    "Premium Quoted": x => money(x), "Premium Sold": x => money(x) };
+  const ranked = v != null && PER_DAY[label] ? ` -- ranked on ${PER_DAY[label](v)} per day worked` : "";
+  return `<span class="lbrank r${pts}" title="${label}: ${place}, ${pts} point${pts === 1 ? "" : "s"}${ranked}">${place} &middot; ${pts} pts</span>`;
+}
 function teamLeaderboardHtml(d, who) {
   const byName = Object.fromEntries((d.producers || []).map(p => [p.name, p]));
   const focus = who ? byName[who] : null;
@@ -1228,15 +1255,15 @@ function teamLeaderboardHtml(d, who) {
   const rows = ranked.map((p, i) => `<tr>
     <td><span class="who">${
        !focus && i < 3 ? `<span class="mdl" role="img" aria-label="${["1st", "2nd", "3rd"][i]}">${MEDAL[i]}</span>` : ""}${pbadge(DOT[p.name] || "#8a877f", p.name)}</span></td>
-    ${hasRoleplay ? `<td class="num ${tc(p.name, "roleplay")}">${(p.coach || {}).roleplay ?? "—"}${p.rp_missed ? ` <br><span style="color:var(--text-muted);font-weight:400;white-space:nowrap;font-size:11px" title="Days worked with no role play -- each counts as 0 in the ranking">${p.rp_missed} missed</span>` : ""}</td>` : ""}
-    <td class="num ${tc(p.name, "dials")}${lv("dials")}">${p.dials ?? 0}${dialsSub(p)}</td>
-    <td class="num ${tc(p.name, "talk")}">${hhmm(p.talk)}</td>
-    <td class="num ${tc(p.name, "rate")}">${p.rate ?? 0}% <span style="opacity:.72">(${p.live ?? 0})</span></td>
+    ${hasRoleplay ? `<td class="num ${tc(p.name, "roleplay")}">${(p.coach || {}).roleplay ?? "—"}${lbRankTag(d, "Role Play", p.name)}${p.rp_missed ? `<span style="display:block;color:var(--text-muted);font-weight:400;white-space:nowrap;font-size:10.5px" title="Days worked with no role play -- each counts as 0 in the ranking">${p.rp_missed} missed</span>` : ""}</td>` : ""}
+    <td class="num ${tc(p.name, "dials")}${lv("dials")}">${p.dials ?? 0}${dialsSub(p)}${lbRankTag(d, "Call Volume", p.name)}</td>
+    <td class="num ${tc(p.name, "talk")}">${hhmm(p.talk)}${lbRankTag(d, "Avg Talk Time", p.name)}</td>
+    <td class="num ${tc(p.name, "rate")}">${p.rate ?? 0}% <span style="opacity:.72">(${p.live ?? 0})</span>${lbRankTag(d, "Contact Rate", p.name)}</td>
     ${msgCell(MP && MP[p.name])}
-    <td class="num ${tc(p.name, "hh")}${lv("quotes")}">${p.hh ?? 0}</td>
-    <td class="num ${tc(p.name, "pq")}${lv("quotes")}">${money(p.pq)}</td>
+    <td class="num ${tc(p.name, "hh")}${lv("quotes")}">${p.hh ?? 0}${lbRankTag(d, "Households Quoted", p.name)}</td>
+    <td class="num ${tc(p.name, "pq")}${lv("quotes")}">${money(p.pq)}${lbRankTag(d, "Premium Quoted", p.name)}</td>
     <td class="num ${tc(p.name, "pol")}${lv("sales")}" title="${polTitle(p.name)}">${p.pol ?? 0}</td>
-    <td class="num ${tc(p.name, "ps")}${lv("sales")}">${money(p.ps)}</td>
+    <td class="num ${tc(p.name, "ps")}${lv("sales")}">${money(p.ps)}${lbRankTag(d, "Premium Sold", p.name)}</td>
     ${p.util != null ? `<td class="num ${tc(p.name, "util")}${lv("util")}">${p.util}%</td>` : ""}</tr>`).join("");
   const tt = k => TI[((d.tiers || {})["team"] || {})[k]] || "";
   const T = d.totals || {};
@@ -2239,13 +2266,16 @@ const LEADERBOARD_POINTS = [5, 4, 3, 2, 1];
 function rankLeaderboard(names, categories, tiebreak) {
   const place = i => LEADERBOARD_POINTS[i] || 0;
   const points = Object.fromEntries(names.map(n => [n, 0]));
+  const perCat = [];
   for (const vals of categories) {
     const v = Object.fromEntries(names.map(n => [n, vals[n] || 0]));
+    const pts = {};
+    perCat.push(pts);
     const order = [...names].sort((a, b) => v[b] - v[a]);
     for (let i = 0; i < order.length;) {
       let j = i;
       while (j + 1 < order.length && v[order[j + 1]] === v[order[i]]) j++;
-      for (const n of order.slice(i, j + 1)) points[n] += v[n] ? place(j) : 0;
+      for (const n of order.slice(i, j + 1)) { pts[n] = v[n] ? place(j) : 0; points[n] += pts[n]; }
       i = j + 1;
     }
   }
@@ -2254,7 +2284,7 @@ function rankLeaderboard(names, categories, tiebreak) {
     for (let k = 0; k < tiebreak[a].length; k++) if (tiebreak[b][k] !== tiebreak[a][k]) return tiebreak[b][k] - tiebreak[a][k];
     return 0;
   });
-  return { points, order };
+  return { points, order, perCat };
 }
 function mergeDayDocs(docs) {
   const NUM = ["dials", "live", "hh", "pq", "ps", "pol"];
@@ -2452,14 +2482,18 @@ function mergeDayDocs(docs) {
   // days they worked, so a day off costs nothing; rates as the range's own;
   // role play as rp_scored, where a missed role play day is a 0.
   const perDay = (p, k) => p.worked ? (p[k] || 0) / p.worked : 0;
+  const LB_LABELS = ["Role Play", "Call Volume", "Avg Talk Time", "Contact Rate", "Households Quoted", "Premium Quoted", "Premium Sold"];
   const lbCats = [
     p => p.rp_scored || 0, p => perDay(p, "dials"), p => p.talk || 0, p => p.rate || 0,
     p => perDay(p, "hh"), p => perDay(p, "pq"), p => perDay(p, "ps"),
   ];
   const ranked = finalProducers.filter(p => p.worked);
-  const leaderboard = ranked.length > 1 ? {
-    ...rankLeaderboard(ranked.map(p => p.name), lbCats.map(fn => Object.fromEntries(ranked.map(p => [p.name, fn(p)]))),
-      Object.fromEntries(ranked.map(p => [p.name, [perDay(p, "ps"), perDay(p, "hh"), perDay(p, "dials")]]))),
+  const lbVals = lbCats.map(fn => Object.fromEntries(ranked.map(p => [p.name, fn(p)])));
+  const lbRes = ranked.length > 1 ? rankLeaderboard(ranked.map(p => p.name), lbVals,
+      Object.fromEntries(ranked.map(p => [p.name, [perDay(p, "ps"), perDay(p, "hh"), perDay(p, "dials")]]))) : null;
+  const leaderboard = lbRes ? {
+    points: lbRes.points, order: lbRes.order,
+    categories: LB_LABELS.map((label, i) => ({ label, points: lbRes.perCat[i], values: lbVals[i] })),
     days: days.filter(Boolean).length, averaged: true,
   } : null;
 
