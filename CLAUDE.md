@@ -293,6 +293,12 @@ and anything without the glow is the checkpoint's (Frank, 2026-09-24).
   checkpoint saw.
 - **Sales** are AgencyZoom policies by agentId + soldDate minus
   `lead_sources.NOT_A_SALE`, the same rule as `is_real_sale`.
+- **Households sold** ride with sales (Frank, 2026-09-28): the same even-minute
+  refresh reads every lead marked sold today (`site/live.js soldLeadsToday`,
+  leads newest activity first back to Arizona midnight, up to 5 pages), so
+  HH/Prem. Sold glows whenever sales are live. That list stands on its own
+  for the day; the checkpoint's `rows.sold_leads` are added only if the read
+  stopped at the page cap.
 - **Utilization** is `insightful_util.pull()`'s formula.
 - **Households and premium quoted** are daily.py's own three rules (quoteDate
   today; a producer's move into a quoted stage; a producer's note delivering
@@ -366,8 +372,8 @@ play figures for anyone (no Coach AI email), counts neither way.
 needs to be one or the other. i would prefer HH"). The board's **HH/Prem.
 Sold** tile, the leaderboard's **HH Sold** column and the Closing Ratio's
 households half (households sold over households quoted) count the leads
-marked sold (`rows.sold_leads`, plus any the live refresh finds since the
-checkpoint), one per household per day -- `household` is the lead's
+marked sold (`rows.sold_leads`; live, the sales refresh's own read of
+today's sold leads), one per household per day -- `household` is the lead's
 convertedHouseholdId, else its name, since duplicate lead records are
 pervasive. **Premium Sold is still the policies' own premium** and the
 policy count still shows beside it (policies per HH). A lead can be marked
