@@ -298,7 +298,8 @@ because the prefetch broke.
 ## Live figures between checkpoints
 
 **Today's board is the last checkpoint, with dials, sales, utilization,
-quotes, contacts, talk time, texts & emails and speed to dial kept live** (Frank, 2026-09-24: "just live data where its already at on
+quotes, contacts, talk time, texts & emails, speed to dial and task
+completion kept live** (Frank, 2026-09-24: "just live data where its already at on
 everything possible, and the header up there specifying what is stale from
 the last hourly run"). No separate live strip: the Worker's `/api/live/<day>`
 (`site/live.js`) is written into the same document the page renders. The
@@ -333,6 +334,24 @@ and anything without the glow is the checkpoint's (Frank, 2026-09-24).
   rebuilding them from each producer's summary -- 09-25's team read 69m23s
   that way against a true 34m56s. Checked identical to the Python on every
   day R2 holds a lead snapshot for (09-23, 09-24, 09-25, 09-28).
+- **Task Completion** (Frank, 2026-09-29: "task completion should be live")
+  is worked out whole like Speed to Dial (`site/live.js taskCompletion`, a
+  line-for-line mirror of `az_tasks.audit` -- keep them in step, rounding
+  included: Python's half-to-even), from the producers' tasks due today,
+  re-read every 5.5 minutes, one page per producer. The checkpoint hands
+  over its own duplicate-lead / smart-cycle verdicts (`live_basis.tasks`);
+  a task closed since is judged by the same patterns on the lead's stage
+  moves, which the quotes pass already reads (`taskFlags`). Checked identical
+  to Python on all 20 September days with a saved task file, both ways.
+- **AgencyZoom's whole-day task list cannot be paged** (found 2026-09-29):
+  its pages overlap, so 09-28's 214 rows gave 141 distinct tasks, and only
+  115 of the producers' 183. Every Task Completion before 2026-09-29 counted
+  about six in ten of their tasks (Lorena 15 due against a real 42; team
+  85/96 against 151/164), and `missed_call_tasks`' duplicate check and the
+  Service Center's task figures missed the rest too. `az_client.tasks` now
+  reads each active employee on their own (`assigneeId`, one page each) and
+  merges by id; the Worker reads the five producers the same way. Published
+  days were not rebuilt.
 - **A live sale goes on the Sales sheet in the same refresh** (Frank,
   2026-09-28: "the sales on the leaderboard are live, but the sales werent
   added to the sales sheet"). `site/live.js syncSalesLog` applies
