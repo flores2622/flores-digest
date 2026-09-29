@@ -1047,17 +1047,36 @@ async function roleplayFace(env, key) {
   return new Response(img, { headers });
 }
 
+/* The prospect talks a little faster than Deepgram's default (Frank,
+   2026-09-29: "they talk to slow"), with Deepgram's own speed setting,
+   which keeps the voice natural. Deepgram says it is not supported in every
+   language yet, so a refused speed is retried at normal speed and this
+   Worker stops asking for that language (per isolate). */
+const RP_SPEAK_SPEED = 1.2;
+const rpSpeedRefused = new Set();   // "en" / "es"
+async function deepgramSpeak(env, voice, text) {
+  const call = (speed) => fetch(`https://api.deepgram.com/v1/speak?model=${voice}&encoding=mp3${speed ? `&speed=${speed}` : ""}`, {
+    method: "POST",
+    headers: { Authorization: `Token ${env.DEEPGRAM_API_KEY}`, "content-type": "application/json" },
+    body: JSON.stringify({ text }),
+  });
+  const lang = voice.slice(-2);
+  if (rpSpeedRefused.has(lang)) return call(null);
+  const r = await call(RP_SPEAK_SPEED);
+  if (r.status !== 400) return r;
+  const detail = await r.text();
+  if (!/speed/i.test(detail)) return new Response(detail, { status: 400 });
+  rpSpeedRefused.add(lang);
+  return call(null);
+}
+
 async function roleplaySpeak(env, url, ctx) {
   if (!env.DEEPGRAM_API_KEY) return json({ error: "DEEPGRAM_API_KEY is not configured on this Worker" }, 503);
   const voice = url.searchParams.get("voice") || "";
   const text = (url.searchParams.get("text") || "").trim();
   if (!/^aura-2-[a-z]+-(en|es)$/.test(voice)) return json({ error: "unknown voice" }, 400);
   if (!text || text.length > 2000) return json({ error: "text must be 1-2000 characters" }, 400);
-  const r = await fetch(`https://api.deepgram.com/v1/speak?model=${voice}&encoding=mp3`, {
-    method: "POST",
-    headers: { Authorization: `Token ${env.DEEPGRAM_API_KEY}`, "content-type": "application/json" },
-    body: JSON.stringify({ text }),
-  });
+  const r = await deepgramSpeak(env, voice, text);
   if (!r.ok) return json({ error: `Deepgram ${r.status}`, detail: (await r.text()).slice(0, 300) }, 502);
   // A copy of every line the prospect speaks, so a saved session can be
   // played back (Frank, 2026-09-29: "i want to be able to hear it"). The

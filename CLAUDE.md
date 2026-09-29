@@ -160,7 +160,9 @@ Everything caches under `data/`, so a re-run resumes rather than restarting.
   American + Hispanic list in every language; a Spanish or mixed prospect
   has a Hispanic surname. **Crystal never gets Spanish or mixed** (Frank,
   2026-09-29: "she doesnt speak it") -- `RP_ENGLISH_ONLY`.
-  The Worker's `/api/roleplay/speak` streams them and needs the
+  They speak at 1.2x (`RP_SPEAK_SPEED`, Deepgram's `speed`; Frank,
+  2026-09-29: "they talk to slow") -- a refused speed is retried at normal
+  speed. The Worker's `/api/roleplay/speak` streams them and needs the
   `DEEPGRAM_API_KEY` secret (without it the browser's voice speaks). Apollo
   grades in English whatever the call's language. **Producers rate the voice
   after each graded session** (stars, again yes / no, a comment), saved on
@@ -180,7 +182,7 @@ Everything caches under `data/`, so a re-run resumes rather than restarting.
   initials.
   **The mic waits for the producer to finish** (Frank, 2026-09-29: "fix the
   mic cutting off"): it listens continuously and sends the turn after
-  `RP_PAUSE_MS` (2 s) of silence -- a tap on the mic sends at once -- never
+  `RP_PAUSE_MS` (1.5 s, Frank's pick -- 2 s felt slow) of silence -- a tap on the mic sends at once -- never
   at the browser's first final result, which cut people off mid-sentence.
   When Chrome ends the session itself it restarts at once, keeping the words
   and the turn's recording; a blocked mic stops for good.
