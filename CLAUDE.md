@@ -298,7 +298,8 @@ because the prefetch broke.
 ## Live figures between checkpoints
 
 **Today's board is the last checkpoint, with dials, sales, utilization,
-quotes, contacts, talk time, texts & emails and speed to dial kept live** (Frank, 2026-09-24: "just live data where its already at on
+quotes, contacts, talk time, texts & emails, speed to dial and task
+completion kept live** (Frank, 2026-09-24: "just live data where its already at on
 everything possible, and the header up there specifying what is stale from
 the last hourly run"). No separate live strip: the Worker's `/api/live/<day>`
 (`site/live.js`) is written into the same document the page renders. The
@@ -333,6 +334,24 @@ and anything without the glow is the checkpoint's (Frank, 2026-09-24).
   rebuilding them from each producer's summary -- 09-25's team read 69m23s
   that way against a true 34m56s. Checked identical to the Python on every
   day R2 holds a lead snapshot for (09-23, 09-24, 09-25, 09-28).
+- **Task Completion** (Frank, 2026-09-29: "task completion should be live")
+  is worked out whole like Speed to Dial (`site/live.js taskCompletion`, a
+  line-for-line mirror of `az_tasks.audit` -- keep them in step, rounding
+  included: Python's half-to-even), from the producers' tasks due today,
+  re-read every 5.5 minutes, one page per producer. The checkpoint hands
+  over its own duplicate-lead / smart-cycle verdicts (`live_basis.tasks`);
+  a task closed since is judged by the same patterns on the lead's stage
+  moves, which the quotes pass already reads (`taskFlags`). Checked identical
+  to Python on all 20 September days with a saved task file, both ways.
+- **AgencyZoom's whole-day task list cannot be paged** (found 2026-09-29):
+  its pages overlap, so 09-28's 214 rows gave 141 distinct tasks, and only
+  115 of the producers' 183. Every Task Completion before 2026-09-29 counted
+  about six in ten of their tasks (Lorena 15 due against a real 42; team
+  85/96 against 151/164), and `missed_call_tasks`' duplicate check and the
+  Service Center's task figures missed the rest too. `az_client.tasks` now
+  reads each active employee on their own (`assigneeId`, one page each) and
+  merges by id; the Worker reads the five producers the same way. Published
+  days were not rebuilt.
 - **A live sale goes on the Sales sheet in the same refresh** (Frank,
   2026-09-28: "the sales on the leaderboard are live, but the sales werent
   added to the sales sheet"). `site/live.js syncSalesLog` applies
@@ -824,6 +843,23 @@ Crystal (hybrid); credit always goes to whoever COMPLETED the SR or task.
   **Note Standard** counts the missing parts. Past days: `python3
   service_digest.py --add-roles 2026-09-01 2026-09-25` (backs up under
   `backups/<today>-roles/`).
+- **The Service Digest is one card per person, no leaderboard** (Frank,
+  2026-09-29, option D: "when I dont have a rep selected i want it to display
+  the team totals"). A strip of small cards (Amanda, Crystal, Debbie in the
+  playbook's order: SRs, tasks, reply speed, overdue); under it one grid --
+  the team's totals until a person is picked, then theirs with their role's
+  checklist from the playbook (`serviceStatsHtml`): SRs completed, tasks,
+  open / overdue, dials, call backs, speed to reply, texts / emails, calls
+  answered, SRs created, note standard, opportunities, utilization. Nobody
+  is ranked; every tile opens its accounts (keys `g-...`). It replaced the
+  Service Team tiles, By Role cards and Speed to Call Back by person.
+  **Dials** are `service_digest.dial_figures` (`dials.rows`, one per person
+  and number, from the day's RC call log): Debbie's and Amanda's every dial,
+  **Crystal's only to numbers that route to service** (customer or open SR;
+  her new-business dials are the Sales Center's), commercial-only households
+  left out, renewal numbers split to the Renewals side. Past days: `python3
+  service_digest.py --add-dials 2026-09-01 2026-09-28` (backs up under
+  `backups/<today>-dials/`, adds only `dials`). The Renewals tab is next.
 - **Documents hold rows, never medians**, so the board can add any range up.
   **Every card opens the rows it counts** (Frank, 2026-09-25), so the rows
   carry what a list needs: SRs name, household (= the AgencyZoom customer

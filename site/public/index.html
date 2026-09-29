@@ -712,7 +712,7 @@ details.sc .scb { padding: 0 12px 12px; }
 .tile.rdrill { cursor: pointer; transition: border-color .15s, box-shadow .15s; }
 .tile.rdrill:hover { border-color: var(--border-strong); }
 .tile.rdrill:focus-visible { outline: 2px solid var(--s1); outline-offset: 2px; }
-.tile.rdrill.on { border-color: var(--s1); box-shadow: 0 0 0 1px var(--s1) inset; }
+.tile.rdrill.on { border-color: var(--s1); box-shadow: 0 0 0 1px var(--s1) inset; color: inherit; }
 tr.rdrill-row { cursor: pointer; }
 /* A leaderboard number that opens its list: underlined on hover, marked while open. */
 td.rdrill-cell { cursor: pointer; }
@@ -1507,14 +1507,15 @@ function taskCompletionHtml(d, who) {
   const list = (focus ? [focus] : (d.producers || [])).filter(p => p.tasks && p.tasks.total != null);
   if (!list.length) return "";
   const rk = k => ` class="rdrill-row${digDrill === k ? " on" : ""}" data-ddrill="${k}" tabindex="0" role="button"`;
+  const lt = liveOn(d, "tasks") ? " isLive" : "";
   const rows = list.map(p => { const t = p.tasks; const pct = t.pct ?? 0;
     return `<tr${rk("tasks@" + p.name)}><td><span class="who">${pbadge(DOT[p.name] || "#8a877f", p.name)}</span></td>
-      <td class="num">${t.total ?? 0}</td><td class="num">${t.completed ?? 0}</td>
-      <td class="num ${tc(p.name)}">${(+pct).toFixed(1)}%</td></tr>`; }).join("");
+      <td class="num${lt}">${t.total ?? 0}</td><td class="num${lt}">${t.completed ?? 0}</td>
+      <td class="num ${tc(p.name)}${lt}">${(+pct).toFixed(1)}%</td></tr>`; }).join("");
   const T = (d.totals || {}).tasks || {};
   const tot = focus || T.total == null ? "" : `<tr class="tot rdrill-row${digDrill === "tasks" ? " on" : ""}" data-ddrill="tasks" tabindex="0" role="button"><td><span class="who">${pbadge(TEAM_DOT, "Team")}</span></td>
-    <td class="num">${T.total ?? 0}</td><td class="num">${T.completed ?? 0}</td>
-    <td class="num ${TI[((d.tiers || {})["team"] || {})["tasks"]] || ""}">${(+(T.pct ?? 0)).toFixed(1)}%</td></tr>`;
+    <td class="num${lt}">${T.total ?? 0}</td><td class="num${lt}">${T.completed ?? 0}</td>
+    <td class="num ${TI[((d.tiers || {})["team"] || {})["tasks"]] || ""}${lt}">${(+(T.pct ?? 0)).toFixed(1)}%</td></tr>`;
   return `<div class="sect"><h2>Task Completion Rate</h2>
    <div class="scroll"><table><thead><tr><th>Producer</th><th class="num">Due</th>
    <th class="num">Done</th><th class="num">Rate</th></tr></thead>
@@ -2093,6 +2094,21 @@ function applyLive(base, L) {
   // Speed to Dial is worked out whole from today's leads and call log
   // (site/live.js speedToDial), so the live figure replaces the checkpoint's,
   // and so does the list its cards open.
+  // Task Completion is worked out whole from the tasks due today
+  // (site/live.js taskCompletion), like Speed to Dial.
+  if ((L.tasks || {}).ok) {
+    d.live_parts.push("tasks");
+    const X = L.tasks.data, tiersT = d.tiers || (d.tiers = {});
+    for (const p of d.producers || []) {
+      const x = X.per[p.name]; if (!x) continue;
+      p.tasks = { ...(p.tasks || {}), ...x };
+      if (x.pct != null) (tiersT[p.name] || (tiersT[p.name] = {})).tasks = tierColor("task_completion_pct", x.pct);
+    }
+    d.totals = d.totals || {};
+    d.totals.tasks = { ...(d.totals.tasks || {}), ...X.team };
+    if (X.team.pct != null) (tiersT.team || (tiersT.team = {})).tasks = tierColor("task_completion_pct", X.team.pct);
+    d.rows = { ...(d.rows || {}), tasks: X.rows };
+  }
   if ((L.speed || {}).ok) {
     d.live_parts.push("speed");
     const note = (d.speed_to_dial || {}).note;
@@ -4911,7 +4927,7 @@ async function fetchServiceDocs(days) {
 function mergeServiceDocs(docs) {
   const last = docs[docs.length - 1];
   const m = { days: docs.map(x => x.date), team: last.team, pipelines: last.pipelines,
-    tasks: {}, completed: [], renewals: [], unnamed: {}, callbacks: [], util: {}, taskRows: [],
+    tasks: {}, completed: [], renewals: [], unnamed: {}, callbacks: [], util: {}, taskRows: [], dials: [], dialDays: 0,
     msg: { days: 0, people: {}, replies: [], sent: [] },
     front: { days: 0, calls: [], created: [] }, playbook: null,
     openRows: (last.srs || {}).open_rows || null,
@@ -4935,6 +4951,7 @@ function mergeServiceDocs(docs) {
       for (const [k, n] of Object.entries(x.renewals.unnamed || {})) m.unnamed[k] = (m.unnamed[k] || 0) + n;
     }
     m.callbacks.push(...(((x.callbacks || {}).rows) || []).map(r => Object.assign({ day: x.date }, r)));
+    if (x.dials) { m.dialDays++; m.dials.push(...(x.dials.rows || []).map(r => Object.assign({ day: x.date }, r))); }
     if (x.front) {
       m.front.days++;
       m.front.calls.push(...(x.front.calls || []).map(r => Object.assign({ day: x.date }, r)));
@@ -4993,6 +5010,8 @@ function splitRenewals(m) {
   m.front.created = m.front.created.filter(r => !ren(r));
   m.renewalCallbacks = m.callbacks.filter(r => r.renewal);
   m.callbacks = m.callbacks.filter(r => !r.renewal);
+  m.renewalDials = m.dials.filter(r => r.renewal);
+  m.dials = m.dials.filter(r => !r.renewal);
   const msgSide = keep => {
     const sent = m.msg.sent.filter(r => !!r.renewal === keep), people = {};
     for (const n of team) people[n] = { texts: 0, emails: 0, auto_texts: 0, auto_emails: 0, customers: 0 };
@@ -5314,14 +5333,31 @@ function svcDrillList(title, what, body) {
 }
 // The list for the open card, or "" -- placed right under the cards it belongs to.
 function svcDrillFor(m, keys) {
-  const k = svcDrill;
-  if (!k || !keys.some(p => k === p || k.startsWith(p + ":"))) return "";
+  // "g-<list>" is a list opened from the person grid (serviceStatsHtml), so
+  // it opens under the grid and not under the section that shares its list.
+  let k = svcDrill;
+  if (!k || !keys.some(p => k === p || k.startsWith(p + ":") || k.startsWith(p + "-"))) return "";
+  if (k.startsWith("g-")) k = k.slice(2);
   const [kind, a, b] = k.split(":");
   const per = n => n === "team" ? (() => true) : n === "others" ? (r => !r.by) : (r => r.by === n);
   const who = n => n === "team" ? "Team" : n === "others" ? "Others" : n.split(" ")[0];
   const pipeName = Object.fromEntries((m.pipelines || []).map(([x, l]) => [x, l]));
   const cbDone = m.callbacks.filter(r => r.minutes != null);
   const n = x => `${x.length} `;
+  if (kind === "openall") { const o = m.openRows; return svcDrillList(`Team · open SRs${o ? " · " + o.length : ""}`, `Overdue first, as of ${fmtShortDate(m.days[m.days.length - 1])}.`, svcOpenTable(o, m)); }
+  if (kind === "dials") { const rs = m.dials.filter(r => a === "team" || r.who === a);
+    return svcDrillList(`${a === "team" ? "Team" : cesc(a.split(" ")[0])} · dials · ${rs.length} number${rs.length === 1 ? "" : "s"}`,
+      (m.dialDays ? "" : "Dials are counted from 2026-09-29. ") + "One row per number, with how many times it was dialled. Crystal's are her service dials only; her new-business dials are on the Sales Center.", svcDialTable(rs, m)); }
+  if (kind === "sentby") { const rs = m.msg.sent.filter(r => a === "team" || r.who === a);
+    return svcDrillList(`${a === "team" ? "Team" : cesc(a.split(" ")[0])} · sent · ${rs.filter(r => !r.auto).length} typed`, "Every text and email to a customer, typed first.", svcSentTable(rs, m)); }
+  if (kind === "front") { const rs = a === "calls" ? m.front.calls : m.front.created;
+    return svcDrillList(`Team · ${a === "calls" ? "calls answered" : "SRs created"} · ${rs.length}`, "", a === "calls" ? svcCallTable(rs, m) : svcCreatedTable(rs, m)); }
+  if (kind === "notesall" || kind === "oppall") {
+    const PB = m.playbook || {}, typeLabel = Object.fromEntries(Object.entries(PB.request_types || {}).map(([x, [l]]) => [x, l]));
+    const rs = kind === "notesall" ? m.completed.filter(r => r.audit).sort((x, y) => y.audit.missing.length - x.audit.missing.length)
+      : m.completed.filter(r => r.audit && r.audit.opp !== "none");
+    return svcDrillList(`Team · ${kind === "notesall" ? "notes" : "opportunities"} · ${rs.length}`, kind === "notesall" ? "Missing parts first." : "", svcSrTable(withAudit(rs, typeLabel), m, true));
+  }
   if (kind === "tasks") return svcDrillList(`Service Tasks · ${n(m.taskRows)}due`, "Every service task due in this period, not done first.", svcTaskTable(m.taskRows));
   if (kind === "srs") return svcDrillList(`SRs Completed · ${m.completed.length}`, "Every service SR completed in this period, newest first.", svcSrTable(m.completed, m, true));
   if (kind === "cbwho") { const rs = m.callbacks.filter(r => a === "others" ? r.by === "other" : r.by === a);
@@ -5386,32 +5422,107 @@ function svcDrillFor(m, keys) {
   }
   return "";
 }
+function svcDialTable(rs, m) {
+  if (!rs.length) return '<p class="sd">None.</p>';
+  const secs = x => x >= 60 ? `${Math.floor(x / 60)}m ${String(x % 60).padStart(2, "0")}s` : `${x}s`;
+  const rows = [...rs].sort((a, b) => (b.day || "").localeCompare(a.day || "") || (b.first || "").localeCompare(a.first || "")).map(r => `<tr>
+    <td>${svcTime(r.first)}</td><td>${svcLink(r.link_kind, r.link_id, r.name || fmtPhone(r.number))}<div style="font-size:11.5px;color:var(--text-muted)">${cesc(fmtPhone(r.number))} &middot; ${cesc(r.bucket || "")}</div></td>
+    <td>${svcFirst(r.who)}</td><td class="num">${r.attempts}</td><td class="num">${r.seconds ? secs(r.seconds) : "—"}</td></tr>`).join("");
+  return `<div class="scroll"><table class="rtable"><thead><tr><th>First dial</th><th>Called</th><th>By</th><th class="num">Dials</th><th class="num">Longest connected</th></tr></thead><tbody>${rows}</tbody></table></div>`;
+}
+/* The Service Digest's people (Frank, 2026-09-29: "no leaderboard but cards
+   per producer with their own tasks/SR's completed, dials ... Speed to
+   reply, and all the other stats"; option D, "when I dont have a rep
+   selected i want it to display the team totals"). A strip of one small card
+   per person; the grid under it is the whole team until a person is picked,
+   then theirs, with their role's checklist from the playbook. Nobody is
+   ranked. Every tile opens the accounts it counts. */
+let svcPerson = "";
+function svcStats(m, n) {
+  const team = m.team.map(t => t.name);
+  const mine = r => !n || r.by === n;
+  const srs = m.completed.filter(mine);
+  const k = n ? (m.tasks[n] || { due: 0, completed: 0 })
+    : Object.values(m.tasks).reduce((a, t) => ({ due: a.due + t.due, completed: a.completed + t.completed }), { due: 0, completed: 0 });
+  const b = n ? (m.backlog[n] || {}) : team.reduce((a, x) => ({ open: a.open + ((m.backlog[x] || {}).open || 0), overdue: a.overdue + ((m.backlog[x] || {}).overdue || 0) }), { open: 0, overdue: 0 });
+  const dials = m.dials.filter(r => !n || r.who === n);
+  // The team's call backs are every missed service call; a person's are the ones they returned.
+  const cbs = n ? m.callbacks.filter(r => r.by === n) : m.callbacks;
+  const cbDone = cbs.filter(r => r.minutes != null);
+  const need = m.msg.replies.filter(r => (!n || r.who === n) && !r.ack && !r.optout);
+  const ans = need.filter(r => r.minutes != null);
+  const ppl = n ? [n] : team;
+  const msum = key => ppl.reduce((a, x) => a + ((m.msg.people[x] || {})[key] || 0), 0);
+  const aud = srs.filter(r => r.audit), meets = aud.filter(r => !r.audit.missing.length);
+  const U = ppl.reduce((a, x) => { const u = m.util[x] || {}; return { p: a.p + (u.p || 0), t: a.t + (u.t || 0) }; }, { p: 0, t: 0 });
+  const sells = new Set(((m.playbook || {}).sells) || ["Amanda Torricellas", "Crystal Mango"]);
+  return { srs, k, b, dials, cbs, cbDone, need, ans, aud, meets, U, texts: msum("texts"), emails: msum("emails"),
+    autos: msum("auto_texts") + msum("auto_emails"), customers: msum("customers"),
+    opp: { worked: aud.filter(r => r.audit.opp === "passed").length, missed: aud.filter(r => r.audit.opp === "missed").length, sells: !n || sells.has(n) },
+    calls: m.front.calls.filter(r => !n || r.who === n), created: m.front.created.filter(r => !n || r.by === n) };
+}
+function serviceStatsHtml(m) {
+  // The playbook's own order and titles (Service Lead, Service Team Member,
+  // Front Desk) where the day carries it.
+  const PB = m.playbook, order = PB ? Object.keys(PB.roles) : [];
+  const team = m.team.map(t => t.name).sort((x, y) => PB ? order.indexOf(PB.role_of[x]) - order.indexOf(PB.role_of[y]) : 0);
+  if (svcPerson && !team.includes(svcPerson)) svcPerson = "";
+  const n = svcPerson, first = x => x.split(" ")[0];
+  const pct = (a, t) => t ? Math.round(100 * a / t) + "%" : "—";
+  const medMins = rs => rs.length ? Math.round(median(rs.map(r => r.minutes))) : null;
+  const title = x => (PB && PB.role_of[x] && PB.roles[PB.role_of[x]] ? PB.roles[PB.role_of[x]].title : "")
+    || SERVICE_TITLES[x] || (m.team.find(t => t.name === x) || {}).role || "";
+  const strip = team.map(x => { const S = svcStats(m, x), rm = medMins(S.ans), on = x === n;
+    return `<div class="tile rdrill${on ? " on" : ""}" data-sperson="${cesc(x)}" role="button" tabindex="0" style="text-align:left">
+      <div style="display:flex;justify-content:space-between;align-items:baseline;gap:8px">${pbadge(DOT[x] || TEAM_DOT, first(x))}<span class="n">${cesc(title(x))}</span></div>
+      <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:4px;text-align:center;margin-top:10px">
+        <div><div class="v" style="font-size:19px">${S.srs.length}</div><div class="n">SRs</div></div>
+        <div><div class="v" style="font-size:19px">${S.k.completed}/${S.k.due}</div><div class="n">tasks</div></div>
+        <div><div class="v ${replyTier(rm)}" style="font-size:19px">${fmtMins(rm)}</div><div class="n">reply</div></div>
+        <div><div class="v${S.b.overdue ? " tr" : ""}" style="font-size:19px">${S.b.overdue ?? 0}</div><div class="n">overdue</div></div></div></div>`; }).join("");
+  const S = svcStats(m, n);
+  const g = (key, teamKey) => "g-" + (n ? key : teamKey);
+  const cbMed = medMins(S.cbDone), rMed = medMins(S.ans), wait = S.need.length - S.ans.length;
+  const tile = (key, k, v, note, cls) => key ? `<div${sdk(key)}><div class="k">${k}</div><div class="v${cls ? " " + cls : ""}">${v}</div><div class="n">${note}</div></div>`
+    : `<div class="tile"><div class="k">${k}</div><div class="v">${v}</div><div class="n">${note}</div></div>`;
+  const connected = S.dials.filter(r => r.seconds > 0).length;
+  const u = n ? (m.util[n] || {}) : {};
+  const tiles = [
+    tile(g(`role:${n}:srs`, "srs"), "SRs completed", S.srs.length, S.srs.length ? `median ${fmtDur(svcMedian(S.srs.map(r => r.hours)))} created to completed` : "none completed"),
+    tile(g(`role:${n}:tasks`, "tasks"), "Tasks done", `${S.k.completed}<span style="font-size:15px;color:var(--text-muted)"> / ${S.k.due}</span>`, `${pct(S.k.completed, S.k.due)} of service tasks due`),
+    tile(g(`role:${n}:open`, "openall"), "Open SRs", S.b.open ?? 0, `<b${S.b.overdue ? ' style="color:var(--bad)"' : ""}>${S.b.overdue ?? 0}</b> overdue &middot; as of ${fmtShortDate(m.days[m.days.length - 1])}`),
+    tile(`g-dials:${n || "team"}`, n && n === "Crystal Mango" ? "Service dials" : "Dials", m.dialDays ? S.dials.length : "—",
+      m.dialDays ? `numbers &middot; ${S.dials.reduce((a, r) => a + r.attempts, 0)} dials &middot; ${connected} connected${n === "Crystal Mango" ? " &middot; service only" : ""}` : "counted from 2026-09-29"),
+    tile(g(`cbwho:${n}`, "callbacks"), "Call backs", `<span class="${replyTier(cbMed)}">${fmtMins(cbMed)}</span>`,
+      n ? `median to return &middot; ${S.cbDone.length} returned` : `median to return &middot; ${S.cbDone.length} of ${S.cbs.length} missed calls returned same day`),
+    tile(g(`msg:who:${n}`, "msg:answered"), "Speed to reply", `<span class="${replyTier(rMed)}">${fmtMins(rMed)}</span>`,
+      `median &middot; ${S.ans.length} answered${wait ? ` &middot; <b style="color:var(--bad)">${wait} waiting</b>` : ""}`),
+    tile(`g-sentby:${n || "team"}`, "Texts / Emails", `${S.texts} / ${S.emails}`, `typed &middot; ${S.autos} more by automation`),
+    tile(g(`role:${n}:calls`, "front:calls"), "Calls answered", m.front.days ? S.calls.length : "—", "inbound, picked up first"),
+    tile(g(`role:${n}:created`, "front:created"), "SRs created", m.front.days ? S.created.length : "—", "created and assigned"),
+    tile(g(`role:${n}:notes`, "notesall"), "Note standard", S.aud.length ? pct(S.meets.length, S.aud.length) : "—", `${S.meets.length} of ${S.aud.length} notes answer Who / What / Why / Outcome / Next step`),
+    tile(g(`role:${n}:opp`, "oppall"), "Opportunities", S.opp.worked, `${S.opp.sells ? "worked (quoted, lead set or passed)" : "passed to a producer"} &middot; <b${S.opp.missed ? ' style="color:var(--warn, #b45309)"' : ""}>${S.opp.missed}</b> not ${S.opp.sells ? "noted" : "passed"}`),
+    tile("", "Utilization", S.U.t ? pct(S.U.p, S.U.t) : "—", u.hybrid ? "whole day, shared with sales" : "productive / tracked time"),
+  ].join("");
+  let role = "";
+  if (n && m.playbook && m.playbook.role_of[n]) {
+    const R = m.playbook.roles[m.playbook.role_of[n]];
+    role = `<h3 class="rh3" style="margin-top:14px">${cesc(first(n))}'s role · ${cesc(R.title)}</h3>
+      <p class="sd" style="margin:0 0 6px;font-style:italic">${cesc(R.primary)}</p>
+      <div class="scroll"><table class="rtable"><tbody>${roleMeasures(m, n).map(x => `<tr class="rdrill-row${svcDrill === `g-role:${n}:${x.key}` ? " on" : ""}" data-sdrill="g-role:${n}:${x.key}" tabindex="0" role="button"><td>${cesc(x.label)}</td><td style="text-align:right">${x.value}</td></tr>`).join("")}</tbody></table></div>
+      <p class="sd" style="margin-top:6px">${cesc(R.expectation)}</p>`;
+  }
+  return `<div class="sect"><h2>Service Team</h2>
+    <p class="sd">Pick a person for their own stats; with nobody picked the cards below are the whole team. Credit goes to whoever completed the SR or task. Click any card for the accounts behind it.</p>
+    <div class="tiles" style="grid-template-columns:repeat(auto-fill,minmax(250px,1fr))">${strip}</div>
+    <div class="tile" style="margin-top:12px;text-align:left;background:var(--surface-2, transparent)">
+      <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:8px">
+        <b>${n ? `${pbadge(DOT[n] || TEAM_DOT, first(n))} <span style="margin-left:4px">${cesc(title(n))}</span>` : `${pbadge(TEAM_DOT, "Team")} <span style="margin-left:4px">totals</span>`}</b>
+        ${n ? '<a href="#" data-sperson="">Show the team</a>' : ""}</div>
+      <div class="tiles">${tiles}</div>${role}${svcDrillFor(m, ["g"])}</div></div>`;
+}
 // A card that opens a list: wraps a tile's attributes.
 const sdk = (k, extra) => ` data-sdrill="${k}" role="button" tabindex="0" class="tile rdrill${svcDrill === k ? " on" : ""}${extra ? " " + extra : ""}"`;
-/* Speed to Call Back by person (Frank, 2026-09-27: "the same way you did it
-   for the reply back time"): under the team's Call-Back Resolution card, one
-   card per person -- median minutes from the missed call to their return
-   call, quickest and longest, green at 15 minutes or less, red over an hour
-   (REPLY_GOAL). A call is credited to whoever called back; one never
-   returned belongs to nobody, so it shows on the team card only. */
-function callbackSpeedHtml(m) {
-  const done = m.callbacks.filter(r => r.minutes != null);
-  if (!done.length) return "";
-  const card = (key, label, rs) => { const x = rs.map(r => r.minutes);
-    return `<div${sdk("cbwho:" + key)}><div class="k">${label}</div>
-      <div class="v"><span class="${replyTier(median(x))}">${fmtMins(Math.round(median(x)))}</span></div>
-      <div class="n">median &middot; ${x.length} returned</div>
-      <div class="n" style="margin-top:5px">quickest ${fmtMins(Math.min(...x))} &middot; longest ${fmtMins(Math.max(...x))}</div></div>`; };
-  const team = m.team.map(t => t.name);
-  const cards = team.map(n => [n, done.filter(r => r.by === n)]).filter(([, rs]) => rs.length)
-    .map(([n, rs]) => card(n, pbadge(DOT[n] || TEAM_DOT, n.split(" ")[0]), rs)).join("");
-  const others = done.filter(r => r.by === "other");
-  const waiting = m.callbacks.length - done.length;
-  return `<h3 class="rh3" style="margin-top:14px">Speed to Call Back by person</h3>
-    <p class="sd" style="margin:0 0 6px">From a missed service call to the first call back, credited to whoever made it.
-    Green is 15 minutes or less, red over an hour.${waiting ? ` ${waiting} not returned the same day (on the team card above).` : ""}</p>
-    <div class="tiles">${cards}${others.length ? card("others", pbadge("#8a877f", "Others"), others) : ""}</div>${svcDrillFor(m, ["cbwho"])}`;
-}
 /* ---- The Service Playbook (Amanda, head of service; Frank, 2026-09-28) ------
    service_playbook.py is her document; each day's `playbook` carries it here.
    By Role gives each person the measures of their own role's
@@ -5500,24 +5611,6 @@ function roleMeasures(m, n) {
     notes,
   ];
 }
-function roleCardsHtml(m) {
-  const PB = m.playbook;
-  if (!PB) return "";
-  const order = Object.keys(PB.roles);    // the playbook's own order: Lead, Team Member, Front Desk
-  const team = m.team.map(t => t.name).filter(n => PB.role_of[n])
-    .sort((x, y) => order.indexOf(PB.role_of[x]) - order.indexOf(PB.role_of[y]));
-  const card = n => { const R = PB.roles[PB.role_of[n]];
-    const lines = roleMeasures(m, n).map(x => `<div class="n rline${svcDrill === `role:${n}:${x.key}` ? " on" : ""}" data-sdrill="role:${n}:${x.key}" role="button" tabindex="0" style="cursor:pointer;margin-top:6px">
-      <span style="color:var(--text-muted)">${cesc(x.label)}</span><br>${x.value}</div>`).join("");
-    return `<div class="tile" style="text-align:left">
-      <div class="k">${pbadge(DOT[n] || TEAM_DOT, n.split(" ")[0])} <span style="margin-left:4px">${cesc(R.title)}</span></div>
-      <div class="n" style="margin-top:6px;font-style:italic">${cesc(R.primary)}</div>${lines}
-      <div class="n" style="margin-top:10px;font-size:11.5px;color:var(--text-muted)">${cesc(R.expectation)}</div>
-      <div class="n" style="margin-top:6px"><a href="#" data-sdrill="person:${cesc(n)}">Everything ${cesc(n.split(" ")[0])} worked</a></div></div>`; };
-  return `<div class="sect"><h2>By Role</h2>
-    <p class="sd">Each person against their own role in the Service Playbook. Open and overdue SRs are as of ${fmtShortDate(m.days[m.days.length - 1])}. Click a line for its list.</p>
-    <div class="tiles">${team.map(card).join("")}</div>${svcDrillFor(m, ["role", "person"])}</div>`;
-}
 function noteStandardHtml(m) {
   const PB = m.playbook;
   const aud = m.completed.filter(r => r.audit);
@@ -5551,53 +5644,14 @@ function playbookHtml(m) {
     <p class="sd"><i>${cesc(PB.closing)}</i></p></details></div>`;
 }
 function servicePanel(m) {
-  const team = m.team.map(t => t.name);
-  const first = n => n.split(" ")[0];
-  const pct = x => x == null ? "—" : Math.round(x) + "%";
-  const mins = x => x == null ? "—" : (x < 60 ? Math.round(x) + "m" : (Math.round(x / 6) / 10) + "h");
-  const T = Object.values(m.tasks).reduce((a, t) => ({ due: a.due + t.due, completed: a.completed + t.completed }), { due: 0, completed: 0 });
-  const cbDone = m.callbacks.filter(r => r.minutes != null);
-  const U = team.reduce((a, n) => { const u = m.util[n] || {}; return { p: a.p + (u.p || 0), t: a.t + (u.t || 0) }; }, { p: 0, t: 0 });
-  const tiles = `<div class="tiles">
-    <div${sdk("tasks")}><div class="k">Service Tasks Done</div>
-      <div class="v">${T.completed}<span style="font-size:15px;color:var(--text-muted)"> / ${T.due}</span></div>
-      <div class="n">${T.due ? pct(100 * T.completed / T.due) : "—"} of service tasks due</div></div>
-    <div${sdk("srs")}><div class="k">SRs Completed</div>
-      <div class="v">${m.completed.length}</div><div class="n">median ${fmtDur(svcMedian(m.completed.map(r => r.hours)))} created to completed</div></div>
-    <div${sdk("callbacks")}><div class="k">Call-Back Resolution</div>
-      <div class="v"><span class="${replyTier(svcMedian(cbDone.map(r => r.minutes)))}">${fmtMins(cbDone.length ? Math.round(svcMedian(cbDone.map(r => r.minutes))) : null)}</span></div>
-      <div class="n">median to the first return call &middot; ${cbDone.length} of ${m.callbacks.length} missed service calls returned same day</div></div>
-    <div class="tile"><div class="k">Utilization</div>
-      <div class="v">${U.t ? pct(100 * U.p / U.t) : "—"}</div><div class="n">productive / tracked time, whole team</div></div>
-  </div>${svcDrillFor(m, ["tasks", "srs", "callbacks"])}${callbackSpeedHtml(m)}`;
-  const person = n => {
-    const k = m.tasks[n] || { due: 0, completed: 0 }, u = m.util[n] || {}, b = m.backlog[n] || {};
-    const mine = m.completed.filter(r => r.by === n);
-    const cb = cbDone.filter(r => r.by === n);
-    // Titles set here win over the ones stored in each day's document, so a
-    // range ending before a retitle still shows the current one (Amanda was
-    // "Hybrid" in documents built before 2026-09-24).
-    const role = SERVICE_TITLES[n] || (m.team.find(t => t.name === n) || {}).role || "";
-    return `<div${sdk("person:" + n)}>
-      <div class="k">${pbadge(DOT[n] || TEAM_DOT, first(n))} <span style="margin-left:4px">${role}</span></div>
-      <div class="n" style="margin-top:8px"><b>${k.completed}/${k.due}</b> service tasks &middot; <b>${mine.length}</b> SRs completed${mine.length ? ` (median ${fmtDur(svcMedian(mine.map(r => r.hours)))})` : ""}</div>
-      <div class="n"><b>${b.open ?? 0}</b> open SRs &middot; <b>${b.overdue ?? 0}</b> overdue</div>
-      <div class="n">Call backs <b>${cb.length}</b>${cb.length ? ` &middot; median ${mins(svcMedian(cb.map(r => r.minutes)))}` : ""}</div>
-      ${m.msg.days ? (() => { const p = m.msg.people[n] || {}, need = m.msg.replies.filter(r => r.who === n && !r.ack && !r.optout),
-        a = need.filter(r => r.minutes != null).map(r => r.minutes), w = need.length - a.length;
-        return `<div class="n">Texts <b>${p.texts || 0}</b> &middot; Emails <b>${p.emails || 0}</b> &middot; Reply ${a.length ? `median <b class="${replyTier(median(a))}">${fmtMins(median(a))}</b>` : "<b>—</b>"}${w ? ` &middot; <b style="color:var(--bad)">${w} waiting</b>` : ""}</div>`; })() : ""}
-      <div class="n">Utilization <b>${u.t ? pct(100 * u.p / u.t) : "—"}</b>${u.hybrid ? ' <span style="color:var(--text-muted)">&middot; whole day, shared with sales</span>' : ""}</div>
-    </div>`;
-  };
-  return `${playbookHtml(m)}<div class="sect"><h2>Service Team</h2>
-    <p class="sd">Credit goes to whoever completed the SR or task.</p>${tiles}</div>
-    ${m.playbook ? roleCardsHtml(m) + noteStandardHtml(m) : ""}
+  return `${playbookHtml(m)}${serviceStatsHtml(m)}
+    ${m.playbook ? noteStandardHtml(m) : ""}
     ${svcMessagesHtml(m)}
     ${SR_OUTCOME_SECTIONS.map(([p, t, w, b]) => srOutcomeHtml(m, p, t, w, b)).join("")}
     ${completionTimeHtml(m)}
     ${latePaymentsHtml(m)}
     ${missingDocsHtml(m)}
-    ${m.playbook ? "" : `<div class="sect"><h2>By Person</h2><p class="sd">Open and overdue SRs are as of ${fmtShortDate(m.days[m.days.length - 1])}.</p><div class="tiles">${team.map(person).join("")}</div>${svcDrillFor(m, ["person"])}</div>`}`;
+`;
 }
 // The Sales Digest's date filter, as service days (the Service Digest and the
 // Renewals tab share it -- Frank, 2026-09-27).
@@ -5634,6 +5688,12 @@ async function paintService() {
       el.onkeydown = e => { if (e.key === "Enter" || e.key === " ") go(e); };
     });
     v.querySelectorAll("[data-sdrill-close]").forEach(el => el.onclick = e => { e.preventDefault(); svcDrill = ""; paint(); });
+    v.querySelectorAll("[data-sperson]").forEach(el => {
+      const go = e => { if (e) e.preventDefault(); const x = el.dataset.sperson;
+        svcPerson = x && svcPerson !== x ? x : ""; if (svcDrill.startsWith("g-")) svcDrill = ""; paint(); };
+      el.onclick = go;
+      el.onkeydown = e => { if (e.key === "Enter" || e.key === " ") go(e); };
+    });
     window.scrollTo(0, y);
   };
   paint();

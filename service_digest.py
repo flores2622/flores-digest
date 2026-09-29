@@ -424,6 +424,55 @@ def callback_figures(day, recs=None, commercial_only=frozenset()):
     return {"rows": rows}
 
 
+# Crystal also sells, so only her dials to service numbers are service work
+# (Frank, 2026-09-29: "dials (for Crystal the Service dials only)"); her
+# new-business dials are the Sales Center's.
+SERVICE_ONLY_DIALS = {"Crystal Mango"}
+DIAL_SERVICE_BUCKETS = {"customer", "open SR"}
+
+
+def dial_figures(day, recs=None, commercial_only=frozenset()):
+    """Every number each service team member dialled on the day, one row per
+    (person, number): attempts, the longest connected leg, and whether the
+    number routes to service (missed_call_audit.route: a customer, an open
+    SR). Debbie's and Amanda's every dial counts; Crystal's only those that
+    route to service. A commercial-only household is Cerberus's. Rows, never
+    totals."""
+    import commercial
+    import inbound
+    import missed_call_audit as mca
+    recs = recs if recs is not None else mca.collect(day, refresh=False)
+    idx, *_ = mca.build_index(day)
+    per = {}
+    for r in recs:
+        if r.get("direction") != "Outbound" or inbound.az_day(r) != day:
+            continue
+        who = (r.get("from") or {}).get("name")
+        n = mca.norm((r.get("to") or {}).get("phoneNumber"))
+        if who not in SERVICE_TEAM or not n:
+            continue
+        hit = idx.get(n)
+        if commercial.is_commercial_caller(hit, commercial_only):
+            continue
+        bucket = mca.route(hit)[0]
+        service = bucket in DIAL_SERVICE_BUCKETS
+        if who in SERVICE_ONLY_DIALS and not service:
+            continue
+        row = per.get((who, n))
+        if row is None:
+            h = hit or {}
+            cust = (h.get("cust") or [None])[0]
+            lead = (h.get("lead") or [None])[0] if not cust else None
+            row = per[(who, n)] = {"who": who, "number": n, "attempts": 0, "seconds": 0, "bucket": bucket,
+                                   "service": service, "renewal": renewal_caller(hit),
+                                   "name": mca.name_for(h, None), "first": r.get("startTime"),
+                                   "link_kind": "customer" if cust else ("lead" if lead else None),
+                                   "link_id": (cust or lead or {}).get("id")}
+        row["attempts"] += 1
+        row["seconds"] = max(row["seconds"], int(r.get("duration") or 0) if r.get("result") == "Call connected" else 0)
+    return {"rows": sorted(per.values(), key=lambda x: (x["who"], x["first"] or ""))}
+
+
 # A service team member picking up an inbound call: their own phone ringing
 # (FindMe to themselves), a pickup off park, or their desk phone -- the same
 # legs inbound.attribute() reads for producers.
@@ -512,6 +561,11 @@ def build(day, log=log, refresh_households=True):
     except Exception as e:
         log(f"  call backs failed ({type(e).__name__}: {e})")
         callbacks = None
+    try:
+        dials = dial_figures(day, commercial_only=com_only)
+    except Exception as e:
+        log(f"  dials failed ({type(e).__name__}: {e})")
+        dials = None
     # Texts and emails with customers (service_messages.py, Frank 2026-09-27).
     try:
         import service_messages
@@ -543,6 +597,7 @@ def build(day, log=log, refresh_households=True):
         "pipelines": [[k, label, kind] for k, label, _, kind in PIPELINES],
         "renewals": renewals,
         "callbacks": callbacks,
+        "dials": dials,
         "messages": messages,
         "front": front,
         "playbook": __import__("service_playbook").as_doc(),
@@ -960,12 +1015,51 @@ def add_roles(start, end, log=log):
     return changed
 
 
+def add_dials(start, end, log=log):
+    """Add the service dials (`dials`, dial_figures) to published days from
+    `start` to `end`, from each day's saved call log (disk, else R2's day
+    cache). Backs each up under backups/<today>-dials/ and changes nothing
+    else; a day with no saved call log is left alone (Frank, 2026-09-29)."""
+    import commercial
+    import publish_board
+    import r2_cache
+    import service_retention
+    cli, bucket = publish_board._client()
+    _, com_only = commercial.households(service_retention.load_household_map(log=log))
+    stamp = dt.date.today().isoformat()
+    changed = []
+    for d in [x for x in _published_days(cli, bucket) if start <= x <= end]:
+        f = ROOT / "data" / f"rc_raw_{d}.json"
+        try:
+            recs = json.loads(f.read_text()) if f.exists() else json.loads(
+                cli.get_object(Bucket=bucket, Key=r2_cache._key(d, f"rc_raw_{d}.json"))["Body"].read())
+        except Exception:
+            log(f"  {d}: no call log saved, left alone")
+            continue
+        key = _key(d)
+        raw = cli.get_object(Bucket=bucket, Key=key)["Body"].read()
+        doc = json.loads(raw)
+        doc["dials"] = dial_figures(d, recs=recs, commercial_only=com_only)
+        backup = f"backups/{stamp}-dials/{key}"
+        try:
+            cli.head_object(Bucket=bucket, Key=backup)
+        except Exception:
+            cli.put_object(Bucket=bucket, Key=backup, Body=raw, ContentType="application/json")
+        cli.put_object(Bucket=bucket, Key=key, Body=json.dumps(doc, default=str).encode(),
+                       ContentType="application/json", CacheControl="no-store")
+        changed.append(d)
+        log(f"  {d}: {len(doc['dials']['rows'])} numbers dialled")
+    return changed
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--day")
     ap.add_argument("--dry-run", action="store_true")
     ap.add_argument("--add-roles", nargs=2, metavar=("START", "END"),
                     help="add the playbook read and Front Desk rows to published days")
+    ap.add_argument("--add-dials", nargs=2, metavar=("START", "END"),
+                    help="add the service dials to published days from their saved call logs")
     ap.add_argument("--refresh-renewals", action="store_true",
                     help="only re-read the renewal outcomes of earlier published days")
     ap.add_argument("--add-lists", action="store_true",
@@ -991,6 +1085,9 @@ def main():
         return
     if a.add_roles:
         add_roles(*a.add_roles)
+        return
+    if a.add_dials:
+        add_dials(*a.add_dials)
         return
     if a.refresh_renewals:
         refresh_past_renewals(day)

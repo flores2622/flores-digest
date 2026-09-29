@@ -101,6 +101,7 @@ def basis(day):
         "live": live,
         "talk": talk,
         "contact": _contact_basis(),
+        "tasks": _task_basis(day),
         "producers": {n: {"rc_id": v["rc_id"], "az_id": v["az_id"]}
                       for n, v in cfg.PRODUCERS.items()},
         "not_a_sale": sorted(lead_sources.NOT_A_SALE),
@@ -179,6 +180,33 @@ def _contact_basis():
         "rc_no_connect": sorted(lc.RC_NO_CONNECT),
         "min_contact_seconds": lc.MIN_CONTACT_SECONDS,
         "provisional_seconds": PROVISIONAL_LIVE_SECONDS,
+    }
+
+
+def _task_basis(day):
+    """What the Worker needs to keep Task Completion live (site/live.js
+    tasksLive): az_tasks.audit's exclusion patterns and task_audit's
+    cancellation patterns as regex source, and this checkpoint's own
+    verdicts on the tasks it saw closed (duplicate lead -> excluded,
+    smart-cycled by the producer -> excused). A task closed after the
+    checkpoint is judged by the same patterns on the lead's stage moves."""
+    import re
+    import task_audit
+    rx = lambda r: [r.pattern, "i" if r.flags & re.I else ""]
+    verdicts = {}
+    path = ROOT / f"data/az_tasks_{day}.json"
+    if path.exists():
+        try:
+            verdicts = task_audit.cancellation_verdicts(
+                day, json.loads(path.read_text()),
+                {v["az_id"]: k for k, v in cfg.PRODUCERS.items()})
+        except Exception:
+            verdicts = {}
+    return {
+        "verdicts": {str(k): v for k, v in verdicts.items()},
+        "rx": {"title": rx(cfg.SERVICE_TITLE_RE), "body": rx(cfg.SERVICE_BODY_RE),
+               "loss": rx(task_audit.LOSS_RE), "duplicate": rx(task_audit.LOSS_DUPLICATE_RE),
+               "cycle": rx(task_audit.SMART_CYCLE_RE)},
     }
 
 
