@@ -156,6 +156,8 @@ Everything caches under `data/`, so a re-run resumes rather than restarting.
   ("some should be spanish, some english, and some mixed"): the persona
   screen picks, or "any" gives a Hispanic surname a third each; Spanish uses
   Mexican / Latin American voices, mixed Deepgram's five code-switching ones.
+  **Crystal never gets Spanish or mixed** (Frank, 2026-09-29: "she doesnt
+  speak it") -- `RP_ENGLISH_ONLY`; she has no language choice.
   The Worker's `/api/roleplay/speak` streams them and needs the
   `DEEPGRAM_API_KEY` secret (without it the browser's voice speaks). Apollo
   grades in English whatever the call's language. **Producers rate the voice

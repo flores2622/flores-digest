@@ -3448,6 +3448,10 @@ const RP_HISPANIC_LAST = new Set(["Garcia", "Martinez", "Lopez", "Hernandez", "R
 // on the persona screen, remembered per browser; "any" rolls it -- a third
 // each for a Hispanic surname, English otherwise.
 let rpLangPref = "any";
+// Producers who don't speak Spanish only ever get English prospects
+// (Frank, 2026-09-29: "crystal CANNOT have any spanish. she doesnt speak it").
+const RP_ENGLISH_ONLY = new Set(["Crystal Mango"]);
+const rpEnglishOnly = () => RP_ENGLISH_ONLY.has(rpProducer);
 try { rpLangPref = localStorage.getItem("rpLangPref") || "any"; } catch (_) {}
 function rpMakeProspect(groupKey) {
   const sex = Math.random() < 0.5 ? "f" : "m";
@@ -3458,7 +3462,7 @@ function rpMakeProspect(groupKey) {
   const [job, lo, hi] = rpPick(jobs);
   const age = rpInt(Math.max(lo, settled ? 27 : lo), hi);
   let first = rpPick(RP_FIRST[sex]), last = rpPick(RP_LAST);
-  let lang = rpLangPref !== "any" ? rpLangPref
+  let lang = rpEnglishOnly() ? "en" : rpLangPref !== "any" ? rpLangPref
     : RP_HISPANIC_LAST.has(last) ? rpPick(["en", "es", "mix"]) : "en";
   if (lang !== "en") {
     if (!RP_HISPANIC_FIRST.has(first)) first = rpPick(RP_FIRST[sex].filter(n => RP_HISPANIC_FIRST.has(n)));
@@ -3721,9 +3725,9 @@ function roleplayPanel() {
       <p class="sd">Practicing as <b>${rpProducer}</b>. <button class="ghost" id="rpChangeProducer" type="button" style="margin-left:6px">change</button></p>
       ${rpIsBeta() ? `<div class="note" style="border:1px dashed var(--border-strong);border-radius:8px;padding:10px 14px;margin-bottom:12px"><b>Beta / testing.</b> This session runs on <b>${rpWeakFor() || "a real producer"}</b>'s real activity -- the objections their calls have been losing on -- and moves to the next producer with each session. Graded like any session, but saved to the beta area: it never counts toward any producer's history or weak spots.</div>` : ""}
       ${recHtml}
-      <p class="sd" style="margin:0 0 10px">Prospect speaks
+      ${rpEnglishOnly() ? `<p class="sd" style="margin:0 0 10px">Prospect speaks English.</p>` : `<p class="sd" style="margin:0 0 10px">Prospect speaks
         <select id="rpLangSel">${[["any", "any language (mixed up)"], ["en", "English"], ["es", "Spanish"], ["mix", "English + Spanish"]]
-          .map(([k, l]) => `<option value="${k}"${k === rpLangPref ? " selected" : ""}>${l}</option>`).join("")}</select></p>
+          .map(([k, l]) => `<option value="${k}"${k === rpLangPref ? " selected" : ""}>${l}</option>`).join("")}</select></p>`}
       <div class="pcards">${RP_PERSONAS.map(p => `<div class="pcard" data-persona="${p.key}">
         <div class="pn">${p.name}</div><div class="sd" style="margin:4px 0 0">${p.blurb}</div></div>`).join("")}</div></div>
       ${histHtml}`;
