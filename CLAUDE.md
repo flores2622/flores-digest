@@ -150,6 +150,23 @@ Everything caches under `data/`, so a re-run resumes rather than restarting.
   sources still get coaching cards** and count in every coaching figure like
   any other call. Role Play draws a session's lead source from the
   producer's own cards over the trailing 4 weeks.
+- **Role Play prospects speak with Deepgram voices** (Frank, 2026-09-29).
+  `RP_VOICES` (index.html) tags each Aura-2 voice by language, sex and age
+  band, and each prospect gets one that fits. **English, Spanish and mixed**
+  ("some should be spanish, some english, and some mixed"): random, a third
+  each, with **no language choice on the screen** (Frank, 2026-09-29: "i dont
+  want a language dropdown"). Spanish uses Mexican / Latin American voices,
+  mixed Deepgram's five code-switching ones. First names come from the whole
+  American + Hispanic list in every language; a Spanish or mixed prospect
+  has a Hispanic surname. **Crystal never gets Spanish or mixed** (Frank,
+  2026-09-29: "she doesnt speak it") -- `RP_ENGLISH_ONLY`.
+  The Worker's `/api/roleplay/speak` streams them and needs the
+  `DEEPGRAM_API_KEY` secret (without it the browser's voice speaks). Apollo
+  grades in English whatever the call's language. **Producers rate the voice
+  after each graded session** (stars, again yes / no, a comment), saved on
+  the session and in `roleplay-voices/ratings.json`; the ratings table on
+  the Role Play tab is Frank's alone (`ROLEPLAY_VOICE_VIEWERS`). Faces are
+  not built yet.
 - **A renewal is not new business.** Neither is servicing, a payment, a claim,
   or chasing paperwork on a policy already sold.
 - **Selling a product the household does not have yet IS new business**, even to
