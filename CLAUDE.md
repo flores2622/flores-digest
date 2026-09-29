@@ -150,6 +150,23 @@ Everything caches under `data/`, so a re-run resumes rather than restarting.
   sources still get coaching cards** and count in every coaching figure like
   any other call. Role Play draws a session's lead source from the
   producer's own cards over the trailing 4 weeks.
+- **Role Play prospects speak with Deepgram voices** (Frank, 2026-09-29).
+  `RP_VOICES` (index.html) tags each Aura-2 voice by language, sex and age
+  band, and each prospect gets one that fits. **English, Spanish and mixed**
+  ("some should be spanish, some english, and some mixed"): random, a third
+  each, with **no language choice on the screen** (Frank, 2026-09-29: "i dont
+  want a language dropdown"). Spanish uses Mexican / Latin American voices,
+  mixed Deepgram's five code-switching ones. First names come from the whole
+  American + Hispanic list in every language; a Spanish or mixed prospect
+  has a Hispanic surname. **Crystal never gets Spanish or mixed** (Frank,
+  2026-09-29: "she doesnt speak it") -- `RP_ENGLISH_ONLY`.
+  The Worker's `/api/roleplay/speak` streams them and needs the
+  `DEEPGRAM_API_KEY` secret (without it the browser's voice speaks). Apollo
+  grades in English whatever the call's language. **Producers rate the voice
+  after each graded session** (stars, again yes / no, a comment), saved on
+  the session and in `roleplay-voices/ratings.json`; the ratings table on
+  the Role Play tab is Frank's alone (`ROLEPLAY_VOICE_VIEWERS`). Faces are
+  not built yet.
 - **A renewal is not new business.** Neither is servicing, a payment, a claim,
   or chasing paperwork on a policy already sold.
 - **Selling a product the household does not have yet IS new business**, even to
@@ -978,7 +995,7 @@ reached for once, e.g. 6836965 created 2025-08-03).
 
 ## Cost
 
-Transcription is local and free. **The Anthropic API reads in `call_summary.py`,
+Transcription is Deepgram, paid per audio minute (about $1-2 a day; below). **The Anthropic API reads in `call_summary.py`,
 `renewal_notes.py` and `service_notes.py` are the only paid steps** (plus
 `sendoff.py` and `assume_reread.py --backfill`, each run once for September) — roughly one call per live
 contact per day, plus one call per 25 renewal SR notes (each SR's note is read
@@ -1030,7 +1047,9 @@ about (Coral asking Jessica about Jesse, 09-25), and a spouse, "you just
 missed him" or a wrong number stays Speaker N. Customers on renewal or
 service calls have no Call Detail row and stay Speaker N. 09-25 / 09-28: 11
 leads named, all checked by hand. It is paid per audio minute (~226
-min on 2026-09-28), cached per recording under `data/deepgram/`. A leg with
+min on 2026-09-28), cached per recording under `data/deepgram/` and carried
+between containers in R2 as `cache/<day>/deepgram_<day>.json` (`r2_cache`), so a
+recording is paid for once however many checkpoints touch it. A leg with
 no speech at all is `[silence]`, read as no answer like Whisper's "[Music]",
 never as a pickup that said nothing. **Past days stay as they went out**: a
 rebuild reuses the day's saved transcripts. `python3 compare_stt.py <day>
