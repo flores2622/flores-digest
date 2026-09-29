@@ -316,7 +316,8 @@ and anything without the glow is the checkpoint's (Frank, 2026-09-24).
   `lead_sources.NOT_A_SALE`, the same rule as `is_real_sale`.
 - **Households sold** ride with sales (Frank, 2026-09-28): the same even-minute
   refresh reads every lead marked sold today (`site/live.js soldLeadsToday`,
-  leads newest activity first back to Arizona midnight, up to 5 pages), so
+  leads newest activity first back to Arizona midnight -- kept in R2 and
+  topped up from the newest end each refresh, up to 5 pages), so
   HH/Prem. Sold glows whenever sales are live. That list stands on its own
   for the day; the checkpoint's `rows.sold_leads` are added only if the read
   stopped at the page cap.
@@ -359,6 +360,14 @@ and anything without the glow is the checkpoint's (Frank, 2026-09-24).
   Worker kept asking ~40 times every two minutes. A 403 now pauses every
   AgencyZoom part for 30 minutes (`site/live.js azGet`); the board keeps
   each part's last good answer for the checkpoint meanwhile.
+  **And it asks less** (2026-09-29): the day's active-leads list is KEPT in
+  R2 (`live/<day>-leads.json`) and each even-minute refresh pages only down
+  to where the last one started (any change to a lead puts it back on top),
+  usually one page instead of up to five; the quotes pass reuses that copy
+  instead of paging its own (`fromShared`); lead source names are fetched
+  once a day (`worker-private/lead_sources.json`). Same figures, measured on
+  a mocked day with leads marked and unmarked sold: 132 AgencyZoom requests
+  -> 75 over 30 refreshes.
 - **Contact rate, live contacts and Avg Talk Time are live too** (Frank,
   2026-09-28: "avg talk time, contact rate, and texts and emails should all
   be live as well"), and they are PROVISIONAL: the Worker cannot hear a

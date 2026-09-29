@@ -235,9 +235,22 @@ export async function azPoliciesSold(env, day, fetchFn = fetch) {
   }
   return out;
 }
+/* Lead source names, fetched ONCE per Arizona day (2026-09-29, after
+   AgencyZoom began refusing the Worker on 09-28): the list barely changes,
+   and fetching it every two minutes was ~30 requests an hour for nothing. A
+   source created mid-day is named from the next day on; BOB and Rewrite,
+   the only ones that change a figure, long exist. */
+const LEAD_SOURCES_KEY = "worker-private/lead_sources.json";
 export async function azLeadSources(env, fetchFn = fetch) {
+  const day = azToday();
+  if (env.BOARD) {
+    const o = await env.BOARD.get(LEAD_SOURCES_KEY);
+    if (o !== null) { const x = await o.json(); if (x.day === day && x.names) return x.names; }
+  }
   const rows = await azGet(env, "/v1/api/lead-sources", fetchFn);
-  return Object.fromEntries((rows || []).map(r => [r.id, r.name]));
+  const names = Object.fromEntries((rows || []).map(r => [r.id, r.name]));
+  if (env.BOARD) await env.BOARD.put(LEAD_SOURCES_KEY, JSON.stringify({ day, names }));
+  return names;
 }
 
 /* digest_config.real_sales + bundle_classification's cross_sell, per producer. */
@@ -357,37 +370,68 @@ export function quotedBy(lead, notes, day, basis, rx) {
 /* Households sold (Frank, 2026-09-28): every lead marked sold today, read in
    the same refresh as the policies so the HH/Prem. Sold tile is live
    whenever sales are. Leads come newest activity first (lastActivityDate is
-   UTC; marking a lead sold moves it), paged back to the start of the
-   Arizona day. `complete` is false only if the page cap stopped it short,
-   and then the board also keeps the checkpoint's own sold-lead rows. */
+   UTC; marking a lead sold moves it), back to the start of the Arizona day.
+
+   KEPT, NOT RE-PAGED (2026-09-29, after AgencyZoom began refusing the
+   Worker on 09-28). Paging the whole day's list every two minutes was up to
+   five requests each time by the afternoon. Any change to a lead -- marked
+   sold, unmarked, a note, a stage move -- puts it back at the top, so the
+   day's list is kept in R2 (live/<day>-leads.json) and each refresh pages
+   only down to where the last one started (ACTIVE_OVERLAP_MS earlier, for
+   ties), usually one page. The quotes pass reads the same copy
+   (fromShared). `complete` is false only if the page cap ever stopped a
+   read short of what the day's list already held -- then the board also
+   keeps the checkpoint's own sold-lead rows, as before. */
 const SOLD_LEAD_PAGES = 5;
-export async function soldLeadsToday(env, day, basis, fetchFn = fetch) {
+const ACTIVE_OVERLAP_MS = 2 * 60000;
+const utcMs = s => Date.parse(String(s || "").replace(" ", "T").slice(0, 19) + "Z");
+const utcStr = ms => new Date(ms).toISOString().slice(0, 19).replace("T", " ");
+export async function soldLeadsToday(env, day, basis, fetchFn = fetch, kept = null) {
   const since = `${day} 07:00:00`;   // midnight Arizona (UTC-7), in UTC
   const byAz = Object.fromEntries(Object.entries(basis.producers || {}).map(([n, v]) => [String(v.az_id), n]));
-  const per = {}, seen = new Set(), raw = [];
-  let complete = false;
+  const prev = kept && kept.day === day && Array.isArray(kept.leads) && kept.newest ? kept : null;
+  const stopAt = prev ? utcStr(Math.max(utcMs(since), utcMs(prev.newest) - ACTIVE_OVERLAP_MS)) : since;
+  const fresh = new Map();
+  let reached = false, newest = prev ? prev.newest : "";
   for (let page = 0; page < SOLD_LEAD_PAGES; page++) {
     const jl = await azGet(env, "/v1/api/leads/list", fetchFn, {
       method: "POST", body: JSON.stringify({ page, pageSize: 100, sort: "lastActivityDate", order: "desc" }),
     });
     const ls = jl.leads || [];
     for (const l of ls) {
-      if (String(l.lastActivityDate || "") < since || seen.has(l.id)) continue;
-      seen.add(l.id);
-      if (l.status !== 2 || !String(l.soldDate || "").startsWith(day)) continue;
-      // Everyone's, for the Sales sheet's name match (syncSalesLog), which
-      // covers Amanda too; never stored or served.
-      raw.push({ agentId: l.assignedTo, leadSourceId: l.leadSourceId, household: l.convertedHouseholdId ?? null,
-        name: [l.firstname, l.lastname].map(x => String(x || "").trim()).filter(Boolean).join(" ") });
-      const who = byAz[String(l.assignedTo)];
-      if (!who) continue;
-      (per[who] || (per[who] = [])).push({ lead_id: l.id, household: l.convertedHouseholdId ?? null,
-        lead: [l.firstname, l.lastname].map(x => String(x || "").trim()).filter(Boolean).join(" ") });
+      const act = String(l.lastActivityDate || "");
+      if (act < since) continue;
+      if (act > newest) newest = act;
+      if (!fresh.has(l.id)) fresh.set(l.id, leadFields(l));
     }
-    if (!ls.length || String(ls[ls.length - 1].lastActivityDate || "") < since) { complete = true; break; }
+    if (!ls.length || String(ls[ls.length - 1].lastActivityDate || "") < stopAt) { reached = true; break; }
   }
-  return { per, complete, _raw: raw };
+  // Stopped short of what the kept list covers: there may be a gap, so the
+  // day's list starts again from this read, marked incomplete.
+  const merged = new Map(reached && prev ? prev.leads.map(l => [l.id, l]) : []);
+  for (const [id, l] of fresh) merged.set(id, l);
+  const complete = reached && (prev ? !!prev.complete : true);
+  const per = {}, raw = [];
+  for (const l of merged.values()) {
+    if (l.status !== 2 || !String(l.soldDate || "").startsWith(day)) continue;
+    const name = [l.firstname, l.lastname].map(x => String(x || "").trim()).filter(Boolean).join(" ");
+    // Everyone's, for the Sales sheet's name match (syncSalesLog), which
+    // covers Amanda too; never stored or served.
+    raw.push({ agentId: l.assignedTo, leadSourceId: l.leadSourceId, household: l.convertedHouseholdId ?? null, name });
+    const who = byAz[String(l.assignedTo)];
+    if (!who) continue;
+    (per[who] || (per[who] = [])).push({ lead_id: l.id, household: l.convertedHouseholdId ?? null, lead: name });
+  }
+  const leads = [...merged.values()].sort((a, b) => (a.lastActivityDate < b.lastActivityDate ? 1 : -1));
+  const oldest = leads.length ? leads[leads.length - 1].lastActivityDate : null;
+  return { per, complete, _raw: raw, _active: { day, newest, leads, complete, oldest } };
 }
+
+/* What is kept of a lead: what the sold count and the quotes pass read. */
+const leadFields = l => ({ id: l.id, lastActivityDate: l.lastActivityDate, enterStageDate: l.enterStageDate,
+  assignedTo: l.assignedTo, quoteDate: l.quoteDate, firstname: l.firstname, lastname: l.lastname,
+  phone: l.phone, secondaryPhone: l.secondaryPhone, status: l.status, soldDate: l.soldDate,
+  leadSourceId: l.leadSourceId, convertedHouseholdId: l.convertedHouseholdId });
 
 /* ---- the Sales sheet --------------------------------------------------- */
 
@@ -481,7 +525,22 @@ export async function syncSalesLog(env, day, basis, policies, sourceNames, soldR
   return added;
 }
 
-async function azLeadsActiveSince(env, since, fetchFn) {
+/* ONE LIST OF TODAY'S ACTIVE LEADS, NOT TWO (2026-09-29). The sold part
+   pages this same list (newest activity first, back to Arizona midnight)
+   every even minute, so the quotes pass a minute later uses that copy
+   (live/<day>-leads.json) instead of paging it again -- when it is under
+   ACTIVE_LIST_FRESH_SECONDS old and reaches back to the checkpoint. A lead
+   active in that minute is read on the next pass. */
+export const ACTIVE_LIST_FRESH_SECONDS = 150;
+export function fromShared(shared, since) {
+  if (!shared || !Array.isArray(shared.leads) || !shared.fetched_at) return null;
+  if (Date.now() - Date.parse(shared.fetched_at) > ACTIVE_LIST_FRESH_SECONDS * 1000) return null;
+  if (!shared.complete && !(shared.oldest && shared.oldest < since)) return null;
+  return shared.leads.filter(l => String(l.lastActivityDate || "") >= since);
+}
+async function azLeadsActiveSince(env, since, fetchFn, shared = null) {
+  const reuse = fromShared(shared, since);
+  if (reuse) return reuse;
   const out = [], seen = new Set();
   for (let page = 0; page < 5; page++) {
     const j = await azGet(env, "/v1/api/leads/list", fetchFn, {
@@ -496,7 +555,7 @@ async function azLeadsActiveSince(env, since, fetchFn) {
 
 /* `memo` is the previous refresh's per-lead reads (R2), so a lead is only
    re-read when its activity moved; returns the deltas and the new memo. */
-export async function quotedLive(env, day, basis, memo, fetchFn = fetch, wanted = [], calls = null) {
+export async function quotedLive(env, day, basis, memo, fetchFn = fetch, wanted = [], calls = null, shared = null) {
   const q = basis.quotes;
   if (!q) throw new Error("needs a checkpoint built after this update");
   const rx = { stage: new RegExp(q.stage_pattern, "i"), presented: new RegExp(q.presented_pattern, "i"), past: new RegExp(q.past_pattern, "i") };
@@ -514,7 +573,7 @@ export async function quotedLive(env, day, basis, memo, fetchFn = fetch, wanted 
   const phones = l => [last10(l.phone), last10(l.secondaryPhone)].filter(Boolean);
   const rank = l => (phones(l).some(p => want.has(p)) ? -1 : String(l.enterStageDate || "") >= q.activity_since ? 0 : producerAz.has(String(l.assignedTo)) ? 1 : 2);
   const presented = b => rx.presented.test(b) && !rx.past.test(b);
-  const active = (await azLeadsActiveSince(env, q.activity_since, fetchFn)).sort((a, b) => rank(a) - rank(b));
+  const active = (await azLeadsActiveSince(env, q.activity_since, fetchFn, shared)).sort((a, b) => rank(a) - rank(b));
   for (const l of active) {
     const id = String(l.id), was = prev[id];
     // A read from before contacts and messages were kept is read again.
@@ -594,7 +653,7 @@ const part = async (env, key, fn) => {
    sold) and utilization: a handful of requests, refreshed together.
    `evidence` is the last quotes pass's read of the lead notes
    (live/<day>-quotes.json). */
-export async function computeFast(env, day, basis, fetchFn = fetch, evidence = null) {
+export async function computeFast(env, day, basis, fetchFn = fetch, evidence = null, kept = null) {
   const inputs = {};   // for syncSalesLog; never stored
   let log = null;
   const callLog = async () => (log || (log = rcCallLog(env, day, fetchFn)));
@@ -610,9 +669,12 @@ export async function computeFast(env, day, basis, fetchFn = fetch, evidence = n
       return salesFrom(basis, pols, names);
     }),
     part(env, "util", async () => insightfulUtil(env, day, basis, fetchFn)),
-    part(env, "sold", async () => soldLeadsToday(env, day, basis, fetchFn)),
+    part(env, "sold", async () => soldLeadsToday(env, day, basis, fetchFn, kept)),
   ]);
-  if (sold.ok) { inputs.soldRaw = sold.data._raw; delete sold.data._raw; }
+  if (sold.ok) {
+    inputs.soldRaw = sold.data._raw; delete sold.data._raw;
+    inputs.active = { ...sold.data._active, fetched_at: new Date().toISOString() }; delete sold.data._active;
+  }
   // Today's dials, for the messages part: a call back answers a lead's text
   // (messages.build reads the same call log).
   let calls = null;
@@ -634,10 +696,10 @@ function dialTouches(basis, recs) {
 
 /* Households and premium quoted: one batch of lead reads, carried on from
    the last batch's memo. */
-export async function computeQuotes(env, day, basis, memo, fetchFn = fetch, wanted = [], calls = null) {
+export async function computeQuotes(env, day, basis, memo, fetchFn = fetch, wanted = [], calls = null, shared = null) {
   let next = memo, extra = null;
   const quotes = await part(env, "quotes", async () => {
-    const r = await quotedLive(env, day, basis, memo, fetchFn, wanted, calls);
+    const r = await quotedLive(env, day, basis, memo, fetchFn, wanted, calls, shared);
     next = r.memo; extra = r;
     return r.data;
   });
@@ -654,7 +716,8 @@ export async function computeLive(env, day, basis, fetchFn = fetch, memo = null)
   return { day, ...rest, quotes: q.quotes, messages: q.messages, _memo: q.memo };
 }
 
-const keys = day => ({ fast: `live/${day}.json`, quotes: `live/${day}-quotes.json`, memo: `live/${day}-quote-reads.json` });
+const keys = day => ({ fast: `live/${day}.json`, quotes: `live/${day}-quotes.json`, memo: `live/${day}-quote-reads.json`,
+  leads: `live/${day}-leads.json` });
 async function r2json(env, key) {
   const o = await env.BOARD.get(key);
   return o === null ? null : o.json();
@@ -683,9 +746,9 @@ function keepGood(prev, next, cp, parts) {
 }
 async function refreshFast(env, day, cp) {
   const k = keys(day);
-  const [prev, q] = await Promise.all([r2json(env, k.fast), r2json(env, k.quotes)]);
+  const [prev, q, kept] = await Promise.all([r2json(env, k.fast), r2json(env, k.quotes), r2json(env, k.leads)]);
   const evidence = q && q.checkpoint === cp.as_of ? q.evidence : null;
-  const { _inputs, ...fast } = await computeFast(env, day, cp.basis, fetch, evidence);
+  const { _inputs, ...fast } = await computeFast(env, day, cp.basis, fetch, evidence, kept);
   // A live sale goes on the Sales sheet in the same refresh that puts it on
   // the board (Frank, 2026-09-28). Only with this run's own policies and
   // sold leads -- a sold-lead read that failed would leave names blank that
@@ -694,6 +757,8 @@ async function refreshFast(env, day, cp) {
     try { await syncSalesLog(env, day, cp.basis, _inputs.policies, _inputs.names, _inputs.soldRaw); }
     catch (e) { console.log(`sales sheet sync failed: ${e && e.message || e}`); }
   }
+  // Today's active leads, for the quotes pass a minute from now (fromShared).
+  if (_inputs.active) await r2put(env, k.leads, _inputs.active);
   const out = keepGood(prev, { checkpoint: cp.as_of, ...fast }, cp, ["dials", "contacts", "sales", "util", "sold"]);
   if (!out.calls && prev && prev.checkpoint === cp.as_of) out.calls = prev.calls;
   // The numbers dialled since the checkpoint, so the next quotes pass reads
@@ -706,10 +771,10 @@ async function refreshFast(env, day, cp) {
 }
 async function refreshQuotes(env, day, cp) {
   const k = keys(day);
-  const [prev, memoIn, fast] = await Promise.all([r2json(env, k.quotes), r2json(env, k.memo), r2json(env, k.fast)]);
+  const [prev, memoIn, fast, shared] = await Promise.all([r2json(env, k.quotes), r2json(env, k.memo), r2json(env, k.fast), r2json(env, k.leads)]);
   const same = fast && fast.checkpoint === cp.as_of;
   const { memo, ...res } = await computeQuotes(env, day, cp.basis, memoIn, fetch,
-    same ? fast.dialled || [] : [], same ? fast.calls || [] : []);
+    same ? fast.dialled || [] : [], same ? fast.calls || [] : [], shared);
   const out = keepGood(prev, { checkpoint: cp.as_of, ...res }, cp, ["quotes", "messages"]);
   if (!(res.quotes || {}).ok && prev && prev.checkpoint === cp.as_of) out.evidence = prev.evidence;
   if (memo && res.quotes.ok) await r2put(env, k.memo, memo);
