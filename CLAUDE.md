@@ -182,7 +182,7 @@ Everything caches under `data/`, so a re-run resumes rather than restarting.
   initials.
   **The mic waits for the producer to finish** (Frank, 2026-09-29: "fix the
   mic cutting off"): it listens continuously and sends the turn after
-  `RP_PAUSE_MS` (1.2 s -- 2 s felt slow) of silence -- a tap on the mic sends at once -- never
+  `RP_PAUSE_MS` (1.5 s, Frank's pick -- 2 s felt slow) of silence -- a tap on the mic sends at once -- never
   at the browser's first final result, which cut people off mid-sentence.
   When Chrome ends the session itself it restarts at once, keeping the words
   and the turn's recording; a blocked mic stops for good.

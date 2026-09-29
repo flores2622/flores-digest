@@ -3749,7 +3749,7 @@ function rpClipUpload(item, blobP) {
    on its own now and then: it starts again at once, keeping what was
    heard and the turn's recording (rpClipStart), and the pause clock carries
    on. A blocked mic stops for good. */
-const RP_PAUSE_MS = 1200;   // was 2000; Frank, 2026-09-29: "take too long to respond"
+const RP_PAUSE_MS = 1500;   // was 2000; Frank, 2026-09-29: "take too long to respond" ... "do 1.5 sec"
 let rpHeard = "";              // what the producer has said so far this turn
 let rpPauseTimer = null;
 function rpFinishTurn() {
