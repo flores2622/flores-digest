@@ -174,8 +174,10 @@ Everything caches under `data/`, so a re-run resumes rather than restarting.
   for a Hispanic surname, else white / Black / Asian American) x 4 variants,
   at most 96 faces, each drawn ONCE by Workers AI (FLUX.1 [schnell], the
   `AI` binding in wrangler.jsonc, ~$0.0006 a face) the first time a prospect
-  needs it and kept in R2 under `roleplay-faces/` (`/api/roleplay/face/<key>`,
-  seed from the key). No binding or a failed draw shows the initials.
+  needs it and kept in R2 under `roleplay-faces/` (`/api/roleplay/face/<key>`).
+  **No `seed`** -- the model refuses it (AiError 5006, 2026-09-29), which is
+  why no face drew on the first day. No binding or a failed draw shows the
+  initials.
   **The mic waits for the producer to finish** (Frank, 2026-09-29: "fix the
   mic cutting off"): it listens continuously and sends the turn after
   `RP_PAUSE_MS` (2 s) of silence -- a tap on the mic sends at once -- never
