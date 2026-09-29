@@ -25,6 +25,7 @@ secrets/*.env.
 import json
 import os
 import pathlib
+import re
 import time
 
 import requests
@@ -170,18 +171,62 @@ def head_tail(path, duration=None, offset=0, seconds=30, log=None):
     return f"{head} || {tail}"
 
 
-def full(path, duration, offset=0, log=None):
-    """The whole leg, one line per turn: "Speaker 1: ...". None on failure."""
+# How each producer's name comes back, for finding who introduced
+# themselves. Only the producer's OWN name: a customer says "Hi, Crystal"
+# on a call back, and Mike dials customers named Miguel.
+NAME_FORMS = {"sarahi": r"sarahi|sarai|zarahi", "crystal": r"crystal|cristal"}
+AGENCY = r"(farmers|la aseguranza|la seguranza|insurance)"
+
+
+def producer_speaker(utts, producer):
+    """Which diarized speaker is the producer, from how they introduce
+    themselves: "This is Crystal with Farmers", "Le habla Mike, de la
+    aseguranza", "Soy Sarahi", "Coral, calling from Farmers". None when
+    nobody does, or when two speakers score the same -- a guess would put
+    the customer's words in the producer's mouth for Apollo."""
+    first = (producer or "").split()[0].lower() if producer else ""
+    if not first:
+        return None
+    name = NAME_FORMS.get(first, re.escape(first))
+    intro = re.compile(
+        rf"\b(this is|it'?s|my name is|soy|le habla|te habla|habla|"
+        rf"me llamo|mi nombre es)\s+(me\s+|yo\s+)?({name})\b"
+        rf"|\b({name})\b[,.]?\s+(with|from|de|calling from|de parte de)\s+"
+        rf"(\w+\s+){{0,2}}{AGENCY}", re.I)
+    agency = re.compile(rf"\b(this is|soy|le habla|te habla|calling from|"
+                        rf"with|from|de parte de)\s+(\w+\s+){{0,2}}{AGENCY}", re.I)
+    score = {}
+    for u in utts:
+        sp = u["speaker"]
+        score.setdefault(sp, 0)
+        score[sp] += 3 * len(intro.findall(u["text"]))
+        score[sp] += len(agency.findall(u["text"]))
+    ranked = sorted(score.items(), key=lambda kv: -kv[1])
+    if not ranked or ranked[0][1] < 2:
+        return None
+    if len(ranked) > 1 and ranked[1][1] == ranked[0][1]:
+        return None
+    return ranked[0][0]
+
+
+def full(path, duration, offset=0, log=None, producer=None):
+    """The whole leg, one line per turn: "Speaker 1: ...", with the producer's
+    turns labelled "<First name> (producer)" when producer_speaker finds them.
+    None on failure."""
     d = raw(path, log=log)
     if d is None:
         return None
     utts = _between(d["utterances"], offset,
                     offset + duration if duration else float("inf"))
+    who = producer_speaker(utts, producer)
+    first = producer.split()[0] if producer else ""
     lines, last = [], None
     for u in utts:
         if u["speaker"] == last:
             lines[-1] += " " + u["text"]
         else:
-            lines.append(f"Speaker {int(u['speaker'] or 0) + 1}: {u['text']}")
+            label = (f"{first} (producer)" if who is not None and u["speaker"] == who
+                     else f"Speaker {int(u['speaker'] or 0) + 1}")
+            lines.append(f"{label}: {u['text']}")
             last = u["speaker"]
     return "\n".join(lines).strip()

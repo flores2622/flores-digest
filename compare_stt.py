@@ -62,7 +62,8 @@ def compare(day, log=print):
             if new != v.get("class"):
                 changes.append((v, cid, new, why, dg))
         if inbound or v.get("class") == "live":
-            live.append((v, cid, DG.full(path, dur, offset=off, log=log)))
+            live.append((v, cid, DG.full(path, dur, offset=off, log=log,
+                                         producer=v.get("producer"))))
         if i % 25 == 0:
             log(f"  {i}/{len(tx)}")
 

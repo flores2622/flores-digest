@@ -1014,8 +1014,13 @@ side-by-side). `deepgram_stt.py` (Nova-3, language=multi, diarized, keyed on
 `DEEPGRAM_API_KEY` in the cloud environment) transcribes every recording
 unless `TRANSCRIBE_ENGINE=whisper`, and falls back to Whisper on any failure
 (a missing key says so once in the log). Full transcripts are one line per
-turn, "Speaker 1: ..." / "Speaker 2: ...", in order of first speech -- which
-one is the producer is left to the reader. It is paid per audio minute (~226
+turn. The producer's turns read "<First name> (producer):", found from how
+they introduce themselves ("This is Crystal with Farmers", "Le habla Mike, de
+la aseguranza", "Soy Sarahi"; `deepgram_stt.producer_speaker`, own name
+only -- a caller saying "Hi, Crystal" does not count); everyone else, and
+every turn when no one introduces themselves or two speakers tie, stays
+"Speaker N:" -- never guessed. On 09-25 / 09-28 it named the producer on
+50 of 57 calls with two voices, every one checked by hand. It is paid per audio minute (~226
 min on 2026-09-28), cached per recording under `data/deepgram/`. A leg with
 no speech at all is `[silence]`, read as no answer like Whisper's "[Music]",
 never as a pickup that said nothing. **Past days stay as they went out**: a
