@@ -811,6 +811,17 @@ note is read again -- never delete that cache casually). Changing
 the prompt means deleting `data/callsum_<day>.json`, which re-reads everything.
 Do not do that casually, and never in a loop while iterating on wording.
 
+**Deepgram is built but OFF** (Frank, 2026-09-29: Whisper base mishears
+too much and cannot separate speakers). `deepgram_stt.py` (Nova-3,
+language=multi, diarized, keyed on `DEEPGRAM_API_KEY` in the cloud
+environment) is used only when `TRANSCRIBE_ENGINE=deepgram`, and falls back
+to Whisper on any failure. It is paid per audio minute (~226 min on
+2026-09-28), cached per recording under `data/deepgram/`. Before switching it
+on, `python3 compare_stt.py <day> ...` writes `out/stt_compare_<day>.md`: the
+outbound dials whose live/voicemail verdict would change (that moves the
+contact rate) and every live call's full transcript both ways. Frank signs
+that off first; past days stay as they went out.
+
 `python3 verify_finalize.py` reconciles all six headline figures against source
 data and costs nothing. Run it after touching `daily.py`, `day_calls.py` or
 `finalize.py`.

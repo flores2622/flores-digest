@@ -32,6 +32,14 @@ import numpy as np
 import requests
 
 MODEL = "models/sherpa-onnx-whisper-base"
+
+# "whisper" (the default, local, free) or "deepgram" (deepgram_stt.py: whole
+# call, bilingual, speakers separated; paid per minute). Deepgram falls back
+# to Whisper on any failure, so switching it on can never lose a transcript.
+# Default stays Whisper until the side-by-side (compare_stt.py) is signed
+# off: a better transcript moves live/voicemail verdicts, and so the contact
+# rate (Frank, 2026-09-29).
+ENGINE = os.environ.get("TRANSCRIBE_ENGINE", "whisper").lower()
 AUDIO = "data/audio"
 RATE_LIMIT_MARKER = b"CMN-301"
 
@@ -338,6 +346,11 @@ def transcribe_full(path, duration, seconds=30, language=None, offset=0):
     """
     if not duration or duration <= 0:
         return None
+    if ENGINE == "deepgram":
+        import deepgram_stt
+        t = deepgram_stt.full(path, duration, offset=offset)
+        if t is not None:
+            return t or None
     out = []
     for start in range(int(offset), int(offset) + int(duration), seconds):
         t = one_window(path, start, seconds, language=language)
@@ -399,6 +412,13 @@ def transcribe_file(path, seconds=30, duration=None, offset=0):
     A window that comes back as Whisper's foreign-language placeholder is
     retried in Spanish, which is the only other language on this book.
     """
+    if ENGINE == "deepgram":
+        import deepgram_stt
+        t = deepgram_stt.head_tail(path, duration=duration, offset=offset,
+                                   seconds=seconds)
+        if t is not None:
+            return t
+
     def one(start):
         t = _window(path, start, seconds)
         if t and FOREIGN.search(t):
