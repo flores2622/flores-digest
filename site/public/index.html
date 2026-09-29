@@ -714,6 +714,11 @@ details.sc .scb { padding: 0 12px 12px; }
 .tile.rdrill:focus-visible { outline: 2px solid var(--s1); outline-offset: 2px; }
 .tile.rdrill.on { border-color: var(--s1); box-shadow: 0 0 0 1px var(--s1) inset; }
 tr.rdrill-row { cursor: pointer; }
+/* A leaderboard number that opens its list: underlined on hover, marked while open. */
+td.rdrill-cell { cursor: pointer; }
+td.rdrill-cell:hover { text-decoration: underline; text-underline-offset: 3px; }
+td.rdrill-cell:focus-visible { outline: 2px solid var(--s1); outline-offset: -2px; }
+td.rdrill-cell.on { box-shadow: inset 0 -2px 0 var(--s1); color: inherit; font-weight: 600; }
 tr.rdrill-row:hover td { background: var(--surface-2, rgba(127,127,127,.08)); }
 tr.rdrill-row.on td { box-shadow: inset 0 -2px 0 var(--s1); }
 </style>
@@ -1143,7 +1148,8 @@ function digestDay(d, who) {
 
   return `<div class="tiles tiles-6">${tilesHtml}${closingRatioTileHtml}</div>
   ${digDrillFor(d, who, ["dials", "contacts", "quoted", "sold", "closing"])}
-  ${teamLeaderboardHtml(d, who)}`;
+  ${teamLeaderboardHtml(d, who)}
+  ${digDrillFor(d, who, ["lb"])}`;
 }
 
 /* Household Completion -- was a single "Cross-Sell/Bundle" tile in the main
@@ -1194,7 +1200,7 @@ function householdCompletionHtml(d, who) {
   // separate from `label`, the capitalized "Team" actually shown, so this
   // doesn't repeat the bug where using the display label as the lookup key
   // silently found no tier data and rendered uncoloured.
-  const card = (label, tierKey, p, cls) => `<div class="tile"${cls ? ` style="border-color:var(--border-strong)"` : ""}>
+  const card = (label, tierKey, p, cls) => `<div${ddk(tierKey === "team" ? "hhc" : "hhc@" + tierKey)}${cls ? ` style="border-color:var(--border-strong)"` : ""}>
     <div class="k">${label}</div>
     <div class="v ${tc(tierKey)}">${perHh(p) == null ? "—" : perHh(p).toFixed(2)}</div>
     <div class="n">policies/HH &middot; ${p.cross_sell ?? 0} cross-sell &middot; ${p.new_bundle ?? 0}+ new bundle</div>
@@ -1209,7 +1215,7 @@ function householdCompletionHtml(d, who) {
 
   return `<div class="sect"><h2>Household Completion</h2>
    <p class="sd">Cross-sell to an existing household (AgencyZoom's own lead source, every sale) vs. a brand-new bundled household (est. lower bound -- see the "matched" note).</p>
-   <div class="tiles">${cards}${teamCard}</div></div>`;
+   <div class="tiles">${cards}${teamCard}</div>${digDrillFor(d, who, ["hhc"])}</div>`;
 }
 
 /* Team Leaderboard -- replaces what used to be two separate panels
@@ -1280,18 +1286,20 @@ function teamLeaderboardHtml(d, who) {
   // What each producer typed and sent themselves (messages.py), automation
   // left out; no goal colour until Frank sets one (2026-09-27).
   const MP = (d.messages || {}).producers || null;
-  const msgCell = r => MP ? `<td class="num${liveOn(d, "messages") ? " isLive" : ""}">${r ? `${r.texts || 0} / ${r.emails || 0}` : "0 / 0"}</td>` : "";
+  // Opens the Texts & Emails page, where the messages themselves are.
+  const msgCell = r => MP ? `<td class="num rdrill-cell${liveOn(d, "messages") ? " isLive" : ""}" data-goview="messages" role="button" tabindex="0" title="Open Texts &amp; Emails">${r ? `${r.texts || 0} / ${r.emails || 0}` : "0 / 0"}</td>` : "";
   const msgTeam = MP ? Object.values(MP).reduce((a, r) => ({ texts: a.texts + (r.texts || 0), emails: a.emails + (r.emails || 0) }), { texts: 0, emails: 0 }) : null;
   // Quote sent instead of kept on the phone (Frank, 2026-09-28: "add the
   // send-the-quote stat per producer to the leaderboard"): calls where the
   // producer offered on their own to send it, of the calls where a quote came
   // up -- the same count as Wins and Losses. Shown, not scored.
   const SO = (d.calls || []).filter(c => c.sendoff && c.sendoff[0]);
-  const soCell = list => {
+  const soCell = (list, name) => {
     if (!SO.length) return "";
     if (!list.length) return `<td class="num">—</td>`;
     const n = list.filter(c => c.sendoff[0] === "producer").length;
-    return `<td class="num">${n} <span style="opacity:.72">of ${list.length}</span></td>`;
+    const [cl, at] = cc("sendoff", name);
+    return `<td class="num${cl}"${at}>${n} <span style="opacity:.72">of ${list.length}</span></td>`;
   };
 
   let podium = "";
@@ -1302,34 +1310,39 @@ function teamLeaderboardHtml(d, who) {
 
   const lv = part => liveOn(d, part) ? " isLive" : "";
   const hhCol = hhSoldOf(d, "") != null;
+  // Each number opens the rows it counts, under the leaderboard (Frank,
+  // 2026-09-29: "anything we add/create should be clickable to display the
+  // accounts"); the Team row opens everyone's. Role play and utilization
+  // have no accounts behind them.
+  const cc = (list, name) => { const c = ddc("lb-" + list + (name ? "@" + name : "")); return [c.cls, c.attr]; };
   const rows = ranked.map((p, i) => `<tr>
     <td><span class="who">${
        !focus && i < 3 ? `<span class="mdl" role="img" aria-label="${["1st", "2nd", "3rd"][i]}">${MEDAL[i]}</span>` : ""}${pbadge(DOT[p.name] || "#8a877f", p.name)}</span></td>
     ${hasRoleplay ? `<td class="num ${tc(p.name, "roleplay")}"${lbRankTag(d, "Role Play", p.name)}>${(p.coach || {}).roleplay ?? "—"}${p.rp_missed ? `<span style="display:block;color:var(--text-muted);font-weight:400;white-space:nowrap;font-size:10.5px" title="Days worked with no role play -- each counts as 0 in the ranking">${p.rp_missed} missed</span>` : ""}</td>` : ""}
-    <td class="num ${tc(p.name, "dials")}${lv("dials")}"${lbRankTag(d, "Call Volume", p.name)}>${p.dials ?? 0}${dialsSub(p)}</td>
-    <td class="num ${tc(p.name, "talk")}${lv("contacts")}"${lbRankTag(d, "Avg Talk Time", p.name)}>${hhmm(p.talk)}</td>
-    <td class="num ${tc(p.name, "rate")}${lv("contacts")}"${lbRankTag(d, "Contact Rate", p.name)}>${p.rate ?? 0}% <span style="opacity:.72">(${p.live ?? 0})</span></td>
+    <td class="num ${tc(p.name, "dials")}${lv("dials")}${cc("dials", p.name)[0]}"${cc("dials", p.name)[1]}${lbRankTag(d, "Call Volume", p.name)}>${p.dials ?? 0}${dialsSub(p)}</td>
+    <td class="num ${tc(p.name, "talk")}${lv("contacts")}${cc("contacts", p.name)[0]}"${cc("contacts", p.name)[1]}${lbRankTag(d, "Avg Talk Time", p.name)}>${hhmm(p.talk)}</td>
+    <td class="num ${tc(p.name, "rate")}${lv("contacts")}${cc("contacts", p.name)[0]}"${cc("contacts", p.name)[1]}${lbRankTag(d, "Contact Rate", p.name)}>${p.rate ?? 0}% <span style="opacity:.72">(${p.live ?? 0})</span></td>
     ${msgCell(MP && MP[p.name])}
-    ${soCell(SO.filter(c => c.who === p.name))}
-    <td class="num ${tc(p.name, "hh")}${lv("quotes")}"${lbRankTag(d, "Households Quoted", p.name)}>${p.hh ?? 0}</td>
-    <td class="num ${tc(p.name, "pq")}${lv("quotes")}"${lbRankTag(d, "Premium Quoted", p.name)}>${money(p.pq)}</td>
-    <td class="num ${tc(p.name, "pol")}${lv(hhCol ? "hhsold" : "sales")}" title="${polTitle(p.name)}">${hhCol ? `${hhSoldOf(d, p.name)} <span style="opacity:.72">(${p.pol ?? 0} pol)</span>` : (p.pol ?? 0)}</td>
-    <td class="num ${tc(p.name, "ps")}${lv("sales")}"${lbRankTag(d, "Premium Sold", p.name)}>${money(p.ps)}</td>
+    ${soCell(SO.filter(c => c.who === p.name), p.name)}
+    <td class="num ${tc(p.name, "hh")}${lv("quotes")}${cc("quoted", p.name)[0]}"${cc("quoted", p.name)[1]}${lbRankTag(d, "Households Quoted", p.name)}>${p.hh ?? 0}</td>
+    <td class="num ${tc(p.name, "pq")}${lv("quotes")}${cc("quoted", p.name)[0]}"${cc("quoted", p.name)[1]}${lbRankTag(d, "Premium Quoted", p.name)}>${money(p.pq)}</td>
+    <td class="num ${tc(p.name, "pol")}${lv(hhCol ? "hhsold" : "sales")}${cc("sold", p.name)[0]}"${cc("sold", p.name)[1]} title="${polTitle(p.name)}">${hhCol ? `${hhSoldOf(d, p.name)} <span style="opacity:.72">(${p.pol ?? 0} pol)</span>` : (p.pol ?? 0)}</td>
+    <td class="num ${tc(p.name, "ps")}${lv("sales")}${cc("sold", p.name)[0]}"${cc("sold", p.name)[1]}${lbRankTag(d, "Premium Sold", p.name)}>${money(p.ps)}</td>
     ${p.util != null ? `<td class="num ${tc(p.name, "util")}${lv("util")}">${p.util}%</td>` : ""}</tr>`).join("");
   const tt = k => TI[((d.tiers || {})["team"] || {})[k]] || "";
   const T = d.totals || {};
   const teamRate = T.rate != null ? (+T.rate).toFixed(1) : (T.dials ? (100 * T.live / T.dials).toFixed(1) : "0");   // see digestDay
   const tot = focus ? "" : `<tr class="tot"><td><span class="who">${pbadge(TEAM_DOT, "Team")}</span></td>
     ${hasRoleplay ? `<td class="num ${tt("roleplay")}">${T.roleplay != null ? Math.round(T.roleplay) : "—"}</td>` : ""}
-    <td class="num ${tt("dials")}${lv("dials")}">${T.dials ?? 0}${dialsSub(T)}</td>
-    <td class="num ${tt("talk")}${lv("contacts")}">${hhmm(T.talk)}</td>
-    <td class="num ${tt("rate")}${lv("contacts")}">${teamRate}% <span style="opacity:.72">(${T.live ?? 0})</span></td>
+    <td class="num ${tt("dials")}${lv("dials")}${cc("dials")[0]}"${cc("dials")[1]}>${T.dials ?? 0}${dialsSub(T)}</td>
+    <td class="num ${tt("talk")}${lv("contacts")}${cc("contacts")[0]}"${cc("contacts")[1]}>${hhmm(T.talk)}</td>
+    <td class="num ${tt("rate")}${lv("contacts")}${cc("contacts")[0]}"${cc("contacts")[1]}>${teamRate}% <span style="opacity:.72">(${T.live ?? 0})</span></td>
     ${msgCell(msgTeam)}
-    ${soCell(SO)}
-    <td class="num ${tt("hh")}${lv("quotes")}">${T.hh ?? 0}</td>
-    <td class="num ${tt("pq")}${lv("quotes")}">${money(T.pq)}</td>
-    <td class="num ${tt("pol")}${lv(hhCol ? "hhsold" : "sales")}">${hhCol ? `${hhSoldOf(d, "")} <span style="opacity:.72">(${T.pol ?? 0} pol)</span>` : (T.pol ?? 0)}</td>
-    <td class="num ${tt("ps")}${lv("sales")}">${money(T.ps)}</td>
+    ${soCell(SO, "")}
+    <td class="num ${tt("hh")}${lv("quotes")}${cc("quoted")[0]}"${cc("quoted")[1]}>${T.hh ?? 0}</td>
+    <td class="num ${tt("pq")}${lv("quotes")}${cc("quoted")[0]}"${cc("quoted")[1]}>${money(T.pq)}</td>
+    <td class="num ${tt("pol")}${lv(hhCol ? "hhsold" : "sales")}${cc("sold")[0]}"${cc("sold")[1]}>${hhCol ? `${hhSoldOf(d, "")} <span style="opacity:.72">(${T.pol ?? 0} pol)</span>` : (T.pol ?? 0)}</td>
+    <td class="num ${tt("ps")}${lv("sales")}${cc("sold")[0]}"${cc("sold")[1]}>${money(T.ps)}</td>
     ${T.util != null ? `<td class="num ${tt("util")}${lv("util")}">${T.util}%</td>` : ""}</tr>`;
 
   const rangeNote = !focus && lb.averaged ? `<p class="sd">Ranked on the ${lb.days} reporting days: each producer's per-day averages over the days they worked, scored like a single day. For the ranking a missed role play counts as 0; the Role Play column is the average of the sessions they did.</p>` : "";
@@ -1472,18 +1485,19 @@ function taskCompletionHtml(d, who) {
   const tc = (name) => TI[((d.tiers || {})[name] || {})["tasks"]] || "";
   const list = (focus ? [focus] : (d.producers || [])).filter(p => p.tasks && p.tasks.total != null);
   if (!list.length) return "";
+  const rk = k => ` class="rdrill-row${digDrill === k ? " on" : ""}" data-ddrill="${k}" tabindex="0" role="button"`;
   const rows = list.map(p => { const t = p.tasks; const pct = t.pct ?? 0;
-    return `<tr><td><span class="who">${pbadge(DOT[p.name] || "#8a877f", p.name)}</span></td>
+    return `<tr${rk("tasks@" + p.name)}><td><span class="who">${pbadge(DOT[p.name] || "#8a877f", p.name)}</span></td>
       <td class="num">${t.total ?? 0}</td><td class="num">${t.completed ?? 0}</td>
       <td class="num ${tc(p.name)}">${(+pct).toFixed(1)}%</td></tr>`; }).join("");
   const T = (d.totals || {}).tasks || {};
-  const tot = focus || T.total == null ? "" : `<tr class="tot"><td><span class="who">${pbadge(TEAM_DOT, "Team")}</span></td>
+  const tot = focus || T.total == null ? "" : `<tr class="tot rdrill-row${digDrill === "tasks" ? " on" : ""}" data-ddrill="tasks" tabindex="0" role="button"><td><span class="who">${pbadge(TEAM_DOT, "Team")}</span></td>
     <td class="num">${T.total ?? 0}</td><td class="num">${T.completed ?? 0}</td>
     <td class="num ${TI[((d.tiers || {})["team"] || {})["tasks"]] || ""}">${(+(T.pct ?? 0)).toFixed(1)}%</td></tr>`;
   return `<div class="sect"><h2>Task Completion Rate</h2>
    <div class="scroll"><table><thead><tr><th>Producer</th><th class="num">Due</th>
    <th class="num">Done</th><th class="num">Rate</th></tr></thead>
-   <tbody>${rows}${tot}</tbody></table></div></div>`;
+   <tbody>${rows}${tot}</tbody></table></div>${digDrillFor(d, who, ["tasks"])}</div>`;
 }
 
 const OUTCOME_SEGMENTS = [["Live Contact", "--s1"], ["Voicemail", "--s2"], ["Screener", "--s3"],
@@ -1609,6 +1623,8 @@ function speedPanel(d, who) {
    adds every day's rows together. */
 let digDrill = "";
 const ddk = (k, cls) => ` data-ddrill="${k}" role="button" tabindex="0" class="${cls || "tile"} rdrill${digDrill === k ? " on" : ""}"`;
+// A table cell that opens a list: attributes plus the class to add.
+const ddc = k => ({ attr: ` data-ddrill="${k}" role="button" tabindex="0"`, cls: ` rdrill-cell${digDrill === k ? " on" : ""}` });
 const digWho = r => `<span class="who">${pbadge(DOT[r.who] || "#8a877f", (r.who || "").split(" ")[0])}</span>`;
 const digLead = r => r.lead_id ? `<a href="${AZ_URL.lead}${encodeURIComponent(r.lead_id)}" target="_blank" rel="noopener">${cesc(r.lead)}</a>` : cesc(r.lead || "—");
 const digDay = (d, r) => d.date ? "" : `<td class="num">${r.day ? fmtShortDate(r.day) : ""}</td>`;
@@ -1625,8 +1641,13 @@ function digDrillList(title, what, body) {
 }
 const DIG_NO_ROWS = `<p class="sd" style="margin:4px 0 0">The list behind this card was not kept for this day (lists start 2026-09-27; earlier days get them from their saved call data where it was kept).</p>`;
 function digDrillFor(d, who, keys) {
-  const k = digDrill;
-  if (!k || !keys.some(p => k === p || k.startsWith(p + ":"))) return "";
+  // "<list>@<producer>" opens one producer's list; "lb-<list>" is the same
+  // list opened from the leaderboard, so it opens under the leaderboard.
+  let k = digDrill;
+  if (!k || !keys.some(p => k === p || k.startsWith(p + ":") || k.startsWith(p + "-") || k.startsWith(p + "@"))) return "";
+  const at = k.indexOf("@");
+  if (at > 0) { who = k.slice(at + 1); k = k.slice(0, at); }
+  if (k.startsWith("lb-")) k = k.slice(3);
   const R = d.rows;
   if (!R) return digDrillList("", "", DIG_NO_ROWS);
   // 09-03, 09-04, 09-16 lost their call data and were rebuilt from
@@ -1635,6 +1656,7 @@ function digDrillFor(d, who, keys) {
   digRebuiltNote = rb.length ? `<p class="sd" style="margin:10px 0 0;color:var(--warn, #b45309)">${rb.map(fmtShortDate).join(", ")}: this list was rebuilt from RingCentral on 9/27 against today's AgencyZoom records, so it can differ from the card's figure, which stays as it went out.</p>` : "";
   const [kind, a, b] = k.split(":");
   const mine = rs => (rs || []).filter(r => !who || r.who === who);
+  const whoTag = who ? ` · ${cesc(who.split(" ")[0])}` : "";
   const secs = s => s >= 60 ? `${Math.floor(s / 60)}m ${String(s % 60).padStart(2, "0")}s` : `${s}s`;
   if (kind === "dials" || kind === "outcome") {
     let rs = mine(R.dials);
@@ -1642,7 +1664,7 @@ function digDrillFor(d, who, keys) {
     rs = rs.slice().sort((x, y) => (x.who || "").localeCompare(y.who || "") || (x.outcome || "").localeCompare(y.outcome || ""));
     const tr = rs.map(r => `<tr>${digDay(d, r)}<td>${digWho(r)}</td><td>${digLead(r)}</td><td class="num">…${cesc(r.last4)}</td>
       <td>${cesc(r.outcome)}${r.callback ? " · called back" : ""}</td><td class="num">${r.attempts}</td><td class="num">${r.talk ? secs(r.talk) : "—"}</td></tr>`);
-    const title = kind === "outcome" ? `${cesc(a)}${b ? ` · ${cesc(b.split(" ")[0])}` : ""} · ${rs.length}` : `Dials · ${rs.length} numbers`;
+    const title = kind === "outcome" ? `${cesc(a)}${b ? ` · ${cesc(b.split(" ")[0])}` : ""} · ${rs.length}` : `Dials${whoTag} · ${rs.length} number${rs.length === 1 ? "" : "s"}`;
     return digDrillList(title, kind === "outcome" ? "" : "Every new-business number dialled, one row per number; attempts is how many times it was dialled.",
       digTable(d, `<th>Producer</th><th>Lead</th><th class="num">Phone</th><th>Outcome</th><th class="num">Attempts</th><th class="num">Talk</th>`, tr));
   }
@@ -1651,7 +1673,7 @@ function digDrillFor(d, who, keys) {
     const counted = rs.filter(r => r.counted !== false).length, outside = rs.length - counted;
     const tr = rs.map(r => `<tr>${digDay(d, r)}<td>${digWho(r)}</td><td>${digLead(r)}</td><td>${cesc(r.source)}</td><td class="num">${secs(r.seconds)}</td>
       <td>${r.inbound ? (r.kind === "callback" ? "call back" : "call in") : "dialled"}${r.counted === false ? `<div class="n" style="font-size:11px;color:var(--text-muted)">outside the rate</div>` : ""}</td><td class="said">${cesc(r.summary || r.note || "")}</td></tr>`);
-    return digDrillList(`Live contacts · ${counted} in the contact rate${outside ? ` · ${outside} call-in${outside === 1 ? "" : "s"}` : ""}`,
+    return digDrillList(`Live contacts${whoTag} · ${counted} in the contact rate${outside ? ` · ${outside} call-in${outside === 1 ? "" : "s"}` : ""}`,
       "Every conversation, longest first. A call-in the producer answered is a conversation but sits outside the contact rate, which counts only the producer's own dials.",
       digTable(d, `<th>Producer</th><th>Lead</th><th>Source</th><th class="num">On the phone</th><th>How</th><th class="said">What happened</th>`, tr));
   }
@@ -1661,11 +1683,50 @@ function digDrillFor(d, who, keys) {
     const soldIds = new Set(mine(R.sold_leads).map(r => r.lead_id));
     const tr = rs.map(r => `<tr>${digDay(d, r)}<td>${digWho(r)}</td><td>${digLead(r)}</td><td>${cesc(r.source)}</td>
       <td class="num">${r.premium === "" || r.premium == null ? "—" : money(r.premium)}</td>${kind === "closing" ? `<td>${soldIds.has(r.lead_id) ? `<span class="chip c-g">sold</span>` : ""}</td>` : ""}</tr>`);
-    return digDrillList(`Households quoted · ${rs.length}`, kind === "closing" ? "Sold marks a household quoted that was also marked sold the same day." : "",
+    return digDrillList(`Households quoted${whoTag} · ${rs.length}`, kind === "closing" ? "Sold marks a household quoted that was also marked sold the same day." : "",
       digTable(d, `<th>Producer</th><th>Lead</th><th>Source</th><th class="num">Premium quoted</th>${kind === "closing" ? "<th>Sold</th>" : ""}`, tr)
       + (kind === "closing" ? digDrillSold(d, mine) : ""));
   }
-  if (kind === "sold") return digDrillList(`Policies sold · ${mine(R.sold).length}`, "", digDrillSold(d, mine));
+  if (kind === "sold") return digDrillList(`Sold${whoTag} · ${mine(R.sold).length} polic${mine(R.sold).length === 1 ? "y" : "ies"}`, "", digDrillSold(d, mine));
+  if (kind === "hhc") {
+    // Household Completion: the policies sold, cross-sells marked.
+    const ps = mine(R.sold);
+    const tr = ps.map(r => `<tr>${digDay(d, r)}<td>${digWho(r)}</td><td>${cesc(r.product)}</td><td>${cesc(r.policy)}</td>
+      <td class="num">${money(r.premium)}</td><td>${cesc(r.source)}</td><td>${r.cross_sell ? `<span class="chip c-g">cross-sell</span>` : r.cross_sell === false ? "" : "—"}</td></tr>`);
+    return digDrillList(`Household completion${whoTag} · ${ps.length} polic${ps.length === 1 ? "y" : "ies"}`,
+      "Cross-sell is read off the sale's own lead source. A new bundle needs the policy matched to a household, which AgencyZoom's policy records don't carry, so it isn't marked per policy.",
+      digTable(d, `<th>Producer</th><th>Product</th><th>Policy</th><th class="num">Premium</th><th>Lead source</th><th>Cross-sell</th>`, tr)
+      + `<h3 class="rh3" style="margin-top:10px">Leads marked sold · ${mine(R.sold_leads).length}</h3>`
+      + digTable(d, `<th>Producer</th><th>Lead</th><th>Source</th>`, mine(R.sold_leads).map(r => `<tr>${digDay(d, r)}<td>${digWho(r)}</td><td>${digLead(r)}</td><td>${cesc(r.source)}</td></tr>`)));
+  }
+  if (kind === "tasks") {
+    if (!R.tasks || (!R.tasks.length && ((who ? ((d.producers || []).find(p => p.name === who) || {}).tasks : (d.totals || {}).tasks) || {}).total)) return digDrillList(`Tasks${whoTag}`, "", DIG_NO_ROWS);
+    const ORDER = { open: 0, closed: 1, excused: 2, done: 3 };
+    const LABEL = { open: `<span class="chip c-r">still open</span>`, closed: `<span class="chip c-r">closed, not done</span>`,
+      excused: `<span class="chip">excused</span>`, done: `<span class="chip c-g">done</span>` };
+    const rs = mine(R.tasks).slice().sort((x, y) => ORDER[x.state] - ORDER[y.state] || (x.who || "").localeCompare(y.who || ""));
+    const rec = r => r.lead_id ? digLead({ lead: r.record, lead_id: r.lead_id })
+      : r.customer_id ? `<a href="${AZ_URL.customer}${encodeURIComponent(r.customer_id)}" target="_blank" rel="noopener">${cesc(r.record)}</a>` : cesc(r.record || "—");
+    const tr = rs.map(r => `<tr>${digDay(d, r)}<td>${digWho(r)}</td><td>${rec(r)}</td><td>${cesc(r.title)}</td><td>${LABEL[r.state] || ""}</td>
+      <td class="num">${r.due ? fmtShortDate(r.due) : ""}</td><td class="num">${r.completed ? fmtShortDate(r.completed) : ""}</td></tr>`);
+    return digDrillList(`Tasks${whoTag} · ${rs.filter(r => r.state === "done").length} done of ${rs.filter(r => r.state !== "excused").length}`,
+      "Not done first. Excused: the producer smart-cycled the lead and AgencyZoom closed its tasks, so it counts neither way.",
+      digTable(d, `<th>Producer</th><th>Account</th><th>Task</th><th>Status</th><th class="num">Due</th><th class="num">Completed</th>`, tr));
+  }
+  if (kind === "sendoff") {
+    // Sent the Quote: every call where a quote came up (the card's own sendoff).
+    const SO = { producer: `<span class="chip c-r">offered to send</span>`, busy: `<span class="chip">prospect busy</span>`,
+      asked: `<span class="chip">prospect asked</span>`, no: `<span class="chip c-g">kept on the phone</span>` };
+    const ORDER = { producer: 0, busy: 1, asked: 2, no: 3 };
+    const rs = (d.calls || []).filter(c => c.sendoff && c.sendoff[0] && (!who || c.who === who))
+      .sort((x, y) => (ORDER[x.sendoff[0]] ?? 9) - (ORDER[y.sendoff[0]] ?? 9) || (x.who || "").localeCompare(y.who || ""));
+    const n = rs.filter(c => c.sendoff[0] === "producer").length;
+    const tr = rs.map(c => `<tr>${digDay(d, { day: c.day })}<td>${digWho(c)}</td><td>${digLead(c)}</td><td>${cesc(c.leadsrc || "")}</td>
+      <td>${SO[c.sendoff[0]] || cesc(c.sendoff[0])}</td><td class="said">${cesc(c.sendoff[1] || "")}</td></tr>`);
+    return digDrillList(`Sent the quote${whoTag} · ${n} of ${rs.length}`,
+      "Every call where a quote came up. Offered to send: the producer offered, on their own, to send it or get back with the numbers instead of presenting it on the call.",
+      digTable(d, `<th>Producer</th><th>Lead</th><th>Source</th><th>Quote</th><th class="said">What was said</th>`, tr));
+  }
   if (kind === "speed") {
     const rs = mine(R.speed).filter(r => a === "team" || r.who === a).sort((x, y) => y.secs - x.secs);
     const clock = iso => iso ? new Date(iso).toLocaleTimeString([], { hour: "numeric", minute: "2-digit", timeZone: "America/Phoenix" }) : "";
@@ -2513,7 +2574,7 @@ function mergeDayDocs(docs) {
   const msgPer = {}, msgRows = { replies: [], quotes: [], bad_contact: [] };
   let hasMsg = false;
   // The Digest cards' lists: every day's rows, tagged with their day.
-  const digRows = { dials: [], contacts: [], quoted: [], sold: [], sold_leads: [], speed: [], rebuilt_days: [] };
+  const digRows = { dials: [], contacts: [], quoted: [], sold: [], sold_leads: [], speed: [], tasks: [], rebuilt_days: [] };
   let hasRows = false;
 
   for (const doc of docs) {

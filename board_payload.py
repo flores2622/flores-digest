@@ -270,7 +270,8 @@ def build(day, live=False):
             "util_total": (util.get(name) or [None, None])[1] if util.get(name) else None,
             "util_prod": (util.get(name) or [None, None, None])[2] if util.get(name) else None,
             "coach": (M.get("coach") or {}).get(name, {}),
-            "tasks": tasks.get(name, {}),
+            # The task list itself travels in rows.tasks (digest_rows.py).
+            "tasks": {k: v for k, v in (tasks.get(name) or {}).items() if k != "items"},
         })
 
     ta = M.get("task_audit") or {}
