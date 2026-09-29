@@ -91,4 +91,6 @@ Then return:
   "summary"  -- 2 sentences, plain, what happened.
   "tip"      -- one specific, actionable tip for next time. Quote the producer's own weakest line if there is one.
 
+The call may be in English, Spanish, or both mixed -- some prospects speak Spanish or switch between the two. Judge it exactly the same way in any language, and write every note, the summary and the tip in English, quoting the producer's own words as they said them.
+
 Return ONLY a JSON object with exactly these keys: checklist, resolved, summary, tip. No prose outside the JSON.
