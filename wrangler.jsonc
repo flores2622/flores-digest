@@ -50,6 +50,10 @@
     "COMMERCIAL_VIEWERS": "frank@floresinsuranceagency.com",
     // Who sees Role Play's voice ratings table (site/worker.js
     // roleplayVoiceRatings; Frank, 2026-09-29). Same format.
-    "ROLEPLAY_VOICE_VIEWERS": "frank@floresinsuranceagency.com"
+    "ROLEPLAY_VOICE_VIEWERS": "frank@floresinsuranceagency.com",
+    // Who sees EVERY producer's Role Play session history and the beta
+    // sessions (site/worker.js rpScope; Frank, 2026-09-29). A producer always
+    // sees their own. Same format.
+    "ROLEPLAY_HISTORY_VIEWERS": "frank@floresinsuranceagency.com,francisco@floresinsuranceagency.com,veronica@floresinsuranceagency.com,amanda@floresinsuranceagency.com"
   }
 }

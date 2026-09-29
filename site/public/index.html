@@ -880,7 +880,7 @@ let view = "digest";
 const CENTERS = {
   salescenter: [["digest", "Digest"], ["sales", "Sales"], ["messages", "Texts & Emails"]],
   coaching: [["coaching", "Coaching"]],
-  learning: [["roleplay", "Role Play"], ["training", "Training"]],
+  learning: [["roleplay", "Role Play"], ["rphistory", "Session History"], ["training", "Training"]],
   service: [["service", "Service Digest"], ["renewals", "Renewals"]],
   commercial: [["commercial", "Commercial"]],
 };
@@ -3703,6 +3703,7 @@ function roleplayPanel() {
   }
 
   const histHtml = rpHistoryCache.length ? `<div class="sect"><h2>Past sessions</h2>
+    <p class="sd" style="margin:0 0 6px">The last 25. <a href="#" id="rpToHistory">Open the full history</a> to read any session.</p>
     ${rpHistoryCache.map(s => `<div class="histrow">
       <span>${new Date(s.created_at).toLocaleString(undefined, { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })}
         · ${(rpPersona(s.persona) || {}).name || s.persona}${s.as_producer ? ` · as ${s.as_producer.split(" ")[0]}` : ""}</span>
@@ -3981,6 +3982,148 @@ function rpVoiceRatingsHtml() {
     </tbody></table></div></div>`;
 }
 
+/* ---- Session History (Frank, 2026-09-29: "a full history of role play
+   sessions once the producers are on it ... producers see their own") ----
+   Every graded session, newest first, from /api/roleplay/sessions -- the
+   Worker decides who sees what from the signed-in email: Frank and ops see
+   everyone and the beta sessions, a producer only their own. A row opens
+   the whole session (the conversation and Apollo's grade) in place. */
+let rphState = { from: "", to: "", producer: "", beta: false, preset: "30" };
+let rphData = null;          // {scope, sessions} or null while loading
+let rphOpenKey = "";
+const rphFull = {};          // key -> full saved session
+const rphEsc = t => String(t == null ? "" : t).replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+
+function rphRange() {
+  if (rphState.preset === "custom") return { from: rphState.from, to: rphState.to };
+  if (rphState.preset === "all") return { from: "", to: "" };
+  const d = new Date(Date.now() - 7 * 3600e3);            // Arizona today
+  const to = d.toISOString().slice(0, 10);
+  d.setUTCDate(d.getUTCDate() - (parseInt(rphState.preset, 10) - 1));
+  return { from: d.toISOString().slice(0, 10), to };
+}
+
+async function rphLoad() {
+  rphData = null;
+  const { from, to } = rphRange();
+  const q = new URLSearchParams();
+  if (from) q.set("from", from);
+  if (to) q.set("to", to);
+  if (rphState.beta) q.set("beta", "1");
+  try {
+    const r = await fetch(`/api/roleplay/sessions?${q}`, { cache: "no-store" });
+    rphData = r.ok ? await r.json() : { scope: {}, sessions: [], error: `HTTP ${r.status}` };
+  } catch (e) { rphData = { scope: {}, sessions: [], error: String(e) }; }
+  if (view === "rphistory") { $("#view").innerHTML = rphPanel(); wireRphPanel(); }
+}
+
+function rphSummaryHtml(rows, scope) {
+  const by = {};
+  for (const x of rows) {
+    const k = rphState.beta ? "Beta / testing" : x.producer;
+    const b = by[k] || (by[k] = { n: 0, res: 0, met: 0, of: 0, missed: {}, focus: {}, last: "" });
+    b.n++; if (x.resolved) b.res++;
+    b.met += x.met || 0; b.of += x.of || 0;
+    for (const m of x.missed || []) b.missed[m] = (b.missed[m] || 0) + 1;
+    for (const f of x.focus || []) b.focus[f] = (b.focus[f] || 0) + 1;
+    if (x.created_at > b.last) b.last = x.created_at;
+  }
+  const order = rphState.beta ? ["Beta / testing"] : PRODUCER_ROSTER.filter(p => scope.all || p === scope.producer);
+  const top = o => Object.entries(o).sort((a, b) => b[1] - a[1]).slice(0, 2).map(([k, n]) => `${rphEsc(k)} (${n}×)`).join(", ") || "—";
+  const pct = (a, b) => b ? `${Math.round(100 * a / b)}%` : "—";
+  const body = order.map(p => {
+    const b = by[p];
+    if (!b) return `<tr><td>${rphEsc(p)}</td><td class="num">0</td><td class="num">—</td><td class="num">—</td><td>—</td><td>—</td><td>—</td></tr>`;
+    return `<tr><td>${rphEsc(p)}</td><td class="num">${b.n}</td><td class="num">${b.res} (${pct(b.res, b.n)})</td>
+      <td class="num">${pct(b.met, b.of)}</td><td>${top(b.missed)}</td><td>${top(b.focus)}</td>
+      <td>${new Date(b.last).toLocaleDateString(undefined, { month: "short", day: "numeric" })}</td></tr>`;
+  }).join("");
+  return `<div class="scroll"><table><thead><tr><th>${rphState.beta ? "" : "Producer"}</th><th class="num">Sessions</th>
+    <th class="num">Resolved</th><th class="num">Checklist met</th><th>Missed most</th><th>Objections drilled</th><th>Last session</th></tr></thead>
+    <tbody>${body}</tbody></table></div>`;
+}
+
+function rphSessionHtml(s) {
+  if (!s) return `<div class="empty" style="padding:12px 0">Loading…</div>`;
+  const who = s.beta ? "Tester" : (s.producer || "").split(" ")[0];
+  const msgs = (s.history || []).map(m => `<div class="rpmsg ${m.role === "producer" ? "producer" : "prospect"}">
+    <span class="rl">${m.role === "producer" ? rphEsc(who) : "Prospect"}</span>${rphEsc(m.content)}</div>`).join("");
+  const facts = [s.lead_source && `Lead source: ${rphEsc(s.lead_source)}`,
+    s.language && `Language: ${rphEsc(RP_LANG_LABEL[s.language] || s.language)}`,
+    s.focus && s.focus.length && `Drilled: ${s.focus.map(rphEsc).join(", ")}`,
+    s.prospect && `Prospect: ${rphEsc(s.prospect)}`].filter(Boolean).join(" · ");
+  return `<div style="padding:10px 0 16px">
+    ${facts ? `<p class="sd" style="margin:0 0 8px">${facts}</p>` : ""}
+    ${s.grade ? gradeCardHtml(s.grade) : ""}
+    <div class="bl" style="margin-top:14px">The conversation</div>
+    <div class="rpchat"><div class="rpmsgs" style="max-height:none">${msgs || '<div class="empty">No transcript saved.</div>'}</div></div>
+  </div>`;
+}
+
+function rphPanel() {
+  const scope = (rphData && rphData.scope) || {};
+  const presetOpts = [["7", "Last 7 days"], ["30", "Last 30 days"], ["90", "Last 90 days"], ["all", "All time"], ["custom", "Custom"]]
+    .map(([k, l]) => `<option value="${k}"${rphState.preset === k ? " selected" : ""}>${l}</option>`).join("");
+  const prodOpts = scope.all && !rphState.beta ? `<select id="rphProd"><option value="">Everyone</option>${PRODUCER_ROSTER.map(p =>
+    `<option value="${p}"${p === rphState.producer ? " selected" : ""}>${p}</option>`).join("")}</select>` : "";
+  const betaBtn = scope.all ? `<button class="ghost${rphState.beta ? " on" : ""}" id="rphBeta" type="button">${rphState.beta ? "Showing beta / testing" : "Show beta / testing"}</button>` : "";
+  const custom = rphState.preset === "custom" ? `<input type="date" id="rphFrom" value="${rphState.from}"> to <input type="date" id="rphTo" value="${rphState.to}">` : "";
+  const controls = `<div class="rprow" style="gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:12px">
+    <select id="rphPreset">${presetOpts}</select>${custom}${prodOpts}${betaBtn}</div>`;
+  if (!rphData) return `<div class="sect"><h2>Session History</h2>${controls}<div class="empty">Loading…</div></div>`;
+  if (rphData.error) return `<div class="sect"><h2>Session History</h2>${controls}<div class="empty">Could not load sessions (${rphEsc(rphData.error)}).</div></div>`;
+  if (!scope.all && !scope.producer) return `<div class="sect"><h2>Session History</h2>
+    <div class="empty">Session history is for the producers and managers. Your sign-in isn't one of them.</div></div>`;
+  const rows = rphData.sessions.filter(x => !rphState.producer || rphState.beta || x.producer === rphState.producer);
+  const intro = rphState.beta ? "Beta / testing sessions -- never counted toward any producer."
+    : scope.all ? "Every producer's graded sessions. Each producer sees only their own here."
+    : "Your graded sessions. Only you and your managers see these.";
+  const list = rows.length ? rows.map(x => `<div class="histrow rphrow" data-key="${rphEsc(x.key)}" style="cursor:pointer">
+      <span>${new Date(x.created_at).toLocaleString(undefined, { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })}
+        · ${rphEsc(rphState.beta ? (x.as_producer ? `as ${x.as_producer.split(" ")[0]}` : "tester") : x.producer.split(" ")[0])}
+        · ${rphEsc((rpPersona(x.persona) || {}).name || x.persona_label || x.persona)}
+        ${x.focus && x.focus.length ? ` · ${rphEsc(x.focus.join(", "))}` : ""}</span>
+      <span><span class="chip ${x.met === x.of && x.of ? "c-g" : "c-w"}">${x.met}/${x.of} checklist</span>
+        ${x.resolved ? '<span class="chip c-g">resolved</span>' : '<span class="chip c-w">not resolved</span>'}
+        ${x.key === rphOpenKey ? "▾" : "▸"}</span>
+    </div>${x.key === rphOpenKey ? rphSessionHtml(rphFull[x.key]) : ""}`).join("")
+    : `<div class="empty">No sessions in this period.</div>`;
+  return `<div class="sect"><h2>Session History</h2>
+    <p class="sd">${intro}</p>${controls}
+    ${rphSummaryHtml(rows, scope)}</div>
+    <div class="sect"><h2>Sessions (${rows.length})</h2>${list}</div>`;
+}
+
+function wireRphPanel() {
+  const rerender = () => { $("#view").innerHTML = rphPanel(); wireRphPanel(); };
+  const pre = $("#rphPreset");
+  if (pre) pre.onchange = () => {
+    rphState.preset = pre.value;
+    if (pre.value === "custom" && !rphState.to) { const r = rphRange(); rphState.from = r.from; rphState.to = r.to; }
+    if (pre.value === "custom") rerender(); else rphLoad();
+  };
+  const f = $("#rphFrom"), t = $("#rphTo");
+  if (f) f.onchange = () => { rphState.from = f.value; rphLoad(); };
+  if (t) t.onchange = () => { rphState.to = t.value; rphLoad(); };
+  const pr = $("#rphProd");
+  if (pr) pr.onchange = () => { rphState.producer = pr.value; rerender(); };
+  const b = $("#rphBeta");
+  if (b) b.onclick = () => { rphState.beta = !rphState.beta; rphOpenKey = ""; rphLoad(); };
+  document.querySelectorAll(".rphrow").forEach(el => el.onclick = async () => {
+    const key = el.dataset.key;
+    rphOpenKey = rphOpenKey === key ? "" : key;
+    rerender();
+    if (rphOpenKey && !rphFull[key]) {
+      try {
+        const r = await fetch(`/api/roleplay/session?key=${encodeURIComponent(key)}`, { cache: "no-store" });
+        const body = r.ok ? await r.json() : null;
+        rphFull[key] = body && body.session ? body.session : { history: [], grade: { summary: "Could not load this session." } };
+      } catch (_) { rphFull[key] = { history: [], grade: { summary: "Could not load this session." } }; }
+      if (view === "rphistory" && rphOpenKey === key) rerender();
+    }
+  });
+}
+
 async function rpSendTurn(text) {
   rpHistory.push({ role: "producer", content: text });
   rpBusy = true;
@@ -4022,6 +4165,7 @@ async function rpSubmitGrade() {
       body: JSON.stringify({ producer: rpProducer, persona: rpPersonaKey, history: rpHistory, lead_source: rpLeadSource ? rpLeadSource.label : "",
                              prospect: rpLeadSource && rpLeadSource.prospect ? rpLeadSource.prospect.text : "",
                              voice: rpDeepgramOff ? "" : rpProspectNow().voice || "", language: rpProspectNow().lang || "en",
+                             focus_objections: producerWeakSpots(rpWeakFor()).map(([c]) => c),
                              beta: rpIsBeta(), ...(rpIsBeta() ? { as_producer: rpWeakFor() } : {}) }),
     });
     const body = await r.json();
@@ -4035,6 +4179,8 @@ async function rpSubmitGrade() {
 }
 
 function wireRoleplayPanel() {
+  const toHist = document.getElementById("rpToHistory");
+  if (toHist) toHist.onclick = e => { e.preventDefault(); goView("rphistory"); };
   // Auto-grade on the way out: nothing that got practiced should go
   // ungraded just because the producer picked a new scenario or switched
   // who's practicing, rather than clicking "Grade my attempt" themselves.
@@ -5083,6 +5229,11 @@ async function paint() {
         wireRoleplayPanel();
       });
     }
+  } else if (view === "rphistory") {
+    $("#topsub").textContent = "every graded Role Play session";
+    v.innerHTML = rphPanel();
+    wireRphPanel();
+    rphLoad();
   } else if (view === "training") {
     $("#topsub").textContent = "Apollo training -- flashcards for objections, info-gathering and technique";
     v.innerHTML = '<div class="empty">Loading…</div>';
