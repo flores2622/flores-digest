@@ -153,7 +153,7 @@ def save(cache, log=print):
 
 def _ask(cs, model, pipe, chunk):
     base = {"model": model, "system": _system(pipe),
-            "messages": [{"role": "user", "content": json.dumps(chunk, ensure_ascii=False)}]}
+            "messages": [{"role": "user", "content": rn.BATCH_LEAD + json.dumps(chunk, ensure_ascii=False)}]}
     room = 60 * len(chunk) + 200
     think = {"thinking": {"type": "disabled"}}
     try:
