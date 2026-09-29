@@ -165,11 +165,14 @@ Everything caches under `data/`, so a re-run resumes rather than restarting.
   grades in English whatever the call's language. **Producers rate the voice
   after each graded session** (stars, again yes / no, a comment), saved on
   the session and in `roleplay-voices/ratings.json`; the ratings table on
-  the Role Play tab is Frank's alone (`ROLEPLAY_VOICE_VIEWERS`). **Faces
-  are a test only** (Frank, 2026-09-29: "3d face"): `site/public/face-test.html`
-  is one TalkingHead 3D face (`faces/mpfb.glb`, CC0 -- the other sample
-  avatars are non-commercial only) speaking the Deepgram voices, with the
-  delay it adds shown under each line. Role Play itself has no face yet.
+  the Role Play tab is Frank's alone (`ROLEPLAY_VOICE_VIEWERS`). **Women
+  prospects have a 3D face** (Frank, 2026-09-29: "add the face to role
+  play"): TalkingHead with `faces/mpfb.glb` (CC0 -- the other sample avatars
+  are non-commercial only), lip-synced to the Deepgram voice, her mood set by
+  the difficulty. It is the only face, a woman's, so **men prospects have
+  none** until one is made. No face (no WebGL, library unreachable, Deepgram
+  off) means the call goes on voice-only. `site/public/face-test.html` is the
+  test page for it, with the delay the face adds shown under each line.
 - **Every graded Role Play session is kept and can be read back** (Frank,
   2026-09-29: "a full history of role play sessions ... producers see their
   own"). Learning Center > **Session History**: a date range (7 / 30 / 90
