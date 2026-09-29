@@ -71,8 +71,9 @@ def _request(audio, key, keyterms=True):
                                   "Content-Type": "audio/mpeg"})
 
 
-def raw(path, log=None):
-    """Deepgram's response for one recording, cached. None on any failure."""
+def raw(path, log=None, cached_only=False):
+    """Deepgram's response for one recording, cached. None on any failure.
+    cached_only: never send the recording -- None unless it was read before."""
     path = pathlib.Path(path)
     cf = CACHE / f"{path.stem}.json"
     if cf.exists():
@@ -80,6 +81,8 @@ def raw(path, log=None):
             return json.loads(cf.read_text())
         except ValueError:
             pass
+    if cached_only:
+        return None
     key = _key()
     if not key or not path.exists():
         return None
@@ -286,12 +289,12 @@ def lead_speaker(utts, producer_sp, lead):
     return None
 
 
-def full(path, duration, offset=0, log=None, producer=None, lead=None):
-    """The whole leg, one line per turn: "Speaker 1: ...", with the producer's
-    turns labelled "<First name> (producer)" when producer_speaker finds them
-    and the lead's "<First name> (lead)" when lead_speaker does. None on
-    failure."""
-    d = raw(path, log=log)
+def turns(path, duration, offset=0, log=None, producer=None, lead=None, cached_only=False):
+    """The leg as timed turns: [{"t": seconds into the recording, "who":
+    label, "text"}], consecutive lines from one speaker merged -- what the
+    coaching card's player seeks to (Frank, 2026-09-29: "skip to a specific
+    part that I am reading"). Labels as full(). None on failure."""
+    d = raw(path, log=log, cached_only=cached_only)
     if d is None:
         return None
     utts = _between(d["utterances"], offset,
@@ -300,17 +303,28 @@ def full(path, duration, offset=0, log=None, producer=None, lead=None):
     first = producer.split()[0] if producer else ""
     them = lead_speaker(utts, who, lead)
     lead_first = lead.replace(",", " ").split()[0].title() if them is not None else ""
-    lines, last = [], None
+    out, last = [], None
     for u in utts:
         if u["speaker"] == last:
-            lines[-1] += " " + u["text"]
+            out[-1]["text"] += " " + u["text"]
+            continue
+        if who is not None and u["speaker"] == who:
+            label = f"{first} (producer)"
+        elif them is not None and u["speaker"] == them:
+            label = f"{lead_first} (lead)"
         else:
-            if who is not None and u["speaker"] == who:
-                label = f"{first} (producer)"
-            elif them is not None and u["speaker"] == them:
-                label = f"{lead_first} (lead)"
-            else:
-                label = f"Speaker {int(u['speaker'] or 0) + 1}"
-            lines.append(f"{label}: {u['text']}")
-            last = u["speaker"]
-    return "\n".join(lines).strip()
+            label = f"Speaker {int(u['speaker'] or 0) + 1}"
+        out.append({"t": round(float(u["start"] or 0), 1), "who": label, "text": u["text"]})
+        last = u["speaker"]
+    return out
+
+
+def full(path, duration, offset=0, log=None, producer=None, lead=None):
+    """The whole leg, one line per turn: "Speaker 1: ...", with the producer's
+    turns labelled "<First name> (producer)" when producer_speaker finds them
+    and the lead's "<First name> (lead)" when lead_speaker does. None on
+    failure."""
+    ts = turns(path, duration, offset=offset, log=log, producer=producer, lead=lead)
+    if ts is None:
+        return None
+    return "\n".join(f"{x['who']}: {x['text']}" for x in ts).strip()

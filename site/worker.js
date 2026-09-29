@@ -64,7 +64,7 @@ export default {
     ctx.waitUntil(scheduledLive(event, env));
   },
 
-  async fetch(request, env) {
+  async fetch(request, env, ctx) {
     const url = new URL(request.url);
     const parts = url.pathname.split("/").filter(Boolean);
 
@@ -133,11 +133,17 @@ export default {
         if (parts[2] === "sessions" && request.method === "GET") {
           return roleplaySessions(request, env, url);
         }
+        if (parts[2] === "clip" && request.method === "POST") {
+          return roleplayClipUpload(request, env, url);
+        }
+        if (parts[2] === "audio" && request.method === "GET") {
+          return roleplayAudio(request, env, url.searchParams.get("key"));
+        }
         if (parts[2] === "session" && request.method === "GET") {
           return roleplaySession(request, env, url.searchParams.get("key"));
         }
         if (parts[2] === "speak" && request.method === "GET") {
-          return roleplaySpeak(env, url);
+          return roleplaySpeak(env, url, ctx);
         }
         if (parts[2] === "voice-feedback" && request.method === "POST") {
           return roleplayVoiceFeedback(request, env);
@@ -993,7 +999,7 @@ function languageInstruction(language) {
  * <audio> element and start playing as Deepgram streams it back -- the
  * Access cookie rides along like any same-origin request. With no
  * DEEPGRAM_API_KEY secret the board falls back to the browser's voice. */
-async function roleplaySpeak(env, url) {
+async function roleplaySpeak(env, url, ctx) {
   if (!env.DEEPGRAM_API_KEY) return json({ error: "DEEPGRAM_API_KEY is not configured on this Worker" }, 503);
   const voice = url.searchParams.get("voice") || "";
   const text = (url.searchParams.get("text") || "").trim();
@@ -1005,7 +1011,77 @@ async function roleplaySpeak(env, url) {
     body: JSON.stringify({ text }),
   });
   if (!r.ok) return json({ error: `Deepgram ${r.status}`, detail: (await r.text()).slice(0, 300) }, 502);
+  // A copy of every line the prospect speaks, so a saved session can be
+  // played back (Frank, 2026-09-29: "i want to be able to hear it"). The
+  // copy is keyed by voice + text -- the grade finds it from the session's
+  // own turns -- and written after the reply is already streaming.
+  if (ctx && r.body) {
+    const [play, keep] = r.body.tee();
+    ctx.waitUntil((async () => {
+      try {
+        const bytes = await new Response(keep).arrayBuffer();
+        await env.BOARD.put(await rpTtsKey(voice, text), bytes, { httpMetadata: { contentType: "audio/mpeg" } });
+      } catch (_) {}
+    })());
+    return new Response(play, { headers: { "content-type": "audio/mpeg", "cache-control": "no-store" } });
+  }
   return new Response(r.body, { headers: { "content-type": "audio/mpeg", "cache-control": "no-store" } });
+}
+
+async function rpTtsKey(voice, text) {
+  const h = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(`${voice}\n${text}`));
+  return `roleplay-audio/tts/${[...new Uint8Array(h)].map((b) => b.toString(16).padStart(2, "0")).join("").slice(0, 40)}.mp3`;
+}
+
+/** POST /api/roleplay/clip?producer=X&beta=1 (body: the audio) -> {key}
+ *  One producer turn as the browser recorded it. Stored under the
+ *  producer's own prefix (beta under beta/), so the same rule that decides
+ *  who may open a session decides who may hear it. */
+const RP_CLIP_TYPES = { "audio/webm": "webm", "audio/ogg": "ogg", "audio/mp4": "m4a", "audio/mpeg": "mp3" };
+async function roleplayClipUpload(request, env, url) {
+  const type = String(request.headers.get("content-type") || "").split(";")[0].trim().toLowerCase();
+  const ext = RP_CLIP_TYPES[type];
+  if (!ext) return json({ error: "unsupported audio type" }, 400);
+  const beta = url.searchParams.get("beta") === "1";
+  const producer = String(url.searchParams.get("producer") || "").trim();
+  if (!beta && !producer) return json({ error: "producer is required" }, 400);
+  const bytes = await request.arrayBuffer();
+  if (!bytes.byteLength) return json({ error: "empty clip" }, 400);
+  if (bytes.byteLength > 8 * 1024 * 1024) return json({ error: "clip too large" }, 413);
+  const id = `${new Date().toISOString().replace(/[:.]/g, "-")}-${crypto.randomUUID().slice(0, 8)}`;
+  const key = `roleplay-audio/${beta ? "beta" : roleplaySlug(producer)}/${id}.${ext}`;
+  await env.BOARD.put(key, bytes, { httpMetadata: { contentType: type } });
+  return json({ key });
+}
+
+/** GET /api/roleplay/audio?key=roleplay-audio/... -> the clip, with range
+ *  support so the player can seek. The prospect's lines (tts/) are the
+ *  machine's voice and open to anyone signed in; a producer's own turns
+ *  follow rpScope -- their own, or everyone's for the history viewers. */
+async function roleplayAudio(request, env, key) {
+  const m = /^roleplay-audio\/([a-z0-9-]+)\/[A-Za-z0-9._-]+\.(mp3|webm|ogg|m4a)$/.exec(key || "");
+  if (!m || key.includes("..")) return json({ error: "bad key" }, 400);
+  const scope = rpScope(request, env);
+  const owner = m[1];
+  const ok = owner === "tts" || scope.all || (owner !== "beta" && scope.producer && owner === roleplaySlug(scope.producer));
+  if (!ok) return json({ error: "not permitted" }, 403);
+  const object = await env.BOARD.get(key, { range: request.headers });
+  if (object === null) return json({ error: "not found" }, 404);
+  const headers = new Headers();
+  headers.set("content-type", (object.httpMetadata && object.httpMetadata.contentType) || "audio/mpeg");
+  headers.set("accept-ranges", "bytes");
+  headers.set("cache-control", "private, max-age=3600");
+  let status = 200;
+  if (object.range) {
+    const offset = object.range.offset || 0;
+    const length = object.range.length ?? (object.size - offset);
+    headers.set("content-range", `bytes ${offset}-${offset + length - 1}/${object.size}`);
+    headers.set("content-length", String(length));
+    status = 206;
+  } else {
+    headers.set("content-length", String(object.size));
+  }
+  return new Response(object.body, { status, headers });
 }
 
 /** POST /api/roleplay/voice-feedback {key, stars, again, comment} -> {ok}
@@ -1127,6 +1203,25 @@ async function roleplayGrade(request, env) {
   if (!history.length) return json({ error: "no transcript to grade" }, 400);
   const producer = String(body.producer || "").trim();
   if (!producer) return json({ error: "producer is required" }, 400);
+  // Each turn's sound, for playback (Frank, 2026-09-29): the producer's
+  // own clip only if it sits under this session's own prefix, and the
+  // prospect's line from the copy /speak kept, if it did.
+  const own = `roleplay-audio/${body.beta === true ? "beta" : roleplaySlug(producer)}/`;
+  const voiceOk = typeof body.voice === "string" && /^aura-2-[a-z]+-(en|es)$/.test(body.voice);
+  for (const h of history) {
+    if (!h || typeof h !== "object") continue;
+    if (h.role === "producer") {
+      if (typeof h.audio !== "string" || !h.audio.startsWith(own) || h.audio.includes("..")) delete h.audio;
+    } else {
+      delete h.audio;
+      if (voiceOk && typeof h.content === "string" && h.content.trim()) {
+        try {
+          const k = await rpTtsKey(body.voice, h.content.slice(0, 2000).trim());
+          if (await env.BOARD.head(k)) h.audio = k;
+        } catch (_) {}
+      }
+    }
+  }
 
   const transcriptText = history
     .map((h) => `${h.role === "producer" ? "Producer" : "Prospect"}: ${h.content}`)
