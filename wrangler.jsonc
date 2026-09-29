@@ -47,6 +47,9 @@
     // Who may open the Commercial Center (site/worker.js requireCommercial).
     // Commercial is Frank's alone (2026-09-24). Comma-separated emails, as
     // Cloudflare Access reports them; empty means nobody.
-    "COMMERCIAL_VIEWERS": "frank@floresinsuranceagency.com"
+    "COMMERCIAL_VIEWERS": "frank@floresinsuranceagency.com",
+    // Who sees Role Play's voice ratings table (site/worker.js
+    // roleplayVoiceRatings; Frank, 2026-09-29). Same format.
+    "ROLEPLAY_VOICE_VIEWERS": "frank@floresinsuranceagency.com"
   }
 }

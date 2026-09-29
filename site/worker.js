@@ -130,6 +130,15 @@ export default {
         if (parts[2] === "history" && request.method === "GET") {
           return roleplayHistory(env, url.searchParams.get("producer"), url.searchParams.get("beta") === "1");
         }
+        if (parts[2] === "speak" && request.method === "GET") {
+          return roleplaySpeak(env, url);
+        }
+        if (parts[2] === "voice-feedback" && request.method === "POST") {
+          return roleplayVoiceFeedback(request, env);
+        }
+        if (parts[2] === "voices" && request.method === "GET") {
+          return roleplayVoiceRatings(request, env);
+        }
       }
 
       if (parts[1] === "saleslog" && parts[2] === "folio" && parts[3] && parts.length === 4
@@ -955,6 +964,97 @@ function prospectInstruction(profile) {
   return `\n\nWho you are: ${profile} Answer as this person -- your name, age, job and household are these, and your coverage needs follow from them (a household with kids or a new driver, a business owner's tools, a retiree's fixed income). Share them naturally when the producer asks during discovery, not all at once. None of this changes which objections you raise or how hard you hold them.`;
 }
 
+/** Appended when the frontend sends language (Frank, 2026-09-29: "some
+ * should be spanish, some english, and some mixed"). Rolled with the
+ * prospect on the board; English sends nothing. How the prospect talks,
+ * never what they object to. */
+function languageInstruction(language) {
+  if (language === "es") {
+    return "\n\nLanguage: you speak Spanish -- everyday Mexican Spanish, the way a customer in Arizona talks on the phone -- and you are more comfortable in it than in English. Reply only in Spanish. If the producer speaks English, ask whether they speak Spanish (\"¿habla español?\") and keep answering in Spanish.";
+  }
+  if (language === "mix") {
+    return "\n\nLanguage: you are bilingual and talk the way many Arizona families do, switching between English and Spanish naturally, sometimes mid-sentence (\"sí, I already have Progressive, pero está muy caro\"). Mix both in most replies, whichever language the producer uses.";
+  }
+  return "";
+}
+
+/** GET /api/roleplay/speak?voice=aura-2-...&text=... -> audio/mpeg
+ *
+ * The prospect's voice (Frank, 2026-09-29: Deepgram). The board picks the
+ * voice from its own catalogue (RP_VOICES in index.html) to fit the
+ * prospect's sex, age and language; any Aura-2 English or Spanish voice
+ * id is accepted here. A GET so the page can hand the URL straight to an
+ * <audio> element and start playing as Deepgram streams it back -- the
+ * Access cookie rides along like any same-origin request. With no
+ * DEEPGRAM_API_KEY secret the board falls back to the browser's voice. */
+async function roleplaySpeak(env, url) {
+  if (!env.DEEPGRAM_API_KEY) return json({ error: "DEEPGRAM_API_KEY is not configured on this Worker" }, 503);
+  const voice = url.searchParams.get("voice") || "";
+  const text = (url.searchParams.get("text") || "").trim();
+  if (!/^aura-2-[a-z]+-(en|es)$/.test(voice)) return json({ error: "unknown voice" }, 400);
+  if (!text || text.length > 2000) return json({ error: "text must be 1-2000 characters" }, 400);
+  const r = await fetch(`https://api.deepgram.com/v1/speak?model=${voice}&encoding=mp3`, {
+    method: "POST",
+    headers: { Authorization: `Token ${env.DEEPGRAM_API_KEY}`, "content-type": "application/json" },
+    body: JSON.stringify({ text }),
+  });
+  if (!r.ok) return json({ error: `Deepgram ${r.status}`, detail: (await r.text()).slice(0, 300) }, 502);
+  return new Response(r.body, { headers: { "content-type": "audio/mpeg", "cache-control": "no-store" } });
+}
+
+/** POST /api/roleplay/voice-feedback {key, stars, again, comment} -> {ok}
+ *
+ * A producer's rating of the prospect's voice (Frank, 2026-09-29), sent
+ * from the grade card after a session. Written onto the saved session
+ * itself and appended to roleplay-voices/ratings.json, the one file the
+ * ratings table reads -- listing every session to add them up would grow
+ * without bound. Beta sessions are rated too: a voice rating is not a
+ * producer figure. A second rating of the same session replaces the first. */
+async function roleplayVoiceFeedback(request, env) {
+  let body;
+  try {
+    body = await request.json();
+  } catch (_) {
+    return json({ error: "bad request body" }, 400);
+  }
+  const key = String(body.key || "");
+  if (!/^roleplay(-beta)?\/[a-z0-9-]+\/[0-9TZ:.-]+\.json$/.test(key)) return json({ error: "bad session key" }, 400);
+  const stars = Number(body.stars);
+  if (!Number.isInteger(stars) || stars < 1 || stars > 5) return json({ error: "stars must be 1-5" }, 400);
+  const obj = await env.BOARD.get(key);
+  if (!obj) return json({ error: "session not found" }, 404);
+  const session = await obj.json();
+  if (!session.voice) return json({ error: "session has no voice to rate" }, 400);
+  const feedback = {
+    stars,
+    again: body.again === true ? true : body.again === false ? false : null,
+    comment: String(body.comment || "").trim().slice(0, 500),
+    at: new Date().toISOString(),
+  };
+  session.voice_feedback = feedback;
+  await env.BOARD.put(key, JSON.stringify(session), { httpMetadata: { contentType: "application/json" } });
+
+  const idxKey = "roleplay-voices/ratings.json";
+  const idxObj = await env.BOARD.get(idxKey);
+  const idx = idxObj ? await idxObj.json() : { ratings: [] };
+  idx.ratings = (idx.ratings || []).filter((x) => x.key !== key);
+  idx.ratings.push({ key, voice: session.voice, language: session.language || "en",
+    producer: session.producer, beta: !!session.beta, ...feedback });
+  await env.BOARD.put(idxKey, JSON.stringify(idx), { httpMetadata: { contentType: "application/json" } });
+  return json({ ok: true });
+}
+
+/** GET /api/roleplay/voices -> {ratings: [...]}, for ROLEPLAY_VOICE_VIEWERS
+ * only (wrangler.jsonc): the board adds them up per voice. */
+async function roleplayVoiceRatings(request, env) {
+  const who = String((ACCESS_IDENTITY.get(request) || {}).email || "").toLowerCase();
+  const allowed = String(env.ROLEPLAY_VOICE_VIEWERS || "").toLowerCase()
+    .split(",").map((x) => x.trim()).filter(Boolean);
+  if (!who || !allowed.includes(who)) return json({ error: "not permitted" }, 403);
+  const obj = await env.BOARD.get("roleplay-voices/ratings.json");
+  return json(obj ? await obj.json() : { ratings: [] });
+}
+
 /** POST /api/roleplay/turn {persona, history, focus_objections} -> {reply}
  *
  * `history` is the growing [{role: "producer"|"prospect", content}, ...]
@@ -990,7 +1090,7 @@ async function roleplayTurn(request, env) {
   const leadSource = typeof body.lead_source === "string" ? body.lead_source.slice(0, 500) : "";
   const prospect = typeof body.prospect === "string" ? body.prospect.slice(0, 300) : "";
   const system = persona.system + focusObjectionInstruction(focusObjections) + leadSourceInstruction(leadSource)
-    + prospectInstruction(prospect);
+    + prospectInstruction(prospect) + languageInstruction(body.language);
 
   try {
     const reply = await callClaude(env, { system, messages, maxTokens: 300 });
@@ -1055,6 +1155,10 @@ async function roleplayGrade(request, env) {
     persona_label: persona.label,
     lead_source: typeof body.lead_source === "string" ? body.lead_source.slice(0, 200) : "",
     ...(typeof body.prospect === "string" && body.prospect ? { prospect: body.prospect.slice(0, 300) } : {}),
+    // The prospect's voice and language, so the rating after the session
+    // lands on the right voice.
+    ...(typeof body.voice === "string" && /^aura-2-[a-z]+-(en|es)$/.test(body.voice) ? { voice: body.voice } : {}),
+    ...(["en", "es", "mix"].includes(body.language) ? { language: body.language } : {}),
     history,
     grade,
     created_at: now.toISOString(),
