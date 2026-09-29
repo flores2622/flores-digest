@@ -712,8 +712,13 @@ details.sc .scb { padding: 0 12px 12px; }
 .tile.rdrill { cursor: pointer; transition: border-color .15s, box-shadow .15s; }
 .tile.rdrill:hover { border-color: var(--border-strong); }
 .tile.rdrill:focus-visible { outline: 2px solid var(--s1); outline-offset: 2px; }
-.tile.rdrill.on { border-color: var(--s1); box-shadow: 0 0 0 1px var(--s1) inset; }
+.tile.rdrill.on { border-color: var(--s1); box-shadow: 0 0 0 1px var(--s1) inset; color: inherit; }
 tr.rdrill-row { cursor: pointer; }
+/* A leaderboard number that opens its list: underlined on hover, marked while open. */
+td.rdrill-cell { cursor: pointer; }
+td.rdrill-cell:hover { text-decoration: underline; text-underline-offset: 3px; }
+td.rdrill-cell:focus-visible { outline: 2px solid var(--s1); outline-offset: -2px; }
+td.rdrill-cell.on { box-shadow: inset 0 -2px 0 var(--s1); color: inherit; font-weight: 600; }
 tr.rdrill-row:hover td { background: var(--surface-2, rgba(127,127,127,.08)); }
 tr.rdrill-row.on td { box-shadow: inset 0 -2px 0 var(--s1); }
 </style>
@@ -1037,18 +1042,31 @@ function hoverable(node, html) {
    has no sold-lead rows (days before digest_rows), so the old Policies
    display stands there. */
 function hhSoldOf(d, name) {
+  const h = hhSoldSplit(d, name);
+  return h ? h.n : null;
+}
+/* hhSoldOf's households, each marked an existing customer (a cross-sell:
+   the sold lead's source is one of lead_sources.EXISTING_HOUSEHOLD, carried
+   on the row as `existing`) or a new household. A household with any
+   existing-customer lead is an existing customer. `unknown` counts rows
+   built before the mark was added. */
+function hhSoldSplit(d, name) {
   const R = d.rows;
   if (!R || !R.sold_leads) return null;
-  const keys = new Set();
+  const keys = new Map();
   const add = (r, who) => {
     if (name && who !== name) return;
-    keys.add(`${r.day || d.date || ""}|${r.household != null ? "h" + r.household : "n" + String(r.lead || r.lead_id || "").toLowerCase()}`);
+    const k = `${r.day || d.date || ""}|${r.household != null ? "h" + r.household : "n" + String(r.lead || r.lead_id || "").toLowerCase()}`;
+    const was = keys.get(k);
+    keys.set(k, was === true || r.existing === true ? true : (was === false || r.existing === false ? false : null));
   };
   // Live, the whole day's sold leads are read at once, so that list stands on
   // its own; the checkpoint's rows are added only if the read stopped short.
   if (!(d.live_sold && d.live_sold_complete)) for (const r of R.sold_leads) add(r, r.who);
   for (const [w, list] of Object.entries(d.live_sold || {})) for (const r of list) add(r, w);
-  return keys.size;
+  const v = [...keys.values()];
+  return { n: v.length, existing: v.filter(x => x === true).length,
+           fresh: v.filter(x => x === false).length, unknown: v.filter(x => x == null).length };
 }
 function digestDay(d, who) {
   const byName = Object.fromEntries((d.producers || []).map(p => [p.name, p]));
@@ -1092,7 +1110,7 @@ function digestDay(d, who) {
   const hhSold = hhSoldOf(d, focus ? focus.name : "");
   const tiles = [
     ["Dials", t.dials ?? 0, dialsNote, tc("dials"), liveOn(d, "dials")],
-    ["Live contacts", t.live ?? 0, rate + "% contact rate", tc("rate")],
+    ["Live contacts", t.live ?? 0, rate + "% contact rate", tc("rate"), liveOn(d, "contacts")],
     ["HH/Prem. Quoted", `<span class="${tc("hh")}">${t.hh ?? 0} HH</span><br><span class="${tc("pq")}">${money(t.pq)}</span>`,
       t.hh ? `avg ${money(t.pq / t.hh)} per HH` : "", "", liveOn(d, "quotes")],
     // Policies colours on the sale streak (see apply_policy_streak), same
@@ -1143,73 +1161,82 @@ function digestDay(d, who) {
 
   return `<div class="tiles tiles-6">${tilesHtml}${closingRatioTileHtml}</div>
   ${digDrillFor(d, who, ["dials", "contacts", "quoted", "sold", "closing"])}
-  ${teamLeaderboardHtml(d, who)}`;
+  ${teamLeaderboardHtml(d, who)}
+  ${digDrillFor(d, who, ["lb"])}`;
 }
 
-/* Household Completion -- was a single "Cross-Sell/Bundle" tile in the main
-   row (Frank, 2026-09-23: "know if they completed an existing household ...
-   or if they are selling a new bundle/household"), then a table of its own
-   between Closing Ratio and Team Leaderboard, now moved into digestPanel()'s
-   .digestgrid alongside Speed to Dial/Utilization (Frank, 2026-09-24: "it
-   should be down below with the other small cards, and should be smaller
-   itself") -- one row per producer, a team total row below (Frank,
-   2026-09-23: "down below for now, with individual numbers, then a team
-   total").
-
-   Two DIFFERENT confidence levels sharing this table, so the caption spells
-   each one out rather than trusting the reader to know:
-     - Cross-Sell reads AgencyZoom's own lead source on the sale ("Home no
-       Auto", "Cross Sell", etc.) -- no join needed, covers every sale.
-     - New Bundle needs a policy -> household match that only resolves for
-       part of a day's sales (no customerId/leadId on a policy record --
-       see digest_config.bundle_classification for the full method and why
-       widening the match window makes it WORSE, not better). It is a LOWER
-       BOUND, marked with "+" for exactly that reason, with its own coverage
-       (Matched to Household) alongside so it's never read as a complete
-       count. Neither column is tier-coloured yet -- no Frank-approved
-       threshold exists for either. */
-// Small per-producer cards, same shape as utilizationHtml's (name, one big
-// tiered number, small notes below) instead of a wide table -- moved out of
-// digestDay() into digestPanel()'s .digestgrid, alongside Speed to Dial and
-// Utilization (Frank, 2026-09-24: "it should be down below with the other
-// small cards, and should be smaller itself").
+/* Household Completion (Frank, 2026-09-23: "know if they completed an
+   existing household ... or if they are selling a new bundle/household";
+   simplified 2026-09-29: "too much description on the bottom, even im
+   confused"). Policies sold over households sold -- the same households the
+   HH/Prem. Sold tile counts (hhSoldSplit), so it covers every sale. It used
+   to divide only the sales a policy -> lead match could place (about half),
+   which blanked Coral's 3-policy household on 09-28. Below it, how many of
+   those households were existing customers (a cross-sell) and how many new.
+   A lead can be marked sold a day off its policy, so a day can hold
+   policies with no household or the reverse: that shows "—" and says so.
+   Colour (Frank, 2026-09-29): green when they sold to an existing customer
+   (the household's source or the policy's own) or a new household bundled (more policies than households, every one
+   new), yellow when every sale was one policy to a new household, and a
+   red "—" with no sales at all. A policy and its household marked sold on
+   different days can't be judged, so that card is left uncoloured. The
+   Team card takes its producers' best colour. Every producer gets a card,
+   sales or not. Days with no sold-lead rows keep the
+   old matched figure. */
 function householdCompletionHtml(d, who) {
   const byName = Object.fromEntries((d.producers || []).map(p => [p.name, p]));
   const focus = who ? byName[who] : null;
-  const TI = { green: "tg", yellow: "ty", red: "tr" };
-  const tc = (name) => TI[((d.tiers || {})[name] || {})["policies_per_hh"]] || "";
-  // Resolved policies over resolved HOUSEHOLDS (never over `pol`, which
-  // includes the ~50% of sales the join can't place at a household at all
-  // -- see digest_config.bundle_classification). Tier-coloured (Frank,
-  // 2026-09-23, off industry policies-per-household benchmarks: green
-  // >=1.5, yellow 1.1-1.49, red <1.1 -- digest_config.THRESHOLDS
-  // ["policies_per_household"]) and the headline number on this card
-  // (Frank, 2026-09-24) -- cross-sell/new-bundle/coverage are supporting
-  // notes underneath, same role dialsNote plays on the Dials tile.
-  const perHh = p => (p.bundle_resolved_households
-    ? (p.bundle_resolved / p.bundle_resolved_households) : null);
-  // `tierKey` is the (d.tiers || {}) lookup key -- the producer's own name,
-  // or the lowercase "team" every other panel keys the team row under
-  // (teamLeaderboardHtml's own tt()/tc("team", ...) do the same) -- kept
-  // separate from `label`, the capitalized "Team" actually shown, so this
-  // doesn't repeat the bug where using the display label as the lookup key
-  // silently found no tier data and rendered uncoloured.
-  const card = (label, tierKey, p, cls) => `<div class="tile"${cls ? ` style="border-color:var(--border-strong)"` : ""}>
+  const hasRows = hhSoldOf(d, "") != null;
+  const glow = liveOn(d, "hhsold") && liveOn(d, "sales") ? " isLive" : "";
+  const plural = (n, one, many) => `${n} ${n === 1 ? one : many}`;
+  const card = (label, name, p, team, teamTier) => {
+    const pol = p.pol || 0;
+    let v, notes, tier = "";
+    if (hasRows) {
+      const h = hhSoldSplit(d, name);
+      v = h.n && pol ? pol / h.n : null;
+      // An existing customer shows on the household or on the policy's own
+      // lead source (p.cross_sell), which covers every sale -- so a
+      // cross-sell whose household was marked sold another day is still one.
+      tier = !pol && !h.n ? "tr"
+        : h.existing || (p.cross_sell || 0) > 0 ? "tg"
+        : v == null ? ""
+        : !h.unknown && pol > h.n ? "tg" : "ty";
+      const split = [h.fresh ? plural(h.fresh, "new household", "new households") : "",
+                     h.existing ? plural(h.existing, "existing customer", "existing customers") : "",
+                     h.unknown ? plural(h.unknown, "household", "households") : ""].filter(Boolean).join(" &middot; ");
+      notes = !pol && !h.n ? "no sales"
+        : v != null ? split
+        : pol ? `${plural(pol, "policy", "policies")} &middot; household marked sold another day`
+        : `${split} &middot; policy dated another day`;
+    } else {
+      v = p.bundle_resolved_households ? p.bundle_resolved / p.bundle_resolved_households : null;
+      notes = pol ? "" : "no sales";
+      tier = pol ? "" : "tr";
+    }
+    if (teamTier != null) tier = teamTier;
+    return `<div${ddk(team ? "hhc" : "hhc@" + name, "tile" + glow)}${team ? ` style="border-color:var(--border-strong)"` : ""}>
     <div class="k">${label}</div>
-    <div class="v ${tc(tierKey)}">${perHh(p) == null ? "—" : perHh(p).toFixed(2)}</div>
-    <div class="n">policies/HH &middot; ${p.cross_sell ?? 0} cross-sell &middot; ${p.new_bundle ?? 0}+ new bundle</div>
-    <div class="n">${p.bundle_resolved ?? 0} of ${p.pol ?? 0} sold matched to a household</div>
+    <div class="v ${tier}">${v == null ? "—" : v.toFixed(2)}</div>
+    <div class="n">policies per household</div>
+    ${notes ? `<div class="n">${notes}</div>` : ""}
    </div>`;
-
-  const list = (focus ? [focus] : (d.producers || [])).filter(p => (p.pol || 0) > 0);
-  const cards = list.map(p => card(p.name, p.name, p)).join("");
+  };
+  const list = focus ? [focus] : (d.producers || []);
+  const made = list.map(p => card(p.name, p.name, p, false));
+  const cards = made.join("");
   const T = d.totals || {};
-  const teamCard = focus || !(T.pol) ? "" : card("Team", "team", T, true);
+  // The team takes its producers' best colour: its own policies-over-
+  // households mixes a policy and a household marked sold on different
+  // days into what looks like a bundle (09-25: 5 policies, 3 households).
+  const tiers = made.map(h => (h.match(/class="v (t[gyr])"/) || [])[1]);
+  const teamTier = ["tg", "ty", "tr"].find(t => tiers.includes(t)) || "";
+  const teamCard = focus ? "" : card("Team", "", T, true, hasRows ? teamTier : null);
   if (!cards && !teamCard) return "";
 
   return `<div class="sect"><h2>Household Completion</h2>
-   <p class="sd">Cross-sell to an existing household (AgencyZoom's own lead source, every sale) vs. a brand-new bundled household (est. lower bound -- see the "matched" note).</p>
-   <div class="tiles">${cards}${teamCard}</div></div>`;
+   <p class="sd">Policies sold per household sold. Existing customer = a cross-sell to a household we already had.</p>
+   <div class="tiles">${cards}${teamCard}</div>${digDrillFor(d, who, ["hhc"])}</div>`;
 }
 
 /* Team Leaderboard -- replaces what used to be two separate panels
@@ -1266,6 +1293,9 @@ function teamLeaderboardHtml(d, who) {
   const MEDAL = ["\u{1F3C6}", "\u{1F948}", "\u{1F949}"];
   const streak = d.policy_streak || {};
   const polTitle = n => {
+    // A household marked sold today, or a live policy, is a sale today even
+    // before the checkpoint's streak knows it.
+    if (d.date && ((byName[n] || {}).pol > 0 || (hhSoldOf(d, "") != null && hhSoldOf(d, n) > 0))) return "sold today";
     const g = streak[n];
     return g === 0 ? "sold today" : g == null ? "no sale on record"
          : g + " business day" + (g === 1 ? "" : "s") + " without a sale";
@@ -1277,18 +1307,20 @@ function teamLeaderboardHtml(d, who) {
   // What each producer typed and sent themselves (messages.py), automation
   // left out; no goal colour until Frank sets one (2026-09-27).
   const MP = (d.messages || {}).producers || null;
-  const msgCell = r => MP ? `<td class="num">${r ? `${r.texts || 0} / ${r.emails || 0}` : "0 / 0"}</td>` : "";
+  // Opens the Texts & Emails page, where the messages themselves are.
+  const msgCell = r => MP ? `<td class="num rdrill-cell${liveOn(d, "messages") ? " isLive" : ""}" data-goview="messages" role="button" tabindex="0" title="Open Texts &amp; Emails">${r ? `${r.texts || 0} / ${r.emails || 0}` : "0 / 0"}</td>` : "";
   const msgTeam = MP ? Object.values(MP).reduce((a, r) => ({ texts: a.texts + (r.texts || 0), emails: a.emails + (r.emails || 0) }), { texts: 0, emails: 0 }) : null;
   // Quote sent instead of kept on the phone (Frank, 2026-09-28: "add the
   // send-the-quote stat per producer to the leaderboard"): calls where the
   // producer offered on their own to send it, of the calls where a quote came
   // up -- the same count as Wins and Losses. Shown, not scored.
   const SO = (d.calls || []).filter(c => c.sendoff && c.sendoff[0]);
-  const soCell = list => {
+  const soCell = (list, name) => {
     if (!SO.length) return "";
     if (!list.length) return `<td class="num">—</td>`;
     const n = list.filter(c => c.sendoff[0] === "producer").length;
-    return `<td class="num">${n} <span style="opacity:.72">of ${list.length}</span></td>`;
+    const [cl, at] = cc("sendoff", name);
+    return `<td class="num${cl}"${at}>${n} <span style="opacity:.72">of ${list.length}</span></td>`;
   };
 
   let podium = "";
@@ -1299,34 +1331,39 @@ function teamLeaderboardHtml(d, who) {
 
   const lv = part => liveOn(d, part) ? " isLive" : "";
   const hhCol = hhSoldOf(d, "") != null;
+  // Each number opens the rows it counts, under the leaderboard (Frank,
+  // 2026-09-29: "anything we add/create should be clickable to display the
+  // accounts"); the Team row opens everyone's. Role play and utilization
+  // have no accounts behind them.
+  const cc = (list, name) => { const c = ddc("lb-" + list + (name ? "@" + name : "")); return [c.cls, c.attr]; };
   const rows = ranked.map((p, i) => `<tr>
     <td><span class="who">${
        !focus && i < 3 ? `<span class="mdl" role="img" aria-label="${["1st", "2nd", "3rd"][i]}">${MEDAL[i]}</span>` : ""}${pbadge(DOT[p.name] || "#8a877f", p.name)}</span></td>
     ${hasRoleplay ? `<td class="num ${tc(p.name, "roleplay")}"${lbRankTag(d, "Role Play", p.name)}>${(p.coach || {}).roleplay ?? "—"}${p.rp_missed ? `<span style="display:block;color:var(--text-muted);font-weight:400;white-space:nowrap;font-size:10.5px" title="Days worked with no role play -- each counts as 0 in the ranking">${p.rp_missed} missed</span>` : ""}</td>` : ""}
-    <td class="num ${tc(p.name, "dials")}${lv("dials")}"${lbRankTag(d, "Call Volume", p.name)}>${p.dials ?? 0}${dialsSub(p)}</td>
-    <td class="num ${tc(p.name, "talk")}"${lbRankTag(d, "Avg Talk Time", p.name)}>${hhmm(p.talk)}</td>
-    <td class="num ${tc(p.name, "rate")}"${lbRankTag(d, "Contact Rate", p.name)}>${p.rate ?? 0}% <span style="opacity:.72">(${p.live ?? 0})</span></td>
+    <td class="num ${tc(p.name, "dials")}${lv("dials")}${cc("dials", p.name)[0]}"${cc("dials", p.name)[1]}${lbRankTag(d, "Call Volume", p.name)}>${p.dials ?? 0}${dialsSub(p)}</td>
+    <td class="num ${tc(p.name, "talk")}${lv("contacts")}${cc("contacts", p.name)[0]}"${cc("contacts", p.name)[1]}${lbRankTag(d, "Avg Talk Time", p.name)}>${hhmm(p.talk)}</td>
+    <td class="num ${tc(p.name, "rate")}${lv("contacts")}${cc("contacts", p.name)[0]}"${cc("contacts", p.name)[1]}${lbRankTag(d, "Contact Rate", p.name)}>${p.rate ?? 0}% <span style="opacity:.72">(${p.live ?? 0})</span></td>
     ${msgCell(MP && MP[p.name])}
-    ${soCell(SO.filter(c => c.who === p.name))}
-    <td class="num ${tc(p.name, "hh")}${lv("quotes")}"${lbRankTag(d, "Households Quoted", p.name)}>${p.hh ?? 0}</td>
-    <td class="num ${tc(p.name, "pq")}${lv("quotes")}"${lbRankTag(d, "Premium Quoted", p.name)}>${money(p.pq)}</td>
-    <td class="num ${tc(p.name, "pol")}${lv(hhCol ? "hhsold" : "sales")}" title="${polTitle(p.name)}">${hhCol ? `${hhSoldOf(d, p.name)} <span style="opacity:.72">(${p.pol ?? 0} pol)</span>` : (p.pol ?? 0)}</td>
-    <td class="num ${tc(p.name, "ps")}${lv("sales")}"${lbRankTag(d, "Premium Sold", p.name)}>${money(p.ps)}</td>
+    ${soCell(SO.filter(c => c.who === p.name), p.name)}
+    <td class="num ${tc(p.name, "hh")}${lv("quotes")}${cc("quoted", p.name)[0]}"${cc("quoted", p.name)[1]}${lbRankTag(d, "Households Quoted", p.name)}>${p.hh ?? 0}</td>
+    <td class="num ${tc(p.name, "pq")}${lv("quotes")}${cc("quoted", p.name)[0]}"${cc("quoted", p.name)[1]}${lbRankTag(d, "Premium Quoted", p.name)}>${money(p.pq)}</td>
+    <td class="num ${tc(p.name, "pol")}${lv(hhCol ? "hhsold" : "sales")}${cc("sold", p.name)[0]}"${cc("sold", p.name)[1]} title="${polTitle(p.name)}">${hhCol ? `${hhSoldOf(d, p.name)} <span style="opacity:.72">(${p.pol ?? 0} pol)</span>` : (p.pol ?? 0)}</td>
+    <td class="num ${tc(p.name, "ps")}${lv("sales")}${cc("sold", p.name)[0]}"${cc("sold", p.name)[1]}${lbRankTag(d, "Premium Sold", p.name)}>${money(p.ps)}</td>
     ${p.util != null ? `<td class="num ${tc(p.name, "util")}${lv("util")}">${p.util}%</td>` : ""}</tr>`).join("");
   const tt = k => TI[((d.tiers || {})["team"] || {})[k]] || "";
   const T = d.totals || {};
   const teamRate = T.rate != null ? (+T.rate).toFixed(1) : (T.dials ? (100 * T.live / T.dials).toFixed(1) : "0");   // see digestDay
   const tot = focus ? "" : `<tr class="tot"><td><span class="who">${pbadge(TEAM_DOT, "Team")}</span></td>
     ${hasRoleplay ? `<td class="num ${tt("roleplay")}">${T.roleplay != null ? Math.round(T.roleplay) : "—"}</td>` : ""}
-    <td class="num ${tt("dials")}${lv("dials")}">${T.dials ?? 0}${dialsSub(T)}</td>
-    <td class="num ${tt("talk")}">${hhmm(T.talk)}</td>
-    <td class="num ${tt("rate")}">${teamRate}% <span style="opacity:.72">(${T.live ?? 0})</span></td>
+    <td class="num ${tt("dials")}${lv("dials")}${cc("dials")[0]}"${cc("dials")[1]}>${T.dials ?? 0}${dialsSub(T)}</td>
+    <td class="num ${tt("talk")}${lv("contacts")}${cc("contacts")[0]}"${cc("contacts")[1]}>${hhmm(T.talk)}</td>
+    <td class="num ${tt("rate")}${lv("contacts")}${cc("contacts")[0]}"${cc("contacts")[1]}>${teamRate}% <span style="opacity:.72">(${T.live ?? 0})</span></td>
     ${msgCell(msgTeam)}
-    ${soCell(SO)}
-    <td class="num ${tt("hh")}${lv("quotes")}">${T.hh ?? 0}</td>
-    <td class="num ${tt("pq")}${lv("quotes")}">${money(T.pq)}</td>
-    <td class="num ${tt("pol")}${lv(hhCol ? "hhsold" : "sales")}">${hhCol ? `${hhSoldOf(d, "")} <span style="opacity:.72">(${T.pol ?? 0} pol)</span>` : (T.pol ?? 0)}</td>
-    <td class="num ${tt("ps")}${lv("sales")}">${money(T.ps)}</td>
+    ${soCell(SO, "")}
+    <td class="num ${tt("hh")}${lv("quotes")}${cc("quoted")[0]}"${cc("quoted")[1]}>${T.hh ?? 0}</td>
+    <td class="num ${tt("pq")}${lv("quotes")}${cc("quoted")[0]}"${cc("quoted")[1]}>${money(T.pq)}</td>
+    <td class="num ${tt("pol")}${lv(hhCol ? "hhsold" : "sales")}${cc("sold")[0]}"${cc("sold")[1]}>${hhCol ? `${hhSoldOf(d, "")} <span style="opacity:.72">(${T.pol ?? 0} pol)</span>` : (T.pol ?? 0)}</td>
+    <td class="num ${tt("ps")}${lv("sales")}${cc("sold")[0]}"${cc("sold")[1]}>${money(T.ps)}</td>
     ${T.util != null ? `<td class="num ${tt("util")}${lv("util")}">${T.util}%</td>` : ""}</tr>`;
 
   const rangeNote = !focus && lb.averaged ? `<p class="sd">Ranked on the ${lb.days} reporting days: each producer's per-day averages over the days they worked, scored like a single day. For the ranking a missed role play counts as 0; the Role Play column is the average of the sessions they did.</p>` : "";
@@ -1469,18 +1506,20 @@ function taskCompletionHtml(d, who) {
   const tc = (name) => TI[((d.tiers || {})[name] || {})["tasks"]] || "";
   const list = (focus ? [focus] : (d.producers || [])).filter(p => p.tasks && p.tasks.total != null);
   if (!list.length) return "";
+  const rk = k => ` class="rdrill-row${digDrill === k ? " on" : ""}" data-ddrill="${k}" tabindex="0" role="button"`;
+  const lt = liveOn(d, "tasks") ? " isLive" : "";
   const rows = list.map(p => { const t = p.tasks; const pct = t.pct ?? 0;
-    return `<tr><td><span class="who">${pbadge(DOT[p.name] || "#8a877f", p.name)}</span></td>
-      <td class="num">${t.total ?? 0}</td><td class="num">${t.completed ?? 0}</td>
-      <td class="num ${tc(p.name)}">${(+pct).toFixed(1)}%</td></tr>`; }).join("");
+    return `<tr${rk("tasks@" + p.name)}><td><span class="who">${pbadge(DOT[p.name] || "#8a877f", p.name)}</span></td>
+      <td class="num${lt}">${t.total ?? 0}</td><td class="num${lt}">${t.completed ?? 0}</td>
+      <td class="num ${tc(p.name)}${lt}">${(+pct).toFixed(1)}%</td></tr>`; }).join("");
   const T = (d.totals || {}).tasks || {};
-  const tot = focus || T.total == null ? "" : `<tr class="tot"><td><span class="who">${pbadge(TEAM_DOT, "Team")}</span></td>
-    <td class="num">${T.total ?? 0}</td><td class="num">${T.completed ?? 0}</td>
-    <td class="num ${TI[((d.tiers || {})["team"] || {})["tasks"]] || ""}">${(+(T.pct ?? 0)).toFixed(1)}%</td></tr>`;
+  const tot = focus || T.total == null ? "" : `<tr class="tot rdrill-row${digDrill === "tasks" ? " on" : ""}" data-ddrill="tasks" tabindex="0" role="button"><td><span class="who">${pbadge(TEAM_DOT, "Team")}</span></td>
+    <td class="num${lt}">${T.total ?? 0}</td><td class="num${lt}">${T.completed ?? 0}</td>
+    <td class="num ${TI[((d.tiers || {})["team"] || {})["tasks"]] || ""}${lt}">${(+(T.pct ?? 0)).toFixed(1)}%</td></tr>`;
   return `<div class="sect"><h2>Task Completion Rate</h2>
    <div class="scroll"><table><thead><tr><th>Producer</th><th class="num">Due</th>
    <th class="num">Done</th><th class="num">Rate</th></tr></thead>
-   <tbody>${rows}${tot}</tbody></table></div></div>`;
+   <tbody>${rows}${tot}</tbody></table></div>${digDrillFor(d, who, ["tasks"])}</div>`;
 }
 
 const OUTCOME_SEGMENTS = [["Live Contact", "--s1"], ["Voicemail", "--s2"], ["Screener", "--s3"],
@@ -1582,11 +1621,11 @@ function speedPanel(d, who) {
     <p class="sd">No internet leads were assigned today, so there is nothing to time.</p></div>`;
   const entries = who ? Object.entries(s.per || {}).filter(([n]) => n === who) : Object.entries(s.per || {});
   const cards = entries.map(([n, v]) => `
-    <div${ddk("speed:" + n)}><div class="k">${pbadge(DOT[n] || "#8a877f", n.split(" ")[0])}</div>
+    <div${ddk("speed:" + n, liveOn(d, "speed") ? "tile isLive" : "")}><div class="k">${pbadge(DOT[n] || "#8a877f", n.split(" ")[0])}</div>
       <div class="v">${hhmm(v.median)}</div>
       <div class="n">median · ${v.n} lead${v.n > 1 ? "s" : ""}</div>
       <div class="n" style="margin-top:5px">quickest ${hhmm(v.quickest)} · longest ${hhmm(v.longest)}</div></div>`).join("")
-   + (!who && s.team ? `<div${ddk("speed:team")} style="border-color:var(--border-strong);background:var(--surface)">
+   + (!who && s.team ? `<div${ddk("speed:team", liveOn(d, "speed") ? "tile isLive" : "")} style="border-color:var(--border-strong);background:var(--surface)">
       <div class="k">Team</div><div class="v">${hhmm(s.team.median)}</div>
       <div class="n">median of all ${s.team.n} leads</div>
       <div class="n" style="margin-top:5px">quickest ${hhmm(s.team.quickest)} · longest ${hhmm(s.team.longest)}</div></div>` : "");
@@ -1606,6 +1645,8 @@ function speedPanel(d, who) {
    adds every day's rows together. */
 let digDrill = "";
 const ddk = (k, cls) => ` data-ddrill="${k}" role="button" tabindex="0" class="${cls || "tile"} rdrill${digDrill === k ? " on" : ""}"`;
+// A table cell that opens a list: attributes plus the class to add.
+const ddc = k => ({ attr: ` data-ddrill="${k}" role="button" tabindex="0"`, cls: ` rdrill-cell${digDrill === k ? " on" : ""}` });
 const digWho = r => `<span class="who">${pbadge(DOT[r.who] || "#8a877f", (r.who || "").split(" ")[0])}</span>`;
 const digLead = r => r.lead_id ? `<a href="${AZ_URL.lead}${encodeURIComponent(r.lead_id)}" target="_blank" rel="noopener">${cesc(r.lead)}</a>` : cesc(r.lead || "—");
 const digDay = (d, r) => d.date ? "" : `<td class="num">${r.day ? fmtShortDate(r.day) : ""}</td>`;
@@ -1622,8 +1663,13 @@ function digDrillList(title, what, body) {
 }
 const DIG_NO_ROWS = `<p class="sd" style="margin:4px 0 0">The list behind this card was not kept for this day (lists start 2026-09-27; earlier days get them from their saved call data where it was kept).</p>`;
 function digDrillFor(d, who, keys) {
-  const k = digDrill;
-  if (!k || !keys.some(p => k === p || k.startsWith(p + ":"))) return "";
+  // "<list>@<producer>" opens one producer's list; "lb-<list>" is the same
+  // list opened from the leaderboard, so it opens under the leaderboard.
+  let k = digDrill;
+  if (!k || !keys.some(p => k === p || k.startsWith(p + ":") || k.startsWith(p + "-") || k.startsWith(p + "@"))) return "";
+  const at = k.indexOf("@");
+  if (at > 0) { who = k.slice(at + 1); k = k.slice(0, at); }
+  if (k.startsWith("lb-")) k = k.slice(3);
   const R = d.rows;
   if (!R) return digDrillList("", "", DIG_NO_ROWS);
   // 09-03, 09-04, 09-16 lost their call data and were rebuilt from
@@ -1632,6 +1678,7 @@ function digDrillFor(d, who, keys) {
   digRebuiltNote = rb.length ? `<p class="sd" style="margin:10px 0 0;color:var(--warn, #b45309)">${rb.map(fmtShortDate).join(", ")}: this list was rebuilt from RingCentral on 9/27 against today's AgencyZoom records, so it can differ from the card's figure, which stays as it went out.</p>` : "";
   const [kind, a, b] = k.split(":");
   const mine = rs => (rs || []).filter(r => !who || r.who === who);
+  const whoTag = who ? ` · ${cesc(who.split(" ")[0])}` : "";
   const secs = s => s >= 60 ? `${Math.floor(s / 60)}m ${String(s % 60).padStart(2, "0")}s` : `${s}s`;
   if (kind === "dials" || kind === "outcome") {
     let rs = mine(R.dials);
@@ -1639,7 +1686,7 @@ function digDrillFor(d, who, keys) {
     rs = rs.slice().sort((x, y) => (x.who || "").localeCompare(y.who || "") || (x.outcome || "").localeCompare(y.outcome || ""));
     const tr = rs.map(r => `<tr>${digDay(d, r)}<td>${digWho(r)}</td><td>${digLead(r)}</td><td class="num">…${cesc(r.last4)}</td>
       <td>${cesc(r.outcome)}${r.callback ? " · called back" : ""}</td><td class="num">${r.attempts}</td><td class="num">${r.talk ? secs(r.talk) : "—"}</td></tr>`);
-    const title = kind === "outcome" ? `${cesc(a)}${b ? ` · ${cesc(b.split(" ")[0])}` : ""} · ${rs.length}` : `Dials · ${rs.length} numbers`;
+    const title = kind === "outcome" ? `${cesc(a)}${b ? ` · ${cesc(b.split(" ")[0])}` : ""} · ${rs.length}` : `Dials${whoTag} · ${rs.length} number${rs.length === 1 ? "" : "s"}`;
     return digDrillList(title, kind === "outcome" ? "" : "Every new-business number dialled, one row per number; attempts is how many times it was dialled.",
       digTable(d, `<th>Producer</th><th>Lead</th><th class="num">Phone</th><th>Outcome</th><th class="num">Attempts</th><th class="num">Talk</th>`, tr));
   }
@@ -1648,7 +1695,7 @@ function digDrillFor(d, who, keys) {
     const counted = rs.filter(r => r.counted !== false).length, outside = rs.length - counted;
     const tr = rs.map(r => `<tr>${digDay(d, r)}<td>${digWho(r)}</td><td>${digLead(r)}</td><td>${cesc(r.source)}</td><td class="num">${secs(r.seconds)}</td>
       <td>${r.inbound ? (r.kind === "callback" ? "call back" : "call in") : "dialled"}${r.counted === false ? `<div class="n" style="font-size:11px;color:var(--text-muted)">outside the rate</div>` : ""}</td><td class="said">${cesc(r.summary || r.note || "")}</td></tr>`);
-    return digDrillList(`Live contacts · ${counted} in the contact rate${outside ? ` · ${outside} call-in${outside === 1 ? "" : "s"}` : ""}`,
+    return digDrillList(`Live contacts${whoTag} · ${counted} in the contact rate${outside ? ` · ${outside} call-in${outside === 1 ? "" : "s"}` : ""}`,
       "Every conversation, longest first. A call-in the producer answered is a conversation but sits outside the contact rate, which counts only the producer's own dials.",
       digTable(d, `<th>Producer</th><th>Lead</th><th>Source</th><th class="num">On the phone</th><th>How</th><th class="said">What happened</th>`, tr));
   }
@@ -1658,11 +1705,53 @@ function digDrillFor(d, who, keys) {
     const soldIds = new Set(mine(R.sold_leads).map(r => r.lead_id));
     const tr = rs.map(r => `<tr>${digDay(d, r)}<td>${digWho(r)}</td><td>${digLead(r)}</td><td>${cesc(r.source)}</td>
       <td class="num">${r.premium === "" || r.premium == null ? "—" : money(r.premium)}</td>${kind === "closing" ? `<td>${soldIds.has(r.lead_id) ? `<span class="chip c-g">sold</span>` : ""}</td>` : ""}</tr>`);
-    return digDrillList(`Households quoted · ${rs.length}`, kind === "closing" ? "Sold marks a household quoted that was also marked sold the same day." : "",
+    return digDrillList(`Households quoted${whoTag} · ${rs.length}`, kind === "closing" ? "Sold marks a household quoted that was also marked sold the same day." : "",
       digTable(d, `<th>Producer</th><th>Lead</th><th>Source</th><th class="num">Premium quoted</th>${kind === "closing" ? "<th>Sold</th>" : ""}`, tr)
       + (kind === "closing" ? digDrillSold(d, mine) : ""));
   }
-  if (kind === "sold") return digDrillList(`Policies sold · ${mine(R.sold).length}`, "", digDrillSold(d, mine));
+  if (kind === "sold") return digDrillList(`Sold${whoTag} · ${mine(R.sold).length} polic${mine(R.sold).length === 1 ? "y" : "ies"}`, "", digDrillSold(d, mine));
+  if (kind === "hhc") {
+    // Household Completion: the households sold, then their policies.
+    const hhTag = r => r.existing === true ? `<span class="chip c-g">existing customer</span>` : r.existing === false ? "new household" : "—";
+    const ls = mine(R.sold_leads), ps = mine(R.sold);
+    const lr = ls.map(r => `<tr>${digDay(d, r)}<td>${digWho(r)}</td><td>${digLead(r)}</td><td>${cesc(r.source)}</td><td>${hhTag(r)}</td></tr>`);
+    const tr = ps.map(r => `<tr>${digDay(d, r)}<td>${digWho(r)}</td><td>${cesc(r.product)}</td><td>${cesc(r.policy)}</td>
+      <td class="num">${money(r.premium)}</td><td>${cesc(r.source)}</td></tr>`);
+    return digDrillList(`Household completion${whoTag} · ${ls.length} marked sold · ${ps.length} polic${ps.length === 1 ? "y" : "ies"}`,
+      "Existing customer is read off the lead's own source (a cross-sell source such as Home no Auto).",
+      `<h3 class="rh3">Leads marked sold · ${ls.length}</h3>`
+      + digTable(d, `<th>Producer</th><th>Lead</th><th>Source</th><th>Household</th>`, lr)
+      + `<h3 class="rh3" style="margin-top:10px">Policies · ${ps.length}</h3>`
+      + digTable(d, `<th>Producer</th><th>Product</th><th>Policy</th><th class="num">Premium</th><th>Lead source</th>`, tr));
+  }
+  if (kind === "tasks") {
+    if (!R.tasks || (!R.tasks.length && ((who ? ((d.producers || []).find(p => p.name === who) || {}).tasks : (d.totals || {}).tasks) || {}).total)) return digDrillList(`Tasks${whoTag}`, "", DIG_NO_ROWS);
+    const ORDER = { open: 0, closed: 1, excused: 2, done: 3 };
+    const LABEL = { open: `<span class="chip c-r">still open</span>`, closed: `<span class="chip c-r">closed, not done</span>`,
+      excused: `<span class="chip">excused</span>`, done: `<span class="chip c-g">done</span>` };
+    const rs = mine(R.tasks).slice().sort((x, y) => ORDER[x.state] - ORDER[y.state] || (x.who || "").localeCompare(y.who || ""));
+    const rec = r => r.lead_id ? digLead({ lead: r.record, lead_id: r.lead_id })
+      : r.customer_id ? `<a href="${AZ_URL.customer}${encodeURIComponent(r.customer_id)}" target="_blank" rel="noopener">${cesc(r.record)}</a>` : cesc(r.record || "—");
+    const tr = rs.map(r => `<tr>${digDay(d, r)}<td>${digWho(r)}</td><td>${rec(r)}</td><td>${cesc(r.title)}</td><td>${LABEL[r.state] || ""}</td>
+      <td class="num">${r.due ? fmtShortDate(r.due) : ""}</td><td class="num">${r.completed ? fmtShortDate(r.completed) : ""}</td></tr>`);
+    return digDrillList(`Tasks${whoTag} · ${rs.filter(r => r.state === "done").length} done of ${rs.filter(r => r.state !== "excused").length}`,
+      "Not done first. Excused: the producer smart-cycled the lead and AgencyZoom closed its tasks, so it counts neither way.",
+      digTable(d, `<th>Producer</th><th>Account</th><th>Task</th><th>Status</th><th class="num">Due</th><th class="num">Completed</th>`, tr));
+  }
+  if (kind === "sendoff") {
+    // Sent the Quote: every call where a quote came up (the card's own sendoff).
+    const SO = { producer: `<span class="chip c-r">offered to send</span>`, busy: `<span class="chip">prospect busy</span>`,
+      asked: `<span class="chip">prospect asked</span>`, no: `<span class="chip c-g">kept on the phone</span>` };
+    const ORDER = { producer: 0, busy: 1, asked: 2, no: 3 };
+    const rs = (d.calls || []).filter(c => c.sendoff && c.sendoff[0] && (!who || c.who === who))
+      .sort((x, y) => (ORDER[x.sendoff[0]] ?? 9) - (ORDER[y.sendoff[0]] ?? 9) || (x.who || "").localeCompare(y.who || ""));
+    const n = rs.filter(c => c.sendoff[0] === "producer").length;
+    const tr = rs.map(c => `<tr>${digDay(d, { day: c.day })}<td>${digWho(c)}</td><td>${digLead(c)}</td><td>${cesc(c.leadsrc || "")}</td>
+      <td>${SO[c.sendoff[0]] || cesc(c.sendoff[0])}</td><td class="said">${cesc(c.sendoff[1] || "")}</td></tr>`);
+    return digDrillList(`Sent the quote${whoTag} · ${n} of ${rs.length}`,
+      "Every call where a quote came up. Offered to send: the producer offered, on their own, to send it or get back with the numbers instead of presenting it on the call.",
+      digTable(d, `<th>Producer</th><th>Lead</th><th>Source</th><th>Quote</th><th class="said">What was said</th>`, tr));
+  }
   if (kind === "speed") {
     const rs = mine(R.speed).filter(r => a === "team" || r.who === a).sort((x, y) => y.secs - x.secs);
     const clock = iso => iso ? new Date(iso).toLocaleTimeString([], { hour: "numeric", minute: "2-digit", timeZone: "America/Phoenix" }) : "";
@@ -1710,9 +1799,10 @@ function speedReplyPanel(d, who) {
   const rows = (M.replies || []).filter(r => names.includes(r.who) && !r.ack && !r.optout);
   if (!rows.length) return `<div class="sect"><h2>Speed to Reply</h2>
     <p class="sd">No lead wrote in by text or email${who ? ` to ${who}` : ""} that needed an answer.</p></div>`;
+  const live = liveOn(d, "messages") ? " isLive" : "";
   const tile = (label, rs, team) => {
     const m = rs.filter(r => r.minutes != null).map(r => r.minutes), wait = rs.length - m.length;
-    return `<div${ddk("reply:" + (team ? "team" : rs[0].who))}${team ? ' style="border-color:var(--border-strong);background:var(--surface)"' : ""}>
+    return `<div${ddk("reply:" + (team ? "team" : rs[0].who), "tile" + live)}${team ? ' style="border-color:var(--border-strong);background:var(--surface)"' : ""}>
       <div class="k">${label}</div><div class="v"><span class="${replyTier(m.length ? median(m) : null)}">${fmtMins(m.length ? median(m) : null)}</span></div>
       <div class="n">median · ${m.length} answered</div>
       <div class="n" style="margin-top:5px">${m.length ? `quickest ${fmtMins(Math.min(...m))} · longest ${fmtMins(Math.max(...m))}` : "none answered"}</div>
@@ -1778,7 +1868,7 @@ function messagesPanel(d, who) {
     ["Time to answer", `<span class="${replyTier(med(answered.map(r => r.minutes)))}">${fmtMins(med(answered.map(r => r.minutes)))}</span>`, `median of ${answered.length} repl${answered.length === 1 ? "y" : "ies"} answered`],
     ["Waiting on us", waiting.length, `repl${waiting.length === 1 ? "y" : "ies"} with no answer by end of day`],
     ["Quotes sent", sum("quotes"), `by email or text · ${sum("quotes_opened")} opened`],
-  ].map(([k, v, n]) => `<div class="tile"><div class="k">${k}</div><div class="v">${v}</div><div class="n">${n}</div></div>`).join("");
+  ].map(([k, v, n]) => `<div class="tile${liveOn(d, "messages") ? " isLive" : ""}"><div class="k">${k}</div><div class="v">${v}</div><div class="n">${n}</div></div>`).join("");
   const table = names.map(n => {
     const p = per[n] || {}, a = answered.filter(r => r.who === n).map(r => r.minutes);
     return `<tr><td><span class="who">${pbadge(DOT[n] || "#8a877f", n.split(" ")[0])}</span></td>
@@ -1989,7 +2079,11 @@ function applyLive(base, L) {
   if (!L || !L.live) return d;
   // Which figures are live on this document -- read by liveOn() to make
   // them glow. closing is live only once both halves are.
-  d.live_parts = ["dials", "sales", "quotes", "util"].filter(k => (L[k] || {}).ok);
+  d.live_parts = ["dials", "sales", "quotes", "util", "messages"].filter(k => (L[k] || {}).ok);
+  // Contacts ride on the live dial count: a live numerator over the
+  // checkpoint's dials would overstate the rate.
+  const contactsOn = (L.contacts || {}).ok && (L.dials || {}).ok && !!(d.live_basis || {}).talk;
+  if (contactsOn) d.live_parts.push("contacts");
   // Households sold ride with sales (site/live.js soldLeadsToday).
   if ((L.sales || {}).ok && (L.sold || {}).ok) {
     d.live_parts.push("hhsold");
@@ -1997,9 +2091,38 @@ function applyLive(base, L) {
     d.live_sold_complete = !!L.sold.data.complete;
   }
   if ((L.sales || {}).ok && (L.quotes || {}).ok && (L.sold || {}).ok) d.live_parts.push("closing");
+  // Speed to Dial is worked out whole from today's leads and call log
+  // (site/live.js speedToDial), so the live figure replaces the checkpoint's,
+  // and so does the list its cards open.
+  // Task Completion is worked out whole from the tasks due today
+  // (site/live.js taskCompletion), like Speed to Dial.
+  if ((L.tasks || {}).ok) {
+    d.live_parts.push("tasks");
+    const X = L.tasks.data, tiersT = d.tiers || (d.tiers = {});
+    for (const p of d.producers || []) {
+      const x = X.per[p.name]; if (!x) continue;
+      p.tasks = { ...(p.tasks || {}), ...x };
+      if (x.pct != null) (tiersT[p.name] || (tiersT[p.name] = {})).tasks = tierColor("task_completion_pct", x.pct);
+    }
+    d.totals = d.totals || {};
+    d.totals.tasks = { ...(d.totals.tasks || {}), ...X.team };
+    if (X.team.pct != null) (tiersT.team || (tiersT.team = {})).tasks = tierColor("task_completion_pct", X.team.pct);
+    d.rows = { ...(d.rows || {}), tasks: X.rows };
+  }
+  if ((L.speed || {}).ok) {
+    d.live_parts.push("speed");
+    const note = (d.speed_to_dial || {}).note;
+    d.speed_to_dial = L.speed.data.summary ? { ...L.speed.data.summary, note } : null;
+    d.rows = { ...(d.rows || {}), speed: L.speed.data.rows };
+  }
   const tiers = d.tiers || (d.tiers = {});
   const T = d.totals || (d.totals = {});
   const ps = d.producers || [];
+  // The checkpoint's own figures, so the leaderboard can be re-ranked on
+  // what the live parts add (liveRerank, below).
+  const LB_FIELDS = { "Call Volume": "dials", "Avg Talk Time": "talk", "Contact Rate": "rate",
+    "Households Quoted": "hh", "Premium Quoted": "pq", "Premium Sold": "ps" };
+  const before = Object.fromEntries(ps.map(p => [p.name, Object.fromEntries(Object.values(LB_FIELDS).map(k => [k, p[k] || 0]))]));
   const sum = k => ps.reduce((s, p) => s + (p[k] || 0), 0);
   if (L.dials && L.dials.ok) {
     for (const p of ps) {
@@ -2014,6 +2137,54 @@ function applyLive(base, L) {
     d.pace = Math.round(frac * 1000) / 1000;
     for (const p of ps) (tiers[p.name] || (tiers[p.name] = {})).dials = pacedTierColor("call_volume", p.dials || 0, frac);
     (tiers.team || (tiers.team = {})).dials = pacedTierColor("call_volume", (T.dials || 0) / TEAM_SCALE, frac);
+  }
+  if (contactsOn) {
+    // Provisional between checkpoints (live_notes.contactDeltas): the next
+    // checkpoint reads the recordings and settles each one. Avg Talk Time is
+    // finalize._totals's -- seconds over every conversation, inbound too --
+    // and the team's is board_payload._team_talk_and_roleplay's.
+    const TB = d.live_basis.talk;
+    for (const p of ps) {
+      const x = L.contacts.data[p.name], b = TB[p.name]; if (!x || !b) continue;
+      p.live = (p.live || 0) + x.live;
+      const secs = b.seconds + x.seconds, n = b.conversations + x.conversations;
+      p.talk = n ? Math.round(secs / n) : 0;
+      p.rate = p.dials ? Math.round(1000 * p.live / p.dials) / 10 : 0;
+      p.provisional = x.provisional;
+      const row = tiers[p.name] || (tiers[p.name] = {});
+      row.rate = tierColor("contact_rate_pct", p.rate);
+      row.talk = tierColor("avg_talk_min", p.talk / 60);
+    }
+    T.live = sum("live");
+    T.rate = T.dials ? Math.round(1000 * T.live / T.dials) / 10 : 0;
+    T.talk = T.live ? Math.floor(ps.reduce((s, p) => s + (p.talk || 0) * (p.live || 0), 0) / T.live) : 0;
+    const team = tiers.team || (tiers.team = {});
+    team.rate = tierColor("contact_rate_pct", T.rate);
+    team.talk = tierColor("avg_talk_min", T.talk / 60);
+  }
+  if (L.messages && L.messages.ok && d.messages) {
+    // messages.build's figures carried on from the checkpoint
+    // (live_notes.messageDeltas): counts added, new reply rows, and the
+    // replies it left waiting now answered.
+    const M = d.messages, D = L.messages.data;
+    const per = M.producers || (M.producers = {});
+    for (const [who, add] of Object.entries(D.producers || {})) {
+      const row = per[who] || (per[who] = {});
+      for (const [k, v] of Object.entries(add)) row[k] = (row[k] || 0) + v;
+    }
+    M.replies = M.replies || [];
+    for (const u of D.updates || []) {
+      const r = M.replies.find(r => String(r.lead_id) === String(u.lead_id) && r.at === u.at && r.minutes == null);
+      if (!r) continue;
+      if (u.minutes != null) Object.assign(r, { answered_by: u.answered_by, via: u.via, minutes: u.minutes });
+      if (u.add_messages) {
+        r.messages = (r.messages || 1) + u.add_messages;
+        r.said = [r.said, u.add_said].filter(Boolean).join(" / ").slice(0, 300);
+      }
+    }
+    M.replies.push(...(D.replies || []));
+    M.quotes = [...(M.quotes || []), ...(D.quotes || [])];
+    M.bad_contact = [...(M.bad_contact || []), ...(D.bad_contact || [])];
   }
   if (L.sales && L.sales.ok) {
     const streak = d.policy_streak || (d.policy_streak = {});
@@ -2067,7 +2238,39 @@ function applyLive(base, L) {
       (tiers.team || (tiers.team = {})).util = tierColor("utilization_pct", T.util);
     }
   }
+  liveRerank(d, before, LB_FIELDS);
   return d;
+}
+/* The standing, the podium and every leaderboard hover follow the live
+   figures (Frank, 2026-09-28: "the hover for the leaderboard is not live,
+   the actual data is"). Each live category's checkpoint value moves by
+   exactly what the live overlay changed the producer's figure by, then the
+   same scoring (rankLeaderboard) runs again; categories with nothing live
+   (role play, talk time, contact rate) keep the checkpoint's values. */
+function liveRerank(d, before, fields) {
+  const lb = d.leaderboard;
+  if (!lb || !lb.categories || !lb.categories.length) return;
+  const names = Object.keys(lb.points || {});
+  if (names.length < 2) return;
+  const byName = Object.fromEntries((d.producers || []).map(p => [p.name, p]));
+  let moved = false;
+  for (const cat of lb.categories) {
+    const k = fields[cat.label];
+    if (!k || !cat.values) continue;
+    for (const n of names) {
+      const p = byName[n], b = before[n];
+      if (!p || !b) continue;
+      const delta = (p[k] || 0) - b[k];
+      if (delta) { cat.values[n] = (cat.values[n] || 0) + delta; moved = true; }
+    }
+  }
+  if (!moved) return;
+  const val = label => (lb.categories.find(c => c.label === label) || {}).values || {};
+  const tb = ["Premium Sold", "Households Quoted", "Call Volume"].map(val);
+  const res = rankLeaderboard(names, lb.categories.map(c => c.values || {}),
+    Object.fromEntries(names.map(n => [n, tb.map(v => v[n] || 0)])));
+  lb.points = res.points; lb.order = res.order;
+  lb.categories.forEach((c, i) => { c.points = res.perCat[i]; });
 }
 
 const fmtClock = iso => iso ? new Date(iso).toLocaleTimeString([], { hour: "numeric", minute: "2-digit", timeZone: "America/Phoenix" }) : "";
@@ -2108,7 +2311,7 @@ async function refreshLive(day) {
   if (!cur || cur.date !== day || rangeMode !== "day") return;   // moved on while this was in flight
   curLiveData = L;
   cur = applyLive(curCheckpoint, L.checkpoint === curCheckpoint.as_of ? L : null);
-  if (view === "digest") await paint();
+  if (view === "digest" || view === "messages") await paint();
 }
 function startLivePoll(day) {
   stopLivePoll();
@@ -2411,7 +2614,7 @@ function mergeDayDocs(docs) {
   const msgPer = {}, msgRows = { replies: [], quotes: [], bad_contact: [] };
   let hasMsg = false;
   // The Digest cards' lists: every day's rows, tagged with their day.
-  const digRows = { dials: [], contacts: [], quoted: [], sold: [], sold_leads: [], speed: [], rebuilt_days: [] };
+  const digRows = { dials: [], contacts: [], quoted: [], sold: [], sold_leads: [], speed: [], tasks: [], rebuilt_days: [] };
   let hasRows = false;
 
   for (const doc of docs) {
@@ -4724,8 +4927,9 @@ async function fetchServiceDocs(days) {
 function mergeServiceDocs(docs) {
   const last = docs[docs.length - 1];
   const m = { days: docs.map(x => x.date), team: last.team, pipelines: last.pipelines,
-    tasks: {}, completed: [], renewals: [], unnamed: {}, callbacks: [], util: {}, taskRows: [],
+    tasks: {}, completed: [], renewals: [], unnamed: {}, callbacks: [], util: {}, taskRows: [], dials: [], dialDays: 0,
     msg: { days: 0, people: {}, replies: [], sent: [] },
+    front: { days: 0, calls: [], created: [] }, playbook: null,
     openRows: (last.srs || {}).open_rows || null,
     backlog: (last.srs || {}).backlog || {}, lateStages: (last.srs || {}).late_payment_stages || [],
     outcomes: (last.renewals || {}).outcomes || [], resolutionsFrom: (last.renewals || {}).resolutions_from,
@@ -4747,6 +4951,13 @@ function mergeServiceDocs(docs) {
       for (const [k, n] of Object.entries(x.renewals.unnamed || {})) m.unnamed[k] = (m.unnamed[k] || 0) + n;
     }
     m.callbacks.push(...(((x.callbacks || {}).rows) || []).map(r => Object.assign({ day: x.date }, r)));
+    if (x.dials) { m.dialDays++; m.dials.push(...(x.dials.rows || []).map(r => Object.assign({ day: x.date }, r))); }
+    if (x.front) {
+      m.front.days++;
+      m.front.calls.push(...(x.front.calls || []).map(r => Object.assign({ day: x.date }, r)));
+      m.front.created.push(...(x.front.created || []).map(r => Object.assign({ day: x.date }, r)));
+    }
+    if (x.playbook) m.playbook = x.playbook;
     if (x.messages) {
       m.msg.days++;
       for (const [n, c] of Object.entries(x.messages.people || {})) {
@@ -4796,8 +5007,11 @@ function splitRenewals(m) {
   // renewal SRs, or a message about the renewal (service_digest.
   // renewal_caller, service_messages.RENEWAL_WORDS). Per-person message
   // counts are rebuilt from the rows so each side adds up on its own.
+  m.front.created = m.front.created.filter(r => !ren(r));
   m.renewalCallbacks = m.callbacks.filter(r => r.renewal);
   m.callbacks = m.callbacks.filter(r => !r.renewal);
+  m.renewalDials = m.dials.filter(r => r.renewal);
+  m.dials = m.dials.filter(r => !r.renewal);
   const msgSide = keep => {
     const sent = m.msg.sent.filter(r => !!r.renewal === keep), people = {};
     for (const n of team) people[n] = { texts: 0, emails: 0, auto_texts: 0, auto_emails: 0, customers: 0 };
@@ -5119,14 +5333,31 @@ function svcDrillList(title, what, body) {
 }
 // The list for the open card, or "" -- placed right under the cards it belongs to.
 function svcDrillFor(m, keys) {
-  const k = svcDrill;
-  if (!k || !keys.some(p => k === p || k.startsWith(p + ":"))) return "";
+  // "g-<list>" is a list opened from the person grid (serviceStatsHtml), so
+  // it opens under the grid and not under the section that shares its list.
+  let k = svcDrill;
+  if (!k || !keys.some(p => k === p || k.startsWith(p + ":") || k.startsWith(p + "-"))) return "";
+  if (k.startsWith("g-")) k = k.slice(2);
   const [kind, a, b] = k.split(":");
   const per = n => n === "team" ? (() => true) : n === "others" ? (r => !r.by) : (r => r.by === n);
   const who = n => n === "team" ? "Team" : n === "others" ? "Others" : n.split(" ")[0];
   const pipeName = Object.fromEntries((m.pipelines || []).map(([x, l]) => [x, l]));
   const cbDone = m.callbacks.filter(r => r.minutes != null);
   const n = x => `${x.length} `;
+  if (kind === "openall") { const o = m.openRows; return svcDrillList(`Team · open SRs${o ? " · " + o.length : ""}`, `Overdue first, as of ${fmtShortDate(m.days[m.days.length - 1])}.`, svcOpenTable(o, m)); }
+  if (kind === "dials") { const rs = m.dials.filter(r => a === "team" || r.who === a);
+    return svcDrillList(`${a === "team" ? "Team" : cesc(a.split(" ")[0])} · dials · ${rs.length} number${rs.length === 1 ? "" : "s"}`,
+      (m.dialDays ? "" : "Dials are counted from 2026-09-29. ") + "One row per number, with how many times it was dialled. Crystal's are her service dials only; her new-business dials are on the Sales Center.", svcDialTable(rs, m)); }
+  if (kind === "sentby") { const rs = m.msg.sent.filter(r => a === "team" || r.who === a);
+    return svcDrillList(`${a === "team" ? "Team" : cesc(a.split(" ")[0])} · sent · ${rs.filter(r => !r.auto).length} typed`, "Every text and email to a customer, typed first.", svcSentTable(rs, m)); }
+  if (kind === "front") { const rs = a === "calls" ? m.front.calls : m.front.created;
+    return svcDrillList(`Team · ${a === "calls" ? "calls answered" : "SRs created"} · ${rs.length}`, "", a === "calls" ? svcCallTable(rs, m) : svcCreatedTable(rs, m)); }
+  if (kind === "notesall" || kind === "oppall") {
+    const PB = m.playbook || {}, typeLabel = Object.fromEntries(Object.entries(PB.request_types || {}).map(([x, [l]]) => [x, l]));
+    const rs = kind === "notesall" ? m.completed.filter(r => r.audit).sort((x, y) => y.audit.missing.length - x.audit.missing.length)
+      : m.completed.filter(r => r.audit && r.audit.opp !== "none");
+    return svcDrillList(`Team · ${kind === "notesall" ? "notes" : "opportunities"} · ${rs.length}`, kind === "notesall" ? "Missing parts first." : "", svcSrTable(withAudit(rs, typeLabel), m, true));
+  }
   if (kind === "tasks") return svcDrillList(`Service Tasks · ${n(m.taskRows)}due`, "Every service task due in this period, not done first.", svcTaskTable(m.taskRows));
   if (kind === "srs") return svcDrillList(`SRs Completed · ${m.completed.length}`, "Every service SR completed in this period, newest first.", svcSrTable(m.completed, m, true));
   if (kind === "cbwho") { const rs = m.callbacks.filter(r => a === "others" ? r.by === "other" : r.by === a);
@@ -5152,6 +5383,32 @@ function svcDrillFor(m, keys) {
     if (a === "who") { const rs = M.replies.filter(r => r.who === b);
       return svcDrillList(`${cesc(b.split(" ")[0])} · ${rs.length} customer messages`, "", svcReplyTable(rs, m)); }
   }
+  if (kind === "role" || kind === "notes") {
+    const PB = m.playbook || {}, typeLabel = Object.fromEntries(Object.entries(PB.request_types || {}).map(([k, [l]]) => [k, l]));
+    const routine = new Set(PB.routine || []);
+    const sr = (title, rs, what) => svcDrillList(`${title} · ${rs.length}`, what || "", svcSrTable(withAudit(rs, typeLabel), m, true));
+    if (kind === "notes") { const rs = m.completed.filter(r => r.audit && r.audit.missing.includes(a));
+      return sr(`Notes missing ${PART_LABEL[a] || a}`, rs, "Each SR's note, with the parts of the standard it leaves out."); }
+    const n = a, key = b, first = cesc(n.split(" ")[0]);
+    const mine = m.completed.filter(r => r.by === n);
+    if (key === "notes") return sr(`${first} · notes`, mine.filter(r => r.audit).sort((x, y) => y.audit.missing.length - x.audit.missing.length), "Missing parts first.");
+    if (key === "team_notes") return sr("Team · notes not meeting the standard", m.completed.filter(r => r.audit && r.audit.missing.length));
+    if (key === "routine") return sr(`${first} · routine requests`, mine.filter(r => r.audit && routine.has(r.audit.type)), "Requests the playbook gives to the Service Team or Front Desk.");
+    if (key === "complex") return sr(`${first} · complex, sensitive or escalated`, mine.filter(r => r.audit && (!routine.has(r.audit.type) || r.audit.escalated)));
+    if (key === "opp") return sr(`${first} · opportunities`, mine.filter(r => r.audit && r.audit.opp !== "none"),
+      (PB.sells || ["Amanda Torricellas", "Crystal Mango"]).includes(n) ? "Opportunities that came up: worked (quoted, a lead set, or passed), or not noted." : "Passed to a producer, or came up and not passed.");
+    if (key === "billing") return sr(`${first} · billing`, mine.filter(r => r.pipeline === "late_payments" || (r.audit && r.audit.type === "basic_billing")));
+    if (key === "noc") return sr(`${first} · NOC / admin`, mine.filter(r => r.audit && r.audit.type === "noc"));
+    if (key === "srs") return sr(`${first} · SRs completed`, mine);
+    if (key === "calls") return svcDrillList(`${first} · calls answered · ${m.front.calls.filter(r => r.who === n).length}`, "Inbound calls this person picked up first.", svcCallTable(m.front.calls.filter(r => r.who === n), m));
+    if (key === "created") return svcDrillList(`${first} · SRs created · ${m.front.created.filter(r => r.by === n).length}`, "", svcCreatedTable(m.front.created.filter(r => r.by === n), m));
+    if (key === "tasks") { const t = m.taskRows.filter(r => r.assignees.includes(n) || r.done_by === n); return svcDrillList(`${first} · service tasks · ${t.length}`, "", svcTaskTable(t)); }
+    if (key === "open") { const o = m.openRows ? m.openRows.filter(r => r.by === n) : null; return svcDrillList(`${first} · open SRs${o ? " · " + o.length : ""}`, "", svcOpenTable(o, m)); }
+    if (key === "cb") return svcDrillList(`${first} · call backs`, "", svcCallbackTable(m.callbacks.filter(r => r.by === n)));
+    if (key === "reply") return svcDrillList(`${first} · calls and texts`, "", `<h3 class="rh3">Call backs</h3>${svcCallbackTable(m.callbacks.filter(r => r.by === n))}<h3 class="rh3">Customer texts &amp; emails</h3>${svcReplyTable(m.msg.replies.filter(r => r.who === n), m)}`);
+    if (key === "workload") { const o = m.openRows ? m.openRows.filter(r => r.overdue) : null; return svcDrillList(`Team · overdue SRs${o ? " · " + o.length : ""}`, "Every overdue SR on the team, as of the latest day.", svcOpenTable(o, m)); }
+    if (key === "watch") return svcDrillList("Team · waiting on us", "", `<h3 class="rh3">Missed calls not returned</h3>${svcCallbackTable(m.callbacks.filter(r => r.minutes == null))}<h3 class="rh3">Customer texts waiting</h3>${svcReplyTable(m.msg.replies.filter(r => !r.ack && !r.optout && r.minutes == null), m)}`);
+  }
   if (kind === "person") {
     const srs = m.completed.filter(r => r.by === a), tasks = m.taskRows.filter(r => r.assignees.includes(a) || r.done_by === a);
     const open = m.openRows ? m.openRows.filter(r => r.by === a) : null;
@@ -5165,79 +5422,236 @@ function svcDrillFor(m, keys) {
   }
   return "";
 }
+function svcDialTable(rs, m) {
+  if (!rs.length) return '<p class="sd">None.</p>';
+  const secs = x => x >= 60 ? `${Math.floor(x / 60)}m ${String(x % 60).padStart(2, "0")}s` : `${x}s`;
+  const rows = [...rs].sort((a, b) => (b.day || "").localeCompare(a.day || "") || (b.first || "").localeCompare(a.first || "")).map(r => `<tr>
+    <td>${svcTime(r.first)}</td><td>${svcLink(r.link_kind, r.link_id, r.name || fmtPhone(r.number))}<div style="font-size:11.5px;color:var(--text-muted)">${cesc(fmtPhone(r.number))} &middot; ${cesc(r.bucket || "")}</div></td>
+    <td>${svcFirst(r.who)}</td><td class="num">${r.attempts}</td><td class="num">${r.seconds ? secs(r.seconds) : "—"}</td></tr>`).join("");
+  return `<div class="scroll"><table class="rtable"><thead><tr><th>First dial</th><th>Called</th><th>By</th><th class="num">Dials</th><th class="num">Longest connected</th></tr></thead><tbody>${rows}</tbody></table></div>`;
+}
+/* The Service Digest's people (Frank, 2026-09-29: "no leaderboard but cards
+   per producer with their own tasks/SR's completed, dials ... Speed to
+   reply, and all the other stats"; option D, "when I dont have a rep
+   selected i want it to display the team totals"). A strip of one small card
+   per person; the grid under it is the whole team until a person is picked,
+   then theirs, with their role's checklist from the playbook. Nobody is
+   ranked. Every tile opens the accounts it counts. */
+let svcPerson = "";
+function svcStats(m, n) {
+  const team = m.team.map(t => t.name);
+  const mine = r => !n || r.by === n;
+  const srs = m.completed.filter(mine);
+  const k = n ? (m.tasks[n] || { due: 0, completed: 0 })
+    : Object.values(m.tasks).reduce((a, t) => ({ due: a.due + t.due, completed: a.completed + t.completed }), { due: 0, completed: 0 });
+  const b = n ? (m.backlog[n] || {}) : team.reduce((a, x) => ({ open: a.open + ((m.backlog[x] || {}).open || 0), overdue: a.overdue + ((m.backlog[x] || {}).overdue || 0) }), { open: 0, overdue: 0 });
+  const dials = m.dials.filter(r => !n || r.who === n);
+  // The team's call backs are every missed service call; a person's are the ones they returned.
+  const cbs = n ? m.callbacks.filter(r => r.by === n) : m.callbacks;
+  const cbDone = cbs.filter(r => r.minutes != null);
+  const need = m.msg.replies.filter(r => (!n || r.who === n) && !r.ack && !r.optout);
+  const ans = need.filter(r => r.minutes != null);
+  const ppl = n ? [n] : team;
+  const msum = key => ppl.reduce((a, x) => a + ((m.msg.people[x] || {})[key] || 0), 0);
+  const aud = srs.filter(r => r.audit), meets = aud.filter(r => !r.audit.missing.length);
+  const U = ppl.reduce((a, x) => { const u = m.util[x] || {}; return { p: a.p + (u.p || 0), t: a.t + (u.t || 0) }; }, { p: 0, t: 0 });
+  const sells = new Set(((m.playbook || {}).sells) || ["Amanda Torricellas", "Crystal Mango"]);
+  return { srs, k, b, dials, cbs, cbDone, need, ans, aud, meets, U, texts: msum("texts"), emails: msum("emails"),
+    autos: msum("auto_texts") + msum("auto_emails"), customers: msum("customers"),
+    opp: { worked: aud.filter(r => r.audit.opp === "passed").length, missed: aud.filter(r => r.audit.opp === "missed").length, sells: !n || sells.has(n) },
+    calls: m.front.calls.filter(r => !n || r.who === n), created: m.front.created.filter(r => !n || r.by === n) };
+}
+function serviceStatsHtml(m) {
+  // The playbook's own order and titles (Service Lead, Service Team Member,
+  // Front Desk) where the day carries it.
+  const PB = m.playbook, order = PB ? Object.keys(PB.roles) : [];
+  const team = m.team.map(t => t.name).sort((x, y) => PB ? order.indexOf(PB.role_of[x]) - order.indexOf(PB.role_of[y]) : 0);
+  if (svcPerson && !team.includes(svcPerson)) svcPerson = "";
+  const n = svcPerson, first = x => x.split(" ")[0];
+  const pct = (a, t) => t ? Math.round(100 * a / t) + "%" : "—";
+  const medMins = rs => rs.length ? Math.round(median(rs.map(r => r.minutes))) : null;
+  const title = x => (PB && PB.role_of[x] && PB.roles[PB.role_of[x]] ? PB.roles[PB.role_of[x]].title : "")
+    || SERVICE_TITLES[x] || (m.team.find(t => t.name === x) || {}).role || "";
+  const strip = team.map(x => { const S = svcStats(m, x), rm = medMins(S.ans), on = x === n;
+    return `<div class="tile rdrill${on ? " on" : ""}" data-sperson="${cesc(x)}" role="button" tabindex="0" style="text-align:left">
+      <div style="display:flex;justify-content:space-between;align-items:baseline;gap:8px">${pbadge(DOT[x] || TEAM_DOT, first(x))}<span class="n">${cesc(title(x))}</span></div>
+      <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:4px;text-align:center;margin-top:10px">
+        <div><div class="v" style="font-size:19px">${S.srs.length}</div><div class="n">SRs</div></div>
+        <div><div class="v" style="font-size:19px">${S.k.completed}/${S.k.due}</div><div class="n">tasks</div></div>
+        <div><div class="v ${replyTier(rm)}" style="font-size:19px">${fmtMins(rm)}</div><div class="n">reply</div></div>
+        <div><div class="v${S.b.overdue ? " tr" : ""}" style="font-size:19px">${S.b.overdue ?? 0}</div><div class="n">overdue</div></div></div></div>`; }).join("");
+  const S = svcStats(m, n);
+  const g = (key, teamKey) => "g-" + (n ? key : teamKey);
+  const cbMed = medMins(S.cbDone), rMed = medMins(S.ans), wait = S.need.length - S.ans.length;
+  const tile = (key, k, v, note, cls) => key ? `<div${sdk(key)}><div class="k">${k}</div><div class="v${cls ? " " + cls : ""}">${v}</div><div class="n">${note}</div></div>`
+    : `<div class="tile"><div class="k">${k}</div><div class="v">${v}</div><div class="n">${note}</div></div>`;
+  const connected = S.dials.filter(r => r.seconds > 0).length;
+  const u = n ? (m.util[n] || {}) : {};
+  const tiles = [
+    tile(g(`role:${n}:srs`, "srs"), "SRs completed", S.srs.length, S.srs.length ? `median ${fmtDur(svcMedian(S.srs.map(r => r.hours)))} created to completed` : "none completed"),
+    tile(g(`role:${n}:tasks`, "tasks"), "Tasks done", `${S.k.completed}<span style="font-size:15px;color:var(--text-muted)"> / ${S.k.due}</span>`, `${pct(S.k.completed, S.k.due)} of service tasks due`),
+    tile(g(`role:${n}:open`, "openall"), "Open SRs", S.b.open ?? 0, `<b${S.b.overdue ? ' style="color:var(--bad)"' : ""}>${S.b.overdue ?? 0}</b> overdue &middot; as of ${fmtShortDate(m.days[m.days.length - 1])}`),
+    tile(`g-dials:${n || "team"}`, n && n === "Crystal Mango" ? "Service dials" : "Dials", m.dialDays ? S.dials.length : "—",
+      m.dialDays ? `numbers &middot; ${S.dials.reduce((a, r) => a + r.attempts, 0)} dials &middot; ${connected} connected${n === "Crystal Mango" ? " &middot; service only" : ""}` : "counted from 2026-09-29"),
+    tile(g(`cbwho:${n}`, "callbacks"), "Call backs", `<span class="${replyTier(cbMed)}">${fmtMins(cbMed)}</span>`,
+      n ? `median to return &middot; ${S.cbDone.length} returned` : `median to return &middot; ${S.cbDone.length} of ${S.cbs.length} missed calls returned same day`),
+    tile(g(`msg:who:${n}`, "msg:answered"), "Speed to reply", `<span class="${replyTier(rMed)}">${fmtMins(rMed)}</span>`,
+      `median &middot; ${S.ans.length} answered${wait ? ` &middot; <b style="color:var(--bad)">${wait} waiting</b>` : ""}`),
+    tile(`g-sentby:${n || "team"}`, "Texts / Emails", `${S.texts} / ${S.emails}`, `typed &middot; ${S.autos} more by automation`),
+    tile(g(`role:${n}:calls`, "front:calls"), "Calls answered", m.front.days ? S.calls.length : "—", "inbound, picked up first"),
+    tile(g(`role:${n}:created`, "front:created"), "SRs created", m.front.days ? S.created.length : "—", "created and assigned"),
+    tile(g(`role:${n}:notes`, "notesall"), "Note standard", S.aud.length ? pct(S.meets.length, S.aud.length) : "—", `${S.meets.length} of ${S.aud.length} notes answer Who / What / Why / Outcome / Next step`),
+    tile(g(`role:${n}:opp`, "oppall"), "Opportunities", S.opp.worked, `${S.opp.sells ? "worked (quoted, lead set or passed)" : "passed to a producer"} &middot; <b${S.opp.missed ? ' style="color:var(--warn, #b45309)"' : ""}>${S.opp.missed}</b> not ${S.opp.sells ? "noted" : "passed"}`),
+    tile("", "Utilization", S.U.t ? pct(S.U.p, S.U.t) : "—", u.hybrid ? "whole day, shared with sales" : "productive / tracked time"),
+  ].join("");
+  let role = "";
+  if (n && m.playbook && m.playbook.role_of[n]) {
+    const R = m.playbook.roles[m.playbook.role_of[n]];
+    role = `<h3 class="rh3" style="margin-top:14px">${cesc(first(n))}'s role · ${cesc(R.title)}</h3>
+      <p class="sd" style="margin:0 0 6px;font-style:italic">${cesc(R.primary)}</p>
+      <div class="scroll"><table class="rtable"><tbody>${roleMeasures(m, n).map(x => `<tr class="rdrill-row${svcDrill === `g-role:${n}:${x.key}` ? " on" : ""}" data-sdrill="g-role:${n}:${x.key}" tabindex="0" role="button"><td>${cesc(x.label)}</td><td style="text-align:right">${x.value}</td></tr>`).join("")}</tbody></table></div>
+      <p class="sd" style="margin-top:6px">${cesc(R.expectation)}</p>`;
+  }
+  return `<div class="sect"><h2>Service Team</h2>
+    <p class="sd">Pick a person for their own stats; with nobody picked the cards below are the whole team. Credit goes to whoever completed the SR or task. Click any card for the accounts behind it.</p>
+    <div class="tiles" style="grid-template-columns:repeat(auto-fill,minmax(250px,1fr))">${strip}</div>
+    <div class="tile" style="margin-top:12px;text-align:left;background:var(--surface-2, transparent)">
+      <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:8px">
+        <b>${n ? `${pbadge(DOT[n] || TEAM_DOT, first(n))} <span style="margin-left:4px">${cesc(title(n))}</span>` : `${pbadge(TEAM_DOT, "Team")} <span style="margin-left:4px">totals</span>`}</b>
+        ${n ? '<a href="#" data-sperson="">Show the team</a>' : ""}</div>
+      <div class="tiles">${tiles}</div>${role}${svcDrillFor(m, ["g"])}</div></div>`;
+}
 // A card that opens a list: wraps a tile's attributes.
 const sdk = (k, extra) => ` data-sdrill="${k}" role="button" tabindex="0" class="tile rdrill${svcDrill === k ? " on" : ""}${extra ? " " + extra : ""}"`;
-/* Speed to Call Back by person (Frank, 2026-09-27: "the same way you did it
-   for the reply back time"): under the team's Call-Back Resolution card, one
-   card per person -- median minutes from the missed call to their return
-   call, quickest and longest, green at 15 minutes or less, red over an hour
-   (REPLY_GOAL). A call is credited to whoever called back; one never
-   returned belongs to nobody, so it shows on the team card only. */
-function callbackSpeedHtml(m) {
-  const done = m.callbacks.filter(r => r.minutes != null);
-  if (!done.length) return "";
-  const card = (key, label, rs) => { const x = rs.map(r => r.minutes);
-    return `<div${sdk("cbwho:" + key)}><div class="k">${label}</div>
-      <div class="v"><span class="${replyTier(median(x))}">${fmtMins(Math.round(median(x)))}</span></div>
-      <div class="n">median &middot; ${x.length} returned</div>
-      <div class="n" style="margin-top:5px">quickest ${fmtMins(Math.min(...x))} &middot; longest ${fmtMins(Math.max(...x))}</div></div>`; };
-  const team = m.team.map(t => t.name);
-  const cards = team.map(n => [n, done.filter(r => r.by === n)]).filter(([, rs]) => rs.length)
-    .map(([n, rs]) => card(n, pbadge(DOT[n] || TEAM_DOT, n.split(" ")[0]), rs)).join("");
-  const others = done.filter(r => r.by === "other");
-  const waiting = m.callbacks.length - done.length;
-  return `<h3 class="rh3" style="margin-top:14px">Speed to Call Back by person</h3>
-    <p class="sd" style="margin:0 0 6px">From a missed service call to the first call back, credited to whoever made it.
-    Green is 15 minutes or less, red over an hour.${waiting ? ` ${waiting} not returned the same day (on the team card above).` : ""}</p>
-    <div class="tiles">${cards}${others.length ? card("others", pbadge("#8a877f", "Others"), others) : ""}</div>${svcDrillFor(m, ["cbwho"])}`;
+/* ---- The Service Playbook (Amanda, head of service; Frank, 2026-09-28) ------
+   service_playbook.py is her document; each day's `playbook` carries it here.
+   By Role gives each person the measures of their own role's
+   responsibilities, in her words; the Note Standard checks every completed
+   SR's note for Who / What / Why / Outcome / Next step (service_audit.py). */
+const PART_LABEL = { who: "Who", what: "What", why: "Why", outcome: "Outcome", next_step: "Next step" };
+function svcCallTable(rs, m) {
+  if (!rs.length) return '<p class="sd">None.</p>';
+  const rows = [...rs].sort((a, b) => (b.at || "").localeCompare(a.at || "")).map(r => `<tr>
+    <td>${svcTime(r.at)}</td><td>${cesc(fmtPhone(r.number))}</td><td>${svcFirst(r.who)}</td>
+    <td class="num">${fmtMins(Math.round((r.seconds || 0) / 60))}</td></tr>`).join("");
+  return `<div class="scroll"><table class="rtable"><thead><tr><th>Answered</th><th>Caller</th><th>By</th><th class="num">On the line</th></tr></thead><tbody>${rows}</tbody></table></div>`;
+}
+function svcCreatedTable(rs, m) {
+  if (!rs.length) return '<p class="sd">None.</p>';
+  const pipeName = Object.fromEntries((m.pipelines || []).map(([k, l]) => [k, l]));
+  const rows = [...rs].sort((a, b) => (b.day || "").localeCompare(a.day || "")).map(r => `<tr>
+    <td>${renDate(r.day)}</td><td>${svcLink("customer", r.household, r.name)}</td>
+    <td>${cesc(r.subject || "")}<div style="font-size:11.5px;color:var(--text-muted)">${cesc(pipeName[r.pipeline] || r.pipeline || "")}</div></td>
+    <td>${cesc(r.assigned || "—")}</td></tr>`).join("");
+  return `<div class="scroll"><table class="rtable"><thead><tr><th>Created</th><th>Customer</th><th>SR</th><th>Assigned to</th></tr></thead><tbody>${rows}</tbody></table></div>`;
+}
+// SR rows with what the playbook read found, in the note column.
+const withAudit = (rs, typeLabel) => rs.map(r => { const a = r.audit; if (!a) return r;
+  const bits = [typeLabel[a.type] || a.type, a.missing.length ? "Missing: " + a.missing.map(k => PART_LABEL[k] || k).join(", ") : "Meets the note standard",
+    a.opp === "passed" ? "Opportunity acted on" : a.opp === "missed" ? "Opportunity not noted as worked" : "", a.escalated ? "Escalated" : ""].filter(Boolean);
+  return Object.assign({}, r, { note: `[${bits.join(" · ")}] ${r.note || ""}` }); });
+function roleMeasures(m, n) {
+  const PB = m.playbook, role = PB.role_of[n], team = m.team.map(t => t.name);
+  const routine = new Set(PB.routine || []);
+  const mine = m.completed.filter(r => r.by === n), aud = mine.filter(r => r.audit);
+  const meets = aud.filter(r => !r.audit.missing.length);
+  const k = m.tasks[n] || { due: 0, completed: 0 }, b = m.backlog[n] || {};
+  const cb = m.callbacks.filter(r => r.by === n && r.minutes != null);
+  const need = m.msg.replies.filter(r => r.who === n && !r.ack && !r.optout), ans = need.filter(r => r.minutes != null);
+  const pct = (a, t) => t ? Math.round(100 * a / t) + "%" : "—";
+  const med = x => x.length ? fmtMins(Math.round(median(x))) : "—";
+  const L = (label, value, key) => ({ label, value, key });
+  const oppOf = (label, doneWord, missWord) => { const ps = aud.filter(r => r.audit.opp === "passed"), ms = aud.filter(r => r.audit.opp === "missed");
+    return L(label, `<b>${ps.length}</b> ${doneWord} &middot; <b${ms.length ? ' style="color:var(--warn, #b45309)"' : ""}>${ms.length}</b> ${missWord}`, "opp"); };
+  // Pages built before 2026-09-28's change don't carry `sells`.
+  const sellsSet = new Set((m.playbook || {}).sells || ["Amanda Torricellas", "Crystal Mango"]);
+  const oppAny = sellsSet.has(n) ? oppOf("Work the opportunities that come up", "worked (quoted, lead set or passed)", "not noted")
+    : oppOf("Identify opportunities for a producer", "passed", "not passed");
+  const notes = L("Maintain accurate notes", aud.length ? `<b>${pct(meets.length, aud.length)}</b> meet the note standard (${meets.length} of ${aud.length})` : "—", "notes");
+  if (role === "lead") {
+    const openAll = team.reduce((a, x) => a + ((m.backlog[x] || {}).open || 0), 0), overAll = team.reduce((a, x) => a + ((m.backlog[x] || {}).overdue || 0), 0);
+    const busiest = team.map(x => [x, (m.backlog[x] || {}).open || 0]).sort((a, c) => c[1] - a[1])[0];
+    const rout = aud.filter(r => routine.has(r.audit.type)), cx = aud.filter(r => !routine.has(r.audit.type) || r.audit.escalated);
+    const teamAud = m.completed.filter(r => r.audit), teamMeets = teamAud.filter(r => !r.audit.missing.length);
+    return [
+      L("Monitor the overall service workload", `<b>${openAll}</b> open SRs on the team, <b${overAll ? ' style="color:var(--bad)"' : ""}>${overAll}</b> overdue${busiest && busiest[1] ? ` &middot; most with ${cesc(busiest[0].split(" ")[0])} (${busiest[1]})` : ""}`, "workload"),
+      L("Not the default person for every request", aud.length ? `<b>${pct(rout.length, aud.length)}</b> of her SRs were routine work the team handles (${rout.length} of ${aud.length})` : "—", "routine"),
+      L("Complex or sensitive service, escalations", `<b>${cx.length}</b> SR${cx.length === 1 ? "" : "s"}`, "complex"),
+      L("Monitor missed calls and texts", `<b${m.callbacks.some(r => r.minutes == null) ? ' style="color:var(--bad)"' : ""}>${m.callbacks.filter(r => r.minutes == null).length}</b> missed calls not returned &middot; <b>${m.msg.replies.filter(r => !r.ack && !r.optout && r.minutes == null).length}</b> customer texts waiting (team)`, "watch"),
+      L("Audit service notes", teamAud.length ? `team <b>${pct(teamMeets.length, teamAud.length)}</b> meet the note standard` : "—", "team_notes"),
+      oppAny,
+      notes,
+    ];
+  }
+  if (role === "front_desk") {
+    const calls = m.front.calls.filter(r => r.who === n), allCalls = m.front.calls.length;
+    const created = m.front.created.filter(r => r.by === n);
+    const billing = mine.filter(r => r.pipeline === "late_payments" || (r.audit && r.audit.type === "basic_billing"));
+    const noc = mine.filter(r => r.audit && r.audit.type === "noc");
+    return [
+      L("Answer incoming calls", m.front.days ? `<b>${calls.length}</b> answered${allCalls ? ` &middot; ${pct(calls.length, allCalls)} of the team's` : ""}` : "—", "calls"),
+      L("Assign service requests", m.front.days ? `<b>${created.length}</b> SRs created and assigned` : "—", "created"),
+      L("Assist with basic billing", `<b>${billing.length}</b> billing / late payment SRs completed`, "billing"),
+      L("Handle NOCs and administrative tasks", `<b>${noc.length}</b> NOC / admin SRs &middot; tasks <b>${k.completed}/${k.due}</b>`, "noc"),
+      L("Missed calls returned", `<b>${cb.length}</b>${cb.length ? ` &middot; median ${med(cb.map(r => r.minutes))}` : ""}`, "cb"),
+      oppAny,
+      notes,
+    ];
+  }
+  const passed = aud.filter(r => r.audit.opp === "passed"), missed = aud.filter(r => r.audit.opp === "missed");
+  // Crystal and Amanda sell, so they work an opportunity themselves; only the
+  // Front Desk passes one to a producer (Frank, 2026-09-28).
+  const oppLine = oppAny;
+  return [
+    L("Handle routine policy service", `<b>${mine.length}</b> SRs completed${mine.length ? ` &middot; median ${fmtDur(svcMedian(mine.map(r => r.hours)))}` : ""}`, "srs"),
+    L("Complete assigned tasks", `<b>${k.completed}/${k.due}</b> service tasks`, "tasks"),
+    L("Follow up on outstanding items", `<b>${b.open ?? 0}</b> open SRs &middot; <b${b.overdue ? ' style="color:var(--bad)"' : ""}>${b.overdue ?? 0}</b> overdue`, "open"),
+    L("Return calls and texts", `call backs <b>${cb.length}</b>${cb.length ? ` (median ${med(cb.map(r => r.minutes))})` : ""} &middot; replies <b>${ans.length}</b>${ans.length ? ` (median ${med(ans.map(r => r.minutes))})` : ""}${need.length - ans.length ? ` &middot; <b style="color:var(--bad)">${need.length - ans.length} waiting</b>` : ""}`, "reply"),
+    oppLine,
+    notes,
+  ];
+}
+function noteStandardHtml(m) {
+  const PB = m.playbook;
+  const aud = m.completed.filter(r => r.audit);
+  if (!PB || !aud.length) return "";
+  const meets = aud.filter(r => !r.audit.missing.length);
+  const parts = Object.keys(PART_LABEL).map(k => [k, aud.filter(r => r.audit.missing.includes(k)).length]);
+  const chips = parts.map(([k, c]) => `<div${sdk("notes:" + k)}><div class="k">${PART_LABEL[k]}</div><div class="v">${c}</div><div class="n">note${c === 1 ? "" : "s"} missing it &middot; ${Math.round(100 * c / aud.length)}%</div></div>`).join("");
+  return `<div class="sect"><h2>Note Standard</h2>
+    <p class="sd">Every note should answer Who? What? Why? Outcome? Next step? so the next person can pick up where you left off. <b>${Math.round(100 * meets.length / aud.length)}%</b> of the ${aud.length} service SRs completed in this period meet it; each note is read against the playbook by AI.
+    Good: <i>"${cesc(PB.good_note)}"</i> Too vague: <i>"${cesc(PB.vague_note)}"</i></p>
+    <div class="tiles">${chips}</div>${svcDrillFor(m, ["notes"])}</div>`;
+}
+function playbookHtml(m) {
+  const PB = m.playbook;
+  if (!PB) return "";
+  const roleCols = Object.values(PB.roles).map(R => `<div class="tile" style="text-align:left"><div class="k">${cesc(R.title)}</div>
+    <div class="n" style="font-style:italic;margin:6px 0">${cesc(R.primary)}</div>
+    <ul style="margin:0 0 6px 18px;padding:0;font-size:12.5px">${R.responsibilities.map(x => `<li>${cesc(x)}</li>`).join("")}</ul>
+    <div class="n" style="font-size:12px"><b>Expectation:</b> ${cesc(R.expectation)}</div></div>`).join("");
+  const who = Object.values(PB.request_types).map(([l, o]) => `<tr><td>${cesc(l)}</td><td>${cesc({ service: "Service", front_desk: "Front Desk / Service", lead: "Service Lead / Producer", producer: "Producer", frank: "Frank" }[o] || o)}</td></tr>`).join("");
+  const exp = Object.entries(PB.expectations).map(([k, v]) => `<li><b>${cesc(k)}.</b> ${cesc(v)}</li>`).join("");
+  return `<div class="sect"><details class="msgd"><summary style="cursor:pointer"><h2 style="display:inline">Service Playbook</h2> <span style="color:var(--text-muted);font-size:12.5px">what each role owns, as Amanda wrote it</span></summary>
+    <p class="sd" style="margin-top:8px">${cesc(PB.purpose)}</p>
+    <p class="sd"><b>Our Service Standard:</b> ${cesc(PB.standard)}. Every client should feel heard, helped, and confident that their request is being handled.</p>
+    <div class="tiles">${roleCols}</div>
+    <h3 class="rh3">Who handles what</h3>
+    <div class="scroll"><table class="rtable"><thead><tr><th>Request</th><th>Primary responsibility</th></tr></thead><tbody>${who}</tbody></table></div>
+    <p class="sd">${cesc(PB.when_in_doubt)}</p>
+    <h3 class="rh3">Service vs. sales</h3><p class="sd">${cesc(PB.service_vs_sales)}</p>
+    <h3 class="rh3">Our team expectations</h3><ul style="margin:0 0 6px 18px;padding:0;font-size:13px">${exp}</ul>
+    <p class="sd"><i>${cesc(PB.closing)}</i></p></details></div>`;
 }
 function servicePanel(m) {
-  const team = m.team.map(t => t.name);
-  const first = n => n.split(" ")[0];
-  const pct = x => x == null ? "—" : Math.round(x) + "%";
-  const mins = x => x == null ? "—" : (x < 60 ? Math.round(x) + "m" : (Math.round(x / 6) / 10) + "h");
-  const T = Object.values(m.tasks).reduce((a, t) => ({ due: a.due + t.due, completed: a.completed + t.completed }), { due: 0, completed: 0 });
-  const cbDone = m.callbacks.filter(r => r.minutes != null);
-  const U = team.reduce((a, n) => { const u = m.util[n] || {}; return { p: a.p + (u.p || 0), t: a.t + (u.t || 0) }; }, { p: 0, t: 0 });
-  const tiles = `<div class="tiles">
-    <div${sdk("tasks")}><div class="k">Service Tasks Done</div>
-      <div class="v">${T.completed}<span style="font-size:15px;color:var(--text-muted)"> / ${T.due}</span></div>
-      <div class="n">${T.due ? pct(100 * T.completed / T.due) : "—"} of service tasks due</div></div>
-    <div${sdk("srs")}><div class="k">SRs Completed</div>
-      <div class="v">${m.completed.length}</div><div class="n">median ${fmtDur(svcMedian(m.completed.map(r => r.hours)))} created to completed</div></div>
-    <div${sdk("callbacks")}><div class="k">Call-Back Resolution</div>
-      <div class="v"><span class="${replyTier(svcMedian(cbDone.map(r => r.minutes)))}">${fmtMins(cbDone.length ? Math.round(svcMedian(cbDone.map(r => r.minutes))) : null)}</span></div>
-      <div class="n">median to the first return call &middot; ${cbDone.length} of ${m.callbacks.length} missed service calls returned same day</div></div>
-    <div class="tile"><div class="k">Utilization</div>
-      <div class="v">${U.t ? pct(100 * U.p / U.t) : "—"}</div><div class="n">productive / tracked time, whole team</div></div>
-  </div>${svcDrillFor(m, ["tasks", "srs", "callbacks"])}${callbackSpeedHtml(m)}`;
-  const person = n => {
-    const k = m.tasks[n] || { due: 0, completed: 0 }, u = m.util[n] || {}, b = m.backlog[n] || {};
-    const mine = m.completed.filter(r => r.by === n);
-    const cb = cbDone.filter(r => r.by === n);
-    // Titles set here win over the ones stored in each day's document, so a
-    // range ending before a retitle still shows the current one (Amanda was
-    // "Hybrid" in documents built before 2026-09-24).
-    const role = SERVICE_TITLES[n] || (m.team.find(t => t.name === n) || {}).role || "";
-    return `<div${sdk("person:" + n)}>
-      <div class="k">${pbadge(DOT[n] || TEAM_DOT, first(n))} <span style="margin-left:4px">${role}</span></div>
-      <div class="n" style="margin-top:8px"><b>${k.completed}/${k.due}</b> service tasks &middot; <b>${mine.length}</b> SRs completed${mine.length ? ` (median ${fmtDur(svcMedian(mine.map(r => r.hours)))})` : ""}</div>
-      <div class="n"><b>${b.open ?? 0}</b> open SRs &middot; <b>${b.overdue ?? 0}</b> overdue</div>
-      <div class="n">Call backs <b>${cb.length}</b>${cb.length ? ` &middot; median ${mins(svcMedian(cb.map(r => r.minutes)))}` : ""}</div>
-      ${m.msg.days ? (() => { const p = m.msg.people[n] || {}, need = m.msg.replies.filter(r => r.who === n && !r.ack && !r.optout),
-        a = need.filter(r => r.minutes != null).map(r => r.minutes), w = need.length - a.length;
-        return `<div class="n">Texts <b>${p.texts || 0}</b> &middot; Emails <b>${p.emails || 0}</b> &middot; Reply ${a.length ? `median <b class="${replyTier(median(a))}">${fmtMins(median(a))}</b>` : "<b>—</b>"}${w ? ` &middot; <b style="color:var(--bad)">${w} waiting</b>` : ""}</div>`; })() : ""}
-      <div class="n">Utilization <b>${u.t ? pct(100 * u.p / u.t) : "—"}</b>${u.hybrid ? ' <span style="color:var(--text-muted)">&middot; whole day, shared with sales</span>' : ""}</div>
-    </div>`;
-  };
-  return `<div class="sect"><h2>Service Team</h2>
-    <p class="sd">Credit goes to whoever completed the SR or task.</p>${tiles}</div>
+  return `${playbookHtml(m)}${serviceStatsHtml(m)}
+    ${m.playbook ? noteStandardHtml(m) : ""}
     ${svcMessagesHtml(m)}
     ${SR_OUTCOME_SECTIONS.map(([p, t, w, b]) => srOutcomeHtml(m, p, t, w, b)).join("")}
     ${completionTimeHtml(m)}
     ${latePaymentsHtml(m)}
     ${missingDocsHtml(m)}
-    <div class="sect"><h2>By Person</h2><p class="sd">Open and overdue SRs are as of ${fmtShortDate(m.days[m.days.length - 1])}.</p><div class="tiles">${team.map(person).join("")}</div>${svcDrillFor(m, ["person"])}</div>`;
+`;
 }
 // The Sales Digest's date filter, as service days (the Service Digest and the
 // Renewals tab share it -- Frank, 2026-09-27).
@@ -5274,6 +5688,12 @@ async function paintService() {
       el.onkeydown = e => { if (e.key === "Enter" || e.key === " ") go(e); };
     });
     v.querySelectorAll("[data-sdrill-close]").forEach(el => el.onclick = e => { e.preventDefault(); svcDrill = ""; paint(); });
+    v.querySelectorAll("[data-sperson]").forEach(el => {
+      const go = e => { if (e) e.preventDefault(); const x = el.dataset.sperson;
+        svcPerson = x && svcPerson !== x ? x : ""; if (svcDrill.startsWith("g-")) svcDrill = ""; paint(); };
+      el.onclick = go;
+      el.onkeydown = e => { if (e.key === "Enter" || e.key === " ") go(e); };
+    });
     window.scrollTo(0, y);
   };
   paint();

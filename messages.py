@@ -203,9 +203,12 @@ def _is_reply_subject(n):
     return bool(re.match(r"^\s*(re|fw|fwd):", str((n.get("attr") or {}).get("emailSubject") or ""), re.I))
 
 
-def build(day, log=print):
+def build(day, log=print, live=False):
     """The day's texts-and-emails document, or None when there is nothing to
-    read (no lead corpus or no notes on disk)."""
+    read (no lead corpus or no notes on disk). `live` (checkpoints only) adds
+    `_live`, what the board's Worker needs to carry the figures on between
+    checkpoints (see live_basis below); publish_board moves it into the
+    document's live_basis."""
     corpus = ROOT / "data/az_leads_all.json"
     if not corpus.exists():
         return None
@@ -240,8 +243,12 @@ def build(day, log=print):
     learn = collections.defaultdict(set)
     raw = []
     wrote_in = collections.defaultdict(list)    # lead -> times the lead emailed us
+    seen_at = {}                                # person -> newest note this build read
     for lid, key in person.items():
         for n in lc.load_notes(lid):
+            c = str(n.get("createDate") or "")[:19]
+            if c > seen_at.get(key, ""):
+                seen_at[key] = c
             t = n.get("type")
             if t not in ("TEXT", "EMAIL", "TEXT-FAILED", "CALL"):
                 continue
@@ -320,6 +327,7 @@ def build(day, log=print):
 
     stats = {p: collections.Counter() for p in cfg.PRODUCERS}
     replies, quotes, bad = [], [], []
+    carry = {}                                  # person -> live state (live=True)
     for key, evs in events.items():
         evs.sort(key=lambda e: e["at"])
         own = owner.get(key)
@@ -350,10 +358,13 @@ def build(day, log=print):
                 bad.append({"who": credit, "lead": lead, "lead_id": e["lead_id"], "day": day,
                             "channel": "text" if e["type"] != "EMAIL" else "email",
                             "reason": e.get("bounce_reason") or ("text failed" if e["kind"] == "failed" else "bounced")})
+        wrote_back = []
         for who, t0 in first_sent.items():
             stats[who]["leads"] += 1
             if any(e["kind"] == "in" and e["at"] > t0 and e["at"] <= day_end for e in evs):
                 stats[who]["wrote_back"] += 1
+                wrote_back.append(who)
+        open_row = None
 
         # --- replies waiting on us ------------------------------------------
         # A touch answers the lead: a message someone typed, a call back, or
@@ -415,7 +426,17 @@ def build(day, log=print):
                 stats[partner]["answered"] += 1
             else:
                 stats[partner]["unanswered"] += 1
+                open_row = {"lead_id": row["lead_id"], "at": row["at"], "who": partner,
+                            "start": e["at"].isoformat()}
             replies.append(row)
+        if live and any(e["at"] > start for e in evs):
+            sent = [t for t in evs if t["kind"] == "sent" and t["at"] <= day_end]
+            carry[key] = {
+                "leads": [l for l, k in person.items() if k == key],     # messages.build's own order
+                "seen": seen_at.get(key, ""), "owner": own, "name": lead,
+                "last_sender": sent[-1]["by"] if sent and sent[-1]["by"] else None,
+                "sent_by": sorted(first_sent), "wrote_back": sorted(wrote_back),
+                "open": open_row}
 
     replies.sort(key=lambda r: (r["answered_by"] is not None, r["at"]))
     quotes.sort(key=lambda r: r["at"])
@@ -423,9 +444,35 @@ def build(day, log=print):
         f"{sum(s['emails'] for s in stats.values())} emails sent by producers, "
         f"{sum(s['replies'] for s in stats.values())} replies "
         f"({sum(s['unanswered'] for s in stats.values())} unanswered)")
-    return {"day": day, "window": [start.isoformat(), end.isoformat()],
-            "producers": {p: dict(c) for p, c in stats.items()},
-            "replies": replies, "quotes": quotes, "bad_contact": bad}
+    out = {"day": day, "window": [start.isoformat(), end.isoformat()],
+           "producers": {p: dict(c) for p, c in stats.items()},
+           "replies": replies, "quotes": quotes, "bad_contact": bad}
+    if live:
+        out["_live"] = live_basis(carry, templates)
+    return out
+
+
+def live_basis(people, templates):
+    """What the Worker (site/live.js messagesLive) needs to carry the day on
+    from this checkpoint: per person (phone number), the lead records, the
+    newest note this build read (anything later is new), whose lead it is,
+    who last typed to them, who has already messaged them today and been
+    written back, and the reply still waiting on an answer. Plus this
+    module's own patterns as regex source, so the Worker reads messages by
+    the very same rules -- never retyped in JS."""
+    def rx(r):
+        # As (source, flags) for JavaScript's RegExp, which has no inline (?i).
+        src = r.pattern.replace("(?i)", "")
+        return [src, ("i" if r.flags & re.I or "(?i)" in r.pattern else "") + ("s" if r.flags & re.S else "")]
+    return {
+        "people": people,
+        "templates": sorted(templates),
+        "rx": {k: rx(v) for k, v in (("ack", ACK), ("ack_short", ACK_SHORT), ("opt_out", OPT_OUT),
+                                     ("wrong", WRONG), ("email_quote", _EMAIL_QUOTE),
+                                     ("ssn", _SSN), ("long_digits", _LONG_DIGITS), ("code", _CODE))},
+        "office_open": "%02d:%02d" % OFFICE_OPEN, "office_close": "%02d:%02d" % OFFICE_CLOSE,
+        "conversation_seconds": CONVERSATION_SECONDS,
+    }
 
 
 def _fetch_notes_paced(lead_ids, fresh_after, log=print, pause=0.35):

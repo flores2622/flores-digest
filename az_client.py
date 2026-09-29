@@ -206,9 +206,30 @@ class AgencyZoom:
         return self.post("/v1/api/policies", body or {})
 
     def tasks(self, start_date, end_date):
-        """POST /v1/api/tasks/list -- filters on dueDate, NOT createDate."""
-        return self._paged("/v1/api/tasks/list", "tasks",
-                           {"startDate": start_date, "endDate": end_date})
+        """POST /v1/api/tasks/list -- filters on dueDate, NOT createDate.
+
+        THE WHOLE-DAY LIST CANNOT BE PAGED RELIABLY (found 2026-09-29). Its
+        pages overlap: on 2026-09-28 it reported 214 rows, and paging them
+        returned only 141 distinct tasks (152 sorted by id, 139 at 25 a
+        page, 158 across every way combined) -- and just 115 of the 183
+        tasks actually assigned to the five producers that day. Task
+        Completion had been counting ~60% of their tasks (Lorena 15 due
+        against a real 42), and missed_call_tasks' duplicate check was
+        blind to the rest. Filtered to ONE assignee (`assigneeId`) a day's
+        list fits on a single page (Mike 55, the busiest), so each active
+        employee is read on their own and merged by id; the whole-day pages
+        are kept too, for any task with no active assignee.
+        """
+        body = {"startDate": start_date, "endDate": end_date}
+        out = {t["id"]: t for t in self._paged("/v1/api/tasks/list", "tasks", body)
+               if isinstance(t, dict) and t.get("id") is not None}
+        for e in self.employees():
+            if not e.get("isActive", True) or e.get("id") is None:
+                continue
+            for t in self._paged("/v1/api/tasks/list", "tasks", dict(body, assigneeId=e["id"])):
+                if isinstance(t, dict) and t.get("id") is not None:
+                    out.setdefault(t["id"], t)
+        return list(out.values())
 
     def employees(self):
         return self.get("/v1/api/employees") or []

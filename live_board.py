@@ -21,9 +21,17 @@ the source, by the same rules:
     Worker applies exactly the rule digest_config.is_real_sale does.
   * UTILIZATION -- Insightful, same formula as insightful_util.pull().
 
-Everything else -- contact rate, live contacts, talk time, outcomes, quotes,
-tasks, speed to dial, the leaderboard, coaching cards -- needs a transcript
-or a note read, so it stays the checkpoint's, and the board says so.
+  * QUOTES -- households and premium quoted, daily.py's three rules.
+  * CONTACTS AND TALK TIME -- a dial since the checkpoint is judged from the
+    notes the quotes part already reads, then how long it ran
+    (PROVISIONAL_LIVE_SECONDS); answered call-ins add talk time, and a call
+    back turns its dial live. Provisional: the checkpoint reads the
+    recordings and settles every one.
+  * TEXTS AND EMAILS -- messages.build's rules on the same notes, carried on
+    from the checkpoint's own per-person state (messages.live_basis).
+
+Everything else -- outcomes, tasks, speed to dial, coaching cards -- needs a
+transcript or a model read, so it stays the checkpoint's.
 
 `basis(day)` is published inside the intraday document (publish_board.build,
 live=True only), so the Worker needs nothing but R2 and the three services.
@@ -33,6 +41,7 @@ import json
 import pathlib
 
 import day_calls
+import sales_log_auto
 import digest_config as cfg
 import lead_sources
 
@@ -51,7 +60,7 @@ def basis(day):
     recs = json.loads(rpath.read_text())
     dialled = day_calls.dials_from(recs)          # {producer: {number: [records]}}
 
-    counted, dropped, excluded = {}, {}, {}
+    counted, dropped, excluded, live, talk = {}, {}, {}, {}, {}
     for who in cfg.PRODUCERS:
         rows = (M.get("producers", {}).get(who) or {}).get("dials") or []
         keep = {d["number"] for d in rows if not d.get("dropped")}
@@ -68,6 +77,16 @@ def basis(day):
         # Dialled but not counted: service, renewal, no record, a test lead
         # (day_calls.classify), or dropped by the service/renewal read.
         excluded[who] = sorted(seen - keep - drop)
+        # Contacts and talk time (finalize._totals): which counted numbers
+        # are already live, and the conversations behind Avg Talk Time --
+        # every Call Detail row, inbound included, on a number not dropped.
+        live[who] = sorted(d["number"] for d in rows if not d.get("dropped") and d.get("live"))
+        gone = {d["number"] for d in rows if d.get("dropped")}
+        convos = [r for r in ((M.get("producers", {}).get(who) or {}).get("call_detail") or [])
+                  if r.get("number") not in gone]
+        talk[who] = {"seconds": sum(r.get("seconds") or 0 for r in convos),
+                     "conversations": len(convos),
+                     "numbers": sorted({r["number"] for r in convos if r.get("number")})}
 
     return {
         "day": day,
@@ -79,11 +98,21 @@ def basis(day):
         "counted": counted,
         "dropped": dropped,
         "excluded": excluded,
+        "live": live,
+        "talk": talk,
+        "contact": _contact_basis(),
+        "tasks": _task_basis(day),
         "producers": {n: {"rc_id": v["rc_id"], "az_id": v["az_id"]}
                       for n, v in cfg.PRODUCERS.items()},
         "not_a_sale": sorted(lead_sources.NOT_A_SALE),
         "existing_household": sorted(lead_sources.EXISTING_HOUSEHOLD),
         "util_exclude": sorted(_util_exclude()),
+        # The Sales sheet's auto rows (sales_log_auto), so the Worker adds a
+        # live sale to the sheet with the same people and product names.
+        "saleslog": {
+            "ids": {str(k): v for k, v in sales_log_auto._ids().items()},
+            "carrier": {str(k): v for k, v in sales_log_auto.CARRIER.items()},
+        },
         "quotes": _quote_basis(M),
         "business_hours": [f"{cfg.BUSINESS_START_HOUR:02d}:{cfg.BUSINESS_START_MIN:02d}",
                            f"{cfg.BUSINESS_END_HOUR:02d}:{cfg.BUSINESS_END_MIN:02d}"],
@@ -116,6 +145,68 @@ def _quote_basis(M):
         "stage_pattern": daily.QUOTED_STAGE.pattern,
         "presented_pattern": daily._PRESENTED.pattern,
         "past_pattern": daily._PAST.pattern,
+    }
+
+
+# How long a dial made since the checkpoint must run, with nothing written
+# on the lead, for the board to show it as a contact until the next
+# checkpoint reads the recording. Measured 2026-09-28 on every counted dial
+# of 09-22..09-25 (687 with their notes; 66 live by the checkpoints' own
+# verdicts), applying is_live's order with the recording left out:
+#
+#     notes alone         16 shown   (10 right)     real 66
+#     notes + 45s                     day totals 32/16/14/19 vs 31/11/11/13
+#     notes + 60s         64 shown   (44 right)     day totals 27/12/12/13
+#     notes + 90s         48 shown   (36 right)     day totals 21/9/8/10
+#
+# Sixty seconds keeps the day's count where the recordings put it; about a
+# third of the individual calls it picks are wrong either way, which is why
+# it is provisional and the checkpoint settles every one. Duration alone
+# (no notes) at 60s showed 474 against a real 303 over September.
+PROVISIONAL_LIVE_SECONDS = 60
+
+
+def _contact_basis():
+    """live_contact's note rules as regex source, for the Worker's
+    provisional read of a dial made since the checkpoint (site/live.js
+    contactsLive) -- the same patterns, never retyped in JS."""
+    import live_contact as lc
+    import re
+    rx = lambda r: [r.pattern, "i" if r.flags & re.I else ""]
+    return {"rx": {k: rx(getattr(lc, k)) for k in (
+        "NEGATIVE", "SCREENER", "SYSTEM", "DATA_ONLY", "CONTACT_VERB",
+        "TRAQ_NOTE", "TRAQ_VOICEMAIL", "ASSERTS_CONTACT", "NOT_AN_OUTCOME",
+        "TASK_COMPLETED_BY", "TASK_BOILERPLATE")},
+        "rc_no_connect": sorted(lc.RC_NO_CONNECT),
+        "min_contact_seconds": lc.MIN_CONTACT_SECONDS,
+        "provisional_seconds": PROVISIONAL_LIVE_SECONDS,
+    }
+
+
+def _task_basis(day):
+    """What the Worker needs to keep Task Completion live (site/live.js
+    tasksLive): az_tasks.audit's exclusion patterns and task_audit's
+    cancellation patterns as regex source, and this checkpoint's own
+    verdicts on the tasks it saw closed (duplicate lead -> excluded,
+    smart-cycled by the producer -> excused). A task closed after the
+    checkpoint is judged by the same patterns on the lead's stage moves."""
+    import re
+    import task_audit
+    rx = lambda r: [r.pattern, "i" if r.flags & re.I else ""]
+    verdicts = {}
+    path = ROOT / f"data/az_tasks_{day}.json"
+    if path.exists():
+        try:
+            verdicts = task_audit.cancellation_verdicts(
+                day, json.loads(path.read_text()),
+                {v["az_id"]: k for k, v in cfg.PRODUCERS.items()})
+        except Exception:
+            verdicts = {}
+    return {
+        "verdicts": {str(k): v for k, v in verdicts.items()},
+        "rx": {"title": rx(cfg.SERVICE_TITLE_RE), "body": rx(cfg.SERVICE_BODY_RE),
+               "loss": rx(task_audit.LOSS_RE), "duplicate": rx(task_audit.LOSS_DUPLICATE_RE),
+               "cycle": rx(task_audit.SMART_CYCLE_RE)},
     }
 
 

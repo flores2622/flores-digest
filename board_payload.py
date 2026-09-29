@@ -66,8 +66,15 @@ def speed_to_dial(M):
     # metrics_<day>.json keeps only the summary, so the pooled distribution is
     # reconstructed from the extremes and count we do have. When daily.py starts
     # storing the raw seconds (see REVIEW s1) this reads them directly instead.
+    # The raw seconds, pooled, when daily.py kept them (it does -- `secs`);
+    # the board's live Speed to Dial pools them the same way, so a checkpoint
+    # and the live figure agree. Older metrics files had only the summary, and
+    # for those the distribution is still reconstructed from the extremes.
     pooled = []
     for v in per.values():
+        if v.get("secs"):
+            pooled += list(v["secs"])
+            continue
         pooled += [v["quickest"], v["longest"]]
         pooled += [v["median"]] * max(0, v.get("n", 1) - 2)
     pooled.sort()
@@ -154,13 +161,6 @@ def _producer_tiers(p, pace=None):
     pq = p.get("pq") or 0
     out["closing_pq"] = cfg.tier("closing_ratio_pct",
         (100 * (p.get("ps") or 0) / pq) if pq else None)
-    # Household Completion's policies-per-household (Frank, 2026-09-23) --
-    # resolved policies over resolved households (see bundle_classification),
-    # never `pol` over resolved households, since `pol` includes the ~50%
-    # of sales this join can't place at a household at all.
-    resolved_hh = p.get("bundle_resolved_households") or 0
-    out["policies_per_hh"] = cfg.tier("policies_per_household",
-        (p.get("bundle_resolved") or 0) / resolved_hh if resolved_hh else None)
     # daily.py's coach blank-fill sets 0, not None, when no Coach AI figure
     # was recorded for this producer today -- fold that back to None so
     # tier()'s existing None->red rule gives the red 0 Frank asked for
@@ -216,9 +216,6 @@ def _team_tiers(totals, producers, pace=None):
     pq = totals.get("pq") or 0
     out["closing_pq"] = cfg.tier("closing_ratio_pct",
         (100 * (totals.get("ps") or 0) / pq) if pq else None)
-    resolved_hh = totals.get("bundle_resolved_households") or 0
-    out["policies_per_hh"] = cfg.tier("policies_per_household",
-        (totals.get("bundle_resolved") or 0) / resolved_hh if resolved_hh else None)
     out["roleplay"] = cfg.tier("roleplay_score", totals.get("roleplay"))
     ttp = (totals.get("tasks") or {}).get("pct")
     if ttp is not None:
@@ -263,7 +260,8 @@ def build(day, live=False):
             "util_total": (util.get(name) or [None, None])[1] if util.get(name) else None,
             "util_prod": (util.get(name) or [None, None, None])[2] if util.get(name) else None,
             "coach": (M.get("coach") or {}).get(name, {}),
-            "tasks": tasks.get(name, {}),
+            # The task list itself travels in rows.tasks (digest_rows.py).
+            "tasks": {k: v for k, v in (tasks.get(name) or {}).items() if k != "items"},
         })
 
     ta = M.get("task_audit") or {}

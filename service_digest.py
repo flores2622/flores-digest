@@ -270,6 +270,14 @@ def sr_figures(day, done, live, log=log):
     completed, sellers = [], None
     day_srs = [r for r in done if str(r.get("completeDate") or "")[:10] == day]
     ended = sr_outcomes(day_srs, log=log)
+    # Each SR read against Amanda's Service Playbook (service_audit.py):
+    # request type, note standard, opportunity passed, escalated.
+    try:
+        import service_audit
+        audits = service_audit.read(day_srs, log=log)
+    except Exception as e:
+        log(f"  service audit failed ({type(e).__name__}: {e})")
+        audits = {}
     for r in day_srs:
         h = _hours(r.get("createDate"), r.get("completeDate"))
         pipe = pipeline_of(r.get("workflowName"))
@@ -282,6 +290,9 @@ def sr_figures(day, done, live, log=log):
             row["handler"], row["seller"] = _handler(r, sellers)
         if r.get("id") in ended:
             row["outcome"], row["source"] = ended[r.get("id")]
+        row["created_by"] = r.get("createdBy")
+        if str(r.get("id")) in audits:
+            row["audit"] = audits[str(r.get("id"))]
         completed.append(row)
 
     by_csr = {v["az_id"]: k for k, v in SERVICE_TEAM.items()}
@@ -413,6 +424,98 @@ def callback_figures(day, recs=None, commercial_only=frozenset()):
     return {"rows": rows}
 
 
+# Crystal also sells, so only her dials to service numbers are service work
+# (Frank, 2026-09-29: "dials (for Crystal the Service dials only)"); her
+# new-business dials are the Sales Center's.
+SERVICE_ONLY_DIALS = {"Crystal Mango"}
+DIAL_SERVICE_BUCKETS = {"customer", "open SR"}
+
+
+def dial_figures(day, recs=None, commercial_only=frozenset()):
+    """Every number each service team member dialled on the day, one row per
+    (person, number): attempts, the longest connected leg, and whether the
+    number routes to service (missed_call_audit.route: a customer, an open
+    SR). Debbie's and Amanda's every dial counts; Crystal's only those that
+    route to service. A commercial-only household is Cerberus's. Rows, never
+    totals."""
+    import commercial
+    import inbound
+    import missed_call_audit as mca
+    recs = recs if recs is not None else mca.collect(day, refresh=False)
+    idx, *_ = mca.build_index(day)
+    per = {}
+    for r in recs:
+        if r.get("direction") != "Outbound" or inbound.az_day(r) != day:
+            continue
+        who = (r.get("from") or {}).get("name")
+        n = mca.norm((r.get("to") or {}).get("phoneNumber"))
+        if who not in SERVICE_TEAM or not n:
+            continue
+        hit = idx.get(n)
+        if commercial.is_commercial_caller(hit, commercial_only):
+            continue
+        bucket = mca.route(hit)[0]
+        service = bucket in DIAL_SERVICE_BUCKETS
+        if who in SERVICE_ONLY_DIALS and not service:
+            continue
+        row = per.get((who, n))
+        if row is None:
+            h = hit or {}
+            cust = (h.get("cust") or [None])[0]
+            lead = (h.get("lead") or [None])[0] if not cust else None
+            row = per[(who, n)] = {"who": who, "number": n, "attempts": 0, "seconds": 0, "bucket": bucket,
+                                   "service": service, "renewal": renewal_caller(hit),
+                                   "name": mca.name_for(h, None), "first": r.get("startTime"),
+                                   "link_kind": "customer" if cust else ("lead" if lead else None),
+                                   "link_id": (cust or lead or {}).get("id")}
+        row["attempts"] += 1
+        row["seconds"] = max(row["seconds"], int(r.get("duration") or 0) if r.get("result") == "Call connected" else 0)
+    return {"rows": sorted(per.values(), key=lambda x: (x["who"], x["first"] or ""))}
+
+
+# A service team member picking up an inbound call: their own phone ringing
+# (FindMe to themselves), a pickup off park, or their desk phone -- the same
+# legs inbound.attribute() reads for producers.
+PICKUP_ACTIONS = ("Park Location", "FindMe", "VoIP Call")
+
+
+def front_figures(day, done, live, recs=None):
+    """The Front Desk's measures, from the playbook's own list ("Answer
+    incoming calls", "Assign service requests"): every inbound call the
+    service team picked up, credited to whoever answered it first, and every
+    SR created on the day, by who created it. Rows, never totals."""
+    import inbound
+    import missed_call_audit as mca
+    recs = recs if recs is not None else mca.collect(day, refresh=False)
+    calls = []
+    for r in recs:
+        if r.get("direction") != "Inbound" or r.get("result") != "Accepted" or inbound.az_day(r) != day:
+            continue
+        first = None
+        for l in r.get("legs") or []:
+            f = (l.get("from") or {}).get("name")
+            if l.get("result") != "Call connected" or l.get("action") not in PICKUP_ACTIONS or not f:
+                continue
+            if l.get("action") == "FindMe" and (l.get("to") or {}).get("name") != f:
+                continue
+            first = (f, int(l.get("duration") or 0))
+            break
+        if first and first[0] in SERVICE_TEAM:
+            calls.append({"who": first[0], "at": r.get("startTime"), "seconds": first[1],
+                          "number": mca.norm((r.get("from") or {}).get("phoneNumber"))})
+    seen, created = set(), []
+    for t in list(live) + list(done):
+        if str(t.get("createDate") or "")[:10] != day or t.get("id") in seen:
+            continue
+        seen.add(t.get("id"))
+        who = t.get("createdBy")
+        if who in SERVICE_TEAM:
+            created.append(dict(sr_detail(t), id=t.get("id"), by=who,
+                                pipeline=pipeline_of(t.get("workflowName")),
+                                assigned=mca.CSR_NAMES.get(t.get("csr"))))
+    return {"calls": calls, "created": created}
+
+
 def util_figures(day):
     import insightful_util as iu
     util, _, detail = iu.pull(day)
@@ -449,10 +552,20 @@ def build(day, log=log, refresh_households=True):
         log(f"  utilization failed ({type(e).__name__}: {e})")
         util = {}
     try:
+        front = front_figures(day, done, live)
+    except Exception as e:
+        log(f"  front desk figures failed ({type(e).__name__}: {e})")
+        front = None
+    try:
         callbacks = callback_figures(day, commercial_only=com_only)
     except Exception as e:
         log(f"  call backs failed ({type(e).__name__}: {e})")
         callbacks = None
+    try:
+        dials = dial_figures(day, commercial_only=com_only)
+    except Exception as e:
+        log(f"  dials failed ({type(e).__name__}: {e})")
+        dials = None
     # Texts and emails with customers (service_messages.py, Frank 2026-09-27).
     try:
         import service_messages
@@ -484,7 +597,10 @@ def build(day, log=log, refresh_households=True):
         "pipelines": [[k, label, kind] for k, label, _, kind in PIPELINES],
         "renewals": renewals,
         "callbacks": callbacks,
+        "dials": dials,
         "messages": messages,
+        "front": front,
+        "playbook": __import__("service_playbook").as_doc(),
         "utilization": util,
     }
 
@@ -843,10 +959,107 @@ def backfill_missing_days(day, log=log):
     return built
 
 
+def add_roles(start, end, log=log):
+    """Add the playbook read (each completed SR's `audit`, `created_by`) and
+    the Front Desk rows (`front`) to published days from `start` to `end`,
+    from their saved files -- the day's call log and open SRs (R2's day
+    cache when not on disk) and the latest completed-SR pull. Backs each up
+    under backups/<today>-roles/ and changes nothing else (Frank, 2026-09-28)."""
+    import publish_board
+    import r2_cache
+    import service_audit
+    cli, bucket = publish_board._client()
+    latest = sorted((ROOT / "data").glob("az_service_tickets_done_*.json"))[-1]
+    done_all = json.loads(latest.read_text())
+    by_id = {t.get("id"): t for t in done_all}
+    stamp = dt.date.today().isoformat()
+    changed = []
+    for d in [x for x in _published_days(cli, bucket) if start <= x <= end]:
+        key = _key(d)
+        raw = cli.get_object(Bucket=bucket, Key=key)["Body"].read()
+        doc = json.loads(raw)
+        rows = (doc.get("srs") or {}).get("completed") or []
+        srs = [by_id[r["id"]] for r in rows if r.get("id") in by_id]
+        audits = service_audit.read(srs, log=log)
+        for r in rows:
+            t = by_id.get(r.get("id"))
+            if t:
+                r["created_by"] = t.get("createdBy")
+            if str(r.get("id")) in audits:
+                r["audit"] = audits[str(r.get("id"))]
+
+        def saved(name):
+            f = ROOT / "data" / name
+            if f.exists():
+                return json.loads(f.read_text())
+            try:
+                return json.loads(cli.get_object(Bucket=bucket, Key=r2_cache._key(d, name))["Body"].read())
+            except Exception:
+                return None
+        recs, live = saved(f"rc_raw_{d}.json"), saved(f"az_service_tickets_{d}.json") or []
+        if recs is not None:
+            doc["front"] = front_figures(d, done_all, live, recs=recs)
+        import service_playbook
+        doc["playbook"] = service_playbook.as_doc()
+        backup = f"backups/{stamp}-roles/{key}"
+        try:
+            cli.head_object(Bucket=bucket, Key=backup)
+        except Exception:
+            cli.put_object(Bucket=bucket, Key=backup, Body=raw, ContentType="application/json")
+        cli.put_object(Bucket=bucket, Key=key, Body=json.dumps(doc, default=str).encode(),
+                       ContentType="application/json", CacheControl="no-store")
+        changed.append(d)
+        log(f"  {d}: {len(audits)} of {len(rows)} SRs read against the playbook"
+            + (f", {len(doc['front']['calls'])} calls answered, {len(doc['front']['created'])} SRs created"
+               if doc.get("front") else ", no call log saved"))
+    return changed
+
+
+def add_dials(start, end, log=log):
+    """Add the service dials (`dials`, dial_figures) to published days from
+    `start` to `end`, from each day's saved call log (disk, else R2's day
+    cache). Backs each up under backups/<today>-dials/ and changes nothing
+    else; a day with no saved call log is left alone (Frank, 2026-09-29)."""
+    import commercial
+    import publish_board
+    import r2_cache
+    import service_retention
+    cli, bucket = publish_board._client()
+    _, com_only = commercial.households(service_retention.load_household_map(log=log))
+    stamp = dt.date.today().isoformat()
+    changed = []
+    for d in [x for x in _published_days(cli, bucket) if start <= x <= end]:
+        f = ROOT / "data" / f"rc_raw_{d}.json"
+        try:
+            recs = json.loads(f.read_text()) if f.exists() else json.loads(
+                cli.get_object(Bucket=bucket, Key=r2_cache._key(d, f"rc_raw_{d}.json"))["Body"].read())
+        except Exception:
+            log(f"  {d}: no call log saved, left alone")
+            continue
+        key = _key(d)
+        raw = cli.get_object(Bucket=bucket, Key=key)["Body"].read()
+        doc = json.loads(raw)
+        doc["dials"] = dial_figures(d, recs=recs, commercial_only=com_only)
+        backup = f"backups/{stamp}-dials/{key}"
+        try:
+            cli.head_object(Bucket=bucket, Key=backup)
+        except Exception:
+            cli.put_object(Bucket=bucket, Key=backup, Body=raw, ContentType="application/json")
+        cli.put_object(Bucket=bucket, Key=key, Body=json.dumps(doc, default=str).encode(),
+                       ContentType="application/json", CacheControl="no-store")
+        changed.append(d)
+        log(f"  {d}: {len(doc['dials']['rows'])} numbers dialled")
+    return changed
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--day")
     ap.add_argument("--dry-run", action="store_true")
+    ap.add_argument("--add-roles", nargs=2, metavar=("START", "END"),
+                    help="add the playbook read and Front Desk rows to published days")
+    ap.add_argument("--add-dials", nargs=2, metavar=("START", "END"),
+                    help="add the service dials to published days from their saved call logs")
     ap.add_argument("--refresh-renewals", action="store_true",
                     help="only re-read the renewal outcomes of earlier published days")
     ap.add_argument("--add-lists", action="store_true",
@@ -869,6 +1082,12 @@ def main():
         pool = completed_tickets(today)
         for d in sorted(_published_days(cli, bucket)):
             add_list_details(d, pool=pool)
+        return
+    if a.add_roles:
+        add_roles(*a.add_roles)
+        return
+    if a.add_dials:
+        add_dials(*a.add_dials)
         return
     if a.refresh_renewals:
         refresh_past_renewals(day)
