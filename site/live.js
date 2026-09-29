@@ -33,7 +33,7 @@
    checkpoint's figure for it. Results are cached in R2 at live/<day>.json
    for CACHE_SECONDS, so every viewer shares one refresh. */
 
-import { contactItems, messageEvents, contactDeltas, messageDeltas, last10 } from "./live_notes.js";
+import { contactItems, messageEvents, contactDeltas, messageDeltas, last10, noteText, rxOf } from "./live_notes.js";
 
 export const CACHE_SECONDS = 120;
 export const QUOTES_STALE_SECONDS = 180;
@@ -434,6 +434,102 @@ const leadFields = l => ({ id: l.id, lastActivityDate: l.lastActivityDate, enter
   leadSourceId: l.leadSourceId, convertedHouseholdId: l.convertedHouseholdId,
   createDate: l.createDate, leadSourceName: l.leadSourceName });
 
+/* ---- task completion ---------------------------------------------------- */
+
+/* az_tasks.audit, line for line (keep in step), on the tasks due today:
+   service / renewal / change work left out (a customer record, or the title
+   or body patterns), each task credited to the producer assigned it, and a
+   task closed without completion either EXCLUDED (the lead was lost as a
+   duplicate that day) or EXCUSED (the producer smart-cycled / killed it
+   that day and AgencyZoom's "cancel all related open tasks" closed it) --
+   task_audit.cancellation_verdicts. The checkpoint's own verdicts come
+   first; a task closed since is judged by the same patterns on the lead's
+   stage moves, which the quotes pass reads anyway (taskFlags). Refreshed
+   every TASKS_REFRESH_SECONDS, not every run: tasks change slowly, and it
+   is one list page per producer each time. */
+export const TASKS_REFRESH_SECONDS = 330;
+const TASK_PAGES = 5;
+export function taskFlags(notes, day, basis) {
+  const t = basis.tasks;
+  if (!t || !t.rx) return null;
+  const loss = rxOf(t.rx.loss), dup = rxOf(t.rx.duplicate), cycle = rxOf(t.rx.cycle);
+  const firsts = Object.keys(basis.producers || {}).map(n => n.split(" ")[0].toLowerCase());
+  let isDup = false; const cycled = new Set();
+  for (const n of notes || []) {
+    if (!String(n.createDate || "").startsWith(day) || n.type !== "MOVE_STAGE") continue;
+    const body = noteText(n.body);
+    const g = body.match(loss);
+    if (g && dup.test(g[1])) isDup = true;
+    if (cycle.test(body)) for (const f of firsts) if (body.toLowerCase().includes(f)) cycled.add(f);
+  }
+  return isDup || cycled.size ? { dup: isDup, cycled: [...cycled] } : null;
+}
+async function azTasksDue(env, day, basis, fetchFn) {
+  // One producer at a time (assigneeId): the whole-day list's pages overlap
+  // and drop tasks (az_client.tasks, 2026-09-29), while one person's day
+  // fits on a single page. Pages are 0-indexed. Merged by id.
+  const out = new Map();
+  let complete = true;
+  for (const v of Object.values(basis.producers || {})) {
+    let fetched = 0, page = 0;
+    for (;;) {
+      const j = await azGet(env, "/v1/api/tasks/list", fetchFn, {
+        method: "POST", body: JSON.stringify({ startDate: day, endDate: day, assigneeId: v.az_id, page, pageSize: 100 }),
+      });
+      const batch = j.tasks || j.data || [];
+      fetched += batch.length;
+      for (const t of batch) if (t && t.id != null && !out.has(t.id)) out.set(t.id, t);
+      page++;
+      if (!batch.length || (j.totalCount != null ? fetched >= j.totalCount : batch.length < 100)) break;
+      if (page >= TASK_PAGES) { complete = false; break; }
+    }
+  }
+  return { tasks: [...out.values()], complete };
+}
+// Python's round(x, 1): half to even on an exact tie (13 of 16 is 81.25 ->
+// 81.2), where Math.round would give 81.3.
+const pyRound1 = x => {
+  const t = x * 10, f = Math.floor(t);
+  if (t - f === 0.5) return (f % 2 === 0 ? f : f + 1) / 10;
+  return Number(x.toFixed(1));
+};
+export function taskCompletion(basis, tasks, flags) {
+  const t = basis.tasks || {};
+  const title = rxOf(t.rx.title), body = rxOf(t.rx.body);
+  const verdicts = t.verdicts || {};
+  const byAz = Object.fromEntries(Object.entries(basis.producers || {}).map(([n, v]) => [String(v.az_id), n]));
+  const per = Object.fromEntries(Object.keys(basis.producers || {}).map(n => [n,
+    { total: 0, completed: 0, closed_not_done: 0, open: 0, excused: 0 }]));
+  const rows = [];
+  for (const x of tasks) {
+    if (String(x.customerType || "").toLowerCase() === "customer") continue;
+    if (title.test(x.title || "") || body.test(x.comments || "")) continue;
+    const a = (x.assignees || []).find(a => byAz[String(a.id)]);
+    const who = a ? byAz[String(a.id)] : null;
+    if (!who) continue;
+    let v = verdicts[String(x.id)];
+    if (!v && x.status === 2 && x.customerId) {
+      const f = (flags || {})[String(x.customerId)];
+      if (f && f.dup) v = "excluded";
+      else if (f && f.cycled.includes(who.split(" ")[0].toLowerCase())) v = "excused";
+    }
+    if (v === "excluded") continue;
+    const p = per[who];
+    const state = v === "excused" ? "excused" : x.status === 1 ? "done" : x.status === 2 ? "closed" : "open";
+    rows.push({ who, id: x.id, title: x.title, state, record: x.customerName,
+      due: String(x.dueDate || "").slice(0, 10), completed: String(x.completeDate || "").slice(0, 10),
+      lead_id: x.customerId || null, customer_id: null });
+    if (v === "excused") { p.excused++; continue; }
+    p.total++;
+    if (x.status === 1) p.completed++;
+    else if (x.status === 2) p.closed_not_done++;
+    else p.open++;
+  }
+  for (const p of Object.values(per)) p.pct = p.total ? pyRound1(p.completed / p.total * 100) : null;
+  const tot = Object.values(per).reduce((s, p) => s + p.total, 0), done = Object.values(per).reduce((s, p) => s + p.completed, 0);
+  return { per, team: { total: tot, completed: done, pct: tot ? pyRound1(done / tot * 100) : null }, rows };
+}
+
 /* ---- speed to dial ------------------------------------------------------ */
 
 /* daily.speed_rows + daily.speed_to_dial, line for line (keep in step): an
@@ -653,7 +749,8 @@ export async function quotedLive(env, day, basis, memo, fetchFn = fetch, wanted 
     const ns = Array.isArray(notes) ? notes : [];
     leads[id] = { act: l.lastActivityDate, who: [...quotedBy(l, ns, day, basis, rx)], prem: was ? was.prem : null,
       lead: { firstname: l.firstname, lastname: l.lastname, assignedTo: l.assignedTo, phone: l.phone, secondaryPhone: l.secondaryPhone },
-      items: contactItems(ns, day, basis), events: messageEvents(l, ns, day, basis, presented) };
+      items: contactItems(ns, day, basis), events: messageEvents(l, ns, day, basis, presented),
+      tf: taskFlags(ns, day, basis) };
   }
   const per = Object.fromEntries(Object.keys(basis.producers || {}).map(n => [n, { hh: 0, pq: 0, new_leads: [] }]));
   for (const [id, v] of Object.entries(leads)) {
@@ -687,7 +784,9 @@ export async function quotedLive(env, day, basis, memo, fetchFn = fetch, wanted 
       e.items.push(...(v.items || []));
     }
   }
-  return { data: { per, pending, looked_at: Object.keys(leads).length }, evidence,
+  const task_flags = {};
+  for (const [id, v] of Object.entries(leads)) if (v.tf) task_flags[id] = v.tf;
+  return { data: { per, pending, looked_at: Object.keys(leads).length }, evidence, task_flags,
     messages: basis.messages ? messageDeltas(basis, Object.fromEntries(Object.entries(leads).filter(([, v]) => v.events)), day, calls || []) : null,
     memo: { checkpoint_since: q.activity_since, leads } };
 }
@@ -702,6 +801,7 @@ const NEEDS = {
   messages: ["AZ_USERNAME", "AZ_PASSWORD"],
   contacts: ["RC_CLIENT_ID", "RC_CLIENT_SECRET", "RC_SERVER_URL", "RC_JWT"],
   sold: ["AZ_USERNAME", "AZ_PASSWORD"],
+  tasks: ["AZ_USERNAME", "AZ_PASSWORD"],
 };
 
 const part = async (env, key, fn) => {
@@ -715,7 +815,7 @@ const part = async (env, key, fn) => {
    sold) and utilization: a handful of requests, refreshed together.
    `evidence` is the last quotes pass's read of the lead notes
    (live/<day>-quotes.json). */
-export async function computeFast(env, day, basis, fetchFn = fetch, evidence = null, kept = null) {
+export async function computeFast(env, day, basis, fetchFn = fetch, evidence = null, kept = null, taskPrev = null, flags = null) {
   const inputs = {};   // for syncSalesLog; never stored
   let log = null;
   const callLog = async () => (log || (log = rcCallLog(env, day, fetchFn)));
@@ -733,6 +833,18 @@ export async function computeFast(env, day, basis, fetchFn = fetch, evidence = n
     part(env, "util", async () => insightfulUtil(env, day, basis, fetchFn)),
     part(env, "sold", async () => soldLeadsToday(env, day, basis, fetchFn, kept)),
   ]);
+  // Task completion: the kept tasks are re-judged every run (a verdict can
+  // arrive with the quotes pass), re-fetched only every TASKS_REFRESH_SECONDS.
+  let tasks;
+  if (!basis.tasks) tasks = { ok: false, reason: "needs a checkpoint built after this update" };
+  else {
+    const stale = !taskPrev || !taskPrev.fetched_at || Date.now() - Date.parse(taskPrev.fetched_at) > TASKS_REFRESH_SECONDS * 1000;
+    const got = stale ? await part(env, "tasks", async () => azTasksDue(env, day, basis, fetchFn))
+      : { ok: true, data: { tasks: taskPrev.tasks, complete: taskPrev.complete } };
+    if (got.ok && stale) inputs.tasks = { tasks: got.data.tasks, complete: got.data.complete, fetched_at: new Date().toISOString() };
+    tasks = !got.ok ? got : !got.data.complete ? { ok: false, reason: "more tasks due today than the page cap" }
+      : { ok: true, data: taskCompletion(basis, got.data.tasks, flags) };
+  }
   if (sold.ok) {
     inputs.soldRaw = sold.data._raw; delete sold.data._raw;
     inputs.active = { ...sold.data._active, fetched_at: new Date().toISOString() }; delete sold.data._active;
@@ -746,7 +858,7 @@ export async function computeFast(env, day, basis, fetchFn = fetch, evidence = n
     : !sold.ok ? { ok: false, reason: sold.reason }
     : !(inputs.active || {}).complete ? { ok: false, reason: "today's lead list was cut short" }
     : await part(env, "dials", async () => speedToDial(day, basis, inputs.active.leads, await log));
-  return { fetched_at: new Date().toISOString(), dials, contacts, sales, util, sold, speed, calls, _inputs: inputs };
+  return { fetched_at: new Date().toISOString(), dials, contacts, sales, util, sold, speed, tasks, calls, _inputs: inputs };
 }
 
 function dialTouches(basis, recs) {
@@ -773,7 +885,8 @@ export async function computeQuotes(env, day, basis, memo, fetchFn = fetch, want
   const messages = !quotes.ok ? { ok: false, reason: quotes.reason }
     : extra.messages ? { ok: true, data: extra.messages }
     : { ok: false, reason: "needs a checkpoint built after this update" };
-  return { fetched_at: new Date().toISOString(), quotes, messages, evidence: extra ? extra.evidence : null, memo: next };
+  return { fetched_at: new Date().toISOString(), quotes, messages, evidence: extra ? extra.evidence : null,
+    task_flags: extra ? extra.task_flags : null, memo: next };
 }
 
 // Kept for callers/tests that want every part in one go.
@@ -784,7 +897,7 @@ export async function computeLive(env, day, basis, fetchFn = fetch, memo = null)
 }
 
 const keys = day => ({ fast: `live/${day}.json`, quotes: `live/${day}-quotes.json`, memo: `live/${day}-quote-reads.json`,
-  leads: `live/${day}-leads.json` });
+  leads: `live/${day}-leads.json`, tasks: `live/${day}-tasks.json` });
 async function r2json(env, key) {
   const o = await env.BOARD.get(key);
   return o === null ? null : o.json();
@@ -813,9 +926,14 @@ function keepGood(prev, next, cp, parts) {
 }
 async function refreshFast(env, day, cp) {
   const k = keys(day);
-  const [prev, q, kept] = await Promise.all([r2json(env, k.fast), r2json(env, k.quotes), r2json(env, k.leads)]);
+  const [prev, q, kept, taskPrev] = await Promise.all([r2json(env, k.fast), r2json(env, k.quotes), r2json(env, k.leads), r2json(env, k.tasks)]);
   const evidence = q && q.checkpoint === cp.as_of ? q.evidence : null;
-  const { _inputs, ...fast } = await computeFast(env, day, cp.basis, fetch, evidence, kept);
+  const flags = q && q.checkpoint === cp.as_of ? q.task_flags : null;
+  const { _inputs, ...fast } = await computeFast(env, day, cp.basis, fetch, evidence, kept, taskPrev, flags);
+  if (_inputs.tasks) {
+    try { await r2put(env, k.tasks, _inputs.tasks); }
+    catch (e) { console.log(`tasks not saved: ${e && e.message || e}`); }
+  }
   // A live sale goes on the Sales sheet in the same refresh that puts it on
   // the board (Frank, 2026-09-28). Only with this run's own policies and
   // sold leads -- a sold-lead read that failed would leave names blank that
@@ -831,7 +949,7 @@ async function refreshFast(env, day, cp) {
     try { await r2put(env, k.leads, _inputs.active); }
     catch (e) { console.log(`kept lead list not saved: ${e && e.message || e}`); }
   }
-  const out = keepGood(prev, { checkpoint: cp.as_of, ...fast }, cp, ["dials", "contacts", "sales", "util", "sold", "speed"]);
+  const out = keepGood(prev, { checkpoint: cp.as_of, ...fast }, cp, ["dials", "contacts", "sales", "util", "sold", "speed", "tasks"]);
   if (!out.calls && prev && prev.checkpoint === cp.as_of) out.calls = prev.calls;
   // The numbers dialled since the checkpoint, so the next quotes pass reads
   // their leads' notes first.
@@ -848,7 +966,7 @@ async function refreshQuotes(env, day, cp) {
   const { memo, ...res } = await computeQuotes(env, day, cp.basis, memoIn, fetch,
     same ? fast.dialled || [] : [], same ? fast.calls || [] : [], shared);
   const out = keepGood(prev, { checkpoint: cp.as_of, ...res }, cp, ["quotes", "messages"]);
-  if (!(res.quotes || {}).ok && prev && prev.checkpoint === cp.as_of) out.evidence = prev.evidence;
+  if (!(res.quotes || {}).ok && prev && prev.checkpoint === cp.as_of) { out.evidence = prev.evidence; out.task_flags = prev.task_flags; }
   if (memo && res.quotes.ok) await r2put(env, k.memo, memo);
   await r2put(env, k.quotes, out);
   return out;
@@ -868,7 +986,7 @@ export async function getLive(env, day) {
     fresh(quotes, cp.as_of, QUOTES_STALE_SECONDS) ? quotes : refreshQuotes(env, day, cp),
   ]);
   return jsonResp({ live: true, day, checkpoint: cp.as_of, fetched_at: f.fetched_at,
-    dials: f.dials, contacts: f.contacts, sales: f.sales, util: f.util, sold: f.sold, speed: f.speed,
+    dials: f.dials, contacts: f.contacts, sales: f.sales, util: f.util, sold: f.sold, speed: f.speed, tasks: f.tasks,
     quotes: q.quotes, messages: q.messages, quotes_fetched_at: q.fetched_at }, 200);
 }
 
