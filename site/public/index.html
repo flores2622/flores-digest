@@ -1042,18 +1042,31 @@ function hoverable(node, html) {
    has no sold-lead rows (days before digest_rows), so the old Policies
    display stands there. */
 function hhSoldOf(d, name) {
+  const h = hhSoldSplit(d, name);
+  return h ? h.n : null;
+}
+/* hhSoldOf's households, each marked an existing customer (a cross-sell:
+   the sold lead's source is one of lead_sources.EXISTING_HOUSEHOLD, carried
+   on the row as `existing`) or a new household. A household with any
+   existing-customer lead is an existing customer. `unknown` counts rows
+   built before the mark was added. */
+function hhSoldSplit(d, name) {
   const R = d.rows;
   if (!R || !R.sold_leads) return null;
-  const keys = new Set();
+  const keys = new Map();
   const add = (r, who) => {
     if (name && who !== name) return;
-    keys.add(`${r.day || d.date || ""}|${r.household != null ? "h" + r.household : "n" + String(r.lead || r.lead_id || "").toLowerCase()}`);
+    const k = `${r.day || d.date || ""}|${r.household != null ? "h" + r.household : "n" + String(r.lead || r.lead_id || "").toLowerCase()}`;
+    const was = keys.get(k);
+    keys.set(k, was === true || r.existing === true ? true : (was === false || r.existing === false ? false : null));
   };
   // Live, the whole day's sold leads are read at once, so that list stands on
   // its own; the checkpoint's rows are added only if the read stopped short.
   if (!(d.live_sold && d.live_sold_complete)) for (const r of R.sold_leads) add(r, r.who);
   for (const [w, list] of Object.entries(d.live_sold || {})) for (const r of list) add(r, w);
-  return keys.size;
+  const v = [...keys.values()];
+  return { n: v.length, existing: v.filter(x => x === true).length,
+           fresh: v.filter(x => x === false).length, unknown: v.filter(x => x == null).length };
 }
 function digestDay(d, who) {
   const byName = Object.fromEntries((d.producers || []).map(p => [p.name, p]));
@@ -1152,69 +1165,77 @@ function digestDay(d, who) {
   ${digDrillFor(d, who, ["lb"])}`;
 }
 
-/* Household Completion -- was a single "Cross-Sell/Bundle" tile in the main
-   row (Frank, 2026-09-23: "know if they completed an existing household ...
-   or if they are selling a new bundle/household"), then a table of its own
-   between Closing Ratio and Team Leaderboard, now moved into digestPanel()'s
-   .digestgrid alongside Speed to Dial/Utilization (Frank, 2026-09-24: "it
-   should be down below with the other small cards, and should be smaller
-   itself") -- one row per producer, a team total row below (Frank,
-   2026-09-23: "down below for now, with individual numbers, then a team
-   total").
-
-   Two DIFFERENT confidence levels sharing this table, so the caption spells
-   each one out rather than trusting the reader to know:
-     - Cross-Sell reads AgencyZoom's own lead source on the sale ("Home no
-       Auto", "Cross Sell", etc.) -- no join needed, covers every sale.
-     - New Bundle needs a policy -> household match that only resolves for
-       part of a day's sales (no customerId/leadId on a policy record --
-       see digest_config.bundle_classification for the full method and why
-       widening the match window makes it WORSE, not better). It is a LOWER
-       BOUND, marked with "+" for exactly that reason, with its own coverage
-       (Matched to Household) alongside so it's never read as a complete
-       count. Neither column is tier-coloured yet -- no Frank-approved
-       threshold exists for either. */
-// Small per-producer cards, same shape as utilizationHtml's (name, one big
-// tiered number, small notes below) instead of a wide table -- moved out of
-// digestDay() into digestPanel()'s .digestgrid, alongside Speed to Dial and
-// Utilization (Frank, 2026-09-24: "it should be down below with the other
-// small cards, and should be smaller itself").
+/* Household Completion (Frank, 2026-09-23: "know if they completed an
+   existing household ... or if they are selling a new bundle/household";
+   simplified 2026-09-29: "too much description on the bottom, even im
+   confused"). Policies sold over households sold -- the same households the
+   HH/Prem. Sold tile counts (hhSoldSplit), so it covers every sale. It used
+   to divide only the sales a policy -> lead match could place (about half),
+   which blanked Coral's 3-policy household on 09-28. Below it, how many of
+   those households were existing customers (a cross-sell) and how many new.
+   A lead can be marked sold a day off its policy, so a day can hold
+   policies with no household or the reverse: that shows "—" and says so.
+   Colour (Frank, 2026-09-29): green when they sold to an existing customer
+   (the household's source or the policy's own) or a new household bundled (more policies than households, every one
+   new), yellow when every sale was one policy to a new household, and a
+   red "—" with no sales at all. A policy and its household marked sold on
+   different days can't be judged, so that card is left uncoloured. The
+   Team card takes its producers' best colour. Every producer gets a card,
+   sales or not. Days with no sold-lead rows keep the
+   old matched figure. */
 function householdCompletionHtml(d, who) {
   const byName = Object.fromEntries((d.producers || []).map(p => [p.name, p]));
   const focus = who ? byName[who] : null;
-  const TI = { green: "tg", yellow: "ty", red: "tr" };
-  const tc = (name) => TI[((d.tiers || {})[name] || {})["policies_per_hh"]] || "";
-  // Resolved policies over resolved HOUSEHOLDS (never over `pol`, which
-  // includes the ~50% of sales the join can't place at a household at all
-  // -- see digest_config.bundle_classification). Tier-coloured (Frank,
-  // 2026-09-23, off industry policies-per-household benchmarks: green
-  // >=1.5, yellow 1.1-1.49, red <1.1 -- digest_config.THRESHOLDS
-  // ["policies_per_household"]) and the headline number on this card
-  // (Frank, 2026-09-24) -- cross-sell/new-bundle/coverage are supporting
-  // notes underneath, same role dialsNote plays on the Dials tile.
-  const perHh = p => (p.bundle_resolved_households
-    ? (p.bundle_resolved / p.bundle_resolved_households) : null);
-  // `tierKey` is the (d.tiers || {}) lookup key -- the producer's own name,
-  // or the lowercase "team" every other panel keys the team row under
-  // (teamLeaderboardHtml's own tt()/tc("team", ...) do the same) -- kept
-  // separate from `label`, the capitalized "Team" actually shown, so this
-  // doesn't repeat the bug where using the display label as the lookup key
-  // silently found no tier data and rendered uncoloured.
-  const card = (label, tierKey, p, cls) => `<div${ddk(tierKey === "team" ? "hhc" : "hhc@" + tierKey)}${cls ? ` style="border-color:var(--border-strong)"` : ""}>
+  const hasRows = hhSoldOf(d, "") != null;
+  const glow = liveOn(d, "hhsold") && liveOn(d, "sales") ? " isLive" : "";
+  const plural = (n, one, many) => `${n} ${n === 1 ? one : many}`;
+  const card = (label, name, p, team, teamTier) => {
+    const pol = p.pol || 0;
+    let v, notes, tier = "";
+    if (hasRows) {
+      const h = hhSoldSplit(d, name);
+      v = h.n && pol ? pol / h.n : null;
+      // An existing customer shows on the household or on the policy's own
+      // lead source (p.cross_sell), which covers every sale -- so a
+      // cross-sell whose household was marked sold another day is still one.
+      tier = !pol && !h.n ? "tr"
+        : h.existing || (p.cross_sell || 0) > 0 ? "tg"
+        : v == null ? ""
+        : !h.unknown && pol > h.n ? "tg" : "ty";
+      const split = [h.fresh ? plural(h.fresh, "new household", "new households") : "",
+                     h.existing ? plural(h.existing, "existing customer", "existing customers") : "",
+                     h.unknown ? plural(h.unknown, "household", "households") : ""].filter(Boolean).join(" &middot; ");
+      notes = !pol && !h.n ? "no sales"
+        : v != null ? split
+        : pol ? `${plural(pol, "policy", "policies")} &middot; household marked sold another day`
+        : `${split} &middot; policy dated another day`;
+    } else {
+      v = p.bundle_resolved_households ? p.bundle_resolved / p.bundle_resolved_households : null;
+      notes = pol ? "" : "no sales";
+      tier = pol ? "" : "tr";
+    }
+    if (teamTier != null) tier = teamTier;
+    return `<div${ddk(team ? "hhc" : "hhc@" + name, "tile" + glow)}${team ? ` style="border-color:var(--border-strong)"` : ""}>
     <div class="k">${label}</div>
-    <div class="v ${tc(tierKey)}">${perHh(p) == null ? "—" : perHh(p).toFixed(2)}</div>
-    <div class="n">policies/HH &middot; ${p.cross_sell ?? 0} cross-sell &middot; ${p.new_bundle ?? 0}+ new bundle</div>
-    <div class="n">${p.bundle_resolved ?? 0} of ${p.pol ?? 0} sold matched to a household</div>
+    <div class="v ${tier}">${v == null ? "—" : v.toFixed(2)}</div>
+    <div class="n">policies per household</div>
+    ${notes ? `<div class="n">${notes}</div>` : ""}
    </div>`;
-
-  const list = (focus ? [focus] : (d.producers || [])).filter(p => (p.pol || 0) > 0);
-  const cards = list.map(p => card(p.name, p.name, p)).join("");
+  };
+  const list = focus ? [focus] : (d.producers || []);
+  const made = list.map(p => card(p.name, p.name, p, false));
+  const cards = made.join("");
   const T = d.totals || {};
-  const teamCard = focus || !(T.pol) ? "" : card("Team", "team", T, true);
+  // The team takes its producers' best colour: its own policies-over-
+  // households mixes a policy and a household marked sold on different
+  // days into what looks like a bundle (09-25: 5 policies, 3 households).
+  const tiers = made.map(h => (h.match(/class="v (t[gyr])"/) || [])[1]);
+  const teamTier = ["tg", "ty", "tr"].find(t => tiers.includes(t)) || "";
+  const teamCard = focus ? "" : card("Team", "", T, true, hasRows ? teamTier : null);
   if (!cards && !teamCard) return "";
 
   return `<div class="sect"><h2>Household Completion</h2>
-   <p class="sd">Cross-sell to an existing household (AgencyZoom's own lead source, every sale) vs. a brand-new bundled household (est. lower bound -- see the "matched" note).</p>
+   <p class="sd">Policies sold per household sold. Existing customer = a cross-sell to a household we already had.</p>
    <div class="tiles">${cards}${teamCard}</div>${digDrillFor(d, who, ["hhc"])}</div>`;
 }
 
@@ -1690,15 +1711,18 @@ function digDrillFor(d, who, keys) {
   }
   if (kind === "sold") return digDrillList(`Sold${whoTag} · ${mine(R.sold).length} polic${mine(R.sold).length === 1 ? "y" : "ies"}`, "", digDrillSold(d, mine));
   if (kind === "hhc") {
-    // Household Completion: the policies sold, cross-sells marked.
-    const ps = mine(R.sold);
+    // Household Completion: the households sold, then their policies.
+    const hhTag = r => r.existing === true ? `<span class="chip c-g">existing customer</span>` : r.existing === false ? "new household" : "—";
+    const ls = mine(R.sold_leads), ps = mine(R.sold);
+    const lr = ls.map(r => `<tr>${digDay(d, r)}<td>${digWho(r)}</td><td>${digLead(r)}</td><td>${cesc(r.source)}</td><td>${hhTag(r)}</td></tr>`);
     const tr = ps.map(r => `<tr>${digDay(d, r)}<td>${digWho(r)}</td><td>${cesc(r.product)}</td><td>${cesc(r.policy)}</td>
-      <td class="num">${money(r.premium)}</td><td>${cesc(r.source)}</td><td>${r.cross_sell ? `<span class="chip c-g">cross-sell</span>` : r.cross_sell === false ? "" : "—"}</td></tr>`);
-    return digDrillList(`Household completion${whoTag} · ${ps.length} polic${ps.length === 1 ? "y" : "ies"}`,
-      "Cross-sell is read off the sale's own lead source. A new bundle needs the policy matched to a household, which AgencyZoom's policy records don't carry, so it isn't marked per policy.",
-      digTable(d, `<th>Producer</th><th>Product</th><th>Policy</th><th class="num">Premium</th><th>Lead source</th><th>Cross-sell</th>`, tr)
-      + `<h3 class="rh3" style="margin-top:10px">Leads marked sold · ${mine(R.sold_leads).length}</h3>`
-      + digTable(d, `<th>Producer</th><th>Lead</th><th>Source</th>`, mine(R.sold_leads).map(r => `<tr>${digDay(d, r)}<td>${digWho(r)}</td><td>${digLead(r)}</td><td>${cesc(r.source)}</td></tr>`)));
+      <td class="num">${money(r.premium)}</td><td>${cesc(r.source)}</td></tr>`);
+    return digDrillList(`Household completion${whoTag} · ${ls.length} marked sold · ${ps.length} polic${ps.length === 1 ? "y" : "ies"}`,
+      "Existing customer is read off the lead's own source (a cross-sell source such as Home no Auto).",
+      `<h3 class="rh3">Leads marked sold · ${ls.length}</h3>`
+      + digTable(d, `<th>Producer</th><th>Lead</th><th>Source</th><th>Household</th>`, lr)
+      + `<h3 class="rh3" style="margin-top:10px">Policies · ${ps.length}</h3>`
+      + digTable(d, `<th>Producer</th><th>Product</th><th>Policy</th><th class="num">Premium</th><th>Lead source</th>`, tr));
   }
   if (kind === "tasks") {
     if (!R.tasks || (!R.tasks.length && ((who ? ((d.producers || []).find(p => p.name === who) || {}).tasks : (d.totals || {}).tasks) || {}).total)) return digDrillList(`Tasks${whoTag}`, "", DIG_NO_ROWS);

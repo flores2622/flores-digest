@@ -491,6 +491,24 @@ policy count still shows beside it (policies per HH). A lead can be marked
 sold a few days off its policy's soldDate, so a day can show a household
 with no policy or the reverse. A day with no sold-lead rows keeps the old
 Policies display. The emailed digest is unchanged.
+**Household Completion is policies sold over those same households sold**
+(Frank, 2026-09-29: "too much description on the bottom, even im
+confused"): no more policy -> lead match (it placed about half of sales and
+blanked Coral's 3-policy household on 09-28), no "0+ new bundle" or
+"matched" line. Under the number, how many were existing customers (the
+sold lead's source is `lead_sources.EXISTING_HOUSEHOLD` -- a cross-sell) and
+how many new, from each sold lead's `existing` (digest_rows, live.js;
+09-01..09-28 tagged from their saved source, backups under
+`backups/2026-09-29-hh-existing/`). A day with policies but no household
+marked sold, or the reverse, shows "—" and says which.
+**Its colour is what was sold, not a threshold** (Frank, 2026-09-29): green
+for an existing customer (the household's source, or the policy's own
+cross-sell source) or a new household that bundled (more policies than
+households, every one new); yellow when every sale was one policy to a new
+household; a red "—" for no sales (every producer gets a card). A day with
+policies and households on different days, no cross-sell, is uncoloured.
+The Team card takes its producers' best colour. The old 1.5 / 1.1
+policies-per-household thresholds are gone.
 
 ## Texts and emails
 

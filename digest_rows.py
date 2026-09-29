@@ -39,6 +39,13 @@ def _name(l):
     return " ".join(x for x in ((l.get("firstname") or "").strip(), (l.get("lastname") or "").strip()) if x) or "(no name)"
 
 
+def is_existing(source_name):
+    """A sold lead whose source says it was an existing customer -- the same
+    set Household Completion's cross-sell always read off the policy."""
+    import lead_sources
+    return lead_sources.norm(source_name) in cfg.CROSS_SELL_LEAD_SOURCES
+
+
 def build(day, log=print):
     mpath = ROOT / f"data/metrics_{day}.json"
     if not mpath.exists():
@@ -117,7 +124,10 @@ def build(day, log=print):
             # -- duplicate lead records are pervasive (Frank, 2026-09-28).
             out["sold_leads"].append({"who": who, "lead": _name(l), "lead_id": l.get("id"),
                                       "household": l.get("convertedHouseholdId"),
-                                      "source": (l.get("leadSourceName") or "").strip()})
+                                      "source": (l.get("leadSourceName") or "").strip(),
+                                      # an existing customer (a cross-sell source) or a
+                                      # new household -- Household Completion's split.
+                                      "existing": is_existing(l.get("leadSourceName"))})
     try:
         import daily
         out["speed"] = daily.speed_rows(day, leads, day_calls.producer_dials(day))
