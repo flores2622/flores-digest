@@ -837,16 +837,20 @@ budget. Do not switch to "between_tools" without Frank -- it would cut cost
 but could shift Apollo's verdicts; the proposed check is ~15 cards and ~15
 simple reads both ways, compared verdict by verdict.
 
-**Deepgram is built but OFF** (Frank, 2026-09-29: Whisper base mishears
-too much and cannot separate speakers). `deepgram_stt.py` (Nova-3,
-language=multi, diarized, keyed on `DEEPGRAM_API_KEY` in the cloud
-environment) is used only when `TRANSCRIBE_ENGINE=deepgram`, and falls back
-to Whisper on any failure. It is paid per audio minute (~226 min on
-2026-09-28), cached per recording under `data/deepgram/`. Before switching it
-on, `python3 compare_stt.py <day> ...` writes `out/stt_compare_<day>.md`: the
-outbound dials whose live/voicemail verdict would change (that moves the
-contact rate) and every live call's full transcript both ways. Frank signs
-that off first; past days stay as they went out.
+**Deepgram is ON** (Frank, 2026-09-29: Whisper base mishears too much and
+cannot separate speakers; switched on the same day after the 09-25 / 09-28
+side-by-side). `deepgram_stt.py` (Nova-3, language=multi, diarized, keyed on
+`DEEPGRAM_API_KEY` in the cloud environment) transcribes every recording
+unless `TRANSCRIBE_ENGINE=whisper`, and falls back to Whisper on any failure
+(a missing key says so once in the log). Full transcripts are one line per
+turn, "Speaker 1: ..." / "Speaker 2: ...", in order of first speech -- which
+one is the producer is left to the reader. It is paid per audio minute (~226
+min on 2026-09-28), cached per recording under `data/deepgram/`. A leg with
+no speech at all is `[silence]`, read as no answer like Whisper's "[Music]",
+never as a pickup that said nothing. **Past days stay as they went out**: a
+rebuild reuses the day's saved transcripts. `python3 compare_stt.py <day>
+...` still writes `out/stt_compare_<day>.md` (verdicts both ways and every
+live call's transcript both ways) for any day with saved recordings.
 
 `python3 verify_finalize.py` reconciles all six headline figures against source
 data and costs nothing. Run it after touching `daily.py`, `day_calls.py` or

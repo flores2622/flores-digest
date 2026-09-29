@@ -33,13 +33,27 @@ import requests
 
 MODEL = "models/sherpa-onnx-whisper-base"
 
-# "whisper" (the default, local, free) or "deepgram" (deepgram_stt.py: whole
-# call, bilingual, speakers separated; paid per minute). Deepgram falls back
-# to Whisper on any failure, so switching it on can never lose a transcript.
-# Default stays Whisper until the side-by-side (compare_stt.py) is signed
-# off: a better transcript moves live/voicemail verdicts, and so the contact
-# rate (Frank, 2026-09-29).
-ENGINE = os.environ.get("TRANSCRIBE_ENGINE", "whisper").lower()
+# "deepgram" (the default, deepgram_stt.py: whole call, bilingual, speakers
+# separated; paid per minute) or "whisper" (local, free). Deepgram falls back
+# to Whisper on any failure, so it can never lose a transcript. Switched on
+# by Frank on 2026-09-29 after the 09-25 / 09-28 side-by-side
+# (compare_stt.py); TRANSCRIBE_ENGINE=whisper puts Whisper back.
+ENGINE = os.environ.get("TRANSCRIBE_ENGINE", "deepgram").lower()
+_WARNED = []
+
+
+def _deepgram():
+    """deepgram_stt, or None -- said once in the log -- when there is no key,
+    so a night that fell back to Whisper says so instead of passing for
+    Deepgram."""
+    import deepgram_stt
+    if deepgram_stt.available():
+        return deepgram_stt
+    if not _WARNED:
+        _WARNED.append(1)
+        print("  TRANSCRIBE_ENGINE=deepgram but DEEPGRAM_API_KEY is not set "
+              "-- transcribing with Whisper", flush=True)
+    return None
 AUDIO = "data/audio"
 RATE_LIMIT_MARKER = b"CMN-301"
 
@@ -359,9 +373,9 @@ def transcribe_full(path, duration, seconds=30, language=None, offset=0):
     """
     if not duration or duration <= 0:
         return None
-    if ENGINE == "deepgram":
-        import deepgram_stt
-        t = deepgram_stt.full(path, duration, offset=offset)
+    dg = _deepgram() if ENGINE == "deepgram" else None
+    if dg:
+        t = dg.full(path, duration, offset=offset)
         if t is not None:
             return t or None
     out = []
@@ -425,9 +439,9 @@ def transcribe_file(path, seconds=30, duration=None, offset=0):
     A window that comes back as Whisper's foreign-language placeholder is
     retried in Spanish, which is the only other language on this book.
     """
-    if ENGINE == "deepgram":
-        import deepgram_stt
-        t = deepgram_stt.head_tail(path, duration=duration, offset=offset,
+    dg = _deepgram() if ENGINE == "deepgram" else None
+    if dg:
+        t = dg.head_tail(path, duration=duration, offset=offset,
                                    seconds=seconds)
         if t is not None:
             return t
