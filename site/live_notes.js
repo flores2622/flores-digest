@@ -119,11 +119,13 @@ export function provisionalLive(legs, items, c) {
   if (talk < (c.min_contact_seconds ?? 5)) return [false, "too short to be a conversation"];
   const noConnect = new Set(c.rc_no_connect || []);
   const res = legs.map(l => String(l.result || "").trim().toLowerCase());
-  if (res.length && res.every(r => noConnect.has(r))) return [false, "RingCentral: did not connect"];
+  // Notes win (Frank, 2026-08-18): RingCentral's disposition only speaks
+  // where nobody wrote anything, as in live_contact.outcome_bucket.
   if (items.some(i => i.asr)) return [true, "producer note (states contact)"];
   if (items.some(i => i.neg)) return [false, "producer note (no contact)"];
   if (items.some(i => i.out)) return [true, "producer note"];
   if (items.some(i => i.vm)) return [false, "call summary reports a voicemail"];
+  if (res.length && res.every(r => noConnect.has(r))) return [false, "RingCentral: did not connect"];
   const longest = Math.max(0, ...legs.map(l => l.dur || 0));
   if (c.provisional_seconds && longest >= c.provisional_seconds) return [true, "duration, until the recording is read"];
   return [false, "no outcome logged yet"];
@@ -185,7 +187,9 @@ export function contactDeltas(basis, recs, evidence) {
     if (r.direction !== "Outbound") continue;
     const who = byExt[String((r.extension || {}).id || (r.from || {}).extensionId || "")];
     const num = last10((r.to || {}).phoneNumber);
-    if (!who || !num || excluded[who].has(num)) continue;
+    // A duplicate-lead number adds attempts only (dialDeltas); its person's
+    // contact is on the surviving number.
+    if (!who || !num || excluded[who].has(num) || dropped[who].has(num)) continue;
     const leg = { id: String(r.id), dur: r.duration || 0, result: r.result, start: r.startTime };
     const into = seen.has(leg.id) ? before : legs;
     (into[who][num] || (into[who][num] = [])).push(leg);
@@ -197,7 +201,7 @@ export function contactDeltas(basis, recs, evidence) {
       const secs = ls.reduce((s, l) => s + l.dur, 0);
       if (live[who].has(num)) { out[who].seconds += secs; continue; }
       const ev = (evidence || {})[num] || {};
-      const fresh = !counted[who].has(num) && !dropped[who].has(num);
+      const fresh = !counted[who].has(num);
       const first = Math.min(...ls.map(l => Date.parse(l.start)));
       // A counted number was already judged "no contact" on its earlier
       // dials, from its notes; only a note written since this call began can
@@ -220,7 +224,7 @@ export function contactDeltas(basis, recs, evidence) {
   for (const r of answeredInbound(recs, names)) {
     if (seen.has(r.id)) continue;
     const who = r.who, num = last10(r.num);
-    if (!num || excluded[who].has(num)) continue;
+    if (!num || excluded[who].has(num) || dropped[who].has(num)) continue;
     out[who].seconds += r.secs;
     if (convo[who].has(num) || live[who].has(num)) continue;       // talking on a row already counted
     convo[who].add(num);
@@ -466,7 +470,10 @@ export function messageDeltas(basis, leads, day, calls = []) {
       bump(partner, "unanswered");
       open = { cp: false, row, who: partner, startMs: ms };
       // A call still going when the text arrived answers it (messages.build).
-      if (lastTouchEnd >= ms) { const t = [...fresh].reverse().find(x => (x.kind === "call" || x.kind === "sent") && azMs(x.at) <= ms); if (t) answer(t, ms); }
+      if (lastTouchEnd >= ms) {
+        const t = fresh.find(x => (x.kind === "call" || x.kind === "sent") && azMs(x.at) <= ms && azMs(x.at) + (x.dur || 0) * 1000 >= ms);
+        if (t) answer(t, ms);
+      }
     }
     if (open && open.cp && open.messages) updates.push({ ...open.key, add_messages: open.messages, add_said: open.said.join(" / ") });
   }
