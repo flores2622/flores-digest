@@ -153,11 +153,13 @@ Everything caches under `data/`, so a re-run resumes rather than restarting.
 - **Role Play prospects speak with Deepgram voices** (Frank, 2026-09-29).
   `RP_VOICES` (index.html) tags each Aura-2 voice by language, sex and age
   band, and each prospect gets one that fits. **English, Spanish and mixed**
-  ("some should be spanish, some english, and some mixed"): the persona
-  screen picks, or "any" gives a Hispanic surname a third each; Spanish uses
-  Mexican / Latin American voices, mixed Deepgram's five code-switching ones.
-  **Crystal never gets Spanish or mixed** (Frank, 2026-09-29: "she doesnt
-  speak it") -- `RP_ENGLISH_ONLY`; she has no language choice.
+  ("some should be spanish, some english, and some mixed"): random, a third
+  each, with **no language choice on the screen** (Frank, 2026-09-29: "i dont
+  want a language dropdown"). Spanish uses Mexican / Latin American voices,
+  mixed Deepgram's five code-switching ones. First names come from the whole
+  American + Hispanic list in every language; a Spanish or mixed prospect
+  has a Hispanic surname. **Crystal never gets Spanish or mixed** (Frank,
+  2026-09-29: "she doesnt speak it") -- `RP_ENGLISH_ONLY`.
   The Worker's `/api/roleplay/speak` streams them and needs the
   `DEEPGRAM_API_KEY` secret (without it the browser's voice speaks). Apollo
   grades in English whatever the call's language. **Producers rate the voice
