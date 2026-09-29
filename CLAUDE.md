@@ -215,7 +215,12 @@ Everything caches under `data/`, so a re-run resumes rather than restarting.
   (`deepgram_stt.turns(..., cached_only=True)` -- a card build never pays
   for a read), and the card shows one player with the transcript under it:
   a line click seeks there, the line playing is lit. Cards with no Deepgram
-  read (before 2026-09-29) keep the plain transcript.
+  read keep the plain transcript. **September's cards were given theirs**
+  (Frank, 2026-09-29: "do september's cards") by `card_turns_backfill.py
+  2026-09-01 2026-09-28`: one paid Deepgram read per carded recording, added
+  to the day's R2 bundle, and ONLY `turns` added to each day's page (backups
+  under `backups/<today>-card-turns/`) -- the transcript Apollo read, the
+  grades and data/transcripts_<day>.json (so every verdict) untouched.
 - **A renewal is not new business.** Neither is servicing, a payment, a claim,
   or chasing paperwork on a policy already sold.
 - **Selling a product the household does not have yet IS new business**, even to
