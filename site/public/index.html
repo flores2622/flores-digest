@@ -1175,32 +1175,46 @@ function digestDay(d, who) {
    those households were existing customers (a cross-sell) and how many new.
    A lead can be marked sold a day off its policy, so a day can hold
    policies with no household or the reverse: that shows "—" and says so.
-   Tier: digest_config.THRESHOLDS["policies_per_household"]. Days with no
-   sold-lead rows keep the old matched figure. */
+   Colour (Frank, 2026-09-29): green when they sold to an existing customer
+   (the household's source or the policy's own) or a new household bundled (more policies than households, every one
+   new), yellow when every sale was one policy to a new household, and a
+   red "—" with no sales at all. A policy and its household marked sold on
+   different days can't be judged, so that card is left uncoloured. The
+   Team card takes its producers' best colour. Every producer gets a card,
+   sales or not. Days with no sold-lead rows keep the
+   old matched figure. */
 function householdCompletionHtml(d, who) {
   const byName = Object.fromEntries((d.producers || []).map(p => [p.name, p]));
   const focus = who ? byName[who] : null;
-  const TI = { green: "tg", yellow: "ty", red: "tr" };
   const hasRows = hhSoldOf(d, "") != null;
   const glow = liveOn(d, "hhsold") && liveOn(d, "sales") ? " isLive" : "";
   const plural = (n, one, many) => `${n} ${n === 1 ? one : many}`;
-  const card = (label, name, p, team) => {
+  const card = (label, name, p, team, teamTier) => {
     const pol = p.pol || 0;
-    let v, notes;
+    let v, notes, tier = "";
     if (hasRows) {
       const h = hhSoldSplit(d, name);
       v = h.n && pol ? pol / h.n : null;
+      // An existing customer shows on the household or on the policy's own
+      // lead source (p.cross_sell), which covers every sale -- so a
+      // cross-sell whose household was marked sold another day is still one.
+      tier = !pol && !h.n ? "tr"
+        : h.existing || (p.cross_sell || 0) > 0 ? "tg"
+        : v == null ? ""
+        : !h.unknown && pol > h.n ? "tg" : "ty";
       const split = [h.fresh ? plural(h.fresh, "new household", "new households") : "",
                      h.existing ? plural(h.existing, "existing customer", "existing customers") : "",
                      h.unknown ? plural(h.unknown, "household", "households") : ""].filter(Boolean).join(" &middot; ");
-      notes = v != null ? split
+      notes = !pol && !h.n ? "no sales"
+        : v != null ? split
         : pol ? `${plural(pol, "policy", "policies")} &middot; household marked sold another day`
         : `${split} &middot; policy dated another day`;
     } else {
       v = p.bundle_resolved_households ? p.bundle_resolved / p.bundle_resolved_households : null;
-      notes = "";
+      notes = pol ? "" : "no sales";
+      tier = pol ? "" : "tr";
     }
-    const tier = v == null ? "" : TI[tierColor("policies_per_household", v)];
+    if (teamTier != null) tier = teamTier;
     return `<div${ddk(team ? "hhc" : "hhc@" + name, "tile" + glow)}${team ? ` style="border-color:var(--border-strong)"` : ""}>
     <div class="k">${label}</div>
     <div class="v ${tier}">${v == null ? "—" : v.toFixed(2)}</div>
@@ -1208,11 +1222,16 @@ function householdCompletionHtml(d, who) {
     ${notes ? `<div class="n">${notes}</div>` : ""}
    </div>`;
   };
-  const sold = p => (p.pol || 0) > 0 || (hasRows && hhSoldOf(d, p.name) > 0);
-  const list = (focus ? [focus] : (d.producers || [])).filter(sold);
-  const cards = list.map(p => card(p.name, p.name, p, false)).join("");
+  const list = focus ? [focus] : (d.producers || []);
+  const made = list.map(p => card(p.name, p.name, p, false));
+  const cards = made.join("");
   const T = d.totals || {};
-  const teamCard = focus || !(T.pol || (hasRows && hhSoldOf(d, ""))) ? "" : card("Team", "", T, true);
+  // The team takes its producers' best colour: its own policies-over-
+  // households mixes a policy and a household marked sold on different
+  // days into what looks like a bundle (09-25: 5 policies, 3 households).
+  const tiers = made.map(h => (h.match(/class="v (t[gyr])"/) || [])[1]);
+  const teamTier = ["tg", "ty", "tr"].find(t => tiers.includes(t)) || "";
+  const teamCard = focus ? "" : card("Team", "", T, true, hasRows ? teamTier : null);
   if (!cards && !teamCard) return "";
 
   return `<div class="sect"><h2>Household Completion</h2>
@@ -2477,7 +2496,6 @@ const THRESHOLDS = {
   utilization_pct: { green: 85, yellow: 80 },
   roleplay_score: { green: 80, yellow: 0 },
   closing_ratio_pct: { green: 25, yellow: 15 },   // digest_config.THRESHOLDS, for live recolouring
-  policies_per_household: { green: 1.5, yellow: 1.1 },
 };
 const TEAM_SCALE = 5; // digest_config.TEAM_SCALE == len(PRODUCERS)
 function tierColor(metric, value) {

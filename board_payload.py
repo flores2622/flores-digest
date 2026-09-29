@@ -161,13 +161,6 @@ def _producer_tiers(p, pace=None):
     pq = p.get("pq") or 0
     out["closing_pq"] = cfg.tier("closing_ratio_pct",
         (100 * (p.get("ps") or 0) / pq) if pq else None)
-    # Household Completion's policies-per-household (Frank, 2026-09-23) --
-    # resolved policies over resolved households (see bundle_classification),
-    # never `pol` over resolved households, since `pol` includes the ~50%
-    # of sales this join can't place at a household at all.
-    resolved_hh = p.get("bundle_resolved_households") or 0
-    out["policies_per_hh"] = cfg.tier("policies_per_household",
-        (p.get("bundle_resolved") or 0) / resolved_hh if resolved_hh else None)
     # daily.py's coach blank-fill sets 0, not None, when no Coach AI figure
     # was recorded for this producer today -- fold that back to None so
     # tier()'s existing None->red rule gives the red 0 Frank asked for
@@ -223,9 +216,6 @@ def _team_tiers(totals, producers, pace=None):
     pq = totals.get("pq") or 0
     out["closing_pq"] = cfg.tier("closing_ratio_pct",
         (100 * (totals.get("ps") or 0) / pq) if pq else None)
-    resolved_hh = totals.get("bundle_resolved_households") or 0
-    out["policies_per_hh"] = cfg.tier("policies_per_household",
-        (totals.get("bundle_resolved") or 0) / resolved_hh if resolved_hh else None)
     out["roleplay"] = cfg.tier("roleplay_score", totals.get("roleplay"))
     ttp = (totals.get("tasks") or {}).get("pct")
     if ttp is not None:

@@ -482,6 +482,14 @@ how many new, from each sold lead's `existing` (digest_rows, live.js;
 09-01..09-28 tagged from their saved source, backups under
 `backups/2026-09-29-hh-existing/`). A day with policies but no household
 marked sold, or the reverse, shows "—" and says which.
+**Its colour is what was sold, not a threshold** (Frank, 2026-09-29): green
+for an existing customer (the household's source, or the policy's own
+cross-sell source) or a new household that bundled (more policies than
+households, every one new); yellow when every sale was one policy to a new
+household; a red "—" for no sales (every producer gets a card). A day with
+policies and households on different days, no cross-sell, is uncoloured.
+The Team card takes its producers' best colour. The old 1.5 / 1.1
+policies-per-household thresholds are gone.
 
 ## Texts and emails
 
