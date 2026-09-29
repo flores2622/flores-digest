@@ -825,6 +825,23 @@ Crystal (hybrid); credit always goes to whoever COMPLETED the SR or task.
   **Note Standard** counts the missing parts. Past days: `python3
   service_digest.py --add-roles 2026-09-01 2026-09-25` (backs up under
   `backups/<today>-roles/`).
+- **The Service Digest is one card per person, no leaderboard** (Frank,
+  2026-09-29, option D: "when I dont have a rep selected i want it to display
+  the team totals"). A strip of small cards (Amanda, Crystal, Debbie in the
+  playbook's order: SRs, tasks, reply speed, overdue); under it one grid --
+  the team's totals until a person is picked, then theirs with their role's
+  checklist from the playbook (`serviceStatsHtml`): SRs completed, tasks,
+  open / overdue, dials, call backs, speed to reply, texts / emails, calls
+  answered, SRs created, note standard, opportunities, utilization. Nobody
+  is ranked; every tile opens its accounts (keys `g-...`). It replaced the
+  Service Team tiles, By Role cards and Speed to Call Back by person.
+  **Dials** are `service_digest.dial_figures` (`dials.rows`, one per person
+  and number, from the day's RC call log): Debbie's and Amanda's every dial,
+  **Crystal's only to numbers that route to service** (customer or open SR;
+  her new-business dials are the Sales Center's), commercial-only households
+  left out, renewal numbers split to the Renewals side. Past days: `python3
+  service_digest.py --add-dials 2026-09-01 2026-09-28` (backs up under
+  `backups/<today>-dials/`, adds only `dials`). The Renewals tab is next.
 - **Documents hold rows, never medians**, so the board can add any range up.
   **Every card opens the rows it counts** (Frank, 2026-09-25), so the rows
   carry what a list needs: SRs name, household (= the AgencyZoom customer
