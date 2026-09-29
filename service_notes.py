@@ -153,17 +153,20 @@ def save(cache, log=print):
 
 def _ask(cs, model, pipe, chunk):
     base = {"model": model, "system": _system(pipe),
-            "messages": [{"role": "user", "content": json.dumps(chunk, ensure_ascii=False)}]}
+            "messages": [{"role": "user", "content": rn.BATCH_LEAD + json.dumps(chunk, ensure_ascii=False)}]}
     room = 60 * len(chunk) + 200
+    think = {"thinking": {"type": "disabled"}}
     try:
-        resp = cs._post(dict(base, max_tokens=room, thinking={"type": "disabled"}))
+        resp = cs._post(dict(base, max_tokens=room, **think))
     except RuntimeError as e:
         if "thinking" not in str(e).lower():
             raise
+        think = {}
         resp = cs._post(dict(base, max_tokens=room * 4))
     got = cs._extract(resp)
     if got is None:
-        got = cs._extract(cs._post(dict(base, max_tokens=room * 4)))
+        # The retry keeps thinking off too, or it thinks into its own budget.
+        got = cs._extract(cs._post(dict(base, max_tokens=room * 4, **think)))
     if not isinstance(got, dict):
         raise ValueError("no JSON in response")
     return got

@@ -47,7 +47,9 @@ where two DIFFERENT real policy records (distinct az_policy_id, distinct
 premium -- one line per vehicle on a multi-vehicle policy) shared one
 displayed policyNumber, and mutating the snapshot mid-run would have
 silently dropped the second one as a false duplicate of the first. Both
-daily.py (nightly) and intraday.py (each checkpoint) call this, guarded
+daily.py (nightly) and intraday.py (each checkpoint) call this -- and the
+Worker's two-minute live refresh applies the same rules in JS
+(site/live.js syncSalesLog, Frank 2026-09-28) -- guarded
 in a try/except exactly like publish_day -- a Cloudflare/R2 hiccup here
 must cost this feature alone, never the digest or the rest of the board.
 R2 is the only state,

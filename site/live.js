@@ -20,11 +20,20 @@
             attendance, per person; team minute-rounded, Amanda excluded.
      quotes AgencyZoom: households and premium quoted, daily.py's three rules
             applied to leads active since the checkpoint (see quotedLive).
+     contacts / talk
+            RingCentral's calls since the checkpoint, judged provisionally
+            from the notes quotedLive reads (live_notes.contactDeltas); the
+            next checkpoint reads the recordings and settles them.
+     messages
+            texts and emails, messages.build's rules on those same notes,
+            carried on from the checkpoint (live_notes.messageDeltas).
 
    Each part needs its own secrets and fails on its own: a missing or broken
    service leaves that part null with a reason, and the board keeps the
    checkpoint's figure for it. Results are cached in R2 at live/<day>.json
    for CACHE_SECONDS, so every viewer shares one refresh. */
+
+import { contactItems, messageEvents, contactDeltas, messageDeltas, last10, noteText, rxOf } from "./live_notes.js";
 
 export const CACHE_SECONDS = 120;
 export const QUOTES_STALE_SECONDS = 180;
@@ -171,10 +180,34 @@ async function azForget(env) {
   azJwt = null; azJwtExp = 0;
   if (env.BOARD) await env.BOARD.delete(AZ_TOKEN_KEY);
 }
+/* A REFUSED REQUEST PAUSES AGENCYZOOM TOO, not only a refused login. On
+   2026-09-28 every AgencyZoom request from the Worker began returning 403 at
+   2:29 PM -- sales, sold households, quotes and messages all went dark --
+   while the very same token worked from the nightly run's machine: a block
+   on the addresses the Worker calls from, not on the login. The Worker kept
+   asking ~40 times every two minutes all afternoon. Now a 403 pauses every
+   AgencyZoom part for AZ_PAUSE_MINUTES, like a refused login; the board
+   keeps each part's last good answer meanwhile (keepGood). */
+let azPauseSeen = { at: 0, until: 0 };
+async function azPausedUntil(env) {
+  if (!env.BOARD) return 0;
+  if (Date.now() - azPauseSeen.at < 20000) return azPauseSeen.until;   // once per run, not per request
+  const o = await env.BOARD.get(AZ_PAUSE_KEY);
+  azPauseSeen = { at: Date.now(), until: o === null ? 0 : ((await o.json()).until || 0) };
+  return azPauseSeen.until;
+}
+export function _resetAzPauseForTests() { azPauseSeen = { at: 0, until: 0 }; }
 async function azGet(env, path, fetchFn, init = {}) {
+  const until = await azPausedUntil(env);
+  if (Date.now() < until) throw new Error(`AgencyZoom paused until ${azClock(until)} after a refused request`);
   const tok = await azToken(env, fetchFn);
   const r = await fetchFn(`${AZ}${path}`, { ...init, headers: { ...(init.headers || {}), authorization: `Bearer ${tok}`, "content-type": "application/json" } });
   if (r.status === 401) await azForget(env);          // the saved login stopped working: log in afresh next time
+  if (r.status === 403 && env.BOARD) {
+    const x = { until: Date.now() + AZ_PAUSE_MINUTES * 60000, status: 403, path, at: new Date().toISOString() };
+    await env.BOARD.put(AZ_PAUSE_KEY, JSON.stringify(x));
+    azPauseSeen = { at: Date.now(), until: x.until };
+  }
   if (!r.ok) { const e = new Error(`AgencyZoom ${path} ${r.status}`); e.status = r.status; throw e; }
   return r.json();
 }
@@ -202,9 +235,22 @@ export async function azPoliciesSold(env, day, fetchFn = fetch) {
   }
   return out;
 }
+/* Lead source names, fetched ONCE per Arizona day (2026-09-29, after
+   AgencyZoom began refusing the Worker on 09-28): the list barely changes,
+   and fetching it every two minutes was ~30 requests an hour for nothing. A
+   source created mid-day is named from the next day on; BOB and Rewrite,
+   the only ones that change a figure, long exist. */
+const LEAD_SOURCES_KEY = "worker-private/lead_sources.json";
 export async function azLeadSources(env, fetchFn = fetch) {
+  const day = azToday();
+  if (env.BOARD) {
+    const o = await env.BOARD.get(LEAD_SOURCES_KEY);
+    if (o !== null) { const x = await o.json(); if (x.day === day && x.names) return x.names; }
+  }
   const rows = await azGet(env, "/v1/api/lead-sources", fetchFn);
-  return Object.fromEntries((rows || []).map(r => [r.id, r.name]));
+  const names = Object.fromEntries((rows || []).map(r => [r.id, r.name]));
+  if (env.BOARD) await env.BOARD.put(LEAD_SOURCES_KEY, JSON.stringify({ day, names }));
+  return names;
 }
 
 /* digest_config.real_sales + bundle_classification's cross_sell, per producer. */
@@ -324,34 +370,327 @@ export function quotedBy(lead, notes, day, basis, rx) {
 /* Households sold (Frank, 2026-09-28): every lead marked sold today, read in
    the same refresh as the policies so the HH/Prem. Sold tile is live
    whenever sales are. Leads come newest activity first (lastActivityDate is
-   UTC; marking a lead sold moves it), paged back to the start of the
-   Arizona day. `complete` is false only if the page cap stopped it short,
-   and then the board also keeps the checkpoint's own sold-lead rows. */
+   UTC; marking a lead sold moves it), back to the start of the Arizona day.
+
+   KEPT, NOT RE-PAGED (2026-09-29, after AgencyZoom began refusing the
+   Worker on 09-28). Paging the whole day's list every two minutes was up to
+   five requests each time by the afternoon. Any change to a lead -- marked
+   sold, unmarked, a note, a stage move -- puts it back at the top, so the
+   day's list is kept in R2 (live/<day>-leads.json) and each refresh pages
+   only down to where the last one started (ACTIVE_OVERLAP_MS earlier, for
+   ties), usually one page. The quotes pass reads the same copy
+   (fromShared). `complete` is false only if the page cap ever stopped a
+   read short of what the day's list already held -- then the board also
+   keeps the checkpoint's own sold-lead rows, as before. */
 const SOLD_LEAD_PAGES = 5;
-export async function soldLeadsToday(env, day, basis, fetchFn = fetch) {
+const ACTIVE_OVERLAP_MS = 2 * 60000;
+const utcMs = s => Date.parse(String(s || "").replace(" ", "T").slice(0, 19) + "Z");
+const utcStr = ms => new Date(ms).toISOString().slice(0, 19).replace("T", " ");
+export async function soldLeadsToday(env, day, basis, fetchFn = fetch, kept = null) {
   const since = `${day} 07:00:00`;   // midnight Arizona (UTC-7), in UTC
   const byAz = Object.fromEntries(Object.entries(basis.producers || {}).map(([n, v]) => [String(v.az_id), n]));
-  const per = {}, seen = new Set();
-  let complete = false;
+  const prev = kept && kept.day === day && Array.isArray(kept.leads) && kept.newest ? kept : null;
+  const stopAt = prev ? utcStr(Math.max(utcMs(since), utcMs(prev.newest) - ACTIVE_OVERLAP_MS)) : since;
+  const fresh = new Map();
+  let reached = false, newest = prev ? prev.newest : "";
   for (let page = 0; page < SOLD_LEAD_PAGES; page++) {
     const jl = await azGet(env, "/v1/api/leads/list", fetchFn, {
       method: "POST", body: JSON.stringify({ page, pageSize: 100, sort: "lastActivityDate", order: "desc" }),
     });
     const ls = jl.leads || [];
     for (const l of ls) {
-      if (String(l.lastActivityDate || "") < since || seen.has(l.id)) continue;
-      seen.add(l.id);
-      const who = byAz[String(l.assignedTo)];
-      if (!who || l.status !== 2 || !String(l.soldDate || "").startsWith(day)) continue;
-      (per[who] || (per[who] = [])).push({ lead_id: l.id, household: l.convertedHouseholdId ?? null,
-        lead: [l.firstname, l.lastname].map(x => String(x || "").trim()).filter(Boolean).join(" ") });
+      const act = String(l.lastActivityDate || "");
+      if (act < since) continue;
+      if (act > newest) newest = act;
+      if (!fresh.has(l.id)) fresh.set(l.id, leadFields(l));
     }
-    if (!ls.length || String(ls[ls.length - 1].lastActivityDate || "") < since) { complete = true; break; }
+    if (!ls.length || String(ls[ls.length - 1].lastActivityDate || "") < stopAt) { reached = true; break; }
   }
-  return { per, complete };
+  // Stopped short of what the kept list covers: there may be a gap, so the
+  // day's list starts again from this read, marked incomplete.
+  const merged = new Map(reached && prev ? prev.leads.map(l => [l.id, l]) : []);
+  for (const [id, l] of fresh) merged.set(id, l);
+  const complete = reached && (prev ? !!prev.complete : true);
+  const per = {}, raw = [];
+  const existing = new Set(basis.existing_household || []);
+  for (const l of merged.values()) {
+    if (l.status !== 2 || !String(l.soldDate || "").startsWith(day)) continue;
+    const name = [l.firstname, l.lastname].map(x => String(x || "").trim()).filter(Boolean).join(" ");
+    // Everyone's, for the Sales sheet's name match (syncSalesLog), which
+    // covers Amanda too; never stored or served.
+    raw.push({ agentId: l.assignedTo, leadSourceId: l.leadSourceId, household: l.convertedHouseholdId ?? null, name });
+    const who = byAz[String(l.assignedTo)];
+    if (!who) continue;
+    (per[who] || (per[who] = [])).push({ lead_id: l.id, household: l.convertedHouseholdId ?? null, lead: name,
+      existing: existing.has(norm(l.leadSourceName)) });
+  }
+  const leads = [...merged.values()].sort((a, b) => (a.lastActivityDate < b.lastActivityDate ? 1 : -1));
+  const oldest = leads.length ? leads[leads.length - 1].lastActivityDate : null;
+  return { per, complete, _raw: raw, _active: { day, newest, leads, complete, oldest } };
 }
 
-async function azLeadsActiveSince(env, since, fetchFn) {
+/* What is kept of a lead: what the sold count and the quotes pass read. */
+const leadFields = l => ({ id: l.id, lastActivityDate: l.lastActivityDate, enterStageDate: l.enterStageDate,
+  assignedTo: l.assignedTo, quoteDate: l.quoteDate, firstname: l.firstname, lastname: l.lastname,
+  phone: l.phone, secondaryPhone: l.secondaryPhone, status: l.status, soldDate: l.soldDate,
+  leadSourceId: l.leadSourceId, convertedHouseholdId: l.convertedHouseholdId,
+  createDate: l.createDate, leadSourceName: l.leadSourceName });
+
+/* ---- task completion ---------------------------------------------------- */
+
+/* az_tasks.audit, line for line (keep in step), on the tasks due today:
+   service / renewal / change work left out (a customer record, or the title
+   or body patterns), each task credited to the producer assigned it, and a
+   task closed without completion either EXCLUDED (the lead was lost as a
+   duplicate that day) or EXCUSED (the producer smart-cycled / killed it
+   that day and AgencyZoom's "cancel all related open tasks" closed it) --
+   task_audit.cancellation_verdicts. The checkpoint's own verdicts come
+   first; a task closed since is judged by the same patterns on the lead's
+   stage moves, which the quotes pass reads anyway (taskFlags). Refreshed
+   every TASKS_REFRESH_SECONDS, not every run: tasks change slowly, and it
+   is one list page per producer each time. */
+export const TASKS_REFRESH_SECONDS = 330;
+const TASK_PAGES = 5;
+export function taskFlags(notes, day, basis) {
+  const t = basis.tasks;
+  if (!t || !t.rx) return null;
+  const loss = rxOf(t.rx.loss), dup = rxOf(t.rx.duplicate), cycle = rxOf(t.rx.cycle);
+  const firsts = Object.keys(basis.producers || {}).map(n => n.split(" ")[0].toLowerCase());
+  let isDup = false; const cycled = new Set();
+  for (const n of notes || []) {
+    if (!String(n.createDate || "").startsWith(day) || n.type !== "MOVE_STAGE") continue;
+    const body = noteText(n.body);
+    const g = body.match(loss);
+    if (g && dup.test(g[1])) isDup = true;
+    if (cycle.test(body)) for (const f of firsts) if (body.toLowerCase().includes(f)) cycled.add(f);
+  }
+  return isDup || cycled.size ? { dup: isDup, cycled: [...cycled] } : null;
+}
+async function azTasksDue(env, day, basis, fetchFn) {
+  // One producer at a time (assigneeId): the whole-day list's pages overlap
+  // and drop tasks (az_client.tasks, 2026-09-29), while one person's day
+  // fits on a single page. Pages are 0-indexed. Merged by id.
+  const out = new Map();
+  let complete = true;
+  for (const v of Object.values(basis.producers || {})) {
+    let fetched = 0, page = 0;
+    for (;;) {
+      const j = await azGet(env, "/v1/api/tasks/list", fetchFn, {
+        method: "POST", body: JSON.stringify({ startDate: day, endDate: day, assigneeId: v.az_id, page, pageSize: 100 }),
+      });
+      const batch = j.tasks || j.data || [];
+      fetched += batch.length;
+      for (const t of batch) if (t && t.id != null && !out.has(t.id)) out.set(t.id, t);
+      page++;
+      if (!batch.length || (j.totalCount != null ? fetched >= j.totalCount : batch.length < 100)) break;
+      if (page >= TASK_PAGES) { complete = false; break; }
+    }
+  }
+  return { tasks: [...out.values()], complete };
+}
+// Python's round(x, 1): half to even on an exact tie (13 of 16 is 81.25 ->
+// 81.2), where Math.round would give 81.3.
+const pyRound1 = x => {
+  const t = x * 10, f = Math.floor(t);
+  if (t - f === 0.5) return (f % 2 === 0 ? f : f + 1) / 10;
+  return Number(x.toFixed(1));
+};
+export function taskCompletion(basis, tasks, flags) {
+  const t = basis.tasks || {};
+  const title = rxOf(t.rx.title), body = rxOf(t.rx.body);
+  const verdicts = t.verdicts || {};
+  const byAz = Object.fromEntries(Object.entries(basis.producers || {}).map(([n, v]) => [String(v.az_id), n]));
+  const per = Object.fromEntries(Object.keys(basis.producers || {}).map(n => [n,
+    { total: 0, completed: 0, closed_not_done: 0, open: 0, excused: 0 }]));
+  const rows = [];
+  for (const x of tasks) {
+    if (String(x.customerType || "").toLowerCase() === "customer") continue;
+    if (title.test(x.title || "") || body.test(x.comments || "")) continue;
+    const a = (x.assignees || []).find(a => byAz[String(a.id)]);
+    const who = a ? byAz[String(a.id)] : null;
+    if (!who) continue;
+    let v = verdicts[String(x.id)];
+    if (!v && x.status === 2 && x.customerId) {
+      const f = (flags || {})[String(x.customerId)];
+      if (f && f.dup) v = "excluded";
+      else if (f && f.cycled.includes(who.split(" ")[0].toLowerCase())) v = "excused";
+    }
+    if (v === "excluded") continue;
+    const p = per[who];
+    const state = v === "excused" ? "excused" : x.status === 1 ? "done" : x.status === 2 ? "closed" : "open";
+    rows.push({ who, id: x.id, title: x.title, state, record: x.customerName,
+      due: String(x.dueDate || "").slice(0, 10), completed: String(x.completeDate || "").slice(0, 10),
+      lead_id: x.customerId || null, customer_id: null });
+    if (v === "excused") { p.excused++; continue; }
+    p.total++;
+    if (x.status === 1) p.completed++;
+    else if (x.status === 2) p.closed_not_done++;
+    else p.open++;
+  }
+  for (const p of Object.values(per)) p.pct = p.total ? pyRound1(p.completed / p.total * 100) : null;
+  const tot = Object.values(per).reduce((s, p) => s + p.total, 0), done = Object.values(per).reduce((s, p) => s + p.completed, 0);
+  return { per, team: { total: tot, completed: done, pct: tot ? pyRound1(done / tot * 100) : null }, rows };
+}
+
+/* ---- speed to dial ------------------------------------------------------ */
+
+/* daily.speed_rows + daily.speed_to_dial, line for line (keep in step): an
+   internet lead (SureQuote / MAV) created today, the first dial to its
+   number, and the seconds between. Worked out whole every refresh from the
+   day's kept lead list (every lead created today has activity today) and the
+   full call log -- exact, not an estimate. The first dial is taken exactly
+   as daily.py takes it: producers in the order they first appear in the
+   call log, each one's earliest dial to the number, the first producer
+   found keeping it. */
+const SPEED_SOURCES = ["surequote", "mav ai", "mav"];
+const median = xs => { const v = [...xs].sort((a, b) => a - b), m = v.length >> 1; return v.length % 2 ? v[m] : (v[m - 1] + v[m]) / 2; };
+export function speedToDial(day, basis, leads, recs) {
+  const byExt = Object.fromEntries(Object.entries(basis.producers || {}).map(([n, v]) => [String(v.rc_id), n]));
+  const dials = new Map();                       // producer -> Map(number -> earliest start)
+  for (const r of recs) {
+    const who = byExt[ownerExt(r)];
+    if (!who || r.direction !== "Outbound") continue;
+    const num = (r.to || {}).phoneNumber;
+    if (!num) continue;
+    if (!dials.has(who)) dials.set(who, new Map());
+    const m = dials.get(who), t = r.startTime;
+    if (!m.has(num) || t < m.get(num)) m.set(num, t);
+  }
+  const first = new Map();
+  for (const [w, m] of dials) for (const [num, t] of m) if (!first.has(num)) first.set(num, [w, t]);
+  const rows = [];
+  for (const l of leads) {
+    const src = String(l.leadSourceName || "").toLowerCase();
+    if (!SPEED_SOURCES.some(k => src.includes(k))) continue;
+    if (!String(l.createDate || "").startsWith(day)) continue;
+    const ten = last10(l.phone), hit = ten ? first.get("+1" + ten) : null;   // az_corpus.e164
+    if (!hit) continue;
+    const c = utcMs(l.createDate), d = Date.parse(hit[1]);
+    const secs = (d - c) / 1000;
+    if (secs > 0) rows.push({ who: hit[0], lead_id: l.id,
+      lead: `${String(l.firstname || "").trim()} ${String(l.lastname || "").trim()}`.trim(),
+      source: String(l.leadSourceName || "").trim(),
+      arrived: new Date(c).toISOString(), dialled: new Date(d).toISOString(), secs: Math.trunc(secs) });
+  }
+  const per = {};
+  for (const n of Object.keys(basis.producers || {})) {
+    const v = rows.filter(r => r.who === n).map(r => r.secs).sort((a, b) => a - b);
+    if (v.length) per[n] = { median: Math.trunc(median(v)), n: v.length, quickest: v[0], longest: v[v.length - 1], secs: v };
+  }
+  const all = rows.map(r => r.secs);
+  const summary = all.length ? { per, team: { median: Math.trunc(median(all)), quickest: Math.min(...all),
+    longest: Math.max(...all), n: all.length } } : null;
+  return { summary, rows };
+}
+
+/* ---- the Sales sheet --------------------------------------------------- */
+
+/* sales_log_auto.product_name, line for line (keep in step): the sheet's
+   product name for a policy, by carrier id (basis.saleslog.carrier). */
+export function productName(p, carriers) {
+  const raw = String(p.policyTypeName || "").trim();
+  const carrier = (carriers || {})[String(p.carrierId)];
+  if (!carrier || !raw) return raw;
+  const auto = /auto/i.test(raw);
+  if (carrier === "BW") return auto ? "BW-Auto" : `BW-${raw}`;
+  if (auto) return `${carrier}-Auto`;
+  if (carrier === "Foremost") {
+    if (/mobile|manufactured/i.test(raw)) return "Foremost-MH";
+    if (/landlord|dp\d|dwelling/i.test(raw)) return "Foremost-Landlord";
+    if (/atv|motorcycle|trailer|boat|watercraft|motor home|\brv\b|golf cart|toy/i.test(raw)) return "Foremost-Toys";
+    if (/vacant/i.test(raw)) return "Foremost-Vacant";
+    if (/home|ho-?\d/i.test(raw)) return "Foremost-Home";
+  }
+  if (carrier === "Farmers") {
+    if (/homeowner|^home$|ho-?\d/i.test(raw)) return "Farmers-Home";
+    if (/term|life/i.test(raw)) return "Farmers-Life";
+  }
+  return `${carrier}-${raw}`;
+}
+function termOf(eff, exp) {
+  const e = String(eff || "").slice(0, 10), x = String(exp || "").slice(0, 10);
+  if (!e || !x) return "";
+  const days = (Date.parse(x + "T00:00:00Z") - Date.parse(e + "T00:00:00Z")) / 86400000;
+  if (!Number.isFinite(days)) return "";
+  const months = Math.round(days / 30.44);
+  return months > 0 ? `${months}mo` : "";
+}
+
+/* sales_log_auto.build_entries: one row per real sale today by a producer
+   or Amanda. The name comes from the one lead marked sold today with the
+   same agent and lead source, else it stays blank -- the nightly match
+   reads the customer record instead, so a name here can be the lead's
+   spelling of the same person. */
+export function salesLogEntries(day, basis, policies, sourceNames, soldRaw) {
+  const sl = basis.saleslog || {};
+  const ids = sl.ids || {};
+  const notSale = new Set(basis.not_a_sale || []);
+  const out = [];
+  for (const p of policies) {
+    if (!String(p.soldDate || "").startsWith(day)) continue;
+    const who = ids[String(p.agentId)];
+    if (!who || notSale.has(norm(sourceNames[p.leadSourceId]))) continue;
+    const cands = (soldRaw || []).filter(l => String(l.agentId) === String(p.agentId)
+      && String(l.leadSourceId) === String(p.leadSourceId));
+    const one = cands.length === 1 ? cands[0] : null;
+    out.push({
+      producer: who,
+      client_name: one && one.household != null ? one.name : "",
+      az_customer_id: one && one.household != null ? String(one.household) : "",
+      lead_source: String(sourceNames[p.leadSourceId] || "").trim(),
+      policy_number: String(p.policyNumber || ""),
+      product: productName(p, sl.carrier),
+      premium: p.premium != null ? Number(p.premium) : null,
+      term: termOf(p.effectiveDate, p.expiryDate),
+      date_sold: String(p.soldDate || "").slice(0, 10),
+      effective_date: String(p.effectiveDate || "").slice(0, 10),
+      az_policy_id: p.id,
+    });
+  }
+  return out;
+}
+
+/* sales_log_auto.sync_day's rules on saleslog/<day>.json: only ever adds --
+   never a policy already on the sheet (az_policy_id), never one a person
+   typed by hand (their policy number) -- so the checkpoints and the nightly
+   run find it there and skip it. Read right before the write, and written
+   only when something is new. */
+export async function syncSalesLog(env, day, basis, policies, sourceNames, soldRaw) {
+  const cands = salesLogEntries(day, basis, policies, sourceNames, soldRaw);
+  if (!cands.length) return 0;
+  const key = `saleslog/${day}.json`;
+  const doc = (await r2json(env, key)) || { day, entries: [] };
+  const have = new Set(doc.entries.filter(e => e.az_policy_id != null).map(e => String(e.az_policy_id)));
+  const typed = new Set(doc.entries.filter(e => e.policy_number && e.az_policy_id == null).map(e => e.policy_number));
+  let added = 0;
+  for (const c of cands) {
+    if (c.az_policy_id != null && have.has(String(c.az_policy_id))) continue;
+    if (c.policy_number && typed.has(c.policy_number)) continue;
+    doc.entries.push({ ...c, id: crypto.randomUUID(), created_at: new Date().toISOString(), day,
+      docs_signed: "", review_sent: false, notes: "Auto-added from AgencyZoom", source: "auto" });
+    if (c.az_policy_id != null) have.add(String(c.az_policy_id));
+    added++;
+  }
+  if (added) await r2put(env, key, doc);
+  return added;
+}
+
+/* ONE LIST OF TODAY'S ACTIVE LEADS, NOT TWO (2026-09-29). The sold part
+   pages this same list (newest activity first, back to Arizona midnight)
+   every even minute, so the quotes pass a minute later uses that copy
+   (live/<day>-leads.json) instead of paging it again -- when it is under
+   ACTIVE_LIST_FRESH_SECONDS old and reaches back to the checkpoint. A lead
+   active in that minute is read on the next pass. */
+export const ACTIVE_LIST_FRESH_SECONDS = 150;
+export function fromShared(shared, since) {
+  if (!shared || !Array.isArray(shared.leads) || !shared.fetched_at) return null;
+  if (Date.now() - Date.parse(shared.fetched_at) > ACTIVE_LIST_FRESH_SECONDS * 1000) return null;
+  if (!shared.complete && !(shared.oldest && shared.oldest < since)) return null;
+  return shared.leads.filter(l => String(l.lastActivityDate || "") >= since);
+}
+async function azLeadsActiveSince(env, since, fetchFn, shared = null) {
+  const reuse = fromShared(shared, since);
+  if (reuse) return reuse;
   const out = [], seen = new Set();
   for (let page = 0; page < 5; page++) {
     const j = await azGet(env, "/v1/api/leads/list", fetchFn, {
@@ -364,9 +703,13 @@ async function azLeadsActiveSince(env, since, fetchFn) {
   return out;
 }
 
+// Not found / gone: the lead itself, never the Worker's access (a 403 still
+// pauses AgencyZoom, azGet).
+const gone = e => e && (e.status === 404 || e.status === 410);
+
 /* `memo` is the previous refresh's per-lead reads (R2), so a lead is only
    re-read when its activity moved; returns the deltas and the new memo. */
-export async function quotedLive(env, day, basis, memo, fetchFn = fetch) {
+export async function quotedLive(env, day, basis, memo, fetchFn = fetch, wanted = [], calls = null, shared = null) {
   const q = basis.quotes;
   if (!q) throw new Error("needs a checkpoint built after this update");
   const rx = { stage: new RegExp(q.stage_pattern, "i"), presented: new RegExp(q.presented_pattern, "i"), past: new RegExp(q.past_pattern, "i") };
@@ -378,11 +721,17 @@ export async function quotedLive(env, day, basis, memo, fetchFn = fetch) {
   // assigned to a producer, then everything else; newest activity first
   // within each (the list already arrives newest first, and sort is stable).
   const producerAz = new Set(Object.values(basis.producers || {}).map(v => String(v.az_id)));
-  const rank = l => (String(l.enterStageDate || "") >= q.activity_since ? 0 : producerAz.has(String(l.assignedTo)) ? 1 : 2);
-  const active = (await azLeadsActiveSince(env, q.activity_since, fetchFn)).sort((a, b) => rank(a) - rank(b));
+  // A lead dialled since the checkpoint comes first of all: its notes are
+  // what judges that dial a contact (live_notes.contactDeltas).
+  const want = new Set((wanted || []).map(last10));
+  const phones = l => [last10(l.phone), last10(l.secondaryPhone)].filter(Boolean);
+  const rank = l => (phones(l).some(p => want.has(p)) ? -1 : String(l.enterStageDate || "") >= q.activity_since ? 0 : producerAz.has(String(l.assignedTo)) ? 1 : 2);
+  const presented = b => rx.presented.test(b) && !rx.past.test(b);
+  const active = (await azLeadsActiveSince(env, q.activity_since, fetchFn, shared)).sort((a, b) => rank(a) - rank(b));
   for (const l of active) {
     const id = String(l.id), was = prev[id];
-    if (was && was.act === l.lastActivityDate) { leads[id] = was; continue; }
+    // A read from before contacts and messages were kept is read again.
+    if (was && was.act === l.lastActivityDate && was.events) { leads[id] = was; continue; }
     if (notesRead >= NOTES_PER_REFRESH || limited) { pending++; if (was) leads[id] = was; continue; }
     notesRead++;
     let notes;
@@ -390,11 +739,20 @@ export async function quotedLive(env, day, basis, memo, fetchFn = fetch) {
       if (notesRead > 1) await pause(LEAD_READ_GAP_MS);
       notes = await azGet(env, `/v1/api/leads/${id}/notes`, fetchFn);
     } catch (e) {
+      // A lead AgencyZoom no longer serves (deleted, merged into another
+      // record) is read as having no notes, and kept that way until its
+      // activity moves: the day's kept list (soldLeadsToday) never drops an
+      // id, and one unreadable lead must not stop every other one.
+      if (gone(e)) notes = [];
       // Rate limited: keep what this batch read, the rest waits for the next.
-      if (e.status !== 429) throw e;
-      limited = true; pending++; if (was) leads[id] = was; continue;
+      else if (e.status !== 429) throw e;
+      else { limited = true; pending++; if (was) leads[id] = was; continue; }
     }
-    leads[id] = { act: l.lastActivityDate, who: [...quotedBy(l, Array.isArray(notes) ? notes : [], day, basis, rx)], prem: was ? was.prem : null };
+    const ns = Array.isArray(notes) ? notes : [];
+    leads[id] = { act: l.lastActivityDate, who: [...quotedBy(l, ns, day, basis, rx)], prem: was ? was.prem : null,
+      lead: { firstname: l.firstname, lastname: l.lastname, assignedTo: l.assignedTo, phone: l.phone, secondaryPhone: l.secondaryPhone },
+      items: contactItems(ns, day, basis), events: messageEvents(l, ns, day, basis, presented),
+      tf: taskFlags(ns, day, basis) };
   }
   const per = Object.fromEntries(Object.keys(basis.producers || {}).map(n => [n, { hh: 0, pq: 0, new_leads: [] }]));
   for (const [id, v] of Object.entries(leads)) {
@@ -408,8 +766,9 @@ export async function quotedLive(env, day, basis, memo, fetchFn = fetch) {
         await pause(LEAD_READ_GAP_MS);
         qs = await azGet(env, `/v1/api/leads/${id}/quotes`, fetchFn);
       } catch (e) {
-        if (e.status !== 429) throw e;
-        limited = true; pending++; continue;
+        if (gone(e)) qs = [];
+        else if (e.status !== 429) throw e;
+        else { limited = true; pending++; continue; }
       }
       const arr = Array.isArray(qs) ? qs : (qs || {}).quotes || [];
       v.prem = arr.reduce((s, x) => s + (Number(x.premium) || 0), 0);
@@ -417,7 +776,21 @@ export async function quotedLive(env, day, basis, memo, fetchFn = fetch) {
     for (const w of fresh) { per[w].hh++; per[w].pq += v.prem; per[w].new_leads.push(Number(id)); }
   }
   for (const v of Object.values(per)) v.pq = Math.round(v.pq);
-  return { data: { per, pending, looked_at: Object.keys(leads).length }, memo: { checkpoint_since: q.activity_since, leads } };
+  // What each read lead says about a dial to its numbers, for contactDeltas.
+  const evidence = {};
+  for (const [id, v] of Object.entries(leads)) {
+    if (!v.lead) continue;
+    for (const p of [last10(v.lead.phone), last10(v.lead.secondaryPhone)].filter(Boolean)) {
+      const e = evidence[p] || (evidence[p] = { items: [], leads: [] });
+      e.leads.push(Number(id));
+      e.items.push(...(v.items || []));
+    }
+  }
+  const task_flags = {};
+  for (const [id, v] of Object.entries(leads)) if (v.tf) task_flags[id] = v.tf;
+  return { data: { per, pending, looked_at: Object.keys(leads).length }, evidence, task_flags,
+    messages: basis.messages ? messageDeltas(basis, Object.fromEntries(Object.entries(leads).filter(([, v]) => v.events)), day, calls || []) : null,
+    memo: { checkpoint_since: q.activity_since, leads } };
 }
 
 /* ---- the route --------------------------------------------------------- */
@@ -427,7 +800,10 @@ const NEEDS = {
   sales: ["AZ_USERNAME", "AZ_PASSWORD"],
   util: ["INSIGHTFUL_TOKEN"],
   quotes: ["AZ_USERNAME", "AZ_PASSWORD"],
+  messages: ["AZ_USERNAME", "AZ_PASSWORD"],
+  contacts: ["RC_CLIENT_ID", "RC_CLIENT_SECRET", "RC_SERVER_URL", "RC_JWT"],
   sold: ["AZ_USERNAME", "AZ_PASSWORD"],
+  tasks: ["AZ_USERNAME", "AZ_PASSWORD"],
 };
 
 const part = async (env, key, fn) => {
@@ -437,40 +813,93 @@ const part = async (env, key, fn) => {
   catch (e) { return { ok: false, reason: String(e && e.message || e) }; }
 };
 
-/* Dials, sales (policies and the leads marked sold) and utilization: a
-   handful of requests, refreshed together. */
-export async function computeFast(env, day, basis, fetchFn = fetch) {
-  const [dials, sales, util, sold] = await Promise.all([
-    part(env, "dials", async () => dialDeltas(basis, await rcCallLog(env, day, fetchFn))),
+/* Dials, contacts and talk time, sales (policies and the leads marked
+   sold) and utilization: a handful of requests, refreshed together.
+   `evidence` is the last quotes pass's read of the lead notes
+   (live/<day>-quotes.json). */
+export async function computeFast(env, day, basis, fetchFn = fetch, evidence = null, kept = null, taskPrev = null, flags = null) {
+  const inputs = {};   // for syncSalesLog; never stored
+  let log = null;
+  const callLog = async () => (log || (log = rcCallLog(env, day, fetchFn)));
+  const [dials, contacts, sales, util, sold] = await Promise.all([
+    part(env, "dials", async () => dialDeltas(basis, await callLog())),
+    part(env, "contacts", async () => {
+      if (!basis.contact || !basis.talk) throw new Error("needs a checkpoint built after this update");
+      return contactDeltas(basis, await callLog(), evidence || {});
+    }),
     part(env, "sales", async () => {
       const [pols, names] = await Promise.all([azPoliciesSold(env, day, fetchFn), azLeadSources(env, fetchFn)]);
+      inputs.policies = pols; inputs.names = names;
       return salesFrom(basis, pols, names);
     }),
     part(env, "util", async () => insightfulUtil(env, day, basis, fetchFn)),
-    part(env, "sold", async () => soldLeadsToday(env, day, basis, fetchFn)),
+    part(env, "sold", async () => soldLeadsToday(env, day, basis, fetchFn, kept)),
   ]);
-  return { fetched_at: new Date().toISOString(), dials, sales, util, sold };
+  // Task completion: the kept tasks are re-judged every run (a verdict can
+  // arrive with the quotes pass), re-fetched only every TASKS_REFRESH_SECONDS.
+  let tasks;
+  if (!basis.tasks) tasks = { ok: false, reason: "needs a checkpoint built after this update" };
+  else {
+    const stale = !taskPrev || !taskPrev.fetched_at || Date.now() - Date.parse(taskPrev.fetched_at) > TASKS_REFRESH_SECONDS * 1000;
+    const got = stale ? await part(env, "tasks", async () => azTasksDue(env, day, basis, fetchFn))
+      : { ok: true, data: { tasks: taskPrev.tasks, complete: taskPrev.complete } };
+    if (got.ok && stale) inputs.tasks = { tasks: got.data.tasks, complete: got.data.complete, fetched_at: new Date().toISOString() };
+    tasks = !got.ok ? got : !got.data.complete ? { ok: false, reason: "more tasks due today than the page cap" }
+      : { ok: true, data: taskCompletion(basis, got.data.tasks, flags) };
+  }
+  if (sold.ok) {
+    inputs.soldRaw = sold.data._raw; delete sold.data._raw;
+    inputs.active = { ...sold.data._active, fetched_at: new Date().toISOString() }; delete sold.data._active;
+  }
+  // Today's dials, for the messages part: a call back answers a lead's text
+  // (messages.build reads the same call log).
+  let calls = null;
+  if (log) try { calls = dialTouches(basis, await log); } catch (_) {}
+  // Speed to dial needs every lead created today, so only a complete list.
+  const speed = !dials.ok ? { ok: false, reason: dials.reason }
+    : !sold.ok ? { ok: false, reason: sold.reason }
+    : !(inputs.active || {}).complete ? { ok: false, reason: "today's lead list was cut short" }
+    : await part(env, "dials", async () => speedToDial(day, basis, inputs.active.leads, await log));
+  return { fetched_at: new Date().toISOString(), dials, contacts, sales, util, sold, speed, tasks, calls, _inputs: inputs };
+}
+
+function dialTouches(basis, recs) {
+  const byExt = Object.fromEntries(Object.entries(basis.producers || {}).map(([n, v]) => [String(v.rc_id), n]));
+  const out = [];
+  for (const r of recs) {
+    const who = byExt[ownerExt(r)], n = last10((r.to || {}).phoneNumber);
+    if (r.direction !== "Outbound" || !who || !n || !r.startTime) continue;
+    const at = new Date(Date.parse(r.startTime) - 7 * 3600 * 1000).toISOString().slice(0, 19).replace("T", " ");
+    out.push({ n, by: who, at, dur: r.duration || 0 });
+  }
+  return out;
 }
 
 /* Households and premium quoted: one batch of lead reads, carried on from
    the last batch's memo. */
-export async function computeQuotes(env, day, basis, memo, fetchFn = fetch) {
-  let next = memo;
+export async function computeQuotes(env, day, basis, memo, fetchFn = fetch, wanted = [], calls = null, shared = null) {
+  let next = memo, extra = null;
   const quotes = await part(env, "quotes", async () => {
-    const r = await quotedLive(env, day, basis, memo, fetchFn);
-    next = r.memo;
+    const r = await quotedLive(env, day, basis, memo, fetchFn, wanted, calls, shared);
+    next = r.memo; extra = r;
     return r.data;
   });
-  return { fetched_at: new Date().toISOString(), quotes, memo: next };
+  const messages = !quotes.ok ? { ok: false, reason: quotes.reason }
+    : extra.messages ? { ok: true, data: extra.messages }
+    : { ok: false, reason: "needs a checkpoint built after this update" };
+  return { fetched_at: new Date().toISOString(), quotes, messages, evidence: extra ? extra.evidence : null,
+    task_flags: extra ? extra.task_flags : null, memo: next };
 }
 
 // Kept for callers/tests that want every part in one go.
 export async function computeLive(env, day, basis, fetchFn = fetch, memo = null) {
   const [fast, q] = await Promise.all([computeFast(env, day, basis, fetchFn), computeQuotes(env, day, basis, memo, fetchFn)]);
-  return { day, ...fast, quotes: q.quotes, _memo: q.memo };
+  const { _inputs, ...rest } = fast;
+  return { day, ...rest, quotes: q.quotes, messages: q.messages, _memo: q.memo };
 }
 
-const keys = day => ({ fast: `live/${day}.json`, quotes: `live/${day}-quotes.json`, memo: `live/${day}-quote-reads.json` });
+const keys = day => ({ fast: `live/${day}.json`, quotes: `live/${day}-quotes.json`, memo: `live/${day}-quote-reads.json`,
+  leads: `live/${day}-leads.json`, tasks: `live/${day}-tasks.json` });
 async function r2json(env, key) {
   const o = await env.BOARD.get(key);
   return o === null ? null : o.json();
@@ -499,16 +928,47 @@ function keepGood(prev, next, cp, parts) {
 }
 async function refreshFast(env, day, cp) {
   const k = keys(day);
-  const prev = await r2json(env, k.fast);
-  const out = keepGood(prev, { checkpoint: cp.as_of, ...(await computeFast(env, day, cp.basis)) }, cp, ["dials", "sales", "util", "sold"]);
+  const [prev, q, kept, taskPrev] = await Promise.all([r2json(env, k.fast), r2json(env, k.quotes), r2json(env, k.leads), r2json(env, k.tasks)]);
+  const evidence = q && q.checkpoint === cp.as_of ? q.evidence : null;
+  const flags = q && q.checkpoint === cp.as_of ? q.task_flags : null;
+  const { _inputs, ...fast } = await computeFast(env, day, cp.basis, fetch, evidence, kept, taskPrev, flags);
+  if (_inputs.tasks) {
+    try { await r2put(env, k.tasks, _inputs.tasks); }
+    catch (e) { console.log(`tasks not saved: ${e && e.message || e}`); }
+  }
+  // A live sale goes on the Sales sheet in the same refresh that puts it on
+  // the board (Frank, 2026-09-28). Only with this run's own policies and
+  // sold leads -- a sold-lead read that failed would leave names blank that
+  // it could have filled -- and never at the board's expense.
+  if (cp.basis.saleslog && fast.sales.ok && fast.sold.ok && _inputs.policies) {
+    try { await syncSalesLog(env, day, cp.basis, _inputs.policies, _inputs.names, _inputs.soldRaw); }
+    catch (e) { console.log(`sales sheet sync failed: ${e && e.message || e}`); }
+  }
+  // Today's active leads, for the quotes pass a minute from now (fromShared).
+  // Never at the board's expense: a failed save only means the next refresh
+  // pages further back.
+  if (_inputs.active) {
+    try { await r2put(env, k.leads, _inputs.active); }
+    catch (e) { console.log(`kept lead list not saved: ${e && e.message || e}`); }
+  }
+  const out = keepGood(prev, { checkpoint: cp.as_of, ...fast }, cp, ["dials", "contacts", "sales", "util", "sold", "speed", "tasks"]);
+  if (!out.calls && prev && prev.checkpoint === cp.as_of) out.calls = prev.calls;
+  // The numbers dialled since the checkpoint, so the next quotes pass reads
+  // their leads' notes first.
+  out.dialled = (out.contacts || {}).ok
+    ? [...new Set(Object.values(out.contacts.data).flatMap(v => v.dialled || []))]
+    : (prev && prev.checkpoint === cp.as_of ? prev.dialled || [] : []);
   await r2put(env, k.fast, out);
   return out;
 }
 async function refreshQuotes(env, day, cp) {
   const k = keys(day);
-  const [prev, memoIn] = await Promise.all([r2json(env, k.quotes), r2json(env, k.memo)]);
-  const { memo, ...res } = await computeQuotes(env, day, cp.basis, memoIn);
-  const out = keepGood(prev, { checkpoint: cp.as_of, ...res }, cp, ["quotes"]);
+  const [prev, memoIn, fast, shared] = await Promise.all([r2json(env, k.quotes), r2json(env, k.memo), r2json(env, k.fast), r2json(env, k.leads)]);
+  const same = fast && fast.checkpoint === cp.as_of;
+  const { memo, ...res } = await computeQuotes(env, day, cp.basis, memoIn, fetch,
+    same ? fast.dialled || [] : [], same ? fast.calls || [] : [], shared);
+  const out = keepGood(prev, { checkpoint: cp.as_of, ...res }, cp, ["quotes", "messages"]);
+  if (!(res.quotes || {}).ok && prev && prev.checkpoint === cp.as_of) { out.evidence = prev.evidence; out.task_flags = prev.task_flags; }
   if (memo && res.quotes.ok) await r2put(env, k.memo, memo);
   await r2put(env, k.quotes, out);
   return out;
@@ -528,7 +988,8 @@ export async function getLive(env, day) {
     fresh(quotes, cp.as_of, QUOTES_STALE_SECONDS) ? quotes : refreshQuotes(env, day, cp),
   ]);
   return jsonResp({ live: true, day, checkpoint: cp.as_of, fetched_at: f.fetched_at,
-    dials: f.dials, sales: f.sales, util: f.util, sold: f.sold, quotes: q.quotes, quotes_fetched_at: q.fetched_at }, 200);
+    dials: f.dials, contacts: f.contacts, sales: f.sales, util: f.util, sold: f.sold, speed: f.speed, tasks: f.tasks,
+    quotes: q.quotes, messages: q.messages, quotes_fetched_at: q.fetched_at }, 200);
 }
 
 /* Worker cron (wrangler.jsonc, every minute in business hours): even minutes

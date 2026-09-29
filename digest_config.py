@@ -400,13 +400,8 @@ THRESHOLDS = {
     # to BOTH halves of the Closing Ratio card, households% and premium%
     # alike -- Frank gave one scheme for "close ratio", not two.
     "closing_ratio_pct": {"green": 25, "yellow": 15},
-    # Household Completion's policies-per-household (Frank, 2026-09-23, off
-    # the industry benchmark that top agencies run 1.5-2.5+ policies per
-    # household against an industry average under 2.0 -- see
-    # digest_config.bundle_classification's resolved_households for what
-    # this divides: RESOLVED policies over resolved households, never total
-    # `pol`, since the join only resolves about half of a day's sales).
-    "policies_per_household": {"green": 1.5, "yellow": 1.1},
+    # Household Completion is coloured on the board by what was sold, not a
+    # threshold (Frank, 2026-09-29): householdCompletionHtml.
 }
 
 # Straight-sum metrics scale x3 for the team row. Rate, percentage and per-unit

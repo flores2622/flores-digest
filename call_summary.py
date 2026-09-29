@@ -264,6 +264,25 @@ def upgrade(d):
     return d
 
 
+# The lowest thinking setting the current model accepts. Every read here
+# asks for thinking "disabled" (see _ask's docstring: thinking eats the
+# output budget); the newest Sonnet refuses that with a 400 and names
+# "between_tools" as its lowest setting, which measured 0 thinking tokens.
+# Found 2026-09-28: the old fallback dropped the setting instead, so the
+# model thought for ~3,600 tokens inside an 8,000 budget and long coaching
+# cards came back cut off ("no JSON in response") -- Lorena had 4 live
+# contacts and 2 cards. Once refused, every later read in the process goes
+# straight to between_tools.
+_NO_THINKING = {"type": "disabled"}
+
+
+def _thinking_off(body):
+    """A "disabled" request rewritten to the setting this model accepts."""
+    if (body.get("thinking") or {}).get("type") == "disabled" and _NO_THINKING["type"] != "disabled":
+        body = dict(body, thinking=dict(_NO_THINKING))
+    return body
+
+
 def _headers():
     return {"x-api-key": _key(), "anthropic-version": API_VERSION,
             "content-type": "application/json"}
@@ -308,7 +327,6 @@ class Deferred(Exception):
 
 _collecting = None      # {id: body} while collect() runs
 _answered = {}          # id -> (ok, response or error) from run_batch()
-_no_disabled = set()    # models that refuse thinking {"type": "disabled"}
 
 
 def _id(body):
@@ -316,33 +334,37 @@ def _id(body):
     return hashlib.sha256(json.dumps(body, sort_keys=True).encode()).hexdigest()[:48]
 
 
-def _rejects_disabled(model):
-    """Does this model refuse thinking "disabled"? Asked once, with a
-    one-token request (a refusal is not billed). Used only while collecting,
-    so the recorded request is the one the live path would really answer."""
-    if model in _no_disabled:
-        return True
-    try:
-        _live({"model": model, "max_tokens": 1, "thinking": {"type": "disabled"},
-               "messages": [{"role": "user", "content": "."}]})
-    except RuntimeError as e:
-        if "thinking" in str(e).lower():
-            _no_disabled.add(model)
-            return True
-    except Exception:
-        pass
-    return False
+def _learn_thinking(model):
+    """While collecting, find out once whether this model refuses thinking
+    "disabled" (a one-token request; a refusal is not billed), so the
+    recorded request is the one the live path would really send."""
+    global _NO_THINKING
+    if _NO_THINKING["type"] != "disabled":
+        return
+    r = requests.post(API_URL, timeout=TIMEOUT, headers=_headers(), json={
+        "model": model, "max_tokens": 1, "thinking": {"type": "disabled"},
+        "messages": [{"role": "user", "content": "."}]})
+    if r.status_code == 400 and "thinking.type.disabled" in r.text:
+        _NO_THINKING = {"type": "between_tools"}
 
 
 def _live(body):
+    global _NO_THINKING
     r = requests.post(API_URL, json=body, timeout=TIMEOUT, headers=_headers())
+    if (r.status_code == 400 and (body.get("thinking") or {}).get("type") == "disabled"
+            and "thinking.type.disabled" in r.text):
+        _NO_THINKING = {"type": "between_tools"}
+        body = dict(body, thinking=dict(_NO_THINKING))
+        r = requests.post(API_URL, json=body, timeout=TIMEOUT, headers=_headers())
     if r.status_code >= 400:
         raise RuntimeError(f"{r.status_code} {r.text[:300]}")
     return r.json()
 
 
 def _post(body):
-    body = _with_cache(body)
+    if _collecting is not None and (body.get("thinking") or {}).get("type") == "disabled":
+        _learn_thinking(body.get("model"))
+    body = _with_cache(_thinking_off(body))
     rid = _id(body)
     if rid in _answered:
         ok, got = _answered.pop(rid)
@@ -350,12 +372,6 @@ def _post(body):
             return got
         raise RuntimeError(f"400 {json.dumps(got)[:300]}")
     if _collecting is not None:
-        # The live path would get a 400 for this and move on to its retry,
-        # so do the same here and let the retry be the request recorded.
-        if (body.get("thinking") or {}).get("type") == "disabled" \
-                and _rejects_disabled(body.get("model")):
-            raise RuntimeError('400 "thinking.type.disabled" is not supported '
-                               "for this model (known before sending)")
         _collecting[rid] = body
         raise Deferred(rid)
     return _live(body)
@@ -458,17 +474,19 @@ def _ask(model, transcript, notes, seconds, producer="the producer"):
             f"Machine transcript:\n{transcript}"}]
     base = {"model": model, "system": SYSTEM, "messages": msg}
 
+    think = {"thinking": {"type": "disabled"}}
     try:
-        resp = _post(dict(base, max_tokens=1000,
-                          thinking={"type": "disabled"}))
+        resp = _post(dict(base, max_tokens=1000, **think))
     except RuntimeError as e:
         if "thinking" not in str(e).lower():
             raise
+        think = {}
         resp = _post(dict(base, max_tokens=3000))
 
     d = _extract(resp)
     if d is None:
-        resp = _post(dict(base, max_tokens=3000))
+        # The retry keeps thinking off too, or it thinks into its own budget.
+        resp = _post(dict(base, max_tokens=3000, **think))
         d = _extract(resp)
     if d is None:
         raise ValueError("no JSON in response")

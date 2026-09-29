@@ -130,22 +130,31 @@ def save(cache, log=print):
         log(f"  renewal notes: R2 copy not saved ({type(e).__name__})")
 
 
+# Said before every batch (found 2026-09-29): a batch of a few very short
+# notes ({"12945140": "Late payment: paid", ...}) read to the model as ids
+# already labelled, and it answered in prose that there were no notes.
+BATCH_LEAD = "Each key below is an SR id and each value is what to read for it.\n"
+
+
 def _ask(cs, model, chunk, system=None):
     """One batch, the way call_summary._ask does it: thinking off, and if a
     model rejects that, or the answer is cut off, one retry with more room.
     Raises rather than return nothing, so a failed batch is never cached."""
     base = {"model": model, "system": system or SYSTEM,
-            "messages": [{"role": "user", "content": json.dumps(chunk, ensure_ascii=False)}]}
+            "messages": [{"role": "user", "content": BATCH_LEAD + json.dumps(chunk, ensure_ascii=False)}]}
     room = 60 * len(chunk) + 200
+    think = {"thinking": {"type": "disabled"}}
     try:
-        resp = cs._post(dict(base, max_tokens=room, thinking={"type": "disabled"}))
+        resp = cs._post(dict(base, max_tokens=room, **think))
     except RuntimeError as e:
         if "thinking" not in str(e).lower():
             raise
+        think = {}
         resp = cs._post(dict(base, max_tokens=room * 4))
     got = cs._extract(resp)
     if got is None:
-        got = cs._extract(cs._post(dict(base, max_tokens=room * 4)))
+        # The retry keeps thinking off too, or it thinks into its own budget.
+        got = cs._extract(cs._post(dict(base, max_tokens=room * 4, **think)))
     if not isinstance(got, dict):
         raise ValueError("no JSON in response")
     return got
