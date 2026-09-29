@@ -122,6 +122,10 @@ def raw(path, log=None):
     return None
 
 
+# A tag transcribe.NON_SPEECH already reads as "ringback or hold audio only".
+SILENCE = "[silence]"
+
+
 def _between(utts, lo, hi):
     return [u for u in utts if u["text"] and u["end"] > lo and u["start"] < hi]
 
@@ -140,12 +144,22 @@ def _inline(utts):
 
 def head_tail(path, duration=None, offset=0, seconds=30, log=None):
     """transcribe.transcribe_file's shape: first and last `seconds` of the
-    [offset, offset+duration) leg, joined by " || ". "" is silence; None is
-    a failure (caller falls back)."""
+    [offset, offset+duration) leg, joined by " || ". None is a failure
+    (caller falls back).
+
+    A leg with no speech at all comes back as SILENCE, not "". Whisper writes
+    ringback, hold music and dead air as tags ("[Music]", "[Bell]") that
+    transcribe.classify reads as no answer; Deepgram writes nothing for them,
+    and classify reads "" on a 5s+ leg as a pickup that said nothing -- live.
+    On 09-28 and 09-25 that turned 15 of Whisper's "[Music]" no-answers live
+    (compare_stt.py, 2026-09-29). Only an empty WHOLE leg is SILENCE: speech
+    anywhere between the two windows still leaves "" to mean what it did."""
     d = raw(path, log=log)
     if d is None:
         return None
     utts = d["utterances"]
+    if not _between(utts, offset, offset + duration if duration else float("inf")):
+        return SILENCE
     head = _inline(_between(utts, offset, offset + seconds))
     if not duration or duration <= seconds * 1.5:
         return head
