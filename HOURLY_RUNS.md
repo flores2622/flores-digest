@@ -264,29 +264,37 @@ even has a chance to call back."*
 | Sarahi, Amanda, Coral, Mike | 9:00 AM – 5:30 PM |
 | Everyone | lunch 12:00 – 1:00 |
 
-**Runs — Frank's times, Arizona, Monday–Friday. Ten a day. No Saturday.**
+**Runs — one routine, hourly at :55 from 8:55 AM to 5:55 PM Arizona,
+Monday–Friday. No Saturday.** (Frank, 2026-09-28: "run it on :55 hourly", then
+"1 routine that takes care of the whole day".)
 
-    8:35   9:50   10:55   11:45   1:00   2:00   3:00   4:00   4:45   5:15
+    CRON_TZ=America/Phoenix 55 8-17 * * 1-5
 
-Rationale, his: 8:35 catches everything that came in overnight. 4:45 and earlier
-is same-day work for everyone. 5:15 is next-day for the early shift and still
-same-day for the late shift.
+8:55 AM–4:55 PM are checkpoints (`intraday.py`, then `missed_call_tasks.py
+--live`). **5:55 PM is the final run**: it reads Coach AI (whose reports Frank
+moved to 5:30 PM) and runs `daily.py`, which creates the rest of the day's
+missed-call tasks itself (`make_missed_call_tasks`, after the email; a
+SEND_HOLD night skips them). Calls after the final roll into the next
+morning's 8:55 run. It replaced seven routines on Frank's earlier ten times
+(8:35-ish, 9:50, 10:55, 11:45, 1-4 PM, 4:45, 5:15) plus the 5:35 PM nightly;
+the CRON_TZ prefix is what lets one rule cover weekdays in Arizona time.
 
-No run between 11:45 and 1:00 — the office is at lunch. Because lunch is
-universal, the schedule handles it and no per-person logic is needed.
+The 12:55 run lands at the end of lunch (12:00-1:00), where the old 1:00 run
+did, so tasks are waiting when people come back.
 
-Arizona does not observe DST, so AZ = UTC-7 all year.
+**The sync step is a fast-forward, never `git reset --hard`.** Each run starts
+in its own session, which must pull the latest `main` first (its checkout does
+not update between runs). On 2026-09-28 the session's permission check began
+refusing `git reset --hard` as destructive, which stopped the 1 PM and 2 PM
+runs before they did anything; the routine now runs `git fetch origin main &&
+git checkout main && git merge --ff-only origin/main`, and stops and reports if
+that is refused.
 
-    35 15  * * 1-5    UTC  →  8:35 AM AZ
-    50 16  * * 1-5           9:50 AM
-    55 17  * * 1-5          10:55 AM
-    45 18  * * 1-5          11:45 AM
-    0  20-23 * * 1-5         1:00, 2:00, 3:00, 4:00 PM
-    45 23  * * 1-5           4:45 PM
-    15 0   * * 2-6           5:15 PM AZ (lands on the next UTC day)
+Arizona does not observe DST, so AZ = UTC-7 all year. The old routines are
+disabled, not deleted.
 
 **No per-assignee gating anywhere.** Frank, 09-01: *"its okay for the late
-staff on the early time, it can be there for them when they come in."* The 8:35
+staff on the early time, it can be there for them when they come in."* The 8:55
 run creates tasks for everyone, including the 9:00 crew, who find them waiting.
 
 That collapses the whole hours question into the run times. There is no hold
@@ -294,7 +302,7 @@ state, no escape hatch for a call whose assignee is out, and no staff-hours
 table in code — the table above is documentation of why the ten times are what
 they are, nothing reads it. A call is either in the log at run time or it is not.
 
-Calls after 5:15 roll into the next morning's 8:35 run.
+Calls after the nightly roll into the next morning's 8:55 run.
 
 **Ten runs a day changes the data-access pattern.** The nightly digest pulls the
 whole AgencyZoom corpus. An hourly job must not. It should resolve callers by

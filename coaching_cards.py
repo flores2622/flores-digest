@@ -85,7 +85,10 @@ METHODOLOGY = (ROOT / "coaching/METHODOLOGY.md").read_text()
 # budget with thinking or run past it. Bumped 2026-09-10 when "techniques"
 # (6 more scored dimensions) was added to the schema.
 MAX_TOKENS = 4800
-RETRY_TOKENS = 8000
+# 16000 since 2026-09-28: a two-call card (Joaquin Guillen, 09-22) ran past
+# 8000 and came back with no JSON even with thinking off. A reply only bills
+# the tokens it writes, so the bigger ceiling costs nothing on a normal card.
+RETRY_TOKENS = 16000
 
 DIMS = ["Opening & identification", "Discovery", "Current premium captured",
         "Renewal / X-date captured", "Product knowledge", "Presenting numbers",
@@ -136,17 +139,19 @@ def _ask_card(model, transcript, notes, seconds, producer, lead, call_count=1,
     # Same two failure modes as call_summary._ask, same fix -- see that
     # function's docstring for why thinking is disabled and truncation gets
     # one retry with a bigger budget.
+    think = {"thinking": {"type": "disabled"}}
     try:
-        resp = CS._post(dict(base, max_tokens=MAX_TOKENS,
-                             thinking={"type": "disabled"}))
+        resp = CS._post(dict(base, max_tokens=MAX_TOKENS, **think))
     except RuntimeError as e:
         if "thinking" not in str(e).lower():
             raise
+        think = {}
         resp = CS._post(dict(base, max_tokens=RETRY_TOKENS))
 
     d = CS._extract(resp)
     if d is None:
-        resp = CS._post(dict(base, max_tokens=RETRY_TOKENS))
+        # The retry keeps thinking off too, or it thinks into its own budget.
+        resp = CS._post(dict(base, max_tokens=RETRY_TOKENS, **think))
         d = CS._extract(resp)
     if d is None:
         raise ValueError("no JSON in response")

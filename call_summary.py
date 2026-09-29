@@ -264,10 +264,33 @@ def upgrade(d):
     return d
 
 
+# The lowest thinking setting the current model accepts. Every read here
+# asks for thinking "disabled" (see _ask's docstring: thinking eats the
+# output budget); the newest Sonnet refuses that with a 400 and names
+# "between_tools" as its lowest setting, which measured 0 thinking tokens.
+# Found 2026-09-28: the old fallback dropped the setting instead, so the
+# model thought for ~3,600 tokens inside an 8,000 budget and long coaching
+# cards came back cut off ("no JSON in response") -- Lorena had 4 live
+# contacts and 2 cards. Once refused, every later read in the process goes
+# straight to between_tools.
+_NO_THINKING = {"type": "disabled"}
+
+
 def _post(body):
-    r = requests.post(API_URL, json=body, timeout=TIMEOUT, headers={
-        "x-api-key": _key(), "anthropic-version": API_VERSION,
-        "content-type": "application/json"})
+    global _NO_THINKING
+    if (body.get("thinking") or {}).get("type") == "disabled" and _NO_THINKING["type"] != "disabled":
+        body = dict(body, thinking=dict(_NO_THINKING))
+
+    def send(b):
+        return requests.post(API_URL, json=b, timeout=TIMEOUT, headers={
+            "x-api-key": _key(), "anthropic-version": API_VERSION,
+            "content-type": "application/json"})
+    r = send(body)
+    if (r.status_code == 400 and (body.get("thinking") or {}).get("type") == "disabled"
+            and "thinking.type.disabled" in r.text):
+        _NO_THINKING = {"type": "between_tools"}
+        body = dict(body, thinking=dict(_NO_THINKING))
+        r = send(body)
     if r.status_code >= 400:
         raise RuntimeError(f"{r.status_code} {r.text[:300]}")
     return r.json()
@@ -311,17 +334,19 @@ def _ask(model, transcript, notes, seconds, producer="the producer"):
             f"Machine transcript:\n{transcript}"}]
     base = {"model": model, "system": SYSTEM, "messages": msg}
 
+    think = {"thinking": {"type": "disabled"}}
     try:
-        resp = _post(dict(base, max_tokens=1000,
-                          thinking={"type": "disabled"}))
+        resp = _post(dict(base, max_tokens=1000, **think))
     except RuntimeError as e:
         if "thinking" not in str(e).lower():
             raise
+        think = {}
         resp = _post(dict(base, max_tokens=3000))
 
     d = _extract(resp)
     if d is None:
-        resp = _post(dict(base, max_tokens=3000))
+        # The retry keeps thinking off too, or it thinks into its own budget.
+        resp = _post(dict(base, max_tokens=3000, **think))
         d = _extract(resp)
     if d is None:
         raise ValueError("no JSON in response")

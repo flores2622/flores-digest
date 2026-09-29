@@ -219,6 +219,20 @@ on or before the day and was not already closed before it.
 
 ## THE RUN STARTS AT 5:35 PM AND PREFETCHES FIRST
 
+**ONE ROUTINE RUNS THE WHOLE DAY** (Frank, 2026-09-28: "I want to consolidate
+and have 1 routine that takes care of the whole day"). "Flores daily: hourly
+checkpoints + 5:55 PM final (AZ)" fires `CRON_TZ=America/Phoenix 55 8-17 * *
+1-5`: 8:55 AM-4:55 PM are checkpoints (`intraday.py`, then
+`missed_call_tasks.py --live`), and **5:55 PM is the final run** -- Coach AI
+from Gmail into `data/coach_<day>.json`, then `daily.py`, which sends, publishes
+the boards and creates the rest of the day's missed-call tasks. It skips the
+final if `publish_board.day_is_finalized` is already true. It runs in the
+environment that holds the secrets (no credentials in the prompt) with Gmail
+on the routine. The 5:35 PM "Flores Daily Sales Digest" routine and the seven
+per-time missed-call routines are disabled, not deleted. The prefetch section
+below describes that retired 5:35 flow; `hourly.py` is not needed at 5:55
+because the checkpoints have already cached the day.
+
 **This overrides the scheduled-task prompt, which still describes a single
 6:45 PM `python3 daily.py` and is stale.** Changed 2026-09-01.
 
@@ -242,18 +256,23 @@ survives between them, and a scheduled session cannot push to the repository to
 carry it either. Both were measured on 2026-09-01. Do not rebuild the separate
 hourly schedule until one of those two facts changes.
 
-**Coach AI is the reason for the wait, not the reason to start late.** Those
-emails arrive around 6:00 PM Arizona. Step 1 takes roughly 25-30 minutes from a
-5:35 start, so they are normally there by the time it finishes. If they are not,
-wait for them rather than writing zeros — there is time now, which there was not
-before.
+**Coach AI's emails arrive at 5:30 PM Arizona** (Frank moved their send time
+from 6:30 on 2026-09-28). Until then they landed at 6:30 every night
+(measured 09-22..09-25: 01:30 UTC), and the nightly sat idle for most of an
+hour waiting for them -- the digest went out 6:42-6:56, 12-26 minutes after
+they arrived. The recordings, transcripts, call summaries and coaching cards
+are NOT the slow part: the hourly checkpoints (`intraday.py`) build all of
+them through the day into R2's cache/<day>/, so by 5:21 PM nearly every
+recording is already there and the nightly only adds the last half hour's.
+If the emails have not arrived, wait for them rather than writing zeros.
 
 **Timing to expect.**
 
-    5:35   hourly.py starts        ~25-30 min, downloads pace at 8/min
-    ~6:05  Coach AI figures        wait if they have not landed
-    ~6:10  daily.py starts         transcription already done
-    ~7:00  both emails sent
+    5:30   Coach AI emails land
+    5:35   hourly.py starts        a few minutes: only the calls since the last checkpoint
+    ~5:40  Coach AI figures        already in the mailbox
+    ~5:45  daily.py starts         transcription and cards already cached
+    ~6:00-6:15  both emails sent   (was 6:42-6:56 with Coach AI at 6:30)
 
 **`SEND_HOLD` stops the email only** (Frank, 2026-09-24: "i still want the
 board to build"). A held night still publishes the Sales, Service and
@@ -278,8 +297,8 @@ because the prefetch broke.
 
 ## Live figures between checkpoints
 
-**Today's board is the last checkpoint, with dials, sales and utilization
-kept live** (Frank, 2026-09-24: "just live data where its already at on
+**Today's board is the last checkpoint, with dials, sales, utilization,
+quotes, contacts, talk time and texts & emails kept live** (Frank, 2026-09-24: "just live data where its already at on
 everything possible, and the header up there specifying what is stale from
 the last hourly run"). No separate live strip: the Worker's `/api/live/<day>`
 (`site/live.js`) is written into the same document the page renders. The
@@ -297,7 +316,8 @@ and anything without the glow is the checkpoint's (Frank, 2026-09-24).
   `lead_sources.NOT_A_SALE`, the same rule as `is_real_sale`.
 - **Households sold** ride with sales (Frank, 2026-09-28): the same even-minute
   refresh reads every lead marked sold today (`site/live.js soldLeadsToday`,
-  leads newest activity first back to Arizona midnight, up to 5 pages), so
+  leads newest activity first back to Arizona midnight -- kept in R2 and
+  topped up from the newest end each refresh, up to 5 pages), so
   HH/Prem. Sold glows whenever sales are live. That list stands on its own
   for the day; the checkpoint's `rows.sold_leads` are added only if the read
   stopped at the page cap.
@@ -322,8 +342,8 @@ and anything without the glow is the checkpoint's (Frank, 2026-09-24).
   quotes are.
 - **A one-minute Worker cron** (wrangler.jsonc, business hours) refreshes
   the parts in batches sized for the free plan's 50 outside requests per
-  run: even minutes dials/sales/utilization, odd minutes up to 30 lead
-  reads. AgencyZoom 429s on bursts of note reads; a failed part keeps its
+  run: even minutes dials/contacts/sales/utilization, odd minutes up to 30
+  lead reads (quotes, contact evidence and messages from the same reads). AgencyZoom 429s on bursts of note reads; a failed part keeps its
   last good answer for the same checkpoint instead of blanking the board.
 - **The Worker logs in to AgencyZoom ONCE a day, not once a run.** A per-run
   login meant ~30 an hour, and on 2026-09-24 AgencyZoom began refusing the
@@ -332,10 +352,50 @@ and anything without the glow is the checkpoint's (Frank, 2026-09-24).
   `worker-private/az_token.json` (served by no route) and is shared by every
   run; a refused login pauses AgencyZoom for 30 minutes
   (`worker-private/az_pause.json`) instead of retrying every minute.
-- **Contact rate stays the checkpoint's.** The board uses the document's own
-  `rate`, never live contacts over live dials -- live dials over a stale
-  numerator would read as a collapsing rate. The closing ratio falls back to
-  the checkpoint's (`cp_pol`/`cp_ps`) whenever quotes are not live.
+  **So does a refused REQUEST** (2026-09-28): from 2:29 PM every AgencyZoom
+  call from the Worker got 403 -- sales, households sold, quotes and texts
+  all stopped glowing -- while the same saved token answered 200 from the
+  nightly run's machine (any User-Agent). AgencyZoom (nginx, not Cloudflare)
+  was refusing the addresses the Worker calls from, not the login, and the
+  Worker kept asking ~40 times every two minutes. A 403 now pauses every
+  AgencyZoom part for 30 minutes (`site/live.js azGet`); the board keeps
+  each part's last good answer for the checkpoint meanwhile.
+  **And it asks less** (2026-09-29): the day's active-leads list is KEPT in
+  R2 (`live/<day>-leads.json`) and each even-minute refresh pages only down
+  to where the last one started (any change to a lead puts it back on top),
+  usually one page instead of up to five; the quotes pass reuses that copy
+  instead of paging its own (`fromShared`); lead source names are fetched
+  once a day (`worker-private/lead_sources.json`). Same figures, measured on
+  a mocked day with leads marked and unmarked sold: 132 AgencyZoom requests
+  -> 75 over 30 refreshes.
+- **Contact rate, live contacts and Avg Talk Time are live too** (Frank,
+  2026-09-28: "avg talk time, contact rate, and texts and emails should all
+  be live as well"), and they are PROVISIONAL: the Worker cannot hear a
+  recording, so a dial since the checkpoint is judged by `is_live`'s order
+  with the recording left out -- a producer note stating contact, a
+  no-contact note, an outcome note, TRAQ's voicemail summary, RingCentral's
+  disposition -- then, with nothing written, a leg of 60s or more
+  (`live_board.PROVISIONAL_LIVE_SECONDS`; measured 09-22..09-25: day totals
+  27/12/12/13 against the recordings' 31/11/11/13, about a third of the
+  individual calls wrong either way). The next checkpoint reads the
+  recordings and settles every one. A counted number is judged only on its
+  new legs and the notes written since; an excluded one stays excluded; a
+  call back turns its dial live; any other answered call-in adds talk time,
+  never a contact. The rate is live contacts over LIVE dials, so it is live
+  only when dials are. The notes come from the quotes part's own reads
+  (dialled leads first), so it costs no extra AgencyZoom requests.
+  `site/live_notes.js contactDeltas`; the checkpoint's side is
+  `live_basis.live` / `.talk` / `.contact`.
+- **Texts & emails are live** the same way (`live_notes.messageDeltas`,
+  `live_basis.messages` from `messages.build(live=True)`): the checkpoint
+  hands over, per person, the newest note it read, who last typed to them,
+  who has messaged them today and the reply still waiting; the Worker adds
+  only what is newer, by messages.py's own patterns and templates. Checked
+  against a full rebuild at 12 checkpoint times on 09-23 and 09-25: every
+  count and reply row identical, except one tie between two producers'
+  duplicate lead records, which Python breaks by corpus order the Worker
+  cannot see (the next checkpoint fixes it). The closing ratio falls back
+  to the checkpoint's (`cp_pol`/`cp_ps`) whenever quotes are not live.
 - The Worker needs its own secrets, set in Cloudflare (Workers & Pages ->
   flores-board -> Settings -> Variables and Secrets, type Secret):
   `RC_CLIENT_ID`, `RC_CLIENT_SECRET`, `RC_SERVER_URL`, `RC_JWT`,
@@ -710,6 +770,31 @@ Crystal (hybrid); credit always goes to whoever COMPLETED the SR or task.
   customers text card numbers to pay. Past days: `python3 service_messages.py
   --backfill 2026-09-01 [end]` (adds only `messages`, backs up under
   `backups/<today>-service-messages-backfill/`).
+- **Amanda's Service Playbook is how Athena judges the service team**
+  (Frank, 2026-09-28: "Teach Athena this and build the digest to be focused
+  on their own roles and responsibilities"). `service_playbook.py` is her
+  document -- roles, who handles what, the note standard, the daily checklist,
+  the team expectations -- and the only place to change it; each day carries
+  it as `playbook`. Roles: **Service Lead = Amanda, Service Team Member =
+  Crystal, Front Desk = Debbie** (`ROLE_OF`). **Crystal and Amanda sell**
+  (`SELLS`; Frank, 2026-09-28: "she can do the opportunity herself, amanda as
+  well. Debbie is the only one that would identify and pass to any
+  producer"): the playbook's "identify opportunities to pass to a producer" is
+  Debbie's line; theirs is "work the opportunities that come up" (quoted, a
+  lead set, or passed -- versus not noted). `service_audit.py` reads every
+  completed SR against it (request type from her "Who handles what" table,
+  which of Who / What / Why / Outcome / Next step the note leaves out, a
+  sales opportunity passed or not, escalated), cached by SR + note text in
+  `data/service_audit_reads.json` + R2 -- a paid read, never delete it
+  casually. A renewal reviewed without contacting the client ("low increase,
+  review if needed") answers who and why. `front_figures` adds the Front
+  Desk's rows: inbound calls each team member picked up first, and the SRs
+  each created. The Service Digest's **By Role** cards give each person the
+  measures of their own role's responsibilities in her words (the Lead's
+  "not the default person" is the share of her SRs that were routine), and
+  **Note Standard** counts the missing parts. Past days: `python3
+  service_digest.py --add-roles 2026-09-01 2026-09-25` (backs up under
+  `backups/<today>-roles/`).
 - **Documents hold rows, never medians**, so the board can add any range up.
   **Every card opens the rows it counts** (Frank, 2026-09-25), so the rows
   carry what a list needs: SRs name, household (= the AgencyZoom customer
