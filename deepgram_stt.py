@@ -209,10 +209,88 @@ def producer_speaker(utts, producer):
     return ranked[0][0]
 
 
-def full(path, duration, offset=0, log=None, producer=None):
+def _fold(t):
+    import unicodedata
+    return "".join(c for c in unicodedata.normalize("NFD", t or "")
+                   if unicodedata.category(c) != "Mn").lower()
+
+
+def _says_name(text, first):
+    """`first` appears in `text`, allowing a transcription's spelling of it
+    (Cinthya / Cynthia, Sarahi / Sarai): same first letter, 80% alike and
+    at most a letter longer or shorter -- Jessica is not Jesse (Coral,
+    09-25: "Yes, this is Jessica ... I'm not able to reach him either")."""
+    import difflib
+    first = _fold(first)
+    for w in re.findall(r"[a-z]+", _fold(text)):
+        if w == first or (len(first) >= 4 and w[:1] == first[:1] and
+                          abs(len(w) - len(first)) <= 1 and
+                          difflib.SequenceMatcher(None, w, first).ratio() >= 0.8):
+            return True
+    return False
+
+
+# The other voice saying the lead is not who is on the phone.
+NOT_THE_LEAD = re.compile(
+    r"\b(not here|isn'?t here|not home|isn'?t home|just missed (him|her)|"
+    r"(he|she)'?s not (here|available|home)|wrong number|"
+    r"my (husband|wife|son|daughter|mom|mother|dad|father)|"
+    r"(his|her) (wife|husband|son|daughter|mom|mother|dad|father)|"
+    r"no (est[aá]|se encuentra)|n[uú]mero equivocado|"
+    r"(soy|es) (su|la|el) (esposa|esposo|hija|hijo|mam[aá]|pap[aá])|"
+    r"yo soy su)\b", re.I)
+GREETED = (r"(hi|hello|hey|hola|good (morning|afternoon|evening)|buenas tardes|"
+           r"buenos d[ií]as|buenas|is this|is it|am i speaking with|"
+           r"speaking with|hablo con|es|con|habla|for)")
+SELF_NAMED = r"(this is|it'?s|speaking|soy|habla|ella habla|[eé]l habla|me llamo)"
+
+
+def lead_speaker(utts, producer_sp, lead):
+    """Which diarized speaker is the lead. Only with the producer found, only
+    one other voice with anything to say, and only on evidence in the call:
+    the producer says the lead's first name, or the other voice gives it
+    ("This is Brianna", "Speaking", "Ella habla"). A spouse, a "you just
+    missed him" or a wrong number leaves them Speaker N -- Ubaldo's wife
+    (Mike, 09-25) answered his phone while he was in surgery."""
+    if producer_sp is None or not lead:
+        return None
+    first = lead.replace(",", " ").split()[0]
+    if len(first) < 2:
+        return None
+    words = {}
+    for u in utts:
+        if u["speaker"] != producer_sp:
+            words[u["speaker"]] = words.get(u["speaker"], "") + " " + u["text"]
+    others = [sp for sp, t in words.items() if len(t.split()) >= 3]
+    if len(others) != 1:
+        return None
+    other = others[0]
+    theirs = words[other]
+    if NOT_THE_LEAD.search(theirs):
+        return None
+    # The producer GREETING or ASKING FOR the lead by name in the opening
+    # ("Hi, Harry", "Is this Carlos?", "Hablo con Maria?"). A name only
+    # mentioned is the person being talked ABOUT: Coral asked Jessica about
+    # "trying to get a hold of Jesse" (09-25); a parent called about their
+    # son Justin's text (Crystal, 09-28).
+    mine = " ".join(" ".join(u["text"] for u in utts
+                             if u["speaker"] == producer_sp).split()[:40])
+    greeted = any(_says_name(m.group("n"), first) for m in re.finditer(
+        rf"\b{GREETED}\W+(?=(?P<n>\w+))", mine, re.I))
+    head = " ".join(theirs.split()[:40])
+    self_named = any(_says_name(m.group("n"), first) for m in
+                     re.finditer(rf"\b{SELF_NAMED}\W+(?=(?P<n>\w+))", head, re.I))
+    if (greeted or self_named
+            or re.search(r"\b(speaking|ella habla|[eé]l habla)\b", head, re.I)):
+        return other
+    return None
+
+
+def full(path, duration, offset=0, log=None, producer=None, lead=None):
     """The whole leg, one line per turn: "Speaker 1: ...", with the producer's
-    turns labelled "<First name> (producer)" when producer_speaker finds them.
-    None on failure."""
+    turns labelled "<First name> (producer)" when producer_speaker finds them
+    and the lead's "<First name> (lead)" when lead_speaker does. None on
+    failure."""
     d = raw(path, log=log)
     if d is None:
         return None
@@ -220,13 +298,19 @@ def full(path, duration, offset=0, log=None, producer=None):
                     offset + duration if duration else float("inf"))
     who = producer_speaker(utts, producer)
     first = producer.split()[0] if producer else ""
+    them = lead_speaker(utts, who, lead)
+    lead_first = lead.replace(",", " ").split()[0].title() if them is not None else ""
     lines, last = [], None
     for u in utts:
         if u["speaker"] == last:
             lines[-1] += " " + u["text"]
         else:
-            label = (f"{first} (producer)" if who is not None and u["speaker"] == who
-                     else f"Speaker {int(u['speaker'] or 0) + 1}")
+            if who is not None and u["speaker"] == who:
+                label = f"{first} (producer)"
+            elif them is not None and u["speaker"] == them:
+                label = f"{lead_first} (lead)"
+            else:
+                label = f"Speaker {int(u['speaker'] or 0) + 1}"
             lines.append(f"{label}: {u['text']}")
             last = u["speaker"]
     return "\n".join(lines).strip()

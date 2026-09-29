@@ -40,6 +40,12 @@ def compare(day, log=print):
     tx = json.loads(tf.read_text())
     fx_f = ROOT / f"data/fulltx_{day}.json"
     fx = json.loads(fx_f.read_text()) if fx_f.exists() else {}
+    mf = ROOT / f"data/metrics_{day}.json"
+    leads = {}
+    if mf.exists():
+        for p, pv in (json.loads(mf.read_text()).get("producers") or {}).items():
+            for row in pv.get("call_detail") or []:
+                leads[(p, row.get("number"))] = row.get("lead")
 
     changes, live, failed = [], [], 0
     before, after = collections.Counter(), collections.Counter()
@@ -63,7 +69,8 @@ def compare(day, log=print):
                 changes.append((v, cid, new, why, dg))
         if inbound or v.get("class") == "live":
             live.append((v, cid, DG.full(path, dur, offset=off, log=log,
-                                         producer=v.get("producer"))))
+                                         producer=v.get("producer"),
+                                         lead=leads.get((v.get("producer"), v.get("to"))))))
         if i % 25 == 0:
             log(f"  {i}/{len(tx)}")
 

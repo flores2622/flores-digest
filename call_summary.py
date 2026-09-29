@@ -652,7 +652,8 @@ def build(day, log=print):
                 parts = []
                 for path, dur, cls, direction, off, partial, _start in want:
                     t = T.transcribe_full(path, dur, offset=off,
-                                          producer=p_) or ""
+                                          producer=p_,
+                                          lead=r.get("lead")) or ""
                     if not t:
                         continue
                     # Always tagged, even a lone call: whether the prospect
