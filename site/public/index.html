@@ -725,6 +725,12 @@ details.sc .scb { padding: 0 12px 12px; }
 .gradecard td.gi { width: 180px; font-weight: 600; }
 .histrow { display: flex; justify-content: space-between; gap: 10px; padding: 7px 0; border-bottom: 1px solid var(--border); font-size: 12.5px; }
 .histrow:last-child { border-bottom: none; }
+/* The line playing in a Role Play session or a coaching card's recording. */
+.rphplay.playing, .tturn.sync.playing { outline: 2px solid var(--accent, #2b6cb0); outline-offset: 2px; }
+.tturn.sync { cursor: pointer; }
+.tturn.sync:hover { filter: brightness(0.97); }
+.tturn .ts { font-variant-numeric: tabular-nums; color: var(--text-secondary); font-size: 11px; margin-right: 6px; }
+.tturn .tw { font-weight: 600; margin-right: 4px; }
 
 /* Renewals tab: the top cards open their list (Frank, 2026-09-25). */
 .tile.rdrill { cursor: pointer; transition: border-color .15s, box-shadow .15s; }
@@ -3157,7 +3163,61 @@ function transcriptHtml(text) {
     return tag + turns.map((t, i) => `<p class="tturn t${i % 2}">${t}</p>`).join("");
   }).join("");
 }
+/* The recording and its transcript as one (Frank, 2026-09-29: "the
+   transcript and recording combined, to be able to skip to a specific part
+   that I am reading"). One player per card; every line carries the second
+   it starts at in its recording, so clicking it jumps there (switching
+   recordings on a card that coaches two calls), and the line playing is
+   lit as the call plays. Cards whose recordings Deepgram never read (before
+   2026-09-29) keep the plain transcript. */
+function syncedRecordingBlk(c) {
+  const ids = c.recording_ids || [];
+  const esc = t => String(t == null ? "" : t).replace(/[&<>"]/g, ch => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[ch]));
+  const mmss = t => `${Math.floor(t / 60)}:${String(Math.floor(t % 60)).padStart(2, "0")}`;
+  const uid = `rec-${c.day}-${ids[0]}`;
+  let lastR = -1;
+  const lines = c.turns.map(x => {
+    const head = ids.length > 1 && x.r !== lastR ? `<div class="ttag">Call ${x.r + 1} of ${ids.length}</div>` : "";
+    lastR = x.r;
+    return `${head}<p class="tturn sync t${/producer/.test(x.who) ? 0 : 1}" data-rec="${uid}" data-r="${x.r}" data-t="${x.t}">
+      <span class="ts">${mmss(x.t)}</span><span class="tw">${esc(x.who)}</span>${esc(x.text)}</p>`;
+  }).join("");
+  return `<div class="blk"><div class="bl">Recording &amp; transcript</div>
+    <audio controls preload="none" id="${uid}" data-day="${c.day}" data-ids="${ids.join(",")}" data-r="0"
+      style="width:100%" src="/api/recordings/${c.day}/${ids[0]}"></audio>
+    <p class="sd" style="margin:6px 0 4px">Click a line to play the call from there.</p>
+    <div class="scb" style="font-size:12px;padding:6px 2px;max-height:420px;overflow:auto">${lines}</div></div>`;
+}
+document.addEventListener("click", e => {
+  const line = e.target.closest && e.target.closest(".tturn.sync");
+  if (!line) return;
+  const a = document.getElementById(line.dataset.rec);
+  if (!a) return;
+  const r = +line.dataset.r, t = +line.dataset.t;
+  const go = () => { try { a.currentTime = t; } catch (_) {} a.play().catch(() => {}); };
+  if (+a.dataset.r !== r) {
+    a.dataset.r = String(r);
+    a.src = `/api/recordings/${a.dataset.day}/${a.dataset.ids.split(",")[r]}`;
+    a.addEventListener("loadedmetadata", go, { once: true });
+    a.load();
+  } else if (a.readyState >= 1) go();
+  else { a.addEventListener("loadedmetadata", go, { once: true }); a.load(); }
+});
+// Media events don't bubble; listening in the capture phase catches every
+// card's player without wiring each one after a render.
+document.addEventListener("timeupdate", e => {
+  const a = e.target;
+  if (!a || !a.id || !a.id.startsWith("rec-")) return;
+  const r = a.dataset.r, now = a.currentTime;
+  let best = null;
+  document.querySelectorAll(`.tturn.sync[data-rec="${a.id}"]`).forEach(el => {
+    el.classList.remove("playing");
+    if (el.dataset.r === r && +el.dataset.t <= now + 0.25) best = el;
+  });
+  if (best) best.classList.add("playing");
+}, true);
 function recordingBlk(c) {
+  if (c.turns && c.turns.length && c.recording_ids && c.recording_ids.length) return syncedRecordingBlk(c);
   if (!c.transcript && !(c.recording_ids && c.recording_ids.length)) return "";
   const players = (c.recording_ids || []).map((id, i) => `
     <audio controls preload="none" style="width:100%;margin-top:${i ? "8" : "0"}px" src="/api/recordings/${c.day}/${id}"></audio>`).join("");
@@ -3634,8 +3694,47 @@ function rpUpdateMicUI(interim) {
 
 function rpStopListening() {
   if (rpRecognition) { try { rpRecognition.stop(); } catch (_) {} }
+  rpClipStop();            // a turn that never became text is not kept
   rpListening = false;
   rpUpdateMicUI();
+}
+
+/* Each producer turn is recorded while they speak, so a graded session can
+   be played back line by line (Frank, 2026-09-29: "i dont see the audio, i
+   want to be able to hear it"). The mic stream is asked for once; a clip
+   starts with each listen and is uploaded when the turn becomes text. If
+   the browser can't record, the session goes on exactly as before, just
+   without the producer's sound. */
+let rpMicStream = null, rpClip = null, rpPendingClips = [];
+async function rpClipStart() {
+  if (!window.MediaRecorder || !navigator.mediaDevices) return;
+  try {
+    if (!rpMicStream) rpMicStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    if (!rpListening) return;                       // the listen ended while we waited
+    rpClipStop();
+    const type = ["audio/webm", "audio/ogg", "audio/mp4"].find(t => MediaRecorder.isTypeSupported(t)) || "";
+    const rec = new MediaRecorder(rpMicStream, type ? { mimeType: type } : undefined);
+    const chunks = [];
+    rec.ondataavailable = e => { if (e.data && e.data.size) chunks.push(e.data); };
+    const done = new Promise(res => { rec.onstop = () => res(chunks.length ? new Blob(chunks, { type: (rec.mimeType || type || "audio/webm").split(";")[0] }) : null); });
+    rec.start();
+    rpClip = { rec, done };
+  } catch (_) { rpClip = null; }
+}
+function rpClipStop(keep) {
+  const c = rpClip;
+  rpClip = null;
+  if (!c) return null;
+  try { c.rec.stop(); } catch (_) {}
+  return keep ? c.done : null;
+}
+function rpClipUpload(item, blobP) {
+  if (!blobP) return;
+  const q = rpIsBeta() ? "beta=1" : `producer=${encodeURIComponent(rpProducer)}`;
+  rpPendingClips.push(blobP.then(blob => blob && fetch(`/api/roleplay/clip?${q}`, {
+      method: "POST", headers: { "content-type": blob.type || "audio/webm" }, body: blob })
+    .then(r => r.ok ? r.json() : null)
+    .then(b => { if (b && b.key) item.audio = b.key; })).catch(() => {}));
 }
 
 function rpStartListening() {
@@ -3653,18 +3752,19 @@ function rpStartListening() {
     }
     if (finalText.trim()) {
       const text = finalText.trim();
+      const clip = rpClipStop(true);
       rpStopListening();
-      rpSendTurn(text);
+      rpSendTurn(text, clip);
     } else {
       rpUpdateMicUI(interim.trim());
     }
   };
-  rec.onerror = () => { rpListening = false; rpUpdateMicUI(); };
-  rec.onend = () => { rpListening = false; rpUpdateMicUI(); };
+  rec.onerror = () => { rpClipStop(); rpListening = false; rpUpdateMicUI(); };
+  rec.onend = () => { rpClipStop(); rpListening = false; rpUpdateMicUI(); };
   rpRecognition = rec;
   rpListening = true;
   rpUpdateMicUI();
-  try { rec.start(); } catch (_) { rpListening = false; rpUpdateMicUI(); }
+  try { rec.start(); rpClipStart(); } catch (_) { rpListening = false; rpUpdateMicUI(); }
 }
 
 // "Beta / testing" (Frank, 2026-09-24): practice runs by anyone trying the
@@ -4094,8 +4194,11 @@ function rphSummaryHtml(rows, scope) {
 function rphSessionHtml(s) {
   if (!s) return `<div class="empty" style="padding:12px 0">Loading…</div>`;
   const who = s.beta ? "Tester" : (s.producer || "").split(" ")[0];
-  const msgs = (s.history || []).map(m => `<div class="rpmsg ${m.role === "producer" ? "producer" : "prospect"}">
-    <span class="rl">${m.role === "producer" ? rphEsc(who) : "Prospect"}</span>${rphEsc(m.content)}</div>`).join("");
+  const hist = s.history || [];
+  const anyAudio = hist.some(m => m.audio);
+  const msgs = hist.map((m, i) => `<div class="rpmsg ${m.role === "producer" ? "producer" : "prospect"}${m.audio ? " rphplay" : ""}"
+      ${m.audio ? `data-i="${i}" title="Play from here" style="cursor:pointer"` : ""}>
+    <span class="rl">${m.role === "producer" ? rphEsc(who) : "Prospect"}${m.audio ? " &#9654;" : ""}</span>${rphEsc(m.content)}</div>`).join("");
   const facts = [s.lead_source && `Lead source: ${rphEsc(s.lead_source)}`,
     s.language && `Language: ${rphEsc(RP_LANG_LABEL[s.language] || s.language)}`,
     s.focus && s.focus.length && `Drilled: ${s.focus.map(rphEsc).join(", ")}`,
@@ -4104,6 +4207,9 @@ function rphSessionHtml(s) {
     ${facts ? `<p class="sd" style="margin:0 0 8px">${facts}</p>` : ""}
     ${s.grade ? gradeCardHtml(s.grade) : ""}
     <div class="bl" style="margin-top:14px">The conversation</div>
+    ${anyAudio ? `<p class="sd" style="margin:4px 0 8px"><button class="ghost" id="rphPlayAll" type="button">&#9654; Play the session</button>
+      <button class="ghost" id="rphStop" type="button">&#9632; Stop</button> Click any line to play from there.</p>`
+      : `<p class="sd" style="margin:4px 0 8px">No sound was saved for this session -- sessions are recorded from 2026-09-29 on.</p>`}
     <div class="rpchat"><div class="rpmsgs" style="max-height:none">${msgs || '<div class="empty">No transcript saved.</div>'}</div></div>
   </div>`;
 }
@@ -4142,6 +4248,27 @@ function rphPanel() {
     <div class="sect"><h2>Sessions (${rows.length})</h2>${list}</div>`;
 }
 
+/* Plays a saved session from turn `i` on, line by line, lighting up the
+   line that is playing. */
+let rphAudio = null;
+function rphStopPlay() {
+  if (rphAudio) { try { rphAudio.pause(); } catch (_) {} rphAudio = null; }
+  document.querySelectorAll(".rphplay.playing").forEach(el => el.classList.remove("playing"));
+}
+function rphPlayFrom(sess, i) {
+  rphStopPlay();
+  const hist = sess.history || [];
+  while (i >= 0 && i < hist.length && !hist[i].audio) i++;
+  if (i < 0 || i >= hist.length) return;
+  const a = new Audio(`/api/roleplay/audio?key=${encodeURIComponent(hist[i].audio)}`);
+  rphAudio = a;
+  const el = document.querySelector(`.rphplay[data-i="${i}"]`);
+  if (el) { el.classList.add("playing"); el.scrollIntoView({ block: "nearest", behavior: "smooth" }); }
+  a.onended = () => { if (rphAudio === a) rphPlayFrom(sess, i + 1); };
+  a.onerror = () => { if (rphAudio === a) rphPlayFrom(sess, i + 1); };
+  a.play().catch(() => {});
+}
+
 function wireRphPanel() {
   const rerender = () => { $("#view").innerHTML = rphPanel(); wireRphPanel(); };
   const pre = $("#rphPreset");
@@ -4157,7 +4284,15 @@ function wireRphPanel() {
   if (pr) pr.onchange = () => { rphState.producer = pr.value; rerender(); };
   const b = $("#rphBeta");
   if (b) b.onclick = () => { rphState.beta = !rphState.beta; rphOpenKey = ""; rphLoad(); };
+  const cur = rphOpenKey && rphFull[rphOpenKey];
+  if (cur) {
+    document.querySelectorAll(".rphplay").forEach(el => el.onclick = () => rphPlayFrom(cur, +el.dataset.i));
+    const all = $("#rphPlayAll"), stop = $("#rphStop");
+    if (all) all.onclick = () => rphPlayFrom(cur, (cur.history || []).findIndex(m => m.audio));
+    if (stop) stop.onclick = () => rphStopPlay();
+  }
   document.querySelectorAll(".rphrow").forEach(el => el.onclick = async () => {
+    rphStopPlay();
     const key = el.dataset.key;
     rphOpenKey = rphOpenKey === key ? "" : key;
     rerender();
@@ -4172,8 +4307,10 @@ function wireRphPanel() {
   });
 }
 
-async function rpSendTurn(text) {
-  rpHistory.push({ role: "producer", content: text });
+async function rpSendTurn(text, clip) {
+  const turn = { role: "producer", content: text };
+  rpHistory.push(turn);
+  rpClipUpload(turn, clip);
   rpBusy = true;
   document.getElementById("view").innerHTML = roleplayPanel();
   wireRoleplayPanel();
@@ -4207,6 +4344,10 @@ async function rpSubmitGrade() {
   rpBusy = true;
   document.getElementById("view").innerHTML = roleplayPanel();
   wireRoleplayPanel();
+  // Wait for the last turns' clips to finish uploading, so their keys are
+  // on the transcript that gets saved.
+  const pending = rpPendingClips; rpPendingClips = [];
+  await Promise.race([Promise.allSettled(pending), new Promise(r => setTimeout(r, 15000))]);
   try {
     const r = await fetch("/api/roleplay/grade", {
       method: "POST", headers: { "content-type": "application/json" },
