@@ -363,7 +363,7 @@ def repetition_ratio(text):
 
 
 def transcribe_full(path, duration, seconds=30, language=None, offset=0,
-                    producer=None, lead=None):
+                    producer=None, lead=None, number=None):
     """The WHOLE call in `seconds` windows, not just head and tail.
 
     transcribe_file deliberately reads only both ends, which is all the
@@ -377,7 +377,7 @@ def transcribe_full(path, duration, seconds=30, language=None, offset=0,
     dg = _deepgram() if ENGINE == "deepgram" else None
     if dg:
         t = dg.full(path, duration, offset=offset, producer=producer,
-                    lead=lead)
+                    lead=lead, number=number)
         if t is not None:
             return t or None
     out = []

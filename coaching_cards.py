@@ -907,7 +907,7 @@ def _timed_turns(producer, lead, day, recording_ids):
         ts = deepgram_stt.turns(ROOT / f"data/audio/{rid}.mp3",
                                 v.get("audio_seconds") or v.get("duration") or 0,
                                 offset=v.get("offset") or 0, producer=producer,
-                                lead=lead, cached_only=True)
+                                lead=lead, cached_only=True, number=v.get("to"))
         out += [dict(x, r=i) for x in ts or []]
     return out
 

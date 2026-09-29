@@ -70,7 +70,8 @@ def compare(day, log=print):
         if inbound or v.get("class") == "live":
             live.append((v, cid, DG.full(path, dur, offset=off, log=log,
                                          producer=v.get("producer"),
-                                         lead=leads.get((v.get("producer"), v.get("to"))))))
+                                         lead=leads.get((v.get("producer"), v.get("to"))),
+                                         number=v.get("to"))))
         if i % 25 == 0:
             log(f"  {i}/{len(tx)}")
 
