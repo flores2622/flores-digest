@@ -165,8 +165,11 @@ Everything caches under `data/`, so a re-run resumes rather than restarting.
   grades in English whatever the call's language. **Producers rate the voice
   after each graded session** (stars, again yes / no, a comment), saved on
   the session and in `roleplay-voices/ratings.json`; the ratings table on
-  the Role Play tab is Frank's alone (`ROLEPLAY_VOICE_VIEWERS`). Faces are
-  not built yet.
+  the Role Play tab is Frank's alone (`ROLEPLAY_VOICE_VIEWERS`). **Faces
+  are a test only** (Frank, 2026-09-29: "3d face"): `site/public/face-test.html`
+  is one TalkingHead 3D face (`faces/mpfb.glb`, CC0 -- the other sample
+  avatars are non-commercial only) speaking the Deepgram voices, with the
+  delay it adds shown under each line. Role Play itself has no face yet.
 - **A renewal is not new business.** Neither is servicing, a payment, a claim,
   or chasing paperwork on a policy already sold.
 - **Selling a product the household does not have yet IS new business**, even to
