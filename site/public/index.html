@@ -1486,14 +1486,15 @@ function taskCompletionHtml(d, who) {
   const list = (focus ? [focus] : (d.producers || [])).filter(p => p.tasks && p.tasks.total != null);
   if (!list.length) return "";
   const rk = k => ` class="rdrill-row${digDrill === k ? " on" : ""}" data-ddrill="${k}" tabindex="0" role="button"`;
+  const lt = liveOn(d, "tasks") ? " isLive" : "";
   const rows = list.map(p => { const t = p.tasks; const pct = t.pct ?? 0;
     return `<tr${rk("tasks@" + p.name)}><td><span class="who">${pbadge(DOT[p.name] || "#8a877f", p.name)}</span></td>
-      <td class="num">${t.total ?? 0}</td><td class="num">${t.completed ?? 0}</td>
-      <td class="num ${tc(p.name)}">${(+pct).toFixed(1)}%</td></tr>`; }).join("");
+      <td class="num${lt}">${t.total ?? 0}</td><td class="num${lt}">${t.completed ?? 0}</td>
+      <td class="num ${tc(p.name)}${lt}">${(+pct).toFixed(1)}%</td></tr>`; }).join("");
   const T = (d.totals || {}).tasks || {};
   const tot = focus || T.total == null ? "" : `<tr class="tot rdrill-row${digDrill === "tasks" ? " on" : ""}" data-ddrill="tasks" tabindex="0" role="button"><td><span class="who">${pbadge(TEAM_DOT, "Team")}</span></td>
-    <td class="num">${T.total ?? 0}</td><td class="num">${T.completed ?? 0}</td>
-    <td class="num ${TI[((d.tiers || {})["team"] || {})["tasks"]] || ""}">${(+(T.pct ?? 0)).toFixed(1)}%</td></tr>`;
+    <td class="num${lt}">${T.total ?? 0}</td><td class="num${lt}">${T.completed ?? 0}</td>
+    <td class="num ${TI[((d.tiers || {})["team"] || {})["tasks"]] || ""}${lt}">${(+(T.pct ?? 0)).toFixed(1)}%</td></tr>`;
   return `<div class="sect"><h2>Task Completion Rate</h2>
    <div class="scroll"><table><thead><tr><th>Producer</th><th class="num">Due</th>
    <th class="num">Done</th><th class="num">Rate</th></tr></thead>
@@ -2069,6 +2070,21 @@ function applyLive(base, L) {
   // Speed to Dial is worked out whole from today's leads and call log
   // (site/live.js speedToDial), so the live figure replaces the checkpoint's,
   // and so does the list its cards open.
+  // Task Completion is worked out whole from the tasks due today
+  // (site/live.js taskCompletion), like Speed to Dial.
+  if ((L.tasks || {}).ok) {
+    d.live_parts.push("tasks");
+    const X = L.tasks.data, tiersT = d.tiers || (d.tiers = {});
+    for (const p of d.producers || []) {
+      const x = X.per[p.name]; if (!x) continue;
+      p.tasks = { ...(p.tasks || {}), ...x };
+      if (x.pct != null) (tiersT[p.name] || (tiersT[p.name] = {})).tasks = tierColor("task_completion_pct", x.pct);
+    }
+    d.totals = d.totals || {};
+    d.totals.tasks = { ...(d.totals.tasks || {}), ...X.team };
+    if (X.team.pct != null) (tiersT.team || (tiersT.team = {})).tasks = tierColor("task_completion_pct", X.team.pct);
+    d.rows = { ...(d.rows || {}), tasks: X.rows };
+  }
   if ((L.speed || {}).ok) {
     d.live_parts.push("speed");
     const note = (d.speed_to_dial || {}).note;
