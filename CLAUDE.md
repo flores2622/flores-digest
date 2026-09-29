@@ -188,6 +188,25 @@ Everything caches under `data/`, so a re-run resumes rather than restarting.
   and healed on every list call from what is actually under `roleplay/` and
   `roleplay-beta/`); a session opens from its own file. Sessions saved from
   2026-09-29 also carry `focus`, the objection groups they drilled.
+- **Sessions and coaching cards play back line by line** (Frank, 2026-09-29:
+  "i want to be able to hear it ... the transcript and recording combined, to
+  be able to skip to a specific part that I am reading. This should also be
+  reflected in the coaching cards"). **Role Play**: each producer turn is
+  recorded in the browser while they speak (MediaRecorder on the same mic,
+  `rpClipStart`) and uploaded to `roleplay-audio/<producer-slug or beta>/`
+  (`/api/roleplay/clip`); every prospect line `/api/roleplay/speak` streams is
+  also kept at `roleplay-audio/tts/<sha of voice + text>.mp3`, and the grade
+  puts each turn's `audio` key on the saved transcript -- a producer clip only
+  if it sits under that session's own prefix. `/api/roleplay/audio` serves a
+  producer's clips by `rpScope` (their own, or everyone's for the history
+  viewers); the prospect's machine voice to anyone signed in. Session History
+  plays a session from any line. Sessions before 2026-09-29 have no sound.
+  **Coaching cards**: `coaching_cards._timed_turns` adds `turns` ({r, t, who,
+  text}; t = seconds into recording r) from Deepgram's SAVED reads only
+  (`deepgram_stt.turns(..., cached_only=True)` -- a card build never pays
+  for a read), and the card shows one player with the transcript under it:
+  a line click seeks there, the line playing is lit. Cards with no Deepgram
+  read (before 2026-09-29) keep the plain transcript.
 - **A renewal is not new business.** Neither is servicing, a payment, a claim,
   or chasing paperwork on a policy already sold.
 - **Selling a product the household does not have yet IS new business**, even to

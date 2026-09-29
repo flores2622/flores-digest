@@ -738,6 +738,12 @@ def _finish_card(d, producer, group, raw_dials, day, transcript, recording_ids):
         # group when call_count > 1 -- one per call, in order.
         "transcript": transcript,
         "recording_ids": recording_ids,
+        # The recordings as timed, labelled turns -- the card's player jumps
+        # to whichever line is clicked (Frank, 2026-09-29: "the transcript
+        # and recording combined ... skip to a specific part that I am
+        # reading"). Only for recordings Deepgram has read; [] otherwise,
+        # and the card falls back to the plain transcript.
+        "turns": _timed_turns(producer, lead, day, recording_ids),
         "lead": lead,
         "lead_id": lead_id,
         # Full name, not first name: coachingPanel() (site/public/index.html)
@@ -881,6 +887,29 @@ def _group_transcript(producer, group, fx):
         else:
             segs.append(text)
     return "\n\n".join(segs)
+
+
+def _timed_turns(producer, lead, day, recording_ids):
+    """[{"r": index into recording_ids, "t": seconds, "who", "text"}] from
+    Deepgram's saved reads only -- never a new, paid read. Each leg is cut
+    to the part the transcript used (an inbound call's producer leg starts
+    at its offset), and times are into the recording itself, so the player
+    seeks straight to them."""
+    import deepgram_stt
+    tpath = ROOT / f"data/transcripts_{day}.json"
+    try:
+        tx = json.loads(tpath.read_text()) if tpath.exists() else {}
+    except ValueError:
+        tx = {}
+    out = []
+    for i, rid in enumerate(recording_ids or []):
+        v = tx.get(rid) or {}
+        ts = deepgram_stt.turns(ROOT / f"data/audio/{rid}.mp3",
+                                v.get("audio_seconds") or v.get("duration") or 0,
+                                offset=v.get("offset") or 0, producer=producer,
+                                lead=lead, cached_only=True)
+        out += [dict(x, r=i) for x in ts or []]
+    return out
 
 
 def _group_recordings(producer, group, audiorefs):
