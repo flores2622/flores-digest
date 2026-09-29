@@ -830,6 +830,13 @@ record its requests (`call_summary.collect`), they go out as one batch
 and every identical request is answered from the batch; retries go live.
 Never the nightly run -- it cannot wait.
 
+**Reads run with thinking ON, and that stays for now** (Frank, 2026-09-29:
+"leave it for now"). The code asks for thinking "disabled"; claude-sonnet-5-5
+refuses that (400), and each read's retry runs with thinking on and a bigger
+budget. Do not switch to "between_tools" without Frank -- it would cut cost
+but could shift Apollo's verdicts; the proposed check is ~15 cards and ~15
+simple reads both ways, compared verdict by verdict.
+
 **Deepgram is built but OFF** (Frank, 2026-09-29: Whisper base mishears
 too much and cannot separate speakers). `deepgram_stt.py` (Nova-3,
 language=multi, diarized, keyed on `DEEPGRAM_API_KEY` in the cloud
