@@ -361,6 +361,16 @@ per lead (`quoted_premium`) and `speed_rows` -- the same first-dial rule as
 customer, so Sold lists the leads marked sold beside the policies. Past days:
 `python3 digest_rows.py --backfill 2026-09-01` from R2's saved inputs (no
 quoted premium, and no quoted list before 2026-09-24's `quoted_leads`).
+**Everything on the Digest opens its accounts** (Frank, 2026-09-29:
+"anything we add/create should be clickable to display the accounts"), and
+anything added later should too. The leaderboard's numbers open that
+producer's list under the leaderboard (the Team row, everyone's):
+dials, talk time and contact rate the contacts, quoted, sold, and **Sent
+the Quote** every call where a quote came up (the cards' `sendoff`); Texts
+/ Emails goes to the Texts & Emails page. Task Completion's rows open the
+tasks in the rate (`rows.tasks`, from `az_tasks.audit`'s own `items`, from
+2026-09-29 on) and Household Completion's cards the policies sold, cross-
+sells marked. Role play and utilization have no accounts behind them.
 
 ## Date ranges on the Digest
 
