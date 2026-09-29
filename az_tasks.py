@@ -82,6 +82,16 @@ def audit(tasks, verdicts=None):
             excluded["duplicate lead"] += 1
             continue
         p = per[who]
+        # Every task this producer's rate is made of, so the board's Task
+        # Completion row opens them (Frank, 2026-09-29: "anything we add/create
+        # should be clickable to display the accounts"). Never a figure.
+        state = ("excused" if v == "excused" else "done" if t.get("status") == STATUS_COMPLETED
+                 else "closed" if t.get("status") == STATUS_CLOSED_NOT_COMPLETED else "open")
+        p.setdefault("items", []).append({
+            "id": t.get("id"), "title": t.get("title"), "state": state,
+            "record": t.get("customerName"), "record_id": t.get("customerId"),
+            "due": str(t.get("dueDate") or "")[:10], "completed": str(t.get("completeDate") or "")[:10],
+        })
         if v == "excused":
             # Out of the denominator entirely -- neither a pass nor a fail.
             p["excused"] += 1

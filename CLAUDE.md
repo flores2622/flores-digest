@@ -298,7 +298,7 @@ because the prefetch broke.
 ## Live figures between checkpoints
 
 **Today's board is the last checkpoint, with dials, sales, utilization,
-quotes, contacts, talk time and texts & emails kept live** (Frank, 2026-09-24: "just live data where its already at on
+quotes, contacts, talk time, texts & emails and speed to dial kept live** (Frank, 2026-09-24: "just live data where its already at on
 everything possible, and the header up there specifying what is stale from
 the last hourly run"). No separate live strip: the Worker's `/api/live/<day>`
 (`site/live.js`) is written into the same document the page renders. The
@@ -322,6 +322,17 @@ and anything without the glow is the checkpoint's (Frank, 2026-09-24).
   for the day; the checkpoint's `rows.sold_leads` are added only if the read
   stopped at the page cap.
 - **Utilization** is `insightful_util.pull()`'s formula.
+- **Speed to Dial** (Frank, 2026-09-29: "make speed to dial live too") is
+  worked out WHOLE every even minute (`site/live.js speedToDial`, a line-for-
+  line mirror of `daily.speed_rows` / `speed_to_dial` -- keep them in step)
+  from the day's kept lead list (every lead created today has activity today)
+  and the full call log, so it is exact, not provisional, and it replaces the
+  checkpoint's cards and their list. Only when the lead list is complete. The
+  Team card is the median of every lead's seconds pooled (Frank, 2026-09-01);
+  `board_payload.speed_to_dial` now pools the saved `secs` too instead of
+  rebuilding them from each producer's summary -- 09-25's team read 69m23s
+  that way against a true 34m56s. Checked identical to the Python on every
+  day R2 holds a lead snapshot for (09-23, 09-24, 09-25, 09-28).
 - **A live sale goes on the Sales sheet in the same refresh** (Frank,
   2026-09-28: "the sales on the leaderboard are live, but the sales werent
   added to the sales sheet"). `site/live.js syncSalesLog` applies
@@ -421,6 +432,16 @@ per lead (`quoted_premium`) and `speed_rows` -- the same first-dial rule as
 customer, so Sold lists the leads marked sold beside the policies. Past days:
 `python3 digest_rows.py --backfill 2026-09-01` from R2's saved inputs (no
 quoted premium, and no quoted list before 2026-09-24's `quoted_leads`).
+**Everything on the Digest opens its accounts** (Frank, 2026-09-29:
+"anything we add/create should be clickable to display the accounts"), and
+anything added later should too. The leaderboard's numbers open that
+producer's list under the leaderboard (the Team row, everyone's):
+dials, talk time and contact rate the contacts, quoted, sold, and **Sent
+the Quote** every call where a quote came up (the cards' `sendoff`); Texts
+/ Emails goes to the Texts & Emails page. Task Completion's rows open the
+tasks in the rate (`rows.tasks`, from `az_tasks.audit`'s own `items`, from
+2026-09-29 on) and Household Completion's cards the policies sold, cross-
+sells marked. Role play and utilization have no accounts behind them.
 
 ## Date ranges on the Digest
 

@@ -66,8 +66,15 @@ def speed_to_dial(M):
     # metrics_<day>.json keeps only the summary, so the pooled distribution is
     # reconstructed from the extremes and count we do have. When daily.py starts
     # storing the raw seconds (see REVIEW s1) this reads them directly instead.
+    # The raw seconds, pooled, when daily.py kept them (it does -- `secs`);
+    # the board's live Speed to Dial pools them the same way, so a checkpoint
+    # and the live figure agree. Older metrics files had only the summary, and
+    # for those the distribution is still reconstructed from the extremes.
     pooled = []
     for v in per.values():
+        if v.get("secs"):
+            pooled += list(v["secs"])
+            continue
         pooled += [v["quickest"], v["longest"]]
         pooled += [v["median"]] * max(0, v.get("n", 1) - 2)
     pooled.sort()
@@ -263,7 +270,8 @@ def build(day, live=False):
             "util_total": (util.get(name) or [None, None])[1] if util.get(name) else None,
             "util_prod": (util.get(name) or [None, None, None])[2] if util.get(name) else None,
             "coach": (M.get("coach") or {}).get(name, {}),
-            "tasks": tasks.get(name, {}),
+            # The task list itself travels in rows.tasks (digest_rows.py).
+            "tasks": {k: v for k, v in (tasks.get(name) or {}).items() if k != "items"},
         })
 
     ta = M.get("task_audit") or {}

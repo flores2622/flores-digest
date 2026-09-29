@@ -431,7 +431,59 @@ export async function soldLeadsToday(env, day, basis, fetchFn = fetch, kept = nu
 const leadFields = l => ({ id: l.id, lastActivityDate: l.lastActivityDate, enterStageDate: l.enterStageDate,
   assignedTo: l.assignedTo, quoteDate: l.quoteDate, firstname: l.firstname, lastname: l.lastname,
   phone: l.phone, secondaryPhone: l.secondaryPhone, status: l.status, soldDate: l.soldDate,
-  leadSourceId: l.leadSourceId, convertedHouseholdId: l.convertedHouseholdId });
+  leadSourceId: l.leadSourceId, convertedHouseholdId: l.convertedHouseholdId,
+  createDate: l.createDate, leadSourceName: l.leadSourceName });
+
+/* ---- speed to dial ------------------------------------------------------ */
+
+/* daily.speed_rows + daily.speed_to_dial, line for line (keep in step): an
+   internet lead (SureQuote / MAV) created today, the first dial to its
+   number, and the seconds between. Worked out whole every refresh from the
+   day's kept lead list (every lead created today has activity today) and the
+   full call log -- exact, not an estimate. The first dial is taken exactly
+   as daily.py takes it: producers in the order they first appear in the
+   call log, each one's earliest dial to the number, the first producer
+   found keeping it. */
+const SPEED_SOURCES = ["surequote", "mav ai", "mav"];
+const median = xs => { const v = [...xs].sort((a, b) => a - b), m = v.length >> 1; return v.length % 2 ? v[m] : (v[m - 1] + v[m]) / 2; };
+export function speedToDial(day, basis, leads, recs) {
+  const byExt = Object.fromEntries(Object.entries(basis.producers || {}).map(([n, v]) => [String(v.rc_id), n]));
+  const dials = new Map();                       // producer -> Map(number -> earliest start)
+  for (const r of recs) {
+    const who = byExt[ownerExt(r)];
+    if (!who || r.direction !== "Outbound") continue;
+    const num = (r.to || {}).phoneNumber;
+    if (!num) continue;
+    if (!dials.has(who)) dials.set(who, new Map());
+    const m = dials.get(who), t = r.startTime;
+    if (!m.has(num) || t < m.get(num)) m.set(num, t);
+  }
+  const first = new Map();
+  for (const [w, m] of dials) for (const [num, t] of m) if (!first.has(num)) first.set(num, [w, t]);
+  const rows = [];
+  for (const l of leads) {
+    const src = String(l.leadSourceName || "").toLowerCase();
+    if (!SPEED_SOURCES.some(k => src.includes(k))) continue;
+    if (!String(l.createDate || "").startsWith(day)) continue;
+    const ten = last10(l.phone), hit = ten ? first.get("+1" + ten) : null;   // az_corpus.e164
+    if (!hit) continue;
+    const c = utcMs(l.createDate), d = Date.parse(hit[1]);
+    const secs = (d - c) / 1000;
+    if (secs > 0) rows.push({ who: hit[0], lead_id: l.id,
+      lead: `${String(l.firstname || "").trim()} ${String(l.lastname || "").trim()}`.trim(),
+      source: String(l.leadSourceName || "").trim(),
+      arrived: new Date(c).toISOString(), dialled: new Date(d).toISOString(), secs: Math.trunc(secs) });
+  }
+  const per = {};
+  for (const n of Object.keys(basis.producers || {})) {
+    const v = rows.filter(r => r.who === n).map(r => r.secs).sort((a, b) => a - b);
+    if (v.length) per[n] = { median: Math.trunc(median(v)), n: v.length, quickest: v[0], longest: v[v.length - 1], secs: v };
+  }
+  const all = rows.map(r => r.secs);
+  const summary = all.length ? { per, team: { median: Math.trunc(median(all)), quickest: Math.min(...all),
+    longest: Math.max(...all), n: all.length } } : null;
+  return { summary, rows };
+}
 
 /* ---- the Sales sheet --------------------------------------------------- */
 
@@ -679,7 +731,12 @@ export async function computeFast(env, day, basis, fetchFn = fetch, evidence = n
   // (messages.build reads the same call log).
   let calls = null;
   if (log) try { calls = dialTouches(basis, await log); } catch (_) {}
-  return { fetched_at: new Date().toISOString(), dials, contacts, sales, util, sold, calls, _inputs: inputs };
+  // Speed to dial needs every lead created today, so only a complete list.
+  const speed = !dials.ok ? { ok: false, reason: dials.reason }
+    : !sold.ok ? { ok: false, reason: sold.reason }
+    : !(inputs.active || {}).complete ? { ok: false, reason: "today's lead list was cut short" }
+    : await part(env, "dials", async () => speedToDial(day, basis, inputs.active.leads, await log));
+  return { fetched_at: new Date().toISOString(), dials, contacts, sales, util, sold, speed, calls, _inputs: inputs };
 }
 
 function dialTouches(basis, recs) {
@@ -759,7 +816,7 @@ async function refreshFast(env, day, cp) {
   }
   // Today's active leads, for the quotes pass a minute from now (fromShared).
   if (_inputs.active) await r2put(env, k.leads, _inputs.active);
-  const out = keepGood(prev, { checkpoint: cp.as_of, ...fast }, cp, ["dials", "contacts", "sales", "util", "sold"]);
+  const out = keepGood(prev, { checkpoint: cp.as_of, ...fast }, cp, ["dials", "contacts", "sales", "util", "sold", "speed"]);
   if (!out.calls && prev && prev.checkpoint === cp.as_of) out.calls = prev.calls;
   // The numbers dialled since the checkpoint, so the next quotes pass reads
   // their leads' notes first.
@@ -796,7 +853,7 @@ export async function getLive(env, day) {
     fresh(quotes, cp.as_of, QUOTES_STALE_SECONDS) ? quotes : refreshQuotes(env, day, cp),
   ]);
   return jsonResp({ live: true, day, checkpoint: cp.as_of, fetched_at: f.fetched_at,
-    dials: f.dials, contacts: f.contacts, sales: f.sales, util: f.util, sold: f.sold,
+    dials: f.dials, contacts: f.contacts, sales: f.sales, util: f.util, sold: f.sold, speed: f.speed,
     quotes: q.quotes, messages: q.messages, quotes_fetched_at: q.fetched_at }, 200);
 }
 
