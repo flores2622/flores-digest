@@ -1009,9 +1009,11 @@ function languageInstruction(language) {
  * age bands x 4 looks x 4 variants, at most 96 faces -- each drawn ONCE
  * with Workers AI (FLUX.1 [schnell], about $0.0006 a face) the first time
  * a prospect needs it, then kept in R2 under roleplay-faces/ and served
- * from there forever. The seed comes from the key, so a face lost from R2
- * is drawn the same again. No AI binding, or a failed draw, is a 503 and
- * the board shows the prospect's initials instead. */
+ * from there forever. No seed: the model refuses one ("Additional or
+ * unevaluated properties '/seed'", 2026-09-29, though Cloudflare's own
+ * example passes it), so a face lost from R2 would be drawn afresh. No AI
+ * binding, or a failed draw, is a 503 and the board shows the prospect's
+ * initials instead. */
 const RP_FACE_AGE = { young: "24-year-old", adult: "40-year-old", mature: "62-year-old" };
 const RP_FACE_LOOK = { latino: "Hispanic", white: "white", black: "Black", asian: "Asian American" };
 const RP_FACE_DRESS = [
@@ -1030,12 +1032,14 @@ async function roleplayFace(env, key) {
   const prompt = `Realistic head-and-shoulders portrait photo of an ordinary ${RP_FACE_AGE[band]} ${RP_FACE_LOOK[look]} ${who} `
     + `from Arizona, ${RP_FACE_DRESS[+n]}, relaxed natural expression, looking at the camera, soft daylight, `
     + `plain softly blurred background, sharp focus on the face, natural skin texture. No text, no watermark.`;
-  let seed = 7;
-  for (const c of key) seed = (seed * 31 + c.charCodeAt(0)) % 2147483647;
   let img;
   try {
-    const out = await env.AI.run("@cf/black-forest-labs/flux-1-schnell", { prompt, steps: 6, seed });
-    img = Uint8Array.from(atob(out.image), (ch) => ch.charCodeAt(0));
+    const out = await env.AI.run("@cf/black-forest-labs/flux-1-schnell", { prompt, steps: 6 });
+    // A plain loop, not Uint8Array.from(str, fn): the free plan's CPU budget
+    // per request is small and the image is a few hundred KB of base64.
+    const bin = atob(out.image);
+    img = new Uint8Array(bin.length);
+    for (let i = 0; i < bin.length; i++) img[i] = bin.charCodeAt(i);
   } catch (e) {
     return json({ error: "face could not be drawn", detail: String(e).slice(0, 200) }, 503);
   }
