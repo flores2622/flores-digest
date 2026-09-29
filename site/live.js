@@ -412,6 +412,7 @@ export async function soldLeadsToday(env, day, basis, fetchFn = fetch, kept = nu
   for (const [id, l] of fresh) merged.set(id, l);
   const complete = reached && (prev ? !!prev.complete : true);
   const per = {}, raw = [];
+  const existing = new Set(basis.existing_household || []);
   for (const l of merged.values()) {
     if (l.status !== 2 || !String(l.soldDate || "").startsWith(day)) continue;
     const name = [l.firstname, l.lastname].map(x => String(x || "").trim()).filter(Boolean).join(" ");
@@ -420,7 +421,8 @@ export async function soldLeadsToday(env, day, basis, fetchFn = fetch, kept = nu
     raw.push({ agentId: l.assignedTo, leadSourceId: l.leadSourceId, household: l.convertedHouseholdId ?? null, name });
     const who = byAz[String(l.assignedTo)];
     if (!who) continue;
-    (per[who] || (per[who] = [])).push({ lead_id: l.id, household: l.convertedHouseholdId ?? null, lead: name });
+    (per[who] || (per[who] = [])).push({ lead_id: l.id, household: l.convertedHouseholdId ?? null, lead: name,
+      existing: existing.has(norm(l.leadSourceName)) });
   }
   const leads = [...merged.values()].sort((a, b) => (a.lastActivityDate < b.lastActivityDate ? 1 : -1));
   const oldest = leads.length ? leads[leads.length - 1].lastActivityDate : null;

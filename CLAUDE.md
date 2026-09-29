@@ -472,6 +472,16 @@ policy count still shows beside it (policies per HH). A lead can be marked
 sold a few days off its policy's soldDate, so a day can show a household
 with no policy or the reverse. A day with no sold-lead rows keeps the old
 Policies display. The emailed digest is unchanged.
+**Household Completion is policies sold over those same households sold**
+(Frank, 2026-09-29: "too much description on the bottom, even im
+confused"): no more policy -> lead match (it placed about half of sales and
+blanked Coral's 3-policy household on 09-28), no "0+ new bundle" or
+"matched" line. Under the number, how many were existing customers (the
+sold lead's source is `lead_sources.EXISTING_HOUSEHOLD` -- a cross-sell) and
+how many new, from each sold lead's `existing` (digest_rows, live.js;
+09-01..09-28 tagged from their saved source, backups under
+`backups/2026-09-29-hh-existing/`). A day with policies but no household
+marked sold, or the reverse, shows "—" and says which.
 
 ## Texts and emails
 
