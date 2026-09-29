@@ -978,7 +978,7 @@ reached for once, e.g. 6836965 created 2025-08-03).
 
 ## Cost
 
-Transcription is local and free. **The Anthropic API reads in `call_summary.py`,
+Transcription is Deepgram, paid per audio minute (about $1-2 a day; below). **The Anthropic API reads in `call_summary.py`,
 `renewal_notes.py` and `service_notes.py` are the only paid steps** (plus
 `sendoff.py` and `assume_reread.py --backfill`, each run once for September) — roughly one call per live
 contact per day, plus one call per 25 renewal SR notes (each SR's note is read
@@ -1021,7 +1021,9 @@ only -- a caller saying "Hi, Crystal" does not count); everyone else, and
 every turn when no one introduces themselves or two speakers tie, stays
 "Speaker N:" -- never guessed. On 09-25 / 09-28 it named the producer on
 50 of 57 calls with two voices, every one checked by hand. It is paid per audio minute (~226
-min on 2026-09-28), cached per recording under `data/deepgram/`. A leg with
+min on 2026-09-28), cached per recording under `data/deepgram/` and carried
+between containers in R2 as `cache/<day>/deepgram_<day>.json` (`r2_cache`), so a
+recording is paid for once however many checkpoints touch it. A leg with
 no speech at all is `[silence]`, read as no answer like Whisper's "[Music]",
 never as a pickup that said nothing. **Past days stay as they went out**: a
 rebuild reuses the day's saved transcripts. `python3 compare_stt.py <day>
