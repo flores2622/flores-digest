@@ -605,6 +605,10 @@ async function azLeadsActiveSince(env, since, fetchFn, shared = null) {
   return out;
 }
 
+// Not found / gone: the lead itself, never the Worker's access (a 403 still
+// pauses AgencyZoom, azGet).
+const gone = e => e && (e.status === 404 || e.status === 410);
+
 /* `memo` is the previous refresh's per-lead reads (R2), so a lead is only
    re-read when its activity moved; returns the deltas and the new memo. */
 export async function quotedLive(env, day, basis, memo, fetchFn = fetch, wanted = [], calls = null, shared = null) {
@@ -637,9 +641,14 @@ export async function quotedLive(env, day, basis, memo, fetchFn = fetch, wanted 
       if (notesRead > 1) await pause(LEAD_READ_GAP_MS);
       notes = await azGet(env, `/v1/api/leads/${id}/notes`, fetchFn);
     } catch (e) {
+      // A lead AgencyZoom no longer serves (deleted, merged into another
+      // record) is read as having no notes, and kept that way until its
+      // activity moves: the day's kept list (soldLeadsToday) never drops an
+      // id, and one unreadable lead must not stop every other one.
+      if (gone(e)) notes = [];
       // Rate limited: keep what this batch read, the rest waits for the next.
-      if (e.status !== 429) throw e;
-      limited = true; pending++; if (was) leads[id] = was; continue;
+      else if (e.status !== 429) throw e;
+      else { limited = true; pending++; if (was) leads[id] = was; continue; }
     }
     const ns = Array.isArray(notes) ? notes : [];
     leads[id] = { act: l.lastActivityDate, who: [...quotedBy(l, ns, day, basis, rx)], prem: was ? was.prem : null,
@@ -658,8 +667,9 @@ export async function quotedLive(env, day, basis, memo, fetchFn = fetch, wanted 
         await pause(LEAD_READ_GAP_MS);
         qs = await azGet(env, `/v1/api/leads/${id}/quotes`, fetchFn);
       } catch (e) {
-        if (e.status !== 429) throw e;
-        limited = true; pending++; continue;
+        if (gone(e)) qs = [];
+        else if (e.status !== 429) throw e;
+        else { limited = true; pending++; continue; }
       }
       const arr = Array.isArray(qs) ? qs : (qs || {}).quotes || [];
       v.prem = arr.reduce((s, x) => s + (Number(x.premium) || 0), 0);
@@ -815,7 +825,12 @@ async function refreshFast(env, day, cp) {
     catch (e) { console.log(`sales sheet sync failed: ${e && e.message || e}`); }
   }
   // Today's active leads, for the quotes pass a minute from now (fromShared).
-  if (_inputs.active) await r2put(env, k.leads, _inputs.active);
+  // Never at the board's expense: a failed save only means the next refresh
+  // pages further back.
+  if (_inputs.active) {
+    try { await r2put(env, k.leads, _inputs.active); }
+    catch (e) { console.log(`kept lead list not saved: ${e && e.message || e}`); }
+  }
   const out = keepGood(prev, { checkpoint: cp.as_of, ...fast }, cp, ["dials", "contacts", "sales", "util", "sold", "speed"]);
   if (!out.calls && prev && prev.checkpoint === cp.as_of) out.calls = prev.calls;
   // The numbers dialled since the checkpoint, so the next quotes pass reads
