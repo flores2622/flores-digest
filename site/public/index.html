@@ -728,6 +728,12 @@ details.sc .scb { padding: 0 12px 12px; }
 /* The line playing in a Role Play session or a coaching card's recording. */
 .rphplay.playing, .tturn.sync.playing { outline: 2px solid var(--accent, #2b6cb0); outline-offset: 2px; }
 .tturn.sync { cursor: pointer; }
+/* The play / pause button at the start of each line. */
+.pp { display: inline-flex; align-items: center; justify-content: center; width: 22px; height: 22px; margin-right: 6px;
+  padding: 0; border: 1px solid var(--border-strong); border-radius: 50%; background: var(--surface, transparent);
+  color: var(--text-primary); font-size: 10px; line-height: 1; cursor: pointer; vertical-align: middle; flex: none; }
+.pp:hover { border-color: var(--text-primary); }
+.playing > .pp, .playing .pp { background: var(--text-primary); color: var(--bg, #fff); border-color: var(--text-primary); }
 .tturn.sync:hover { filter: brightness(0.97); }
 .tturn .ts { font-variant-numeric: tabular-nums; color: var(--text-secondary); font-size: 11px; margin-right: 6px; }
 .tturn .tw { font-weight: 600; margin-right: 4px; }
@@ -3180,12 +3186,12 @@ function syncedRecordingBlk(c) {
     const head = ids.length > 1 && x.r !== lastR ? `<div class="ttag">Call ${x.r + 1} of ${ids.length}</div>` : "";
     lastR = x.r;
     return `${head}<p class="tturn sync t${/producer/.test(x.who) ? 0 : 1}" data-rec="${uid}" data-r="${x.r}" data-t="${x.t}">
-      <span class="ts">${mmss(x.t)}</span><span class="tw">${esc(x.who)}</span>${esc(x.text)}</p>`;
+      <button type="button" class="pp" aria-label="Play from here">&#9654;</button><span class="ts">${mmss(x.t)}</span><span class="tw">${esc(x.who)}</span>${esc(x.text)}</p>`;
   }).join("");
   return `<div class="blk"><div class="bl">Recording &amp; transcript</div>
     <audio controls preload="none" id="${uid}" data-day="${c.day}" data-ids="${ids.join(",")}" data-r="0"
       style="width:100%" src="/api/recordings/${c.day}/${ids[0]}"></audio>
-    <p class="sd" style="margin:6px 0 4px">Click a line to play the call from there.</p>
+    <p class="sd" style="margin:6px 0 4px">Click a line to play the call from there; its button pauses and resumes.</p>
     <div class="scb" style="font-size:12px;padding:6px 2px;max-height:420px;overflow:auto">${lines}</div></div>`;
 }
 document.addEventListener("click", e => {
@@ -3193,6 +3199,13 @@ document.addEventListener("click", e => {
   if (!line) return;
   const a = document.getElementById(line.dataset.rec);
   if (!a) return;
+  // The button on the line already playing pauses and resumes in place
+  // (Frank, 2026-09-29: "pause the playback without stopping or restarting
+  // it"); anywhere else plays the call from that line.
+  if (e.target.closest(".pp") && line.classList.contains("playing")) {
+    if (a.paused) a.play().catch(() => {}); else a.pause();
+    return;
+  }
   const r = +line.dataset.r, t = +line.dataset.t;
   const go = () => { try { a.currentTime = t; } catch (_) {} a.play().catch(() => {}); };
   if (+a.dataset.r !== r) {
@@ -3215,7 +3228,22 @@ document.addEventListener("timeupdate", e => {
     if (el.dataset.r === r && +el.dataset.t <= now + 0.25) best = el;
   });
   if (best) best.classList.add("playing");
+  syncButtons(a);
 }, true);
+// Each line's button shows pause while its line plays, play otherwise.
+function syncButtons(a) {
+  document.querySelectorAll(`.tturn.sync[data-rec="${a.id}"]`).forEach(el => {
+    const b = el.querySelector(".pp");
+    if (!b) return;
+    const on = el.classList.contains("playing") && !a.paused;
+    b.innerHTML = on ? "&#10074;&#10074;" : "&#9654;";
+    b.setAttribute("aria-label", on ? "Pause" : el.classList.contains("playing") ? "Resume" : "Play from here");
+  });
+}
+["play", "pause", "ended"].forEach(ev => document.addEventListener(ev, e => {
+  const a = e.target;
+  if (a && a.id && a.id.startsWith("rec-")) syncButtons(a);
+}, true));
 function recordingBlk(c) {
   if (c.turns && c.turns.length && c.recording_ids && c.recording_ids.length) return syncedRecordingBlk(c);
   if (!c.transcript && !(c.recording_ids && c.recording_ids.length)) return "";
@@ -4232,7 +4260,7 @@ function rphSessionHtml(s) {
   const anyAudio = hist.some(m => m.audio);
   const msgs = hist.map((m, i) => `<div class="rpmsg ${m.role === "producer" ? "producer" : "prospect"}${m.audio ? " rphplay" : ""}"
       ${m.audio ? `data-i="${i}" title="Play from here" style="cursor:pointer"` : ""}>
-    <span class="rl">${m.role === "producer" ? rphEsc(who) : "Prospect"}${m.audio ? " &#9654;" : ""}</span>${rphEsc(m.content)}</div>`).join("");
+    <span class="rl">${m.audio ? `<button type="button" class="pp" aria-label="Play from here">&#9654;</button>` : ""}${m.role === "producer" ? rphEsc(who) : "Prospect"}</span>${rphEsc(m.content)}</div>`).join("");
   const facts = [s.lead_source && `Lead source: ${rphEsc(s.lead_source)}`,
     s.language && `Language: ${rphEsc(RP_LANG_LABEL[s.language] || s.language)}`,
     s.focus && s.focus.length && `Drilled: ${s.focus.map(rphEsc).join(", ")}`,
@@ -4242,7 +4270,7 @@ function rphSessionHtml(s) {
     ${s.grade ? gradeCardHtml(s.grade) : ""}
     <div class="bl" style="margin-top:14px">The conversation</div>
     ${anyAudio ? `<p class="sd" style="margin:4px 0 8px"><button class="ghost" id="rphPlayAll" type="button">&#9654; Play the session</button>
-      <button class="ghost" id="rphStop" type="button">&#9632; Stop</button> Click any line to play from there.</p>`
+      <button class="ghost" id="rphStop" type="button">&#9632; Stop</button> Click any line to play from there; its button pauses and resumes.</p>`
       : `<p class="sd" style="margin:4px 0 8px">No sound was saved for this session -- sessions are recorded from 2026-09-29 on.</p>`}
     <div class="rpchat"><div class="rpmsgs" style="max-height:none">${msgs || '<div class="empty">No transcript saved.</div>'}</div></div>
   </div>`;
@@ -4284,10 +4312,22 @@ function rphPanel() {
 
 /* Plays a saved session from turn `i` on, line by line, lighting up the
    line that is playing. */
-let rphAudio = null;
+let rphAudio = null, rphIdx = -1;
 function rphStopPlay() {
   if (rphAudio) { try { rphAudio.pause(); } catch (_) {} rphAudio = null; }
+  rphIdx = -1;
   document.querySelectorAll(".rphplay.playing").forEach(el => el.classList.remove("playing"));
+  rphButtons();
+}
+function rphButtons() {
+  document.querySelectorAll(".rphplay").forEach(el => {
+    const b = el.querySelector(".pp");
+    if (!b) return;
+    const mine = +el.dataset.i === rphIdx && rphAudio;
+    const on = mine && !rphAudio.paused;
+    b.innerHTML = on ? "&#10074;&#10074;" : "&#9654;";
+    b.setAttribute("aria-label", on ? "Pause" : mine ? "Resume" : "Play from here");
+  });
 }
 function rphPlayFrom(sess, i) {
   rphStopPlay();
@@ -4295,7 +4335,8 @@ function rphPlayFrom(sess, i) {
   while (i >= 0 && i < hist.length && !hist[i].audio) i++;
   if (i < 0 || i >= hist.length) return;
   const a = new Audio(`/api/roleplay/audio?key=${encodeURIComponent(hist[i].audio)}`);
-  rphAudio = a;
+  rphAudio = a; rphIdx = i;
+  a.onplay = a.onpause = () => { if (rphAudio === a) rphButtons(); };
   const el = document.querySelector(`.rphplay[data-i="${i}"]`);
   if (el) { el.classList.add("playing"); el.scrollIntoView({ block: "nearest", behavior: "smooth" }); }
   a.onended = () => { if (rphAudio === a) rphPlayFrom(sess, i + 1); };
@@ -4320,7 +4361,15 @@ function wireRphPanel() {
   if (b) b.onclick = () => { rphState.beta = !rphState.beta; rphOpenKey = ""; rphLoad(); };
   const cur = rphOpenKey && rphFull[rphOpenKey];
   if (cur) {
-    document.querySelectorAll(".rphplay").forEach(el => el.onclick = () => rphPlayFrom(cur, +el.dataset.i));
+    document.querySelectorAll(".rphplay").forEach(el => el.onclick = e => {
+      const i = +el.dataset.i;
+      // The button on the line playing pauses and resumes it in place.
+      if (e.target.closest(".pp") && rphAudio && rphIdx === i) {
+        if (rphAudio.paused) rphAudio.play().catch(() => {}); else rphAudio.pause();
+        return;
+      }
+      rphPlayFrom(cur, i);
+    });
     const all = $("#rphPlayAll"), stop = $("#rphStop");
     if (all) all.onclick = () => rphPlayFrom(cur, (cur.history || []).findIndex(m => m.audio));
     if (stop) stop.onclick = () => rphStopPlay();
