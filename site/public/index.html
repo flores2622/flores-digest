@@ -1585,11 +1585,11 @@ function speedPanel(d, who) {
     <p class="sd">No internet leads were assigned today, so there is nothing to time.</p></div>`;
   const entries = who ? Object.entries(s.per || {}).filter(([n]) => n === who) : Object.entries(s.per || {});
   const cards = entries.map(([n, v]) => `
-    <div${ddk("speed:" + n)}><div class="k">${pbadge(DOT[n] || "#8a877f", n.split(" ")[0])}</div>
+    <div${ddk("speed:" + n, liveOn(d, "speed") ? "tile isLive" : "")}><div class="k">${pbadge(DOT[n] || "#8a877f", n.split(" ")[0])}</div>
       <div class="v">${hhmm(v.median)}</div>
       <div class="n">median · ${v.n} lead${v.n > 1 ? "s" : ""}</div>
       <div class="n" style="margin-top:5px">quickest ${hhmm(v.quickest)} · longest ${hhmm(v.longest)}</div></div>`).join("")
-   + (!who && s.team ? `<div${ddk("speed:team")} style="border-color:var(--border-strong);background:var(--surface)">
+   + (!who && s.team ? `<div${ddk("speed:team", liveOn(d, "speed") ? "tile isLive" : "")} style="border-color:var(--border-strong);background:var(--surface)">
       <div class="k">Team</div><div class="v">${hhmm(s.team.median)}</div>
       <div class="n">median of all ${s.team.n} leads</div>
       <div class="n" style="margin-top:5px">quickest ${hhmm(s.team.quickest)} · longest ${hhmm(s.team.longest)}</div></div>` : "");
@@ -2005,6 +2005,15 @@ function applyLive(base, L) {
     d.live_sold_complete = !!L.sold.data.complete;
   }
   if ((L.sales || {}).ok && (L.quotes || {}).ok && (L.sold || {}).ok) d.live_parts.push("closing");
+  // Speed to Dial is worked out whole from today's leads and call log
+  // (site/live.js speedToDial), so the live figure replaces the checkpoint's,
+  // and so does the list its cards open.
+  if ((L.speed || {}).ok) {
+    d.live_parts.push("speed");
+    const note = (d.speed_to_dial || {}).note;
+    d.speed_to_dial = L.speed.data.summary ? { ...L.speed.data.summary, note } : null;
+    d.rows = { ...(d.rows || {}), speed: L.speed.data.rows };
+  }
   const tiers = d.tiers || (d.tiers = {});
   const T = d.totals || (d.totals = {});
   const ps = d.producers || [];

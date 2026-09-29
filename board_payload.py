@@ -66,8 +66,15 @@ def speed_to_dial(M):
     # metrics_<day>.json keeps only the summary, so the pooled distribution is
     # reconstructed from the extremes and count we do have. When daily.py starts
     # storing the raw seconds (see REVIEW s1) this reads them directly instead.
+    # The raw seconds, pooled, when daily.py kept them (it does -- `secs`);
+    # the board's live Speed to Dial pools them the same way, so a checkpoint
+    # and the live figure agree. Older metrics files had only the summary, and
+    # for those the distribution is still reconstructed from the extremes.
     pooled = []
     for v in per.values():
+        if v.get("secs"):
+            pooled += list(v["secs"])
+            continue
         pooled += [v["quickest"], v["longest"]]
         pooled += [v["median"]] * max(0, v.get("n", 1) - 2)
     pooled.sort()
