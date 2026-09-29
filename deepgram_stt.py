@@ -219,16 +219,19 @@ def _fold(t):
 
 
 def _says_name(text, first):
-    """`first` appears in `text`, allowing a transcription's spelling of it
-    (Cinthya / Cynthia, Sarahi / Sarai): same first letter, 80% alike and
-    at most a letter longer or shorter -- Jessica is not Jesse (Coral,
-    09-25: "Yes, this is Jessica ... I'm not able to reach him either")."""
+    """`first` appears in `text`, allowing a transcription's or a record's
+    spelling of it (Cinthya / Cynthia, Sarahi / Sarai, Brayana / Brianna,
+    Merideth / Meredith): same first AND last letter, at most a letter longer
+    or shorter, 70% alike. Jessica is not Jesse (Coral, 09-25: "Yes, this is
+    Jessica ... I'm not able to reach him either"), and Juan is not Juana nor
+    Mario Maria -- a husband and wife on one number."""
     import difflib
     first = _fold(first)
     for w in re.findall(r"[a-z]+", _fold(text)):
         if w == first or (len(first) >= 4 and w[:1] == first[:1] and
+                          w[-1:] == first[-1:] and
                           abs(len(w) - len(first)) <= 1 and
-                          difflib.SequenceMatcher(None, w, first).ratio() >= 0.8):
+                          difflib.SequenceMatcher(None, w, first).ratio() >= 0.7):
             return True
     return False
 
@@ -289,7 +292,54 @@ def lead_speaker(utts, producer_sp, lead):
     return None
 
 
-def turns(path, duration, offset=0, log=None, producer=None, lead=None, cached_only=False):
+_CUSTOMERS = {}
+
+
+def customer_names(number):
+    """First names on the AgencyZoom customer records for a phone number
+    (the last ten digits, az_corpus.e164's rule), from the nightly's own
+    data/az_customers_all.json -- no extra AgencyZoom read. A customer record
+    is a household, so this is its primary's name; a spouse answering stays
+    Speaker N unless the call shows who they are (lead_speaker's rule)."""
+    if not number:
+        return []
+    if not _CUSTOMERS:
+        idx = {}
+        try:
+            rows = json.loads((ROOT / "data/az_customers_all.json").read_text())
+        except (OSError, ValueError):
+            rows = []
+        if isinstance(rows, dict):
+            rows = rows.get("data") or rows.get("customers") or []
+        for c in rows:
+            name = (c.get("firstname") or "").strip()
+            for f in ("phone", "secondaryPhone"):
+                d = re.sub(r"\D", "", c.get(f) or "")[-10:]
+                if len(d) == 10 and name and name not in idx.setdefault(d, []):
+                    idx[d].append(name)
+        _CUSTOMERS["idx"] = idx
+    d = re.sub(r"\D", "", number)[-10:]
+    return list(_CUSTOMERS["idx"].get(d, []))
+
+
+def other_party(utts, producer_sp, lead=None, number=None):
+    """(speaker, label) for the other voice: the lead by lead_speaker's rule,
+    else a customer on the number's AgencyZoom records by the same rule --
+    greeted or asked for by name in the opening, or giving it themselves.
+    (None, None) when nothing on the call shows who it is."""
+    if lead:
+        sp = lead_speaker(utts, producer_sp, lead)
+        if sp is not None:
+            return sp, lead.replace(",", " ").split()[0].title() + " (lead)"
+    for name in customer_names(number):
+        sp = lead_speaker(utts, producer_sp, name)
+        if sp is not None:
+            return sp, name.split()[0].title() + " (customer)"
+    return None, None
+
+
+def turns(path, duration, offset=0, log=None, producer=None, lead=None,
+          cached_only=False, number=None):
     """The leg as timed turns: [{"t": seconds into the recording, "who":
     label, "text"}], consecutive lines from one speaker merged -- what the
     coaching card's player seeks to (Frank, 2026-09-29: "skip to a specific
@@ -301,8 +351,7 @@ def turns(path, duration, offset=0, log=None, producer=None, lead=None, cached_o
                     offset + duration if duration else float("inf"))
     who = producer_speaker(utts, producer)
     first = producer.split()[0] if producer else ""
-    them = lead_speaker(utts, who, lead)
-    lead_first = lead.replace(",", " ").split()[0].title() if them is not None else ""
+    them, their_label = other_party(utts, who, lead, number)
     out, last = [], None
     for u in utts:
         if u["speaker"] == last:
@@ -311,7 +360,7 @@ def turns(path, duration, offset=0, log=None, producer=None, lead=None, cached_o
         if who is not None and u["speaker"] == who:
             label = f"{first} (producer)"
         elif them is not None and u["speaker"] == them:
-            label = f"{lead_first} (lead)"
+            label = their_label
         else:
             label = f"Speaker {int(u['speaker'] or 0) + 1}"
         out.append({"t": round(float(u["start"] or 0), 1), "who": label, "text": u["text"]})
@@ -319,12 +368,13 @@ def turns(path, duration, offset=0, log=None, producer=None, lead=None, cached_o
     return out
 
 
-def full(path, duration, offset=0, log=None, producer=None, lead=None):
+def full(path, duration, offset=0, log=None, producer=None, lead=None, number=None):
     """The whole leg, one line per turn: "Speaker 1: ...", with the producer's
     turns labelled "<First name> (producer)" when producer_speaker finds them
-    and the lead's "<First name> (lead)" when lead_speaker does. None on
-    failure."""
-    ts = turns(path, duration, offset=offset, log=log, producer=producer, lead=lead)
+    and the other voice "<First name> (lead)" or "(customer)" when
+    other_party finds them. None on failure."""
+    ts = turns(path, duration, offset=offset, log=log, producer=producer, lead=lead,
+               number=number)
     if ts is None:
         return None
     return "\n".join(f"{x['who']}: {x['text']}" for x in ts).strip()

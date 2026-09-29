@@ -1084,9 +1084,18 @@ the call shows it: the producer greets or asks for them by name in the
 opening ("Hi, Harry", "Is this Carlos?", "Hablo con Maria?"), or they give
 it ("This is Brianna", "Speaking"). A name only mentioned is someone talked
 about (Coral asking Jessica about Jesse, 09-25), and a spouse, "you just
-missed him" or a wrong number stays Speaker N. Customers on renewal or
-service calls have no Call Detail row and stay Speaker N. 09-25 / 09-28: 11
-leads named, all checked by hand. It is paid per audio minute (~226
+missed him" or a wrong number stays Speaker N. **Customers are named the
+same way** (`deepgram_stt.other_party`, Frank, 2026-09-29: "match customers
+to their names too"): with no lead matched, the first names on the number's
+AgencyZoom customer records (`customer_names`, from the nightly's own
+`data/az_customers_all.json`) go through the same test and read "<First
+name> (customer):", in the record's spelling. Names match across a
+transcription's or a record's spelling (Brianna / Brayana, Meredith /
+Merideth) only with the same first AND last letter, so Juan is never Juana
+nor Mario Maria -- a husband and wife on one number. 09-25 / 09-28: 11
+leads and 8 customers named, all checked by hand. The nightly only
+full-transcribes the calls Apollo coaches, so a renewal or service call's
+customer shows up in `compare_stt.py`'s report and on any coached call. It is paid per audio minute (~226
 min on 2026-09-28), cached per recording under `data/deepgram/` and carried
 between containers in R2 as `cache/<day>/deepgram_<day>.json` (`r2_cache`), so a
 recording is paid for once however many checkpoints touch it. A leg with
