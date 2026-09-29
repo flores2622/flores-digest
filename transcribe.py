@@ -133,7 +133,20 @@ MACHINE = re.compile(
     r"|check(ing)? my (voice ?)?messages?|send me a text"
     # Spanish screener / voicemail phrasings.
     r"|d[ée]je(se|nos|me)? un mensaje|deje un mensaje|un mensaje para"
-    r"|no est[aá] (disponible|en este momento)|le comunico",
+    r"|no est[aá] (disponible|en este momento)|le comunico"
+    # Sarahi Chin, 2026-09-28: "En este momento no me es posible contestar su
+    # llamada. Lo haré a la brevedad posible." Deepgram's speakers split the
+    # greeting from her message, which read as a two-party exchange; Whisper
+    # heard "next moment I will be able to contest the game". Lorena Gonzalez,
+    # 09-25: "Si dejas tu nombre y el motivo de tu llamada, revisaré si esta
+    # persona está disponible" is the Spanish screener.
+    r"|no (me )?es posible contestar|a la brevedad posible"
+    r"|motivo de (tu|su) llamada|si (esta|esa) persona est[aá] disponible"
+    # AI call screeners (Cloud AI, Sarahi Chin, 2026-09-28): "You've reached
+    # Cloud AI. Can I please get your name? ... the purpose of your call to
+    # Timothy". It asks and answers like a person, so it read as live.
+    r"|you'?ve reached|purpose of (your|the) call"
+    r"|asunto espec[ií]fico|(de )?la empresa de donde llama",
     re.I)
 
 # Ringback, hold music and empty captures are not conversations. Whisper also
