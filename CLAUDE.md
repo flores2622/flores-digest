@@ -261,6 +261,13 @@ Commercial boards and saves the day to R2; it skips the sales-log sync and the
 AgencyZoom missed-call tasks along with the email. `--no-send` (hand rebuilds)
 still stops before anything is published.
 
+**The nightly run checks in** (`healthcheck.py`, Frank, 2026-09-29): with
+`HEALTHCHECK_URL` (a Healthchecks.io ping URL) in the cloud environment's
+variables, `daily.py` pings start, success ("sent" / "held") and failure
+(with the traceback). Only a bare nightly `daily.py` pings -- never
+`--day` or `--no-send`. The check's own schedule and grace time are what
+alert when the run never started or hung.
+
 A stall still means the log has not advanced in ~5 minutes, or repeated "rate
 limited" lines. Judge it on progress, not on elapsed time.
 
@@ -810,6 +817,18 @@ once and kept in `data/renewal_note_reads.json` and its R2 copy; only an edited
 note is read again -- never delete that cache casually). Changing
 the prompt means deleting `data/callsum_<day>.json`, which re-reads everything.
 Do not do that casually, and never in a loop while iterating on wording.
+
+**Every read's instructions are prompt-cached** (Frank, 2026-09-29):
+`call_summary._post`, which every Claude API read goes through, marks the
+system prompt for caching, so a coaching card's ~20,800-token METHODOLOGY is
+billed at a tenth on each read after the first within five minutes. The
+answers are the same. **The one-off re-reads go as a half-price Message
+Batch** by default -- `sendoff.py` / `assume_reread.py --backfill` and
+`rebuild_cards.py` (`--live` for one by one): the read loop runs once to
+record its requests (`call_summary.collect`), they go out as one batch
+(`run_batch`, usually minutes, at most 24 hours), then the loop runs for real
+and every identical request is answered from the batch; retries go live.
+Never the nightly run -- it cannot wait.
 
 **Deepgram is built but OFF** (Frank, 2026-09-29: Whisper base mishears
 too much and cannot separate speakers). `deepgram_stt.py` (Nova-3,
