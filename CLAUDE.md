@@ -1040,7 +1040,16 @@ la aseguranza", "Soy Sarahi"; `deepgram_stt.producer_speaker`, own name
 only -- a caller saying "Hi, Crystal" does not count); everyone else, and
 every turn when no one introduces themselves or two speakers tie, stays
 "Speaker N:" -- never guessed. On 09-25 / 09-28 it named the producer on
-50 of 57 calls with two voices, every one checked by hand. It is paid per audio minute (~226
+50 of 57 calls with two voices, every one checked by hand. **The other voice
+is "<First name> (lead):"** (`deepgram_stt.lead_speaker`, the Call Detail
+row's lead) only when the producer is found, there is ONE other voice, and
+the call shows it: the producer greets or asks for them by name in the
+opening ("Hi, Harry", "Is this Carlos?", "Hablo con Maria?"), or they give
+it ("This is Brianna", "Speaking"). A name only mentioned is someone talked
+about (Coral asking Jessica about Jesse, 09-25), and a spouse, "you just
+missed him" or a wrong number stays Speaker N. Customers on renewal or
+service calls have no Call Detail row and stay Speaker N. 09-25 / 09-28: 11
+leads named, all checked by hand. It is paid per audio minute (~226
 min on 2026-09-28), cached per recording under `data/deepgram/` and carried
 between containers in R2 as `cache/<day>/deepgram_<day>.json` (`r2_cache`), so a
 recording is paid for once however many checkpoints touch it. A leg with
