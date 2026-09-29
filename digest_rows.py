@@ -51,7 +51,7 @@ def build(day, log=print):
     import day_calls
     ix = phone_index(leads)
     smap = cfg.lead_source_map(leads)
-    out = {"dials": [], "contacts": [], "quoted": [], "sold": [], "sold_leads": [], "speed": []}
+    out = {"dials": [], "contacts": [], "quoted": [], "sold": [], "sold_leads": [], "speed": [], "tasks": []}
 
     for who in cfg.PRODUCERS:
         p = P.get(who) or {}
@@ -96,9 +96,20 @@ def build(day, log=print):
             out["sold"].append({"who": who, "product": sales_log_auto.product_name(x),
                                 "policy": x.get("policyNumber") or "", "premium": round(float(x.get("premium") or 0)),
                                 "source": smap.get(x.get("leadSourceId"), ""),
+                                # Household Completion's cross-sell, by its own rule.
+                                                "cross_sell": cfg.is_cross_sell(x, smap),
                                 "effective": str(x.get("effectiveDate") or "")[:10]})
     except Exception as e:
         log(f"  digest rows: no policy list ({type(e).__name__}: {e})")
+    # Every task in the Task Completion rate (az_tasks.audit's own items),
+    # linked to the lead or customer it hangs off.
+    tper = ((M.get("tasks") or {}).get("per_producer") or {})
+    for who in cfg.PRODUCERS:
+        for t in (tper.get(who) or {}).get("items") or []:
+            rid = t.get("record_id")
+            out["tasks"].append({"who": who, **{k: v for k, v in t.items() if k != "record_id"},
+                                 "lead_id": rid if rid in by_id else None,
+                                 "customer_id": rid if rid and rid not in by_id else None})
     for l in leads:
         who = azid.get(l.get("assignedTo"))
         if who and l.get("status") == 2 and str(l.get("soldDate") or "").startswith(day):
@@ -113,7 +124,7 @@ def build(day, log=print):
     except Exception as e:
         log(f"  digest rows: no speed-to-dial rows ({type(e).__name__})")
     log(f"  digest rows: {len(out['dials'])} dials, {len(out['contacts'])} contacts, {len(out['quoted'])} quoted, "
-        f"{len(out['sold'])} policies, {len(out['speed'])} internet leads")
+        f"{len(out['sold'])} policies, {len(out['speed'])} internet leads, {len(out['tasks'])} tasks")
     return out
 
 
