@@ -176,6 +176,12 @@ Everything caches under `data/`, so a re-run resumes rather than restarting.
   `AI` binding in wrangler.jsonc, ~$0.0006 a face) the first time a prospect
   needs it and kept in R2 under `roleplay-faces/` (`/api/roleplay/face/<key>`,
   seed from the key). No binding or a failed draw shows the initials.
+  **The mic waits for the producer to finish** (Frank, 2026-09-29: "fix the
+  mic cutting off"): it listens continuously and sends the turn after
+  `RP_PAUSE_MS` (2 s) of silence -- a tap on the mic sends at once -- never
+  at the browser's first final result, which cut people off mid-sentence.
+  When Chrome ends the session itself it restarts at once, keeping the words
+  and the turn's recording; a blocked mic stops for good.
 - **Every graded Role Play session is kept and can be read back** (Frank,
   2026-09-29: "a full history of role play sessions ... producers see their
   own"). Learning Center > **Session History**: a date range (7 / 30 / 90

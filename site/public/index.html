@@ -3688,12 +3688,15 @@ function rpUpdateMicUI(interim) {
   mic.disabled = rpBusy || rpSpeaking;
   mic.textContent = rpBusy ? "…"
     : rpSpeaking ? "🔊 Prospect talking…"
-    : rpListening ? (interim ? `● "${interim}"` : "● Listening… (tap to pause)")
+    : rpListening ? (interim ? `● "${interim}"` : "● Listening… (tap when done)")
     : rpHistory.length ? "🎙 Talk" : "🎙 Push to start";
 }
 
 function rpStopListening() {
-  if (rpRecognition) { try { rpRecognition.stop(); } catch (_) {} }
+  clearTimeout(rpPauseTimer); rpPauseTimer = null;
+  const rec = rpRecognition;
+  rpRecognition = null;
+  if (rec) { try { rec.stop(); } catch (_) {} }
   rpClipStop();            // a turn that never became text is not kept
   rpListening = false;
   rpUpdateMicUI();
@@ -3737,34 +3740,65 @@ function rpClipUpload(item, blobP) {
     .then(b => { if (b && b.key) item.audio = b.key; })).catch(() => {}));
 }
 
-function rpStartListening() {
+/* The mic waits for the producer to FINISH (Frank, 2026-09-29: "fix the mic
+   cutting off"). It used to send the turn at the browser's first final
+   result -- the first breath -- so a pause mid-sentence handed the prospect
+   half a sentence. Now it listens continuously, keeps every phrase, and
+   sends only after RP_PAUSE_MS of silence (any new words restart the
+   clock); tapping the mic sends at once. Chrome ends a continuous session
+   on its own now and then: it starts again at once, keeping what was
+   heard and the turn's recording (rpClipStart), and the pause clock carries
+   on. A blocked mic stops for good. */
+const RP_PAUSE_MS = 2000;
+let rpHeard = "";              // what the producer has said so far this turn
+let rpPauseTimer = null;
+function rpFinishTurn() {
+  clearTimeout(rpPauseTimer); rpPauseTimer = null;
+  const text = rpHeard.trim();
+  rpHeard = "";
+  const clip = text ? rpClipStop(true) : null;   // the turn's recording goes with it
+  rpStopListening();
+  if (text) rpSendTurn(text, clip);
+}
+function rpStartListening(keepHeard) {
   if (rpBusy || rpSpeaking || rpListening || !rpSpeechSupported()) return;
+  if (!keepHeard) rpHeard = "";
   const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
   const rec = new SR();
   rec.lang = rpRecLang();
   rec.interimResults = true;
-  rec.continuous = false;
+  rec.continuous = true;
+  let finals = "";            // this recognition session's finished phrases
+  const base = rpHeard;       // words kept from a session Chrome ended early
+  let fatal = false;
   rec.onresult = (e) => {
-    let finalText = "", interim = "";
-    for (let i = e.resultIndex; i < e.results.length; i++) {
+    let interim = "";
+    finals = "";
+    for (let i = 0; i < e.results.length; i++) {
       const r = e.results[i];
-      if (r.isFinal) finalText += r[0].transcript; else interim += r[0].transcript;
+      if (r.isFinal) finals += r[0].transcript + " "; else interim += r[0].transcript;
     }
-    if (finalText.trim()) {
-      const text = finalText.trim();
-      const clip = rpClipStop(true);
-      rpStopListening();
-      rpSendTurn(text, clip);
-    } else {
-      rpUpdateMicUI(interim.trim());
-    }
+    rpHeard = (base + " " + finals + interim).replace(/\s+/g, " ").trim();
+    rpUpdateMicUI(rpHeard);
+    clearTimeout(rpPauseTimer);
+    rpPauseTimer = setTimeout(rpFinishTurn, RP_PAUSE_MS);
   };
-  rec.onerror = () => { rpClipStop(); rpListening = false; rpUpdateMicUI(); };
-  rec.onend = () => { rpClipStop(); rpListening = false; rpUpdateMicUI(); };
+  rec.onerror = (e) => {
+    if (e && (e.error === "not-allowed" || e.error === "service-not-allowed" || e.error === "audio-capture")) fatal = true;
+  };
+  rec.onend = () => {
+    if (rpRecognition !== rec) return;
+    rpRecognition = null;
+    if (!rpListening) return;                        // stopped on purpose
+    rpListening = false;
+    if (fatal) { clearTimeout(rpPauseTimer); rpHeard = ""; rpClipStop(); rpUpdateMicUI(); return; }
+    rpStartListening(true);   // keep listening, keeping what was heard; the pause timer still sends it
+  };
   rpRecognition = rec;
   rpListening = true;
-  rpUpdateMicUI();
-  try { rec.start(); rpClipStart(); } catch (_) { rpListening = false; rpUpdateMicUI(); }
+  rpUpdateMicUI(rpHeard);
+  // A new turn starts its recording; a restart mid-turn keeps the one running.
+  try { rec.start(); if (!keepHeard) rpClipStart(); } catch (_) { rpListening = false; rpRecognition = null; rpUpdateMicUI(); }
 }
 
 // "Beta / testing" (Frank, 2026-09-24): practice runs by anyone trying the
@@ -4325,6 +4359,7 @@ async function rpSendTurn(text, clip) {
     const body = await r.json();
     if (r.ok && body.reply) {
       rpHistory.push({ role: "prospect", content: body.reply });
+      rpBusy = false;   // before she speaks: a reply that ends at once must still re-arm the mic
       speakProspect(body.reply, () => {
         if (view === "roleplay" && rpPersonaKey && !rpGrade) rpStartListening();
       });
@@ -4443,7 +4478,8 @@ function wireRoleplayPanel() {
   });
   wireVoiceFeedback();
   const mic = document.getElementById("rpMic");
-  if (mic) { mic.onclick = () => { rpListening ? rpStopListening() : rpStartListening(); }; rpUpdateMicUI(); }
+  // Tap while listening: done talking, send now (nothing said: just stop).
+  if (mic) { mic.onclick = () => { rpListening ? rpFinishTurn() : rpStartListening(); }; rpUpdateMicUI(); }
 }
 
 /* ---- Training tab: Apollo's flashcard decks (coaching/TRAINING.md) -------- */
