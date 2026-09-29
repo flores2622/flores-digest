@@ -32,6 +32,28 @@ import numpy as np
 import requests
 
 MODEL = "models/sherpa-onnx-whisper-base"
+
+# "deepgram" (the default, deepgram_stt.py: whole call, bilingual, speakers
+# separated; paid per minute) or "whisper" (local, free). Deepgram falls back
+# to Whisper on any failure, so it can never lose a transcript. Switched on
+# by Frank on 2026-09-29 after the 09-25 / 09-28 side-by-side
+# (compare_stt.py); TRANSCRIBE_ENGINE=whisper puts Whisper back.
+ENGINE = os.environ.get("TRANSCRIBE_ENGINE", "deepgram").lower()
+_WARNED = []
+
+
+def _deepgram():
+    """deepgram_stt, or None -- said once in the log -- when there is no key,
+    so a night that fell back to Whisper says so instead of passing for
+    Deepgram."""
+    import deepgram_stt
+    if deepgram_stt.available():
+        return deepgram_stt
+    if not _WARNED:
+        _WARNED.append(1)
+        print("  TRANSCRIBE_ENGINE=deepgram but DEEPGRAM_API_KEY is not set "
+              "-- transcribing with Whisper", flush=True)
+    return None
 AUDIO = "data/audio"
 RATE_LIMIT_MARKER = b"CMN-301"
 
@@ -125,7 +147,20 @@ MACHINE = re.compile(
     r"|check(ing)? my (voice ?)?messages?|send me a text"
     # Spanish screener / voicemail phrasings.
     r"|d[ée]je(se|nos|me)? un mensaje|deje un mensaje|un mensaje para"
-    r"|no est[aá] (disponible|en este momento)|le comunico",
+    r"|no est[aá] (disponible|en este momento)|le comunico"
+    # Sarahi Chin, 2026-09-28: "En este momento no me es posible contestar su
+    # llamada. Lo haré a la brevedad posible." Deepgram's speakers split the
+    # greeting from her message, which read as a two-party exchange; Whisper
+    # heard "next moment I will be able to contest the game". Lorena Gonzalez,
+    # 09-25: "Si dejas tu nombre y el motivo de tu llamada, revisaré si esta
+    # persona está disponible" is the Spanish screener.
+    r"|no (me )?es posible contestar|a la brevedad posible"
+    r"|motivo de (tu|su) llamada|si (esta|esa) persona est[aá] disponible"
+    # AI call screeners (Cloud AI, Sarahi Chin, 2026-09-28): "You've reached
+    # Cloud AI. Can I please get your name? ... the purpose of your call to
+    # Timothy". It asks and answers like a person, so it read as live.
+    r"|you'?ve reached|purpose of (your|the) call"
+    r"|asunto espec[ií]fico|(de )?la empresa de donde llama",
     re.I)
 
 # Ringback, hold music and empty captures are not conversations. Whisper also
@@ -327,7 +362,8 @@ def repetition_ratio(text):
     return words.count(top) / len(words)
 
 
-def transcribe_full(path, duration, seconds=30, language=None, offset=0):
+def transcribe_full(path, duration, seconds=30, language=None, offset=0,
+                    producer=None):
     """The WHOLE call in `seconds` windows, not just head and tail.
 
     transcribe_file deliberately reads only both ends, which is all the
@@ -338,6 +374,11 @@ def transcribe_full(path, duration, seconds=30, language=None, offset=0):
     """
     if not duration or duration <= 0:
         return None
+    dg = _deepgram() if ENGINE == "deepgram" else None
+    if dg:
+        t = dg.full(path, duration, offset=offset, producer=producer)
+        if t is not None:
+            return t or None
     out = []
     for start in range(int(offset), int(offset) + int(duration), seconds):
         t = one_window(path, start, seconds, language=language)
@@ -399,6 +440,13 @@ def transcribe_file(path, seconds=30, duration=None, offset=0):
     A window that comes back as Whisper's foreign-language placeholder is
     retried in Spanish, which is the only other language on this book.
     """
+    dg = _deepgram() if ENGINE == "deepgram" else None
+    if dg:
+        t = dg.head_tail(path, duration=duration, offset=offset,
+                                   seconds=seconds)
+        if t is not None:
+            return t
+
     def one(start):
         t = _window(path, start, seconds)
         if t and FOREIGN.search(t):

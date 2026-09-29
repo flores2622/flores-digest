@@ -129,6 +129,23 @@ def sync_down_day(day, log=print):
         if n:
             pulled.append(f"audio/*.mp3 (+{n})")
 
+    # Deepgram's reads, unbundled into data/deepgram/ -- never over one this
+    # container already has (see sync_up_day).
+    try:
+        body = cli.get_object(Bucket=bucket, Key=_key(day, f"deepgram_{day}.json"))["Body"].read()
+        dg_dir = ROOT / "data/deepgram"
+        dg_dir.mkdir(parents=True, exist_ok=True)
+        n = 0
+        for cid, v in json.loads(body).items():
+            f = dg_dir / f"{cid}.json"
+            if not f.exists():
+                f.write_text(json.dumps(v))
+                n += 1
+        if n:
+            pulled.append(f"deepgram (+{n})")
+    except Exception:
+        pass
+
     if pulled:
         log(f"  r2 cache: pulled {', '.join(pulled)}")
     return pulled
@@ -196,6 +213,24 @@ def sync_up_day(day, log=print):
             n += 1
         if n:
             pushed.append(f"audio/*.mp3 (+{n})")
+
+    # Deepgram's reads (data/deepgram/<call id>.json), bundled into one file
+    # per day. Each is a paid read (per audio minute) and every checkpoint is
+    # a fresh container, so without this a later checkpoint -- or the nightly
+    # run -- paid again for any recording an earlier one had already read.
+    if rc_path.exists():
+        dg = {}
+        for cid in ids:
+            f = ROOT / "data/deepgram" / f"{cid}.json"
+            if f.exists():
+                try:
+                    dg[cid] = json.loads(f.read_text())
+                except ValueError:
+                    pass
+        if dg:
+            cli.put_object(Bucket=bucket, Key=_key(day, f"deepgram_{day}.json"),
+                           Body=json.dumps(dg).encode(), ContentType="application/json")
+            pushed.append(f"deepgram ({len(dg)})")
 
     if pushed:
         log(f"  r2 cache: pushed {', '.join(pushed)}")

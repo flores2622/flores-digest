@@ -297,6 +297,13 @@ Commercial boards and saves the day to R2; it skips the sales-log sync and the
 AgencyZoom missed-call tasks along with the email. `--no-send` (hand rebuilds)
 still stops before anything is published.
 
+**The nightly run checks in** (`healthcheck.py`, Frank, 2026-09-29): with
+`HEALTHCHECK_URL` (a Healthchecks.io ping URL) in the cloud environment's
+variables, `daily.py` pings start, success ("sent" / "held") and failure
+(with the traceback). Only a bare nightly `daily.py` pings -- never
+`--day` or `--no-send`. The check's own schedule and grace time are what
+alert when the run never started or hung.
+
 A stall still means the log has not advanced in ~5 minutes, or repeated "rate
 limited" lines. Judge it on progress, not on elapsed time.
 
@@ -988,7 +995,7 @@ reached for once, e.g. 6836965 created 2025-08-03).
 
 ## Cost
 
-Transcription is local and free. **The Anthropic API reads in `call_summary.py`,
+Transcription is Deepgram, paid per audio minute (about $1-2 a day; below). **The Anthropic API reads in `call_summary.py`,
 `renewal_notes.py` and `service_notes.py` are the only paid steps** (plus
 `sendoff.py` and `assume_reread.py --backfill`, each run once for September) — roughly one call per live
 contact per day, plus one call per 25 renewal SR notes (each SR's note is read
@@ -996,6 +1003,49 @@ once and kept in `data/renewal_note_reads.json` and its R2 copy; only an edited
 note is read again -- never delete that cache casually). Changing
 the prompt means deleting `data/callsum_<day>.json`, which re-reads everything.
 Do not do that casually, and never in a loop while iterating on wording.
+
+**Every read's instructions are prompt-cached** (Frank, 2026-09-29):
+`call_summary._post`, which every Claude API read goes through, marks the
+system prompt for caching, so a coaching card's ~20,800-token METHODOLOGY is
+billed at a tenth on each read after the first within five minutes. The
+answers are the same. **The one-off re-reads go as a half-price Message
+Batch** by default -- `sendoff.py` / `assume_reread.py --backfill` and
+`rebuild_cards.py` (`--live` for one by one): the read loop runs once to
+record its requests (`call_summary.collect`), they go out as one batch
+(`run_batch`, usually minutes, at most 24 hours), then the loop runs for real
+and every identical request is answered from the batch; retries go live.
+Never the nightly run -- it cannot wait.
+
+**Reads run at the model's lowest thinking setting** (2026-09-28,
+`call_summary._NO_THINKING`): the code asks for thinking "disabled";
+claude-sonnet-5-5 refuses that (400), so `_post` switches to
+"between_tools" (0 thinking tokens) for the rest of the run. The old
+fallback dropped the setting, the model thought inside the answer budget,
+and long coaching cards came back cut off. Frank did not choose this on
+2026-09-29 -- he was told reads ran with thinking on, which was only true of
+the branch he was looking at; this had already landed on main.
+
+**Deepgram is ON** (Frank, 2026-09-29: Whisper base mishears too much and
+cannot separate speakers; switched on the same day after the 09-25 / 09-28
+side-by-side). `deepgram_stt.py` (Nova-3, language=multi, diarized, keyed on
+`DEEPGRAM_API_KEY` in the cloud environment) transcribes every recording
+unless `TRANSCRIBE_ENGINE=whisper`, and falls back to Whisper on any failure
+(a missing key says so once in the log). Full transcripts are one line per
+turn. The producer's turns read "<First name> (producer):", found from how
+they introduce themselves ("This is Crystal with Farmers", "Le habla Mike, de
+la aseguranza", "Soy Sarahi"; `deepgram_stt.producer_speaker`, own name
+only -- a caller saying "Hi, Crystal" does not count); everyone else, and
+every turn when no one introduces themselves or two speakers tie, stays
+"Speaker N:" -- never guessed. On 09-25 / 09-28 it named the producer on
+50 of 57 calls with two voices, every one checked by hand. It is paid per audio minute (~226
+min on 2026-09-28), cached per recording under `data/deepgram/` and carried
+between containers in R2 as `cache/<day>/deepgram_<day>.json` (`r2_cache`), so a
+recording is paid for once however many checkpoints touch it. A leg with
+no speech at all is `[silence]`, read as no answer like Whisper's "[Music]",
+never as a pickup that said nothing. **Past days stay as they went out**: a
+rebuild reuses the day's saved transcripts. `python3 compare_stt.py <day>
+...` still writes `out/stt_compare_<day>.md` (verdicts both ways and every
+live call's transcript both ways) for any day with saved recordings.
 
 `python3 verify_finalize.py` reconciles all six headline figures against source
 data and costs nothing. Run it after touching `daily.py`, `day_calls.py` or

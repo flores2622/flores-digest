@@ -12,6 +12,8 @@ a card (CLAUDE.md, Cost). This is the deliberate exception, day by day:
     python3 rebuild_cards.py 2026-09-22 --publish --reuse  # publish a test run's reads
     python3 rebuild_cards.py 2026-09-01 2026-09-25 --publish --repair
         # re-read only follow-ups missing their scorecard, and failed reads
+    add --live to read one by one at full price instead of one half-price
+    Message Batch per day (usually minutes, at most 24 hours)
 
 For each day:
   1. the day's own inputs come back from R2's cache/<day>/ (call rows,
@@ -173,9 +175,14 @@ def _refresh_moves(day, log):
     log(f"  {day}: stage moves re-read ({changed} row(s) changed)")
 
 
-def rebuild(day, publish=False, reuse=False, repair=False, log=print):
+def rebuild(day, publish=False, reuse=False, repair=False, log=print, batch=True):
     """`reuse` publishes the reads a previous run of this script left in
-    data/coaching_cards_<day>.json instead of paying for them again."""
+    data/coaching_cards_<day>.json instead of paying for them again.
+
+    `batch` (the default; --live turns it off): the day's reads go out first
+    as one half-price Message Batch (call_summary.run_batch) and the build
+    below takes its answers from it -- same requests, same reads."""
+    import call_summary
     import coaching_cards
     import publish_board
     cli, bucket = publish_board._client()
@@ -206,6 +213,9 @@ def rebuild(day, publish=False, reuse=False, repair=False, log=print):
             _drop_bad_reads(old_cache_path, log, day)
     elif old_cache_path.exists():
         old_cache_path.unlink()              # read every call again
+    if batch:
+        call_summary.run_batch(call_summary.collect(
+            lambda: coaching_cards.build(day, log=lambda m: None)), log=log)
     cards = coaching_cards.build(day, log=log)
     # A read that failed is retried once (build only re-reads calls it has no
     # read for); one that fails again keeps its old card.
@@ -285,7 +295,8 @@ def main(argv):
         token = page.get("NextContinuationToken")
     for day in sorted(d for d in days if start <= d <= end and (only is None or d in only)):
         try:
-            rebuild(day, publish=publish, reuse=reuse, repair=repair, log=lambda m: print(m, flush=True))
+            rebuild(day, publish=publish, reuse=reuse, repair=repair, log=lambda m: print(m, flush=True),
+                    batch="--live" not in argv)
         except Exception as e:
             print(f"  {day}: FAILED ({type(e).__name__}: {e}) -- left as it was", flush=True)
 

@@ -1034,7 +1034,25 @@ def main():
     ap.add_argument("--audience", choices=["ops", "staff", "both"], default="both")
     ap.add_argument("--no-send", action="store_true")
     a = ap.parse_args()
+    # Only the nightly run checks in (healthcheck.py): a hand rebuild of a
+    # past day, or a --no-send build, must not read as tonight's run.
+    nightly = not a.day and not a.no_send
+    import healthcheck
+    if nightly:
+        healthcheck.ping("start")
+    try:
+        _run(a)
+    except BaseException:
+        if nightly:
+            import traceback
+            healthcheck.ping("fail", traceback.format_exc())
+        raise
+    if nightly:
+        healthcheck.ping("", "held -- boards built, no email" if (ROOT / "SEND_HOLD").exists()
+                         else "sent")
 
+
+def _run(a):
     # THE REPORTING DAY IS THE DAY THE EMAILS ARE SENT (Frank, 2026-08-14).
     # Both go out at 6:30 PM Arizona and report the day that is ending. That is
     # the whole reason the send sits at 6:30 and the reason utilization comes

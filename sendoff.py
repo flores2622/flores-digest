@@ -54,7 +54,14 @@ def read(card, model, rules=None):
     return cc._sendoff(d.get("sendoff"))
 
 
-def backfill(start, end=None, force=False, log=print):
+def backfill(start, end=None, force=False, log=print, batch=True, dry=False):
+    """batch (the default): every read goes out first as one half-price
+    Message Batch (call_summary.run_batch), then the loop runs for real and
+    takes its answers from it. --live reads one by one at full price."""
+    if batch and not dry:
+        CS.run_batch(CS.collect(lambda: backfill(start, end, force, log=lambda m: None,
+                                                 batch=False, dry=True)), log=log)
+
     import publish_board
     cli, bucket = publish_board._client()
     end = end or (dt.date.today() - dt.timedelta(days=1)).isoformat()
@@ -79,6 +86,8 @@ def backfill(start, end=None, force=False, log=print):
                 n += 1
             except Exception as e:
                 log(f"  {day} {c.get('who')} / {c.get('lead')}: {type(e).__name__}: {str(e)[:120]}")
+        if dry:
+            continue
         bk = f"backups/{stamp}-sendoff-backfill/{key}"
         try:
             cli.head_object(Bucket=bucket, Key=bk)
@@ -104,6 +113,7 @@ def backfill(start, end=None, force=False, log=print):
 if __name__ == "__main__":
     if sys.argv[1:2] == ["--backfill"]:
         args = [a for a in sys.argv[2:] if not a.startswith("--")]
-        backfill(args[0], args[1] if len(args) > 1 else None, force="--force" in sys.argv)
+        backfill(args[0], args[1] if len(args) > 1 else None, force="--force" in sys.argv,
+                 batch="--live" not in sys.argv)
     else:
         print(_rules())

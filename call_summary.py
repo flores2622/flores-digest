@@ -276,24 +276,164 @@ def upgrade(d):
 _NO_THINKING = {"type": "disabled"}
 
 
-def _post(body):
-    global _NO_THINKING
+def _thinking_off(body):
+    """A "disabled" request rewritten to the setting this model accepts."""
     if (body.get("thinking") or {}).get("type") == "disabled" and _NO_THINKING["type"] != "disabled":
         body = dict(body, thinking=dict(_NO_THINKING))
+    return body
 
-    def send(b):
-        return requests.post(API_URL, json=b, timeout=TIMEOUT, headers={
-            "x-api-key": _key(), "anthropic-version": API_VERSION,
-            "content-type": "application/json"})
-    r = send(body)
+
+def _headers():
+    return {"x-api-key": _key(), "anthropic-version": API_VERSION,
+            "content-type": "application/json"}
+
+
+def _with_cache(body):
+    """The system prompt marked for prompt caching (Frank, 2026-09-29).
+
+    Every read of a kind sends the same long instructions -- METHODOLOGY.md
+    alone is ~63 KB on every coaching card -- and only the call changes. A
+    cached prefix is billed at a tenth of the input price on the next read
+    within five minutes (the first write costs 1.25x), and the nightly run
+    reads one call after another. The answer is identical either way; a
+    prompt too short to cache is simply not cached.
+    """
+    sysp = body.get("system")
+    if isinstance(sysp, str) and sysp:
+        body = dict(body, system=[{"type": "text", "text": sysp,
+                                   "cache_control": {"type": "ephemeral"}}])
+    return body
+
+
+# --- Message Batches (Frank, 2026-09-29) -----------------------------------
+# Half price, answered within 24 hours (usually well inside one). For the
+# one-off re-reads only -- sendoff.py / assume_reread.py --backfill and
+# rebuild_cards.py -- never the nightly run, which cannot wait.
+#
+# How a script uses it without changing how it reads: run the script's own
+# read loop once inside collect(), where _post records each request and
+# raises Deferred instead of sending it; send what was recorded with
+# run_batch(); then run the loop for real. Every request identical to a
+# batched one is answered from the batch; anything else (a retry with a
+# bigger budget, a request built differently the second time) goes live at
+# full price as before. So a batch can only make a read cheaper, never
+# different.
+BATCH_URL = "https://api.anthropic.com/v1/messages/batches"
+
+
+class Deferred(Exception):
+    """Raised by _post inside collect(): recorded for the batch, not sent."""
+
+
+_collecting = None      # {id: body} while collect() runs
+_answered = {}          # id -> (ok, response or error) from run_batch()
+
+
+def _id(body):
+    import hashlib
+    return hashlib.sha256(json.dumps(body, sort_keys=True).encode()).hexdigest()[:48]
+
+
+def _learn_thinking(model):
+    """While collecting, find out once whether this model refuses thinking
+    "disabled" (a one-token request; a refusal is not billed), so the
+    recorded request is the one the live path would really send."""
+    global _NO_THINKING
+    if _NO_THINKING["type"] != "disabled":
+        return
+    r = requests.post(API_URL, timeout=TIMEOUT, headers=_headers(), json={
+        "model": model, "max_tokens": 1, "thinking": {"type": "disabled"},
+        "messages": [{"role": "user", "content": "."}]})
+    if r.status_code == 400 and "thinking.type.disabled" in r.text:
+        _NO_THINKING = {"type": "between_tools"}
+
+
+def _live(body):
+    global _NO_THINKING
+    r = requests.post(API_URL, json=body, timeout=TIMEOUT, headers=_headers())
     if (r.status_code == 400 and (body.get("thinking") or {}).get("type") == "disabled"
             and "thinking.type.disabled" in r.text):
         _NO_THINKING = {"type": "between_tools"}
         body = dict(body, thinking=dict(_NO_THINKING))
-        r = send(body)
+        r = requests.post(API_URL, json=body, timeout=TIMEOUT, headers=_headers())
     if r.status_code >= 400:
         raise RuntimeError(f"{r.status_code} {r.text[:300]}")
     return r.json()
+
+
+def _post(body):
+    if _collecting is not None and (body.get("thinking") or {}).get("type") == "disabled":
+        _learn_thinking(body.get("model"))
+    body = _with_cache(_thinking_off(body))
+    rid = _id(body)
+    if rid in _answered:
+        ok, got = _answered.pop(rid)
+        if ok:
+            return got
+        raise RuntimeError(f"400 {json.dumps(got)[:300]}")
+    if _collecting is not None:
+        _collecting[rid] = body
+        raise Deferred(rid)
+    return _live(body)
+
+
+def collect(fn):
+    """Run fn() recording every request _post would send; return them."""
+    global _collecting
+    _collecting = {}
+    try:
+        fn()
+    except Deferred:
+        pass            # fn stopped at its first request; what it recorded stands
+    finally:
+        got, _collecting = _collecting, None
+    return got
+
+
+def run_batch(bodies, log=print, poll=30):
+    """Send `bodies` ({id: body}) as one Message Batch, wait, and hold the
+    answers for _post. Returns how many came back answered. Never raises:
+    a batch that fails leaves every read to go live, as before."""
+    import time
+    if not bodies:
+        return 0
+    try:
+        reqs = [{"custom_id": k, "params": v} for k, v in bodies.items()]
+        r = requests.post(BATCH_URL, json={"requests": reqs}, timeout=300,
+                          headers=_headers())
+        if r.status_code >= 400:
+            raise RuntimeError(f"{r.status_code} {r.text[:300]}")
+        b = r.json()
+        log(f"  batch {b['id']}: {len(reqs)} reads sent at half price -- waiting "
+            f"(usually under an hour, at most 24)")
+        t0, polls = time.time(), 0
+        while b.get("processing_status") != "ended":
+            time.sleep(poll)
+            polls += 1
+            b = requests.get(f"{BATCH_URL}/{b['id']}", timeout=60,
+                             headers=_headers()).json()
+            if polls % 20 == 0:
+                c = b.get("request_counts") or {}
+                log(f"    {c.get('succeeded', 0)} done, {c.get('processing', 0)} "
+                    f"to go ({int(time.time() - t0) // 60} min)")
+        res = requests.get(b["results_url"], timeout=300, headers=_headers())
+        n = 0
+        for line in res.text.splitlines():
+            if not line.strip():
+                continue
+            row = json.loads(line)
+            out = row.get("result") or {}
+            if out.get("type") == "succeeded":
+                _answered[row["custom_id"]] = (True, out["message"])
+                n += 1
+            elif out.get("type") == "errored":
+                _answered[row["custom_id"]] = (False, out.get("error"))
+        log(f"  batch {b['id']}: {n} of {len(reqs)} answered "
+            f"({int(time.time() - t0) // 60} min); the rest go live")
+        return n
+    except Exception as e:
+        log(f"  batch failed ({type(e).__name__}: {str(e)[:200]}) -- reading live")
+        return 0
 
 
 def _extract(resp):
@@ -511,7 +651,8 @@ def build(day, log=print):
             try:
                 parts = []
                 for path, dur, cls, direction, off, partial, _start in want:
-                    t = T.transcribe_full(path, dur, offset=off) or ""
+                    t = T.transcribe_full(path, dur, offset=off,
+                                          producer=p_) or ""
                     if not t:
                         continue
                     # Always tagged, even a lone call: whether the prospect
