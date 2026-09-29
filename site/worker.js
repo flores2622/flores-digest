@@ -142,6 +142,9 @@ export default {
         if (parts[2] === "session" && request.method === "GET") {
           return roleplaySession(request, env, url.searchParams.get("key"));
         }
+        if (parts[2] === "face" && parts[3] && parts.length === 4 && request.method === "GET") {
+          return roleplayFace(env, parts[3]);
+        }
         if (parts[2] === "speak" && request.method === "GET") {
           return roleplaySpeak(env, url, ctx);
         }
@@ -999,6 +1002,47 @@ function languageInstruction(language) {
  * <audio> element and start playing as Deepgram streams it back -- the
  * Access cookie rides along like any same-origin request. With no
  * DEEPGRAM_API_KEY secret the board falls back to the browser's voice. */
+/** GET /api/roleplay/face/<sex>-<band>-<look>-<n> -> image/jpeg
+ *
+ * The prospect's headshot (Frank, 2026-09-29: "headshots of AI generated
+ * faces with glow when they are speaking"). A fixed library -- 2 sexes x 3
+ * age bands x 4 looks x 4 variants, at most 96 faces -- each drawn ONCE
+ * with Workers AI (FLUX.1 [schnell], about $0.0006 a face) the first time
+ * a prospect needs it, then kept in R2 under roleplay-faces/ and served
+ * from there forever. The seed comes from the key, so a face lost from R2
+ * is drawn the same again. No AI binding, or a failed draw, is a 503 and
+ * the board shows the prospect's initials instead. */
+const RP_FACE_AGE = { young: "24-year-old", adult: "40-year-old", mature: "62-year-old" };
+const RP_FACE_LOOK = { latino: "Hispanic", white: "white", black: "Black", asian: "Asian American" };
+const RP_FACE_DRESS = [
+  "wearing a casual button-up shirt", "wearing a plain t-shirt", "wearing a polo shirt", "wearing a sweater",
+];
+async function roleplayFace(env, key) {
+  const m = /^(f|m)-(young|adult|mature)-(latino|white|black|asian)-([0-3])$/.exec(key);
+  if (!m) return json({ error: "unknown face" }, 400);
+  const r2key = `roleplay-faces/${key}.jpg`;
+  const headers = { "content-type": "image/jpeg", "cache-control": "private, max-age=604800" };
+  const saved = await env.BOARD.get(r2key);
+  if (saved) return new Response(saved.body, { headers });
+  if (!env.AI) return json({ error: "no Workers AI binding" }, 503);
+  const [, sex, band, look, n] = m;
+  const who = sex === "f" ? "woman" : "man";
+  const prompt = `Realistic head-and-shoulders portrait photo of an ordinary ${RP_FACE_AGE[band]} ${RP_FACE_LOOK[look]} ${who} `
+    + `from Arizona, ${RP_FACE_DRESS[+n]}, relaxed natural expression, looking at the camera, soft daylight, `
+    + `plain softly blurred background, sharp focus on the face, natural skin texture. No text, no watermark.`;
+  let seed = 7;
+  for (const c of key) seed = (seed * 31 + c.charCodeAt(0)) % 2147483647;
+  let img;
+  try {
+    const out = await env.AI.run("@cf/black-forest-labs/flux-1-schnell", { prompt, steps: 6, seed });
+    img = Uint8Array.from(atob(out.image), (ch) => ch.charCodeAt(0));
+  } catch (e) {
+    return json({ error: "face could not be drawn", detail: String(e).slice(0, 200) }, 503);
+  }
+  await env.BOARD.put(r2key, img, { httpMetadata: { contentType: "image/jpeg" } });
+  return new Response(img, { headers });
+}
+
 async function roleplaySpeak(env, url, ctx) {
   if (!env.DEEPGRAM_API_KEY) return json({ error: "DEEPGRAM_API_KEY is not configured on this Worker" }, 503);
   const voice = url.searchParams.get("voice") || "";

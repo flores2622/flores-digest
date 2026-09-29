@@ -165,14 +165,23 @@ Everything caches under `data/`, so a re-run resumes rather than restarting.
   grades in English whatever the call's language. **Producers rate the voice
   after each graded session** (stars, again yes / no, a comment), saved on
   the session and in `roleplay-voices/ratings.json`; the ratings table on
-  the Role Play tab is Frank's alone (`ROLEPLAY_VOICE_VIEWERS`). **Women
-  prospects have a 3D face** (Frank, 2026-09-29: "add the face to role
-  play"): TalkingHead with `faces/mpfb.glb` (CC0 -- the other sample avatars
-  are non-commercial only), lip-synced to the Deepgram voice, her mood set by
-  the difficulty. It is the only face, a woman's, so **men prospects have
-  none** until one is made. No face (no WebGL, library unreachable, Deepgram
-  off) means the call goes on voice-only. `site/public/face-test.html` is the
-  test page for it, with the delay the face adds shown under each line.
+  the Role Play tab is Frank's alone (`ROLEPLAY_VOICE_VIEWERS`). **Every
+  prospect has an AI-drawn headshot that glows green while they speak**
+  (Frank, 2026-09-29: "remove the talking face, its too slow and cuts me
+  off. lets just do headshots of AI generated faces with glow when they are
+  speaking" -- the TalkingHead 3D face, its test page and `faces/` are gone;
+  do not bring them back). A fixed library: sex x age band x look (Latino
+  for a Hispanic surname, else white / Black / Asian American) x 4 variants,
+  at most 96 faces, each drawn ONCE by Workers AI (FLUX.1 [schnell], the
+  `AI` binding in wrangler.jsonc, ~$0.0006 a face) the first time a prospect
+  needs it and kept in R2 under `roleplay-faces/` (`/api/roleplay/face/<key>`,
+  seed from the key). No binding or a failed draw shows the initials.
+  **The mic waits for the producer to finish** (Frank, 2026-09-29: "fix the
+  mic cutting off"): it listens continuously and sends the turn after
+  `RP_PAUSE_MS` (2 s) of silence -- a tap on the mic sends at once -- never
+  at the browser's first final result, which cut people off mid-sentence.
+  When Chrome ends the session itself it restarts at once, keeping the words
+  and the turn's recording; a blocked mic stops for good.
 - **Every graded Role Play session is kept and can be read back** (Frank,
   2026-09-29: "a full history of role play sessions ... producers see their
   own"). Learning Center > **Session History**: a date range (7 / 30 / 90

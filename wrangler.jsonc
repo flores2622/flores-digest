@@ -17,6 +17,9 @@
   // 5:59 PM Arizona (UTC-7, no DST) on weekdays -- 15:00-23:59 UTC Mon-Fri
   // plus 00:00-00:59 UTC Tue-Sat. Two entries of the account's cron quota.
   "triggers": { "crons": ["* 15-23 * * 1-5", "* 0 * * 2-6"] },
+  // Workers AI, for Role Play's prospect headshots (site/worker.js
+  // roleplayFace; Frank, 2026-09-29). Each face is drawn once and kept in R2.
+  "ai": { "binding": "AI" },
   "r2_buckets": [
     // Same bucket publish_board.py writes to over the S3 API -- see that
     // file for why the write side uses boto3 + an R2 API token instead of a

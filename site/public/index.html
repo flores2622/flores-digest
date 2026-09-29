@@ -701,12 +701,21 @@ details.sc .scb { padding: 0 12px 12px; }
 .rpmic { border: 1px solid var(--border-strong); border-radius: 6px; background: var(--surface); color: var(--text-primary); font-size: 13px; padding: 8px 14px; cursor: pointer; white-space: nowrap; }
 .rpmic.listening { background: var(--bad); color: #fff; border-color: var(--bad); animation: rppulse 1.1s ease-in-out infinite; }
 @keyframes rppulse { 0%,100% { opacity: 1; } 50% { opacity: .6; } }
-.rpcall { display: flex; gap: 14px; align-items: flex-start; flex-wrap: wrap; }
+.rpcall { display: flex; gap: 16px; align-items: flex-start; flex-wrap: wrap; }
 .rpcall .rpchat { flex: 1 1 360px; }
-#rpFaceSlot { flex: 0 0 260px; max-width: 100%; }
-.rpface { width: 100%; aspect-ratio: 1 / 1; border-radius: 10px; overflow: hidden; position: relative;
-  background: linear-gradient(#dfe6ee, #c9d3de); border: 1px solid var(--border-strong); }
-.rpface-msg { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; font-size: 12.5px; color: #333; }
+.rphead { flex: 0 0 auto; display: flex; flex-direction: column; align-items: center; gap: 8px; width: 170px; }
+.rphead-name { font-size: 12.5px; font-weight: 600; text-align: center; }
+.rpshot { width: 150px; height: 150px; border-radius: 50%; position: relative; overflow: hidden; flex: 0 0 auto;
+  background: var(--surface); border: 3px solid var(--border-strong); transition: border-color .2s, box-shadow .2s; }
+.rpshot .ini { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
+  font-size: 40px; font-weight: 700; color: var(--text-muted); }
+.rpshot img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+.rpshot.sm { width: 64px; height: 64px; border-width: 2px; float: right; margin: 0 0 6px 10px; }
+.rpshot.sm .ini { font-size: 20px; }
+/* Speaking: the same green glow as a live figure on the board. */
+.rpshot.speaking { border-color: var(--good); animation: rpspeak 1.2s ease-in-out infinite; }
+@keyframes rpspeak { 0%,100% { box-shadow: 0 0 0 0 rgba(31,157,85,.55); } 50% { box-shadow: 0 0 18px 6px rgba(31,157,85,.55); } }
+@media (max-width: 640px) { .rphead { width: 100%; flex-direction: row; justify-content: center; } .rpshot { width: 96px; height: 96px; } }
 .rpml.on { border-color: var(--s1); box-shadow: 0 0 0 1px var(--s1) inset; }
 .rpstar { background: none; border: none; font-size: 24px; line-height: 1; padding: 0 2px; cursor: pointer; color: var(--text-muted); }
 .rpstar.on { color: #e8a317; }
@@ -737,16 +746,6 @@ td.rdrill-cell.on { box-shadow: inset 0 -2px 0 var(--s1); color: inherit; font-w
 tr.rdrill-row:hover td { background: var(--surface-2, rgba(127,127,127,.08)); }
 tr.rdrill-row.on td { box-shadow: inset 0 -2px 0 var(--s1); }
 </style>
-<!-- Role Play's 3D face (TalkingHead, MIT, pinned to the commit checked
-     2026-09-29 -- the published 1.7.0 package lacks the Portuguese lip-sync
-     and the compressed-face support). Loaded only when a call needs it. -->
-<script type="importmap">
-{ "imports": {
-  "three": "https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.module.js/+esm",
-  "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.180.0/examples/jsm/",
-  "talkinghead": "https://cdn.jsdelivr.net/gh/met4citizen/TalkingHead@b3e277b3b46f88e557bf28a2c5612a5b04e075c3/modules/talkinghead.mjs"
-} }
-</script>
 </head>
 <body>
 <div class="top">
@@ -3539,7 +3538,7 @@ function rpMakeProspect(groupKey) {
   const lang = rpEnglishOnly() ? "en" : rpPick(["en", "es", "mix"]);
   const last = lang === "en" ? rpPick(RP_LAST) : rpPick([...RP_HISPANIC_LAST]);
   const p = { name: `${first} ${last}`, sex, age, occupation: job, family: rpFamily(age),
-    lang, voice: rpPickVoice(lang, sex, age) };
+    lang, voice: rpPickVoice(lang, sex, age), face: rpFaceKey(sex, age, last) };
   p.text = `${p.name}, ${p.age}, ${/^([aeiou]|hvac)/i.test(p.occupation) ? "an" : "a"} ${p.occupation}; ${p.family}.`;
   return p;
 }
@@ -3607,8 +3606,6 @@ let rpAudio = null;
 let rpDeepgramOff = false;
 const rpProspectNow = () => (rpLeadSource && rpLeadSource.prospect) || {};
 function rpStopSpeaking() {
-  rpFaceToken++;
-  if (rpFace) { try { rpFace.stopSpeaking(); } catch (_) {} }
   if (rpAudio) { try { rpAudio.onended = rpAudio.onerror = null; rpAudio.pause(); } catch (_) {} rpAudio = null; }
   if ("speechSynthesis" in window) window.speechSynthesis.cancel();
   rpSpeaking = false;
@@ -3620,15 +3617,6 @@ function speakProspect(text, onDone) {
   const pr = rpProspectNow();
   rpSpeaking = true;
   rpUpdateMicUI();
-  if (pr.voice && !rpDeepgramOff && rpFace && rpFaceFor(pr) && document.getElementById("rpFaceSlot")) {
-    const token = rpFaceToken;
-    rpSpeakFace(text, pr, done, token).catch(e => {
-      if (token !== rpFaceToken || finished) return;
-      if (e && e.status === 503) { rpDeepgramOff = true; speakBrowser(text, pr.lang, done); }
-      else speakAudioEl(text, pr, done);
-    });
-    return;
-  }
   if (pr.voice && !rpDeepgramOff) { speakAudioEl(text, pr, done); return; }
   speakBrowser(text, pr.lang, done);
 }
@@ -3650,83 +3638,31 @@ function speakAudioEl(text, pr, done) {
   }
 }
 
-/* The prospect's face (Frank, 2026-09-29: "add the face to role play").
-   One 3D face so far -- TalkingHead's MPFB avatar (faces/mpfb.glb, CC0),
-   a woman -- so only a woman prospect gets it; a man talks without one
-   until there is a face for him. Loaded when her call starts (the files
-   are fetched ahead on the debrief), kept in one element that every
-   re-render of the call screen moves back into #rpFaceSlot, and stopped
-   while off screen. Her mood follows the difficulty. If it cannot load
-   (no WebGL, the library unreachable), the call goes on voice-only. */
-const RP_FACE_URL = "./faces/mpfb.glb";
-const rpFaceFor = pr => pr.sex === "f";
-let rpFace = null;         // the TalkingHead, once loaded
-let rpFaceEl = null;       // its element, moved between renders
-let rpFaceFailed = false;
-let rpFaceToken = 0;       // bumped by rpStopSpeaking, so a reply still downloading never plays late
-let rpFacePrefetched = false;
-const rpFaceMood = () => ({ easy: "happy", medium: "neutral", hard: "angry" })[rpPersonaKey] || "neutral";
-function rpPrefetchFace() {
-  if (rpFacePrefetched || rpFaceFailed || !rpFaceFor(rpProspectNow())) return;
-  rpFacePrefetched = true;
-  import("talkinghead").catch(() => {});
-  fetch(RP_FACE_URL).catch(() => {});
+/* The prospect's headshot (Frank, 2026-09-29: "lets just do headshots of AI
+   generated faces with glow when they are speaking" -- replacing the 3D
+   face, which was too slow). Each prospect gets one of a fixed library of
+   faces -- sex, age band, look, and 4 variants of each -- that the Worker
+   draws once with Workers AI and keeps in R2 (/api/roleplay/face/<key>), so
+   every face after the first costs nothing and loads at once. A Hispanic
+   surname gets a Latino face; anyone else a mix. The circle glows green
+   while the prospect is speaking; with no picture, their initials. */
+const RP_FACE_LOOKS = ["white", "white", "white", "black", "asian"];
+function rpFaceKey(sex, age, last) {
+  const band = age < 30 ? "young" : age >= 55 ? "mature" : "adult";
+  const look = RP_HISPANIC_LAST.has(last) ? "latino" : rpPick(RP_FACE_LOOKS);
+  return `${sex}-${band}-${look}-${rpInt(0, 3)}`;
 }
-function rpPlaceFace() {
-  const slot = document.getElementById("rpFaceSlot");
-  if (!slot) { if (rpFace) rpFace.stop(); return; }
-  if (!rpFaceEl) {
-    rpFaceEl = document.createElement("div");
-    rpFaceEl.className = "rpface";
-    rpFaceEl.innerHTML = '<div class="rpface-msg">Connecting…</div>';
-    slot.appendChild(rpFaceEl);
-    const el = rpFaceEl;
-    import("talkinghead").then(async ({ TalkingHead }) => {
-      const head = new TalkingHead(el, { ttsEndpoint: null, lipsyncModules: ["en", "pt_br"], cameraView: "head", modelFPS: 30 });
-      await head.showAvatar({ url: RP_FACE_URL, body: "F", avatarMood: rpFaceMood(), lipsyncLang: "en" });
-      const msg = el.querySelector(".rpface-msg");
-      if (msg) msg.remove();
-      rpFace = head;
-      rpPlaceFace();
-    }).catch(() => {
-      rpFaceFailed = true; el.remove(); rpFaceEl = null;
-      const s = document.getElementById("rpFaceSlot");
-      if (s) s.remove();
-    });
-    return;
-  }
-  if (rpFaceEl.parentNode !== slot) slot.appendChild(rpFaceEl);
-  if (rpFace) {
-    rpFace.start();
-    try { rpFace.setMood(rpFaceMood()); } catch (_) {}
-    if (rpFace.audioCtx && rpFace.audioCtx.state === "suspended") rpFace.audioCtx.resume().catch(() => {});
-  }
+const rpFaceUrl = key => `/api/roleplay/face/${key}`;
+function rpShotHtml(pr, small) {
+  if (!pr || !pr.name) return "";
+  const ini = pr.name.split(" ").map(w => w[0]).join("").slice(0, 2);
+  return `<div class="rpshot${small ? " sm" : ""}${!small && rpSpeaking ? " speaking" : ""}"${small ? "" : ' id="rpShot"'}>
+    <div class="ini">${ini}</div>
+    ${pr.face ? `<img src="${rpFaceUrl(pr.face)}" alt="" onerror="this.remove()">` : ""}</div>`;
 }
-/* Deepgram's audio carries no word timings, so the words are spread over
-   the clip by their length and TalkingHead shapes the mouth inside each
-   word. Spanish and mixed use its Brazilian Portuguese lip-sync (there is
-   no Spanish one; the spelling rules are close). Waits for the whole clip,
-   which the plain voice does not -- the extra wait the face test page
-   measures. */
-async function rpSpeakFace(text, pr, done, token) {
-  const r = await fetch(`/api/roleplay/speak?voice=${encodeURIComponent(pr.voice)}&text=${encodeURIComponent(text.slice(0, 2000))}`, { cache: "no-store" });
-  if (!r.ok) { const e = new Error(`speak ${r.status}`); e.status = r.status; throw e; }
-  const buf = await r.arrayBuffer();
-  if (token !== rpFaceToken) return;
-  const ctx = rpFace.audioCtx;
-  if (ctx.state === "suspended") await ctx.resume();
-  const audio = await ctx.decodeAudioData(buf);
-  if (token !== rpFaceToken) return;
-  const words = text.split(/\s+/).filter(Boolean);
-  const lead = 120, tail = 150;   // Deepgram's short silence at each end, roughly
-  const span = Math.max(audio.duration * 1000 - lead - tail, words.length * 80);
-  const weight = words.map(w => w.replace(/[^\p{L}\p{N}]/gu, "").length + 1);
-  const total = weight.reduce((a, b) => a + b, 0);
-  const wtimes = [], wdurations = [];
-  let at = lead;
-  for (const w of weight) { const d = span * w / total; wtimes.push(at); wdurations.push(d); at += d; }
-  rpFace.speakAudio({ audio, words, wtimes, wdurations }, { lipsyncLang: pr.lang === "en" ? "en" : "pt_br", isRaw: true });
-  rpFace.speakMarker(() => { if (token === rpFaceToken) done(); });
+function rpUpdateShotGlow() {
+  const el = document.getElementById("rpShot");
+  if (el) el.classList.toggle("speaking", rpSpeaking);
 }
 function speakBrowser(text, lang, done) {
   if (!("speechSynthesis" in window)) { done(); return; }
@@ -3745,18 +3681,22 @@ let rpMicLang = "en-US";
 const rpRecLang = () => rpProspectNow().lang === "es" ? "es-MX" : rpProspectNow().lang === "mix" ? rpMicLang : "en-US";
 
 function rpUpdateMicUI(interim) {
+  rpUpdateShotGlow();
   const mic = document.getElementById("rpMic");
   if (!mic) return;
   mic.classList.toggle("listening", rpListening);
   mic.disabled = rpBusy || rpSpeaking;
   mic.textContent = rpBusy ? "…"
     : rpSpeaking ? "🔊 Prospect talking…"
-    : rpListening ? (interim ? `● "${interim}"` : "● Listening… (tap to pause)")
+    : rpListening ? (interim ? `● "${interim}"` : "● Listening… (tap when done)")
     : rpHistory.length ? "🎙 Talk" : "🎙 Push to start";
 }
 
 function rpStopListening() {
-  if (rpRecognition) { try { rpRecognition.stop(); } catch (_) {} }
+  clearTimeout(rpPauseTimer); rpPauseTimer = null;
+  const rec = rpRecognition;
+  rpRecognition = null;
+  if (rec) { try { rec.stop(); } catch (_) {} }
   rpClipStop();            // a turn that never became text is not kept
   rpListening = false;
   rpUpdateMicUI();
@@ -3800,34 +3740,65 @@ function rpClipUpload(item, blobP) {
     .then(b => { if (b && b.key) item.audio = b.key; })).catch(() => {}));
 }
 
-function rpStartListening() {
+/* The mic waits for the producer to FINISH (Frank, 2026-09-29: "fix the mic
+   cutting off"). It used to send the turn at the browser's first final
+   result -- the first breath -- so a pause mid-sentence handed the prospect
+   half a sentence. Now it listens continuously, keeps every phrase, and
+   sends only after RP_PAUSE_MS of silence (any new words restart the
+   clock); tapping the mic sends at once. Chrome ends a continuous session
+   on its own now and then: it starts again at once, keeping what was
+   heard and the turn's recording (rpClipStart), and the pause clock carries
+   on. A blocked mic stops for good. */
+const RP_PAUSE_MS = 2000;
+let rpHeard = "";              // what the producer has said so far this turn
+let rpPauseTimer = null;
+function rpFinishTurn() {
+  clearTimeout(rpPauseTimer); rpPauseTimer = null;
+  const text = rpHeard.trim();
+  rpHeard = "";
+  const clip = text ? rpClipStop(true) : null;   // the turn's recording goes with it
+  rpStopListening();
+  if (text) rpSendTurn(text, clip);
+}
+function rpStartListening(keepHeard) {
   if (rpBusy || rpSpeaking || rpListening || !rpSpeechSupported()) return;
+  if (!keepHeard) rpHeard = "";
   const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
   const rec = new SR();
   rec.lang = rpRecLang();
   rec.interimResults = true;
-  rec.continuous = false;
+  rec.continuous = true;
+  let finals = "";            // this recognition session's finished phrases
+  const base = rpHeard;       // words kept from a session Chrome ended early
+  let fatal = false;
   rec.onresult = (e) => {
-    let finalText = "", interim = "";
-    for (let i = e.resultIndex; i < e.results.length; i++) {
+    let interim = "";
+    finals = "";
+    for (let i = 0; i < e.results.length; i++) {
       const r = e.results[i];
-      if (r.isFinal) finalText += r[0].transcript; else interim += r[0].transcript;
+      if (r.isFinal) finals += r[0].transcript + " "; else interim += r[0].transcript;
     }
-    if (finalText.trim()) {
-      const text = finalText.trim();
-      const clip = rpClipStop(true);
-      rpStopListening();
-      rpSendTurn(text, clip);
-    } else {
-      rpUpdateMicUI(interim.trim());
-    }
+    rpHeard = (base + " " + finals + interim).replace(/\s+/g, " ").trim();
+    rpUpdateMicUI(rpHeard);
+    clearTimeout(rpPauseTimer);
+    rpPauseTimer = setTimeout(rpFinishTurn, RP_PAUSE_MS);
   };
-  rec.onerror = () => { rpClipStop(); rpListening = false; rpUpdateMicUI(); };
-  rec.onend = () => { rpClipStop(); rpListening = false; rpUpdateMicUI(); };
+  rec.onerror = (e) => {
+    if (e && (e.error === "not-allowed" || e.error === "service-not-allowed" || e.error === "audio-capture")) fatal = true;
+  };
+  rec.onend = () => {
+    if (rpRecognition !== rec) return;
+    rpRecognition = null;
+    if (!rpListening) return;                        // stopped on purpose
+    rpListening = false;
+    if (fatal) { clearTimeout(rpPauseTimer); rpHeard = ""; rpClipStop(); rpUpdateMicUI(); return; }
+    rpStartListening(true);   // keep listening, keeping what was heard; the pause timer still sends it
+  };
   rpRecognition = rec;
   rpListening = true;
-  rpUpdateMicUI();
-  try { rec.start(); rpClipStart(); } catch (_) { rpListening = false; rpUpdateMicUI(); }
+  rpUpdateMicUI(rpHeard);
+  // A new turn starts its recording; a restart mid-turn keeps the one running.
+  try { rec.start(); if (!keepHeard) rpClipStart(); } catch (_) { rpListening = false; rpRecognition = null; rpUpdateMicUI(); }
 }
 
 // "Beta / testing" (Frank, 2026-09-24): practice runs by anyone trying the
@@ -3946,7 +3917,7 @@ function roleplayPanel() {
       <button class="ghost" id="rpChangeProducer" type="button">change producer</button>
       ${rpDebriefButtons()}</p>
     <div class="rpcall">
-    ${rpFaceFor(rpProspectNow()) && !rpFaceFailed ? `<div id="rpFaceSlot"></div>` : ""}
+    ${rpProspectNow().name ? `<div class="rphead">${rpShotHtml(rpProspectNow())}<div class="rphead-name">${rpProspectNow().name}</div></div>` : ""}
     <div class="rpchat">
       <div class="rpmsgs" id="rpMsgs">${msgs}</div>
       ${rpSpeechSupported() ? `<div class="rprow" style="justify-content:center;align-items:center">
@@ -4044,7 +4015,7 @@ function roleplayDebriefHtml(p) {
     <div class="tiles" style="margin-bottom:6px">
       <div class="tile"><div class="k">Client type</div><div class="v" style="font-size:16px">${p.name}</div><div class="n">${p.blurb}</div></div>
       <div class="tile"><div class="k">Lead source</div><div class="v" style="font-size:16px">${ls.label}</div><div class="n">${ls.tip}</div></div>
-      ${ls.prospect ? `<div class="tile"><div class="k">Prospect</div><div class="v" style="font-size:16px">${ls.prospect.name}</div>
+      ${ls.prospect ? `<div class="tile">${rpShotHtml(ls.prospect, true)}<div class="k">Prospect</div><div class="v" style="font-size:16px">${ls.prospect.name}</div>
         <div class="n">${ls.prospect.age} &middot; ${ls.prospect.occupation}</div><div class="n">${ls.prospect.family}</div>${rpLangLine(ls.prospect)}</div>` : ""}
     </div>
     ${weakHtml}
@@ -4388,6 +4359,7 @@ async function rpSendTurn(text, clip) {
     const body = await r.json();
     if (r.ok && body.reply) {
       rpHistory.push({ role: "prospect", content: body.reply });
+      rpBusy = false;   // before she speaks: a reply that ends at once must still re-arm the mic
       speakProspect(body.reply, () => {
         if (view === "roleplay" && rpPersonaKey && !rpGrade) rpStartListening();
       });
@@ -4505,10 +4477,9 @@ function wireRoleplayPanel() {
     if (wasListening) rpStartListening();
   });
   wireVoiceFeedback();
-  rpPlaceFace();
-  if (document.getElementById("rpStartCall")) rpPrefetchFace();
   const mic = document.getElementById("rpMic");
-  if (mic) { mic.onclick = () => { rpListening ? rpStopListening() : rpStartListening(); }; rpUpdateMicUI(); }
+  // Tap while listening: done talking, send now (nothing said: just stop).
+  if (mic) { mic.onclick = () => { rpListening ? rpFinishTurn() : rpStartListening(); }; rpUpdateMicUI(); }
 }
 
 /* ---- Training tab: Apollo's flashcard decks (coaching/TRAINING.md) -------- */
