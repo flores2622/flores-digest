@@ -128,7 +128,13 @@ export default {
           return roleplayGrade(request, env);
         }
         if (parts[2] === "history" && request.method === "GET") {
-          return roleplayHistory(env, url.searchParams.get("producer"), url.searchParams.get("beta") === "1");
+          return roleplayHistory(request, env, url.searchParams.get("producer"), url.searchParams.get("beta") === "1");
+        }
+        if (parts[2] === "sessions" && request.method === "GET") {
+          return roleplaySessions(request, env, url);
+        }
+        if (parts[2] === "session" && request.method === "GET") {
+          return roleplaySession(request, env, url.searchParams.get("key"));
         }
         if (parts[2] === "speak" && request.method === "GET") {
           return roleplaySpeak(env, url);
@@ -1159,6 +1165,10 @@ async function roleplayGrade(request, env) {
     // lands on the right voice.
     ...(typeof body.voice === "string" && /^aura-2-[a-z]+-(en|es)$/.test(body.voice) ? { voice: body.voice } : {}),
     ...(["en", "es", "mix"].includes(body.language) ? { language: body.language } : {}),
+    // The real objection groups the prospect leaned on (the producer's weak
+    // spots), so the history can say what each session drilled.
+    ...(Array.isArray(body.focus_objections) && body.focus_objections.length
+      ? { focus: body.focus_objections.slice(0, 4).map((x) => String(x).slice(0, 80)) } : {}),
     history,
     grade,
     created_at: now.toISOString(),
@@ -1169,6 +1179,7 @@ async function roleplayGrade(request, env) {
     await env.BOARD.put(key, JSON.stringify(session), {
       httpMetadata: { contentType: "application/json" },
     });
+    try { await rpIndexAdd(env, { [key]: rpSummary(key, session) }); } catch (_) {}
   } catch (e) {
     // The producer still gets their grade even if the save failed -- a
     // lost practice record is a much smaller problem than a lost grade.
@@ -1184,7 +1195,11 @@ async function roleplayGrade(request, env) {
  * across everyone -- small volume expected (practice reps, not a
  * once-a-day batch), so a plain list-then-fetch is fine; no rollup file.
  */
-async function roleplayHistory(env, producer, beta) {
+async function roleplayHistory(request, env, producer, beta) {
+  // A producer sees only their own sessions (Frank, 2026-09-29); beta and
+  // other producers' lists are for ROLEPLAY_HISTORY_VIEWERS.
+  const scope = rpScope(request, env);
+  if (!scope.all && (beta || !producer || producer !== scope.producer)) return json({ sessions: [] });
   // beta=1 lists every beta session, whoever ran it; never mixed with the
   // producers' own roleplay/ history.
   const prefix = beta ? "roleplay-beta/"
@@ -1204,4 +1219,141 @@ async function roleplayHistory(env, producer, beta) {
     if (obj) sessions.push(await obj.json());
   }
   return json({ sessions });
+}
+
+
+/* ---- Role Play session history (Frank, 2026-09-29: "a full history of role
+   play sessions ... producers see their own") ----------------------------
+
+   Who sees what: an email in ROLEPLAY_HISTORY_VIEWERS (wrangler.jsonc) sees
+   every producer's sessions and the beta ones; a producer's own email
+   (RP_PRODUCER_EMAILS -- the addresses the staff digest goes to,
+   digest_config.RECIPIENTS_STAFF) sees only their own; anyone else, none.
+   Always from the verified Access token, never a request parameter.
+
+   The list reads roleplay-index.json -- one summary per session (no
+   transcript) -- so the page does not fetch every session to draw a table.
+   Each graded session is added to it as it is saved, and every list call
+   also compares the index with what is actually in R2 and adds any session
+   it lacks (up to 40 a call), so a session saved before the index existed,
+   or a lost write, heals itself. A session opens in full from its own file. */
+const RP_PRODUCER_EMAILS = {
+  "crystal@floresinsuranceagency.com": "Crystal Mango",
+  "lorena@floresinsuranceagency.com": "Lorena Gonzalez",
+  "mike@floresinsuranceagency.com": "Mike Olvera",
+  "coral@floresinsuranceagency.com": "Coral Barwick",
+  "sarahi@floresinsuranceagency.com": "Sarahi Chin",
+};
+const RP_INDEX_KEY = "roleplay-index.json";
+
+function rpScope(request, env) {
+  const who = String((ACCESS_IDENTITY.get(request) || {}).email || "").toLowerCase();
+  const all = String(env.ROLEPLAY_HISTORY_VIEWERS || "").toLowerCase()
+    .split(",").map((x) => x.trim()).filter(Boolean);
+  return { all: !!who && all.includes(who), producer: RP_PRODUCER_EMAILS[who] || "" };
+}
+
+function rpMaySee(scope, key) {
+  if (scope.all) return key.startsWith("roleplay/") || key.startsWith("roleplay-beta/");
+  return !!scope.producer && key.startsWith(`roleplay/${roleplaySlug(scope.producer)}/`);
+}
+
+function rpSummary(key, s) {
+  const g = s.grade || {};
+  const items = Array.isArray(g.checklist) ? g.checklist : [];
+  return {
+    key,
+    beta: !!s.beta,
+    producer: s.producer || "",
+    ...(s.as_producer ? { as_producer: s.as_producer } : {}),
+    persona: s.persona || "",
+    persona_label: s.persona_label || "",
+    lead_source: s.lead_source || "",
+    ...(s.language ? { language: s.language } : {}),
+    ...(s.focus ? { focus: s.focus } : {}),
+    created_at: s.created_at || "",
+    resolved: g.resolved === true,
+    met: items.filter((c) => c && c.met).length,
+    of: items.length,
+    missed: items.filter((c) => c && !c.met).map((c) => String(c.item || "")),
+    turns: Array.isArray(s.history) ? s.history.length : 0,
+    summary: String(g.summary || "").slice(0, 400),
+  };
+}
+
+async function rpIndexRead(env) {
+  const obj = await env.BOARD.get(RP_INDEX_KEY);
+  if (!obj) return {};
+  try { return (await obj.json()).sessions || {}; } catch (_) { return {}; }
+}
+
+async function rpIndexAdd(env, add) {
+  const idx = await rpIndexRead(env);
+  Object.assign(idx, add);
+  await env.BOARD.put(RP_INDEX_KEY, JSON.stringify({ sessions: idx }), {
+    httpMetadata: { contentType: "application/json" },
+  });
+  return idx;
+}
+
+async function rpAllKeys(env) {
+  const keys = [];
+  for (const prefix of ["roleplay/", "roleplay-beta/"]) {
+    let cursor;
+    do {
+      const listed = await env.BOARD.list({ prefix, cursor });
+      for (const o of listed.objects) if (o.key.endsWith(".json")) keys.push(o.key);
+      cursor = listed.truncated ? listed.cursor : undefined;
+    } while (cursor);
+  }
+  return keys;
+}
+
+/** GET /api/roleplay/sessions?from=YYYY-MM-DD&to=YYYY-MM-DD&producer=X&beta=1
+ *  -> {scope: {all, producer}, sessions: [summary, ...]} newest first. */
+async function roleplaySessions(request, env, url) {
+  const scope = rpScope(request, env);
+  if (!scope.all && !scope.producer) return json({ scope, sessions: [] });
+  let idx = await rpIndexRead(env);
+  const keys = await rpAllKeys(env);
+  const have = new Set(keys);
+  const missing = keys.filter((k) => !idx[k]).slice(0, 40);
+  const stale = Object.keys(idx).filter((k) => !have.has(k));
+  if (missing.length || stale.length) {
+    const add = {};
+    for (const k of missing) {
+      const obj = await env.BOARD.get(k);
+      if (!obj) continue;
+      try { add[k] = rpSummary(k, await obj.json()); } catch (_) {}
+    }
+    for (const k of stale) delete idx[k];
+    Object.assign(idx, add);
+    try {
+      await env.BOARD.put(RP_INDEX_KEY, JSON.stringify({ sessions: idx }), {
+        httpMetadata: { contentType: "application/json" },
+      });
+    } catch (_) {}
+  }
+  const from = url.searchParams.get("from") || "";
+  const to = url.searchParams.get("to") || "";
+  const beta = url.searchParams.get("beta") === "1";
+  const who = url.searchParams.get("producer") || "";
+  // Days are Arizona days, like the rest of the board (UTC-7, no DST).
+  const azDay = (iso) => new Date(new Date(iso).getTime() - 7 * 3600e3).toISOString().slice(0, 10);
+  const sessions = Object.values(idx)
+    .filter((x) => rpMaySee(scope, x.key))
+    .filter((x) => (beta ? x.beta : !x.beta))
+    .filter((x) => !who || x.producer === who)
+    .filter((x) => { const d = azDay(x.created_at); return (!from || d >= from) && (!to || d <= to); })
+    .sort((a, b) => (a.created_at < b.created_at ? 1 : -1));
+  return json({ scope, sessions });
+}
+
+/** GET /api/roleplay/session?key=roleplay/... -> the whole saved session. */
+async function roleplaySession(request, env, key) {
+  const scope = rpScope(request, env);
+  if (!key || key.includes("..") || !rpMaySee(scope, key)) return json({ error: "not permitted" }, 403);
+  const obj = await env.BOARD.get(key);
+  if (!obj) return json({ error: "not found" }, 404);
+  return json({ key, session: await obj.json() });
 }

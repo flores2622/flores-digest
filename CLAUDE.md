@@ -173,6 +173,21 @@ Everything caches under `data/`, so a re-run resumes rather than restarting.
   none** until one is made. No face (no WebGL, library unreachable, Deepgram
   off) means the call goes on voice-only. `site/public/face-test.html` is the
   test page for it, with the delay the face adds shown under each line.
+- **Every graded Role Play session is kept and can be read back** (Frank,
+  2026-09-29: "a full history of role play sessions ... producers see their
+  own"). Learning Center > **Session History**: a date range (7 / 30 / 90
+  days, all time, custom), a summary per producer (sessions, resolved,
+  checklist met, the checklist items missed most, the objections drilled),
+  and every session, which opens in place to Apollo's grade and the whole
+  conversation. **Who sees what is the Worker's call, from the Access email**
+  (`rpScope`): `ROLEPLAY_HISTORY_VIEWERS` (wrangler.jsonc -- Frank and the
+  ops recipients) see everyone and the beta sessions; a producer
+  (`RP_PRODUCER_EMAILS`, their staff-digest address) sees only their own --
+  on the Role Play tab's Past sessions list too; anyone else sees none. The
+  list reads `roleplay-index.json` (one summary per session, added on save,
+  and healed on every list call from what is actually under `roleplay/` and
+  `roleplay-beta/`); a session opens from its own file. Sessions saved from
+  2026-09-29 also carry `focus`, the objection groups they drilled.
 - **A renewal is not new business.** Neither is servicing, a payment, a claim,
   or chasing paperwork on a policy already sold.
 - **Selling a product the household does not have yet IS new business**, even to
