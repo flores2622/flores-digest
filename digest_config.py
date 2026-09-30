@@ -105,11 +105,48 @@ def is_real_sale(policy, source_map):
     return name not in NON_SALE_LEAD_SOURCES
 
 
-def real_sales(day, policies, source_map, ids):
-    """{name: (count, premium)} of genuine sales on `day` for the given ids."""
+# Life insurance is its own stat (Frank, 2026-09-30: "life insurance sales are
+# separate than the rest. I want it on the sales digest still, but i dont want
+# it to count as a HH or premium, make it its own stat"). A policy is life by
+# AgencyZoom's own type: "10 / 20 / 30 year term", "Whole Life", "Universal
+# Life", "Index / Variable Universal Life", "Individual Life", "Life" -- every
+# life type in the corpus (2026-09-30). "Short-Term Rental" is not.
+LIFE_TYPE = re.compile(r"\blife\b|\byear\s+term\b|^\s*term\b", re.I)
+
+
+def is_life(policy):
+    return bool(LIFE_TYPE.search(str(policy.get("policyTypeName") or "")))
+
+
+# A lead marked sold on a life source is a life sale, not a household sold.
+LIFE_LEAD_SOURCES = {"life cross sell"}
+
+
+def is_life_lead(lead):
+    return lead_sources.norm(lead.get("leadSourceName")) in LIFE_LEAD_SOURCES
+
+
+def life_sales(day, policies, source_map, ids):
+    """{name: (count, premium)} of real LIFE sales on `day` -- counted apart,
+    never in Premium Sold or the policy count."""
     out = {}
     for p in policies:
-        if not str(p.get("soldDate") or "").startswith(day):
+        if not str(p.get("soldDate") or "").startswith(day) or not is_life(p):
+            continue
+        who = ids.get(p.get("agentId"))
+        if not who or not is_real_sale(p, source_map):
+            continue
+        n, prem = out.get(who, (0, 0.0))
+        out[who] = (n + 1, prem + float(p.get("premium") or 0))
+    return out
+
+
+def real_sales(day, policies, source_map, ids):
+    """{name: (count, premium)} of genuine sales on `day` for the given ids.
+    Life policies are left out -- they are their own stat (life_sales)."""
+    out = {}
+    for p in policies:
+        if not str(p.get("soldDate") or "").startswith(day) or is_life(p):
             continue
         who = ids.get(p.get("agentId"))
         if not who or not is_real_sale(p, source_map):
@@ -222,7 +259,7 @@ def bundle_classification(day, policies, leads, customers, source_map, ids):
         if not str(p.get("soldDate") or "").startswith(day):
             continue
         who = ids.get(p.get("agentId"))
-        if not who or not is_real_sale(p, source_map):
+        if not who or not is_real_sale(p, source_map) or is_life(p):
             continue
         row = out[who]
         if is_cross_sell(p, source_map):

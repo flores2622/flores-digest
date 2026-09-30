@@ -1286,9 +1286,13 @@ function digestDay(d, who) {
       // Households sold and premium sold come from the same refresh.
       : ["HH/Prem. Sold", `<span class="${tc("pol")}">${hhSold} HH</span><br><span class="${tc("ps")}">${money(t.ps)}</span>`,
          `${t.pol ?? 0} polic${(t.pol ?? 0) === 1 ? "y" : "ies"}${hhSold ? ` &middot; ${((t.pol || 0) / hhSold).toFixed(1)} per HH` : ""}`, "", liveOn(d, "hhsold")],
+    // Life, its own stat (Frank, 2026-09-30: "i dont want it to count as a HH
+    // or premium, make it its own stat"): never in the tiles above, the
+    // leaderboard or the closing ratio. No goal yet, so no colour.
+    ["Life Sold", `${t.life ?? 0} Pol<br>${money(t.life_ps || 0)}`, "counted apart", "", liveOn(d, "sales")],
   ];
   if (t.util != null) tiles.push(["Utilization", t.util + "%", "weighted", tc("util"), liveOn(d, "util")]);
-  const DRILL = { "Dials": "dials", "Live contacts": "contacts", "HH/Prem. Quoted": "quoted", "Pol/Prem. Sold": "sold", "HH/Prem. Sold": "sold" };
+  const DRILL = { "Dials": "dials", "Live contacts": "contacts", "HH/Prem. Quoted": "quoted", "Pol/Prem. Sold": "sold", "HH/Prem. Sold": "sold", "Life Sold": "life" };
   const tilesHtml = tiles.map(([k, v, n, cls, live]) =>
     `<div${DRILL[k] ? ddk(DRILL[k], `tile${live ? " isLive" : ""}`) : ` class="tile${live ? " isLive" : ""}"`}><div class="k">${k}</div><div class="v${cls ? " " + cls : ""}">${v}</div>${n ? `<div class="n">${n}</div>` : ""}</div>`).join("");
 
@@ -1328,7 +1332,7 @@ function digestDay(d, who) {
   </div>`;
 
   return `<div class="tiles tiles-6">${tilesHtml}${closingRatioTileHtml}</div>
-  ${digDrillFor(d, who, ["dials", "contacts", "quoted", "sold", "closing"])}
+  ${digDrillFor(d, who, ["dials", "contacts", "quoted", "sold", "life", "closing"])}
   ${teamLeaderboardHtml(d, who)}
   ${digDrillFor(d, who, ["lb"])}`;
 }
@@ -1885,6 +1889,15 @@ function digDrillFor(d, who, keys) {
     return digDrillList(`Households quoted${whoTag} · ${rs.length}`, kind === "closing" ? "Sold marks a household quoted that was also marked sold the same day." : "",
       (kind === "quoted" || liveOn(d, "closing") ? note("quotes", "hh") : "") + digTable(d, `<th>Producer</th><th>Lead</th><th>Source</th><th class="num">Premium quoted</th>${kind === "closing" ? "<th>Sold</th>" : ""}`, tr)
       + (kind === "closing" ? digDrillSold(d, mine, liveOn(d, "closing") ? note("sales", "pol") : "", RC) : ""));
+  }
+  if (kind === "life") {
+    // Life policies sold, counted apart from Premium Sold (Frank, 2026-09-30).
+    const lr = mine(R.life || []);
+    const tr = lr.map(r => `<tr>${digDay(d, r)}<td>${digWho(r)}</td><td>${cesc(r.product)}</td><td>${cesc(r.policy)}</td>
+      <td class="num">${money(r.premium)}</td><td>${cesc(r.source)}</td><td class="num">${r.effective ? fmtShortDate(r.effective) : ""}</td></tr>`);
+    return digDrillList(`Life sold${whoTag} · ${lr.length} polic${lr.length === 1 ? "y" : "ies"}`,
+      (R.life ? "" : "Days built before life was counted apart list their life policies with the others. ") + "Life insurance is its own stat: it is never a household sold or part of Premium Sold.",
+      digTable(d, `<th>Producer</th><th>Product</th><th>Policy</th><th class="num">Premium</th><th>Lead source</th><th class="num">Effective</th>`, tr));
   }
   if (kind === "sold") return digDrillList(`Sold${whoTag} · ${mine(R.sold).length} polic${mine(R.sold).length === 1 ? "y" : "ies"}`, "", digDrillSold(d, mine, note("sales", "pol")));
   if (kind === "hhc") {
@@ -2446,11 +2459,13 @@ function applyLive(base, L) {
       const x = L.sales.data[p.name]; if (!x) continue;
       p.cp_pol = p.pol || 0; p.cp_ps = p.ps || 0;
       p.pol = x.pol; p.ps = x.ps; p.cross_sell = x.cross_sell;
+      if (x.life != null) { p.life = x.life; p.life_ps = x.life_ps; }
       const row = tiers[p.name] || (tiers[p.name] = {});
       if (p.pol > 0) { streak[p.name] = 0; row.pol = "green"; }
       if (p.ps) row.ps = "green";
     }
     T.pol = sum("pol"); T.ps = sum("ps"); T.cross_sell = sum("cross_sell");
+    T.life = sum("life"); T.life_ps = sum("life_ps");
     const team = tiers.team || (tiers.team = {});
     team.pol = tierColor("policy_count", T.pol || 0);
     team.ps = T.ps ? "green" : team.pol;
@@ -2852,7 +2867,7 @@ function rankLeaderboard(names, categories, tiebreak) {
   return { points, order, perCat };
 }
 function mergeDayDocs(docs) {
-  const NUM = ["dials", "live", "hh", "pq", "ps", "pol"];
+  const NUM = ["dials", "live", "hh", "pq", "ps", "pol", "life", "life_ps"];
   const totals = Object.fromEntries(NUM.map(k => [k, 0]));
   const taskTotals = { total: 0, completed: 0 };
   let teamUtilTotalSecs = 0, teamUtilProdSecs = 0;
@@ -2874,7 +2889,7 @@ function mergeDayDocs(docs) {
   const msgPer = {}, msgRows = { replies: [], quotes: [], bad_contact: [] };
   let hasMsg = false;
   // The Digest cards' lists: every day's rows, tagged with their day.
-  const digRows = { dials: [], contacts: [], quoted: [], sold: [], sold_leads: [], speed: [], tasks: [], rebuilt_days: [] };
+  const digRows = { dials: [], contacts: [], quoted: [], sold: [], life: [], sold_leads: [], speed: [], tasks: [], rebuilt_days: [] };
   let hasRows = false;
 
   for (const doc of docs) {
