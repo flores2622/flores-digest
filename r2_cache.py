@@ -64,6 +64,9 @@ DAY_FILES = [
     "fulltx_{day}.json", "callsum_{day}.json", "coaching_cards_{day}.json",
     "metrics_{day}.json", "az_service_tickets_{day}.json", "az_tasks_{day}.json",
     "audiorefs_{day}.json", "az_service_tickets_done_{day}.json", "rc_texts_{day}.json",
+    # Which audiences tonight's email already reached (daily.send, 2026-09-30),
+    # so a re-run in a fresh container does not email them twice.
+    "sent_{day}_ops.json", "sent_{day}_staff.json",
 ]
 
 
@@ -79,6 +82,24 @@ def _key(day, name):
 
 def _audio_key(day, call_id):
     return f"{PREFIX}/{day}/audio/{call_id}.mp3"
+
+
+def _never_raise(fn, what):
+    """A cache sync is a saving, never a step the run depends on (2026-09-30).
+    An R2 outage, an expired key or a missing R2 secret (publish_board._client
+    -> secrets_load raises SystemExit, which `except Exception` misses) used
+    to stop the nightly run before the email -- sync_down_day is the first
+    thing pull_sources does. Now it is logged and the run carries on doing
+    the work itself, exactly as a cold container with an empty cache would."""
+    def wrapped(day, log=print):
+        try:
+            return fn(day, log=log)
+        except (Exception, SystemExit) as e:
+            log(f"  r2 cache: {what} failed ({type(e).__name__}: {str(e)[:200]}) "
+                f"-- carrying on without it")
+            return []
+    wrapped.__name__, wrapped.__doc__ = fn.__name__, fn.__doc__
+    return wrapped
 
 
 def sync_down_day(day, log=print):
@@ -235,6 +256,26 @@ def sync_up_day(day, log=print):
     if pushed:
         log(f"  r2 cache: pushed {', '.join(pushed)}")
     return pushed
+
+
+def push_file(day, fname, log=print):
+    """Push ONE of the day's files now (a sent marker, the moment the email
+    went out), without waiting for the run's next full sync_up_day. Never
+    raises; False if it did not land."""
+    try:
+        cli, bucket = _client()
+        cli.put_object(Bucket=bucket, Key=_key(day, fname),
+                       Body=(ROOT / "data" / fname).read_bytes(),
+                       ContentType="application/json")
+        return True
+    except (Exception, SystemExit) as e:
+        log(f"  r2 cache: could not push {fname} ({type(e).__name__}) -- "
+            f"the next sync will")
+        return False
+
+
+sync_down_day = _never_raise(sync_down_day, "pull")
+sync_up_day = _never_raise(sync_up_day, "push")
 
 
 # ---- AgencyZoom snapshot, for rebuilding a past day as it was ----------------
