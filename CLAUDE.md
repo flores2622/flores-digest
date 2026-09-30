@@ -160,13 +160,23 @@ Everything caches under `data/`, so a re-run resumes rather than restarting.
   American + Hispanic list in every language; a Spanish or mixed prospect
   has a Hispanic surname. **Crystal never gets Spanish or mixed** (Frank,
   2026-09-29: "she doesnt speak it") -- `RP_ENGLISH_ONLY`.
-  They speak at 1.2x (`RP_SPEAK_SPEED`, Deepgram's `speed`; Frank,
-  2026-09-29: "they talk to slow") -- a refused speed is retried at normal
-  speed. **They start talking on the first sentence** (Frank, 2026-09-30,
+  They speak at 1.5x, Deepgram's maximum (`RP_SPEAK_SPEED`, Deepgram's
+  `speed`; Frank, 2026-09-29: "they talk to slow", raised from 1.2 on
+  2026-09-30: "it still talks really slow" -- 1.2 was only ~8% shorter in
+  Spanish) -- a refused speed is retried at normal speed. **A Spanish
+  prospect uses no English words** (Frank, 2026-09-30: "its mixing English
+  words with Spanish"): `languageInstruction("es")` names the Spanish
+  insurance words; only company names stay. The MIXED third code-switches
+  by design. **They start talking on the first sentence** (Frank, 2026-09-30,
   still on claude-sonnet-5 -- "i dont want haiku 4.5"): the turn is
   streamed (`callClaudeStream`, `stream: true`), each finished sentence goes
   to Deepgram at once and they play back to back (`rpSpeechQueue`; under 20
-  characters is held for the next), and the mic returns only after the last.
+  characters is held for the next), and the mic returns only after the last. The turn goes out
+  streamed as `text/event-stream` with `no-transform` (Cloudflare may hold
+  back a text/plain body), with the persona and conversation prompt-cached,
+  and **the reply is asked for early** (2026-09-30, "it still takes too long
+  to respond"): at `RP_EARLY_MS` (0.7 s) of silence, quietly; more words
+  throw it away, and the prospect still answers only the whole turn at 1.5 s.
   A streamed line keeps its sentences as `parts`; the grade attaches every
   clip as `audios` (first also as `audio`), and Session History plays them
   in order. The Worker's `/api/roleplay/speak` streams them and needs the

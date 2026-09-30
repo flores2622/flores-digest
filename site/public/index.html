@@ -3747,6 +3747,7 @@ function rpUpdateMicUI(interim) {
 
 function rpStopListening() {
   clearTimeout(rpPauseTimer); rpPauseTimer = null;
+  rpEarlyCancel();
   const rec = rpRecognition;
   rpRecognition = null;
   if (rec) { try { rec.stop(); } catch (_) {} }
@@ -3805,13 +3806,36 @@ function rpClipUpload(item, blobP) {
 const RP_PAUSE_MS = 1500;   // was 2000; Frank, 2026-09-29: "take too long to respond" ... "do 1.5 sec"
 let rpHeard = "";              // what the producer has said so far this turn
 let rpPauseTimer = null;
+/* The reply is asked for EARLY (2026-09-30, "it still takes too long to
+   respond"): after RP_EARLY_MS of silence the turn goes to the prospect
+   quietly, so Claude is already writing while the 1.5 s pause runs out. If
+   the producer says anything more, that early ask is thrown away and a new
+   one starts at the next silence; the prospect only ever answers the whole
+   turn, and still only after RP_PAUSE_MS. */
+const RP_EARLY_MS = 700;
+let rpEarlyTimer = null, rpEarly = null;   // {text, ctl, resp}
+function rpEarlyCancel() {
+  clearTimeout(rpEarlyTimer); rpEarlyTimer = null;
+  if (rpEarly) { try { rpEarly.ctl.abort(); } catch (_) {} rpEarly = null; }
+}
+function rpEarlyAsk() {
+  rpEarlyTimer = null;
+  const text = rpHeard.trim();
+  if (!text || rpEarly || rpBusy) return;
+  const ctl = new AbortController();
+  const resp = rpTurnFetch([...rpHistory, { role: "producer", content: text }], ctl.signal);
+  resp.catch(() => {});
+  rpEarly = { text, ctl, resp };
+}
 function rpFinishTurn() {
   clearTimeout(rpPauseTimer); rpPauseTimer = null;
   const text = rpHeard.trim();
   rpHeard = "";
+  let early = null;
+  if (rpEarly && rpEarly.text === text) { early = rpEarly.resp; rpEarly = null; }
   const clip = text ? rpClipStop(true) : null;   // the turn's recording goes with it
-  rpStopListening();
-  if (text) rpSendTurn(text, clip);
+  rpStopListening();                             // also drops an early ask that no longer fits
+  if (text) rpSendTurn(text, clip, early);
 }
 function rpStartListening(keepHeard) {
   if (rpBusy || rpSpeaking || rpListening || !rpSpeechSupported()) return;
@@ -3835,6 +3859,9 @@ function rpStartListening(keepHeard) {
     rpUpdateMicUI(rpHeard);
     clearTimeout(rpPauseTimer);
     rpPauseTimer = setTimeout(rpFinishTurn, RP_PAUSE_MS);
+    if (rpEarly && rpEarly.text !== rpHeard.trim()) rpEarlyCancel();   // they kept talking
+    clearTimeout(rpEarlyTimer);
+    rpEarlyTimer = setTimeout(rpEarlyAsk, RP_EARLY_MS);
   };
   rec.onerror = (e) => {
     if (e && (e.error === "not-allowed" || e.error === "service-not-allowed" || e.error === "audio-capture")) fatal = true;
@@ -3844,7 +3871,7 @@ function rpStartListening(keepHeard) {
     rpRecognition = null;
     if (!rpListening) return;                        // stopped on purpose
     rpListening = false;
-    if (fatal) { clearTimeout(rpPauseTimer); rpHeard = ""; rpClipStop(); rpUpdateMicUI(); return; }
+    if (fatal) { clearTimeout(rpPauseTimer); rpEarlyCancel(); rpHeard = ""; rpClipStop(); rpUpdateMicUI(); return; }
     rpStartListening(true);   // keep listening, keeping what was heard; the pause timer still sends it
   };
   rpRecognition = rec;
@@ -4399,7 +4426,17 @@ function wireRphPanel() {
   });
 }
 
-async function rpSendTurn(text, clip) {
+function rpTurnFetch(history, signal) {
+  return fetch("/api/roleplay/turn", {
+    method: "POST", headers: { "content-type": "application/json" }, signal,
+    body: JSON.stringify({ persona: rpPersonaKey, history, focus_objections: producerWeakSpots(rpWeakFor()).map(([c]) => c),
+      lead_source: rpLeadSource ? rpLeadSource.forCustomer : "",
+      prospect: rpLeadSource && rpLeadSource.prospect ? rpLeadSource.prospect.text : "",
+      language: rpProspectNow().lang || "en", stream: true }),
+  });
+}
+
+async function rpSendTurn(text, clip, early) {
   const turn = { role: "producer", content: text };
   rpHistory.push(turn);
   rpClipUpload(turn, clip);
@@ -4407,15 +4444,11 @@ async function rpSendTurn(text, clip) {
   document.getElementById("view").innerHTML = roleplayPanel();
   wireRoleplayPanel();
   try {
-    const focusObjections = producerWeakSpots(rpWeakFor()).map(([c]) => c);
-    const r = await fetch("/api/roleplay/turn", {
-      method: "POST", headers: { "content-type": "application/json" },
-      body: JSON.stringify({ persona: rpPersonaKey, history: rpHistory, focus_objections: focusObjections, lead_source: rpLeadSource ? rpLeadSource.forCustomer : "",
-        prospect: rpLeadSource && rpLeadSource.prospect ? rpLeadSource.prospect.text : "",
-        language: rpProspectNow().lang || "en", stream: true }),
-    });
+    let r = null;
+    if (early) r = await early.catch(() => null);   // asked for during the pause
+    if (!r) r = await rpTurnFetch(rpHistory);
     const ctype = r.headers.get("content-type") || "";
-    if (r.ok && r.body && ctype.startsWith("text/plain")) {
+    if (r.ok && r.body && /^text\/(event-stream|plain)/.test(ctype)) {
       // Streamed: each finished sentence goes to the voice at once, and the
       // line in the transcript fills in as she speaks.
       const reply = { role: "prospect", content: "" };

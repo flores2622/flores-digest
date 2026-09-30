@@ -948,6 +948,15 @@ async function callClaudeStream(env, { system, messages, maxTokens }) {
   if (!env.ANTHROPIC_API_KEY) {
     throw new Error("ANTHROPIC_API_KEY is not configured on this Worker");
   }
+  // Prompt caching (2026-09-30, "it still takes too long to respond"): the
+  // persona and the conversation so far are the same on every turn of a
+  // session, so they are marked for caching -- each turn after the first
+  // reads them back instead of processing them again, which starts the reply
+  // sooner and bills them at a tenth. A prompt under the model's minimum is
+  // simply not cached; the reply is the same either way.
+  const cached = messages.map((m, i) => i === messages.length - 1 && m.content
+    ? { role: m.role, content: [{ type: "text", text: m.content, cache_control: { type: "ephemeral" } }] }
+    : m);
   const r = await fetch("https://api.anthropic.com/v1/messages", {
     method: "POST",
     headers: {
@@ -958,8 +967,8 @@ async function callClaudeStream(env, { system, messages, maxTokens }) {
     body: JSON.stringify({
       model: "claude-sonnet-5",
       max_tokens: maxTokens,
-      system,
-      messages,
+      system: [{ type: "text", text: system, cache_control: { type: "ephemeral" } }],
+      messages: cached,
       thinking: { type: "disabled" },
       stream: true,
     }),
@@ -1033,7 +1042,7 @@ function prospectInstruction(profile) {
  * never what they object to. */
 function languageInstruction(language) {
   if (language === "es") {
-    return "\n\nLanguage: you speak Spanish -- everyday Mexican Spanish, the way a customer in Arizona talks on the phone -- and you are more comfortable in it than in English. Reply only in Spanish. If the producer speaks English, ask whether they speak Spanish (\"¿habla español?\") and keep answering in Spanish.";
+    return "\n\nLanguage: you speak Spanish -- everyday Mexican Spanish, the way a customer in Arizona talks on the phone -- and you are more comfortable in it than in English. Reply only in Spanish, and EVERY word in Spanish: no English words or fillers at all -- not \"okay\", \"yeah\", \"so\", \"insurance\", \"quote\", \"email\" or \"full coverage\". Say seguro, cotización, póliza, cobertura completa, deducible, pago mensual, correo, and write numbers and prices as words or digits, never with English. Only a company's name stays as it is (Progressive, Geico, Farmers). The example objections above are written in English only to describe them -- say them in your own Spanish. If the producer speaks English, ask whether they speak Spanish (\"¿habla español?\") and keep answering in Spanish.";
   }
   if (language === "mix") {
     return "\n\nLanguage: you are bilingual and talk the way many Arizona families do, switching between English and Spanish naturally, sometimes mid-sentence (\"sí, I already have Progressive, pero está muy caro\"). Mix both in most replies, whichever language the producer uses.";
@@ -1099,8 +1108,10 @@ async function roleplayFace(env, key) {
    2026-09-29: "they talk to slow"), with Deepgram's own speed setting,
    which keeps the voice natural. Deepgram says it is not supported in every
    language yet, so a refused speed is retried at normal speed and this
-   Worker stops asking for that language (per isolate). */
-const RP_SPEAK_SPEED = 1.2;
+   Worker stops asking for that language (per isolate). Raised to 1.5 on
+   2026-09-30 ("it still talks really slow"): measured 25-38% shorter than
+   normal, English and Spanish alike. */
+const RP_SPEAK_SPEED = 1.5;   // Deepgram's maximum (1.8 is refused); 1.2 barely changed Spanish (~8% shorter)
 const rpSpeedRefused = new Set();   // "en" / "es"
 async function deepgramSpeak(env, voice, text) {
   const call = (speed) => fetch(`https://api.deepgram.com/v1/speak?model=${voice}&encoding=mp3${speed ? `&speed=${speed}` : ""}`, {
@@ -1292,7 +1303,11 @@ async function roleplayTurn(request, env) {
   if (body.stream === true) {
     try {
       const text = await callClaudeStream(env, { system, messages, maxTokens: 300 });
-      return new Response(text, { headers: { "content-type": "text/plain; charset=utf-8", "cache-control": "no-store" } });
+      // text/event-stream + no-transform: Cloudflare may hold back and
+      // compress a text/plain body, which would deliver the reply in one
+      // lump and undo the first-sentence start. The body is still plain
+      // reply text, not SSE frames.
+      return new Response(text, { headers: { "content-type": "text/event-stream; charset=utf-8", "cache-control": "no-store, no-transform" } });
     } catch (e) {
       return json({ error: "role-play turn failed", detail: String(e).slice(0, 300) }, 502);
     }
