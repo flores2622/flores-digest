@@ -160,10 +160,10 @@ Everything caches under `data/`, so a re-run resumes rather than restarting.
   American + Hispanic list in every language; a Spanish or mixed prospect
   has a Hispanic surname. **Crystal never gets Spanish or mixed** (Frank,
   2026-09-29: "she doesnt speak it") -- `RP_ENGLISH_ONLY`.
-  They speak at 1.5x, Deepgram's maximum (`RP_SPEAK_SPEED`, Deepgram's
-  `speed`; Frank, 2026-09-29: "they talk to slow", raised from 1.2 on
-  2026-09-30: "it still talks really slow" -- 1.2 was only ~8% shorter in
-  Spanish) -- a refused speed is retried at normal speed. **A Spanish
+  They speak at 1.3x (`RP_SPEAK_SPEED`, Deepgram's `speed`; Frank,
+  2026-09-29: "they talk to slow"; 1.2 was only ~8% shorter in Spanish, 1.5
+  -- Deepgram's maximum -- "just a tad bit too fast", 2026-09-30) -- a
+  refused speed is retried at normal speed. **A Spanish
   prospect uses no English words** (Frank, 2026-09-30: "its mixing English
   words with Spanish"): `languageInstruction("es")` names the Spanish
   insurance words; only company names stay. The MIXED third code-switches

@@ -1111,7 +1111,7 @@ async function roleplayFace(env, key) {
    Worker stops asking for that language (per isolate). Raised to 1.5 on
    2026-09-30 ("it still talks really slow"): measured 25-38% shorter than
    normal, English and Spanish alike. */
-const RP_SPEAK_SPEED = 1.5;   // Deepgram's maximum (1.8 is refused); 1.2 barely changed Spanish (~8% shorter)
+const RP_SPEAK_SPEED = 1.3;   // Frank, 2026-09-30: 1.5 (Deepgram's maximum) was "just a tad bit too fast"; 1.2 barely changed Spanish
 const rpSpeedRefused = new Set();   // "en" / "es"
 async function deepgramSpeak(env, voice, text) {
   const call = (speed) => fetch(`https://api.deepgram.com/v1/speak?model=${voice}&encoding=mp3${speed ? `&speed=${speed}` : ""}`, {
