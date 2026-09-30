@@ -1382,7 +1382,8 @@ async function roleplayGrade(request, env) {
   try {
     const raw = await callClaude(env, {
       system: GRADE_SYSTEM,
-      messages: [{ role: "user", content: transcriptText.slice(0, 12000) }],
+      messages: [{ role: "user", content: (typeof body.lead_source === "string" && body.lead_source.trim()
+        ? `Lead source: ${body.lead_source.trim().slice(0, 200)}\n\n` : "") + transcriptText.slice(0, 12000) }],
       maxTokens: 1000,
     });
     const m = raw.match(/\{[\s\S]*\}/);

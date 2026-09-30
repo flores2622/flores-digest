@@ -91,6 +91,8 @@ Then return:
   "summary"  -- 2 sentences, plain, what happened.
   "tip"      -- one specific, actionable tip for next time. Quote the producer's own weakest line if there is one.
 
+The transcript may start with the session's lead source. Use it to describe who the prospect was, in the agency's words: a Winback is a FORMER or PRIOR customer who now insures with another company -- never "lapsed", which means without coverage (Frank, 2026-09-30); a cross-sell source names what the agency already insures and what the producer is selling ("Home no Auto": we have the home, the producer is selling the auto).
+
 The call may be in English, Spanish, or both mixed -- some prospects speak Spanish or switch between the two. Judge it exactly the same way in any language, and write every note, the summary and the tip in English, quoting the producer's own words as they said them.
 
 Return ONLY a JSON object with exactly these keys: checklist, resolved, summary, tip. No prose outside the JSON.

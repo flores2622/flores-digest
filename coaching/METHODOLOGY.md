@@ -250,13 +250,16 @@ close HERE ONLY.
       elsewhere on the board says this call is; if the transcript disagrees
       with what you'd expect from context, trust the transcript.
     - Past-tense language about the relationship is itself evidence of a
-      LAPSED policy, not a current one — read it as a win-back/new-business
+      FORMER policy with us, not a current one — read it as a win-back/new-business
       signal, not as grounds to call the account "existing" and the call a
       "renewal." "Sé que **anteriormente** subo su seguro de carro aquí con
       nosotros" ("I know you **previously** had your car insurance here with
       us") means the policy ended, not that it's active — a producer
-      re-quoting someone whose coverage lapsed years ago is pursuing new
-      business, however routine the re-quote sounds. Don't need AgencyZoom's
+      re-quoting someone whose policy with us ended years ago is pursuing new
+      business, however routine the re-quote sounds. Call that person a
+      FORMER or PRIOR customer, never "lapsed": lapsed means they are without
+      coverage now, and a winback almost always insures elsewhere (Frank,
+      2026-09-30). Don't need AgencyZoom's
       own record to catch this: the transcript already says so. (Frank,
       2026-09-15: Maria Cruz, Lorena Gonzalez — "anteriormente" was quoted as
       proof of an existing policyholder when it means the opposite; her two
