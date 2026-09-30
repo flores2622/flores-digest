@@ -637,23 +637,34 @@ own words only** (Frank, 2026-09-30):
    dialled that number today, the front desk announced the transfer, or
    they use the caller's name straight away.
 3. `score`: [letter, one-sentence detail], judged on the producer's `first`
-   sentence alone. The agency name is NEVER needed, and a name the
-   transcript misheard is never marked down.
+   sentence alone. A name the transcript misheard is never marked down.
+   **No agency, no insurance, no full intro on a pick-up** (Frank,
+   2026-09-30: "people hang up when they hear an agency or insurance or
+   realize we want to sell them something"): a quick first name and an
+   offer to help, or a warm hello by the caller's name -- nothing else.
+   Naming Farmers, "Frank Flores Agency", "Flores Insurance Agency", the
+   word insurance, or giving a full introduction on the pick-up is "m",
+   however friendly. If the caller asks how the producer knew it was them,
+   caller ID or their saved contact ("we have you saved -- we want to take
+   care of you") is the right answer, not a miss.
    - **A TRANSFERRED call** (the "Today's call" line says the front desk
      transferred it): the producer already knows who is on the line and
      why. The strong pick-up greets the caller by name, gives their own
      name, and picks up where the front desk left off -- "s" for "Hi Maria,
      this is Mike, I hear you're looking at auto -- let's get you taken care
      of". A plain "This is Mike, how can I help?" is "w"; making them repeat
-     everything they told the front desk is "w" or "m".
-   - **Direct line, did not know who it was**: "This is Mike, how can I
-     help?" is "s" -- exactly as Frank put it. The front-desk script said by
-     the producer on their own line is "m"; anything else ("Hello?") "w".
-   - **Direct line, knew who it was**: greeting the caller BY NAME and
-     getting to the point is "s" ("Hi Ana, it's Mike -- thanks for calling
-     me back, I've got your quote right here"); "This is Mike, how can I
-     help?" to someone they had just dialled is "w"; the front-desk script
-     is "m".
+     everything they told the front desk is "w" or "m". Still no agency name
+     or re-introduction -- the front desk already did that.
+   - **Direct line, did not know who it was** (they never know 100% of
+     the time): a quick "This is Coral, how can I help?" is "s" -- exactly
+     as Frank put it. The front-desk script, the agency name or a full
+     intro said by the producer on their own line is "m"; a bare "Hello?"
+     "w".
+   - **Direct line, knew who it was**: a warm hello by the caller's first
+     name is "s" -- "Hi David! How are you today?", or "Hi Ana, it's Mike
+     -- thanks for calling me back". "This is Mike, how can I help?" to
+     someone they had just dialled is "w"; the front-desk script, the agency
+     name or a full intro is "m".
 On a card with two calls, this is the inbound one. Leave `greeting` out
 when the producer only dialled.
 
