@@ -235,7 +235,10 @@ Everything caches under `data/`, so a re-run resumes rather than restarting.
   text}; t = seconds into recording r) from Deepgram's SAVED reads only
   (`deepgram_stt.turns(..., cached_only=True)` -- a card build never pays
   for a read), and the card shows one player with the transcript under it:
-  a line click seeks there, the line playing is lit. Cards with no Deepgram
+  a line click seeks there, the line playing is lit, and **each line's button
+  pauses and resumes in place** (Frank, 2026-09-29: "pause the playback
+  without stopping or restarting it") -- the same on a Role Play session's
+  lines. Cards with no Deepgram
   read keep the plain transcript. **September's cards were given theirs**
   (Frank, 2026-09-29: "do september's cards") by `card_turns_backfill.py
   2026-09-01 2026-09-28`: one paid Deepgram read per carded recording, added
