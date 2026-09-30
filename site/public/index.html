@@ -735,7 +735,23 @@ details.sc .scb { padding: 0 12px 12px; }
   color: var(--text-primary); font-size: 10px; line-height: 1; cursor: pointer; vertical-align: middle; flex: none; }
 .pp:hover { border-color: var(--text-primary); }
 .playing > .pp, .playing .pp { background: var(--text-primary); color: var(--bg, #fff); border-color: var(--text-primary); }
-.tturn.sync:hover { filter: brightness(0.97); }
+/* Volume and speed, on hover over a line's play / pause circle (Frank,
+   2026-09-29). One setting for every line and call, kept per browser. */
+.ppwrap { position: relative; display: inline-flex; vertical-align: middle; margin-right: 6px; }
+.ppwrap .pp { margin-right: 0; }
+.ppmenu { display: none; position: fixed; z-index: 60; padding: 0 6px 0 0; }
+.ppwrap:hover .ppmenu, .ppwrap:focus-within .ppmenu { display: block; }
+/* A vertical bar to the LEFT of the circle (Frank, 2026-09-30: "it covers
+   the part of the transcript we're wanting to hear"). Fixed, placed by
+   ppPlace() on hover, so the transcript's scroll box cannot clip it. */
+.ppmenu > .ppbox { display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 8px 6px;
+  background: var(--surface-raised, var(--bg, #fff)); border: 1px solid var(--border-strong); border-radius: 10px;
+  box-shadow: 0 2px 8px rgba(0,0,0,.15); font-size: 11px; color: var(--text-primary); font-weight: 400; }
+.ppmenu input[type=range] { writing-mode: vertical-lr; direction: rtl; -webkit-appearance: slider-vertical;
+  width: 18px; height: 84px; margin: 2px 0 4px; accent-color: var(--text-primary); }
+.ppmenu .pprate { border: 1px solid var(--border); background: var(--surface-raised, var(--bg, #fff)); color: inherit;
+  border-radius: 5px; padding: 2px 2px; font-size: 11px; cursor: pointer; }
+.tturn.sync:hover { background-color: var(--hover, rgba(127,127,127,.08)); }
 .tturn .ts { font-variant-numeric: tabular-nums; color: var(--text-secondary); font-size: 11px; margin-right: 6px; }
 .tturn .tw { font-weight: 600; margin-right: 4px; }
 
@@ -3177,6 +3193,68 @@ function transcriptHtml(text) {
    recordings on a card that coaches two calls), and the line playing is
    lit as the call plays. Cards whose recordings Deepgram never read (before
    2026-09-29) keep the plain transcript. */
+// Playback volume and speed, shared by every line's control and kept in
+// this browser. Applied to a card's player and to Role Play clips alike.
+const PB_RATES = [0.75, 1, 1.25, 1.5, 2];
+const pb = (() => {
+  let v = 1, r = 1;
+  try { v = parseFloat(localStorage.getItem("pbVol") ?? "1"); r = parseFloat(localStorage.getItem("pbRate") ?? "1"); } catch (_) {}
+  return { vol: isFinite(v) ? Math.min(1, Math.max(0, v)) : 1, rate: PB_RATES.includes(r) ? r : 1 };
+})();
+function pbApply(a) { if (!a) return; try { a.volume = pb.vol; a.defaultPlaybackRate = pb.rate; a.playbackRate = pb.rate; } catch (_) {} }
+function ppBtn(label) {
+  return `<span class="ppwrap"><button type="button" class="pp" aria-label="${label}">&#9654;</button><span class="ppmenu"><span class="ppbox">
+    <span aria-hidden="true">&#128266;</span><input type="range" class="ppvol" min="0" max="1" step="0.05" value="${pb.vol}" aria-label="Volume">
+    <select class="pprate" aria-label="Speed">${PB_RATES.map(r => `<option value="${r}"${r === pb.rate ? " selected" : ""}>${r}&times;</option>`).join("")}</select>
+  </span></span></span>`;
+}
+// Put a line's bar just left of its circle, centred on it and kept on screen.
+function ppPlace(wrap) {
+  const m = wrap && wrap.querySelector(".ppmenu");
+  if (!m) return;
+  const r = wrap.getBoundingClientRect();
+  m.style.visibility = "hidden"; m.style.display = "block";
+  const w = m.offsetWidth, h = m.offsetHeight;
+  m.style.display = ""; m.style.visibility = "";
+  let left = r.left - w, top = r.top + r.height / 2 - h / 2;
+  if (left < 4) {                           // no room on the left: sit below the circle instead
+    left = Math.max(4, r.left + r.width / 2 - w / 2);
+    top = r.bottom;
+    m.style.padding = "4px 0 0";
+  } else m.style.padding = "";
+  top = Math.max(4, Math.min(top, window.innerHeight - h - 4));
+  m.style.left = `${left}px`; m.style.top = `${top}px`;
+}
+["mouseover", "focusin"].forEach(ev => document.addEventListener(ev, e => {
+  const w = e.target.closest && e.target.closest(".ppwrap");
+  if (w && !(e.relatedTarget && w.contains(e.relatedTarget))) ppPlace(w);
+}));
+document.addEventListener("scroll", () => {
+  const w = document.querySelector(".ppwrap:hover, .ppwrap:focus-within");
+  if (w) ppPlace(w);
+}, true);
+function pbAll() {
+  document.querySelectorAll("audio[id^='rec-']").forEach(pbApply);
+  if (typeof rphAudio !== "undefined") pbApply(rphAudio);
+  document.querySelectorAll(".ppvol").forEach(x => { x.value = pb.vol; });
+  document.querySelectorAll(".pprate").forEach(x => { x.value = String(pb.rate); });
+}
+// The menu's own clicks never reach the line (which would jump the call).
+document.addEventListener("click", e => {
+  const m = e.target.closest && e.target.closest(".ppmenu");
+  if (!m) return;
+  e.stopPropagation();
+}, true);
+document.addEventListener("change", e => {
+  if (!e.target.classList || !e.target.classList.contains("pprate")) return;
+  pb.rate = +e.target.value; try { localStorage.setItem("pbRate", String(pb.rate)); } catch (_) {}
+  pbAll();
+});
+document.addEventListener("input", e => {
+  if (!e.target.classList || !e.target.classList.contains("ppvol")) return;
+  pb.vol = +e.target.value; try { localStorage.setItem("pbVol", String(pb.vol)); } catch (_) {}
+  pbAll();
+});
 function syncedRecordingBlk(c) {
   const ids = c.recording_ids || [];
   const esc = t => String(t == null ? "" : t).replace(/[&<>"]/g, ch => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[ch]));
@@ -3187,7 +3265,7 @@ function syncedRecordingBlk(c) {
     const head = ids.length > 1 && x.r !== lastR ? `<div class="ttag">Call ${x.r + 1} of ${ids.length}</div>` : "";
     lastR = x.r;
     return `${head}<p class="tturn sync t${/\((producer|service)\)/.test(x.who) ? 0 : 1}" data-rec="${uid}" data-r="${x.r}" data-t="${x.t}">
-      <button type="button" class="pp" aria-label="Play from here">&#9654;</button><span class="ts">${mmss(x.t)}</span><span class="tw">${esc(x.who)}</span>${esc(x.text)}</p>`;
+      ${ppBtn("Play from here")}<span class="ts">${mmss(x.t)}</span><span class="tw">${esc(x.who)}</span>${esc(x.text)}</p>`;
   }).join("");
   return `<div class="blk"><div class="bl">Recording &amp; transcript</div>
     <audio controls preload="none" id="${uid}" data-day="${c.day}" data-ids="${ids.join(",")}" data-r="0"
@@ -3243,7 +3321,7 @@ function syncButtons(a) {
 }
 ["play", "pause", "ended"].forEach(ev => document.addEventListener(ev, e => {
   const a = e.target;
-  if (a && a.id && a.id.startsWith("rec-")) syncButtons(a);
+  if (a && a.id && a.id.startsWith("rec-")) { if (ev === "play") pbApply(a); syncButtons(a); }
 }, true));
 function recordingBlk(c) {
   if (c.turns && c.turns.length && c.recording_ids && c.recording_ids.length) return syncedRecordingBlk(c);
@@ -4369,7 +4447,7 @@ function rphSessionHtml(s) {
   const anyAudio = hist.some(m => m.audio);
   const msgs = hist.map((m, i) => `<div class="rpmsg ${m.role === "producer" ? "producer" : "prospect"}${m.audio ? " rphplay" : ""}"
       ${m.audio ? `data-i="${i}" title="Play from here" style="cursor:pointer"` : ""}>
-    <span class="rl">${m.audio ? `<button type="button" class="pp" aria-label="Play from here">&#9654;</button>` : ""}${m.role === "producer" ? rphEsc(who) : "Prospect"}</span>${rphEsc(m.content)}</div>`).join("");
+    <span class="rl">${m.audio ? ppBtn("Play from here") : ""}${m.role === "producer" ? rphEsc(who) : "Prospect"}</span>${rphEsc(m.content)}</div>`).join("");
   const facts = [s.lead_source && `Lead source: ${rphEsc(s.lead_source)}`,
     s.language && `Language: ${rphEsc(RP_LANG_LABEL[s.language] || s.language)}`,
     s.focus && s.focus.length && `Drilled: ${s.focus.map(rphEsc).join(", ")}`,
@@ -4449,6 +4527,7 @@ function rphPlayFrom(sess, i, part) {
   const k = part || 0;
   const a = new Audio(`/api/roleplay/audio?key=${encodeURIComponent(clips[k])}`);
   rphAudio = a; rphIdx = i;
+  pbApply(a);
   a.onplay = a.onpause = () => { if (rphAudio === a) rphButtons(); };
   const el = document.querySelector(`.rphplay[data-i="${i}"]`);
   if (el) { el.classList.add("playing"); if (!k) el.scrollIntoView({ block: "nearest", behavior: "smooth" }); }
