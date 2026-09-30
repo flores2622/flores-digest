@@ -1105,6 +1105,13 @@ Crystal (hybrid); credit always goes to whoever COMPLETED the SR or task.
   left out, renewal numbers split to the Renewals side. Past days: `python3
   service_digest.py --add-dials 2026-09-01 2026-09-28` (backs up under
   `backups/<today>-dials/`, adds only `dials`). The Renewals tab is next.
+  **Laid out for the full-width board** (Frank, 2026-09-30: "it looks
+  off"): the person strip is three equal columns (`.svcstrip`), the stat
+  cards come in even rows of six (`.svcgrid`; four, then two, on narrower
+  screens), Texts & Emails stays full width, and the rest sits two to a row
+  like the Sales Digest (`.digestgrid`): Note Standard, Completion Time and
+  Late Payments on the left, the pipeline outcomes and Contingencies on the
+  right.
 - **Every recorded service call has its full transcript** (Frank,
   2026-09-30: "full transcripts for service calls too"). `service_calls.py`
   takes exactly the calls the Service Center's rows list -- every inbound
