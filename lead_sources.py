@@ -61,11 +61,14 @@ GROUPS = {
     },
     "winback": {
         "label": "Winback",
-        "who": "A former customer we are trying to win back.",
+        # "Former" or "prior", never "lapsed" -- lapsed means without
+        # coverage, and a winback insures elsewhere now (Frank, 2026-09-30).
+        "who": "A former (prior) customer who now insures with another company. "
+               "We are trying to win them back.",
         "products": ANY,
         "existing_household": False, "sale": True, "owner": "apollo",
         # Role Play: what the prospect knows about how this call came about.
-        "backstory": 'You used to insure with this agency and moved to another company. The producer is calling to win you back.',
+        "backstory": 'You used to insure with this agency and moved to another company, which insures you now. The producer is calling to win you back.',
         "approach": "Find out why they left before quoting. Lead with what has "
                     "changed since, and quote what they had plus anything missing.",
     },
@@ -266,8 +269,20 @@ STAFF = {
 STAFF_REFERRAL = {"francisco flores"}
 
 # Role Play backstory for one source where its group's own is not right: a
-# Francisco lead is a referral or a warm transfer (Frank, 2026-09-24).
+# Francisco lead is a referral or a warm transfer (Frank, 2026-09-24). Home
+# no Auto and Auto no Home say which policy the agency already has (Frank,
+# 2026-09-30: "If its Home no auto, that means we have the home and not the
+# auto. we are trying to sell the auto") -- the group's "one policy" left the
+# prospect saying they already had the auto with us.
 SOURCE_BACKSTORY = {
+    "home no auto": "Your home is insured with this agency. Your cars are insured "
+                    "with another company, not this agency. The producer is calling "
+                    "about your auto insurance. You do not need a home quote -- this "
+                    "agency already has your home.",
+    "auto no home": "Your cars are insured with this agency. Your home is insured "
+                    "with another company, not this agency. The producer is calling "
+                    "about your home insurance. You do not need an auto quote -- this "
+                    "agency already has your cars.",
     "francisco flores": "You spoke with Francisco at this agency and he either "
                         "transferred your call to this producer or passed your "
                         "information along and told you they would call.",
