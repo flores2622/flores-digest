@@ -67,6 +67,7 @@ DAY_FILES = [
     # Which audiences tonight's email already reached (daily.send, 2026-09-30),
     # so a re-run in a fresh container does not email them twice.
     "sent_{day}_ops.json", "sent_{day}_staff.json",
+    "servicetx_{day}.json",
 ]
 
 
@@ -130,8 +131,12 @@ def sync_down_day(day, log=print):
     # file actually references -- never a bulk directory listing, so this
     # never pulls another day's leftover mp3s into the same local folder.
     tpath = ROOT / "data" / f"transcripts_{day}.json"
-    if tpath.exists():
-        ids = list(json.loads(tpath.read_text()).keys())
+    stpath = ROOT / "data" / f"servicetx_{day}.json"
+    if tpath.exists() or stpath.exists():
+        ids = list(json.loads(tpath.read_text()).keys()) if tpath.exists() else []
+        # The service team's recordings too (service_calls.py).
+        if stpath.exists():
+            ids += [k for k in json.loads(stpath.read_text()) if k not in set(ids)]
         audio_dir = ROOT / "data/audio"
         n = 0
         for cid in ids:

@@ -467,8 +467,10 @@ def dial_figures(day, recs=None, commercial_only=frozenset()):
                                    "service": service, "renewal": renewal_caller(hit),
                                    "name": mca.name_for(h, None), "first": r.get("startTime"),
                                    "link_kind": "customer" if cust else ("lead" if lead else None),
-                                   "link_id": (cust or lead or {}).get("id")}
+                                   "link_id": (cust or lead or {}).get("id"), "recs": []}
         row["attempts"] += 1
+        if r.get("recording") and r.get("result") == "Call connected":
+            row["recs"].append(r.get("id"))
         row["seconds"] = max(row["seconds"], int(r.get("duration") or 0) if r.get("result") == "Call connected" else 0)
     return {"rows": sorted(per.values(), key=lambda x: (x["who"], x["first"] or ""))}
 
@@ -477,6 +479,20 @@ def dial_figures(day, recs=None, commercial_only=frozenset()):
 # (FindMe to themselves), a pickup off park, or their desk phone -- the same
 # legs inbound.attribute() reads for producers.
 PICKUP_ACTIONS = ("Park Location", "FindMe", "VoIP Call")
+
+
+def first_pickup(r):
+    """(name, seconds) of whoever first picked up an inbound call -- their
+    own phone ringing (FindMe to themselves), a pickup off park, or their
+    desk phone -- or None."""
+    for l in r.get("legs") or []:
+        f = (l.get("from") or {}).get("name")
+        if l.get("result") != "Call connected" or l.get("action") not in PICKUP_ACTIONS or not f:
+            continue
+        if l.get("action") == "FindMe" and (l.get("to") or {}).get("name") != f:
+            continue
+        return f, int(l.get("duration") or 0)
+    return None
 
 
 def front_figures(day, done, live, recs=None):
@@ -491,18 +507,13 @@ def front_figures(day, done, live, recs=None):
     for r in recs:
         if r.get("direction") != "Inbound" or r.get("result") != "Accepted" or inbound.az_day(r) != day:
             continue
-        first = None
-        for l in r.get("legs") or []:
-            f = (l.get("from") or {}).get("name")
-            if l.get("result") != "Call connected" or l.get("action") not in PICKUP_ACTIONS or not f:
-                continue
-            if l.get("action") == "FindMe" and (l.get("to") or {}).get("name") != f:
-                continue
-            first = (f, int(l.get("duration") or 0))
-            break
+        first = first_pickup(r)
         if first and first[0] in SERVICE_TEAM:
             calls.append({"who": first[0], "at": r.get("startTime"), "seconds": first[1],
-                          "number": mca.norm((r.get("from") or {}).get("phoneNumber"))})
+                          "number": mca.norm((r.get("from") or {}).get("phoneNumber")),
+                          # The call's recording, for its transcript and player
+                          # (service_calls.py); None when it was not recorded.
+                          "rec": r.get("id") if r.get("recording") else None})
     seen, created = set(), []
     for t in list(live) + list(done):
         if str(t.get("createDate") or "")[:10] != day or t.get("id") in seen:
@@ -566,6 +577,18 @@ def build(day, log=log, refresh_households=True):
     except Exception as e:
         log(f"  dials failed ({type(e).__name__}: {e})")
         dials = None
+    # Full transcripts of the team's recorded calls (service_calls.py, Frank
+    # 2026-09-30): the checkpoints have usually built them already; this
+    # fills in the rest. Only the calls the rows above list are kept.
+    calls_tx = None
+    try:
+        import service_calls
+        tx = service_calls.build(day, log=log, commercial_only=com_only)
+        listed = {c.get("rec") for c in (front or {}).get("calls") or []}
+        listed |= {i for r in (dials or {}).get("rows") or [] for i in r.get("recs") or []}
+        calls_tx = {k: v for k, v in tx.items() if k in listed and v.get("turns")}
+    except Exception as e:
+        log(f"  service transcripts failed ({type(e).__name__}: {e})")
     # Texts and emails with customers (service_messages.py, Frank 2026-09-27).
     try:
         import service_messages
@@ -600,6 +623,7 @@ def build(day, log=log, refresh_households=True):
         "dials": dials,
         "messages": messages,
         "front": front,
+        "calls_tx": calls_tx,
         "playbook": __import__("service_playbook").as_doc(),
         "utilization": util,
     }
