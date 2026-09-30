@@ -347,7 +347,15 @@ h2 {
    column, same as it already does outside this grid. Collapses to one
    column under the same width other narrow layouts in this file use. */
 .digestgrid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 20px; align-items: start; }
-.digestgrid > div { min-width: 0; }   /* an open card list scrolls inside its column instead of widening it */
+.digestgrid > div { min-width: 0; }
+/* The Service Center at full width (Frank, 2026-09-30: "it looks off"):
+   the person strip fills the row, the stat cards come in even rows of six,
+   and the sections under them sit two to a row like the Sales Digest. */
+.svcstrip { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
+.svcgrid { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 10px; }
+.svcsmall { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 260px)); gap: 10px; }
+@media (max-width: 1300px) { .svcgrid { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
+@media (max-width: 900px) { .svcgrid { grid-template-columns: repeat(2, minmax(0, 1fr)); } .svcstrip { grid-template-columns: 1fr; } }   /* an open card list scrolls inside its column instead of widening it */
 @media (max-width: 720px) { .digestgrid { grid-template-columns: 1fr; } }
 
 /* Stat tiles. */
@@ -6362,7 +6370,7 @@ function srOutcomeHtml(m, pipe, title, rateWord, blurb) {
     `<span class="oleg-item"><span class="pd rdot" style="${fill(k)}"></span>${l} <b>${c}</b> <span style="color:var(--text-muted)">(${Math.round(100 * c / rows.length)}%)</span></span>`).join("");
   const noted = rows.filter(r => r.source === "notes").length, unread = rows.filter(r => r.source === "unread").length;
   return `<div class="sect"><h2>${title}</h2><p class="sd">${blurb}</p>
-    <div class="tiles rtiles">${cards}</div>${svcDrillFor(m, ["out:" + pipe])}<div class="oleg">${legend}</div>
+    <div class="tiles rtiles" style="grid-template-columns:repeat(auto-fit,minmax(105px,1fr))">${cards}</div>${svcDrillFor(m, ["out:" + pipe])}<div class="oleg">${legend}</div>
     <p class="sd" style="margin:10px 0 0">Of ${rows.length}: ${noted} read from the rep's note by AI${unread ? `; ${unread} with a note not read yet (shown as No note until the next nightly run)` : ""}. These SRs are closed as Completed, so the note is where the outcome is written.</p></div>`;
 }
 /* Renewal outcomes and retention live on the Renewals tab (Frank, 2026-09-25):
@@ -6511,7 +6519,7 @@ function svcMessagesHtml(m) {
     anyone with an open SR count; leads are the Sales Center's. A message that came in while the office was closed
     starts at 8:30. Green is 15 minutes or less, red over an hour.${part}</p>
     ${tiles}${svcDrillFor(m, ["msg:sent", "msg:emails", "msg:answered", "msg:waiting"])}
-    ${cards ? `<h3 class="rh3" style="margin-top:14px">Speed to Reply by person</h3><div class="tiles">${cards}</div>${svcDrillFor(m, ["msg:who"])}` : ""}</div>`;
+    ${cards ? `<h3 class="rh3" style="margin-top:14px">Speed to Reply by person</h3><div class="svcsmall">${cards}</div>${svcDrillFor(m, ["msg:who"])}` : ""}</div>`;
 }
 function svcDrillList(title, what, body) {
   return `<div class="rdrill-list"><div style="display:flex;justify-content:space-between;align-items:baseline;gap:12px;margin:14px 0 6px">
@@ -6738,12 +6746,12 @@ function serviceStatsHtml(m) {
   }
   return `<div class="sect"><h2>Service Team</h2>
     <p class="sd">Pick a person for their own stats; with nobody picked the cards below are the whole team. Credit goes to whoever completed the SR or task. Click any card for the accounts behind it.</p>
-    <div class="tiles" style="grid-template-columns:repeat(auto-fill,minmax(250px,1fr))">${strip}</div>
+    <div class="svcstrip">${strip}</div>
     <div class="tile" style="margin-top:12px;text-align:left;background:var(--surface-2, transparent)">
       <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:8px">
         <b>${n ? `${pbadge(DOT[n] || TEAM_DOT, first(n))} <span style="margin-left:4px">${cesc(title(n))}</span>` : `${pbadge(TEAM_DOT, "Team")} <span style="margin-left:4px">totals</span>`}</b>
         ${n ? '<a href="#" data-sperson="">Show the team</a>' : ""}</div>
-      <div class="tiles">${tiles}</div>${role}${svcDrillFor(m, ["g"])}</div></div>`;
+      <div class="svcgrid">${tiles}</div>${role}${svcDrillFor(m, ["g"])}</div></div>`;
 }
 // A card that opens a list: wraps a tile's attributes.
 const sdk = (k, extra) => ` data-sdrill="${k}" role="button" tabindex="0" class="tile rdrill${svcDrill === k ? " on" : ""}${extra ? " " + extra : ""}"`;
@@ -6845,7 +6853,7 @@ function noteStandardHtml(m) {
   return `<div class="sect"><h2>Note Standard</h2>
     <p class="sd">Every note should answer Who? What? Why? Outcome? Next step? so the next person can pick up where you left off. <b>${Math.round(100 * meets.length / aud.length)}%</b> of the ${aud.length} service SRs completed in this period meet it; each note is read against the playbook by AI.
     Good: <i>"${cesc(PB.good_note)}"</i> Too vague: <i>"${cesc(PB.vague_note)}"</i></p>
-    <div class="tiles">${chips}</div>${svcDrillFor(m, ["notes"])}</div>`;
+    <div class="tiles" style="grid-template-columns:repeat(auto-fit,minmax(90px,1fr))">${chips}</div>${svcDrillFor(m, ["notes"])}</div>`;
 }
 function playbookHtml(m) {
   const PB = m.playbook;
@@ -6869,12 +6877,11 @@ function playbookHtml(m) {
 }
 function servicePanel(m) {
   return `${playbookHtml(m)}${serviceStatsHtml(m)}
-    ${m.playbook ? noteStandardHtml(m) : ""}
     ${svcMessagesHtml(m)}
-    ${SR_OUTCOME_SECTIONS.map(([p, t, w, b]) => srOutcomeHtml(m, p, t, w, b)).join("")}
-    ${completionTimeHtml(m)}
-    ${latePaymentsHtml(m)}
-    ${missingDocsHtml(m)}
+    <div class="digestgrid">
+      <div>${m.playbook ? noteStandardHtml(m) : ""}${completionTimeHtml(m)}${latePaymentsHtml(m)}</div>
+      <div>${SR_OUTCOME_SECTIONS.map(([p, t, w, b]) => srOutcomeHtml(m, p, t, w, b)).join("")}${missingDocsHtml(m)}</div>
+    </div>
 `;
 }
 // The Sales Digest's date filter, as service days (the Service Digest and the
