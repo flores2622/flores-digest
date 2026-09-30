@@ -283,7 +283,11 @@ Everything caches under `data/`, so a re-run resumes rather than restarting.
   if it sits under that session's own prefix. `/api/roleplay/audio` serves a
   producer's clips by `rpScope` (their own, or everyone's for the history
   viewers); the prospect's machine voice to anyone signed in. Session History
-  plays a session from any line. Sessions before 2026-09-29 have no sound.
+  plays a session from any line, **and word by word like the cards** (Frank,
+  2026-09-30; `rphWords` / `rphClip`): neither voice has word times, so each
+  word sits at its share of its clip's speech by length, the speech found in
+  the sound itself (a producer's clip holds the silence before they spoke and
+  the 1.5 s pause after) -- close, not exact. Sessions before 2026-09-29 have no sound.
   **Coaching cards**: `coaching_cards._timed_turns` adds `turns` ({r, t, who,
   text}; t = seconds into recording r) from Deepgram's SAVED reads only
   (`deepgram_stt.turns(..., cached_only=True)` -- a card build never pays

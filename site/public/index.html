@@ -713,8 +713,6 @@ details.sc .scb { padding: 0 12px 12px; }
 .rpside { flex: 1 1 340px; min-width: 0; display: flex; flex-direction: column; gap: 14px; }
 .rpside .gradecard { max-width: none; margin-top: 0; }
 .rpside .gradecard td.gi { width: 42%; }
-.rpside .gradecard td { text-align: left; }
-.rpside .gradecard td + td { padding-left: 10px; }
 .rpcall .rpchat { max-width: 820px; }
 .rphead { flex: 0 0 auto; display: flex; flex-direction: column; align-items: center; gap: 8px; width: 170px; }
 .rphead-name { font-size: 12.5px; font-weight: 600; text-align: center; }
@@ -734,7 +732,8 @@ details.sc .scb { padding: 0 12px 12px; }
 .rpstar.on { color: #e8a317; }
 .gradecard { border: 1px solid var(--border-strong); border-radius: 10px; padding: 14px 16px; margin-top: 14px; max-width: 640px; background: var(--surface-raised); }
 .gradecard table { width: 100%; border-collapse: collapse; margin: 8px 0; }
-.gradecard td { padding: 5px 0; font-size: 12.5px; vertical-align: top; }
+.gradecard td { padding: 5px 0; font-size: 12.5px; vertical-align: top; text-align: left; }
+.gradecard td + td { padding-left: 10px; }
 .gradecard td.gi { width: 180px; font-weight: 600; }
 .histrow { display: flex; justify-content: space-between; gap: 10px; padding: 7px 0; border-bottom: 1px solid var(--border); font-size: 12.5px; }
 .histrow:last-child { border-bottom: none; }
@@ -742,9 +741,9 @@ details.sc .scb { padding: 0 12px 12px; }
 /* Drawn inside the line, so the transcript box's edge never covers it (Frank, 2026-09-30). */
 .rphplay.playing, .tturn.sync.playing { box-shadow: inset 0 0 0 2px var(--accent, #2b6cb0); }
 /* The word being said, and every word clickable to play from there. */
-.tturn .wd { cursor: pointer; border-radius: 3px; }
-.tturn .wd:hover { text-decoration: underline; }
-.tturn .wd.cur { background: #ffe58a; color: #1a1a1a; box-shadow: 0 0 0 2px #ffe58a; }
+.wd { cursor: pointer; border-radius: 3px; }
+.wd:hover { text-decoration: underline; }
+.wd.cur { background: #ffe58a; color: #1a1a1a; box-shadow: 0 0 0 2px #ffe58a; }
 .tturn.sync { cursor: pointer; }
 /* The play / pause button at the start of each line. */
 .pp { display: inline-flex; align-items: center; justify-content: center; width: 22px; height: 22px; margin-right: 6px;
@@ -4649,7 +4648,7 @@ function rphSessionHtml(s) {
   const anyAudio = hist.some(m => m.audio);
   const msgs = hist.map((m, i) => `<div class="rpmsg ${m.role === "producer" ? "producer" : "prospect"}${m.audio ? " rphplay" : ""}"
       ${m.audio ? `data-i="${i}" title="Play from here" style="cursor:pointer"` : ""}>
-    <span class="rl">${m.audio ? ppBtn("Play from here") : ""}${m.role === "producer" ? rphEsc(who) : "Prospect"}</span>${rphEsc(m.content)}</div>`).join("");
+    <span class="rl">${m.audio ? ppBtn("Play from here") : ""}${m.role === "producer" ? rphEsc(who) : "Prospect"}</span>${m.audio ? rphWords(m) : rphEsc(m.content)}</div>`).join("");
   const facts = [s.lead_source && `Lead source: ${rphEsc(s.lead_source)}`,
     s.language && `Language: ${rphEsc(RP_LANG_LABEL[s.language] || s.language)}`,
     s.focus && s.focus.length && `Drilled: ${s.focus.map(rphEsc).join(", ")}`,
@@ -4659,7 +4658,7 @@ function rphSessionHtml(s) {
     ${s.grade ? gradeCardHtml(s.grade) : ""}
     <div class="bl" style="margin-top:14px">The conversation</div>
     ${anyAudio ? `<p class="sd" style="margin:4px 0 8px"><button class="ghost" id="rphPlayAll" type="button">&#9654; Play the session</button>
-      <button class="ghost" id="rphStop" type="button">&#9632; Stop</button> Click any line to play from there; its button pauses and resumes.</p>`
+      <button class="ghost" id="rphStop" type="button">&#9632; Stop</button> Click any word to play from there; a line's button pauses and resumes.</p>`
       : `<p class="sd" style="margin:4px 0 8px">No sound was saved for this session -- sessions are recorded from 2026-09-29 on.</p>`}
     <div class="rpchat"><div class="rpmsgs" style="max-height:none">${msgs || '<div class="empty">No transcript saved.</div>'}</div></div>
   </div>`;
@@ -4699,14 +4698,80 @@ function rphPanel() {
     <div class="sect"><h2>Sessions (${rows.length})</h2>${list}</div>`;
 }
 
+/* Word by word, like the coaching cards (Frank, 2026-09-30: "do the same
+   for the role play session history"). A line's words are its clips' words
+   -- a streamed reply was spoken sentence by sentence, one clip each -- and
+   each word sits at its share of the clip's SPEECH by length. Neither the
+   prospect's voice nor the browser's mic gives word times, so this is close,
+   not exact; the speech is found in the sound itself (rphClip), because a
+   producer's clip carries the silence before they spoke and the 1.5 s pause
+   after. */
+function rphWords(m) {
+  const parts = Array.isArray(m.audios) && m.audios.length > 1 && Array.isArray(m.parts) && m.parts.length === m.audios.length
+    ? m.parts : [m.content];
+  return parts.map((txt, k) => {
+    const words = String(txt || "").split(/\s+/).filter(Boolean);
+    const total = words.reduce((n, w) => n + w.length + 1, 0) || 1;
+    let run = 0;
+    return words.map(w => { const f = run / total; run += w.length + 1;
+      return `<span class="wd" data-k="${k}" data-f="${f.toFixed(3)}">${rphEsc(w)}</span>`; }).join(" ");
+  }).join(" ");
+}
+/* One saved clip: its sound as a local URL, and where the speech starts and
+   ends in it (the first and last 20 ms that are clearly louder than the
+   clip's quiet). Fetched once per clip; a clip the browser cannot decode
+   counts its whole length as speech. */
+const rphClips = new Map();
+function rphClip(key) {
+  if (!rphClips.has(key)) rphClips.set(key, (async () => {
+    const r = await fetch(`/api/roleplay/audio?key=${encodeURIComponent(key)}`);
+    if (!r.ok) throw new Error(`clip ${r.status}`);
+    const buf = await r.arrayBuffer();
+    const url = URL.createObjectURL(new Blob([buf], { type: r.headers.get("content-type") || "audio/mpeg" }));
+    let s = 0, e = null;
+    try {
+      const Ctx = window.OfflineAudioContext || window.webkitOfflineAudioContext;
+      const audio = await new Ctx(1, 1, 44100).decodeAudioData(buf.slice(0));
+      const d = audio.getChannelData(0), win = Math.max(1, Math.round(audio.sampleRate * 0.02));
+      const rms = [];
+      for (let i = 0; i < d.length; i += win) {
+        let sum = 0; const end = Math.min(d.length, i + win);
+        for (let j = i; j < end; j++) sum += d[j] * d[j];
+        rms.push(Math.sqrt(sum / (end - i)));
+      }
+      const peak = Math.max(...rms, 0), cut = Math.max(peak * 0.12, 0.004);
+      const first = rms.findIndex(x => x > cut);
+      let last = rms.length - 1; while (last > 0 && rms[last] <= cut) last--;
+      if (first >= 0 && last > first) { s = first * 0.02; e = (last + 1) * 0.02; }
+    } catch (_) {}
+    return { url, s, e };
+  })().catch(err => { rphClips.delete(key); throw err; }));
+  return rphClips.get(key);
+}
+
 /* Plays a saved session from turn `i` on, line by line, lighting up the
-   line that is playing. */
-let rphAudio = null, rphIdx = -1;
+   line that is playing and the word being said. */
+let rphAudio = null, rphIdx = -1, rphSpan = null, rphTok = 0;
 function rphStopPlay() {
+  rphTok++;
   if (rphAudio) { try { rphAudio.pause(); } catch (_) {} rphAudio = null; }
-  rphIdx = -1;
+  rphIdx = -1; rphSpan = null;
   document.querySelectorAll(".rphplay.playing").forEach(el => el.classList.remove("playing"));
+  document.querySelectorAll(".rphplay .wd.cur").forEach(el => el.classList.remove("cur"));
   rphButtons();
+}
+function rphTick() {
+  const a = rphAudio, sp = rphSpan;
+  if (!a || !sp || a.paused || a.ended) return;
+  const el = document.querySelector(`.rphplay[data-i="${sp.i}"]`);
+  if (el) {
+    const e = sp.e || a.duration || 0, f = e > sp.s ? (a.currentTime - sp.s) / (e - sp.s) : 0;
+    let cur = null;
+    for (const w of el.querySelectorAll(`.wd[data-k="${sp.k}"]`)) { if (+w.dataset.f <= f) cur = w; else break; }
+    const was = el.querySelector(".wd.cur");
+    if (was !== cur) { if (was) was.classList.remove("cur"); if (cur) cur.classList.add("cur"); }
+  }
+  requestAnimationFrame(rphTick);
 }
 function rphButtons() {
   document.querySelectorAll(".rphplay").forEach(el => {
@@ -4718,25 +4783,37 @@ function rphButtons() {
     b.setAttribute("aria-label", on ? "Pause" : mine ? "Resume" : "Play from here");
   });
 }
-function rphPlayFrom(sess, i, part) {
+async function rphPlayFrom(sess, i, part, frac) {
   rphStopPlay();
+  const tok = rphTok;
   const hist = sess.history || [];
   while (i >= 0 && i < hist.length && !hist[i].audio) i++;
   if (i < 0 || i >= hist.length) return;
   // A streamed reply was spoken sentence by sentence: `audios` holds every
   // clip in order; an older line has the one `audio`.
   const clips = Array.isArray(hist[i].audios) && hist[i].audios.length ? hist[i].audios : [hist[i].audio];
-  const k = part || 0;
-  const a = new Audio(`/api/roleplay/audio?key=${encodeURIComponent(clips[k])}`);
-  rphAudio = a; rphIdx = i;
-  pbApply(a);
-  a.onplay = a.onpause = () => { if (rphAudio === a) rphButtons(); };
+  const k = Math.min(part || 0, clips.length - 1);
   const el = document.querySelector(`.rphplay[data-i="${i}"]`);
-  if (el) { el.classList.add("playing"); if (!k) el.scrollIntoView({ block: "nearest", behavior: "smooth" }); }
-  const go = () => { if (rphAudio === a) (k + 1 < clips.length ? rphPlayFrom(sess, i, k + 1) : rphPlayFrom(sess, i + 1)); };
-  a.onended = go;
-  a.onerror = go;
-  a.play().catch(() => {});
+  if (el) { el.classList.add("playing"); if (!k && !frac) el.scrollIntoView({ block: "nearest", behavior: "smooth" }); }
+  rphIdx = i;
+  const next = () => { if (tok === rphTok) (k + 1 < clips.length ? rphPlayFrom(sess, i, k + 1) : rphPlayFrom(sess, i + 1)); };
+  let clip;
+  try { clip = await rphClip(clips[k]); } catch (_) { if (tok === rphTok) next(); return; }
+  if (tok !== rphTok) return;
+  const a = new Audio(clip.url);
+  rphAudio = a;
+  rphSpan = { i, k, s: clip.s, e: clip.e };
+  pbApply(a);
+  a.onplay = () => { if (rphAudio === a) { rphButtons(); requestAnimationFrame(rphTick); } };
+  a.onpause = () => { if (rphAudio === a) rphButtons(); };
+  a.onended = next;
+  a.onerror = next;
+  const start = () => {
+    if (frac) { const e = clip.e || a.duration || 0; try { a.currentTime = Math.max(0, clip.s + frac * (e - clip.s) - 0.05); } catch (_) {} }
+    a.play().catch(() => {});
+  };
+  if (frac) a.addEventListener("loadedmetadata", start, { once: true }); else start();
+  rphButtons();
 }
 
 function wireRphPanel() {
@@ -4763,7 +4840,10 @@ function wireRphPanel() {
         if (rphAudio.paused) rphAudio.play().catch(() => {}); else rphAudio.pause();
         return;
       }
-      rphPlayFrom(cur, i);
+      // A word plays the line from that word.
+      const w = e.target.closest(".wd");
+      if (w) rphPlayFrom(cur, i, +w.dataset.k, +w.dataset.f);
+      else rphPlayFrom(cur, i);
     });
     const all = $("#rphPlayAll"), stop = $("#rphStop");
     if (all) all.onclick = () => rphPlayFrom(cur, (cur.history || []).findIndex(m => m.audio));
