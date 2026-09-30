@@ -508,6 +508,18 @@ and anything without the glow is the checkpoint's (Frank, 2026-09-24).
   once a day (`worker-private/lead_sources.json`). Same figures, measured on
   a mocked day with leads marked and unmarked sold: 132 AgencyZoom requests
   -> 75 over 30 refreshes.
+  **It calls api.agencyzoom.com** (Frank, 2026-09-30), the address
+  AgencyZoom's published spec gives integrations
+  (api.agencyzoom.com/openapi/agencyzoom.yaml: "rate limit of 120 calls per
+  minute during the day and night"), not app.agencyzoom.com, the web app's
+  own -- a separate AWS load balancer. The refusals above were all on the
+  app address, from 2:29 PM two days running whatever the volume; same
+  endpoints, data and login on both (checked 2026-09-30). The nightly run
+  still uses app.agencyzoom.com (never refused). **Every AgencyZoom request
+  is counted** by hour and endpoint, and every refusal kept whole -- status,
+  headers (`server` says whose firewall), the first of the body, and the
+  address Cloudflare sent it from -- in `worker-private/az_log/<day>.json`
+  (`flushAzLog`, once per run). Read that before guessing why it refused.
 - **Contact rate, live contacts and Avg Talk Time are live too** (Frank,
   2026-09-28: "avg talk time, contact rate, and texts and emails should all
   be live as well"), and they are PROVISIONAL: the Worker cannot hear a
