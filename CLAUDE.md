@@ -266,12 +266,26 @@ Everything caches under `data/`, so a re-run resumes rather than restarting.
   it leaves the numerator AND the denominator. Reaching someone on their mobile
   after their landline must not read as a 50% contact rate. Mike / Nicole
   Santana, 2026-08-31 -- 252s and 67s on one lead -- and Roger Ryan before her.
+  **Reached or not** (Frank, 2026-09-30): every counted dial on one lead
+  collapses to one (`daily._one_attempt_per_lead`) -- the live number, else
+  the one dialled most -- the rest dropped as "duplicate lead" with their
+  attempts moved over, so an unanswered lead on two numbers is one dial, not
+  two. A call-in from a dropped duplicate number stays a conversation
+  (`finalize.conversations`).
 - **An answered call-in is a conversation** (Frank, 2026-09-23). If it survives
   `inbound.screen` -- Accepted, and connected on a producer's own phone -- it is
   live, whatever the transcript says; the producer's "Thank you for calling
   Farmers" reads as an auto-attendant greeting to `transcribe.MACHINE`. Only a
   SAME-DAY call back may turn a dial live; any other call-in stays outside the rate.
-- **Talk time counts every conversation**, inbound included.
+  **A screened same-day call back makes its dial live, full stop** (Frank,
+  2026-09-30): `is_live(..., callback=True)` is "answered call back" over a
+  "no answer" note and under 60s. A screened call-in with no recording is
+  still a conversation (an entry with no text: talk time and Call Detail,
+  no coaching card); it is read once a recording appears.
+- **Talk time counts every conversation**, inbound included. **So does the
+  team's** (Frank, 2026-09-30): `finalize.team_avg_talk` weights each
+  producer by live + inbound, `_totals`' own divisor, for the email and the
+  board alike -- it was avg x outbound live only.
 - **Notes win over the recording** (Frank, 2026-08-18). A producer writing "no
   answer" outranks a 12-second transcript that sounds live. Duration is the
   last resort and is labelled as such.
@@ -301,6 +315,10 @@ Everything caches under `data/`, so a re-run resumes rather than restarting.
 as ten digits with no country code, so a Mexican number arrives from RingCentral
 as `+526535380676` and from AgencyZoom as `(653) 538-0676`. Anything stricter
 silently drops real customers.
+**Dials are keyed that way too** (Frank, 2026-09-30): `day_calls.dials_from`
+keys every dialled number by `e164` (a number too short keeps its raw form),
+so a +52 dial meets its lead; transcripts, call backs, `task_audit` and the
+Worker's `dialDeltas` / `speedToDial` use the same key.
 
 ## Rebuilding a past day
 
@@ -444,6 +462,11 @@ and anything without the glow is the checkpoint's (Frank, 2026-09-24).
   rebuilding them from each producer's summary -- 09-25's team read 69m23s
   that way against a true 34m56s. Checked identical to the Python on every
   day R2 holds a lead snapshot for (09-23, 09-24, 09-25, 09-28).
+  **Three corrections** (Frank, 2026-09-30; published days not rebuilt): the
+  first dial is the EARLIEST by any producer, credited to them (it was the
+  first producer in the log's order); a lead "arrived today" by its
+  createDate in ARIZONA time (UTC-7 -- a 5:30 PM lead was lost); both sides
+  keyed by `e164`. `speed_to_dial` is now built from `speed_rows`.
 - **Task Completion** (Frank, 2026-09-29: "task completion should be live")
   is worked out whole like Speed to Dial (`site/live.js taskCompletion`, a
   line-for-line mirror of `az_tasks.audit` -- keep them in step, rounding
@@ -596,7 +619,10 @@ households half (households sold over households quoted) count the leads
 marked sold (`rows.sold_leads`; live, the sales refresh's own read of
 today's sold leads), one per household per day -- `household` is the lead's
 convertedHouseholdId, else its name, since duplicate lead records are
-pervasive. **Premium Sold is still the policies' own premium** and the
+pervasive. **A BOB / Rewrite lead (`lead_sources.NOT_A_SALE`) or a test lead
+(`digest_config.is_test_lead`) is not a household sold** (Frank,
+2026-09-30), in `digest_rows` and `live.js soldLeadsToday` alike
+(`live_basis.test_lead`). **Premium Sold is still the policies' own premium** and the
 policy count still shows beside it (policies per HH). A lead can be marked
 sold a few days off its policy's soldDate, so a day can show a household
 with no policy or the reverse. A day with no sold-lead rows keeps the old

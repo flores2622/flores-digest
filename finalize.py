@@ -62,15 +62,47 @@ def _totals(dials, rows):
     }
 
 
+def team_avg_talk(people, talk="avg_talk"):
+    """Team Avg Talk Time in seconds, from each producer's own average.
+
+    Weighted by the SAME divisor _totals uses for each producer: every
+    conversation, outbound live contacts plus inbound rows (Frank,
+    2026-09-30). The team figure used to rebuild each producer's seconds as
+    avg_talk x live -- outbound only -- so a producer whose average was
+    lifted or dragged by call-ins counted with too little weight, and the
+    team read neither total seconds over total conversations nor anything
+    else. `talk` names the key holding the average ("avg_talk" on a
+    metrics producer, "talk" on the board's producer rows); both carry
+    `live` and `inbound`. Used by render_report.build_funnel and
+    board_payload._team_talk_and_roleplay, so the email and the board
+    cannot disagree."""
+    n = [(p.get("live") or 0) + (p.get("inbound") or 0) for p in people]
+    convos = sum(n)
+    secs = sum((p.get(talk) or 0) * k for p, k in zip(people, n))
+    return int(secs // convos) if convos else 0
+
+
 def apply(M):
     """Re-total every producer in place. Safe to call more than once."""
     for who, v in M.get("producers", {}).items():
-        dials = v.get("dials") or []
-        dropped = {d["number"] for d in dials if d.get("dropped")}
-        detail = [r for r in (v.get("call_detail") or [])
-                  if r["number"] not in dropped]
-        v.update(_totals(dials, detail))
+        v.update(_totals(v.get("dials") or [], conversations(v)))
     return M
+
+
+def conversations(v):
+    """The Call Detail rows that count as conversations for one producer:
+    every row not on a dropped number. A number dropped as a DUPLICATE LEAD
+    (daily.py, one account one attempt) loses only its outbound row -- a
+    call-in from it is still its own conversation (Frank, 2026-09-30: an
+    unreached second number is now dropped too, and must not take a cold
+    call-in's talk time with it). live_board.basis reads the same rows."""
+    dials = v.get("dials") or []
+    dropped = {d["number"] for d in dials if d.get("dropped")}
+    dup = {d["number"] for d in dials
+           if str(d.get("dropped") or "").startswith("duplicate lead")}
+    return [r for r in (v.get("call_detail") or [])
+            if r.get("number") not in dropped
+            or (r.get("inbound") and r.get("number") in dup)]
 
 
 def flag_service(M, who, number, why="service/renewal (from the call)"):

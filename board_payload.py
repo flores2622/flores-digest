@@ -174,15 +174,16 @@ def _producer_tiers(p, pace=None):
 
 
 def _team_talk_and_roleplay(producers):
-    """Team Avg Talk Time (seconds, weighted by live contacts) and Avg Role
+    """Team Avg Talk Time (seconds, weighted by conversations) and Avg Role
     Play (mean of producers who actually recorded a non-zero score today).
     Computed once here and used BOTH for the actual displayed totals (Frank,
     2026-09-15: "why no avg talk time or avg role play for the team" -- these
     were computed for tiering only and the number itself was never kept) and
     for _team_tiers()'s colouring, so the two can never drift apart."""
-    live = sum(p.get("live") or 0 for p in producers)
-    talk_secs = sum((p.get("talk") or 0) * (p.get("live") or 0) for p in producers)
-    team_talk = (talk_secs // live) if live else 0
+    # Weighted by every conversation, inbound included -- finalize._totals's
+    # own divisor -- not by outbound live contacts (Frank, 2026-09-30).
+    import finalize
+    team_talk = finalize.team_avg_talk(producers, talk="talk")
     recorded = [v for v in ((p.get("coach") or {}).get("roleplay") for p in producers) if v]
     team_rp = (sum(recorded) / len(recorded)) if recorded else None
     return team_talk, team_rp

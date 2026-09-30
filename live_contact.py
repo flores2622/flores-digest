@@ -490,8 +490,16 @@ def _evidence_into(out, lead_id, day, producer):
 
 
 def is_live(ev, talk_seconds=None, transcript_class=None, live_seconds=0,
-            unrecorded_dials=None, screener=False):
+            unrecorded_dials=None, screener=False, callback=False):
     """(bool, basis) -- basis is what the report prints for the row.
+
+    `callback` is True when a SCREENED same-day call back from this number
+    reached this producer (inbound.screen, kind "callback", callback_day ==
+    the day). That call back IS the conversation -- Accepted, connected on
+    the producer's own phone -- so the dial it answers is live whatever was
+    written about the dial itself or however short it ran (Frank,
+    2026-09-30). A "no answer" note is true of the dial; it cannot speak for
+    the call that came back. Checked first, before the one-ring floor.
 
     `live_seconds` is the length of the longest LIVE-classified recording on
     this (producer, number) -- not the row's talk time, which sums every dial.
@@ -543,6 +551,8 @@ def is_live(ev, talk_seconds=None, transcript_class=None, live_seconds=0,
     # "He has home and autos already" -- written for the other call -- carried
     # it into the contact rate as a second live contact for the same person
     # (Frank, 2026-08-28: "one is 1 sec long, its not a live contact").
+    if callback:
+        return True, "answered call back"
     if (talk_seconds or 0) < MIN_CONTACT_SECONDS and not transcript_class:
         return False, "too short to be a conversation"
     sustained = (transcript_class == "live"

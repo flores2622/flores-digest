@@ -344,10 +344,32 @@ def transcribe_day(day, outbound_only=False):
         win = json.loads((ROOT / f"data/rc_window_{day}.json").read_text())
         in_rows = ib.screen(ib.link_callbacks(
             ib.answered(day, list(raw_by_id.values())), win, day), day)
+        # AN ANSWERED CALL-IN IS A CONVERSATION (Frank, 2026-09-23), recorded
+        # or not (2026-09-30). One that survived screening but has no
+        # recording used to be dropped here, so it never reached Call Detail,
+        # talk time, or -- a same-day call back -- the dial it answered. It
+        # gets an entry with no text: nothing to transcribe or coach (the
+        # call summary falls back to the notes, and a card needs a
+        # recording), but its seconds are talk time like any other call-in.
+        for r in in_rows:
+            if r["skip"] or r["recording"] or r["id"] in done:
+                continue
+            done[r["id"]] = {"producer": r["producer"],
+                             "to": r["e164"] or r["number"],
+                             "duration": r["seconds"], "text": None,
+                             "class": "live", "why": "answered call-in (no recording)",
+                             "direction": "inbound", "kind": r["kind"],
+                             "offset": 0, "audio_seconds": 0, "partial": False,
+                             "no_recording": True,
+                             "callback_day": r.get("callback_day")}
+            out_f.write_text(json.dumps(done))
         keep = [r for r in in_rows if not r["skip"] and r["recording"]]
         dropped = len(in_rows) - len(keep)
+        # A call-in first seen without a recording is read once one appears
+        # (RingCentral can attach it after the call log first lists the call).
         in_todo = [raw_by_id[r["id"]] for r in keep if r["id"] not in done
-                   or _retry_download(done[r["id"]])]
+                   or _retry_download(done[r["id"]])
+                   or done[r["id"]].get("no_recording")]
         if in_todo:
             log(f"inbound: {len(in_rows)} reached a producer, "
                 f"{dropped} screened out, downloading {len(in_todo)}...")
@@ -465,6 +487,42 @@ def _one_row_per_lead(detail):
     return out + list(best.values()), collapsed
 
 
+def _one_attempt_per_lead(dials_kept, keep_num):
+    """ONE ACCOUNT, ONE ATTEMPT, REACHED OR NOT (Frank, 2026-09-30).
+
+    build_metrics' first collapse only ever saw LIVE rows (it works off Call
+    Detail), so a lead dialled on two numbers counted two in the denominator
+    when nobody answered and one when someone did -- and a reached lead's
+    unanswered second number stayed in as a separate dial. Every counted dial
+    on the same lead collapses the same way: the survivor is the live number
+    kept by the first collapse (`keep_num`, lead id -> number), else any live
+    one, else the number dialled most, then the longest, then the first in
+    the log; the rest are dropped as duplicate-lead drops (live_board.basis
+    keeps their attempts) with their attempts and any call back moved onto
+    the survivor. In place; returns dials_kept."""
+    by_lead = collections.defaultdict(list)
+    for d in dials_kept:
+        if d.get("lead_id") is not None and not d.get("dropped"):
+            by_lead[d["lead_id"]].append(d)
+    for lid, group in by_lead.items():
+        if len(group) < 2:
+            continue
+        live_num = keep_num.get(lid)
+        survivor = (next((d for d in group if d["number"] == live_num), None)
+                    or next((d for d in group if d.get("live")), None)
+                    or sorted(group, key=lambda d: (-(d.get("attempts") or 0),
+                                                    -(d.get("talk_seconds") or 0)))[0])
+        for d in group:
+            if d is survivor:
+                continue
+            survivor["attempts"] = ((survivor.get("attempts") or 0)
+                                    + (d.get("attempts") or 0))
+            if d.get("callback"):
+                survivor["callback"] = True
+            d["dropped"] = "duplicate lead (same person, another number)"
+    return dials_kept
+
+
 def build_metrics(day):
     import digest_config as cfg
     import day_calls
@@ -499,6 +557,12 @@ def build_metrics(day):
     # Only these may change a dial's verdict below.
     _same_day = {r["id"] for r in _screened if not r["skip"]
                  and r.get("kind") == "callback" and r.get("callback_day") == day}
+    # (producer, number) of every screened same-day call back, straight from
+    # the call log, recording or not: the dial it answers is live (Frank,
+    # 2026-09-30; live_contact.is_live's `callback`).
+    from az_corpus import e164 as _e164
+    _callback_keys = {(r["producer"], r.get("e164") or _e164(r.get("number")))
+                      for r in _screened if r["id"] in _same_day}
     # AN ANSWERED CALL-IN IS A CONVERSATION (Frank, 2026-09-23). A call that
     # survives screening was Accepted by RingCentral AND connected on a
     # producer's own phone -- attribute() requires that leg, so a caller who
@@ -514,7 +578,10 @@ def build_metrics(day):
 
     bynum, txt, all_txt, livesecs = {}, {}, {}, {}
     for cid, v in tx.items():
-        n = v.get("to")
+        # The dials' own key (day_calls.dials_from, Frank 2026-09-30): an
+        # outbound transcript carries RingCentral's raw number, so a +52 dial
+        # has to be keyed the same way to meet its row.
+        n = _e164(v.get("to")) or v.get("to")
         if not n:
             continue
         # A CALL-IN ONLY SPEAKS FOR A DIAL IT ANSWERED. A same-day call back
@@ -665,7 +732,8 @@ def build_metrics(day):
                 lc.SCREENER.search(all_txt.get((who, r["number"]), "")))
             ok, basis = lc.is_live(ev, r["talk_seconds"], tc,
                                    live_seconds=livesecs.get((who, r["number"]), 0),
-                                   unrecorded_dials=_unrec, screener=_scr)
+                                   unrecorded_dials=_unrec, screener=_scr,
+                                   callback=(who, r["number"]) in _callback_keys)
             # Screener is checked ahead of the transcript class on purpose. An
             # AI attendant reads as a machine greeting, so Elsa Aguilera --
             # "call dropped after AI transferred me" -- was being filed as
@@ -691,6 +759,7 @@ def build_metrics(day):
             # call volume until later?").
             dials_kept.append({
                 "number": r["number"], "bucket": bucket, "live": ok,
+                "lead_id": r["lead_id"],
                 "talk_seconds": r["talk_seconds"],
                 "attempts": len(dials.get(who, {}).get(r["number"], []) or []),
                 "open_lead": r.get("open_lead", False),
@@ -739,6 +808,9 @@ def build_metrics(day):
         # it happened, because that earlier day's report has already gone out.
         prior_callbacks = 0
         for e in inb.get(who, []):
+            # inbound.screen stores the caller's number as az_corpus.e164;
+            # older cached rows may carry the raw one (2026-09-30).
+            e = {**e, "to": _e164(e.get("to")) or e.get("to")}
             same_day = e.get("kind") == "callback" and e.get("callback_day") == day
             if e.get("kind") == "callback" and not same_day:
                 # Answers a dial from an earlier day, which is not in today's
@@ -767,7 +839,8 @@ def build_metrics(day):
                          if lead else None),
                 "lead_id": lead_id,
                 "number": e["to"], "seconds": e.get("duration") or 0,
-                "basis": "recording (inbound)", "inbound": True,
+                "basis": ("answered call-in (no recording)" if e.get("no_recording")
+                          else "recording (inbound)"), "inbound": True,
                 "kind": e.get("kind"), "callback_of_day": e.get("callback_day"),
                 "note_producer": "",
                 # An inbound call can still be the sale, or the call that
@@ -858,6 +931,9 @@ def build_metrics(day):
                 survivor["attempts"] = ((survivor.get("attempts") or 0)
                                         + (row.get("attempts") or 0))
             row["dropped"] = "duplicate lead (same person, another number)"
+        # ...and every UNREACHED number on the same lead too (Frank,
+        # 2026-09-30): one account, one attempt, reached or not.
+        _one_attempt_per_lead(dials_kept, keep_num)
         M[who] = {"dials": dials_kept, "callbacks_prior": prior_callbacks,
                   "call_detail": sorted(detail, key=lambda d: -d["seconds"]),
                   "households_quoted": len(hh.get(who, ())),
@@ -969,25 +1045,45 @@ def speed_rows(day, leads, dials):
     """One row per internet lead that arrived on `day` and was dialled: who
     dialled it first, when it arrived, when it was dialled, and the seconds
     between -- the rows speed_to_dial summarises, kept for the Digest card's
-    list (digest_rows.py, Frank 2026-09-27)."""
+    list (digest_rows.py, Frank 2026-09-27). speed_to_dial is built FROM
+    these rows, so the list and the tile cannot disagree.
+
+    Three rules (Frank, 2026-09-30), mirrored line for line by site/live.js
+    speedToDial -- keep them in step:
+      * the first dial is the EARLIEST dial to the number by ANY producer,
+        credited to whoever made it. It used to be the first producer found
+        in the call log's order, so a later dial by one producer could beat
+        an earlier one by another.
+      * the lead arrived on `day` in ARIZONA time. createDate is UTC, so a
+        lead in at 5:30 PM Arizona (00:30 UTC the next day) was dropped, and
+        one in at 5:30 PM the evening before was counted.
+      * both sides are keyed by az_corpus.e164 (the last ten digits), so a
+        +52 number RingCentral dialled matches AgencyZoom's ten digits.
+    """
     from az_corpus import e164
     first = {}
     for w, bynum in dials.items():
         for num, calls in bynum.items():
+            k = e164(num)
+            if not k:
+                continue
             t = min(c["startTime"] for c in calls)
-            first.setdefault(num, (w, t))     # exactly as speed_to_dial, so the list matches the tile
+            if k not in first or t < first[k][1]:
+                first[k] = (w, t)
     rows = []
     for l in leads:
         src = (l.get("leadSourceName") or "").lower()
         if not any(k in src for k in ("surequote", "mav ai", "mav")):
             continue
-        if not str(l.get("createDate") or "").startswith(day):
+        if not l.get("createDate"):
+            continue
+        c = dt.datetime.fromisoformat(str(l["createDate"]).replace(" ", "T")).replace(
+            tzinfo=dt.timezone.utc)
+        if (c - dt.timedelta(hours=7)).date().isoformat() != day:   # Arizona is UTC-7, no DST
             continue
         hit = first.get(e164(l.get("phone")))
         if not hit:
             continue
-        c = dt.datetime.fromisoformat(str(l["createDate"]).replace(" ", "T")).replace(
-            tzinfo=dt.timezone.utc)
         d = dt.datetime.fromisoformat(hit[1].replace("Z", "+00:00"))
         s = (d - c).total_seconds()
         if s > 0:
@@ -999,29 +1095,10 @@ def speed_rows(day, leads, dials):
 
 
 def speed_to_dial(day, leads, dials):
-    from az_corpus import e164
     from digest_config import PRODUCERS
-    first = {}
-    for w, bynum in dials.items():
-        for num, calls in bynum.items():
-            t = min(c["startTime"] for c in calls)
-            first.setdefault(num, (w, t))
     per = collections.defaultdict(list)
-    for l in leads:
-        src = (l.get("leadSourceName") or "").lower()
-        if not any(k in src for k in ("surequote", "mav ai", "mav")):
-            continue
-        if not str(l.get("createDate") or "").startswith(day):
-            continue
-        hit = first.get(e164(l.get("phone")))
-        if not hit:
-            continue
-        c = dt.datetime.fromisoformat(str(l["createDate"]).replace(" ", "T")).replace(
-            tzinfo=dt.timezone.utc)
-        d = dt.datetime.fromisoformat(hit[1].replace("Z", "+00:00"))
-        s = (d - c).total_seconds()
-        if s > 0:
-            per[hit[0]].append(int(s))
+    for r in speed_rows(day, leads, dials):
+        per[r["who"]].append(r["secs"])
     out = {}
     for p in PRODUCERS:
         v = sorted(per.get(p, []))

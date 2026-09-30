@@ -41,6 +41,7 @@ import json
 import pathlib
 
 import day_calls
+import finalize
 import sales_log_auto
 import digest_config as cfg
 import lead_sources
@@ -79,11 +80,9 @@ def basis(day):
         excluded[who] = sorted(seen - keep - drop)
         # Contacts and talk time (finalize._totals): which counted numbers
         # are already live, and the conversations behind Avg Talk Time --
-        # every Call Detail row, inbound included, on a number not dropped.
+        # every Call Detail row, inbound included, finalize.conversations.
         live[who] = sorted(d["number"] for d in rows if not d.get("dropped") and d.get("live"))
-        gone = {d["number"] for d in rows if d.get("dropped")}
-        convos = [r for r in ((M.get("producers", {}).get(who) or {}).get("call_detail") or [])
-                  if r.get("number") not in gone]
+        convos = finalize.conversations(M.get("producers", {}).get(who) or {})
         talk[who] = {"seconds": sum(r.get("seconds") or 0 for r in convos),
                      "conversations": len(convos),
                      "numbers": sorted({r["number"] for r in convos if r.get("number")})}
@@ -106,6 +105,11 @@ def basis(day):
                       for n, v in cfg.PRODUCERS.items()},
         "not_a_sale": sorted(lead_sources.NOT_A_SALE),
         "existing_household": sorted(lead_sources.EXISTING_HOUSEHOLD),
+        # digest_config.is_test_lead, for households sold (site/live.js
+        # soldLeadsToday skips a test lead as digest_rows does; Frank,
+        # 2026-09-30).
+        "test_lead": {"ids": sorted(cfg.TEST_LEAD_IDS),
+                      "rx": [cfg.TEST_LEAD_RE.pattern, "i"]},
         "util_exclude": sorted(_util_exclude()),
         # The Sales sheet's auto rows (sales_log_auto), so the Worker adds a
         # live sale to the sheet with the same people and product names.
