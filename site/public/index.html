@@ -748,9 +748,8 @@ details.sc .scb { padding: 0 12px 12px; }
   box-shadow: 0 2px 8px rgba(0,0,0,.15); font-size: 11px; color: var(--text-primary); font-weight: 400; }
 .ppmenu input[type=range] { writing-mode: vertical-lr; direction: rtl; -webkit-appearance: slider-vertical;
   width: 18px; height: 84px; margin: 2px 0 4px; accent-color: var(--text-primary); }
-.ppmenu .pprate { width: 42px; border: 1px solid var(--border); background: none; color: inherit; border-radius: 5px;
-  padding: 2px 0; font-size: 11px; cursor: pointer; text-align: center; }
-.ppmenu .pprate.on { background: var(--text-primary); color: var(--bg, #fff); border-color: var(--text-primary); }
+.ppmenu .pprate { border: 1px solid var(--border); background: var(--surface-raised, var(--bg, #fff)); color: inherit;
+  border-radius: 5px; padding: 2px 2px; font-size: 11px; cursor: pointer; }
 .tturn.sync:hover { background-color: var(--hover, rgba(127,127,127,.08)); }
 .tturn .ts { font-variant-numeric: tabular-nums; color: var(--text-secondary); font-size: 11px; margin-right: 6px; }
 .tturn .tw { font-weight: 600; margin-right: 4px; }
@@ -3205,7 +3204,7 @@ function pbApply(a) { if (!a) return; try { a.volume = pb.vol; a.defaultPlayback
 function ppBtn(label) {
   return `<span class="ppwrap"><button type="button" class="pp" aria-label="${label}">&#9654;</button><span class="ppmenu"><span class="ppbox">
     <span aria-hidden="true">&#128266;</span><input type="range" class="ppvol" min="0" max="1" step="0.05" value="${pb.vol}" aria-label="Volume">
-    ${PB_RATES.map(r => `<button type="button" class="pprate${r === pb.rate ? " on" : ""}" data-rate="${r}">${r}&times;</button>`).join("")}
+    <select class="pprate" aria-label="Speed">${PB_RATES.map(r => `<option value="${r}"${r === pb.rate ? " selected" : ""}>${r}&times;</option>`).join("")}</select>
   </span></span></span>`;
 }
 // Put a line's bar just left of its circle, centred on it and kept on screen.
@@ -3237,16 +3236,19 @@ function pbAll() {
   document.querySelectorAll("audio[id^='rec-']").forEach(pbApply);
   if (typeof rphAudio !== "undefined") pbApply(rphAudio);
   document.querySelectorAll(".ppvol").forEach(x => { x.value = pb.vol; });
-  document.querySelectorAll(".pprate").forEach(x => x.classList.toggle("on", +x.dataset.rate === pb.rate));
+  document.querySelectorAll(".pprate").forEach(x => { x.value = String(pb.rate); });
 }
 // The menu's own clicks never reach the line (which would jump the call).
 document.addEventListener("click", e => {
   const m = e.target.closest && e.target.closest(".ppmenu");
   if (!m) return;
   e.stopPropagation();
-  const b = e.target.closest(".pprate");
-  if (b) { pb.rate = +b.dataset.rate; try { localStorage.setItem("pbRate", String(pb.rate)); } catch (_) {} pbAll(); }
 }, true);
+document.addEventListener("change", e => {
+  if (!e.target.classList || !e.target.classList.contains("pprate")) return;
+  pb.rate = +e.target.value; try { localStorage.setItem("pbRate", String(pb.rate)); } catch (_) {}
+  pbAll();
+});
 document.addEventListener("input", e => {
   if (!e.target.classList || !e.target.classList.contains("ppvol")) return;
   pb.vol = +e.target.value; try { localStorage.setItem("pbVol", String(pb.vol)); } catch (_) {}

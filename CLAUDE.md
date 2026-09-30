@@ -240,7 +240,8 @@ Everything caches under `data/`, so a re-run resumes rather than restarting.
   without stopping or restarting it") -- the same on a Role Play session's
   lines. Hovering the button opens **volume and speed** (0.75x-2x; `ppBtn`,
   `pb`), one setting for every line, card and session, kept in the browser --
-  a **vertical bar to the LEFT of the circle** (Frank, 2026-09-30: it covered
+  a **vertical bar to the LEFT of the circle**, speed as a dropdown (Frank,
+  2026-09-30: it covered
   the transcript), `position: fixed` and placed by `ppPlace` so the scroll
   box cannot clip it (below the circle when there is no room). Keep the
   panel inline elements (a card line is a <p>; a <div> inside one ends the
