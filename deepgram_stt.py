@@ -119,11 +119,7 @@ def raw(path, log=None, cached_only=False):
             return None
         d = r.json()
         res = d.get("results") or {}
-        keep = {"utterances": [
-                    {"start": u.get("start"), "end": u.get("end"),
-                     "speaker": u.get("speaker"),
-                     "text": (u.get("transcript") or "").strip()}
-                    for u in res.get("utterances") or []],
+        keep = {"utterances": [_keep_utt(u) for u in res.get("utterances") or []],
                 "languages": sorted({w.get("language") for ch in
                                      res.get("channels") or []
                                      for alt in ch.get("alternatives") or []
@@ -139,6 +135,21 @@ def raw(path, log=None, cached_only=False):
 
 # A tag transcribe.NON_SPEECH already reads as "ringback or hold audio only".
 SILENCE = "[silence]"
+
+
+def _keep_utt(u):
+    """One utterance as the cache keeps it. `w` is each word's start, one per
+    word of `text` (Frank, 2026-09-30: "highlight the word its on and make it
+    playable from there") -- dropped when Deepgram's words don't line up with
+    the transcript word for word, so a time never lands on the wrong word.
+    Reads cached before 2026-09-30 have no `w`; the board spreads their words
+    across the line instead."""
+    text = (u.get("transcript") or "").strip()
+    out = {"start": u.get("start"), "end": u.get("end"), "speaker": u.get("speaker"), "text": text}
+    words = u.get("words") or []
+    if words and len(words) == len(text.split()):
+        out["w"] = [round(float(w.get("start") or 0), 2) for w in words]
+    return out
 
 
 def _between(utts, lo, hi):
@@ -383,7 +394,14 @@ def turns(path, duration, offset=0, log=None, producer=None, lead=None,
     out, last = [], None
     for u in utts:
         if u["speaker"] == last:
-            out[-1]["text"] += " " + u["text"]
+            prev = out[-1]
+            prev["text"] += " " + u["text"]
+            prev["e"] = round(float(u["end"] or 0), 1)
+            if "w" in prev:
+                if u.get("w"):
+                    prev["w"] += u["w"]
+                else:
+                    del prev["w"]
             continue
         if who is not None and u["speaker"] == who:
             label = f"{first} ({role})"
@@ -391,7 +409,11 @@ def turns(path, duration, offset=0, log=None, producer=None, lead=None,
             label = their_label
         else:
             label = f"Speaker {int(u['speaker'] or 0) + 1}"
-        out.append({"t": round(float(u["start"] or 0), 1), "who": label, "text": u["text"]})
+        turn = {"t": round(float(u["start"] or 0), 1), "e": round(float(u["end"] or 0), 1),
+                "who": label, "text": u["text"]}
+        if u.get("w"):
+            turn["w"] = list(u["w"])
+        out.append(turn)
         last = u["speaker"]
     return out
 

@@ -129,7 +129,68 @@ export function dialDeltas(basis, recs) {
 
 /* ---- sales: AgencyZoom -------------------------------------------------- */
 
-const AZ = "https://app.agencyzoom.com";
+/* The API's own address (Frank, 2026-09-30). AgencyZoom's published spec
+   (api.agencyzoom.com/openapi/agencyzoom.yaml) names https://api.agencyzoom.com
+   as the server for integrations; app.agencyzoom.com is the web app's, a
+   separate AWS load balancer. From 09-28 app.agencyzoom.com refused the
+   Worker (403) from 2:29 PM Arizona to the next morning, two days running,
+   whatever the volume, while the same token worked from elsewhere. Same
+   endpoints, same data, same login on both (checked 2026-09-30). */
+const AZ = "https://api.agencyzoom.com";
+
+/* ---- what AgencyZoom sees of us, for when it refuses ------------------- */
+
+/* Every AgencyZoom request is counted by hour and endpoint, and every
+   refusal (403 / 429, login included) is kept whole -- status, the reply's
+   headers and the first of its body, the time, and the address Cloudflare
+   sent it from (cloudflare.com/cdn-cgi/trace) -- in
+   worker-private/az_log/<day>.json, served by no route. Enough to tell whose
+   firewall said no and to hand AgencyZoom support the facts. Flushed once
+   per run (flushAzLog), never per request. */
+const AZ_LOG_PREFIX = "worker-private/az_log/";
+const AZ_LOG_REFUSALS = 50;                        // per day, the first ones
+let azCalls = {}, azRefusals = [];
+const hourAZ = () => new Date(Date.now() - 7 * 3600 * 1000).toISOString().slice(11, 13);
+function countAz(path) {
+  const ep = path.split("?")[0].replace(/\/\d+/g, "/N");
+  const h = hourAZ();
+  const b = azCalls[h] || (azCalls[h] = {});
+  b[ep] = (b[ep] || 0) + 1;
+}
+async function egress(fetchFn) {
+  try {
+    const t = await (await fetchFn("https://cloudflare.com/cdn-cgi/trace")).text();
+    const f = Object.fromEntries(t.trim().split("\n").map(l => l.split("=")));
+    return { ip: f.ip, colo: f.colo, loc: f.loc };
+  } catch (_) { return null; }
+}
+async function noteRefusal(path, r, fetchFn) {
+  let body = "";
+  try { body = (await r.clone().text()).slice(0, 600); } catch (_) {}
+  const keep = ["server", "content-type", "date", "via", "retry-after", "x-amzn-requestid", "x-amzn-errortype",
+    "x-amz-cf-id", "x-cache", "www-authenticate"];
+  const headers = {};
+  for (const [k, v] of r.headers) if (keep.includes(k.toLowerCase()) || k.toLowerCase().startsWith("x-amzn")) headers[k] = v;
+  azRefusals.push({ at: new Date().toISOString(), host: AZ, path, status: r.status, headers, body,
+    egress: await egress(fetchFn) });
+}
+export async function flushAzLog(env, day) {
+  if (!env.BOARD || (!Object.keys(azCalls).length && !azRefusals.length)) return;
+  const calls = azCalls, refusals = azRefusals;
+  azCalls = {}; azRefusals = [];
+  try {
+    const key = `${AZ_LOG_PREFIX}${day}.json`;
+    const o = await env.BOARD.get(key);
+    const log = o === null ? { day, host: AZ, calls: {}, refusals: [] } : await o.json();
+    for (const [h, eps] of Object.entries(calls)) {
+      const b = log.calls[h] || (log.calls[h] = {});
+      for (const [ep, n] of Object.entries(eps)) b[ep] = (b[ep] || 0) + n;
+    }
+    for (const x of refusals) if (log.refusals.length < AZ_LOG_REFUSALS) log.refusals.push(x);
+    log.refused = (log.refused || 0) + refusals.length;
+    await env.BOARD.put(key, JSON.stringify(log));
+  } catch (e) { console.log(`AgencyZoom log not saved: ${e && e.message || e}`); }
+}
 /* ONE AgencyZoom login, shared. The timer runs every minute and Cloudflare
    starts each run fresh, so a per-run login meant ~30 logins an hour -- and
    on 2026-09-24 AgencyZoom began refusing the Worker's logins (403) within
@@ -162,10 +223,12 @@ async function azToken(env, fetchFn) {
         if (Date.now() < x.until) throw new Error(`AgencyZoom paused until ${azClock(x.until)} after a refused login (${x.status})`);
       }
     }
+    countAz("/v1/api/auth/login");
     const r = await fetchFn(`${AZ}/v1/api/auth/login`, {
       method: "POST", headers: { "content-type": "application/json" },
       body: JSON.stringify({ username: env.AZ_USERNAME, password: env.AZ_PASSWORD }),
     });
+    if (r.status === 403 || r.status === 429) await noteRefusal("/v1/api/auth/login", r, fetchFn);
     if (!r.ok) {
       if (R2 && (r.status === 403 || r.status === 429)) {
         await R2.put(AZ_PAUSE_KEY, JSON.stringify({ until: Date.now() + AZ_PAUSE_MINUTES * 60000, status: r.status, at: new Date().toISOString() }));
@@ -204,7 +267,9 @@ async function azGet(env, path, fetchFn, init = {}) {
   const until = await azPausedUntil(env);
   if (Date.now() < until) throw new Error(`AgencyZoom paused until ${azClock(until)} after a refused request`);
   const tok = await azToken(env, fetchFn);
+  countAz(path);
   const r = await fetchFn(`${AZ}${path}`, { ...init, headers: { ...(init.headers || {}), authorization: `Bearer ${tok}`, "content-type": "application/json" } });
+  if (r.status === 403 || r.status === 429) await noteRefusal(path, r, fetchFn);
   if (r.status === 401) await azForget(env);          // the saved login stopped working: log in afresh next time
   if (r.status === 403 && env.BOARD) {
     const x = { until: Date.now() + AZ_PAUSE_MINUTES * 60000, status: 403, path, at: new Date().toISOString() };
@@ -1011,6 +1076,7 @@ export async function getLive(env, day) {
     fresh(fast, cp.as_of, CACHE_SECONDS) ? fast : refreshFast(env, day, cp),
     fresh(quotes, cp.as_of, QUOTES_STALE_SECONDS) ? quotes : refreshQuotes(env, day, cp),
   ]);
+  await flushAzLog(env, day);
   return jsonResp({ live: true, day, checkpoint: cp.as_of, fetched_at: f.fetched_at,
     dials: f.dials, contacts: f.contacts, sales: f.sales, util: f.util, sold: f.sold, speed: f.speed, tasks: f.tasks,
     quotes: q.quotes, messages: q.messages, quotes_fetched_at: q.fetched_at }, 200);
@@ -1025,8 +1091,10 @@ export async function scheduledLive(event, env) {
   const cp = await checkpointFor(env, day);
   if (!cp.basis) return;
   const minute = new Date(event.scheduledTime || Date.now()).getUTCMinutes();
-  if (minute % 2 === 0) await refreshFast(env, day, cp);
-  else await refreshQuotes(env, day, cp);
+  try {
+    if (minute % 2 === 0) await refreshFast(env, day, cp);
+    else await refreshQuotes(env, day, cp);
+  } finally { await flushAzLog(env, day); }
 }
 
 function jsonResp(body, status) {

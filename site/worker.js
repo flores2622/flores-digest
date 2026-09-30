@@ -909,6 +909,10 @@ const PERSONAS = {
 // Apollo (Frank's name for the coaching brain, 2026-09-10) grading a Role
 // Play session: METHODOLOGY.md's shared judgment, prepended to ROLEPLAY.md's
 // own grading framing -- see the "ONE BRAIN, NOT TWO" note above.
+// Every persona talks as a person first (Frank, 2026-09-30: "more rapport,
+// they keep just turning me back to the quote after 1 sentence").
+const RP_RAPPORT = _section(ROLEPLAY_MD, "### Rapport");
+
 const GRADE_SYSTEM = CORE_JUDGMENT + "\n\n" + _section(ROLEPLAY_MD, "## Grading (Apollo)");
 
 async function callClaude(env, { system, messages, maxTokens }) {
@@ -1111,7 +1115,7 @@ async function roleplayFace(env, key) {
    Worker stops asking for that language (per isolate). Raised to 1.5 on
    2026-09-30 ("it still talks really slow"): measured 25-38% shorter than
    normal, English and Spanish alike. */
-const RP_SPEAK_SPEED = 1.5;   // Deepgram's maximum (1.8 is refused); 1.2 barely changed Spanish (~8% shorter)
+const RP_SPEAK_SPEED = 1.3;   // Frank, 2026-09-30: 1.5 (Deepgram's maximum) was "just a tad bit too fast"; 1.2 barely changed Spanish
 const rpSpeedRefused = new Set();   // "en" / "es"
 async function deepgramSpeak(env, voice, text) {
   const call = (speed) => fetch(`https://api.deepgram.com/v1/speak?model=${voice}&encoding=mp3${speed ? `&speed=${speed}` : ""}`, {
@@ -1297,7 +1301,7 @@ async function roleplayTurn(request, env) {
     : [];
   const leadSource = typeof body.lead_source === "string" ? body.lead_source.slice(0, 500) : "";
   const prospect = typeof body.prospect === "string" ? body.prospect.slice(0, 300) : "";
-  const system = persona.system + focusObjectionInstruction(focusObjections) + leadSourceInstruction(leadSource)
+  const system = persona.system + "\n\n" + RP_RAPPORT + focusObjectionInstruction(focusObjections) + leadSourceInstruction(leadSource)
     + prospectInstruction(prospect) + languageInstruction(body.language);
 
   if (body.stream === true) {
@@ -1382,7 +1386,8 @@ async function roleplayGrade(request, env) {
   try {
     const raw = await callClaude(env, {
       system: GRADE_SYSTEM,
-      messages: [{ role: "user", content: transcriptText.slice(0, 12000) }],
+      messages: [{ role: "user", content: (typeof body.lead_source === "string" && body.lead_source.trim()
+        ? `Lead source: ${body.lead_source.trim().slice(0, 200)}\n\n` : "") + transcriptText.slice(0, 12000) }],
       maxTokens: 1000,
     });
     const m = raw.match(/\{[\s\S]*\}/);

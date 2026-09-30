@@ -160,10 +160,10 @@ Everything caches under `data/`, so a re-run resumes rather than restarting.
   American + Hispanic list in every language; a Spanish or mixed prospect
   has a Hispanic surname. **Crystal never gets Spanish or mixed** (Frank,
   2026-09-29: "she doesnt speak it") -- `RP_ENGLISH_ONLY`.
-  They speak at 1.5x, Deepgram's maximum (`RP_SPEAK_SPEED`, Deepgram's
-  `speed`; Frank, 2026-09-29: "they talk to slow", raised from 1.2 on
-  2026-09-30: "it still talks really slow" -- 1.2 was only ~8% shorter in
-  Spanish) -- a refused speed is retried at normal speed. **A Spanish
+  They speak at 1.3x (`RP_SPEAK_SPEED`, Deepgram's `speed`; Frank,
+  2026-09-29: "they talk to slow"; 1.2 was only ~8% shorter in Spanish, 1.5
+  -- Deepgram's maximum -- "just a tad bit too fast", 2026-09-30) -- a
+  refused speed is retried at normal speed. **A Spanish
   prospect uses no English words** (Frank, 2026-09-30: "its mixing English
   words with Spanish"): `languageInstruction("es")` names the Spanish
   insurance words; only company names stay. The MIXED third code-switches
@@ -197,12 +197,28 @@ Everything caches under `data/`, so a re-run resumes rather than restarting.
   **No `seed`** -- the model refuses it (AiError 5006, 2026-09-29), which is
   why no face drew on the first day. No binding or a failed draw shows the
   initials.
+  **Every prospect gives rapport** (Frank, 2026-09-30: "they keep just
+  turning me back to the quote after 1 sentence"): ROLEPLAY.md's `###
+  Rapport`, appended to every persona -- small talk and questions about
+  them get a real answer with a detail or two, sometimes a question back,
+  for as long as the producer keeps it going; the prospect never steers back
+  to the quote or an objection themselves, and rapport never counts as not
+  asking for the close. Difficulty still decides the objections.
   **The mic waits for the producer to finish** (Frank, 2026-09-29: "fix the
   mic cutting off"): it listens continuously and sends the turn after
   `RP_PAUSE_MS` (1.5 s, Frank's pick -- 2 s felt slow) of silence -- a tap on the mic sends at once -- never
   at the browser's first final result, which cut people off mid-sentence.
   When Chrome ends the session itself it restarts at once, keeping the words
   and the turn's recording; a blocked mic stops for good.
+  **What the producer is saying shows as their own bubble at the bottom of
+  the conversation** (Frank, 2026-09-30 -- it was in the mic button and ran
+  the width of the screen; `rpShowLive`), and the conversation keeps
+  scrolled to the newest line unless they scroll up to read (`rpFollow`);
+  the box fits the window so the mic stays in view. **Apollo's grade and the
+  voice rating sit beside the conversation** (`.rpside`; Frank, 2026-09-30:
+  "were losing a lot of space, and the feedback is off centered"), and the
+  board is 1600px wide on a big monitor (`.main`; it was 1120px because it
+  began as an email -- Frank, 2026-09-30); narrow screens stack.
 - **Every graded Role Play session is kept and can be read back** (Frank,
   2026-09-29: "a full history of role play sessions ... producers see their
   own"). Learning Center > **Session History**: a date range (7 / 30 / 90
@@ -235,7 +251,23 @@ Everything caches under `data/`, so a re-run resumes rather than restarting.
   text}; t = seconds into recording r) from Deepgram's SAVED reads only
   (`deepgram_stt.turns(..., cached_only=True)` -- a card build never pays
   for a read), and the card shows one player with the transcript under it:
-  a line click seeks there, the line playing is lit. Cards with no Deepgram
+  a line click seeks there, the line playing is lit (inside its edge, so
+  the box never covers it), **the word being said is highlighted and any
+  word plays from there** (Frank, 2026-09-30; `wordSpans`: Deepgram's own
+  word starts, `w` on each turn, cached from 2026-09-30 on -- older reads
+  spread a line's words across it by length -- and a redacted line loses
+  its `w`), and **each line's button
+  pauses and resumes in place** (Frank, 2026-09-29: "pause the playback
+  without stopping or restarting it") -- the same on a Role Play session's
+  lines. Hovering the button opens **volume and speed** (0.75x-2x; `ppBtn`,
+  `pb`), one setting for every line, card and session, kept in the browser --
+  a **vertical bar to the LEFT of the circle**, speed as a dropdown (Frank,
+  2026-09-30: it covered
+  the transcript), `position: fixed` and placed by `ppPlace` so the scroll
+  box cannot clip it (below the circle when there is no room). Keep the
+  panel inline elements (a card line is a <p>; a <div> inside one ends the
+  line early) and give no ancestor a `filter` or `transform` -- either makes
+  it the fixed bar's frame and the bar lands in the wrong place. Cards with no Deepgram
   read keep the plain transcript. **September's cards were given theirs**
   (Frank, 2026-09-29: "do september's cards") by `card_turns_backfill.py
   2026-09-01 2026-09-28`: one paid Deepgram read per carded recording, added
@@ -536,6 +568,18 @@ and anything without the glow is the checkpoint's (Frank, 2026-09-24).
   once a day (`worker-private/lead_sources.json`). Same figures, measured on
   a mocked day with leads marked and unmarked sold: 132 AgencyZoom requests
   -> 75 over 30 refreshes.
+  **It calls api.agencyzoom.com** (Frank, 2026-09-30), the address
+  AgencyZoom's published spec gives integrations
+  (api.agencyzoom.com/openapi/agencyzoom.yaml: "rate limit of 120 calls per
+  minute during the day and night"), not app.agencyzoom.com, the web app's
+  own -- a separate AWS load balancer. The refusals above were all on the
+  app address, from 2:29 PM two days running whatever the volume; same
+  endpoints, data and login on both (checked 2026-09-30). The nightly run
+  still uses app.agencyzoom.com (never refused). **Every AgencyZoom request
+  is counted** by hour and endpoint, and every refusal kept whole -- status,
+  headers (`server` says whose firewall), the first of the body, and the
+  address Cloudflare sent it from -- in `worker-private/az_log/<day>.json`
+  (`flushAzLog`, once per run). Read that before guessing why it refused.
 - **Contact rate, live contacts and Avg Talk Time are live too** (Frank,
   2026-09-28: "avg talk time, contact rate, and texts and emails should all
   be live as well"), and they are PROVISIONAL: the Worker cannot hear a
@@ -1049,8 +1093,16 @@ Crystal (hybrid); credit always goes to whoever COMPLETED the SR or task.
   `calls_tx`; the Calls answered and Dials lists get a **Listen & read**
   button that opens the coaching cards' own player under the row
   (`svcTxRow`). ~60 recordings / ~150 minutes a day (09-28), about $1 of
-  Deepgram. Days before 2026-09-30 have none; `python3 service_calls.py
-  <day>` builds one by hand (a paid read per recording not read before).
+  Deepgram. **September was given theirs** (Frank, 2026-09-30: "do the same
+  for all of september") by `python3 service_calls.py --backfill 2026-09-01
+  2026-09-29`: per published day it backs the page up under
+  `backups/<today>-service-calls/`, adds `dials` where the page had none
+  (a new Dials figure on those days -- Frank asked for it on 09-28 and then
+  the month), each calls-answered row's `rec`, and `calls_tx`; nothing else
+  changes. Days with no corpus snapshot (all but 09-23..09-25, 09-28, 09-29)
+  route numbers with the customers and leads as of the backfill. A day that
+  already has `calls_tx` is skipped (`--force` redoes it); the recordings
+  go to R2 and leave the disk as each day finishes.
 - **Documents hold rows, never medians**, so the board can add any range up.
   **Every card opens the rows it counts** (Frank, 2026-09-25), so the rows
   carry what a list needs: SRs name, household (= the AgencyZoom customer
