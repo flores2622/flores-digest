@@ -22,6 +22,7 @@ Deepgram's timed, labelled turns: the team member's side reads
 read before is never paid for again (data/deepgram/ + R2).
 
     python3 service_calls.py 2026-09-28        # build that day's file
+    python3 service_calls.py --backfill 2026-09-01 2026-09-29   # published days
 
 Output: data/servicetx_<day>.json, {recording id: {who, number, direction,
 at, seconds, turns}}, carried between containers by r2_cache like the other
@@ -151,6 +152,139 @@ def build(day, log=print, recs=None, commercial_only=None):
     return have
 
 
+def _front_recs(calls, recs):
+    """Each calls-answered row's recording id, matched on the call's start
+    and the caller's number -- for pages built before rows carried `rec`."""
+    import missed_call_audit as mca
+    by = {(r.get("startTime"), mca.norm((r.get("from") or {}).get("phoneNumber"))): r
+          for r in recs if r.get("direction") == "Inbound"}
+    for c in calls:
+        if "rec" not in c:
+            r = by.get((c.get("at"), c.get("number")))
+            c["rec"] = r["id"] if r and r.get("recording") else None
+
+
+def backfill(start, end, log=print, force=False):
+    """Give published days from `start` to `end` their service transcripts
+    (Frank, 2026-09-30: "do the same for all of september"). Per day, from
+    that day's saved files in R2 (call log, open SRs; the day's corpus
+    snapshot when there is one, else today's customers and leads):
+
+      * backs the page up under backups/<today>-service-calls/ (once);
+      * adds `dials` (dial_figures) if the page has none -- a new figure on
+        a page that never had one; an existing one is left as it is and only
+        gains each row's `recs`;
+      * adds each calls-answered row's `rec`;
+      * downloads and transcribes the listed calls (build), uploads the new
+        recordings, the day file and the Deepgram reads to R2, and adds
+        `calls_tx`.
+
+    Nothing else on the page changes. A day whose page already has calls_tx
+    is skipped unless `force`, so a stopped run picks up where it left off."""
+    import datetime as dt
+    import commercial
+    import publish_board
+    import r2_cache
+    import service_digest as sd
+    import service_retention
+    cli, bucket = publish_board._client()
+    stamp = dt.date.today().isoformat()
+    _, com_only = commercial.households(service_retention.load_household_map(log=log))
+    # Today's customers and leads, for a day with no corpus snapshot of its
+    # own -- read once, restored before each such day, so no day inherits
+    # another day's snapshot.
+    import az_corpus
+    from az_client import AgencyZoom
+    az_corpus.fetch(force=True)
+    (ROOT / "data/az_customers_all.json").write_text(
+        json.dumps(AgencyZoom()._paged("/v1/api/customers/list", "customers", {})))
+    today = {n: (ROOT / "data" / n).read_bytes() for n in ("az_leads_all.json", "az_customers_all.json")}
+    done = []
+    for d in sorted(x for x in sd._published_days(cli, bucket) if start <= x <= end):
+        key = sd._key(d)
+        raw = cli.get_object(Bucket=bucket, Key=key)["Body"].read()
+        doc = json.loads(raw)
+        if doc.get("calls_tx") and not force:
+            log(f"{d}: already has {len(doc['calls_tx'])} transcripts, left alone")
+            continue
+        for name in (f"rc_raw_{d}.json", f"az_service_tickets_{d}.json"):
+            f = ROOT / "data" / name
+            if not f.exists():
+                try:
+                    f.write_bytes(cli.get_object(Bucket=bucket, Key=r2_cache._key(d, name))["Body"].read())
+                except Exception:
+                    pass
+        f = ROOT / "data" / f"rc_raw_{d}.json"
+        if not f.exists():
+            log(f"{d}: no call log saved, left alone")
+            continue
+        recs = json.loads(f.read_text())
+        snap = r2_cache.load_corpus(d)
+        if not snap:
+            for name, body in today.items():
+                (ROOT / "data" / name).write_bytes(body)
+        log(f"{d}: customers and leads {'of the day' if snap else 'as of today (no snapshot saved)'}")
+        backup = f"backups/{stamp}-service-calls/{key}"
+        try:
+            cli.head_object(Bucket=bucket, Key=backup)
+        except Exception:
+            cli.put_object(Bucket=bucket, Key=backup, Body=raw, ContentType="application/json")
+        fresh = sd.dial_figures(d, recs=recs, commercial_only=com_only)
+        if doc.get("dials") is None:
+            doc["dials"] = fresh
+        else:
+            by = {(r["who"], r["number"]): r.get("recs") or [] for r in fresh["rows"]}
+            for r in doc["dials"].get("rows") or []:
+                r.setdefault("recs", by.get((r.get("who"), r.get("number")), []))
+        front = doc.get("front") or {}
+        _front_recs(front.get("calls") or [], recs)
+        tx = build(d, log=log, recs=recs, commercial_only=com_only)
+        listed = {c.get("rec") for c in front.get("calls") or [] if c.get("rec")}
+        listed |= {i for r in doc["dials"].get("rows") or [] for i in r.get("recs") or []}
+        doc["calls_tx"] = {k: v for k, v in tx.items() if k in listed and v.get("turns")}
+        # The new recordings, the day file and Deepgram's reads -- to R2
+        # directly (sync_up_day would also re-send every other day file).
+        up = 0
+        for rid in tx:
+            ap = ROOT / "data/audio" / f"{rid}.mp3"
+            k = r2_cache._audio_key(d, rid)
+            if not ap.exists():
+                continue
+            try:
+                cli.head_object(Bucket=bucket, Key=k)
+            except Exception:
+                cli.put_object(Bucket=bucket, Key=k, Body=ap.read_bytes(), ContentType="audio/mpeg")
+                up += 1
+        if path(d).exists():
+            cli.put_object(Bucket=bucket, Key=r2_cache._key(d, f"servicetx_{d}.json"),
+                           Body=path(d).read_bytes(), ContentType="application/json")
+        bk = r2_cache._key(d, f"deepgram_{d}.json")
+        try:
+            dg = json.loads(cli.get_object(Bucket=bucket, Key=bk)["Body"].read())
+        except Exception:
+            dg = {}
+        for rid in tx:
+            f = ROOT / "data/deepgram" / f"{rid}.json"
+            if rid not in dg and f.exists():
+                dg[rid] = json.loads(f.read_text())
+        cli.put_object(Bucket=bucket, Key=bk, Body=json.dumps(dg).encode(), ContentType="application/json")
+        sd.publish(d, doc=doc, log=log)
+        log(f"{d}: {len(doc['calls_tx'])} transcripts on the page "
+            f"({len(front.get('calls') or [])} calls answered, {len(doc['dials'].get('rows') or [])} numbers dialled), "
+            f"{up} recordings uploaded")
+        # A month of recordings would fill the disk; they are in R2 now.
+        for rid in tx:
+            ap = ROOT / "data/audio" / f"{rid}.mp3"
+            if ap.exists():
+                ap.unlink()
+        done.append(d)
+    return done
+
+
 if __name__ == "__main__":
-    for d in sys.argv[1:]:
-        build(d)
+    args = sys.argv[1:]
+    if args[:1] == ["--backfill"]:
+        backfill(args[1], args[2] if len(args) > 2 else args[1], force="--force" in args)
+    else:
+        for d in args:
+            build(d)

@@ -1011,8 +1011,16 @@ Crystal (hybrid); credit always goes to whoever COMPLETED the SR or task.
   `calls_tx`; the Calls answered and Dials lists get a **Listen & read**
   button that opens the coaching cards' own player under the row
   (`svcTxRow`). ~60 recordings / ~150 minutes a day (09-28), about $1 of
-  Deepgram. Days before 2026-09-30 have none; `python3 service_calls.py
-  <day>` builds one by hand (a paid read per recording not read before).
+  Deepgram. **September was given theirs** (Frank, 2026-09-30: "do the same
+  for all of september") by `python3 service_calls.py --backfill 2026-09-01
+  2026-09-29`: per published day it backs the page up under
+  `backups/<today>-service-calls/`, adds `dials` where the page had none
+  (a new Dials figure on those days -- Frank asked for it on 09-28 and then
+  the month), each calls-answered row's `rec`, and `calls_tx`; nothing else
+  changes. Days with no corpus snapshot (all but 09-23..09-25, 09-28, 09-29)
+  route numbers with the customers and leads as of the backfill. A day that
+  already has `calls_tx` is skipped (`--force` redoes it); the recordings
+  go to R2 and leave the disk as each day finishes.
 - **Documents hold rows, never medians**, so the board can add any range up.
   **Every card opens the rows it counts** (Frank, 2026-09-25), so the rows
   carry what a list needs: SRs name, household (= the AgencyZoom customer
