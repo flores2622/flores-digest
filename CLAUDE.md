@@ -239,9 +239,13 @@ Everything caches under `data/`, so a re-run resumes rather than restarting.
   pauses and resumes in place** (Frank, 2026-09-29: "pause the playback
   without stopping or restarting it") -- the same on a Role Play session's
   lines. Hovering the button opens **volume and speed** (0.75x-2x; `ppBtn`,
-  `pb`), one setting for every line, card and session, kept in the browser.
-  Keep the panel inline elements: a card line is a <p>, and a <div> inside
-  one ends the line early. Cards with no Deepgram
+  `pb`), one setting for every line, card and session, kept in the browser --
+  a **vertical bar to the LEFT of the circle** (Frank, 2026-09-30: it covered
+  the transcript), `position: fixed` and placed by `ppPlace` so the scroll
+  box cannot clip it (below the circle when there is no room). Keep the
+  panel inline elements (a card line is a <p>; a <div> inside one ends the
+  line early) and give no ancestor a `filter` or `transform` -- either makes
+  it the fixed bar's frame and the bar lands in the wrong place. Cards with no Deepgram
   read keep the plain transcript. **September's cards were given theirs**
   (Frank, 2026-09-29: "do september's cards") by `card_turns_backfill.py
   2026-09-01 2026-09-28`: one paid Deepgram read per carded recording, added

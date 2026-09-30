@@ -738,17 +738,20 @@ details.sc .scb { padding: 0 12px 12px; }
    2026-09-29). One setting for every line and call, kept per browser. */
 .ppwrap { position: relative; display: inline-flex; vertical-align: middle; margin-right: 6px; }
 .ppwrap .pp { margin-right: 0; }
-.ppmenu { display: none; position: absolute; left: 100%; top: 50%; transform: translateY(-50%); z-index: 30;
-  padding: 0 0 0 6px; }
+.ppmenu { display: none; position: fixed; z-index: 60; padding: 0 6px 0 0; }
 .ppwrap:hover .ppmenu, .ppwrap:focus-within .ppmenu { display: block; }
-.ppmenu > .ppbox { display: flex; align-items: center; gap: 8px; white-space: nowrap; padding: 5px 8px;
-  background: var(--surface-raised, var(--bg, #fff)); border: 1px solid var(--border-strong); border-radius: 8px;
+/* A vertical bar to the LEFT of the circle (Frank, 2026-09-30: "it covers
+   the part of the transcript we're wanting to hear"). Fixed, placed by
+   ppPlace() on hover, so the transcript's scroll box cannot clip it. */
+.ppmenu > .ppbox { display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 8px 6px;
+  background: var(--surface-raised, var(--bg, #fff)); border: 1px solid var(--border-strong); border-radius: 10px;
   box-shadow: 0 2px 8px rgba(0,0,0,.15); font-size: 11px; color: var(--text-primary); font-weight: 400; }
-.ppmenu input[type=range] { width: 80px; accent-color: var(--text-primary); }
-.ppmenu .pprate { border: 1px solid var(--border); background: none; color: inherit; border-radius: 5px;
-  padding: 1px 5px; font-size: 11px; cursor: pointer; }
+.ppmenu input[type=range] { writing-mode: vertical-lr; direction: rtl; -webkit-appearance: slider-vertical;
+  width: 18px; height: 84px; margin: 2px 0 4px; accent-color: var(--text-primary); }
+.ppmenu .pprate { width: 42px; border: 1px solid var(--border); background: none; color: inherit; border-radius: 5px;
+  padding: 2px 0; font-size: 11px; cursor: pointer; text-align: center; }
 .ppmenu .pprate.on { background: var(--text-primary); color: var(--bg, #fff); border-color: var(--text-primary); }
-.tturn.sync:hover { filter: brightness(0.97); }
+.tturn.sync:hover { background-color: var(--hover, rgba(127,127,127,.08)); }
 .tturn .ts { font-variant-numeric: tabular-nums; color: var(--text-secondary); font-size: 11px; margin-right: 6px; }
 .tturn .tw { font-weight: 600; margin-right: 4px; }
 
@@ -3205,6 +3208,31 @@ function ppBtn(label) {
     ${PB_RATES.map(r => `<button type="button" class="pprate${r === pb.rate ? " on" : ""}" data-rate="${r}">${r}&times;</button>`).join("")}
   </span></span></span>`;
 }
+// Put a line's bar just left of its circle, centred on it and kept on screen.
+function ppPlace(wrap) {
+  const m = wrap && wrap.querySelector(".ppmenu");
+  if (!m) return;
+  const r = wrap.getBoundingClientRect();
+  m.style.visibility = "hidden"; m.style.display = "block";
+  const w = m.offsetWidth, h = m.offsetHeight;
+  m.style.display = ""; m.style.visibility = "";
+  let left = r.left - w, top = r.top + r.height / 2 - h / 2;
+  if (left < 4) {                           // no room on the left: sit below the circle instead
+    left = Math.max(4, r.left + r.width / 2 - w / 2);
+    top = r.bottom;
+    m.style.padding = "4px 0 0";
+  } else m.style.padding = "";
+  top = Math.max(4, Math.min(top, window.innerHeight - h - 4));
+  m.style.left = `${left}px`; m.style.top = `${top}px`;
+}
+["mouseover", "focusin"].forEach(ev => document.addEventListener(ev, e => {
+  const w = e.target.closest && e.target.closest(".ppwrap");
+  if (w && !(e.relatedTarget && w.contains(e.relatedTarget))) ppPlace(w);
+}));
+document.addEventListener("scroll", () => {
+  const w = document.querySelector(".ppwrap:hover, .ppwrap:focus-within");
+  if (w) ppPlace(w);
+}, true);
 function pbAll() {
   document.querySelectorAll("audio[id^='rec-']").forEach(pbApply);
   if (typeof rphAudio !== "undefined") pbApply(rphAudio);
