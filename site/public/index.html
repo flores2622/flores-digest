@@ -3605,37 +3605,90 @@ function rpSpeechSupported() { return !!(window.SpeechRecognition || window.webk
 let rpAudio = null;
 let rpDeepgramOff = false;
 const rpProspectNow = () => (rpLeadSource && rpLeadSource.prospect) || {};
+let rpQueueToken = 0;   // bumped by rpStopSpeaking, so a stopped reply never plays on
 function rpStopSpeaking() {
+  rpQueueToken++;
   if (rpAudio) { try { rpAudio.onended = rpAudio.onerror = null; rpAudio.pause(); } catch (_) {} rpAudio = null; }
   if ("speechSynthesis" in window) window.speechSynthesis.cancel();
   rpSpeaking = false;
 }
-function speakProspect(text, onDone) {
-  let finished = false;
-  const done = () => { if (finished) return; finished = true; rpAudio = null; rpSpeaking = false; rpUpdateMicUI(); if (onDone) onDone(); };
-  rpStopSpeaking();   // don't stack replies if one is still talking
+/* The prospect speaks a reply sentence by sentence (Frank, 2026-09-30:
+   start the voice on the first sentence). add() hands over each sentence
+   the moment it is written; each is fetched from Deepgram right away, so
+   the next is ready while the current one plays, and they play back to
+   back. end() says the reply is complete; onDone fires once the last
+   sentence has finished -- only then does the mic come back, never in the
+   gap between two sentences. A sentence Deepgram can't play is said by the
+   browser's voice, and so is the rest of the page load's speech. */
+function rpSpeechQueue(onDone) {
+  rpStopSpeaking();                 // don't stack replies if one is still talking
+  const token = rpQueueToken;
   const pr = rpProspectNow();
+  const q = [], parts = [];
+  let playing = false, ended = false, finished = false;
   rpSpeaking = true;
   rpUpdateMicUI();
-  if (pr.voice && !rpDeepgramOff) { speakAudioEl(text, pr, done); return; }
-  speakBrowser(text, pr.lang, done);
-}
-function speakAudioEl(text, pr, done) {
-  {
-    const a = new Audio(`/api/roleplay/speak?voice=${encodeURIComponent(pr.voice)}&text=${encodeURIComponent(text.slice(0, 2000))}`);
+  const finish = () => {
+    if (finished || token !== rpQueueToken) return;
+    finished = true; rpAudio = null; rpSpeaking = false; rpUpdateMicUI();
+    if (onDone) onDone();
+  };
+  const next = () => {
+    if (token !== rpQueueToken) return;
+    const item = q.shift();
+    if (!item) { playing = false; if (ended) finish(); return; }
+    playing = true;
+    const after = () => { if (token === rpQueueToken) next(); };
+    if (!item.audio || rpDeepgramOff) { speakBrowser(item.text, pr.lang, after); return; }
+    const a = item.audio;
     rpAudio = a;
     let started = false;
     a.onplaying = () => { started = true; };
-    a.onended = done;
+    a.onended = after;
     a.onerror = () => {
       if (rpAudio !== a) return;
       rpAudio = null;
-      if (started) { done(); return; }
+      if (started) { after(); return; }
       rpDeepgramOff = true;
-      speakBrowser(text, pr.lang, done);
+      speakBrowser(item.text, pr.lang, after);
     };
     a.play().catch(() => { if (rpAudio === a && !started) a.onerror(); });
+  };
+  return {
+    parts,
+    add(text) {
+      text = String(text || "").trim();
+      if (!text || finished || token !== rpQueueToken) return;
+      parts.push(text);
+      let audio = null;
+      if (pr.voice && !rpDeepgramOff) {
+        audio = new Audio(`/api/roleplay/speak?voice=${encodeURIComponent(pr.voice)}&text=${encodeURIComponent(text.slice(0, 2000))}`);
+        audio.preload = "auto";   // starts fetching now, while the sentence before it plays
+      }
+      q.push({ text, audio });
+      if (!playing) next();
+    },
+    end() { ended = true; if (!playing && !q.length) finish(); },
+  };
+}
+function speakProspect(text, onDone) {
+  const sq = rpSpeechQueue(onDone);
+  sq.add(text);
+  sq.end();
+}
+/* A sentence ends at . ! ? or ... followed by a space; one under 20
+   characters ("Oh." / "Sí.") is held and spoken with the next, so the
+   voice doesn't stop and start on every word. */
+function rpTakeSentences(buf, emit) {
+  const re = /[.!?\u2026]+["'\u201d\u2019)\]]*\s+/g;
+  let start = 0, m;
+  while ((m = re.exec(buf))) {
+    const end = m.index + m[0].length;
+    if (end - start < 20) continue;
+    emit(buf.slice(start, end));
+    start = end;
   }
+  return buf.slice(start);
 }
 
 /* The prospect's headshot (Frank, 2026-09-29: "lets just do headshots of AI
@@ -4289,17 +4342,22 @@ function rphStopPlay() {
   if (rphAudio) { try { rphAudio.pause(); } catch (_) {} rphAudio = null; }
   document.querySelectorAll(".rphplay.playing").forEach(el => el.classList.remove("playing"));
 }
-function rphPlayFrom(sess, i) {
+function rphPlayFrom(sess, i, part) {
   rphStopPlay();
   const hist = sess.history || [];
   while (i >= 0 && i < hist.length && !hist[i].audio) i++;
   if (i < 0 || i >= hist.length) return;
-  const a = new Audio(`/api/roleplay/audio?key=${encodeURIComponent(hist[i].audio)}`);
+  // A streamed reply was spoken sentence by sentence: `audios` holds every
+  // clip in order; an older line has the one `audio`.
+  const clips = Array.isArray(hist[i].audios) && hist[i].audios.length ? hist[i].audios : [hist[i].audio];
+  const k = part || 0;
+  const a = new Audio(`/api/roleplay/audio?key=${encodeURIComponent(clips[k])}`);
   rphAudio = a;
   const el = document.querySelector(`.rphplay[data-i="${i}"]`);
-  if (el) { el.classList.add("playing"); el.scrollIntoView({ block: "nearest", behavior: "smooth" }); }
-  a.onended = () => { if (rphAudio === a) rphPlayFrom(sess, i + 1); };
-  a.onerror = () => { if (rphAudio === a) rphPlayFrom(sess, i + 1); };
+  if (el) { el.classList.add("playing"); if (!k) el.scrollIntoView({ block: "nearest", behavior: "smooth" }); }
+  const go = () => { if (rphAudio === a) (k + 1 < clips.length ? rphPlayFrom(sess, i, k + 1) : rphPlayFrom(sess, i + 1)); };
+  a.onended = go;
+  a.onerror = go;
   a.play().catch(() => {});
 }
 
@@ -4354,17 +4412,49 @@ async function rpSendTurn(text, clip) {
       method: "POST", headers: { "content-type": "application/json" },
       body: JSON.stringify({ persona: rpPersonaKey, history: rpHistory, focus_objections: focusObjections, lead_source: rpLeadSource ? rpLeadSource.forCustomer : "",
         prospect: rpLeadSource && rpLeadSource.prospect ? rpLeadSource.prospect.text : "",
-        language: rpProspectNow().lang || "en" }),
+        language: rpProspectNow().lang || "en", stream: true }),
     });
-    const body = await r.json();
-    if (r.ok && body.reply) {
-      rpHistory.push({ role: "prospect", content: body.reply });
+    const ctype = r.headers.get("content-type") || "";
+    if (r.ok && r.body && ctype.startsWith("text/plain")) {
+      // Streamed: each finished sentence goes to the voice at once, and the
+      // line in the transcript fills in as she speaks.
+      const reply = { role: "prospect", content: "" };
+      rpHistory.push(reply);
       rpBusy = false;   // before she speaks: a reply that ends at once must still re-arm the mic
-      speakProspect(body.reply, () => {
+      const sq = rpSpeechQueue(() => {
         if (view === "roleplay" && rpPersonaKey && !rpGrade) rpStartListening();
       });
+      reply.parts = sq.parts;
+      const show = () => { if (view === "roleplay") { document.getElementById("view").innerHTML = roleplayPanel(); wireRoleplayPanel(); } };
+      const reader = r.body.getReader(), dec = new TextDecoder();
+      let pending = "";
+      for (;;) {
+        const { value, done } = await reader.read();
+        if (done) break;
+        const t = dec.decode(value, { stream: true });
+        reply.content += t;
+        const before = sq.parts.length;
+        pending = rpTakeSentences(pending + t, x => sq.add(x));
+        if (sq.parts.length !== before) show();
+      }
+      reply.content = reply.content.trim();
+      sq.add(pending);
+      sq.end();
+      if (!reply.content) {
+        reply.content = "[could not reach the practice partner: empty reply]";
+        delete reply.parts;
+      }
     } else {
-      rpHistory.push({ role: "prospect", content: `[could not reach the practice partner: ${body.error || r.status}]` });
+      const body = await r.json().catch(() => ({}));
+      if (r.ok && body.reply) {
+        rpHistory.push({ role: "prospect", content: body.reply });
+        rpBusy = false;
+        speakProspect(body.reply, () => {
+          if (view === "roleplay" && rpPersonaKey && !rpGrade) rpStartListening();
+        });
+      } else {
+        rpHistory.push({ role: "prospect", content: `[could not reach the practice partner: ${body.error || r.status}]` });
+      }
     }
   } catch (e) {
     rpHistory.push({ role: "prospect", content: `[connection error: ${e}]` });

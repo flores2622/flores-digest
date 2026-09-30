@@ -940,6 +940,54 @@ async function callClaude(env, { system, messages, maxTokens }) {
     .join("");
 }
 
+/* The same call, streamed (Frank, 2026-09-30: start the voice on the first
+   sentence): returns a plain-text stream of the reply as Claude writes it,
+   so the board can hand each finished sentence to the voice while the rest
+   is still being written. Same model and settings as callClaude. */
+async function callClaudeStream(env, { system, messages, maxTokens }) {
+  if (!env.ANTHROPIC_API_KEY) {
+    throw new Error("ANTHROPIC_API_KEY is not configured on this Worker");
+  }
+  const r = await fetch("https://api.anthropic.com/v1/messages", {
+    method: "POST",
+    headers: {
+      "x-api-key": env.ANTHROPIC_API_KEY,
+      "anthropic-version": "2023-06-01",
+      "content-type": "application/json",
+    },
+    body: JSON.stringify({
+      model: "claude-sonnet-5",
+      max_tokens: maxTokens,
+      system,
+      messages,
+      thinking: { type: "disabled" },
+      stream: true,
+    }),
+  });
+  if (!r.ok || !r.body) {
+    throw new Error(`Claude API ${r.status}: ${(await r.text()).slice(0, 300)}`);
+  }
+  // Server-sent events in, text deltas out.
+  const dec = new TextDecoder(), enc = new TextEncoder();
+  let buf = "";
+  return r.body.pipeThrough(new TransformStream({
+    transform(chunk, ctl) {
+      buf += dec.decode(chunk, { stream: true });
+      let i;
+      while ((i = buf.indexOf("\n")) >= 0) {
+        const line = buf.slice(0, i).trim();
+        buf = buf.slice(i + 1);
+        if (!line.startsWith("data:")) continue;
+        let ev;
+        try { ev = JSON.parse(line.slice(5)); } catch (_) { continue; }
+        if (ev.type === "content_block_delta" && ev.delta && ev.delta.type === "text_delta" && ev.delta.text) {
+          ctl.enqueue(enc.encode(ev.delta.text));
+        }
+      }
+    },
+  }));
+}
+
 function roleplaySlug(name) {
   return String(name || "unknown").trim().toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "") || "unknown";
 }
@@ -1241,6 +1289,14 @@ async function roleplayTurn(request, env) {
   const system = persona.system + focusObjectionInstruction(focusObjections) + leadSourceInstruction(leadSource)
     + prospectInstruction(prospect) + languageInstruction(body.language);
 
+  if (body.stream === true) {
+    try {
+      const text = await callClaudeStream(env, { system, messages, maxTokens: 300 });
+      return new Response(text, { headers: { "content-type": "text/plain; charset=utf-8", "cache-control": "no-store" } });
+    } catch (e) {
+      return json({ error: "role-play turn failed", detail: String(e).slice(0, 300) }, 502);
+    }
+  }
   try {
     const reply = await callClaude(env, { system, messages, maxTokens: 300 });
     return json({ reply: reply.trim() });
@@ -1280,12 +1336,25 @@ async function roleplayGrade(request, env) {
     if (h.role === "producer") {
       if (typeof h.audio !== "string" || !h.audio.startsWith(own) || h.audio.includes("..")) delete h.audio;
     } else {
-      delete h.audio;
+      // A streamed reply was spoken sentence by sentence (h.parts), each
+      // kept on its own; an older one in one piece. `audio` is the first
+      // clip, `audios` every clip in order when there is more than one.
+      delete h.audio; delete h.audios;
+      const parts = Array.isArray(h.parts)
+        ? h.parts.filter((x) => typeof x === "string" && x.trim()).slice(0, 20).map((x) => x.slice(0, 2000).trim())
+        : [];
+      delete h.parts;
+      if (parts.length) h.parts = parts;
       if (voiceOk && typeof h.content === "string" && h.content.trim()) {
-        try {
-          const k = await rpTtsKey(body.voice, h.content.slice(0, 2000).trim());
-          if (await env.BOARD.head(k)) h.audio = k;
-        } catch (_) {}
+        const keys = [];
+        for (const t of (parts.length ? parts : [h.content.slice(0, 2000).trim()])) {
+          try {
+            const k = await rpTtsKey(body.voice, t);
+            if (await env.BOARD.head(k)) keys.push(k);
+          } catch (_) {}
+        }
+        if (keys.length) h.audio = keys[0];
+        if (keys.length > 1) h.audios = keys;
       }
     }
   }
