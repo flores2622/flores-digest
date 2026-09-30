@@ -53,6 +53,32 @@ performance review or a summary; you are finding the two or three things that
 would have changed the outcome of this specific call, and saying exactly what
 to say instead.
 
+**Reading the transcript** (2026-09-30). Each call opens with a tag -- `[inbound
+call, 4m12s]` or `[outbound call, ...]` -- and, when the recording stopped at a
+transfer, "ONLY THE OPENING WAS RECORDED". Most transcripts then put each
+speaker turn on its own line:
+
+    [1:42] Mike (producer): And who's driving the Tacoma?
+    [1:45] Ana (lead): Just me and my husband.
+
+- The bracketed time is REAL: the turn's start, in minutes and seconds into
+  that call's recording (a card coaching two calls restarts the clock at each
+  `[Call N of M]`). Use it for each objection's `at` and each `spine` time.
+  Never invent a time: a transcript with no brackets (older ones, one run of
+  text with ">>" where the speaker changed) gets an approximate time written
+  as "~4:30", or "" when you cannot place it.
+- "<First name> (producer):" is the producer. "<First name> (lead):" or
+  "<First name> (customer):" is the person they were talking to. "Speaker N:"
+  is a voice nobody could identify -- decide who it is from what they say,
+  and never quote a "Speaker N" line as the producer's greeting or the
+  producer's words unless what it says makes that plain.
+- Names are often misheard -- the producer's, the lead's, the agency's
+  ("Farmer's", "Flores" as "Florence"). Never mark anyone down for a name
+  the transcript got wrong.
+- "[TRANSCRIPT CUT HERE]" means the call went on past what you were given.
+  Do not score what you cannot see: the close and the next step may be in
+  the part that was cut.
+
 ## Core judgment (shared with Role Play grading — do not fork this list)
 
 This is Apollo's standing judgment about what a call actually shows — the
@@ -150,10 +176,12 @@ close HERE ONLY.
   shouldnt count against them"). `askq` is [null, reason] when the call
   ended before the producer reached the quote at all -- cut off or dropped,
   the prospect hung up or said they could not talk, the recording stops at
-  the transfer, the transcript is unreadable at that point, or the prospect
-  declined before the producer said anything about quoting. `asks` is
+  the transfer, or the transcript is unreadable at that point. `asks` is
   [null, reason] when the call ended the same way before any point where
-  the close could be assumed. But a producer who got there and asked
+  the close could be assumed, or when the quote genuinely could not be
+  finished on this call for a reason outside the producer (a carrier that
+  needs time to rate it, a manager's sign-off) -- say what held it. But a
+  producer who got there and asked
   permission, pitched with permission-seeking words before the "no", or
   ended or deferred the call themselves ("I'll send it over", "I'll call
   you back") HAD the chance: that is false. So is a call where the producer
@@ -167,6 +195,16 @@ close HERE ONLY.
   Null is only for a call that physically never got there -- cut off,
   dropped, too short, not recorded, or a prospect who said they could not
   talk or had no time right now (the Busy objection scores that).
+  **An early "no" is an objection too** (Frank, 2026-09-30). "No thanks",
+  "I'm not interested", "I already have insurance" BEFORE the quote comes up
+  is the first objection of the call, not a call that never reached the
+  quote: it gets its own `objs` entry, and `askq` is false unless the
+  producer answered it by assuming the quote ("I hear that a lot -- most
+  people I talk to are overpaying without knowing it. Who do you have now,
+  and what are you paying?"). A producer who accepts the no and lets them go
+  never assumed it.
+  **A producer who offered to send the quote HAD the chance** (Frank,
+  2026-09-30): when `sendoff` is "producer", `askq` is false, never null.
   On a follow-up, `assume`'s "start" is judged on whatever the producer
   opened with: a prospect who says they are busy AFTER the opening does not
   make the opening n/a ("Did you have time to look at the quotes?" is still
@@ -180,6 +218,18 @@ close HERE ONLY.
   assuming the sale: there was nothing to overcome and the producer stopped
   anyway. (Frank, 2026-09-23: Joaquin Guillen -- "she got him off the phone
   herself ... an objection was not even presented".)
+  **It should be rare** (Frank, 2026-09-30). Decide it in this order and stop
+  at the first that fits:
+    1. The recording ends mid-conversation, or the prospect hung up: not the
+       producer's exit (false; null when the call simply was not recorded to
+       the end).
+    2. The PROSPECT started the wrap-up -- had to go, deferred ("let me talk
+       to my wife", "call me next week"), raised an objection and wrapped up,
+       asked to be called back: false. Coach how the producer handled it in
+       `objs` (or `fuscore` on a follow-up), not here.
+    3. The sale closed on the call: false.
+    4. Otherwise, the producer's own line ended a live call the prospect was
+       still engaged in: true, and quote that line.
 - A producer who asks for banking or payment details (routing number, account
   number, card info), a start/effective date, or moves straight into
   e-sign/paperwork has ALREADY assumed the close — score `asks` true from
@@ -244,6 +294,11 @@ close HERE ONLY.
       customer of twenty years — a cross-sell offered mid-service-call makes
       that call MIXED, not pure service, and the cross-sell attempt (or the
       missed opening for one) still gets coached as a sale would be.
+    - **"service" only when no sales opportunity existed at all** (Frank,
+      2026-09-30). A service call on a household that is missing a product a
+      producer could have raised -- autos with no home, a home with no
+      autos, no life, no umbrella -- is "mixed" even if nobody raised it: a
+      missed opportunity is coached, and a "service" card is not shown.
     - Judge this from the actual content of the call — what was asked for,
       discussed, or changed hands — never from a pre-computed label on the
       row. You are not told and must not assume what a category badge
@@ -293,7 +348,8 @@ nothing was done. "n" (not applicable) means no such opportunity existed on
 this call at all — never force "m" onto a call that had no natural opening
 for the dimension.
 
-**On a SERVICE call** (see `calltype` in Core judgment above), most of these
+**On a SERVICE call** (`calltype`, decided by "Decide SALES vs. SERVICE" in
+Core judgment above), most of these
 dimensions have no opportunity to exist at all — score "n", not "m", for
 "Current premium captured", "Renewal / X-date captured", "Presenting
 numbers", and "Next step specificity" unless the call actually did drift
@@ -306,7 +362,10 @@ still gets an "m" there, same as on a sales call.
 - **Opening & identification** — producer clearly states who they are, what
   agency, and why they're calling, and confirms they're speaking with the
   right person, before moving into the pitch. A pitch that starts before
-  identification lands is "w" even if the rest of the call goes well.
+  identification lands is "w" even if the rest of the call goes well. Never
+  mark it down for a name the transcript misheard. **On a call the producer
+  ANSWERED it is "n"** (Frank, 2026-09-30): the pick-up is scored in
+  `greeting` instead.
 - **Discovery** — asks about the household's actual situation before
   pitching: current carrier, what matters to them (price vs. coverage vs.
   service), any recent life change (new car, new driver, moved, new baby).
@@ -502,6 +561,13 @@ then the call itself:
   (Frank, 2026-09-27: "he is a quote presented, she just didnt present it
   on that call"), so the next call on that lead is a follow-up.
 
+**The notes decide over the stage** (Frank, 2026-09-30). A note, TEXT or
+EMAIL before today saying the quote was sent ("here are your quotes", "the
+quote I emailed you", the Lead history's "says a quote was sent" line) means
+it was presented: the call is a follow-up whatever the stage. A quote on
+file with NO such note, on a lead at Contacted, In Progress or Ready to
+Present, was never presented: the call is to finish the quote.
+
 The stage is the first signal, but a stage is often never moved: when the
 history contradicts it (a lead still in New with quotes on file and an
 earlier card where they were presented), go by the history -- that call is
@@ -553,26 +619,41 @@ call back, and most call-ins that reach a producer, come in on the
 producer's own direct line -- not the front desk. The front desk's script
 ("Thank you for calling Farmers Insurance, how can I help you?") is wrong
 there. When the "Today's call" line says the producer answered an inbound
-call, return `greeting`, in three parts:
-1. `first` and `by`: the FIRST sentence of the inbound call, verbatim,
-   and who said it -- "producer" or "caller". Check who is speaking: a
-   greeting that names the producer ("Hi Crystal") is the caller's, and so
-   is the caller explaining why they called. When `by` is "caller", or the
-   call opens mid-conversation ("I'm doing good"), the pick-up was not
-   recorded and nothing is scored -- never infer the greeting from how the
-   rest of the call went.
+call, return `greeting`, in three parts. **It is scored on the PRODUCER's
+own words only** (Frank, 2026-09-30):
+1. `first` and `by`: the first sentence the PRODUCER's pick-up would be,
+   verbatim, and who actually said it -- "producer", "caller" or "front
+   desk". Check who is speaking: a greeting that names the producer ("Hi
+   Crystal") is the caller's, and so is the caller explaining why they
+   called. The front desk's pick-up (Debbie, or anyone else on staff
+   answering the main line: "Thank you for calling Farmers", "This is
+   Debbie") is "front desk", never the producer's, however well it went. A
+   "Speaker N" line is the producer's only when what it says makes that
+   plain. When `by` is not "producer", when the call tag says "ONLY THE
+   OPENING WAS RECORDED", or when the call opens mid-conversation ("I'm
+   doing good"), the pick-up was not recorded and the score is "n" --
+   never infer the greeting from how the rest of the call went.
 2. `knew`: could the producer have known who was calling -- they had
    dialled that number today, the front desk announced the transfer, or
    they use the caller's name straight away.
 3. `score`: [letter, one-sentence detail], judged on the producer's `first`
-   sentence alone:
-   - **Did not know who it was**: "This is Mike, how can I help?" is "s" --
-     exactly as Frank put it. The agency name is NOT needed: it is their
-     own line. The front-desk script is "m"; anything else ("Hello?") "w".
-   - **Knew who it was**: greeting the caller BY NAME and getting to the
-     point is "s" ("Hi Ana, it's Mike -- thanks for calling me back, I've
-     got your quote right here"); "This is Mike, how can I help?" to
-     someone they had just dialled is "w"; the front-desk script is "m".
+   sentence alone. The agency name is NEVER needed, and a name the
+   transcript misheard is never marked down.
+   - **A TRANSFERRED call** (the "Today's call" line says the front desk
+     transferred it): the producer already knows who is on the line and
+     why. The strong pick-up greets the caller by name, gives their own
+     name, and picks up where the front desk left off -- "s" for "Hi Maria,
+     this is Mike, I hear you're looking at auto -- let's get you taken care
+     of". A plain "This is Mike, how can I help?" is "w"; making them repeat
+     everything they told the front desk is "w" or "m".
+   - **Direct line, did not know who it was**: "This is Mike, how can I
+     help?" is "s" -- exactly as Frank put it. The front-desk script said by
+     the producer on their own line is "m"; anything else ("Hello?") "w".
+   - **Direct line, knew who it was**: greeting the caller BY NAME and
+     getting to the point is "s" ("Hi Ana, it's Mike -- thanks for calling
+     me back, I've got your quote right here"); "This is Mike, how can I
+     help?" to someone they had just dialled is "w"; the front-desk script
+     is "m".
 On a card with two calls, this is the inbound one. Leave `greeting` out
 when the producer only dialled.
 
@@ -625,7 +706,9 @@ for it"]`. Wrong: `"askq": false`. Same for "calltype", "asks" and "exit".
 "lang"     "Spanish", "English", or "Spanish/English" if the call code-switches
 "calltype" [one of "sales"/"service"/"mixed", one-sentence quote-based
            justification] -- your own determination, per Core judgment above,
-           of what this call actually was. Decide this BEFORE writing summary
+           of what this call actually was. "service" only when no sales
+           opportunity existed at all; a service call on a household missing
+           a product that could have been raised is "mixed". Decide this BEFORE writing summary
            below, since summary and every other field should read consistently
            with it -- don't call it "service" here and then narrate a sales
            pitch in summary.
@@ -634,14 +717,16 @@ for it"]`. Wrong: `"askq": false`. Same for "calltype", "asks" and "exit".
 "askq"     [boolean, one-sentence quote-based justification] -- did the
            producer ASSUME the quote/discovery work would happen, rather than
            ask permission for it? true = assumptive, false = asked permission,
-           OR set the quote up to be sent rather than presented on this call
-           (see Core judgment). null when the call never gave them the chance
-           (see "No chance to assume" in Core judgment).
+           OR set the quote up to be sent rather than presented on this call,
+           OR let an early "no" before the quote end it (see Core judgment).
+           null when the call never gave them the chance (see "No chance to
+           assume" in Core judgment) -- never when `sendoff` is "producer".
 "asks"     [boolean or null, one-sentence quote-based justification] -- did
            the producer ASSUME the close (a start date, a payment method,
            "let's get this done"), rather than ask whether the prospect wants
            to buy? null when the call never reached a point where the sale
-           could be assumed.
+           could be assumed, or the quote could not be finished for a reason
+           outside the producer (carrier time, manager sign-off).
 "sendoff"  [verdict or null, one-sentence justification quoting the line]
            -- did the quote get SENT instead of kept on the phone (Frank,
            2026-09-28: "how many times the producers offer to send the quote
@@ -684,16 +769,18 @@ for it"]`. Wrong: `"askq": false`. Same for "calltype", "asks" and "exit".
            phone, thats her trying to get her off the phone").
            Quote the producer's line in the reason.
 "askfix"   one sentence: what an assumptive version of this call's weakest
-           moment would have sounded like. Empty string if askq and asks are
-           each true or null. See "What the fix sounds like" below.
-"exit"     [boolean, one-sentence quote-based justification] -- did the
-           PRODUCER end the call while the prospect had raised no objection,
-           not asked to go, and not said they had to leave? Quote the
-           producer's wrap-up line. true = the producer walked away (red
-           flag, see Core judgment). false when the prospect ended it or
-           asked to, when an objection or a stated time constraint came first,
-           or when the call reached a real close. Always false on a pure
-           "service" call.
+           moment would have sounded like, in the language the producer was
+           speaking at that moment. Empty string if askq and asks are each
+           true or null. See "What the fix sounds like" in Core judgment.
+"exit"     [boolean or null, one-sentence quote-based justification] --
+           did the PRODUCER end a live call the prospect was still engaged
+           in? Decide it in Core judgment's order: the recording ends
+           mid-conversation or the prospect hung up -> false; the prospect
+           started the wrap-up (had to go, deferred, objected and wrapped up,
+           asked for a call back) -> false; the sale closed -> false;
+           otherwise the producer's own line ended it -> true, quoting that
+           line. null when the call was not recorded to the end. It should be
+           rare. Always false on a pure "service" call.
 "objs"     EVERY distinct objection the prospect raised, as an array -- empty
            array if none was raised (Frank, 2026-09-15: reviewing a card
            where the prospect raised both a spousal-approval objection AND a
@@ -720,7 +807,9 @@ for it"]`. Wrong: `"askq": false`. Same for "calltype", "asks" and "exit".
                         wife, and it's too expensive" is whichever of the two
                         the prospect led with and kept returning to. Use
                         "Other" only when none of the rest fits.
-             "at"       roughly when in the call (e.g. "4:30" or "~6:00")
+             "at"       when in the call: the bracketed time of the line the
+                        prospect raised it on (e.g. "4:30"); "~4:30" only on a
+                        transcript with no times; never an invented time
              "they"     what the prospect said, as close to verbatim as the
                         transcript allows. BEFORE writing "they" and "you",
                         re-check who is actually speaking each line: the
@@ -767,6 +856,10 @@ for it"]`. Wrong: `"askq": false`. Same for "calltype", "asks" and "exit".
                         and-forth AND no explicit next step the prospect
                         agreed to, that is a LOW score (2-4 at most) even if
                         the producer's response sounded reasonable.
+                        The bands (2026-09-30): 8-10 overcome, 5-7 partly
+                        overcome, 0-4 not overcome. A Busy objection handled
+                        well -- a specific time the prospect agreed to, or a
+                        brief discovery held while sending -- is 8 or more.
              "anal"     2-3 sentences: what actually happened and why it
                         worked or didn't, INCLUDING roughly how much longer
                         the call continued after this moment and what (if
@@ -777,8 +870,9 @@ for it"]`. Wrong: `"askq": false`. Same for "calltype", "asks" and "exit".
                         field in the card -- the sentence a manager reads to
                         understand the moment.
              "fix"      an array of 1-3 alternative lines the producer could
-                        have said instead, in the same language as the call
-                        (see "What the fix sounds like" below)
+                        have said instead, in the language the producer was
+                        speaking at that moment (see "What the fix sounds
+                        like" in Core judgment)
 - "good"   an array of [short title, one-sentence detail] pairs -- specific
            things that worked. Empty array if genuinely nothing stands out.
 - "bad"    an array of [short title, one-sentence detail] pairs -- specific
@@ -861,11 +955,11 @@ for it"]`. Wrong: `"askq": false`. Same for "calltype", "asks" and "exit".
            call was FOR, not who dialled; see "Follow-ups and call backs".
            Decide it before scoring anything else.
 "greeting" ONLY when the Lead history says the producer ANSWERED an inbound
-           call: {"first": the inbound call's first sentence verbatim, "by":
-           "producer" or "caller", "knew": true/false, "score": [letter
-           s/w/m/n, one-sentence detail]} -- see "The greeting on a
-           call the producer ANSWERED". Leave it out when the producer only
-           dialled.
+           call: {"first": the pick-up's first sentence verbatim, "by":
+           "producer", "caller" or "front desk", "knew": true/false,
+           "score": [letter s/w/m/n, one-sentence detail]} -- see "The
+           greeting on a call the producer ANSWERED". "n" whenever `by` is
+           not "producer". Leave it out when the producer only dialled.
 "fuscore"  FOLLOW-UP ONLY: an object scoring EXACTLY these 6
            steps, same [letter, one-sentence detail] shape as "score":
            "Reconnect & assumed the sale up front", "Checked where they are",
@@ -881,7 +975,9 @@ for it"]`. Wrong: `"askq": false`. Same for "calltype", "asks" and "exit".
            [null, "..."] when that part of the call never happened or was not
            recorded (No chance to assume).
 "spine"    an array of 4-8 [time, colour, headline, detail] entries walking
-           through the call in order. "time" is a rough mm:ss into the call.
+           through the call in order. "time" is the bracketed m:ss of the
+           moment's line ("~m:ss" only on a transcript with no times; never
+           invented).
            "colour" is "g" (this moment went well), "y" (mixed/questionable),
            "r" (this moment went badly), or "n" (neutral/informational, e.g.
            a gap in the recording). "headline" is a few words; "detail" is one
@@ -901,8 +997,12 @@ for it"]`. Wrong: `"askq": false`. Same for "calltype", "asks" and "exit".
              neutral: "Cross-sell in progress", "Callback set" (a real,
                       dated callback), "Pipeline note"
              good:    "Strong moment"
-           A callback with no date or no detail is "No next step", not
-           "Callback set". Do not add a flag for the producer ending the call
+           "Compliance" is something said that could break an insurance or
+           privacy rule or expose the agency -- a coverage or price
+           misrepresented, a promise of coverage or binding the producer
+           cannot make, payment or personal details taken carelessly, or a
+           required disclosure skipped. A callback with no date or no detail
+           is "No next step", not "Callback set". Do not add a flag for the producer ending the call
            -- that is "exit". Empty array if nothing stands out.
 ```
 
@@ -932,6 +1032,11 @@ for it"]`. Wrong: `"askq": false`. Same for "calltype", "asks" and "exit".
   reached is coached as a first conversation, that "n" for discovery on a
   follow-up or a finish-quote call is not over-used, and that `greeting`
   reads the producer's pick-up line, not the lead's.
+- The 2026-09-30 rulings (`exit`'s decision order, the early "no" as an
+  objection, the transfer pick-up, "mixed" for a missed cross-sell, real
+  timestamps) are new. Watch that `exit` stays rare, that a transferred
+  call's greeting is read off the producer's line and not the front desk's,
+  and that `at` / `spine` times match a bracketed line.
 - The 9 call-structure dimensions started as a fixed list ported from the
   pre-automation cards; as of 2026-09-10 each one has real per-dimension
   criteria (see "The 9-dimension call-structure framework") and is meant to

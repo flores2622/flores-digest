@@ -3145,10 +3145,12 @@ function outcomeBadgeHtml(cat, catc, extras) {
    from 2026-09-27 (c.flag_groups, digest_config.FLAG_GROUPS -- keep the two
    lists in step); older cards get the best guess from the wording below
    (Frank chose that over a paid re-read). "Producer ended the call" (exit)
-   joins Call cut short. Hover lists Apollo's own words for that category. */
+   is its own badge (Frank, 2026-09-30: only when the producer ended a live
+   call, never when the customer did); Call cut short is left to Apollo's own
+   flags. Hover lists Apollo's own words for that category. */
 const FLAG_GROUPS = {
   "No next step": "bad", "Quote not presented": "bad", "Discovery missed": "bad",
-  "Approach skipped": "bad", "Objection dropped": "bad", "Call cut short": "bad",
+  "Approach skipped": "bad", "Objection dropped": "bad", "Call cut short": "bad", "Producer ended the call": "bad",
   "Stage / pipeline mistake": "bad", "Compliance": "bad",
   "Cross-sell in progress": "neutral", "Callback set": "neutral", "Pipeline note": "neutral",
   "Strong moment": "good",
@@ -3178,7 +3180,7 @@ function flagGroupOf(text, given) {
 function flagBadgesHtml(c) {
   const groups = new Map();   // category -> [texts], in first-seen order
   const add = (g, t) => { if (!groups.has(g)) groups.set(g, []); if (t) groups.get(g).push(t); };
-  if (c.exit && c.exit[0]) add("Call cut short", "Producer ended the call" + (c.exit[1] ? `: ${c.exit[1]}` : ""));
+  if (c.exit && c.exit[0] === true) add("Producer ended the call", c.exit[1] || "");
   (c.flags || []).forEach((f, i) => add(flagGroupOf(f, (c.flag_groups || [])[i]) || f, f));
   const cls = { bad: "red", neutral: "", good: "green" };
   return [...groups].map(([g, texts]) => {
@@ -3189,8 +3191,9 @@ function flagBadgesHtml(c) {
 }
 /* On a call the producer answered, the greeting leads whichever scorecard
    the card has: by name and direct, never the front desk's "thanks for
-   calling Farmers" on their own line (Frank, 2026-09-25). */
-const GREETING_DIM = "Direct-line greeting";
+   calling Farmers" on their own line (Frank, 2026-09-25); a transferred
+   call's pick-up is scored too (2026-09-30), so it is just "Greeting". */
+const GREETING_DIM = "Greeting";
 function withGreeting(c, sc, dims) {
   if (!c.greeting || !sc || !Object.keys(sc).length) return [sc, dims];
   return [{ [GREETING_DIM]: c.greeting, ...sc }, [GREETING_DIM, ...dims]];
@@ -3278,15 +3281,16 @@ function card(c) {
        ${!multiCall ? outcomeBadgeHtml(c.cat, c.catc, [...typeParts, ...flowParts(c)])
          : [...typeParts, ...flowParts(c)].map(([l, why]) => `<span class="ctype" title="${escAttr(why)}">${cesc(l)}</span>`).join("")}<span class="ctog" aria-hidden="true">▸</span></div>
      <div class="sum">${cesc(c.summary || "")}</div>
-     ${(c.flags && c.flags.length) || (c.exit && c.exit[0]) ? `<div style="margin-top:8px">${
+     ${(c.flags && c.flags.length) || (c.exit && c.exit[0] === true) ? `<div style="margin-top:8px">${
        flagBadgesHtml(c)}</div>` : ""}
    </summary>
    ${c.askq || c.assume ? `<div class="blk"><div class="bl">The Assumption</div><table class="askt">
      ${c.assume ? assumeRowsHtml(c.assume) : `<tr><td class="k">Assumed the quote</td><td class="v">${bdg(c.askq[0])}</td><td>${cesc(c.askq[1] || "")}</td></tr>
      <tr><td class="k">Assumed the sale</td><td class="v">${bdg((c.asks || [])[0])}</td><td>${cesc((c.asks || [])[1] || "")}</td></tr>`}${
      // Inverted on purpose: "yes" here is the red flag (Frank, 2026-09-23).
-     c.exit ? `<tr><td class="k">Ended the call themselves</td><td class="v">${c.exit[0]
-       ? `<span class="chip c-r">yes</span>` : `<span class="chip c-g">no</span>`}</td><td>${cesc(c.exit[1] || "")}</td></tr>` : ""}</table>
+     // Null: the recording did not run to the end, so nobody can say (2026-09-30).
+     c.exit ? `<tr><td class="k">Ended the call themselves</td><td class="v">${c.exit[0] === true
+       ? `<span class="chip c-r">yes</span>` : c.exit[0] === false ? `<span class="chip c-g">no</span>` : `<span class="chip">n/a</span>`}</td><td>${cesc(c.exit[1] || "")}</td></tr>` : ""}</table>
      ${c.askfix ? `<div class="fix"><span class="fixl">What assumptive sounds like</span>${cesc(c.askfix)}</div>` : ""}
    </div>` : ""}
    ${objBlk}
@@ -3321,8 +3325,20 @@ function transcriptHtml(text) {
     const m = block.match(/^(\[Call \d+ of \d+[^\]]*\])\n([\s\S]*)$/);
     const tag = m ? `<div class="ttag">${cesc(m[1])}</div>` : "";
     const body = m ? m[2] : block;
-    const turns = body.split(/\s*>>\s*/).map(t => t.trim()).filter(Boolean);
-    return tag + turns.map((t, i) => `<p class="tturn t${i % 2}">${cesc(t)}</p>`).join("");
+    // Whisper's ">>" turns, or Deepgram's one line per turn with its real
+    // start time and speaker (2026-09-30: "[4:32] Mike (producer): ...").
+    if (/>>/.test(body) || !/\n/.test(body.trim())) {
+      const turns = body.split(/\s*>>\s*/).map(t => t.trim()).filter(Boolean);
+      return tag + turns.map((t, i) => `<p class="tturn t${i % 2}">${cesc(t)}</p>`).join("");
+    }
+    let alt = 0;
+    return tag + body.split("\n").map(l => l.trim()).filter(Boolean).map(l => {
+      if (/^\[(?!\d+:\d\d\])[^\]]*\]$/.test(l)) return `<div class="ttag">${cesc(l)}</div>`;   // leg tags, TRANSCRIPT CUT HERE
+      const m = l.match(/^(?:\[(\d+:\d\d)\]\s+)?([^:\n\[\]]{1,40}):\s?(.*)$/);
+      if (!m) return `<p class="tturn t${(alt++) % 2}">${cesc(l)}</p>`;
+      const mine = /\((producer|service)\)/.test(m[2]);
+      return `<p class="tturn ${mine ? "t0" : "t1"}">${m[1] ? `<span class="ts">${m[1]}</span>` : ""}<b>${cesc(m[2])}:</b> ${cesc(m[3])}</p>`;
+    }).join("");
   }).join("");
 }
 /* The recording and its transcript as one (Frank, 2026-09-29: "the

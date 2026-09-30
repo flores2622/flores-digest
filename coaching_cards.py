@@ -83,8 +83,10 @@ METHODOLOGY = (ROOT / "coaching/METHODOLOGY.md").read_text()
 # minute call's worth of transcript; the retry tier exists for the same
 # reason call_summary.py's does -- a long call can still fill the first
 # budget with thinking or run past it. Bumped 2026-09-10 when "techniques"
-# (6 more scored dimensions) was added to the schema.
-MAX_TOKENS = 4800
+# (6 more scored dimensions) was added to the schema, and to 9000 on
+# 2026-09-30: a reply bills only the tokens it writes, so the higher first
+# ceiling costs nothing on a normal card and saves the retry on a long one.
+MAX_TOKENS = 9000
 # 16000 since 2026-09-28: a two-call card (Joaquin Guillen, 09-22) ran past
 # 8000 and came back with no JSON even with thinking off. A reply only bills
 # the tokens it writes, so the bigger ceiling costs nothing on a normal card.
@@ -314,22 +316,54 @@ def _tab(key):
     return cfg.CALL_CATEGORIES[key]["paint"]
 
 
+_TRUE = {"true", "yes", "y", "1"}
+_FALSE = {"false", "no", "n", "0"}
+_NULL = {"null", "none", "n/a", "na", "", "unclear", "not applicable"}
+
+
+def _truth(v):
+    """True / False / None from whatever the model put in a verdict's place.
+    Strings map explicitly -- bool("false") is True, which is how a quoted
+    "false" used to read as yes -- and anything unrecognised is None, never
+    a guess either way."""
+    if v is None or isinstance(v, bool):
+        return v
+    if isinstance(v, (int, float)):
+        return bool(v)
+    t = str(v).strip().lower()
+    if t in _NULL:
+        return None
+    return True if t in _TRUE else False if t in _FALSE else None
+
+
 def _bool_pair(raw):
-    # The model sometimes answers with a bare true/false instead of the
-    # [bool, reason] pair METHODOLOGY.md asks for -- 12 of 314 cached reads
-    # did, and every one of them used to display "no" whatever it said
-    # (Joaquin Guillen, 2026-09-22: "exit": true shown as "no").
-    if isinstance(raw, bool):
-        return [raw, ""]
-    if not isinstance(raw, (list, tuple)) or not raw:
-        return [False, ""]
-    return [bool(raw[0]), str(raw[1]).strip() if len(raw) > 1 else ""]
+    """[True/False/None, reason] for a [verdict, reason] field.
+
+    The model sometimes answers with a bare true/false instead of the
+    [bool, reason] pair METHODOLOGY.md asks for -- 12 of 314 cached reads
+    did, and every one of them used to display "no" whatever it said
+    (Joaquin Guillen, 2026-09-22: "exit": true shown as "no"). A bare or
+    quoted null, "n/a", or nothing at all is None -- counted neither way --
+    never False (2026-09-30); so is "true - reason" read as one string."""
+    if isinstance(raw, (list, tuple)):
+        if not raw:
+            return [None, ""]
+        return [_truth(raw[0]), str(raw[1]).strip() if len(raw) > 1 and raw[1] is not None else ""]
+    if isinstance(raw, str):
+        m = re.match(r"\s*(true|false|yes|no|null|none|n/a)\b[\s,.:;\-—–]*(.*)", raw, re.I | re.S)
+        if m:
+            return [_truth(m.group(1)), m.group(2).strip()]
+        return [None, raw.strip()]
+    if isinstance(raw, dict):
+        v = next((raw[k] for k in ("verdict", "value", "answer") if k in raw), None)
+        return [_truth(v), str(raw.get("reason") or raw.get("why") or "").strip()]
+    return [_truth(raw), ""]
 
 
 def _verdict(raw):
-    """_bool_pair, but a null verdict stays None: no chance to assume."""
-    if isinstance(raw, (list, tuple)) and raw and raw[0] is None:
-        return [None, str(raw[1]).strip() if len(raw) > 1 else ""]
+    """[True/False/None, reason]: a null verdict stays None -- no chance to
+    assume (Frank, 2026-09-28). The same reading as _bool_pair since
+    2026-09-30, kept as its own name for the callers that mean that."""
     return _bool_pair(raw)
 
 
@@ -340,10 +374,15 @@ def _sendoff(raw):
     """[kind, reason] -- did the quote get sent instead of presented on the
     call, and whose idea was it (Frank, 2026-09-28). kind is one of
     SENDOFF_KINDS; None when no quote came up, or the read left it out."""
+    if isinstance(raw, str):
+        # "producer -- I'll email it over" as one string (2026-09-30).
+        m = re.match(r"\s*(producer|busy|asked|no)\b[\s,.:;\-\u2014\u2013]*(.*)", raw, re.I | re.S)
+        return [m.group(1).lower(), m.group(2).strip()] if m else None
     if not isinstance(raw, (list, tuple)) or not raw or raw[0] is None:
         return None
     kind = str(raw[0]).strip().lower()
-    return [kind, str(raw[1]).strip() if len(raw) > 1 else ""] if kind in SENDOFF_KINDS else None
+    return ([kind, str(raw[1]).strip() if len(raw) > 1 and raw[1] is not None else ""]
+            if kind in SENDOFF_KINDS else None)
 
 
 # What the call was FOR, whoever dialled (Frank, 2026-09-25): a first
@@ -355,20 +394,36 @@ FLOW_VALUES = ("first", "finish quote", "follow-up")
 _OLD_FLOWS = {"call back": "follow-up", "call in": "first"}
 
 
+_FLOW_RE = re.compile(
+    r"\s*(first(?:[ _-](?:conversation|call|contact|time))?|finish(?:ing)?[ _-](?:the[ _-])?quote|"
+    r"follow[ _-]?up|call[ _-]?back|call[ _-]?in)\b[\s,.:;\-\u2014\u2013]*(.*)", re.I | re.S)
+
+
+def _flow_kind(text):
+    """(kind, rest) for a flow written any of the ways the model writes it --
+    "follow up", "followup", "Follow-Up", "first conversation", "finishing
+    the quote", the old "call back" / "call in" -- or (None, "")."""
+    m = _FLOW_RE.match(str(text or ""))
+    if not m:
+        return None, ""
+    k = re.sub(r"[ _-]+", " ", m.group(1).lower())
+    kind = ("first" if k.startswith("first") else "finish quote" if k.startswith("finish")
+            else "follow-up" if k.startswith("follow") else _OLD_FLOWS.get(k.replace("callback", "call back")
+                                                                           .replace("callin", "call in")))
+    return kind, m.group(2).strip()
+
+
 def _flow(raw):
     """Apollo's [kind, reason] for what this conversation was for in the
-    sale; None when missing or malformed, so the card simply leaves it off."""
+    sale; None when missing or malformed, so the card simply leaves it off.
+    The list form and the string form go through the same reading
+    (2026-09-30): ["follow up", ...] used to be dropped."""
     kind, why = None, ""
     if isinstance(raw, (list, tuple)) and raw:
-        kind, why = str(raw[0]).strip().lower(), str(raw[1]).strip() if len(raw) > 1 else ""
+        kind, _ = _flow_kind(raw[0])
+        why = str(raw[1]).strip() if len(raw) > 1 and raw[1] is not None else ""
     elif isinstance(raw, str):
-        m = re.match(r"\s*(first|finish(?:ing)? (?:the )?quote|follow-up|call back|call in)\b[\s,.:;\-\u2014\u2013]*(.*)",
-                     raw, re.I | re.S)
-        if m:
-            kind, why = m.group(1).lower(), m.group(2).strip()
-    if kind and kind.startswith("finish"):
-        kind = "finish quote"
-    kind = _OLD_FLOWS.get(kind, kind)
+        kind, why = _flow_kind(raw)
     return [kind, why] if kind in FLOW_VALUES else None
 
 
@@ -385,24 +440,89 @@ def _assume(raw):
     return out or None
 
 
-def _greeting(raw):
-    """[letter, detail] for the pick-up line on an answered call. Apollo
-    quotes the call's first sentence and says who said it; when that is the
-    caller, the pick-up was not recorded and the greeting is "n" whatever
-    letter came back -- on the first reads the model scored a caller's "Hi
-    Crystal", and a call opening with the caller's own words, as the
-    producer's greeting."""
+# The front desk's script. On a producer's card it is Debbie picking up the
+# main line before the transfer, never the producer's greeting -- unless the
+# transcript itself labels the producer saying it on their own line.
+FRONT_DESK = re.compile(
+    r"thank(s| you) for calling|gracias por (llamar|su llamada)|"
+    r"(farmers|flores)( insurance)?,? (this is \w+,? )?how (can|may) i help", re.I)
+# Staff first names as a transcript spells them -> who that is.
+STAFF_NAMES = {"crystal": "crystal", "cristal": "crystal", "lorena": "lorena",
+               "mike": "mike", "coral": "coral", "sarahi": "sarahi", "sarai": "sarahi",
+               "debbie": "debbie", "amanda": "amanda", "frank": "frank",
+               "francisco": "francisco", "veronica": "veronica"}
+# The tag call_summary.build puts on an inbound leg whose recording stopped at
+# the park: only the front desk's side of the call exists.
+OPENING_ONLY = "ONLY THE OPENING WAS RECORDED"
+_LEG_TAG = re.compile(r"\[(inbound|outbound) call,[^\]]*\]")
+
+
+def _pickup_missing(transcript):
+    """True when every inbound leg in the transcript is tagged as holding only
+    the front desk's opening -- the producer's pick-up was never recorded."""
+    tags = [m.group(0) for m in _LEG_TAG.finditer(transcript or "") if m.group(1) == "inbound"]
+    return bool(tags) and all(OPENING_ONLY in t for t in tags)
+
+
+def _speaker_of(first, transcript):
+    """The label on the transcript line the quoted first sentence comes from
+    ("Mike (producer)", "Speaker 1", ...), or None when it cannot be found
+    (an older transcript with no labels, or a loose quote)."""
+    import deepgram_stt
+    want = re.sub(r"\W+", " ", first.lower()).strip()[:40]
+    if len(want) < 4:
+        return None
+    for line in (transcript or "").splitlines():
+        m = deepgram_stt.LINE.match(line.strip())
+        if m and want in re.sub(r"\W+", " ", m.group("text").lower()):
+            return m.group("who").strip()
+    return None
+
+
+def _greeting(raw, producer="", transcript="", route=None):
+    """[letter, detail] for the pick-up line on an answered call, scored on
+    the PRODUCER's own words only (Frank, 2026-09-30).
+
+    Apollo quotes the call's first sentence and says who said it. "n" --
+    the pick-up wasn't recorded -- whatever letter came back, when:
+      * `by` is anyone but the producer ("caller", "front desk"): on the
+        first reads the model scored a caller's "Hi Crystal", and a call
+        opening with the caller's own words, as the producer's greeting;
+      * every inbound leg is tagged OPENING_ONLY (the recording stopped at
+        the park, so only the front desk is on it);
+      * the sentence names a staff member other than this producer ("This
+        is Debbie"), or is on a line the transcript labels as the lead's or
+        the customer's;
+      * it is the front desk's script and nothing shows it is the producer's
+        own -- a transferred call, or a line not labelled "(producer)"."""
     if isinstance(raw, dict):
         first = str(raw.get("first") or raw.get("line") or "").strip()
         by = str(raw.get("by") or "producer").strip().lower()
         sc = _clean_score({"x": raw.get("score")}, ["x"]).get("x")
         if not first or by != "producer":
+            who = "the front desk" if "front" in by or "desk" in by else "the caller"
+            return ["n", f"The pick-up wasn't recorded: the call opens with {who}."]
+        if _pickup_missing(transcript):
+            return ["n", "The pick-up wasn't recorded: only the front desk's opening was, "
+                         "before the transfer."]
+        mine = (producer or "").split()[0].lower() if producer else ""
+        named = re.search(r"\b(this is|it'?s|soy|my name is|me llamo|habla)\s+(\w+)", first, re.I)
+        who_named = STAFF_NAMES.get(named.group(2).lower()) if named else None
+        if who_named and who_named != mine:
+            return ["n", f"The pick-up wasn't recorded: \u201c{first}\u201d is {named.group(2).title()}, "
+                         f"not the producer."]
+        label = _speaker_of(first, transcript)
+        if label and re.search(r"\((lead|customer|service)\)", label):
             return ["n", "The pick-up wasn't recorded: the call opens with the caller."]
+        if FRONT_DESK.search(first) and (route == "transferred" or not (label and "(producer)" in label)):
+            return ["n", "The pick-up wasn't recorded: the call opens with the front desk's greeting."]
         if not sc:
             return None
         if sc[0] == "n":
             return sc
         return [sc[0], f"\u201c{first}\u201d \u2014 {sc[1]}" if sc[1] else f"\u201c{first}\u201d"]
+    if _pickup_missing(transcript):
+        return ["n", "The pick-up wasn't recorded: only the front desk's opening was, before the transfer."]
     return _clean_score({"x": raw}, ["x"]).get("x")
 
 
@@ -550,8 +670,18 @@ def _clean_objs(raw, legacy=None, cap=6):
         cat = str(item.get("cat") or "").strip()
         they = str(item.get("they") or "").strip()
         you = str(item.get("you") or "").strip()
-        if not cat or not they:
+        anal = str(item.get("anal") or "").strip()
+        # An objection with no quote of the prospect is still an objection
+        # Apollo found and scored (2026-09-30): it used to vanish from the
+        # card and from objcats. Only an entry with nothing in it is dropped.
+        if not (cat or they or you or anal):
             continue
+        if not cat:
+            g = str(item.get("group") or "").strip()
+            cat = g if g in cfg.OBJECTION_GROUPS else "Objection"
+        fix = item.get("fix")
+        if isinstance(fix, str):
+            fix = [fix]
         try:
             score = max(0, min(10, int(round(float(item.get("score"))))))
         except (TypeError, ValueError):
@@ -566,12 +696,13 @@ def _clean_objs(raw, legacy=None, cap=6):
             "cat": cat, "group": group, "at": str(item.get("at") or "").strip(),
             "they": they, "theyen": str(item.get("theyen") or "").strip(),
             "you": you, "youen": str(item.get("youen") or "").strip(),
-            "noresp": bool(item.get("noresp")),
-            "addressed": bool(item.get("addressed")),
+            "noresp": _truth(item.get("noresp")) is True,
+            "addressed": _truth(item.get("addressed")) is True,
             "score": score,
-            "anal": str(item.get("anal") or "").strip(),
-            "fix": [str(f).strip() for f in item.get("fix") if str(f).strip()][:3]
-                   if isinstance(item.get("fix"), list) else [],
+            "anal": anal,
+            # One line as a plain string is still a fix (2026-09-30).
+            "fix": [str(f).strip() for f in fix if f is not None and str(f).strip()][:3]
+                   if isinstance(fix, (list, tuple)) else [],
         })
     return out
 
@@ -617,7 +748,7 @@ def _history(producer, group, day, ctx, log=print):
     """lead_history.block, never raising: a card is still worth reading
     without its history."""
     try:
-        return lead_history.block(group, day, ctx)
+        return lead_history.block(group, day, ctx, producer=producer)
     except Exception as e:
         log(f"    lead history: skipped ({type(e).__name__}: {e})")
         return ""
@@ -664,7 +795,7 @@ def _lead_group(leadsrc):
     return lead_sources.group(leadsrc)["label"] if leadsrc.strip() else ""
 
 
-def _finish_card(d, producer, group, raw_dials, day, transcript, recording_ids):
+def _finish_card(d, producer, group, raw_dials, day, transcript, recording_ids, ctx=None):
     """Merge the model's judgment with everything already known from the
     pipeline. Every mechanical field below is cheaper and more reliable to
     compute here than to ask the model for -- see the module docstring.
@@ -678,8 +809,10 @@ def _finish_card(d, producer, group, raw_dials, day, transcript, recording_ids):
     across all of them.
     """
     # [None, reason] when the call never gave the producer the chance --
-    # cut off, too short, declined before the quote came up -- so it counts
-    # neither way (Frank, 2026-09-28: "it shouldnt count against them").
+    # cut off, too short, not recorded -- so it counts neither way (Frank,
+    # 2026-09-28: "it shouldnt count against them"). An early "no" before
+    # the quote came up is an objection to work, not a lack of chance
+    # (Frank, 2026-09-30): false unless the producer assumed the quote.
     askq = _verdict(d.get("askq"))
     asks = _verdict(d.get("asks"))
     # The producer ending a call with no objection, request to go, or time
@@ -703,7 +836,12 @@ def _finish_card(d, producer, group, raw_dials, day, transcript, recording_ids):
     direction = lead_history.direction_key(group)
     # A call the producer answered: a direct, by-name greeting, not the
     # front desk's "thanks for calling Farmers" (Frank, 2026-09-25).
-    greeting = _greeting(d.get("greeting")) if lead_history.answered(group) and "greeting" in d else None
+    # Scored on the producer's own words only (Frank, 2026-09-30): the front
+    # desk's pick-up, an opening-only recording, or a line naming someone
+    # else is "n" whatever the model said.
+    greeting = (_greeting(d.get("greeting"), producer, transcript,
+                          lead_history.answer_route(group, producer, ctx))
+                if lead_history.answered(group) and "greeting" in d else None)
     # On a follow-up: the follow-up scorecard, and whether the
     # SALE was assumed at each of the three moments (start, objections, end)
     # in place of "assumed the quote" -- the quote is already done.
@@ -711,6 +849,8 @@ def _finish_card(d, producer, group, raw_dials, day, transcript, recording_ids):
     assume = _assume(d.get("assume")) if followup and "assume" in d else None
     if followup:
         askq = None
+    sendoff = _sendoff(d.get("sendoff"))
+    askq = _askq_after_sendoff(askq, sendoff)
     cat, catc = _category(group)
     lead = next((r.get("lead") for r in group if r.get("lead")), "") or ""
     # AgencyZoom lead id, straight off the same call_detail rows day_calls.
@@ -792,18 +932,46 @@ def _finish_card(d, producer, group, raw_dials, day, transcript, recording_ids):
         "summary": str(d.get("summary") or "").strip(),
         "askq": askq, "asks": asks, "exit": exit_,
         # Quote sent instead of presented, and whose idea (Frank, 2026-09-28).
-        "sendoff": _sendoff(d.get("sendoff")),
+        "sendoff": sendoff,
         "askfix": str(d.get("askfix") or "").strip(),
         "objs": _clean_objs(d.get("objs"), d.get("obj")),
         "good": _clean_pairs(d.get("good")),
         "bad": _clean_pairs(d.get("bad")),
         # A follow-up is scored on fuscore alone; any nine-dimension score the
         # model still returns would count in scan() as if it were a first call.
-        "score": {} if fuscore else _clean_score(d.get("score")),
+        "score": {} if fuscore else _answered_opening(_clean_score(d.get("score")), transcript),
         "techniques": _clean_score(d.get("techniques"), TECH_DIMS),
         "spine": _clean_spine(d.get("spine")),
         **_clean_flags(d.get("flags")),
+        # The model that read the card (2026-09-30); None on a card read
+        # before it was kept.
+        "model": d.get("_model"),
     }
+
+
+def _askq_after_sendoff(askq, sendoff):
+    """A producer who offered to send the quote on their own HAD the chance
+    to assume it (Frank, 2026-09-30): `askq` cannot be null then. A null
+    askq beside sendoff "producer" becomes false, with the sendoff's own
+    reason. Only a [None, reason] askq changes -- a follow-up's askq (None,
+    not a pair) does not apply at all."""
+    if (isinstance(askq, list) and askq and askq[0] is None
+            and sendoff and sendoff[0] == "producer"):
+        why = sendoff[1] or "the producer offered to send the quote instead of presenting it"
+        return [False, f"Set the quote up to be sent instead of presented on the call: {why}"]
+    return askq
+
+
+def _answered_opening(score, transcript):
+    """On a card whose every recorded call is one the producer ANSWERED,
+    "Opening & identification" is "n": the pick-up is scored as `greeting`
+    (Frank, 2026-09-30). A card that holds a dial too keeps the letter."""
+    dirs = [m.group(1) for m in _LEG_TAG.finditer(transcript or "")]
+    if score and dirs and all(x == "inbound" for x in dirs) and "Opening & identification" in score:
+        score = dict(score)
+        score["Opening & identification"] = ["n", "An answered call: the pick-up is scored as "
+                                                  "the greeting, not here."]
+    return score
 
 
 def _clean_flags(raw):
@@ -997,13 +1165,16 @@ def build(day, log=print):
                             for r in grp) if n)
             src = next((r.get("lead_source") for r in grp if r.get("lead_source")), "") or ""
             try:
-                d = _ask_card(model, text[:16000], notes, total_seconds,
+                # A long call is cut with a marker, never silently (2026-09-30:
+                # it was text[:16000], which dropped the close off the end).
+                d = _ask_card(model, CS.clip(text), notes, total_seconds,
                              p.split()[0], lead_name,
                              call_count=len(_distinct_calls(p, grp)),
                              lead_source=src,
                              stage_block=pipelines.prompt_block(*_group_stage(grp, day)),
                              history_block=_history(p, grp, day, history_ctx, log))
-                cache[gck] = d
+                # Which model read it, kept on the card (2026-09-30).
+                cache[gck] = dict(d, _model=model)
                 # Saved after EVERY card, as call_summary.build saves each
                 # row (2026-09-30): a run killed partway through used to lose
                 # every card it had already paid for, and the next run bought
@@ -1016,9 +1187,12 @@ def build(day, log=print):
         cpath.write_text(json.dumps(cache, indent=1))
 
     raw_dials = day_calls.producer_dials(day)
+    # Only the day's saved RC log (inbound.answered's transfer / direct route
+    # for each call-in); nothing is fetched.
+    route_ctx = lead_history.Context(day, log=log)
     pairs = [(p, _finish_card(cache[_group_ck(p, grp)], p, grp, raw_dials, day,
                                _group_transcript(p, grp, fx),
-                               _group_recordings(p, grp, audiorefs)))
+                               _group_recordings(p, grp, audiorefs), ctx=route_ctx))
              for p, grp in group_list if _group_ck(p, grp) in cache]
     rank = {name: i for i, name in enumerate(ROSTER_ORDER)}
     pairs.sort(key=lambda pc: rank.get(pc[0], 99))
