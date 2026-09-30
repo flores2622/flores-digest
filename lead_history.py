@@ -35,6 +35,43 @@ MAX_NOTES = 8
 NOTE_CHARS = 220
 SKIP_NOTE_TYPES = {"CALL", "auto_unenroll_automation"}   # call-log rows: the dial counts cover them
 TRAQ = re.compile(r"traq call|app\.traq\.ai", re.I)
+# A note that says the quote went out -- sent, emailed, texted, attached --
+# whether it delivers the quote (daily.quote_presented) or chases one already
+# sent ("the quote I sent you"). Either way the quote was PRESENTED (Frank,
+# 2026-09-27), so the next call is a follow-up whatever the stage says
+# (Frank, 2026-09-30).
+QUOTE_SENT = re.compile(
+    r"\b(sent|send you|emailed|e-mailed|texted|attached|attaching)\b[^.!?]{0,40}\b(quotes?|cotizaci[oó]n(es)?)\b"
+    r"|\b(quotes?|cotizaci[oó]n(es)?)\b[^.!?]{0,30}\b(sent|emailed|e-mailed|texted|attached|enviad[ao]s?)\b"
+    r"|\bte (mand[eé]|envi[eé])\b[^.!?]{0,30}\bcotizaci[oó]n", re.I)
+
+
+def _automated(n):
+    """An AgencyZoom drip, or the lead's own message: neither is someone on
+    the team saying a quote went out (messages.py's own markers -- a text's
+    triggerRuleId, an email on a template subject with no attachment)."""
+    a = n.get("attr") or {}
+    if a.get("outbound") in (False, 0) or a.get("triggerRuleId"):
+        return True
+    if n.get("type") == "EMAIL" and not a.get("attachments"):
+        try:
+            import messages
+            subj = re.sub(r"^\s*(re|fwd?):\s*", "", str(a.get("emailSubject") or ""), flags=re.I).strip().lower()
+            return any(subj == t or subj.endswith(t) for t in messages.TEMPLATE_SUBJECTS)
+        except Exception:
+            return False
+    return False
+
+
+def quote_sent(text):
+    """True when a note says a quote was sent to the lead."""
+    try:
+        import daily
+        if daily.quote_presented(text):
+            return True
+    except Exception:
+        pass
+    return bool(QUOTE_SENT.search(text or ""))
 
 
 def direction_key(group):
@@ -57,7 +94,34 @@ def answered(group):
     return direction_key(group) != "dialled"
 
 
-def direction(group):
+def _last10(s):
+    d = re.sub(r"\D", "", str(s or ""))
+    return d[-10:] if len(d) >= 10 else None
+
+
+def answer_route(group, producer, ctx=None):
+    """"transferred" (the front desk picked up and handed the call over),
+    "direct" (it rang the producer's own line), or None when nothing on file
+    says -- for the inbound call(s) on this card (Frank, 2026-09-30: a
+    transferred call is its own kind of greeting). From what the day already
+    holds, no new request: an inbound row whose recording stops at the
+    hand-off (`partial` -- RingCentral stops recording at a park, which only
+    a transfer does), else inbound.attribute's own route over the day's RC
+    log (ctx.routes)."""
+    if not answered(group):
+        return None
+    if any(r.get("inbound") and r.get("partial") for r in group):
+        return "transferred"
+    routes = set()
+    for r in group:
+        if r.get("inbound") or r.get("callback_seconds"):
+            routes |= (ctx.routes() if ctx else {}).get((producer, _last10(r.get("number"))), set())
+    if len(routes) == 1:
+        return next(iter(routes))
+    return None
+
+
+def direction(group, route=None):
     """How today's conversation(s) with this lead came about, for Apollo."""
     key = direction_key(group)
     dialled_too = any(not r.get("inbound") for r in group)
@@ -68,6 +132,13 @@ def direction(group):
                 else "the lead called in")
     else:
         return "the producer dialled the lead"
+    if route == "transferred":
+        text += (". The front desk answered and TRANSFERRED the call to the producer, so the "
+                 "producer picked up knowing who was on the line and why -- a transfer pickup "
+                 "(see \"The greeting on a call the producer ANSWERED\"); the recording may "
+                 "open with the front desk, whose words are never the producer's greeting")
+    elif route == "direct":
+        text += ". It rang the producer's own direct line and the producer picked up"
     return (text + " -- the producer ANSWERED an inbound call, so score `greeting`. "
             "Who dialled is not the flow: decide `flow` from the stage and the history")
 
@@ -85,6 +156,23 @@ class Context:
         self._dials = None
         self._cards = None
         self._az = None
+        self._routes = None
+
+    def routes(self):
+        """{(producer, last ten digits): {"direct"/"transferred"}} for the
+        day's answered call-ins, by inbound.answered over the day's saved RC
+        log (data/rc_raw_<day>.json) -- the same legs the run already read."""
+        if self._routes is None:
+            self._routes = collections.defaultdict(set)
+            try:
+                import inbound
+                recs = json.loads((ROOT / f"data/rc_raw_{self.day}.json").read_text())
+                for r in inbound.answered(self.day, recs):
+                    if r.get("route"):
+                        self._routes[(r["producer"], _last10(r.get("number")))].add(r["route"])
+            except Exception as e:
+                self.log(f"    lead history: no call-in routes ({type(e).__name__})")
+        return self._routes
 
     def dials(self):
         """{number: [(startTime, producer)]} over the trailing window, before today."""
@@ -142,9 +230,9 @@ def _fmt_money(v):
         return "?"
 
 
-def block(group, day, ctx):
+def block(group, day, ctx, producer=None):
     """The "Lead history" text for one card's rows."""
-    lines = [f"Today's call: {direction(group)}."]
+    lines = [f"Today's call: {direction(group, answer_route(group, producer, ctx))}."]
     lead_ids = [r.get("lead_id") for r in group if r.get("lead_id")]
     lead_id = lead_ids[0] if lead_ids else None
     numbers = {r.get("number") for r in group if r.get("number")}
@@ -186,7 +274,7 @@ def block(group, day, ctx):
     else:
         lines.append(f"No earlier coaching card on this lead in the {WINDOW_DAYS} days before today.")
 
-    notes = []
+    notes, sent = [], []
     for lid in lead_ids:
         for n in lc.load_notes(lid):
             if str(n.get("createDate") or "")[:10] >= day or n.get("type") in SKIP_NOTE_TYPES:
@@ -195,9 +283,18 @@ def block(group, day, ctx):
             if not text:
                 continue
             who = (n.get("createdBy") or "").strip() or "the lead or an automation"
-            kind = "TRAQ auto-summary of a past call" if TRAQ.search(text) else (n.get("type") or "note")
-            notes.append((str(n.get("createDate") or "")[:16], kind, who, text[:NOTE_CHARS]))
+            traq = TRAQ.search(text)
+            kind = "TRAQ auto-summary of a past call" if traq else (n.get("type") or "note")
+            when = str(n.get("createDate") or "")[:16]
+            # Read over the whole note, before it is cut for the prompt.
+            if not traq and not _automated(n) and quote_sent(text):
+                kind += ", says a quote was sent"
+                sent.append(when[:10])
+            notes.append((when, kind, who, text[:NOTE_CHARS]))
     notes = sorted(set(notes), reverse=True)[:MAX_NOTES]
+    if sent:
+        lines.append(f"A note before today says a quote was sent to this lead (last {max(sent)}): the quote "
+                     f"counts as PRESENTED, so `flow` is follow-up whatever the stage says.")
     if notes:
         lines.append("Recent notes before today, newest first:")
         for when, kind, who, text in notes:

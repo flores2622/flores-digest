@@ -81,7 +81,10 @@ def usable(text, seconds=None):
     plainly; keep the flag for a long call that came back with nothing, which
     is the case where something really did go wrong.
     """
-    t = (text or "").strip()
+    # Measured on the words, not the "[m:ss]" each Deepgram line starts with
+    # since 2026-09-30 -- a 20-turn hang-up must not pass MIN_CHARS on its
+    # timestamps alone.
+    t = re.sub(r"(?m)^\[\d+:\d\d\]\s*", "", text or "").strip()
     if len(t) < MIN_CHARS:
         if seconds and seconds <= BRIEF_CALL_SECONDS:
             return False, "brief call"
@@ -118,8 +121,14 @@ def pick_model():
 
 
 SYSTEM = """You read one sales call from an insurance agency and report what \
-happened. You are given a machine transcript that is often noisy: words are \
-misheard, speaker turns are not marked, and both sides may be paraphrased badly.
+happened. You are given a machine transcript that is often noisy: words -- \
+names and the agency's name most of all -- are misheard, and both sides may be \
+paraphrased badly. Most transcripts put each speaker turn on its own line, \
+starting with its time into the recording in brackets and a label: \
+"<First name> (producer):" is the producer; "<First name> (lead):" or \
+"<First name> (customer):" is the person they were talking to; "Speaker N:" \
+is a voice nobody identified -- decide who it is from what they say. Older \
+transcripts are one run of text, with ">>" where the speaker changed.
 
 Return ONLY a JSON object, no prose around it, with exactly these keys:
 
@@ -536,6 +545,23 @@ def _ask(model, transcript, notes, seconds, producer="the producer"):
             "objections": _clean_objections(d.get("objections"))}
 
 
+# How much of a transcript a read gets (2026-09-30). It was 12,000 characters
+# here and 16,000 on a coaching card, which cut the end -- the close, the next
+# step -- off a long call without saying so. 40,000 holds a 35-40 minute
+# call; anything longer is cut with a marker, so the model knows the rest of
+# the call happened and does not score what it cannot see.
+TRANSCRIPT_CHARS = 40000
+CUT_MARK = "[TRANSCRIPT CUT HERE]"
+
+
+def clip(text, limit=TRANSCRIPT_CHARS):
+    """`text`, or its first `limit` characters and CUT_MARK."""
+    text = text or ""
+    if len(text) <= limit:
+        return text
+    return text[:limit].rstrip() + "\n" + CUT_MARK
+
+
 def from_notes(notes, why):
     """No usable audio: show what the producer wrote, and say why."""
     return {"summary": (notes or "").strip(), "objections": [],
@@ -737,7 +763,7 @@ def build(day, log=print):
             sm[ck] = from_notes(notes, "no API key configured")
         else:
             try:
-                d = _ask(model, text[:12000], notes, r.get("seconds") or 0,
+                d = _ask(model, clip(text), notes, r.get("seconds") or 0,
                          p.split()[0])
                 d.update(source="recording", why="")
                 sm[ck] = d
