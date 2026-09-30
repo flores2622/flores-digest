@@ -1002,6 +1002,19 @@ Crystal (hybrid); credit always goes to whoever COMPLETED the SR or task.
   counts from the rows. Utilization cannot be split (Insightful measures the
   whole day). 09-01..09-25 were flagged from their saved files (backups
   under `backups/2026-09-27-renewal-split/`).
+- **Renewal SR Work is the Service Center's person strip** (Frank,
+  2026-09-30: "same as the service center, person strip with team
+  totals"). The agency's retention rates stay on top; under them one small
+  card per person (renewal SRs, retained, open, overdue) and one grid -- the
+  team's until a person is picked (`renPerson`), then theirs
+  (`renewalWorkHtml(m, doc, rb)`): renewal SRs completed, retained (of the
+  renewal SRs completed), reviewed with the customer (every outcome but No
+  action / Unable to Contact and the two outside the rate --
+  `REN_DISCUSSED`), renewal tasks, open / overdue, coming up and high risk,
+  settled 4-week retention and lost (the policies on their renewal SRs),
+  renewal dials, call backs, speed to reply, texts / emails. Every card
+  opens its accounts (`rw:<list>[:<person>]`). The settled section's "By
+  who worked the renewal SR" row went into the cards.
 - **Both tabs take the Sales Digest's date filter** (Frank, 2026-09-27).
   On the Renewals tab, Renewal SR Work, Lost and Not confirmed follow it
   (Lost and Not confirmed by the day the policy renewed); Coming up stays
