@@ -172,6 +172,13 @@ Everything caches under `data/`, so a re-run resumes rather than restarting.
   was 16,000 / 12,000 silently), the card's first budget is 9,000 tokens,
   each new card keeps `model`, and `_bool_pair` reads "true"/"false"/"null"/
   "n/a" strings for what they say (a bare None is None, never False).
+- **A closed card's right half is Quick coaching** (Frank, 2026-09-30:
+  "the right half of the card be a quick coaching summary, while leaving
+  the left of the card whats currently there"; `quickCoachHtml`), from what
+  the card already holds -- no new read: the top two `good` and `bad`
+  titles (detail on hover) and one line to say next time, the first
+  objection not overcome's first `fix`, else `askfix`. One column under
+  900px; no panel when there is nothing to say.
 - **Card flags are categorised** (Frank, 2026-09-27): Apollo names each
   flag's category from `digest_config.FLAG_GROUPS` (No next step, Quote not
   presented, Discovery missed, Approach skipped, Objection dropped, Call cut
