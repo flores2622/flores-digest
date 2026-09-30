@@ -714,13 +714,13 @@ A tab that fails to draw (an old or partial document) shows "This section
 could not be drawn: <message>" under its date controls instead of a blank
 page (2026-09-30).
 
-## Blueprints and the tour
+## Apollo's Road Map (ARM) and the tour
 
-**Learning Center > Blueprints holds the plain-language guides** (Frank,
+**Learning Center > Road Map holds the plain-language guides** (Frank,
 2026-09-30: "if Im out for a week and want amanda to coach, she should know
 what everything means, how the model coaches, where everything is ... in
-regular language, not AI prompt language"): **Apollo's Blueprint** for
-managers (shown only to `ROLEPLAY_HISTORY_VIEWERS`, via the Worker's
+regular language, not AI prompt language"): **Apollo's Road Map (ARM)** for
+managers (Frank named it, 2026-09-30) (shown only to `ROLEPLAY_HISTORY_VIEWERS`, via the Worker's
 `/api/me`) and **New / Mid-Level / Experienced Producer** guides for
 everyone. The words live in `site/public/blueprints.js`, nowhere else.
 **Take the tour** at the foot of the left bar walks anyone through the

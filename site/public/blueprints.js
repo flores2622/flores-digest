@@ -3,9 +3,10 @@
    know what everything means, how the model coaches, where everything is";
    "They should be in regular language, not AI prompt language").
 
-   One manager guide (Apollo's Blueprint) and three producer guides (new,
+   One manager guide (Apollo's Road Map, the ARM) and three producer guides (new,
    mid-level, experienced). The board renders them on Learning Center >
-   Blueprints (blueprintPanel in index.html).
+   Road Map (blueprintPanel in index.html). Frank named it 2026-09-30:
+   "call it Apollo's Road Map (ARM)".
 
    KEEP THIS CURRENT. Whenever a change alters what a number means, how
    Apollo scores or coaches a call, what a page shows or where it sits,
@@ -21,7 +22,7 @@ window.BLUEPRINTS = {
   guides: [
 
   /* ------------------------------------------------------------------ */
-  { key: "manager", manager: true, title: "Apollo's Blueprint",
+  { key: "manager", manager: true, title: "Apollo's Road Map (ARM)",
     who: "For managers: how the Sales Floor works, what every number means, how Apollo coaches, and how to run coaching when Frank is out.",
     sections: [
     { h: "What this is",
@@ -33,7 +34,7 @@ window.BLUEPRINTS = {
           ["Athena", "Service. The Service Center: SRs, renewals, tasks, call backs, texts, and the Service Playbook."],
           ["Cerberus", "Commercial. Frank's alone; nobody else's numbers include commercial work."],
         ] },
-        "This Blueprint covers Apollo. Anything commercial is Frank's and is left out of every producer figure.",
+        "The ARM covers Apollo. Anything commercial is Frank's and is left out of every producer figure.",
       ] },
 
     { h: "The day's rhythm",
@@ -62,7 +63,7 @@ window.BLUEPRINTS = {
           ["Learning Center > Role Play", "Practice calls against an AI prospect, graded by Apollo."],
           ["Learning Center > Session History", "Every graded Role Play session. Managers see everyone's; a producer sees their own."],
           ["Learning Center > Training", "Flashcards, quizzes and matching games on objections, information gathering and technique."],
-          ["Learning Center > Blueprints", "These guides."],
+          ["Learning Center > Road Map", "The ARM and the producer guides."],
           ["Service Center", "Athena's side: the Service Digest and the Renewals tab."],
         ] } },
         "Anyone can press **Take the tour** at the bottom of the left bar for a walk through the board.",
@@ -160,7 +161,7 @@ window.BLUEPRINTS = {
           ["Objections", "Each one Apollo found, in one of twelve groups: Price / Can't Afford, Bad Timing / Busy, Already Insured / Satisfied, Coverage / Eligibility, Spouse / Decision-Maker, Missing Info / Confusion, Not Interested, Shopping Around / Comparing, Wants to Wait / Think It Over, Payment / Billing, Trust / Bad Experience, Other. For each: what they said, whether the producer addressed it and overcame it, and a better line."],
           ["Lead source fit", "Did the call suit the lead source? A Home no Auto lead should hear about their auto; a winback should be asked why they left."],
           ["Stage fit", "Did the call do what the lead's stage asked for, and were the stage moves right?"],
-          ["Greeting", "On a call the producer answered on their own line: the caller's name if they knew it, or \"This is Mike, how can I help?\", never the front desk's \"Thank you for calling Farmers.\""],
+          ["Greeting", "On a call the producer answered on their own line: \"Hi David! How are you today?\" when they know who it is, \"This is Mike, how can I help?\" when they don't. **No agency name, no \"insurance\", no full introduction**; people hang up when they hear they're being sold something. A transferred call picks up where the front desk left off, by name. Only the producer's own words count as the greeting."],
           ["Flags", "Each flag has a colour. **Red**: No next step, Quote not presented, Discovery missed, Approach skipped, Objection dropped, Call cut short, Stage / pipeline mistake, Compliance. **Yellow**: Cross-sell in progress, Callback set, Pipeline note. **Green**: Strong moment. Hover a flag for Apollo's words."],
           ["The recording", "Most cards play the call with the transcript underneath. Click a line to jump there; the play button on each line pauses and resumes in place, and hovering it shows volume and speed."],
         ] },
@@ -249,9 +250,9 @@ window.BLUEPRINTS = {
         ] },
       ] },
 
-    { h: "Keeping this Blueprint current",
+    { h: "Keeping the ARM current",
       body: [
-        "This Blueprint is updated whenever the way Apollo coaches, a number is counted, or the board is laid out changes. The date at the top says when it last changed.",
+        "The ARM is updated whenever the way Apollo coaches, a number is counted, or the board is laid out changes. The date at the top says when it last changed.",
       ] },
     ] },
 
@@ -452,7 +453,7 @@ window.BLUEPRINTS = {
           "**The up-front close on a follow-up.** Put the close in your opening line. A ready customer finishes in minutes, and one who isn't tells you why in the first thirty seconds instead of the last.",
           "**Documents on the call.** When you need a dec page or VINs, have them send it while you're still on the phone and review it together.",
           "**Techniques, named.** Apollo marks six when you use them: elevator pitch, feel-felt-found, risk reversal, social proof, trial close, and takeaway / urgency. Look at which ones you lean on and which you never reach for.",
-          "**The greeting on your own line.** When a lead calls you back, use their name. When you don't know who it is, \"This is Mike, how can I help?\" Never the front desk's greeting.",
+          "**The greeting on your own line.** When a lead calls you back, use their name: \"Hi David! How are you today?\" When you don't know who it is, \"This is Mike, how can I help?\" Leave out the agency name and the word insurance; people hang up when they hear they're being sold something.",
         ] },
       ] },
 

@@ -815,7 +815,7 @@ td.rdrill-cell.on { box-shadow: inset 0 -2px 0 var(--s1); color: inherit; font-w
 tr.rdrill-row:hover td { background: var(--surface-2, rgba(127,127,127,.08)); }
 tr.rdrill-row.on td { box-shadow: inset 0 -2px 0 var(--s1); }
 
-/* Blueprints (Frank, 2026-09-30): Learning Center > Blueprints, the plain-
+/* Road Map (Frank, 2026-09-30): Learning Center > Road Map, the plain-
    language guides in blueprints.js. One reading column. */
 .bp { max-width: 760px; }
 .bp .bpwho { color: var(--text-secondary); font-size: 14px; margin: 0 0 6px; line-height: 1.55; }
@@ -1017,7 +1017,7 @@ let view = "digest";
 const CENTERS = {
   salescenter: [["digest", "Digest"], ["sales", "Sales"], ["messages", "Texts & Emails"]],
   coaching: [["coaching", "Coaching"]],
-  learning: [["roleplay", "Role Play"], ["rphistory", "Session History"], ["training", "Training"], ["blueprint", "Blueprints"]],
+  learning: [["roleplay", "Role Play"], ["rphistory", "Session History"], ["training", "Training"], ["blueprint", "Road Map"]],
   service: [["service", "Service Digest"], ["renewals", "Renewals"]],
   commercial: [["commercial", "Commercial"]],
 };
@@ -7685,8 +7685,8 @@ async function loadDay(day) {
   if (curLive) { await refreshLive(day); startLivePoll(day); }
 }
 
-/* ---- Blueprints (Frank, 2026-09-30) ---------------------------------------
-   The plain-language guides in blueprints.js: Apollo's Blueprint for managers
+/* ---- Road Map / ARM (Frank, 2026-09-30) -----------------------------------
+   The plain-language guides in blueprints.js: Apollo's Road Map (ARM) for managers
    (shown only to the Role Play history viewers -- /api/me's `all`) and the
    New / Mid-Level / Experienced producer guides for everyone. */
 let IS_MANAGER = false;
@@ -7715,7 +7715,7 @@ function bpItem(it) {
 }
 function blueprintPanel() {
   const guides = bpGuides();
-  if (!guides.length) return '<div class="empty">The Blueprints did not load. Refresh the page.</div>';
+  if (!guides.length) return '<div class="empty">The Road Map did not load. Refresh the page.</div>';
   const g = guides.find(x => x.key === bpPick) || guides[0];
   bpPick = g.key;
   const pills = guides.map(x => `<button class="subtab ${x.key === g.key ? "sel" : ""}" data-bp="${x.key}">${cesc(x.title)}</button>`).join("");
@@ -7772,12 +7772,12 @@ const TOUR_STEPS = [
     text: "Every graded Role Play session, with the grade and the whole conversation. Producers see their own; managers see everyone's." },
   { view: "training", title: "Training",
     text: "Flashcards, quizzes and matching games on objections, what to ask, and technique." },
-  { view: "blueprint", find: () => $("#view .subtabs"), title: "Blueprints",
-    text: "Plain-language guides to everything on the board: one for new producers, one for mid-level, one for experienced, and one for managers." },
+  { view: "blueprint", find: () => $("#view .subtabs"), title: "The Road Map",
+    text: "Plain-language guides to everything on the board: one for new producers, one for mid-level, one for experienced, and Apollo's Road Map (the ARM) for managers." },
   { view: "service", title: "The Service Center",
     text: "Athena's side: the service team's SRs, tasks, call backs and texts, and the Renewals tab." },
   { find: () => $("#tourbtn"), title: "That's the tour",
-    text: "You can take it again any time from this button. The Blueprints in the Learning Center go into more detail." },
+    text: "You can take it again any time from this button. The Road Map in the Learning Center goes into more detail." },
 ];
 const tourSection = title => [...$$("#view .sect")].find(sec => {
   const h = sec.querySelector("h2");
@@ -7935,7 +7935,7 @@ paintCenterBar();
   }
   DAYS = days;
   initCommercial();   // unhides the Commercial Center for Frank only
-  initMe();           // Apollo's Blueprint for managers only
+  initMe();           // Apollo's Road Map (ARM) for managers only
   await loadDay(days[0]);
 })();
 </script>
