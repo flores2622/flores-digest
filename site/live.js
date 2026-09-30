@@ -499,6 +499,7 @@ export function taskCompletion(basis, tasks, flags) {
   const t = basis.tasks || {};
   const title = rxOf(t.rx.title), body = rxOf(t.rx.body);
   const verdicts = t.verdicts || {};
+  const customers = new Set((t.customers || []).map(String));
   const byAz = Object.fromEntries(Object.entries(basis.producers || {}).map(([n, v]) => [String(v.az_id), n]));
   const per = Object.fromEntries(Object.keys(basis.producers || {}).map(n => [n,
     { total: 0, completed: 0, closed_not_done: 0, open: 0, excused: 0 }]));
@@ -520,7 +521,10 @@ export function taskCompletion(basis, tasks, flags) {
     const state = v === "excused" ? "excused" : x.status === 1 ? "done" : x.status === 2 ? "closed" : "open";
     rows.push({ who, id: x.id, title: x.title, state, record: x.customerName,
       due: String(x.dueDate || "").slice(0, 10), completed: String(x.completeDate || "").slice(0, 10),
-      lead_id: x.customerId || null, customer_id: null });
+      // The checkpoint's corpus says which records are customers (customerType
+      // is wrong on a few rows -- task_audit._link); a lead link otherwise.
+      lead_id: x.customerId && !customers.has(String(x.customerId)) ? x.customerId : null,
+      customer_id: x.customerId && customers.has(String(x.customerId)) ? x.customerId : null });
     if (v === "excused") { p.excused++; continue; }
     p.total++;
     if (x.status === 1) p.completed++;
