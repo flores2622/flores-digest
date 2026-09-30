@@ -909,6 +909,10 @@ const PERSONAS = {
 // Apollo (Frank's name for the coaching brain, 2026-09-10) grading a Role
 // Play session: METHODOLOGY.md's shared judgment, prepended to ROLEPLAY.md's
 // own grading framing -- see the "ONE BRAIN, NOT TWO" note above.
+// Every persona talks as a person first (Frank, 2026-09-30: "more rapport,
+// they keep just turning me back to the quote after 1 sentence").
+const RP_RAPPORT = _section(ROLEPLAY_MD, "### Rapport");
+
 const GRADE_SYSTEM = CORE_JUDGMENT + "\n\n" + _section(ROLEPLAY_MD, "## Grading (Apollo)");
 
 async function callClaude(env, { system, messages, maxTokens }) {
@@ -1297,7 +1301,7 @@ async function roleplayTurn(request, env) {
     : [];
   const leadSource = typeof body.lead_source === "string" ? body.lead_source.slice(0, 500) : "";
   const prospect = typeof body.prospect === "string" ? body.prospect.slice(0, 300) : "";
-  const system = persona.system + focusObjectionInstruction(focusObjections) + leadSourceInstruction(leadSource)
+  const system = persona.system + "\n\n" + RP_RAPPORT + focusObjectionInstruction(focusObjections) + leadSourceInstruction(leadSource)
     + prospectInstruction(prospect) + languageInstruction(body.language);
 
   if (body.stream === true) {
