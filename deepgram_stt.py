@@ -71,10 +71,14 @@ def _request(audio, key, keyterms=True):
                                   "Content-Type": "audio/mpeg"})
 
 
+_WARNED_REFUSED = False     # raw() has said Deepgram refused the key
+
+
 def raw(path, log=None, cached_only=False):
     """Deepgram's response for one recording, cached. None on any failure.
     cached_only: never send the recording -- None unless it was read before."""
     path = pathlib.Path(path)
+    global _WARNED_REFUSED
     cf = CACHE / f"{path.stem}.json"
     if cf.exists():
         try:
@@ -105,6 +109,13 @@ def raw(path, log=None, cached_only=False):
         if r.status_code != 200:
             if log:
                 log(f"    deepgram {path.stem}: HTTP {r.status_code}")
+            # A refused key (401/403) fails EVERY recording, and callers
+            # mostly pass no log, so the whole day used to drop to Whisper
+            # without a word (2026-09-30). Said once per run.
+            if r.status_code in (401, 403) and not _WARNED_REFUSED:
+                _WARNED_REFUSED = True
+                print(f"  WARNING: Deepgram refused the key (HTTP {r.status_code}) "
+                      f"-- transcribing with Whisper instead until it is fixed")
             return None
         d = r.json()
         res = d.get("results") or {}
@@ -181,7 +192,17 @@ NAME_FORMS = {"sarahi": r"sarahi|sarai|zarahi", "crystal": r"crystal|cristal"}
 AGENCY = r"(farmers|la aseguranza|la seguranza|insurance)"
 
 
-def producer_speaker(utts, producer):
+# The agency's own greeting on a call-in. A caller never says it, so on a
+# call the service team ANSWERED (the call log names who picked up) the voice
+# saying it is theirs -- Debbie answers "Thank you for calling Farmers
+# Insurance" and rarely her name. Never used for the producers' calls: a
+# transferred call-in's recording starts with the front desk's greeting.
+ANSWER_GREETING = re.compile(
+    r"thank you for calling (farmers|flores)|gracias por (llamar|su llamada)|"
+    r"(farmers|flores) insurance,? (this is|how can i help)", re.I)
+
+
+def producer_speaker(utts, producer, answered=False):
     """Which diarized speaker is the producer, from how they introduce
     themselves: "This is Crystal with Farmers", "Le habla Mike, de la
     aseguranza", "Soy Sarahi", "Coral, calling from Farmers". None when
@@ -205,9 +226,12 @@ def producer_speaker(utts, producer):
         score[sp] += 3 * len(intro.findall(u["text"]))
         score[sp] += len(agency.findall(u["text"]))
     ranked = sorted(score.items(), key=lambda kv: -kv[1])
-    if not ranked or ranked[0][1] < 2:
-        return None
-    if len(ranked) > 1 and ranked[1][1] == ranked[0][1]:
+    if (not ranked or ranked[0][1] < 2 or
+            (len(ranked) > 1 and ranked[1][1] == ranked[0][1])):
+        if answered:
+            for u in utts[:3]:
+                if ANSWER_GREETING.search(u["text"]):
+                    return u["speaker"]
         return None
     return ranked[0][0]
 
@@ -248,7 +272,8 @@ NOT_THE_LEAD = re.compile(
 GREETED = (r"(hi|hello|hey|hola|good (morning|afternoon|evening)|buenas tardes|"
            r"buenos d[ií]as|buenas|is this|is it|am i speaking with|"
            r"speaking with|hablo con|es|con|habla|for)")
-SELF_NAMED = r"(this is|it'?s|speaking|soy|habla|ella habla|[eé]l habla|me llamo)"
+SELF_NAMED = (r"(this is|it'?s|speaking|soy|habla|ella habla|[eé]l habla|me llamo|"
+              r"my name is|mi nombre es|hablas? con)")
 
 
 def lead_speaker(utts, producer_sp, lead):
@@ -339,17 +364,20 @@ def other_party(utts, producer_sp, lead=None, number=None):
 
 
 def turns(path, duration, offset=0, log=None, producer=None, lead=None,
-          cached_only=False, number=None):
+          cached_only=False, number=None, role="producer", answered=False):
     """The leg as timed turns: [{"t": seconds into the recording, "who":
     label, "text"}], consecutive lines from one speaker merged -- what the
     coaching card's player seeks to (Frank, 2026-09-29: "skip to a specific
-    part that I am reading"). Labels as full(). None on failure."""
+    part that I am reading"). Labels as full(); `role` names the agency's
+    side ("producer", or "service" for the service team's calls);
+    `answered` is a call-in the agency side is known to have picked up
+    (producer_speaker's greeting rule). None on failure."""
     d = raw(path, log=log, cached_only=cached_only)
     if d is None:
         return None
     utts = _between(d["utterances"], offset,
                     offset + duration if duration else float("inf"))
-    who = producer_speaker(utts, producer)
+    who = producer_speaker(utts, producer, answered=answered)
     first = producer.split()[0] if producer else ""
     them, their_label = other_party(utts, who, lead, number)
     out, last = [], None
@@ -358,7 +386,7 @@ def turns(path, duration, offset=0, log=None, producer=None, lead=None,
             out[-1]["text"] += " " + u["text"]
             continue
         if who is not None and u["speaker"] == who:
-            label = f"{first} (producer)"
+            label = f"{first} ({role})"
         elif them is not None and u["speaker"] == them:
             label = their_label
         else:

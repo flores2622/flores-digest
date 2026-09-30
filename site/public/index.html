@@ -802,7 +802,7 @@ function badgeTextColor(hex) {
   return contrast(lum, 1) >= contrast(lum, 0) ? "#fff" : "#111";
 }
 function pbadge(color, label) {
-  return `<span class="pbadge" style="background:${color};color:${badgeTextColor(color)}">${label}</span>`;
+  return `<span class="pbadge" style="background:${color};color:${badgeTextColor(color)}">${cesc(label)}</span>`;
 }
 
 // Producer name -> photo URL. Empty until real headshots exist somewhere
@@ -1507,7 +1507,7 @@ ${assumeStatsHtml(d)}
    <div class="hero">
     <div class="hl">Prices on the table against asks made</div>
     <p><b>${s.priced}</b> of ${s.of} calls put a real price in front of someone. <b>${s.closed}</b> closed on the
-    call${sold.length ? ` — ${sold.join(", ")}` : ""}. Current premium was captured on <b>${s.premium}</b>, a
+    call${sold.length ? ` — ${sold.map(cesc).join(", ")}` : ""}. Current premium was captured on <b>${s.premium}</b>, a
     renewal date on <b>${s.xdate}</b>, and a bundle raised on <b>${s.bundle}</b>.
     <b>${s.timeset} of ${s.of}</b> set a specific callback time — that one is usually the cheapest to fix.</p>
    </div>${sendOffHtml(d)}${s.greet_of ? `
@@ -1856,8 +1856,8 @@ function misfiledPanel(d, who) {
   const all = (d.misfiled || []).filter(r => !who || r.assigned === who);
   if (!all.length) return "";
   const rows = all.map(r => `<tr>
-    <td><a href="${AZ_URL.lead}${encodeURIComponent(r.lead_id)}" target="_blank" rel="noopener">${r.lead}</a></td>
-    <td>${r.assigned || "—"}</td><td>${r.stage || ""}</td><td>${r.source || ""}</td>
+    <td><a href="${AZ_URL.lead}${encodeURIComponent(r.lead_id)}" target="_blank" rel="noopener">${cesc(r.lead)}</a></td>
+    <td>${cesc(r.assigned || "—")}</td><td>${cesc(r.stage || "")}</td><td>${cesc(r.source || "")}</td>
     <td class="num">${r.last_activity ? fmtShortDate(r.last_activity) : "—"}</td></tr>`).join("");
   return `<div class="sect"><h2>Leads to move out of "Pipeline"</h2>
    <p class="sd">${all.length} open lead${all.length === 1 ? "" : "s"} misfiled in "Pipeline" by an integration. Move each into 1 Pipeline.</p>
@@ -1962,9 +1962,9 @@ function messagesPanel(d, who) {
 function recontactPanel(d, who) {
   const all = ((d.recontact || {}).at_risk || []).filter(r => !who || r.producer === who);
   const rows = all.slice(0, 14).map(r => `<tr>
-    <td>${r.lead_name || "—"}</td>
+    <td>${cesc(r.lead_name || "—")}</td>
     <td><span class="who">${pbadge(DOT[r.producer] || "#8a877f", (r.producer || "").split(" ")[0])}</span></td>
-    <td>${r.stage || ""}</td><td class="num">${r.business_days ?? "—"}</td><td class="num">${r.calls ?? "—"}</td>
+    <td>${cesc(r.stage || "")}</td><td class="num">${r.business_days ?? "—"}</td><td class="num">${r.calls ?? "—"}</td>
     <td><span class="chip ${r.flag === "under-worked" ? "c-r" : "c-w"}">${r.flag || ""}</span></td></tr>`).join("");
   const n = all.length;
   if (!n) return "";
@@ -1995,44 +1995,44 @@ function fmtPhone(e164) {
   return digits.length === 10 ? `(${digits.slice(0, 3)}) ${digits.slice(3, 6)}-${digits.slice(6)}` : (e164 || "—");
 }
 function auditRecordCell(r) {
-  const name = r.record || "—";
-  const kindNote = r.link_kind ? `<div class="n">${r.link_kind}</div>` : "";
+  const name = cesc(r.record || "—");
+  const kindNote = r.link_kind ? `<div class="n">${cesc(r.link_kind)}</div>` : "";
   if (!r.link_kind || !r.link_id) return `${name}${kindNote}`;
   return `<a href="${AZ_URL[r.link_kind]}${encodeURIComponent(r.link_id)}" target="_blank" rel="noopener">${name}</a>${kindNote}`;
 }
 function auditColumns(bucket, list) {
   if (bucket === "a") return {
     head: ["Rep", "Lead", "Task", "Comment", "Number on file"],
-    body: list.map(r => `<tr><td>${r.producer || ""}</td><td>${auditRecordCell(r)}</td><td>${r.title || ""}</td>
-      <td>${r.comment || "—"}</td><td>${fmtPhone(r.number)}</td></tr>`).join(""),
+    body: list.map(r => `<tr><td>${cesc(r.producer || "")}</td><td>${auditRecordCell(r)}</td><td>${cesc(r.title || "")}</td>
+      <td>${cesc(r.comment || "—")}</td><td>${cesc(fmtPhone(r.number))}</td></tr>`).join(""),
   };
   if (bucket === "b") return {
     head: ["Rep", "Lead", "Task", "Due", "Completed", "Days late"],
-    body: list.map(r => `<tr><td>${r.producer || ""}</td><td>${auditRecordCell(r)}</td><td>${r.title || ""}</td>
-      <td class="num">${r.due || ""}</td><td class="num">${r.completed || ""}</td><td class="num">${r.days_late ?? ""}</td></tr>`).join(""),
+    body: list.map(r => `<tr><td>${cesc(r.producer || "")}</td><td>${auditRecordCell(r)}</td><td>${cesc(r.title || "")}</td>
+      <td class="num">${cesc(r.due || "")}</td><td class="num">${cesc(r.completed || "")}</td><td class="num">${cesc(r.days_late ?? "")}</td></tr>`).join(""),
   };
   if (bucket === "c") return {
     head: ["Rep", "Lead", "Task", "Created", "Last modified", "Due"],
-    body: list.map(r => `<tr><td>${r.producer || ""}</td><td>${auditRecordCell(r)}</td><td>${r.title || ""}</td>
-      <td>${(r.created || "").slice(0, 10)}</td><td>${(r.modified || "").slice(0, 10)}</td><td>${r.due || ""}</td></tr>`).join(""),
+    body: list.map(r => `<tr><td>${cesc(r.producer || "")}</td><td>${auditRecordCell(r)}</td><td>${cesc(r.title || "")}</td>
+      <td>${cesc(String(r.created || "").slice(0, 10))}</td><td>${cesc(String(r.modified || "").slice(0, 10))}</td><td>${cesc(r.due || "")}</td></tr>`).join(""),
   };
   if (bucket === "d") {
-    const activity = r => (r.activity && r.activity.length) ? r.activity.join(", ")
+    const activity = r => (r.activity && r.activity.length) ? r.activity.map(cesc).join(", ")
       : r.call_on_record === "yes" ? "call" : r.call_on_record === "no number" ? "no number on file" : "none";
-    const why = r => r.loss_reason || ((r.inbound || [])[0] && `Lead replied: "${r.inbound[0]}"`)
-      || (r.move_comment && `Producer: "${r.move_comment}"`) || (r.comment || "—");
+    const why = r => cesc(r.loss_reason || ((r.inbound || [])[0] && `Lead replied: "${r.inbound[0]}"`)
+      || (r.move_comment && `Producer: "${r.move_comment}"`) || (r.comment || "—"));
     const verdict = r => r.verdict === "excused" ? "excused — smart-cycled that day" : "counts";
     return {
       head: ["Rep", "Lead", "Task", "Activity that day", "Why / instruction", "Counts?"],
-      body: list.map(r => `<tr><td>${r.producer || ""}</td><td>${auditRecordCell(r)}</td><td>${r.title || ""}</td>
+      body: list.map(r => `<tr><td>${cesc(r.producer || "")}</td><td>${auditRecordCell(r)}</td><td>${cesc(r.title || "")}</td>
         <td>${activity(r)}</td><td>${why(r)}</td><td>${verdict(r)}</td></tr>`).join(""),
     };
   }
   // e -- still open at day's end
   return {
     head: ["Rep", "Lead", "Task", "Due", "Comment"],
-    body: list.map(r => `<tr><td>${r.producer || ""}</td><td>${auditRecordCell(r)}</td><td>${r.title || ""}</td>
-      <td>${r.due || ""}</td><td>${r.comment || "—"}</td></tr>`).join(""),
+    body: list.map(r => `<tr><td>${cesc(r.producer || "")}</td><td>${auditRecordCell(r)}</td><td>${cesc(r.title || "")}</td>
+      <td>${cesc(r.due || "")}</td><td>${cesc(r.comment || "—")}</td></tr>`).join(""),
   };
 }
 function auditPanel(d, who) {
@@ -2897,7 +2897,7 @@ function chips(o) {
   const s = o.score;
   const [cls, label] = s == null ? ["c-w", "Unscored"]
     : s >= 8 ? ["c-g", "Overcome"] : s >= 4 ? ["c-w", "Partial"] : ["c-r", "Not overcome"];
-  return `${ack} <span class="chip ${cls}">${label}${s != null ? ` (${s}/10)` : ""}</span>`;
+  return `${ack} <span class="chip ${cls}">${label}${s != null ? ` (${cesc(s)}/10)` : ""}</span>`;
 }
 const DIMS = ["Opening & identification", "Discovery", "Current premium captured", "Renewal / X-date captured",
   "Product knowledge", "Presenting numbers", "Bundle / cross-sell raised", "Next step specificity", "CRM after the call"];
@@ -2915,7 +2915,7 @@ function scorecard(sc, dims = DIMS, label = "Scorecard") {
     n[e[0]]++; const r = RT[e[0]];
     rows += `<tr><td style="width:172px;font-weight:600">${d}</td>
       <td style="width:78px"><span class="chip ${r[0]}">${r[1]}</span></td>
-      <td style="color:var(--text-secondary)">${e[1] || ""}</td></tr>`;
+      <td style="color:var(--text-secondary)">${cesc(e[1] || "")}</td></tr>`;
   });
   const head = [n.s && n.s + " strong", n.w && n.w + " weak", n.m && n.m + " missing", n.x && n.x + " not scored"].filter(Boolean).join(" · ");
   const dotc = { s: "var(--good)", w: "var(--warn)", m: "var(--bad)", x: "var(--border-strong)" };
@@ -2931,11 +2931,11 @@ function leadFitHtml(c) {
   const f = c.leadfit;
   if (!f) return "";
   const r = RT[f[0]];
-  const src = c.leadsrc ? `${c.leadsrc}${c.leadgroup && c.leadgroup !== c.leadsrc.trim() ? ` · ${c.leadgroup}` : ""}` : "Unknown source";
+  const src = c.leadsrc ? `${cesc(c.leadsrc)}${c.leadgroup && c.leadgroup !== String(c.leadsrc).trim() ? ` · ${cesc(c.leadgroup)}` : ""}` : "Unknown source";
   return `<div class="blk"><div class="bl">Lead source — ${src}</div>
     <div style="display:flex;gap:10px;align-items:baseline">
       <span class="chip ${r ? r[0] : ""}">${r ? r[1] : "Not scored"}</span>
-      <span style="color:var(--text-secondary);font-size:12.5px;line-height:1.55">${f[1] || ""}</span></div></div>`;
+      <span style="color:var(--text-secondary);font-size:12.5px;line-height:1.55">${cesc(f[1] || "")}</span></div></div>`;
 }
 /* Did the call do what the lead's pipeline stage called for (Apollo's
    "stagefit", Frank, 2026-09-24)? Shows where the lead was when the call
@@ -2976,12 +2976,12 @@ function flowLegendHtml() {
    service/mixed, call in / call back, first conversation / finishing the
    quote / follow-up -- instead of a second grey pill beside it. The hover
    says why each part is there. */
-const escAttr = t => String(t || "").replace(/"/g, "&quot;");
+const escAttr = t => cesc(t || "");
 function outcomeBadgeHtml(cat, catc, extras) {
   extras = extras.filter(([l]) => l);
   const title = extras.map(([l, why]) => why ? `${l}: ${why}` : "").filter(Boolean).join("\n");
-  return `<span class="cat ${catc ? `cat-${catc}` : ""}"${title ? ` title="${escAttr(title)}"` : ""}>${cat || ""}${
-    extras.length ? `<span class="catx"> &middot; ${extras.map(([l]) => l).join(" &middot; ")}</span>` : ""}</span>`;
+  return `<span class="cat ${catc ? `cat-${catc}` : ""}"${title ? ` title="${escAttr(title)}"` : ""}>${cesc(cat || "")}${
+    extras.length ? `<span class="catx"> &middot; ${extras.map(([l]) => cesc(l)).join(" &middot; ")}</span>` : ""}</span>`;
 }
 /* Card flags, one badge per CATEGORY (Frank, 2026-09-27: "consolidate or
    categorize, as well as tint with yellow red or green depending of if the
@@ -3028,7 +3028,7 @@ function flagBadgesHtml(c) {
   return [...groups].map(([g, texts]) => {
     const tone = FLAG_GROUPS[g] || "neutral";   // an uncategorised flag shows its own words, neutral
     const tip = texts.filter(t => t !== g).join("\n");
-    return `<span class="flag ${cls[tone]}"${tip ? ` title="${escAttr(tip)}"` : ""}>${g}${texts.length > 1 ? ` <b>&times;${texts.length}</b>` : ""}</span>`;
+    return `<span class="flag ${cls[tone]}"${tip ? ` title="${escAttr(tip)}"` : ""}>${cesc(g)}${texts.length > 1 ? ` <b>&times;${texts.length}</b>` : ""}</span>`;
   }).join("");
 }
 /* On a call the producer answered, the greeting leads whichever scorecard
@@ -3049,7 +3049,7 @@ const FU_DIMS = ["Reconnect & assumed the sale up front", "Checked where they ar
 function assumeRowsHtml(a) {
   const bdg = v => v ? `<span class="chip c-g">yes</span>` : `<span class="chip c-r">no</span>`;
   const row = (label, v) => !v ? "" : `<tr><td class="k">${label}</td><td class="v">${
-    v[0] == null ? `<span class="chip">n/a</span>` : bdg(v[0])}</td><td>${v[1] || ""}</td></tr>`;
+    v[0] == null ? `<span class="chip">n/a</span>` : bdg(v[0])}</td><td>${cesc(v[1] || "")}</td></tr>`;
   return row("Assumed the sale up front", a.start) + row("…while handling objections", a.objections) + row("…at the end", a.end);
 }
 function stageFitHtml(c) {
@@ -3057,34 +3057,34 @@ function stageFitHtml(c) {
   if (!f) return "";
   const r = RT[f[0]];
   const b = c.stage_before || "Unknown stage", a = c.stage_after || "";
-  const path = a && a !== b ? `${b} → ${a}` : `${b}${a ? " (not moved)" : ""}`;
+  const path = a && a !== b ? `${cesc(b)} → ${cesc(a)}` : `${cesc(b)}${a ? " (not moved)" : ""}`;
   return `<div class="blk"><div class="bl">Pipeline stage — ${path}</div>
     <div style="display:flex;gap:10px;align-items:baseline">
       <span class="chip ${r ? r[0] : ""}">${r ? r[1] : "Not scored"}</span>
-      <span style="color:var(--text-secondary);font-size:12.5px;line-height:1.55">${f[1] || ""}</span></div></div>`;
+      <span style="color:var(--text-secondary);font-size:12.5px;line-height:1.55">${cesc(f[1] || "")}</span></div></div>`;
 }
 function card(c) {
   const objs = c.objs || [];
   // One block per objection -- a card can carry several (Frank, 2026-09-15:
   // "I want them as their own badge"), each scored on its own instead of one
   // shared verdict for the whole call.
-  const objBlk = objs.map(o => `<div class="blk"><div class="bl">Objection — ${o.group || "Other"}</div>
-    <div class="chead" style="margin-bottom:11px"><span class="cat" style="background:var(--text-primary);color:var(--surface);white-space:normal;max-width:100%">${o.cat}</span>
+  const objBlk = objs.map(o => `<div class="blk"><div class="bl">Objection — ${cesc(o.group || "Other")}</div>
+    <div class="chead" style="margin-bottom:11px"><span class="cat" style="background:var(--text-primary);color:var(--surface);white-space:normal;max-width:100%">${cesc(o.cat)}</span>
     <span>${chips(o)}</span></div>
     <div class="two">
-      <div><div class="ol">They said · ${o.at}</div><div class="said">${o.they}${o.theyen ? `<br><span class="en">${o.theyen}</span>` : ""}</div></div>
+      <div><div class="ol">They said · ${cesc(o.at)}</div><div class="said">${cesc(o.they)}${o.theyen ? `<br><span class="en">${cesc(o.theyen)}</span>` : ""}</div></div>
       <div><div class="ol">You said${o.noresp ? ` <span class="chip c-r">no response</span>` : ""}</div>
-           <div class="said">${o.you}${o.youen ? `<br><span class="en">${o.youen}</span>` : ""}</div></div>
+           <div class="said">${cesc(o.you)}${o.youen ? `<br><span class="en">${cesc(o.youen)}</span>` : ""}</div></div>
     </div>
-    <div class="anal">${o.anal}</div>
-    ${o.fix && o.fix.length ? `<div class="fix"><span class="fixl">Ways to take it on</span>${o.fix.map((f, i) => `<b>${i + 1}.</b> ${f}`).join("<br>")}</div>` : ""}
+    <div class="anal">${cesc(o.anal)}</div>
+    ${o.fix && o.fix.length ? `<div class="fix"><span class="fixl">Ways to take it on</span>${o.fix.map((f, i) => `<b>${i + 1}.</b> ${cesc(f)}`).join("<br>")}</div>` : ""}
     </div>`).join("");
   const bdg = v => v === null || v === undefined ? `<span class="chip c-n">n/a</span>` : (v ? `<span class="chip c-g">yes</span>` : `<span class="chip c-r">no</span>`);
   const spine = (c.spine && c.spine.length) ? `<div class="blk"><div class="bl">How the call went</div><div class="tl">${
-    c.spine.map(([t, m, h, s], i) => `<div class="tlt">${t}</div>
+    c.spine.map(([t, m, h, s], i) => `<div class="tlt">${cesc(t)}</div>
       <div class="tlk"><span class="dt" style="background:${{ g: "var(--good)", y: "var(--warn)", r: "var(--bad)", n: "var(--border-strong)" }[m]}"></span>
       ${i < c.spine.length - 1 ? `<span class="ln" style="height:100%"></span>` : ""}</div>
-      <div class="tlx"><b>${h}</b>${s ? `<span>${s}</span>` : ""}</div>`).join("")}</div></div>` : "";
+      <div class="tlx"><b>${cesc(h)}</b>${s ? `<span>${cesc(s)}</span>` : ""}</div>`).join("")}</div></div>` : "";
   // Collapsed by default -- the whole header (the box with the left accent
   // strip) is a <summary>, so clicking anywhere on it expands the rest of
   // the card natively; clicking again collapses it (Frank, 2026-09-10).
@@ -3094,7 +3094,7 @@ function card(c) {
   // (Frank, 2026-09-15: "it should specify under the clients name if its 2
   // calls, if its a call back... show 1st talk time + 2nd talk time").
   const durCell = (c.call_times && c.call_times.length > 1)
-    ? c.call_times.join(" + ") : (c.dur || "");
+    ? c.call_times.map(cesc).join(" + ") : cesc(c.dur || "");
   // One outcome + call-in/call-back badge per real conversation on this
   // card, not one aggregate pair for the whole thing (Frank, 2026-09-16:
   // those "are not on a single call" -- a 2-call card showed one outcome
@@ -3107,7 +3107,7 @@ function card(c) {
     : [{ cat: c.cat, catc: c.catc, kind: c.callback_kind || "" }];
   const multiCall = calls.length > 1;
   const callRowHtml = multiCall ? `<div class="callrow">${calls.map((call, i) => `<span class="callchip">
-      <span class="cdur">${(c.call_times || [])[i] || ""}</span>
+      <span class="cdur">${cesc((c.call_times || [])[i] || "")}</span>
       ${outcomeBadgeHtml(call.cat, call.catc, [[call.kind || "", ""]])}</span>`).join("")}</div>` : "";
   const typeParts = c.calltype && c.calltype[0] !== "sales" ? [[c.calltype[0], c.calltype[1] || ""]] : [];
   const edge = flowEdge(c);
@@ -3115,28 +3115,28 @@ function card(c) {
    <summary class="blk cchead" style="border-left:10px solid transparent">
      <span class="flowedge" style="--fc:${edge.color}"${edge.label ? ` title="${escAttr(edge.label + (edge.why ? ": " + edge.why : ""))}" aria-label="${escAttr(edge.label)}"` : ""}></span>
      <div class="chead"><div><div class="cname">${c.lead_id
-       ? `<a href="${AZ_URL.lead}${encodeURIComponent(c.lead_id)}" target="_blank" rel="noopener" onclick="event.stopPropagation()">${c.lead || ""}</a>`
-       : (c.lead || "")}</div>
-       <div class="cmeta">${c.who || ""} · ${fmtShortDate(c.day)}${c.time ? ` ${c.time}` : ""} · ${durCell} · ${c.lang || ""} · ${c.src || ""}${c.leadsrc ? ` · ${c.leadsrc}` : ""}</div>
+       ? `<a href="${AZ_URL.lead}${encodeURIComponent(c.lead_id)}" target="_blank" rel="noopener" onclick="event.stopPropagation()">${cesc(c.lead || "")}</a>`
+       : cesc(c.lead || "")}</div>
+       <div class="cmeta">${cesc(c.who || "")} · ${cesc(fmtShortDate(c.day))}${c.time ? ` ${cesc(c.time)}` : ""} · ${durCell} · ${cesc(c.lang || "")} · ${cesc(c.src || "")}${c.leadsrc ? ` · ${cesc(c.leadsrc)}` : ""}</div>
        ${callRowHtml}</div>
        ${!multiCall ? outcomeBadgeHtml(c.cat, c.catc, [...typeParts, ...flowParts(c)])
-         : [...typeParts, ...flowParts(c)].map(([l, why]) => `<span class="ctype" title="${escAttr(why)}">${l}</span>`).join("")}<span class="ctog" aria-hidden="true">▸</span></div>
-     <div class="sum">${c.summary || ""}</div>
+         : [...typeParts, ...flowParts(c)].map(([l, why]) => `<span class="ctype" title="${escAttr(why)}">${cesc(l)}</span>`).join("")}<span class="ctog" aria-hidden="true">▸</span></div>
+     <div class="sum">${cesc(c.summary || "")}</div>
      ${(c.flags && c.flags.length) || (c.exit && c.exit[0]) ? `<div style="margin-top:8px">${
        flagBadgesHtml(c)}</div>` : ""}
    </summary>
    ${c.askq || c.assume ? `<div class="blk"><div class="bl">The Assumption</div><table class="askt">
-     ${c.assume ? assumeRowsHtml(c.assume) : `<tr><td class="k">Assumed the quote</td><td class="v">${bdg(c.askq[0])}</td><td>${c.askq[1] || ""}</td></tr>
-     <tr><td class="k">Assumed the sale</td><td class="v">${bdg((c.asks || [])[0])}</td><td>${(c.asks || [])[1] || ""}</td></tr>`}${
+     ${c.assume ? assumeRowsHtml(c.assume) : `<tr><td class="k">Assumed the quote</td><td class="v">${bdg(c.askq[0])}</td><td>${cesc(c.askq[1] || "")}</td></tr>
+     <tr><td class="k">Assumed the sale</td><td class="v">${bdg((c.asks || [])[0])}</td><td>${cesc((c.asks || [])[1] || "")}</td></tr>`}${
      // Inverted on purpose: "yes" here is the red flag (Frank, 2026-09-23).
      c.exit ? `<tr><td class="k">Ended the call themselves</td><td class="v">${c.exit[0]
-       ? `<span class="chip c-r">yes</span>` : `<span class="chip c-g">no</span>`}</td><td>${c.exit[1] || ""}</td></tr>` : ""}</table>
-     ${c.askfix ? `<div class="fix"><span class="fixl">What assumptive sounds like</span>${c.askfix}</div>` : ""}
+       ? `<span class="chip c-r">yes</span>` : `<span class="chip c-g">no</span>`}</td><td>${cesc(c.exit[1] || "")}</td></tr>` : ""}</table>
+     ${c.askfix ? `<div class="fix"><span class="fixl">What assumptive sounds like</span>${cesc(c.askfix)}</div>` : ""}
    </div>` : ""}
    ${objBlk}
    <div class="blk"><div class="bl">Strengths and gaps</div><div class="two">
-     <div><div class="colh g">What worked</div><ul class="gl g">${(c.good || []).map(([t, dd]) => `<li><b>${t}</b>${dd}</li>`).join("") || `<li style="color:var(--text-muted)">—</li>`}</ul></div>
-     <div><div class="colh b">What cost the sale</div><ul class="gl b">${(c.bad || []).map(([t, dd]) => `<li><b>${t}</b>${dd}</li>`).join("") || `<li style="color:var(--text-muted);padding-left:0">Nothing to flag on this call.</li>`}</ul></div>
+     <div><div class="colh g">What worked</div><ul class="gl g">${(c.good || []).map(([t, dd]) => `<li><b>${cesc(t)}</b>${cesc(dd)}</li>`).join("") || `<li style="color:var(--text-muted)">—</li>`}</ul></div>
+     <div><div class="colh b">What cost the sale</div><ul class="gl b">${(c.bad || []).map(([t, dd]) => `<li><b>${cesc(t)}</b>${cesc(dd)}</li>`).join("") || `<li style="color:var(--text-muted);padding-left:0">Nothing to flag on this call.</li>`}</ul></div>
    </div>${leadFitHtml(c)}${stageFitHtml(c)}${c.fuscore && Object.keys(c.fuscore).length
      ? scorecard(...withGreeting(c, c.fuscore, FU_DIMS), "Follow-up scorecard")
      : scorecard(...withGreeting(c, c.score, DIMS))}${scorecard(c.techniques, TECH_DIMS, "Sales techniques")}</div>
@@ -3163,10 +3163,10 @@ function transcriptHtml(text) {
   const callBlocks = text.split(/\n\n(?=\[Call \d+ of \d+)/);
   return callBlocks.map(block => {
     const m = block.match(/^(\[Call \d+ of \d+[^\]]*\])\n([\s\S]*)$/);
-    const tag = m ? `<div class="ttag">${m[1]}</div>` : "";
+    const tag = m ? `<div class="ttag">${cesc(m[1])}</div>` : "";
     const body = m ? m[2] : block;
     const turns = body.split(/\s*>>\s*/).map(t => t.trim()).filter(Boolean);
-    return tag + turns.map((t, i) => `<p class="tturn t${i % 2}">${t}</p>`).join("");
+    return tag + turns.map((t, i) => `<p class="tturn t${i % 2}">${cesc(t)}</p>`).join("");
   }).join("");
 }
 /* The recording and its transcript as one (Frank, 2026-09-29: "the
@@ -3185,7 +3185,7 @@ function syncedRecordingBlk(c) {
   const lines = c.turns.map(x => {
     const head = ids.length > 1 && x.r !== lastR ? `<div class="ttag">Call ${x.r + 1} of ${ids.length}</div>` : "";
     lastR = x.r;
-    return `${head}<p class="tturn sync t${/producer/.test(x.who) ? 0 : 1}" data-rec="${uid}" data-r="${x.r}" data-t="${x.t}">
+    return `${head}<p class="tturn sync t${/\((producer|service)\)/.test(x.who) ? 0 : 1}" data-rec="${uid}" data-r="${x.r}" data-t="${x.t}">
       <button type="button" class="pp" aria-label="Play from here">&#9654;</button><span class="ts">${mmss(x.t)}</span><span class="tw">${esc(x.who)}</span>${esc(x.text)}</p>`;
   }).join("");
   return `<div class="blk"><div class="bl">Recording &amp; transcript</div>
@@ -3308,7 +3308,7 @@ function objectionChartHtml(objData, scopedCount) {
     const pct = n ? Math.round(100 * w / n) : 0;
     const wonPct = n ? (100 * w / n) : 0;
     return `<div class="objrow${cat === objFilterCat ? " sel" : ""}" data-cat="${encodeURIComponent(cat)}" role="button" tabindex="0">
-      <div class="objrow-head"><span class="objcat">${cat}</span><span class="objn">${n} raised · ${pct}% won</span></div>
+      <div class="objrow-head"><span class="objcat">${cesc(cat)}</span><span class="objn">${n} raised · ${pct}% won</span></div>
       <div class="objtrack" style="width:${(100 * n / maxN).toFixed(1)}%"><div class="objwon" style="width:${wonPct.toFixed(1)}%"></div></div>
     </div>`;
   }).join("");
@@ -3368,7 +3368,7 @@ function coachingPanel(d, who) {
   // coachSubTab === "detail" (Cards)
   const matches = c => !objFilterCat || (c.objs || []).some(o => (o.group || "Other") === objFilterCat);
   const filterBanner = objFilterCat ? `<div class="sect" style="display:flex;justify-content:space-between;align-items:center;gap:10px">
-    <span class="sd" style="margin:0">Filtered to objection "${objFilterCat}"</span>
+    <span class="sd" style="margin:0">Filtered to objection "${cesc(objFilterCat)}"</span>
     <button type="button" id="objClearBtn" class="linkbtn">Clear filter</button></div>` : "";
 
   let out = "";
@@ -3378,12 +3378,12 @@ function coachingPanel(d, who) {
     const mine = d.calls.filter(c => c.who === p && matches(c));
     if (!mine.length) return;
     shown += mine.length;
-    out += `<div class="sect"><h2>${p}</h2><p class="sd">${mine.length} coached call${mine.length > 1 ? "s" : ""}${objFilterCat ? ` carrying "${objFilterCat}"` : ""}</p>
+    out += `<div class="sect"><h2>${p}</h2><p class="sd">${mine.length} coached call${mine.length > 1 ? "s" : ""}${objFilterCat ? ` carrying "${cesc(objFilterCat)}"` : ""}</p>
       ${mine.map(card).join("")}</div>`;
   });
   if (!shown) {
     const scope = multiDay ? "in this range" : "on this day";
-    out = `<div class="empty">${objFilterCat ? `No coaching cards carrying "${objFilterCat}"${sel ? ` for ${sel}` : ""} ${scope}.`
+    out = `<div class="empty">${objFilterCat ? `No coaching cards carrying "${cesc(objFilterCat)}"${sel ? ` for ${sel}` : ""} ${scope}.`
       : sel ? `No coaching cards for ${sel} ${scope}.` : `No coaching cards ${scope}.`}</div>`;
   }
   return nav + filterBanner + (shown ? flowLegendHtml() : "") + out + (d.notcoached ? `<div class="note" style="border:1px dashed var(--border-strong);border-radius:8px;padding:14px 16px">
@@ -3633,37 +3633,90 @@ function rpSpeechSupported() { return !!(window.SpeechRecognition || window.webk
 let rpAudio = null;
 let rpDeepgramOff = false;
 const rpProspectNow = () => (rpLeadSource && rpLeadSource.prospect) || {};
+let rpQueueToken = 0;   // bumped by rpStopSpeaking, so a stopped reply never plays on
 function rpStopSpeaking() {
+  rpQueueToken++;
   if (rpAudio) { try { rpAudio.onended = rpAudio.onerror = null; rpAudio.pause(); } catch (_) {} rpAudio = null; }
   if ("speechSynthesis" in window) window.speechSynthesis.cancel();
   rpSpeaking = false;
 }
-function speakProspect(text, onDone) {
-  let finished = false;
-  const done = () => { if (finished) return; finished = true; rpAudio = null; rpSpeaking = false; rpUpdateMicUI(); if (onDone) onDone(); };
-  rpStopSpeaking();   // don't stack replies if one is still talking
+/* The prospect speaks a reply sentence by sentence (Frank, 2026-09-30:
+   start the voice on the first sentence). add() hands over each sentence
+   the moment it is written; each is fetched from Deepgram right away, so
+   the next is ready while the current one plays, and they play back to
+   back. end() says the reply is complete; onDone fires once the last
+   sentence has finished -- only then does the mic come back, never in the
+   gap between two sentences. A sentence Deepgram can't play is said by the
+   browser's voice, and so is the rest of the page load's speech. */
+function rpSpeechQueue(onDone) {
+  rpStopSpeaking();                 // don't stack replies if one is still talking
+  const token = rpQueueToken;
   const pr = rpProspectNow();
+  const q = [], parts = [];
+  let playing = false, ended = false, finished = false;
   rpSpeaking = true;
   rpUpdateMicUI();
-  if (pr.voice && !rpDeepgramOff) { speakAudioEl(text, pr, done); return; }
-  speakBrowser(text, pr.lang, done);
-}
-function speakAudioEl(text, pr, done) {
-  {
-    const a = new Audio(`/api/roleplay/speak?voice=${encodeURIComponent(pr.voice)}&text=${encodeURIComponent(text.slice(0, 2000))}`);
+  const finish = () => {
+    if (finished || token !== rpQueueToken) return;
+    finished = true; rpAudio = null; rpSpeaking = false; rpUpdateMicUI();
+    if (onDone) onDone();
+  };
+  const next = () => {
+    if (token !== rpQueueToken) return;
+    const item = q.shift();
+    if (!item) { playing = false; if (ended) finish(); return; }
+    playing = true;
+    const after = () => { if (token === rpQueueToken) next(); };
+    if (!item.audio || rpDeepgramOff) { speakBrowser(item.text, pr.lang, after); return; }
+    const a = item.audio;
     rpAudio = a;
     let started = false;
     a.onplaying = () => { started = true; };
-    a.onended = done;
+    a.onended = after;
     a.onerror = () => {
       if (rpAudio !== a) return;
       rpAudio = null;
-      if (started) { done(); return; }
+      if (started) { after(); return; }
       rpDeepgramOff = true;
-      speakBrowser(text, pr.lang, done);
+      speakBrowser(item.text, pr.lang, after);
     };
     a.play().catch(() => { if (rpAudio === a && !started) a.onerror(); });
+  };
+  return {
+    parts,
+    add(text) {
+      text = String(text || "").trim();
+      if (!text || finished || token !== rpQueueToken) return;
+      parts.push(text);
+      let audio = null;
+      if (pr.voice && !rpDeepgramOff) {
+        audio = new Audio(`/api/roleplay/speak?voice=${encodeURIComponent(pr.voice)}&text=${encodeURIComponent(text.slice(0, 2000))}`);
+        audio.preload = "auto";   // starts fetching now, while the sentence before it plays
+      }
+      q.push({ text, audio });
+      if (!playing) next();
+    },
+    end() { ended = true; if (!playing && !q.length) finish(); },
+  };
+}
+function speakProspect(text, onDone) {
+  const sq = rpSpeechQueue(onDone);
+  sq.add(text);
+  sq.end();
+}
+/* A sentence ends at . ! ? or ... followed by a space; one under 20
+   characters ("Oh." / "Sí.") is held and spoken with the next, so the
+   voice doesn't stop and start on every word. */
+function rpTakeSentences(buf, emit) {
+  const re = /[.!?\u2026]+["'\u201d\u2019)\]]*\s+/g;
+  let start = 0, m;
+  while ((m = re.exec(buf))) {
+    const end = m.index + m[0].length;
+    if (end - start < 20) continue;
+    emit(buf.slice(start, end));
+    start = end;
   }
+  return buf.slice(start);
 }
 
 /* The prospect's headshot (Frank, 2026-09-29: "lets just do headshots of AI
@@ -3722,6 +3775,7 @@ function rpUpdateMicUI(interim) {
 
 function rpStopListening() {
   clearTimeout(rpPauseTimer); rpPauseTimer = null;
+  rpEarlyCancel();
   const rec = rpRecognition;
   rpRecognition = null;
   if (rec) { try { rec.stop(); } catch (_) {} }
@@ -3777,16 +3831,39 @@ function rpClipUpload(item, blobP) {
    on its own now and then: it starts again at once, keeping what was
    heard and the turn's recording (rpClipStart), and the pause clock carries
    on. A blocked mic stops for good. */
-const RP_PAUSE_MS = 2000;
+const RP_PAUSE_MS = 1500;   // was 2000; Frank, 2026-09-29: "take too long to respond" ... "do 1.5 sec"
 let rpHeard = "";              // what the producer has said so far this turn
 let rpPauseTimer = null;
+/* The reply is asked for EARLY (2026-09-30, "it still takes too long to
+   respond"): after RP_EARLY_MS of silence the turn goes to the prospect
+   quietly, so Claude is already writing while the 1.5 s pause runs out. If
+   the producer says anything more, that early ask is thrown away and a new
+   one starts at the next silence; the prospect only ever answers the whole
+   turn, and still only after RP_PAUSE_MS. */
+const RP_EARLY_MS = 700;
+let rpEarlyTimer = null, rpEarly = null;   // {text, ctl, resp}
+function rpEarlyCancel() {
+  clearTimeout(rpEarlyTimer); rpEarlyTimer = null;
+  if (rpEarly) { try { rpEarly.ctl.abort(); } catch (_) {} rpEarly = null; }
+}
+function rpEarlyAsk() {
+  rpEarlyTimer = null;
+  const text = rpHeard.trim();
+  if (!text || rpEarly || rpBusy) return;
+  const ctl = new AbortController();
+  const resp = rpTurnFetch([...rpHistory, { role: "producer", content: text }], ctl.signal);
+  resp.catch(() => {});
+  rpEarly = { text, ctl, resp };
+}
 function rpFinishTurn() {
   clearTimeout(rpPauseTimer); rpPauseTimer = null;
   const text = rpHeard.trim();
   rpHeard = "";
+  let early = null;
+  if (rpEarly && rpEarly.text === text) { early = rpEarly.resp; rpEarly = null; }
   const clip = text ? rpClipStop(true) : null;   // the turn's recording goes with it
-  rpStopListening();
-  if (text) rpSendTurn(text, clip);
+  rpStopListening();                             // also drops an early ask that no longer fits
+  if (text) rpSendTurn(text, clip, early);
 }
 function rpStartListening(keepHeard) {
   if (rpBusy || rpSpeaking || rpListening || !rpSpeechSupported()) return;
@@ -3810,6 +3887,9 @@ function rpStartListening(keepHeard) {
     rpUpdateMicUI(rpHeard);
     clearTimeout(rpPauseTimer);
     rpPauseTimer = setTimeout(rpFinishTurn, RP_PAUSE_MS);
+    if (rpEarly && rpEarly.text !== rpHeard.trim()) rpEarlyCancel();   // they kept talking
+    clearTimeout(rpEarlyTimer);
+    rpEarlyTimer = setTimeout(rpEarlyAsk, RP_EARLY_MS);
   };
   rec.onerror = (e) => {
     if (e && (e.error === "not-allowed" || e.error === "service-not-allowed" || e.error === "audio-capture")) fatal = true;
@@ -3819,7 +3899,7 @@ function rpStartListening(keepHeard) {
     rpRecognition = null;
     if (!rpListening) return;                        // stopped on purpose
     rpListening = false;
-    if (fatal) { clearTimeout(rpPauseTimer); rpHeard = ""; rpClipStop(); rpUpdateMicUI(); return; }
+    if (fatal) { clearTimeout(rpPauseTimer); rpEarlyCancel(); rpHeard = ""; rpClipStop(); rpUpdateMicUI(); return; }
     rpStartListening(true);   // keep listening, keeping what was heard; the pause timer still sends it
   };
   rpRecognition = rec;
@@ -4027,7 +4107,7 @@ function roleplayDebriefHtml(p) {
   rpDebriefSnapshot = { title: `Role Play · ${p.name} · Debrief`, producer: rpProducer,
     body: `<div class="tiles" style="margin-bottom:6px">
       <div class="tile"><div class="k">Client type</div><div class="v" style="font-size:16px">${p.name}</div><div class="n">${p.blurb}</div></div>
-      <div class="tile"><div class="k">Lead source</div><div class="v" style="font-size:16px">${ls.label}</div><div class="n">${ls.tip}</div></div>
+      <div class="tile"><div class="k">Lead source</div><div class="v" style="font-size:16px">${cesc(ls.label)}</div><div class="n">${cesc(ls.tip)}</div></div>
       ${ls.prospect ? `<div class="tile"><div class="k">Prospect</div><div class="v" style="font-size:16px">${ls.prospect.name}</div>
         <div class="n">${ls.prospect.age} &middot; ${ls.prospect.occupation}</div><div class="n">${ls.prospect.family}</div>${rpLangLine(ls.prospect)}</div>` : ""}
     </div>
@@ -4042,7 +4122,7 @@ function roleplayDebriefHtml(p) {
       ${rpDebriefButtons()}</p>
     <div class="tiles" style="margin-bottom:6px">
       <div class="tile"><div class="k">Client type</div><div class="v" style="font-size:16px">${p.name}</div><div class="n">${p.blurb}</div></div>
-      <div class="tile"><div class="k">Lead source</div><div class="v" style="font-size:16px">${ls.label}</div><div class="n">${ls.tip}</div></div>
+      <div class="tile"><div class="k">Lead source</div><div class="v" style="font-size:16px">${cesc(ls.label)}</div><div class="n">${cesc(ls.tip)}</div></div>
       ${ls.prospect ? `<div class="tile">${rpShotHtml(ls.prospect, true)}<div class="k">Prospect</div><div class="v" style="font-size:16px">${ls.prospect.name}</div>
         <div class="n">${ls.prospect.age} &middot; ${ls.prospect.occupation}</div><div class="n">${ls.prospect.family}</div>${rpLangLine(ls.prospect)}</div>` : ""}
     </div>
@@ -4088,15 +4168,15 @@ function roleplayCallGuideHtml(data, weak) {
 
 function gradeCardHtml(g) {
   const rows = (g.checklist || []).map(c => `<tr>
-    <td class="gi"><span class="chip ${c.met ? "c-g" : "c-r"}">${c.met ? "met" : "missed"}</span> ${c.item}</td>
-    <td>${c.note || ""}</td></tr>`).join("");
+    <td class="gi"><span class="chip ${c.met ? "c-g" : "c-r"}">${c.met ? "met" : "missed"}</span> ${cesc(c.item)}</td>
+    <td>${cesc(c.note || "")}</td></tr>`).join("");
   return `<div class="gradecard">
     <div style="display:flex;justify-content:space-between;align-items:center">
       <b>Result</b><span class="chip ${g.resolved ? "c-g" : "c-w"}">${g.resolved ? "Resolved" : "Not resolved"}</span>
     </div>
-    <p style="font-size:12.5px;margin:8px 0">${g.summary || ""}</p>
+    <p style="font-size:12.5px;margin:8px 0">${cesc(g.summary || "")}</p>
     <table>${rows}</table>
-    <div class="fix" style="margin-top:8px"><span class="fixl">Tip for next time</span>${g.tip || ""}</div>
+    <div class="fix" style="margin-top:8px"><span class="fixl">Tip for next time</span>${cesc(g.tip || "")}</div>
   </div>`;
 }
 
@@ -4329,18 +4409,23 @@ function rphButtons() {
     b.setAttribute("aria-label", on ? "Pause" : mine ? "Resume" : "Play from here");
   });
 }
-function rphPlayFrom(sess, i) {
+function rphPlayFrom(sess, i, part) {
   rphStopPlay();
   const hist = sess.history || [];
   while (i >= 0 && i < hist.length && !hist[i].audio) i++;
   if (i < 0 || i >= hist.length) return;
-  const a = new Audio(`/api/roleplay/audio?key=${encodeURIComponent(hist[i].audio)}`);
+  // A streamed reply was spoken sentence by sentence: `audios` holds every
+  // clip in order; an older line has the one `audio`.
+  const clips = Array.isArray(hist[i].audios) && hist[i].audios.length ? hist[i].audios : [hist[i].audio];
+  const k = part || 0;
+  const a = new Audio(`/api/roleplay/audio?key=${encodeURIComponent(clips[k])}`);
   rphAudio = a; rphIdx = i;
   a.onplay = a.onpause = () => { if (rphAudio === a) rphButtons(); };
   const el = document.querySelector(`.rphplay[data-i="${i}"]`);
-  if (el) { el.classList.add("playing"); el.scrollIntoView({ block: "nearest", behavior: "smooth" }); }
-  a.onended = () => { if (rphAudio === a) rphPlayFrom(sess, i + 1); };
-  a.onerror = () => { if (rphAudio === a) rphPlayFrom(sess, i + 1); };
+  if (el) { el.classList.add("playing"); if (!k) el.scrollIntoView({ block: "nearest", behavior: "smooth" }); }
+  const go = () => { if (rphAudio === a) (k + 1 < clips.length ? rphPlayFrom(sess, i, k + 1) : rphPlayFrom(sess, i + 1)); };
+  a.onended = go;
+  a.onerror = go;
   a.play().catch(() => {});
 }
 
@@ -4390,7 +4475,17 @@ function wireRphPanel() {
   });
 }
 
-async function rpSendTurn(text, clip) {
+function rpTurnFetch(history, signal) {
+  return fetch("/api/roleplay/turn", {
+    method: "POST", headers: { "content-type": "application/json" }, signal,
+    body: JSON.stringify({ persona: rpPersonaKey, history, focus_objections: producerWeakSpots(rpWeakFor()).map(([c]) => c),
+      lead_source: rpLeadSource ? rpLeadSource.forCustomer : "",
+      prospect: rpLeadSource && rpLeadSource.prospect ? rpLeadSource.prospect.text : "",
+      language: rpProspectNow().lang || "en", stream: true }),
+  });
+}
+
+async function rpSendTurn(text, clip, early) {
   const turn = { role: "producer", content: text };
   rpHistory.push(turn);
   rpClipUpload(turn, clip);
@@ -4398,22 +4493,50 @@ async function rpSendTurn(text, clip) {
   document.getElementById("view").innerHTML = roleplayPanel();
   wireRoleplayPanel();
   try {
-    const focusObjections = producerWeakSpots(rpWeakFor()).map(([c]) => c);
-    const r = await fetch("/api/roleplay/turn", {
-      method: "POST", headers: { "content-type": "application/json" },
-      body: JSON.stringify({ persona: rpPersonaKey, history: rpHistory, focus_objections: focusObjections, lead_source: rpLeadSource ? rpLeadSource.forCustomer : "",
-        prospect: rpLeadSource && rpLeadSource.prospect ? rpLeadSource.prospect.text : "",
-        language: rpProspectNow().lang || "en" }),
-    });
-    const body = await r.json();
-    if (r.ok && body.reply) {
-      rpHistory.push({ role: "prospect", content: body.reply });
+    let r = null;
+    if (early) r = await early.catch(() => null);   // asked for during the pause
+    if (!r) r = await rpTurnFetch(rpHistory);
+    const ctype = r.headers.get("content-type") || "";
+    if (r.ok && r.body && /^text\/(event-stream|plain)/.test(ctype)) {
+      // Streamed: each finished sentence goes to the voice at once, and the
+      // line in the transcript fills in as she speaks.
+      const reply = { role: "prospect", content: "" };
+      rpHistory.push(reply);
       rpBusy = false;   // before she speaks: a reply that ends at once must still re-arm the mic
-      speakProspect(body.reply, () => {
+      const sq = rpSpeechQueue(() => {
         if (view === "roleplay" && rpPersonaKey && !rpGrade) rpStartListening();
       });
+      reply.parts = sq.parts;
+      const show = () => { if (view === "roleplay") { document.getElementById("view").innerHTML = roleplayPanel(); wireRoleplayPanel(); } };
+      const reader = r.body.getReader(), dec = new TextDecoder();
+      let pending = "";
+      for (;;) {
+        const { value, done } = await reader.read();
+        if (done) break;
+        const t = dec.decode(value, { stream: true });
+        reply.content += t;
+        const before = sq.parts.length;
+        pending = rpTakeSentences(pending + t, x => sq.add(x));
+        if (sq.parts.length !== before) show();
+      }
+      reply.content = reply.content.trim();
+      sq.add(pending);
+      sq.end();
+      if (!reply.content) {
+        reply.content = "[could not reach the practice partner: empty reply]";
+        delete reply.parts;
+      }
     } else {
-      rpHistory.push({ role: "prospect", content: `[could not reach the practice partner: ${body.error || r.status}]` });
+      const body = await r.json().catch(() => ({}));
+      if (r.ok && body.reply) {
+        rpHistory.push({ role: "prospect", content: body.reply });
+        rpBusy = false;
+        speakProspect(body.reply, () => {
+          if (view === "roleplay" && rpPersonaKey && !rpGrade) rpStartListening();
+        });
+      } else {
+        rpHistory.push({ role: "prospect", content: `[could not reach the practice partner: ${body.error || r.status}]` });
+      }
     }
   } catch (e) {
     rpHistory.push({ role: "prospect", content: `[connection error: ${e}]` });
@@ -4928,7 +5051,7 @@ function salesTotalsHtml(entries) {
   }).join(", ");
   const legend = names.map(name => `<div style="display:flex;align-items:center;gap:6px">
       <i style="width:10px;height:10px;border-radius:2px;background:${DOT[name] || "#8a877f"};flex:none"></i>
-      <span style="flex:1">${salesShortLabel(name)}</span>
+      <span style="flex:1">${cesc(salesShortLabel(name))}</span>
       <span style="color:var(--text-muted);font-variant-numeric:tabular-nums">${teamPremium ? Math.round(byProd[name].premium / teamPremium * 100) : 0}%</span>
     </div>`).join("");
 
@@ -4984,9 +5107,9 @@ function salesPanel(data) {
   const isCurrent = !curEnd || viewingEnd === curEnd;
   const folioOpts = salesFolioOptions();
   const producerOpts = [`<option value="">Who's logging?</option>`]
-    .concat(SALES_LOGGER_ROSTER.map(p => `<option value="${p}"${p === salesProducer ? " selected" : ""}>${p}</option>`)).join("");
+    .concat(SALES_LOGGER_ROSTER.map(p => `<option value="${cesc(p)}"${p === salesProducer ? " selected" : ""}>${cesc(p)}</option>`)).join("");
   const sourceOpts = [`<option value="">Lead source</option>`]
-    .concat((salesLeadSourceCache || []).map(s => `<option value="${s}">${s}</option>`)).join("");
+    .concat((salesLeadSourceCache || []).map(s => `<option value="${cesc(s)}">${cesc(s)}</option>`)).join("");
   // Client name links to the real AgencyZoom customer account when its id
   // was typed in at logging time (Frank, 2026-09-15) -- same
   // app.agencyzoom.com/customer?id=... URL panels.py's own AZ_URL uses for
@@ -4996,8 +5119,8 @@ function salesPanel(data) {
   // self-reported entry (AgencyZoom policy records carry no customerId).
   const clientCell = e => {
     const name = e.az_customer_id
-      ? `<a href="https://app.agencyzoom.com/customer?id=${encodeURIComponent(e.az_customer_id)}" target="_blank" rel="noopener">${e.client_name}</a>`
-      : e.client_name;
+      ? `<a href="https://app.agencyzoom.com/customer?id=${encodeURIComponent(e.az_customer_id)}" target="_blank" rel="noopener">${cesc(e.client_name)}</a>`
+      : cesc(e.client_name);
     // sales_log_auto.py marks every row it creates with source: "auto" (a
     // manually-typed entry via the Worker's own POST never has this key) --
     // flagged here, reusing the existing .ctype badge, so a blank name (a
@@ -5009,17 +5132,17 @@ function salesPanel(data) {
   };
   const rows = entries.map(e => `<tr>
     <td class="name"><span class="who">${pbadge(DOT[e.producer] || "#8a877f", e.producer)}</span></td>
-    <td>${fmtMDY(e.date_sold)}</td>
-    <td>${fmtMDY(e.effective_date)}</td>
+    <td>${cesc(fmtMDY(e.date_sold))}</td>
+    <td>${cesc(fmtMDY(e.effective_date))}</td>
     <td>${clientCell(e)}</td>
-    <td>${e.lead_source || ""}</td>
-    <td>${e.policy_number || ""}</td>
-    <td>${e.product || ""}</td>
-    <td class="num">${e.premium != null ? money(e.premium) : ""}</td>
-    <td>${e.term || ""}</td>
-    <td><select data-track="docs_signed" data-id="${e.id}" data-day="${e.day}">${docsSignedOpts(e.docs_signed || "")}</select></td>
-    <td><input type="checkbox" data-track="review_sent" data-id="${e.id}" data-day="${e.day}" ${e.review_sent ? "checked" : ""}></td>
-    <td><button class="icon-btn del-btn" data-del="${e.id}" data-day="${e.day}" type="button" title="Delete" aria-label="Delete">${TRASH_ICON}</button></td>
+    <td>${cesc(e.lead_source || "")}</td>
+    <td>${cesc(e.policy_number || "")}</td>
+    <td>${cesc(e.product || "")}</td>
+    <td class="num">${e.premium != null ? cesc(money(e.premium)) : ""}</td>
+    <td>${cesc(e.term || "")}</td>
+    <td><select data-track="docs_signed" data-id="${cesc(e.id)}" data-day="${cesc(e.day)}">${docsSignedOpts(e.docs_signed || "")}</select></td>
+    <td><input type="checkbox" data-track="review_sent" data-id="${cesc(e.id)}" data-day="${cesc(e.day)}" ${e.review_sent ? "checked" : ""}></td>
+    <td><button class="icon-btn del-btn" data-del="${cesc(e.id)}" data-day="${cesc(e.day)}" type="button" title="Delete" aria-label="Delete">${TRASH_ICON}</button></td>
   </tr>`).join("");
 
   return `${salesTotalsHtml(entries)}<div class="sect">
@@ -5240,8 +5363,8 @@ function salesPieSvg(rows, total, colorFor) {
   const paths = rows.map((row, i) => {
     const f = total ? row.premium / total : 0;
     if (f <= 0) return "";
-    const tipHtml = `<b>${row.key}</b><br>${money(row.premium)} &middot; ${Math.round(f * 100)}% &middot; ${salesCount(row.count)}`;
-    const attrs = `fill="${colorFor(row, i)}" stroke="var(--surface)" stroke-width="2" data-tip="${tipHtml.replace(/"/g, "&quot;")}"`;
+    const tipHtml = `<b>${cesc(row.key)}</b><br>${money(row.premium)} &middot; ${Math.round(f * 100)}% &middot; ${salesCount(row.count)}`;
+    const attrs = `fill="${colorFor(row, i)}" stroke="var(--surface)" stroke-width="2" data-tip="${cesc(tipHtml)}"`;
     if (f >= 0.9999) return `<circle cx="${C}" cy="${C}" r="${R}" ${attrs}/>`;
     const [x0, y0] = pt(acc), [x1, y1] = pt(acc + f);
     acc += f;
@@ -5274,7 +5397,7 @@ function salesBreakdownPanel(data) {
   if (spec.chart === "pie") {
     const colorFor = (row, i) => row.other ? "var(--text-muted)" : `var(--s${i + 1})`;
     const legend = rows.map((row, i) => `<div class="bkleg-row">
-        <i style="background:${colorFor(row, i)}"></i><span class="bkleg-name">${row.key}</span>
+        <i style="background:${colorFor(row, i)}"></i><span class="bkleg-name">${cesc(row.key)}</span>
         <span class="bkleg-v">${money(row.premium)}</span><span class="bkleg-p">${pctOf(row.premium)}%</span>
         <span class="bkleg-c">${salesCount(row.count)}</span></div>`).join("");
     body = `<div class="bkpie-wrap">${salesPieSvg(rows, totalPremium, colorFor)}<div class="bkleg">${legend}</div></div>`;
@@ -5283,12 +5406,12 @@ function salesBreakdownPanel(data) {
     const memberTip = row => {
       const ms = Object.values(row.members).map(m => ({ ...m, avg: m.premium / m.count }))
         .sort((a, b) => b.avg - a.avg || b.premium - a.premium);
-      return `<b>${row.key}</b> &middot; ${money(row.avg)} avg &middot; ${salesCount(row.count)}`
-        + `<table class="bktip">${ms.map(m => `<tr><td>${m.name}</td><td>${money(m.avg)} avg</td><td>${salesCount(m.count)}</td><td>${money(m.premium)}</td></tr>`).join("")}</table>`;
+      return `<b>${cesc(row.key)}</b> &middot; ${money(row.avg)} avg &middot; ${salesCount(row.count)}`
+        + `<table class="bktip">${ms.map(m => `<tr><td>${cesc(m.name)}</td><td>${money(m.avg)} avg</td><td>${salesCount(m.count)}</td><td>${money(m.premium)}</td></tr>`).join("")}</table>`;
     };
     body = rows.map((row, i) => { const nsrc = Object.keys(row.members).length;
-      return `<div class="orow bkrank" data-tip="${memberTip(row).replace(/"/g, "&quot;")}"><div class="orow-head">
-      <span class="who"><span class="bkrank-n">${i + 1}</span>${row.key}${nsrc > 1 ? ` <span class="bkrank-src">${nsrc} sources</span>` : ""}</span>
+      return `<div class="orow bkrank" data-tip="${cesc(memberTip(row))}"><div class="orow-head">
+      <span class="who"><span class="bkrank-n">${i + 1}</span>${cesc(row.key)}${nsrc > 1 ? ` <span class="bkrank-src">${nsrc} sources</span>` : ""}</span>
       <span class="on"><b>${money(row.avg)}</b> avg per sale &middot; ${salesCount(row.count)} &middot; ${money(row.premium)} total</span></div>
       <div style="width:${(row.avg / busiest * 100).toFixed(2)}%"><div class="otrack">
         <span class="ogseg" style="width:100%;background:var(--bar)"></span></div></div></div>`; }).join("");
@@ -5567,7 +5690,7 @@ function mergeServiceDocs(docs) {
   const m = { days: docs.map(x => x.date), team: last.team, pipelines: last.pipelines,
     tasks: {}, completed: [], renewals: [], unnamed: {}, callbacks: [], util: {}, taskRows: [], dials: [], dialDays: 0,
     msg: { days: 0, people: {}, replies: [], sent: [] },
-    front: { days: 0, calls: [], created: [] }, playbook: null,
+    front: { days: 0, calls: [], created: [] }, playbook: null, callTx: {},
     openRows: (last.srs || {}).open_rows || null,
     backlog: (last.srs || {}).backlog || {}, lateStages: (last.srs || {}).late_payment_stages || [],
     outcomes: (last.renewals || {}).outcomes || [], resolutionsFrom: (last.renewals || {}).resolutions_from,
@@ -5596,6 +5719,9 @@ function mergeServiceDocs(docs) {
       m.front.created.push(...(x.front.created || []).map(r => Object.assign({ day: x.date }, r)));
     }
     if (x.playbook) m.playbook = x.playbook;
+    // Full transcripts of the team's recorded calls (service_calls.py),
+    // by recording id, each with its day for the recording's URL.
+    for (const [id, t] of Object.entries(x.calls_tx || {})) m.callTx[id] = Object.assign({ day: x.date }, t);
     if (x.messages) {
       m.msg.days++;
       for (const [n, c] of Object.entries(x.messages.people || {})) {
@@ -6060,13 +6186,50 @@ function svcDrillFor(m, keys) {
   }
   return "";
 }
+/* A service call's recording and full transcript (Frank, 2026-09-30: "full
+   transcripts for service calls too"), from service_calls.py via the day's
+   `calls_tx`: the coaching cards' own player (syncedRecordingBlk), opened
+   under the row by its Listen & read button. A row whose call was not
+   recorded, or not transcribed yet, shows nothing. */
+function svcTxIds(ids, m) { return (ids || []).filter(id => id && m.callTx[id] && (m.callTx[id].turns || []).length); }
+function svcTxButton(ids, m) {
+  const got = svcTxIds(ids, m);
+  if (!got.length) return "";
+  const label = got.some(id => m.callTx[id].redacted) ? "Read" : "Listen &amp; read";
+  return `<button class="ghost svc-tx" data-label="${label}" style="padding:2px 8px;font-size:12px">${label}</button>`;
+}
+function svcTxRow(ids, m, cols) {
+  const got = svcTxIds(ids, m);
+  if (!got.length) return "";
+  // A call where a card, bank or social security number came up keeps its
+  // transcript (numbers removed) but never plays: the recording still has
+  // the number in it (service_calls.redact_turns).
+  if (got.some(id => m.callTx[id].redacted)) {
+    const esc = t => String(t == null ? "" : t).replace(/[&<>"]/g, ch => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[ch]));
+    const lines = got.flatMap(id => m.callTx[id].turns).map(x =>
+      `<p class="tturn t${/\(service\)/.test(x.who) ? 0 : 1}"><span class="tw">${esc(x.who)}</span>${esc(x.text)}</p>`).join("");
+    return `<tr class="svc-tx-row" hidden><td colspan="${cols}"><div class="blk"><div class="bl">Transcript</div>
+      <p class="sd" style="margin:0 0 4px">A payment number came up on this call, so it is shown without the recording, numbers removed.</p>
+      <div class="scb" style="font-size:12px;padding:6px 2px;max-height:420px;overflow:auto">${lines}</div></div></td></tr>`;
+  }
+  const turns = got.flatMap((id, r) => m.callTx[id].turns.map(x => Object.assign({ r }, x)));
+  return `<tr class="svc-tx-row" hidden><td colspan="${cols}">${syncedRecordingBlk({ day: m.callTx[got[0]].day, recording_ids: got, turns })}</td></tr>`;
+}
+document.addEventListener("click", e => {
+  const b = e.target.closest && e.target.closest(".svc-tx");
+  if (!b) return;
+  const row = b.closest("tr").nextElementSibling;
+  if (!row || !row.classList.contains("svc-tx-row")) return;
+  row.hidden = !row.hidden;
+  b.innerHTML = row.hidden ? b.dataset.label : "Hide";
+});
 function svcDialTable(rs, m) {
   if (!rs.length) return '<p class="sd">None.</p>';
   const secs = x => x >= 60 ? `${Math.floor(x / 60)}m ${String(x % 60).padStart(2, "0")}s` : `${x}s`;
   const rows = [...rs].sort((a, b) => (b.day || "").localeCompare(a.day || "") || (b.first || "").localeCompare(a.first || "")).map(r => `<tr>
     <td>${svcTime(r.first)}</td><td>${svcLink(r.link_kind, r.link_id, r.name || fmtPhone(r.number))}<div style="font-size:11.5px;color:var(--text-muted)">${cesc(fmtPhone(r.number))} &middot; ${cesc(r.bucket || "")}</div></td>
-    <td>${svcFirst(r.who)}</td><td class="num">${r.attempts}</td><td class="num">${r.seconds ? secs(r.seconds) : "—"}</td></tr>`).join("");
-  return `<div class="scroll"><table class="rtable"><thead><tr><th>First dial</th><th>Called</th><th>By</th><th class="num">Dials</th><th class="num">Longest connected</th></tr></thead><tbody>${rows}</tbody></table></div>`;
+    <td>${svcFirst(r.who)}</td><td class="num">${r.attempts}</td><td class="num">${r.seconds ? secs(r.seconds) : "—"}</td><td>${svcTxButton(r.recs, m)}</td></tr>${svcTxRow(r.recs, m, 6)}`).join("");
+  return `<div class="scroll"><table class="rtable"><thead><tr><th>First dial</th><th>Called</th><th>By</th><th class="num">Dials</th><th class="num">Longest connected</th><th>Call</th></tr></thead><tbody>${rows}</tbody></table></div>`;
 }
 /* The Service Digest's people (Frank, 2026-09-29: "no leaderboard but cards
    per producer with their own tasks/SR's completed, dials ... Speed to
@@ -6171,8 +6334,8 @@ function svcCallTable(rs, m) {
   if (!rs.length) return '<p class="sd">None.</p>';
   const rows = [...rs].sort((a, b) => (b.at || "").localeCompare(a.at || "")).map(r => `<tr>
     <td>${svcTime(r.at)}</td><td>${cesc(fmtPhone(r.number))}</td><td>${svcFirst(r.who)}</td>
-    <td class="num">${fmtMins(Math.round((r.seconds || 0) / 60))}</td></tr>`).join("");
-  return `<div class="scroll"><table class="rtable"><thead><tr><th>Answered</th><th>Caller</th><th>By</th><th class="num">On the line</th></tr></thead><tbody>${rows}</tbody></table></div>`;
+    <td class="num">${fmtMins(Math.round((r.seconds || 0) / 60))}</td><td>${svcTxButton([r.rec], m)}</td></tr>${svcTxRow([r.rec], m, 5)}`).join("");
+  return `<div class="scroll"><table class="rtable"><thead><tr><th>Answered</th><th>Caller</th><th>By</th><th class="num">On the line</th><th>Call</th></tr></thead><tbody>${rows}</tbody></table></div>`;
 }
 function svcCreatedTable(rs, m) {
   if (!rs.length) return '<p class="sd">None.</p>';

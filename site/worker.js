@@ -940,6 +940,63 @@ async function callClaude(env, { system, messages, maxTokens }) {
     .join("");
 }
 
+/* The same call, streamed (Frank, 2026-09-30: start the voice on the first
+   sentence): returns a plain-text stream of the reply as Claude writes it,
+   so the board can hand each finished sentence to the voice while the rest
+   is still being written. Same model and settings as callClaude. */
+async function callClaudeStream(env, { system, messages, maxTokens }) {
+  if (!env.ANTHROPIC_API_KEY) {
+    throw new Error("ANTHROPIC_API_KEY is not configured on this Worker");
+  }
+  // Prompt caching (2026-09-30, "it still takes too long to respond"): the
+  // persona and the conversation so far are the same on every turn of a
+  // session, so they are marked for caching -- each turn after the first
+  // reads them back instead of processing them again, which starts the reply
+  // sooner and bills them at a tenth. A prompt under the model's minimum is
+  // simply not cached; the reply is the same either way.
+  const cached = messages.map((m, i) => i === messages.length - 1 && m.content
+    ? { role: m.role, content: [{ type: "text", text: m.content, cache_control: { type: "ephemeral" } }] }
+    : m);
+  const r = await fetch("https://api.anthropic.com/v1/messages", {
+    method: "POST",
+    headers: {
+      "x-api-key": env.ANTHROPIC_API_KEY,
+      "anthropic-version": "2023-06-01",
+      "content-type": "application/json",
+    },
+    body: JSON.stringify({
+      model: "claude-sonnet-5",
+      max_tokens: maxTokens,
+      system: [{ type: "text", text: system, cache_control: { type: "ephemeral" } }],
+      messages: cached,
+      thinking: { type: "disabled" },
+      stream: true,
+    }),
+  });
+  if (!r.ok || !r.body) {
+    throw new Error(`Claude API ${r.status}: ${(await r.text()).slice(0, 300)}`);
+  }
+  // Server-sent events in, text deltas out.
+  const dec = new TextDecoder(), enc = new TextEncoder();
+  let buf = "";
+  return r.body.pipeThrough(new TransformStream({
+    transform(chunk, ctl) {
+      buf += dec.decode(chunk, { stream: true });
+      let i;
+      while ((i = buf.indexOf("\n")) >= 0) {
+        const line = buf.slice(0, i).trim();
+        buf = buf.slice(i + 1);
+        if (!line.startsWith("data:")) continue;
+        let ev;
+        try { ev = JSON.parse(line.slice(5)); } catch (_) { continue; }
+        if (ev.type === "content_block_delta" && ev.delta && ev.delta.type === "text_delta" && ev.delta.text) {
+          ctl.enqueue(enc.encode(ev.delta.text));
+        }
+      }
+    },
+  }));
+}
+
 function roleplaySlug(name) {
   return String(name || "unknown").trim().toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "") || "unknown";
 }
@@ -985,7 +1042,7 @@ function prospectInstruction(profile) {
  * never what they object to. */
 function languageInstruction(language) {
   if (language === "es") {
-    return "\n\nLanguage: you speak Spanish -- everyday Mexican Spanish, the way a customer in Arizona talks on the phone -- and you are more comfortable in it than in English. Reply only in Spanish. If the producer speaks English, ask whether they speak Spanish (\"¿habla español?\") and keep answering in Spanish.";
+    return "\n\nLanguage: you speak Spanish -- everyday Mexican Spanish, the way a customer in Arizona talks on the phone -- and you are more comfortable in it than in English. Reply only in Spanish, and EVERY word in Spanish: no English words or fillers at all -- not \"okay\", \"yeah\", \"so\", \"insurance\", \"quote\", \"email\" or \"full coverage\". Say seguro, cotización, póliza, cobertura completa, deducible, pago mensual, correo, and write numbers and prices as words or digits, never with English. Only a company's name stays as it is (Progressive, Geico, Farmers). The example objections above are written in English only to describe them -- say them in your own Spanish. If the producer speaks English, ask whether they speak Spanish (\"¿habla español?\") and keep answering in Spanish.";
   }
   if (language === "mix") {
     return "\n\nLanguage: you are bilingual and talk the way many Arizona families do, switching between English and Spanish naturally, sometimes mid-sentence (\"sí, I already have Progressive, pero está muy caro\"). Mix both in most replies, whichever language the producer uses.";
@@ -1047,17 +1104,38 @@ async function roleplayFace(env, key) {
   return new Response(img, { headers });
 }
 
+/* The prospect talks a little faster than Deepgram's default (Frank,
+   2026-09-29: "they talk to slow"), with Deepgram's own speed setting,
+   which keeps the voice natural. Deepgram says it is not supported in every
+   language yet, so a refused speed is retried at normal speed and this
+   Worker stops asking for that language (per isolate). Raised to 1.5 on
+   2026-09-30 ("it still talks really slow"): measured 25-38% shorter than
+   normal, English and Spanish alike. */
+const RP_SPEAK_SPEED = 1.5;   // Deepgram's maximum (1.8 is refused); 1.2 barely changed Spanish (~8% shorter)
+const rpSpeedRefused = new Set();   // "en" / "es"
+async function deepgramSpeak(env, voice, text) {
+  const call = (speed) => fetch(`https://api.deepgram.com/v1/speak?model=${voice}&encoding=mp3${speed ? `&speed=${speed}` : ""}`, {
+    method: "POST",
+    headers: { Authorization: `Token ${env.DEEPGRAM_API_KEY}`, "content-type": "application/json" },
+    body: JSON.stringify({ text }),
+  });
+  const lang = voice.slice(-2);
+  if (rpSpeedRefused.has(lang)) return call(null);
+  const r = await call(RP_SPEAK_SPEED);
+  if (r.status !== 400) return r;
+  const detail = await r.text();
+  if (!/speed/i.test(detail)) return new Response(detail, { status: 400 });
+  rpSpeedRefused.add(lang);
+  return call(null);
+}
+
 async function roleplaySpeak(env, url, ctx) {
   if (!env.DEEPGRAM_API_KEY) return json({ error: "DEEPGRAM_API_KEY is not configured on this Worker" }, 503);
   const voice = url.searchParams.get("voice") || "";
   const text = (url.searchParams.get("text") || "").trim();
   if (!/^aura-2-[a-z]+-(en|es)$/.test(voice)) return json({ error: "unknown voice" }, 400);
   if (!text || text.length > 2000) return json({ error: "text must be 1-2000 characters" }, 400);
-  const r = await fetch(`https://api.deepgram.com/v1/speak?model=${voice}&encoding=mp3`, {
-    method: "POST",
-    headers: { Authorization: `Token ${env.DEEPGRAM_API_KEY}`, "content-type": "application/json" },
-    body: JSON.stringify({ text }),
-  });
+  const r = await deepgramSpeak(env, voice, text);
   if (!r.ok) return json({ error: `Deepgram ${r.status}`, detail: (await r.text()).slice(0, 300) }, 502);
   // A copy of every line the prospect speaks, so a saved session can be
   // played back (Frank, 2026-09-29: "i want to be able to hear it"). The
@@ -1222,6 +1300,18 @@ async function roleplayTurn(request, env) {
   const system = persona.system + focusObjectionInstruction(focusObjections) + leadSourceInstruction(leadSource)
     + prospectInstruction(prospect) + languageInstruction(body.language);
 
+  if (body.stream === true) {
+    try {
+      const text = await callClaudeStream(env, { system, messages, maxTokens: 300 });
+      // text/event-stream + no-transform: Cloudflare may hold back and
+      // compress a text/plain body, which would deliver the reply in one
+      // lump and undo the first-sentence start. The body is still plain
+      // reply text, not SSE frames.
+      return new Response(text, { headers: { "content-type": "text/event-stream; charset=utf-8", "cache-control": "no-store, no-transform" } });
+    } catch (e) {
+      return json({ error: "role-play turn failed", detail: String(e).slice(0, 300) }, 502);
+    }
+  }
   try {
     const reply = await callClaude(env, { system, messages, maxTokens: 300 });
     return json({ reply: reply.trim() });
@@ -1261,12 +1351,25 @@ async function roleplayGrade(request, env) {
     if (h.role === "producer") {
       if (typeof h.audio !== "string" || !h.audio.startsWith(own) || h.audio.includes("..")) delete h.audio;
     } else {
-      delete h.audio;
+      // A streamed reply was spoken sentence by sentence (h.parts), each
+      // kept on its own; an older one in one piece. `audio` is the first
+      // clip, `audios` every clip in order when there is more than one.
+      delete h.audio; delete h.audios;
+      const parts = Array.isArray(h.parts)
+        ? h.parts.filter((x) => typeof x === "string" && x.trim()).slice(0, 20).map((x) => x.slice(0, 2000).trim())
+        : [];
+      delete h.parts;
+      if (parts.length) h.parts = parts;
       if (voiceOk && typeof h.content === "string" && h.content.trim()) {
-        try {
-          const k = await rpTtsKey(body.voice, h.content.slice(0, 2000).trim());
-          if (await env.BOARD.head(k)) h.audio = k;
-        } catch (_) {}
+        const keys = [];
+        for (const t of (parts.length ? parts : [h.content.slice(0, 2000).trim()])) {
+          try {
+            const k = await rpTtsKey(body.voice, t);
+            if (await env.BOARD.head(k)) keys.push(k);
+          } catch (_) {}
+        }
+        if (keys.length) h.audio = keys[0];
+        if (keys.length > 1) h.audios = keys;
       }
     }
   }

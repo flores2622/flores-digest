@@ -139,6 +139,15 @@ def run(day, dry_run=False):
         log(f"  call summaries: failed ({type(e).__name__}: {e}) -- "
             f"coaching cards will be missing or stale this checkpoint")
 
+    # The service team's call transcripts (service_calls.py, Frank
+    # 2026-09-30), built here through the day so the nightly only adds the
+    # last hour's. Same guard: a failure costs only the transcripts.
+    try:
+        import service_calls
+        service_calls.build(day, log=log)
+    except Exception as e:
+        log(f"  service transcripts: failed ({type(e).__name__}: {e})")
+
     doc = publish_board.build(day, log=log, live=True)
 
     # call_summary.build() and coaching_cards.build() (the latter runs inside

@@ -10,6 +10,8 @@ over the threshold rather than delivering a truncated report.
 """
 import base64
 import sys
+import time
+import uuid
 
 import requests
 
@@ -17,6 +19,8 @@ import digest_config as cfg
 from secrets_load import load
 
 API = "https://api.resend.com/emails"
+# Seconds to wait before the 2nd and 3rd attempt (2026-09-30).
+RETRY_WAITS = (5, 15)
 UA = "FloresDigest/1.0 (+frank@floresinsuranceagency.com)"
 
 
@@ -52,14 +56,39 @@ def send(subject, html, to, attachments=(), sender=None, binary=False):
             for name, content in attachments
         ]
 
-    r = requests.post(API, json=payload, timeout=60, headers={
+    headers = {
         "Authorization": f"Bearer {key}",
         "Content-Type": "application/json",
         "User-Agent": UA,          # without this, Cloudflare returns error 1010
-    })
-    if r.status_code >= 300:
-        raise SystemExit(f"Resend {r.status_code}: {r.text[:400]}")
-    return r.json()
+        # One key per send() call, reused by its retries, so a retry after a
+        # timeout on a request Resend DID accept is not a second email. New on
+        # every call, so a deliberate re-send is never swallowed as a repeat.
+        "Idempotency-Key": uuid.uuid4().hex,
+    }
+    # BOUNDED RETRY (2026-09-30). One Resend 5xx, 429 or dropped connection
+    # used to raise straight out of the nightly run, and the audience never
+    # got its email. Three attempts, 5s and 15s apart, on those only -- any
+    # other 4xx (bad key, bad payload) will not get better by asking again.
+    for attempt in range(len(RETRY_WAITS) + 1):
+        last = attempt == len(RETRY_WAITS)
+        try:
+            r = requests.post(API, json=payload, timeout=60, headers=headers)
+        except (requests.Timeout, requests.ConnectionError) as e:
+            if last:
+                raise SystemExit(f"Resend unreachable after {attempt + 1} attempts: "
+                                 f"{type(e).__name__}: {str(e)[:200]}")
+            print(f"  resend: {type(e).__name__}, retrying in "
+                  f"{RETRY_WAITS[attempt]}s (attempt {attempt + 1})")
+            time.sleep(RETRY_WAITS[attempt])
+            continue
+        if (r.status_code == 429 or r.status_code >= 500) and not last:
+            print(f"  resend: HTTP {r.status_code}, retrying in "
+                  f"{RETRY_WAITS[attempt]}s (attempt {attempt + 1})")
+            time.sleep(RETRY_WAITS[attempt])
+            continue
+        if r.status_code >= 300:
+            raise SystemExit(f"Resend {r.status_code}: {r.text[:400]}")
+        return r.json()
 
 
 if __name__ == "__main__":

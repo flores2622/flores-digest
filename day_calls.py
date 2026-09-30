@@ -315,7 +315,13 @@ def fetch_notes(lead_ids, az=None, day=None, log=print):
         f.write_text(json.dumps(n))
         _FETCHED.add(lid)
         got[lid] = n
-    if failed:
+    global LAST_FETCH
+    LAST_FETCH = (failed, len(got))
+    if notes_shortfall():
+        log(f"  NOTES INCOMPLETE: {failed} of {len(got)} leads' notes could not be "
+            f"fetched from AgencyZoom -- contacts and outcomes are built on "
+            f"them, so daily.py will NOT email this build (boards still build)")
+    elif failed:
         log(f"  notes: {failed} lead(s) could not be fetched -- using the "
             f"previous copy where there is one")
     return got
@@ -324,6 +330,20 @@ def fetch_notes(lead_ids, az=None, day=None, log=print):
 # Leads fetched fresh by THIS process, so a second fetch_notes() call in the
 # same run does not pay for them twice.
 _FETCHED = set()
+
+# (failed, leads) from this process's last fetch_notes() call (2026-09-30).
+LAST_FETCH = (0, 0)
+
+
+def notes_shortfall():
+    """(failed, leads) when too many leads' notes could not be fetched to trust
+    the day -- more than 10% and at least 10 -- else None. A failed lead
+    falls back to an older copy or to nothing, and notes win over the
+    recording (Frank, 2026-08-18), so a mass AgencyZoom failure used to go
+    out as a low contact rate with nothing said. daily.py refuses to email
+    on it; the boards still build."""
+    failed, n = LAST_FETCH
+    return (failed, n) if failed >= 10 and failed > 0.10 * n else None
 
 if __name__ == "__main__":
     import sys

@@ -160,7 +160,26 @@ Everything caches under `data/`, so a re-run resumes rather than restarting.
   American + Hispanic list in every language; a Spanish or mixed prospect
   has a Hispanic surname. **Crystal never gets Spanish or mixed** (Frank,
   2026-09-29: "she doesnt speak it") -- `RP_ENGLISH_ONLY`.
-  The Worker's `/api/roleplay/speak` streams them and needs the
+  They speak at 1.5x, Deepgram's maximum (`RP_SPEAK_SPEED`, Deepgram's
+  `speed`; Frank, 2026-09-29: "they talk to slow", raised from 1.2 on
+  2026-09-30: "it still talks really slow" -- 1.2 was only ~8% shorter in
+  Spanish) -- a refused speed is retried at normal speed. **A Spanish
+  prospect uses no English words** (Frank, 2026-09-30: "its mixing English
+  words with Spanish"): `languageInstruction("es")` names the Spanish
+  insurance words; only company names stay. The MIXED third code-switches
+  by design. **They start talking on the first sentence** (Frank, 2026-09-30,
+  still on claude-sonnet-5 -- "i dont want haiku 4.5"): the turn is
+  streamed (`callClaudeStream`, `stream: true`), each finished sentence goes
+  to Deepgram at once and they play back to back (`rpSpeechQueue`; under 20
+  characters is held for the next), and the mic returns only after the last. The turn goes out
+  streamed as `text/event-stream` with `no-transform` (Cloudflare may hold
+  back a text/plain body), with the persona and conversation prompt-cached,
+  and **the reply is asked for early** (2026-09-30, "it still takes too long
+  to respond"): at `RP_EARLY_MS` (0.7 s) of silence, quietly; more words
+  throw it away, and the prospect still answers only the whole turn at 1.5 s.
+  A streamed line keeps its sentences as `parts`; the grade attaches every
+  clip as `audios` (first also as `audio`), and Session History plays them
+  in order. The Worker's `/api/roleplay/speak` streams them and needs the
   `DEEPGRAM_API_KEY` secret (without it the browser's voice speaks). Apollo
   grades in English whatever the call's language. **Producers rate the voice
   after each graded session** (stars, again yes / no, a comment), saved on
@@ -180,7 +199,7 @@ Everything caches under `data/`, so a re-run resumes rather than restarting.
   initials.
   **The mic waits for the producer to finish** (Frank, 2026-09-29: "fix the
   mic cutting off"): it listens continuously and sends the turn after
-  `RP_PAUSE_MS` (2 s) of silence -- a tap on the mic sends at once -- never
+  `RP_PAUSE_MS` (1.5 s, Frank's pick -- 2 s felt slow) of silence -- a tap on the mic sends at once -- never
   at the browser's first final result, which cut people off mid-sentence.
   When Chrome ends the session itself it restarts at once, keeping the words
   and the turn's recording; a blocked mic stops for good.
@@ -356,6 +375,17 @@ Commercial boards and saves the day to R2; it skips the sales-log sync and the
 AgencyZoom missed-call tasks along with the email. `--no-send` (hand rebuilds)
 still stops before anything is published.
 
+**Each audience that is emailed leaves a sent marker** (2026-09-30):
+`data/sent_<day>_ops.json` / `_staff.json`, carried in R2 with the day's
+files. A re-run skips an audience already sent, and says so; `--resend`
+(or deleting the marker here AND in R2's cache/<day>/) sends it again. A
+send that fails (after `send_digest`'s three tries) no longer stops the
+run: the other audience, the boards, the R2 save, the sales log and the
+missed-call tasks still run, then the run fails so the healthcheck alerts.
+It also refuses to email -- boards still built -- when more than 10% (and
+10+) of the leads' notes could not be fetched (`day_calls.notes_shortfall`).
+R2 cache syncs and Insightful never stop the run; they log and carry on.
+
 **The nightly run checks in** (`healthcheck.py`, Frank, 2026-09-29): with
 `HEALTHCHECK_URL` (a Healthchecks.io ping URL) in the cloud environment's
 variables, `daily.py` pings start, success ("sent" / "held") and failure
@@ -481,6 +511,18 @@ and anything without the glow is the checkpoint's (Frank, 2026-09-24).
   once a day (`worker-private/lead_sources.json`). Same figures, measured on
   a mocked day with leads marked and unmarked sold: 132 AgencyZoom requests
   -> 75 over 30 refreshes.
+  **It calls api.agencyzoom.com** (Frank, 2026-09-30), the address
+  AgencyZoom's published spec gives integrations
+  (api.agencyzoom.com/openapi/agencyzoom.yaml: "rate limit of 120 calls per
+  minute during the day and night"), not app.agencyzoom.com, the web app's
+  own -- a separate AWS load balancer. The refusals above were all on the
+  app address, from 2:29 PM two days running whatever the volume; same
+  endpoints, data and login on both (checked 2026-09-30). The nightly run
+  still uses app.agencyzoom.com (never refused). **Every AgencyZoom request
+  is counted** by hour and endpoint, and every refusal kept whole -- status,
+  headers (`server` says whose firewall), the first of the body, and the
+  address Cloudflare sent it from -- in `worker-private/az_log/<day>.json`
+  (`flushAzLog`, once per run). Read that before guessing why it refused.
 - **Contact rate, live contacts and Avg Talk Time are live too** (Frank,
   2026-09-28: "avg talk time, contact rate, and texts and emails should all
   be live as well"), and they are PROVISIONAL: the Worker cannot hear a
@@ -943,6 +985,37 @@ Crystal (hybrid); credit always goes to whoever COMPLETED the SR or task.
   left out, renewal numbers split to the Renewals side. Past days: `python3
   service_digest.py --add-dials 2026-09-01 2026-09-28` (backs up under
   `backups/<today>-dials/`, adds only `dials`). The Renewals tab is next.
+- **Every recorded service call has its full transcript** (Frank,
+  2026-09-30: "full transcripts for service calls too"). `service_calls.py`
+  takes exactly the calls the Service Center's rows list -- every inbound
+  call a team member picked up first (`front_figures`, "calls answered",
+  each row's `rec`) and every connected dial on `dial_figures`' rows (each
+  row's `recs`: Debbie's and Amanda's every dial, Crystal's only to service
+  numbers, commercial-only households left out) -- downloads the recordings
+  the producers' pass did not (Debbie's and Amanda's were never downloaded
+  before; transcribe.download's 8/min pacing) and saves Deepgram's timed
+  turns in `data/servicetx_<day>.json` (a DAY_FILE in R2; the audio rides
+  with the rest of the day's recordings). The team member reads "<First
+  name> (service):" from their own introduction -- or, on a call-in the call
+  log says they picked up, from the agency's greeting ("Thank you for calling
+  Farmers Insurance", which Debbie says without her name;
+  `deepgram_stt.ANSWER_GREETING`, never used on producers' calls, whose
+  transferred call-ins start with the front desk's greeting) -- the customer
+  "<First name> (customer):" by the lead rule, everyone else Speaker N.
+  **Payment numbers never reach the board** (`service_calls.redact_turns`):
+  `messages.redact` on every line, and after any mention of a card /
+  account / routing / social number every run of 4+ digits in the next six
+  turns, whoever said it (a number read aloud comes back split). It errs
+  toward removing too much (phone numbers, a premium). A call where that
+  happened is `redacted` and the board shows it as text only, never the
+  recording, which still holds the number (7 of 73 on 09-28). Built at every
+  checkpoint (`intraday.py`) and topped up by the nightly's
+  `service_digest.build`, which keeps the listed ones as the document's
+  `calls_tx`; the Calls answered and Dials lists get a **Listen & read**
+  button that opens the coaching cards' own player under the row
+  (`svcTxRow`). ~60 recordings / ~150 minutes a day (09-28), about $1 of
+  Deepgram. Days before 2026-09-30 have none; `python3 service_calls.py
+  <day>` builds one by hand (a paid read per recording not read before).
 - **Documents hold rows, never medians**, so the board can add any range up.
   **Every card opens the rows it counts** (Frank, 2026-09-25), so the rows
   carry what a list needs: SRs name, household (= the AgencyZoom customer
@@ -1112,9 +1185,8 @@ name> (customer):", in the record's spelling. Names match across a
 transcription's or a record's spelling (Brianna / Brayana, Meredith /
 Merideth) only with the same first AND last letter, so Juan is never Juana
 nor Mario Maria -- a husband and wife on one number. 09-25 / 09-28: 11
-leads and 8 customers named, all checked by hand. The nightly only
-full-transcribes the calls Apollo coaches, so a renewal or service call's
-customer shows up in `compare_stt.py`'s report and on any coached call. It is paid per audio minute (~226
+leads and 8 customers named, all checked by hand. **The service team's
+calls are full-transcribed too** (Athena, below: `service_calls.py`). It is paid per audio minute (~226
 min on 2026-09-28), cached per recording under `data/deepgram/` and carried
 between containers in R2 as `cache/<day>/deepgram_<day>.json` (`r2_cache`), so a
 recording is paid for once however many checkpoints touch it. A leg with

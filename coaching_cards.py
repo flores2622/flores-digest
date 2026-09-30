@@ -1004,6 +1004,11 @@ def build(day, log=print):
                              stage_block=pipelines.prompt_block(*_group_stage(grp, day)),
                              history_block=_history(p, grp, day, history_ctx, log))
                 cache[gck] = d
+                # Saved after EVERY card, as call_summary.build saves each
+                # row (2026-09-30): a run killed partway through used to lose
+                # every card it had already paid for, and the next run bought
+                # them all again.
+                cpath.write_text(json.dumps(cache, indent=1))
             except Exception as e:
                 log(f"    {lead_name}: coaching read failed ({type(e).__name__}) -- no card")
             if i % 5 == 0:
