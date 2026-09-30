@@ -818,6 +818,8 @@ tr.rdrill-row.on td { box-shadow: inset 0 -2px 0 var(--s1); }
 /* Road Map (Frank, 2026-09-30): Learning Center > Road Map, the plain-
    language guides in blueprints.js. One reading column. */
 .bp { max-width: 760px; }
+.bp .bptitle { margin-top: 0; }
+.bppick label { font-size: 12.5px; font-weight: 600; color: var(--text-secondary); }
 .bp .bpwho { color: var(--text-secondary); font-size: 14px; margin: 0 0 6px; line-height: 1.55; }
 .bp .bpdate { color: var(--text-muted); font-size: 12px; margin: 0 0 18px; }
 .bp .bptoc { display: flex; flex-wrap: wrap; gap: 4px 14px; font-size: 12.5px; margin: 0 0 8px; }
@@ -1017,8 +1019,8 @@ let view = "digest";
 const CENTERS = {
   salescenter: [["digest", "Digest"], ["sales", "Sales"], ["messages", "Texts & Emails"]],
   coaching: [["coaching", "Coaching"]],
-  learning: [["roleplay", "Role Play"], ["rphistory", "Session History"], ["training", "Training"], ["blueprint", "Road Map"]],
-  service: [["service", "Service Digest"], ["renewals", "Renewals"]],
+  learning: [["roleplay", "Role Play"], ["rphistory", "Session History"], ["training", "Training"], ["blueprint", "Apollo's Road Map"]],
+  service: [["service", "Service Digest"], ["renewals", "Renewals"], ["athenamap", "Athena's Road Map"]],
   commercial: [["commercial", "Commercial"]],
 };
 const centerPick = Object.fromEntries(Object.entries(CENTERS).map(([c, pages]) => [c, pages[0][0]]));
@@ -6164,9 +6166,9 @@ async function paintTab() {
     const data = await loadTraining();
     v.innerHTML = trainingPanel(data);
     wireTrainingPanel(data);
-  } else if (view === "blueprint") {
-    $("#topsub").textContent = "how the Sales Floor works, in plain language";
-    v.innerHTML = blueprintPanel();
+  } else if (view === "blueprint" || view === "athenamap") {
+    $("#topsub").textContent = view === "athenamap" ? "how the service team works, in plain language" : "how the Sales Floor works, in plain language";
+    v.innerHTML = blueprintPanel(view === "athenamap" ? "athena" : "apollo");
     wireBlueprintPanel();
   } else if (view === "sales") {
     $("#topsub").textContent = "log today's sales, reference any past folio's sheet, or break it down by source/type/producer -- self-reported, not the official Premium Sold figure";
@@ -7690,7 +7692,7 @@ async function loadDay(day) {
    (shown only to the Role Play history viewers -- /api/me's `all`) and the
    New / Mid-Level / Experienced producer guides for everyone. */
 let IS_MANAGER = false;
-let bpPick = "";
+const bpPick = { apollo: "", athena: "" };
 async function initMe() {
   try {
     const r = await fetch("/api/me", { cache: "no-store" });
@@ -7698,9 +7700,9 @@ async function initMe() {
   } catch (_) {}
   if (view === "blueprint") paint();
 }
-function bpGuides() {
+function bpGuides(map) {
   const all = ((window.BLUEPRINTS || {}).guides || []);
-  return all.filter(g => !g.manager || IS_MANAGER);
+  return all.filter(g => (g.map || "apollo") === map && (!g.manager || IS_MANAGER));
 }
 // **bold** is the only markup the guides use.
 const bpText = t => cesc(t).replace(/\*\*([^*]+)\*\*/g, "<strong>$1</strong>");
@@ -7713,16 +7715,21 @@ function bpItem(it) {
     <tbody>${it.table.rows.map(r => `<tr>${r.map(c => `<td>${bpText(c)}</td>`).join("")}</tr>`).join("")}</tbody></table></div>`;
   return "";
 }
-function blueprintPanel() {
-  const guides = bpGuides();
+/* Apollo's Road Map is one tab with a dropdown (Frank, 2026-09-30:
+   "manager/coaching, and one for the 3 producer levels"); Athena's is the
+   Service Center's own tab, one guide, no dropdown. */
+function blueprintPanel(map) {
+  const guides = bpGuides(map);
   if (!guides.length) return '<div class="empty">The Road Map did not load. Refresh the page.</div>';
-  const g = guides.find(x => x.key === bpPick) || guides[0];
-  bpPick = g.key;
-  const pills = guides.map(x => `<button class="subtab ${x.key === g.key ? "sel" : ""}" data-bp="${x.key}">${cesc(x.title)}</button>`).join("");
+  const g = guides.find(x => x.key === bpPick[map]) || guides[0];
+  bpPick[map] = g.key;
   const upd = (window.BLUEPRINTS || {}).updated;
+  const pick = guides.length > 1 ? `<div class="controls bppick"><label for="bpsel">Guide</label>
+    <select id="bpsel">${guides.map(x => `<option value="${x.key}"${x.key === g.key ? " selected" : ""}>${cesc(x.label || x.title)}</option>`).join("")}</select></div>` : "";
   const toc = g.sections.map((sec, i) => `<a href="#bp-${g.key}-${i}" data-bpjump="bp-${g.key}-${i}">${cesc(sec.h)}</a>`).join("");
-  return `<div class="subtabs" style="flex-wrap:wrap">${pills}</div>
+  return `${pick}
   <div class="bp">
+    <h2 class="bptitle">${cesc(g.title)}</h2>
     <p class="bpwho">${bpText(g.who)}</p>
     ${upd ? `<p class="bpdate">Last updated ${cesc(fmtShortDate(upd))}</p>` : ""}
     <nav class="bptoc" aria-label="Sections">${toc}</nav>
@@ -7730,7 +7737,8 @@ function blueprintPanel() {
   </div>`;
 }
 function wireBlueprintPanel() {
-  $$("#view [data-bp]").forEach(b => b.onclick = () => { bpPick = b.dataset.bp; paint(); window.scrollTo(0, 0); });
+  const sel = $("#bpsel");
+  if (sel) sel.onchange = () => { bpPick[view === "athenamap" ? "athena" : "apollo"] = sel.value; paint(); window.scrollTo(0, 0); };
   $$("#view [data-bpjump]").forEach(a => a.onclick = e => {
     e.preventDefault();
     const t = document.getElementById(a.dataset.bpjump);
@@ -7772,12 +7780,12 @@ const TOUR_STEPS = [
     text: "Every graded Role Play session, with the grade and the whole conversation. Producers see their own; managers see everyone's." },
   { view: "training", title: "Training",
     text: "Flashcards, quizzes and matching games on objections, what to ask, and technique." },
-  { view: "blueprint", find: () => $("#view .subtabs"), title: "The Road Map",
-    text: "Plain-language guides to everything on the board: one for new producers, one for mid-level, one for experienced, and Apollo's Road Map (the ARM) for managers." },
+  { view: "blueprint", find: () => $("#view .bppick") || $("#view .bp"), title: "Apollo's Road Map",
+    text: "Plain-language guides to the sales side of the board. Pick one from the dropdown: New, Mid-Level or Experienced Producer, and Manager / Coaching for managers." },
   { view: "service", title: "The Service Center",
-    text: "Athena's side: the service team's SRs, tasks, call backs and texts, and the Renewals tab." },
+    text: "Athena's side: the service team's SRs, tasks, call backs and texts, and the Renewals tab. Athena's Road Map, the last tab here, explains it all." },
   { find: () => $("#tourbtn"), title: "That's the tour",
-    text: "You can take it again any time from this button. The Road Map in the Learning Center goes into more detail." },
+    text: "You can take it again any time from this button. Apollo's Road Map in the Learning Center and Athena's in the Service Center go into more detail." },
 ];
 const tourSection = title => [...$$("#view .sect")].find(sec => {
   const h = sec.querySelector("h2");

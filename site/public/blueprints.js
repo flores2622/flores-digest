@@ -3,10 +3,15 @@
    know what everything means, how the model coaches, where everything is";
    "They should be in regular language, not AI prompt language").
 
-   One manager guide (Apollo's Road Map, the ARM) and three producer guides (new,
+   One manager guide (Apollo's Road Map, the ARM), Athena's Road Map for the
+   service team (Frank, 2026-09-30: "make an Athena Road Map for the service
+   team too"), and three producer guides (new,
    mid-level, experienced). The board renders them on Learning Center >
-   Road Map (blueprintPanel in index.html). Frank named it 2026-09-30:
-   "call it Apollo's Road Map (ARM)".
+   Apollo's Road Map and Service Center > Athena's Road Map (blueprintPanel in
+   index.html). Frank, 2026-09-30: "call it Apollo's Road Map (ARM)";
+   "Apollos road map should be the name of the full tab, with a dropdown
+   that has options for manager/coaching, and one for the 3 producer
+   levels". `map` says which tab a guide is on, `label` its dropdown name.
 
    KEEP THIS CURRENT. Whenever a change alters what a number means, how
    Apollo scores or coaches a call, what a page shows or where it sits,
@@ -22,7 +27,7 @@ window.BLUEPRINTS = {
   guides: [
 
   /* ------------------------------------------------------------------ */
-  { key: "manager", manager: true, title: "Apollo's Road Map (ARM)",
+  { key: "manager", map: "apollo", label: "Manager / Coaching", manager: true, title: "Apollo's Road Map (ARM)",
     who: "For managers: how the Sales Floor works, what every number means, how Apollo coaches, and how to run coaching when Frank is out.",
     sections: [
     { h: "What this is",
@@ -63,7 +68,7 @@ window.BLUEPRINTS = {
           ["Learning Center > Role Play", "Practice calls against an AI prospect, graded by Apollo."],
           ["Learning Center > Session History", "Every graded Role Play session. Managers see everyone's; a producer sees their own."],
           ["Learning Center > Training", "Flashcards, quizzes and matching games on objections, information gathering and technique."],
-          ["Learning Center > Road Map", "The ARM and the producer guides."],
+          ["Learning Center > Apollo's Road Map", "This guide (Manager / Coaching) and the three producer guides, picked from the dropdown. Athena's Road Map is in the Service Center."],
           ["Service Center", "Athena's side: the Service Digest and the Renewals tab."],
         ] } },
         "Anyone can press **Take the tour** at the bottom of the left bar for a walk through the board.",
@@ -257,7 +262,172 @@ window.BLUEPRINTS = {
     ] },
 
   /* ------------------------------------------------------------------ */
-  { key: "new", title: "New Producer",
+  { key: "athena", map: "athena", label: "Service team", title: "Athena's Road Map",
+    who: "For the service team (Amanda, Crystal and Debbie) and anyone covering for them: each role, how the Service Center counts your work, and how renewals are judged.",
+    sections: [
+    { h: "What Athena is",
+      body: [
+        "Athena is the service side of the Sales Floor, the way Apollo is the sales side. It reads the day's service requests, tasks, calls, texts and emails from AgencyZoom and RingCentral, and shows them on the **Service Center**.",
+        "The rules Athena works from are **Amanda's Service Playbook**: the roles, who handles what, the note standard and the daily checklist. When the playbook changes, Athena changes with it.",
+        { list: [
+          "We say **SR** (service request), never \"ticket\".",
+          "**Credit goes to whoever completed the SR or task**, not whoever created it.",
+          "Anything commercial is Frank's (Cerberus) and stays out of the service team's numbers. The team's work on a commercial household, like a payment or the owner's personal lines, still counts here.",
+        ] },
+      ] },
+
+    { h: "The standard",
+      body: [
+        "**Listen, Understand, Handle, Document, Follow Up.** Every client should feel heard, helped, and confident their request is being handled.",
+        "The goal isn't for one person to handle everything. It's for everyone to know their role, own their work, and work together to keep things moving.",
+      ] },
+
+    { h: "The three roles",
+      body: [
+        { terms: [
+          ["Service Lead: Amanda", "Oversight, delegation, complex service, training, and keeping the department moving. Handles complex or sensitive issues, Spanish-speaking service clients, involved policy changes and coverage questions, and reviews renewals. Watches missed calls, texts and pending tasks, audits notes, and steps in when someone needs help. **The Service Lead is not the default person for every request**; the goal is to delegate and support, not become the team's backlog."],
+          ["Service Team Member: Crystal", "Handles day-to-day service independently: policy questions and changes, billing questions, vehicles and drivers, lienholders, documents and ID cards, renewal questions, and follow-ups. **If you can handle it, handle it.** Check the account, the policy and the notes before passing anything on. Crystal also sells, so she works an opportunity herself."],
+          ["Front Desk: Debbie", "The first impression of the agency. Answers calls, greets walk-ins, handles basic billing, NOCs and admin tasks, and gets each client to the right person. **The front desk doesn't need to solve every issue**; the goal is to identify the need and route it confidently. Debbie passes sales opportunities to a producer."],
+        ] },
+      ] },
+
+    { h: "Who handles what",
+      body: [
+        { table: { head: ["Request", "Who"], rows: [
+          ["Basic billing question, NOC or admin", "Front Desk"],
+          ["Documents, ID cards, address, vehicle, driver or lienholder change", "Service team"],
+          ["Routine policy change, renewal question, cancellation, claim", "Service team"],
+          ["Complex coverage question or an unresolved issue", "Service Lead"],
+          ["New business, a cross-sell, a requote, new coverage", "A producer (Crystal and Amanda can work it themselves)"],
+          ["Anything that needs the owner", "Frank"],
+        ] } },
+        "**When in doubt, start with the service team.** We decide where the request needs to go.",
+        "**Service first, opportunity second.** Don't force a sales conversation into every call, but don't miss the ones clients hand you. \"I'm adding a new vehicle\": handle the change, then see if the household could be reviewed. \"We're buying a house\": handle the need, and make sure the home gets to a producer.",
+      ] },
+
+    { h: "The note standard",
+      body: [
+        "Every note should answer five things, so the next person can pick up without making the client repeat themselves:",
+        { steps: [
+          "**Who** contacted us, or who we contacted",
+          "**What** they needed",
+          "**Why**, the reason behind it",
+          "**Outcome**: what was done or decided",
+          "**Next step**: what happens next, or that nothing more is needed",
+        ] },
+        "Good: \"Client called regarding upcoming renewal increase. Reviewed policy changes and discussed deductible options. Client wants to keep current coverage. No changes made.\"",
+        "Too vague: \"Talked to client about renewal.\"",
+        "Athena reads the note on every completed SR against this and counts the parts that are missing. A renewal reviewed without calling the client (\"low increase, review if needed\") already answers who and why.",
+      ] },
+
+    { h: "Your day",
+      body: [
+        { terms: [
+          ["Start of the day", "Check missed calls, texts and emails. Review your tasks and anything urgent or pending. Find the follow-ups due today."],
+          ["During the day", "Answer and return calls, work SRs, complete tasks, document every conversation, follow up on pending items, route sales opportunities, ask for help when you need it, and help teammates when you can."],
+          ["End of the day", "Review unfinished tasks, finish your notes, return priority calls, make sure anything urgent has a next step, and tell the team what carries over."],
+        ] },
+        "**Priority order**: time-sensitive items, then client callbacks, then anything stopping a policy from moving forward, then older tasks, then routine requests.",
+        "**How to sound**: warm, clear, confident, solution-focused. Instead of \"I don't know\" or \"That's not my job\", say \"Let me take a look at that for you\", \"Let me check and get back to you\", or \"I'll get you to the right person.\"",
+      ] },
+
+    { h: "The Service Center",
+      body: [
+        "The Service Center has two tabs, **Service Digest** and **Renewals**, and uses the same date filter as the Sales Center: a day, a week, month to date, or your own dates. **Every card opens the accounts behind it.**",
+        "**Service Digest.** Across the top is one small card per person (Amanda, Crystal, Debbie) showing their SRs, tasks, reply speed and overdue items. Below it is one grid of cards: the team's totals until you pick a person, then that person's, with their role's checklist. Nobody is ranked.",
+        { terms: [
+          ["SRs completed", "SRs you closed in the period, and how long each took from created to completed."],
+          ["Tasks done", "AgencyZoom service tasks completed."],
+          ["Open SRs", "What's still open at the end of the day, and how much is overdue."],
+          ["Dials", "Service calls you made. For Crystal, only calls to service numbers (a customer or an open SR); her new-business dials are on the Sales Center."],
+          ["Call backs", "Missed service calls and how fast they were returned."],
+          ["Speed to reply", "When a customer texts or emails, how long until someone answered."],
+          ["Texts / Emails", "What each person typed to customers themselves. Automated messages are counted apart."],
+          ["Calls answered", "Inbound calls each person picked up first. **Listen & read** plays the call with its transcript."],
+          ["SRs created", "SRs each person opened."],
+          ["Note standard", "How many notes left out a part of the note standard, and which part."],
+          ["Opportunities", "Sales opportunities in the SRs: worked (quoted, a lead set, or passed to a producer) or not noted."],
+          ["Utilization", "Insightful's productive time over tracked time."],
+        ] },
+        "Under the cards: Texts & Emails, Note Standard, Completion Time, and each pipeline's outcomes.",
+        "**Card, bank account and social security numbers are removed** from texts and call transcripts before they reach the board. A call where a number was said shows as text only, never the recording.",
+      ] },
+
+    { h: "The pipelines",
+      body: [
+        { terms: [
+          ["Personal Renewals", "Farmers and Foremost renewals. Judged on completion time and outcome."],
+          ["Other 30 day Renewals", "Bristol West renewals. The same."],
+          ["Service Pipeline", "Changes, endorsements and basic service. Outcome read from your note: change made, policy cancelled, other service, not done, or unable to contact."],
+          ["Late Payments", "The only pipeline worked stage by stage. Outcome: paid, cancelled for non-pay, client cancelled, unable to contact, or other. \"Saved\" is paid over paid or cancelled."],
+          ["Contingencies", "Anything pending on a policy (AgencyZoom calls it Missing Documents). Outcome: cleared, policy cancelled, closed without clearing, or unable to contact. It also shows whether the selling producer or the service team closed it."],
+        ] },
+        "Service Pipeline, Late Payments and Contingencies SRs are all closed on **Completed**, so Athena reads the outcome from your note. A note that says what happened gets the right outcome; no note reads as \"No note\".",
+      ] },
+
+    { h: "Renewals",
+      body: [
+        "Renewal SRs are counted on the **Renewals** tab, not the Service Digest. Renewal tasks, calls, texts and emails go with them.",
+        "**Close every renewal SR on one of Frank's resolutions.** They are the only outcomes Athena uses:",
+        { table: { head: ["Resolution", "Counts as"], rows: [
+          ["Renewed: Accepted as is", "Retained"],
+          ["Renewed: Endorsed", "Retained"],
+          ["Rewrite Accepted", "Retained"],
+          ["No action: Review if needed", "Retained (reviewed, didn't need a call)"],
+          ["Unable to Contact/No Show", "Retained (renewed as is)"],
+          ["Cancelled: Rewrite Declined", "Lost"],
+          ["Cancelled, no endorse/rewrite available", "Lost"],
+          ["Client Cancelled", "Lost (went to the carrier, or never gave us the chance)"],
+          ["Mid-term Cancellation", "Left out of the rate (already cancelled before the renewal SR opened)"],
+          ["Cancelled: Sold/Moved", "Left out of the rate"],
+        ] } },
+        "**Completed is not a renewal outcome.** It's for changes, NOCs and missing documents. A renewal SR closed on Completed is listed on the Service Center as not one of the resolutions, and Athena reads your note, and the customer's texts, to decide what happened.",
+        "Write the note the way it happened: \"renewed\" or \"reviewed\" alone reads as No action; a customer who went over it with you and changed nothing is Accepted as is; a bad number or email is Unable to Contact; \"cancelled in 2025\" is a Mid-term Cancellation.",
+        "**The customer's texts count.** If a customer texts that they're switching or cancelling, that decides the outcome even when the note said \"renewed\".",
+        "A Mid-term Cancellation with nothing that dates it (no date or year in the note, a policy record that never changed) is listed under **Cancellations to check** for someone to confirm.",
+      ] },
+
+    { h: "The Renewals tab",
+      body: [
+        { terms: [
+          ["Retention", "Three rates. The **settled 4 weeks** (renewals 14 to 41 days ago; the newest two weeks are still settling), the **date filter's period**, and the **last 12 months**, the one to compare with Farmers'. Here the policy record counts too: a policy the record shows cancelled is lost even if no SR says so."],
+          ["Renewal SR Work", "One card per person (renewal SRs, retained, open, overdue) and a grid below, the team's until you pick someone: renewal SRs completed, retained, reviewed with the customer, renewal tasks, open and overdue, coming up and high risk, lost, renewal dials, call backs, speed to reply, and texts and emails."],
+          ["Renewal Outcome Breakdown", "A bar per person, split by resolution."],
+          ["Coming up", "Renewals in the next 45 days, and how each renewal SR is being worked. **High risk** means not yet discussed with the customer and a warning sign: an open Late Payment or a cancellation SR on the household."],
+          ["Lost, Not confirmed", "Policies lost in the period, and ones the records haven't settled yet."],
+        ] },
+        "Mid-term cancellations and \"not confirmed yet\" stay out of the rate.",
+      ] },
+
+    { h: "For the Service Lead: running the team",
+      body: [
+        { steps: [
+          "Each morning, open the Service Digest on yesterday with no person picked. Look at open and overdue SRs, call backs and speed to reply.",
+          "Pick each person's card. Compare what they did with their role's checklist, not with each other.",
+          "Open **Note Standard** and read two or three notes that missed a part. Coach the part, not the person.",
+          "Check **Opportunities** for anything not noted.",
+          "On the Renewals tab, work **Coming up** and **High risk** first, then **Cancellations to check**.",
+          "Watch your own share of routine SRs. If it's high, that's work to hand back to the team.",
+        ] },
+      ] },
+
+    { h: "Our expectations",
+      body: [
+        { terms: [
+          ["Ownership", "If you take the request, own it until it's resolved or properly handed off."],
+          ["Communication", "Don't let someone else discover that a client has been waiting."],
+          ["Documentation", "If it isn't documented, the next person doesn't know what happened."],
+          ["Follow-through", "Don't make the client chase us for an answer."],
+          ["Teamwork", "We help each other. We don't work as individual islands."],
+          ["Accountability", "Different responsibilities don't mean different levels of importance."],
+          ["Growth", "Ask questions, learn from mistakes, and become more independent over time."],
+        ] },
+        "We don't all have to do the same job, but we all have to do our part. We answer. We listen. We solve. We document. We follow up. We communicate. We help each other.",
+      ] },
+    ] },
+
+  /* ------------------------------------------------------------------ */
+  { key: "new", map: "apollo", label: "New Producer", title: "New Producer",
     who: "For someone brand new to insurance sales: what the board is, how you're measured, and how to build good habits from day one.",
     sections: [
     { h: "Welcome",
@@ -376,7 +546,7 @@ window.BLUEPRINTS = {
     ] },
 
   /* ------------------------------------------------------------------ */
-  { key: "mid", title: "Mid-Level Producer",
+  { key: "mid", map: "apollo", label: "Mid-Level Producer", title: "Mid-Level Producer",
     who: "For producers who have the basics and want to close more consistently.",
     sections: [
     { h: "Where to focus",
@@ -443,7 +613,7 @@ window.BLUEPRINTS = {
     ] },
 
   /* ------------------------------------------------------------------ */
-  { key: "exp", title: "Experienced Producer",
+  { key: "exp", map: "apollo", label: "Experienced Producer", title: "Experienced Producer",
     who: "For seasoned producers: the fine points Apollo looks for, and how to use the board to stay sharp.",
     sections: [
     { h: "What separates the best calls",

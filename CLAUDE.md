@@ -716,13 +716,19 @@ page (2026-09-30).
 
 ## Apollo's Road Map (ARM) and the tour
 
-**Learning Center > Road Map holds the plain-language guides** (Frank,
+**Learning Center > Apollo's Road Map is one tab with a dropdown** (Frank,
 2026-09-30: "if Im out for a week and want amanda to coach, she should know
 what everything means, how the model coaches, where everything is ... in
-regular language, not AI prompt language"): **Apollo's Road Map (ARM)** for
-managers (Frank named it, 2026-09-30) (shown only to `ROLEPLAY_HISTORY_VIEWERS`, via the Worker's
-`/api/me`) and **New / Mid-Level / Experienced Producer** guides for
-everyone. The words live in `site/public/blueprints.js`, nowhere else.
+regular language, not AI prompt language"; "Apollos road map should be the
+name of the full tab, with a dropdown that has options for manager/coaching,
+and one for the 3 producer levels"): **Manager / Coaching** (the ARM, shown
+only to `ROLEPLAY_HISTORY_VIEWERS`, via the Worker's `/api/me`) and **New /
+Mid-Level / Experienced Producer** for everyone. **Service Center > Athena's
+Road Map** is the service team's (Frank, 2026-09-30: "make an Athena Road Map
+for the service team too"): Amanda's Service Playbook in plain words plus how
+the Service Center counts, for everyone; when `service_playbook.py` changes,
+it changes with it. The words live in `site/public/blueprints.js`, nowhere
+else (`map` = which tab, `label` = the dropdown name).
 **Take the tour** at the foot of the left bar walks anyone through the
 board (`TOUR_STEPS` in index.html).
 **KEEP THEM CURRENT, in the same change** (Frank: "continues updating as we
