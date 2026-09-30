@@ -590,8 +590,15 @@ td.num.msgbad { color: var(--bad); font-weight: 600; }
 .ccard { display: block; background: var(--surface); border: 1px solid var(--border-strong); border-radius: 9px; padding: 12px; margin-bottom: 13px; }
 .ccard > summary.cchead { cursor: pointer; list-style: none; }
 .ccard > summary.cchead::-webkit-details-marker { display: none; }
-.ctog { color: var(--text-muted); font-size: 11px; margin-left: 8px; display: inline-block; transition: transform .15s; }
-.ccard[open] .ctog { transform: rotate(90deg); }
+/* Open and close at the bottom of the card, "Expand" with an arrow each side
+   (Frank, 2026-09-30, replacing the small arrow at the top right). */
+.cexp { display: flex; justify-content: center; align-items: center; gap: 8px; margin-top: 10px; padding-top: 7px;
+  border-top: 1px solid var(--border); font-size: 11.5px; font-weight: 600; letter-spacing: .04em; text-transform: uppercase; color: var(--text-secondary); }
+.cexp .ar { font-size: 13px; line-height: 1; }
+.ccard > summary.cchead:hover .cexp { color: var(--text-primary); }
+.ccard[open] > summary .cexp { display: none; }
+.ccol { cursor: pointer; margin-top: 12px; }
+.ccol:hover { color: var(--text-primary); }
 .blk { background: var(--surface-raised); border: 1px solid var(--border); border-radius: 7px; padding: 13px 15px; margin-bottom: 9px; }
 .blk:last-child { margin-bottom: 0; }
 .bl { font-size: 10px; text-transform: uppercase; letter-spacing: 0.09em; color: var(--text-muted); margin-bottom: 9px; }
@@ -600,6 +607,19 @@ td.num.msgbad { color: var(--bad); font-weight: 600; }
 .badge-slot { margin-left: 8px; vertical-align: middle; }
 .cmeta { font-size: 11px; color: var(--text-muted); margin-top: 1px; }
 .sum { font-size: 12.5px; line-height: 1.55; margin-top: 9px; }
+/* The closed card: what happened on the left, a quick coaching read on the
+   right (Frank, 2026-09-30: "the right half of the card be a quick coaching
+   summary"); one column on a narrow screen. */
+.chbody { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 16px; align-items: start; }
+.chbody.one { grid-template-columns: minmax(0, 1fr); }
+@media (max-width: 900px) { .chbody { grid-template-columns: minmax(0, 1fr); } }
+.qc { margin-top: 9px; border-left: 3px solid var(--border-strong); padding: 2px 0 2px 12px; font-size: 12.5px; line-height: 1.5; }
+.qc .qh { font-size: 10px; text-transform: uppercase; letter-spacing: .05em; color: var(--text-secondary); margin-bottom: 4px; }
+.qc .qr { display: flex; gap: 8px; margin: 3px 0; }
+.qc .qk { flex: 0 0 86px; font-weight: 600; }
+.qc .qk.g { color: var(--good); } .qc .qk.b { color: var(--bad); } .qc .qk.s { color: var(--s1, #2b6cb0); }
+.qc .qv { min-width: 0; }
+.qc .say { font-style: italic; }
 .two { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
 @media (max-width: 640px) { .two { grid-template-columns: 1fr; } }
 .ol { font-size: 9.5px; text-transform: uppercase; letter-spacing: 0.07em; color: var(--text-muted); margin-bottom: 3px; }
@@ -3229,6 +3249,32 @@ function stageFitHtml(c) {
       <span class="chip ${r ? r[0] : ""}">${r ? r[1] : "Not scored"}</span>
       <span style="color:var(--text-secondary);font-size:12.5px;line-height:1.55">${cesc(f[1] || "")}</span></div></div>`;
 }
+/* The quick coaching read on the closed card, from what Apollo already
+   wrote on it -- no new read: the top two things that worked and that cost
+   the sale (the detail on hover), and one line to say next time: the fix
+   for the first objection not overcome, else "what assumptive sounds
+   like". Nothing to say, no panel. */
+function quickCoachHtml(c) {
+  const top = xs => (xs || []).filter(x => x && x[0]).slice(0, 2);
+  const good = top(c.good), bad = top(c.bad);
+  const miss = (c.objs || []).find(o => (o.score == null || o.score < 8) && o.fix && o.fix.length);
+  const say = miss ? miss.fix[0] : c.askfix || "";
+  if (!good.length && !bad.length && !say) return "";
+  const list = xs => xs.map(([t, d]) => `<div${d ? ` title="${escAttr(d)}"` : ""}>${cesc(t)}</div>`).join("");
+  return `<div class="qc"><div class="qh">Quick coaching</div>
+    ${good.length ? `<div class="qr"><span class="qk g">Did well</span><span class="qv">${list(good)}</span></div>` : ""}
+    ${bad.length ? `<div class="qr"><span class="qk b">Work on</span><span class="qv">${list(bad)}</span></div>` : ""}
+    ${say ? `<div class="qr"><span class="qk s">Say next time</span><span class="qv say">“${cesc(say)}”${miss ? ` <span class="sd" style="font-style:normal">(${cesc(miss.group || "objection")})</span>` : ""}</span></div>` : ""}
+  </div>`;
+}
+// Closing from the bottom of a long card leaves the reader far below it;
+// bring the card's top back into view if it has scrolled off.
+function ccCollapse(el) {
+  const d = el.closest("details");
+  if (!d) return;
+  d.open = false;
+  if (d.getBoundingClientRect().top < 0) d.scrollIntoView({ block: "start" });
+}
 function card(c) {
   const objs = c.objs || [];
   // One block per objection -- a card can carry several (Frank, 2026-09-15:
@@ -3286,10 +3332,12 @@ function card(c) {
        <div class="cmeta">${cesc(c.who || "")} · ${cesc(fmtShortDate(c.day))}${c.time ? ` ${cesc(c.time)}` : ""} · ${durCell} · ${cesc(c.lang || "")} · ${cesc(c.src || "")}${c.leadsrc ? ` · ${cesc(c.leadsrc)}` : ""}</div>
        ${callRowHtml}</div>
        ${!multiCall ? outcomeBadgeHtml(c.cat, c.catc, [...typeParts, ...flowParts(c)])
-         : [...typeParts, ...flowParts(c)].map(([l, why]) => `<span class="ctype" title="${escAttr(why)}">${cesc(l)}</span>`).join("")}<span class="ctog" aria-hidden="true">▸</span></div>
+         : [...typeParts, ...flowParts(c)].map(([l, why]) => `<span class="ctype" title="${escAttr(why)}">${cesc(l)}</span>`).join("")}</div>
+     ${(() => { const qc = quickCoachHtml(c); return `<div class="chbody${qc ? "" : " one"}"><div>
      <div class="sum">${cesc(c.summary || "")}</div>
      ${(c.flags && c.flags.length) || (c.exit && c.exit[0] === true) ? `<div style="margin-top:8px">${
-       flagBadgesHtml(c)}</div>` : ""}
+       flagBadgesHtml(c)}</div>` : ""}</div>${qc}</div>`; })()}
+     <div class="cexp"><span class="ar">▼</span>Expand<span class="ar">▼</span></div>
    </summary>
    ${c.askq || c.assume ? `<div class="blk"><div class="bl">The Assumption</div><table class="askt">
      ${c.assume ? assumeRowsHtml(c.assume) : `<tr><td class="k">Assumed the quote</td><td class="v">${bdg(c.askq[0])}</td><td>${cesc(c.askq[1] || "")}</td></tr>
@@ -3308,7 +3356,9 @@ function card(c) {
      ? scorecard(...withGreeting(c, c.fuscore, FU_DIMS), "Follow-up scorecard")
      : scorecard(...withGreeting(c, c.score, DIMS))}${scorecard(c.techniques, TECH_DIMS, "Sales techniques")}</div>
    ${spine}
-   ${recordingBlk(c)}</details>`;
+   ${recordingBlk(c)}
+   <div class="cexp ccol" role="button" tabindex="0" onclick="ccCollapse(this)"
+     onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();ccCollapse(this)}"><span class="ar">▲</span>Collapse<span class="ar">▲</span></div></details>`;
 }
 // Listen to the actual call and/or read what it transcribed to, right on the
 // card that coached it (Frank, 2026-09-14) -- both were already sitting in
