@@ -71,10 +71,14 @@ def _request(audio, key, keyterms=True):
                                   "Content-Type": "audio/mpeg"})
 
 
+_WARNED_REFUSED = False     # raw() has said Deepgram refused the key
+
+
 def raw(path, log=None, cached_only=False):
     """Deepgram's response for one recording, cached. None on any failure.
     cached_only: never send the recording -- None unless it was read before."""
     path = pathlib.Path(path)
+    global _WARNED_REFUSED
     cf = CACHE / f"{path.stem}.json"
     if cf.exists():
         try:
@@ -105,6 +109,13 @@ def raw(path, log=None, cached_only=False):
         if r.status_code != 200:
             if log:
                 log(f"    deepgram {path.stem}: HTTP {r.status_code}")
+            # A refused key (401/403) fails EVERY recording, and callers
+            # mostly pass no log, so the whole day used to drop to Whisper
+            # without a word (2026-09-30). Said once per run.
+            if r.status_code in (401, 403) and not _WARNED_REFUSED:
+                _WARNED_REFUSED = True
+                print(f"  WARNING: Deepgram refused the key (HTTP {r.status_code}) "
+                      f"-- transcribing with Whisper instead until it is fixed")
             return None
         d = r.json()
         res = d.get("results") or {}

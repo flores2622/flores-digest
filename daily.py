@@ -236,6 +236,33 @@ def pull_sources(day):
     r2_cache.sync_up_day(day, log=log)
 
 
+# Runs that may retry a recording that did not download before its entry is
+# left as the "unknown" it has always been (2026-09-30). A recording
+# RingCentral will never serve must not cost every later checkpoint a minute.
+DOWNLOAD_RETRIES = 3
+
+
+def _audio_missing(path):
+    """True when a recording is not on disk, or is too small to be one -- the
+    same 500-byte test transcribe.download uses to decide it has a file. A
+    download that failed (RingCentral throttling, a dropped connection) used
+    to be transcribed as nothing, cached as class "unknown", and never
+    downloaded again by any later run (2026-09-30)."""
+    p = ROOT / path
+    return not p.exists() or p.stat().st_size <= 500
+
+
+def _retry_download(entry):
+    """A cached transcript whose recording never arrived, still worth a try."""
+    return 0 < (entry.get("not_downloaded") or 0) < DOWNLOAD_RETRIES
+
+
+def _mark_download(entry, before, missing):
+    """Count the runs a recording has failed to download, on its entry."""
+    if missing:
+        entry["not_downloaded"] = ((before or {}).get("not_downloaded") or 0) + 1
+
+
 def transcribe_day(day, outbound_only=False):
     """Outbound first, then inbound.
 
@@ -257,7 +284,9 @@ def transcribe_day(day, outbound_only=False):
             if r.get("recording") and r.get("direction") == "Outbound"
             and names.get(owner_ext_id(r) or "")]
     done = json.loads(out_f.read_text()) if out_f.exists() else {}
-    todo = [r for r in recs if r["id"] not in done]
+    # A recording that never downloaded is retried on the next run, not kept
+    # as a permanent "unknown" (2026-09-30) -- see _audio_missing below.
+    todo = [r for r in recs if r["id"] not in done or _retry_download(done[r["id"]])]
     if todo:
         log(f"downloading {len(todo)} recordings (throttled)...")
         # CHECKPOINTED, not one call for the whole list (Frank, 2026-09-14:
@@ -276,13 +305,19 @@ def transcribe_day(day, outbound_only=False):
             r2_cache.sync_up_day(day, log=log)
         log("transcribing...")
         for i, r in enumerate(todo):
-            txt = transcribe.transcribe_file(f"data/audio/{r['id']}.mp3",
-                                             duration=r.get("duration", 0))
+            path = f"data/audio/{r['id']}.mp3"
+            # A recording that did not download gets exactly the entry it
+            # always got (so tonight's figures are unchanged), flagged so the
+            # next run downloads it again instead of trusting it forever.
+            missing, before = _audio_missing(path), done.get(r["id"])
+            txt = transcribe.transcribe_file(path, duration=r.get("duration", 0)) \
+                if (ROOT / path).exists() else None
             cls, why = transcribe.classify(txt, r.get("duration", 0))
             done[r["id"]] = {"producer": names[owner_ext_id(r)],
                              "to": (r.get("to") or {}).get("phoneNumber"),
                              "duration": r.get("duration"), "text": txt,
                              "class": cls, "why": why}
+            _mark_download(done[r["id"]], before, missing)
             # Written after EVERY record, not once after the loop (REVIEW
             # 2026-09-01 s8): this loop can run 20-30 minutes and this
             # container has no way to guarantee it runs to completion. A
@@ -311,7 +346,8 @@ def transcribe_day(day, outbound_only=False):
             ib.answered(day, list(raw_by_id.values())), win, day), day)
         keep = [r for r in in_rows if not r["skip"] and r["recording"]]
         dropped = len(in_rows) - len(keep)
-        in_todo = [raw_by_id[r["id"]] for r in keep if r["id"] not in done]
+        in_todo = [raw_by_id[r["id"]] for r in keep if r["id"] not in done
+                   or _retry_download(done[r["id"]])]
         if in_todo:
             log(f"inbound: {len(in_rows)} reached a producer, "
                 f"{dropped} screened out, downloading {len(in_todo)}...")
@@ -334,7 +370,9 @@ def transcribe_day(day, outbound_only=False):
                 partial = have < leg * 0.8
                 off = 0 if partial else max(0, total - leg)
                 use = int(have) if partial else leg
-                txt = transcribe.transcribe_file(path, duration=use, offset=off)
+                missing, before = _audio_missing(path), done.get(r["id"])
+                txt = transcribe.transcribe_file(path, duration=use, offset=off) \
+                    if (ROOT / path).exists() else None
                 # Screened and answered, so a conversation whatever the
                 # transcript says (build_metrics applies the same rule to
                 # calls cached before 2026-09-23).
@@ -347,6 +385,7 @@ def transcribe_day(day, outbound_only=False):
                                  "offset": off, "audio_seconds": use,
                                  "partial": partial,
                                  "callback_day": meta.get("callback_day")}
+                _mark_download(done[r["id"]], before, missing)
             out_f.write_text(json.dumps(done))
     # A day with no recordings at all -- a holiday, a weekend, an office
     # closure -- still has to leave a transcripts file behind. Both writes
@@ -853,7 +892,16 @@ def build_metrics(day):
                   "bundle_resolved": bundle.get(who, {}).get("resolved", 0),
                   "bundle_resolved_households": bundle.get(who, {}).get("resolved_households", 0)}
 
-    util, weighted, _ = iu.pull(day)
+    # Insightful down, or its token missing (SystemExit from secrets_load),
+    # must not stop the email (2026-09-30): everyone reads as untracked --
+    # the same "absent, not 0%" pull() itself gives someone with no
+    # attendance -- and the team figure is pull()'s own 0.0 for no time.
+    try:
+        util, weighted, _ = iu.pull(day)
+    except (Exception, SystemExit) as e:
+        log(f"  UTILIZATION UNAVAILABLE: Insightful failed ({type(e).__name__}: "
+            f"{str(e)[:200]}) -- sending without it")
+        util, weighted = {}, 0.0
     _raw_tasks = json.loads((ROOT / f"data/az_tasks_{day}.json").read_text())
     import task_audit as _ta
     _verdicts = _ta.cancellation_verdicts(
@@ -1033,6 +1081,9 @@ def main():
     ap.add_argument("--day")
     ap.add_argument("--audience", choices=["ops", "staff", "both"], default="both")
     ap.add_argument("--no-send", action="store_true")
+    # Send even to an audience whose sent marker says it already went out
+    # tonight (see send()). Only ever by hand, and only on purpose.
+    ap.add_argument("--resend", action="store_true")
     a = ap.parse_args()
     # Only the nightly run checks in (healthcheck.py): a hand rebuild of a
     # past day, or a --no-send build, must not read as tonight's run.
@@ -1137,12 +1188,39 @@ def _run(a):
     # skipped with the email.
     hold = ROOT / "SEND_HOLD"
     held = hold.exists()
+    # A FAILED SEND STILL BUILDS THE BOARDS (2026-09-30). send() used to raise
+    # straight out of here, so one Resend outage cost the Sales, Service and
+    # Commercial boards and the R2 save along with the email. Now the failure
+    # is held, everything below runs, and it is raised at the very end so
+    # the run still reports failed (healthcheck). The sales log and the
+    # missed-call tasks run too: they are written from AgencyZoom, not from
+    # the email, and both only ever add what is not there yet, so the re-run
+    # that sends the email repeats nothing. SEND_HOLD is different -- a
+    # change is mid-flight and the figures are in doubt -- so it still skips
+    # them, as before.
+    send_error = None
+    import day_calls
+    short = day_calls.notes_shortfall()
     if held:
         log(f"SEND_HOLD present, NOT sending -- {hold.read_text().strip()[:200]} "
             f"-- the boards still build")
+    elif short:
+        # Too many leads' notes could not be read from AgencyZoom: notes win
+        # over the recording (Frank, 2026-08-18), so the contact rate and
+        # every outcome built on them would go out wrong. Boards still build.
+        send_error = SystemExit(
+            f"REFUSING TO SEND: notes for {short[0]} of {short[1]} leads could not "
+            f"be fetched from AgencyZoom -- re-run daily.py once it answers")
+        log(f"{send_error} -- the boards still build")
     else:
-        send(day, html, [p for p in (notes, rec) if p], audience=a.audience,
-             ops_only_pdfs=[missed] if missed else [])
+        try:
+            send(day, html, [p for p in (notes, rec) if p], audience=a.audience,
+                 ops_only_pdfs=[missed] if missed else [],
+                 resend=a.resend)
+        except (Exception, SystemExit) as e:
+            send_error = e
+            log(f"send failed ({type(e).__name__}: {e}) -- the boards still build, "
+                f"then this run reports failed")
     publish_day(day)
     publish_service(day)
     publish_commercial(day)
@@ -1166,6 +1244,8 @@ def _run(a):
         return
     sync_sales_log(day)
     make_missed_call_tasks(day)
+    if send_error is not None:
+        raise send_error
 
 
 def publish_service(day):
@@ -1323,8 +1403,25 @@ def make_missed_call_audit(day):
         return None
 
 
-def send(day, ops_html, pdfs, audience="both", ops_only_pdfs=()):
+def sent_marker(day, audience):
+    """data/sent_<day>_<audience>.json -- written the moment that audience's
+    email is accepted by Resend (2026-09-30), and carried between containers
+    by r2_cache like the day's other files."""
+    return ROOT / f"data/sent_{day}_{audience}.json"
+
+
+def send(day, ops_html, pdfs, audience="both", ops_only_pdfs=(), resend=False):
+    """Email each audience, ONE AT A TIME (2026-09-30).
+
+    Each audience that goes out leaves a sent marker, and a re-run skips an
+    audience that has one -- saying so -- so re-running a night that failed
+    halfway never emails ops twice to reach staff once. One audience failing
+    (Resend down after send_digest's own retries, an overflow the body cannot
+    shed, the staff panel not found) no longer costs the other: every
+    audience is tried, and only then does this raise, naming each failure,
+    so the run is still reported failed."""
     import digest_config as cfg
+    import r2_cache
     import send_digest
     from attachments import qp_safe
     label = dt.date.fromisoformat(day).strftime("%b %-d, %Y")
@@ -1337,16 +1434,19 @@ def send(day, ops_html, pdfs, audience="both", ops_only_pdfs=()):
     # Removing one panel by depth walk keeps the section wrapper balanced, which
     # cutting at the section boundary did by brute force.
     import render_report as rr
-    staff = rr.drop_panel(ops, "Task Completion Audit &middot;")
-    staff = (staff
-             .replace("Call Detail &amp; Task Completion Audit", "Call Detail")
-             .replace("Daily Sales Digest &amp; Call Detail Audit",
-                      "Daily Sales Digest"))
+
+    def staff_body():
+        staff = rr.drop_panel(ops, "Task Completion Audit &middot;")
+        staff = (staff
+                 .replace("Call Detail &amp; Task Completion Audit", "Call Detail")
+                 .replace("Daily Sales Digest &amp; Call Detail Audit",
+                          "Daily Sales Digest"))
+        return rr.prune_css(staff, log=log)
     # Prune the stylesheet LAST, per audience, after shedding -- a shed panel's
     # rules are dead weight in the body that remains, and Gmail throws away any
     # <style> block over ~16 KB (see render_report.prune_css).
-    ops = rr.prune_css(ops, log=log)
-    staff = rr.prune_css(staff, log=log)
+    def ops_body():
+        return rr.prune_css(ops, log=log)
     def load(paths):
         return [(pathlib.Path(p).name, pathlib.Path(p).read_bytes())
                 for p in paths if p]
@@ -1357,10 +1457,10 @@ def send(day, ops_html, pdfs, audience="both", ops_only_pdfs=()):
     ops_atts = atts + load(ops_only_pdfs)
     jobs = []
     if audience in ("ops", "both"):
-        jobs.append((f"Daily Sales Digest & Call Detail Audit — {label}", ops,
-                     cfg.RECIPIENTS_OPS, ops_atts))
+        jobs.append(("ops", f"Daily Sales Digest & Call Detail Audit — {label}",
+                     ops_body, cfg.RECIPIENTS_OPS, ops_atts))
     if audience in ("staff", "both"):
-        jobs.append((f"Daily Sales Digest — {label}", staff,
+        jobs.append(("staff", f"Daily Sales Digest — {label}", staff_body,
                      cfg.RECIPIENTS_STAFF, atts))
     # On a heavy day the body can pass Gmail's clip threshold. Rather than
     # refuse the whole send -- which cost BOTH audiences their report -- shed
@@ -1368,14 +1468,38 @@ def send(day, ops_html, pdfs, audience="both", ops_only_pdfs=()):
     # 2026-08-25). Each audience is measured on its own: the staff body is
     # already lighter by one panel, so it can still fit when ops does not.
     import overflow
-    for subj, body, to, base_atts in jobs:
-        body, extra = overflow.relieve(day, body, log=log)
-        a = list(base_atts)
-        if extra:
-            a.append((pathlib.Path(extra).name,
-                      pathlib.Path(extra).read_bytes()))
-        send_digest.send(subj, body, to, attachments=a, binary=True)
+    failed = []
+    for aud, subj, build, to, base_atts in jobs:
+        marker = sent_marker(day, aud)
+        if marker.exists() and not resend:
+            try:
+                when = json.loads(marker.read_text()).get("sent_at", "?")
+            except ValueError:
+                when = "?"
+            log(f"{aud}: already sent for {day} (at {when}) -- skipping; delete "
+                f"{marker.relative_to(ROOT)} and its R2 copy, or pass --resend, "
+                f"to send it again")
+            continue
+        try:
+            body, extra = overflow.relieve(day, build(), log=log)
+            a = list(base_atts)
+            if extra:
+                a.append((pathlib.Path(extra).name,
+                          pathlib.Path(extra).read_bytes()))
+            res = send_digest.send(subj, body, to, attachments=a, binary=True)
+        except (Exception, SystemExit) as e:
+            log(f"SEND FAILED: {aud} ({type(e).__name__}: {str(e)[:300]}) -- "
+                f"carrying on with the rest")
+            failed.append(f"{aud}: {type(e).__name__}: {str(e)[:200]}")
+            continue
         log(f"sent: {subj} -> {len(to)}")
+        marker.write_text(json.dumps({
+            "day": day, "audience": aud, "subject": subj, "recipients": len(to),
+            "sent_at": dt.datetime.now(AZ).isoformat(timespec="seconds"),
+            "resend_id": (res or {}).get("id") if isinstance(res, dict) else None}))
+        r2_cache.push_file(day, marker.name, log=log)
+    if failed:
+        raise SystemExit("digest not sent to every audience -- " + "; ".join(failed))
 
 
 def make_missed_call_tasks(day):
@@ -1389,7 +1513,7 @@ def make_missed_call_tasks(day):
     try:
         made, skipped = missed_call_tasks.run(day, live=True)
         log(f"missed-call tasks: {len(made)} created, {len(skipped)} skipped")
-    except Exception as e:
+    except (Exception, SystemExit) as e:
         log(f"missed-call tasks failed ({type(e).__name__}: {e}) -- "
             f"the digest already sent, so nothing else is affected")
 

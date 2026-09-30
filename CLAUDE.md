@@ -372,6 +372,17 @@ Commercial boards and saves the day to R2; it skips the sales-log sync and the
 AgencyZoom missed-call tasks along with the email. `--no-send` (hand rebuilds)
 still stops before anything is published.
 
+**Each audience that is emailed leaves a sent marker** (2026-09-30):
+`data/sent_<day>_ops.json` / `_staff.json`, carried in R2 with the day's
+files. A re-run skips an audience already sent, and says so; `--resend`
+(or deleting the marker here AND in R2's cache/<day>/) sends it again. A
+send that fails (after `send_digest`'s three tries) no longer stops the
+run: the other audience, the boards, the R2 save, the sales log and the
+missed-call tasks still run, then the run fails so the healthcheck alerts.
+It also refuses to email -- boards still built -- when more than 10% (and
+10+) of the leads' notes could not be fetched (`day_calls.notes_shortfall`).
+R2 cache syncs and Insightful never stop the run; they log and carry on.
+
 **The nightly run checks in** (`healthcheck.py`, Frank, 2026-09-29): with
 `HEALTHCHECK_URL` (a Healthchecks.io ping URL) in the cloud environment's
 variables, `daily.py` pings start, success ("sent" / "held") and failure

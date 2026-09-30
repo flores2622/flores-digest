@@ -154,15 +154,19 @@ def _todays_tasks(azc, day):
     """Every task already open with a due date of `day`, fetched once per run
     and shared by both the per-record dedup check below and the standalone
     (no-record) one -- one bulk read instead of one GET per caller.
+
+    None when the list cannot be read (2026-09-30). It used to become [] --
+    "no tasks yet" -- so one AgencyZoom hiccup let every caller the day's
+    checkpoints had already made a task for get a duplicate. run() creates
+    nothing without it.
     """
     global _ALL_TASKS
     if _ALL_TASKS is None:
         try:
             _ALL_TASKS = azc.tasks(day, day)
-        except Exception as e:
-            log(f"  could not read today's tasks ({e}); "
-                f"skipping the duplicate check")
-            _ALL_TASKS = []
+        except (Exception, SystemExit) as e:
+            log(f"  could not read today's tasks ({type(e).__name__}: {e})")
+            return None
     return _ALL_TASKS
 
 
@@ -181,6 +185,8 @@ def already_there(azc, r, day):
     reason to trust two endpoints when the bulk list already carries
     customerId/customerType/title for every task, lead or customer alike.
     """
+    if _todays_tasks(azc, day) is None:
+        return True        # cannot tell -- never risk a duplicate (2026-09-30)
     rec = r.get("record_id")
     if not rec:
         return r["number"] in _standalone_titles(azc, day)
@@ -277,6 +283,13 @@ def run(day, live=False, intraday=False):
     log(f"{len(rows)} missed callers, {len(rows) - len(todo)} already reached, "
         f"{len(todo)} need a task")
     made, skipped, failed = [], [], []
+    if todo and _todays_tasks(azc, day) is None:
+        # No list to check against means no way to know which of these the
+        # day's earlier checkpoints already made (2026-09-30). Make none; the
+        # next checkpoint, or tonight's run, makes them once it can read it.
+        log(f"COULD NOT READ TODAY'S TASK LIST -- creating NO tasks this run "
+            f"({len(todo)} callers wait for the next run)")
+        return made, skipped
     for r in todo:
         who = r["name"] or audit.pretty(r["number"])
         if already_there(azc, r, day):
