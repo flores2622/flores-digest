@@ -190,7 +190,7 @@
 .bktip td { padding: 2px 0 2px 12px; border: 0; font-size: 11.5px; white-space: nowrap; font-variant-numeric: tabular-nums; text-align: right; }
 .bktip td:first-child { padding-left: 0; text-align: left; }
 .bkrank-n { display: inline-block; min-width: 18px; color: var(--text-muted); font-variant-numeric: tabular-nums; }
-.rtiles { grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); }
+.tiles.rtiles { grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); }
 .rh3 { font-size: 12px; text-transform: uppercase; letter-spacing: .06em; color: var(--text-muted); margin: 16px 0 6px; }
 .rtable th, .rtable td { text-align: left; vertical-align: top; }
 .rtable th.num, .rtable td.num { text-align: right; }
@@ -7139,7 +7139,7 @@ function renewalsPanel(doc, workHtml = "", rb = null) {
   };
   const dt = (k, inner, style) => `<div class="tile rdrill${renDrill === k ? " on" : ""}" data-drill="${k}" role="button" tabindex="0"
     title="Show these ${drills[k][2].length} renewals"${style ? ` style="${style}"` : ""}>${inner}</div>`;
-  const tiles = `<div class="tiles">
+  const tiles = `<div class="tiles" style="grid-template-columns:repeat(auto-fit,minmax(128px,1fr))">
     ${dt("rate", `<div class="k">Retention · settled 4 weeks</div>
       <div class="v">${rt.pct == null ? "—" : rt.pct + "%"}</div><div class="n">${rt.k} of ${rt.k + rt.l} kept &middot; renewed ${span(settled)}</div>`, "border-color:var(--border-strong)")}
     ${dt("rrange", `<div class="k">Retention · this period</div>
@@ -7164,9 +7164,6 @@ function renewalsPanel(doc, workHtml = "", rb = null) {
   const worked = REN_WORKED.map(([k, l]) => [l, base.filter(r => renWorked(r) === k)]).filter(x => x[1].length);
   const workedCards = worked.map(([l, rs]) => renCard(rs, l)).join("");
   const pipeCards = (doc.pipelines || []).map(([k, l]) => [l, base.filter(r => r.pipeline === k)]).filter(x => x[1].length).map(([l, rs]) => renCard(rs, l)).join("");
-  const people = (doc.team || []).filter(n => base.some(r => r.sr && r.sr.by === n));
-  const personCards = people.map(n => renCard(base.filter(r => r.sr && r.sr.by === n), pbadge(DOT[n] || TEAM_DOT, n.split(" ")[0]))).join("")
-    + (base.some(r => !r.sr || !people.includes(r.sr.by)) ? renCard(base.filter(r => !r.sr || !people.includes(r.sr.by)), pbadge("#8a877f", "Others / no SR")) : "");
   const legend = Object.entries(REN_STATUS).map(([k, [l]]) => { const c = recent.filter(r => r.status === k).length;
     return c ? `<span class="oleg-item"><span class="pd rdot" style="${renFill(k)}"></span>${l} <b>${c}</b></span>` : ""; }).join("");
   const lostRows = lost.sort((a, b) => a.renewal < b.renewal ? -1 : 1).map(r => `<tr>
@@ -7192,11 +7189,10 @@ function renewalsPanel(doc, workHtml = "", rb = null) {
     <p class="sd">Every personal-lines policy that renewed in the last ${doc.past_days} days or renews in the next ${doc.upcoming_days}, from AgencyZoom's policy records and the team's SRs. Rebuilt every night · as of ${renDate(doc.as_of)}. Three retention rates: the settled 4 weeks (renewals 2 to 6 weeks ago), the date filter's period, and the last 12 months. Everything else follows the date filter, except Coming up.${rangeNote}</p>${tiles}</div>
     ${workHtml}
     <div class="sect"><h2>Retention · settled 4 weeks</h2>
-    <p class="sd">By the week each policy renewed: the four weeks in the settled rate, and the newest two, still settling (a renewal counts once it is two weeks past). Retained = a next term on record, a rewrite, or Rewrite Accepted on the renewal SR. Lost = the policy record shows it cancelled, a Late Payment or Service Pipeline SR cancelled it, or the renewal SR was closed on a cancellation. Rate = retained over retained plus lost. A Mid-term Cancellation (hatched, cancelled more than 30 days before the renewal) and a renewal not confirmed yet sit outside the rate. The breakdowns by how the SR was worked, pipeline and person are the settled four weeks.</p>
+    <p class="sd">By the week each policy renewed: the four weeks in the settled rate, and the newest two, still settling (a renewal counts once it is two weeks past). Retained = a next term on record, a rewrite, or Rewrite Accepted on the renewal SR. Lost = the policy record shows it cancelled, a Late Payment or Service Pipeline SR cancelled it, or the renewal SR was closed on a cancellation. Rate = retained over retained plus lost. A Mid-term Cancellation (hatched, cancelled more than 30 days before the renewal) and a renewal not confirmed yet sit outside the rate. The breakdowns by how the SR was worked and pipeline are the settled four weeks; each person's own is on their card above.</p>
     <div class="tiles rtiles">${weekCards}</div><div class="oleg">${legend}</div>
     <h3 class="rh3">By how the renewal SR was worked</h3><div class="tiles rtiles">${workedCards}</div>
-    <h3 class="rh3">By pipeline</h3><div class="tiles rtiles">${pipeCards}</div>
-    <h3 class="rh3">By who worked the renewal SR</h3><div class="tiles rtiles">${personCards}</div></div>
+    <h3 class="rh3">By pipeline</h3><div class="tiles rtiles">${pipeCards}</div></div>
     <div class="sect"><h2>Lost</h2><p class="sd">Every renewal lost in this period, and any renewal still ahead that has already cancelled, with how we know.${rangeNote}</p>
     ${lostRows ? `<div class="scroll"><table class="rtable"><thead><tr><th>Renews</th><th>Customer</th><th>Policy</th><th class="num">Premium</th><th>Renewal SR</th><th>How we know</th></tr></thead><tbody>${lostRows}</tbody></table></div>` : '<p class="sd">None.</p>'}</div>
     ${renFlagHtml(doc, label, inRange)}
@@ -7287,50 +7283,117 @@ function renCommsTiles(m, dk) {
       <div class="v"><span class="${replyTier(med(ans.map(r => r.minutes)))}">${fmtMins(med(ans.map(r => r.minutes)))}</span></div>
       <div class="n">median &middot; ${ans.length} of ${need.length} answered${need.length - ans.length ? ` &middot; <b style="color:var(--bad)">${need.length - ans.length} waiting</b>` : ""}</div>`) : "");
 }
-function renewalWorkHtml(m) {
+/* Renewal SR Work as the Service Center's person strip (Frank, 2026-09-30:
+   "same as the service center, person strip with team totals"): one small
+   card per person, and one grid under it -- the team's renewal work until a
+   person is picked, then theirs. The agency's retention rates stay above,
+   agency-wide. Every card opens the accounts it counts. Nobody is ranked. */
+let renPerson = "";
+// Discussed with the customer: every outcome but the two where nobody talked
+// the renewal over (No action, Unable to Contact) and the two outside the rate.
+const REN_DISCUSSED = new Set(["renewed_as_is", "renewed_endorsed", "rewrite_accepted", "cancelled_rewrite_declined", "cancelled_no_option", "client_cancelled"]);
+function renewalWorkHtml(m, doc, rb) {
   if (!m) return "";
-  const rs = m.renewalDone, open = m.renewalOpen;
-  const hrs = x => fmtDur(svcMedian(x.map(r => r.hours)));
-  const dk = (k, inner, style) => `<div class="tile rdrill${renDrill === k ? " on" : ""}" data-drill="${k}" role="button" tabindex="0"${style ? ` style="${style}"` : ""}>${inner}</div>`;
   const team = m.team.map(t => t.name);
-  const person = n => { const mine = rs.filter(r => r.by === n), o = open ? open.filter(r => r.by === n) : null;
-    return dk("rw:person:" + n, `<div class="k">${pbadge(DOT[n] || TEAM_DOT, n.split(" ")[0])}</div>
-      <div class="v">${mine.length}</div><div class="n">completed${mine.length ? ` &middot; median ${hrs(mine)}` : ""}</div>
-      ${o ? `<div class="n"><b>${o.length}</b> open &middot; <b${o.some(r => r.overdue) ? ' style="color:var(--bad)"' : ""}>${o.filter(r => r.overdue).length}</b> overdue</div>` : ""}
-      <div class="n">Renewal tasks <b>${(m.renewalTaskCounts[n] || {}).completed || 0}/${(m.renewalTaskCounts[n] || {}).due || 0}</b></div>`); };
-  const others = rs.filter(r => !team.includes(r.by));
-  const tiles = `<div class="tiles">
-    ${dk("rw:done", `<div class="k">Renewal SRs Completed</div><div class="v">${rs.length}</div><div class="n">median ${hrs(rs)} created to completed</div>`, "border-color:var(--border-strong)")}
-    ${dk("rw:tasks", `<div class="k">Renewal Tasks Done</div><div class="v">${m.renewalTasks.filter(r => r.done).length}<span style="font-size:15px;color:var(--text-muted)"> / ${m.renewalTasks.length}</span></div><div class="n">${m.renewalTasks.length ? Math.round(100 * m.renewalTasks.filter(r => r.done).length / m.renewalTasks.length) : 0}% of renewal tasks due</div>`)}
-    ${renCommsTiles(m, dk)}
-    ${open ? dk("rw:open", `<div class="k">Open Renewal SRs</div><div class="v">${open.length}</div><div class="n">${open.filter(r => r.overdue).length} overdue &middot; as of ${fmtShortDate(m.days[m.days.length - 1])}</div>`) : ""}
-    ${team.filter(n => rs.some(r => r.by === n) || (open || []).some(r => r.by === n) || (m.renewalTaskCounts[n] || {}).due).map(person).join("")}
-    ${others.length ? dk("rw:person:others", `<div class="k">${pbadge("#8a877f", "Others")}</div><div class="v">${others.length}</div><div class="n">completed &middot; median ${hrs(others)}</div>`) : ""}
-  </div>`;
-  const pipes = (m.pipelines || []).filter(([k]) => RENEWAL_PIPES.has(k)).map(([k, l]) => [k, l, rs.filter(r => r.pipeline === k)]).filter(x => x[2].length);
+  const PB = m.playbook, order = PB ? Object.keys(PB.roles) : [];
+  const people = [...team].sort((x, y) => PB ? order.indexOf(PB.role_of[x]) - order.indexOf(PB.role_of[y]) : 0);
+  if (renPerson && !people.includes(renPerson)) renPerson = "";
+  const n = renPerson, first = x => x.split(" ")[0];
+  const kind = Object.fromEntries((m.outcomes || []).map(([k, , c]) => [k, c]));
+  const hrs = x => fmtDur(svcMedian(x.map(r => r.hours)));
+  const pct = (a, t) => t ? Math.round(100 * a / t) + "%" : "—";
+  const med = x => x.length ? Math.round(median(x)) : null;
+  // The renewal report's rows (policy terms), for the settled rate, lost and coming up.
+  const rows = (doc && doc.rows) || [];
+  const past = rows.filter(r => r.kind === "past");
+  const ahead = rows.filter(r => r.kind === "upcoming" && r.status === "upcoming");
+  const ago = r => doc ? Math.round((new Date(doc.as_of + "T12:00:00") - new Date(r.renewal + "T12:00:00")) / 864e5) : 0;
+  const settledAll = past.filter(r => ago(r) >= REN_SETTLE_DAYS && ago(r) < REN_SETTLE_DAYS + 28);
+  const inRange = r => !rb || ((!rb.from || r.renewal >= rb.from) && (!rb.to || r.renewal <= rb.to));
+  const lostAll = past.filter(r => inRange(r) && r.status === "lost");
+  const title = x => (PB && PB.role_of[x] && PB.roles[PB.role_of[x]] ? PB.roles[PB.role_of[x]].title : "") || SERVICE_TITLES[x] || "";
+  const stats = x => {
+    const mine = r => !x || r.by === x, srOf = r => !x || (r.sr && r.sr.by === x);
+    const done = m.renewalDone.filter(mine), outs = (m.renewals || []).filter(mine);
+    const open = m.renewalOpen ? m.renewalOpen.filter(mine) : null;
+    const tasks = m.renewalTasks.filter(r => !x || (r.assignees || []).includes(x) || r.done_by === x);
+    const tk = x ? (m.renewalTaskCounts[x] || { due: 0, completed: 0 }) : { due: m.renewalTasks.length, completed: m.renewalTasks.filter(r => r.done).length };
+    const cb = (m.renewalCallbacks || []).filter(r => !x || r.by === x), cbDone = cb.filter(r => r.minutes != null);
+    const M = m.renewalMsg || { replies: [], sent: [] };
+    const need = M.replies.filter(r => (!x || r.who === x) && !r.ack && !r.optout), ans = need.filter(r => r.minutes != null);
+    const sent = M.sent.filter(r => !x || r.who === x);
+    const dials = (m.renewalDials || []).filter(r => !x || r.who === x);
+    return { done, outs, open, tasks, tk, cb, cbDone, need, ans, sent, dials,
+      rate: renewalRate(outs, kind), disc: outs.filter(r => REN_DISCUSSED.has(r.outcome)),
+      settled: settledAll.filter(srOf), lost: lostAll.filter(srOf), up: ahead.filter(srOf) };
+  };
+  const strip = people.map(x => { const S = stats(x), on = x === n;
+    return `<div class="tile rdrill${on ? " on" : ""}" data-rperson="${cesc(x)}" role="button" tabindex="0" style="text-align:left">
+      <div style="display:flex;justify-content:space-between;align-items:baseline;gap:8px">${pbadge(DOT[x] || TEAM_DOT, first(x))}<span class="n">${cesc(title(x))}</span></div>
+      <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:4px;text-align:center;margin-top:10px">
+        <div><div class="v" style="font-size:19px">${S.done.length}</div><div class="n">renewal SRs</div></div>
+        <div><div class="v" style="font-size:19px">${S.rate.pct == null ? "—" : S.rate.pct + "%"}</div><div class="n">retained</div></div>
+        <div><div class="v" style="font-size:19px">${S.open ? S.open.length : "—"}</div><div class="n">open</div></div>
+        <div><div class="v${S.open && S.open.some(r => r.overdue) ? " tr" : ""}" style="font-size:19px">${S.open ? S.open.filter(r => r.overdue).length : "—"}</div><div class="n">overdue</div></div></div></div>`; }).join("");
+  const S = stats(n), sfx = n ? ":" + n : "";
+  const dk = (k, inner) => `<div class="tile rdrill${renDrill === k ? " on" : ""}" data-drill="${k}" role="button" tabindex="0">${inner}</div>`;
+  const tile = (k, head, v, note) => dk("rw:" + k + sfx, `<div class="k">${head}</div><div class="v">${v}</div><div class="n">${note}</div>`);
+  const cbMed = med(S.cbDone.map(r => r.minutes)), rMed = med(S.ans.map(r => r.minutes)), wait = S.need.length - S.ans.length;
+  const rs = renRate(S.settled), highs = S.up.filter(r => r.risk === "high").length;
+  const upDisc = S.up.filter(r => renWorked(r) === "discussed").length;
+  const tiles = [
+    tile("done", "Renewal SRs completed", S.done.length, S.done.length ? `median ${hrs(S.done)} created to completed` : "none completed"),
+    tile("ret", "Retained", S.rate.pct == null ? "—" : S.rate.pct + "%", `of the renewal SRs completed &middot; ${S.rate.kept} of ${S.rate.kept + S.rate.lost}${S.rate.lost ? ` &middot; <b style="color:var(--bad)">${S.rate.lost} lost</b>` : ""}`),
+    tile("disc", "Reviewed with the customer", pct(S.disc.length, S.outs.length), `${S.disc.length} of ${S.outs.length} &middot; the rest No action or Unable to Contact`),
+    tile("tasks", "Renewal tasks done", `${S.tk.completed}<span style="font-size:15px;color:var(--text-muted)"> / ${S.tk.due}</span>`, `${pct(S.tk.completed, S.tk.due)} of renewal tasks due`),
+    tile("open", "Open renewal SRs", S.open ? S.open.length : "—", S.open ? `<b${S.open.some(r => r.overdue) ? ' style="color:var(--bad)"' : ""}>${S.open.filter(r => r.overdue).length}</b> overdue &middot; as of ${fmtShortDate(m.days[m.days.length - 1])}` : "not kept for this day"),
+    tile("up", `Coming up · ${doc ? doc.upcoming_days : 45} days`, S.up.length, `${pct(upDisc, S.up.length)} reviewed &middot; <b${highs ? ' style="color:var(--bad)"' : ""}>${highs}</b> high risk`),
+    tile("settled", "Retention · settled 4 weeks", rs.pct == null ? "—" : rs.pct + "%", `policies renewed 2-6 weeks ago${n ? " on their SRs" : ""} &middot; ${rs.k} of ${rs.k + rs.l} kept`),
+    tile("lost", "Lost", S.lost.length, `policies renewed in this period${n ? " on their SRs" : ""}`),
+    tile("dials", "Renewal dials", m.dialDays ? S.dials.length : "—", m.dialDays ? `numbers &middot; ${S.dials.reduce((a, r) => a + r.attempts, 0)} dials` : "counted from 2026-09-29"),
+    tile("cb", "Renewal call backs", `<span class="${replyTier(cbMed)}">${fmtMins(cbMed)}</span>`, n ? `median to return &middot; ${S.cbDone.length} returned` : `median to return &middot; ${S.cbDone.length} of ${S.cb.length} returned same day`),
+    tile("replies", "Speed to reply", `<span class="${replyTier(rMed)}">${fmtMins(rMed)}</span>`, `median &middot; ${S.ans.length} answered${wait ? ` &middot; <b style="color:var(--bad)">${wait} waiting</b>` : ""}`),
+    tile("sent", "Texts / emails", `${S.sent.filter(r => r.channel === "text" && !r.auto).length} / ${S.sent.filter(r => r.channel === "email" && !r.auto).length}`, `typed &middot; ${S.sent.filter(r => r.auto).length} more by automation`),
+  ].join("");
+  const done = m.renewalDone;
+  const pipes = (m.pipelines || []).filter(([k]) => RENEWAL_PIPES.has(k)).map(([k, l]) => [k, l, done.filter(r => r.pipeline === k)]).filter(x => x[2].length);
   const tr = pipes.map(([k, l, x]) => { const h = x.map(r => r.hours);
     return `<tr class="rdrill-row${renDrill === "rw:pipe:" + k ? " on" : ""}" data-drill="rw:pipe:${k}" tabindex="0"><td>${l}</td><td class="num">${x.length}</td><td class="num">${fmtDur(svcMedian(h))}</td><td class="num">${fmtDur(svcPctile(h, 0.9))}</td></tr>`; }).join("");
   let list = "";
   if (renDrill.startsWith("rw:")) {
-    const rest = renDrill.slice(3), i = rest.indexOf(":");
-    const kind = i < 0 ? rest : rest.slice(0, i), a = i < 0 ? "" : rest.slice(i + 1);
+    const parts = renDrill.slice(3).split(":"), k = parts[0], a = parts.slice(1).join(":");
+    const who = k === "pipe" ? "" : a, T = k === "pipe" ? null : stats(who);
+    const whoTag = who ? ` · ${cesc(first(who))}` : "";
     const head = (t, what) => `<div class="rdrill-list"><div style="display:flex;justify-content:space-between;align-items:baseline;gap:12px;margin:14px 0 6px">
       <h3 class="rh3" style="margin:0">${t}</h3><a href="#" data-drill-close style="font-size:12.5px">Close</a></div>${what ? `<p class="sd" style="margin:0 0 6px">${what}</p>` : ""}`;
-    if (kind === "done") list = head(`Renewal SRs Completed · ${rs.length}`, "Newest first, with the outcome each counts as.") + svcSrTable(rs, m, true) + "</div>";
-    if (kind === "tasks") list = head(`Renewal Tasks · ${m.renewalTasks.length} due`, "Every renewal task due in this period, not done first.") + svcTaskTable(m.renewalTasks) + "</div>";
-    if (kind === "cb") list = head(`Renewal Call Backs · ${m.renewalCallbacks.length}`, "Missed calls from customers whose open SRs are all renewal SRs. Not returned first.") + svcCallbackTable(m.renewalCallbacks) + "</div>";
-    if (kind === "sent") list = head(`Renewal Texts & Emails · ${m.renewalMsg.sent.filter(r => !r.auto).length} typed, ${m.renewalMsg.sent.filter(r => r.auto).length} automation`, "To customers whose open SRs are all renewal SRs, or about the renewal. Typed first.") + svcSentTable(m.renewalMsg.sent, m) + "</div>";
-    if (kind === "replies") list = head(`Renewal Customer Messages · ${m.renewalMsg.replies.length}`, "Waiting first, then slowest answered.") + svcReplyTable(m.renewalMsg.replies, m) + "</div>";
-    if (kind === "open") list = head(`Open Renewal SRs · ${open.length}`, `As of ${fmtShortDate(m.days[m.days.length - 1])}.`) + svcOpenTable(open, m) + "</div>";
-    if (kind === "pipe") { const x = rs.filter(r => r.pipeline === a); list = head(`${cesc((pipes.find(p => p[0] === a) || [, a])[1])} · ${x.length} completed`) + svcSrTable(x, m, true) + "</div>"; }
-    if (kind === "person") { const x = a === "others" ? others : rs.filter(r => r.by === a), o = open && a !== "others" ? open.filter(r => r.by === a) : null;
-      const tk = a === "others" ? [] : m.renewalTasks.filter(r => (r.assignees || []).includes(a) || r.done_by === a);
-      list = head(a === "others" ? "Others" : cesc(a)) + `<h3 class="rh3">Completed · ${x.length}</h3>${svcSrTable(x, m, true)}${o ? `<h3 class="rh3">Open · ${o.length}</h3>${svcOpenTable(o, m)}` : ""}${a !== "others" ? `<h3 class="rh3">Renewal tasks · ${tk.length}</h3>${svcTaskTable(tk)}` : ""}</div>`; }
+    const label = Object.fromEntries(((doc && doc.sr_outcomes) || []).map(([x, l]) => [x, l]));
+    const pipeName = Object.fromEntries((doc && doc.pipelines) || []);
+    const pol = (t, what, r) => renDrillHtml([t, what, r], label, pipeName);
+    if (k === "done") list = head(`Renewal SRs completed${whoTag} · ${T.done.length}`, "Newest first, with the outcome each counts as.") + svcSrTable(T.done, m, true) + "</div>";
+    if (k === "ret") { const x = T.outs.filter(r => kind[r.outcome] === "kept" || kind[r.outcome] === "lost").sort((p, q) => (kind[q.outcome] === "lost") - (kind[p.outcome] === "lost"));
+      list = head(`Retained${whoTag} · ${T.rate.kept} of ${T.rate.kept + T.rate.lost}`, "The renewal SRs in the rate, lost first. Mid-term Cancellation and Sold/Moved sit outside it.") + svcSrTable(x, m, true) + "</div>"; }
+    if (k === "disc") { const x = [...T.outs].sort((p, q) => REN_DISCUSSED.has(p.outcome) - REN_DISCUSSED.has(q.outcome));
+      list = head(`Reviewed with the customer${whoTag} · ${T.disc.length} of ${T.outs.length}`, "Not reviewed (No action, Unable to Contact) first.") + svcSrTable(x, m, true) + "</div>"; }
+    if (k === "tasks") list = head(`Renewal tasks${whoTag} · ${T.tasks.length} due`, "Not done first.") + svcTaskTable(T.tasks) + "</div>";
+    if (k === "open") list = head(`Open renewal SRs${whoTag}${T.open ? " · " + T.open.length : ""}`, `As of ${fmtShortDate(m.days[m.days.length - 1])}.`) + svcOpenTable(T.open, m) + "</div>";
+    if (k === "up") list = pol(`Coming up${whoTag}`, `renewing in the next ${doc ? doc.upcoming_days : 45} days${who ? ", on their renewal SRs" : ""}`, T.up);
+    if (k === "settled") list = pol(`Retention · settled 4 weeks${whoTag}`, "renewed 2-6 weeks ago, retained and lost", T.settled.filter(r => r.status === "retained" || r.status === "lost"));
+    if (k === "lost") list = pol(`Lost${whoTag}`, "renewals lost in this period", T.lost);
+    if (k === "dials") list = head(`Renewal dials${whoTag} · ${T.dials.length} number${T.dials.length === 1 ? "" : "s"}`, "Numbers whose open SRs are all renewal SRs.") + svcDialTable(T.dials, m) + "</div>";
+    if (k === "cb") list = head(`Renewal call backs${whoTag} · ${T.cb.length}`, "Missed calls from customers whose open SRs are all renewal SRs. Not returned first.") + svcCallbackTable(T.cb) + "</div>";
+    if (k === "replies") list = head(`Renewal customer messages${whoTag} · ${T.need.length}`, "Waiting first, then slowest answered.") + svcReplyTable(T.need, m) + "</div>";
+    if (k === "sent") list = head(`Renewal texts & emails${whoTag} · ${T.sent.filter(r => !r.auto).length} typed`, "Typed first.") + svcSentTable(T.sent, m) + "</div>";
+    if (k === "pipe") { const x = done.filter(r => r.pipeline === a); list = head(`${cesc((pipes.find(p => p[0] === a) || [, a])[1])} · ${x.length} completed`) + svcSrTable(x, m, true) + "</div>"; }
   }
   return `<div class="sect"><h2>Renewal SR Work${m.label ? ` <span style="font-weight:400;text-transform:none;letter-spacing:0;color:var(--text-muted)">· ${cesc(m.label)}</span>` : ""}</h2>
-    <p class="sd">Renewal SRs, tasks, call backs and texts, ${fmtShortDate(m.days[0])} – ${fmtShortDate(m.days[m.days.length - 1])}: the SRs completed, from the day each was created to the day it was completed, and the ones still open; the renewal tasks due, and how many were done; and the call backs, texts and emails with customers whose open SRs are all renewal SRs, or about the renewal. Credit goes to whoever completed the SR or task. None of these are in the Service Digest.</p>
-    ${tiles}${renDrill.startsWith("rw:") && !renDrill.startsWith("rw:pipe:") ? list : ""}
-    ${tr ? `<div class="scroll"><table><thead><tr><th>Pipeline</th><th class="num">Completed</th><th class="num">Median</th><th class="num">90% within</th></tr></thead><tbody>${tr}</tbody></table></div>` : ""}
+    <p class="sd">Pick a person for their own renewal work; with nobody picked the cards below are the whole team. Renewal SRs, tasks, call backs and texts, ${fmtShortDate(m.days[0])} – ${fmtShortDate(m.days[m.days.length - 1])}; credit goes to whoever completed the SR or task. Retention, lost and coming up count the policies on each person's renewal SRs. Click any card for the accounts behind it.</p>
+    <div class="svcstrip">${strip}</div>
+    <div class="tile" style="margin-top:12px;text-align:left">
+      <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:8px">
+        <b>${n ? `${pbadge(DOT[n] || TEAM_DOT, first(n))} <span style="margin-left:4px">${cesc(title(n))}</span>` : `${pbadge(TEAM_DOT, "Team")} <span style="margin-left:4px">totals</span>`}</b>
+        ${n ? '<a href="#" data-rperson="">Show the team</a>' : ""}</div>
+      <div class="svcgrid">${tiles}</div>${renDrill.startsWith("rw:") && !renDrill.startsWith("rw:pipe:") ? list : ""}</div>
+    ${tr ? `<h3 class="rh3" style="margin-top:14px">By pipeline</h3><div class="scroll"><table><thead><tr><th>Pipeline</th><th class="num">Completed</th><th class="num">Median</th><th class="num">90% within</th></tr></thead><tbody>${tr}</tbody></table></div>` : ""}
     ${renDrill.startsWith("rw:pipe:") ? list : ""}</div>`;
 }
 async function paintRenewals() {
@@ -7355,7 +7418,7 @@ async function paintRenewalsTab() {
     $("#topsub").textContent = "Athena · renewals" + (rg.label ? " · " + rg.label : "");
   }
   const workHtml = rg.err ? `<div class="sect"><h2>Renewal SR Work</h2><p class="sd">${rg.err}</p></div>`
-    : work ? renewalWorkHtml(work) + renOutcomeHtml(work) : `<div class="sect"><h2>Renewal SR Work</h2><p class="sd">No Athena report for ${rangeMode === "day" ? "this day" : "this range"} yet.</p></div>`;
+    : work ? renewalWorkHtml(work, RENEWALS_DOC, rg.err ? null : (rangeMode === "day" ? (rg.wanted && rg.wanted[0] ? { from: rg.wanted[0], to: rg.wanted[0] } : null) : rangeBounds())) + renOutcomeHtml(work) : `<div class="sect"><h2>Renewal SR Work</h2><p class="sd">No Athena report for ${rangeMode === "day" ? "this day" : "this range"} yet.</p></div>`;
   if (!RENEWALS_DOC && !work) { v.innerHTML = controls + '<div class="empty">No renewal report yet. It is built every night.</div>'; wireRangeControl(); return; }
   const y = window.scrollY;
   const day = rg.wanted && rg.wanted[0];
@@ -7370,6 +7433,12 @@ async function paintRenewalsTab() {
   });
   const close = v.querySelector("[data-drill-close]");
   if (close) close.onclick = e => { e.preventDefault(); renDrill = ""; paintRenewals(); };
+  v.querySelectorAll("[data-rperson]").forEach(el => {
+    const go = e => { if (e) e.preventDefault(); const x = el.dataset.rperson;
+      renPerson = x && renPerson !== x ? x : ""; if (renDrill.startsWith("rw:") && !renDrill.startsWith("rw:pipe:")) renDrill = ""; paintRenewals(); };
+    el.onclick = go;
+    el.onkeydown = e => { if (e.key === "Enter" || e.key === " ") go(e); };
+  });
   [["renRisk", "risk"], ["renPipe", "pipe"], ["renWorked", "worked"], ["renWho", "who"]].forEach(([id, k]) => {
     const el = document.getElementById(id);
     if (el) el.onchange = () => { renFilter[k] = el.value; paintRenewals(); };
