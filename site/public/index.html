@@ -254,6 +254,8 @@ body {
   padding: 20px 10px; border-right: 1px solid var(--border);
   position: sticky; top: 49px; align-self: flex-start; max-height: calc(100vh - 49px);
   overflow-y: auto;
+  /* Full height, so "Take the tour" (margin-top: auto) sits at the foot. */
+  height: calc(100vh - 49px); box-sizing: border-box;
 }
 .tab {
   background: none; border: none; border-left: 3px solid transparent; border-radius: 0 7px 7px 0;
@@ -268,7 +270,7 @@ body {
   .shell { flex-direction: column; }
   .tabs {
     flex-direction: row; width: 100%; max-width: 100%; min-width: 0; flex: none;
-    position: static; max-height: none; overflow-y: visible;
+    position: static; max-height: none; height: auto; overflow-y: visible;
     overflow-x: auto; border-right: none; border-bottom: 1px solid var(--border); padding: 8px 12px;
   }
   .tab { border-left: none; border-bottom: 2px solid transparent; border-radius: 0; white-space: nowrap; flex: none; width: auto; }
@@ -785,6 +787,51 @@ td.rdrill-cell:focus-visible { outline: 2px solid var(--s1); outline-offset: -2p
 td.rdrill-cell.on { box-shadow: inset 0 -2px 0 var(--s1); color: inherit; font-weight: 600; }
 tr.rdrill-row:hover td { background: var(--surface-2, rgba(127,127,127,.08)); }
 tr.rdrill-row.on td { box-shadow: inset 0 -2px 0 var(--s1); }
+
+/* Blueprints (Frank, 2026-09-30): Learning Center > Blueprints, the plain-
+   language guides in blueprints.js. One reading column. */
+.bp { max-width: 760px; }
+.bp .bpwho { color: var(--text-secondary); font-size: 14px; margin: 0 0 6px; line-height: 1.55; }
+.bp .bpdate { color: var(--text-muted); font-size: 12px; margin: 0 0 18px; }
+.bp .bptoc { display: flex; flex-wrap: wrap; gap: 4px 14px; font-size: 12.5px; margin: 0 0 8px; }
+.bp .bptoc a { color: var(--text-secondary); text-decoration: none; border-bottom: 1px dotted var(--border-strong); }
+.bp .bptoc a:hover { color: var(--text-primary); }
+.bp section { border-top: 1px solid var(--border); padding-top: 4px; margin-top: 22px; }
+.bp h3 { font-size: 16px; margin: 14px 0 10px; color: var(--text-primary); text-wrap: balance; }
+.bp p { margin: 0 0 10px; line-height: 1.6; font-size: 14px; }
+.bp ul, .bp ol { margin: 0 0 12px; padding-left: 22px; font-size: 14px; line-height: 1.6; }
+.bp li { margin-bottom: 5px; }
+.bp dl { margin: 0 0 12px; display: grid; grid-template-columns: minmax(120px, 190px) minmax(0, 1fr); gap: 8px 16px; font-size: 14px; line-height: 1.55; }
+.bp dt { font-weight: 600; color: var(--text-primary); }
+.bp dd { margin: 0; color: var(--text-secondary); }
+@media (max-width: 560px) { .bp dl { grid-template-columns: 1fr; gap: 2px; } .bp dd { margin-bottom: 8px; } }
+.bp .bptw { overflow-x: auto; margin: 0 0 12px; }
+.bp table { border-collapse: collapse; font-size: 13.5px; min-width: 100%; }
+.bp th { text-align: left; font-size: 11.5px; text-transform: uppercase; letter-spacing: .05em; color: var(--text-muted); padding: 6px 10px; border-bottom: 1px solid var(--border-strong); }
+.bp td { padding: 7px 10px; border-bottom: 1px solid var(--border); vertical-align: top; }
+
+/* System tour (Frank, 2026-09-30: "an option on the bottom left for anyone
+   to do a system tour"). The button sits at the foot of the left bar; the
+   tour lights one part of the page at a time with a card beside it. */
+.tabs .tourbtn { margin-top: auto; background: none; border: 1px solid var(--border-strong); border-radius: 7px;
+  padding: 8px 10px; font: inherit; font-size: 12.5px; font-weight: 600; color: var(--text-secondary); cursor: pointer; text-align: left; }
+.tabs .tourbtn:hover { color: var(--text-primary); border-color: var(--text-muted); }
+.tabs .tourbtn:focus-visible, .tourcard button:focus-visible { outline: 2px solid var(--s1, #2563eb); outline-offset: 2px; }
+.tourspot { position: fixed; z-index: 90; border-radius: 10px; pointer-events: none;
+  box-shadow: 0 0 0 3px var(--s1, #2563eb), 0 0 0 9999px rgba(10, 14, 20, .55); transition: all .25s ease; }
+.tourcard { position: fixed; z-index: 91; width: min(360px, calc(100vw - 32px)); background: var(--surface-raised, var(--surface));
+  color: var(--text-primary); border: 1px solid var(--border-strong); border-radius: 12px; padding: 16px 18px 14px;
+  box-shadow: 0 10px 30px rgba(0,0,0,.25); font-size: 14px; line-height: 1.55; }
+.tourcard .tstep { font-size: 11.5px; color: var(--text-muted); letter-spacing: .04em; text-transform: uppercase; margin-bottom: 4px; }
+.tourcard h4 { margin: 0 0 6px; font-size: 16px; }
+.tourcard p { margin: 0 0 12px; color: var(--text-secondary); }
+.tourcard .tbtns { display: flex; gap: 8px; justify-content: flex-end; align-items: center; }
+.tourcard .tbtns .tskip { margin-right: auto; background: none; border: none; color: var(--text-muted); font: inherit; font-size: 13px; cursor: pointer; padding: 6px 2px; }
+.tourcard .tbtns .tnext, .tourcard .tbtns .tback { font: inherit; font-size: 13px; font-weight: 600; border-radius: 7px; padding: 6px 14px; cursor: pointer; }
+.tourcard .tbtns .tnext { background: var(--text-primary); color: var(--surface); border: 1px solid var(--text-primary); }
+.tourcard .tbtns .tback { background: none; color: var(--text-primary); border: 1px solid var(--border-strong); }
+@media (max-width: 760px) { .tabs .tourbtn { margin-top: 0; margin-left: auto; flex: none; white-space: nowrap; } }
+@media (prefers-reduced-motion: reduce) { .tourspot { transition: none; } }
 </style>
 </head>
 <body>
@@ -800,6 +847,7 @@ tr.rdrill-row.on td { box-shadow: inset 0 -2px 0 var(--s1); }
     <button class="tab" role="tab" aria-selected="false" data-v="learning">Learning Center</button>
     <button class="tab" role="tab" aria-selected="false" data-v="service">Service Center</button>
     <button class="tab" role="tab" aria-selected="false" data-v="commercial" hidden>Commercial Center</button>
+    <button class="tourbtn" id="tourbtn" type="button">Take the tour</button>
   </nav>
   <main class="main">
     <div id="centerbar"></div>
@@ -808,6 +856,7 @@ tr.rdrill-row.on td { box-shadow: inset 0 -2px 0 var(--s1); }
 </div>
 <div id="tip" role="tooltip"></div>
 
+<script src="blueprints.js"></script>
 <script>
 /* The digest email's own producer colours (render_report.DOT), so a producer
    is the same colour on the board as in their inbox. Not chosen here. */
@@ -941,7 +990,7 @@ let view = "digest";
 const CENTERS = {
   salescenter: [["digest", "Digest"], ["sales", "Sales"], ["messages", "Texts & Emails"]],
   coaching: [["coaching", "Coaching"]],
-  learning: [["roleplay", "Role Play"], ["rphistory", "Session History"], ["training", "Training"]],
+  learning: [["roleplay", "Role Play"], ["rphistory", "Session History"], ["training", "Training"], ["blueprint", "Blueprints"]],
   service: [["service", "Service Digest"], ["renewals", "Renewals"]],
   commercial: [["commercial", "Commercial"]],
 };
@@ -5977,6 +6026,10 @@ async function paintTab() {
     const data = await loadTraining();
     v.innerHTML = trainingPanel(data);
     wireTrainingPanel(data);
+  } else if (view === "blueprint") {
+    $("#topsub").textContent = "how the Sales Floor works, in plain language";
+    v.innerHTML = blueprintPanel();
+    wireBlueprintPanel();
   } else if (view === "sales") {
     $("#topsub").textContent = "log today's sales, reference any past folio's sheet, or break it down by source/type/producer -- self-reported, not the official Premium Sold figure";
     v.innerHTML = '<div class="empty">Loading…</div>';
@@ -7426,6 +7479,209 @@ async function loadDay(day) {
   if (curLive) { await refreshLive(day); startLivePoll(day); }
 }
 
+/* ---- Blueprints (Frank, 2026-09-30) ---------------------------------------
+   The plain-language guides in blueprints.js: Apollo's Blueprint for managers
+   (shown only to the Role Play history viewers -- /api/me's `all`) and the
+   New / Mid-Level / Experienced producer guides for everyone. */
+let IS_MANAGER = false;
+let bpPick = "";
+async function initMe() {
+  try {
+    const r = await fetch("/api/me", { cache: "no-store" });
+    if (r.ok) IS_MANAGER = !!(await r.json()).all;
+  } catch (_) {}
+  if (view === "blueprint") paint();
+}
+function bpGuides() {
+  const all = ((window.BLUEPRINTS || {}).guides || []);
+  return all.filter(g => !g.manager || IS_MANAGER);
+}
+// **bold** is the only markup the guides use.
+const bpText = t => cesc(t).replace(/\*\*([^*]+)\*\*/g, "<strong>$1</strong>");
+function bpItem(it) {
+  if (typeof it === "string") return `<p>${bpText(it)}</p>`;
+  if (it.list) return `<ul>${it.list.map(x => `<li>${bpText(x)}</li>`).join("")}</ul>`;
+  if (it.steps) return `<ol>${it.steps.map(x => `<li>${bpText(x)}</li>`).join("")}</ol>`;
+  if (it.terms) return `<dl>${it.terms.map(([a, b]) => `<dt>${bpText(a)}</dt><dd>${bpText(b)}</dd>`).join("")}</dl>`;
+  if (it.table) return `<div class="bptw"><table><thead><tr>${it.table.head.map(h => `<th>${bpText(h)}</th>`).join("")}</tr></thead>
+    <tbody>${it.table.rows.map(r => `<tr>${r.map(c => `<td>${bpText(c)}</td>`).join("")}</tr>`).join("")}</tbody></table></div>`;
+  return "";
+}
+function blueprintPanel() {
+  const guides = bpGuides();
+  if (!guides.length) return '<div class="empty">The Blueprints did not load. Refresh the page.</div>';
+  const g = guides.find(x => x.key === bpPick) || guides[0];
+  bpPick = g.key;
+  const pills = guides.map(x => `<button class="subtab ${x.key === g.key ? "sel" : ""}" data-bp="${x.key}">${cesc(x.title)}</button>`).join("");
+  const upd = (window.BLUEPRINTS || {}).updated;
+  const toc = g.sections.map((sec, i) => `<a href="#bp-${g.key}-${i}" data-bpjump="bp-${g.key}-${i}">${cesc(sec.h)}</a>`).join("");
+  return `<div class="subtabs" style="flex-wrap:wrap">${pills}</div>
+  <div class="bp">
+    <p class="bpwho">${bpText(g.who)}</p>
+    ${upd ? `<p class="bpdate">Last updated ${cesc(fmtShortDate(upd))}</p>` : ""}
+    <nav class="bptoc" aria-label="Sections">${toc}</nav>
+    ${g.sections.map((sec, i) => `<section id="bp-${g.key}-${i}"><h3>${cesc(sec.h)}</h3>${sec.body.map(bpItem).join("")}</section>`).join("")}
+  </div>`;
+}
+function wireBlueprintPanel() {
+  $$("#view [data-bp]").forEach(b => b.onclick = () => { bpPick = b.dataset.bp; paint(); window.scrollTo(0, 0); });
+  $$("#view [data-bpjump]").forEach(a => a.onclick = e => {
+    e.preventDefault();
+    const t = document.getElementById(a.dataset.bpjump);
+    if (t) t.scrollIntoView({ behavior: "smooth", block: "start" });
+  });
+}
+
+/* ---- System tour (Frank, 2026-09-30) ---------------------------------------
+   "Take the tour" at the foot of the left bar walks anyone through the board:
+   each step opens a page, lights one part of it and explains it in a card.
+   A step whose part is not on the page (no data that day) explains it anyway,
+   with the card in the middle. Esc or Skip ends it. */
+const TOUR_STEPS = [
+  { title: "Welcome to the Sales Floor",
+    text: "This is the agency's board. It shows how the day is going, coaches every recorded sales call, and gives you places to practise. This tour takes about two minutes." },
+  { find: () => $("nav.tabs"), title: "The left bar",
+    text: "Each entry is a Center: Sales, Coaching, Learning and Service. Every Center has its own tabs across the top of the page." },
+  { view: "digest", find: () => $("#view .controls"), title: "Pick a day and a person",
+    text: "Choose a single day, a week, month to date, a folio or your own dates, and everyone or one producer. The same choice follows you from page to page." },
+  { view: "digest", find: () => $("#view .tiles"), title: "The day at a glance",
+    text: "Dials, contacts, quotes, sales and closing ratio. Green is on goal, yellow is close, red is off track. A number with a pulsing green glow is live; the rest update every hour on the :55. Click any number to see the accounts behind it." },
+  { view: "digest", find: () => tourSection("Team Leaderboard"), title: "The leaderboard",
+    text: "Seven categories, 5 points for first down to 1 for fifth. Click a producer's number to see the calls or accounts it counts." },
+  { view: "digest", find: () => tourSection("Speed to Dial") || tourSection("Household Completion"), title: "Speed, tasks and households",
+    text: "How fast new internet leads were called and texts were answered, how many of today's tasks got done, and how many policies each household bought." },
+  { view: "sales", title: "The Sales sheet",
+    text: "Log a sale, look back at any folio, or break sales down by lead source, product or producer. Live sales are added here automatically." },
+  { view: "messages", title: "Texts & Emails",
+    text: "Every text and email with a lead: what each producer typed, the replies still waiting, and how quickly replies were answered. Automated messages are counted separately." },
+  { view: "coaching", sub: "detail", find: () => $("#centerbar .ctabs"), title: "Coaching cards",
+    text: "Apollo reviews every recorded sales conversation and writes a card: what the call was for, a score on each step, the objections and better lines to use, flags, and the recording with its transcript. Click a line of the transcript to jump there." },
+  { view: "coaching", sub: "objections", title: "Objections",
+    text: "Every objection Apollo found, grouped, with how each one was handled. Filter to one person to see what they lose to most." },
+  { view: "coaching", sub: "wins", title: "Wins and Losses",
+    text: "Patterns across many calls: how often the quote and the sale were assumed, and how often a quote was sent instead of kept on the phone. Every number lists the calls behind it." },
+  { view: "roleplay", title: "Role Play",
+    text: "A practice call against an AI prospect with a face and a voice. Pick a difficulty, talk it through, and Apollo grades the call and gives you one tip." },
+  { view: "rphistory", title: "Session History",
+    text: "Every graded Role Play session, with the grade and the whole conversation. Producers see their own; managers see everyone's." },
+  { view: "training", title: "Training",
+    text: "Flashcards, quizzes and matching games on objections, what to ask, and technique." },
+  { view: "blueprint", find: () => $("#view .subtabs"), title: "Blueprints",
+    text: "Plain-language guides to everything on the board: one for new producers, one for mid-level, one for experienced, and one for managers." },
+  { view: "service", title: "The Service Center",
+    text: "Athena's side: the service team's SRs, tasks, call backs and texts, and the Renewals tab." },
+  { find: () => $("#tourbtn"), title: "That's the tour",
+    text: "You can take it again any time from this button. The Blueprints in the Learning Center go into more detail." },
+];
+const tourSection = title => [...$$("#view .sect")].find(sec => {
+  const h = sec.querySelector("h2");
+  return h && h.textContent.trim().toLowerCase().startsWith(title.toLowerCase());
+});
+let tourIdx = -1, tourReturn = null;
+function tourEls() {
+  let spot = $("#tourspot"), card = $("#tourcard");
+  if (!spot) { spot = document.createElement("div"); spot.id = "tourspot"; spot.className = "tourspot"; document.body.appendChild(spot); }
+  if (!card) {
+    card = document.createElement("div"); card.id = "tourcard"; card.className = "tourcard";
+    card.setAttribute("role", "dialog"); card.setAttribute("aria-modal", "false"); card.setAttribute("aria-labelledby", "tourtitle");
+    document.body.appendChild(card);
+  }
+  return { spot, card };
+}
+function tourPlace(el) {
+  const { spot, card } = tourEls();
+  const vw = window.innerWidth, vh = window.innerHeight, pad = 6;
+  const r = el ? el.getBoundingClientRect() : null;
+  if (!r || !r.width || !r.height) {
+    spot.style.cssText = `left:${vw / 2}px;top:${vh / 2}px;width:0;height:0;`;
+    const cw = card.offsetWidth, ch = card.offsetHeight;
+    card.style.left = `${Math.max(16, (vw - cw) / 2)}px`; card.style.top = `${Math.max(16, (vh - ch) / 2)}px`;
+    return;
+  }
+  const top = Math.max(4, r.top - pad), left = Math.max(4, r.left - pad);
+  const h = Math.min(r.height + pad * 2, vh - top - 4), w = Math.min(r.width + pad * 2, vw - left - 4);
+  spot.style.cssText = `left:${left}px;top:${top}px;width:${w}px;height:${h}px;`;
+  const cw = card.offsetWidth, ch = card.offsetHeight, gap = 12;
+  let cx, cy;
+  if (left + w + gap + cw <= vw - 16 && ch <= vh - 32) { cx = left + w + gap; cy = Math.min(Math.max(16, top), vh - ch - 16); }
+  else if (top + h + gap + ch <= vh - 16) { cy = top + h + gap; cx = Math.min(Math.max(16, left), vw - cw - 16); }
+  else if (top - gap - ch >= 16) { cy = top - gap - ch; cx = Math.min(Math.max(16, left), vw - cw - 16); }
+  else { cx = Math.max(16, (vw - cw) / 2); cy = vh - ch - 16; }
+  card.style.left = `${cx}px`; card.style.top = `${cy}px`;
+}
+async function tourWait(find) {
+  if (!find) return null;
+  for (let i = 0; i < 30; i++) {
+    const el = find();
+    if (el && el.getBoundingClientRect().height) return el;
+    await new Promise(r => setTimeout(r, 100));
+  }
+  return null;
+}
+async function tourShow(i) {
+  tourIdx = i;
+  const st = TOUR_STEPS[i];
+  if (st.view) {
+    if (st.sub && typeof coachSubTab !== "undefined") coachSubTab = st.sub;
+    if (view !== st.view) await goView(st.view);
+    else if (st.sub) { paintCenterBar(); paint(); }
+  }
+  const { card } = tourEls();
+  const last = i === TOUR_STEPS.length - 1;
+  card.innerHTML = `<div class="tstep">${i + 1} of ${TOUR_STEPS.length}</div>
+    <h4 id="tourtitle">${cesc(st.title)}</h4><p>${cesc(st.text)}</p>
+    <div class="tbtns">${last ? "" : '<button class="tskip" type="button">Skip tour</button>'}
+      ${i ? '<button class="tback" type="button">Back</button>' : ""}
+      <button class="tnext" type="button">${last ? "Done" : "Next"}</button></div>`;
+  card.querySelector(".tnext").onclick = () => last ? tourEnd() : tourShow(i + 1);
+  const back = card.querySelector(".tback"); if (back) back.onclick = () => tourShow(i - 1);
+  const skip = card.querySelector(".tskip"); if (skip) skip.onclick = tourEnd;
+  tourPlace(null);
+  const el = await tourWait(st.find || (st.view ? () => $("#view") : null));
+  if (tourIdx !== i) return;
+  if (el) {
+    const r = el.getBoundingClientRect();
+    if (r.top < 60 || r.top > window.innerHeight * 0.6) {
+      el.scrollIntoView({ block: "start" });
+      window.scrollBy(0, -70);
+    }
+  }
+  tourPlace(el && el.id === "view" ? null : el);
+  card.querySelector(".tnext").focus({ preventScroll: true });
+}
+function tourStart() {
+  tourReturn = view;
+  window.scrollTo(0, 0);
+  tourShow(0);
+}
+function tourEnd() {
+  tourIdx = -1;
+  const spot = $("#tourspot"), card = $("#tourcard");
+  if (spot) spot.remove();
+  if (card) card.remove();
+  const back = tourReturn; tourReturn = null;
+  if (back && back !== view) goView(back);
+  $("#tourbtn").focus({ preventScroll: true });
+}
+document.addEventListener("keydown", e => {
+  if (tourIdx < 0) return;
+  if (e.key === "Escape") tourEnd();
+  else if (e.key === "ArrowRight") { if (tourIdx < TOUR_STEPS.length - 1) tourShow(tourIdx + 1); }
+  else if (e.key === "ArrowLeft") { if (tourIdx > 0) tourShow(tourIdx - 1); }
+});
+window.addEventListener("resize", () => {
+  if (tourIdx < 0) return;
+  const st = TOUR_STEPS[tourIdx];
+  const el = st.find ? st.find() : null;
+  tourPlace(el);
+});
+window.addEventListener("scroll", () => {
+  if (tourIdx < 0) return;
+  const st = TOUR_STEPS[tourIdx];
+  if (st.find) tourPlace(st.find());
+}, { passive: true });
+$("#tourbtn").onclick = tourStart;
+
 async function goView(next) {
   if (next === view) return;
   if (view === "roleplay" && next !== "roleplay") {
@@ -7473,6 +7729,7 @@ paintCenterBar();
   }
   DAYS = days;
   initCommercial();   // unhides the Commercial Center for Frank only
+  initMe();           // Apollo's Blueprint for managers only
   await loadDay(days[0]);
 })();
 </script>

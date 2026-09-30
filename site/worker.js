@@ -116,6 +116,13 @@ export default {
         return json(trainingDecks());
       }
 
+      // Who is viewing, for the board's own choices (Frank, 2026-09-30:
+      // Apollo's Blueprint is for managers): `all` is true for the Role
+      // Play history viewers, `producer` names a producer's own address.
+      if (parts[1] === "me" && parts.length === 2) {
+        return json(rpScope(request, env));
+      }
+
       if (parts[1] === "leadsources" && parts.length === 2) {
         return getLeadSources(env);
       }

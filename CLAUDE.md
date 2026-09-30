@@ -700,6 +700,25 @@ A tab that fails to draw (an old or partial document) shows "This section
 could not be drawn: <message>" under its date controls instead of a blank
 page (2026-09-30).
 
+## Blueprints and the tour
+
+**Learning Center > Blueprints holds the plain-language guides** (Frank,
+2026-09-30: "if Im out for a week and want amanda to coach, she should know
+what everything means, how the model coaches, where everything is ... in
+regular language, not AI prompt language"): **Apollo's Blueprint** for
+managers (shown only to `ROLEPLAY_HISTORY_VIEWERS`, via the Worker's
+`/api/me`) and **New / Mid-Level / Experienced Producer** guides for
+everyone. The words live in `site/public/blueprints.js`, nowhere else.
+**Take the tour** at the foot of the left bar walks anyone through the
+board (`TOUR_STEPS` in index.html).
+**KEEP THEM CURRENT, in the same change** (Frank: "continues updating as we
+make changes"): anything that changes what a number means, a goal, how
+Apollo reads or scores a call, what a page shows or where it sits, or adds
+a page, also updates the matching lines in `blueprints.js` (and a tour step
+if a page moved or was added) and moves its `updated` date. Write them the
+way you'd explain it to a person at their desk -- no field names, file
+names or prompt wording.
+
 ## Date ranges on the Digest
 
 **The range leaderboard is re-ranked on averages** (Frank, 2026-09-28):
