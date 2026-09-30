@@ -197,6 +197,13 @@ Everything caches under `data/`, so a re-run resumes rather than restarting.
   **No `seed`** -- the model refuses it (AiError 5006, 2026-09-29), which is
   why no face drew on the first day. No binding or a failed draw shows the
   initials.
+  **Every prospect gives rapport** (Frank, 2026-09-30: "they keep just
+  turning me back to the quote after 1 sentence"): ROLEPLAY.md's `###
+  Rapport`, appended to every persona -- small talk and questions about
+  them get a real answer with a detail or two, sometimes a question back,
+  for as long as the producer keeps it going; the prospect never steers back
+  to the quote or an objection themselves, and rapport never counts as not
+  asking for the close. Difficulty still decides the objections.
   **The mic waits for the producer to finish** (Frank, 2026-09-29: "fix the
   mic cutting off"): it listens continuously and sends the turn after
   `RP_PAUSE_MS` (1.5 s, Frank's pick -- 2 s felt slow) of silence -- a tap on the mic sends at once -- never
