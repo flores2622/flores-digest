@@ -172,6 +172,16 @@ Everything caches under `data/`, so a re-run resumes rather than restarting.
   was 16,000 / 12,000 silently), the card's first budget is 9,000 tokens,
   each new card keeps `model`, and `_bool_pair` reads "true"/"false"/"null"/
   "n/a" strings for what they say (a bare None is None, never False).
+- **A closed card's right half is Quick coaching** (Frank, 2026-09-30:
+  "the right half of the card be a quick coaching summary, while leaving
+  the left of the card whats currently there"; `quickCoachHtml`), from what
+  the card already holds -- no new read: the top two `good` and `bad`
+  titles (detail on hover) and one line to say next time, the first
+  objection not overcome's first `fix`, else `askfix`. One column under
+  900px; no panel when there is nothing to say. **A card opens from
+  "▼ Expand ▼" at its bottom and closes from "▲ Collapse ▲" at the bottom of
+  the open card** (Frank, 2026-09-30, replacing the small top-right arrow;
+  the header still opens it too), which scrolls back to the card's top.
 - **Card flags are categorised** (Frank, 2026-09-27): Apollo names each
   flag's category from `digest_config.FLAG_GROUPS` (No next step, Quote not
   presented, Discovery missed, Approach skipped, Objection dropped, Call cut
@@ -283,7 +293,11 @@ Everything caches under `data/`, so a re-run resumes rather than restarting.
   if it sits under that session's own prefix. `/api/roleplay/audio` serves a
   producer's clips by `rpScope` (their own, or everyone's for the history
   viewers); the prospect's machine voice to anyone signed in. Session History
-  plays a session from any line. Sessions before 2026-09-29 have no sound.
+  plays a session from any line, **and word by word like the cards** (Frank,
+  2026-09-30; `rphWords` / `rphClip`): neither voice has word times, so each
+  word sits at its share of its clip's speech by length, the speech found in
+  the sound itself (a producer's clip holds the silence before they spoke and
+  the 1.5 s pause after) -- close, not exact. Sessions before 2026-09-29 have no sound.
   **Coaching cards**: `coaching_cards._timed_turns` adds `turns` ({r, t, who,
   text}; t = seconds into recording r) from Deepgram's SAVED reads only
   (`deepgram_stt.turns(..., cached_only=True)` -- a card build never pays
@@ -1007,6 +1021,19 @@ Crystal (hybrid); credit always goes to whoever COMPLETED the SR or task.
   counts from the rows. Utilization cannot be split (Insightful measures the
   whole day). 09-01..09-25 were flagged from their saved files (backups
   under `backups/2026-09-27-renewal-split/`).
+- **Renewal SR Work is the Service Center's person strip** (Frank,
+  2026-09-30: "same as the service center, person strip with team
+  totals"). The agency's retention rates stay on top; under them one small
+  card per person (renewal SRs, retained, open, overdue) and one grid -- the
+  team's until a person is picked (`renPerson`), then theirs
+  (`renewalWorkHtml(m, doc, rb)`): renewal SRs completed, retained (of the
+  renewal SRs completed), reviewed with the customer (every outcome but No
+  action / Unable to Contact and the two outside the rate --
+  `REN_DISCUSSED`), renewal tasks, open / overdue, coming up and high risk,
+  settled 4-week retention and lost (the policies on their renewal SRs),
+  renewal dials, call backs, speed to reply, texts / emails. Every card
+  opens its accounts (`rw:<list>[:<person>]`). The settled section's "By
+  who worked the renewal SR" row went into the cards.
 - **Both tabs take the Sales Digest's date filter** (Frank, 2026-09-27).
   On the Renewals tab, Renewal SR Work, Lost and Not confirmed follow it
   (Lost and Not confirmed by the day the policy renewed); Coming up stays
@@ -1120,6 +1147,13 @@ Crystal (hybrid); credit always goes to whoever COMPLETED the SR or task.
   left out, renewal numbers split to the Renewals side. Past days: `python3
   service_digest.py --add-dials 2026-09-01 2026-09-28` (backs up under
   `backups/<today>-dials/`, adds only `dials`). The Renewals tab is next.
+  **Laid out for the full-width board** (Frank, 2026-09-30: "it looks
+  off"): the person strip is three equal columns (`.svcstrip`), the stat
+  cards come in even rows of six (`.svcgrid`; four, then two, on narrower
+  screens), Texts & Emails stays full width, and the rest sits two to a row
+  like the Sales Digest (`.digestgrid`): Note Standard, Completion Time and
+  Late Payments on the left, the pipeline outcomes and Contingencies on the
+  right.
 - **Every recorded service call has its full transcript** (Frank,
   2026-09-30: "full transcripts for service calls too"). `service_calls.py`
   takes exactly the calls the Service Center's rows list -- every inbound
