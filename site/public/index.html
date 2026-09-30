@@ -3179,7 +3179,7 @@ function syncedRecordingBlk(c) {
   const lines = c.turns.map(x => {
     const head = ids.length > 1 && x.r !== lastR ? `<div class="ttag">Call ${x.r + 1} of ${ids.length}</div>` : "";
     lastR = x.r;
-    return `${head}<p class="tturn sync t${/producer/.test(x.who) ? 0 : 1}" data-rec="${uid}" data-r="${x.r}" data-t="${x.t}">
+    return `${head}<p class="tturn sync t${/\((producer|service)\)/.test(x.who) ? 0 : 1}" data-rec="${uid}" data-r="${x.r}" data-t="${x.t}">
       <span class="ts">${mmss(x.t)}</span><span class="tw">${esc(x.who)}</span>${esc(x.text)}</p>`;
   }).join("");
   return `<div class="blk"><div class="bl">Recording &amp; transcript</div>
@@ -5641,7 +5641,7 @@ function mergeServiceDocs(docs) {
   const m = { days: docs.map(x => x.date), team: last.team, pipelines: last.pipelines,
     tasks: {}, completed: [], renewals: [], unnamed: {}, callbacks: [], util: {}, taskRows: [], dials: [], dialDays: 0,
     msg: { days: 0, people: {}, replies: [], sent: [] },
-    front: { days: 0, calls: [], created: [] }, playbook: null,
+    front: { days: 0, calls: [], created: [] }, playbook: null, callTx: {},
     openRows: (last.srs || {}).open_rows || null,
     backlog: (last.srs || {}).backlog || {}, lateStages: (last.srs || {}).late_payment_stages || [],
     outcomes: (last.renewals || {}).outcomes || [], resolutionsFrom: (last.renewals || {}).resolutions_from,
@@ -5670,6 +5670,9 @@ function mergeServiceDocs(docs) {
       m.front.created.push(...(x.front.created || []).map(r => Object.assign({ day: x.date }, r)));
     }
     if (x.playbook) m.playbook = x.playbook;
+    // Full transcripts of the team's recorded calls (service_calls.py),
+    // by recording id, each with its day for the recording's URL.
+    for (const [id, t] of Object.entries(x.calls_tx || {})) m.callTx[id] = Object.assign({ day: x.date }, t);
     if (x.messages) {
       m.msg.days++;
       for (const [n, c] of Object.entries(x.messages.people || {})) {
@@ -6134,13 +6137,50 @@ function svcDrillFor(m, keys) {
   }
   return "";
 }
+/* A service call's recording and full transcript (Frank, 2026-09-30: "full
+   transcripts for service calls too"), from service_calls.py via the day's
+   `calls_tx`: the coaching cards' own player (syncedRecordingBlk), opened
+   under the row by its Listen & read button. A row whose call was not
+   recorded, or not transcribed yet, shows nothing. */
+function svcTxIds(ids, m) { return (ids || []).filter(id => id && m.callTx[id] && (m.callTx[id].turns || []).length); }
+function svcTxButton(ids, m) {
+  const got = svcTxIds(ids, m);
+  if (!got.length) return "";
+  const label = got.some(id => m.callTx[id].redacted) ? "Read" : "Listen &amp; read";
+  return `<button class="ghost svc-tx" data-label="${label}" style="padding:2px 8px;font-size:12px">${label}</button>`;
+}
+function svcTxRow(ids, m, cols) {
+  const got = svcTxIds(ids, m);
+  if (!got.length) return "";
+  // A call where a card, bank or social security number came up keeps its
+  // transcript (numbers removed) but never plays: the recording still has
+  // the number in it (service_calls.redact_turns).
+  if (got.some(id => m.callTx[id].redacted)) {
+    const esc = t => String(t == null ? "" : t).replace(/[&<>"]/g, ch => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[ch]));
+    const lines = got.flatMap(id => m.callTx[id].turns).map(x =>
+      `<p class="tturn t${/\(service\)/.test(x.who) ? 0 : 1}"><span class="tw">${esc(x.who)}</span>${esc(x.text)}</p>`).join("");
+    return `<tr class="svc-tx-row" hidden><td colspan="${cols}"><div class="blk"><div class="bl">Transcript</div>
+      <p class="sd" style="margin:0 0 4px">A payment number came up on this call, so it is shown without the recording, numbers removed.</p>
+      <div class="scb" style="font-size:12px;padding:6px 2px;max-height:420px;overflow:auto">${lines}</div></div></td></tr>`;
+  }
+  const turns = got.flatMap((id, r) => m.callTx[id].turns.map(x => Object.assign({ r }, x)));
+  return `<tr class="svc-tx-row" hidden><td colspan="${cols}">${syncedRecordingBlk({ day: m.callTx[got[0]].day, recording_ids: got, turns })}</td></tr>`;
+}
+document.addEventListener("click", e => {
+  const b = e.target.closest && e.target.closest(".svc-tx");
+  if (!b) return;
+  const row = b.closest("tr").nextElementSibling;
+  if (!row || !row.classList.contains("svc-tx-row")) return;
+  row.hidden = !row.hidden;
+  b.innerHTML = row.hidden ? b.dataset.label : "Hide";
+});
 function svcDialTable(rs, m) {
   if (!rs.length) return '<p class="sd">None.</p>';
   const secs = x => x >= 60 ? `${Math.floor(x / 60)}m ${String(x % 60).padStart(2, "0")}s` : `${x}s`;
   const rows = [...rs].sort((a, b) => (b.day || "").localeCompare(a.day || "") || (b.first || "").localeCompare(a.first || "")).map(r => `<tr>
     <td>${svcTime(r.first)}</td><td>${svcLink(r.link_kind, r.link_id, r.name || fmtPhone(r.number))}<div style="font-size:11.5px;color:var(--text-muted)">${cesc(fmtPhone(r.number))} &middot; ${cesc(r.bucket || "")}</div></td>
-    <td>${svcFirst(r.who)}</td><td class="num">${r.attempts}</td><td class="num">${r.seconds ? secs(r.seconds) : "—"}</td></tr>`).join("");
-  return `<div class="scroll"><table class="rtable"><thead><tr><th>First dial</th><th>Called</th><th>By</th><th class="num">Dials</th><th class="num">Longest connected</th></tr></thead><tbody>${rows}</tbody></table></div>`;
+    <td>${svcFirst(r.who)}</td><td class="num">${r.attempts}</td><td class="num">${r.seconds ? secs(r.seconds) : "—"}</td><td>${svcTxButton(r.recs, m)}</td></tr>${svcTxRow(r.recs, m, 6)}`).join("");
+  return `<div class="scroll"><table class="rtable"><thead><tr><th>First dial</th><th>Called</th><th>By</th><th class="num">Dials</th><th class="num">Longest connected</th><th>Call</th></tr></thead><tbody>${rows}</tbody></table></div>`;
 }
 /* The Service Digest's people (Frank, 2026-09-29: "no leaderboard but cards
    per producer with their own tasks/SR's completed, dials ... Speed to
@@ -6245,8 +6285,8 @@ function svcCallTable(rs, m) {
   if (!rs.length) return '<p class="sd">None.</p>';
   const rows = [...rs].sort((a, b) => (b.at || "").localeCompare(a.at || "")).map(r => `<tr>
     <td>${svcTime(r.at)}</td><td>${cesc(fmtPhone(r.number))}</td><td>${svcFirst(r.who)}</td>
-    <td class="num">${fmtMins(Math.round((r.seconds || 0) / 60))}</td></tr>`).join("");
-  return `<div class="scroll"><table class="rtable"><thead><tr><th>Answered</th><th>Caller</th><th>By</th><th class="num">On the line</th></tr></thead><tbody>${rows}</tbody></table></div>`;
+    <td class="num">${fmtMins(Math.round((r.seconds || 0) / 60))}</td><td>${svcTxButton([r.rec], m)}</td></tr>${svcTxRow([r.rec], m, 5)}`).join("");
+  return `<div class="scroll"><table class="rtable"><thead><tr><th>Answered</th><th>Caller</th><th>By</th><th class="num">On the line</th><th>Call</th></tr></thead><tbody>${rows}</tbody></table></div>`;
 }
 function svcCreatedTable(rs, m) {
   if (!rs.length) return '<p class="sd">None.</p>';

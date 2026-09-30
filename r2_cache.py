@@ -64,6 +64,7 @@ DAY_FILES = [
     "fulltx_{day}.json", "callsum_{day}.json", "coaching_cards_{day}.json",
     "metrics_{day}.json", "az_service_tickets_{day}.json", "az_tasks_{day}.json",
     "audiorefs_{day}.json", "az_service_tickets_done_{day}.json", "rc_texts_{day}.json",
+    "servicetx_{day}.json",
 ]
 
 
@@ -109,8 +110,12 @@ def sync_down_day(day, log=print):
     # file actually references -- never a bulk directory listing, so this
     # never pulls another day's leftover mp3s into the same local folder.
     tpath = ROOT / "data" / f"transcripts_{day}.json"
-    if tpath.exists():
-        ids = list(json.loads(tpath.read_text()).keys())
+    stpath = ROOT / "data" / f"servicetx_{day}.json"
+    if tpath.exists() or stpath.exists():
+        ids = list(json.loads(tpath.read_text()).keys()) if tpath.exists() else []
+        # The service team's recordings too (service_calls.py).
+        if stpath.exists():
+            ids += [k for k in json.loads(stpath.read_text()) if k not in set(ids)]
         audio_dir = ROOT / "data/audio"
         n = 0
         for cid in ids:
