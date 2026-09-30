@@ -203,6 +203,11 @@ Everything caches under `data/`, so a re-run resumes rather than restarting.
   at the browser's first final result, which cut people off mid-sentence.
   When Chrome ends the session itself it restarts at once, keeping the words
   and the turn's recording; a blocked mic stops for good.
+  **What the producer is saying shows as their own bubble at the bottom of
+  the conversation** (Frank, 2026-09-30 -- it was in the mic button and ran
+  the width of the screen; `rpShowLive`), and the conversation keeps
+  scrolled to the newest line unless they scroll up to read (`rpFollow`);
+  the box fits the window so the mic stays in view.
 - **Every graded Role Play session is kept and can be read back** (Frank,
   2026-09-29: "a full history of role play sessions ... producers see their
   own"). Learning Center > **Session History**: a date range (7 / 30 / 90
