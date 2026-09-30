@@ -135,6 +135,12 @@ Everything caches under `data/`, so a re-run resumes rather than restarting.
   Farmers". Apollo quotes the call's first sentence and who said it; when
   the caller spoke first the pick-up wasn't recorded and the code makes it
   "n" (`coaching_cards._greeting`) -- the model guessed otherwise.
+  **No agency, no insurance, no full intro on a pick-up** (Frank,
+  2026-09-30: "people hang up when they hear an agency or insurance or
+  realize we want to sell them something"): "This is Coral, how can I
+  help?" when they don't know who it is, "Hi David! How are you today?"
+  when they do (caller ID / a saved contact explains it if asked). Saying
+  Farmers, an agency name, "insurance" or a full introduction is "m".
   **Only the producer's own words are the greeting** (Frank, 2026-09-30):
   `by` is producer / caller / front desk, and `_greeting` forces "n" when
   it is not the producer, when the leg is tagged "ONLY THE OPENING WAS
