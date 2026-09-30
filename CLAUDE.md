@@ -160,10 +160,10 @@ Everything caches under `data/`, so a re-run resumes rather than restarting.
   American + Hispanic list in every language; a Spanish or mixed prospect
   has a Hispanic surname. **Crystal never gets Spanish or mixed** (Frank,
   2026-09-29: "she doesnt speak it") -- `RP_ENGLISH_ONLY`.
-  They speak at 1.5x, Deepgram's maximum (`RP_SPEAK_SPEED`, Deepgram's
-  `speed`; Frank, 2026-09-29: "they talk to slow", raised from 1.2 on
-  2026-09-30: "it still talks really slow" -- 1.2 was only ~8% shorter in
-  Spanish) -- a refused speed is retried at normal speed. **A Spanish
+  They speak at 1.3x (`RP_SPEAK_SPEED`, Deepgram's `speed`; Frank,
+  2026-09-29: "they talk to slow"; 1.2 was only ~8% shorter in Spanish, 1.5
+  -- Deepgram's maximum -- "just a tad bit too fast", 2026-09-30) -- a
+  refused speed is retried at normal speed. **A Spanish
   prospect uses no English words** (Frank, 2026-09-30: "its mixing English
   words with Spanish"): `languageInstruction("es")` names the Spanish
   insurance words; only company names stay. The MIXED third code-switches
@@ -243,7 +243,15 @@ Everything caches under `data/`, so a re-run resumes rather than restarting.
   a line click seeks there, the line playing is lit, and **each line's button
   pauses and resumes in place** (Frank, 2026-09-29: "pause the playback
   without stopping or restarting it") -- the same on a Role Play session's
-  lines. Cards with no Deepgram
+  lines. Hovering the button opens **volume and speed** (0.75x-2x; `ppBtn`,
+  `pb`), one setting for every line, card and session, kept in the browser --
+  a **vertical bar to the LEFT of the circle**, speed as a dropdown (Frank,
+  2026-09-30: it covered
+  the transcript), `position: fixed` and placed by `ppPlace` so the scroll
+  box cannot clip it (below the circle when there is no room). Keep the
+  panel inline elements (a card line is a <p>; a <div> inside one ends the
+  line early) and give no ancestor a `filter` or `transform` -- either makes
+  it the fixed bar's frame and the bar lands in the wrong place. Cards with no Deepgram
   read keep the plain transcript. **September's cards were given theirs**
   (Frank, 2026-09-29: "do september's cards") by `card_turns_backfill.py
   2026-09-01 2026-09-28`: one paid Deepgram read per carded recording, added
@@ -1019,8 +1027,16 @@ Crystal (hybrid); credit always goes to whoever COMPLETED the SR or task.
   `calls_tx`; the Calls answered and Dials lists get a **Listen & read**
   button that opens the coaching cards' own player under the row
   (`svcTxRow`). ~60 recordings / ~150 minutes a day (09-28), about $1 of
-  Deepgram. Days before 2026-09-30 have none; `python3 service_calls.py
-  <day>` builds one by hand (a paid read per recording not read before).
+  Deepgram. **September was given theirs** (Frank, 2026-09-30: "do the same
+  for all of september") by `python3 service_calls.py --backfill 2026-09-01
+  2026-09-29`: per published day it backs the page up under
+  `backups/<today>-service-calls/`, adds `dials` where the page had none
+  (a new Dials figure on those days -- Frank asked for it on 09-28 and then
+  the month), each calls-answered row's `rec`, and `calls_tx`; nothing else
+  changes. Days with no corpus snapshot (all but 09-23..09-25, 09-28, 09-29)
+  route numbers with the customers and leads as of the backfill. A day that
+  already has `calls_tx` is skipped (`--force` redoes it); the recordings
+  go to R2 and leave the disk as each day finishes.
 - **Documents hold rows, never medians**, so the board can add any range up.
   **Every card opens the rows it counts** (Frank, 2026-09-25), so the rows
   carry what a list needs: SRs name, household (= the AgencyZoom customer
