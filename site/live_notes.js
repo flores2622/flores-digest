@@ -221,17 +221,32 @@ export function contactDeltas(basis, recs, evidence) {
       live[who].add(num); convo[who].add(num);
     }
   }
+  // inbound.screen's verdicts on today's call-ins as the checkpoint saw
+  // them (live_board._inbound_basis); null on an older checkpoint.
+  const IB = basis.inbound || null;
+  const inSet = (who, k) => new Set(((IB && IB[who]) || {})[k] || []);
+  const screenedIn = Object.fromEntries([...names].map(n => [n, inSet(n, "in")]));
+  const screenedOut = Object.fromEntries([...names].map(n => [n, inSet(n, "out")]));
   for (const r of answeredInbound(recs, names)) {
     if (seen.has(r.id)) continue;
     const who = r.who, num = last10(r.num);
     if (!num || excluded[who].has(num) || dropped[who].has(num)) continue;
+    const callback = counted[who].has(num) || !!legs[who][num] || !!before[who][num];
+    // Only a call-in inbound.screen would keep adds talk time: a number the
+    // checkpoint already kept or is talking on, a call back to today's
+    // dial, or a number the lead notes read since show is a lead's. A
+    // number the checkpoint screened out (service, renewal, customer only)
+    // or one nobody can place yet waits for the next checkpoint
+    // (2026-09-30: the Worker counted every answered call-in).
+    const known = callback || convo[who].has(num) || live[who].has(num) || screenedIn[who].has(num);
+    if (!known && (screenedOut[who].has(num) || !(((evidence || {})[num] || {}).leads || []).length)) continue;
     out[who].seconds += r.secs;
     if (convo[who].has(num) || live[who].has(num)) continue;       // talking on a row already counted
     convo[who].add(num);
     out[who].conversations++;
     // A same-day call back turns the dial it answers live; a call-in to a
     // number never dialled stays outside the rate.
-    if (counted[who].has(num) || legs[who][num] || before[who][num]) {
+    if (callback) {
       out[who].live++; live[who].add(num);
       out[who].provisional.push({ number: num, seconds: r.secs, basis: "call back" });
     }
@@ -290,10 +305,12 @@ export function messageEvents(lead, notes, day, basis, presented) {
     if (!["TEXT", "EMAIL", "TEXT-FAILED", "CALL"].includes(t)) continue;
     const a = n.attr || {};
     if (at <= start) {
-      if ((t === "TEXT" && !inbound(a) && !a.triggerRuleId || t === "EMAIL" && !inbound(a)) && n.createdBy && (!prior || at > prior.at)) {
+      // Blank author included: messages.build's partner is the last typed
+      // message's author, and a blank one falls to the lead's owner.
+      if ((t === "TEXT" && !inbound(a) && !a.triggerRuleId || t === "EMAIL" && !inbound(a)) && (!prior || at > prior.at)) {
         const auto = t === "EMAIL" && templates.has(subjectKey(n, first)) && !(a.attachments || []).length
           && !(isReplySubject(n) && wroteIn.some(w => w < at));
-        if (!auto) prior = { at, by: String(n.createdBy).trim() };
+        if (!auto) prior = { at, by: String(n.createdBy || "").trim() };
       }
       continue;
     }
@@ -325,6 +342,32 @@ export function messageEvents(lead, notes, day, basis, presented) {
   }
   if (prior) out.push({ at: prior.at, kind: "prior", type: "", by: prior.by, text: "" });
   return out;
+}
+
+/* A reply run's verdict, messages.build's order: not a producer's
+   conversation (counted nowhere), opted out, wrong person (bad contact, no
+   reply row), every message an acknowledgement, answered, or waiting. */
+function runStatus(r) {
+  if (!r) return "none";
+  if (!r.listed) return "none";
+  if (r.anyOpt) return "optout";
+  if (r.anyWrong) return "wrong";
+  if (r.allAck) return "ack";
+  return r.answered ? "answered" : "open";
+}
+const RUN_COUNTS = {
+  none: {}, wrong: { bad: 1 },
+  optout: { replies: 1, optouts: 1 }, ack: { replies: 1, acks: 1 },
+  open: { replies: 1, unanswered: 1 }, answered: { replies: 1, answered: 1 },
+};
+// One more message into a run: all() of the acknowledgements, any() of the
+// opt-outs and wrong-person lines, over the messages with text.
+function judgeInto(run, text, R) {
+  if (!text) return;
+  if (R.opt_out.test(text)) run.anyOpt = true;
+  if (R.wrong.test(text)) run.anyWrong = true;
+  const ack = R.ack.test(text) || (R.ack_short.test(text) && !text.includes("?") && text.split(/\s+/).length <= 6);
+  if (!ack) run.allAck = false;
 }
 
 /* messages.build's figures for everything that happened since the
@@ -398,23 +441,77 @@ export function messageDeltas(basis, leads, day, calls = []) {
     const priors = evs.filter(e => e.kind === "prior").sort((a, b) => (a.at < b.at ? 1 : -1));
     let lastSender = cp ? cp.last_sender : null;
     if (!cp) {
-      const typed = evs.filter(e => e.kind === "sent" && e.by && e.at <= since);
-      lastSender = typed.length ? typed[typed.length - 1].by : priors.length ? priors[0].by : null;
+      // messages.build: whoever typed the last message before, blank -> the owner.
+      const typed = evs.filter(e => e.kind === "sent" && e.at <= since);
+      lastSender = typed.length ? typed[typed.length - 1].by || null : priors.length ? priors[0].by || null : null;
     }
     const sentBy = new Set(cp ? cp.sent_by : []), wrote = new Set(cp ? cp.wrote_back : []);
-    // The checkpoint's reply still waiting on this person, and any wait this
-    // run opens: {row, cp, start, who}.
-    let open = cp && cp.open ? { cp: true, key: { lead_id: cp.open.lead_id, at: cp.open.at }, who: cp.open.who,
-      startMs: Date.parse(cp.open.start), said: [], messages: 0 } : null;
-    let lastTouchEnd = 0;
+    // The wait still running: the checkpoint's (cp.run, messages.build's
+    // own state for the run nothing had answered) or one this refresh
+    // opened. messages.build groups EVERY message until an answer into one
+    // row and judges it over all of them -- an "ok" then a question is one
+    // wait, from the "ok" (2026-09-30) -- so each message joins the run and
+    // it is re-judged, its counts moved from what it was to what it is.
+    let run = null;
+    if (cp && cp.run) {
+      const r = cp.run;
+      run = { cp: true, key: { lead_id: r.lead_id, at: r.at }, who: r.who, listed: !!r.listed, startMs: Date.parse(r.start),
+        lead_id: r.lead_id, at: r.at, channel: r.channel || "text", messages: r.messages || 1, said: r.said || "",
+        allAck: !!r.all_ack, anyOpt: !!r.any_optout, anyWrong: !!r.any_wrong, answered: null, added: 0, addedSaid: [] };
+    } else if (cp && cp.open) {
+      // A checkpoint built before `run` was handed over: only the reply it
+      // left waiting is known, and messages are added to it.
+      const o = cp.open;
+      run = { cp: true, legacy: true, key: { lead_id: o.lead_id, at: o.at }, who: o.who, listed: true, startMs: Date.parse(o.start),
+        lead_id: o.lead_id, at: o.at, channel: "text", messages: 1, said: "",
+        allAck: false, anyOpt: false, anyWrong: false, answered: null, added: 0, addedSaid: [] };
+    }
+    if (run) run.was = runStatus(run);
+    const dayEnd = `${day} 23:59:00`;            // messages.build's day_end
+    const touchEnd = t => azMs(t.at) + (t.dur || 0) * 1000;
+    // Counts follow the run's verdict: moved from what it was counted as to
+    // what it is now (a new run was counted as nothing).
+    const recount = (r, from, to) => {
+      if (from === to) return;
+      for (const [k, v] of Object.entries(RUN_COUNTS[from] || {})) bump(r.who, k, -v);
+      for (const [k, v] of Object.entries(RUN_COUNTS[to] || {})) bump(r.who, k, v);
+    };
+    const rowOf = (r, status) => ({ who: r.who, lead: name, lead_id: r.lead_id, day, at: r.at, channel: r.channel,
+      said: r.said.slice(0, 300), messages: r.messages, optout: status === "optout", ack: status === "ack",
+      answered_by: r.answered ? r.answered.by : null, via: r.answered ? r.answered.via : null,
+      minutes: r.answered ? r.answered.minutes : null });
+    const badOf = r => ({ who: r.who, lead: name, lead_id: r.lead_id, day, channel: r.channel,
+      reason: "wrong person (the lead said so): " + r.said.slice(0, 80) });
+    const close = () => {
+      if (!run) return;
+      const r = run, now = runStatus(r);
+      run = null;
+      if (!r.cp) {
+        recount(r, "none", now);
+        if (now === "wrong") bad.push(badOf(r));
+        else if (now !== "none") rows.push(rowOf(r, now));
+        return;
+      }
+      recount(r, r.was, now);
+      if (r.legacy) {
+        if (r.answered || r.added)
+          updates.push({ ...r.key, ...(r.answered ? { answered_by: r.answered.by, via: r.answered.via, minutes: r.answered.minutes } : {}),
+            ...(r.added ? { add_messages: r.added, add_said: r.addedSaid.join(" / ") } : {}) });
+        return;
+      }
+      if (now === r.was && !r.added && !r.answered) return;
+      updates.push({ ...r.key, was: r.was, status: now, add_messages: r.added, add_said: r.addedSaid.join(" / "),
+        row: now === "wrong" || now === "none" ? null : rowOf(r, now), bad: now === "wrong" ? badOf(r) : null });
+    };
+    // A touch after the run began answers it (messages.build's `ans`) and
+    // ends it; only a wait still open is credited as answered.
     const answer = (t, atMs) => {
-      const clock = Math.max(open.startMs, opensMs);
-      const patch = { answered_by: t.by || null, via: { TEXT: "text", EMAIL: "email", CALL: "call" }[t.type] || t.type,
-        minutes: Math.max(0, Math.floor((atMs - clock) / 60000)) };
-      bump(open.who, "answered"); bump(open.who, "unanswered", -1);
-      if (open.cp) updates.push({ ...open.key, ...patch, ...(open.messages ? { add_messages: open.messages, add_said: open.said.join(" / ") } : {}) });
-      else Object.assign(open.row, patch);
-      open = null;
+      if (runStatus(run) === "open") {
+        const clock = Math.max(run.startMs, opensMs);
+        run.answered = { by: t.by || null, via: { TEXT: "text", EMAIL: "email", CALL: "call" }[t.type] || t.type,
+          minutes: Math.max(0, Math.floor((atMs - clock) / 60000)) };
+      }
+      close();
     };
     for (const e of fresh) {
       const ms = azMs(e.at), today = e.at.slice(0, 10) === day;
@@ -436,46 +533,34 @@ export function messageDeltas(basis, leads, day, calls = []) {
           reason: e.bounce_reason || (e.kind === "failed" ? "text failed" : "bounced") });
       }
       if (e.kind === "sent" || e.kind === "call") {
-        if (open && ms >= open.startMs && e.at <= `${day} 23:59:59`) answer(e, ms);
-        if (e.kind === "sent" && e.by) lastSender = e.by;
-        lastTouchEnd = Math.max(lastTouchEnd, ms + (e.dur || 0) * 1000);
+        if (run && ms >= run.startMs && e.at <= dayEnd) answer(e, ms);
+        // Whose conversation it is: the last one typed, and a blank author
+        // falls to the lead's owner (messages.build's `partner`).
+        if (e.kind === "sent") lastSender = e.by || null;
         continue;
       }
       if (e.kind !== "in") continue;
-      if (e.at <= `${day} 23:59:59`) for (const w of sentBy) if (!wrote.has(w)) { wrote.add(w); bump(w, "wrote_back"); }
+      if (e.at <= dayEnd) for (const w of sentBy) if (!wrote.has(w)) { wrote.add(w); bump(w, "wrote_back"); }
       if (!(e.at > winStart && e.at <= winEnd)) continue;
-      if (open) {                                // the same wait, one more message
-        if (open.cp) { open.messages++; if (e.text) open.said.push(e.text); }
-        else { open.row.messages++; if (e.text) open.row.said = [open.row.said, e.text].filter(Boolean).join(" / ").slice(0, 300); }
+      const text = e.text || "";
+      if (run) {                                 // the same wait, one more message
+        run.messages++;
+        if (run.cp) run.added++;
+        if (text) { run.said = [run.said, text].filter(Boolean).join(" / ").slice(0, 300); if (run.cp) run.addedSaid.push(text); }
+        judgeInto(run, text, R);
         continue;
       }
       const partner = lastSender || owner;
-      if (!names.has(partner)) continue;          // someone else's conversation -- service
-      const text = e.text || "";
-      const optout = R.opt_out.test(text);
-      const wrong = !optout && R.wrong.test(text);
-      const ack = !optout && !wrong && (!text || R.ack.test(text) || (R.ack_short.test(text) && !text.includes("?") && text.split(/\s+/).length <= 6));
-      const channel = e.type === "EMAIL" ? "email" : "text";
-      if (wrong) {
-        bump(partner, "bad");
-        bad.push({ who: partner, lead: name, lead_id: e.lead_id, day, channel, reason: "wrong person (the lead said so): " + text.slice(0, 80) });
-        continue;
-      }
-      bump(partner, "replies");
-      const row = { who: partner, lead: name, lead_id: e.lead_id, day, at: hhmm(e.at), channel, said: text.slice(0, 300),
-        messages: 1, optout, ack, answered_by: null, via: null, minutes: null };
-      rows.push(row);
-      if (optout) { bump(partner, "optouts"); continue; }
-      if (ack) { bump(partner, "acks"); continue; }
-      bump(partner, "unanswered");
-      open = { cp: false, row, who: partner, startMs: ms };
-      // A call still going when the text arrived answers it (messages.build).
-      if (lastTouchEnd >= ms) {
-        const t = fresh.find(x => (x.kind === "call" || x.kind === "sent") && azMs(x.at) <= ms && azMs(x.at) + (x.dur || 0) * 1000 >= ms);
-        if (t) answer(t, ms);
-      }
+      run = { cp: false, who: partner, listed: names.has(partner), startMs: ms, lead_id: e.lead_id, at: hhmm(e.at),
+        channel: e.type === "EMAIL" ? "email" : "text", messages: 1, said: text.slice(0, 300),
+        allAck: true, anyOpt: false, anyWrong: false, answered: null, added: 0, addedSaid: [] };
+      judgeInto(run, text, R);
+      // A call or message still going when this arrived answers it
+      // (messages.build: the first touch that ends at or after it).
+      const t = evs.find(x => (x.kind === "call" || x.kind === "sent") && x.at <= dayEnd && azMs(x.at) <= ms && touchEnd(x) >= ms);
+      if (t) answer(t, ms);
     }
-    if (open && open.cp && open.messages) updates.push({ ...open.key, add_messages: open.messages, add_said: open.said.join(" / ") });
+    close();
   }
   return { producers: stat, replies: rows, updates, quotes, bad_contact: bad };
 }

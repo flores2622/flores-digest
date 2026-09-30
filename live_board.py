@@ -99,6 +99,7 @@ def basis(day):
         "excluded": excluded,
         "live": live,
         "talk": talk,
+        "inbound": _inbound_basis(day, recs),
         "contact": _contact_basis(),
         "tasks": _task_basis(day),
         "producers": {n: {"rc_id": v["rc_id"], "az_id": v["az_id"]}
@@ -168,6 +169,29 @@ def _quote_basis(M):
 # it is provisional and the checkpoint settles every one. Duration alone
 # (no notes) at 60s showed 474 against a real 303 over September.
 PROVISIONAL_LIVE_SECONDS = 60
+
+
+def _inbound_basis(day, recs):
+    """inbound.screen's verdict on each number that called in and was
+    answered by a producer today, as the checkpoint saw it: {producer:
+    {"in": [numbers kept], "out": [numbers screened out]}}. A call-in since
+    the checkpoint from a number screened out (service, renewal, customer
+    only, no record) must not add talk time the nightly will never count
+    (live_notes.contactDeltas, 2026-09-30). None when it cannot be read --
+    the Worker then counts a new call-in only on a number it knows is a
+    lead or already a conversation."""
+    try:
+        import inbound as ib
+        win = json.loads((ROOT / f"data/rc_window_{day}.json").read_text())
+        rows = ib.screen(ib.link_callbacks(ib.answered(day, recs), win, day), day)
+    except Exception:
+        return None
+    out = {who: {"in": set(), "out": set()} for who in cfg.PRODUCERS}
+    for r in rows:
+        n = ib.last10(r.get("number"))
+        if n and r.get("producer") in out:
+            out[r["producer"]]["out" if r.get("skip") else "in"].add(n)
+    return {who: {k: sorted(v) for k, v in d.items()} for who, d in out.items()}
 
 
 def _contact_basis():

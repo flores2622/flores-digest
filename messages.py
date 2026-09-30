@@ -246,12 +246,16 @@ def build(day, log=print, live=False):
     seen_at = {}                                # person -> newest note this build read
     for lid, key in person.items():
         for n in lc.load_notes(lid):
-            c = str(n.get("createDate") or "")[:19]
-            if c > seen_at.get(key, ""):
-                seen_at[key] = c
             t = n.get("type")
             if t not in ("TEXT", "EMAIL", "TEXT-FAILED", "CALL"):
                 continue
+            # Only the message notes say how far this build read: a TASK note
+            # is stamped 5 PM the day before it is due, so it would put
+            # `seen` hours ahead of the checkpoint and hide every text the
+            # Worker finds before then (2026-09-30).
+            c = str(n.get("createDate") or "")[:19]
+            if c > seen_at.get(key, ""):
+                seen_at[key] = c
             at = _at(n.get("createDate"))
             if at is None:
                 continue
@@ -364,7 +368,7 @@ def build(day, log=print, live=False):
             if any(e["kind"] == "in" and e["at"] > t0 and e["at"] <= day_end for e in evs):
                 stats[who]["wrote_back"] += 1
                 wrote_back.append(who)
-        open_row = None
+        open_row = run_state = None
 
         # --- replies waiting on us ------------------------------------------
         # A touch answers the lead: a message someone typed, a call back, or
@@ -391,15 +395,30 @@ def build(day, log=print, live=False):
             stop = end if ans is None else (ans["at"] if ans["at"] > e["at"] else e["at"])
             run = [x for x in evs[i:] if x["kind"] == "in" and x["at"] <= max(stop, e["at"]) and x["at"] <= end] or [e]
             i = evs.index(run[-1]) + 1
-            if partner not in producers:
-                continue
             said = " / ".join(x["text"] for x in run if x["text"])[:300]
-            optout = any(OPT_OUT.search(x["text"] or "") for x in run)
-            wrong = not optout and any(WRONG.search(x["text"] or "") for x in run)
-            ack = not optout and not wrong and all(
+            any_optout = any(OPT_OUT.search(x["text"] or "") for x in run)
+            any_wrong = any(WRONG.search(x["text"] or "") for x in run)
+            all_ack = all(
                 ACK.match(x["text"] or "") or (ACK_SHORT.match(x["text"] or "") and "?" not in x["text"]
                                                and len(x["text"].split()) <= 6)
                 for x in run if x["text"])
+            if ans is None:
+                # Nothing has answered this wait yet, so every later message
+                # in the window joins it: the Worker carries it on from here
+                # (live_notes.messageDeltas) and re-judges it over all of its
+                # messages, as this loop does -- ack, opt-out or not listed
+                # at all (2026-09-30).
+                run_state = {"lead_id": e["lead_id"],
+                             "at": e["at"].strftime("%H:%M") if e["at"].date().isoformat() == day else e["at"].strftime("%m-%d %H:%M"),
+                             "who": partner, "listed": partner in producers, "start": e["at"].isoformat(),
+                             "channel": "email" if e["type"] == "EMAIL" else "text",
+                             "messages": len(run), "said": said,
+                             "all_ack": all_ack, "any_optout": any_optout, "any_wrong": any_wrong}
+            if partner not in producers:
+                continue
+            optout = any_optout
+            wrong = not optout and any_wrong
+            ack = not optout and not wrong and all_ack
             if wrong:
                 stats[partner]["bad"] += 1
                 bad.append({"who": partner, "lead": lead, "lead_id": e["lead_id"], "day": day,
@@ -436,7 +455,7 @@ def build(day, log=print, live=False):
                 "seen": seen_at.get(key, ""), "owner": own, "name": lead,
                 "last_sender": sent[-1]["by"] if sent and sent[-1]["by"] else None,
                 "sent_by": sorted(first_sent), "wrote_back": sorted(wrote_back),
-                "open": open_row}
+                "open": open_row, "run": run_state}
 
     replies.sort(key=lambda r: (r["answered_by"] is not None, r["at"]))
     quotes.sort(key=lambda r: r["at"])

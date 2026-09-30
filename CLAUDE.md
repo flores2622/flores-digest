@@ -449,7 +449,12 @@ and anything without the glow is the checkpoint's (Frank, 2026-09-24).
   topped up from the newest end each refresh, up to 5 pages), so
   HH/Prem. Sold glows whenever sales are live. That list stands on its own
   for the day; the checkpoint's `rows.sold_leads` are added only if the read
-  stopped at the page cap.
+  stopped at the page cap. **The list the tile opens is the tile's**
+  (2026-09-30): applyLive merges the live sold leads into `rows.sold_leads`
+  (one per lead_id, the checkpoint's row keeping its source); a list with
+  no live rows (dials, contacts, quoted, policies) under a live card says
+  "Live figure; this list is as of the last checkpoint <time> -- N more
+  since".
 - **Utilization** is `insightful_util.pull()`'s formula.
 - **Speed to Dial** (Frank, 2026-09-29: "make speed to dial live too") is
   worked out WHOLE every even minute (`site/live.js speedToDial`, a line-for-
@@ -544,7 +549,14 @@ and anything without the glow is the checkpoint's (Frank, 2026-09-24).
   recordings and settles every one. A counted number is judged only on its
   new legs and the notes written since; an excluded one stays excluded; a
   call back turns its dial live; any other answered call-in adds talk time,
-  never a contact. The rate is live contacts over LIVE dials, so it is live
+  never a contact -- **but only on a number the checkpoint kept, is already
+  talking on, or the lead notes show is a lead's** (2026-09-30:
+  `live_basis.inbound` carries inbound.screen's in / out numbers; a
+  screened-out or unplaced call-in waits for the next checkpoint).
+  **Team Avg Talk Time live is total seconds over total conversations**
+  (live + inbound + the live deltas), like `finalize.team_avg_talk`, and a
+  range weights each day's talk by live + inbound; rates and averages round
+  half-to-even like Python (`pyRound`, 2026-09-30). The rate is live contacts over LIVE dials, so it is live
   only when dials are. The notes come from the quotes part's own reads
   (dialled leads first), so it costs no extra AgencyZoom requests.
   `site/live_notes.js contactDeltas`; the checkpoint's side is
@@ -557,8 +569,17 @@ and anything without the glow is the checkpoint's (Frank, 2026-09-24).
   against a full rebuild at 12 checkpoint times on 09-23 and 09-25: every
   count and reply row identical, except one tie between two producers'
   duplicate lead records, which Python breaks by corpus order the Worker
-  cannot see (the next checkpoint fixes it). The closing ratio falls back
-  to the checkpoint's (`cp_pol`/`cp_ps`) whenever quotes are not live.
+  cannot see (the next checkpoint fixes it). **A wait is one row however
+  many messages it holds** (2026-09-30): the checkpoint hands over the run
+  nothing has answered yet (`people[].run`: start, messages, ack / opt-out /
+  wrong so far) and the Worker adds to it, re-judges it over all its
+  messages and moves its counts (an "ok" then a question is one waiting
+  row from the "ok"; minutes run from the first message). `seen` is the
+  newest TEXT / EMAIL / TEXT-FAILED / CALL note only (a TASK note is stamped
+  the evening before). The closing ratio falls back to the checkpoint's
+  (`cp_pol`/`cp_ps`, and since 2026-09-30 `cp_hh`/`cp_pq` and the
+  checkpoint's sold-lead rows for the households half) until
+  `liveOn(d, "closing")` -- sales, quotes and households sold all live.
 - The Worker needs its own secrets, set in Cloudflare (Workers & Pages ->
   flores-board -> Settings -> Variables and Secrets, type Secret):
   `RC_CLIENT_ID`, `RC_CLIENT_SECRET`, `RC_SERVER_URL`, `RC_JWT`,
@@ -594,6 +615,9 @@ the Quote** every call where a quote came up (the cards' `sendoff`); Texts
 tasks in the rate (`rows.tasks`, from `az_tasks.audit`'s own `items`, from
 2026-09-29 on) and Household Completion's cards the policies sold, cross-
 sells marked. Role play and utilization have no accounts behind them.
+A tab that fails to draw (an old or partial document) shows "This section
+could not be drawn: <message>" under its date controls instead of a blank
+page (2026-09-30).
 
 ## Date ranges on the Digest
 
