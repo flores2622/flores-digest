@@ -348,14 +348,52 @@ def _learn_thinking(model):
         _NO_THINKING = {"type": "between_tools"}
 
 
+# Retries for a live read (2026-09-30): an overloaded API (529), a 429 or a
+# 5xx used to fail the read outright -- a missing summary or coaching card
+# for that call until some later run paid for it. Four attempts, honouring
+# retry-after, never more than LIVE_RETRY_BUDGET seconds of waiting in all.
+# A read timeout is NOT retried: the request may have been answered (and
+# billed) after we stopped listening.
+LIVE_ATTEMPTS = 4
+LIVE_RETRY_BUDGET = 120
+
+
+def _send_retrying(body):
+    import time
+    waited = 0.0
+    for attempt in range(LIVE_ATTEMPTS):
+        last = attempt == LIVE_ATTEMPTS - 1
+        try:
+            r = requests.post(API_URL, json=body, timeout=TIMEOUT, headers=_headers())
+        except requests.ConnectionError as e:
+            if last or waited >= LIVE_RETRY_BUDGET:
+                raise
+            r, wait, why = None, 2 ** (attempt + 1), type(e).__name__
+        else:
+            if not (r.status_code in (429, 529) or r.status_code >= 500) or last:
+                return r
+            try:
+                wait = float(r.headers.get("retry-after") or 2 ** (attempt + 1))
+            except ValueError:
+                wait = 2 ** (attempt + 1)
+            why = f"HTTP {r.status_code}"
+        wait = min(wait, LIVE_RETRY_BUDGET - waited)
+        if wait <= 0 and r is not None:
+            return r               # budget spent: the caller raises on it
+        print(f"  claude api: {why}, retrying in {wait:.0f}s "
+              f"(attempt {attempt + 1}/{LIVE_ATTEMPTS})")
+        time.sleep(wait)
+        waited += wait
+
+
 def _live(body):
     global _NO_THINKING
-    r = requests.post(API_URL, json=body, timeout=TIMEOUT, headers=_headers())
+    r = _send_retrying(body)
     if (r.status_code == 400 and (body.get("thinking") or {}).get("type") == "disabled"
             and "thinking.type.disabled" in r.text):
         _NO_THINKING = {"type": "between_tools"}
         body = dict(body, thinking=dict(_NO_THINKING))
-        r = requests.post(API_URL, json=body, timeout=TIMEOUT, headers=_headers())
+        r = _send_retrying(body)
     if r.status_code >= 400:
         raise RuntimeError(f"{r.status_code} {r.text[:300]}")
     return r.json()
