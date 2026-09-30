@@ -66,9 +66,12 @@ def redact_turns(turns):
         if hot:
             clean = _DIGIT_RUN.sub("[number removed]", clean)
             hot -= 1
+        row = dict(x, text=clean)
         if clean != t:
             hit = True
-        out.append(dict(x, text=clean))
+        if clean != (x.get("text") or ""):
+            row.pop("w", None)   # the word times no longer line up with the words
+        out.append(row)
     return out, hit
 
 
