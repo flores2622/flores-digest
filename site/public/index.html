@@ -691,8 +691,9 @@ details.sc .scb { padding: 0 12px 12px; }
 .pcard .pn { font-weight: 700; font-size: 13.5px; }
 .rpbar { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; margin-bottom: 10px; }
 .rpchat { border: 1px solid var(--border-strong); border-radius: 10px; background: var(--surface-raised); padding: 14px; max-width: 640px; }
-.rpmsgs { display: flex; flex-direction: column; gap: 10px; max-height: 480px; overflow-y: auto; margin-bottom: 12px; }
-.rpmsg { max-width: 82%; padding: 8px 12px; border-radius: 10px; font-size: 13px; line-height: 1.45; }
+.rpmsgs { display: flex; flex-direction: column; gap: 10px; max-height: min(480px, max(240px, calc(100vh - 360px))); overflow-y: auto; margin-bottom: 12px; }
+.rpmsg { max-width: 82%; padding: 8px 12px; border-radius: 10px; font-size: 13px; line-height: 1.45; overflow-wrap: anywhere; }
+.rpmsg.live { opacity: .7; font-style: italic; }
 .rpmsg.producer { align-self: flex-end; background: var(--s1); color: #fff; }
 .rpmsg.prospect { align-self: flex-start; background: var(--surface); border: 1px solid var(--border-strong); color: var(--text-primary); }
 .rpmsg .rl { display: block; font-size: 9.5px; text-transform: uppercase; letter-spacing: .04em; opacity: .7; margin-bottom: 3px; }
@@ -3769,8 +3770,36 @@ function rpUpdateMicUI(interim) {
   mic.disabled = rpBusy || rpSpeaking;
   mic.textContent = rpBusy ? "…"
     : rpSpeaking ? "🔊 Prospect talking…"
-    : rpListening ? (interim ? `● "${interim}"` : "● Listening… (tap when done)")
+    : rpListening ? "● Listening… (tap when done)"
     : rpHistory.length ? "🎙 Talk" : "🎙 Push to start";
+  rpShowLive(rpListening ? (interim || rpHeard) : "");
+}
+
+/* What the producer is saying shows as their own bubble at the bottom of the
+   conversation while they talk (Frank, 2026-09-30: it used to sit in the mic
+   button, running the width of the screen), and the conversation follows
+   along -- it keeps scrolled to the newest line unless the producer has
+   scrolled up to read something. */
+let rpFollow = true;
+function rpScrollMsgs() {
+  const box = document.getElementById("rpMsgs");
+  if (box && rpFollow) box.scrollTop = box.scrollHeight;
+}
+function rpShowLive(text) {
+  const box = document.getElementById("rpMsgs");
+  if (!box) return;
+  let el = document.getElementById("rpLive");
+  if (!text) { if (el) el.remove(); return; }
+  if (!el) {
+    const empty = box.querySelector(".empty");
+    if (empty) empty.remove();
+    el = document.createElement("div");
+    el.id = "rpLive"; el.className = "rpmsg producer live";
+    el.innerHTML = `<span class="rl">${rpIsBeta() ? "Tester" : rpProducer.split(" ")[0]}</span><span class="tx"></span>`;
+    box.appendChild(el);
+  }
+  el.querySelector(".tx").textContent = text;
+  rpScrollMsgs();
 }
 
 function rpStopListening() {
@@ -4488,6 +4517,7 @@ function rpTurnFetch(history, signal) {
 async function rpSendTurn(text, clip, early) {
   const turn = { role: "producer", content: text };
   rpHistory.push(turn);
+  rpFollow = true;
   rpClipUpload(turn, clip);
   rpBusy = true;
   document.getElementById("view").innerHTML = roleplayPanel();
@@ -4575,6 +4605,11 @@ async function rpSubmitGrade() {
 }
 
 function wireRoleplayPanel() {
+  const msgBox = document.getElementById("rpMsgs");
+  if (msgBox) {
+    rpScrollMsgs();
+    msgBox.onscroll = () => { rpFollow = msgBox.scrollHeight - msgBox.scrollTop - msgBox.clientHeight < 40; };
+  }
   const toHist = document.getElementById("rpToHistory");
   if (toHist) toHist.onclick = e => { e.preventDefault(); goView("rphistory"); };
   // Auto-grade on the way out: nothing that got practiced should go
