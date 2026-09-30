@@ -33,7 +33,7 @@
    checkpoint's figure for it. Results are cached in R2 at live/<day>.json
    for CACHE_SECONDS, so every viewer shares one refresh. */
 
-import { contactItems, messageEvents, contactDeltas, messageDeltas, last10, noteText, rxOf } from "./live_notes.js";
+import { contactItems, messageEvents, contactDeltas, messageDeltas, last10, e164, noteText, rxOf } from "./live_notes.js";
 
 export const CACHE_SECONDS = 120;
 export const QUOTES_STALE_SECONDS = 180;
@@ -101,7 +101,10 @@ const ownerExt = r => String((r.extension || {}).id || (r.from || {}).extensionI
 export function dialDeltas(basis, recs) {
   const seen = new Set(basis.rc_ids || []);
   const byExt = Object.fromEntries(Object.entries(basis.producers || {}).map(([n, v]) => [String(v.rc_id), n]));
-  const sets = k => Object.fromEntries(Object.entries(basis[k] || {}).map(([n, v]) => [n, new Set(v)]));
+  // az_corpus.e164 on both sides (day_calls.dials_from's key, Frank
+  // 2026-09-30); a checkpoint built before then listed raw RingCentral
+  // numbers, which this maps the same way.
+  const sets = k => Object.fromEntries(Object.entries(basis[k] || {}).map(([n, v]) => [n, new Set(v.map(x => e164(x) || x))]));
   const counted = sets("counted"), dropped = sets("dropped"), excluded = sets("excluded");
   const out = {}, fresh = {};
   for (const n of Object.keys(basis.producers || {})) {
@@ -111,7 +114,7 @@ export function dialDeltas(basis, recs) {
   for (const r of recs) {
     const who = byExt[ownerExt(r)];
     if (!who || r.direction !== "Outbound") continue;
-    const num = (r.to || {}).phoneNumber;
+    const raw = (r.to || {}).phoneNumber, num = e164(raw) || raw;
     if (!num || seen.has(String(r.id))) continue;
     const o = out[who];
     o.calls_since++;
@@ -478,6 +481,7 @@ export async function soldLeadsToday(env, day, basis, fetchFn = fetch, kept = nu
   const complete = reached && (prev ? !!prev.complete : true);
   const per = {}, raw = [];
   const existing = new Set(basis.existing_household || []);
+  const notSale = new Set(basis.not_a_sale || []);
   for (const l of merged.values()) {
     if (l.status !== 2 || !String(l.soldDate || "").startsWith(day)) continue;
     const name = [l.firstname, l.lastname].map(x => String(x || "").trim()).filter(Boolean).join(" ");
@@ -486,12 +490,24 @@ export async function soldLeadsToday(env, day, basis, fetchFn = fetch, kept = nu
     raw.push({ agentId: l.assignedTo, leadSourceId: l.leadSourceId, household: l.convertedHouseholdId ?? null, name });
     const who = byAz[String(l.assignedTo)];
     if (!who) continue;
+    // digest_rows.sold_leads (keep in step): a BOB / Rewrite source or a
+    // test lead is not a household sold (Frank, 2026-09-30).
+    if (notSale.has(norm(l.leadSourceName)) || isTestLead(l, basis)) continue;
     (per[who] || (per[who] = [])).push({ lead_id: l.id, household: l.convertedHouseholdId ?? null, lead: name,
       existing: existing.has(norm(l.leadSourceName)) });
   }
   const leads = [...merged.values()].sort((a, b) => (a.lastActivityDate < b.lastActivityDate ? 1 : -1));
   const oldest = leads.length ? leads[leads.length - 1].lastActivityDate : null;
   return { per, complete, _raw: raw, _active: { day, newest, leads, complete, oldest } };
+}
+
+/* digest_config.is_test_lead (keep in step): an id in TEST_LEAD_IDS, or the
+   name matching TEST_LEAD_RE -- both travel in basis.test_lead. */
+export function isTestLead(l, basis) {
+  const t = basis.test_lead || {};
+  if ((t.ids || []).includes(l.id)) return true;
+  const name = `${String(l.firstname || "").trim()} ${String(l.lastname || "").trim()}`.trim();
+  return !!name && !!t.rx && rxOf(t.rx).test(name);
 }
 
 /* What is kept of a lead: what the sold count and the quotes pass read. */
@@ -608,33 +624,37 @@ export function taskCompletion(basis, tasks, flags) {
    number, and the seconds between. Worked out whole every refresh from the
    day's kept lead list (every lead created today has activity today) and the
    full call log -- exact, not an estimate. The first dial is taken exactly
-   as daily.py takes it: producers in the order they first appear in the
-   call log, each one's earliest dial to the number, the first producer
-   found keeping it. */
+   as daily.py takes it (Frank, 2026-09-30): the EARLIEST dial to the number
+   by any producer, credited to whoever made it (a tie keeps the one found
+   first, in call-log order, as Python's dict order does); the lead's
+   createDate (UTC) moved to Arizona before it is compared with the day; and
+   both sides keyed by az_corpus.e164, the last ten digits. */
 const SPEED_SOURCES = ["surequote", "mav ai", "mav"];
 const median = xs => { const v = [...xs].sort((a, b) => a - b), m = v.length >> 1; return v.length % 2 ? v[m] : (v[m - 1] + v[m]) / 2; };
 export function speedToDial(day, basis, leads, recs) {
   const byExt = Object.fromEntries(Object.entries(basis.producers || {}).map(([n, v]) => [String(v.rc_id), n]));
-  const dials = new Map();                       // producer -> Map(number -> earliest start)
+  const dials = new Map();                       // producer -> Map(e164 -> earliest start)
   for (const r of recs) {
     const who = byExt[ownerExt(r)];
     if (!who || r.direction !== "Outbound") continue;
-    const num = (r.to || {}).phoneNumber;
+    const num = e164((r.to || {}).phoneNumber);  // day_calls.dials_from's key
     if (!num) continue;
     if (!dials.has(who)) dials.set(who, new Map());
     const m = dials.get(who), t = r.startTime;
     if (!m.has(num) || t < m.get(num)) m.set(num, t);
   }
   const first = new Map();
-  for (const [w, m] of dials) for (const [num, t] of m) if (!first.has(num)) first.set(num, [w, t]);
+  for (const [w, m] of dials) for (const [num, t] of m) if (!first.has(num) || t < first.get(num)[1]) first.set(num, [w, t]);
   const rows = [];
   for (const l of leads) {
     const src = String(l.leadSourceName || "").toLowerCase();
     if (!SPEED_SOURCES.some(k => src.includes(k))) continue;
-    if (!String(l.createDate || "").startsWith(day)) continue;
-    const ten = last10(l.phone), hit = ten ? first.get("+1" + ten) : null;   // az_corpus.e164
+    if (!l.createDate) continue;
+    const c = utcMs(l.createDate);
+    if (!Number.isFinite(c) || new Date(c - 7 * 3600 * 1000).toISOString().slice(0, 10) !== day) continue;   // Arizona is UTC-7
+    const k = e164(l.phone), hit = k ? first.get(k) : null;
     if (!hit) continue;
-    const c = utcMs(l.createDate), d = Date.parse(hit[1]);
+    const d = Date.parse(hit[1]);
     const secs = (d - c) / 1000;
     if (secs > 0) rows.push({ who: hit[0], lead_id: l.id,
       lead: `${String(l.firstname || "").trim()} ${String(l.lastname || "").trim()}`.trim(),

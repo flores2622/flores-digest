@@ -146,7 +146,10 @@ def notes_and_methodology(day, M, template):
     tv = sum(P[p]["call_volume"] for p in P)
     tx = json.loads((ROOT / f"data/transcripts_{day}.json").read_text())
     import collections
-    c = collections.Counter(v["class"] for v in tx.values())
+    # A call-in with no recording (daily.transcribe_day, 2026-09-30) is not
+    # one of the calls "recorded" below.
+    c = collections.Counter(v["class"] for v in tx.values()
+                            if not v.get("no_recording"))
 
     start = h.index("<b>Live Contact</b>")
     end = h.index("<b>Premium Quoted</b>")

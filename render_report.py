@@ -179,7 +179,10 @@ def build_funnel(m, day_label):
     talk = [(p, m[p]["avg_talk"], hhmm(m[p]["avg_talk"]),
              cfg.tier("avg_talk_min", m[p]["avg_talk"] / 60)) for p in P]
     live = sum(m[p]["live"] for p in P)
-    tt = sum(m[p]["avg_talk"] * m[p]["live"] for p in P) // live if live else 0
+    # Over every conversation, inbound included, as each producer's own
+    # average is (finalize.team_avg_talk; Frank, 2026-09-30).
+    import finalize
+    tt = finalize.team_avg_talk([m[p] for p in P])
     cards.append(funnel_card(
         "Avg Talk Time", f"Per live contact &mdash; {day_label}", talk,
         hhmm(tt), cfg.tier("avg_talk_min", tt / 60)))

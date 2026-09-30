@@ -178,7 +178,10 @@ def build(day, tasks, dials_by_producer, leads, customers, verdicts=None):
     az_ids = {v["az_id"]: k for k, v in PRODUCERS.items()}
     idx = _phone_index(leads, customers)
     lead_ids = {l["id"] for l in leads}
-    dialled = {who: set(bynum) for who, bynum in dials_by_producer.items()}
+    # az_corpus.e164 on both sides (Frank, 2026-09-30): the task's phones
+    # come from the corpus in that form, and a raw +52 dial never matched.
+    dialled = {who: {e164(n) or n for n in bynum}
+               for who, bynum in dials_by_producer.items()}
 
     verdicts = verdicts or {}
     counted = [t for t in tasks

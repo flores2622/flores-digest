@@ -117,9 +117,16 @@ def build(day, log=print):
             out["tasks"].append({"who": who, **{k: v for k, v in t.items() if k != "record_id"},
                                  "lead_id": rid if rid in by_id else None,
                                  "customer_id": rid if rid and rid not in by_id else None})
+    import lead_sources
     for l in leads:
         who = azid.get(l.get("assignedTo"))
         if who and l.get("status") == 2 and str(l.get("soldDate") or "").startswith(day):
+            # Not a household sold when the lead's source is not a sale (BOB,
+            # Rewrite -- is_real_sale's own set) or the lead is a test record
+            # (Frank, 2026-09-30). site/live.js soldLeadsToday skips the same.
+            if (lead_sources.norm(l.get("leadSourceName")) in lead_sources.NOT_A_SALE
+                    or cfg.is_test_lead(l)):
+                continue
             # household: so the board counts households sold, not lead records
             # -- duplicate lead records are pervasive (Frank, 2026-09-28).
             out["sold_leads"].append({"who": who, "lead": _name(l), "lead_id": l.get("id"),

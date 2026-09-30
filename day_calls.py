@@ -31,14 +31,23 @@ NOTE_CACHE = pathlib.Path("data/notes")
 
 
 def dials_from(recs):
-    """{producer: {number: [call records]}} -- outbound only."""
+    """{producer: {number: [call records]}} -- outbound only.
+
+    KEYED BY az_corpus.e164, the last ten digits (Frank, 2026-09-30), the
+    form every AgencyZoom lookup uses. The raw RingCentral number was the
+    key, so a Mexican number dialled as +526535380676 never met AgencyZoom's
+    (653) 538-0676: no lead, "no AgencyZoom record", out of call volume
+    entirely. A US number's key is unchanged (+1 and its ten digits). A
+    number too short to key (an extension, a short code) keeps its raw form,
+    as before, so it still counts as a dial."""
     names = {v["rc_id"]: k for k, v in PRODUCERS.items()}
     out = collections.defaultdict(lambda: collections.defaultdict(list))
     for r in recs:
         who = names.get(owner_ext_id(r) or "")
         if not who or r.get("direction") != "Outbound":
             continue
-        num = (r.get("to") or {}).get("phoneNumber")
+        raw = (r.get("to") or {}).get("phoneNumber")
+        num = e164(raw) or raw
         if num:
             out[who][num].append(r)
     return out

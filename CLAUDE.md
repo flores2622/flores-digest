@@ -298,12 +298,26 @@ Everything caches under `data/`, so a re-run resumes rather than restarting.
   it leaves the numerator AND the denominator. Reaching someone on their mobile
   after their landline must not read as a 50% contact rate. Mike / Nicole
   Santana, 2026-08-31 -- 252s and 67s on one lead -- and Roger Ryan before her.
+  **Reached or not** (Frank, 2026-09-30): every counted dial on one lead
+  collapses to one (`daily._one_attempt_per_lead`) -- the live number, else
+  the one dialled most -- the rest dropped as "duplicate lead" with their
+  attempts moved over, so an unanswered lead on two numbers is one dial, not
+  two. A call-in from a dropped duplicate number stays a conversation
+  (`finalize.conversations`).
 - **An answered call-in is a conversation** (Frank, 2026-09-23). If it survives
   `inbound.screen` -- Accepted, and connected on a producer's own phone -- it is
   live, whatever the transcript says; the producer's "Thank you for calling
   Farmers" reads as an auto-attendant greeting to `transcribe.MACHINE`. Only a
   SAME-DAY call back may turn a dial live; any other call-in stays outside the rate.
-- **Talk time counts every conversation**, inbound included.
+  **A screened same-day call back makes its dial live, full stop** (Frank,
+  2026-09-30): `is_live(..., callback=True)` is "answered call back" over a
+  "no answer" note and under 60s. A screened call-in with no recording is
+  still a conversation (an entry with no text: talk time and Call Detail,
+  no coaching card); it is read once a recording appears.
+- **Talk time counts every conversation**, inbound included. **So does the
+  team's** (Frank, 2026-09-30): `finalize.team_avg_talk` weights each
+  producer by live + inbound, `_totals`' own divisor, for the email and the
+  board alike -- it was avg x outbound live only.
 - **Notes win over the recording** (Frank, 2026-08-18). A producer writing "no
   answer" outranks a 12-second transcript that sounds live. Duration is the
   last resort and is labelled as such.
@@ -333,6 +347,10 @@ Everything caches under `data/`, so a re-run resumes rather than restarting.
 as ten digits with no country code, so a Mexican number arrives from RingCentral
 as `+526535380676` and from AgencyZoom as `(653) 538-0676`. Anything stricter
 silently drops real customers.
+**Dials are keyed that way too** (Frank, 2026-09-30): `day_calls.dials_from`
+keys every dialled number by `e164` (a number too short keeps its raw form),
+so a +52 dial meets its lead; transcripts, call backs, `task_audit` and the
+Worker's `dialDeltas` / `speedToDial` use the same key.
 
 ## Rebuilding a past day
 
@@ -463,7 +481,12 @@ and anything without the glow is the checkpoint's (Frank, 2026-09-24).
   topped up from the newest end each refresh, up to 5 pages), so
   HH/Prem. Sold glows whenever sales are live. That list stands on its own
   for the day; the checkpoint's `rows.sold_leads` are added only if the read
-  stopped at the page cap.
+  stopped at the page cap. **The list the tile opens is the tile's**
+  (2026-09-30): applyLive merges the live sold leads into `rows.sold_leads`
+  (one per lead_id, the checkpoint's row keeping its source); a list with
+  no live rows (dials, contacts, quoted, policies) under a live card says
+  "Live figure; this list is as of the last checkpoint <time> -- N more
+  since".
 - **Utilization** is `insightful_util.pull()`'s formula.
 - **Speed to Dial** (Frank, 2026-09-29: "make speed to dial live too") is
   worked out WHOLE every even minute (`site/live.js speedToDial`, a line-for-
@@ -476,6 +499,11 @@ and anything without the glow is the checkpoint's (Frank, 2026-09-24).
   rebuilding them from each producer's summary -- 09-25's team read 69m23s
   that way against a true 34m56s. Checked identical to the Python on every
   day R2 holds a lead snapshot for (09-23, 09-24, 09-25, 09-28).
+  **Three corrections** (Frank, 2026-09-30; published days not rebuilt): the
+  first dial is the EARLIEST by any producer, credited to them (it was the
+  first producer in the log's order); a lead "arrived today" by its
+  createDate in ARIZONA time (UTC-7 -- a 5:30 PM lead was lost); both sides
+  keyed by `e164`. `speed_to_dial` is now built from `speed_rows`.
 - **Task Completion** (Frank, 2026-09-29: "task completion should be live")
   is worked out whole like Speed to Dial (`site/live.js taskCompletion`, a
   line-for-line mirror of `az_tasks.audit` -- keep them in step, rounding
@@ -565,7 +593,14 @@ and anything without the glow is the checkpoint's (Frank, 2026-09-24).
   recordings and settles every one. A counted number is judged only on its
   new legs and the notes written since; an excluded one stays excluded; a
   call back turns its dial live; any other answered call-in adds talk time,
-  never a contact. The rate is live contacts over LIVE dials, so it is live
+  never a contact -- **but only on a number the checkpoint kept, is already
+  talking on, or the lead notes show is a lead's** (2026-09-30:
+  `live_basis.inbound` carries inbound.screen's in / out numbers; a
+  screened-out or unplaced call-in waits for the next checkpoint).
+  **Team Avg Talk Time live is total seconds over total conversations**
+  (live + inbound + the live deltas), like `finalize.team_avg_talk`, and a
+  range weights each day's talk by live + inbound; rates and averages round
+  half-to-even like Python (`pyRound`, 2026-09-30). The rate is live contacts over LIVE dials, so it is live
   only when dials are. The notes come from the quotes part's own reads
   (dialled leads first), so it costs no extra AgencyZoom requests.
   `site/live_notes.js contactDeltas`; the checkpoint's side is
@@ -578,8 +613,17 @@ and anything without the glow is the checkpoint's (Frank, 2026-09-24).
   against a full rebuild at 12 checkpoint times on 09-23 and 09-25: every
   count and reply row identical, except one tie between two producers'
   duplicate lead records, which Python breaks by corpus order the Worker
-  cannot see (the next checkpoint fixes it). The closing ratio falls back
-  to the checkpoint's (`cp_pol`/`cp_ps`) whenever quotes are not live.
+  cannot see (the next checkpoint fixes it). **A wait is one row however
+  many messages it holds** (2026-09-30): the checkpoint hands over the run
+  nothing has answered yet (`people[].run`: start, messages, ack / opt-out /
+  wrong so far) and the Worker adds to it, re-judges it over all its
+  messages and moves its counts (an "ok" then a question is one waiting
+  row from the "ok"; minutes run from the first message). `seen` is the
+  newest TEXT / EMAIL / TEXT-FAILED / CALL note only (a TASK note is stamped
+  the evening before). The closing ratio falls back to the checkpoint's
+  (`cp_pol`/`cp_ps`, and since 2026-09-30 `cp_hh`/`cp_pq` and the
+  checkpoint's sold-lead rows for the households half) until
+  `liveOn(d, "closing")` -- sales, quotes and households sold all live.
 - The Worker needs its own secrets, set in Cloudflare (Workers & Pages ->
   flores-board -> Settings -> Variables and Secrets, type Secret):
   `RC_CLIENT_ID`, `RC_CLIENT_SECRET`, `RC_SERVER_URL`, `RC_JWT`,
@@ -615,6 +659,9 @@ the Quote** every call where a quote came up (the cards' `sendoff`); Texts
 tasks in the rate (`rows.tasks`, from `az_tasks.audit`'s own `items`, from
 2026-09-29 on) and Household Completion's cards the policies sold, cross-
 sells marked. Role play and utilization have no accounts behind them.
+A tab that fails to draw (an old or partial document) shows "This section
+could not be drawn: <message>" under its date controls instead of a blank
+page (2026-09-30).
 
 ## Date ranges on the Digest
 
@@ -640,7 +687,10 @@ households half (households sold over households quoted) count the leads
 marked sold (`rows.sold_leads`; live, the sales refresh's own read of
 today's sold leads), one per household per day -- `household` is the lead's
 convertedHouseholdId, else its name, since duplicate lead records are
-pervasive. **Premium Sold is still the policies' own premium** and the
+pervasive. **A BOB / Rewrite lead (`lead_sources.NOT_A_SALE`) or a test lead
+(`digest_config.is_test_lead`) is not a household sold** (Frank,
+2026-09-30), in `digest_rows` and `live.js soldLeadsToday` alike
+(`live_basis.test_lead`). **Premium Sold is still the policies' own premium** and the
 policy count still shows beside it (policies per HH). A lead can be marked
 sold a few days off its policy's soldDate, so a day can show a household
 with no policy or the reverse. A day with no sold-lead rows keeps the old

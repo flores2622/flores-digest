@@ -572,8 +572,11 @@ def _audio_legs(day):
                                             (r.get("direction") or "").lower(),
                                             r.get("result") or ""))
     out = {}
+    from az_corpus import e164
     for cid, v in tx.items():
-        n, who = v.get("to"), v.get("producer")
+        # Keyed like the Call Detail rows (day_calls.dials_from's e164 key,
+        # 2026-09-30); an outbound transcript carries RingCentral's raw number.
+        n, who = e164(v.get("to")) or v.get("to"), v.get("producer")
         if not n or not who:
             continue
         p = ROOT / f"data/audio/{cid}.mp3"

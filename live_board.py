@@ -41,6 +41,7 @@ import json
 import pathlib
 
 import day_calls
+import finalize
 import sales_log_auto
 import digest_config as cfg
 import lead_sources
@@ -79,11 +80,9 @@ def basis(day):
         excluded[who] = sorted(seen - keep - drop)
         # Contacts and talk time (finalize._totals): which counted numbers
         # are already live, and the conversations behind Avg Talk Time --
-        # every Call Detail row, inbound included, on a number not dropped.
+        # every Call Detail row, inbound included, finalize.conversations.
         live[who] = sorted(d["number"] for d in rows if not d.get("dropped") and d.get("live"))
-        gone = {d["number"] for d in rows if d.get("dropped")}
-        convos = [r for r in ((M.get("producers", {}).get(who) or {}).get("call_detail") or [])
-                  if r.get("number") not in gone]
+        convos = finalize.conversations(M.get("producers", {}).get(who) or {})
         talk[who] = {"seconds": sum(r.get("seconds") or 0 for r in convos),
                      "conversations": len(convos),
                      "numbers": sorted({r["number"] for r in convos if r.get("number")})}
@@ -100,12 +99,18 @@ def basis(day):
         "excluded": excluded,
         "live": live,
         "talk": talk,
+        "inbound": _inbound_basis(day, recs),
         "contact": _contact_basis(),
         "tasks": _task_basis(day),
         "producers": {n: {"rc_id": v["rc_id"], "az_id": v["az_id"]}
                       for n, v in cfg.PRODUCERS.items()},
         "not_a_sale": sorted(lead_sources.NOT_A_SALE),
         "existing_household": sorted(lead_sources.EXISTING_HOUSEHOLD),
+        # digest_config.is_test_lead, for households sold (site/live.js
+        # soldLeadsToday skips a test lead as digest_rows does; Frank,
+        # 2026-09-30).
+        "test_lead": {"ids": sorted(cfg.TEST_LEAD_IDS),
+                      "rx": [cfg.TEST_LEAD_RE.pattern, "i"]},
         "util_exclude": sorted(_util_exclude()),
         # The Sales sheet's auto rows (sales_log_auto), so the Worker adds a
         # live sale to the sheet with the same people and product names.
@@ -164,6 +169,29 @@ def _quote_basis(M):
 # it is provisional and the checkpoint settles every one. Duration alone
 # (no notes) at 60s showed 474 against a real 303 over September.
 PROVISIONAL_LIVE_SECONDS = 60
+
+
+def _inbound_basis(day, recs):
+    """inbound.screen's verdict on each number that called in and was
+    answered by a producer today, as the checkpoint saw it: {producer:
+    {"in": [numbers kept], "out": [numbers screened out]}}. A call-in since
+    the checkpoint from a number screened out (service, renewal, customer
+    only, no record) must not add talk time the nightly will never count
+    (live_notes.contactDeltas, 2026-09-30). None when it cannot be read --
+    the Worker then counts a new call-in only on a number it knows is a
+    lead or already a conversation."""
+    try:
+        import inbound as ib
+        win = json.loads((ROOT / f"data/rc_window_{day}.json").read_text())
+        rows = ib.screen(ib.link_callbacks(ib.answered(day, recs), win, day), day)
+    except Exception:
+        return None
+    out = {who: {"in": set(), "out": set()} for who in cfg.PRODUCERS}
+    for r in rows:
+        n = ib.last10(r.get("number"))
+        if n and r.get("producer") in out:
+            out[r["producer"]]["out" if r.get("skip") else "in"].add(n)
+    return {who: {k: sorted(v) for k, v in d.items()} for who, d in out.items()}
 
 
 def _contact_basis():
