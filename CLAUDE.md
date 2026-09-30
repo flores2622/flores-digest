@@ -135,6 +135,37 @@ Everything caches under `data/`, so a re-run resumes rather than restarting.
   Farmers". Apollo quotes the call's first sentence and who said it; when
   the caller spoke first the pick-up wasn't recorded and the code makes it
   "n" (`coaching_cards._greeting`) -- the model guessed otherwise.
+  **Only the producer's own words are the greeting** (Frank, 2026-09-30):
+  `by` is producer / caller / front desk, and `_greeting` forces "n" when
+  it is not the producer, when the leg is tagged "ONLY THE OPENING WAS
+  RECORDED", when the line names another staff member ("This is Debbie"),
+  is labelled (lead)/(customer), or is the front-desk script on a
+  transferred or unlabelled line. A **transferred** call
+  (`lead_history.answer_route`: the row's `partial`, else `inbound.answered`'s
+  route over the saved RC log -- no new request) is its own greeting: by
+  name, own name, pick up where the front desk left off. The agency name is
+  never needed; a misheard name is never marked down; an answered-only
+  card's "Opening & identification" is "n".
+- **Apollo's rulings of 2026-09-30** (new reads only; no past card re-read):
+  **`exit` is rare** -- decided in order: recording ends mid-call or the
+  prospect hung up, the prospect started the wrap-up, the sale closed ->
+  false; only the producer's own line ending an engaged call is true; null
+  when not recorded to the end. **An early "no" before the quote is an
+  objection**: `askq` false unless the producer assumed the quote in reply;
+  **`sendoff` "producer" makes a null `askq` false** in code
+  (`_askq_after_sendoff`). `asks` is null when the quote could not be
+  finished for a reason outside the producer. **`calltype` "service" only
+  when no sales opportunity existed at all**; a household missing a product
+  is "mixed". **A note / TEXT / EMAIL saying a quote was sent makes the call
+  a follow-up whatever the stage** (`lead_history.quote_sent`, drips and the
+  lead's own messages left out); a quote on file with no such note at
+  Contacted / Ready to Present is finish quote. Objection bands: 8-10
+  overcome, 5-7 partial, 0-4 not; a Busy handled well is 8+. Fix lines are
+  in the language the producer was speaking at that moment. Reads get up to
+  40,000 characters (`call_summary.clip`, "[TRANSCRIPT CUT HERE]" when cut;
+  was 16,000 / 12,000 silently), the card's first budget is 9,000 tokens,
+  each new card keeps `model`, and `_bool_pair` reads "true"/"false"/"null"/
+  "n/a" strings for what they say (a bare None is None, never False).
 - **Card flags are categorised** (Frank, 2026-09-27): Apollo names each
   flag's category from `digest_config.FLAG_GROUPS` (No next step, Quote not
   presented, Discovery missed, Approach skipped, Objection dropped, Call cut
@@ -1148,7 +1179,12 @@ side-by-side). `deepgram_stt.py` (Nova-3, language=multi, diarized, keyed on
 `DEEPGRAM_API_KEY` in the cloud environment) transcribes every recording
 unless `TRANSCRIBE_ENGINE=whisper`, and falls back to Whisper on any failure
 (a missing key says so once in the log). Full transcripts are one line per
-turn. The producer's turns read "<First name> (producer):", found from how
+turn, **each starting with its real start time, "[m:ss]" into the
+recording** (2026-09-30, `deepgram_stt.full` / `LINE`; Apollo uses them for
+objections' `at` and the spine and never invents one). Transcripts saved
+before that have none and stay as they are; speakers are found on the
+utterances, never on this text, and `turns` (the card player) is unchanged.
+The producer's turns read "<First name> (producer):", found from how
 they introduce themselves ("This is Crystal with Farmers", "Le habla Mike, de
 la aseguranza", "Soy Sarahi"; `deepgram_stt.producer_speaker`, own name
 only -- a caller saying "Hi, Crystal" does not count); everyone else, and

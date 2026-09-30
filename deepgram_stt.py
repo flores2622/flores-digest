@@ -396,13 +396,33 @@ def turns(path, duration, offset=0, log=None, producer=None, lead=None,
     return out
 
 
+def stamp(t):
+    """Seconds -> "m:ss", the bracketed time each full() line starts with."""
+    n = int(max(0, float(t or 0)))
+    return f"{n // 60}:{n % 60:02d}"
+
+
+# One full() line: "[4:32] Mike (producer): ...". The time is optional -- a
+# transcript saved before 2026-09-30 has none -- so nothing that reads the
+# label may depend on it.
+LINE = re.compile(r"^(?:\[(?P<t>\d+:\d\d)\]\s+)?(?P<who>[^:\n\[\]]{1,40}):\s?(?P<text>.*)$")
+
+
 def full(path, duration, offset=0, log=None, producer=None, lead=None, number=None):
-    """The whole leg, one line per turn: "Speaker 1: ...", with the producer's
-    turns labelled "<First name> (producer)" when producer_speaker finds them
-    and the other voice "<First name> (lead)" or "(customer)" when
-    other_party finds them. None on failure."""
+    """The whole leg, one line per turn: "[0:04] Speaker 1: ...", with the
+    producer's turns labelled "<First name> (producer)" when producer_speaker
+    finds them and the other voice "<First name> (lead)" or "(customer)" when
+    other_party finds them. None on failure.
+
+    Each line starts with the turn's REAL start time in brackets (Frank,
+    2026-09-30): seconds into the recording, the same `t` turns() gives the
+    card's player, so a time Apollo quotes is a line the player can find.
+    Before this the text carried no times and Apollo guessed them. Speakers
+    are still found on the utterances (producer_speaker), never on this
+    text. Transcripts saved before 2026-09-30 keep their old form: a rebuild
+    reuses the saved text, it never re-transcribes."""
     ts = turns(path, duration, offset=offset, log=log, producer=producer, lead=lead,
                number=number)
     if ts is None:
         return None
-    return "\n".join(f"{x['who']}: {x['text']}" for x in ts).strip()
+    return "\n".join(f"[{stamp(x['t'])}] {x['who']}: {x['text']}" for x in ts).strip()
