@@ -193,17 +193,26 @@ def _task_basis(day):
     import re
     import task_audit
     rx = lambda r: [r.pattern, "i" if r.flags & re.I else ""]
-    verdicts = {}
+    verdicts, customers = {}, []
     path = ROOT / f"data/az_tasks_{day}.json"
     if path.exists():
+        tasks = json.loads(path.read_text())
         try:
             verdicts = task_audit.cancellation_verdicts(
-                day, json.loads(path.read_text()),
-                {v["az_id"]: k for k, v in cfg.PRODUCERS.items()})
+                day, tasks, {v["az_id"]: k for k, v in cfg.PRODUCERS.items()})
         except Exception:
             verdicts = {}
+        # Which records the tasks hang off are customers, not leads -- the
+        # lead corpus decides, as digest_rows / task_audit._link do, because
+        # customerType is wrong on a few rows. For the list's links only.
+        corpus = ROOT / "data/az_leads_all.json"
+        if corpus.exists():
+            lead_ids = {l.get("id") for l in json.loads(corpus.read_text())}
+            customers = sorted({t["customerId"] for t in tasks
+                                if t.get("customerId") and t["customerId"] not in lead_ids})
     return {
         "verdicts": {str(k): v for k, v in verdicts.items()},
+        "customers": customers,
         "rx": {"title": rx(cfg.SERVICE_TITLE_RE), "body": rx(cfg.SERVICE_BODY_RE),
                "loss": rx(task_audit.LOSS_RE), "duplicate": rx(task_audit.LOSS_DUPLICATE_RE),
                "cycle": rx(task_audit.SMART_CYCLE_RE)},
