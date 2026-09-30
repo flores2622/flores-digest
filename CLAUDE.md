@@ -214,7 +214,10 @@ Everything caches under `data/`, so a re-run resumes rather than restarting.
   the conversation** (Frank, 2026-09-30 -- it was in the mic button and ran
   the width of the screen; `rpShowLive`), and the conversation keeps
   scrolled to the newest line unless they scroll up to read (`rpFollow`);
-  the box fits the window so the mic stays in view.
+  the box fits the window so the mic stays in view. **Apollo's grade and the
+  voice rating sit beside the conversation** (`.rpside`; Frank, 2026-09-30:
+  "were losing a lot of space, and the feedback is off centered"), and the
+  call screen widens to 1500px on a big monitor; narrow screens stack.
 - **Every graded Role Play session is kept and can be read back** (Frank,
   2026-09-29: "a full history of role play sessions ... producers see their
   own"). Learning Center > **Session History**: a date range (7 / 30 / 90
