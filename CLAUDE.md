@@ -178,7 +178,10 @@ Everything caches under `data/`, so a re-run resumes rather than restarting.
   the card already holds -- no new read: the top two `good` and `bad`
   titles (detail on hover) and one line to say next time, the first
   objection not overcome's first `fix`, else `askfix`. One column under
-  900px; no panel when there is nothing to say.
+  900px; no panel when there is nothing to say. **A card opens from
+  "▼ Expand ▼" at its bottom and closes from "▲ Collapse ▲" at the bottom of
+  the open card** (Frank, 2026-09-30, replacing the small top-right arrow;
+  the header still opens it too), which scrolls back to the card's top.
 - **Card flags are categorised** (Frank, 2026-09-27): Apollo names each
   flag's category from `digest_config.FLAG_GROUPS` (No next step, Quote not
   presented, Discovery missed, Approach skipped, Objection dropped, Call cut

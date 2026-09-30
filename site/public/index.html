@@ -582,8 +582,15 @@ td.num.msgbad { color: var(--bad); font-weight: 600; }
 .ccard { display: block; background: var(--surface); border: 1px solid var(--border-strong); border-radius: 9px; padding: 12px; margin-bottom: 13px; }
 .ccard > summary.cchead { cursor: pointer; list-style: none; }
 .ccard > summary.cchead::-webkit-details-marker { display: none; }
-.ctog { color: var(--text-muted); font-size: 11px; margin-left: 8px; display: inline-block; transition: transform .15s; }
-.ccard[open] .ctog { transform: rotate(90deg); }
+/* Open and close at the bottom of the card, "Expand" with an arrow each side
+   (Frank, 2026-09-30, replacing the small arrow at the top right). */
+.cexp { display: flex; justify-content: center; align-items: center; gap: 8px; margin-top: 10px; padding-top: 7px;
+  border-top: 1px solid var(--border); font-size: 11.5px; font-weight: 600; letter-spacing: .04em; text-transform: uppercase; color: var(--text-secondary); }
+.cexp .ar { font-size: 13px; line-height: 1; }
+.ccard > summary.cchead:hover .cexp { color: var(--text-primary); }
+.ccard[open] > summary .cexp { display: none; }
+.ccol { cursor: pointer; margin-top: 12px; }
+.ccol:hover { color: var(--text-primary); }
 .blk { background: var(--surface-raised); border: 1px solid var(--border); border-radius: 7px; padding: 13px 15px; margin-bottom: 9px; }
 .blk:last-child { margin-bottom: 0; }
 .bl { font-size: 10px; text-transform: uppercase; letter-spacing: 0.09em; color: var(--text-muted); margin-bottom: 9px; }
@@ -3252,6 +3259,14 @@ function quickCoachHtml(c) {
     ${say ? `<div class="qr"><span class="qk s">Say next time</span><span class="qv say">“${cesc(say)}”${miss ? ` <span class="sd" style="font-style:normal">(${cesc(miss.group || "objection")})</span>` : ""}</span></div>` : ""}
   </div>`;
 }
+// Closing from the bottom of a long card leaves the reader far below it;
+// bring the card's top back into view if it has scrolled off.
+function ccCollapse(el) {
+  const d = el.closest("details");
+  if (!d) return;
+  d.open = false;
+  if (d.getBoundingClientRect().top < 0) d.scrollIntoView({ block: "start" });
+}
 function card(c) {
   const objs = c.objs || [];
   // One block per objection -- a card can carry several (Frank, 2026-09-15:
@@ -3309,11 +3324,12 @@ function card(c) {
        <div class="cmeta">${cesc(c.who || "")} · ${cesc(fmtShortDate(c.day))}${c.time ? ` ${cesc(c.time)}` : ""} · ${durCell} · ${cesc(c.lang || "")} · ${cesc(c.src || "")}${c.leadsrc ? ` · ${cesc(c.leadsrc)}` : ""}</div>
        ${callRowHtml}</div>
        ${!multiCall ? outcomeBadgeHtml(c.cat, c.catc, [...typeParts, ...flowParts(c)])
-         : [...typeParts, ...flowParts(c)].map(([l, why]) => `<span class="ctype" title="${escAttr(why)}">${cesc(l)}</span>`).join("")}<span class="ctog" aria-hidden="true">▸</span></div>
+         : [...typeParts, ...flowParts(c)].map(([l, why]) => `<span class="ctype" title="${escAttr(why)}">${cesc(l)}</span>`).join("")}</div>
      ${(() => { const qc = quickCoachHtml(c); return `<div class="chbody${qc ? "" : " one"}"><div>
      <div class="sum">${cesc(c.summary || "")}</div>
      ${(c.flags && c.flags.length) || (c.exit && c.exit[0] === true) ? `<div style="margin-top:8px">${
        flagBadgesHtml(c)}</div>` : ""}</div>${qc}</div>`; })()}
+     <div class="cexp"><span class="ar">▼</span>Expand<span class="ar">▼</span></div>
    </summary>
    ${c.askq || c.assume ? `<div class="blk"><div class="bl">The Assumption</div><table class="askt">
      ${c.assume ? assumeRowsHtml(c.assume) : `<tr><td class="k">Assumed the quote</td><td class="v">${bdg(c.askq[0])}</td><td>${cesc(c.askq[1] || "")}</td></tr>
@@ -3332,7 +3348,9 @@ function card(c) {
      ? scorecard(...withGreeting(c, c.fuscore, FU_DIMS), "Follow-up scorecard")
      : scorecard(...withGreeting(c, c.score, DIMS))}${scorecard(c.techniques, TECH_DIMS, "Sales techniques")}</div>
    ${spine}
-   ${recordingBlk(c)}</details>`;
+   ${recordingBlk(c)}
+   <div class="cexp ccol" role="button" tabindex="0" onclick="ccCollapse(this)"
+     onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();ccCollapse(this)}"><span class="ar">▲</span>Collapse<span class="ar">▲</span></div></details>`;
 }
 // Listen to the actual call and/or read what it transcribed to, right on the
 // card that coached it (Frank, 2026-09-14) -- both were already sitting in
