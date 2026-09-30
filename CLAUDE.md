@@ -238,7 +238,10 @@ Everything caches under `data/`, so a re-run resumes rather than restarting.
   a line click seeks there, the line playing is lit, and **each line's button
   pauses and resumes in place** (Frank, 2026-09-29: "pause the playback
   without stopping or restarting it") -- the same on a Role Play session's
-  lines. Cards with no Deepgram
+  lines. Hovering the button opens **volume and speed** (0.75x-2x; `ppBtn`,
+  `pb`), one setting for every line, card and session, kept in the browser.
+  Keep the panel inline elements: a card line is a <p>, and a <div> inside
+  one ends the line early. Cards with no Deepgram
   read keep the plain transcript. **September's cards were given theirs**
   (Frank, 2026-09-29: "do september's cards") by `card_turns_backfill.py
   2026-09-01 2026-09-28`: one paid Deepgram read per carded recording, added
