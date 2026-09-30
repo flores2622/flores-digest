@@ -3332,7 +3332,10 @@ function card(c) {
        <div class="cmeta">${cesc(c.who || "")} · ${cesc(fmtShortDate(c.day))}${c.time ? ` ${cesc(c.time)}` : ""} · ${durCell} · ${cesc(c.lang || "")} · ${cesc(c.src || "")}${c.leadsrc ? ` · ${cesc(c.leadsrc)}` : ""}</div>
        ${callRowHtml}</div>
        ${!multiCall ? outcomeBadgeHtml(c.cat, c.catc, [...typeParts, ...flowParts(c)])
-         : [...typeParts, ...flowParts(c)].map(([l, why]) => `<span class="ctype" title="${escAttr(why)}">${cesc(l)}</span>`).join("")}</div>
+         // Each call's own badge already says call back / call in (Frank,
+         // 2026-09-30: "it already says it in the call outcome badge"), so
+         // only a service / mixed call type is left to show here.
+         : typeParts.map(([l, why]) => `<span class="ctype" title="${escAttr(why)}">${cesc(l)}</span>`).join("")}</div>
      ${(() => { const qc = quickCoachHtml(c); return `<div class="chbody${qc ? "" : " one"}"><div>
      <div class="sum">${cesc(c.summary || "")}</div>
      ${(c.flags && c.flags.length) || (c.exit && c.exit[0] === true) ? `<div style="margin-top:8px">${
