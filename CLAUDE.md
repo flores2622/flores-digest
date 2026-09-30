@@ -162,7 +162,14 @@ Everything caches under `data/`, so a re-run resumes rather than restarting.
   2026-09-29: "she doesnt speak it") -- `RP_ENGLISH_ONLY`.
   They speak at 1.2x (`RP_SPEAK_SPEED`, Deepgram's `speed`; Frank,
   2026-09-29: "they talk to slow") -- a refused speed is retried at normal
-  speed. The Worker's `/api/roleplay/speak` streams them and needs the
+  speed. **They start talking on the first sentence** (Frank, 2026-09-30,
+  still on claude-sonnet-5 -- "i dont want haiku 4.5"): the turn is
+  streamed (`callClaudeStream`, `stream: true`), each finished sentence goes
+  to Deepgram at once and they play back to back (`rpSpeechQueue`; under 20
+  characters is held for the next), and the mic returns only after the last.
+  A streamed line keeps its sentences as `parts`; the grade attaches every
+  clip as `audios` (first also as `audio`), and Session History plays them
+  in order. The Worker's `/api/roleplay/speak` streams them and needs the
   `DEEPGRAM_API_KEY` secret (without it the browser's voice speaks). Apollo
   grades in English whatever the call's language. **Producers rate the voice
   after each graded session** (stars, again yes / no, a comment), saved on
