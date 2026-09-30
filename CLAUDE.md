@@ -251,7 +251,12 @@ Everything caches under `data/`, so a re-run resumes rather than restarting.
   text}; t = seconds into recording r) from Deepgram's SAVED reads only
   (`deepgram_stt.turns(..., cached_only=True)` -- a card build never pays
   for a read), and the card shows one player with the transcript under it:
-  a line click seeks there, the line playing is lit, and **each line's button
+  a line click seeks there, the line playing is lit (inside its edge, so
+  the box never covers it), **the word being said is highlighted and any
+  word plays from there** (Frank, 2026-09-30; `wordSpans`: Deepgram's own
+  word starts, `w` on each turn, cached from 2026-09-30 on -- older reads
+  spread a line's words across it by length -- and a redacted line loses
+  its `w`), and **each line's button
   pauses and resumes in place** (Frank, 2026-09-29: "pause the playback
   without stopping or restarting it") -- the same on a Role Play session's
   lines. Hovering the button opens **volume and speed** (0.75x-2x; `ppBtn`,

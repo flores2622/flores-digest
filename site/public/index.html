@@ -739,7 +739,12 @@ details.sc .scb { padding: 0 12px 12px; }
 .histrow { display: flex; justify-content: space-between; gap: 10px; padding: 7px 0; border-bottom: 1px solid var(--border); font-size: 12.5px; }
 .histrow:last-child { border-bottom: none; }
 /* The line playing in a Role Play session or a coaching card's recording. */
-.rphplay.playing, .tturn.sync.playing { outline: 2px solid var(--accent, #2b6cb0); outline-offset: 2px; }
+/* Drawn inside the line, so the transcript box's edge never covers it (Frank, 2026-09-30). */
+.rphplay.playing, .tturn.sync.playing { box-shadow: inset 0 0 0 2px var(--accent, #2b6cb0); }
+/* The word being said, and every word clickable to play from there. */
+.tturn .wd { cursor: pointer; border-radius: 3px; }
+.tturn .wd:hover { text-decoration: underline; }
+.tturn .wd.cur { background: #ffe58a; color: #1a1a1a; box-shadow: 0 0 0 2px #ffe58a; }
 .tturn.sync { cursor: pointer; }
 /* The play / pause button at the start of each line. */
 .pp { display: inline-flex; align-items: center; justify-content: center; width: 22px; height: 22px; margin-right: 6px;
@@ -3273,17 +3278,33 @@ function syncedRecordingBlk(c) {
   const mmss = t => `${Math.floor(t / 60)}:${String(Math.floor(t % 60)).padStart(2, "0")}`;
   const uid = `rec-${c.day}-${ids[0]}`;
   let lastR = -1;
-  const lines = c.turns.map(x => {
+  const lines = c.turns.map((x, i) => {
     const head = ids.length > 1 && x.r !== lastR ? `<div class="ttag">Call ${x.r + 1} of ${ids.length}</div>` : "";
     lastR = x.r;
     return `${head}<p class="tturn sync t${/\((producer|service)\)/.test(x.who) ? 0 : 1}" data-rec="${uid}" data-r="${x.r}" data-t="${x.t}">
-      ${ppBtn("Play from here")}<span class="ts">${mmss(x.t)}</span><span class="tw">${esc(x.who)}</span>${esc(x.text)}</p>`;
+      ${ppBtn("Play from here")}<span class="ts">${mmss(x.t)}</span><span class="tw">${esc(x.who)}</span>${wordSpans(x, c.turns[i + 1], esc)}</p>`;
   }).join("");
   return `<div class="blk"><div class="bl">Recording &amp; transcript</div>
     <audio controls preload="none" id="${uid}" data-day="${c.day}" data-ids="${ids.join(",")}" data-r="0"
       style="width:100%" src="/api/recordings/${c.day}/${ids[0]}"></audio>
-    <p class="sd" style="margin:6px 0 4px">Click a line to play the call from there; its button pauses and resumes.</p>
+    <p class="sd" style="margin:6px 0 4px">Click any word to play the call from there; a line's button pauses and resumes.</p>
     <div class="scb" style="font-size:12px;padding:6px 2px;max-height:420px;overflow:auto">${lines}</div></div>`;
+}
+/* Each word of a line as its own span with the second it is said (Frank,
+   2026-09-30: "highlight the word its on and make it playable from there").
+   Reads from 2026-09-30 carry Deepgram's own word times (`w`); older ones
+   only know when the line starts and ends, so their words are spread across
+   it by length -- close, not exact. */
+function wordSpans(x, next, esc) {
+  const words = String(x.text || "").split(/\s+/).filter(Boolean);
+  let at = Array.isArray(x.w) && x.w.length === words.length ? x.w : null;
+  if (!at) {
+    const end = x.e > x.t ? x.e : next && next.r === x.r && next.t > x.t ? next.t : x.t + words.length * 0.35;
+    const total = words.reduce((n, w) => n + w.length + 1, 0) || 1;
+    let run = 0;
+    at = words.map(w => { const t = x.t + (end - x.t) * run / total; run += w.length + 1; return t; });
+  }
+  return words.map((w, k) => `<span class="wd" data-t="${(+at[k]).toFixed(2)}">${esc(w)}</span>`).join(" ");
 }
 document.addEventListener("click", e => {
   const line = e.target.closest && e.target.closest(".tturn.sync");
@@ -3297,7 +3318,8 @@ document.addEventListener("click", e => {
     if (a.paused) a.play().catch(() => {}); else a.pause();
     return;
   }
-  const r = +line.dataset.r, t = +line.dataset.t;
+  const word = e.target.closest(".wd");
+  const r = +line.dataset.r, t = word ? +word.dataset.t : +line.dataset.t;
   const go = () => { try { a.currentTime = t; } catch (_) {} a.play().catch(() => {}); };
   if (+a.dataset.r !== r) {
     a.dataset.r = String(r);
@@ -3309,17 +3331,41 @@ document.addEventListener("click", e => {
 });
 // Media events don't bubble; listening in the capture phase catches every
 // card's player without wiring each one after a render.
+function syncLines(a) {
+  const r = a.dataset.r, now = a.currentTime;
+  let best = null;
+  const lines = document.querySelectorAll(`.tturn.sync[data-rec="${a.id}"]`);
+  lines.forEach(el => { if (el.dataset.r === r && +el.dataset.t <= now + 0.25) best = el; });
+  lines.forEach(el => { if (el !== best) { el.classList.remove("playing"); const w = el.querySelector(".wd.cur"); if (w) w.classList.remove("cur"); } });
+  if (!best) return;
+  if (!best.classList.contains("playing")) {
+    best.classList.add("playing");
+    // Keep the line in view inside its own scroll box, never the page.
+    const box = best.closest(".scb");
+    if (box) {
+      const top = best.offsetTop - box.offsetTop, h = best.offsetHeight;
+      if (top < box.scrollTop || top + h > box.scrollTop + box.clientHeight) box.scrollTop = Math.max(0, top - 40);
+    }
+  }
+  let cur = null;
+  for (const w of best.querySelectorAll(".wd")) { if (+w.dataset.t <= now + 0.05) cur = w; else break; }
+  const was = best.querySelector(".wd.cur");
+  if (was !== cur) { if (was) was.classList.remove("cur"); if (cur) cur.classList.add("cur"); }
+}
 document.addEventListener("timeupdate", e => {
   const a = e.target;
   if (!a || !a.id || !a.id.startsWith("rec-")) return;
-  const r = a.dataset.r, now = a.currentTime;
-  let best = null;
-  document.querySelectorAll(`.tturn.sync[data-rec="${a.id}"]`).forEach(el => {
-    el.classList.remove("playing");
-    if (el.dataset.r === r && +el.dataset.t <= now + 0.25) best = el;
-  });
-  if (best) best.classList.add("playing");
+  syncLines(a);
   syncButtons(a);
+}, true);
+// timeupdate fires only ~4 times a second -- too slow for one word at a
+// time -- so while a call plays the highlight follows every frame.
+document.addEventListener("play", e => {
+  const a = e.target;
+  if (!a || !a.id || !a.id.startsWith("rec-") || a._wordLoop) return;
+  a._wordLoop = true;
+  const tick = () => { if (a.paused || a.ended) { a._wordLoop = false; return; } syncLines(a); requestAnimationFrame(tick); };
+  requestAnimationFrame(tick);
 }, true);
 // Each line's button shows pause while its line plays, play otherwise.
 function syncButtons(a) {
