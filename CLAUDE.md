@@ -1432,8 +1432,9 @@ with a 2px border. **A feed line never names a stage** ("Mike presented
 $2,500 in premium"): the Digest's day reads as Apollo's group chat
 (`digestFeedItems`) beside **Needs someone now** / **Left on the desk**
 (`needsNowRows`); the Service Digest's is **Off the desk · done today**.
-- **The Flores Post** (`site/public/post.js`) is its own page under the
-  Sales Center, written in rules from the day documents -- nothing typed,
+- **The Flores Post** (`site/public/post.js`) is the first of the Editions
+  (Frank, 2026-10-01: "the flores post should also be one of the
+  editions"; it was its own page for a day), written in rules from the day documents -- nothing typed,
   nothing paid. Day editions for published days; the folio edition
   updates every published day (and from today's checkpoint while open),
   Friday editions frozen as they went out, a countdown at two or fewer
@@ -1442,9 +1443,12 @@ $2,500 in premium"): the Digest's day reads as Apollo's group chat
   What to look for and the goal board. **Primetime is a permanent part of
   the paper and the only place it carries the standings.** No links back to
   the Digest ("tabs on the left is enough").
-- **The Editions** (`site/public/editions.js`): The Flores Feed, Fourth and
-  Goal, KFLR The Close, FLRS 500, Cold Call Comics, CLOSER (Frank named
-  them, 2026-10-01) -- each with its own
+- **The Editions** (`site/public/editions.js`, one page under the Sales
+  Center, every edition the full 1600px -- `.main` is `width: 100%`, since
+  `margin: auto` had let the page shrink to its content and the whole
+  screen shifted between editions, Frank, 2026-10-01): The Flores Post,
+  The Flores Feed, Fourth and Goal, KFLR The Close, FLRS 500, Cold Call
+  Comics, CLOSER (Frank named them, 2026-10-01) -- each with its own
   mechanic, every one carrying the leaderboard, all from the same
   documents. What people do on them (reactions, comments, poll and MVP
   votes, mailbag notes, panel likes) is shared through the Worker's

@@ -839,7 +839,7 @@ html[data-look="mesa"] .tab:hover, html[data-look="mesa"] .tab[aria-selected="tr
 .top h1 { font-size: 30px; font-weight: 400; letter-spacing: 0; }
 .top .sub { margin-left: auto; font-size: 13px; color: var(--text-primary); background: var(--chip); padding: 6px 12px; border-radius: 999px; font-weight: 600; }
 .top .sub:empty { display: none; }
-.main { padding: 14px 24px 60px; }
+.main { padding: 14px 24px 60px; width: 100%; }   /* margin:auto turns off the column's stretch; without this the page was as wide as its content */
 #view > .controls { display: inline-flex; vertical-align: middle; margin: 0 10px 18px 0; }
 select, button.ghost, .btn, input[type="date"] { border-radius: 10px; border-color: var(--border-strong); background: var(--surface-raised); font-family: var(--body); font-weight: 600; padding: 8px 10px; }
 .subtab { border-radius: 999px; background: var(--chip); border-color: transparent; }
@@ -1177,7 +1177,7 @@ let view = "digest";
 // page's own pill-style .subtabs for anything inside it. A Center with one
 // page shows just that one tab.
 const CENTERS = {
-  salescenter: [["digest", "Digest"], ["post", "The Flores Post"], ["editions", "Editions"], ["sales", "Sales"], ["messages", "Texts & Emails"]],
+  salescenter: [["digest", "Digest"], ["editions", "Editions"], ["sales", "Sales"], ["messages", "Texts & Emails"]],
   coaching: [["coaching", "Coaching"]],
   learning: [["roleplay", "Role Play"], ["rphistory", "Session History"], ["training", "Training"], ["blueprint", "Apollo's Road Map"]],
   service: [["service", "Service Digest"], ["renewals", "Renewals"], ["athenamap", "Athena's Road Map"]],
@@ -6655,7 +6655,7 @@ async function paintTab() {
     let body;
     try { body = await editionsPanel(err); } catch (e) { console.error(e); body = drawErrorHtml(e); }
     v.innerHTML = rangeControlHtml() + body;
-    wireRangeControl();
+    wireRangeControl(); wirePost();   // the edition tabs are wired by editions.js's own click handler
   } else if (view === "messages") {
     if (rangeMode !== "day") v.innerHTML = rangeControlHtml() + producerControlHtml() + '<div class="empty">Loading…</div>';
     const err = await ensureCurForRange();
@@ -8316,10 +8316,8 @@ const TOUR_STEPS = [
     text: "How fast new internet leads were called and texts were answered, how many of today's tasks got done, and how many policies each household bought." },
   { view: "digest", find: () => $("#view .chatbox"), title: "The day as a chat",
     text: "Apollo on the left: every coached call and text as it happened. The producers on the right: each sale, quote presented and quote sent. A line opens its coaching card. Beside it, what needs someone right now." },
-  { view: "post", find: () => $("#view .paper .mast") || $("#view .press"), title: "The Flores Post",
-    text: "A published day or a folio as a newspaper: the headline, the goal board, what to try on a slow day, and Primetime, the sports section, with the standings." },
   { view: "editions", find: () => $("#view .edtabs") || $("#view .press"), title: "The editions",
-    text: "Six more ways to read the same day: The Flores Feed, Fourth and Goal, KFLR The Close, FLRS 500, Cold Call Comics and CLOSER. React, vote, comment: everyone sees the same tally." },
+    text: "A published day or a folio, seven ways: The Flores Post (the newspaper, with Primetime), The Flores Feed, Fourth and Goal, KFLR The Close, FLRS 500, Cold Call Comics and CLOSER. React, vote, comment: everyone sees the same tally." },
   { view: "sales", title: "The Sales sheet",
     text: "Log a sale, look back at any folio, or break sales down by lead source, product or producer. Live sales are added here automatically." },
   { view: "messages", title: "Texts & Emails",

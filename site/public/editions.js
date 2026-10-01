@@ -156,8 +156,8 @@
   const st = document.createElement("style"); st.textContent = css; document.head.appendChild(st);
 })();
 
-const ED_PUBS = [["feed", "The Flores Feed"], ["grid", "Fourth and Goal"], ["pod", "KFLR The Close"], ["mkt", "FLRS 500"], ["comic", "Cold Call Comics"], ["closer", "CLOSER"]];
-let edPub = "feed";
+const ED_PUBS = [["post", "The Flores Post"], ["feed", "The Flores Feed"], ["grid", "Fourth and Goal"], ["pod", "KFLR The Close"], ["mkt", "FLRS 500"], ["comic", "Cold Call Comics"], ["closer", "CLOSER"]];
+let edPub = "post";
 try { const v = localStorage.getItem("board-edition"); if (ED_PUBS.some(p => p[0] === v)) edPub = v; } catch (_) {}
 const edMine = { watch: {}, cover: "", flip: {}, seen: {} };   // this viewer's own picks
 try { Object.assign(edMine, JSON.parse(localStorage.getItem("board-edition-mine") || "{}")); } catch (_) {}
@@ -458,11 +458,12 @@ const ED_R = { feed: edFeed, grid: edGrid, pod: edPod, mkt: edMkt, comic: edComi
 let edX = null;
 async function editionsPanel(err) {
   const today = isoDate(azTodayDate());
+  const tabs = `<div class="subtabs edtabs">${ED_PUBS.map(([k, l]) => `<button type="button" class="subtab ${k === edPub ? "sel" : ""}" data-pub="${k}">${l}</button>`).join("")}</div>`;
   if (rangeMode === "day") {
-    if (!cur) return postGateHtml("No report for this day yet.", "Pick a published day in Day, or choose Folio.");
-    if (curLive || (cur.date === today && !DAYS.includes(today))) return postGateHtml("Today's editions come out after the 5:55 PM run.", "Pick a published day in Day, or choose Folio for the folio's editions.");
-  } else if (rangeMode !== "folio") return postGateHtml("The editions are made for a published day or a folio.", `${RANGE_LABELS[rangeMode] || "That range"} is on the Digest. Pick a published day in Day, or choose Folio.`);
-  else if (err) return postGateHtml("Nothing to print yet.", cesc(err));
+    if (!cur) return tabs + postGateHtml("No report for this day yet.", "Pick a published day in Day, or choose Folio.");
+    if (curLive || (cur.date === today && !DAYS.includes(today))) return tabs + postGateHtml("Today's editions come out after the 5:55 PM run.", "Pick a published day in Day, or choose Folio for the folio's editions.");
+  } else if (rangeMode !== "folio") return tabs + postGateHtml("The editions are made for a published day or a folio.", `${RANGE_LABELS[rangeMode] || "That range"} is on the Digest. Pick a published day in Day, or choose Folio.`);
+  else if (err) return tabs + postGateHtml("Nothing to print yet.", cesc(err));
   const isFolio = rangeMode === "folio";
   const day = isFolio ? null : cur.date;
   const curEnd = folioEndFor(today), end = isFolio ? (folioPick || curEnd) : folioEndFor(day), start = folioStartFor(end) || "";
@@ -477,9 +478,12 @@ async function editionsPanel(err) {
   const key = isFolio ? `folio-${end}` : day;
   await edLoadShared(key);
   edX = X;
-  return `<div class="ed"><div class="subtabs edtabs">${ED_PUBS.map(([k, l]) => `<button type="button" class="subtab ${k === edPub ? "sel" : ""}" data-pub="${k}">${l}</button>`).join("")}</div><div id="edbody">${ED_R[edPub](X)}</div></div>`;
+  // The Flores Post is the first edition (Frank, 2026-10-01); it has its own
+  // writer and gate in post.js.
+  const body = edPub === "post" ? await postPanel(err) : ED_R[edPub](X);
+  return `<div class="ed"><div class="subtabs edtabs">${ED_PUBS.map(([k, l]) => `<button type="button" class="subtab ${k === edPub ? "sel" : ""}" data-pub="${k}">${l}</button>`).join("")}</div><div id="edbody">${body}</div></div>`;
 }
-function edRepaint() { const b = $("#edbody"); if (b && edX) b.innerHTML = ED_R[edPub](edX); }
+function edRepaint() { const b = $("#edbody"); if (b && edX) { if (edPub === "post") { paint(); return; } b.innerHTML = ED_R[edPub](edX); } }
 function edOpenModal(h) { edCloseModal(); const m = document.createElement("div"); m.className = "edmodal ed"; m.id = "edmodal"; m.innerHTML = `<div class="edcard">${h}</div>`; m.addEventListener("click", e => { if (e.target === m) edCloseModal(); }); document.body.appendChild(m); }
 function edCloseModal() { const m = $("#edmodal"); if (m) m.remove(); }
 document.addEventListener("click", async e => {
