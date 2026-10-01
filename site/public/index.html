@@ -916,22 +916,6 @@ html[data-look="mesa"] .chatbox .pinned { background: var(--text-primary); color
 .todo button { font: 600 12px var(--body); border: 1px solid var(--border-strong); background: var(--surface-raised); border-radius: 8px; padding: 6px 10px; cursor: pointer; color: var(--text-primary); white-space: nowrap; }
 .todo button:hover { border-color: var(--accent); }
 
-/* The tour's card is a Field note (Frank, 2026-10-01: option 3): a ruled index
-   card with a paper clip, the thing explained left lit in green. */
-.tourspot { border-radius: 14px; box-shadow: 0 0 0 9999px rgba(42,35,32,.55); outline: 3px solid var(--livegreen); outline-offset: 3px; }
-.tourcard { width: min(380px, calc(100vw - 24px)); background: #fffdf5; color: #2a2320; border: 1px solid #d9c8b4; border-radius: 4px; box-shadow: 0 14px 40px rgba(0,0,0,.28);
-  padding: 56px 16px 12px; background-image: linear-gradient(0deg, transparent 0 27px, #f1d9d9 27px 28px); background-size: 100% 28px; background-position: 0 56px; font-family: var(--body); }
-.tourcard::before { content: ""; position: absolute; top: -14px; left: 28px; width: 22px; height: 40px; border: 3px solid #9a9a9a; border-radius: 11px; border-bottom: 0; }
-.tourcard .tstep { position: absolute; top: 13px; right: 16px; width: 30px; height: 30px; border-radius: 50%; background: #2a2320; color: #fff; display: flex; align-items: center; justify-content: center; font: 700 12px var(--body); letter-spacing: 0; text-transform: none; margin: 0; }
-.tourcard h4 { position: absolute; top: 0; left: 16px; right: 56px; height: 56px; margin: 0; display: flex; align-items: center; font: 400 20px var(--display); border-bottom: 2px solid #e59a9a; }
-.tourcard h4::after { content: ""; position: absolute; left: -16px; right: -56px; bottom: -2px; border-bottom: 2px solid #e59a9a; }
-.tourcard p { margin: 0 0 8px; font-size: 14px; line-height: 28px; color: #2a2320; }
-.tourcard .tbtns .tnext { background: #b5532f; border-color: #b5532f; color: #fff; border-radius: 10px; }
-.tourcard .tbtns .tback { background: #e8dac9; border-color: #e8dac9; color: #2a2320; border-radius: 10px; }
-.tourcard .tbtns .tskip { color: #6e5f53; }
-.tabs .tourbtn { margin-top: auto; background: var(--side2); color: var(--sideInk); border: 0; border-radius: 12px; padding: 11px 12px; font: 600 14px var(--body); }
-.tabs .tourbtn:hover { color: #fff; border-color: transparent; }
-.tabs .tourbtn + .setbtn { margin-top: 6px; }
 /* The coaching card's flow is in its badge (outcomeBadgeHtml), so the striped
    left edge and its legend are gone (Frank, 2026-09-30 preview review: "remove
    that left colored tab from the cards, and the legend, i like the badge"). */
@@ -995,6 +979,23 @@ html[data-look="mesa"] .chatbox .pinned { background: var(--text-primary); color
 .tourcard .tbtns .tback { background: none; color: var(--text-primary); border: 1px solid var(--border-strong); }
 @media (max-width: 760px) { .tabs .tourbtn { margin-top: 0; margin-left: auto; flex: none; white-space: nowrap; } }
 @media (prefers-reduced-motion: reduce) { .tourspot { transition: none; } }
+/* The tour's card is a Field note (Frank, 2026-10-01: option 3): a ruled index
+   card with a paper clip, the thing explained left lit in green. After the
+   tour's own rules above, so these win. */
+.tourspot { border-radius: 14px; box-shadow: 0 0 0 9999px rgba(42,35,32,.55); outline: 3px solid var(--livegreen); outline-offset: 3px; }
+.tourcard { width: min(380px, calc(100vw - 24px)); background: #fffdf5; color: #2a2320; border: 1px solid #d9c8b4; border-radius: 4px; box-shadow: 0 14px 40px rgba(0,0,0,.28);
+  padding: 0 0 12px; background-image: linear-gradient(0deg, transparent 0 27px, #f1d9d9 27px 28px); background-size: 100% 28px; background-position: 0 56px; font-family: var(--body); }
+.tourcard::before { content: ""; position: absolute; top: -14px; left: 28px; width: 22px; height: 40px; border: 3px solid #9a9a9a; border-radius: 11px; border-bottom: 0; }
+.tourcard .tstep { position: absolute; top: 13px; right: 16px; width: 30px; height: 30px; border-radius: 50%; background: #2a2320; color: #fff; display: flex; align-items: center; justify-content: center; font: 700 11px var(--body); letter-spacing: 0; text-transform: none; margin: 0; white-space: nowrap; }
+.tourcard h4 { height: 56px; margin: 0; padding: 0 56px 0 16px; display: flex; align-items: center; border-bottom: 2px solid #e59a9a; font: 400 20px var(--display); }
+.tourcard p { margin: 0; padding: 10px 16px 0; font-size: 14px; line-height: 28px; color: #2a2320; }
+.tourcard .tbtns { padding: 8px 16px 0; }
+.tourcard .tbtns .tnext { background: #b5532f; border-color: #b5532f; color: #fff; border-radius: 10px; }
+.tourcard .tbtns .tback { background: #e8dac9; border-color: #e8dac9; color: #2a2320; border-radius: 10px; }
+.tourcard .tbtns .tskip { color: #6e5f53; }
+.tabs .tourbtn { margin-top: auto; background: var(--side2); color: var(--sideInk); border: 0; border-radius: 12px; padding: 11px 12px; font: 600 14px var(--body); }
+.tabs .tourbtn:hover { color: #fff; border-color: transparent; }
+.tabs .tourbtn + .setbtn { margin-top: 6px; }
 </style>
 </head>
 <body>
@@ -8397,7 +8398,7 @@ async function tourShow(i) {
   }
   const { card } = tourEls();
   const last = i === TOUR_STEPS.length - 1;
-  card.innerHTML = `<div class="tstep">${i + 1} of ${TOUR_STEPS.length}</div>
+  card.innerHTML = `<div class="tstep" title="${i + 1} of ${TOUR_STEPS.length}">${i + 1}</div>
     <h4 id="tourtitle">${cesc(st.title)}</h4><p>${cesc(st.text)}</p>
     <div class="tbtns">${last ? "" : '<button class="tskip" type="button">Skip tour</button>'}
       ${i ? '<button class="tback" type="button">Back</button>' : ""}
