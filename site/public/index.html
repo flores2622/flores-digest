@@ -1080,7 +1080,7 @@ let view = "digest";
 // page's own pill-style .subtabs for anything inside it. A Center with one
 // page shows just that one tab.
 const CENTERS = {
-  salescenter: [["digest", "Digest"], ["sales", "Sales"], ["messages", "Texts & Emails"]],
+  salescenter: [["digest", "Digest"], ["post", "The Flores Post"], ["sales", "Sales"], ["messages", "Texts & Emails"]],
   coaching: [["coaching", "Coaching"]],
   learning: [["roleplay", "Role Play"], ["rphistory", "Session History"], ["training", "Training"]],
   service: [["service", "Service Digest"], ["renewals", "Renewals"]],
@@ -1424,7 +1424,7 @@ function chatFeedHtml(items, host, pin) {
   }
   return `<div class="chatbox">${pin ? `<div class="pinned">📌 ${cesc(pin)}</div>` : ""}${parts.join("") || '<div class="empty">Nothing yet.</div>'}</div>`;
 }
-function digestFeedHtml(d, who) {
+function digestFeedItems(d, who) {
   const items = [], mine = p => !who || p === who;
   (d.calls || []).forEach((c, i) => {
     if (!mine(c.who)) return;
@@ -1456,6 +1456,10 @@ function digestFeedHtml(d, who) {
     if (!mine(r.who)) continue;
     items.push({ t: null, group: "Sales today", who: r.who, me: true, kind: "Sale", ddrill: "sold", text: `${firstName(r.who)} sold ${r.product} · ${money0(r.premium)}${r.source ? ` · ${r.source}` : ""}` });
   }
+  return items;
+}
+function digestFeedHtml(d, who) {
+  const items = digestFeedItems(d, who);
   const T = (who ? (d.producers || []).find(p => p.name === who) : d.totals) || {};
   const pin = `${T.pol || 0} ${T.pol === 1 ? "policy" : "policies"} · ${money0(T.ps)} sold · ${T.hh || 0} HH quoted · ${T.dials || 0} dials · ${T.live || 0} live`;
   const live = curLive && rangeMode === "day";
@@ -1464,7 +1468,7 @@ function digestFeedHtml(d, who) {
     ${chatFeedHtml(items, "Apollo", pin)}</div>`;
 }
 /* What is waiting on a person right now (live), or what the day left behind. */
-function needsNowHtml(d, who) {
+function needsNowRows(d, who) {
   const mine = p => !who || p === who, live = curLive && rangeMode === "day";
   const tally = (arr, key) => { const c = {}; arr.forEach(x => { const k = firstName(key(x)); c[k] = (c[k] || 0) + 1; }); return Object.entries(c).sort((a, b) => b[1] - a[1]).map(([k, n]) => `${k} ${n}`).join(" · "); };
   const rows = [];
@@ -1478,6 +1482,10 @@ function needsNowHtml(d, who) {
     sub: mis.length ? tally(mis, r => r.assigned) : "Nothing misfiled", h2: "Pipeline", btn: "See them" });
   const risk = ((d.recontact || {}).at_risk || []).filter(r => mine(r.producer));
   if (risk.length) rows.push({ n: risk.length, cls: "warn", t: "quoted leads going cold", sub: `No dial in 3+ business days · ${tally(risk, r => r.producer)}`, goview: "coaching", btn: "Coaching" });
+  return rows;
+}
+function needsNowHtml(d, who) {
+  const live = curLive && rangeMode === "day", rows = needsNowRows(d, who);
   const html = rows.map(r => `<li class="${r.cls}"><b class="n">${r.n}</b><div class="t">${cesc(r.t)}<small>${cesc(r.sub)}</small></div>${
     r.n ? `<button type="button"${r.goview ? ` data-goview="${r.goview}"` : ` data-feedh2="${cesc(r.h2)}"`}>${cesc(r.btn)}</button>` : ""}</li>`).join("");
   return `<div class="sect"><h2>${live ? "Needs someone now" : "Left on the desk"}</h2>
@@ -3001,6 +3009,7 @@ function digestPanel(d, who) {
    2026-09-15: "i want the whole digest filtered to those days, and coaching
    cards to those days"). */
 let curRangeLabel = "", curRangeSub = "";
+let curRangeDocs = [];   // the days behind a merged range (The Flores Post reads them one by one)
 function rangeHeaderHtml() {
   return curRangeLabel ? `<div class="sect"><h2>${curRangeLabel}</h2><p class="sd">${curRangeSub}</p></div>` : "";
 }
@@ -6401,7 +6410,7 @@ async function ensureCurForRange() {
   const { from, to, label } = b;
   const docs = await fetchRangeDocs(from || "", to);
   if (!docs.length) return `No reports in ${from || "the start"} → ${to}.`;
-  cur = mergeDayDocs(docs); curLive = false;
+  cur = mergeDayDocs(docs); curLive = false; curRangeDocs = docs;
   cur.label = label;
   curRangeLabel = label; curRangeSub = `${from || "the start"} → ${to}`;
   return null;
@@ -6444,6 +6453,15 @@ async function paintTab() {
       el.onkeydown = e => { if (e.key === "Enter" || e.key === " ") go(e); };
     });
     v.querySelectorAll("[data-ddrill-close]").forEach(el => el.onclick = e => { e.preventDefault(); digDrill = ""; paint(); });
+  } else if (view === "post") {
+    v.innerHTML = rangeControlHtml() + '<div class="empty">Loading…</div>';
+    wireRangeControl();
+    const err = await ensureCurForRange();
+    $("#topsub").textContent = "The Flores Post" + (cur ? " · " + (cur.label || cur.date || curRangeLabel) : "");
+    let body;
+    try { body = await postPanel(err); } catch (e) { console.error(e); body = drawErrorHtml(e); }
+    v.innerHTML = rangeControlHtml() + body;
+    wireRangeControl(); wirePost();
   } else if (view === "messages") {
     if (rangeMode !== "day") v.innerHTML = rangeControlHtml() + producerControlHtml() + '<div class="empty">Loading…</div>';
     const err = await ensureCurForRange();
@@ -8003,5 +8021,6 @@ paintCenterBar();
   paintGreeting(true);   // again, now that it knows the day (sales, the folio clock)
 })();
 </script>
+<script src="post.js"></script>
 </body>
 </html>
