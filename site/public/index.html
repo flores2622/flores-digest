@@ -889,6 +889,7 @@ html[data-look="mesa"] .chatbox .pinned { background: var(--text-primary); color
    left edge and its legend are gone (Frank, 2026-09-30 preview review: "remove
    that left colored tab from the cards, and the legend, i like the badge"). */
 .flowedge, .flowleg { display: none; }
+.sect.nolog .controls, .sect.nolog .btn { display: none; }
 .ccard.found { box-shadow: 0 0 0 3px var(--accent); }
 .ccard > summary.cchead { border-left: 1px solid var(--border) !important; }
 @media (max-width: 760px) {
@@ -1255,7 +1256,12 @@ applyTheme(false);
 let ME = { email: "", name: "" };
 async function loadMe() {
   try { const r = await fetch("/api/me", { cache: "no-store" }); if (r.ok) ME = await r.json(); } catch (_) {}
+  // A producer practices as themselves (Frank, 2026-10-01); Frank and the ops
+  // viewers (rpScope.all) still pick who, and the Beta tester.
+  const rp = ME.roleplay || {};
+  if (rp.producer && !rp.all) { rpProducer = rp.producer; rpFetchHistory().catch(() => {}); }
 }
+const rpLocked = () => !!((ME.roleplay || {}).producer) && !(ME.roleplay || {}).all;
 function businessDaysUntil(fromIso, toIso) {
   let n = 0;
   for (let d = new Date(fromIso + "T12:00:00Z"); isoDate(d) < toIso; d.setUTCDate(d.getUTCDate() + 1)) {
@@ -4763,7 +4769,7 @@ function roleplayPanel() {
       <b>${weak.map(([c, n]) => `${c} (${n}×)`).join(", ")}</b>. The prospect below will lean on objections like these instead of
       generic ones. <b>Professional</b> cycles through them without giving in easily -- a good place to practice this.</div>` : "";
     return `<div class="sect"><h2>Role Play</h2>
-      <p class="sd">Practicing as <b>${rpProducer}</b>. <button class="ghost" id="rpChangeProducer" type="button" style="margin-left:6px">change</button></p>
+      <p class="sd">Practicing as <b>${rpProducer}</b>.${rpLocked() ? "" : ` <button class="ghost" id="rpChangeProducer" type="button" style="margin-left:6px">change</button>`}</p>
       ${rpIsBeta() ? `<div class="note" style="border:1px dashed var(--border-strong);border-radius:8px;padding:10px 14px;margin-bottom:12px"><b>Beta / testing.</b> This session runs on <b>${rpWeakFor() || "a real producer"}</b>'s real activity -- the objections their calls have been losing on -- and moves to the next producer with each session. Graded like any session, but saved to the beta area: it never counts toward any producer's history or weak spots.</div>` : ""}
       ${recHtml}
       <div class="pcards">${RP_PERSONAS.map(p => `<div class="pcard" data-persona="${p.key}">
@@ -5953,8 +5959,12 @@ function salesPanel(data) {
   const viewingEnd = data.folio_end || curEnd;
   const isCurrent = !curEnd || viewingEnd === curEnd;
   const folioOpts = salesFolioOptions();
-  const producerOpts = [`<option value="">Who's logging?</option>`]
-    .concat(SALES_LOGGER_ROSTER.map(p => `<option value="${cesc(p)}"${p === salesProducer ? " selected" : ""}>${cesc(p)}</option>`)).join("");
+  // Who this login may log for (the Worker's identityOf; Frank, 2026-10-01):
+  // one name is picked for them, none hides the form.
+  const canLog = (ME.canLogFor || []).filter(p => SALES_LOGGER_ROSTER.includes(p));
+  if (canLog.length === 1) salesProducer = canLog[0];
+  const producerOpts = (canLog.length === 1 ? [] : [`<option value="">Who's logging?</option>`])
+    .concat(canLog.map(p => `<option value="${cesc(p)}"${p === salesProducer ? " selected" : ""}>${cesc(p)}</option>`)).join("");
   const sourceOpts = [`<option value="">Lead source</option>`]
     .concat((salesLeadSourceCache || []).map(s => `<option value="${cesc(s)}">${cesc(s)}</option>`)).join("");
   // Client name links to the real AgencyZoom customer account when its id
@@ -5989,13 +5999,14 @@ function salesPanel(data) {
     <td>${cesc(e.term || "")}</td>
     <td><select data-track="docs_signed" data-id="${cesc(e.id)}" data-day="${cesc(e.day)}">${docsSignedOpts(e.docs_signed || "")}</select></td>
     <td><input type="checkbox" data-track="review_sent" data-id="${cesc(e.id)}" data-day="${cesc(e.day)}" ${e.review_sent ? "checked" : ""}></td>
-    <td><button class="icon-btn del-btn" data-del="${cesc(e.id)}" data-day="${cesc(e.day)}" type="button" title="Delete" aria-label="Delete">${TRASH_ICON}</button></td>
+    <td>${(ME.canLogFor || []).includes(e.producer) ? `<button class="icon-btn del-btn" data-del="${cesc(e.id)}" data-day="${cesc(e.day)}" type="button" title="Delete" aria-label="Delete">${TRASH_ICON}</button>` : ""}</td>
   </tr>`).join("");
 
-  return `${salesTotalsHtml(entries)}<div class="sect">
+  return `${salesTotalsHtml(entries)}<div class="sect${canLog.length ? "" : " nolog"}">
     <h2>Log a sale</h2>
     <p class="sd">Same-day list for immediate visibility -- AgencyZoom stays the official Premium Sold number.${
-      isCurrent ? "" : ` Always logs against today, even while you're looking at an older folio below.`}</p>
+      isCurrent ? "" : ` Always logs against today, even while you're looking at an older folio below.`}</p>${
+    canLog.length ? "" : `<p class="note">Your login cannot log sales. Frank, Amanda and Crystal log for everyone; Coral and Sarahi for each other; every other producer their own.</p>`}
     <div class="controls" style="flex-wrap:wrap;gap:10px;align-items:center">
       <select id="salesProdSel" style="${prodSelStyle(salesProducer)}">${producerOpts}</select>
       <label style="display:flex;align-items:center;gap:5px;font-size:12.5px">Date sold <input id="salesDateSold" type="date" value="${salesDay}"></label>

@@ -1371,6 +1371,16 @@ $2,500 in premium"): the Digest's day reads as Apollo's group chat
   a viewer's own picks (watchlist, cover photo, card flips) stay in their
   browser. The `/api/me` first names live in the Worker's `FIRST_NAMES` +
   `RP_PRODUCER_EMAILS`.
+- **Everyone is themselves, from the Access login -- no "viewing as"**
+  (Frank, 2026-10-01). The Worker's `identityOf` decides: **Frank, Amanda
+  and Crystal log sales for everyone; Coral and Sarahi for each other
+  (a team); every other producer their own; anyone else none**
+  (`SALES_LOG_ALL`, `SALES_LOG_TEAMS`; enforced on POST / track / delete,
+  and the Sales form only offers those names -- one name is picked for
+  them, none hides the form; each entry carries `logged_by`). **A producer
+  role plays as themselves**: the picker and "change" are gone for them
+  and `roleplayGrade` refuses another name; Frank and the ops viewers
+  (`rpScope.all`) still pick who, and the Beta tester.
 - The local harness used to check all of this (a mock of the Worker over
   saved day documents, Playwright captures) lives in the session's
   scratchpad, not the repo; `design/flores-board-preview.html` is the

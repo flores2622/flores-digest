@@ -121,7 +121,7 @@ export default {
       }
 
       if (parts[1] === "me" && parts.length === 2) {
-        return whoAmI(request);
+        return whoAmI(request, env);
       }
 
       if (parts[1] === "editions" && parts.length === 3) {
@@ -535,6 +535,10 @@ async function postSalesLog(request, env, day) {
   if (!producer || !client_name) {
     return json({ error: "producer and client_name are required" }, 400);
   }
+  const me = identityOf(request, env);
+  if (!me.canLogFor.includes(producer)) {
+    return json({ error: `your login cannot log a sale for ${producer}` }, 403);
+  }
   const premiumNum = Number(body.premium);
   const docsSigned = String(body.docs_signed || "");
   // date_sold/effective_date are plain YYYY-MM-DD strings, same "typed in
@@ -565,6 +569,7 @@ async function postSalesLog(request, env, day) {
     created_at: new Date().toISOString(),
     docs_signed: DOCS_SIGNED_OPTIONS.includes(docsSigned) ? docsSigned : "",
     review_sent: Boolean(body.review_sent),
+    logged_by: me.name,
   };
   const key = salesLogKey(day);
   const existing = await env.BOARD.get(key);
@@ -595,6 +600,7 @@ async function trackSalesLogEntry(request, env, day) {
   const doc = JSON.parse(await existing.text());
   const target = doc.entries.find((e) => e.id === id);
   if (!target) return json({ error: "entry not found" }, 404);
+  if (!identityOf(request, env).canLogFor.includes(target.producer)) return json({ error: "your login cannot change that sale" }, 403);
   if ("review_sent" in body) target.review_sent = Boolean(body.review_sent);
   if ("docs_signed" in body) {
     const v = String(body.docs_signed || "");
@@ -623,6 +629,7 @@ async function deleteSalesLogEntry(request, env, day) {
   const doc = JSON.parse(await existing.text());
   const target = doc.entries.find((e) => e.id === id);
   if (!target) return json({ error: "entry not found" }, 404);
+  if (!identityOf(request, env).canLogFor.includes(target.producer)) return json({ error: "your login cannot delete that sale" }, 403);
   doc.entries = doc.entries.filter((e) => e.id !== id);
   await env.BOARD.put(key, JSON.stringify(doc), {
     httpMetadata: { contentType: "application/json" },
@@ -1354,6 +1361,8 @@ async function roleplayGrade(request, env) {
   if (!history.length) return json({ error: "no transcript to grade" }, 400);
   const producer = String(body.producer || "").trim();
   if (!producer) return json({ error: "producer is required" }, 400);
+  const rps = rpScope(request, env);   // a producer practices as themselves (Frank, 2026-10-01)
+  if (!rps.all && producer !== rps.producer) return json({ error: "you can only role play as yourself" }, 403);
   // Each turn's sound, for playback (Frank, 2026-09-29): the producer's
   // own clip only if it sits under this session's own prefix, and the
   // prospect's line from the copy /speak kept, if it did.
@@ -1515,12 +1524,30 @@ const FIRST_NAMES = {
   "veronica@floresinsuranceagency.com": "Veronica", "amanda@floresinsuranceagency.com": "Amanda",
   "debbie@floresinsuranceagency.com": "Debbie",
 };
-function whoAmI(request) {
+/* Who may log a sale for whom (Frank, 2026-10-01: "Amanda Crystal and myself
+ * are the only ones that can log sales for everyone, since coral and sarahi
+ * are on a team they can log sales for each other as well"). Everyone else
+ * who is a producer logs their own; anyone else logs nothing. The same
+ * identity decides Role Play: a producer practices as themselves. */
+const SALES_LOG_ALL = new Set(["frank@floresinsuranceagency.com", "amanda@floresinsuranceagency.com", "crystal@floresinsuranceagency.com"]);
+const SALES_LOG_TEAMS = [["coral@floresinsuranceagency.com", "sarahi@floresinsuranceagency.com"]];
+const SALES_LOGGERS = [...Object.values(RP_PRODUCER_EMAILS), "Amanda Torricellas"];
+function identityOf(request, env) {
   const email = String((ACCESS_IDENTITY.get(request) || {}).email || "").toLowerCase();
-  const full = RP_PRODUCER_EMAILS[email];
-  const name = FIRST_NAMES[email] || (full ? full.split(" ")[0] : "") ||
+  const producer = RP_PRODUCER_EMAILS[email] || "";
+  const name = FIRST_NAMES[email] || (producer ? producer.split(" ")[0] : "") ||
     (email.split("@")[0].split(/[._-]/)[0] || "").replace(/^./, (c) => c.toUpperCase());
-  return json({ email, name });
+  let canLogFor = [];
+  if (SALES_LOG_ALL.has(email)) canLogFor = SALES_LOGGERS;
+  else if (producer) {
+    const team = SALES_LOG_TEAMS.find((tm) => tm.includes(email)) || [email];
+    canLogFor = team.map((e) => RP_PRODUCER_EMAILS[e]).filter(Boolean);
+  }
+  const scope = env ? rpScope(request, env) : { all: false, producer };
+  return { email, name, producer, canLogFor, roleplay: { producer: scope.producer, all: scope.all } };
+}
+function whoAmI(request, env) {
+  return json(identityOf(request, env));
 }
 
 /* The editions' shared state (Frank, 2026-10-01): reactions, comments, poll
@@ -1540,9 +1567,7 @@ async function editionsPost(request, env, key) {
   if (!EDITION_KEY.test(key)) return json({ error: "bad key" }, 400);
   let body;
   try { body = await request.json(); } catch (_) { return json({ error: "bad request body" }, 400); }
-  const email = String((ACCESS_IDENTITY.get(request) || {}).email || "").toLowerCase();
-  const full = RP_PRODUCER_EMAILS[email];
-  const who = FIRST_NAMES[email] || (full ? full.split(" ")[0] : "") || (email.split("@")[0].split(/[._-]/)[0] || "").replace(/^./, (c) => c.toUpperCase());
+  const who = identityOf(request, env).name;
   if (!who) return json({ error: "not signed in" }, 403);
   const k = `editions/${key}.json`;
   const obj = await env.BOARD.get(k);
