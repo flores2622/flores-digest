@@ -59,6 +59,45 @@
 .ed .cm .c b { font-size: 13px; }
 .ed .cm .c small { color: var(--text-muted); margin-left: 6px; }
 .ed .cm form { display: flex; gap: 8px; }
+/* GIFs and memes (Frank, 2026-10-01: "add GIF's and memes to the flores feed").
+   The reaction GIFs are drawn in CSS so nothing leaves the board; a pasted
+   Giphy / Tenor / .gif link shows as the picture. Memes are Apollo's,
+   written in rules from the day. */
+.ed .gif { display: inline-flex; align-items: center; justify-content: center; width: 150px; height: 100px; border-radius: 12px; background: var(--card2); font-size: 40px; position: relative; overflow: hidden; line-height: 1; }
+.ed .gif i { font-style: normal; display: inline-block; position: relative; }
+.ed .gif small { position: absolute; left: 0; right: 0; bottom: 6px; font: 800 10px/1 var(--body); letter-spacing: .1em; text-transform: uppercase; color: var(--text-muted); text-align: center; }
+.ed .gifpick { display: flex; flex-wrap: wrap; gap: 8px; padding: 6px 0 2px; }
+.ed .gifpick button { border: 1.5px solid var(--border-strong); background: var(--card2); border-radius: 12px; padding: 0; cursor: pointer; }
+.ed .gifpick button:hover { border-color: var(--accent); }
+.ed .gifpick .gif { width: 96px; height: 70px; font-size: 28px; }
+.ed .gifimg { max-width: 260px; max-height: 220px; border-radius: 12px; display: block; margin-top: 4px; }
+.ed .g-fire i { animation: edflk .5s infinite alternate; } .ed .g-fire i:nth-child(2) { animation-delay: .17s; font-size: 52px; } .ed .g-fire i:nth-child(3) { animation-delay: .33s; }
+@keyframes edflk { from { transform: scaleY(.9) translateY(3px); } to { transform: scaleY(1.1) translateY(-4px); } }
+.ed .g-clap i { animation: edclap .55s infinite alternate ease-in-out; } @keyframes edclap { from { transform: scale(.85) rotate(-8deg); } to { transform: scale(1.15) rotate(8deg); } }
+.ed .g-money i { position: absolute; top: -40px; animation: edfall 1.6s linear infinite; } .ed .g-money i:nth-child(1) { left: 14%; } .ed .g-money i:nth-child(2) { left: 42%; animation-delay: .5s; } .ed .g-money i:nth-child(3) { left: 70%; animation-delay: 1s; }
+@keyframes edfall { to { transform: translateY(150px) rotate(25deg); } }
+.ed .g-crickets i { animation: edhop 1.2s infinite; } .ed .g-crickets small { animation: eddots 1.5s steps(4) infinite; }
+@keyframes edhop { 0%, 60%, 100% { transform: translateY(0); } 30% { transform: translateY(-10px); } }
+@keyframes eddots { from { opacity: .2; } to { opacity: 1; } }
+.ed .g-confetti i:first-child { animation: edpop .9s infinite alternate; } .ed .g-confetti b { position: absolute; width: 8px; height: 8px; border-radius: 2px; top: -10px; animation: edfall 1.4s linear infinite; }
+@keyframes edpop { from { transform: scale(.9) rotate(-10deg); } to { transform: scale(1.15) rotate(10deg); } }
+.ed .g-facepalm i { animation: edshake .7s infinite; } @keyframes edshake { 0%, 100% { transform: translateX(0); } 25% { transform: translateX(-5px) rotate(-4deg); } 75% { transform: translateX(5px) rotate(4deg); } }
+.ed .g-rocket i { animation: edlaunch 1.8s ease-in infinite; } @keyframes edlaunch { 0% { transform: translate(-40px, 30px); opacity: 0; } 15% { opacity: 1; } 100% { transform: translate(50px, -50px); opacity: 0; } }
+.ed .g-mic i { animation: eddrop 1.6s cubic-bezier(.5, 0, 1, 1) infinite; } @keyframes eddrop { 0% { transform: translateY(-30px) rotate(0); } 60% { transform: translateY(18px) rotate(90deg); } 75% { transform: translateY(8px) rotate(90deg); } 100% { transform: translateY(18px) rotate(90deg); } }
+.ed .g-fine { background: linear-gradient(180deg, #ffb27e, #d9622b); } .ed .g-fine i:nth-child(3), .ed .g-fine i:nth-child(1) { animation: edflk .4s infinite alternate; }
+.ed .g-stonks { background: linear-gradient(180deg, #dbe9ff, #9ec1ff); } .ed .g-stonks i:first-child { animation: edrise 1.8s ease-out infinite; } @keyframes edrise { 0% { transform: translateY(14px) scale(.8); opacity: .4; } 100% { transform: translateY(-12px) scale(1.1); opacity: 1; } }
+.ed .g-slow i { animation: edcrawl 4s linear infinite; } @keyframes edcrawl { from { transform: translateX(-60px); } to { transform: translateX(60px); } }
+.ed .meme { border-radius: 14px; overflow: hidden; border: 2px solid #111; background: #111; color: #fff; font-family: Impact, "Anton", "Arial Black", "Helvetica Neue", sans-serif; text-transform: uppercase; letter-spacing: .02em; max-width: 520px; }
+.ed .meme .scene { position: relative; min-height: 220px; display: flex; align-items: center; justify-content: center; font-size: 84px; line-height: 1; background: var(--mbg, linear-gradient(160deg, #3a4a6a, #1d2537)); }
+.ed .meme .mt, .ed .meme .mb { position: absolute; left: 10px; right: 10px; text-align: center; font-size: 26px; line-height: 1.05; -webkit-text-stroke: 1px #000; text-shadow: 2px 2px 0 #000, -1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000; }
+.ed .meme .mt { top: 10px; } .ed .meme .mb { bottom: 10px; }
+.ed .meme .row { display: grid; grid-template-columns: 110px 1fr; align-items: center; background: #fff; color: #111; border-top: 2px solid #111; min-height: 86px; font-family: var(--body); text-transform: none; letter-spacing: 0; font-weight: 700; font-size: 16px; }
+.ed .meme .row > i { font-style: normal; font-size: 48px; text-align: center; background: #f3e9dc; height: 100%; display: flex; align-items: center; justify-content: center; }
+.ed .meme .row.no > i { background: #fde0d6; } .ed .meme .row.yes > i { background: #dcf3e3; }
+.ed .meme .row > span { padding: 10px 14px; }
+.ed .meme .row.b1 > i { font-size: 30px; } .ed .meme .row.b2 > i { font-size: 38px; } .ed .meme .row.b3 > i { font-size: 46px; } .ed .meme .row.b4 > i { font-size: 56px; background: linear-gradient(135deg, #ffe9a8, #ffb27e); }
+.ed .meme .cap { background: #111; color: #cfc6ba; font: 600 12px var(--body); text-transform: none; letter-spacing: 0; padding: 6px 12px; }
+html[data-mode="dark"] .ed .meme .row { background: #f3ece2; }
 .ed .stories { display: flex; gap: 14px; overflow: auto; padding: 2px; }
 .ed .stories button { width: 72px; flex: none; text-align: center; font: 500 12px var(--body); border: 0; background: none; color: inherit; cursor: pointer; }
 .ed .stories i { display: flex; align-items: center; justify-content: center; width: 62px; height: 62px; border-radius: 50%; margin: 0 auto 4px; border: 3px solid var(--accent); background: var(--surface-raised); font-weight: 800; font-style: normal; }
@@ -228,6 +267,8 @@
 .ed .spread .k { font-size: 12px; font-weight: 800; letter-spacing: .14em; text-transform: uppercase; color: var(--accent); }
 .ed .spread h2 { margin: 0; font: 800 52px/1.02 Fraunces, serif; letter-spacing: -.01em; text-wrap: balance; border: 0; padding: 0; text-transform: none; }
 .ed .spread .pq { font: italic 400 30px/1.25 Fraunces, serif; border-left: 6px solid var(--accent); padding-left: 18px; margin: 8px 0; }
+.ed .spread .pq small { display: block; font: 600 13px var(--body); letter-spacing: .06em; text-transform: uppercase; color: var(--text-muted); margin-top: 8px; }
+.ed .spread p.dek { font: 400 21px/1.4 var(--display); color: var(--text-secondary); }
 .ed .spread p { margin: 0; font-size: 17px; line-height: 1.65; color: var(--text-primary); max-width: 72ch; }
 .ed .info { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 16px; }
 .ed .info div { background: var(--card2); border-radius: 16px; padding: 18px; display: flex; flex-direction: column; gap: 4px; position: relative; overflow: hidden; }
@@ -259,6 +300,7 @@ const edSaveMine = () => { try { localStorage.setItem("board-edition-mine", JSON
 const edShared = { key: "", state: null };                      // everyone's: reactions, comments, votes, mailbag, likes
 let edSeg = 0, edPlaying = false, edTick = null, edSel = "FLRS", edRng = "folio";
 const edMe = () => ME.name || "Someone";
+let edGifOpen = "";   // the post whose GIF picker is open
 const edEsc = s => cesc(s);
 function edToast(t) { let e = $("#edtoast"); if (!e) { e = document.createElement("div"); e.id = "edtoast"; e.className = "edtoast"; document.body.appendChild(e); } e.textContent = t; e.classList.add("on"); clearTimeout(e._t); e._t = setTimeout(() => e.classList.remove("on"), 1800); }
 
@@ -347,6 +389,46 @@ function edNextDay(X) {
 const edWhen = X => X.isFolio ? "this folio" : pdow(X.dayKey);
 
 /* ===== THE FLORES FEED ===== */
+// Reaction GIFs, drawn in CSS (no outside service, nothing to key). A
+// comment carries `gif: key`; a pasted Giphy / Tenor / .gif link shows too.
+const ED_GIFS = {
+  fire: ["Fire", `<i>🔥</i><i>🔥</i><i>🔥</i>`], clap: ["Slow clap", `<i>👏</i><i>👏</i>`], money: ["Money rain", `<i>💸</i><i>💵</i><i>💸</i><small>cha-ching</small>`],
+  confetti: ["Confetti", `<i>🎉</i><b style="left:20%;background:#e59a6f"></b><b style="left:45%;background:#1baf7a;animation-delay:.4s"></b><b style="left:70%;background:#2a78d6;animation-delay:.8s"></b><b style="left:85%;background:#eda100;animation-delay:.2s"></b>`],
+  rocket: ["To the moon", `<i>🚀</i>`], stonks: ["Stonks", `<i>📈</i><i>🧍</i><small>stonks</small>`], mic: ["Mic drop", `<i>🎤</i>`],
+  crickets: ["Crickets", `<i>🦗</i><small>. . .</small>`], facepalm: ["Facepalm", `<i>🤦</i>`], fine: ["This is fine", `<i>🔥</i><i>🐶☕</i><i>🔥</i><small>this is fine</small>`],
+  slow: ["Speed to dial", `<i>🐢</i>`],
+};
+const edGifHtml = (k, cls = "") => ED_GIFS[k] ? `<span class="gif g-${k} ${cls}" title="${edEsc(ED_GIFS[k][0])}" role="img" aria-label="${edEsc(ED_GIFS[k][0])}">${ED_GIFS[k][1]}</span>` : "";
+const ED_GIF_LINK = /^https:\/\/(?:media\d*\.giphy\.com\/|media\.tenor\.com\/|i\.imgur\.com\/|\S+\.gif(?:\?\S*)?$)\S*$/i;
+const edCmText = t => ED_GIF_LINK.test(t.trim()) ? `<img class="gifimg" src="${edEsc(t.trim())}" alt="GIF" loading="lazy" referrerpolicy="no-referrer">` : edEsc(t);
+// Apollo's memes: picked by rule from the day, three at most, the classics
+// drawn with emoji and Impact. Each is a post of its own (reactions, replies).
+const edMemeHtml = m => {
+  if (m.tpl === "drake") return `<div class="meme"><div class="row no"><i>✋</i><span>${edEsc(m.no)}</span></div><div class="row yes"><i>👉</i><span>${edEsc(m.yes)}</span></div>${m.cap ? `<div class="cap">${edEsc(m.cap)}</div>` : ""}</div>`;
+  if (m.tpl === "brain") return `<div class="meme">${m.tiers.map((t, i) => `<div class="row b${i + 1}"><i>${["🧠", "🧠✨", "🌌", "👽"][i]}</i><span>${edEsc(t)}</span></div>`).join("")}${m.cap ? `<div class="cap">${edEsc(m.cap)}</div>` : ""}</div>`;
+  return `<div class="meme"><div class="scene" style="${m.bg ? `--mbg:${m.bg}` : ""}"><span class="mt">${edEsc(m.top)}</span>${m.scene}<span class="mb">${edEsc(m.bottom)}</span></div>${m.cap ? `<div class="cap">${edEsc(m.cap)}</div>` : ""}</div>`;
+};
+function edMemes(X) {
+  const F = X.F, top = X.order[0], n = top ? X.NUM[top] : null, when = X.isFolio ? "this folio" : pdow(X.dayKey), out = [];
+  const up = s => String(s).toUpperCase();
+  const sentBy = [...new Set(F.sendoffs.map(c => pfirst(c.who)))];
+  const obj = F.objs[0], busy = obj && /busy|timing/i.test(obj[0]);
+  // 1. the day itself
+  if (!F.ps && F.hh && F.sendoffs.length) out.push({ tpl: "pic", scene: "😮", bg: "linear-gradient(160deg,#ffe28a,#f2b134)", top: `SENT ${F.sendoffs.length} QUOTE${F.sendoffs.length === 1 ? "" : "S"} BY EMAIL`, bottom: "NOBODY CALLED BACK", cap: `${plural(F.hh, "household")} quoted ${when}, none closed. Present it on the call.` });
+  else if (!F.ps) out.push({ tpl: "pic", scene: "🐶☕", bg: "linear-gradient(180deg,#ffb27e,#b5532f)", top: `NO SALES ${up(when)}`, bottom: "THIS IS FINE", cap: `${plural(F.dials, "dial")}, ${plural(F.live, "conversation")}${F.hh ? `, ${plural(F.hh, "household")} still waiting on a close` : ""}.` });
+  else if (n && n.ps >= X.goal) out.push({ tpl: "pic", scene: "📈🧍", bg: "linear-gradient(180deg,#dbe9ff,#6fa0ff)", top: `${up(top)}: ${pmoney(n.ps)}`, bottom: "STONKS", cap: `Over the ${pmoney(X.goal)} day on ${plural(n.hhSold, "household")}. ${n.pts} points.` });
+  else if (n) out.push({ tpl: "pic", scene: "👶✊", bg: "linear-gradient(180deg,#cfe9ff,#7fb6ea)", top: `${up(top)} CLOSED ${n.hhSold || n.pol} ${n.hhSold === 1 ? "HOUSEHOLD" : "HOUSEHOLDS"}`, bottom: `${pmoney(n.ps)} ON THE BOARD`, cap: `The team's day: ${pmoney(F.ps)} across ${plural(F.pol, "policy", "policies")}.` });
+  // 2. how the quotes went
+  if (F.sendoffs.length) out.push({ tpl: "drake", no: "Emailing the quote and hoping they read it", yes: "Building it on the call and asking for the sale", cap: `${plural(F.sendoffs.length, "quote")} went out by email ${when}: ${plist(sentBy)}.` });
+  else if (busy) out.push({ tpl: "pic", scene: "🧙", bg: "linear-gradient(180deg,#5a4a3a,#1d1a17)", top: "ONE DOES NOT SIMPLY", bottom: "LET \"CALL ME BACK\" GO WITHOUT A TIME", cap: `${obj[0]} came up ${plural(obj[1], "time")}, overcome ${obj[2]}. "Is 5 or 6 better, or tomorrow morning?"` });
+  else if (obj) out.push({ tpl: "pic", scene: "🪧☕", bg: "linear-gradient(180deg,#bfe3c6,#5b9a6b)", top: `"${up(obj[0])}" IS NOT A NO`, bottom: "CHANGE MY MIND", cap: `${plural(obj[1], "call")} heard it ${when}; ${obj[2]} turned it around.` });
+  // 3. the phones
+  if (F.spBest && F.spTeam != null) out.push({ tpl: "brain", tiers: ["Calling the new lead tomorrow", "Calling within the hour", `Team median: ${edFmtStd(F.spTeam)}`, `${pfirst(F.spBest[0])}: ${edFmtStd(F.spBest[1].median)}`], cap: "Speed to dial. The goal is 2 minutes." });
+  else if (F.rate < 13 && F.dials) out.push({ tpl: "pic", scene: "📵", bg: "linear-gradient(180deg,#e8dac9,#9b8a78)", top: "VOICEMAIL IS NOT A CONVERSATION", bottom: `${ppct(F.rate, 0)} CONTACT RATE`, cap: `${plural(F.dials, "dial")} reached ${plural(F.live, "person", "people")}. The goal is 13%.` });
+  else if (F.misfiled) out.push({ tpl: "pic", scene: "👀", bg: "linear-gradient(180deg,#f6d8c9,#c77d5e)", top: `${F.misfiled} LEAD${F.misfiled === 1 ? "" : "S"} SITTING IN "PIPELINE"`, bottom: "1 PIPELINE IS RIGHT THERE", cap: "Open leads misfiled by an integration. Someone move them." });
+  else if (X.SALES.some(s => /winback/i.test(s.src))) out.push({ tpl: "pic", scene: "🔁🏆", bg: "linear-gradient(180deg,#ffe9a8,#e59a6f)", top: "THEY LEFT.", bottom: "THEY CAME BACK.", cap: `${plist([...new Set(X.SALES.filter(s => /winback/i.test(s.src)).map(s => s.w))])} closed a winback ${when}.` });
+  return out.slice(0, 3).map((m, i) => ({ id: "m-" + (m.tpl === "pic" ? m.top.slice(0, 12).replace(/[^A-Z0-9]/g, "").toLowerCase() || i : m.tpl), who: "Apollo", when: "Meme desk", meme: m, text: m.cap || "" }));
+}
 function edPosts(X) {
   const F = X.F, posts = [];
   const top = X.order[0];
@@ -364,6 +446,9 @@ function edPosts(X) {
   const quoter = X.order.map(f => X.NUM[f]).filter(n => !n.ps && n.pq).sort((a, b) => b.pq - a.pq)[0];
   if (quoter) posts.push({ id: "q-" + pfirst(quoter.n), who: pfirst(quoter.n), when: "Final · Quoted", text: `${pmoney(quoter.pq)} quoted across ${plural(quoter.hh, "household")}${quoter.pq >= Math.max(...Object.values(X.NUM).map(x => x.pq)) ? ", most on the team" : ""}. Nothing closed yet.`,
     apollo: `${quoter.dials} dials, ${plural(quoter.live, "conversation")}. ${quoter.sent ? `${plural(quoter.sent, "quote")} sent instead of presented.` : "Present on the phone and ask for the sale."}` });
+  // Apollo's memes land after the wrap, in the middle and at the end.
+  const memes = edMemes(X), slots = [1, Math.ceil(posts.length / 2) + 1, posts.length + 2];
+  memes.forEach((m, i) => posts.splice(Math.min(posts.length, slots[i]), 0, m));
   return posts;
 }
 function edPostHtml(X, p) {
@@ -371,9 +456,11 @@ function edPostHtml(X, p) {
   const RXS = ["🔥", "👏", "💰", "😬", "🫡"];
   return `<div class="pc" data-post="${p.id}"><div class="whor">${edAvatar(X, p.who)}<div><b>${p.who === "Apollo" ? 'Apollo <span class="ver">✓ coaching</span>' : edEsc(X.full[p.who] || p.who)}</b><small>${edEsc(p.when)}</small></div></div><p>${p.text}</p>
    ${p.pic ? `<div class="pic"><div><div class="lab">Premium sold</div><b>${pmoney(X.F.ps)}</b></div><div style="text-align:right"><div class="lab">Households</div><b>${X.F.hh ? `${X.F.hhSold} of ${X.F.hh}` : X.F.hhSold}</b></div><div style="text-align:right"><div class="lab">Closing</div><b>${X.F.closeHH == null ? "—" : ppct(X.F.closeHH, 0)}</b></div></div>` : ""}
+   ${p.meme ? edMemeHtml(p.meme) : ""}
    <div class="rx">${RXS.map(e => { const by = rx[e] || []; return `<button type="button" data-rx="${e}" aria-pressed="${by.includes(edMe())}" title="${edEsc(by.join(", "))}">${e} ${by.length || ""}</button>`; }).join("")}</div>
-   <div class="cm">${p.apollo ? `<div class="c">${edAvatar(X, "Apollo", 28)}<div><b>Apollo</b><small>coaching note</small><br>${edEsc(p.apollo)}</div></div>` : ""}${cms.map(c => `<div class="c">${edAvatar(X, pfirst(c.who), 28)}<div><b>${edEsc(c.who)}</b><small>${edEsc(c.at)}</small><br>${edEsc(c.text)}</div></div>`).join("")}
-   <form data-cm><input class="t" placeholder="Reply as ${edEsc(edMe())}…" aria-label="Reply" maxlength="300"><button class="ebtn">Post</button></form></div></div>`;
+   <div class="cm">${p.apollo ? `<div class="c">${edAvatar(X, "Apollo", 28)}<div><b>Apollo</b><small>coaching note</small><br>${edEsc(p.apollo)}</div></div>` : ""}${cms.map(c => `<div class="c">${edAvatar(X, pfirst(c.who), 28)}<div><b>${edEsc(c.who)}</b><small>${edEsc(c.at)}</small><br>${c.gif ? edGifHtml(c.gif) : ""}${c.text && c.gif ? "<br>" : ""}${c.text ? edCmText(c.text) : ""}</div></div>`).join("")}
+   <form data-cm><input class="t" placeholder="Reply as ${edEsc(edMe())}… or paste a GIF link" aria-label="Reply" maxlength="300"><button type="button" class="ebtn q" data-gifpick="${p.id}" aria-expanded="${edGifOpen === p.id}">GIF</button><button class="ebtn">Post</button></form>
+   ${edGifOpen === p.id ? `<div class="gifpick">${Object.keys(ED_GIFS).map(k => `<button type="button" data-gif="${k}" title="${edEsc(ED_GIFS[k][0])}">${edGifHtml(k)}</button>`).join("")}</div>` : ""}</div></div>`;
 }
 function edFeed(X) {
   const S = edShared.state, votes = S.poll || {}, mine = Object.entries(votes).find(([, by]) => by.includes(edMe())), tot = Object.values(votes).reduce((a, b) => a + b.length, 0);
@@ -524,23 +611,82 @@ function edComic(X) {
 }
 
 /* ===== CLOSER ===== */
+/* CLOSER's own copy (Frank, 2026-10-01: "the magazine and the newspaper have
+   the same wording, they should be different"). The Post reports the day;
+   the magazine profiles whoever carried it, opening on a call Apollo heard,
+   with their own words as the pull quote. Written in rules from the same
+   facts, never from writeDay. */
+function edMagStory(X) {
+  const F = X.F, top = X.order[0], n = top ? X.NUM[top] : null, full = top ? X.full[top] : "The team", first = top || "the floor";
+  const when = X.isFolio ? "this folio" : pdow(X.dayKey), seed = (X.dayKey || "") + "closer";
+  const clip = top ? edClip(X, top) : { lines: [], call: null }, call = clip.call;
+  const said = call ? (String(call.transcript || "").split("\n").map(l => l.replace(/^\[\d+:\d+\]\s*/, "")).find(l => /\(producer\):/.test(l) && l.split(":").slice(1).join(":").trim().length > 40) || "") : "";
+  // their own words: the first sentence or two, under ~120 characters
+  const quote = (() => { if (!said) return ""; const t = said.split(":").slice(1).join(":").trim().replace(/\s+/g, " "); let q = "", parts = t.split(/(?<=[.?!])\s+/); for (const x of parts) { if (q && (q + " " + x).length > 120) break; q = q ? q + " " + x : x; if (q.length >= 60) break; } return q.slice(0, 140).replace(/[,;:\s.]+$/, ""); })();
+  const lead = call && call.lead ? pfirst(call.lead) : "a prospect";
+  const mine = top ? X.SALES.filter(s => s.w === top) : [];
+  const others = X.order.slice(1).map(f => X.NUM[f]);
+  const obj = F.objs[0], busy = obj && /busy|timing/i.test(obj[0]);
+  const myFlags = top ? X.FLAGS.filter(x => x[0] === top).map(x => x[1]) : [];
+  const nextDay = edNextDay(X);
+  const S = { paras: [] };
+  if (X.isFolio) {
+    S.hl = ppick([`The folio at ${pmoney(X.FTOT)}, and the ${plural(X.rows.length, "day")} that built it`, `Who is carrying the folio`, `${pmoney(X.FTOT)} and counting: the folio, so far`], seed);
+    S.dek = `${full} leads it with ${pmoney(n ? n.ps : 0)}. ${X.rows.filter(r => !r.ps).length ? `${plural(X.rows.filter(r => !r.ps).length, "day")} closed with nothing.` : "Every day has put something on the board."}`;
+  } else if (!F.ps) {
+    S.hl = ppick([`Everything but the close`, `The quiet floor`, `${plural(F.dials, "dial")}, ${plural(F.live, "conversation")}, no sale`], seed);
+    S.dek = F.hh ? `${plural(F.hh, "household")} heard a number ${when} and none said yes. A look at where the calls went.` : `Nothing was quoted ${when}, so nothing could close. A look at the phones.`;
+  } else {
+    S.hl = ppick([`${full} and the art of the ${pmoney(n.ps)} ${when === "this folio" ? "folio" : "day"}`, `How ${first} built ${pmoney(n.ps)} one call at a time`, `${first}, on the line`], seed);
+    S.dek = `A profile of ${first}'s ${when}, told through the calls Apollo heard${n.hhSold ? `: ${plural(n.hhSold, "household")}, ${pmoney(n.ps)}, first in the standings` : ""}.`;
+  }
+  // the scene
+  if (call) S.paras.push(`${call.time ? `It is ${call.time}` : "It is midmorning"} and ${first} is on with ${lead}.${quote ? ` "${quote}${/[.?!]$/.test(quote) ? "" : "."}"` : ""}${call.dur ? ` The call runs ${call.dur}.` : ""}${call.summary ? ` Apollo's read: ${String(call.summary).trim().replace(/\.?$/, ".")}` : ""}`);
+  else if (n) S.paras.push(`${first} made ${plural(n.dials, "dial")} ${when} and reached ${plural(n.live, "person", "people")}, a ${ppct(n.rate)} contact rate. Apollo heard none of them: no call of ${first}'s was recorded long enough to coach.`);
+  // the number
+  if (n && n.ps) S.paras.push(`By the close ${first} had ${pmoney(n.ps)} in new premium${mine.length ? `: ${plist(mine.map(s => `${/^[aeiou]/i.test(s.prod) ? "an" : "a"} ${s.prod} at ${pmoney(s.amt)}${/winback/i.test(s.src) ? ", a winback" : /existing|cross/i.test(s.src) ? ", to a household we already insure" : ""}`))}` : ""}. That is ${n.pts} points and the top of the standings, on ${plural(n.dials, "dial")} and ${plural(n.hh, "quoted household")}.`);
+  else if (n) S.paras.push(`${first} finished on top of the standings anyway, with ${n.pts} points from ${plural(n.dials, "dial")}, ${plural(n.live, "conversation")} and ${pmoney(n.pq)} quoted. The sale did not come.`);
+  // the rest of the floor
+  const floor = others.map(o => o.ps ? `${pfirst(o.n)} added ${pmoney(o.ps)}` : o.pq ? `${pfirst(o.n)} quoted ${pmoney(o.pq)} and is still waiting on it` : `${pfirst(o.n)} made ${plural(o.dials, "dial")} without a quote`);
+  if (floor.length) S.paras.push(`The rest of the floor: ${plist(floor)}. ${F.ps ? `Together the team wrote ${pmoney(F.ps)} on ${plural(F.pol, "policy", "policies")}${F.hh ? `, closing ${F.hhSold} of ${F.hh} households` : ""}.` : `Nobody closed${F.hh ? `; ${plural(F.hh, "household")} quoted for ${pmoney(F.pq)} ${F.hh === 1 ? "is" : "are"} still open` : ""}.`}`);
+  // what Apollo saw
+  const saw = [];
+  if (myFlags.length) saw.push(`On ${first}'s cards Apollo flagged ${myFlags.length === 1 ? "one thing" : `${myFlags.length} things`}: ${plist(myFlags.slice(0, 2).map(x => x.toLowerCase()))}.`);
+  if (obj) saw.push(`Across the floor the objection of the ${X.isFolio ? "folio" : "day"} was ${obj[0]}, ${plural(obj[1], "time")}, ${obj[2] ? `turned ${obj[2] === obj[1] ? "every time" : `${obj[2]} of them`}` : "never turned"}.`);
+  if (F.sendoffs.length) saw.push(`${plural(F.sendoffs.length, "quote")} left by email instead of being presented on the call.`);
+  if (saw.length) S.paras.push(saw.join(" "));
+  // the ask
+  S.paras.push(busy ? `${nextDay}'s assignment is a time, not a maybe: when the next person says they are busy, the answer is "5 or 6, or tomorrow morning?"`
+    : F.sendoffs.length ? `${nextDay}'s assignment is to stay on the line: build the quote while they are listening and ask for the sale before anyone offers to email anything.`
+    : F.closeHH != null && F.closeHH < 25 ? `${nextDay}'s assignment is the close: ${F.hhSold} of ${F.hh} is under one in four. Assume the sale from the first sentence.`
+    : `${nextDay}'s assignment is to do it again, and to dial the new leads inside two minutes.`);
+  S.pull = quote ? [`"${quote}${/[.?!]$/.test(quote) ? "" : "."}"`, `${full}, to ${lead}, ${X.isFolio ? "this folio" : pdow(X.dayKey)}`]
+    : obj ? [`${obj[0]} is not a no. It is a question the producer has not answered yet.`, "Apollo"]
+    : ["The day is won on the second sentence, not the first.", "Apollo"];
+  S.cover = [
+    ["Inside", `${S.hl}.`],
+    call ? ["The call", `${first} with ${lead}${call.dur ? `, ${call.dur}` : ""}${call.lead_source ? `, ${call.lead_source}` : ""}.`] : ["The phones", `${plural(F.dials, "dial")}, ${plural(F.live, "conversation")}, ${ppct(F.rate)}.`],
+    obj ? ["The objection", `${obj[0]}, ${plural(obj[1], "time")}, ${obj[2]} overcome.`] : ["The quotes", `${plural(F.hh, "household")} for ${pmoney(F.pq)}.`],
+    ["The standings", `${pmoney(X.FTOT)} after ${plural(X.rows.length, "day")} of the folio.`],
+  ];
+  return S;
+}
 function edCloser(X) {
   const F = X.F, top = X.order[0], n = X.NUM[top] || {}, pickC = edMine.cover || "illus";
   const port = { illus: `<div style="position:absolute;inset:0;background:linear-gradient(180deg,#e8dac9,#c9b8a8)"></div><div class="sil" style="--c:${X.C[top] || "#3f5f7a"}"></div>`,
     desert: `<div style="position:absolute;inset:0;background:linear-gradient(180deg,#f2c9a0 0,#e59a6f 38%,#b5532f 60%,#5a2416 100%)"></div><div style="position:absolute;left:0;right:0;bottom:0;height:34%;background:#2a2320;clip-path:polygon(0 60%,8% 40%,15% 55%,22% 20%,30% 50%,40% 35%,52% 60%,60% 30%,70% 45%,80% 25%,90% 50%,100% 40%,100% 100%,0 100%)"></div>`,
     number: `<div style="position:absolute;inset:0;background:#2a2320"></div><div style="position:absolute;left:14px;top:14px;right:14px;font:800 clamp(80px,14vw,150px)/.85 Fraunces,serif;color:#e59a6f;letter-spacing:-.04em">${Math.round(F.ps).toLocaleString()}</div>` }[pickC];
-  const { E } = X.isFolio ? { E: null } : writeDay(F.d);
-  const story = E ? E.body : [`${pmoney(F.ps)} in new premium across ${plural(F.pol, "policy", "policies")}.`];
+  const S = edMagStory(X), story = S.paras;
   const heights = [240, 200, 180, 110, 80];
   const podOrder = X.order.length >= 5 ? [X.order[3], X.order[1], X.order[0], X.order[2], X.order[4]] : X.order;
   const podH = X.order.length >= 5 ? [110, 200, 240, 180, 80] : heights.slice(0, X.order.length);
   const podRank = X.order.length >= 5 ? [4, 2, 1, 3, 5] : X.order.map((_, i) => i + 1);
   return `<div class="mag"><div class="cover"><div class="t">CLOSER</div><div class="port">${port}<span style="position:relative">${pickC === "number" ? edEsc(X.isFolio ? "The folio so far" : (X.rows.length && F.ps >= Math.max(...X.rows.map(r => r.ps)) ? "The folio’s best day" : pdow(X.dayKey))) : edEsc(X.full[top] || "The team")}<br><span style="font:700 16px var(--body)">${pickC === "number" ? edEsc(X.isFolio ? "" : plong(X.dayKey)) : `Producer of the ${X.isFolio ? "folio" : "day"} · ${n.pts || 0} points`}</span></span></div>
-    <div class="cls"><div><b>${pmoney(F.ps)} ${edEsc(X.isFolio ? "so far" : "on " + pdow(X.dayKey))}</b>${plural(F.pol, "policy", "policies")}, ${plural(F.hhSold, "household")}.</div>${F.objs[0] ? `<div><b>The ${edEsc(F.objs[0][0])} objection</b>${plural(F.objs[0][1], "call")}, ${F.objs[0][2]} overcome.</div>` : `<div><b>${ppct(F.rate)} contact rate</b>${plural(F.dials, "dial")}, ${plural(F.live, "conversation")}.</div>`}<div><b>${F.spBest ? edFmtStd(F.spBest[1].median) : "—"}</b>${F.spBest ? `How fast ${pfirst(F.spBest[0])} dialled a new lead.` : "No new internet leads."}</div><div><b>Folio pace</b>${pmoney(X.FTOT)} after ${plural(X.rows.length, "day")}.</div></div>
+    <div class="cls">${S.cover.map(([b, t]) => `<div><b>${edEsc(b)}</b>${edEsc(t)}</div>`).join("")}</div>
     <div class="hrow"><span class="lab">Cover photo</span><div class="seg">${[["illus", "Illustrated portrait"], ["desert", "Sonoran"], ["number", "The number"]].map(([k, l]) => `<button type="button" data-cover="${k}" aria-pressed="${pickC === k}">${l}</button>`).join("")}</div></div></div>
-   <div class="spread"><div class="k">Cover story</div><h2>${edEsc(E ? E.hl : `The folio stands at ${pmoney(F.ps)}`)}</h2><p>${edEsc(story[0] || "")}</p>
-    <div class="pq">${edEsc(E ? E.pull[0] : (F.objs[0] ? `${F.objs[0][0]} came up ${plural(F.objs[0][1], "time")} this folio.` : "Every dial is a maybe."))}</div>
-    ${story.slice(1, 3).map(p => `<p>${edEsc(p)}</p>`).join("")}
+   <div class="spread"><div class="k">Cover story</div><h2>${edEsc(S.hl)}</h2><p class="dek">${edEsc(S.dek)}</p><p>${edEsc(story[0] || "")}</p>
+    <div class="pq">${edEsc(S.pull[0])}<small>${edEsc(S.pull[1])}</small></div>
+    ${story.slice(1).map(p => `<p>${edEsc(p)}</p>`).join("")}
     <div class="k" style="margin-top:8px">By the numbers · drawn, not tabled</div>
     <div class="info"><div><b>${pmoney(F.ps)}</b><span>new premium · ${plural(F.pol, "policy", "policies")}</span></div><div><div class="ring" style="--p:${F.closeHH == null ? 0 : Math.min(100, Math.round(F.closeHH))}%"><i>${F.closeHH == null ? "—" : ppct(F.closeHH, 0)}</i></div><span>${F.hhSold} of ${F.hh} households bought</span></div><div><b>${F.spBest ? edFmtStd(F.spBest[1].median) : "—"}</b><span>${F.spBest ? `${pfirst(F.spBest[0])}’s first dial · team ${edFmtStd(F.spTeam)}` : "no new internet leads"}</span></div><div><b>${F.objs[0] ? `${F.objs[0][2]}/${F.objs[0][1]}` : ppct(F.rate)}</b><span>${F.objs[0] ? `${edEsc(F.objs[0][0])} overcome` : "contact rate"}</span></div></div>
     <div class="k" style="margin-top:8px">The podium</div><div class="podium">${podOrder.map((f, i) => `<div><b>${edEsc(f)}</b><small>${X.NUM[f].pts} pts · ${pmoney(X.NUM[f].ps)}</small><div class="blk" style="height:${podH[i]}px;background:${X.C[f]}22;color:${X.C[f]}">${podRank[i]}</div></div>`).join("")}</div>
@@ -585,6 +731,8 @@ document.addEventListener("click", async e => {
   const t = e.target, d = k => t.closest(`[data-${k}]`); let el;
   if (el = d("pub")) { edPub = el.dataset.pub; try { localStorage.setItem("board-edition", edPub); } catch (_) {} clearInterval(edTick); edPlaying = false; paint(); return; }
   if (el = d("rx")) { const id = el.closest("[data-post]").dataset.post; if (await edPost("rx", { id, emoji: el.dataset.rx })) edRepaint(); return; }
+  if (el = d("gifpick")) { edGifOpen = edGifOpen === el.dataset.gifpick ? "" : el.dataset.gifpick; edRepaint(); return; }
+  if (el = d("gif")) { const id = el.closest("[data-post]").dataset.post; edGifOpen = ""; if (await edPost("cm", { id, gif: el.dataset.gif, text: "" })) edRepaint(); return; }
   if (el = d("story")) { const w = el.dataset.story; edMine.seen[edX.dayKey + w] = 1; edSaveMine(); const clip = w === "Apollo" ? { lines: edSegs(edX)[0][4].concat(edSegs(edX)[1][4]), call: null } : edClip(edX, w);
     edOpenModal(`<div class="hrow"><h3>${edEsc(w)}’s story</h3><button type="button" class="ebtn q" data-edclose>Close</button></div>${edTx(clip.lines)}${clip.call ? `<button type="button" class="ebtn q" data-edcard="${edX.F.calls.indexOf(clip.call)}">Open the coaching card</button>` : ""}`); edRepaint(); return; }
   if (el = d("edclose")) { edCloseModal(); return; }

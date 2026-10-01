@@ -1477,6 +1477,34 @@ $2,500 in premium"): the Digest's day reads as Apollo's group chat
   sections (Apollo's clay, Athena's sage). The editions' stylesheet is
   scoped under `.ed` -- its `.pcard` / `.anal` had been restyling Role Play's
   prospect cards and the coaching cards.
+- **The Feed carries GIFs and memes** (Frank, 2026-10-01: "add GIF's and
+  memes to the flores feed"). A reply's **GIF** button opens a picker of
+  reaction GIFs drawn in CSS (`ED_GIFS` in editions.js: fire, slow clap,
+  money rain, confetti, mic drop, crickets, this is fine ...), saved on the
+  comment as `gif` (the Worker's `cm` op takes a gif with no text); a pasted
+  Giphy / Tenor / .gif link shows as the picture. **Apollo's memes**
+  (`edMemes`) are rule-written from the day -- three at most, the classics
+  (this is fine, stonks, Drake, expanding brain, one does not simply, change
+  my mind) drawn with emoji and Impact -- and sit in the timeline as posts
+  of their own. **CLOSER has its own copy** (Frank, 2026-10-01: "the
+  magazine and the newspaper have the same wording, they should be
+  different"): `edMagStory` profiles whoever carried the day, opening on the
+  longest call Apollo heard with the producer's own words as the pull quote,
+  then the number, the rest of the floor, what Apollo saw and the next day's
+  assignment; it never calls the Post's `writeDay`.
+- **The Service Center and Renewals wear colour too** (Frank, 2026-10-01:
+  "now do the same for the service center and renewals"): each section a
+  hue on its top rule (`.svcsec`, `--sc`: sage for Athena's own, amber for
+  Late Payments, blue for the Service Pipeline and messages, purple for
+  Contingencies, red for Lost), the Service Team and Renewal SR Work on a
+  dark hero (`.svchero`) with each person's card in their badge colour
+  (`.pstrip`) and the stat grid coloured by column (`.statgrid`), the
+  Playbook a sage card with a colour per role, Note Standard's chips red /
+  amber / green by the share missing, the Renewals rates on a sage hero
+  coloured by tier (`renTier`: green from 95%, yellow from 90%, red below)
+  and the week cards the same. Figures and lists are untouched; the
+  duplicate Note Standard above Texts & Emails is gone (it sits in the
+  two-column grid).
 - The local harness used to check all of this (a mock of the Worker over
   saved day documents, Playwright captures) lives in the session's
   scratchpad, not the repo; `design/flores-board-preview.html` is the
