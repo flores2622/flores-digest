@@ -1526,6 +1526,12 @@ $2,500 in premium"): the Digest's day reads as Apollo's group chat
   counts in red, Renewal Outcomes under a purple rule with a Cerberus badge
   and the outcome's colour beside each completed SR, Completed under blue.
   Figures and lists unchanged.
+- **Text is medium weight** (Frank, 2026-10-01: "its thinner than it
+  was"): the restyle had swapped the system font (Segoe UI) for Manrope at
+  400, which reads lighter. `body` is 500 in every look; the serif headings
+  and tile numbers take the face's heavier cut where it has one (`--dw`:
+  Fraunces and Bitter at 600; DM Serif Display and Instrument Serif have one
+  weight and stay as cut, never a synthesized bold).
 - The local harness used to check all of this (a mock of the Worker over
   saved day documents, Playwright captures) lives in the session's
   scratchpad, not the repo; `design/flores-board-preview.html` is the
