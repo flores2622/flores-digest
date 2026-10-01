@@ -976,6 +976,57 @@ html[data-look="mesa"] #view .bp .bpdate { background: #4a3f38; color: var(--sur
 #view .bp dt { color: var(--sc, var(--rm)); }
 #view .bp th { background: var(--card2); } .bp strong { color: var(--sc, var(--rm)); }
 #view .bp ul li::marker, .bp ol li::marker { color: var(--sc, var(--rm)); font-weight: 700; }
+/* ---- Service Center and Renewals, with colour (Frank, 2026-10-01: "now do
+   the same for the service center and renewals"). Athena's colour is sage
+   (--s3); each section carries its own hue on a top rule (--sc), each
+   person's card their badge colour (--pc), each stat card a hue by row. --- */
+.svcsec { border-top: 6px solid var(--sc, var(--s3)); }
+.svcsec > h2 { display: flex; align-items: center; gap: 10px; }
+.svcsec > h2::before { content: ""; width: 10px; height: 10px; border-radius: 50%; background: var(--sc, var(--s3)); flex: none; }
+.svchero { background: linear-gradient(135deg, var(--side) 0%, var(--side2) 100%); color: var(--sideInk); border-color: var(--side2); border-top: 6px solid var(--sc, var(--s3)); }
+html[data-look="mesa"] .svchero { background: linear-gradient(135deg, var(--text-primary), #4a3f38); color: var(--surface); }
+.svchero h2, .svchero .sd, .svchero p { color: inherit; } .svchero h2 { border-bottom-color: rgba(255,255,255,.18); font-size: 28px; }
+.svchero h2 span { color: inherit !important; opacity: .7; } .svchero a { color: var(--brand2); }
+.svchero .tile, .svchero .scroll, .svchero table, .svchero td { color: var(--text-primary); } .svchero .scroll { background: var(--surface-raised); border-radius: 12px; }
+.svchero .rh3 { color: inherit; opacity: .8; }
+.pstrip { border-top: 6px solid var(--pc) !important; border-radius: 14px; background: linear-gradient(180deg, color-mix(in oklab, var(--pc) 16%, var(--surface-raised)), var(--surface-raised) 65%); transition: transform .15s, box-shadow .15s; }
+.pstrip:hover { transform: translateY(-2px); box-shadow: 0 6px 18px rgba(0,0,0,.14); }
+.pstrip.on { border-color: var(--pc) !important; box-shadow: 0 0 0 2px var(--pc) inset; }
+.pstrip .v { font-family: var(--display); font-weight: 400; }
+.ptotals { border-left: 6px solid var(--pc); background: var(--surface-raised); border-radius: 14px; }
+.ptotals > div:first-child b { font-size: 15px; }
+.statgrid .tile { border-top: 4px solid var(--hc, var(--border-strong)); border-radius: 12px; background: linear-gradient(180deg, color-mix(in oklab, var(--hc, var(--border-strong)) 9%, var(--surface-raised)), var(--surface-raised) 60%); }
+.statgrid .tile .k { color: var(--hc, var(--text-muted)); filter: saturate(.8) brightness(.85); }
+html[data-mode="dark"] .statgrid .tile .k { filter: brightness(1.25); }
+.statgrid .tile:nth-child(6n+1) { --hc: var(--s3); } .statgrid .tile:nth-child(6n+2) { --hc: var(--s1); } .statgrid .tile:nth-child(6n+3) { --hc: var(--s4); }
+.statgrid .tile:nth-child(6n+4) { --hc: var(--s7); } .statgrid .tile:nth-child(6n+5) { --hc: var(--accent); } .statgrid .tile:nth-child(6n) { --hc: var(--s5, #d55181); }
+.statgrid .tile.rdrill.on { border-color: var(--hc); box-shadow: 0 0 0 2px var(--hc) inset; }
+.svcbook { background: linear-gradient(180deg, color-mix(in oklab, var(--s3) 10%, var(--surface-raised)), var(--surface-raised) 240px); border-top: 6px solid var(--s3); }
+.svcbook summary h2 { color: var(--accent); } .svcbook summary::marker { color: var(--s3); }
+.svcbook .rh3 { color: var(--accent); font-weight: 800; }
+.rolecard { border-top: 6px solid var(--pc) !important; border-radius: 14px; background: linear-gradient(180deg, color-mix(in oklab, var(--pc) 12%, var(--surface-raised)), var(--surface-raised) 50%); }
+.rolecard .k { color: var(--pc); filter: saturate(.8) brightness(.8); font-size: 13px; }
+.rolecard li::marker { color: var(--pc); }
+.notechip { border-radius: 12px; border-top: 4px solid var(--hc); background: linear-gradient(180deg, color-mix(in oklab, var(--hc) 12%, var(--surface-raised)), var(--surface-raised) 60%); }
+.notechip .v { color: var(--hc); }
+.notechip.miss-hi { --hc: var(--bad); } .notechip.miss-mid { --hc: var(--warn, #b45309); } .notechip.miss-lo { --hc: var(--good); }
+#view[data-view="service"] .rtiles .tile, #view[data-view="renewals"] .rtiles .tile { border-radius: 12px; }
+#view[data-view="service"] th, #view[data-view="renewals"] th { background: var(--card2); }
+#view[data-view="service"] tr.tot td { background: color-mix(in oklab, var(--s3) 10%, transparent); }
+#view[data-view="service"] .otrack, #view[data-view="renewals"] .otrack { height: 12px; border-radius: 6px; overflow: hidden; }
+/* Renewals: the retention rates on a sage hero, coloured by tier */
+.renhero { background: linear-gradient(135deg, color-mix(in oklab, var(--s3) 45%, var(--side)) 0%, var(--side2) 100%); color: var(--sideInk); border-color: var(--side2); }
+html[data-look="mesa"] .renhero { background: linear-gradient(135deg, color-mix(in oklab, var(--s3) 35%, var(--text-primary)), #4a3f38); color: var(--surface); }
+.renhero h2, .renhero .sd { color: inherit; } .renhero h2 { border-bottom-color: rgba(255,255,255,.18); font-size: 28px; }
+.renhero .tile { color: var(--text-primary); border-radius: 12px; border-top: 4px solid var(--hc, var(--border-strong)); background: linear-gradient(180deg, color-mix(in oklab, var(--hc, var(--border-strong)) 10%, var(--surface-raised)), var(--surface-raised) 60%); }
+.renhero .tile .k { color: var(--hc, var(--text-muted)); filter: saturate(.8) brightness(.85); }
+.renhero .tile:has(.v.tg) { --hc: var(--good); } .renhero .tile:has(.v.ty) { --hc: var(--warn, #b45309); } .renhero .tile:has(.v.tr) { --hc: var(--bad); }
+.renhero .tile[data-drill="unconfirmed"] { --hc: var(--s4); } .renhero .tile[data-drill="ahead"] { --hc: var(--s1); } .renhero .tile[data-drill="lost"]:not(:has(.tr)) { --hc: var(--s3); } .renhero .tile[data-drill="high"]:not(:has(.tr)) { --hc: var(--s3); }
+.renhero .tile .v { font-size: 34px; }
+.renhero .tile.rdrill.on { border-color: var(--hc); box-shadow: 0 0 0 2px var(--hc) inset; }
+.rencard { border-top: 4px solid var(--pc) !important; border-radius: 12px; background: linear-gradient(180deg, color-mix(in oklab, var(--pc) 10%, var(--surface-raised)), var(--surface-raised) 60%); }
+#view[data-view="renewals"] .rh3 { color: var(--accent); font-weight: 800; }
+#view[data-view="renewals"] .pbadge { font-size: 12.5px; }
 /* The coaching card's flow is in its badge (outcomeBadgeHtml), so the striped
    left edge and its legend are gone (Frank, 2026-09-30 preview review: "remove
    that left colored tab from the cards, and the legend, i like the badge"). */
@@ -7093,7 +7144,7 @@ function srOutcomeHtml(m, pipe, title, rateWord, blurb) {
   const legend = outs.map(([k, l]) => [k, l, rows.filter(r => r.outcome === k).length]).filter(x => x[2]).map(([k, l, c]) =>
     `<span class="oleg-item"><span class="pd rdot" style="${fill(k)}"></span>${l} <b>${c}</b> <span style="color:var(--text-muted)">(${Math.round(100 * c / rows.length)}%)</span></span>`).join("");
   const noted = rows.filter(r => r.source === "notes").length, unread = rows.filter(r => r.source === "unread").length;
-  return `<div class="sect"><h2>${title}</h2><p class="sd">${blurb}</p>
+  return `<div class="sect svcsec" style="--sc:${{ late_payments: "var(--s4)", changes: "var(--s1)", missing_docs: "var(--s7)" }[pipe] || "var(--s3)"}"><h2>${title}</h2><p class="sd">${blurb}</p>
     <div class="tiles rtiles" style="grid-template-columns:repeat(auto-fit,minmax(105px,1fr))">${cards}</div>${svcDrillFor(m, ["out:" + pipe])}<div class="oleg">${legend}</div>
     <p class="sd" style="margin:10px 0 0">Of ${rows.length}: ${noted} read from the rep's note by AI${unread ? `; ${unread} with a note not read yet (shown as No note until the next nightly run)` : ""}. These SRs are closed as Completed, so the note is where the outcome is written.</p></div>`;
 }
@@ -7107,7 +7158,7 @@ function completionTimeHtml(m) {
   const tr = rows.map(([l, rs, k]) => { const hs = rs.map(r => r.hours);
     return `<tr class="rdrill-row${svcDrill === "pipe:" + k ? " on" : ""}" data-sdrill="pipe:${k}" tabindex="0"><td>${l}</td><td class="num">${rs.length}</td><td class="num">${fmtDur(svcMedian(hs))}</td><td class="num">${fmtDur(svcPctile(hs, 0.9))}</td></tr>`; }).join("");
   const all = m.completed.map(r => r.hours);
-  return `<div class="sect"><h2>Completion Time</h2>
+  return `<div class="sect svcsec" style="--sc:var(--s3)"><h2>Completion Time</h2>
     <p class="sd">SRs completed in this period, from the day each was created to the day it was completed. Not stage by stage.</p>
     <div class="scroll"><table><thead><tr><th>Pipeline</th><th class="num">SRs completed</th><th class="num">Median</th><th class="num">90% within</th></tr></thead>
     <tbody>${tr}<tr class="tot"><td>All service SRs</td><td class="num">${m.completed.length}</td><td class="num">${fmtDur(svcMedian(all))}</td><td class="num">${fmtDur(svcPctile(all, 0.9))}</td></tr></tbody></table></div>${svcDrillFor(m, ["pipe"])}</div>`;
@@ -7117,7 +7168,7 @@ function latePaymentsHtml(m) {
   const done = m.completed.filter(r => r.pipeline === "late_payments");
   if (!st.length && !done.length) return "";
   const tr = st.map(x => `<tr class="rdrill-row${svcDrill === "stage:" + x.stage ? " on" : ""}" data-sdrill="stage:${cesc(x.stage)}" tabindex="0"><td>${x.stage}</td><td class="num">${x.open}</td><td class="num">${x.days_in_stage.length ? Math.round(svcMedian(x.days_in_stage)) + "d" : "—"}</td><td class="num">${x.days_in_stage.length ? Math.round(x.days_in_stage[x.days_in_stage.length - 1]) + "d" : "—"}</td></tr>`).join("");
-  return `<div class="sect"><h2>Late Payments</h2>
+  return `<div class="sect svcsec" style="--sc:var(--s4)"><h2>Late Payments</h2>
     <p class="sd">Open Late Payment SRs by stage as of ${fmtShortDate(m.days[m.days.length - 1])}, and how long they have sat in it. ${done.length} completed in this period, median ${fmtDur(svcMedian(done.map(r => r.hours)))} from created to completed.</p>
     ${tr ? `<div class="scroll"><table><thead><tr><th>Stage</th><th class="num">Open</th><th class="num">Median in stage</th><th class="num">Longest</th></tr></thead><tbody>${tr}</tbody></table></div>` : ""}${svcDrillFor(m, ["stage"])}</div>`;
 }
@@ -7127,7 +7178,7 @@ function missingDocsHtml(m) {
   const order = [["selling producer", "Selling producer"], ["service/hybrid rep", "Service / hybrid rep"], ["another producer", "Another producer"], ["producer", "Producer (seller unknown)"], ["other", "Someone else"]];
   const chips = order.map(([k, l]) => { const n = rs.filter(r => r.handler === k).length;
     return n ? `<div${sdk("hand:" + k)}><div class="k">${l}</div><div class="v">${n}</div><div class="n">${Math.round(100 * n / rs.length)}% &middot; median ${fmtDur(svcMedian(rs.filter(r => r.handler === k).map(r => r.hours)))}</div></div>` : ""; }).join("");
-  return `<div class="sect"><h2>Contingencies</h2>
+  return `<div class="sect svcsec" style="--sc:var(--s7)"><h2>Contingencies</h2>
     <p class="sd">Any contingency pending on a policy: ${rs.length} completed in this period, median ${fmtDur(svcMedian(rs.map(r => r.hours)))} from created to completed, and who took care of it. The selling producer is whoever sold the household's policy just before the SR was created.</p>
     <div class="tiles">${chips}</div>${svcDrillFor(m, ["hand"])}</div>`;
 }
@@ -7236,7 +7287,7 @@ function svcMessagesHtml(m) {
       <div class="n">median &middot; ${a.length} answered</div>
       ${w ? `<div class="n" style="margin-top:5px;color:var(--bad);font-weight:600">${w} waiting</div>` : ""}</div>`;
   }).join("");
-  return `<div class="sect"><h2>Texts &amp; Emails</h2>
+  return `<div class="sect svcsec" style="--sc:var(--s1)"><h2>Texts &amp; Emails</h2>
     <p class="sd">What the team typed to customers and how fast a customer's text or email got an answer: the next
     typed text, email or call back. Texts are every text on each person's own RingCentral line; emails are the ones
     sent through AgencyZoom (Outlook is not seen). Automation is counted apart and never credited. Only customers and
@@ -7429,7 +7480,7 @@ function serviceStatsHtml(m) {
   const title = x => (PB && PB.role_of[x] && PB.roles[PB.role_of[x]] ? PB.roles[PB.role_of[x]].title : "")
     || SERVICE_TITLES[x] || (m.team.find(t => t.name === x) || {}).role || "";
   const strip = team.map(x => { const S = svcStats(m, x), rm = medMins(S.ans), on = x === n;
-    return `<div class="tile rdrill${on ? " on" : ""}" data-sperson="${cesc(x)}" role="button" tabindex="0" style="text-align:left">
+    return `<div class="tile rdrill pstrip${on ? " on" : ""}" data-sperson="${cesc(x)}" role="button" tabindex="0" style="text-align:left;--pc:${DOT[x] || TEAM_DOT}">
       <div style="display:flex;justify-content:space-between;align-items:baseline;gap:8px">${pbadge(DOT[x] || TEAM_DOT, first(x))}<span class="n">${cesc(title(x))}</span></div>
       <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:4px;text-align:center;margin-top:10px">
         <div><div class="v" style="font-size:19px">${S.srs.length}</div><div class="n">SRs</div></div>
@@ -7468,14 +7519,14 @@ function serviceStatsHtml(m) {
       <div class="scroll"><table class="rtable"><tbody>${roleMeasures(m, n).map(x => `<tr class="rdrill-row${svcDrill === `g-role:${n}:${x.key}` ? " on" : ""}" data-sdrill="g-role:${n}:${x.key}" tabindex="0" role="button"><td>${cesc(x.label)}</td><td style="text-align:right">${x.value}</td></tr>`).join("")}</tbody></table></div>
       <p class="sd" style="margin-top:6px">${cesc(R.expectation)}</p>`;
   }
-  return `<div class="sect"><h2>Service Team</h2>
+  return `<div class="sect svchero" style="--sc:var(--s3)"><h2>Service Team</h2>
     <p class="sd">Pick a person for their own stats; with nobody picked the cards below are the whole team. Credit goes to whoever completed the SR or task. Click any card for the accounts behind it.</p>
     <div class="svcstrip">${strip}</div>
-    <div class="tile" style="margin-top:12px;text-align:left;background:var(--surface-2, transparent)">
+    <div class="tile ptotals" style="margin-top:12px;text-align:left;--pc:${n ? (DOT[n] || TEAM_DOT) : "var(--s3)"}">
       <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:8px">
         <b>${n ? `${pbadge(DOT[n] || TEAM_DOT, first(n))} <span style="margin-left:4px">${cesc(title(n))}</span>` : `${pbadge(TEAM_DOT, "Team")} <span style="margin-left:4px">totals</span>`}</b>
         ${n ? '<a href="#" data-sperson="">Show the team</a>' : ""}</div>
-      <div class="svcgrid">${tiles}</div>${role}${svcDrillFor(m, ["g"])}</div></div>`;
+      <div class="svcgrid statgrid">${tiles}</div>${role}${svcDrillFor(m, ["g"])}</div></div>`;
 }
 // A card that opens a list: wraps a tile's attributes.
 const sdk = (k, extra) => ` data-sdrill="${k}" role="button" tabindex="0" class="tile rdrill${svcDrill === k ? " on" : ""}${extra ? " " + extra : ""}"`;
@@ -7573,8 +7624,8 @@ function noteStandardHtml(m) {
   if (!PB || !aud.length) return "";
   const meets = aud.filter(r => !r.audit.missing.length);
   const parts = Object.keys(PART_LABEL).map(k => [k, aud.filter(r => r.audit.missing.includes(k)).length]);
-  const chips = parts.map(([k, c]) => `<div${sdk("notes:" + k)}><div class="k">${PART_LABEL[k]}</div><div class="v">${c}</div><div class="n">note${c === 1 ? "" : "s"} missing it &middot; ${Math.round(100 * c / aud.length)}%</div></div>`).join("");
-  return `<div class="sect"><h2>Note Standard</h2>
+  const chips = parts.map(([k, c]) => `<div${sdk("notes:" + k, "notechip " + (c / aud.length >= .5 ? "miss-hi" : c / aud.length >= .25 ? "miss-mid" : "miss-lo"))}><div class="k">${PART_LABEL[k]}</div><div class="v">${c}</div><div class="n">note${c === 1 ? "" : "s"} missing it &middot; ${Math.round(100 * c / aud.length)}%</div></div>`).join("");
+  return `<div class="sect svcsec" style="--sc:var(--accent)"><h2>Note Standard</h2>
     <p class="sd">Every note should answer Who? What? Why? Outcome? Next step? so the next person can pick up where you left off. <b>${Math.round(100 * meets.length / aud.length)}%</b> of the ${aud.length} service SRs completed in this period meet it; each note is read against the playbook by AI.
     Good: <i>"${cesc(PB.good_note)}"</i> Too vague: <i>"${cesc(PB.vague_note)}"</i></p>
     <div class="tiles" style="grid-template-columns:repeat(auto-fit,minmax(90px,1fr))">${chips}</div>${svcDrillFor(m, ["notes"])}</div>`;
@@ -7582,13 +7633,13 @@ function noteStandardHtml(m) {
 function playbookHtml(m) {
   const PB = m.playbook;
   if (!PB) return "";
-  const roleCols = Object.values(PB.roles).map(R => `<div class="tile" style="text-align:left"><div class="k">${cesc(R.title)}</div>
+  const roleCols = Object.values(PB.roles).map((R, i) => `<div class="tile rolecard" style="text-align:left;--pc:${["var(--s3)", "var(--s1)", "var(--s7)"][i % 3]}"><div class="k">${cesc(R.title)}</div>
     <div class="n" style="font-style:italic;margin:6px 0">${cesc(R.primary)}</div>
     <ul style="margin:0 0 6px 18px;padding:0;font-size:12.5px">${R.responsibilities.map(x => `<li>${cesc(x)}</li>`).join("")}</ul>
     <div class="n" style="font-size:12px"><b>Expectation:</b> ${cesc(R.expectation)}</div></div>`).join("");
   const who = Object.values(PB.request_types).map(([l, o]) => `<tr><td>${cesc(l)}</td><td>${cesc({ service: "Service", front_desk: "Front Desk / Service", lead: "Service Lead / Producer", producer: "Producer", frank: "Frank" }[o] || o)}</td></tr>`).join("");
   const exp = Object.entries(PB.expectations).map(([k, v]) => `<li><b>${cesc(k)}.</b> ${cesc(v)}</li>`).join("");
-  return `<div class="sect"><details class="msgd"><summary style="cursor:pointer"><h2 style="display:inline">Service Playbook</h2> <span style="color:var(--text-muted);font-size:12.5px">what each role owns, as Amanda wrote it</span></summary>
+  return `<div class="sect svcbook" style="--sc:var(--s3)"><details class="msgd"><summary style="cursor:pointer"><h2 style="display:inline">Service Playbook</h2> <span style="color:var(--text-muted);font-size:12.5px">what each role owns, as Amanda wrote it</span></summary>
     <p class="sd" style="margin-top:8px">${cesc(PB.purpose)}</p>
     <p class="sd"><b>Our Service Standard:</b> ${cesc(PB.standard)}. Every client should feel heard, helped, and confident that their request is being handled.</p>
     <div class="tiles">${roleCols}</div>
@@ -7601,7 +7652,6 @@ function playbookHtml(m) {
 }
 function servicePanel(m) {
   return `${playbookHtml(m)}${serviceStatsHtml(m)}${rangeMode === "day" ? svcFeedHtml(m) : ""}
-    ${m.playbook ? noteStandardHtml(m) : ""}
     ${svcMessagesHtml(m)}
     <div class="digestgrid">
       <div>${m.playbook ? noteStandardHtml(m) : ""}${completionTimeHtml(m)}${latePaymentsHtml(m)}</div>
@@ -7712,13 +7762,16 @@ const renFill = st => { const [, v, hatch] = REN_STATUS[st] || [, "--text-muted"
   return `background-color:var(${v})${hatch ? ";background-image:var(--hatch)" : ""}`; };
 const renDate = d => d ? new Date(d + "T12:00:00").toLocaleDateString(undefined, { month: "short", day: "numeric" }) : "—";
 const renMoney = x => x == null ? "—" : "$" + Math.round(x).toLocaleString();
+// Retention reads green from 95%, yellow from 90%, red below (the settled
+// rate has run 93-100% by week; Farmers' own figure is the comparison).
+const renTier = pct => pct == null ? "" : pct >= 95 ? "tg" : pct >= 90 ? "ty" : "tr";
 function renCard(rs, head, strong) {
   const rt = renRate(rs), n = rs.length || 1;
   const segs = Object.keys(REN_STATUS).map(st => { const c = rs.filter(r => r.status === st).length;
     return c ? `<span class="ogseg rseg" style="width:${(c / n * 100).toFixed(2)}%;${renFill(st)}" title="${REN_STATUS[st][0]}: ${c}"></span>` : ""; }).join("");
   const unc = rs.filter(r => r.status === "unconfirmed").length, mid = rs.filter(r => r.status === "mid_term").length;
-  return `<div class="tile"${strong ? ' style="border-color:var(--border-strong)"' : ""}>
-    <div class="k">${head}</div><div class="v">${rt.pct == null ? "—" : rt.pct + "%"}</div>
+  return `<div class="tile rencard" style="--pc:${rt.pct == null ? "var(--border-strong)" : rt.pct >= 95 ? "var(--good)" : rt.pct >= 90 ? "var(--warn, #b45309)" : "var(--bad)"}${strong ? ";border-color:var(--border-strong)" : ""}">
+    <div class="k">${head}</div><div class="v ${renTier(rt.pct)}">${rt.pct == null ? "—" : rt.pct + "%"}</div>
     <div class="n">retained${rt.pct == null ? "" : ` &middot; ${rt.k} of ${rt.k + rt.l}`}${rt.l ? ` &middot; <b>${rt.l} lost</b>` : ""}</div>
     <div class="n">${rs.length} renewal${rs.length === 1 ? "" : "s"}${unc ? ` &middot; ${unc} not confirmed` : ""}${mid ? ` &middot; ${mid} mid-term` : ""}</div>
     <div class="otrack" style="margin-top:10px">${segs}</div></div>`;
@@ -7816,16 +7869,16 @@ function renewalsPanel(doc, workHtml = "", rb = null) {
     title="Show these ${drills[k][2].length} renewals"${style ? ` style="${style}"` : ""}>${inner}</div>`;
   const tiles = `<div class="tiles" style="grid-template-columns:repeat(auto-fit,minmax(128px,1fr))">
     ${dt("rate", `<div class="k">Retention · settled 4 weeks</div>
-      <div class="v">${rt.pct == null ? "—" : rt.pct + "%"}</div><div class="n">${rt.k} of ${rt.k + rt.l} kept &middot; renewed ${span(settled)}</div>`, "border-color:var(--border-strong)")}
+      <div class="v ${renTier(rt.pct)}">${rt.pct == null ? "—" : rt.pct + "%"}</div><div class="n">${rt.k} of ${rt.k + rt.l} kept &middot; renewed ${span(settled)}</div>`, "border-color:var(--border-strong)")}
     ${dt("rrange", `<div class="k">Retention · this period</div>
-      <div class="v">${rr.pct == null ? "—" : rr.pct + "%"}</div><div class="n">${rr.k} of ${rr.k + rr.l} kept &middot; renewed in the date filter's period</div>`)}
+      <div class="v ${renTier(rr.pct)}">${rr.pct == null ? "—" : rr.pct + "%"}</div><div class="n">${rr.k} of ${rr.k + rr.l} kept &middot; renewed in the date filter's period</div>`)}
     ${dt("ryear", `<div class="k">Retention · 12 months</div>
-      <div class="v">${ry.pct == null ? "—" : ry.pct + "%"}</div><div class="n">${ry.k} of ${ry.k + ry.l} kept &middot; to compare with Farmers' figures</div>`)}
-    ${dt("lost", `<div class="k">Lost</div><div class="v">${lostIn.length}</div><div class="n">renewed in this period</div>`)}
+      <div class="v ${renTier(ry.pct)}">${ry.pct == null ? "—" : ry.pct + "%"}</div><div class="n">${ry.k} of ${ry.k + ry.l} kept &middot; to compare with Farmers' figures</div>`)}
+    ${dt("lost", `<div class="k">Lost</div><div class="v${lostIn.length ? " tr" : ""}">${lostIn.length}</div><div class="n">renewed in this period</div>`)}
     ${dt("unconfirmed", `<div class="k">Not confirmed yet</div><div class="v">${pastIn.filter(r => r.status === "unconfirmed").length}</div><div class="n">renewed in this period, no next term or cancellation on record yet</div>`)}
     ${dt("ahead", `<div class="k">Coming up · ${doc.upcoming_days} days</div><div class="v">${ahead.length}</div>
       <div class="n">${ahead.length ? Math.round(100 * discussed / ahead.length) : 0}% reviewed with the customer</div>`)}
-    ${dt("high", `<div class="k">High risk</div><div class="v" style="color:var(--bad)">${high}</div><div class="n">not discussed, with a warning sign</div>`)}
+    ${dt("high", `<div class="k">High risk</div><div class="v${high ? " tr" : ""}">${high}</div><div class="n">not discussed, with a warning sign</div>`)}
   </div>${renDrill && drills[renDrill] ? renDrillHtml(drills[renDrill], label, pipeName) : ""}`;
   // Weeks by renewal date, Monday first, oldest to newest: the settled four
   // weeks and the two still settling. The breakdowns below are the settled
@@ -7860,18 +7913,18 @@ function renewalsPanel(doc, workHtml = "", rb = null) {
     <td>${renSrCell(r, label)}</td>
     <td>${(r.flags || []).filter(x => REN_FLAGS[x]).map(x => `<span class="chip ${REN_FLAGS[x][1]}" style="margin:0 4px 3px 0">${REN_FLAGS[x][0]}</span>`).join("")}</td>
     <td>${REN_RISK[r.risk] ? `<span class="chip ${REN_RISK[r.risk][1]}">${REN_RISK[r.risk][0]}</span>` : "—"}</td></tr>`).join("");
-  return `<div class="sect"><h2>Renewals</h2>
+  return `<div class="sect renhero"><h2>Renewals</h2>
     <p class="sd">Every personal-lines policy that renewed in the last ${doc.past_days} days or renews in the next ${doc.upcoming_days}, from AgencyZoom's policy records and the team's SRs. Rebuilt every night · as of ${renDate(doc.as_of)}. Three retention rates: the settled 4 weeks (renewals 2 to 6 weeks ago), the date filter's period, and the last 12 months. Everything else follows the date filter, except Coming up.${rangeNote}</p>${tiles}</div>
     ${workHtml}
-    <div class="sect"><h2>Retention · settled 4 weeks</h2>
+    <div class="sect svcsec" style="--sc:var(--s3)"><h2>Retention · settled 4 weeks</h2>
     <p class="sd">By the week each policy renewed: the four weeks in the settled rate, and the newest two, still settling (a renewal counts once it is two weeks past). Retained = a next term on record, a rewrite, or Rewrite Accepted on the renewal SR. Lost = the policy record shows it cancelled, a Late Payment or Service Pipeline SR cancelled it, or the renewal SR was closed on a cancellation. Rate = retained over retained plus lost. A Mid-term Cancellation (hatched, cancelled more than 30 days before the renewal) and a renewal not confirmed yet sit outside the rate. The breakdowns by how the SR was worked and pipeline are the settled four weeks; each person's own is on their card above.</p>
     <div class="tiles rtiles">${weekCards}</div><div class="oleg">${legend}</div>
     <h3 class="rh3">By how the renewal SR was worked</h3><div class="tiles rtiles">${workedCards}</div>
     <h3 class="rh3">By pipeline</h3><div class="tiles rtiles">${pipeCards}</div></div>
-    <div class="sect"><h2>Lost</h2><p class="sd">Every renewal lost in this period, and any renewal still ahead that has already cancelled, with how we know.${rangeNote}</p>
+    <div class="sect svcsec" style="--sc:var(--bad)"><h2>Lost</h2><p class="sd">Every renewal lost in this period, and any renewal still ahead that has already cancelled, with how we know.${rangeNote}</p>
     ${lostRows ? `<div class="scroll"><table class="rtable"><thead><tr><th>Renews</th><th>Customer</th><th>Policy</th><th class="num">Premium</th><th>Renewal SR</th><th>How we know</th></tr></thead><tbody>${lostRows}</tbody></table></div>` : '<p class="sd">None.</p>'}</div>
     ${renFlagHtml(doc, label, inRange)}
-    <div class="sect"><h2>Coming up · next ${doc.upcoming_days} days</h2>
+    <div class="sect svcsec" style="--sc:var(--s4)"><h2>Coming up · next ${doc.upcoming_days} days</h2>
     <p class="sd">High = not yet discussed with the customer (no renewal SR, the SR still open, No action or Unable to Contact) and a warning sign: an open Late Payment SR or a cancellation SR on the household. Medium = not discussed and renewing within ${doc.soon_days} days, or discussed with a warning sign.${gone ? ` ${gone} more policies renewing in this window were already cancelled mid term and are left out.` : ""}</p>
     <div class="rfilters">${sel("renRisk", f.risk, [["high", "High risk"], ["medium", "Medium risk"], ["low", "Low risk"]], "Any risk")}
       ${sel("renPipe", f.pipe, doc.pipelines || [], "Both pipelines")}
@@ -7937,7 +7990,7 @@ function renOutcomeHtml(m) {
       <h3 class="rh3" style="margin:0">${cesc(label[k] || k)}${who && who !== "team" ? ` · ${who === "others" ? "Others" : cesc(who.split(" ")[0])}` : ""} · ${rs.length}</h3>
       <a href="#" data-drill-close style="font-size:12.5px">Close</a></div>${svcSrTable(rs, m, true)}</div>`;
   }
-  return `<div class="sect"><h2>Renewal Outcome Breakdown${m.label ? ` <span style="font-weight:400;text-transform:none;letter-spacing:0;color:var(--text-muted)">· ${cesc(m.label)}</span>` : ""}</h2>
+  return `<div class="sect svcsec" style="--sc:var(--s3)"><h2>Renewal Outcome Breakdown${m.label ? ` <span style="font-weight:400;text-transform:none;letter-spacing:0;color:var(--text-muted)">· ${cesc(m.label)}</span>` : ""}</h2>
     <p class="sd">Renewal SRs completed in this period and how each one ended, by whoever completed it. Retained = renewed (No action and Unable to Contact/No Show included) or rewrite accepted, over everything renewed, rewritten or cancelled; Mid-term Cancellation and Sold/Moved (hatched) sit outside it. Click a segment or the legend for the list.</p>
     ${bars}<div class="oleg">${legend}</div>${list}</div>`;
 }
@@ -8060,14 +8113,14 @@ function renewalWorkHtml(m, doc, rb) {
     if (k === "sent") list = head(`Renewal texts & emails${whoTag} · ${T.sent.filter(r => !r.auto).length} typed`, "Typed first.") + svcSentTable(T.sent, m) + "</div>";
     if (k === "pipe") { const x = done.filter(r => r.pipeline === a); list = head(`${cesc((pipes.find(p => p[0] === a) || [, a])[1])} · ${x.length} completed`) + svcSrTable(x, m, true) + "</div>"; }
   }
-  return `<div class="sect"><h2>Renewal SR Work${m.label ? ` <span style="font-weight:400;text-transform:none;letter-spacing:0;color:var(--text-muted)">· ${cesc(m.label)}</span>` : ""}</h2>
+  return `<div class="sect svchero" style="--sc:var(--s3)"><h2>Renewal SR Work${m.label ? ` <span style="font-weight:400;text-transform:none;letter-spacing:0;color:var(--text-muted)">· ${cesc(m.label)}</span>` : ""}</h2>
     <p class="sd">Pick a person for their own renewal work; with nobody picked the cards below are the whole team. Renewal SRs, tasks, call backs and texts, ${fmtShortDate(m.days[0])} – ${fmtShortDate(m.days[m.days.length - 1])}; credit goes to whoever completed the SR or task. Retention, lost and coming up count the policies on each person's renewal SRs. Click any card for the accounts behind it.</p>
     <div class="svcstrip">${strip}</div>
-    <div class="tile" style="margin-top:12px;text-align:left">
+    <div class="tile ptotals" style="margin-top:12px;text-align:left;--pc:${n ? (DOT[n] || TEAM_DOT) : "var(--s3)"}">
       <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:8px">
         <b>${n ? `${pbadge(DOT[n] || TEAM_DOT, first(n))} <span style="margin-left:4px">${cesc(title(n))}</span>` : `${pbadge(TEAM_DOT, "Team")} <span style="margin-left:4px">totals</span>`}</b>
         ${n ? '<a href="#" data-rperson="">Show the team</a>' : ""}</div>
-      <div class="svcgrid">${tiles}</div>${renDrill.startsWith("rw:") && !renDrill.startsWith("rw:pipe:") ? list : ""}</div>
+      <div class="svcgrid statgrid">${tiles}</div>${renDrill.startsWith("rw:") && !renDrill.startsWith("rw:pipe:") ? list : ""}</div>
     ${tr ? `<h3 class="rh3" style="margin-top:14px">By pipeline</h3><div class="scroll"><table><thead><tr><th>Pipeline</th><th class="num">Completed</th><th class="num">Median</th><th class="num">90% within</th></tr></thead><tbody>${tr}</tbody></table></div>` : ""}
     ${renDrill.startsWith("rw:pipe:") ? list : ""}</div>`;
 }

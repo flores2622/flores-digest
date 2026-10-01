@@ -1580,7 +1580,11 @@ async function editionsPost(request, env, key) {
   const at = new Date().toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", timeZone: "America/Phoenix" });
   switch (body.op) {
     case "rx": { const e = String(body.emoji || "").slice(0, 4); if (!id || !e) return json({ error: "bad reaction" }, 400); const r = s.rx[id] = s.rx[id] || {}; r[e] = toggle(r[e] || []); break; }
-    case "cm": { if (!id || !text) return json({ error: "empty comment" }, 400); (s.cm[id] = s.cm[id] || []).push({ who, text, at }); if (s.cm[id].length > 200) s.cm[id] = s.cm[id].slice(-200); break; }
+    case "cm": {   // a typed reply, a built-in reaction GIF (`gif`), or both
+      const gif = /^[a-z0-9_-]{1,24}$/.test(String(body.gif || "")) ? String(body.gif) : "";
+      if (!id || (!text && !gif)) return json({ error: "empty comment" }, 400);
+      const c = { who, text, at }; if (gif) c.gif = gif;
+      (s.cm[id] = s.cm[id] || []).push(c); if (s.cm[id].length > 200) s.cm[id] = s.cm[id].slice(-200); break; }
     case "poll": {   // one vote each; voting the same name again takes it back
       const c = String(body.choice || "").slice(0, 40); if (!c) return json({ error: "bad vote" }, 400);
       let was = null;
