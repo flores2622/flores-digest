@@ -123,7 +123,7 @@ DOT = {"Crystal Mango": "cA", "Lorena Gonzalez": "cB", "Mike Olvera": "cC",
        "Amanda Torricellas": "cL"}
 TEAM_DOT = "cE"
 TIER = {"green": "tier-text-good", "yellow": "tier-text-warning",
-        "red": "tier-text-critical"}
+        "red": "tier-text-critical", "none": ""}
 
 
 def hhmm(sec):
@@ -227,6 +227,17 @@ def build_funnel(m, day_label):
         "Premium Sold", f"Producer sales, tiered per policy &mdash; {day_label}",
         ps, money(tsold),
         cfg.tier("premium_sold_per_policy", tsold / tpol if tpol else 0)))
+
+    # Life, its own card (Frank, 2026-09-30) -- never in Premium Sold. Only on
+    # a day with a life sale, so an ordinary day's email is unchanged.
+    tlife = sum(m[p].get("life_policies", 0) for p in P)
+    if tlife:
+        lf = [(p, m[p].get("life_premium", 0),
+               f'{money(m[p].get("life_premium", 0))}<span class="sq">{m[p].get("life_policies", 0)} pol</span>',
+               "none") for p in P]
+        cards.append(funnel_card(
+            "Life Sold", f"Life insurance, counted apart &mdash; {day_label}", lf,
+            f'{money(sum(m[p].get("life_premium", 0) for p in P))}<span class="sq">{tlife} pol</span>', "none"))
 
     return '<div class="scorecard-grid">' + "".join(cards) + '</div>'
 

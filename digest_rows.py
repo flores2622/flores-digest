@@ -58,7 +58,7 @@ def build(day, log=print):
     import day_calls
     ix = phone_index(leads)
     smap = cfg.lead_source_map(leads)
-    out = {"dials": [], "contacts": [], "quoted": [], "sold": [], "sold_leads": [], "speed": [], "tasks": []}
+    out = {"dials": [], "contacts": [], "quoted": [], "sold": [], "life": [], "sold_leads": [], "speed": [], "tasks": []}
 
     for who in cfg.PRODUCERS:
         p = P.get(who) or {}
@@ -100,7 +100,9 @@ def build(day, log=print):
             who = azid.get(x.get("agentId"))
             if not who or not cfg.is_real_sale(x, smap):
                 continue
-            out["sold"].append({"who": who, "product": sales_log_auto.product_name(x),
+            # Life is its own list and its own stat, never a policy sold
+            # (Frank, 2026-09-30).
+            (out["life"] if cfg.is_life(x) else out["sold"]).append({"who": who, "product": sales_log_auto.product_name(x),
                                 "policy": x.get("policyNumber") or "", "premium": round(float(x.get("premium") or 0)),
                                 "source": smap.get(x.get("leadSourceId"), ""),
                                 # Household Completion's cross-sell, by its own rule.
@@ -124,8 +126,10 @@ def build(day, log=print):
             # Not a household sold when the lead's source is not a sale (BOB,
             # Rewrite -- is_real_sale's own set) or the lead is a test record
             # (Frank, 2026-09-30). site/live.js soldLeadsToday skips the same.
+            # A lead sold on a life source is a life sale, not a household sold
+            # (Frank, 2026-09-30: "i dont want it to count as a HH").
             if (lead_sources.norm(l.get("leadSourceName")) in lead_sources.NOT_A_SALE
-                    or cfg.is_test_lead(l)):
+                    or cfg.is_test_lead(l) or cfg.is_life_lead(l)):
                 continue
             # household: so the board counts households sold, not lead records
             # -- duplicate lead records are pervasive (Frank, 2026-09-28).

@@ -321,22 +321,31 @@ export async function azLeadSources(env, fetchFn = fetch) {
   return names;
 }
 
-/* digest_config.real_sales + bundle_classification's cross_sell, per producer. */
+/* digest_config.is_life (keep in step): the policy-type pattern travels in
+   basis.life. Life is its own stat, never a policy sold (Frank, 2026-09-30). */
+export function isLifePolicy(p, basis) {
+  const rx = (basis.life || {}).rx;
+  return !!rx && new RegExp(rx[0], rx[1]).test(String(p.policyTypeName || ""));
+}
+
+/* digest_config.real_sales + life_sales + bundle_classification's
+   cross_sell, per producer. */
 export function salesFrom(basis, policies, sourceNames) {
   const notSale = new Set(basis.not_a_sale || []);
   const existing = new Set(basis.existing_household || []);
   const byAz = Object.fromEntries(Object.entries(basis.producers || {}).map(([n, v]) => [String(v.az_id), n]));
-  const out = Object.fromEntries(Object.keys(basis.producers || {}).map(n => [n, { pol: 0, ps: 0, cross_sell: 0 }]));
+  const out = Object.fromEntries(Object.keys(basis.producers || {}).map(n => [n, { pol: 0, ps: 0, cross_sell: 0, life: 0, life_ps: 0 }]));
   for (const p of policies) {
     const who = byAz[String(p.agentId)];
     if (!who) continue;
     const src = norm(sourceNames[p.leadSourceId]);
     if (notSale.has(src)) continue;
+    if (isLifePolicy(p, basis)) { out[who].life++; out[who].life_ps += Number(p.premium) || 0; continue; }
     out[who].pol++;
     out[who].ps += Number(p.premium) || 0;
     if (existing.has(src)) out[who].cross_sell++;
   }
-  for (const v of Object.values(out)) v.ps = Math.round(v.ps);
+  for (const v of Object.values(out)) { v.ps = Math.round(v.ps); v.life_ps = Math.round(v.life_ps); }
   return out;
 }
 
@@ -482,6 +491,7 @@ export async function soldLeadsToday(env, day, basis, fetchFn = fetch, kept = nu
   const per = {}, raw = [];
   const existing = new Set(basis.existing_household || []);
   const notSale = new Set(basis.not_a_sale || []);
+  const lifeSources = new Set((basis.life || {}).lead_sources || []);
   for (const l of merged.values()) {
     if (l.status !== 2 || !String(l.soldDate || "").startsWith(day)) continue;
     const name = [l.firstname, l.lastname].map(x => String(x || "").trim()).filter(Boolean).join(" ");
@@ -490,9 +500,9 @@ export async function soldLeadsToday(env, day, basis, fetchFn = fetch, kept = nu
     raw.push({ agentId: l.assignedTo, leadSourceId: l.leadSourceId, household: l.convertedHouseholdId ?? null, name });
     const who = byAz[String(l.assignedTo)];
     if (!who) continue;
-    // digest_rows.sold_leads (keep in step): a BOB / Rewrite source or a
-    // test lead is not a household sold (Frank, 2026-09-30).
-    if (notSale.has(norm(l.leadSourceName)) || isTestLead(l, basis)) continue;
+    // digest_rows.sold_leads (keep in step): a BOB / Rewrite source, a test
+    // lead or a life source is not a household sold (Frank, 2026-09-30).
+    if (notSale.has(norm(l.leadSourceName)) || isTestLead(l, basis) || lifeSources.has(norm(l.leadSourceName))) continue;
     (per[who] || (per[who] = [])).push({ lead_id: l.id, household: l.convertedHouseholdId ?? null, lead: name,
       existing: existing.has(norm(l.leadSourceName)) });
   }

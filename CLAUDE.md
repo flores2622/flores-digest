@@ -325,6 +325,21 @@ Everything caches under `data/`, so a re-run resumes rather than restarting.
   to the day's R2 bundle, and ONLY `turns` added to each day's page (backups
   under `backups/<today>-card-turns/`) -- the transcript Apollo read, the
   grades and data/transcripts_<day>.json (so every verdict) untouched.
+- **Life insurance is its own stat** (Frank, 2026-09-30: "life insurance
+  sales are separate than the rest. I want it on the sales digest still, but
+  i dont want it to count as a HH or premium, make it its own stat"). A
+  policy is life by its AgencyZoom type (`digest_config.is_life`: "N year
+  term", Whole / Universal / Index / Variable Universal / Individual Life,
+  "Life"); `real_sales` and `bundle_classification` leave it out and
+  `life_sales` counts it (`life_policies` / `life_premium`; the board's
+  `life` / `life_ps`). A lead sold on Life Cross Sell is not a household
+  sold (`is_life_lead`). So life is never in Policies, Premium Sold, HH
+  Sold, Household Completion, the leaderboard or the closing ratio; the
+  Digest's **Life Sold** tile shows it (its list is `rows.life`), the email
+  adds a Life Sold card only on a day with one, and the Worker keeps a live
+  life sale apart the same way (`live_basis.life`). The Sales sheet still
+  lists it. BOB life policies stay not-a-sale: no producer had a counted
+  life sale in September (Crystal's two, 09-02 and 09-15, were BOB).
 - **A renewal is not new business.** Neither is servicing, a payment, a claim,
   or chasing paperwork on a policy already sold.
 - **Selling a product the household does not have yet IS new business**, even to

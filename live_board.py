@@ -111,6 +111,10 @@ def basis(day):
         # 2026-09-30).
         "test_lead": {"ids": sorted(cfg.TEST_LEAD_IDS),
                       "rx": [cfg.TEST_LEAD_RE.pattern, "i"]},
+        # Life is its own stat (Frank, 2026-09-30): digest_config.is_life's
+        # policy-type pattern and the life lead sources, so the Worker keeps
+        # a live life sale out of Premium Sold and households sold too.
+        "life": {"rx": [cfg.LIFE_TYPE.pattern, "i"], "lead_sources": sorted(cfg.LIFE_LEAD_SOURCES)},
         "util_exclude": sorted(_util_exclude()),
         # The Sales sheet's auto rows (sales_log_auto), so the Worker adds a
         # live sale to the sheet with the same people and product names.
