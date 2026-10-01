@@ -172,6 +172,16 @@ Everything caches under `data/`, so a re-run resumes rather than restarting.
   was 16,000 / 12,000 silently), the card's first budget is 9,000 tokens,
   each new card keeps `model`, and `_bool_pair` reads "true"/"false"/"null"/
   "n/a" strings for what they say (a bare None is None, never False).
+- **A closed card's right half is Quick coaching** (Frank, 2026-09-30:
+  "the right half of the card be a quick coaching summary, while leaving
+  the left of the card whats currently there"; `quickCoachHtml`), from what
+  the card already holds -- no new read: the top two `good` and `bad`
+  titles (detail on hover) and one line to say next time, the first
+  objection not overcome's first `fix`, else `askfix`. One column under
+  900px; no panel when there is nothing to say. **A card opens from
+  "▼ Expand ▼" at its bottom and closes from "▲ Collapse ▲" at the bottom of
+  the open card** (Frank, 2026-09-30, replacing the small top-right arrow;
+  the header still opens it too), which scrolls back to the card's top.
 - **Card flags are categorised** (Frank, 2026-09-27): Apollo names each
   flag's category from `digest_config.FLAG_GROUPS` (No next step, Quote not
   presented, Discovery missed, Approach skipped, Objection dropped, Call cut
@@ -315,6 +325,33 @@ Everything caches under `data/`, so a re-run resumes rather than restarting.
   to the day's R2 bundle, and ONLY `turns` added to each day's page (backups
   under `backups/<today>-card-turns/`) -- the transcript Apollo read, the
   grades and data/transcripts_<day>.json (so every verdict) untouched.
+- **Life insurance is its own stat** (Frank, 2026-09-30: "life insurance
+  sales are separate than the rest. I want it on the sales digest still, but
+  i dont want it to count as a HH or premium, make it its own stat"). A
+  policy is life by its AgencyZoom type (`digest_config.is_life`: "N year
+  term", Whole / Universal / Index / Variable Universal / Individual Life,
+  "Life"); `real_sales` and `bundle_classification` leave it out and
+  `life_sales` counts it (`life_policies` / `life_premium`; the board's
+  `life` / `life_ps`). A lead sold on Life Cross Sell is not a household
+  sold (`is_life_lead`), **nor is a lead on any source whose sale was life**
+  (Frank, 2026-09-30: "still shows coral with 1 HH" -- Alondra Angulo, Home
+  no Auto, marked sold 09-30 for Coral's 09-29 Individual Life): every
+  policy its producer sold on its lead source within 3 days of its soldDate
+  is life (`life_lead_policies`, `LIFE_LEAD_DAYS`; the Worker's
+  `isLifeLead` gets them as `live_basis.life.recent` plus today's own
+  policy read). Policy records carry no customer, so that tie is the only
+  one; it changed no other September lead. So life is never in Policies, Premium Sold, HH
+  Sold, Household Completion, the leaderboard or the closing ratio; the
+  Digest's **Life Sold** tile shows it (its list is `rows.life`), the email
+  adds a Life Sold card only on a day with one, and the Worker keeps a live
+  life sale apart the same way (`live_basis.life`). The Sales sheet still
+  lists it. BOB life policies stay not-a-sale: no producer had a counted
+  life sale in September (Crystal's two, 09-02 and 09-15, were BOB).
+  **The goal is 1 life policy a week** (Frank, 2026-10-01), per producer,
+  Monday to Friday (team: 1 x `TEAM_SCALE`): `digest_config.life_week_tier`
+  over the board's `life_week` (Monday to the day; `lifeTier` in index.html
+  mirrors it) -- green once the week has one, yellow before Friday without
+  one, red on Friday without one. A range wants 1 per week it touches.
 - **A renewal is not new business.** Neither is servicing, a payment, a claim,
   or chasing paperwork on a policy already sold.
 - **Selling a product the household does not have yet IS new business**, even to
@@ -704,6 +741,31 @@ A tab that fails to draw (an old or partial document) shows "This section
 could not be drawn: <message>" under its date controls instead of a blank
 page (2026-09-30).
 
+## Apollo's Road Map (ARM) and the tour
+
+**Learning Center > Apollo's Road Map is one tab with a dropdown** (Frank,
+2026-09-30: "if Im out for a week and want amanda to coach, she should know
+what everything means, how the model coaches, where everything is ... in
+regular language, not AI prompt language"; "Apollos road map should be the
+name of the full tab, with a dropdown that has options for manager/coaching,
+and one for the 3 producer levels"): **Manager / Coaching** (the ARM, shown
+only to `ROLEPLAY_HISTORY_VIEWERS`, via the Worker's `/api/me`) and **New /
+Mid-Level / Experienced Producer** for everyone. **Service Center > Athena's
+Road Map** is the service team's (Frank, 2026-09-30: "make an Athena Road Map
+for the service team too"): Amanda's Service Playbook in plain words plus how
+the Service Center counts, for everyone; when `service_playbook.py` changes,
+it changes with it. The words live in `site/public/blueprints.js`, nowhere
+else (`map` = which tab, `label` = the dropdown name).
+**Take the tour** at the foot of the left bar walks anyone through the
+board (`TOUR_STEPS` in index.html).
+**KEEP THEM CURRENT, in the same change** (Frank: "continues updating as we
+make changes"): anything that changes what a number means, a goal, how
+Apollo reads or scores a call, what a page shows or where it sits, or adds
+a page, also updates the matching lines in `blueprints.js` (and a tour step
+if a page moved or was added) and moves its `updated` date. Write them the
+way you'd explain it to a person at their desk -- no field names, file
+names or prompt wording.
+
 ## Date ranges on the Digest
 
 **The range leaderboard is re-ranked on averages** (Frank, 2026-09-28):
@@ -992,6 +1054,19 @@ Crystal (hybrid); credit always goes to whoever COMPLETED the SR or task.
   counts from the rows. Utilization cannot be split (Insightful measures the
   whole day). 09-01..09-25 were flagged from their saved files (backups
   under `backups/2026-09-27-renewal-split/`).
+- **Renewal SR Work is the Service Center's person strip** (Frank,
+  2026-09-30: "same as the service center, person strip with team
+  totals"). The agency's retention rates stay on top; under them one small
+  card per person (renewal SRs, retained, open, overdue) and one grid -- the
+  team's until a person is picked (`renPerson`), then theirs
+  (`renewalWorkHtml(m, doc, rb)`): renewal SRs completed, retained (of the
+  renewal SRs completed), reviewed with the customer (every outcome but No
+  action / Unable to Contact and the two outside the rate --
+  `REN_DISCUSSED`), renewal tasks, open / overdue, coming up and high risk,
+  settled 4-week retention and lost (the policies on their renewal SRs),
+  renewal dials, call backs, speed to reply, texts / emails. Every card
+  opens its accounts (`rw:<list>[:<person>]`). The settled section's "By
+  who worked the renewal SR" row went into the cards.
 - **Both tabs take the Sales Digest's date filter** (Frank, 2026-09-27).
   On the Renewals tab, Renewal SR Work, Lost and Not confirmed follow it
   (Lost and Not confirmed by the day the policy renewed); Coming up stays
@@ -1105,6 +1180,13 @@ Crystal (hybrid); credit always goes to whoever COMPLETED the SR or task.
   left out, renewal numbers split to the Renewals side. Past days: `python3
   service_digest.py --add-dials 2026-09-01 2026-09-28` (backs up under
   `backups/<today>-dials/`, adds only `dials`). The Renewals tab is next.
+  **Laid out for the full-width board** (Frank, 2026-09-30: "it looks
+  off"): the person strip is three equal columns (`.svcstrip`), the stat
+  cards come in even rows of six (`.svcgrid`; four, then two, on narrower
+  screens), Texts & Emails stays full width, and the rest sits two to a row
+  like the Sales Digest (`.digestgrid`): Note Standard, Completion Time and
+  Late Payments on the left, the pipeline outcomes and Contingencies on the
+  right.
 - **Every recorded service call has its full transcript** (Frank,
   2026-09-30: "full transcripts for service calls too"). `service_calls.py`
   takes exactly the calls the Service Center's rows list -- every inbound
@@ -1345,7 +1427,7 @@ dark / device as icons only, remembered per browser (`board-look`). The
 menu lists each Center's pages; the header greets whoever is looking by
 first name (`/api/me`, ~90 random lines) and carries the search (Ctrl K:
 pages, sections, producers, every lead on the loaded day) and **Take a
-tour** (`tour.js`, the Field-notes card). Every section is a cream card
+tour** (the board's own system tour, its card styled as the Field note). Every section is a cream card
 with a 2px border. **A feed line never names a stage** ("Mike presented
 $2,500 in premium"): the Digest's day reads as Apollo's group chat
 (`digestFeedItems`) beside **Needs someone now** / **Left on the desk**

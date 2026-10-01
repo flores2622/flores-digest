@@ -58,7 +58,7 @@ def build(day, log=print):
     import day_calls
     ix = phone_index(leads)
     smap = cfg.lead_source_map(leads)
-    out = {"dials": [], "contacts": [], "quoted": [], "sold": [], "sold_leads": [], "speed": [], "tasks": []}
+    out = {"dials": [], "contacts": [], "quoted": [], "sold": [], "life": [], "sold_leads": [], "speed": [], "tasks": []}
 
     for who in cfg.PRODUCERS:
         p = P.get(who) or {}
@@ -92,15 +92,21 @@ def build(day, log=print):
 
     azid = {v["az_id"]: n for n, v in cfg.PRODUCERS.items()}
     try:
-        import sales_log_auto
         pol = json.loads((ROOT / "data/az_policies_all.json").read_text())
+    except Exception as e:
+        pol = []
+        log(f"  digest rows: no policy list ({type(e).__name__}: {e})")
+    try:
+        import sales_log_auto
         for x in pol:
             if not str(x.get("soldDate") or "").startswith(day):
                 continue
             who = azid.get(x.get("agentId"))
             if not who or not cfg.is_real_sale(x, smap):
                 continue
-            out["sold"].append({"who": who, "product": sales_log_auto.product_name(x),
+            # Life is its own list and its own stat, never a policy sold
+            # (Frank, 2026-09-30).
+            (out["life"] if cfg.is_life(x) else out["sold"]).append({"who": who, "product": sales_log_auto.product_name(x),
                                 "policy": x.get("policyNumber") or "", "premium": round(float(x.get("premium") or 0)),
                                 "source": smap.get(x.get("leadSourceId"), ""),
                                 # Household Completion's cross-sell, by its own rule.
@@ -118,14 +124,17 @@ def build(day, log=print):
                                  "lead_id": rid if rid in by_id else None,
                                  "customer_id": rid if rid and rid not in by_id else None})
     import lead_sources
+    life_recent = cfg.life_lead_policies(pol, day)
     for l in leads:
         who = azid.get(l.get("assignedTo"))
         if who and l.get("status") == 2 and str(l.get("soldDate") or "").startswith(day):
             # Not a household sold when the lead's source is not a sale (BOB,
             # Rewrite -- is_real_sale's own set) or the lead is a test record
             # (Frank, 2026-09-30). site/live.js soldLeadsToday skips the same.
+            # A lead sold on a life source is a life sale, not a household sold
+            # (Frank, 2026-09-30: "i dont want it to count as a HH").
             if (lead_sources.norm(l.get("leadSourceName")) in lead_sources.NOT_A_SALE
-                    or cfg.is_test_lead(l)):
+                    or cfg.is_test_lead(l) or cfg.is_life_lead(l, life_recent)):
                 continue
             # household: so the board counts households sold, not lead records
             # -- duplicate lead records are pervasive (Frank, 2026-09-28).

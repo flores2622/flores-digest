@@ -62,7 +62,7 @@ def build(day, template=TEMPLATE):
                  "n": len(pooled)} if pooled else None)
 
     for heading, new in [
-        ("Sales Funnel by Producer", rr.build_funnel(P, label)),
+        ("Sales Funnel by Producer", rr.build_funnel(P, label, day)),
         ("Task Completion Rate", panels.task_table(M["tasks"], {})),
         ("Recontact Struggle",
          panels.recontact_cards(M["recontact"], f"Recontact_Detail_{day}.pdf")),

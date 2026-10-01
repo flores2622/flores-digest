@@ -687,6 +687,14 @@ def build_metrics(day):
                 titles_by_lead[t["customerId"]].append(t.get("title") or "")
 
     real = cfg.real_sales(day, pol, smap, azid)
+    life = cfg.life_sales(day, pol, smap, azid)   # its own stat, never in `real`
+    # This week's life policies, Monday to `day`, for the weekly goal.
+    life_week = collections.Counter()
+    _d = dt.date.fromisoformat(cfg.week_start(day))
+    while _d.isoformat() <= day:
+        for _who, (_n, _p) in cfg.life_sales(_d.isoformat(), pol, smap, azid).items():
+            life_week[_who] += _n
+        _d += dt.timedelta(days=1)
     bundle = cfg.bundle_classification(day, pol, leads, custs, smap, azid)
     # Inbound transcripts, grouped by producer. transcribe_day stored them
     # under the caller's number, so they are already keyed like a dial.
@@ -946,6 +954,10 @@ def build_metrics(day):
                   "quoted_premium": qprem,
                   "premium_quoted": round(tot),
                   "policies": n_sold, "premium_sold": round(prem),
+                  # Life sales, counted apart (Frank, 2026-09-30).
+                  "life_policies": life.get(who, (0, 0.0))[0],
+                  "life_premium": round(life.get(who, (0, 0.0))[1]),
+                  "life_week": life_week.get(who, 0),
                   # ALL dialled numbers, including the ones classify() excluded
                   # as service/renewal/no-record -- kept separately from
                   # call_volume/total_dials (which stay new-business only, the

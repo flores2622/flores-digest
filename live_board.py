@@ -49,6 +49,13 @@ import lead_sources
 ROOT = pathlib.Path(__file__).resolve().parent
 
 
+def _life_recent(day):
+    try:
+        return cfg.life_lead_policies(json.loads((ROOT / "data/az_policies_all.json").read_text()), day)
+    except Exception:
+        return []
+
+
 def basis(day):
     """The checkpoint's own verdicts, for the Worker to extend. None when the
     day's metrics or call log aren't on disk (the board then just shows the
@@ -111,6 +118,14 @@ def basis(day):
         # 2026-09-30).
         "test_lead": {"ids": sorted(cfg.TEST_LEAD_IDS),
                       "rx": [cfg.TEST_LEAD_RE.pattern, "i"]},
+        # Life is its own stat (Frank, 2026-09-30): digest_config.is_life's
+        # policy-type pattern and the life lead sources, so the Worker keeps
+        # a live life sale out of Premium Sold and households sold too.
+        # `recent`: every policy sold within LIFE_LEAD_DAYS of the day, for
+        # is_life_lead's producer + source tie (a lead sold as life is not a
+        # household sold; Frank, 2026-09-30).
+        "life": {"rx": [cfg.LIFE_TYPE.pattern, "i"], "lead_sources": sorted(cfg.LIFE_LEAD_SOURCES),
+                 "days": cfg.LIFE_LEAD_DAYS, "recent": _life_recent(day)},
         "util_exclude": sorted(_util_exclude()),
         # The Sales sheet's auto rows (sales_log_auto), so the Worker adds a
         # live sale to the sheet with the same people and product names.

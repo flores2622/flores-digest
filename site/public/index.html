@@ -170,7 +170,7 @@ html[data-mode="dark"] .tr { color: var(--bad); }
 .bktip td { padding: 2px 0 2px 12px; border: 0; font-size: 11.5px; white-space: nowrap; font-variant-numeric: tabular-nums; text-align: right; }
 .bktip td:first-child { padding-left: 0; text-align: left; }
 .bkrank-n { display: inline-block; min-width: 18px; color: var(--text-muted); font-variant-numeric: tabular-nums; }
-.rtiles { grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); }
+.tiles.rtiles { grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); }
 .rh3 { font-size: 12px; text-transform: uppercase; letter-spacing: .06em; color: var(--text-muted); margin: 16px 0 6px; }
 .rtable th, .rtable td { text-align: left; vertical-align: top; }
 .rtable th.num, .rtable td.num { text-align: right; }
@@ -234,6 +234,8 @@ body {
   padding: 20px 10px; border-right: 1px solid var(--border);
   position: sticky; top: 49px; align-self: flex-start; max-height: calc(100vh - 49px);
   overflow-y: auto;
+  /* Full height, so "Take the tour" (margin-top: auto) sits at the foot. */
+  height: calc(100vh - 49px); box-sizing: border-box;
 }
 .tab {
   background: none; border: none; border-left: 3px solid transparent; border-radius: 0 7px 7px 0;
@@ -248,7 +250,7 @@ body {
   .shell { flex-direction: column; }
   .tabs {
     flex-direction: row; width: 100%; max-width: 100%; min-width: 0; flex: none;
-    position: static; max-height: none; overflow-y: visible;
+    position: static; max-height: none; height: auto; overflow-y: visible;
     overflow-x: auto; border-right: none; border-bottom: 1px solid var(--border); padding: 8px 12px;
   }
   .tab { border-left: none; border-bottom: 2px solid transparent; border-radius: 0; white-space: nowrap; flex: none; width: auto; }
@@ -327,7 +329,15 @@ h2 {
    column, same as it already does outside this grid. Collapses to one
    column under the same width other narrow layouts in this file use. */
 .digestgrid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 20px; align-items: start; }
-.digestgrid > div { min-width: 0; }   /* an open card list scrolls inside its column instead of widening it */
+.digestgrid > div { min-width: 0; }
+/* The Service Center at full width (Frank, 2026-09-30: "it looks off"):
+   the person strip fills the row, the stat cards come in even rows of six,
+   and the sections under them sit two to a row like the Sales Digest. */
+.svcstrip { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
+.svcgrid { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 10px; }
+.svcsmall { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 260px)); gap: 10px; }
+@media (max-width: 1300px) { .svcgrid { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
+@media (max-width: 900px) { .svcgrid { grid-template-columns: repeat(2, minmax(0, 1fr)); } .svcstrip { grid-template-columns: 1fr; } }   /* an open card list scrolls inside its column instead of widening it */
 @media (max-width: 720px) { .digestgrid { grid-template-columns: 1fr; } }
 
 /* Stat tiles. */
@@ -562,8 +572,15 @@ td.num.msgbad { color: var(--bad); font-weight: 600; }
 .ccard { display: block; background: var(--surface); border: 1px solid var(--border-strong); border-radius: 9px; padding: 12px; margin-bottom: 13px; }
 .ccard > summary.cchead { cursor: pointer; list-style: none; }
 .ccard > summary.cchead::-webkit-details-marker { display: none; }
-.ctog { color: var(--text-muted); font-size: 11px; margin-left: 8px; display: inline-block; transition: transform .15s; }
-.ccard[open] .ctog { transform: rotate(90deg); }
+/* Open and close at the bottom of the card, "Expand" with an arrow each side
+   (Frank, 2026-09-30, replacing the small arrow at the top right). */
+.cexp { display: flex; justify-content: center; align-items: center; gap: 8px; margin-top: 10px; padding-top: 7px;
+  border-top: 1px solid var(--border); font-size: 11.5px; font-weight: 600; letter-spacing: .04em; text-transform: uppercase; color: var(--text-secondary); }
+.cexp .ar { font-size: 13px; line-height: 1; }
+.ccard > summary.cchead:hover .cexp { color: var(--text-primary); }
+.ccard[open] > summary .cexp { display: none; }
+.ccol { cursor: pointer; margin-top: 12px; }
+.ccol:hover { color: var(--text-primary); }
 .blk { background: var(--surface-raised); border: 1px solid var(--border); border-radius: 7px; padding: 13px 15px; margin-bottom: 9px; }
 .blk:last-child { margin-bottom: 0; }
 .bl { font-size: 10px; text-transform: uppercase; letter-spacing: 0.09em; color: var(--text-muted); margin-bottom: 9px; }
@@ -572,6 +589,19 @@ td.num.msgbad { color: var(--bad); font-weight: 600; }
 .badge-slot { margin-left: 8px; vertical-align: middle; }
 .cmeta { font-size: 11px; color: var(--text-muted); margin-top: 1px; }
 .sum { font-size: 12.5px; line-height: 1.55; margin-top: 9px; }
+/* The closed card: what happened on the left, a quick coaching read on the
+   right (Frank, 2026-09-30: "the right half of the card be a quick coaching
+   summary"); one column on a narrow screen. */
+.chbody { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 16px; align-items: start; }
+.chbody.one { grid-template-columns: minmax(0, 1fr); }
+@media (max-width: 900px) { .chbody { grid-template-columns: minmax(0, 1fr); } }
+.qc { margin-top: 9px; border-left: 3px solid var(--border-strong); padding: 2px 0 2px 12px; font-size: 12.5px; line-height: 1.5; }
+.qc .qh { font-size: 10px; text-transform: uppercase; letter-spacing: .05em; color: var(--text-secondary); margin-bottom: 4px; }
+.qc .qr { display: flex; gap: 8px; margin: 3px 0; }
+.qc .qk { flex: 0 0 86px; font-weight: 600; }
+.qc .qk.g { color: var(--good); } .qc .qk.b { color: var(--bad); } .qc .qk.s { color: var(--s1, #2b6cb0); }
+.qc .qv { min-width: 0; }
+.qc .say { font-style: italic; }
 .two { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
 @media (max-width: 640px) { .two { grid-template-columns: 1fr; } }
 .ol { font-size: 9.5px; text-transform: uppercase; letter-spacing: 0.07em; color: var(--text-muted); margin-bottom: 3px; }
@@ -885,6 +915,23 @@ html[data-look="mesa"] .chatbox .pinned { background: var(--text-primary); color
 .todo li.bad b.n { color: var(--bad); } .todo li.warn b.n { color: var(--warn); } .todo li.ok b.n { color: var(--good); }
 .todo button { font: 600 12px var(--body); border: 1px solid var(--border-strong); background: var(--surface-raised); border-radius: 8px; padding: 6px 10px; cursor: pointer; color: var(--text-primary); white-space: nowrap; }
 .todo button:hover { border-color: var(--accent); }
+
+/* The tour's card is a Field note (Frank, 2026-10-01: option 3): a ruled index
+   card with a paper clip, the thing explained left lit in green. */
+.tourspot { border-radius: 14px; box-shadow: 0 0 0 9999px rgba(42,35,32,.55); outline: 3px solid var(--livegreen); outline-offset: 3px; }
+.tourcard { width: min(380px, calc(100vw - 24px)); background: #fffdf5; color: #2a2320; border: 1px solid #d9c8b4; border-radius: 4px; box-shadow: 0 14px 40px rgba(0,0,0,.28);
+  padding: 56px 16px 12px; background-image: linear-gradient(0deg, transparent 0 27px, #f1d9d9 27px 28px); background-size: 100% 28px; background-position: 0 56px; font-family: var(--body); }
+.tourcard::before { content: ""; position: absolute; top: -14px; left: 28px; width: 22px; height: 40px; border: 3px solid #9a9a9a; border-radius: 11px; border-bottom: 0; }
+.tourcard .tstep { position: absolute; top: 13px; right: 16px; width: 30px; height: 30px; border-radius: 50%; background: #2a2320; color: #fff; display: flex; align-items: center; justify-content: center; font: 700 12px var(--body); letter-spacing: 0; text-transform: none; margin: 0; }
+.tourcard h4 { position: absolute; top: 0; left: 16px; right: 56px; height: 56px; margin: 0; display: flex; align-items: center; font: 400 20px var(--display); border-bottom: 2px solid #e59a9a; }
+.tourcard h4::after { content: ""; position: absolute; left: -16px; right: -56px; bottom: -2px; border-bottom: 2px solid #e59a9a; }
+.tourcard p { margin: 0 0 8px; font-size: 14px; line-height: 28px; color: #2a2320; }
+.tourcard .tbtns .tnext { background: #b5532f; border-color: #b5532f; color: #fff; border-radius: 10px; }
+.tourcard .tbtns .tback { background: #e8dac9; border-color: #e8dac9; color: #2a2320; border-radius: 10px; }
+.tourcard .tbtns .tskip { color: #6e5f53; }
+.tabs .tourbtn { margin-top: auto; background: var(--side2); color: var(--sideInk); border: 0; border-radius: 12px; padding: 11px 12px; font: 600 14px var(--body); }
+.tabs .tourbtn:hover { color: #fff; border-color: transparent; }
+.tabs .tourbtn + .setbtn { margin-top: 6px; }
 /* The coaching card's flow is in its badge (outcomeBadgeHtml), so the striped
    left edge and its legend are gone (Frank, 2026-09-30 preview review: "remove
    that left colored tab from the cards, and the legend, i like the badge"). */
@@ -902,6 +949,52 @@ html[data-look="mesa"] .chatbox .pinned { background: var(--text-primary); color
   .top { padding-top: 14px; }
   .top h1 { font-size: 24px; }
 }
+/* Road Map (Frank, 2026-09-30): Learning Center > Road Map, the plain-
+   language guides in blueprints.js. One reading column. */
+.bp { max-width: 760px; }
+.bp .bptitle { margin-top: 0; }
+.bppick label { font-size: 12.5px; font-weight: 600; color: var(--text-secondary); }
+.bp .bpwho { color: var(--text-secondary); font-size: 14px; margin: 0 0 6px; line-height: 1.55; }
+.bp .bpdate { color: var(--text-muted); font-size: 12px; margin: 0 0 18px; }
+.bp .bptoc { display: flex; flex-wrap: wrap; gap: 4px 14px; font-size: 12.5px; margin: 0 0 8px; }
+.bp .bptoc a { color: var(--text-secondary); text-decoration: none; border-bottom: 1px dotted var(--border-strong); }
+.bp .bptoc a:hover { color: var(--text-primary); }
+.bp section { border-top: 1px solid var(--border); padding-top: 4px; margin-top: 22px; }
+.bp h3 { font-size: 16px; margin: 14px 0 10px; color: var(--text-primary); text-wrap: balance; }
+.bp p { margin: 0 0 10px; line-height: 1.6; font-size: 14px; }
+.bp ul, .bp ol { margin: 0 0 12px; padding-left: 22px; font-size: 14px; line-height: 1.6; }
+.bp li { margin-bottom: 5px; }
+.bp dl { margin: 0 0 12px; display: grid; grid-template-columns: minmax(120px, 190px) minmax(0, 1fr); gap: 8px 16px; font-size: 14px; line-height: 1.55; }
+.bp dt { font-weight: 600; color: var(--text-primary); }
+.bp dd { margin: 0; color: var(--text-secondary); }
+@media (max-width: 560px) { .bp dl { grid-template-columns: 1fr; gap: 2px; } .bp dd { margin-bottom: 8px; } }
+.bp .bptw { overflow-x: auto; margin: 0 0 12px; }
+.bp table { border-collapse: collapse; font-size: 13.5px; min-width: 100%; }
+.bp th { text-align: left; font-size: 11.5px; text-transform: uppercase; letter-spacing: .05em; color: var(--text-muted); padding: 6px 10px; border-bottom: 1px solid var(--border-strong); }
+.bp td { padding: 7px 10px; border-bottom: 1px solid var(--border); vertical-align: top; }
+
+/* System tour (Frank, 2026-09-30: "an option on the bottom left for anyone
+   to do a system tour"). The button sits at the foot of the left bar; the
+   tour lights one part of the page at a time with a card beside it. */
+.tabs .tourbtn { margin-top: auto; background: none; border: 1px solid var(--border-strong); border-radius: 7px;
+  padding: 8px 10px; font: inherit; font-size: 12.5px; font-weight: 600; color: var(--text-secondary); cursor: pointer; text-align: left; }
+.tabs .tourbtn:hover { color: var(--text-primary); border-color: var(--text-muted); }
+.tabs .tourbtn:focus-visible, .tourcard button:focus-visible { outline: 2px solid var(--s1, #2563eb); outline-offset: 2px; }
+.tourspot { position: fixed; z-index: 90; border-radius: 10px; pointer-events: none;
+  box-shadow: 0 0 0 3px var(--s1, #2563eb), 0 0 0 9999px rgba(10, 14, 20, .55); transition: all .25s ease; }
+.tourcard { position: fixed; z-index: 91; width: min(360px, calc(100vw - 32px)); background: var(--surface-raised, var(--surface));
+  color: var(--text-primary); border: 1px solid var(--border-strong); border-radius: 12px; padding: 16px 18px 14px;
+  box-shadow: 0 10px 30px rgba(0,0,0,.25); font-size: 14px; line-height: 1.55; }
+.tourcard .tstep { font-size: 11.5px; color: var(--text-muted); letter-spacing: .04em; text-transform: uppercase; margin-bottom: 4px; }
+.tourcard h4 { margin: 0 0 6px; font-size: 16px; }
+.tourcard p { margin: 0 0 12px; color: var(--text-secondary); }
+.tourcard .tbtns { display: flex; gap: 8px; justify-content: flex-end; align-items: center; }
+.tourcard .tbtns .tskip { margin-right: auto; background: none; border: none; color: var(--text-muted); font: inherit; font-size: 13px; cursor: pointer; padding: 6px 2px; }
+.tourcard .tbtns .tnext, .tourcard .tbtns .tback { font: inherit; font-size: 13px; font-weight: 600; border-radius: 7px; padding: 6px 14px; cursor: pointer; }
+.tourcard .tbtns .tnext { background: var(--text-primary); color: var(--surface); border: 1px solid var(--text-primary); }
+.tourcard .tbtns .tback { background: none; color: var(--text-primary); border: 1px solid var(--border-strong); }
+@media (max-width: 760px) { .tabs .tourbtn { margin-top: 0; margin-left: auto; flex: none; white-space: nowrap; } }
+@media (prefers-reduced-motion: reduce) { .tourspot { transition: none; } }
 </style>
 </head>
 <body>
@@ -921,6 +1014,7 @@ html[data-look="mesa"] .chatbox .pinned { background: var(--text-primary); color
     <div class="navgrp" id="navcom" hidden>Cerberus · Commercial</div>
     <button class="tab" role="tab" aria-selected="false" data-v="commercial" hidden>Commercial Center</button>
     <div class="subnav" data-for="commercial"></div>
+    <button class="tourbtn" id="tourbtn" type="button">Take the tour</button>
     <button type="button" class="setbtn" id="setBtn" aria-haspopup="dialog" aria-expanded="false"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg><span>Settings<small id="setSub">Sonoran · Light</small></span></button>
     <div class="setpan" id="setPan" role="dialog" aria-label="Settings" hidden>
       <div class="hrow"><h3>Look</h3>
@@ -950,6 +1044,7 @@ html[data-look="mesa"] .chatbox .pinned { background: var(--text-primary); color
 </div>
 <div id="tip" role="tooltip"></div>
 
+<script src="blueprints.js"></script>
 <script>
 /* The digest email's own producer colours (render_report.DOT), so a producer
    is the same colour on the board as in their inbox. Not chosen here. */
@@ -1083,8 +1178,8 @@ let view = "digest";
 const CENTERS = {
   salescenter: [["digest", "Digest"], ["post", "The Flores Post"], ["editions", "Editions"], ["sales", "Sales"], ["messages", "Texts & Emails"]],
   coaching: [["coaching", "Coaching"]],
-  learning: [["roleplay", "Role Play"], ["rphistory", "Session History"], ["training", "Training"]],
-  service: [["service", "Service Digest"], ["renewals", "Renewals"]],
+  learning: [["roleplay", "Role Play"], ["rphistory", "Session History"], ["training", "Training"], ["blueprint", "Apollo's Road Map"]],
+  service: [["service", "Service Digest"], ["renewals", "Renewals"], ["athenamap", "Athena's Road Map"]],
   commercial: [["commercial", "Commercial"]],
 };
 const centerPick = Object.fromEntries(Object.entries(CENTERS).map(([c, pages]) => [c, pages[0][0]]));
@@ -1662,9 +1757,13 @@ function digestDay(d, who) {
       // Households sold and premium sold come from the same refresh.
       : ["HH/Prem. Sold", `<span class="${tc("pol")}">${hhSold} HH</span><br><span class="${tc("ps")}">${money(t.ps)}</span>`,
          `${t.pol ?? 0} polic${(t.pol ?? 0) === 1 ? "y" : "ies"}${hhSold ? ` &middot; ${((t.pol || 0) / hhSold).toFixed(1)} per HH` : ""}`, "", liveOn(d, "hhsold")],
+    // Life, its own stat (Frank, 2026-09-30: "i dont want it to count as a HH
+    // or premium, make it its own stat"): never in the tiles above, the
+    // leaderboard or the closing ratio. Goal: 1 a week each (lifeTier).
+    ["Life Sold", `${t.life ?? 0} Pol<br>${money(t.life_ps || 0)}`, lifeNote(d, t, !focus), TI[lifeTier(d, t, !focus)] || "", liveOn(d, "sales")],
   ];
   if (t.util != null) tiles.push(["Utilization", t.util + "%", "weighted", tc("util"), liveOn(d, "util")]);
-  const DRILL = { "Dials": "dials", "Live contacts": "contacts", "HH/Prem. Quoted": "quoted", "Pol/Prem. Sold": "sold", "HH/Prem. Sold": "sold" };
+  const DRILL = { "Dials": "dials", "Live contacts": "contacts", "HH/Prem. Quoted": "quoted", "Pol/Prem. Sold": "sold", "HH/Prem. Sold": "sold", "Life Sold": "life" };
   const tilesHtml = tiles.map(([k, v, n, cls, live]) =>
     `<div${DRILL[k] ? ddk(DRILL[k], `tile${live ? " isLive" : ""}`) : ` class="tile${live ? " isLive" : ""}"`}><div class="k">${k}</div><div class="v${cls ? " " + cls : ""}">${v}</div>${n ? `<div class="n">${n}</div>` : ""}</div>`).join("");
 
@@ -1704,9 +1803,38 @@ function digestDay(d, who) {
   </div>`;
 
   return `<div class="tiles tiles-6">${tilesHtml}${closingRatioTileHtml}</div>
-  ${digDrillFor(d, who, ["dials", "contacts", "quoted", "sold", "closing"])}
+  ${digDrillFor(d, who, ["dials", "contacts", "quoted", "sold", "life", "closing"])}
   ${teamLeaderboardHtml(d, who)}
   ${digDrillFor(d, who, ["lb"])}`;
+}
+
+/* The life goal (Frank, 2026-10-01: "make the goal 1 life policy a week"),
+   a mirror of digest_config.life_week_tier -- keep them in step. One a week
+   per producer, five for the team. A day: green once this week (Monday to
+   the day) has the goal, yellow before Friday without it, red on Friday
+   without it. A range: one a week for every week in it -- green at the
+   goal, yellow with some, red with none. A day built before the goal has
+   no week count and uses its own. */
+const LIFE_WEEKLY_GOAL = 1;
+function lifeGoal(d, team) {
+  const per = LIFE_WEEKLY_GOAL * (team ? TEAM_SCALE : 1);
+  const days = d.days || [];
+  if (days.length <= 1) return { per, weeks: 1, range: false };
+  const weeks = new Set(days.map(x => { const t = new Date(x + "T12:00:00Z"); t.setUTCDate(t.getUTCDate() - ((t.getUTCDay() + 6) % 7)); return t.toISOString().slice(0, 10); }));
+  return { per, weeks: weeks.size, range: true };
+}
+function lifeTier(d, t, team) {
+  const g = lifeGoal(d, team);
+  if (g.range) { const n = t.life || 0; return n >= g.per * g.weeks ? "green" : n > 0 ? "yellow" : "red"; }
+  const wk = t.life_week ?? t.life ?? 0;
+  if (wk >= g.per) return "green";
+  const dow = d.date ? new Date(d.date + "T12:00:00Z").getUTCDay() : 1;
+  return dow === 5 || dow === 6 || dow === 0 ? "red" : "yellow";
+}
+function lifeNote(d, t, team) {
+  const g = lifeGoal(d, team);
+  if (g.range) return `goal ${g.per * g.weeks} (${g.per} a week)`;
+  return `${t.life_week ?? t.life ?? 0} of ${g.per} this week`;
 }
 
 /* Household Completion (Frank, 2026-09-23: "know if they completed an
@@ -2261,6 +2389,15 @@ function digDrillFor(d, who, keys) {
     return digDrillList(`Households quoted${whoTag} · ${rs.length}`, kind === "closing" ? "Sold marks a household quoted that was also marked sold the same day." : "",
       (kind === "quoted" || liveOn(d, "closing") ? note("quotes", "hh") : "") + digTable(d, `<th>Producer</th><th>Lead</th><th>Source</th><th class="num">Premium quoted</th>${kind === "closing" ? "<th>Sold</th>" : ""}`, tr)
       + (kind === "closing" ? digDrillSold(d, mine, liveOn(d, "closing") ? note("sales", "pol") : "", RC) : ""));
+  }
+  if (kind === "life") {
+    // Life policies sold, counted apart from Premium Sold (Frank, 2026-09-30).
+    const lr = mine(R.life || []);
+    const tr = lr.map(r => `<tr>${digDay(d, r)}<td>${digWho(r)}</td><td>${cesc(r.product)}</td><td>${cesc(r.policy)}</td>
+      <td class="num">${money(r.premium)}</td><td>${cesc(r.source)}</td><td class="num">${r.effective ? fmtShortDate(r.effective) : ""}</td></tr>`);
+    return digDrillList(`Life sold${whoTag} · ${lr.length} polic${lr.length === 1 ? "y" : "ies"}`,
+      (R.life ? "" : "Days built before life was counted apart list their life policies with the others. ") + "Life insurance is its own stat: it is never a household sold or part of Premium Sold.",
+      digTable(d, `<th>Producer</th><th>Product</th><th>Policy</th><th class="num">Premium</th><th>Lead source</th><th class="num">Effective</th>`, tr));
   }
   if (kind === "sold") return digDrillList(`Sold${whoTag} · ${mine(R.sold).length} polic${mine(R.sold).length === 1 ? "y" : "ies"}`, "", digDrillSold(d, mine, note("sales", "pol")));
   if (kind === "hhc") {
@@ -2822,11 +2959,17 @@ function applyLive(base, L) {
       const x = L.sales.data[p.name]; if (!x) continue;
       p.cp_pol = p.pol || 0; p.cp_ps = p.ps || 0;
       p.pol = x.pol; p.ps = x.ps; p.cross_sell = x.cross_sell;
+      if (x.life != null) {
+        // The week so far is the checkpoint's earlier days plus today's live.
+        const prior = (p.life_week ?? p.life ?? 0) - (p.life ?? 0);
+        p.life = x.life; p.life_ps = x.life_ps; p.life_week = prior + x.life;
+      }
       const row = tiers[p.name] || (tiers[p.name] = {});
       if (p.pol > 0) { streak[p.name] = 0; row.pol = "green"; }
       if (p.ps) row.ps = "green";
     }
     T.pol = sum("pol"); T.ps = sum("ps"); T.cross_sell = sum("cross_sell");
+    T.life = sum("life"); T.life_ps = sum("life_ps"); T.life_week = sum("life_week");
     const team = tiers.team || (tiers.team = {});
     team.pol = tierColor("policy_count", T.pol || 0);
     team.ps = T.ps ? "green" : team.pol;
@@ -3230,7 +3373,7 @@ function rankLeaderboard(names, categories, tiebreak) {
   return { points, order, perCat };
 }
 function mergeDayDocs(docs) {
-  const NUM = ["dials", "live", "hh", "pq", "ps", "pol"];
+  const NUM = ["dials", "live", "hh", "pq", "ps", "pol", "life", "life_ps"];
   const totals = Object.fromEntries(NUM.map(k => [k, 0]));
   const taskTotals = { total: 0, completed: 0 };
   let teamUtilTotalSecs = 0, teamUtilProdSecs = 0;
@@ -3252,7 +3395,7 @@ function mergeDayDocs(docs) {
   const msgPer = {}, msgRows = { replies: [], quotes: [], bad_contact: [] };
   let hasMsg = false;
   // The Digest cards' lists: every day's rows, tagged with their day.
-  const digRows = { dials: [], contacts: [], quoted: [], sold: [], sold_leads: [], speed: [], tasks: [], rebuilt_days: [] };
+  const digRows = { dials: [], contacts: [], quoted: [], sold: [], life: [], sold_leads: [], speed: [], tasks: [], rebuilt_days: [] };
   let hasRows = false;
 
   for (const doc of docs) {
@@ -3678,6 +3821,32 @@ function stageFitHtml(c) {
       <span class="chip ${r ? r[0] : ""}">${r ? r[1] : "Not scored"}</span>
       <span style="color:var(--text-secondary);font-size:12.5px;line-height:1.55">${cesc(f[1] || "")}</span></div></div>`;
 }
+/* The quick coaching read on the closed card, from what Apollo already
+   wrote on it -- no new read: the top two things that worked and that cost
+   the sale (the detail on hover), and one line to say next time: the fix
+   for the first objection not overcome, else "what assumptive sounds
+   like". Nothing to say, no panel. */
+function quickCoachHtml(c) {
+  const top = xs => (xs || []).filter(x => x && x[0]).slice(0, 2);
+  const good = top(c.good), bad = top(c.bad);
+  const miss = (c.objs || []).find(o => (o.score == null || o.score < 8) && o.fix && o.fix.length);
+  const say = miss ? miss.fix[0] : c.askfix || "";
+  if (!good.length && !bad.length && !say) return "";
+  const list = xs => xs.map(([t, d]) => `<div${d ? ` title="${escAttr(d)}"` : ""}>${cesc(t)}</div>`).join("");
+  return `<div class="qc"><div class="qh">Quick coaching</div>
+    ${good.length ? `<div class="qr"><span class="qk g">Did well</span><span class="qv">${list(good)}</span></div>` : ""}
+    ${bad.length ? `<div class="qr"><span class="qk b">Work on</span><span class="qv">${list(bad)}</span></div>` : ""}
+    ${say ? `<div class="qr"><span class="qk s">Say next time</span><span class="qv say">“${cesc(say)}”${miss ? ` <span class="sd" style="font-style:normal">(${cesc(miss.group || "objection")})</span>` : ""}</span></div>` : ""}
+  </div>`;
+}
+// Closing from the bottom of a long card leaves the reader far below it;
+// bring the card's top back into view if it has scrolled off.
+function ccCollapse(el) {
+  const d = el.closest("details");
+  if (!d) return;
+  d.open = false;
+  if (d.getBoundingClientRect().top < 0) d.scrollIntoView({ block: "start" });
+}
 function card(c) {
   const objs = c.objs || [];
   // One block per objection -- a card can carry several (Frank, 2026-09-15:
@@ -3735,10 +3904,12 @@ function card(c) {
        <div class="cmeta">${cesc(c.who || "")} · ${cesc(fmtShortDate(c.day))}${c.time ? ` ${cesc(c.time)}` : ""} · ${durCell} · ${cesc(c.lang || "")} · ${cesc(c.src || "")}${c.leadsrc ? ` · ${cesc(c.leadsrc)}` : ""}</div>
        ${callRowHtml}</div>
        ${!multiCall ? outcomeBadgeHtml(c.cat, c.catc, [...typeParts, ...flowParts(c)])
-         : [...typeParts, ...flowParts(c)].map(([l, why]) => `<span class="ctype" title="${escAttr(why)}">${cesc(l)}</span>`).join("")}<span class="ctog" aria-hidden="true">▸</span></div>
+         : [...typeParts, ...flowParts(c)].map(([l, why]) => `<span class="ctype" title="${escAttr(why)}">${cesc(l)}</span>`).join("")}</div>
+     ${(() => { const qc = quickCoachHtml(c); return `<div class="chbody${qc ? "" : " one"}"><div>
      <div class="sum">${cesc(c.summary || "")}</div>
      ${(c.flags && c.flags.length) || (c.exit && c.exit[0] === true) ? `<div style="margin-top:8px">${
-       flagBadgesHtml(c)}</div>` : ""}
+       flagBadgesHtml(c)}</div>` : ""}</div>${qc}</div>`; })()}
+     <div class="cexp"><span class="ar">▼</span>Expand<span class="ar">▼</span></div>
    </summary>
    ${c.askq || c.assume ? `<div class="blk"><div class="bl">The Assumption</div><table class="askt">
      ${c.assume ? assumeRowsHtml(c.assume) : `<tr><td class="k">Assumed the quote</td><td class="v">${bdg(c.askq[0])}</td><td>${cesc(c.askq[1] || "")}</td></tr>
@@ -3757,7 +3928,9 @@ function card(c) {
      ? scorecard(...withGreeting(c, c.fuscore, FU_DIMS), "Follow-up scorecard")
      : scorecard(...withGreeting(c, c.score, DIMS))}${scorecard(c.techniques, TECH_DIMS, "Sales techniques")}</div>
    ${spine}
-   ${recordingBlk(c)}</details>`;
+   ${recordingBlk(c)}
+   <div class="cexp ccol" role="button" tabindex="0" onclick="ccCollapse(this)"
+     onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();ccCollapse(this)}"><span class="ar">▲</span>Collapse<span class="ar">▲</span></div></details>`;
 }
 // Listen to the actual call and/or read what it transcribed to, right on the
 // card that coached it (Frank, 2026-09-14) -- both were already sitting in
@@ -6537,6 +6710,10 @@ async function paintTab() {
     const data = await loadTraining();
     v.innerHTML = trainingPanel(data);
     wireTrainingPanel(data);
+  } else if (view === "blueprint" || view === "athenamap") {
+    $("#topsub").textContent = view === "athenamap" ? "how the service team works, in plain language" : "how the Sales Floor works, in plain language";
+    v.innerHTML = blueprintPanel(view === "athenamap" ? "athena" : "apollo");
+    wireBlueprintPanel();
   } else if (view === "sales") {
     $("#topsub").textContent = "log today's sales, reference any past folio's sheet, or break it down by source/type/producer -- self-reported, not the official Premium Sold figure";
     v.innerHTML = '<div class="empty">Loading…</div>';
@@ -6842,7 +7019,7 @@ function srOutcomeHtml(m, pipe, title, rateWord, blurb) {
     `<span class="oleg-item"><span class="pd rdot" style="${fill(k)}"></span>${l} <b>${c}</b> <span style="color:var(--text-muted)">(${Math.round(100 * c / rows.length)}%)</span></span>`).join("");
   const noted = rows.filter(r => r.source === "notes").length, unread = rows.filter(r => r.source === "unread").length;
   return `<div class="sect"><h2>${title}</h2><p class="sd">${blurb}</p>
-    <div class="tiles rtiles">${cards}</div>${svcDrillFor(m, ["out:" + pipe])}<div class="oleg">${legend}</div>
+    <div class="tiles rtiles" style="grid-template-columns:repeat(auto-fit,minmax(105px,1fr))">${cards}</div>${svcDrillFor(m, ["out:" + pipe])}<div class="oleg">${legend}</div>
     <p class="sd" style="margin:10px 0 0">Of ${rows.length}: ${noted} read from the rep's note by AI${unread ? `; ${unread} with a note not read yet (shown as No note until the next nightly run)` : ""}. These SRs are closed as Completed, so the note is where the outcome is written.</p></div>`;
 }
 /* Renewal outcomes and retention live on the Renewals tab (Frank, 2026-09-25):
@@ -6991,7 +7168,7 @@ function svcMessagesHtml(m) {
     anyone with an open SR count; leads are the Sales Center's. A message that came in while the office was closed
     starts at 8:30. Green is 15 minutes or less, red over an hour.${part}</p>
     ${tiles}${svcDrillFor(m, ["msg:sent", "msg:emails", "msg:answered", "msg:waiting"])}
-    ${cards ? `<h3 class="rh3" style="margin-top:14px">Speed to Reply by person</h3><div class="tiles">${cards}</div>${svcDrillFor(m, ["msg:who"])}` : ""}</div>`;
+    ${cards ? `<h3 class="rh3" style="margin-top:14px">Speed to Reply by person</h3><div class="svcsmall">${cards}</div>${svcDrillFor(m, ["msg:who"])}` : ""}</div>`;
 }
 function svcDrillList(title, what, body) {
   return `<div class="rdrill-list"><div style="display:flex;justify-content:space-between;align-items:baseline;gap:12px;margin:14px 0 6px">
@@ -7218,12 +7395,12 @@ function serviceStatsHtml(m) {
   }
   return `<div class="sect"><h2>Service Team</h2>
     <p class="sd">Pick a person for their own stats; with nobody picked the cards below are the whole team. Credit goes to whoever completed the SR or task. Click any card for the accounts behind it.</p>
-    <div class="tiles" style="grid-template-columns:repeat(auto-fill,minmax(250px,1fr))">${strip}</div>
+    <div class="svcstrip">${strip}</div>
     <div class="tile" style="margin-top:12px;text-align:left;background:var(--surface-2, transparent)">
       <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:8px">
         <b>${n ? `${pbadge(DOT[n] || TEAM_DOT, first(n))} <span style="margin-left:4px">${cesc(title(n))}</span>` : `${pbadge(TEAM_DOT, "Team")} <span style="margin-left:4px">totals</span>`}</b>
         ${n ? '<a href="#" data-sperson="">Show the team</a>' : ""}</div>
-      <div class="tiles">${tiles}</div>${role}${svcDrillFor(m, ["g"])}</div></div>`;
+      <div class="svcgrid">${tiles}</div>${role}${svcDrillFor(m, ["g"])}</div></div>`;
 }
 // A card that opens a list: wraps a tile's attributes.
 const sdk = (k, extra) => ` data-sdrill="${k}" role="button" tabindex="0" class="tile rdrill${svcDrill === k ? " on" : ""}${extra ? " " + extra : ""}"`;
@@ -7325,7 +7502,7 @@ function noteStandardHtml(m) {
   return `<div class="sect"><h2>Note Standard</h2>
     <p class="sd">Every note should answer Who? What? Why? Outcome? Next step? so the next person can pick up where you left off. <b>${Math.round(100 * meets.length / aud.length)}%</b> of the ${aud.length} service SRs completed in this period meet it; each note is read against the playbook by AI.
     Good: <i>"${cesc(PB.good_note)}"</i> Too vague: <i>"${cesc(PB.vague_note)}"</i></p>
-    <div class="tiles">${chips}</div>${svcDrillFor(m, ["notes"])}</div>`;
+    <div class="tiles" style="grid-template-columns:repeat(auto-fit,minmax(90px,1fr))">${chips}</div>${svcDrillFor(m, ["notes"])}</div>`;
 }
 function playbookHtml(m) {
   const PB = m.playbook;
@@ -7351,10 +7528,10 @@ function servicePanel(m) {
   return `${playbookHtml(m)}${serviceStatsHtml(m)}${rangeMode === "day" ? svcFeedHtml(m) : ""}
     ${m.playbook ? noteStandardHtml(m) : ""}
     ${svcMessagesHtml(m)}
-    ${SR_OUTCOME_SECTIONS.map(([p, t, w, b]) => srOutcomeHtml(m, p, t, w, b)).join("")}
-    ${completionTimeHtml(m)}
-    ${latePaymentsHtml(m)}
-    ${missingDocsHtml(m)}
+    <div class="digestgrid">
+      <div>${m.playbook ? noteStandardHtml(m) : ""}${completionTimeHtml(m)}${latePaymentsHtml(m)}</div>
+      <div>${SR_OUTCOME_SECTIONS.map(([p, t, w, b]) => srOutcomeHtml(m, p, t, w, b)).join("")}${missingDocsHtml(m)}</div>
+    </div>
 `;
 }
 // The Sales Digest's date filter, as service days (the Service Digest and the
@@ -7562,7 +7739,7 @@ function renewalsPanel(doc, workHtml = "", rb = null) {
   };
   const dt = (k, inner, style) => `<div class="tile rdrill${renDrill === k ? " on" : ""}" data-drill="${k}" role="button" tabindex="0"
     title="Show these ${drills[k][2].length} renewals"${style ? ` style="${style}"` : ""}>${inner}</div>`;
-  const tiles = `<div class="tiles">
+  const tiles = `<div class="tiles" style="grid-template-columns:repeat(auto-fit,minmax(128px,1fr))">
     ${dt("rate", `<div class="k">Retention · settled 4 weeks</div>
       <div class="v">${rt.pct == null ? "—" : rt.pct + "%"}</div><div class="n">${rt.k} of ${rt.k + rt.l} kept &middot; renewed ${span(settled)}</div>`, "border-color:var(--border-strong)")}
     ${dt("rrange", `<div class="k">Retention · this period</div>
@@ -7587,9 +7764,6 @@ function renewalsPanel(doc, workHtml = "", rb = null) {
   const worked = REN_WORKED.map(([k, l]) => [l, base.filter(r => renWorked(r) === k)]).filter(x => x[1].length);
   const workedCards = worked.map(([l, rs]) => renCard(rs, l)).join("");
   const pipeCards = (doc.pipelines || []).map(([k, l]) => [l, base.filter(r => r.pipeline === k)]).filter(x => x[1].length).map(([l, rs]) => renCard(rs, l)).join("");
-  const people = (doc.team || []).filter(n => base.some(r => r.sr && r.sr.by === n));
-  const personCards = people.map(n => renCard(base.filter(r => r.sr && r.sr.by === n), pbadge(DOT[n] || TEAM_DOT, n.split(" ")[0]))).join("")
-    + (base.some(r => !r.sr || !people.includes(r.sr.by)) ? renCard(base.filter(r => !r.sr || !people.includes(r.sr.by)), pbadge("#8a877f", "Others / no SR")) : "");
   const legend = Object.entries(REN_STATUS).map(([k, [l]]) => { const c = recent.filter(r => r.status === k).length;
     return c ? `<span class="oleg-item"><span class="pd rdot" style="${renFill(k)}"></span>${l} <b>${c}</b></span>` : ""; }).join("");
   const lostRows = lost.sort((a, b) => a.renewal < b.renewal ? -1 : 1).map(r => `<tr>
@@ -7615,11 +7789,10 @@ function renewalsPanel(doc, workHtml = "", rb = null) {
     <p class="sd">Every personal-lines policy that renewed in the last ${doc.past_days} days or renews in the next ${doc.upcoming_days}, from AgencyZoom's policy records and the team's SRs. Rebuilt every night · as of ${renDate(doc.as_of)}. Three retention rates: the settled 4 weeks (renewals 2 to 6 weeks ago), the date filter's period, and the last 12 months. Everything else follows the date filter, except Coming up.${rangeNote}</p>${tiles}</div>
     ${workHtml}
     <div class="sect"><h2>Retention · settled 4 weeks</h2>
-    <p class="sd">By the week each policy renewed: the four weeks in the settled rate, and the newest two, still settling (a renewal counts once it is two weeks past). Retained = a next term on record, a rewrite, or Rewrite Accepted on the renewal SR. Lost = the policy record shows it cancelled, a Late Payment or Service Pipeline SR cancelled it, or the renewal SR was closed on a cancellation. Rate = retained over retained plus lost. A Mid-term Cancellation (hatched, cancelled more than 30 days before the renewal) and a renewal not confirmed yet sit outside the rate. The breakdowns by how the SR was worked, pipeline and person are the settled four weeks.</p>
+    <p class="sd">By the week each policy renewed: the four weeks in the settled rate, and the newest two, still settling (a renewal counts once it is two weeks past). Retained = a next term on record, a rewrite, or Rewrite Accepted on the renewal SR. Lost = the policy record shows it cancelled, a Late Payment or Service Pipeline SR cancelled it, or the renewal SR was closed on a cancellation. Rate = retained over retained plus lost. A Mid-term Cancellation (hatched, cancelled more than 30 days before the renewal) and a renewal not confirmed yet sit outside the rate. The breakdowns by how the SR was worked and pipeline are the settled four weeks; each person's own is on their card above.</p>
     <div class="tiles rtiles">${weekCards}</div><div class="oleg">${legend}</div>
     <h3 class="rh3">By how the renewal SR was worked</h3><div class="tiles rtiles">${workedCards}</div>
-    <h3 class="rh3">By pipeline</h3><div class="tiles rtiles">${pipeCards}</div>
-    <h3 class="rh3">By who worked the renewal SR</h3><div class="tiles rtiles">${personCards}</div></div>
+    <h3 class="rh3">By pipeline</h3><div class="tiles rtiles">${pipeCards}</div></div>
     <div class="sect"><h2>Lost</h2><p class="sd">Every renewal lost in this period, and any renewal still ahead that has already cancelled, with how we know.${rangeNote}</p>
     ${lostRows ? `<div class="scroll"><table class="rtable"><thead><tr><th>Renews</th><th>Customer</th><th>Policy</th><th class="num">Premium</th><th>Renewal SR</th><th>How we know</th></tr></thead><tbody>${lostRows}</tbody></table></div>` : '<p class="sd">None.</p>'}</div>
     ${renFlagHtml(doc, label, inRange)}
@@ -7710,50 +7883,117 @@ function renCommsTiles(m, dk) {
       <div class="v"><span class="${replyTier(med(ans.map(r => r.minutes)))}">${fmtMins(med(ans.map(r => r.minutes)))}</span></div>
       <div class="n">median &middot; ${ans.length} of ${need.length} answered${need.length - ans.length ? ` &middot; <b style="color:var(--bad)">${need.length - ans.length} waiting</b>` : ""}</div>`) : "");
 }
-function renewalWorkHtml(m) {
+/* Renewal SR Work as the Service Center's person strip (Frank, 2026-09-30:
+   "same as the service center, person strip with team totals"): one small
+   card per person, and one grid under it -- the team's renewal work until a
+   person is picked, then theirs. The agency's retention rates stay above,
+   agency-wide. Every card opens the accounts it counts. Nobody is ranked. */
+let renPerson = "";
+// Discussed with the customer: every outcome but the two where nobody talked
+// the renewal over (No action, Unable to Contact) and the two outside the rate.
+const REN_DISCUSSED = new Set(["renewed_as_is", "renewed_endorsed", "rewrite_accepted", "cancelled_rewrite_declined", "cancelled_no_option", "client_cancelled"]);
+function renewalWorkHtml(m, doc, rb) {
   if (!m) return "";
-  const rs = m.renewalDone, open = m.renewalOpen;
-  const hrs = x => fmtDur(svcMedian(x.map(r => r.hours)));
-  const dk = (k, inner, style) => `<div class="tile rdrill${renDrill === k ? " on" : ""}" data-drill="${k}" role="button" tabindex="0"${style ? ` style="${style}"` : ""}>${inner}</div>`;
   const team = m.team.map(t => t.name);
-  const person = n => { const mine = rs.filter(r => r.by === n), o = open ? open.filter(r => r.by === n) : null;
-    return dk("rw:person:" + n, `<div class="k">${pbadge(DOT[n] || TEAM_DOT, n.split(" ")[0])}</div>
-      <div class="v">${mine.length}</div><div class="n">completed${mine.length ? ` &middot; median ${hrs(mine)}` : ""}</div>
-      ${o ? `<div class="n"><b>${o.length}</b> open &middot; <b${o.some(r => r.overdue) ? ' style="color:var(--bad)"' : ""}>${o.filter(r => r.overdue).length}</b> overdue</div>` : ""}
-      <div class="n">Renewal tasks <b>${(m.renewalTaskCounts[n] || {}).completed || 0}/${(m.renewalTaskCounts[n] || {}).due || 0}</b></div>`); };
-  const others = rs.filter(r => !team.includes(r.by));
-  const tiles = `<div class="tiles">
-    ${dk("rw:done", `<div class="k">Renewal SRs Completed</div><div class="v">${rs.length}</div><div class="n">median ${hrs(rs)} created to completed</div>`, "border-color:var(--border-strong)")}
-    ${dk("rw:tasks", `<div class="k">Renewal Tasks Done</div><div class="v">${m.renewalTasks.filter(r => r.done).length}<span style="font-size:15px;color:var(--text-muted)"> / ${m.renewalTasks.length}</span></div><div class="n">${m.renewalTasks.length ? Math.round(100 * m.renewalTasks.filter(r => r.done).length / m.renewalTasks.length) : 0}% of renewal tasks due</div>`)}
-    ${renCommsTiles(m, dk)}
-    ${open ? dk("rw:open", `<div class="k">Open Renewal SRs</div><div class="v">${open.length}</div><div class="n">${open.filter(r => r.overdue).length} overdue &middot; as of ${fmtShortDate(m.days[m.days.length - 1])}</div>`) : ""}
-    ${team.filter(n => rs.some(r => r.by === n) || (open || []).some(r => r.by === n) || (m.renewalTaskCounts[n] || {}).due).map(person).join("")}
-    ${others.length ? dk("rw:person:others", `<div class="k">${pbadge("#8a877f", "Others")}</div><div class="v">${others.length}</div><div class="n">completed &middot; median ${hrs(others)}</div>`) : ""}
-  </div>`;
-  const pipes = (m.pipelines || []).filter(([k]) => RENEWAL_PIPES.has(k)).map(([k, l]) => [k, l, rs.filter(r => r.pipeline === k)]).filter(x => x[2].length);
+  const PB = m.playbook, order = PB ? Object.keys(PB.roles) : [];
+  const people = [...team].sort((x, y) => PB ? order.indexOf(PB.role_of[x]) - order.indexOf(PB.role_of[y]) : 0);
+  if (renPerson && !people.includes(renPerson)) renPerson = "";
+  const n = renPerson, first = x => x.split(" ")[0];
+  const kind = Object.fromEntries((m.outcomes || []).map(([k, , c]) => [k, c]));
+  const hrs = x => fmtDur(svcMedian(x.map(r => r.hours)));
+  const pct = (a, t) => t ? Math.round(100 * a / t) + "%" : "—";
+  const med = x => x.length ? Math.round(median(x)) : null;
+  // The renewal report's rows (policy terms), for the settled rate, lost and coming up.
+  const rows = (doc && doc.rows) || [];
+  const past = rows.filter(r => r.kind === "past");
+  const ahead = rows.filter(r => r.kind === "upcoming" && r.status === "upcoming");
+  const ago = r => doc ? Math.round((new Date(doc.as_of + "T12:00:00") - new Date(r.renewal + "T12:00:00")) / 864e5) : 0;
+  const settledAll = past.filter(r => ago(r) >= REN_SETTLE_DAYS && ago(r) < REN_SETTLE_DAYS + 28);
+  const inRange = r => !rb || ((!rb.from || r.renewal >= rb.from) && (!rb.to || r.renewal <= rb.to));
+  const lostAll = past.filter(r => inRange(r) && r.status === "lost");
+  const title = x => (PB && PB.role_of[x] && PB.roles[PB.role_of[x]] ? PB.roles[PB.role_of[x]].title : "") || SERVICE_TITLES[x] || "";
+  const stats = x => {
+    const mine = r => !x || r.by === x, srOf = r => !x || (r.sr && r.sr.by === x);
+    const done = m.renewalDone.filter(mine), outs = (m.renewals || []).filter(mine);
+    const open = m.renewalOpen ? m.renewalOpen.filter(mine) : null;
+    const tasks = m.renewalTasks.filter(r => !x || (r.assignees || []).includes(x) || r.done_by === x);
+    const tk = x ? (m.renewalTaskCounts[x] || { due: 0, completed: 0 }) : { due: m.renewalTasks.length, completed: m.renewalTasks.filter(r => r.done).length };
+    const cb = (m.renewalCallbacks || []).filter(r => !x || r.by === x), cbDone = cb.filter(r => r.minutes != null);
+    const M = m.renewalMsg || { replies: [], sent: [] };
+    const need = M.replies.filter(r => (!x || r.who === x) && !r.ack && !r.optout), ans = need.filter(r => r.minutes != null);
+    const sent = M.sent.filter(r => !x || r.who === x);
+    const dials = (m.renewalDials || []).filter(r => !x || r.who === x);
+    return { done, outs, open, tasks, tk, cb, cbDone, need, ans, sent, dials,
+      rate: renewalRate(outs, kind), disc: outs.filter(r => REN_DISCUSSED.has(r.outcome)),
+      settled: settledAll.filter(srOf), lost: lostAll.filter(srOf), up: ahead.filter(srOf) };
+  };
+  const strip = people.map(x => { const S = stats(x), on = x === n;
+    return `<div class="tile rdrill${on ? " on" : ""}" data-rperson="${cesc(x)}" role="button" tabindex="0" style="text-align:left">
+      <div style="display:flex;justify-content:space-between;align-items:baseline;gap:8px">${pbadge(DOT[x] || TEAM_DOT, first(x))}<span class="n">${cesc(title(x))}</span></div>
+      <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:4px;text-align:center;margin-top:10px">
+        <div><div class="v" style="font-size:19px">${S.done.length}</div><div class="n">renewal SRs</div></div>
+        <div><div class="v" style="font-size:19px">${S.rate.pct == null ? "—" : S.rate.pct + "%"}</div><div class="n">retained</div></div>
+        <div><div class="v" style="font-size:19px">${S.open ? S.open.length : "—"}</div><div class="n">open</div></div>
+        <div><div class="v${S.open && S.open.some(r => r.overdue) ? " tr" : ""}" style="font-size:19px">${S.open ? S.open.filter(r => r.overdue).length : "—"}</div><div class="n">overdue</div></div></div></div>`; }).join("");
+  const S = stats(n), sfx = n ? ":" + n : "";
+  const dk = (k, inner) => `<div class="tile rdrill${renDrill === k ? " on" : ""}" data-drill="${k}" role="button" tabindex="0">${inner}</div>`;
+  const tile = (k, head, v, note) => dk("rw:" + k + sfx, `<div class="k">${head}</div><div class="v">${v}</div><div class="n">${note}</div>`);
+  const cbMed = med(S.cbDone.map(r => r.minutes)), rMed = med(S.ans.map(r => r.minutes)), wait = S.need.length - S.ans.length;
+  const rs = renRate(S.settled), highs = S.up.filter(r => r.risk === "high").length;
+  const upDisc = S.up.filter(r => renWorked(r) === "discussed").length;
+  const tiles = [
+    tile("done", "Renewal SRs completed", S.done.length, S.done.length ? `median ${hrs(S.done)} created to completed` : "none completed"),
+    tile("ret", "Retained", S.rate.pct == null ? "—" : S.rate.pct + "%", `of the renewal SRs completed &middot; ${S.rate.kept} of ${S.rate.kept + S.rate.lost}${S.rate.lost ? ` &middot; <b style="color:var(--bad)">${S.rate.lost} lost</b>` : ""}`),
+    tile("disc", "Reviewed with the customer", pct(S.disc.length, S.outs.length), `${S.disc.length} of ${S.outs.length} &middot; the rest No action or Unable to Contact`),
+    tile("tasks", "Renewal tasks done", `${S.tk.completed}<span style="font-size:15px;color:var(--text-muted)"> / ${S.tk.due}</span>`, `${pct(S.tk.completed, S.tk.due)} of renewal tasks due`),
+    tile("open", "Open renewal SRs", S.open ? S.open.length : "—", S.open ? `<b${S.open.some(r => r.overdue) ? ' style="color:var(--bad)"' : ""}>${S.open.filter(r => r.overdue).length}</b> overdue &middot; as of ${fmtShortDate(m.days[m.days.length - 1])}` : "not kept for this day"),
+    tile("up", `Coming up · ${doc ? doc.upcoming_days : 45} days`, S.up.length, `${pct(upDisc, S.up.length)} reviewed &middot; <b${highs ? ' style="color:var(--bad)"' : ""}>${highs}</b> high risk`),
+    tile("settled", "Retention · settled 4 weeks", rs.pct == null ? "—" : rs.pct + "%", `policies renewed 2-6 weeks ago${n ? " on their SRs" : ""} &middot; ${rs.k} of ${rs.k + rs.l} kept`),
+    tile("lost", "Lost", S.lost.length, `policies renewed in this period${n ? " on their SRs" : ""}`),
+    tile("dials", "Renewal dials", m.dialDays ? S.dials.length : "—", m.dialDays ? `numbers &middot; ${S.dials.reduce((a, r) => a + r.attempts, 0)} dials` : "counted from 2026-09-29"),
+    tile("cb", "Renewal call backs", `<span class="${replyTier(cbMed)}">${fmtMins(cbMed)}</span>`, n ? `median to return &middot; ${S.cbDone.length} returned` : `median to return &middot; ${S.cbDone.length} of ${S.cb.length} returned same day`),
+    tile("replies", "Speed to reply", `<span class="${replyTier(rMed)}">${fmtMins(rMed)}</span>`, `median &middot; ${S.ans.length} answered${wait ? ` &middot; <b style="color:var(--bad)">${wait} waiting</b>` : ""}`),
+    tile("sent", "Texts / emails", `${S.sent.filter(r => r.channel === "text" && !r.auto).length} / ${S.sent.filter(r => r.channel === "email" && !r.auto).length}`, `typed &middot; ${S.sent.filter(r => r.auto).length} more by automation`),
+  ].join("");
+  const done = m.renewalDone;
+  const pipes = (m.pipelines || []).filter(([k]) => RENEWAL_PIPES.has(k)).map(([k, l]) => [k, l, done.filter(r => r.pipeline === k)]).filter(x => x[2].length);
   const tr = pipes.map(([k, l, x]) => { const h = x.map(r => r.hours);
     return `<tr class="rdrill-row${renDrill === "rw:pipe:" + k ? " on" : ""}" data-drill="rw:pipe:${k}" tabindex="0"><td>${l}</td><td class="num">${x.length}</td><td class="num">${fmtDur(svcMedian(h))}</td><td class="num">${fmtDur(svcPctile(h, 0.9))}</td></tr>`; }).join("");
   let list = "";
   if (renDrill.startsWith("rw:")) {
-    const rest = renDrill.slice(3), i = rest.indexOf(":");
-    const kind = i < 0 ? rest : rest.slice(0, i), a = i < 0 ? "" : rest.slice(i + 1);
+    const parts = renDrill.slice(3).split(":"), k = parts[0], a = parts.slice(1).join(":");
+    const who = k === "pipe" ? "" : a, T = k === "pipe" ? null : stats(who);
+    const whoTag = who ? ` · ${cesc(first(who))}` : "";
     const head = (t, what) => `<div class="rdrill-list"><div style="display:flex;justify-content:space-between;align-items:baseline;gap:12px;margin:14px 0 6px">
       <h3 class="rh3" style="margin:0">${t}</h3><a href="#" data-drill-close style="font-size:12.5px">Close</a></div>${what ? `<p class="sd" style="margin:0 0 6px">${what}</p>` : ""}`;
-    if (kind === "done") list = head(`Renewal SRs Completed · ${rs.length}`, "Newest first, with the outcome each counts as.") + svcSrTable(rs, m, true) + "</div>";
-    if (kind === "tasks") list = head(`Renewal Tasks · ${m.renewalTasks.length} due`, "Every renewal task due in this period, not done first.") + svcTaskTable(m.renewalTasks) + "</div>";
-    if (kind === "cb") list = head(`Renewal Call Backs · ${m.renewalCallbacks.length}`, "Missed calls from customers whose open SRs are all renewal SRs. Not returned first.") + svcCallbackTable(m.renewalCallbacks) + "</div>";
-    if (kind === "sent") list = head(`Renewal Texts & Emails · ${m.renewalMsg.sent.filter(r => !r.auto).length} typed, ${m.renewalMsg.sent.filter(r => r.auto).length} automation`, "To customers whose open SRs are all renewal SRs, or about the renewal. Typed first.") + svcSentTable(m.renewalMsg.sent, m) + "</div>";
-    if (kind === "replies") list = head(`Renewal Customer Messages · ${m.renewalMsg.replies.length}`, "Waiting first, then slowest answered.") + svcReplyTable(m.renewalMsg.replies, m) + "</div>";
-    if (kind === "open") list = head(`Open Renewal SRs · ${open.length}`, `As of ${fmtShortDate(m.days[m.days.length - 1])}.`) + svcOpenTable(open, m) + "</div>";
-    if (kind === "pipe") { const x = rs.filter(r => r.pipeline === a); list = head(`${cesc((pipes.find(p => p[0] === a) || [, a])[1])} · ${x.length} completed`) + svcSrTable(x, m, true) + "</div>"; }
-    if (kind === "person") { const x = a === "others" ? others : rs.filter(r => r.by === a), o = open && a !== "others" ? open.filter(r => r.by === a) : null;
-      const tk = a === "others" ? [] : m.renewalTasks.filter(r => (r.assignees || []).includes(a) || r.done_by === a);
-      list = head(a === "others" ? "Others" : cesc(a)) + `<h3 class="rh3">Completed · ${x.length}</h3>${svcSrTable(x, m, true)}${o ? `<h3 class="rh3">Open · ${o.length}</h3>${svcOpenTable(o, m)}` : ""}${a !== "others" ? `<h3 class="rh3">Renewal tasks · ${tk.length}</h3>${svcTaskTable(tk)}` : ""}</div>`; }
+    const label = Object.fromEntries(((doc && doc.sr_outcomes) || []).map(([x, l]) => [x, l]));
+    const pipeName = Object.fromEntries((doc && doc.pipelines) || []);
+    const pol = (t, what, r) => renDrillHtml([t, what, r], label, pipeName);
+    if (k === "done") list = head(`Renewal SRs completed${whoTag} · ${T.done.length}`, "Newest first, with the outcome each counts as.") + svcSrTable(T.done, m, true) + "</div>";
+    if (k === "ret") { const x = T.outs.filter(r => kind[r.outcome] === "kept" || kind[r.outcome] === "lost").sort((p, q) => (kind[q.outcome] === "lost") - (kind[p.outcome] === "lost"));
+      list = head(`Retained${whoTag} · ${T.rate.kept} of ${T.rate.kept + T.rate.lost}`, "The renewal SRs in the rate, lost first. Mid-term Cancellation and Sold/Moved sit outside it.") + svcSrTable(x, m, true) + "</div>"; }
+    if (k === "disc") { const x = [...T.outs].sort((p, q) => REN_DISCUSSED.has(p.outcome) - REN_DISCUSSED.has(q.outcome));
+      list = head(`Reviewed with the customer${whoTag} · ${T.disc.length} of ${T.outs.length}`, "Not reviewed (No action, Unable to Contact) first.") + svcSrTable(x, m, true) + "</div>"; }
+    if (k === "tasks") list = head(`Renewal tasks${whoTag} · ${T.tasks.length} due`, "Not done first.") + svcTaskTable(T.tasks) + "</div>";
+    if (k === "open") list = head(`Open renewal SRs${whoTag}${T.open ? " · " + T.open.length : ""}`, `As of ${fmtShortDate(m.days[m.days.length - 1])}.`) + svcOpenTable(T.open, m) + "</div>";
+    if (k === "up") list = pol(`Coming up${whoTag}`, `renewing in the next ${doc ? doc.upcoming_days : 45} days${who ? ", on their renewal SRs" : ""}`, T.up);
+    if (k === "settled") list = pol(`Retention · settled 4 weeks${whoTag}`, "renewed 2-6 weeks ago, retained and lost", T.settled.filter(r => r.status === "retained" || r.status === "lost"));
+    if (k === "lost") list = pol(`Lost${whoTag}`, "renewals lost in this period", T.lost);
+    if (k === "dials") list = head(`Renewal dials${whoTag} · ${T.dials.length} number${T.dials.length === 1 ? "" : "s"}`, "Numbers whose open SRs are all renewal SRs.") + svcDialTable(T.dials, m) + "</div>";
+    if (k === "cb") list = head(`Renewal call backs${whoTag} · ${T.cb.length}`, "Missed calls from customers whose open SRs are all renewal SRs. Not returned first.") + svcCallbackTable(T.cb) + "</div>";
+    if (k === "replies") list = head(`Renewal customer messages${whoTag} · ${T.need.length}`, "Waiting first, then slowest answered.") + svcReplyTable(T.need, m) + "</div>";
+    if (k === "sent") list = head(`Renewal texts & emails${whoTag} · ${T.sent.filter(r => !r.auto).length} typed`, "Typed first.") + svcSentTable(T.sent, m) + "</div>";
+    if (k === "pipe") { const x = done.filter(r => r.pipeline === a); list = head(`${cesc((pipes.find(p => p[0] === a) || [, a])[1])} · ${x.length} completed`) + svcSrTable(x, m, true) + "</div>"; }
   }
   return `<div class="sect"><h2>Renewal SR Work${m.label ? ` <span style="font-weight:400;text-transform:none;letter-spacing:0;color:var(--text-muted)">· ${cesc(m.label)}</span>` : ""}</h2>
-    <p class="sd">Renewal SRs, tasks, call backs and texts, ${fmtShortDate(m.days[0])} – ${fmtShortDate(m.days[m.days.length - 1])}: the SRs completed, from the day each was created to the day it was completed, and the ones still open; the renewal tasks due, and how many were done; and the call backs, texts and emails with customers whose open SRs are all renewal SRs, or about the renewal. Credit goes to whoever completed the SR or task. None of these are in the Service Digest.</p>
-    ${tiles}${renDrill.startsWith("rw:") && !renDrill.startsWith("rw:pipe:") ? list : ""}
-    ${tr ? `<div class="scroll"><table><thead><tr><th>Pipeline</th><th class="num">Completed</th><th class="num">Median</th><th class="num">90% within</th></tr></thead><tbody>${tr}</tbody></table></div>` : ""}
+    <p class="sd">Pick a person for their own renewal work; with nobody picked the cards below are the whole team. Renewal SRs, tasks, call backs and texts, ${fmtShortDate(m.days[0])} – ${fmtShortDate(m.days[m.days.length - 1])}; credit goes to whoever completed the SR or task. Retention, lost and coming up count the policies on each person's renewal SRs. Click any card for the accounts behind it.</p>
+    <div class="svcstrip">${strip}</div>
+    <div class="tile" style="margin-top:12px;text-align:left">
+      <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:8px">
+        <b>${n ? `${pbadge(DOT[n] || TEAM_DOT, first(n))} <span style="margin-left:4px">${cesc(title(n))}</span>` : `${pbadge(TEAM_DOT, "Team")} <span style="margin-left:4px">totals</span>`}</b>
+        ${n ? '<a href="#" data-rperson="">Show the team</a>' : ""}</div>
+      <div class="svcgrid">${tiles}</div>${renDrill.startsWith("rw:") && !renDrill.startsWith("rw:pipe:") ? list : ""}</div>
+    ${tr ? `<h3 class="rh3" style="margin-top:14px">By pipeline</h3><div class="scroll"><table><thead><tr><th>Pipeline</th><th class="num">Completed</th><th class="num">Median</th><th class="num">90% within</th></tr></thead><tbody>${tr}</tbody></table></div>` : ""}
     ${renDrill.startsWith("rw:pipe:") ? list : ""}</div>`;
 }
 async function paintRenewals() {
@@ -7778,7 +8018,7 @@ async function paintRenewalsTab() {
     $("#topsub").textContent = "Athena · renewals" + (rg.label ? " · " + rg.label : "");
   }
   const workHtml = rg.err ? `<div class="sect"><h2>Renewal SR Work</h2><p class="sd">${rg.err}</p></div>`
-    : work ? renewalWorkHtml(work) + renOutcomeHtml(work) : `<div class="sect"><h2>Renewal SR Work</h2><p class="sd">No Athena report for ${rangeMode === "day" ? "this day" : "this range"} yet.</p></div>`;
+    : work ? renewalWorkHtml(work, RENEWALS_DOC, rg.err ? null : (rangeMode === "day" ? (rg.wanted && rg.wanted[0] ? { from: rg.wanted[0], to: rg.wanted[0] } : null) : rangeBounds())) + renOutcomeHtml(work) : `<div class="sect"><h2>Renewal SR Work</h2><p class="sd">No Athena report for ${rangeMode === "day" ? "this day" : "this range"} yet.</p></div>`;
   if (!RENEWALS_DOC && !work) { v.innerHTML = controls + '<div class="empty">No renewal report yet. It is built every night.</div>'; wireRangeControl(); return; }
   const y = window.scrollY;
   const day = rg.wanted && rg.wanted[0];
@@ -7793,6 +8033,12 @@ async function paintRenewalsTab() {
   });
   const close = v.querySelector("[data-drill-close]");
   if (close) close.onclick = e => { e.preventDefault(); renDrill = ""; paintRenewals(); };
+  v.querySelectorAll("[data-rperson]").forEach(el => {
+    const go = e => { if (e) e.preventDefault(); const x = el.dataset.rperson;
+      renPerson = x && renPerson !== x ? x : ""; if (renDrill.startsWith("rw:") && !renDrill.startsWith("rw:pipe:")) renDrill = ""; paintRenewals(); };
+    el.onclick = go;
+    el.onkeydown = e => { if (e.key === "Enter" || e.key === " ") go(e); };
+  });
   [["renRisk", "risk"], ["renPipe", "pipe"], ["renWorked", "worked"], ["renWho", "who"]].forEach(([id, k]) => {
     const el = document.getElementById(id);
     if (el) el.onchange = () => { renFilter[k] = el.value; paintRenewals(); };
@@ -7988,6 +8234,223 @@ async function loadDay(day) {
   if (curLive) { await refreshLive(day); startLivePoll(day); }
 }
 
+/* ---- Road Map / ARM (Frank, 2026-09-30) -----------------------------------
+   The plain-language guides in blueprints.js: Apollo's Road Map (ARM) for managers
+   (shown only to the Role Play history viewers -- /api/me's `all`) and the
+   New / Mid-Level / Experienced producer guides for everyone. */
+let IS_MANAGER = false;
+const bpPick = { apollo: "", athena: "" };
+async function initMe() {
+  try {
+    const r = await fetch("/api/me", { cache: "no-store" });
+    if (r.ok) IS_MANAGER = !!(await r.json()).all;
+  } catch (_) {}
+  if (view === "blueprint") paint();
+}
+function bpGuides(map) {
+  const all = ((window.BLUEPRINTS || {}).guides || []);
+  return all.filter(g => (g.map || "apollo") === map && (!g.manager || IS_MANAGER));
+}
+// **bold** is the only markup the guides use.
+const bpText = t => cesc(t).replace(/\*\*([^*]+)\*\*/g, "<strong>$1</strong>");
+function bpItem(it) {
+  if (typeof it === "string") return `<p>${bpText(it)}</p>`;
+  if (it.list) return `<ul>${it.list.map(x => `<li>${bpText(x)}</li>`).join("")}</ul>`;
+  if (it.steps) return `<ol>${it.steps.map(x => `<li>${bpText(x)}</li>`).join("")}</ol>`;
+  if (it.terms) return `<dl>${it.terms.map(([a, b]) => `<dt>${bpText(a)}</dt><dd>${bpText(b)}</dd>`).join("")}</dl>`;
+  if (it.table) return `<div class="bptw"><table><thead><tr>${it.table.head.map(h => `<th>${bpText(h)}</th>`).join("")}</tr></thead>
+    <tbody>${it.table.rows.map(r => `<tr>${r.map(c => `<td>${bpText(c)}</td>`).join("")}</tr>`).join("")}</tbody></table></div>`;
+  return "";
+}
+/* Apollo's Road Map is one tab with a dropdown (Frank, 2026-09-30:
+   "manager/coaching, and one for the 3 producer levels"); Athena's is the
+   Service Center's own tab, one guide, no dropdown. */
+function blueprintPanel(map) {
+  const guides = bpGuides(map);
+  if (!guides.length) return '<div class="empty">The Road Map did not load. Refresh the page.</div>';
+  const g = guides.find(x => x.key === bpPick[map]) || guides[0];
+  bpPick[map] = g.key;
+  const upd = (window.BLUEPRINTS || {}).updated;
+  const pick = guides.length > 1 ? `<div class="controls bppick"><label for="bpsel">Guide</label>
+    <select id="bpsel">${guides.map(x => `<option value="${x.key}"${x.key === g.key ? " selected" : ""}>${cesc(x.label || x.title)}</option>`).join("")}</select></div>` : "";
+  const toc = g.sections.map((sec, i) => `<a href="#bp-${g.key}-${i}" data-bpjump="bp-${g.key}-${i}">${cesc(sec.h)}</a>`).join("");
+  return `${pick}
+  <div class="bp">
+    <h2 class="bptitle">${cesc(g.title)}</h2>
+    <p class="bpwho">${bpText(g.who)}</p>
+    ${upd ? `<p class="bpdate">Last updated ${cesc(fmtShortDate(upd))}</p>` : ""}
+    <nav class="bptoc" aria-label="Sections">${toc}</nav>
+    ${g.sections.map((sec, i) => `<section id="bp-${g.key}-${i}"><h3>${cesc(sec.h)}</h3>${sec.body.map(bpItem).join("")}</section>`).join("")}
+  </div>`;
+}
+function wireBlueprintPanel() {
+  const sel = $("#bpsel");
+  if (sel) sel.onchange = () => { bpPick[view === "athenamap" ? "athena" : "apollo"] = sel.value; paint(); window.scrollTo(0, 0); };
+  $$("#view [data-bpjump]").forEach(a => a.onclick = e => {
+    e.preventDefault();
+    const t = document.getElementById(a.dataset.bpjump);
+    if (t) t.scrollIntoView({ behavior: "smooth", block: "start" });
+  });
+}
+
+/* ---- System tour (Frank, 2026-09-30) ---------------------------------------
+   "Take the tour" at the foot of the left bar walks anyone through the board:
+   each step opens a page, lights one part of it and explains it in a card.
+   A step whose part is not on the page (no data that day) explains it anyway,
+   with the card in the middle. Esc or Skip ends it. */
+const TOUR_STEPS = [
+  { title: "Welcome to the Sales Floor",
+    text: "This is the agency's board. It shows how the day is going, coaches every recorded sales call, and gives you places to practise. This tour takes about two minutes." },
+  { find: () => $("nav.tabs"), title: "The left bar",
+    text: "Three desks: Apollo for sales, Athena for service, Cerberus for commercial. Each Center lists its pages under it. Settings at the bottom picks your look: five looks, each with a dark side." },
+  { find: () => $(".top .search"), title: "Search",
+    text: "Ctrl K from anywhere: pages, the sections on the page you are on, producers, and every lead on the loaded day. A lead opens its coaching card or its AgencyZoom record." },
+  { view: "digest", find: () => $("#view .controls"), title: "Pick a day and a person",
+    text: "Choose a single day, a week, month to date, a folio or your own dates, and everyone or one producer. The same choice follows you from page to page." },
+  { view: "digest", find: () => $("#view .tiles"), title: "The day at a glance",
+    text: "Dials, contacts, quotes, sales and closing ratio. Green is on goal, yellow is close, red is off track. A number with a pulsing green glow is live; the rest update every hour on the :55. Click any number to see the accounts behind it." },
+  { view: "digest", find: () => tourSection("Team Leaderboard"), title: "The leaderboard",
+    text: "Seven categories, 5 points for first down to 1 for fifth. Click a producer's number to see the calls or accounts it counts." },
+  { view: "digest", find: () => tourSection("Speed to Dial") || tourSection("Household Completion"), title: "Speed, tasks and households",
+    text: "How fast new internet leads were called and texts were answered, how many of today's tasks got done, and how many policies each household bought." },
+  { view: "digest", find: () => $("#view .chatbox"), title: "The day as a chat",
+    text: "Apollo on the left: every coached call and text as it happened. The producers on the right: each sale, quote presented and quote sent. A line opens its coaching card. Beside it, what needs someone right now." },
+  { view: "post", find: () => $("#view .paper .mast") || $("#view .press"), title: "The Flores Post",
+    text: "A published day or a folio as a newspaper: the headline, the goal board, what to try on a slow day, and Primetime, the sports section, with the standings." },
+  { view: "editions", find: () => $("#view .edtabs") || $("#view .press"), title: "The editions",
+    text: "Six more ways to read the same day: The Flores Feed, Fourth and Goal, KFLR The Close, FLRS 500, Cold Call Comics and CLOSER. React, vote, comment: everyone sees the same tally." },
+  { view: "sales", title: "The Sales sheet",
+    text: "Log a sale, look back at any folio, or break sales down by lead source, product or producer. Live sales are added here automatically." },
+  { view: "messages", title: "Texts & Emails",
+    text: "Every text and email with a lead: what each producer typed, the replies still waiting, and how quickly replies were answered. Automated messages are counted separately." },
+  { view: "coaching", sub: "detail", find: () => $("#centerbar .ctabs"), title: "Coaching cards",
+    text: "Apollo reviews every recorded sales conversation and writes a card: what the call was for, a score on each step, the objections and better lines to use, flags, and the recording with its transcript. Click a line of the transcript to jump there." },
+  { view: "coaching", sub: "objections", title: "Objections",
+    text: "Every objection Apollo found, grouped, with how each one was handled. Filter to one person to see what they lose to most." },
+  { view: "coaching", sub: "wins", title: "Wins and Losses",
+    text: "Patterns across many calls: how often the quote and the sale were assumed, and how often a quote was sent instead of kept on the phone. Every number lists the calls behind it." },
+  { view: "roleplay", title: "Role Play",
+    text: "A practice call against an AI prospect with a face and a voice. Pick a difficulty, talk it through, and Apollo grades the call and gives you one tip." },
+  { view: "rphistory", title: "Session History",
+    text: "Every graded Role Play session, with the grade and the whole conversation. Producers see their own; managers see everyone's." },
+  { view: "training", title: "Training",
+    text: "Flashcards, quizzes and matching games on objections, what to ask, and technique." },
+  { view: "blueprint", find: () => $("#view .bppick") || $("#view .bp"), title: "Apollo's Road Map",
+    text: "Plain-language guides to the sales side of the board. Pick one from the dropdown: New, Mid-Level or Experienced Producer, and Manager / Coaching for managers." },
+  { view: "service", title: "The Service Center",
+    text: "Athena's side: the service team's SRs, tasks, call backs and texts, and the Renewals tab. Athena's Road Map, the last tab here, explains it all." },
+  { find: () => $("#tourbtn"), title: "That's the tour",
+    text: "You can take it again any time from this button. Apollo's Road Map in the Learning Center and Athena's in the Service Center go into more detail." },
+];
+const tourSection = title => [...$$("#view .sect")].find(sec => {
+  const h = sec.querySelector("h2");
+  return h && h.textContent.trim().toLowerCase().startsWith(title.toLowerCase());
+});
+let tourIdx = -1, tourReturn = null;
+function tourEls() {
+  let spot = $("#tourspot"), card = $("#tourcard");
+  if (!spot) { spot = document.createElement("div"); spot.id = "tourspot"; spot.className = "tourspot"; document.body.appendChild(spot); }
+  if (!card) {
+    card = document.createElement("div"); card.id = "tourcard"; card.className = "tourcard";
+    card.setAttribute("role", "dialog"); card.setAttribute("aria-modal", "false"); card.setAttribute("aria-labelledby", "tourtitle");
+    document.body.appendChild(card);
+  }
+  return { spot, card };
+}
+function tourPlace(el) {
+  const { spot, card } = tourEls();
+  const vw = window.innerWidth, vh = window.innerHeight, pad = 6;
+  const r = el ? el.getBoundingClientRect() : null;
+  if (!r || !r.width || !r.height) {
+    spot.style.cssText = `left:${vw / 2}px;top:${vh / 2}px;width:0;height:0;`;
+    const cw = card.offsetWidth, ch = card.offsetHeight;
+    card.style.left = `${Math.max(16, (vw - cw) / 2)}px`; card.style.top = `${Math.max(16, (vh - ch) / 2)}px`;
+    return;
+  }
+  const top = Math.max(4, r.top - pad), left = Math.max(4, r.left - pad);
+  const h = Math.min(r.height + pad * 2, vh - top - 4), w = Math.min(r.width + pad * 2, vw - left - 4);
+  spot.style.cssText = `left:${left}px;top:${top}px;width:${w}px;height:${h}px;`;
+  const cw = card.offsetWidth, ch = card.offsetHeight, gap = 12;
+  let cx, cy;
+  if (left + w + gap + cw <= vw - 16 && ch <= vh - 32) { cx = left + w + gap; cy = Math.min(Math.max(16, top), vh - ch - 16); }
+  else if (top + h + gap + ch <= vh - 16) { cy = top + h + gap; cx = Math.min(Math.max(16, left), vw - cw - 16); }
+  else if (top - gap - ch >= 16) { cy = top - gap - ch; cx = Math.min(Math.max(16, left), vw - cw - 16); }
+  else { cx = Math.max(16, (vw - cw) / 2); cy = vh - ch - 16; }
+  card.style.left = `${cx}px`; card.style.top = `${cy}px`;
+}
+async function tourWait(find) {
+  if (!find) return null;
+  for (let i = 0; i < 30; i++) {
+    const el = find();
+    if (el && el.getBoundingClientRect().height) return el;
+    await new Promise(r => setTimeout(r, 100));
+  }
+  return null;
+}
+async function tourShow(i) {
+  tourIdx = i;
+  const st = TOUR_STEPS[i];
+  if (st.view) {
+    if (st.sub && typeof coachSubTab !== "undefined") coachSubTab = st.sub;
+    if (view !== st.view) await goView(st.view);
+    else if (st.sub) { paintCenterBar(); paint(); }
+  }
+  const { card } = tourEls();
+  const last = i === TOUR_STEPS.length - 1;
+  card.innerHTML = `<div class="tstep">${i + 1} of ${TOUR_STEPS.length}</div>
+    <h4 id="tourtitle">${cesc(st.title)}</h4><p>${cesc(st.text)}</p>
+    <div class="tbtns">${last ? "" : '<button class="tskip" type="button">Skip tour</button>'}
+      ${i ? '<button class="tback" type="button">Back</button>' : ""}
+      <button class="tnext" type="button">${last ? "Done" : "Next"}</button></div>`;
+  card.querySelector(".tnext").onclick = () => last ? tourEnd() : tourShow(i + 1);
+  const back = card.querySelector(".tback"); if (back) back.onclick = () => tourShow(i - 1);
+  const skip = card.querySelector(".tskip"); if (skip) skip.onclick = tourEnd;
+  tourPlace(null);
+  const el = await tourWait(st.find || (st.view ? () => $("#view") : null));
+  if (tourIdx !== i) return;
+  if (el) {
+    const r = el.getBoundingClientRect();
+    if (r.top < 60 || r.top > window.innerHeight * 0.6) {
+      el.scrollIntoView({ block: "start" });
+      window.scrollBy(0, -70);
+    }
+  }
+  tourPlace(el && el.id === "view" ? null : el);
+  card.querySelector(".tnext").focus({ preventScroll: true });
+}
+function tourStart() {
+  tourReturn = view;
+  window.scrollTo(0, 0);
+  tourShow(0);
+}
+function tourEnd() {
+  tourIdx = -1;
+  const spot = $("#tourspot"), card = $("#tourcard");
+  if (spot) spot.remove();
+  if (card) card.remove();
+  const back = tourReturn; tourReturn = null;
+  if (back && back !== view) goView(back);
+  $("#tourbtn").focus({ preventScroll: true });
+}
+document.addEventListener("keydown", e => {
+  if (tourIdx < 0) return;
+  if (e.key === "Escape") tourEnd();
+  else if (e.key === "ArrowRight") { if (tourIdx < TOUR_STEPS.length - 1) tourShow(tourIdx + 1); }
+  else if (e.key === "ArrowLeft") { if (tourIdx > 0) tourShow(tourIdx - 1); }
+});
+window.addEventListener("resize", () => {
+  if (tourIdx < 0) return;
+  const st = TOUR_STEPS[tourIdx];
+  const el = st.find ? st.find() : null;
+  tourPlace(el);
+});
+window.addEventListener("scroll", () => {
+  if (tourIdx < 0) return;
+  const st = TOUR_STEPS[tourIdx];
+  if (st.find) tourPlace(st.find());
+}, { passive: true });
+$("#tourbtn").onclick = tourStart;
+
 async function goView(next) {
   if (next === view) return;
   if (view === "roleplay" && next !== "roleplay") {
@@ -8037,12 +8500,12 @@ paintCenterBar();
   initCommercial();   // unhides the Commercial Center for Frank only
   await loadMe();
   paintGreeting(true);
+  initMe();           // Apollo's Road Map (ARM) for managers only
   await loadDay(days[0]);
   paintGreeting(true);   // again, now that it knows the day (sales, the folio clock)
 })();
 </script>
 <script src="post.js"></script>
 <script src="editions.js"></script>
-<script src="tour.js"></script>
 </body>
 </html>

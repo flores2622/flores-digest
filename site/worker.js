@@ -1544,7 +1544,9 @@ function identityOf(request, env) {
     canLogFor = team.map((e) => RP_PRODUCER_EMAILS[e]).filter(Boolean);
   }
   const scope = env ? rpScope(request, env) : { all: false, producer };
-  return { email, name, producer, canLogFor, roleplay: { producer: scope.producer, all: scope.all } };
+  // `all` and `producer` at the top level too: the Road Map's initMe reads
+  // them the way the old /api/me (rpScope) answered.
+  return { email, name, producer, canLogFor, all: scope.all, roleplay: { producer: scope.producer, all: scope.all } };
 }
 function whoAmI(request, env) {
   return json(identityOf(request, env));
