@@ -294,7 +294,7 @@ function edFeed(X) {
     <div class="pc"><h3>Folio · day ${done} of ${bizAll}</h3><div class="prog"><i style="width:${pace ? Math.min(100, X.FTOT / pace * 100) : 0}%"></i></div><div class="hrow"><span class="note">${pmoney(X.FTOT)} so far</span><span class="note">pace ${pmoney(pace)}</span></div><p style="font-size:14px">${zero ? `${plural(zero, "zero day")} so far. ` : ""}${Math.max(0, F.hh - F.hhSold) ? `${plural(Math.max(0, F.hh - F.hhSold), "quoted household")} still open.` : ""}</p></div>
     <div class="pc"><h3>Trending</h3>${F.objs.slice(0, 2).map(o => `<div class="trend"><span>#${edEsc(o[0].replace(/[^A-Za-z]/g, ""))}</span><b>${o[1]}</b></div>`).join("")}${X.SALES.some(s => /winback/i.test(s.src)) ? `<div class="trend"><span>#Winback</span><b>${X.SALES.filter(s => /winback/i.test(s.src)).length}</b></div>` : ""}<div class="trend"><span>#SentTheQuote</span><b>${X.T.sent} of ${X.T.quoteUp}</b></div><div class="trend" style="border:0"><span>#Misfiled</span><b>${F.misfiled}</b></div></div>
    </div></div>
-   <div class="pc" style="margin-top:14px"><div class="whor">${edAvatar(X, "Apollo")}<div><b>Apollo <span class="ver">✓</span></b><small>The leaderboard · final</small></div></div>${edLbt(X)}</div>`;
+   <div class="pc" style="margin-top:14px"><div class="whor">${edAvatar(X, "Apollo")}<div><b>Apollo <span class="ver">✓</span></b><small>Trending accounts · every stat, final</small></div></div>${edLbt(X)}</div>`;
 }
 
 /* ===== GRIDIRON ===== */
@@ -359,7 +359,7 @@ function edPod(X) {
    <div class="edcard"><h3>Now playing · ${edEsc(segs[seg][2])}</h3>${edTx(segs[seg][4])}</div>
    <div class="edcard"><div class="hrow"><h3>Mailbag</h3><span class="note">${plural(mail.length, "note")}</span></div><div class="mail">${mail.length ? mail.slice(-6).map(m => `<div class="m"><b>${edEsc(m.who)} · ${edEsc(m.at)}</b>${edEsc(m.text)}</div>`).join("") : '<span class="note">Send Apollo a note. Tomorrow’s Mailbag answers them on air.</span>'}</div>
     <form data-mail style="display:flex;gap:8px"><input class="t" placeholder="Ask Apollo something, ${edEsc(edMe())}…" aria-label="Mailbag" maxlength="300"><button class="ebtn">Send</button></form></div>
-   <div class="edcard"><h3>Show notes · the numbers</h3>${edLbt(X)}</div></div></div>`;
+   <div class="edcard"><h3>The playlist · tonight’s numbers, track by track</h3>${edLbt(X)}</div></div></div>`;
 }
 
 /* ===== THE CLOSING BELL ===== */
@@ -397,7 +397,7 @@ function edMkt(X) {
    <div class="anal"><h4>Analyst note · Apollo</h4><p>${up.length} of ${rows.length} issues closed up ${edEsc(when)}.${up.map(r => ` ${r.sym} +${pmoney(r.chg)}${X.SALES.filter(s => s.w === r.f).length ? ` on ${plist([...new Set(X.SALES.filter(s => s.w === r.f).map(s => (s.src || "a sale").toLowerCase()))])}` : ""}.`).join("")}${flat.length ? ` ${plist(flat.map(r => r.sym))} flat${flat.some(r => r.n.pq) ? ` on heavy volume: ${pmoney(flat.reduce((a, r) => a + r.n.pq, 0))} quoted between them` : ""}.` : ""}</p>
     <p>The FLRS index is at ${pmoney(X.FTOT)} after ${plural(X.rows.length, "session")}${X.rows.filter(r => !r.ps).length ? ` with ${plural(X.rows.filter(r => !r.ps).length, "zero day")}` : ""}. Catalysts: ${plural(Math.max(0, F.hh - F.hhSold), "quoted household")}, ${F.atRisk} at risk, ${F.misfiled} misfiled.</p>
     <div class="r"><span>Closing ratio</span><b class="${F.closeHH >= 25 ? "up" : "dn"}">${F.closeHH == null ? "—" : ppct(F.closeHH)}</b></div><div class="r"><span>Contact rate</span><b class="${F.rate >= 13 ? "up" : "dn"}">${ppct(F.rate)}</b></div>${F.objs[0] ? `<div class="r"><span>${edEsc(F.objs[0][0])} overcome</span><b class="${F.objs[0][2] ? "up" : "dn"}">${F.objs[0][2]} of ${F.objs[0][1]}</b></div>` : ""}<div class="r"><span>Earnings (folio close)</span><b>${X.folioEnd ? pmd(X.folioEnd) : "—"}</b></div><div class="r" style="border:0"><span>Watchlist</span><b>${Object.keys(edMine.watch).filter(k => edMine.watch[k]).join(" · ") || "tap ★ on a row"}</b></div>
-    <h4 style="margin-top:8px">Full board</h4>${edLbt(X, "lbt").replace('class="lbt"', 'class="lbt" style="font-size:12px;min-width:860px"')}</div></div></div>`;
+    <h4 style="margin-top:8px">Closing prices · the full tape</h4>${edLbt(X, "lbt").replace('class="lbt"', 'class="lbt" style="font-size:12px;min-width:860px"')}</div></div></div>`;
 }
 
 /* ===== COLD CALL COMICS ===== */
@@ -425,7 +425,7 @@ function edComic(X) {
   panels.push({ cap: `Final.`, cls: "last", html: `<b>${pmoney(F.ps)}</b><span>${plural(F.pol, "policy", "policies")} · ${F.hhSold} of ${F.hh} households${F.closeHH != null ? ` · ${ppct(F.closeHH, 0)} close` : ""}</span><span style="font-size:13px">${X.order.map(f => `${f} ${X.NUM[f].pts}`).join(" · ")}</span><span style="font-size:12px;color:#e59a6f">${F.objs[0] ? `${edEsc(F.objs[0][0])} ${F.objs[0][2]}-for-${F.objs[0][1]}. ` : ""}${F.misfiled} leads misfiled.</span>` });
   return `<div class="comic"><div class="title"><b>COLD CALL COMICS</b><span style="font-weight:700">${edEsc(X.isFolio ? "The folio so far" : plong(X.dayKey))} · drawn by Apollo</span></div>
   <div class="panels">${panels.map((p, i) => { const by = likes[i] || []; return `<div class="panel ${p.cls || ""}"${p.style ? ` style="${p.style}"` : ""}><div class="cap">${edEsc(p.cap)}</div><div class="scene">${p.html}</div><button type="button" class="plike" data-like="${i}" aria-pressed="${by.includes(edMe())}" title="${edEsc(by.join(", "))}">😂 ${by.length || ""}</button></div>`; }).join("")}</div>
-  <div style="font-family:var(--body);display:flex;flex-direction:column;gap:12px;border-top:3px solid #2a2320;padding-top:14px"><div class="hrow"><b style="font:400 30px Bangers,Impact,sans-serif;letter-spacing:.04em">THE BOX SCORE</b><span class="lab">final · the whole leaderboard</span></div>${edLbt(X)}</div>
+  <div style="font-family:var(--body);display:flex;flex-direction:column;gap:12px;border-top:3px solid #2a2320;padding-top:14px"><div class="hrow"><b style="font:400 30px Bangers,Impact,sans-serif;letter-spacing:.04em">THE LAST PANEL</b><span class="lab">every number, no drawings</span></div>${edLbt(X)}</div>
   <p class="note" style="font-family:var(--body)">Running gags come from the data: a duel when two producers close, a boss fight for the objection that cost most, a tumbleweed on a zero day, Apollo’s thought bubble whenever a quote goes by email.</p></div>`;
 }
 
@@ -450,7 +450,7 @@ function edCloser(X) {
     <div class="k" style="margin-top:8px">By the numbers · drawn, not tabled</div>
     <div class="info"><div><b>${pmoney(F.ps)}</b><span>new premium · ${plural(F.pol, "policy", "policies")}</span></div><div><div class="ring" style="--p:${F.closeHH == null ? 0 : Math.min(100, Math.round(F.closeHH))}%"><i>${F.closeHH == null ? "—" : ppct(F.closeHH, 0)}</i></div><span>${F.hhSold} of ${F.hh} households bought</span></div><div><b>${F.spBest ? edFmtStd(F.spBest[1].median) : "—"}</b><span>${F.spBest ? `${pfirst(F.spBest[0])}’s first dial · team ${edFmtStd(F.spTeam)}` : "no new internet leads"}</span></div><div><b>${F.objs[0] ? `${F.objs[0][2]}/${F.objs[0][1]}` : ppct(F.rate)}</b><span>${F.objs[0] ? `${edEsc(F.objs[0][0])} overcome` : "contact rate"}</span></div></div>
     <div class="k" style="margin-top:8px">The podium</div><div class="podium">${podOrder.map((f, i) => `<div><b>${edEsc(f)}</b><small>${X.NUM[f].pts} pts · ${pmoney(X.NUM[f].ps)}</small><div class="blk" style="height:${podH[i]}px;background:${X.C[f]}22;color:${X.C[f]}">${podRank[i]}</div></div>`).join("")}</div>
-    <div class="k" style="margin-top:8px">The numbers in full</div>${edLbt(X)}</div></div>`;
+    <div class="k" style="margin-top:8px">The masthead · who did what, in full</div>${edLbt(X)}</div></div>`;
 }
 
 /* ===== the page ===== */

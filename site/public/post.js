@@ -222,6 +222,7 @@ function primetimeHtml(F, nums, isFolio, take) {
   return `<section class="sp"><div class="hd">PRIMETIME<small>THE SPORTS SECTION · ${isFolio ? "THIS FOLIO" : "TODAY"} · ${F.live ? "FINAL" : "FINAL"}</small></div>
     <div class="big">${nums.slice(0, 5).map(([k, v]) => `<div><b>${cesc(v)}</b><span>${cesc(k)}</span></div>`).join("")}</div>
     <div class="take">${cesc(take)}</div>
+    <div class="lab kick">The standings${isFolio ? " · per-day averages" : ""}</div>
     <div class="scroll"><table class="box spt"><thead><tr><th>#</th><th>Producer</th><th>Dials</th><th>Cont</th><th>HH Q</th><th>HH sold</th><th>Prem</th><th>Pts</th></tr></thead><tbody>${
       rows.map((r, i) => { const p = r[4]; return `<tr><td>${i + 1}</td><td>${cesc(r[0])}${i === 0 ? " ★" : ""}</td><td>${p.dials || 0}</td><td>${p.live || 0}</td><td>${p.hh || 0}</td><td>${r[2]}</td><td>${r[3]}</td><td><b>${r[1]}</b></td></tr>`; }).join("")}</tbody></table></div>
     <div class="row3" style="border-top:0;padding-top:0">
