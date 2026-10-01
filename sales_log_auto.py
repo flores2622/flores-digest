@@ -155,6 +155,13 @@ def build_entries(day, policies, leads, customers, source_map, ids):
     easily-tested read of the three corpora)."""
     customers_by_id = {c["id"]: c for c in customers if c.get("id") is not None}
     sold_leads = [l for l in leads if str(l.get("soldDate") or "").startswith(day)]
+    # No lead marked sold: the day's new customer record for that producer,
+    # when there is exactly one (digest_config.customer_households; Frank,
+    # 2026-10-01 -- Crystal's Julio Zepeda, 09-30).
+    by_customer = {}
+    for who, cs in cfg.customer_households(day, policies, leads, customers, source_map, ids).items():
+        if len(cs) == 1:
+            by_customer[who] = cs[0]
 
     out = []
     for p in policies:
@@ -174,6 +181,9 @@ def build_entries(day, policies, leads, customers, source_map, ids):
             if cust:
                 client_name = _customer_name(cust)
                 az_customer_id = str(cust["id"])
+        elif not candidates and who in by_customer:
+            client_name = _customer_name(by_customer[who])
+            az_customer_id = str(by_customer[who]["id"])
 
         out.append({
             "producer": who,
@@ -227,9 +237,17 @@ def sync_day(day, log=print, dry_run=False):
     existing_manual_policy_numbers = {e["policy_number"] for e in doc["entries"]
                                        if e.get("policy_number") and not e.get("az_policy_id")}
 
-    added = 0
+    added = named = 0
+    by_pid = {e["az_policy_id"]: e for e in doc["entries"] if e.get("az_policy_id")}
     for c in candidates:
         if c["az_policy_id"] in existing_policy_ids:
+            # An auto row the live refresh added with no name: name it now,
+            # never a row a person has typed in or edited.
+            e = by_pid.get(c["az_policy_id"])
+            if (e and e.get("source") == "auto" and not e.get("client_name") and c["client_name"]
+                    and e.get("notes") == "Auto-added from AgencyZoom"):
+                e["client_name"], e["az_customer_id"] = c["client_name"], c["az_customer_id"]
+                named += 1
             continue
         if c["policy_number"] and c["policy_number"] in existing_manual_policy_numbers:
             continue
@@ -246,9 +264,11 @@ def sync_day(day, log=print, dry_run=False):
         if c["az_policy_id"]:
             existing_policy_ids.add(c["az_policy_id"])
 
-    if not added:
+    if not added and not named:
         log(f"  sales log auto: {len(candidates)} sale(s) found for {day}, all already logged")
         return 0
+    if named:
+        log(f"  sales log auto: named {named} auto row(s) for {day}")
 
     log(f"  sales log auto: {added} new sale(s) added for {day}"
         + (" [dry-run, not written]" if dry_run else ""))

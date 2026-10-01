@@ -1198,17 +1198,24 @@ function hhSoldOf(d, name) {
    own (a lead unmarked since the checkpoint leaves); the checkpoint's row
    is kept for a lead both have (it carries the source). */
 function mergeSoldLeads(cpRows, live, complete, day) {
-  const byId = new Map((cpRows || []).map(r => [String(r.lead_id), r]));
+  // A household found from its customer record (no lead marked sold;
+  // digest_config.customer_households) is keyed by that record.
+  const rk = r => r.lead_id != null ? String(r.lead_id) : "c" + r.household;
+  const byId = new Map((cpRows || []).map(r => [rk(r), r]));
   const fresh = new Map();                        // lead id -> the live row, with its producer
   for (const [who, list] of Object.entries(live || {})) for (const r of list || [])
-    if (!fresh.has(String(r.lead_id))) fresh.set(String(r.lead_id), { ...r, who });
+    if (!fresh.has(rk(r))) fresh.set(rk(r), { ...r, who });
   // A lead both have: the checkpoint's row (it carries the source) under
   // the refresh's newer fields (household, producer).
   const both = (was, r) => was ? { ...was, ...r } : { day: day || undefined, source: "", ...r };
-  const out = complete ? [] : (cpRows || []).map(r => fresh.has(String(r.lead_id)) ? both(r, fresh.get(String(r.lead_id))) : r);
-  const have = new Set(out.map(r => String(r.lead_id)));
+  // A complete live read stands on its own -- except the checkpoint's
+  // customer-record rows, which the refresh reads only now and then.
+  const out = (cpRows || []).filter(r => !complete || r.from_customer).map(r => fresh.has(rk(r)) ? both(r, fresh.get(rk(r))) : r);
+  const have = new Set(out.map(rk));
   for (const [id, r] of fresh) if (!have.has(id)) out.push(both(byId.get(id), r));
-  return out;
+  // ...and a customer row gives way once a lead for that household is marked sold.
+  const leadHH = new Set(out.filter(r => r.lead_id != null && r.household != null).map(r => String(r.household)));
+  return out.filter(r => r.lead_id != null || !leadHH.has(String(r.household)));
 }
 /* hhSoldSplit over the checkpoint's own sold-lead rows, for the closing
    ratio while it is not live (applyLive keeps them as cp_sold_leads). */
@@ -1849,7 +1856,10 @@ const ddk = (k, cls) => ` data-ddrill="${k}" role="button" tabindex="0" class="$
 // A table cell that opens a list: attributes plus the class to add.
 const ddc = k => ({ attr: ` data-ddrill="${k}" role="button" tabindex="0"`, cls: ` rdrill-cell${digDrill === k ? " on" : ""}` });
 const digWho = r => `<span class="who">${pbadge(DOT[r.who] || "#8a877f", (r.who || "").split(" ")[0])}</span>`;
-const digLead = r => r.lead_id ? `<a href="${AZ_URL.lead}${encodeURIComponent(r.lead_id)}" target="_blank" rel="noopener">${cesc(r.lead)}</a>` : cesc(r.lead || "—");
+const digLead = r => r.lead_id ? `<a href="${AZ_URL.lead}${encodeURIComponent(r.lead_id)}" target="_blank" rel="noopener">${cesc(r.lead)}</a>`
+  // No lead marked sold: the household was found from its customer record.
+  : r.customer_id ? `<a href="${AZ_URL.customer}${encodeURIComponent(r.customer_id)}" target="_blank" rel="noopener">${cesc(r.lead)}</a> <span class="sd" title="No lead was marked sold for this sale; the household is the new customer record behind the policy.">(customer record)</span>`
+  : cesc(r.lead || "—");
 const digDay = (d, r) => d.date ? "" : `<td class="num">${r.day ? fmtShortDate(r.day) : ""}</td>`;
 const digDayTh = d => d.date ? "" : `<th class="num">Day</th>`;
 function digTable(d, head, rows) {

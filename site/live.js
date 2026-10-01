@@ -345,6 +345,60 @@ export function isLifeLead(l, basis, recent) {
     && r[2] >= lo && r[2] <= hi).map(r => !!r[3]);
   return hits.length > 0 && hits.every(Boolean);
 }
+/* digest_config.customer_households (keep in step): a household sold with
+   no lead marked sold (Frank, 2026-10-01; Crystal's Julio Zepeda, 09-30).
+   A producer's real, non-life policy today with no lead of theirs on its
+   source marked sold within `days` is unmatched; for each, one customer
+   record created today (Arizona) with asCustomerDate today, assigned to
+   them, that no sold lead points at, is their household sold. `leads` is
+   the day's kept active list, `customers` the newest customer records. */
+const azDayOfUtc = s => { const ms = utcMs(s); return Number.isFinite(ms) ? new Date(ms - 7 * 3600000).toISOString().slice(0, 10) : ""; };
+export function customerHouseholds(day, basis, policies, sourceNames, leads, customers) {
+  const byAz = Object.fromEntries(Object.entries(basis.producers || {}).map(([n, v]) => [String(v.az_id), n]));
+  const notSale = new Set(basis.not_a_sale || []);
+  const days = (basis.life || {}).days ?? 3, d0 = Date.parse(day + "T12:00:00Z");
+  const iso = ms => new Date(ms).toISOString().slice(0, 10);
+  const lo = iso(d0 - days * 86400000), hi = iso(d0 + days * 86400000);
+  const sold = (leads || []).filter(l => l.status === 2 && String(l.soldDate || "").slice(0, 10) >= lo && String(l.soldDate || "").slice(0, 10) <= hi);
+  const covered = new Set(sold.map(l => l.convertedHouseholdId).filter(x => x != null).map(String));
+  const matched = new Set(sold.map(l => `${l.assignedTo}|${l.leadSourceId}`));
+  const unmatched = {};
+  for (const p of policies || []) {
+    if (!String(p.soldDate || "").startsWith(day) || isLifePolicy(p, basis)) continue;
+    if (!byAz[String(p.agentId)] || notSale.has(norm(sourceNames[p.leadSourceId]))) continue;
+    if (!matched.has(`${p.agentId}|${p.leadSourceId}`)) unmatched[p.agentId] = (unmatched[p.agentId] || 0) + 1;
+  }
+  const out = {};
+  const cs = [...(customers || [])].sort((a, b) => (String(a.createDate || "") < String(b.createDate || "") ? -1 : 1));
+  for (const c of cs) {
+    const a = c.agentId;
+    if (!(unmatched[a] > 0) || covered.has(String(c.id)) || isTestLead(c, basis)) continue;
+    if (String(c.asCustomerDate || "").slice(0, 10) !== day || azDayOfUtc(c.createDate) !== day) continue;
+    unmatched[a]--;
+    const name = String(c.housename || "").trim() || [c.firstname, c.lastname].map(x => String(x || "").trim()).filter(Boolean).join(" ");
+    (out[byAz[String(a)]] || (out[byAz[String(a)]] = [])).push({ lead_id: null, customer_id: c.id, household: c.id,
+      lead: name, source: "", existing: false, from_customer: true });
+  }
+  return { out, unmatched: Object.values(unmatched).reduce((s, n) => s + n, 0) + Object.values(out).reduce((s, r) => s + r.length, 0) };
+}
+// The newest customer records, read only while some policy today has no
+// sold lead behind it, and at most every CUSTOMERS_REFRESH_SECONDS.
+const CUSTOMERS_REFRESH_SECONDS = 300;
+async function newestCustomers(env, day, fetchFn) {
+  const key = `live/${day}-customers.json`;
+  if (env.BOARD) {
+    const o = await env.BOARD.get(key);
+    if (o !== null) { const x = await o.json(); if (Date.now() - Date.parse(x.fetched_at || 0) < CUSTOMERS_REFRESH_SECONDS * 1000) return x.customers || []; }
+  }
+  const j = await azGet(env, "/v1/api/customers/list", fetchFn, {
+    method: "POST", body: JSON.stringify({ page: 0, pageSize: 100, sort: "createDate", order: "desc" }),
+  });
+  const customers = (j.customers || []).map(c => ({ id: c.id, agentId: c.agentId, createDate: c.createDate, asCustomerDate: c.asCustomerDate,
+    firstname: c.firstname, lastname: c.lastname, housename: c.housename }));
+  if (env.BOARD) await env.BOARD.put(key, JSON.stringify({ fetched_at: new Date().toISOString(), customers }));
+  return customers;
+}
+
 export function lifeRecent(basis, todays) {
   return [...((basis.life || {}).recent || []),
     ...(todays || []).map(p => [p.agentId, p.leadSourceId, String(p.soldDate || "").slice(0, 10), isLifePolicy(p, basis)])];
@@ -977,6 +1031,16 @@ export async function computeFast(env, day, basis, fetchFn = fetch, evidence = n
     for (const [who, rows] of Object.entries(sold.data.per || {})) {
       sold.data.per[who] = rows.filter(r => !(r._l && isLifeLead(r._l, basis, recent)));
       for (const r of sold.data.per[who]) delete r._l;
+    }
+    // Households with no lead marked sold: the day's new customer records.
+    if (sales.ok) {
+      try {
+        const leads = (sold.data._active || {}).leads || [];
+        if (customerHouseholds(day, basis, inputs.policies, inputs.names, leads, []).unmatched) {
+          const { out } = customerHouseholds(day, basis, inputs.policies, inputs.names, leads, await newestCustomers(env, day, fetchFn));
+          for (const [who, rows] of Object.entries(out)) (sold.data.per[who] || (sold.data.per[who] = [])).push(...rows);
+        }
+      } catch (e) { /* the checkpoint's own customer rows stay (mergeSoldLeads) */ }
     }
     inputs.soldRaw = sold.data._raw; delete sold.data._raw;
     inputs.active = { ...sold.data._active, fetched_at: new Date().toISOString() }; delete sold.data._active;

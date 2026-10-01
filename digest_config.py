@@ -131,6 +131,56 @@ LIFE_LEAD_SOURCES = {"life cross sell"}
 LIFE_LEAD_DAYS = 3
 
 
+def _az_day_of_utc(stamp):
+    """AgencyZoom's UTC 'YYYY-MM-DD HH:MM:SS' as its Arizona date (UTC-7)."""
+    s = str(stamp or "")[:19].replace("T", " ")
+    try:
+        return (dt.datetime.fromisoformat(s) - dt.timedelta(hours=7)).date().isoformat()
+    except ValueError:
+        return ""
+
+
+def customer_households(day, policies, leads, customers, source_map, ids, days=LIFE_LEAD_DAYS):
+    """{producer: [customer, ...]} -- a household sold with NO lead marked
+    sold (Frank, 2026-10-01: "make it fall back to the customer record";
+    Crystal's Julio Zepeda, 09-30: a customer and a policy, no lead).
+
+    A producer's real, non-life policy on `day` is UNMATCHED when no lead of
+    theirs on the same lead source was marked sold within `days` of it. For
+    each unmatched policy, one customer record that became a customer that
+    day (created that Arizona day AND asCustomerDate that day -- an import
+    or a re-entered customer keeps an old asCustomerDate), assigned to the
+    same producer, with no sold lead (any producer, within `days`) pointing
+    at it, is their household sold. Only a NEW customer can be found this
+    way: an older customer's record says nothing about when they bought.
+    site/live.js customerHouseholds mirrors this -- keep them in step."""
+    d0 = dt.date.fromisoformat(day)
+    lo, hi = (d0 - dt.timedelta(days=days)).isoformat(), (d0 + dt.timedelta(days=days)).isoformat()
+    sold = [l for l in leads if l.get("status") == 2 and lo <= str(l.get("soldDate") or "")[:10] <= hi]
+    covered = {l.get("convertedHouseholdId") for l in sold if l.get("convertedHouseholdId")}
+    matched = {(l.get("assignedTo"), l.get("leadSourceId")) for l in sold}
+    unmatched = collections.Counter()
+    for p in policies:
+        if not str(p.get("soldDate") or "").startswith(day) or is_life(p):
+            continue
+        if p.get("agentId") not in ids or not is_real_sale(p, source_map):
+            continue
+        if (p.get("agentId"), p.get("leadSourceId")) not in matched:
+            unmatched[p.get("agentId")] += 1
+    out = {}
+    if not unmatched:
+        return out
+    for c in sorted(customers, key=lambda c: str(c.get("createDate") or "")):
+        a = c.get("agentId")
+        if unmatched.get(a, 0) <= 0 or c.get("id") in covered or is_test_lead(c):
+            continue
+        if str(c.get("asCustomerDate") or "")[:10] != day or _az_day_of_utc(c.get("createDate")) != day:
+            continue
+        unmatched[a] -= 1
+        out.setdefault(ids[a], []).append(c)
+    return out
+
+
 def life_lead_policies(policies, around, days=LIFE_LEAD_DAYS):
     """(agentId, leadSourceId, soldDate, is_life) of every policy sold within
     `days` of `around` -- what is_life_lead needs, small enough for the
