@@ -328,6 +328,28 @@ export function isLifePolicy(p, basis) {
   return !!rx && new RegExp(rx[0], rx[1]).test(String(p.policyTypeName || ""));
 }
 
+/* digest_config.is_life_lead (keep in step): a life source, or every policy
+   the lead's producer sold on its source within `days` of its soldDate is
+   life (Frank, 2026-09-30: Alondra Angulo, Home no Auto, marked sold for an
+   Individual Life). `recent` rows are [agentId, leadSourceId, soldDate,
+   isLife]: the checkpoint's (basis.life.recent) plus today's policies. */
+export function isLifeLead(l, basis, recent) {
+  const life = basis.life || {};
+  if (new Set(life.lead_sources || []).has(norm(l.leadSourceName))) return true;
+  const sold = String(l.soldDate || "").slice(0, 10);
+  if (!sold || !recent || !recent.length) return false;
+  const days = life.days ?? 3, d0 = Date.parse(sold + "T12:00:00Z");
+  const iso = ms => new Date(ms).toISOString().slice(0, 10);
+  const lo = iso(d0 - days * 86400000), hi = iso(d0 + days * 86400000);
+  const hits = recent.filter(r => String(r[0]) === String(l.assignedTo) && String(r[1]) === String(l.leadSourceId)
+    && r[2] >= lo && r[2] <= hi).map(r => !!r[3]);
+  return hits.length > 0 && hits.every(Boolean);
+}
+export function lifeRecent(basis, todays) {
+  return [...((basis.life || {}).recent || []),
+    ...(todays || []).map(p => [p.agentId, p.leadSourceId, String(p.soldDate || "").slice(0, 10), isLifePolicy(p, basis)])];
+}
+
 /* digest_config.real_sales + life_sales + bundle_classification's
    cross_sell, per producer. */
 export function salesFrom(basis, policies, sourceNames) {
@@ -491,7 +513,7 @@ export async function soldLeadsToday(env, day, basis, fetchFn = fetch, kept = nu
   const per = {}, raw = [];
   const existing = new Set(basis.existing_household || []);
   const notSale = new Set(basis.not_a_sale || []);
-  const lifeSources = new Set((basis.life || {}).lead_sources || []);
+  const recent = lifeRecent(basis, null);
   for (const l of merged.values()) {
     if (l.status !== 2 || !String(l.soldDate || "").startsWith(day)) continue;
     const name = [l.firstname, l.lastname].map(x => String(x || "").trim()).filter(Boolean).join(" ");
@@ -501,10 +523,12 @@ export async function soldLeadsToday(env, day, basis, fetchFn = fetch, kept = nu
     const who = byAz[String(l.assignedTo)];
     if (!who) continue;
     // digest_rows.sold_leads (keep in step): a BOB / Rewrite source, a test
-    // lead or a life source is not a household sold (Frank, 2026-09-30).
-    if (notSale.has(norm(l.leadSourceName)) || isTestLead(l, basis) || lifeSources.has(norm(l.leadSourceName))) continue;
+    // lead or a life sale is not a household sold (Frank, 2026-09-30).
+    if (notSale.has(norm(l.leadSourceName)) || isTestLead(l, basis) || isLifeLead(l, basis, recent)) continue;
     (per[who] || (per[who] = [])).push({ lead_id: l.id, household: l.convertedHouseholdId ?? null, lead: name,
-      existing: existing.has(norm(l.leadSourceName)) });
+      existing: existing.has(norm(l.leadSourceName)),
+      // for computeFast's second look with today's policies; removed there
+      _l: { assignedTo: l.assignedTo, leadSourceId: l.leadSourceId, soldDate: l.soldDate, leadSourceName: l.leadSourceName } });
   }
   const leads = [...merged.values()].sort((a, b) => (a.lastActivityDate < b.lastActivityDate ? 1 : -1));
   const oldest = leads.length ? leads[leads.length - 1].lastActivityDate : null;
@@ -947,6 +971,13 @@ export async function computeFast(env, day, basis, fetchFn = fetch, evidence = n
       : { ok: true, data: taskCompletion(basis, got.data.tasks, flags) };
   }
   if (sold.ok) {
+    // A lead sold as life on a policy entered since the checkpoint: today's
+    // policies, when the sales read got them, join the checkpoint's.
+    const recent = lifeRecent(basis, sales.ok ? inputs.policies : null);
+    for (const [who, rows] of Object.entries(sold.data.per || {})) {
+      sold.data.per[who] = rows.filter(r => !(r._l && isLifeLead(r._l, basis, recent)));
+      for (const r of sold.data.per[who]) delete r._l;
+    }
     inputs.soldRaw = sold.data._raw; delete sold.data._raw;
     inputs.active = { ...sold.data._active, fetched_at: new Date().toISOString() }; delete sold.data._active;
   }

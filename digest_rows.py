@@ -92,8 +92,12 @@ def build(day, log=print):
 
     azid = {v["az_id"]: n for n, v in cfg.PRODUCERS.items()}
     try:
-        import sales_log_auto
         pol = json.loads((ROOT / "data/az_policies_all.json").read_text())
+    except Exception as e:
+        pol = []
+        log(f"  digest rows: no policy list ({type(e).__name__}: {e})")
+    try:
+        import sales_log_auto
         for x in pol:
             if not str(x.get("soldDate") or "").startswith(day):
                 continue
@@ -120,6 +124,7 @@ def build(day, log=print):
                                  "lead_id": rid if rid in by_id else None,
                                  "customer_id": rid if rid and rid not in by_id else None})
     import lead_sources
+    life_recent = cfg.life_lead_policies(pol, day)
     for l in leads:
         who = azid.get(l.get("assignedTo"))
         if who and l.get("status") == 2 and str(l.get("soldDate") or "").startswith(day):
@@ -129,7 +134,7 @@ def build(day, log=print):
             # A lead sold on a life source is a life sale, not a household sold
             # (Frank, 2026-09-30: "i dont want it to count as a HH").
             if (lead_sources.norm(l.get("leadSourceName")) in lead_sources.NOT_A_SALE
-                    or cfg.is_test_lead(l) or cfg.is_life_lead(l)):
+                    or cfg.is_test_lead(l) or cfg.is_life_lead(l, life_recent)):
                 continue
             # household: so the board counts households sold, not lead records
             # -- duplicate lead records are pervasive (Frank, 2026-09-28).
