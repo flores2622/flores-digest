@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Sales Floor — Flores Insurance Agency</title>
-<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=Manrope:wght@400;500;600;700;800&family=Fraunces:opsz,wght@9..144,400;9..144,700&family=Public+Sans:wght@400;500;700;800&family=Bitter:wght@400;600&family=Work+Sans:wght@400;500;700;800&family=Instrument+Serif&family=Instrument+Sans:wght@400;500;700&family=Bebas+Neue&display=swap">
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=Manrope:wght@400;500;600;700;800&family=Fraunces:opsz,wght@9..144,400;9..144,700&family=Public+Sans:wght@400;500;700;800&family=Bitter:wght@400;600&family=Work+Sans:wght@400;500;700;800&family=Instrument+Serif&family=Instrument+Sans:wght@400;500;700&family=Bebas+Neue&family=Bangers&family=Comic+Neue:wght@400;700&family=JetBrains+Mono:wght@400;700&display=swap">
 <style>
 /* ---------------------------------------------------------------------------
    Palette. Categorical slots 1-5 in fixed order, validated in both modes:
@@ -1080,7 +1080,7 @@ let view = "digest";
 // page's own pill-style .subtabs for anything inside it. A Center with one
 // page shows just that one tab.
 const CENTERS = {
-  salescenter: [["digest", "Digest"], ["post", "The Flores Post"], ["sales", "Sales"], ["messages", "Texts & Emails"]],
+  salescenter: [["digest", "Digest"], ["post", "The Flores Post"], ["editions", "Editions"], ["sales", "Sales"], ["messages", "Texts & Emails"]],
   coaching: [["coaching", "Coaching"]],
   learning: [["roleplay", "Role Play"], ["rphistory", "Session History"], ["training", "Training"]],
   service: [["service", "Service Digest"], ["renewals", "Renewals"]],
@@ -6462,6 +6462,15 @@ async function paintTab() {
     try { body = await postPanel(err); } catch (e) { console.error(e); body = drawErrorHtml(e); }
     v.innerHTML = rangeControlHtml() + body;
     wireRangeControl(); wirePost();
+  } else if (view === "editions") {
+    v.innerHTML = rangeControlHtml() + '<div class="empty">Loading…</div>';
+    wireRangeControl();
+    const err = await ensureCurForRange();
+    $("#topsub").textContent = "Editions" + (cur ? " · " + (cur.label || cur.date || curRangeLabel) : "");
+    let body;
+    try { body = await editionsPanel(err); } catch (e) { console.error(e); body = drawErrorHtml(e); }
+    v.innerHTML = rangeControlHtml() + body;
+    wireRangeControl();
   } else if (view === "messages") {
     if (rangeMode !== "day") v.innerHTML = rangeControlHtml() + producerControlHtml() + '<div class="empty">Loading…</div>';
     const err = await ensureCurForRange();
@@ -8022,5 +8031,6 @@ paintCenterBar();
 })();
 </script>
 <script src="post.js"></script>
+<script src="editions.js"></script>
 </body>
 </html>

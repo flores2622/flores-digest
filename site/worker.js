@@ -124,6 +124,11 @@ export default {
         return whoAmI(request);
       }
 
+      if (parts[1] === "editions" && parts.length === 3) {
+        if (request.method === "GET") return editionsGet(env, parts[2]);
+        if (request.method === "POST") return editionsPost(request, env, parts[2]);
+      }
+
       if (parts[1] === "roleplay") {
         if (parts[2] === "turn" && request.method === "POST") {
           return roleplayTurn(request, env);
@@ -1516,6 +1521,53 @@ function whoAmI(request) {
   const name = FIRST_NAMES[email] || (full ? full.split(" ")[0] : "") ||
     (email.split("@")[0].split(/[._-]/)[0] || "").replace(/^./, (c) => c.toUpperCase());
   return json({ email, name });
+}
+
+/* The editions' shared state (Frank, 2026-10-01): reactions, comments, poll
+ * and MVP votes, mailbag notes and panel likes on a published day's or a
+ * folio's editions, one file per key in R2 (editions/<day>.json or
+ * editions/folio-<end>.json), so everyone sees the same tally. Who did what
+ * is the first name Access gives (whoAmI); a reaction, vote or like toggles
+ * for that person, one each. Small team, small file: last write wins. */
+const EDITION_KEY = /^(\d{4}-\d{2}-\d{2}|folio-\d{4}-\d{2}-\d{2})$/;
+const EDITION_EMPTY = () => ({ rx: {}, cm: {}, poll: {}, mvp: {}, mail: [], likes: {} });
+async function editionsGet(env, key) {
+  if (!EDITION_KEY.test(key)) return json({ error: "bad key" }, 400);
+  const obj = await env.BOARD.get(`editions/${key}.json`);
+  return json(obj ? await obj.json() : EDITION_EMPTY());
+}
+async function editionsPost(request, env, key) {
+  if (!EDITION_KEY.test(key)) return json({ error: "bad key" }, 400);
+  let body;
+  try { body = await request.json(); } catch (_) { return json({ error: "bad request body" }, 400); }
+  const email = String((ACCESS_IDENTITY.get(request) || {}).email || "").toLowerCase();
+  const full = RP_PRODUCER_EMAILS[email];
+  const who = FIRST_NAMES[email] || (full ? full.split(" ")[0] : "") || (email.split("@")[0].split(/[._-]/)[0] || "").replace(/^./, (c) => c.toUpperCase());
+  if (!who) return json({ error: "not signed in" }, 403);
+  const k = `editions/${key}.json`;
+  const obj = await env.BOARD.get(k);
+  const s = Object.assign(EDITION_EMPTY(), obj ? await obj.json() : {});
+  const toggle = (arr) => { const i = arr.indexOf(who); if (i >= 0) arr.splice(i, 1); else arr.push(who); return arr; };
+  const text = String(body.text || "").trim().slice(0, 300);
+  const id = String(body.id || "").slice(0, 40);
+  const at = new Date().toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", timeZone: "America/Phoenix" });
+  switch (body.op) {
+    case "rx": { const e = String(body.emoji || "").slice(0, 4); if (!id || !e) return json({ error: "bad reaction" }, 400); const r = s.rx[id] = s.rx[id] || {}; r[e] = toggle(r[e] || []); break; }
+    case "cm": { if (!id || !text) return json({ error: "empty comment" }, 400); (s.cm[id] = s.cm[id] || []).push({ who, text, at }); if (s.cm[id].length > 200) s.cm[id] = s.cm[id].slice(-200); break; }
+    case "poll": {   // one vote each; voting the same name again takes it back
+      const c = String(body.choice || "").slice(0, 40); if (!c) return json({ error: "bad vote" }, 400);
+      let was = null;
+      for (const [name, v] of Object.entries(s.poll)) { const i = v.indexOf(who); if (i >= 0) { was = name; v.splice(i, 1); } }
+      if (was !== c) (s.poll[c] = s.poll[c] || []).push(who);
+      break;
+    }
+    case "mvp": { const c = String(body.choice || "").slice(0, 40); if (!c) return json({ error: "bad vote" }, 400); if (s.mvp[who] === c) delete s.mvp[who]; else s.mvp[who] = c; break; }
+    case "mail": { if (!text) return json({ error: "empty note" }, 400); s.mail.push({ who, text, at }); if (s.mail.length > 200) s.mail = s.mail.slice(-200); break; }
+    case "like": { const p = String(body.panel || "").slice(0, 4); if (!p) return json({ error: "bad like" }, 400); s.likes[p] = toggle(s.likes[p] || []); break; }
+    default: return json({ error: "unknown op" }, 400);
+  }
+  await env.BOARD.put(k, JSON.stringify(s), { httpMetadata: { contentType: "application/json" } });
+  return json(s);
 }
 
 function rpScope(request, env) {
