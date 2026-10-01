@@ -39,6 +39,12 @@ def _name(l):
     return " ".join(x for x in ((l.get("firstname") or "").strip(), (l.get("lastname") or "").strip()) if x) or "(no name)"
 
 
+def customer_name(c):
+    return ((c.get("housename") or "").strip()
+            or f"{(c.get('firstname') or '').strip()} {(c.get('lastname') or '').strip()}".strip()
+            or (c.get("businessName") or "").strip())
+
+
 def is_existing(source_name):
     """A sold lead whose source says it was an existing customer -- the same
     set Household Completion's cross-sell always read off the policy."""
@@ -144,6 +150,18 @@ def build(day, log=print):
                                       # an existing customer (a cross-sell source) or a
                                       # new household -- Household Completion's split.
                                       "existing": is_existing(l.get("leadSourceName"))})
+    # A household sold with no lead marked sold: the new customer record
+    # behind an otherwise unmatched policy (Frank, 2026-10-01; Crystal's Julio
+    # Zepeda on 09-30). digest_config.customer_households has the rule.
+    try:
+        custs = json.loads((ROOT / "data/az_customers_all.json").read_text())
+        for who, cs in cfg.customer_households(day, pol, leads, custs, smap, azid).items():
+            for c in cs:
+                out["sold_leads"].append({"who": who, "lead": customer_name(c), "lead_id": None,
+                                          "customer_id": c.get("id"), "household": c.get("id"),
+                                          "source": "", "existing": False, "from_customer": True})
+    except Exception as e:
+        log(f"  digest rows: no customer fallback ({type(e).__name__}: {e})")
     try:
         import daily
         out["speed"] = daily.speed_rows(day, leads, day_calls.producer_dials(day))

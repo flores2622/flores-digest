@@ -793,7 +793,20 @@ convertedHouseholdId, else its name, since duplicate lead records are
 pervasive. **A BOB / Rewrite lead (`lead_sources.NOT_A_SALE`) or a test lead
 (`digest_config.is_test_lead`) is not a household sold** (Frank,
 2026-09-30), in `digest_rows` and `live.js soldLeadsToday` alike
-(`live_basis.test_lead`). **Premium Sold is still the policies' own premium** and the
+(`live_basis.test_lead`). **A household sold with no lead marked sold
+falls back to its customer record** (Frank, 2026-10-01: Crystal's Julio
+Zepeda, 09-30 -- a customer and a policy, no lead): a producer's real,
+non-life policy with no lead of theirs on its source marked sold within 3
+days is unmatched, and for each one a customer record created that Arizona
+day with asCustomerDate that day, assigned to them, that no sold lead points
+at, is a household sold (`digest_config.customer_households`; rows carry
+`from_customer` and `customer_id`, `lead_id` null). Only a NEW customer can
+be found this way. The Worker mirrors it (`customerHouseholds`), reading the
+newest 100 customer records only while some policy is unmatched, at most
+every 5 minutes (`live/<day>-customers.json`); `mergeSoldLeads` keeps the
+checkpoint's customer rows and drops one once a lead for that household is
+marked sold. The Sales sheet names an unnamed sale from it too, and the
+nightly names an auto row the live refresh added without one. **Premium Sold is still the policies' own premium** and the
 policy count still shows beside it (policies per HH). A lead can be marked
 sold a few days off its policy's soldDate, so a day can show a household
 with no policy or the reverse. A day with no sold-lead rows keeps the old
