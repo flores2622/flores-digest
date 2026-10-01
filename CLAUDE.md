@@ -1518,6 +1518,14 @@ $2,500 in premium"): the Digest's day reads as Apollo's group chat
   and the week cards the same. Figures and lists are untouched; the
   duplicate Note Standard above Texts & Emails is gone (it sits in the
   two-column grid).
+- **The Commercial Center wears Cerberus's purple** (Frank, 2026-10-01:
+  "now do the same for the commercial center"): the Open Queue on a dark
+  hero with its tiles coloured by meaning (purple queue, red past due or
+  green when none, amber due soon, blue age, green premium), a purple /
+  blue dot for Commercial Renewals / Service changes in every table, late
+  counts in red, Renewal Outcomes under a purple rule with a Cerberus badge
+  and the outcome's colour beside each completed SR, Completed under blue.
+  Figures and lists unchanged.
 - The local harness used to check all of this (a mock of the Worker over
   saved day documents, Playwright captures) lives in the session's
   scratchpad, not the repo; `design/flores-board-preview.html` is the
