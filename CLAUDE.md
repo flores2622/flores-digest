@@ -1477,7 +1477,12 @@ $2,500 in premium"): the Digest's day reads as Apollo's group chat
 **Coeus is the chat bot on the board** (Frank, 2026-10-01: "a chat bot named
 Coeus that can help answer data questions, coaching questions, or anything
 about the board"), beside Apollo, Athena and Cerberus. The round button at
-the bottom right of every page (or Ctrl /) opens the drawer; "Ask Coeus" is
+the bottom right of every page (or Ctrl /) opens the drawer -- its icon is
+**the constellation owl** (Frank chose it over the axis globe, pole and
+ring, North Star compass, owl in the moon and owl under the pole star,
+2026-10-01: Coeus is the axis of the sky and the Titan of inquiry; the owl
+is drawn as a constellation with two star eyes, which pulse while it
+reads); "Ask Coeus" is
 also in the search. `POST /api/coeus` (`site/coeus.js`) streams its answer
 over `text/event-stream` with status lines while it reads.
 - **What it knows is the board's own words**: `blueprints.js` (every guide,
