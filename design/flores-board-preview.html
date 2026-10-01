@@ -1,0 +1,1286 @@
+<title>Flores Board Preview</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=Manrope:wght@400;500;600;700;800&display=swap">
+<style>
+/* Layout: one shell (menu + sticky search bar + 1600px column) for every view. Digest = sand dashboard cards; The Flores Post = the same palette and faces set as a broadsheet with ink rules. */
+:root{
+  --sand:#f3e9dc; --card:#fffaf3; --card2:#f8efe4; --chip:#e8dac9; --ink:#2a2320; --muted:#6e5f53; --soft:#a8998c;
+  --clay:#b5532f; --clay-d:#8a2b12; --sag:#3e6b4f; --line:#efe3d4; --rule:#d9c8b4;
+  --live:#1fbf5c; --live-t:#177a3d; --good:#2f6b43; --bad:#a80000; --warn:#b57800;
+  --display:'DM Serif Display',Georgia,serif; --body:Manrope,system-ui,sans-serif;
+  color-scheme:light;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--sand);color:var(--ink);font-family:var(--body);font-variant-numeric:tabular-nums}
+a{color:inherit}
+:focus-visible{outline:3px solid var(--clay);outline-offset:2px}
+.shell{display:flex;min-height:100vh}
+.side{width:230px;flex:none;background:var(--ink);color:var(--sand);padding:22px 14px;display:flex;flex-direction:column;gap:20px;position:sticky;top:0;align-self:flex-start;height:100vh;overflow:auto}
+.brand{font-family:var(--display);font-size:26px;line-height:1;padding:0 8px}.brand span{color:#e59a6f}
+.grp{display:flex;flex-direction:column;gap:2px}
+.grp h4{margin:0 0 6px;padding:0 10px;font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--soft);font-weight:600}
+.grp a,.grp button{display:block;text-align:left;width:100%;border:0;background:none;font:inherit;padding:9px 10px;border-radius:10px;text-decoration:none;color:#e9ddd0;font-size:14px;cursor:pointer}
+.grp .top{background:#3a302b;color:#fff;font-weight:700}
+.grp .sub{padding-left:24px;color:#c9b8a8;font-size:13px}
+.grp .sub[aria-current="page"]{background:var(--clay);color:#fff;font-weight:700}
+.wrap{flex:1;min-width:0;display:flex;flex-direction:column}
+.bar{position:sticky;top:env(safe-area-inset-top,0px);z-index:20;background:rgba(243,233,220,.94);backdrop-filter:blur(6px);border-bottom:1px solid var(--rule)}
+.barin{max-width:1600px;margin:0 auto;padding:12px 24px;display:flex;gap:12px;align-items:center;flex-wrap:wrap}
+.search{position:relative;flex:0 1 440px;margin-left:auto}
+.search label{display:flex;align-items:center;gap:10px;height:42px;border:1px solid var(--rule);border-radius:12px;padding:0 12px;background:var(--card);color:var(--muted)}
+.search input{border:0;outline:0;flex:1;min-width:0;font:500 14px var(--body);background:transparent;color:var(--ink)}
+.search kbd{font:600 11px var(--body);border:1px solid var(--rule);border-radius:6px;padding:2px 6px;color:var(--muted)}
+.results{position:absolute;left:0;right:0;top:48px;background:var(--card);border:1px solid var(--rule);border-radius:14px;box-shadow:0 12px 30px rgba(42,35,32,.15);padding:8px;max-height:420px;overflow:auto}
+.results h5{margin:8px 8px 4px;font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted)}
+.results button{display:flex;justify-content:space-between;gap:12px;width:100%;text-align:left;border:0;background:none;font:500 14px var(--body);padding:9px 10px;border-radius:9px;cursor:pointer;color:var(--ink)}
+.results button:hover,.results button.sel{background:var(--card2)}
+.results button span{color:var(--muted);font-size:13px}
+.ctl{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+select.pick{font:600 14px var(--body);padding:9px 10px;border-radius:10px;border:1px solid var(--rule);background:var(--card);color:var(--ink)}
+.seg{display:flex;gap:3px;background:var(--chip);padding:4px;border-radius:12px;flex-wrap:wrap}
+.seg button{border:0;padding:7px 12px;border-radius:9px;background:transparent;font:500 14px var(--body);color:#5e5046;cursor:pointer}
+.seg button[aria-pressed="true"]{background:var(--card);color:var(--ink);font-weight:700}
+.main{width:100%;max-width:1600px;margin:0 auto;padding:24px 24px 60px;display:flex;flex-direction:column;gap:20px}
+.head{display:flex;justify-content:space-between;align-items:flex-end;gap:16px;flex-wrap:wrap}
+.pill{display:inline-flex;align-items:center;gap:8px;padding:6px 12px;border-radius:999px;font-size:13px;background:var(--chip)}
+.pill.lv{background:#e6f5ea;color:var(--live-t);font-weight:700}
+.pill.fin{background:var(--ink);color:var(--sand);font-weight:700}
+.dot{width:8px;height:8px;border-radius:50%;background:var(--live)}
+h1.greet{margin:10px 0 0;font:400 clamp(30px,3.4vw,44px)/1.05 var(--display);text-wrap:balance}
+.tiles{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:12px}
+.tile{background:var(--card);border-radius:18px;padding:16px;display:flex;flex-direction:column;gap:4px;cursor:pointer}
+.tile .k{font-size:13px;font-weight:700;color:var(--muted)}
+.tile .v{font:400 38px/1.05 var(--display)}.tile .v.s{font-size:28px}
+.tile .n{font-size:12px;color:var(--muted)}
+.tile.sold{background:var(--sag);color:#f3efe4}.tile.sold .k,.tile.sold .n{color:#d9e6dc}
+@keyframes glow{0%,100%{box-shadow:0 0 0 2px rgba(31,191,92,.35),0 0 12px rgba(31,191,92,.2)}50%{box-shadow:0 0 0 2px rgba(31,191,92,.75),0 0 24px rgba(31,191,92,.45)}}
+.islive .glow{animation:glow 2.4s ease-in-out infinite}
+.islive .gt{color:var(--live-t);text-shadow:0 0 10px rgba(31,191,92,.4)}
+.islive .tile.sold .gt{color:#fff}
+@media (prefers-reduced-motion:reduce){.islive .glow{animation:none;box-shadow:0 0 0 2px rgba(31,191,92,.6)}}
+.cols{display:grid;grid-template-columns:minmax(0,1fr) 400px;gap:18px;align-items:start}
+.stack{display:flex;flex-direction:column;gap:18px;min-width:0}
+.rail{display:flex;flex-direction:column;gap:18px;position:sticky;top:84px}
+.card{background:var(--card);border-radius:20px;padding:20px;display:flex;flex-direction:column;gap:12px;min-width:0}
+.card h2{margin:0;font:400 24px/1.1 var(--display)}
+.card h2 em{font-size:16px;color:var(--soft)}
+.sd{margin:0;font-size:13px;color:var(--muted)}
+.card.dark{background:var(--card);color:var(--ink)}
+.hrow{display:flex;justify-content:space-between;align-items:baseline;gap:10px;flex-wrap:wrap}
+.feed a{display:flex;gap:12px;align-items:center;padding:9px 0;border-bottom:1px solid var(--line);text-decoration:none;font-size:14px}
+.feed .t{font-size:12px;color:var(--muted);width:60px;flex:none}
+.feed .c{width:9px;height:9px;border-radius:50%;flex:none}
+.feed .kd{margin-left:auto;font-size:11px;font-weight:700;color:var(--muted);white-space:nowrap}
+.todo{display:flex;flex-direction:column;gap:8px}
+.todo a{display:flex;gap:12px;padding:11px 12px;border-radius:12px;background:var(--card2);text-decoration:none}
+.todo a.hot{background:#fbe7dc}
+.todo .sq{width:10px;height:10px;border-radius:3px;margin-top:5px;flex:none}
+.todo b{display:block;font-size:14px}.todo span.s{font-size:13px;color:var(--muted)}
+.scroll{overflow-x:auto}
+table.lb{width:100%;border-collapse:collapse;font-size:14px;min-width:980px}
+table.lb th{font-size:12px;color:var(--muted);text-align:right;font-weight:700;padding:8px 6px;white-space:nowrap}
+table.lb td{text-align:right;padding:11px 6px;border-top:1px solid var(--line);white-space:nowrap}
+table.lb th:first-child,table.lb td:first-child{text-align:left}
+table.lb td.num{cursor:pointer}
+table.lb tr.tot td{border-top:2px solid var(--ink);font-weight:800}
+.av{width:30px;height:30px;border-radius:50%;color:#fff;display:inline-flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;margin-right:10px;vertical-align:middle}
+.medal{font-size:12px;color:var(--clay);margin-left:6px}
+.two{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:18px;align-items:start}
+.bars{display:grid;grid-template-columns:70px 1fr 90px;gap:10px;align-items:center;font-size:14px}
+.stackbar{display:flex;height:16px;border-radius:5px;overflow:hidden;gap:2px}
+.track{height:12px;border-radius:6px;background:var(--line)}.track>div{height:12px;border-radius:6px}
+.legend{display:flex;gap:14px;flex-wrap:wrap;font-size:12px;color:#5e5046}.legend i{display:inline-block;width:10px;height:10px;border-radius:2px;margin-right:4px}
+.mini{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
+.mini>div{border-radius:14px;padding:12px;background:var(--card2)}
+.mini .k{font-size:13px;font-weight:700}.mini .v{font-size:24px;font-weight:800}.mini .n{font-size:12px;color:var(--muted)}
+.coach{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+.coach>div{border-radius:14px;padding:12px;background:var(--card2);display:flex;flex-direction:column;gap:7px}
+.cb{display:grid;grid-template-columns:72px 1fr 30px;gap:8px;align-items:center;font-size:12px}
+.cb .tr{height:8px;border-radius:4px;background:var(--chip)}.cb .tr>div{height:8px;border-radius:4px}
+table.au{width:100%;border-collapse:collapse;font-size:14px;min-width:640px}
+table.au th{text-align:left;font-size:12px;color:var(--muted);padding:6px}
+table.au td{padding:9px 6px;border-top:1px solid var(--line)}
+.chip{font-size:12px;padding:3px 10px;border-radius:999px;background:var(--chip);color:#5e5046}
+.pipe{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;font-size:14px}
+.pipe>div{padding:12px;border-radius:12px;background:var(--card2)}
+.donut{width:70px;height:70px;border-radius:50%;background:conic-gradient(var(--clay) 0 33%,var(--chip) 33% 100%);display:flex;align-items:center;justify-content:center;flex:none}
+.donut span{width:50px;height:50px;border-radius:50%;background:var(--card);display:flex;align-items:center;justify-content:center;font-weight:800;font-size:14px}
+
+/* ---- The Flores Post: same tokens, broadsheet treatment ---- */
+.paper{background:var(--card);border-radius:4px;box-shadow:0 1px 0 var(--rule),0 18px 40px rgba(42,35,32,.08);padding:32px 40px 40px;display:flex;flex-direction:column;gap:26px}
+.lab{font-size:12px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--muted)}
+.mast{border-bottom:3px double var(--ink);padding-bottom:12px;display:flex;flex-direction:column;gap:10px}
+.mrow{display:flex;justify-content:space-between;align-items:center;gap:16px;flex-wrap:wrap}
+.mast h1{margin:0;text-align:center;font:400 clamp(48px,6.5vw,104px)/1 var(--display);letter-spacing:-.01em}
+.mast .rule{border-top:1px solid var(--ink);padding-top:8px}
+.namepick{display:inline-flex;gap:8px;align-items:center}
+.namepick select{font:600 12px var(--body);padding:4px 6px;background:var(--card);color:var(--ink);border:1px solid var(--rule);border-radius:6px}
+.g12{display:grid;grid-template-columns:repeat(12,minmax(0,1fr));column-gap:36px;row-gap:24px}
+.lead{grid-column:span 5;display:flex;flex-direction:column;gap:12px;border-right:1px solid var(--rule);padding-right:36px}
+.lead .eb{color:var(--clay)}
+.lead h2{margin:0;font:400 clamp(30px,2.8vw,46px)/1.05 var(--display);text-wrap:balance}
+.lead p{margin:0;font-size:17px;line-height:1.6;color:#4a3f38;max-width:62ch}
+.ptiles{grid-column:span 7;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));border-top:1px solid var(--ink)}
+.ptiles a{display:block;padding:14px 14px 14px 0;border-bottom:1px solid var(--rule);text-decoration:none}
+.ptiles .v{font:400 34px/1.1 var(--display)}.ptiles .n{font-size:14px;color:var(--muted)}
+.shead{display:flex;justify-content:space-between;align-items:baseline;gap:12px;flex-wrap:wrap;border-bottom:1px solid var(--ink);padding-bottom:8px}
+.shead h3{margin:0;font:400 28px var(--display)}.shead h3 em{font-size:18px;color:var(--muted)}
+table.st{width:100%;border-collapse:collapse;font-size:15px;min-width:1000px}
+table.st th{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);text-align:right;padding:6px 4px;white-space:nowrap}
+table.st td{text-align:right;padding:11px 4px;border-bottom:1px solid var(--line);white-space:nowrap}
+table.st th:first-child,table.st td:first-child{text-align:left}
+table.st td.nm{font:400 20px var(--display)}.rk{font-size:13px;font-weight:800;color:var(--clay);margin-right:10px;font-family:var(--body)}
+table.st tr.tot td{border-top:2px solid var(--ink);font-weight:800}
+.wire{grid-column:span 7;display:flex;flex-direction:column;border-right:1px solid var(--rule);padding-right:36px;min-width:0}
+.wire a{display:grid;grid-template-columns:76px 88px 1fr;gap:12px;padding:9px 0;border-bottom:1px dotted var(--rule);text-decoration:none;font-size:15px}
+.wire .t{font-size:13px;color:var(--muted)}
+.wire .k{font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.08em;color:var(--clay);padding-top:3px}
+.carry{grid-column:span 5;display:flex;flex-direction:column;min-width:0}
+.carry a{display:flex;gap:12px;padding:10px 0;border-bottom:1px dotted var(--rule);text-decoration:none}
+.carry .big{font:400 30px/1 var(--display);color:var(--clay);width:44px;flex:none}
+.carry .s{font-size:14px;color:var(--muted)}
+.depts{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));column-gap:32px;row-gap:28px;border-top:3px double var(--ink);padding-top:18px}
+.depts>section{display:flex;flex-direction:column;gap:6px;min-width:0}
+.depts>section+section{border-left:1px solid var(--rule);padding-left:32px}
+.depts h3{margin:0 0 4px;font:400 22px var(--display)}
+.depts h3.next{margin-top:16px;padding-top:14px;border-top:1px solid var(--rule)}
+.ln{display:flex;justify-content:space-between;align-items:baseline;gap:8px;border-bottom:1px dotted var(--rule);padding:5px 0;font-size:14px}
+.ln small{font-size:12px;color:var(--muted)}.ln strong{font:400 19px var(--display)}
+.pbar{display:grid;grid-template-columns:58px 1fr 26px;gap:8px;align-items:center;font-size:14px}
+.pbar .sb{display:flex;height:12px;gap:1px}
+.cr{display:grid;grid-template-columns:64px repeat(3,minmax(0,1fr));gap:6px;border-bottom:1px dotted var(--rule);padding:6px 0;font-size:14px}
+.cr .h{font:400 17px var(--display)}.cr small{display:block;font-size:11px;color:var(--muted)}
+table.pa{width:100%;border-collapse:collapse;font-size:14px;min-width:620px}
+table.pa th{text-align:left;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);padding:6px 0}
+table.pa td{padding:8px 0;border-bottom:1px dotted var(--rule)}
+.foot{border-top:3px double var(--ink);padding-top:10px;display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap}
+.press{align-items:flex-start;padding:40px}
+.press h2{font-size:34px}
+.btn{border:0;border-radius:12px;padding:12px 18px;background:var(--clay);color:#fff;font:700 15px var(--body);cursor:pointer}
+
+@media (max-width:1400px){.tiles{grid-template-columns:repeat(3,minmax(0,1fr))}}
+@media (max-width:1200px){.cols{grid-template-columns:1fr}.rail{position:static}.depts{grid-template-columns:repeat(2,minmax(0,1fr))}.depts>section:nth-child(3){border-left:0;padding-left:0}}
+@media (max-width:900px){.side{display:none}.two{grid-template-columns:1fr}.pipe{grid-template-columns:repeat(2,minmax(0,1fr))}.lead,.ptiles,.wire,.carry,.aud,.mis{grid-column:1/-1!important;border-right:0!important;border-left:0!important;padding-right:0!important;padding-left:0!important}.paper{padding:24px 20px}.search{flex:1 1 100%;margin-left:0}}
+@media (max-width:600px){.tiles,.mini{grid-template-columns:repeat(2,minmax(0,1fr))}.coach,.depts{grid-template-columns:1fr}.depts>section+section{border-left:0;padding-left:0}.ptiles{grid-template-columns:repeat(2,minmax(0,1fr))}.main,.barin{padding-inline:16px}.wire a{grid-template-columns:64px 1fr}.wire .k{display:none}}
+</style>
+<style>
+.tl{display:flex;flex-direction:column;gap:0}
+.tlr{display:grid;grid-template-columns:92px minmax(0,1fr) 92px minmax(0,1.3fr);gap:14px;align-items:center;padding:7px 0;border-bottom:1px dotted var(--rule);font-size:14px}
+.tlr .d{font-weight:700}.tlr .d small{display:block;font-weight:500;color:var(--muted);font-size:12px}
+.tlr .b{height:14px;background:var(--line);border-radius:3px}.tlr .b>div{height:14px;border-radius:3px;background:var(--clay)}
+.tlr .m{text-align:right;font:400 18px var(--display)}
+.tlr.ahead{color:var(--soft)}.tlr.ahead .b{background:repeating-linear-gradient(135deg,var(--line) 0 6px,transparent 6px 12px)}
+.tlr.today .b>div{background:var(--live)}
+.wk{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:28px}
+.wk>div{border-top:2px solid var(--ink);padding-top:10px;display:flex;flex-direction:column;gap:6px}
+.wk h4{margin:0;font:400 22px var(--display)}.wk p{margin:0;font-size:15px;line-height:1.55;color:#4a3f38}
+.xlink{border:1px solid var(--ink);background:transparent;border-radius:999px;padding:6px 12px;font:700 12px var(--body);letter-spacing:.06em;text-transform:uppercase;cursor:pointer;color:var(--ink)}
+.xlink:hover{background:var(--ink);color:var(--card)}
+@media (max-width:900px){.wk{grid-template-columns:repeat(2,minmax(0,1fr))}.tlr{grid-template-columns:70px 1fr 70px}.tlr .e{grid-column:1/-1}}
+@media (max-width:600px){.wk{grid-template-columns:1fr}}
+</style>
+<style>
+.front{display:grid;grid-template-columns:minmax(0,1fr) 300px;gap:40px}
+.story{display:flex;flex-direction:column;gap:12px;min-width:0}
+.story .kick{color:var(--clay)}
+.story h2.hl{margin:0;font:400 clamp(34px,3.6vw,58px)/1.02 var(--display);text-wrap:balance}
+.story .deck{margin:0;font:italic 400 clamp(19px,1.5vw,23px)/1.35 var(--display);color:#4a3f38;max-width:70ch}
+.byline{font-size:12px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);border-top:1px solid var(--rule);border-bottom:1px solid var(--rule);padding:6px 0}
+.body{columns:3 240px;column-gap:32px;column-rule:1px solid var(--line);font-size:16px;line-height:1.62;color:#3b322c}
+.body p{margin:0 0 12px;break-inside:avoid-column}
+.body p:first-child::first-letter{float:left;font:400 58px/.85 var(--display);margin:6px 8px 0 0;color:var(--clay)}
+.pull{margin:4px 0;padding:14px 0;border-top:3px solid var(--ink);border-bottom:1px solid var(--ink);font:italic 400 24px/1.3 var(--display)}
+.pull cite{display:block;margin-top:8px;font:700 12px var(--body);letter-spacing:.1em;text-transform:uppercase;font-style:normal;color:var(--muted)}
+.btn-box{border:1px solid var(--ink);padding:16px;display:flex;flex-direction:column;gap:2px;align-self:start}
+.btn-box h4{margin:0 0 8px;font:400 22px var(--display);border-bottom:3px double var(--ink);padding-bottom:6px}
+.btn-box .r{display:flex;justify-content:space-between;align-items:baseline;gap:10px;padding:7px 0;border-bottom:1px dotted var(--rule)}
+.btn-box .r span{font-size:13px;color:var(--muted)}.btn-box .r b{font:400 22px var(--display)}
+.btn-box .r:last-child{border-bottom:0}
+.btn-box.islive b{color:var(--live-t);text-shadow:0 0 10px rgba(31,191,92,.4)}
+.row3{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:0;border-top:3px double var(--ink);padding-top:18px}
+.row3>article{padding:0 28px;display:flex;flex-direction:column;gap:8px;min-width:0}
+.row3>article:first-child{padding-left:0}.row3>article:last-child{padding-right:0}
+.row3>article+article{border-left:1px solid var(--rule)}
+.row3 h3{margin:0;font:400 26px/1.1 var(--display);text-wrap:balance}
+.row3 p{margin:0;font-size:15px;line-height:1.6;color:#3b322c}
+table.box{width:100%;border-collapse:collapse;font-size:15px}
+table.box th{font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);text-align:right;padding:4px 0;border-bottom:1px solid var(--ink)}
+table.box th:nth-child(-n+2),table.box td:nth-child(-n+2){text-align:left}
+table.box td{padding:7px 0;border-bottom:1px dotted var(--rule);text-align:right}
+table.box td:nth-child(2){font:400 17px var(--display)}
+.briefs a{display:block;padding:7px 0;border-bottom:1px dotted var(--rule);text-decoration:none;font-size:14px;line-height:1.45}
+.briefs a b{font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--clay);margin-right:6px}
+@media (max-width:1000px){.front{grid-template-columns:1fr}.row3{grid-template-columns:1fr}.row3>article{padding:14px 0!important;border-left:0!important;border-top:1px solid var(--rule)}}
+</style>
+<style>
+.goals{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));column-gap:28px}
+.goal{display:grid;grid-template-columns:150px 1fr;gap:10px;padding:8px 0;border-bottom:1px dotted var(--rule);font-size:14px;align-items:baseline}
+.goal .g{font-weight:700}.goal .g small{display:block;font-weight:500;color:var(--muted);font-size:12px}
+.goal .w{line-height:1.5}.goal .w.none{color:var(--muted);font-style:italic}
+.tips{background:var(--ink);color:var(--sand);padding:22px 26px;display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:8px 40px}
+.tips h3{grid-column:1/-1;margin:0 0 6px;font:400 30px/1.1 var(--display)}
+.tips h3 em{color:#e59a6f}
+.tips .col h4{margin:0 0 6px;font-size:12px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:#e59a6f}
+.tips ol,.tips ul{margin:0;padding-left:20px;display:flex;flex-direction:column;gap:8px;font-size:15px;line-height:1.5;color:#efe4d6}
+.tips b{color:#fff}
+@media (max-width:900px){.goals,.tips{grid-template-columns:1fr}.goal{grid-template-columns:120px 1fr}}
+</style>
+<style>
+.people{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px}
+.person{background:var(--card);border:2px solid transparent;border-radius:18px;padding:14px 16px;display:flex;flex-direction:column;gap:8px;text-align:left;font:inherit;color:inherit;cursor:pointer}
+.person[aria-pressed="true"]{border-color:var(--ink)}
+.person .nm{display:flex;align-items:center;gap:10px;font-weight:800}
+.person .role{font-size:12px;color:var(--muted);font-weight:600}
+.person .q{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:6px;font-size:12px;color:var(--muted)}
+.person .q b{display:block;font-size:17px;color:var(--ink)}
+.grid4{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px}
+.stat{background:var(--card);border-radius:16px;padding:14px 16px;display:flex;flex-direction:column;gap:3px;cursor:pointer}
+.stat .k{font-size:13px;font-weight:700;color:var(--muted)}.stat .v{font:400 32px/1.1 var(--display)}.stat .n{font-size:12px;color:var(--muted)}
+.check{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:18px}
+.check h4{margin:0 0 6px;font-size:12px;letter-spacing:.12em;text-transform:uppercase;color:var(--clay)}
+.check ul{margin:0;padding-left:18px;font-size:14px;line-height:1.6}
+.seglist{display:flex;flex-direction:column;gap:6px;font-size:14px}
+.seglist div{display:flex;justify-content:space-between;gap:10px}
+.seglist i{display:inline-block;width:10px;height:10px;border-radius:2px;margin-right:6px;vertical-align:middle}
+.rates{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
+.rate{background:var(--card);border-radius:20px;padding:20px;display:flex;flex-direction:column;gap:4px}
+.rate .v{font:400 52px/1 var(--display)}.rate.main{background:var(--sag);color:#f3efe4}.rate.main .n,.rate.main .k{color:#d9e6dc}
+.rate .k{font-size:13px;font-weight:700;color:var(--muted)}.rate .n{font-size:13px;color:var(--muted)}
+.hatch{background:repeating-linear-gradient(135deg,#c9b8a8 0 4px,#efe3d4 4px 8px)!important}
+table.t{width:100%;border-collapse:collapse;font-size:14px;min-width:440px}
+table.t th{text-align:left;font-size:12px;color:var(--muted);font-weight:700;padding:6px}
+table.t th.r,table.t td.r{text-align:right}
+table.t td{padding:9px 6px;border-top:1px solid var(--line)}
+.risk{font-size:12px;font-weight:700;padding:3px 9px;border-radius:999px;background:#fbe7dc;color:var(--clay-d)}
+details.drop summary{cursor:pointer;font:400 22px var(--display);list-style:none}
+details.drop summary::before{content:"▸ ";color:var(--clay)}details.drop[open] summary::before{content:"▾ "}
+@media (max-width:1200px){.people,.grid4{grid-template-columns:repeat(2,minmax(0,1fr))}.check{grid-template-columns:1fr}}
+@media (max-width:600px){.people,.grid4,.rates{grid-template-columns:1fr}}
+</style>
+<style>
+/* Card borders (Frank, 2026-09-30) */
+.card,.tile,.stat,.rate,.paper{border:1px solid var(--rule)}
+.tile.sold,.rate.main{border-color:#2f5540}
+.person{border:2px solid var(--rule)}.person[aria-pressed="true"]{border-color:var(--ink)}
+.mini>div,.coach>div,.pipe>div,.todo a{border:1px solid var(--line)}
+.todo a.hot{border-color:#f0cdbb}
+</style>
+<style>
+/* Thicker borders + a small shadow (Frank, 2026-09-30). The live glow keeps the shadow under it. */
+:root{--shadow:0 2px 6px rgba(42,35,32,.10),0 1px 2px rgba(42,35,32,.08)}
+.card,.tile,.stat,.rate,.paper{border:2px solid #d4c1aa;box-shadow:var(--shadow)}
+.tile.sold,.rate.main{border-color:#2f5540}
+.person{border:2px solid #d4c1aa;box-shadow:var(--shadow)}.person[aria-pressed="true"]{border-color:var(--ink)}
+.mini>div,.coach>div,.pipe>div,.todo a{border:1.5px solid #e2d3c0;box-shadow:0 1px 3px rgba(42,35,32,.07)}
+.todo a.hot{border-color:#ecc3ad}
+@keyframes glow{0%,100%{box-shadow:var(--shadow),0 0 0 2px rgba(31,191,92,.35),0 0 12px rgba(31,191,92,.2)}50%{box-shadow:var(--shadow),0 0 0 2px rgba(31,191,92,.75),0 0 24px rgba(31,191,92,.45)}}
+</style>
+<style>
+.ptabs{display:flex;gap:4px;border-bottom:2px solid var(--rule)}
+.ptabs button{border:0;background:none;font:700 15px var(--body);color:var(--muted);padding:10px 16px;margin-bottom:-2px;border-bottom:3px solid transparent;cursor:pointer}
+.ptabs button[aria-selected="true"]{color:var(--ink);border-bottom-color:var(--clay)}
+.chip{display:inline-block;font-size:12px;font-weight:700;padding:3px 10px;border-radius:999px;background:var(--chip);color:#5e5046;white-space:nowrap}
+.chip.g{background:#e3efe6;color:#2f5540}.chip.y{background:#f8eed2;color:#7a5600}.chip.r{background:#fbe2d6;color:var(--clay-d)}.chip.b{background:#e2e9f0;color:#2e4a61}
+details.cc{background:var(--card);border:2px solid #d4c1aa;border-radius:18px;box-shadow:var(--shadow);overflow:hidden}
+details.cc>summary{list-style:none;cursor:pointer;display:grid;grid-template-columns:8px minmax(0,1fr) auto;gap:0 16px;padding:16px 18px 16px 0}
+details.cc>summary::-webkit-details-marker{display:none}
+.edge{border-radius:0 6px 6px 0}
+.cc .nm{font:400 24px/1.1 var(--display)}
+.cc .meta{font-size:13px;color:var(--muted);margin-top:3px}
+.cc .sum{grid-column:2/4;margin-top:10px;font-size:15px;line-height:1.5}
+.cc .flags{grid-column:2/4;margin-top:10px;display:flex;flex-wrap:wrap;gap:6px}
+.cc .right{display:flex;flex-direction:column;align-items:flex-end;gap:6px}
+.cc .tog{font-size:13px;color:var(--clay);font-weight:700}
+details.cc[open] .tog::after{content:" ▾"}details.cc:not([open]) .tog::after{content:" ▸"}
+.cbody{border-top:1px solid var(--line);padding:18px 22px 22px;display:flex;flex-direction:column;gap:18px}
+.blk{display:flex;flex-direction:column;gap:8px}
+.bl{font-size:12px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;color:var(--clay)}
+table.ask{border-collapse:collapse;font-size:14px;width:100%}
+table.ask td{padding:8px 6px;border-top:1px solid var(--line);vertical-align:top}
+table.ask td.k{font-weight:700;width:210px}table.ask td.v{width:70px}
+.fixbox{background:#f3f0e6;border:1.5px solid #dcd3bd;border-radius:12px;padding:12px 14px;font-size:14px;line-height:1.55}
+.fixbox b.l{display:block;font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--sag);margin-bottom:4px}
+.obj{border:1.5px solid #e2d3c0;border-radius:14px;padding:14px;display:flex;flex-direction:column;gap:10px;background:var(--card2)}
+.said2{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.said2 .l{font-size:12px;font-weight:700;color:var(--muted);margin-bottom:4px}
+.said2 .q{font:italic 400 17px/1.4 var(--display)}
+.gw{display:grid;grid-template-columns:1fr 1fr;gap:18px}
+.gw h5{margin:0 0 6px;font-size:13px}
+.gw ul{margin:0;padding-left:18px;font-size:14px;line-height:1.55;display:flex;flex-direction:column;gap:6px}
+.score{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px 18px}
+.score div{display:flex;justify-content:space-between;align-items:center;gap:8px;padding:6px 0;border-bottom:1px dotted var(--rule);font-size:14px}
+.spine{display:grid;grid-template-columns:56px 18px 1fr;gap:0 10px;font-size:14px}
+.spine .t{color:var(--muted);font-size:12px;padding-top:2px}
+.spine .d{position:relative}.spine .d i{display:block;width:11px;height:11px;border-radius:50%;margin-top:4px}
+.spine .d::after{content:"";position:absolute;left:5px;top:16px;bottom:-6px;width:1px;background:var(--rule)}
+.spine .x{padding-bottom:10px}.spine .x span{display:block;color:var(--muted);font-size:13px}
+.player{display:flex;align-items:center;gap:12px;background:var(--card2);border:1.5px solid #e2d3c0;border-radius:12px;padding:10px 14px}
+.player button{width:38px;height:38px;border-radius:50%;border:0;background:var(--clay);color:#fff;cursor:pointer;flex:none}
+.player .bar{flex:1;height:6px;border-radius:3px;background:var(--chip)}.player .bar div{height:6px;border-radius:3px;background:var(--clay);width:34%}
+.tx{display:flex;flex-direction:column;gap:2px;max-height:260px;overflow:auto;border:1.5px solid #e2d3c0;border-radius:12px;padding:8px}
+.tx p{margin:0;padding:6px 8px;border-radius:8px;font-size:14px;line-height:1.5;display:grid;grid-template-columns:46px 1fr;gap:8px}
+.tx p.on{background:#fbe7dc}.tx p .ts{color:var(--muted);font-size:12px;padding-top:2px}
+.tx p b{font-weight:700}.tx p.prod b{color:var(--clay-d)}.tx p mark{background:#f2c9b4;border-radius:3px;padding:0 2px}
+.objbar{display:grid;grid-template-columns:200px 1fr 60px;gap:12px;align-items:center;padding:10px 12px;border-radius:12px;cursor:pointer;border:1.5px solid transparent;font-size:14px}
+.objbar:hover{border-color:#e2d3c0;background:var(--card2)}
+table.wl{width:100%;border-collapse:collapse;font-size:14px;min-width:760px}
+table.wl th{font-size:12px;color:var(--muted);font-weight:700;text-align:right;padding:8px 6px}
+table.wl th:first-child,table.wl td:first-child{text-align:left}
+table.wl td{padding:11px 6px;border-top:1px solid var(--line);text-align:right;cursor:pointer}
+table.wl tr.tot td{border-top:2px solid var(--ink);font-weight:800}
+.hero2{border-left:0;background:var(--card2);border:1.5px solid #e2d3c0;border-radius:14px;padding:14px 16px}
+.hero2 h4{margin:0 0 6px;font:400 20px var(--display)}.hero2 p{margin:0;font-size:15px;line-height:1.55}
+@media (max-width:900px){.said2,.gw{grid-template-columns:1fr}.score{grid-template-columns:1fr 1fr}.objbar{grid-template-columns:130px 1fr 40px}}
+</style>
+<style>
+details.cc[open] .tog::after{content:"Close ▾"}details.cc:not([open]) .tog::after{content:"Open ▸"}
+.card details.cc{box-shadow:none;border-width:1.5px;border-color:#e2d3c0}
+.ptabs{align-items:flex-end;flex-wrap:wrap;gap:4px 4px}
+</style>
+<style>
+details.cc>summary{grid-template-columns:minmax(0,1fr) auto;padding:16px 18px}
+.cc .sum,.cc .qn,.cc .nextc{grid-column:1/-1}
+.qn{list-style:none;margin:10px 0 0;padding:0;display:flex;flex-direction:column;gap:6px}
+.qn li{display:grid;grid-template-columns:auto 1fr;gap:10px;align-items:baseline;font-size:14px;line-height:1.45}
+.nextc{margin-top:10px;background:#f3f0e6;border:1.5px solid #dcd3bd;border-radius:10px;padding:9px 12px;font-size:14px;line-height:1.5}
+.nextc b{display:inline-block;margin-right:8px;font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--sag)}
+</style>
+<style>
+.persona{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
+.persona button{background:var(--card);border:2px solid #d4c1aa;border-radius:16px;padding:14px;text-align:left;font:inherit;color:inherit;cursor:pointer;box-shadow:var(--shadow);display:flex;flex-direction:column;gap:4px}
+.persona button[aria-pressed="true"]{border-color:var(--ink)}
+.persona b{font:400 22px var(--display)}.persona span{font-size:13px;color:var(--muted)}
+.prospect{display:flex;gap:16px;align-items:center}
+.shot{width:84px;height:84px;border-radius:50%;background:linear-gradient(135deg,#c98a5e,#8a5a3c);color:#fff;display:flex;align-items:center;justify-content:center;font:400 30px var(--display);flex:none;border:3px solid var(--card)}
+.shot.talk{box-shadow:0 0 0 3px var(--live),0 0 22px rgba(31,191,92,.6)}
+.convo{display:flex;flex-direction:column;gap:10px;max-height:520px;overflow:auto;padding:4px}
+.bub{max-width:72%;padding:10px 14px;border-radius:16px;font-size:15px;line-height:1.5;display:flex;flex-direction:column;gap:4px}
+.bub small{font-size:11px;color:var(--muted);font-weight:700}
+.bub.them{background:var(--card2);border:1.5px solid #e2d3c0;align-self:flex-start;border-bottom-left-radius:4px}
+.bub.me{background:#f7e3d6;border:1.5px solid #ecc3ad;align-self:flex-end;border-bottom-right-radius:4px}
+.bub.live{border-style:dashed;opacity:.85}
+.mic{width:84px;height:84px;border-radius:50%;border:0;background:var(--clay);color:#fff;font:700 13px var(--body);cursor:pointer;box-shadow:0 0 0 6px #f2d6c6;align-self:center}
+.stars{display:flex;gap:4px;font-size:26px;color:#e0a63a}.stars span.off{color:var(--chip)}
+.fc{min-height:240px;border:2px solid #d4c1aa;border-radius:20px;background:var(--card);box-shadow:var(--shadow);display:flex;flex-direction:column;justify-content:center;align-items:center;gap:12px;padding:28px;text-align:center;cursor:pointer}
+.fc h3{margin:0;font:400 32px/1.15 var(--display);text-wrap:balance}
+.fc p{margin:0;max-width:62ch;font-size:16px;line-height:1.6;text-align:left}
+.ref h3{margin:0 0 4px;font:400 22px var(--display)}.ref p{margin:0;font-size:15px;line-height:1.6;color:#3b322c}
+.ref{display:flex;flex-direction:column;gap:6px;padding:14px 0;border-bottom:1px dotted var(--rule)}
+.decks{display:flex;gap:8px;flex-wrap:wrap}
+.decks button{border:1.5px solid #d4c1aa;background:var(--card);border-radius:999px;padding:8px 14px;font:600 13px var(--body);color:var(--ink);cursor:pointer}
+.decks button[aria-pressed="true"]{background:var(--ink);color:var(--card);border-color:var(--ink)}
+.quizopt{display:flex;flex-direction:column;gap:8px}
+.quizopt button{text-align:left;border:1.5px solid #d4c1aa;background:var(--card);border-radius:12px;padding:12px 14px;font:500 15px var(--body);color:var(--ink);cursor:pointer}
+.quizopt button.ok{border-color:var(--sag);background:#e3efe6}.quizopt button.no{border-color:var(--clay);background:#fbe2d6}
+</style>
+<style>
+/* One row: controls left, search right (Frank, 2026-10-01) */
+.barin{flex-wrap:nowrap}
+.ctl{flex-wrap:nowrap;flex:0 1 auto;min-width:0}
+.search{flex:0 1 380px;min-width:200px;margin-left:auto}
+@media (max-width:1100px){.barin{flex-wrap:wrap}.ctl{flex-wrap:wrap}.search{flex:1 1 100%;max-width:none}}
+</style>
+<style>
+.barin{gap:10px}.ctl{gap:8px}
+.seg button{padding:7px 10px}
+select.pick{padding:8px 8px}
+.search{min-width:180px}
+@media (max-width:1400px){.search kbd{display:none}#dayLab{display:none}}
+</style>
+<style>.seg{flex-wrap:nowrap}.seg button{white-space:nowrap}.ctl>*{flex:none}
+@media (max-width:1100px){.seg{flex-wrap:wrap}}</style>
+<style>
+/* Bars use the room they have: label columns size to their text (Frank, 2026-10-01) */
+.bars{grid-template-columns:70px minmax(0,1fr) auto;gap:12px}
+.bars>span:last-child{white-space:nowrap;min-width:3ch}
+.pbar{grid-template-columns:58px minmax(0,1fr) auto}
+.objbar{grid-template-columns:200px minmax(0,1fr) auto}
+.ctl{flex:none}.search{flex:1 1 380px;max-width:440px;min-width:170px}
+</style>
+<style>
+/* "By the numbers" fills its column (Frank, 2026-10-01) */
+.btn-box{align-self:stretch}
+.front{grid-template-columns:minmax(0,1fr) 340px}
+</style>
+<style>
+.form{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px}
+.form label{display:flex;flex-direction:column;gap:4px;font-size:12px;font-weight:700;color:var(--muted)}
+.form input,.form select{font:500 14px var(--body);padding:9px 10px;border:1.5px solid #d4c1aa;border-radius:10px;background:var(--card);color:var(--ink)}
+.pie{width:200px;height:200px;border-radius:50%;flex:none;border:3px solid var(--card);box-shadow:var(--shadow)}
+.pierow{display:flex;gap:28px;align-items:center;flex-wrap:wrap}
+.said3{font:italic 400 16px/1.4 var(--display)}
+.check2{display:inline-block;width:18px;height:18px;border-radius:5px;border:1.5px solid #d4c1aa;vertical-align:middle;text-align:center;line-height:16px;font-size:12px;font-weight:800}
+.check2.on{background:var(--sag);border-color:var(--sag);color:#fff}
+@media (max-width:900px){.form{grid-template-columns:repeat(2,minmax(0,1fr))}}
+</style>
+<div class="shell">
+  <aside class="side" aria-label="Main menu">
+    <div class="brand">Flores<br><span>Insurance</span></div>
+    <nav class="grp"><h4>Apollo · Sales</h4>
+      <span class="top" style="padding:9px 10px;border-radius:10px">Sales Center</span>
+      <button type="button" class="sub" data-view="digest" aria-current="page">Digest</button>
+      <button type="button" class="sub" data-view="post">The Flores Post</button>
+      <button type="button" class="sub" data-view="messages">Texts &amp; Emails</button><button type="button" class="sub" data-view="sales">Sales Sheet</button>
+      <button type="button" class="sub" data-view="coaching" style="padding-left:10px;font-size:14px;color:#e9ddd0">Coaching Center</button><button type="button" class="sub" data-view="learning" style="padding-left:10px;font-size:14px;color:#e9ddd0">Learning Center</button></nav>
+    <nav class="grp"><h4>Athena · Service</h4>
+      <span class="top" style="padding:9px 10px;border-radius:10px">Service Center</span>
+      <button type="button" class="sub" data-view="service">Service Digest</button>
+      <button type="button" class="sub" data-view="renewals">Renewals</button></nav>
+    <nav class="grp"><h4>Cerberus · Commercial</h4><button type="button" class="sub" data-view="commercial" style="padding-left:10px;font-size:14px;color:#e9ddd0">Commercial Center</button></nav>
+  </aside>
+  <div class="wrap">
+    <div class="bar"><div class="barin">
+      <div class="ctl">
+        <label for="day" id="dayLab" class="lab" style="letter-spacing:.06em">Day</label>
+        <select id="day" class="pick"><option value="live">Today</option><option value="pub">Tue, Sep 29</option><option value="slow">Mon, Sep 28</option></select>
+        <div class="seg" role="group" aria-label="Date range" id="range">
+          <button type="button" aria-pressed="true" data-r="day">Day</button><button type="button" aria-pressed="false" data-r="week">This week</button><button type="button" aria-pressed="false" data-r="mtd">MTD</button><button type="button" aria-pressed="false" data-r="ytd">YTD</button><button type="button" aria-pressed="false" data-r="folio">Folio</button><button type="button" aria-pressed="false" data-r="custom">Custom</button>
+        </div>
+        <select id="folio" class="pick" aria-label="Folio" hidden><option value="cur">Sep 19 – Oct 19 · open</option><option value="aug">Aug 20 – Sep 18 · closed</option></select>
+        <select id="who" class="pick" aria-label="Producer"><option>Whole team</option><option>Lorena Gonzalez</option><option>Mike Olvera</option><option>Coral Barwick</option><option>Crystal Mango</option><option>Sarahi Chin</option></select>
+      </div>
+      <div class="search">
+        <label for="q"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg>
+          <input id="q" type="search" placeholder="Find a lead, producer, SR, call…" autocomplete="off" aria-controls="res"><kbd>Ctrl K</kbd></label>
+        <div class="results" id="res" hidden></div>
+      </div>
+    </div></div>
+    <main class="main" id="view"></main>
+  </div>
+</div>
+<script>
+const $=id=>document.getElementById(id);
+const P=[{n:'Lorena Gonzalez',f:'Lorena',i:'LG',c:'#b5532f'},{n:'Mike Olvera',f:'Mike',i:'MO',c:'#3e6b4f'},{n:'Coral Barwick',f:'Coral',i:'CB',c:'#8a6a3e'},{n:'Crystal Mango',f:'Crystal',i:'CM',c:'#6b4e71'},{n:'Sarahi Chin',f:'Sarahi',i:'SC',c:'#3f5f7a'}];
+const LB=[[84,58,'6:48','17.2% (10)','14 / 3','1 of 5',6,'$8,210','3 (4 pol)','$2,940','82%'],[71,46,'5:40','15.2% (7)','9 / 2','2 of 4',4,'$6,120','1 (1 pol)','$1,860','76%'],[90,41,'7:15','12.2% (5)','11 / 4','3 of 4',3,'$4,030','1 (2 pol)','$1,512','71%'],[65,38,'4:10','13.2% (5)','6 / 1','2 of 3',3,'$3,640','1 (1 pol)','$1,533','68%'],['—',29,'3:05','13.8% (4)','5 / 0','1 of 2',2,'$2,310','0 (0 pol)','$0','64%']];
+const TEAM=[78,212,'5:52','14.6% (31)','45 / 10','9 of 18',18,'$24,310','6 (8 pol)','$7,845','73%'];
+const COLS=['Role Play','Call Volume','Avg Talk','Contact Rate','Texts / Emails','Sent the Quote','HH Quoted','Prem. Quoted','HH Sold','Prem. Sold','Utilization'];
+const LIVECOL=[false,true,true,true,true,false,true,true,true,true,true];
+const OUT=[[58,10,34,6,5,3],[46,7,28,4,4,3],[41,5,26,4,4,2],[38,5,24,4,3,2],[29,4,19,3,1,2]];
+const TASK=[['90%','38 of 42'],['83%','30 of 36'],['81%','25 of 31'],['71%','20 of 28'],['67%','18 of 27'],['80%','131 of 164']];
+const SPEED=[['2m 10s','median · 6 leads','quickest 0m 48s · longest 9m'],['3m 45s','median · 4 leads','quickest 1m 12s · longest 14m'],['5m 02s','median · 3 leads','quickest 2m · longest 11m'],['6m 30s','median · 2 leads','quickest 4m · longest 9m'],['8m 15s','median · 2 leads','quickest 6m · longest 10m'],['4m 12s','median of all 17 leads','quickest 0m 48s · longest 14m']];
+const REPLY=[['8m','good','0 waiting'],['11m','good','1 waiting'],['14m','good','2 waiting'],['22m','','0 waiting'],['1h 08m','bad','0 waiting'],['12m','good','3 waiting']];
+const UTIL=[['82%','5:44 productive / 7:00 tracked','0:22 idle'],['76%','5:19 / 7:00','0:41 idle'],['71%','4:58 / 7:00','0:55 idle'],['68%','4:45 / 7:00','1:02 idle'],['64%','4:29 / 7:00','1:15 idle'],['73%','weighted','']];
+const HH=[['1.3','good','4 pol / 3 HH · 1 existing, 2 new'],['1.0','warn','1 pol / 1 HH · 1 new'],['2.0','good','2 pol / 1 HH · new, bundled'],['1.0','good','1 pol / 1 HH · existing'],['—','bad','no sales'],['1.3','good','8 pol / 6 HH · 2 existing, 4 new']];
+const COACH=[[224,38,84],[148,29,71],[122,25,90],[90,22,65],[11,11,'—']];
+const AUD=[['Lorena','[LEAD]','Live · sold','14:20','Quotes Presented → Sold','Closed'],['Mike','[LEAD]','Live','8:05','Contacted → Quotes Presented','Closed'],['Coral','[LEAD]','Voicemail','0:34','—','Open'],['Crystal','[LEAD]','No answer','—','—','Closed'],['Sarahi','[LEAD]','Call back set','2:11','New → Contacted','Open']];
+const FEED=[['3:41 PM','#3e6b4f','Lorena sold Farmers-Auto · $1,120','Sale'],['3:39 PM','#b5532f','Text from a lead waiting on Coral','Reply'],['3:38 PM','#3f5f7a','New internet lead arrived, not dialled yet','Lead'],['3:36 PM','#3e6b4f','Mike presented $2,500 in premium','Quote'],['3:33 PM','#3e6b4f','Coral on a live call · 6m 40s','Contact'],['3:31 PM','#3f5f7a','New lead dialled by Lorena in 2m 05s','Speed'],['3:27 PM','#c9b8a8','Crystal · 4 voicemails in a row','Dials'],['3:22 PM','#3e6b4f','Mike presented $1,480 in premium','Quote'],['3:18 PM','#b57800','Sarahi finished a role play · 81','Role play']];
+const WIRE=[['5:24 PM','#3e6b4f','Coral bundled a new household · Farmers-Home + Farmers-Auto','Sale'],['4:52 PM','#3f5f7a','Crystal presented $1,210 in premium','Quote'],['3:41 PM','#3e6b4f','Lorena sold Farmers-Auto · $1,120','Sale'],['3:22 PM','#3f5f7a','Mike presented $1,480 in premium','Quote'],['3:18 PM','#b57800','Sarahi finished a role play · 81','Role play'],['2:40 PM','#3e6b4f','Crystal cross-sold an existing customer · $1,533','Sale'],['1:15 PM','#3e6b4f','Mike sold BW-Auto · $1,860','Sale'],['11:48 AM','#3e6b4f','Lorena sold two policies to one household','Sale'],['10:05 AM','#c9b8a8','Quickest dial of the day: Lorena, 48 seconds','Speed']];
+const TODO_LIVE=[[1,'#8a2b12','3','texts waiting on a reply','Oldest 42m · Coral 2, Mike 1'],[1,'#8a2b12','1','new lead not dialled','Arrived 3:38 PM · Speed to Dial is running'],[0,'#b57800','33','tasks still open today','Crystal 8, Sarahi 9 · Task Completion 80%'],[0,'#b57800','4','leads misfiled in "Pipeline"','Move them to 1 Pipeline'],[0,'#b57800','9','quotes sent instead of presented','Apollo flagged them on the cards'],[0,'#3f5f7a','1','producer with no role play','Sarahi · counts as 0 in the ranking']];
+const TODO_FIN=[[1,'#8a2b12','3','texts still waiting on a reply','Oldest 1h 50m · Coral 2, Mike 1'],[0,'#b57800','33','tasks due left open','Crystal 8, Sarahi 9, Coral 6, Mike 6, Lorena 4'],[0,'#b57800','4','leads misfiled in "Pipeline"','Move them to 1 Pipeline'],[0,'#b57800','9','quotes sent instead of presented','Apollo flagged them on the cards'],[0,'#3f5f7a','2','call backs set for the next morning','Lorena, Sarahi'],[0,'#3f5f7a','1','producer with no role play','Sarahi · counts as 0 in the ranking']];
+const names=[...P.map(p=>p.f),'Team'];
+const col={good:'var(--good)',bad:'var(--bad)',warn:'var(--warn)','':'inherit'};
+const S={view:'digest',day:'live',range:'day',folio:'cur',ed:null};
+try{Object.assign(S,JSON.parse(localStorage.getItem('fbp3')||'{}'))}catch(e){}
+if(!['post','service','renewals','coaching','learning','messages','sales','commercial'].includes(S.view))S.view='digest';
+
+const isLive=()=>S.day==='live'&&S.range==='day';
+const dateLong=()=>({live:'Wednesday, September 30, 2026',pub:'Tuesday, September 29, 2026',slow:'Monday, September 28, 2026'})[S.day];
+const RANGE={day:null,week:'This week · Sep 28 – Sep 30',mtd:'September to date',ytd:'2026 to date',custom:'Custom range',folio:null};
+const EDITION={day:'Daily edition',week:'Weekly edition',mtd:'Month-to-date edition',ytd:'Year-to-date edition',custom:'Special edition'};
+
+/* Goal colours, as digest_config.tier(): >= green line is green, >= yellow line is yellow, else red. */
+const tierCol=(v,g,y)=>v>=g?'var(--good)':v>=y?'var(--warn)':'var(--bad)';
+/* The live Digest's welcome line: a different short phrase every time the board
+   opens (Frank, 2026-10-01: "random things like when i open a new chat"). Picked
+   once per page load from lines for the time of day (Arizona), the weekday, and
+   any time. The name will come from the viewer's sign-in. */
+const GREETING=(()=>{
+  const n='Frank', az=new Date(Date.now()-7*3600000), h=az.getUTCHours(), dow=az.getUTCDay();
+  const any=[`Welcome back, ${n}.`,`Back at it, ${n}.`,`Let's sell something, ${n}.`,`Ready when you are, ${n}.`,`What's the move, ${n}?`,
+    `The phones missed you, ${n}.`,`Hot out there. Hotter leads, ${n}.`,`Another day in the desert, ${n}.`,`Quotes don't present themselves, ${n}.`,
+    `Somebody out there needs a bundle, ${n}.`,`Good to see you, ${n}.`,`Let's find some households, ${n}.`,`Assume the sale, ${n}.`,
+    `Every dial is a maybe, ${n}.`,`Voicemails build character, ${n}.`,`Somewhere a renter needs a home policy, ${n}.`,`Ask for the sale, ${n}. Then stop talking.`,
+    `Present it, don't send it, ${n}.`,`Ten minutes on the phone beats ten emails, ${n}.`,`The best quote is the one they hear, ${n}.`,
+    `One more household, ${n}.`,`Dry heat, warm leads, ${n}.`,`Sun's up, rates are in, ${n}.`,`Cactus tough, ${n}.`,`Saguaro-strong today, ${n}.`,
+    `Hello again, ${n}.`,`Look who's here. ${n}.`,`Let's make the board glow, ${n}.`,`Green numbers only, ${n}.`,`Nice to have you, ${n}.`,
+    `Every no gets you closer to a yes, ${n}.`,`Bundle it, ${n}. Always bundle it.`,`Somebody's renewal is about to go up, ${n}.`,
+    `The follow-up is where the money is, ${n}.`,`Call backs are gold, ${n}.`,`Speed to dial, ${n}. Speed to dial.`,`Coverage is a promise, ${n}.`,
+    `Today's a good day to close, ${n}.`,`Fortune favors the dialer, ${n}.`,`The leaderboard awaits, ${n}.`];
+  const tod=h<12?[`Morning, ${n}. Phones are warm.`,`Rise and quote, ${n}.`,`Coffee first, then closes, ${n}.`,`Good morning, ${n}.`,
+      `Early bird gets the bundle, ${n}.`,`Morning, ${n}. Beat the heat, beat the goal.`,`First call of the day is the easiest, ${n}.`,`Fresh coffee, fresh leads, ${n}.`]
+    :h<17?[`Good afternoon, ${n}.`,`Afternoon, ${n}. Plenty of day left.`,`Second half, ${n}. Finish strong.`,`Afternoon push, ${n}.`,
+      `Post-lunch power hour, ${n}.`,`Afternoon, ${n}. People pick up after 3.`,`Still time to make it a great day, ${n}.`,`The 4 o'clock close is real, ${n}.`]
+    :[`Evening, ${n}. Let's see how it went.`,`Good evening, ${n}.`,`Clocking out soon, ${n}?`,`Sunset over the desert, numbers on the board, ${n}.`,`Long day, ${n}. Good work.`];
+  const day={1:[`Fresh week, ${n}.`,`Monday, ${n}. Call backs first.`,`New week, new households, ${n}.`],
+    2:[`Taco Tuesday, ${n}. Sell like it.`,`Tuesday, ${n}. Momentum day.`],
+    3:[`Hump day, ${n}. Over the top.`,`Midweek, ${n}. Halfway to Friday.`],
+    4:[`Thursday, ${n}. One more push.`,`Almost Friday, ${n}.`],
+    5:[`Friday, ${n}. Close it out.`,`Made it to Friday, ${n}.`,`Friday, ${n}. Leave nothing on the table.`]}[dow]||[];
+  // the day itself: folio close and today's sales (sample figures in the preview)
+  const daysLeft=13, soldToday=6;
+  const ctx=[...(daysLeft<=3?[`${daysLeft} days left in the folio, ${n}.`,`Clock's ticking on the folio, ${n}.`]:[]),
+    ...(soldToday===0?[`First sale's still out there, ${n}.`,`Nobody's sold yet, ${n}. Be first.`]:soldToday>=5?[`${soldToday} households sold already, ${n}.`,`Strong day so far, ${n}.`]:[])];
+  const pool=[...any,...tod,...tod,...day,...day,...ctx,...ctx];
+  return pool[Math.floor(Math.random()*pool.length)];
+})();
+function tilesHtml(){
+  return [['Dials','212','226 dials',''],['Live contacts','31','14.6% contact rate',''],['HH / Prem. Quoted','18 HH<br>$24,310','avg $1,351 per HH','s'],['HH / Prem. Sold',`<span style="color:${tierCol(8,4,1)}">6 HH</span><br><span style="color:${tierCol(7845/8,900,501)}">$7,845</span>`,'8 policies · 1.3 per HH','s sold'],['Utilization','73%','weighted','']]
+  .map(([k,v,n,c])=>`<div class="tile glow" tabindex="0"><div class="k">${k}</div><div class="v ${c.includes('sold')?'':'gt'} ${c.includes('s')?'s':''}">${v}</div><div class="n">${n}</div></div>`).join('')+
+  `<div class="tile glow" tabindex="0" style="flex-direction:row;align-items:center;gap:12px"><div class="donut"><span>33%</span></div><div style="font-size:13px"><div class="k">Closing Ratio</div><div><b>33.3%</b> households</div><div><b>32.3%</b> premium</div></div></div>`;
+}
+const sc=(v,lo,hi)=>typeof v!=='number'?0:Math.max(0,Math.min(100,(v-lo)/(hi-lo)*100));
+const oc=['#3e6b4f','#c9b8a8','#e59a6f','#6b4e71','#8a2b12'];
+const hbg={good:'#e3efe6',warn:'#f8eed2',bad:'#fbe7dc'};
+
+function digest(){
+  const live=isLive()||(S.range==='folio'&&FOL[S.folio].open&&S.day==='live'), rng=RANGE[S.range];
+  const pills=live?`<span class="pill lv glow"><span class="dot"></span>Live · updated 3:42 PM</span><span class="pill">Last checkpoint 2:55 PM</span>`
+    : S.range==='folio'?`${FOL[S.folio].open&&S.day==='live'?'<span class="pill lv glow"><span class="dot"></span>Folio updating live · 3:42 PM</span>':'<span class="pill fin">'+(FOL[S.folio].open?'Folio · as of the last checkpoint':'Folio closed Sep 18')+'</span>'}`
+    : rng?`<span class="pill">${S.day==='live'?'Through the last checkpoint, 2:55 PM':'All days final'}</span>`
+    :`<span class="pill fin">Final · published 6:04 PM</span>`;
+  const title=S.range==='folio'?RANGE.folio:live?GREETING:(rng||dateLong().replace(', 2026',''));
+  const feed=live?FEED:WIRE, todo=live?TODO_LIVE:TODO_FIN;
+  return `<div class="${live?'islive':''}" style="display:flex;flex-direction:column;gap:20px">
+  <header class="head"><div><div style="display:flex;gap:8px;flex-wrap:wrap">${pills}</div>
+    <h1 class="greet">${title}</h1><div class="sd" style="font-size:15px;margin-top:4px">Sales Digest${live?' · Wednesday, September 30':''} · sample figures</div></div></header>
+  <section class="tiles">${tilesHtml()}</section>
+  <div class="cols"><div class="stack">
+    <section class="card"><div class="hrow"><h2>Team Leaderboard</h2><span class="sd">5-4-3-2-1 points across seven categories${rng?', ranked on per-day averages':''} · every number opens its accounts</span></div>
+      <div class="scroll"><table class="lb"><thead><tr><th>Producer</th>${COLS.map(c=>`<th>${c}</th>`).join('')}</tr></thead><tbody>
+      ${LB.map((r,i)=>`<tr><td><span class="av" style="background:${P[i].c}">${P[i].i}</span><b>${P[i].n}</b>${i<3?`<span class="medal">${['1st','2nd','3rd'][i]}</span>`:''}</td>${r.map((v,j)=>`<td class="num ${LIVECOL[j]?'gt':''}" style="${LIVECOL[j]&&live?'font-weight:700':''}">${v}</td>`).join('')}</tr>`).join('')}
+      <tr class="tot"><td>Team</td>${TEAM.map((v,j)=>`<td class="${LIVECOL[j]?'gt':''}">${v}</td>`).join('')}</tr></tbody></table></div></section>
+    <div class="two"><div class="stack">
+      <section class="card"><h2>Call Outcome Breakdown</h2><div style="display:flex;flex-direction:column;gap:10px">${OUT.map((r,i)=>`<div class="bars"><b>${P[i].f}</b><div class="stackbar" style="width:${r[0]/58*100}%">${r.slice(1).map((v,j)=>`<div style="flex-grow:${v};background:${oc[j]}"></div>`).join('')}</div><span style="text-align:right;color:var(--muted)">${r[0]} dials</span></div>`).join('')}</div>
+        <div class="legend"><span><i style="background:#3e6b4f"></i>Live 31</span><span><i style="background:#c9b8a8"></i>Voicemail 131</span><span><i style="background:#e59a6f"></i>No answer 21</span><span><i style="background:#6b4e71"></i>Call back set 17</span><span><i style="background:#8a2b12"></i>Bad number 12</span></div></section>
+      <section class="card"><h2>Task Completion Rate</h2><div style="display:flex;flex-direction:column;gap:10px">${TASK.map((r,i)=>`<div class="bars"><b>${names[i]}</b><div class="track"><div class="glow" style="width:${r[0]};background:${parseInt(r[0])>=80?'var(--sag)':'var(--warn)'}"></div></div><span style="text-align:right"><b class="gt">${r[0]}</b> <span style="color:var(--muted)">${r[1]}</span></span></div>`).join('')}</div></section>
+      <section class="card"><h2>Speed to Dial</h2><div class="mini">${SPEED.map((r,i)=>`<div class="glow"><div class="k">${names[i]}</div><div class="v gt">${r[0]}</div><div class="n">${r[1]}</div><div class="n">${r[2]}</div></div>`).join('')}</div></section>
+      <section class="card"><h2>Speed to Reply</h2><div class="mini">${REPLY.map((r,i)=>`<div><div class="k">${names[i]}</div><div class="v" style="color:${col[r[1]]}">${r[0]}</div><div class="n">median · ${r[2]}</div></div>`).join('')}</div></section>
+    </div><div class="stack">
+      <section class="card"><h2>Utilization and Efficiency</h2><div class="mini">${UTIL.map((r,i)=>`<div class="glow"><div class="k">${names[i]}</div><div class="v gt">${r[0]}</div><div class="n">${r[1]}</div><div class="n">${r[2]}</div></div>`).join('')}</div></section>
+      <section class="card"><h2>Household Completion</h2><div class="mini">${HH.map((r,i)=>`<div style="background:${hbg[r[1]]}"><div class="k">${names[i]}</div><div class="v" style="color:${col[r[1]]}">${r[0]}</div><div class="n" style="color:#5e5046">${r[2]}</div></div>`).join('')}</div></section>
+      <section class="card"><h2>Coaching &amp; Call Quality</h2><p class="sd">Coach AI (TRAQ). Call score and sentiment stay off the leaderboard: a voicemail scores as a call.</p><div class="coach">${COACH.map((r,i)=>`<div><b>${P[i].f}</b>${[['Call score',r[0],38,251],['Sentiment',r[1],11,43],['Role play',r[2],58,87]].map(([l,v,lo,hi])=>`<div class="cb"><span style="color:var(--muted)">${l}</span><div class="tr"><div style="width:${sc(v,lo,hi)}%;background:${P[i].c}"></div></div><b style="text-align:right">${v}</b></div>`).join('')}</div>`).join('')}</div></section>
+    </div></div>
+    <section class="card"><div class="hrow"><h2>Call Detail &amp; Task Completion Audit</h2><span class="chip">ops only</span></div><div class="scroll"><table class="au"><thead><tr><th>Producer</th><th>Lead</th><th>Result</th><th>Talk</th><th>Stage move</th><th>Task</th></tr></thead><tbody>${AUD.map(r=>`<tr>${r.map((v,j)=>`<td style="${j==0?'font-weight:700':''}${j==5?`;color:${v=='Open'?'var(--bad)':'var(--good)'}`:''}">${v}</td>`).join('')}</tr>`).join('')}</tbody></table></div></section>
+    <section class="card"><h2>Leads to move out of "Pipeline"</h2><div class="pipe">${['New · 9-28-26','Contacted · 9-29-26','New · 9-30-26','In Progress · 9-30-26'].map(s=>`<div><b>[LEAD NAME]</b><br><span class="sd">${s}</span></div>`).join('')}</div></section>
+  </div>
+  <div class="rail">
+    <section class="card dark"><div class="hrow"><h2>${live?'Live feed':'Feed'} ${live?'':'<em>the day’s highlights</em>'}</h2><span class="sd">newest first</span></div><div class="feed">${feed.map(([t,c,x,k])=>`<a href="#"><span class="t">${t}</span><span class="c" style="background:${c}"></span><span>${x}</span><span class="kd">${k}</span></a>`).join('')}</div></section>
+    <section class="card"><h2>Needs someone now ${live?'':'<em>carried forward</em>'}</h2><div class="todo">${todo.map(([h,c,n,t,s])=>`<a href="#" class="${h?'hot':''}"><span class="sq" style="background:${c}"></span><span><b>${n} ${t}</b><span class="s">${s}</span></span></a>`).join('')}</div></section>
+  </div></div></div>`;
+}
+
+const FOL={cur:{span:'Sep 19 – Oct 19',start:'Sep 19',end:'Oct 19',open:true,
+  days:[['Mon','Sep 21',6210,'Mike opens the folio with a BW-Auto sale'],['Tue','Sep 22',8940,'Busiest dials day of the folio: 241'],['Wed','Sep 23',5120,'Coral’s first bundle of the folio'],['Thu','Sep 24',9880,'Best day so far · Lorena sells 4 households'],['Fri','Sep 25',7405,'Team Speed to Dial under 3 minutes'],['Mon','Sep 28',0,'No sales · 118 voicemails'],['Tue','Sep 29',8870,'Crystal cross-sells two existing customers'],['Wed','Sep 30',7845,'Lorena three households · still live']],
+  ahead:[['Thu','Oct 1'],['Fri','Oct 2'],['Mon','Oct 5'],['Tue','Oct 6'],['Wed','Oct 7'],['Thu','Oct 8'],['Fri','Oct 9'],['Mon','Oct 12'],['Tue','Oct 13'],['Wed','Oct 14'],['Thu','Oct 15'],['Fri','Oct 16'],['Mon','Oct 19']]},
+ aug:{span:'Aug 20 – Sep 18',start:'Aug 20',end:'Sep 18',open:false,
+  days:[['Thu','Aug 20',7120,'Crystal’s $652 Rewrite stays on the board'],['Fri','Aug 21',6480,''],['Mon','Aug 24',5210,'Coral and Sarahi become full producers'],['Tue','Aug 25',8130,'Sarahi’s first day on Insightful'],['Wed','Aug 26',7660,''],['Thu','Aug 27',9420,'Best day of the folio'],['Fri','Aug 28',6010,''],['Mon','Aug 31',5880,'One lead, two numbers: now one contact'],['Tue','Sep 1',8310,''],['Wed','Sep 2',7050,''],['Thu','Sep 3',6740,''],['Fri','Sep 4',8890,'Mike’s best week closes'],['Tue','Sep 8',7310,'Back from Labor Day'],['Wed','Sep 9',6120,''],['Thu','Sep 10',7980,''],['Fri','Sep 11',8550,''],['Mon','Sep 14',5460,''],['Tue','Sep 15',7730,''],['Wed','Sep 16',9010,'Lorena passes $40,000 for the folio'],['Thu','Sep 17',7440,''],['Fri','Sep 18',11930,'Closing-day push: best day of the folio']],ahead:[]}};
+const fsum=f=>f.days.reduce((a,d)=>a+d[2],0);
+const money=n=>'$'+Math.round(n).toLocaleString('en-US');
+
+function postGate(){
+  if(S.range==='day'&&S.day==='live') return `<section class="card press"><span class="lab">The Flores Post</span><h2>Today's Post goes to press after the 5:55 PM run.</h2>
+    <p class="sd" style="font-size:15px;max-width:62ch">Pick a published day in Day, or choose Folio to read the folio's edition, which updates through the day.</p></section>`;
+  if(S.range!=='day'&&S.range!=='folio') return `<section class="card press"><span class="lab">The Flores Post</span><h2>The Post is written for a published day or a folio.</h2>
+    <p class="sd" style="font-size:15px;max-width:62ch">${RANGE[S.range]} is on the Digest. Pick a published day in Day, or choose Folio.</p></section>`;
+  return null;
+}
+
+/* Slow editions (Frank, 2026-09-30): a day with no sales, a week under $20,000,
+   a folio whose pace is under the last folio's total. A slow edition says so and
+   carries "What to try / What to look for". Goals are digest_config.THRESHOLDS' green lines. */
+const SLOW={day:prem=>prem===0, week:tot=>tot<20000, folio:(pace,last)=>pace<last};
+const GOALS=[['Dials','50 or more'],['Avg talk time','7 min or more'],['Contact rate','13% or more'],['Households quoted','5 or more'],['Premium quoted per HH','$900 or more'],['Task completion','100%'],['Speed to dial','2 min or less'],['Utilization','85% or more'],['Role play','80 or more']];
+const HIT={
+  pub:[['Lorena'],['Coral'],['Lorena','Mike','Crystal','Sarahi'],['Lorena'],['Lorena','Mike','Coral','Crystal','Sarahi'],[],[],[],['Lorena','Coral']],
+  slow:[['Lorena','Mike'],['Coral','Lorena'],['Lorena'],[],['Lorena','Mike','Coral','Crystal'],['Lorena'],['Mike'],[],['Coral']],
+  folio:[['Lorena'],['Coral'],['Lorena','Mike','Crystal'],['Lorena'],['Lorena','Mike','Coral','Crystal','Sarahi'],[],['Lorena'],[],['Lorena','Coral']],
+  aug:[['Lorena','Mike'],['Coral'],['Lorena','Mike'],['Lorena','Mike'],['Lorena','Mike','Coral','Crystal','Sarahi'],[],['Lorena','Mike'],[],['Lorena','Coral','Mike']]};
+const NEAR={pub:'Lorena missed Speed to Dial by 10 seconds and Utilization by 3 points.',slow:'Mike quoted 4 households, one short of the goal.',folio:'Mike averages 46 dials a day, 4 short. Lorena is at 82% utilization.',aug:'Crystal averaged 48 dials a day, 2 short of the goal.'};
+function goalBoard(key,title){
+  const h=HIT[key], counts={}; h.flat().forEach(n=>counts[n]=(counts[n]||0)+1);
+  const lead=Object.entries(counts).sort((a,b)=>b[1]-a[1]);
+  return `<section style="display:flex;flex-direction:column;gap:10px"><div class="shead"><h3>${title} <em>— who hit their goals</em></h3><span class="sd">${lead.map(([n,c])=>`${n} ${c} of 9`).join(' · ')}</span></div>
+    <div class="goals">${GOALS.map((g,i)=>`<div class="goal"><span class="g">${g[0]}<small>${g[1]}</small></span><span class="w ${h[i].length?'':'none'}">${h[i].length?h[i].join(', '):'Nobody yet'}</span></div>`).join('')}</div>
+    <p class="sd" style="font-size:14px">Close: ${NEAR[key]}</p></section>`;
+}
+function tipsBox(title,tries,looks){
+  return `<section class="tips"><h3>${title}</h3>
+    <div class="col"><h4>What to try</h4><ol>${tries.map(t=>`<li>${t}</li>`).join('')}</ol></div>
+    <div class="col"><h4>What to look for</h4><ul>${looks.map(t=>`<li>${t}</li>`).join('')}</ul></div></section>`;
+}
+
+function post(){
+  const g=postGate(); if(g) return g;
+  const isF=S.range==='folio', F=FOL[S.folio];
+  if(isF){ const eds=editions(F); if(!eds.some(x=>x.id===S.ed&&!x.ahead)) S.ed=eds.find(x=>x.def).id;
+    const cur=eds.find(x=>x.id===S.ed); if(cur.week) return weekly(F,cur,eds); }
+  const liveF=isF&&F.open&&S.day==='live';
+  const box=rows=>`<table class="box"><thead><tr><th>#</th><th>Producer</th><th>Pts</th><th>HH sold</th><th>Premium</th></tr></thead><tbody>${rows.map((r,i)=>`<tr><td>${i+1}</td><td>${r[0]}</td><td>${r[1]}</td><td>${r[2]}</td><td>${r[3]}</td></tr>`).join('')}</tbody></table>`;
+  const briefs=items=>`<div class="briefs">${items.map(([k,x])=>`<a href="#"><b>${k}</b>${x}</a>`).join('')}</div>`;
+  const lastF=fsum(FOL.aug);
+  let E;
+  if(!isF&&SLOW.day(S.day==='slow'?0:7845)) E={
+    edition:'Daily edition · published 6:02 PM', dateline:dateLong(), kicker:'Sales desk', goalKey:'slow', goalTitle:'The goal board',
+    hl:'No sales on Monday. Nine quoted households are waiting.',
+    deck:'198 dials reached 22 people and nine households were quoted for $11,840. None closed, the first day without a sale this folio.',
+    by:'By Apollo · Sales coaching',
+    body:['Nobody sold on Monday. It is the first day this folio without a sale, and it leaves the folio behind the pace of the last one.',
+      'The quoting was there: nine households for $11,840, an average of $1,316 each. Mike quoted four and Lorena three. What was missing was the close. Five of the nine quotes ended with an offer to email them, and none of those five has called back.',
+      'The phones were quiet too. 118 of 198 dials went to voicemail, and the contact rate fell to 11.1%, under the 13% goal. Only Lorena was over it.',
+      'There is still plenty to work with. Nine households are warm, and the 1-1 QNC pipeline holds 31 quotes from the last 30 days that never closed.'],
+    pull:['Nine households said yes to a quote on Monday. Call every one of them back on Tuesday morning.','Apollo'],
+    nums:[['Premium sold','$0'],['Households quoted','9'],['Premium quoted','$11,840'],['Dials','198'],['Contact rate','11.1%'],['Quotes sent, not presented','5 of 9']],
+    tips:['Monday was a no-sale day. Here is where to start on Tuesday.',[
+      '<b>Call the nine quoted households back before 10 AM.</b> Present the quote on the phone and ask for the sale. Start with the five who were sent it by email.',
+      '<b>Work 1-1 QNC.</b> 31 quotes from the last 30 days never closed. A new rate, a new discount or a bundle is a reason to call.',
+      '<b>Move the dial block later.</b> This folio the team reaches 16% of people after 3 PM and 11% before noon.',
+      '<b>Cross-sell the book.</b> Customers with auto and no home or renters are the quickest sale on a slow day.',
+      '<b>Role play the Busy objection.</b> It came up on six calls on Monday and was dropped on four.'],[
+      'Quotes ending with "I’ll email it to you". The Sent the Quote column on the leaderboard counts them.',
+      'Leads sitting in Contacted or Ready to Present with a quote on file and no next step.',
+      'Call backs that went unanswered, and texts still waiting on a reply.',
+      'Talk time under 3 minutes on a live call: usually the quote was never built.']],
+    s1:['Coaching desk','Five quotes sent, none presented','Apollo flagged five calls that ended with "I’ll email it over." Each one was a chance to build and present the quote on the phone. Coral kept both of hers on the line and presented.'],
+    s2:['Bright spots','Coral’s calls ran longest','Coral averaged 8 minutes 20 seconds on a live call, the only producer over the 7-minute goal besides Lorena. Mike dialled new leads in a median of 1 minute 40 seconds.'],
+    box:[['Lorena Gonzalez',26,0,'$0'],['Mike Olvera',24,0,'$0'],['Coral Barwick',19,0,'$0'],['Crystal Mango',15,0,'$0'],['Sarahi Chin',9,0,'$0']],
+    wireT:'The wire', wire:[['4:40 PM','Mike presented $1,620 in premium'],['3:15 PM','Lorena presented $2,340 in premium to two households'],['1:30 PM','Coral’s longest call of the day · 14m'],['11:20 AM','Crystal · 9 voicemails in a row'],['9:05 AM','Mike dialled a new lead in 48 seconds']],
+    carryT:'Still on the desk', carry:[['9','quoted households to call back'],['4','texts waiting on a reply'],['38','tasks due left open']], foot:'Figures final as of 6:02 PM Arizona'};
+  else if(!isF) E={
+    edition:'Daily edition · published 6:04 PM', dateline:dateLong(), kicker:'Sales desk', goalKey:'pub', goalTitle:'The goal board',
+    hl:'Lorena closes three households as the team clears $7,845',
+    deck:'Six households bought from eighteen quoted, a one-in-three close, on a day when 212 dials reached 31 people.',
+    by:'By Apollo · Sales coaching',
+    body:['Lorena Gonzalez sold four policies to three households for $2,940 and finished first in the standings with 29 points. She also led the team in dials, 58, and reached 10 people.',
+      'Four of the five producers sold. Mike Olvera wrote a $1,860 BW-Auto policy. Coral Barwick bundled home and auto for a new household, and Crystal Mango cross-sold an existing customer. Sarahi Chin quoted two households but did not close one.',
+      'The close was one in three: 6 of 18 households, well over the 25% goal. By premium it was 32.3%, $7,845 of $24,310 quoted.',
+      'Four producers were over the 13% contact-rate goal, and every one of them quoted more than $900 per household.'],
+    pull:['Build the quote and present it on the call. Nine times today it was sent instead.','Apollo, on today’s coaching cards'],
+    nums:[['Premium sold','$7,845'],['Households sold','6 of 18'],['Closing ratio','33.3%'],['Premium quoted','$24,310'],['Dials','212'],['Contact rate','14.6%']],
+    s1:['Coaching desk','Nine quotes sent instead of presented','Apollo flagged nine calls that ended with an offer to email the quote. Coral did it on three of her four quotes, Lorena on one of five. Sarahi had no role play, which counts as a zero in the ranking.'],
+    s2:['Follow-up','Texts answered in 12 minutes','The team answered texts in a median of 12 minutes; Lorena was quickest at 8. Three texts were still waiting at close. Nobody reached the 100% task goal: the team closed 131 of 164.'],
+    box:[['Lorena Gonzalez',29,3,'$2,940'],['Mike Olvera',23,1,'$1,860'],['Coral Barwick',18,1,'$1,512'],['Crystal Mango',17,1,'$1,533'],['Sarahi Chin',11,0,'$0']],
+    wireT:'The wire', wire:WIRE.map(w=>[w[0],w[2]]), carryT:'Still on the desk', carry:TODO_FIN.map(t=>[t[2],t[3]]), foot:'Figures final as of 6:04 PM Arizona'};
+  else if(F.open){ const tot=fsum(F),n=F.days.length,all=n+F.ahead.length,pace=tot/n*all,gap=lastF-pace; E={
+    edition:`Folio edition · day ${n} of ${all} · ${liveF?'updating live, 3:42 PM':'as of the last checkpoint'}`, dateline:`Folio ${F.span}, 2026`, kicker:'The folio so far', goalKey:'folio', goalTitle:'The goal board · per-day averages',
+    hl:`Eight days in, the folio has ${money(tot)} and is ${money(gap)} behind last folio’s pace`,
+    deck:`${n} of ${all} business days are done. At this pace it finishes near ${money(pace)}; last folio closed at ${money(lastF)}.`,
+    by:'By Apollo · Updated every checkpoint',
+    body:[`The folio has ${money(tot)} in new premium after eight business days. Its best day was Thursday the 24th, when Lorena Gonzalez sold four households and the team reached $9,880. Its worst was Monday the 28th, with no sales at all.`,
+      `At the current pace the folio closes near ${money(pace)}, about ${money(gap)} short of the last one. Thirteen business days are left to close that gap: roughly ${money(gap/13)} a day more than the team is averaging.`,
+      'Lorena leads on per-day averages and is the only producer over the 50-dial goal. Coral Barwick has the longest calls; Crystal Mango has made the most of existing customers.',
+      'Forty quoted households have not bought yet. They are the fastest way back to pace.'],
+    pull:[`${money(gap/13)} more a day closes the gap to last folio.`,'The gap to last folio’s total, spread over the 13 days left'],
+    nums:[['Premium sold',money(tot)],['Pace to close',money(pace)],['Last folio',money(lastF)],['Days to go',String(F.ahead.length)],['Households sold','40 of 130'],['Closing ratio','30.8%']],
+    tips:!SLOW.folio(pace,lastF)?null:['Behind last folio’s pace. What to try with thirteen days left.',[
+      '<b>Close what is already quoted.</b> Forty households have a quote and no sale. A call to each, presenting on the phone, is worth more than new leads.',
+      '<b>Protect Mondays.</b> This folio’s Mondays average $3,100 against $8,200 on other days. Start Monday with call backs, not new dials.',
+      '<b>Bundle every auto quote.</b> Households with two policies close at a higher rate and lift premium per household.',
+      '<b>One role play a day for everyone.</b> A missed role play counts as zero, and the objections dropped most (Busy, Price) are the ones that cost sales.'],[
+      'Quotes presented but not closed after 3 days: they go cold fast.',
+      'Producers under the 50-dial goal before noon.',
+      'Speed to Dial over 5 minutes on a new internet lead.',
+      'Leads misfiled in "Pipeline" that nobody is working.']],
+    s1:['The race','Lorena leads by six points a day','On per-day averages Lorena scores 27 points to Mike’s 21, with Coral a point behind Mike. Sarahi’s missed role plays count as zeros and cost her about three points a day.'],
+    s2:['Bright spots','Contact rates are up','Three producers are over the 13% contact-rate goal for the folio, and every producer is quoting more than $900 per household.'],
+    box:[['Lorena Gonzalez',27,14,'$18,940'],['Mike Olvera',21,9,'$12,470'],['Coral Barwick',20,7,'$10,080'],['Crystal Mango',17,7,'$9,300'],['Sarahi Chin',12,3,'$3,480']],
+    wireT:liveF?'Today so far':'Latest', wire:(liveF?FEED:WIRE).map(w=>[w[0],w[2]]), carryT:'Still on the desk', carry:(liveF?TODO_LIVE:TODO_FIN).map(t=>[t[2],t[3]]), foot:'Updates every checkpoint until the folio closes Oct 19'}; }
+  else { const tot=fsum(F); E={
+    edition:'Folio closing edition · published Sep 18, 6:10 PM', dateline:`Folio ${F.span}, 2026`, kicker:'Folio in review', goalKey:'aug', goalTitle:'The goal board · per-day averages',
+    hl:`The folio closes at ${money(tot)} on its best day`,
+    deck:'Twenty-one business days, 121 households sold, and an $11,930 finish on September 18.',
+    by:'By Apollo · Closing edition',
+    body:['The folio opened slowly on August 20, then found its stride in the last week of August. Coral Barwick and Sarahi Chin became full producers on the 24th.',
+      'Mike Olvera had the best single week, August 31 to September 4, with four straight days over $6,000. The four-day week after Labor Day held its pace.',
+      'Lorena Gonzalez won the folio. She passed $40,000 on September 16 and hit six of the nine daily goals on average, more than anyone.',
+      'The team closed with its best day, $11,930 on Friday the 18th. Across the folio it sold 121 of the 361 households it quoted, a 33.5% close.'],
+    pull:['The last day was the best day. The team closed the folio with $11,930.','The closing edition'],
+    nums:[['Premium sold',money(tot)],['Households sold','121 of 361'],['Closing ratio','33.5%'],['Best day','$11,930'],['Dials','4,402'],['Contact rate','13.9%']],
+    s1:['Folio honours','Lorena wins; Mike takes the best week','Top producer: Lorena Gonzalez. Best week: Mike Olvera, Aug 31 – Sep 4. Best day: the team, Sep 18. Most improved: Coral Barwick, whose contact rate rose every week.'],
+    s2:['Carried forward','Twelve quoted households still open','Twelve households quoted in the last week had not bought when the folio closed. They opened the new folio as its first calls.'],
+    box:[['Lorena Gonzalez',26,38,'$48,210'],['Mike Olvera',22,29,'$38,760'],['Coral Barwick',19,22,'$30,140'],['Crystal Mango',17,21,'$27,880'],['Sarahi Chin',11,11,'$17,350']],
+    wireT:'Biggest moments', wire:F.days.filter(d=>d[3]).map(d=>[d[1],d[3]]), carryT:'Into the new folio', carry:[['12','quoted households still open'],['2','leads misfiled in "Pipeline"']], foot:'Final as of the Sep 18 run'}; }
+
+  const max=isF?Math.max(...F.days.map(d=>d[2])):1;
+  const tl=isF?`<section style="display:flex;flex-direction:column;gap:8px"><div class="shead"><h3>${F.open?'The folio, day by day':'How the folio went, day by day'} <em>— premium sold</em></h3><span class="sd">${F.open?F.ahead.length+' business days to go':'every business day of the folio'}</span></div>
+    <div class="tl">${F.days.map((d,i)=>{const t=liveF&&i===F.days.length-1;return `<div class="tlr ${t?'today':''}"><span class="d">${d[1]}<small>${d[0]}${t?' · live':''}</small></span><div class="b"><div class="${t?'glow':''}" style="width:${d[2]/max*100}%"></div></div><span class="m ${t?'gt':''}" style="${d[2]?'':'color:var(--bad)'}">${money(d[2])}</span><span class="e">${d[3]}</span></div>`}).join('')}
+    ${F.ahead.map(d=>`<div class="tlr ahead"><span class="d">${d[1]}<small>${d[0]}</small></span><div class="b"></div><span class="m">—</span><span class="e">ahead</span></div>`).join('')}</div></section>`:'';
+  const weeks=isF&&!F.open?`<section style="display:flex;flex-direction:column;gap:12px"><div class="shead"><h3>Week by week</h3></div><div class="wk">
+    <div><h4>Aug 20 – Aug 28</h4><p>A slow open, then Coral and Sarahi joined as full producers on the 24th. The 27th was the best day until the last.</p></div>
+    <div><h4>Aug 31 – Sep 4</h4><p>Mike's best week: four straight days over $6,000.</p></div>
+    <div><h4>Sep 8 – Sep 11</h4><p>A four-day week after Labor Day held its pace. Speed to Dial improved every day.</p></div>
+    <div><h4>Sep 14 – Sep 18</h4><p>Lorena passed $40,000 on the 16th; the team closed with $11,930.</p></div></div></section>`:'';
+  const k=t=>`<div class="lab kick" style="color:var(--clay)">${t}</div>`;
+  return `<article class="paper ${liveF?'islive':''}">
+  <header class="mast">
+    <div class="mrow lab"><span>${E.edition}</span></div>
+    <h1>The Flores Post</h1>
+    <div class="mrow lab rule"><span>${E.dateline}</span><span>Flores Insurance Agency · Arizona</span><span>Sample figures</span></div>
+  </header>
+  ${isF?editionsHtml(F):''}
+  <div class="front">
+    <section class="story"><div class="lab kick">${E.kicker}</div><h2 class="hl">${E.hl}</h2><p class="deck">${E.deck}</p><div class="byline">${E.by}</div>
+      <div class="body">${E.body.map(p=>`<p>${p}</p>`).join('')}</div></section>
+    <aside style="display:flex;flex-direction:column;gap:22px">
+      <div class="btn-box ${liveF?'islive':''}"><h4>By the numbers</h4>${E.nums.map(([a,v])=>`<div class="r"><span>${a}</span><b>${v}</b></div>`).join('')}</div>
+      <blockquote class="pull">“${E.pull[0]}”<cite>${E.pull[1]}</cite></blockquote>
+    </aside>
+  </div>
+  ${E.tips?tipsBox(E.tips[0],E.tips[1],E.tips[2]):''}
+  ${weeks}${tl}
+  <div class="row3">
+    <article style="grid-column:span 2">${goalBoard(E.goalKey,E.goalTitle)}</article>
+    <article>${k('The standings'+(isF?' · per-day averages':''))}${box(E.box)}<p class="sd">Ranked on points across the seven categories.</p></article>
+  </div>
+  <div class="row3">
+    <article>${k(E.s1[0])}<h3>${E.s1[1]}</h3><p>${E.s1[2]}</p></article>
+    <article>${k(E.s2[0])}<h3>${E.s2[1]}</h3><p>${E.s2[2]}</p></article>
+    <article>${k(E.carryT)}${briefs(E.carry.map(([n,t])=>[n,t[0].toUpperCase()+t.slice(1)]))}</article>
+  </div>
+  <section style="border-top:1px solid var(--rule);padding-top:12px">${k(E.wireT)}${briefs(E.wire)}</section>
+  <footer class="foot lab"><span>Apollo · Athena · Cerberus</span><span>${E.foot}</span><span>Every figure is on the Digest</span></footer>
+  </article>`;
+}
+
+/* Friday editions: one per Friday of the folio, frozen at that night's run, plus
+   the closing edition on close day. A Friday with two or fewer business days left
+   carries the countdown ("one more day" before a Monday close). */
+const PREVIEW_CUR=[['Thu','Oct 1',7120,''],['Fri','Oct 2',8340,''],['Mon','Oct 5',5480,''],['Tue','Oct 6',7910,''],['Wed','Oct 7',6650,''],['Thu','Oct 8',9230,'Best day of the folio so far'],['Fri','Oct 9',7760,''],['Mon','Oct 12',2100,''],['Tue','Oct 13',4800,''],['Wed','Oct 14',0,'No sales'],['Thu','Oct 15',3900,''],['Fri','Oct 16',5600,'Coral bundles two households']];
+FOL.cur.preview=PREVIEW_CUR;
+function editions(F){
+  const all=[...F.days.map(d=>({dow:d[0],date:d[1],done:true})),...F.ahead.map(d=>({dow:d[0],date:d[1],done:false}))];
+  const out=[]; let wk=0, prevEnd=-1;
+  all.forEach((d,i)=>{
+    const left=all.length-1-i;
+    if(left===0){ out.push({id:'close',label:'Closing edition',date:d.date,ahead:F.open,def:!F.open}); return; }
+    if(d.dow!=='Fri') return;
+    wk++;
+    const e={id:'w'+wk,week:wk,label:`Week ${wk}`,date:d.date,from:all[prevEnd+1].date,upto:i,left,final:left<=2,ahead:!d.done};
+    if(e.ahead&&e.final&&F.preview){e.ahead=false;e.preview=true}
+    out.push(e); prevEnd=i;
+  });
+  if(F.open) out.unshift({id:'live',label:'Live now',date:'updating',def:true});
+  return out;
+}
+function editionsHtml(F){
+  const eds=editions(F);
+  return `<nav aria-label="Editions this folio" style="display:flex;flex-wrap:wrap;gap:4px 22px;align-items:baseline;border-bottom:1px solid var(--rule);padding-bottom:12px;margin-top:-12px">
+    <span class="lab">Editions this folio</span>
+    ${eds.map(x=>x.ahead?`<span style="font-size:14px;color:var(--soft)">${x.label} · ${x.date} · to come</span>`
+      :`<button type="button" data-ed="${x.id}" aria-current="${x.id===S.ed?'page':'false'}" style="border:0;background:none;padding:2px 0;font:${x.id===S.ed?'800':'600'} 14px var(--body);color:${x.id===S.ed?'var(--ink)':'var(--clay)'};cursor:pointer;${x.id===S.ed?'border-bottom:2px solid var(--ink)':'text-decoration:underline;text-underline-offset:3px'}">${x.label} · ${x.date}${x.preview?' · preview':''}</button>`).join('')}
+  </nav>`;
+}
+function weekly(F,ed,eds){
+  const src=ed.preview?F.days.concat(F.preview):F.days;
+  const days=src.slice(src.findIndex(d=>d[1]===ed.from),ed.upto+1);
+  const toDate=src.slice(0,ed.upto+1), all=F.days.length+F.ahead.length;
+  const wkTot=days.reduce((a,d)=>a+d[2],0), fTot=toDate.reduce((a,d)=>a+d[2],0);
+  const best=days.reduce((a,d)=>d[2]>a[2]?d:a);
+  const pace=fTot/toDate.length*all, max=Math.max(...src.map(d=>d[2]));
+  const closeDay=F.ahead.length?F.ahead[F.ahead.length-1]:F.days[F.days.length-1], lastF=fsum(FOL.aug);
+  const nWord=['','One more day','Two more days'][ed.left]||'';
+  const slowW=SLOW.week(wkTot), zeroDays=days.filter(d=>!d[2]).map(d=>d[0]+' '+d[1]);
+  const wkTips=!slowW?'':tipsBox(`A slow week: ${money(wkTot)}, under the $20,000 line.${ed.final?' Here is how to finish the folio.':''}`,[
+    '<b>Call back every household quoted this week.</b> Present the quote on the phone and ask for the sale; a quote sent by email rarely closes on its own.',
+    '<b>Work 1-1 QNC before new leads.</b> Quotes that never closed in the last 30 days are the quickest premium on the board.',
+    zeroDays.length?`<b>Find out what happened on ${zeroDays.join(' and ')}.</b> A day with no sales usually means no quotes presented: check that day’s coaching cards.`:'<b>Protect the first hour.</b> Start the day with call backs and follow-ups, then new dials.',
+    '<b>Bundle and cross-sell.</b> Existing customers missing a product are the easiest yes on a slow week.',
+    '<b>Role play the objection dropped most this week</b>, every producer, every day.'],[
+    'Quotes ending with “I’ll email it to you” (Sent the Quote on the leaderboard).',
+    'Producers under the 50-dial goal, and contact rates under 13%.',
+    'Leads with a quote on file and no dated next step.',
+    'Speed to Dial over 5 minutes on new internet leads.']);
+  const notes=days.filter(d=>d[3]).map(d=>`${d[1]}: ${d[3].replace(' · still live','')}.`);
+  return `<article class="paper">
+  <header class="mast">
+    <div class="mrow lab"><span>${ed.preview?'Preview · ':''}Week ${ed.week} edition · ${ed.preview?'goes out':'published'} Fri ${ed.date}, 6:04 PM</span></div>
+    <h1>The Flores Post</h1>
+    <div class="mrow lab rule"><span>Folio ${F.span}, 2026 · week of ${ed.from} – ${ed.date}</span><span>Flores Insurance Agency · Arizona</span><span>Sample figures</span></div>
+  </header>
+  ${editionsHtml(F)}
+  ${ed.final?`<section style="background:var(--ink);color:var(--sand);padding:22px 26px;display:grid;grid-template-columns:auto 1fr;gap:6px 28px;align-items:center">
+    <div style="grid-row:span 2;font:400 clamp(56px,6vw,88px)/.9 var(--display);color:#e59a6f">${ed.left}</div>
+    <div style="font:400 clamp(26px,2.6vw,38px)/1.1 var(--display)">${nWord}. The folio closes ${closeDay[0]==='Mon'?'Monday':closeDay[0]}, ${closeDay[1]}.</div>
+    <div style="font-size:16px;line-height:1.5;color:#e9ddd0;max-width:75ch">${money(Math.max(0,lastF-fTot))} to beat last folio's ${money(lastF)}. Every household still quoted is a sale that counts this folio if it closes by ${closeDay[1]}. Make the calls.</div>
+  </section>`:''}
+  <div class="front">
+    <section class="story"><div class="lab kick">${ed.final?'The last Friday of the folio':'Week '+ed.week+' in review'}</div>
+      <h2 class="hl">${ed.final?`${nWord} left: the folio stands at ${money(fTot)}`:slowW?`A slow week: ${money(wkTot)} in, under the $20,000 line`:`Week ${ed.week} adds ${money(wkTot)}; the folio stands at ${money(fTot)}`}</h2>
+      <p class="deck">${toDate.length} of ${all} business days done. At this pace the folio finishes near ${money(pace)}.</p>
+      <div class="byline">By Apollo · Week ${ed.week} edition</div>
+      <div class="body">
+        <p>The team sold ${money(wkTot)} in new premium from ${ed.from} to ${ed.date}, across ${days.length} business days. The best day was ${best[0]} ${best[1]}, at ${money(best[2])}.</p>
+        ${notes.length?`<p>${notes.join(' ')}</p>`:''}
+        <p>The folio has ${money(fTot)} after ${toDate.length} days. ${ed.final?`${nWord} before it closes on ${closeDay[0]} ${closeDay[1]}: follow up every open quote, call back every lead that asked, and put the rest of the day's dials on the phone.`:`${all-toDate.length} business days remain before it closes on ${F.end}.`}</p>
+      </div></section>
+    <aside style="display:flex;flex-direction:column;gap:22px">
+      <div class="btn-box"><h4>By the numbers</h4>
+        <div class="r"><span>This week</span><b>${money(wkTot)}</b></div><div class="r"><span>Folio to date</span><b>${money(fTot)}</b></div>
+        <div class="r"><span>Best day</span><b>${money(best[2])}</b></div><div class="r"><span>Days done</span><b>${toDate.length} of ${all}</b></div>
+        <div class="r"><span>Pace to close</span><b>${money(pace)}</b></div></div>
+      <blockquote class="pull">“${best[3]?best[3].replace(' · still live',''):'The best day of the week: '+money(best[2])+'.'}”<cite>${best[0]} ${best[1]}</cite></blockquote>
+    </aside>
+  </div>
+  ${wkTips}
+  <section style="display:flex;flex-direction:column;gap:8px"><div class="shead"><h3>The folio through week ${ed.week} <em>— premium sold</em></h3><span class="sd">this week in colour</span></div>
+    <div class="tl">${toDate.map(d=>{const inW=days.includes(d);return `<div class="tlr" style="${inW?'':'color:var(--muted)'}"><span class="d">${d[1]}<small>${d[0]}</small></span><div class="b"><div style="width:${d[2]/max*100}%;${inW?'':'background:#d9c8b4'}"></div></div><span class="m">${money(d[2])}</span><span class="e">${d[3].replace(' · still live','')}</span></div>`}).join('')}</div></section>
+  <footer class="foot lab"><span>Apollo · Athena · Cerberus</span><span>${ed.preview?'Preview with sample figures':'Frozen as it went out on '+ed.date}</span><span>${F.open?'Live edition updates every checkpoint':'Folio closed '+F.end}</span></footer>
+  </article>`;
+}
+
+/* ---------------- Athena: Service Digest ---------------- */
+const SP=[{k:'amanda',n:'Amanda Torricellas',f:'Amanda',i:'AT',c:'#6b4e71',role:'Service Lead',rk:'lead'},
+          {k:'crystal',n:'Crystal Mango',f:'Crystal',i:'CM',c:'#b5532f',role:'Service Team Member',rk:'member'},
+          {k:'debbie',n:'Debbie Aguilera',f:'Debbie',i:'DA',c:'#3f5f7a',role:'Front Desk',rk:'front_desk'}];
+const SV={ // sample figures
+  team:{srs:23,tasks:41,open:57,overdue:4,dials:38,cb:12,cbmiss:2,reply:'11m',msg:'64 / 9',ans:71,created:19,notes:'84%',opp:'5',oppn:'3 passed · 2 worked',util:'76%'},
+  amanda:{srs:9,tasks:12,open:18,overdue:1,dials:14,cb:5,cbmiss:0,reply:'9m',msg:'22 / 5',ans:12,created:6,notes:'91%',opp:'2',oppn:'2 worked (quoted)',util:'79%',routine:'44% of her SRs were routine'},
+  crystal:{srs:8,tasks:15,open:21,overdue:2,dials:9,cb:3,cbmiss:1,reply:'14m',msg:'18 / 3',ans:9,created:4,notes:'78%',opp:'1',oppn:'1 worked (lead set)',util:'74%'},
+  debbie:{srs:6,tasks:14,open:18,overdue:1,dials:15,cb:4,cbmiss:1,reply:'10m',msg:'24 / 1',ans:50,created:9,notes:'82%',opp:'3',oppn:'3 passed to a producer',util:'75%'}};
+const CHECK={start:['Check missed calls','Check texts','Check emails','Review tasks','Review urgent/pending items','Identify follow-ups due today'],
+  during:['Answer/return calls','Work service requests','Complete assigned tasks','Document conversations','Follow up on pending items','Route sales opportunities','Ask for help when needed','Help teammates when available'],
+  end:['Review unfinished tasks','Complete required notes','Return priority calls','Make sure urgent items have a next step','Communicate anything that needs to carry over']};
+const ROLELINE={lead:'Oversight, delegation, complex service, training, and keeping the service department moving. Not the default person for every service request.',
+  member:'Independently handle day-to-day policy service and keep assigned work moving. If you can handle it, handle it.',
+  front_desk:'Be the first impression of the agency, assist with basic billing, and make sure clients get to the right person.'};
+const PIPES=[
+ ['Service Pipeline','11 completed · median 1.4 days',null,[['Change made',7,'#3e6b4f'],['Other service',2,'#8fa99a'],['Policy cancelled',1,'#b5532f'],['Unable to Contact',1,'#c9b8a8']]],
+ ['Late Payments','7 completed · median 3.1 days','80% saved · paid over paid or cancelled',[['Paid',4,'#3e6b4f'],['Cancelled for non-pay',1,'#8a2b12'],['Client cancelled',1,'#b5532f'],['Unable to Contact',1,'#c9b8a8']]],
+ ['Contingencies','5 completed · median 6.2 days','60% cleared · 3 by the selling producer, 2 by service',[['Cleared',3,'#3e6b4f'],['Closed, not cleared',1,'#e59a6f'],['Unable to Contact',1,'#c9b8a8']]]];
+const LATE_STAGES=[['New',6],['Contacted',9],['Promise to pay',4],['Final notice',2]];
+const NOTE_MISS=[['Who',2],['What',1],['Why',4],['Outcome',3],['Next step',6]];
+const OPEN=[['[CUSTOMER]','Service Pipeline','Vehicle change','Today','Crystal',1],['[CUSTOMER]','Late Payments','Payment due 9-30','Today','Debbie',1],['[CUSTOMER]','Contingencies','Proof of prior insurance','Tomorrow','Amanda',0],['[CUSTOMER]','Service Pipeline','Lienholder change','Oct 2','Crystal',0],['[CUSTOMER]','Late Payments','Payment due 10-2','Oct 2','Debbie',0]];
+const CALLS=[['8:42 AM','Debbie','Billing question · routed to Crystal','3:10'],['9:15 AM','Amanda','Coverage question (Spanish)','11:42'],['10:02 AM','Crystal','ID cards requested','2:05'],['11:30 AM','Debbie','Payment by phone','4:48 · text only'],['1:14 PM','Crystal','Driver added','9:30']];
+
+function svcStats(p){
+  const x=SV[p||'team'];
+  const t=[['SRs completed',x.srs,'renewal SRs are on Renewals'],['Tasks done',x.tasks,'renewal tasks left out'],['Open SRs',x.open,`${x.overdue} overdue`],['Dials',x.dials,p==='crystal'?'service numbers only':'to customers'],
+   ['Call backs',x.cb,`${x.cbmiss} missed calls not returned`],['Speed to reply',x.reply,'median · texts and emails'],['Texts / Emails',x.msg,'typed by the team'],['Calls answered',x.ans,'picked up first'],
+   ['SRs created',x.created,'new requests opened'],['Note standard',x.notes,'notes with all five parts'],['Opportunities',x.opp,x.oppn],['Utilization',x.util,p==='amanda'?x.routine:'Insightful']];
+  return `<div class="grid4">${t.map(([k,v,n])=>`<div class="stat" tabindex="0"><div class="k">${k}</div><div class="v" style="${k==='Open SRs'&&x.overdue?'':''}">${v}</div><div class="n" style="${/overdue|not returned/.test(n)&&!/^0/.test(n)?'color:var(--clay-d);font-weight:700':''}">${n}</div></div>`).join('')}</div>`;
+}
+function service(){
+  const who=S.svc||'';
+  const P0=SP.find(p=>p.k===who);
+  const strip=`<div class="people">
+    <button type="button" class="person" data-svc="" aria-pressed="${!who}"><span class="nm"><span class="av" style="background:var(--ink);margin:0">T</span>Whole team</span><span class="role">Service Center</span>
+      <span class="q"><span>SRs<b>23</b></span><span>Tasks<b>41</b></span><span>Reply<b>11m</b></span><span>Overdue<b style="color:var(--clay-d)">4</b></span></span></button>
+    ${SP.map(p=>{const x=SV[p.k];return `<button type="button" class="person" data-svc="${p.k}" aria-pressed="${who===p.k}"><span class="nm"><span class="av" style="background:${p.c};margin:0">${p.i}</span>${p.n}</span><span class="role">${p.role}</span>
+      <span class="q"><span>SRs<b>${x.srs}</b></span><span>Tasks<b>${x.tasks}</b></span><span>Reply<b>${x.reply}</b></span><span>Overdue<b style="${x.overdue?'color:var(--clay-d)':''}">${x.overdue}</b></span></span></button>`}).join('')}</div>`;
+  const pipes=PIPES.map(([name,sub,rate,segs])=>{const tot=segs.reduce((a,s)=>a+s[1],0);return `<section class="card"><div class="hrow"><h2>${name}</h2><span class="sd">${sub}</span></div>
+    ${rate?`<div style="font:400 26px var(--display)">${rate.split(' · ')[0]} <span class="sd" style="font-family:var(--body)">${rate.split(' · ').slice(1).join(' · ')}</span></div>`:''}
+    <div class="stackbar" style="height:18px">${segs.map(s=>`<div style="flex-grow:${s[1]};background:${s[2]}" title="${s[0]} ${s[1]}"></div>`).join('')}</div>
+    <div class="seglist">${segs.map(s=>`<div><span><i style="background:${s[2]}"></i>${s[0]}</span><b>${s[1]}</b></div>`).join('')}</div>
+    ${name==='Late Payments'?`<div class="sd" style="border-top:1px solid var(--line);padding-top:8px">Open by stage: ${LATE_STAGES.map(s=>`${s[0]} <b>${s[1]}</b>`).join(' · ')}</div>`:''}</section>`}).join('');
+  return `<div style="display:flex;flex-direction:column;gap:20px">
+  <header class="head"><div><div style="display:flex;gap:8px;flex-wrap:wrap"><span class="pill fin">${S.day==='live'?'Built at the last checkpoint, 2:55 PM':'Final · built at the nightly run'}</span><span class="pill">14 renewal SRs worked · on Renewals</span></div>
+    <h1 class="greet">Service Digest</h1><div class="sd" style="font-size:15px;margin-top:4px">Athena · ${S.range==='day'?dateLong().replace(', 2026',''):(RANGE[S.range]||'')} · sample figures</div></div></header>
+  ${strip}
+  <div class="cols"><div class="stack">
+    <section class="card"><div class="hrow"><h2>${P0?P0.n:'The team'} <em>${P0?P0.role:'totals'}</em></h2><span class="sd">every figure opens its accounts</span></div>${svcStats(who)}
+      ${P0?`<div style="border-top:1px solid var(--line);padding-top:12px;display:flex;flex-direction:column;gap:10px"><p style="margin:0;font:italic 400 19px/1.4 var(--display)">${ROLELINE[P0.rk]}</p>
+        <div class="check">${[['Start of day','start'],['During the day','during'],['End of day','end']].map(([t,k])=>`<div><h4>${t}</h4><ul>${CHECK[k].map(i=>`<li>${i}</li>`).join('')}</ul></div>`).join('')}</div></div>`:''}</section>
+    <div class="two" style="grid-template-columns:repeat(3,minmax(0,1fr))">${pipes}</div>
+    <div class="two">
+      <section class="card"><h2>Note Standard</h2><p class="sd">Who · What · Why · Outcome · Next step. Missing parts on today's completed SRs:</p>
+        <div style="display:flex;flex-direction:column;gap:9px">${NOTE_MISS.map(([k,n])=>`<div class="bars" style="grid-template-columns:90px 1fr auto"><b>${k}</b><div class="track"><div style="width:${n/6*100}%;background:var(--clay)"></div></div><span style="text-align:right">${n}</span></div>`).join('')}</div></section>
+      <section class="card"><h2>Calls answered <em>71</em></h2><div class="scroll"><table class="t"><thead><tr><th>Time</th><th>Answered by</th><th>What it was</th><th class="r">Length</th><th></th></tr></thead><tbody>
+        ${CALLS.map(r=>`<tr><td>${r[0]}</td><td><b>${r[1]}</b></td><td>${r[2]}</td><td class="r">${r[3]}</td><td class="r"><a href="#" style="font-weight:700;color:var(--clay)">Listen &amp; read</a></td></tr>`).join('')}</tbody></table></div></section>
+    </div>
+    <section class="card"><div class="hrow"><h2>Open queue <em>every open SR, soonest due first</em></h2><span class="sd">57 open · 4 overdue</span></div><div class="scroll"><table class="t"><thead><tr><th>Customer</th><th>Pipeline</th><th>Subject</th><th>Due</th><th>Assigned</th></tr></thead><tbody>
+      ${OPEN.map(r=>`<tr><td><b>${r[0]}</b></td><td>${r[1]}</td><td>${r[2]}</td><td style="${r[5]?'color:var(--clay-d);font-weight:700':''}">${r[3]}</td><td>${r[4]}</td></tr>`).join('')}</tbody></table></div></section>
+  </div>
+  <div class="rail">
+    <section class="card"><h2>Waiting on us</h2><div class="todo">
+      <a href="#" class="hot"><span class="sq" style="background:#8a2b12"></span><span><b>2 missed calls not returned</b><span class="s">Oldest 1h 20m · Crystal, Debbie</span></span></a>
+      <a href="#" class="hot"><span class="sq" style="background:#8a2b12"></span><span><b>2 customer texts waiting</b><span class="s">Oldest 38m</span></span></a>
+      <a href="#"><span class="sq" style="background:#b57800"></span><span><b>4 overdue SRs</b><span class="s">Crystal 2, Amanda 1, Debbie 1</span></span></a>
+      <a href="#"><span class="sq" style="background:#b57800"></span><span><b>6 notes with no next step</b><span class="s">Note Standard</span></span></a>
+      <a href="#"><span class="sq" style="background:#3f5f7a"></span><span><b>3 sales opportunities passed</b><span class="s">Debbie → producers</span></span></a></div></section>
+    <section class="card dark"><div class="hrow"><h2>Off the desk <em>done today</em></h2><span class="sd">newest first</span></div><div class="feed">
+      ${[['3:40 PM','#3e6b4f','Amanda completed a coverage review','SR'],['3:22 PM','#3f5f7a','Debbie passed a home opportunity to Lorena','Opportunity'],['2:58 PM','#3e6b4f','Crystal cleared a contingency','SR'],['2:31 PM','#3e6b4f','Crystal answered a billing text','Reply'],['1:50 PM','#3e6b4f','Late payment paid · policy saved','Late pay'],['1:14 PM','#c9b8a8','Crystal added a driver','Change']].map(([t,c,x,k])=>`<a href="#"><span class="t">${t}</span><span class="c" style="background:${c}"></span><span>${x}</span><span class="kd">${k}</span></a>`).join('')}</div></section>
+  </div></div></div>`;
+}
+
+/* ---------------- Athena: Renewals ---------------- */
+const OUTC=[['Accepted as is','#3e6b4f','in'],['Endorsed','#5f8a6c','in'],['Rewrite Accepted','#8fa99a','in'],['No action: Review if needed','#b8c9bc','in'],['Unable to Contact/No Show','#d6e0d8','in'],
+  ['Client Cancelled','#b5532f','out'],['Cancelled: Rewrite Declined','#8a2b12','out'],['Cancelled, no endorse/rewrite','#e59a6f','out'],['Mid-term Cancellation','hatch','x'],['Cancelled: Sold/Moved','hatch','x']];
+const REN=[['Amanda',[11,4,2,3,1,1,0,0,1,0]],['Crystal',[8,2,1,4,2,0,1,0,0,1]],['Debbie',[3,0,0,4,1,1,0,0,0,0]]];
+function renewals(){
+  const tot=REN.map(r=>r[1].reduce((a,b)=>a+b,0)), max=Math.max(...tot);
+  const team=OUTC.map((_,j)=>REN.reduce((a,r)=>a+r[1][j],0));
+  const segs=(v,w)=>`<div class="stackbar" style="height:20px;width:${w}%">${v.map((n,j)=>n?`<div class="${OUTC[j][1]==='hatch'?'hatch':''}" style="flex-grow:${n};background:${OUTC[j][1]==='hatch'?'':OUTC[j][1]}" title="${OUTC[j][0]} ${n}"></div>`:'').join('')}</div>`;
+  const inRate=v=>{const r=v.filter((_,j)=>OUTC[j][2]==='in').reduce((a,b)=>a+b,0),l=v.filter((_,j)=>OUTC[j][2]==='out').reduce((a,b)=>a+b,0);return (100*r/(r+l)).toFixed(1)+'%'};
+  const period=S.range==='day'?'Last 28 days':(RANGE[S.range]||'');
+  return `<div style="display:flex;flex-direction:column;gap:20px">
+  <header class="head"><div><div style="display:flex;gap:8px;flex-wrap:wrap"><span class="pill fin">Built at the nightly run</span><span class="pill">Every personal-lines term renewing in the last 365 days and the next 45</span></div>
+    <h1 class="greet">Renewals</h1><div class="sd" style="font-size:15px;margin-top:4px">Athena · follows the date filter · Coming up is always the next 45 days · sample figures</div></div></header>
+  <section class="rates">
+    <div class="rate"><div class="k">Retention · settled 4 weeks</div><div class="v">91.8%</div><div class="n">renewals 14-41 days ago · 134 of 146 kept · the newest two weeks are still settling</div></div>
+    <div class="rate"><div class="k">Retention · ${period}</div><div class="v">93.1%</div><div class="n">122 of 131 kept · Mid-term and Sold/Moved outside the rate</div></div>
+    <div class="rate"><div class="k">Retention · last 12 months</div><div class="v">89.6%</div><div class="n">1,812 of 2,022 kept · the one to set beside Farmers'</div></div>
+  </section>
+  <div class="cols"><div class="stack">
+    <section class="card"><div class="hrow"><h2>Renewal Outcome Breakdown</h2><span class="sd">renewal SRs completed · ${period} · per rep</span></div>
+      <div style="display:flex;flex-direction:column;gap:12px">${REN.map((r,i)=>`<div class="bars" style="grid-template-columns:80px 1fr auto"><b>${r[0]}</b>${segs(r[1],tot[i]/max*100)}<span style="text-align:right;color:var(--muted)">${tot[i]} SRs · ${inRate(r[1])} kept</span></div>`).join('')}</div>
+      <div style="border-top:2px solid var(--ink);padding-top:8px;font-weight:800;display:flex;justify-content:space-between;flex-wrap:wrap;gap:8px"><span>Team · ${team.reduce((a,b)=>a+b,0)} renewal SRs</span><span>${inRate(team)} kept · ${team.slice(5,8).reduce((a,b)=>a+b,0)} lost · ${team[8]+team[9]} outside the rate</span></div>
+      <div class="legend">${OUTC.map((o,j)=>`<span><i class="${o[1]==='hatch'?'hatch':''}" style="background:${o[1]==='hatch'?'':o[1]}"></i>${o[0]} ${team[j]}</span>`).join('')}</div>
+      <p class="sd">Green outcomes are kept (Unable to Contact and No action renewed as is). Clay outcomes are lost. Hatched ones sit outside the rate.</p></section>
+    <div class="two">
+      <section class="card"><h2>Renewal SR Work <em>last 28 days</em></h2><div class="scroll"><table class="t"><thead><tr><th>Rep</th><th>Pipeline</th><th class="r">Completed</th><th class="r">Created → completed</th><th class="r">Open</th></tr></thead><tbody>
+        ${[['Amanda','Personal Renewals',18,'4.2 days',6],['Amanda','Other 30 day Renewals',5,'6.0 days',2],['Crystal','Personal Renewals',14,'5.1 days',9],['Crystal','Other 30 day Renewals',5,'7.3 days',3],['Debbie','Personal Renewals',9,'3.8 days',4]].map(r=>`<tr><td><b>${r[0]}</b></td><td>${r[1]}</td><td class="r">${r[2]}</td><td class="r">${r[3]}</td><td class="r">${r[4]}</td></tr>`).join('')}</tbody></table></div></section>
+      <section class="card"><h2>By how it was worked</h2><div style="display:flex;flex-direction:column;gap:10px">
+        ${[['Discussed with the customer',71,'96.1% kept','#3e6b4f'],['Reviewed, no contact needed',42,'100% kept','#8fa99a'],['Unable to contact',33,'78.8% kept','#e59a6f']].map(r=>`<div class="bars" style="grid-template-columns:190px 1fr auto"><span>${r[0]}</span><div class="track"><div style="width:${r[1]/71*100}%;background:${r[3]}"></div></div><span style="text-align:right"><b>${r[1]}</b> <span class="sd">${r[2]}</span></span></div>`).join('')}</div>
+        <p class="sd">Settled 4 weeks. The customers nobody reached are where the losses are.</p></section>
+    </div>
+    <section class="card"><div class="hrow"><h2>Lost <em>${period}</em></h2><span class="sd">by the day the policy renewed</span></div><div class="scroll"><table class="t"><thead><tr><th>Customer</th><th>Line</th><th>Renewed</th><th>How we know</th><th>Worked by</th></tr></thead><tbody>
+      ${[['[CUSTOMER]','Auto','9-22-26','Client Cancelled (notes + texts)','Crystal'],['[CUSTOMER]','Home','9-16-26','Policy record shows cancelled','Amanda'],['[CUSTOMER]','Auto','9-09-26','Late Payment SR: cancelled for non-pay','Debbie']].map(r=>`<tr><td><b>${r[0]}</b></td><td>${r[1]}</td><td>${r[2]}</td><td>${r[3]}</td><td>${r[4]}</td></tr>`).join('')}</tbody></table></div></section>
+    <section class="card"><details class="drop"><summary>Cancellations to check · 3</summary><p class="sd" style="margin-top:8px">Mid-term Cancellations nothing dates. The outcome stays as is until someone checks.</p>
+      <div class="scroll"><table class="t"><thead><tr><th>Customer</th><th>Policy</th><th>Flag</th></tr></thead><tbody>${[['[CUSTOMER]','[POLICY]','not dated'],['[CUSTOMER]','[POLICY]','after the SR opened'],['[CUSTOMER]','[POLICY]','not dated']].map(r=>`<tr><td>${r[0]}</td><td>${r[1]}</td><td>${r[2]}</td></tr>`).join('')}</tbody></table></div></details></section>
+  </div>
+  <div class="rail">
+    <section class="card"><div class="hrow"><h2>Coming up</h2><span class="sd">next 45 days</span></div>
+      <div style="display:flex;gap:18px"><div><div style="font:400 40px var(--display)">212</div><div class="sd">renewals</div></div><div><div style="font:400 40px var(--display);color:var(--clay-d)">9</div><div class="sd">at risk</div></div><div><div style="font:400 40px var(--display)">37</div><div class="sd">SR not yet worked</div></div></div>
+      <div class="todo">${[['Oct 3','[CUSTOMER] · Auto','Not discussed + open Late Payment SR'],['Oct 6','[CUSTOMER] · Home','Not discussed + open cancellation SR'],['Oct 9','[CUSTOMER] · Auto','Not discussed + open Late Payment SR'],['Oct 14','[CUSTOMER] · Auto','Not discussed + open Late Payment SR']].map(r=>`<a href="#" class="hot"><span class="sq" style="background:#8a2b12"></span><span><b>${r[0]} · ${r[1]}</b><span class="s">${r[2]}</span></span></a>`).join('')}</div></section>
+    <section class="card"><h2>Not confirmed <em>11</em></h2><p class="sd">Renewed on paper but the record has no next term yet. Records lag, so these settle on their own over two weeks.</p></section>
+    <section class="card dark"><h2>Renewal calls &amp; texts</h2><div class="feed">${[['3:05 PM','#3e6b4f','Crystal reviewed a renewal increase with the customer','Call'],['2:10 PM','#b5532f','Renewal reminder reply waiting','Text'],['11:40 AM','#3e6b4f','Amanda endorsed a renewal: higher deductible','SR']].map(([t,c,x,k])=>`<a href="#"><span class="t">${t}</span><span class="c" style="background:${c}"></span><span>${x}</span><span class="kd">${k}</span></a>`).join('')}</div></section>
+  </div></div></div>`;
+}
+
+/* ---------------- shell: render, navigation, search ---------------- */
+function render(){
+  RANGE.folio='Folio · '+FOL[S.folio].span;
+  $('view').innerHTML=({post,service,renewals,coaching,learning,messages,sales,commercial}[S.view]||digest)();
+  $('folio').hidden=S.range!=='folio'; $('folio').value=S.folio;
+  document.querySelectorAll('.side [data-view]').forEach(b=>b.dataset.view===S.view?b.setAttribute('aria-current','page'):b.removeAttribute('aria-current'));
+  document.querySelectorAll('#range button').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.r===S.range)));
+  $('day').value=S.day; $('res').hidden=true;
+  $('day').hidden=$('dayLab').hidden=S.range!=='day';
+  try{localStorage.setItem('fbp3',JSON.stringify(S))}catch(e){}
+}
+document.addEventListener('click',e=>{
+  const v=e.target.closest('[data-view],[data-go]'); if(v){S.view=v.dataset.view||v.dataset.go;$('q').value='';render();window.scrollTo(0,0);return}
+  const L=e.target.closest('[data-ltab],[data-rpstage],[data-pers],[data-tmode],[data-deck],[data-flip]');
+  if(L){const d=L.dataset; if(d.ltab)S.ltab=d.ltab; if(d.rpstage)S.rpstage=d.rpstage; if(d.pers)S.pers=d.pers; if(d.tmode){S.tmode=d.tmode;S.flip=0} if(d.deck){S.deck=+d.deck;S.flip=0} if(d.flip)S.flip=S.flip?0:1; render(); return}
+  const sx=e.target.closest('[data-stab],[data-sdim]'); if(sx){if(sx.dataset.stab)S.stab=sx.dataset.stab; if(sx.dataset.sdim)S.sdim=sx.dataset.sdim; render(); return}
+  const ct=e.target.closest('[data-ctab]'); if(ct){S.ctab=ct.dataset.ctab;render();return}
+  const of=e.target.closest('[data-objf]'); if(of){S.objf=of.dataset.objf;S.ctab='cards';render();return}
+  const sv=e.target.closest('[data-svc]'); if(sv){S.svc=sv.dataset.svc;render();return}
+  const ed=e.target.closest('[data-ed]'); if(ed){S.ed=ed.dataset.ed;render();window.scrollTo(0,0);return}
+  const fo=e.target.closest('[data-folio]'); if(fo){S.range='folio';S.folio=fo.dataset.folio;S.ed=null;render();return}
+  const d=e.target.closest('[data-day]'); if(d){S.day=d.dataset.day;S.range='day';render();return}
+  const r=e.target.closest('#range button'); if(r){S.range=r.dataset.r;S.ed=null;render();return}
+  if(!e.target.closest('.search')) $('res').hidden=true;
+});
+$('day').onchange=e=>{S.day=e.target.value;render()};
+$('folio').onchange=e=>{S.folio=e.target.value;S.ed=null;render()};
+
+const IDX=[...P.map(p=>['Producers',p.n,'Leaderboard · calls · coaching cards','digest']),
+ ['People','Amanda Torricellas','Service Lead','service'],['People','Debbie Aguilera','Front Desk','service'],
+ ['Pages','Digest','Sales Center','digest'],['Pages','The Flores Post','Sales Center · published days and folios','post'],['Pages','Texts & Emails','Sales Center','messages'],['Pages','Sales Sheet','Sales Center · log and breakdown','sales'],
+ ['Pages','Coaching Center','Apollo · cards, objections, wins and losses','coaching'],['Pages','Learning Center','Role Play · Session History · Training','learning'],['Pages','Service Digest','Service Center · Athena','service'],['Pages','Renewals','Service Center · Athena','renewals'],['Pages','Commercial Center','Cerberus','commercial'],
+ ['Sections','Speed to Dial','Digest','digest'],['Sections','Speed to Reply','Digest','digest'],['Sections','Task Completion Rate','Digest','digest'],['Sections','Household Completion','Digest','digest'],['Sections','Call Outcome Breakdown','Digest','digest'],
+ ['Sections','Open queue','Service Digest','service'],['Sections','Note Standard','Service Digest','service'],['Sections','Renewal Outcome Breakdown','Renewals','renewals'],['Sections','Coming up','Renewals · next 45 days','renewals']];
+function showRes(){
+  const raw=$('q').value.trim(), q=raw.toLowerCase();
+  const hits=IDX.filter(([g,l,s])=>!q||l.toLowerCase().includes(q)||s.toLowerCase().includes(q)).slice(0,12);
+  const groups=[...new Set(hits.map(h=>h[0]))];
+  $('res').innerHTML=groups.map(g=>`<h5>${g}</h5>`+hits.filter(h=>h[0]===g).map(([,l,s,v])=>`<button type="button" ${v?`data-view="${v}"`:''}>${l}<span>${s}</span></button>`).join('')).join('')+
+   (q?`<h5>Accounts</h5><button type="button">Search leads, customers, SRs and calls for “${raw.replace(/[<>&"]/g,'')}”<span>Enter</span></button>`:'');
+  $('res').hidden=false;
+}
+$('q').addEventListener('focus',showRes); $('q').addEventListener('input',showRes);
+$('q').addEventListener('keydown',e=>{if(e.key==='Escape'){$('res').hidden=true;$('q').blur()}if(e.key==='Enter'){const b=$('res').querySelector('button[data-view]');if(b)b.click()}});
+document.addEventListener('keydown',e=>{if((e.ctrlKey||e.metaKey)&&e.key.toLowerCase()==='k'){e.preventDefault();$('q').focus()}});
+/* ---------------- Apollo: Coaching Center ---------------- */
+const FLOWC={first:['First quote','#3e6b4f'],finish:['Finish quote','#b57800'],fu:['Follow-up','#3f5f7a']};
+const FLAGC={r:'r',y:'y',g:'g'};
+const SC_LBL={s:['Strong','g'],w:['Weak','y'],m:['Missing','r'],n:['n/a','']};
+const CARDS=[
+ {who:'Lorena Gonzalez',lead:'[LEAD]',time:'10:42 AM',dur:'14:20',lang:'English',dir:'Dialled',src:'Internet lead · EverQuote',flow:'first',out:['Sold on the call','g'],
+  sum:'Built and presented a Farmers-Auto quote on the call, handled a price objection with a bundle, and closed two vehicles at $1,120.',
+  flags:[['Strong moment','g','Closed on the first call']],
+  ask:[['Assumed the quote',true,'"Let me build that for you right now while I have you."'],['Assumed the sale',true,'"I’ll get this started for you today."'],['Ended the call themselves',false,'The customer wrapped up after the sale.']],
+  objs:[{g:'Price',score:8,band:'g',at:'6:12',they:'That’s more than I pay now.',you:'I hear you. Most of my clients felt the same until they saw what the bundle saves. Let me show you with the renters added.',anal:'Acknowledged, reframed on value and moved straight to the bundle. Overcome.',fix:['Ask what they pay today before showing the number, so the comparison is yours to frame.']}],
+  good:[['Assumed the quote','Started building it in the first two minutes.'],['Bundle raised','Renters added, which answered the price objection.']],bad:[['Renewal date','Never asked when the current policy renews.']],
+  fit:['Lead source fit','g','Internet lead: quoted fast and closed on the first call, as the source calls for.'],stage:['Stage fit','g','Moved New → Sold the same call.'],
+  score:{s:6,w:2,m:1,list:['s','s','s','m','s','s','s','w','w']},
+  spine:[['0:00','g','Opened by name','"Hi Daniela, this is Lorena with Farmers."'],['1:40','g','Discovery','Two vehicles, one driver, current carrier'],['6:12','y','Price objection','Handled with the bundle'],['11:05','g','Closed','Two vehicles, renters added'],['14:00','g','Next step','Policy documents by email today']],
+  tx:[['0:00','Lorena (producer)','Hi Daniela, this is Lorena with Farmers. How are you today?',1],['0:04','Daniela (lead)','Good, thanks. I filled out something online.',0],['0:08','Lorena (producer)','Perfect, let me pull that up and build your quote while I have you.',1],['6:12','Daniela (lead)','That’s more than I pay now.',0],['6:16','Lorena (producer)','I hear you. Let me show you what the bundle saves.',1]]},
+ {who:'Coral Barwick',lead:'[LEAD]',time:'1:15 PM',dur:'7:12',lang:'English',dir:'Call back',src:'Referral',flow:'finish',out:['Quote sent by email','y'],
+  sum:'The lead called back to finish the quote. Coral gathered the last details, then offered to email the numbers instead of presenting them.',
+  flags:[['Quote not presented','r','Offered to send it instead of presenting on the call'],['Callback set','y','Thursday, no time set']],
+  ask:[['Assumed the quote',false,'"I’ll put it together and email it over to you."'],['Assumed the sale',null,'The quote was never presented.'],['Ended the call themselves',true,'Coral ended an engaged call to send the quote.']],
+  sendoff:'producer',fixq:'"I have everything I need, give me two minutes and I’ll walk you through it right now." Then present on the call.',
+  objs:[{g:'Bad Timing / Busy',score:4,band:'r',at:'5:40',they:'I’m driving right now.',you:'No problem, I’ll just email it.',anal:'The prospect said they were busy and the producer let the call go without a time to talk. Dropped.',fix:['"Totally understand. Are you home by five? I’ll call you at 5:15 and it takes ten minutes."','If they want it sent, send it AND book the time to go over it.']}],
+  good:[['Discovery','Captured current premium and renewal date.']],bad:[['Quote not presented','Sent by email instead of presented.'],['Next step','No dated time to go over the quote.']],
+  fit:['Lead source fit','g','Referral: warm start, used the referrer’s name.'],stage:['Stage fit','y','Left in Ready to Present.'],
+  score:{s:3,w:3,m:3,list:['s','s','s','s','w','m','w','m','w']},
+  spine:[['0:00','g','Call back answered by name','"Hi Marcus! How are you?"'],['2:10','g','Discovery finished','Current premium $1,380'],['5:40','r','Busy objection','Dropped'],['6:50','r','Sent instead of presented','"I’ll email it over."']],
+  tx:[['0:00','Coral (producer)','Hi Marcus! How are you?',1],['5:40','Marcus (lead)','I’m driving right now.',0],['5:43','Coral (producer)','No problem, I’ll just email it.',1]]},
+ {who:'Mike Olvera',lead:'[LEAD]',time:'3:22 PM',dur:'5:40',lang:'Spanish',dir:'Dialled',src:'1-1 QNC',flow:'fu',out:['Quoted, not closed','y'],
+  sum:'Follow-up on a quote presented last week. Mike reconnected with an assumptive close, re-presented the auto, but ended without a dated next step.',
+  flags:[['No next step','r','No date or time set']],
+  fu:[['Assumed the sale up front',true,'"Le llamo para terminar su póliza hoy."'],['Assumed the sale through objections',true,'Handled "let me think" by re-presenting the savings.'],['Assumed the sale at the end',false,'"Me avisa cuando decida."']],
+  objs:[{g:'Needs to think about it',score:6,band:'y',at:'3:10',they:'Déjeme pensarlo.',you:'Claro. ¿Qué parte le gustaría revisar?',anal:'Partly overcome: found the concern (the deductible) but never asked again.',fix:['"¿Si bajamos el deducible a $500, empezamos hoy?"']}],
+  good:[['Reconnect','Up-front assumptive close.']],bad:[['Dated next step','Ended with "let me know".']],
+  fit:['Lead source fit','g','1-1 QNC: the right call, a quote not closed.'],stage:['Stage fit','g','Kept in 1-1 QNC.'],
+  fus:['s','s','s','s','m','m'],
+  spine:[['0:00','g','Reconnect','Assumptive up front'],['3:10','y','"Let me think"','Found the deductible concern'],['5:30','r','No next step','"Me avisa"']],
+  tx:[['0:00','Mike (producer)','Buenas tardes, le llamo para terminar su póliza hoy.',1],['3:10','Rosa (lead)','Déjeme pensarlo.',0]]}];
+
+// The one fix to carry into the next call: the assumptive line, else the first objection's first fix.
+const nextCall=c=>c.fixq||(c.objs.find(o=>o.band!=='g')||{fix:[]}).fix[0]||'';
+function cardHtml(c,open){
+  const fl=FLOWC[c.flow];
+  const bdg=v=>v===null?'<span class="chip">n/a</span>':v?'<span class="chip g">yes</span>':'<span class="chip r">no</span>';
+  const askRows=(c.fu||c.ask).map(([k,v,t])=>`<tr><td class="k">${k}</td><td class="v">${k.startsWith('Ended')?(v===true?'<span class="chip r">yes</span>':v===false?'<span class="chip g">no</span>':'<span class="chip">n/a</span>'):bdg(v)}</td><td>${t}</td></tr>`).join('');
+  const dims=c.fu?FU_DIMS2:DIMS2, vals=c.fu?c.fus:c.score.list;
+  return `<details class="cc"${open?' open':''}>
+  <summary>
+    <div><div class="nm">${c.lead}</div><div class="meta">${c.who} · ${c.time} · ${c.dur} · ${c.lang} · ${c.dir} · ${c.src}</div></div>
+    <div class="right"><span class="chip ${c.out[1]}">${c.out[0]}</span><span class="chip" style="background:${fl[1]};color:#fff">${fl[0]}</span><span class="tog"></span></div>
+    <div class="sum">${c.sum}</div>
+    <ul class="qn">${c.flags.map(f=>`<li><span class="chip ${f[1]}">${f[0]}</span><span>${f[2]}</span></li>`).join('')}${c.sendoff?'<li><span class="chip r">Sent the quote</span><span>Offered to email it instead of presenting it on the call.</span></li>':''}</ul>
+    ${nextCall(c)?`<div class="nextc"><b>Next call</b>${nextCall(c)}</div>`:''}
+  </summary>
+  <div class="cbody">
+    <div class="blk"><div class="bl">The Assumption</div><table class="ask">${askRows}</table>
+      ${c.fixq?`<div class="fixbox"><b class="l">What assumptive sounds like</b>${c.fixq}</div>`:''}</div>
+    ${c.objs.map(o=>`<div class="obj"><div class="hrow"><div class="bl">Objection · ${o.g}</div><span class="chip ${o.band}">${o.score}/10 · ${o.band==='g'?'overcome':o.band==='y'?'partly overcome':'not overcome'}</span></div>
+      <div class="said2"><div><div class="l">They said · ${o.at}</div><div class="q">“${o.they}”</div></div><div><div class="l">You said</div><div class="q">“${o.you}”</div></div></div>
+      <div style="font-size:14px;line-height:1.55">${o.anal}</div>
+      <div class="fixbox"><b class="l">Ways to take it on</b>${o.fix.map((f,i)=>`<b>${i+1}.</b> ${f}`).join('<br>')}</div></div>`).join('')}
+    <div class="blk"><div class="bl">Strengths and gaps</div><div class="gw">
+      <div><h5 style="color:var(--good)">What worked</h5><ul>${c.good.map(([t,d])=>`<li><b>${t}.</b> ${d}</li>`).join('')}</ul></div>
+      <div><h5 style="color:var(--clay-d)">What cost the sale</h5><ul>${c.bad.map(([t,d])=>`<li><b>${t}.</b> ${d}</li>`).join('')}</ul></div></div>
+      <div style="display:flex;flex-direction:column;gap:6px;font-size:14px">${[c.fit,c.stage].map(([k,b,t])=>`<div><span class="chip ${b}">${k}</span> ${t}</div>`).join('')}</div></div>
+    <div class="blk"><div class="bl">${c.fu?'Follow-up scorecard':'Scorecard'}</div><div class="score">${dims.map((d,i)=>`<div><span>${d}</span><span class="chip ${SC_LBL[vals[i]][1]}">${SC_LBL[vals[i]][0]}</span></div>`).join('')}</div></div>
+    <div class="blk"><div class="bl">How the call went</div><div class="spine">${c.spine.map(([t,m,h,s])=>`<span class="t">${t}</span><span class="d"><i style="background:${{g:'var(--good)',y:'var(--warn)',r:'var(--bad)'}[m]}"></i></span><div class="x"><b>${h}</b><span>${s}</span></div>`).join('')}</div></div>
+    <div class="blk"><div class="bl">Listen &amp; read</div>
+      <div class="player"><button type="button" aria-label="Play">▶</button><span class="sd">${c.tx[1]?c.tx[1][0]:'0:00'}</span><div class="bar"><div></div></div><span class="sd">${c.dur}</span></div>
+      <div class="tx">${c.tx.map((l,i)=>`<p class="${l[3]?'prod':''} ${i===1?'on':''}"><span class="ts">${l[0]}</span><span><b>${l[1]}:</b> ${i===1?l[2].replace(/^(\S+ \S+)/,'<mark>$1</mark>'):l[2]}</span></p>`).join('')}</div></div>
+  </div></details>`;
+}
+const DIMS2=["Opening & identification","Discovery","Current premium captured","Renewal / X-date captured","Product knowledge","Presenting numbers","Bundle / cross-sell raised","Next step specificity","CRM after the call"];
+const FU_DIMS2=["Reconnect & assumed the sale up front","Checked where they are","Handled what stalled it, assuming the sale","Re-presented only what's needed","Assumed the sale at the end","Dated next step"];
+const OBJS=[['Price',11,[6,3,2]],['Bad Timing / Busy',9,[2,3,4]],['Needs to think about it',7,[2,3,2]],['Happy with current carrier',5,[2,2,1]],['Talk to spouse',3,[1,1,1]],['Just shopping',2,[0,1,1]]];
+const ASSUME=[['Lorena Gonzalez','5 of 6','4 of 5','2 of 2','2 of 2','1 of 2','1 of 5'],['Mike Olvera','3 of 5','2 of 3','3 of 3','2 of 3','1 of 3','2 of 4'],['Coral Barwick','1 of 4','1 of 2','1 of 1','1 of 1','1 of 1','3 of 4'],['Crystal Mango','2 of 3','1 of 2','1 of 2','0 of 1','0 of 2','2 of 3'],['Sarahi Chin','1 of 3','0 of 1','—','—','—','1 of 2']];
+const pctOf=s=>{const m=/^(\d+) of (\d+)$/.exec(s);return m?Math.round(100*m[1]/m[2]):null};
+
+function coaching(){
+  const tab=S.ctab||'cards';
+  const tabs=`<div class="ptabs" role="tablist">${[['cards','Cards'],['objections','Objections'],['wins','Wins and Losses']].map(([k,l])=>`<button type="button" role="tab" data-ctab="${k}" aria-selected="${tab===k}">${l}</button>`).join('')}</div>`;
+  let main='';
+  if(tab==='cards'){
+    const f=S.objf;
+    const list=CARDS.filter(c=>!f||c.objs.some(o=>o.g===f));
+    const by={};list.forEach(c=>(by[c.who]=by[c.who]||[]).push(c));
+    main=`${f?`<div class="card" style="flex-direction:row;justify-content:space-between;align-items:center"><span>Filtered to objection <b>${f}</b></span><button type="button" class="chip" data-objf="" style="border:0;cursor:pointer">Clear filter</button></div>`:''}
+      ${Object.entries(by).map(([w,cs])=>`<section class="card"><div class="hrow"><h2>${w}</h2><span class="sd">${cs.length} coached call${cs.length>1?'s':''}</span></div>${cs.map(c=>cardHtml(c,false)).join('')}</section>`).join('')}`;
+  } else if(tab==='objections'){
+    const max=Math.max(...OBJS.map(o=>o[1]));
+    main=`<section class="card"><div class="hrow"><h2>Objections</h2><span class="sd">37 objections on 31 coached calls · click one to see its cards</span></div>
+      <div class="legend"><span><i style="background:var(--sag)"></i>Overcome (8-10)</span><span><i style="background:#e5b04a"></i>Partly (5-7)</span><span><i style="background:var(--clay)"></i>Not overcome (0-4)</span></div>
+      <div>${OBJS.map(([g,n,[a,b,c]])=>`<div class="objbar" role="button" tabindex="0" data-objf="${g}"><b>${g}</b><div class="stackbar" style="height:18px;width:${n/max*100}%"><div style="flex-grow:${a};background:var(--sag)"></div><div style="flex-grow:${b};background:#e5b04a"></div><div style="flex-grow:${c};background:var(--clay)"></div></div><span style="text-align:right"><b>${n}</b></span></div>`).join('')}</div></section>
+      <section class="card"><h2>Dropped most</h2><p style="margin:0;font-size:15px;line-height:1.55"><b>Bad Timing / Busy</b> was not overcome on 4 of 9 calls. A busy prospect is the one time sending the quote is right, but only with a time booked to go over it. Role play draws this objection more often until it improves.</p></section>`;
+  } else {
+    const head=['The quote','The sale','Follow-up · up front','Follow-up · objections','Follow-up · at the end','Sent the Quote'];
+    const cell=(s,j)=>{const p=pctOf(s);if(p===null)return `<td>—</td>`;const good=j===5?p<=25:p>=75, bad=j===5?p>=50:p<50;return `<td><b style="color:${good?'var(--good)':bad?'var(--clay-d)':'inherit'}">${s}</b> <span class="sd">${p}%</span></td>`};
+    main=`<section class="card"><div class="hrow"><h2>Assuming the quote and the sale</h2><span class="sd">from each card's own verdicts · n/a counts neither way · click any number for its calls</span></div>
+      <div class="scroll"><table class="wl"><thead><tr><th>Producer</th>${head.map(h=>`<th>${h}</th>`).join('')}</tr></thead><tbody>
+      ${ASSUME.map(r=>`<tr><td><b>${r[0]}</b></td>${r.slice(1).map(cell).join('')}</tr>`).join('')}
+      <tr class="tot"><td>Team</td>${['12 of 21','8 of 13','7 of 8','5 of 7','3 of 8','9 of 18'].map(cell).join('')}</tr></tbody></table></div>
+      <p class="sd">Sent the Quote counts calls where the producer offered on their own to email or text the quote instead of presenting it. Lower is better.</p></section>
+      <div class="two">
+        <div class="hero2"><h4>Prices on the table against asks made</h4><p><b>18</b> of 31 calls put a real price in front of someone. <b>4</b> closed on the call. Current premium was captured on <b>14</b>, a renewal date on <b>9</b>, and a bundle raised on <b>11</b>. <b>6 of 31</b> set a specific callback time: usually the cheapest thing to fix.</p></div>
+        <div class="hero2"><h4>Picking up their own line</h4><p><b>7 of 10</b> call backs and call-ins the producers answered opened direct: the caller's name when they knew who it was, their own name and "how can I help?" when they didn't.</p></div>
+      </div>`;
+  }
+  return `<div style="display:flex;flex-direction:column;gap:20px">
+  <header class="head"><div><div style="display:flex;gap:8px;flex-wrap:wrap"><span class="pill fin">Apollo · cards from the last checkpoint</span><span class="pill">31 coached calls</span></div>
+    <h1 class="greet">Coaching Center</h1><div class="sd" style="font-size:15px;margin-top:4px">${S.range==='day'?dateLong().replace(', 2026',''):(RANGE[S.range]||'')} · sample cards</div></div></header>
+  ${tabs}
+  <div class="cols"><div class="stack">${main}</div>
+  <div class="rail">
+    <section class="card"><h2>The day in cards</h2>
+      <div class="mini" style="grid-template-columns:repeat(3,minmax(0,1fr))"><div><div class="k">First quote</div><div class="v">17</div></div><div><div class="k">Finish quote</div><div class="v">6</div></div><div><div class="k">Follow-up</div><div class="v">8</div></div></div>
+      <div class="seglist">
+        <div><span><i style="background:var(--clay)"></i>Quote not presented</span><b>9</b></div><div><span><i style="background:var(--clay)"></i>No next step</span><b>7</b></div>
+        <div><span><i style="background:var(--clay)"></i>Objection dropped</span><b>6</b></div><div><span><i style="background:var(--clay)"></i>Discovery missed</span><b>4</b></div>
+        <div><span><i style="background:#e5b04a"></i>Callback set</span><b>8</b></div><div><span><i style="background:#e5b04a"></i>Cross-sell in progress</span><b>3</b></div>
+        <div><span><i style="background:var(--sag)"></i>Strong moment</span><b>5</b></div></div></section>
+    <section class="card"><h2>Worth a listen</h2><div class="todo">
+      <a href="#"><span class="sq" style="background:#3e6b4f"></span><span><b>Lorena · sold on the first call</b><span class="s">Price objection overcome with the bundle · 14:20</span></span></a>
+      <a href="#" class="hot"><span class="sq" style="background:#8a2b12"></span><span><b>Coral · sent instead of presented</b><span class="s">Busy objection dropped · 7:12</span></span></a>
+      <a href="#"><span class="sq" style="background:#b57800"></span><span><b>Mike · follow-up, no next step</b><span class="s">Spanish · 5:40</span></span></a></div></section>
+  </div></div></div>`;
+}
+
+/* ---------------- Apollo: Learning Center ---------------- */
+const RP_CHECK=['Identify yourself and the reason for the call in the first line: don’t ask permission to explain why you’re calling.','Get discovery before you pitch: current premium, renewal/X-date, and what’s currently covered.','Always check for a cross-sell: a product they don’t have yet, even to a customer of twenty years.','When an objection comes up, respond to the real concern behind it, then immediately re-ask for the next step.','Close assumptively: state the next step instead of asking permission.'];
+const RP_PERS=[['easy','Beginner','Open to a quote, minimal resistance'],['medium','Medium','Interested, but raises objections that don’t hold much resistance'],['hard','Professional','Skeptical, cycles through objections, doesn’t fold easily']];
+const CONVO=[['them','Rosa','Hello?'],['me','Mike','Hi Rosa, this is Mike with Farmers. You asked for an auto quote online, and I’m building it for you now.'],['them','Rosa','Oh, right. I’m kind of busy at work though.'],['me','Mike','Totally understand. It takes about ten minutes. What are you paying today, and when does your policy renew?'],['them','Rosa','Around $190 a month. It renews in November.'],['me','Mike','Great. Do you rent or own your home?'],['them','Rosa','We own. Why?']];
+const GRADE={resolved:true,summary:'Strong open with the reason for the call, discovery done before the price, and the Busy objection handled with a short time frame. The close asked for permission once ("would that be OK?").',check:[[1,'Opened with name and reason, no permission asked.'],[1,'Current premium and renewal date captured.'],[1,'Raised the home: they own.'],[1,'Answered "busy" with ten minutes and kept going.'],[0,'"Would that be OK if I start it?" State it instead.']],tip:'"I’ll get this started with a November 1st date." State it; don’t ask it.'};
+const HISTORY=[['Sep 30','Mike Olvera','Medium','Internet lead',true,'4/5','Busy, Price'],['Sep 30','Lorena Gonzalez','Professional','Referral',true,'5/5','Spouse, Price'],['Sep 29','Coral Barwick','Medium','1-1 QNC',false,'3/5','Think about it'],['Sep 29','Crystal Mango','Beginner','Call-in',true,'4/5','Price'],['Sep 26','Sarahi Chin','Medium','Internet lead',false,'2/5','Busy, Already insured']];
+const HSUM=[['Lorena Gonzalez',14,12,'92%','Assumptive close','Price, Spouse','Sep 30'],['Mike Olvera',11,8,'84%','Assumptive close','Busy, Price','Sep 30'],['Coral Barwick',12,9,'81%','Discovery before pitch','Think about it','Sep 29'],['Crystal Mango',8,6,'78%','Cross-sell','Price','Sep 29'],['Sarahi Chin',4,1,'55%','Objection: re-ask next step','Busy','Sep 26']];
+const DECK_N=[15,7,6,6,4]; // real card counts in coaching/TRAINING.md; the preview shows a few of each
+const DECKS=[['Insurance Basics',[['Premium','What the customer pays (monthly, semi-annually, or annually) to keep a policy in force. Not the same as a quote: a quote is an offered premium; it becomes the premium once the policy is bound.'],['Deductible','The amount the customer pays out of pocket on a claim before the insurance company pays the rest. Higher deductible, lower premium: the most common lever in a price objection.']]],
+ ['Objections Apollo Sees Most',[['"Your price is higher than what I’m paying now"','Find out exactly what they’re comparing against and reframe on deductible, coverage, or bundling. "Can I ask what you’re paying today so I can see exactly where the gap is?" The failure mode: conceding with a vague promise instead of a concrete reframe right now.'],['"I’m at work / bad timing / can’t talk right now"','A scheduling objection, not a real no. Negotiate a specific callback window before hanging up: "Is later today around 5 or 6 better, or would tomorrow morning work?" The failure mode: "I’ll call you back" with no time attached.']]],
+ ['Getting the Right Information',[['Current premium captured','Ask what they pay today before you show a number, so the comparison is yours to frame.']]],
+ ['Sales Techniques',[['Feel-Felt-Found','Acknowledge ("I understand how you feel"), normalize ("a lot of people feel the same way when..."), then resolve with what those clients found. All three steps, in that order.']]],
+ ['The Assumptive Close',[['Assumptive vs. permission-seeking','Assumptive language states what happens next: "I’ll go ahead and get this bound with a start date of the 1st." Permission-seeking asks: "Would you like me to put together a quote?"']]]];
+
+function learning(){
+  const tab=S.ltab||'roleplay';
+  const tabs=`<div class="ptabs" role="tablist">${[['roleplay','Role Play'],['history','Session History'],['training','Training']].map(([k,l])=>`<button type="button" role="tab" data-ltab="${k}" aria-selected="${tab===k}">${l}</button>`).join('')}</div>`;
+  let main='', rail='';
+  if(tab==='roleplay'){
+    const st=S.rpstage||'call', pk=S.pers||'medium';
+    const stage=`<div class="seg" role="group" aria-label="Preview a stage">${[['debrief','Debrief'],['call','On the call'],['graded','Graded']].map(([k,l])=>`<button type="button" data-rpstage="${k}" aria-pressed="${st===k}">${l}</button>`).join('')}</div>`;
+    const prospect=`<div class="prospect"><div class="shot ${st==='call'?'talk':''}" aria-label="Rosa Delgado">RD</div><div><div style="font:400 26px var(--display)">Rosa Delgado</div><div class="sd">42 · dental hygienist · married, two kids · speaks English</div><div class="sd">Internet lead · ${RP_PERS.find(p=>p[0]===pk)[1]}</div></div></div>`;
+    if(st==='debrief'){
+      main=`<section class="card"><div class="hrow"><h2>Mike Olvera <em>debrief</em></h2>${stage}</div>
+        <div class="persona">${RP_PERS.map(([k,n,b])=>`<button type="button" data-pers="${k}" aria-pressed="${pk===k}"><b>${n}</b><span>${b}</span></button>`).join('')}</div>
+        <div class="grid4" style="grid-template-columns:repeat(2,minmax(0,1fr))">
+          <div class="stat"><div class="k">Lead source</div><div class="v" style="font-size:24px">Internet lead</div><div class="n">They asked for a quote online: build it on the call and present it.</div></div>
+          <div class="stat">${prospect}</div></div>
+        <div class="blk"><div class="bl">Your weak spots · last 4 weeks</div><div style="display:flex;gap:8px;flex-wrap:wrap"><span class="chip r">Assumptive close · missed 5 of 11</span><span class="chip y">Busy objection · 3 of 7</span></div></div>
+        <div class="blk"><div class="bl">Approach checklist</div><ul style="margin:0;padding-left:20px;font-size:15px;line-height:1.6">${RP_CHECK.map(c=>`<li>${c}</li>`).join('')}</ul></div>
+        <button type="button" class="btn" data-rpstage="call" style="align-self:center">Start the call</button></section>`;
+    } else {
+      main=`<section class="card"><div class="hrow">${prospect}${stage}</div>
+        <div class="convo">${CONVO.map(([w,n,t])=>`<div class="bub ${w}"><small>${n}</small>${t}</div>`).join('')}
+          ${st==='call'?'<div class="bub me live"><small>Mike · speaking</small>We could save you more by putting the home with the auto…</div>':''}</div>
+        ${st==='call'?'<button type="button" class="mic" aria-label="Send now">Listening<br>tap to send</button><p class="sd" style="text-align:center">Sends after 1.5 seconds of silence</p>':'<div class="hrow"><span class="sd">Session saved · 7 turns · 6m 10s</span><button type="button" class="btn" data-rpstage="debrief">New session</button></div>'}</section>`;
+    }
+    rail=st==='graded'?`<section class="card"><div class="hrow"><h2>Apollo's grade</h2><span class="chip ${GRADE.resolved?'g':'y'}">${GRADE.resolved?'Resolved':'Not resolved'}</span></div>
+        <p style="margin:0;font-size:15px;line-height:1.55">${GRADE.summary}</p>
+        <table class="ask">${GRADE.check.map(([m,n],i)=>`<tr><td class="v"><span class="chip ${m?'g':'r'}">${m?'met':'missed'}</span></td><td>${RP_CHECK[i].split(':')[0]}<div class="sd">${n}</div></td></tr>`).join('')}</table>
+        <div class="fixbox"><b class="l">Tip for next time</b>${GRADE.tip}</div></section>
+      <section class="card"><h2>Rate the voice</h2><div class="stars"><span>★</span><span>★</span><span>★</span><span>★</span><span class="off">★</span></div>
+        <div style="display:flex;gap:8px"><span class="sd">Use this voice again?</span><button type="button" class="chip g" style="border:0">Yes</button><button type="button" class="chip" style="border:0">No</button></div>
+        <label class="sd" for="vcmt">Comment</label><textarea id="vcmt" rows="2" style="font:inherit;border:1.5px solid #d4c1aa;border-radius:10px;padding:8px;background:var(--card)"></textarea></section>`
+    : `<section class="card"><h2>Call guide</h2>
+        <div class="ref" style="padding-top:0"><h3 style="font-size:18px">${DECKS[1][1][1][0]}</h3><p style="font-size:14px">${DECKS[1][1][1][1]}</p></div>
+        <div class="ref"><h3 style="font-size:18px">${DECKS[1][1][0][0]}</h3><p style="font-size:14px">${DECKS[1][1][0][1]}</p></div>
+        <div class="bl">Techniques to reach for</div><div style="display:flex;gap:6px;flex-wrap:wrap">${['Elevator pitch','Feel-Felt-Found','Risk reversal','Social proof','Trial close','Takeaway / urgency'].map(t=>`<span class="chip">${t}</span>`).join('')}</div></section>
+      <section class="card"><h2>Past sessions</h2><div class="todo">${HISTORY.filter(h=>h[1]==='Mike Olvera').concat([['Sep 25','Mike Olvera','Professional','Referral',false,'3/5','Spouse']]).map(h=>`<a href="#"><span class="sq" style="background:${h[4]?'#3e6b4f':'#b57800'}"></span><span><b>${h[0]} · ${h[2]} · ${h[3]}</b><span class="s">${h[4]?'Resolved':'Not resolved'} · ${h[5]} checklist · ${h[6]}</span></span></a>`).join('')}</div></section>`;
+  } else if(tab==='history'){
+    main=`<section class="card"><div class="hrow"><h2>By producer <em>${RANGE[S.range]||'Last 30 days'}</em></h2><span class="sd">follows the date filter · producers see only their own</span></div>
+      <div class="scroll"><table class="t"><thead><tr><th>Producer</th><th class="r">Sessions</th><th class="r">Resolved</th><th class="r">Checklist met</th><th>Missed most</th><th>Objections drilled</th><th class="r">Last session</th></tr></thead><tbody>
+      ${HSUM.map(r=>`<tr><td><b>${r[0]}</b></td><td class="r">${r[1]}</td><td class="r">${r[2]}</td><td class="r" style="color:${parseInt(r[3])>=80?'var(--good)':'var(--clay-d)'};font-weight:700">${r[3]}</td><td>${r[4]}</td><td>${r[5]}</td><td class="r">${r[6]}</td></tr>`).join('')}</tbody></table></div></section>
+      <section class="card"><div class="hrow"><h2>Every session</h2><span class="sd">open one for Apollo's grade and the whole conversation · plays from any line</span></div>
+      ${HISTORY.map((h,i)=>`<details class="cc"${i===0?' open':''}><summary><div><div class="nm" style="font-size:20px">${h[1]} · ${h[0]}</div><div class="meta">${h[2]} · ${h[3]} · objections drilled: ${h[6]}</div></div>
+        <div class="right"><span class="chip ${h[4]?'g':'y'}">${h[4]?'Resolved':'Not resolved'}</span><span class="chip">${h[5]} checklist</span><span class="tog"></span></div></summary>
+        <div class="cbody">${i===0?`<p style="margin:0;font-size:15px;line-height:1.55">${GRADE.summary}</p>
+          <div class="player"><button type="button" aria-label="Play">▶</button><span class="sd">0:12</span><div class="bar"><div></div></div><span class="sd">6:10</span></div>
+          <div class="tx">${CONVO.map(([w,n,t],j)=>`<p class="${w==='me'?'prod':''} ${j===3?'on':''}"><span class="ts">${['0:00','0:03','0:12','0:18','0:31','0:40','0:46'][j]}</span><span><b>${n}:</b> ${j===3?t.replace(/^(\S+ \S+)/,'<mark>$1</mark>'):t}</span></p>`).join('')}</div>
+          <div class="fixbox"><b class="l">Tip for next time</b>${GRADE.tip}</div>`:'<p class="sd" style="margin:0">Opens to Apollo’s grade and the conversation.</p>'}</div></details>`).join('')}</section>`;
+    rail=`<section class="card"><h2>The team <em>${RANGE[S.range]||'Last 30 days'}</em></h2>
+      <div class="mini" style="grid-template-columns:repeat(2,minmax(0,1fr))"><div><div class="k">Sessions</div><div class="v">49</div></div><div><div class="k">Resolved</div><div class="v">36</div></div><div><div class="k">Checklist met</div><div class="v">82%</div></div><div><div class="k">Avg session</div><div class="v">6m</div></div></div></section>
+      <section class="card"><h2>Missed most</h2><div class="seglist">${[['Assumptive close',17],['Re-ask the next step after an objection',11],['Cross-sell',8],['Discovery before pitch',5]].map(([k,n])=>`<div><span><i style="background:var(--clay)"></i>${k}</span><b>${n}</b></div>`).join('')}</div></section>
+      <section class="card"><h2>Objections drilled</h2><div class="seglist">${[['Price',21],['Bad Timing / Busy',15],['Talk to spouse',9],['Think about it',8],['Already insured',6]].map(([k,n])=>`<div><span><i style="background:var(--sag)"></i>${k}</span><b>${n}</b></div>`).join('')}</div></section>`;
+  } else {
+    const mode=S.tmode||'ref', di=S.deck||0, deck=DECKS[di];
+    const modes=`<div class="seg" role="group" aria-label="Training mode">${[['ref','Terms & Techniques'],['cards','Flashcards'],['match','Match'],['quiz','Quiz']].map(([k,l])=>`<button type="button" data-tmode="${k}" aria-pressed="${mode===k}">${l}</button>`).join('')}</div>`;
+    const decks=`<div class="decks">${DECKS.map((d,i)=>`<button type="button" data-deck="${i}" aria-pressed="${i===di}">${d[0]} · ${DECK_N[i]}</button>`).join('')}</div>`;
+    let body='';
+    if(mode==='ref') body=`<section class="card"><h2>${deck[0]}</h2>${deck[1].map(([f,b])=>`<div class="ref"><h3>${f}</h3><p>${b}</p></div>`).join('')}</section>`;
+    else if(mode==='cards'){const c=deck[1][0];body=`<button type="button" class="fc" data-flip="1">${S.flip?`<p>${c[1]}</p><span class="sd">tap to flip back</span>`:`<span class="lab">${deck[0]} · card 1 of ${DECK_N[di]}</span><h3>${c[0]}</h3><span class="sd">tap to see the answer</span>`}</button>
+      <div class="hrow"><button type="button" class="chip" style="border:0">← Previous</button><span class="sd">Know it? Mark it and it comes back less often.</span><button type="button" class="chip" style="border:0">Next →</button></div>`;}
+    else if(mode==='match') body=`<section class="card"><h2>Match <em>pair each term with what it means</em></h2><div class="two">
+      <div class="quizopt">${['Premium','Deductible','Feel-Felt-Found','Assumptive close'].map(t=>`<button type="button">${t}</button>`).join('')}</div>
+      <div class="quizopt">${['States the next step instead of asking','Paid out of pocket before insurance pays','Acknowledge, normalize, resolve','What the customer pays to keep the policy'].map(t=>`<button type="button">${t}</button>`).join('')}</div></div></section>`;
+    else body=`<section class="card"><div class="hrow"><h2>Quiz</h2><span class="sd">question 3 of 10 · 2 right so far</span></div>
+      <p style="margin:0;font:400 24px/1.3 var(--display)">The prospect says "I'm at work, can't talk right now." What's the best response?</p>
+      <div class="quizopt"><button type="button">"No problem, I'll call you back."</button><button type="button" class="ok">"Is later today around 5 or 6 better, or would tomorrow morning work?"</button><button type="button" class="no">"I'll just email you the quote."</button><button type="button">"Would it be OK if I called back some time?"</button></div>
+      <div class="fixbox"><b class="l">Why</b>A scheduling objection, not a real no. Negotiate a specific callback window before hanging up.</div></section>`;
+    main=`<div class="hrow">${modes}</div>${decks}${body}`;
+    rail=`<section class="card"><h2>The decks</h2><div class="seglist">${DECKS.map((d,i)=>`<div><span>${d[0]}</span><b>${DECK_N[i]} cards</b></div>`).join('')}</div><p class="sd">From the agency's training guide. The objection cards are the ones Apollo sees most on real calls.</p></section>
+      <section class="card"><h2>Your weak spots</h2><div class="todo"><a href="#" class="hot"><span class="sq" style="background:#8a2b12"></span><span><b>The Assumptive Close</b><span class="s">Missed on 5 of 11 role plays</span></span></a><a href="#"><span class="sq" style="background:#b57800"></span><span><b>"I'm at work / bad timing"</b><span class="s">3 of 7 not overcome on real calls</span></span></a></div></section>`;
+  }
+  return `<div style="display:flex;flex-direction:column;gap:20px">
+  <header class="head"><div><div style="display:flex;gap:8px;flex-wrap:wrap"><span class="pill fin">Apollo · practice</span><span class="pill">Prospects speak English, Spanish or both</span></div>
+    <h1 class="greet">Learning Center</h1><div class="sd" style="font-size:15px;margin-top:4px">Role play, the history of every graded session, and the training decks · sample sessions</div></div></header>
+  ${tabs}
+  <div class="cols"><div class="stack">${main}</div><div class="rail">${rail}</div></div></div>`;
+}
+
+/* ---------------- Sales Center: Texts & Emails ---------------- */
+function messages(){
+  const by=[['Lorena Gonzalez',41,14,3,9,7,'6m',0,2],['Mike Olvera',33,9,2,6,5,'11m',1,1],['Coral Barwick',29,11,4,7,5,'14m',2,3],['Crystal Mango',18,6,1,3,3,'22m',0,1],['Sarahi Chin',15,5,0,2,1,'1h 08m',0,1]];
+  const ans=[['[LEAD]','Lorena','Can you do it with a higher deductible?','2:14 PM','4m','Call back'],['[LEAD]','Mike','¿Me puede mandar la cotización?','1:52 PM','9m','Text'],['[LEAD]','Coral','Is the renters included?','11:30 AM','17m','Email'],['[LEAD]','Sarahi','I can talk after 5','10:05 AM','1h 08m','Text']];
+  const wait=[['[LEAD]','Coral','What would the total be with my wife’s car?','3:00 PM','42m'],['[LEAD]','Coral','Ok can you call me tomorrow','3:19 PM','23m'],['[LEAD]','Mike','How much is full coverage?','3:30 PM','12m']];
+  const qs=[['[LEAD]','Coral','Your Farmers auto quote','Email','opened 2×'],['[LEAD]','Lorena','Auto + renters quote attached','Email','opened'],['[LEAD]','Mike','Cotización de auto','Text','—'],['[LEAD]','Crystal','Home quote','Email','not opened']];
+  return `<div style="display:flex;flex-direction:column;gap:20px">
+  <header class="head"><div><div style="display:flex;gap:8px;flex-wrap:wrap">${isLive()?'<span class="pill lv glow"><span class="dot"></span>Live · updated 3:42 PM</span>':'<span class="pill fin">Final</span>'}<span class="pill">Leads only · a customer’s texts are Athena’s</span></div>
+    <h1 class="greet">Texts &amp; Emails</h1><div class="sd" style="font-size:15px;margin-top:4px">Sales Center · replies run from 5:30 PM the business day before · sample figures</div></div></header>
+  <section class="tiles ${isLive()?'islive':''}" style="grid-template-columns:repeat(5,minmax(0,1fr))">
+    ${[['Typed by producers','45 / 10','texts / emails'],['Replies answered','21','median 11m'],['Waiting on an answer','3','oldest 42m'],['Quotes sent','11','by email or text'],['Automation','186','drips and AgencyZoom rules, not credited']].map(([k,v,n],i)=>`<div class="tile ${i<3?'glow':''}"><div class="k">${k}</div><div class="v ${i<3?'gt':''}">${v}</div><div class="n">${n}</div></div>`).join('')}</section>
+  <div class="cols"><div class="stack">
+    <section class="card"><div class="hrow"><h2>By producer</h2><span class="sd">what each producer typed themselves</span></div><div class="scroll"><table class="t" style="min-width:760px"><thead><tr><th>Producer</th><th class="r">Leads</th><th class="r">Texts</th><th class="r">Emails</th><th class="r">Replies</th><th class="r">Answered</th><th class="r">Time to answer</th><th class="r">Unanswered</th><th class="r">Quotes sent</th></tr></thead><tbody>
+      ${by.map(r=>`<tr><td><b>${r[0]}</b></td><td class="r">${r[1]}</td><td class="r">${r[2]}</td><td class="r">${r[3]}</td><td class="r">${r[4]}</td><td class="r">${r[5]}</td><td class="r" style="font-weight:700;color:${/h/.test(r[6])?'var(--bad)':parseInt(r[6])<=15?'var(--good)':'inherit'}">${r[6]}</td><td class="r" style="${r[7]?'color:var(--clay-d);font-weight:700':''}">${r[7]}</td><td class="r">${r[8]}</td></tr>`).join('')}</tbody></table></div>
+      <p class="sd">Time to answer: green at 15 minutes or less, red over an hour.</p></section>
+    <section class="card"><h2>Replies answered</h2><div class="scroll"><table class="t" style="min-width:720px"><thead><tr><th>Lead</th><th>Producer</th><th>What they said</th><th class="r">When</th><th class="r">Answered in</th><th>How</th></tr></thead><tbody>
+      ${ans.map(r=>`<tr><td><b>${r[0]}</b></td><td>${r[1]}</td><td class="said3">“${r[2]}”</td><td class="r">${r[3]}</td><td class="r" style="font-weight:700;color:${/h/.test(r[4])?'var(--bad)':parseInt(r[4])<=15?'var(--good)':'inherit'}">${r[4]}</td><td>${r[5]}</td></tr>`).join('')}</tbody></table></div></section>
+    <section class="card"><h2>Quotes sent by email or text</h2><div class="scroll"><table class="t"><thead><tr><th>Lead</th><th>By</th><th>Subject</th><th>How</th><th>Opened</th></tr></thead><tbody>
+      ${qs.map(r=>`<tr><td><b>${r[0]}</b></td><td>${r[1]}</td><td>${r[2]}</td><td>${r[3]}</td><td>${r[4]}</td></tr>`).join('')}</tbody></table></div></section>
+  </div><div class="rail">
+    <section class="card"><h2>Waiting on an answer</h2><div class="todo">${wait.map(r=>`<a href="#" class="hot"><span class="sq" style="background:#8a2b12"></span><span><b>${r[1]} · ${r[4]}</b><span class="s">“${r[2]}” · ${r[3]}</span></span></a>`).join('')}</div></section>
+    <section class="card"><h2>Bad contact info</h2><div class="todo"><a href="#"><span class="sq" style="background:#b57800"></span><span><b>[LEAD] · Mike</b><span class="s">Text failed: not a mobile number</span></span></a><a href="#"><span class="sq" style="background:#b57800"></span><span><b>[LEAD] · Sarahi</b><span class="s">Email bounced</span></span></a></div></section>
+    <section class="card"><h2>Not counted</h2><p class="sd" style="font-size:14px">"Ok" and "thanks" are counted but never listed as waiting. STOP is counted as an opt-out. A reply someone else answered (Debbie on a payment) is service and stays out.</p></section>
+  </div></div></div>`;
+}
+
+/* ---------------- Sales Center: Sales Sheet ---------------- */
+function sales(){
+  const tab=S.stab||'log';
+  const tabs=`<div class="ptabs" role="tablist">${[['log','Log'],['breakdown','Breakdown']].map(([k,l])=>`<button type="button" role="tab" data-stab="${k}" aria-selected="${tab===k}">${l}</button>`).join('')}</div>`;
+  const LOG=[['Lorena Gonzalez','9-30-26','10-1-26','[CLIENT]','EverQuote','[POLICY]','Farmers-Auto','$1,120','6 mo',1,1],['Mike Olvera','9-30-26','10-1-26','[CLIENT]','Referral','[POLICY]','BW-Auto','$1,860','6 mo',1,0],['Coral Barwick','9-30-26','10-5-26','[CLIENT]','Lorena Gonzalez','[POLICY]','Farmers-Home','$1,012','12 mo',0,0],['Crystal Mango','9-30-26','10-1-26','[CLIENT]','Cross-sell','[POLICY]','Foremost-MH','$1,533','12 mo',1,1],['Lorena Gonzalez','9-29-26','9-30-26','[CLIENT]','Call-in','[POLICY]','Farmers-Auto','$1,820','6 mo',1,1]];
+  const TOT=[['Lorena Gonzalez',14,'$19,880'],['Mike Olvera',9,'$13,410'],['Coral Barwick',8,'$11,020'],['Crystal Mango',8,'$10,240'],['Sarahi Chin',3,'$4,380'],['Amanda Torricellas',2,'$2,310']];
+  let main;
+  if(tab==='log') main=`<section class="card"><h2>Log a sale</h2><div class="form">
+      ${['Producer','Client name','AZ customer ID (if known)','Policy # (if known)','Lead source','Product','Premium','Term'].map((l,i)=>`<label for="f${i}">${l}<input id="f${i}" ${i===0?'value="Lorena Gonzalez"':''} placeholder="${l}"></label>`).join('')}
+      <label for="fd">Date sold<input id="fd" type="date" value="2026-09-30"></label><label for="fe">Effective<input id="fe" type="date" value="2026-10-01"></label>
+      <label for="fn" style="grid-column:span 2">Notes (optional)<input id="fn" placeholder="Notes (optional)"></label></div>
+      <div style="display:flex;justify-content:flex-end"><button type="button" class="btn">Log the sale</button></div></section>
+    <section class="card"><div class="hrow"><h2>This folio's log <em>Sep 19 – Oct 19</em></h2><span class="sd">newest first · auto-added rows come from AgencyZoom each night</span></div>
+      <div class="scroll"><table class="t" style="min-width:1000px"><thead><tr><th>Producer</th><th>Date Sold</th><th>Effective</th><th>Client</th><th>Lead Source</th><th>Policy #</th><th>Product</th><th class="r">Premium</th><th>Term</th><th>Docs Signed</th><th>Review Sent</th></tr></thead><tbody>
+      ${LOG.map(r=>`<tr><td><b>${r[0]}</b></td><td>${r[1]}</td><td>${r[2]}</td><td>${r[3]}</td><td>${r[4]}</td><td>${r[5]}</td><td>${r[6]}</td><td class="r"><b>${r[7]}</b></td><td>${r[8]}</td><td><span class="check2 ${r[9]?'on':''}">${r[9]?'✓':''}</span></td><td><span class="check2 ${r[10]?'on':''}">${r[10]?'✓':''}</span></td></tr>`).join('')}</tbody></table></div></section>`;
+  else {
+    const dim=S.sdim||'lead_source';
+    const D={lead_source:[['EverQuote',14210],['Referral',11980],['Call-in',9420],['Cross-sell',8730],['Personal network',6110],['Other',10430]],product:[['Farmers-Auto',24880],['Farmers-Home',12340],['BW-Auto',9870],['Foremost-MH',5210],['Farmers-Renters',2940],['Other',5640]],top_sources:[['Generated / purchased',18420],['Referral',14210],['Call-in / walk-in',10980],['Cross-sell',8730],['Personal network',6110],['Existing client, new purchase',2420]]}[dim];
+    const tot=D.reduce((a,b)=>a+b[1],0), cols=['#b5532f','#3e6b4f','#3f5f7a','#b57800','#6b4e71','#c9b8a8'];
+    let acc=0; const grad=D.map((d,i)=>{const a=acc/tot*100;acc+=d[1];return `${cols[i]} ${a}% ${acc/tot*100}%`}).join(',');
+    const seg=`<div class="seg" role="group">${[['lead_source','Lead Source'],['product','Policy Type'],['top_sources','Premium per Lead Source']].map(([k,l])=>`<button type="button" data-sdim="${k}" aria-pressed="${dim===k}">${l}</button>`).join('')}</div>`;
+    main=`<section class="card"><div class="hrow"><h2>Sales breakdown <em>Sep 19 – Oct 19</em></h2>${seg}</div>
+      ${dim==='top_sources'?`<div style="display:flex;flex-direction:column;gap:10px">${D.map(([k,v])=>`<div class="bars" style="grid-template-columns:230px minmax(0,1fr) auto"><span>${k}</span><div class="track" style="height:16px"><div style="height:16px;width:${v/D[0][1]*100}%;background:var(--clay)"></div></div><b>${money(v)}</b></div>`).join('')}</div><p class="sd">Lead sources grouped the way lead_sources.py groups them. BOB and Rewrite are not sales.</p>`
+      :`<div class="pierow" style="justify-content:center;gap:48px"><div class="pie" style="width:240px;height:240px" style="background:conic-gradient(${grad})" role="img" aria-label="Premium by ${dim==='product'?'policy type':'lead source'}"></div><div class="seglist" style="flex:0 1 420px;min-width:240px;font-size:15px;gap:9px">${D.map(([k,v],i)=>`<div><span><i style="background:${cols[i]}"></i>${k}</span><span><b>${money(v)}</b> <span class="sd">${Math.round(v/tot*100)}%</span></span></div>`).join('')}</div></div>`}</section>`;
+  }
+  return `<div style="display:flex;flex-direction:column;gap:20px">
+  <header class="head"><div><div style="display:flex;gap:8px;flex-wrap:wrap"><span class="pill">Live sales are added in the same refresh</span><span class="pill">Not the official Premium Sold figure</span></div>
+    <h1 class="greet">Sales Sheet</h1><div class="sd" style="font-size:15px;margin-top:4px">Sales Center · products named the way the team types them · sample rows</div></div></header>
+  ${tabs}
+  <div class="cols"><div class="stack">${main}</div><div class="rail">
+    <section class="card"><h2>This folio by producer</h2><div class="seglist">${TOT.map(([n,c,p])=>`<div><span>${n} <span class="sd">${c} sales</span></span><b>${p}</b></div>`).join('')}</div>
+      <div style="border-top:2px solid var(--ink);padding-top:8px;display:flex;justify-content:space-between;font-weight:800"><span>Team · 44 sales</span><span>$61,240</span></div></section>
+    <section class="card"><h2>Still to do</h2><div class="todo"><a href="#"><span class="sq" style="background:#b57800"></span><span><b>3 sales without docs signed</b><span class="s">Coral 1, Mike 1, Sarahi 1</span></span></a><a href="#"><span class="sq" style="background:#b57800"></span><span><b>5 reviews not sent</b><span class="s">Ask while the sale is fresh</span></span></a></div></section>
+    <section class="card"><h2>Other folios</h2><div class="todo">${['Aug 20 – Sep 18 · $158,430','Jul 18 – Aug 19 · $149,880','Jun 19 – Jul 17 · $141,260'].map(t=>`<a href="#"><span class="sq" style="background:#c9b8a8"></span><span><b>${t}</b></span></a>`).join('')}</div></section>
+  </div></div></div>`;
+}
+
+/* ---------------- Cerberus: Commercial Center ---------------- */
+function commercial(){
+  const outc=[['Accepted as is',6,'#3e6b4f'],['Endorsed',2,'#5f8a6c'],['No action: Review if needed',3,'#b8c9bc'],['Unable to Contact/No Show',1,'#d6e0d8'],['Client Cancelled',1,'#b5532f']];
+  const t=outc.reduce((a,b)=>a+b[1],0);
+  return `<div style="display:flex;flex-direction:column;gap:20px">
+  <header class="head"><div><div style="display:flex;gap:8px;flex-wrap:wrap"><span class="pill fin">Frank only</span><span class="pill">Built at the nightly run</span></div>
+    <h1 class="greet">Commercial Center</h1><div class="sd" style="font-size:15px;margin-top:4px">Cerberus · Commercial Renewals and commercial service changes · sample figures</div></div></header>
+  <section class="tiles" style="grid-template-columns:repeat(4,minmax(0,1fr))">
+    ${[['Open SRs','18','median age 21 days'],['Past due','3','oldest 12 days'],['Due in 30 days','7','4 renewals'],['Premium on the line','$84,600','renewals due in 30 days']].map(([k,v,n],i)=>`<div class="tile"><div class="k">${k}</div><div class="v" style="${i===1?'color:var(--clay-d)':''}">${v}</div><div class="n">${n}</div></div>`).join('')}</section>
+  <div class="cols"><div class="stack">
+    <section class="card"><div class="hrow"><h2>Renewal Outcomes</h2><span class="sd">${t} commercial renewal SRs completed · ${RANGE[S.range]||'last 28 days'}</span></div>
+      <div class="stackbar" style="height:22px">${outc.map(o=>`<div style="flex-grow:${o[1]};background:${o[2]}" title="${o[0]} ${o[1]}"></div>`).join('')}</div>
+      <div class="seglist" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:8px 28px">${outc.map(o=>`<div><span><i style="background:${o[2]}"></i>${o[0]}</span><b>${o[1]}</b></div>`).join('')}</div>
+      <p class="sd">${Math.round(100*(t-1)/t)}% kept. Same resolutions and rules as Athena's Renewals.</p></section>
+    <section class="card"><h2>Completed</h2><div class="scroll"><table class="t" style="min-width:720px"><thead><tr><th>Account</th><th>Pipeline</th><th>Line</th><th>Outcome</th><th>By</th><th class="r">Took</th></tr></thead><tbody>
+      ${[['[ACCOUNT]','Commercial Renewals','General liability','Accepted as is','Frank','6 days'],['[ACCOUNT]','Commercial Renewals','Commercial auto','Endorsed','Frank','11 days'],['[ACCOUNT]','Service Pipeline','Workers comp','Change made','Frank','2 days']].map(r=>`<tr><td><b>${r[0]}</b></td><td>${r[1]}</td><td>${r[2]}</td><td>${r[3]}</td><td>${r[4]}</td><td class="r">${r[5]}</td></tr>`).join('')}</tbody></table></div></section>
+    <section class="card"><div class="hrow"><h2>Open Queue</h2><span class="sd">as of the end of the day</span></div><div class="scroll"><table class="t" style="min-width:720px"><thead><tr><th>Account</th><th>Stage</th><th>Line</th><th class="r">Due</th><th class="r">Age</th><th class="r">Premium</th></tr></thead><tbody>
+      ${[['[ACCOUNT]','Quoting','BOP','past due 12d','34 days','$6,420',1],['[ACCOUNT]','Remarket','Commercial auto','past due 4d','19 days','$18,900',1],['[ACCOUNT]','New','General liability','Oct 8','5 days','$3,150',0],['[ACCOUNT]','Presented','Workers comp','Oct 15','12 days','$22,700',0]].map(r=>`<tr><td><b>${r[0]}</b></td><td>${r[1]}</td><td>${r[2]}</td><td class="r" style="${r[6]?'color:var(--clay-d);font-weight:700':''}">${r[3]}</td><td class="r">${r[4]}</td><td class="r">${r[5]}</td></tr>`).join('')}</tbody></table></div></section>
+  </div><div class="rail">
+    <section class="card"><h2>Needs you</h2><div class="todo"><a href="#" class="hot"><span class="sq" style="background:#8a2b12"></span><span><b>3 past-due SRs</b><span class="s">$34,020 in premium</span></span></a><a href="#"><span class="sq" style="background:#b57800"></span><span><b>2 policy records not current</b><span class="s">Closed on a resolution, record lags</span></span></a></div></section>
+    <section class="card"><h2>Renewing next 30 days</h2><div class="seglist">${[['Oct 6','[ACCOUNT]','$18,900'],['Oct 12','[ACCOUNT]','$22,700'],['Oct 21','[ACCOUNT]','$31,200'],['Oct 28','[ACCOUNT]','$11,800']].map(r=>`<div><span>${r[0]} · ${r[1]}</span><b>${r[2]}</b></div>`).join('')}</div></section>
+  </div></div></div>`;
+}
+
+render();
+</script>
