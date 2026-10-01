@@ -1472,6 +1472,43 @@ $2,500 in premium"): the Digest's day reads as Apollo's group chat
   scratchpad, not the repo; `design/flores-board-preview.html` is the
   approved mock-up the restyle followed.
 
+## Coeus -- the board's assistant (2026-10-01)
+
+**Coeus is the chat bot on the board** (Frank, 2026-10-01: "a chat bot named
+Coeus that can help answer data questions, coaching questions, or anything
+about the board"), beside Apollo, Athena and Cerberus. The round button at
+the bottom right of every page (or Ctrl /) opens the drawer; "Ask Coeus" is
+also in the search. `POST /api/coeus` (`site/coeus.js`) streams its answer
+over `text/event-stream` with status lines while it reads.
+- **What it knows is the board's own words**: `blueprints.js` (every guide,
+  the Manager / Coaching one only for `ROLEPLAY_HISTORY_VIEWERS`, like the
+  tab), METHODOLOGY.md from "Core judgment" to "Output format", and
+  TRAINING.md, in one prompt-cached system block shared by every viewer
+  (~26k tokens for a manager, ~21k for staff; a tenth after the first read
+  in five minutes). **ROLEPLAY.md's personas are never given to it** -- they
+  are the answer key. The Worker imports `blueprints.js` for this, which is
+  why that file assigns to `window` in the browser and the global in the
+  Worker: keep it a plain script.
+- **Every figure comes from a tool read of R2, never from memory**: the
+  published day (`days/`, or today's `intraday/` checkpoint, said so),
+  a range added up like `mergeDayDocs` (up to 45 days), the coaching cards
+  (compact, or one lead's in full with its transcript), a lead search over
+  recent days, the Service Center page, the Renewals report, the Commercial
+  Center (COMMERCIAL_VIEWERS only) and the Role Play index (by `rpScope`).
+  No AgencyZoom, RingCentral or Insightful request is ever made. Each tool
+  hands back a compact reading (`compactSales`, `compactCard`, ...); a
+  document is far too big to send whole.
+- **It knows what is on screen**: the page, the day or range and the
+  producer filter travel with each question, so "how did we do?" is that
+  day and that person. The conversation lives in the browser tab
+  (sessionStorage) until New chat; the Worker keeps nothing.
+- Same model as Role Play (`claude-sonnet-5`, thinking off), up to six tool
+  rounds then a forced answer. It needs the Worker's `ANTHROPIC_API_KEY`;
+  without it the drawer says Coeus is not configured.
+- **When the board changes, Coeus changes with it** through `blueprints.js`
+  -- another reason to keep the guides current in the same change. A new
+  figure Coeus should read needs its compact reading added in `coeus.js`.
+
 ## Never
 
 - Commit anything under `secrets/`, `data/` or `out/` (all gitignored).

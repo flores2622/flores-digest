@@ -20,6 +20,9 @@
   // Workers AI, for Role Play's prospect headshots (site/worker.js
   // roleplayFace; Frank, 2026-09-29). Each face is drawn once and kept in R2.
   "ai": { "binding": "AI" },
+  // The ANTHROPIC_API_KEY secret (Settings -> Variables and Secrets) serves
+  // Role Play's prospect and grader AND Coeus, the board's assistant
+  // (site/coeus.js, Frank, 2026-10-01). Without it Coeus answers 503.
   "r2_buckets": [
     // Same bucket publish_board.py writes to over the S3 API -- see that
     // file for why the write side uses boto3 + an R2 API token instead of a
