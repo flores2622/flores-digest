@@ -1428,6 +1428,73 @@ live call's transcript both ways) for any day with saved recordings.
 data and costs nothing. Run it after touching `daily.py`, `day_calls.py` or
 `finalize.py`.
 
+## The Arizona look, The Flores Post and the Editions (2026-10-01)
+
+**The board wears the desert** (Frank, 2026-10-01: "a pure design change").
+`site/public/index.html` keeps every view's markup, hooks, tier colours,
+lists and links; only the token values moved (checked with a before/after
+capture of 16 views in a local harness). Five looks a person picks in
+**Settings** at the bottom of the menu (Sonoran, Saguaro, Turquoise &
+Silver, Canyon Sunset, Mesa Minimal), each with its Desert Night; light /
+dark / device as icons only, remembered per browser (`board-look`). The
+menu lists each Center's pages; the header greets whoever is looking by
+first name (`/api/me`, ~90 random lines) and carries the search (Ctrl K:
+pages, sections, producers, every lead on the loaded day) and **Take a
+tour** (the board's own system tour, its card styled as the Field note). Every section is a cream card
+with a 2px border. **A feed line never names a stage** ("Mike presented
+$2,500 in premium"): the Digest's day reads as Apollo's group chat
+(`digestFeedItems`) beside **Needs someone now** / **Left on the desk**
+(`needsNowRows`); the Service Digest's is **Off the desk · done today**.
+- **The Flores Post** (`site/public/post.js`) is the first of the Editions
+  (Frank, 2026-10-01: "the flores post should also be one of the
+  editions"; it was its own page for a day), written in rules from the day documents -- nothing typed,
+  nothing paid. Day editions for published days; the folio edition
+  updates every published day (and from today's checkpoint while open),
+  Friday editions frozen as they went out, a countdown at two or fewer
+  business days left, a closing edition. Slow editions (no sales on a day,
+  a week under $20,000, a folio under last folio's pace) carry What to try /
+  What to look for and the goal board. **Primetime is a permanent part of
+  the paper and the only place it carries the standings.** No links back to
+  the Digest ("tabs on the left is enough").
+- **The Editions** (`site/public/editions.js`, one page under the Sales
+  Center, every edition the full 1600px -- `.main` is `width: 100%`, since
+  `margin: auto` had let the page shrink to its content and the whole
+  screen shifted between editions, Frank, 2026-10-01): The Flores Post,
+  The Flores Feed, Fourth and Goal, KFLR The Close, FLRS 500, Cold Call
+  Comics, CLOSER (Frank named them, 2026-10-01) -- each with its own
+  mechanic, every one carrying the leaderboard, all from the same
+  documents. What people do on them (reactions, comments, poll and MVP
+  votes, mailbag notes, panel likes) is shared through the Worker's
+  `/api/editions/<key>` in R2 (`editions/<day>.json`,
+  `editions/folio-<end>.json`), one each per person by the Access name;
+  a viewer's own picks (watchlist, cover photo, card flips) stay in their
+  browser. The `/api/me` first names live in the Worker's `FIRST_NAMES` +
+  `RP_PRODUCER_EMAILS`.
+- **Everyone is themselves, from the Access login -- no "viewing as"**
+  (Frank, 2026-10-01). The Worker's `identityOf` decides: **Frank, Amanda
+  and Crystal log sales for everyone; Coral and Sarahi for each other
+  (a team); every other producer their own; anyone else none**
+  (`SALES_LOG_ALL`, `SALES_LOG_TEAMS`; enforced on POST / track / delete,
+  and the Sales form only offers those names -- one name is picked for
+  them, none hides the form; each entry carries `logged_by`). **A producer
+  role plays as themselves**: the picker and "change" are gone for them
+  and `roleplayGrade` refuses another name; Frank and the ops viewers
+  (`rpScope.all`) still pick who, and the Beta tester.
+- **The Coaching and Learning Centers and both Road Maps carry colour**
+  (Frank, 2026-10-01: "more color and design"): a coaching section wears
+  its producer's badge colour, a card's left edge its outcome's, Quick
+  coaching is a tinted panel; objection bars are red with the won share
+  green; Role Play and Session History open on a dark hero card, the three
+  prospects are green / amber / clay; each Training deck has its own colour;
+  a Road Map has a dark banner, pill contents and numbered, colour-banded
+  sections (Apollo's clay, Athena's sage). The editions' stylesheet is
+  scoped under `.ed` -- its `.pcard` / `.anal` had been restyling Role Play's
+  prospect cards and the coaching cards.
+- The local harness used to check all of this (a mock of the Worker over
+  saved day documents, Playwright captures) lives in the session's
+  scratchpad, not the repo; `design/flores-board-preview.html` is the
+  approved mock-up the restyle followed.
+
 ## Never
 
 - Commit anything under `secrets/`, `data/` or `out/` (all gitignored).
