@@ -1333,6 +1333,48 @@ live call's transcript both ways) for any day with saved recordings.
 data and costs nothing. Run it after touching `daily.py`, `day_calls.py` or
 `finalize.py`.
 
+## The Arizona look, The Flores Post and the Editions (2026-10-01)
+
+**The board wears the desert** (Frank, 2026-10-01: "a pure design change").
+`site/public/index.html` keeps every view's markup, hooks, tier colours,
+lists and links; only the token values moved (checked with a before/after
+capture of 16 views in a local harness). Five looks a person picks in
+**Settings** at the bottom of the menu (Sonoran, Saguaro, Turquoise &
+Silver, Canyon Sunset, Mesa Minimal), each with its Desert Night; light /
+dark / device as icons only, remembered per browser (`board-look`). The
+menu lists each Center's pages; the header greets whoever is looking by
+first name (`/api/me`, ~90 random lines) and carries the search (Ctrl K:
+pages, sections, producers, every lead on the loaded day) and **Take a
+tour** (`tour.js`, the Field-notes card). Every section is a cream card
+with a 2px border. **A feed line never names a stage** ("Mike presented
+$2,500 in premium"): the Digest's day reads as Apollo's group chat
+(`digestFeedItems`) beside **Needs someone now** / **Left on the desk**
+(`needsNowRows`); the Service Digest's is **Off the desk · done today**.
+- **The Flores Post** (`site/public/post.js`) is its own page under the
+  Sales Center, written in rules from the day documents -- nothing typed,
+  nothing paid. Day editions for published days; the folio edition
+  updates every published day (and from today's checkpoint while open),
+  Friday editions frozen as they went out, a countdown at two or fewer
+  business days left, a closing edition. Slow editions (no sales on a day,
+  a week under $20,000, a folio under last folio's pace) carry What to try /
+  What to look for and the goal board. **Primetime is a permanent part of
+  the paper and the only place it carries the standings.** No links back to
+  the Digest ("tabs on the left is enough").
+- **The Editions** (`site/public/editions.js`): The Flores Feed, Gridiron,
+  The Drive Home, The Closing Bell, Dial Tones, CLOSER -- each with its own
+  mechanic, every one carrying the leaderboard, all from the same
+  documents. What people do on them (reactions, comments, poll and MVP
+  votes, mailbag notes, panel likes) is shared through the Worker's
+  `/api/editions/<key>` in R2 (`editions/<day>.json`,
+  `editions/folio-<end>.json`), one each per person by the Access name;
+  a viewer's own picks (watchlist, cover photo, card flips) stay in their
+  browser. The `/api/me` first names live in the Worker's `FIRST_NAMES` +
+  `RP_PRODUCER_EMAILS`.
+- The local harness used to check all of this (a mock of the Worker over
+  saved day documents, Playwright captures) lives in the session's
+  scratchpad, not the repo; `design/flores-board-preview.html` is the
+  approved mock-up the restyle followed.
+
 ## Never
 
 - Commit anything under `secrets/`, `data/` or `out/` (all gitignored).
