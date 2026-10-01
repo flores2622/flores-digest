@@ -121,9 +121,58 @@ def is_life(policy):
 # A lead marked sold on a life source is a life sale, not a household sold.
 LIFE_LEAD_SOURCES = {"life cross sell"}
 
+# ...and so is a lead whose sale WAS a life policy on any source (Frank,
+# 2026-09-30: "still shows coral with 1 HH" -- Alondra Angulo, Home no Auto,
+# marked sold 09-30 for the Individual Life Coral sold 09-29). Policy records
+# carry no customer, so the tie is the lead's producer + lead source: every
+# policy they sold on that source within LIFE_LEAD_DAYS of the lead's
+# soldDate is life (and there is one). Nothing found counts as before.
+# site/live.js isLifeLead mirrors this -- keep them in step.
+LIFE_LEAD_DAYS = 3
 
-def is_life_lead(lead):
-    return lead_sources.norm(lead.get("leadSourceName")) in LIFE_LEAD_SOURCES
+
+def life_lead_policies(policies, around, days=LIFE_LEAD_DAYS):
+    """(agentId, leadSourceId, soldDate, is_life) of every policy sold within
+    `days` of `around` -- what is_life_lead needs, small enough for the
+    Worker's basis."""
+    d0 = dt.date.fromisoformat(around)
+    lo, hi = (d0 - dt.timedelta(days=days)).isoformat(), (d0 + dt.timedelta(days=days)).isoformat()
+    return [[p.get("agentId"), p.get("leadSourceId"), str(p.get("soldDate") or "")[:10], is_life(p)]
+            for p in policies if lo <= str(p.get("soldDate") or "")[:10] <= hi]
+
+
+def is_life_lead(lead, recent=None):
+    """`recent`: life_lead_policies' rows (or None for the source rule only)."""
+    if lead_sources.norm(lead.get("leadSourceName")) in LIFE_LEAD_SOURCES:
+        return True
+    sold = str(lead.get("soldDate") or "")[:10]
+    if not recent or not sold:
+        return False
+    d0 = dt.date.fromisoformat(sold)
+    lo = (d0 - dt.timedelta(days=LIFE_LEAD_DAYS)).isoformat()
+    hi = (d0 + dt.timedelta(days=LIFE_LEAD_DAYS)).isoformat()
+    hits = [r[3] for r in recent if r[0] == lead.get("assignedTo") and r[1] == lead.get("leadSourceId")
+            and lo <= r[2] <= hi]
+    return bool(hits) and all(hits)
+
+
+# The life goal (Frank, 2026-10-01: "make the goal 1 life policy a week"):
+# per producer, Monday to Friday. Green once the week has one; yellow before
+# Friday without one (still time); red on Friday without one. The team's goal
+# is one each (x TEAM_SCALE). site/public/index.html lifeTier mirrors this --
+# keep them in step.
+LIFE_WEEKLY_GOAL = 1
+
+
+def week_start(day):
+    d = dt.date.fromisoformat(day)
+    return (d - dt.timedelta(days=d.weekday())).isoformat()
+
+
+def life_week_tier(count, day, goal=LIFE_WEEKLY_GOAL):
+    if (count or 0) >= goal:
+        return "green"
+    return "red" if dt.date.fromisoformat(day).weekday() >= 4 else "yellow"
 
 
 def life_sales(day, policies, source_map, ids):

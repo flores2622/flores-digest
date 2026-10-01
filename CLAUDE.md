@@ -333,13 +333,25 @@ Everything caches under `data/`, so a re-run resumes rather than restarting.
   "Life"); `real_sales` and `bundle_classification` leave it out and
   `life_sales` counts it (`life_policies` / `life_premium`; the board's
   `life` / `life_ps`). A lead sold on Life Cross Sell is not a household
-  sold (`is_life_lead`). So life is never in Policies, Premium Sold, HH
+  sold (`is_life_lead`), **nor is a lead on any source whose sale was life**
+  (Frank, 2026-09-30: "still shows coral with 1 HH" -- Alondra Angulo, Home
+  no Auto, marked sold 09-30 for Coral's 09-29 Individual Life): every
+  policy its producer sold on its lead source within 3 days of its soldDate
+  is life (`life_lead_policies`, `LIFE_LEAD_DAYS`; the Worker's
+  `isLifeLead` gets them as `live_basis.life.recent` plus today's own
+  policy read). Policy records carry no customer, so that tie is the only
+  one; it changed no other September lead. So life is never in Policies, Premium Sold, HH
   Sold, Household Completion, the leaderboard or the closing ratio; the
   Digest's **Life Sold** tile shows it (its list is `rows.life`), the email
   adds a Life Sold card only on a day with one, and the Worker keeps a live
   life sale apart the same way (`live_basis.life`). The Sales sheet still
   lists it. BOB life policies stay not-a-sale: no producer had a counted
   life sale in September (Crystal's two, 09-02 and 09-15, were BOB).
+  **The goal is 1 life policy a week** (Frank, 2026-10-01), per producer,
+  Monday to Friday (team: 1 x `TEAM_SCALE`): `digest_config.life_week_tier`
+  over the board's `life_week` (Monday to the day; `lifeTier` in index.html
+  mirrors it) -- green once the week has one, yellow before Friday without
+  one, red on Friday without one. A range wants 1 per week it touches.
 - **A renewal is not new business.** Neither is servicing, a payment, a claim,
   or chasing paperwork on a policy already sold.
 - **Selling a product the household does not have yet IS new business**, even to

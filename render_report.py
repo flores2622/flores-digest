@@ -158,7 +158,7 @@ def funnel_card(title, subtitle, rows, team_value, team_tier):
             f'<div class="sb">{subtitle}</div>{body}</div>')
 
 
-def build_funnel(m, day_label):
+def build_funnel(m, day_label, day=None):
     # Its own hardcoded roster until 2026-08-24, which is why the funnel kept
     # showing three producers and three-producer team totals after Coral and
     # Sarahi were promoted everywhere else. Driven off the config now.
@@ -234,10 +234,12 @@ def build_funnel(m, day_label):
     if tlife:
         lf = [(p, m[p].get("life_premium", 0),
                f'{money(m[p].get("life_premium", 0))}<span class="sq">{m[p].get("life_policies", 0)} pol</span>',
-               "none") for p in P]
+               cfg.life_week_tier(m[p].get("life_week", 0), day) if day else "none") for p in P]
+        tweek = sum(m[p].get("life_week", 0) for p in P)
         cards.append(funnel_card(
-            "Life Sold", f"Life insurance, counted apart &mdash; {day_label}", lf,
-            f'{money(sum(m[p].get("life_premium", 0) for p in P))}<span class="sq">{tlife} pol</span>', "none"))
+            "Life Sold", f"Life insurance, counted apart; goal 1 a week each &mdash; {day_label}", lf,
+            f'{money(sum(m[p].get("life_premium", 0) for p in P))}<span class="sq">{tlife} pol</span>',
+            cfg.life_week_tier(tweek, day, cfg.LIFE_WEEKLY_GOAL * cfg.TEAM_SCALE) if day else "none"))
 
     return '<div class="scorecard-grid">' + "".join(cards) + '</div>'
 
