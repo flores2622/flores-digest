@@ -4,6 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Sales Floor — Flores Insurance Agency</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=Manrope:wght@400;500;600;700;800&family=Fraunces:opsz,wght@9..144,400;9..144,700&family=Public+Sans:wght@400;500;700;800&family=Bitter:wght@400;600&family=Work+Sans:wght@400;500;700;800&family=Instrument+Serif&family=Instrument+Sans:wght@400;500;700&family=Bebas+Neue&family=Bangers&family=Comic+Neue:wght@400;700&family=JetBrains+Mono:wght@400;700&display=swap">
 <style>
 /* ---------------------------------------------------------------------------
    Palette. Categorical slots 1-5 in fixed order, validated in both modes:
@@ -15,16 +16,36 @@
    Colour follows the OUTCOME, never its rank or size, so a quiet day does not
    repaint the chart.
 --------------------------------------------------------------------------- */
+/* ---- The Arizona look (Frank, 2026-10-01) -----------------------------------
+   Five looks a person picks in Settings (bottom of the menu), each with its
+   Desert Night: html[data-look] + html[data-mode]. "System" is resolved in
+   JS to light or dark, so there is no media query here. The variable NAMES
+   below are the ones every rule in this file already used -- only the
+   values moved to the desert palette -- so no view's markup had to change.
+   Tier colours (--good/--warn/--bad, .tg/.ty/.tr) keep the email's values
+   in light mode and the tuned dark ones, exactly as before. */
 :root {
   color-scheme: light;
-  --surface:        #fcfcfb;
-  --surface-raised: #ffffff;
-  --border:         #e5e4e0;
-  --border-strong:  #d2d1cc;
-  --text-primary:   #0b0b0b;
-  --text-secondary: #52514e;
-  --text-muted:     #78776f;
-  --grid:           #ecebe7;
+  --display: 'DM Serif Display', Georgia, serif;
+  --body: Manrope, system-ui, -apple-system, "Segoe UI", sans-serif;
+  --surface:        #f3e9dc;   /* sand: the page */
+  --surface-raised: #fffaf3;   /* cream: every card */
+  --card2:          #f8efe4;
+  --chip:           #e8dac9;
+  --border:         #e2d3c0;
+  --border-strong:  #d4c1aa;
+  --text-primary:   #2a2320;
+  --text-secondary: #5e5046;
+  --text-muted:     #7a6a5d;
+  --grid:           #efe3d4;
+  --accent:         #b5532f;   /* clay */
+  --accent-d:       #8a2b12;
+  --side:           #2a2320;   /* the menu */
+  --side2:          #3a302b;
+  --sideInk:        #e9ddd0;
+  --brand:          #f3e9dc;
+  --brand2:         #e59a6f;
+  --rad: 18px; --bw: 2px; --shadow: 0 2px 8px rgba(42,35,32,.08);
   --s1: #2a78d6;  /* Live Contact       */
   --s2: #eb6834;  /* Voicemail          */
   --s3: #1baf7a;  /* Screener           */
@@ -33,91 +54,50 @@
   --s6: #008300;  /* categorical slot 6 -- sales breakdown charts */
   --s7: #4a3aa7;  /* categorical slot 7 -- sales breakdown charts */
   --s8: #e34948;  /* categorical slot 8 -- sales breakdown charts */
-  --bar:           #2a78d6;
-  --bar-track:     #ecebe7;
-  /* Chip/medal tokens, carried over from the pre-migration artifact's own
-     light/dark palette (it had these; the first port here flattened them
-     to single hardcoded values, which is why dark mode looked off --
-     dark-on-dark chip text, unreadable bronze/gold medal names). */
+  --bar:           var(--accent);
+  --bar-track:     var(--chip);
   --good:   #0a6b0a; --goodbg: #e2f4e2; --goodbd: #b7e2b7;
   --warn:   #8a6100; --warnbg: #fdf0d9; --warnbd: #e0c184;
   --bad:    #a80000; --badbg:  #fce3e3; --badbd:  #f0b4b4;
   --gold:   #9a6f00; --silver: #6f6f6f; --bronze: #9a5f2b;
 }
-@media (prefers-color-scheme: dark) {
-  :root:not([data-theme="light"]) {
-    color-scheme: dark;
-    --surface:        #1a1a19;
-    --surface-raised: #222221;
-    --border:         #35352f;
-    --border-strong:  #45453e;
-    --text-primary:   #ffffff;
-    --text-secondary: #c3c2b7;
-    --text-muted:     #8e8d84;
-    --grid:           #2b2b27;
-    --s1: #3987e5;
-    --s2: #d95926;
-    --s3: #199e70;
-    --s4: #c98500;
-    --s5: #d55181;
-    --s6: #008300;
-    --s7: #9085e9;
-    --s8: #e66767;
-    --bar:            #3987e5;
-    --bar-track:      #2b2b27;
-    --good:   #7fd07f; --goodbg: #1c3320; --goodbd: #2f5a34;
-    --warn:   #e0b165; --warnbg: #33290f; --warnbd: #5c4a1c;
-    --bad:    #f0908e; --badbg:  #3a1a1a; --badbd:  #632c2c;
-    --gold:   #e3bf55; --silver: #c4c4c4; --bronze: #d79a63;
-  }
-}
-:root[data-theme="dark"] {
-  color-scheme: dark;
-  --surface:        #1a1a19;
-  --surface-raised: #222221;
-  --border:         #35352f;
-  --border-strong:  #45453e;
-  --text-primary:   #ffffff;
-  --text-secondary: #c3c2b7;
-  --text-muted:     #8e8d84;
-  --grid:           #2b2b27;
-  --s1: #3987e5;
-  --s2: #d95926;
-  --s3: #199e70;
-  --s4: #c98500;
-  --s5: #d55181;
-  --s6: #008300;
-  --s7: #9085e9;
-  --s8: #e66767;
-  --bar:            #3987e5;
-  --bar-track:      #2b2b27;
-  --good:   #7fd07f; --goodbg: #1c3320; --goodbd: #2f5a34;
-  --warn:   #e0b165; --warnbg: #33290f; --warnbd: #5c4a1c;
-  --bad:    #f0908e; --badbg:  #3a1a1a; --badbd:  #632c2c;
-  --gold:   #e3bf55; --silver: #c4c4c4; --bronze: #d79a63;
-}
-/* Digest-email tier colours, verbatim (render_report.DOT / .tier-text-*),
-   in LIGHT mode -- these are the actual colours the sent email uses, so a
-   tier reads the same colour on the board as in their inbox there.
-   Frank, 2026-09-09: in dark mode the email's saturated red/orange/green
-   sitting directly on near-black text (no chip background to soften it,
-   unlike .c-g/.c-w/.c-r) read as "blurry" -- full-saturation colour on a
-   very dark ground causes exactly the halation the rest of this file's
-   dark palette was built to avoid (see --good/--warn/--bad above, and
-   .colh.g/.colh.b which already use them for the same bare-text-no-chip
-   case). Dark mode gets those same tuned tokens instead of the email's
-   literal hex; light mode is untouched and still matches the email exactly. */
+html[data-look="saguaro"] { --display: 'Fraunces', Georgia, serif; --body: 'Public Sans', system-ui, sans-serif;
+  --surface: #f1ece1; --surface-raised: #fdfbf6; --card2: #f4f0e6; --chip: #e6e3d6; --text-primary: #1f2a22; --text-muted: #5d6b5f; --text-secondary: #50605a;
+  --grid: #e4e2d6; --border: #dcdfd0; --border-strong: #c9cdb9; --accent: #3e6b4f; --accent-d: #2b4f39; --side: #24382c; --side2: #2f4a3a; --sideInk: #dfe7dd; --brand: #f1ece1; --brand2: #b9d3a8; --rad: 12px; }
+html[data-look="turquoise"] { --display: 'Bitter', Georgia, serif; --body: 'Work Sans', system-ui, sans-serif;
+  --surface: #eeebe5; --surface-raised: #fbfaf7; --card2: #f2f0eb; --chip: #e3e0da; --text-primary: #1d2a33; --text-muted: #5d6a73; --text-secondary: #4e5b64;
+  --grid: #e3e0da; --border: #dcdfe1; --border-strong: #c8cdd0; --accent: #1f8a8a; --accent-d: #156464; --side: #1d2a33; --side2: #2a3a46; --sideInk: #d6dee3; --brand: #eeebe5; --brand2: #6cc7c4; --rad: 10px; }
+html[data-look="canyon"] { --display: 'Fraunces', Georgia, serif;
+  --surface: #f6e6d6; --surface-raised: #fff8f0; --card2: #fbeee2; --chip: #f1dcc8; --text-primary: #3a1d12; --text-muted: #7d5a48; --text-secondary: #6a4a3a;
+  --grid: #f0dccb; --border: #ecd2bb; --border-strong: #e0b994; --accent: #d9622b; --accent-d: #a8441a; --side: #5a2416; --side2: #733021; --sideInk: #f6dcc8; --brand: #fff1e4; --brand2: #ffb27e; --rad: 18px; --bw: 2.5px; }
+html[data-look="canyon"] h1, html[data-look="canyon"] h2, html[data-look="canyon"] .tile .v { font-weight: 700; }
+html[data-look="mesa"] { --display: 'Instrument Serif', Georgia, serif; --body: 'Instrument Sans', system-ui, sans-serif;
+  --surface: #faf7f2; --surface-raised: #ffffff; --card2: #f7f3ec; --chip: #efe8de; --text-primary: #2a2320; --text-muted: #776a5f; --text-secondary: #5e5248;
+  --grid: #efe8de; --border: #ece4d8; --border-strong: #e2d7c8; --side: #efe6da; --side2: #e2d5c4; --sideInk: #4a3f38; --brand: #2a2320; --brand2: #b5532f; --rad: 10px; --bw: 1px; --shadow: none; }
+html[data-look="mesa"] .tabs { border-right: 1px solid var(--border-strong); }
+/* Desert Night */
+html[data-mode="dark"] { color-scheme: dark;
+  --surface: #1b1613; --surface-raised: #25201c; --card2: #2e2823; --chip: #3a322b; --text-primary: #efe4d6; --text-muted: #b3a393; --text-secondary: #c4b5a5;
+  --grid: #3a322b; --border: #3f3630; --border-strong: #4a3f36; --accent: #d06a3f; --accent-d: #ff9b74; --side: #120e0c; --side2: #241c18; --sideInk: #d9cbbb; --brand: #f3e9dc; --brand2: #e59a6f; --shadow: 0 2px 8px rgba(0,0,0,.45);
+  --s1: #3987e5; --s2: #d95926; --s3: #199e70; --s4: #c98500; --s5: #d55181; --s6: #008300; --s7: #9085e9; --s8: #e66767;
+  --good: #7fd07f; --goodbg: #1c3320; --goodbd: #2f5a34;
+  --warn: #e0b165; --warnbg: #33290f; --warnbd: #5c4a1c;
+  --bad: #f0908e; --badbg: #3a1a1a; --badbd: #632c2c;
+  --gold: #e3bf55; --silver: #c4c4c4; --bronze: #d79a63; }
+html[data-mode="dark"][data-look="saguaro"] { --surface: #141a16; --surface-raised: #1c241e; --card2: #232d26; --chip: #2c372f; --text-primary: #e8ede4; --text-muted: #a3b2a5; --text-secondary: #c3cfc4; --grid: #2c372f; --border: #33403a; --border-strong: #3b4a3f; --accent: #5e9a72; --accent-d: #9fd6b3; --side: #0d120f; --side2: #1a241d; --sideInk: #cfdccf; }
+html[data-mode="dark"][data-look="turquoise"] { --surface: #12181c; --surface-raised: #1a2228; --card2: #212b32; --chip: #29343c; --text-primary: #e6ebee; --text-muted: #9fadb6; --text-secondary: #c2cdd4; --grid: #29343c; --border: #2f3c45; --border-strong: #36444e; --accent: #34aeab; --accent-d: #8fe0dd; --side: #0b1013; --side2: #17202a; --sideInk: #cdd8de; }
+html[data-mode="dark"][data-look="canyon"] { --surface: #1d1210; --surface-raised: #2a1a16; --card2: #33211c; --chip: #40291f; --text-primary: #f7e6da; --text-muted: #c4a491; --text-secondary: #dcc0b0; --grid: #40291f; --border: #4a3026; --border-strong: #5a3a2c; --accent: #ec7a43; --accent-d: #ffb089; --side: #130b09; --side2: #2a1a14; --sideInk: #eccfbe; }
+html[data-mode="dark"][data-look="mesa"] { --surface: #171311; --surface-raised: #1f1a17; --card2: #26201c; --chip: #2f2824; --text-primary: #efe6da; --text-muted: #ad9e90; --text-secondary: #cdbfb1; --grid: #2f2824; --border: #332b26; --border-strong: #3d342e; --side: #1f1a17; --side2: #2a231f; --sideInk: #d5c8ba; --brand: #efe6da; --shadow: none; }
+/* Digest-email tier colours, verbatim (render_report.DOT / .tier-text-*), in
+   LIGHT mode -- the colours the sent email uses. Dark mode gets the tuned
+   tokens instead of the email's literal hex (Frank, 2026-09-09: the
+   saturated red/orange/green on near-black read as "blurry"). */
 .tg { color: #0ca30c; font-weight: 600; }
 .ty { color: #eda100; font-weight: 600; }
 .tr { color: #e60000; font-weight: 600; }
-@media (prefers-color-scheme: dark) {
-  :root:not([data-theme="light"]) .tg { color: var(--good); }
-  :root:not([data-theme="light"]) .ty { color: var(--warn); }
-  :root:not([data-theme="light"]) .tr { color: var(--bad); }
-}
-:root[data-theme="dark"] .tg { color: var(--good); }
-:root[data-theme="dark"] .ty { color: var(--warn); }
-:root[data-theme="dark"] .tr { color: var(--bad); }
+html[data-mode="dark"] .tg { color: var(--good); }
+html[data-mode="dark"] .ty { color: var(--warn); }
+html[data-mode="dark"] .tr { color: var(--bad); }
 .mdl { font-size: 14px; line-height: 1; margin-right: 5px; }
 .ptrack { flex: 1; height: 10px; border-radius: 5px; background: var(--surface); border: 1px solid var(--border-strong); overflow: hidden; }
 .pfill { height: 100%; border-radius: 5px; }
@@ -815,6 +795,144 @@ td.rdrill-cell.on { box-shadow: inset 0 -2px 0 var(--s1); color: inherit; font-w
 tr.rdrill-row:hover td { background: var(--surface-2, rgba(127,127,127,.08)); }
 tr.rdrill-row.on td { box-shadow: inset 0 -2px 0 var(--s1); }
 
+/* ---- The Arizona look: shell and cards (Frank, 2026-10-01) ------------------
+   Overrides of the rules above, in cascade order, so every view keeps its
+   markup, hooks, tiers and lists and only the dress changed. */
+body { font-family: var(--body); font-size: 14px; }
+h1, h2, .tile .v { font-family: var(--display); }
+.shell { min-height: 100vh; }
+/* the menu */
+.tabs { width: 232px; background: var(--side); color: var(--sideInk); border-right: none; padding: 22px 14px 16px; gap: 2px;
+  top: 0; max-height: 100vh; min-height: 100vh; position: sticky; align-self: flex-start; }
+.brand { font-family: var(--display); font-size: 26px; line-height: 1; padding: 0 8px; color: var(--brand); margin-bottom: 18px; }
+.brand span { color: var(--brand2); }
+.navgrp { margin: 0 0 6px; padding: 12px 10px 4px; font-size: 11px; letter-spacing: .14em; text-transform: uppercase; color: var(--sideInk); opacity: .6; font-weight: 700; }
+.navgrp:first-of-type { padding-top: 0; }
+.tab { border: 0; border-radius: 10px; padding: 9px 10px; font-size: 14px; font-weight: 700; color: var(--sideInk); }
+.tab:hover { color: #fff; background: var(--side2); }
+.tab[aria-selected="true"] { color: #fff; background: var(--side2); border-left-color: transparent; }
+html[data-look="mesa"] .tab:hover, html[data-look="mesa"] .tab[aria-selected="true"] { color: var(--text-primary); }
+.subnav { display: flex; flex-direction: column; gap: 1px; margin: 1px 0 4px; }
+.subnav[hidden] { display: none; }
+.stab { display: block; width: 100%; text-align: left; border: 0; background: none; font: inherit; font-size: 13px; padding: 7px 10px 7px 24px; border-radius: 10px; color: var(--sideInk); opacity: .85; cursor: pointer; }
+.stab:hover { opacity: 1; background: var(--side2); }
+.stab[aria-current="page"] { background: var(--accent); color: #fff; opacity: 1; font-weight: 700; }
+.setbtn { margin-top: auto; display: flex; align-items: center; gap: 10px; border: 0; background: var(--side2); color: var(--sideInk); border-radius: 12px; padding: 11px 12px; font: 600 14px var(--body); cursor: pointer; text-align: left; width: 100%; }
+.setbtn svg { flex: none; }
+.setbtn small { display: block; font-size: 12px; opacity: .7; font-weight: 500; }
+.setpan { position: fixed; left: 16px; bottom: 16px; z-index: 60; width: 300px; max-width: calc(100vw - 32px); background: var(--surface-raised); color: var(--text-primary);
+  border: 2px solid var(--border-strong); border-radius: 18px; box-shadow: 0 18px 50px rgba(0,0,0,.3); padding: 14px 16px; display: flex; flex-direction: column; gap: 10px; }
+.setpan[hidden] { display: none; }
+.setpan .hrow { display: flex; justify-content: space-between; align-items: center; gap: 10px; }
+.setpan h3 { margin: 0; font: 400 20px var(--display); color: var(--text-primary); }
+.modes { display: flex; gap: 3px; background: var(--chip); padding: 3px; border-radius: 10px; }
+.modes button { border: 0; padding: 6px 8px; border-radius: 8px; background: transparent; color: var(--text-secondary); cursor: pointer; display: flex; align-items: center; }
+.modes button[aria-pressed="true"] { background: var(--surface-raised); color: var(--text-primary); }
+.looks { display: grid; grid-template-columns: 1fr; gap: 4px; }
+.looks button { display: flex; align-items: center; gap: 10px; border: 1.5px solid var(--border); background: transparent; border-radius: 10px; padding: 7px 8px; font: 600 13px var(--body); color: var(--text-primary); cursor: pointer; text-align: left; }
+.looks button[aria-pressed="true"] { border-color: var(--accent); background: var(--card2); }
+.sw3 { display: flex; gap: 2px; border-radius: 6px; overflow: hidden; }
+.sw3 i { display: block; width: 14px; height: 14px; border-radius: 3px; }
+/* the page column */
+.wrap { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+.top { background: transparent; color: var(--text-primary); padding: 22px 24px 0; max-width: 1600px; width: 100%; margin: 0 auto; align-items: center; }
+.top h1 { font-size: 30px; font-weight: 400; letter-spacing: 0; }
+.top .sub { margin-left: auto; font-size: 13px; color: var(--text-primary); background: var(--chip); padding: 6px 12px; border-radius: 999px; font-weight: 600; }
+.top .sub:empty { display: none; }
+.main { padding: 14px 24px 60px; }
+#view > .controls { display: inline-flex; vertical-align: middle; margin: 0 10px 18px 0; }
+select, button.ghost, .btn, input[type="date"] { border-radius: 10px; border-color: var(--border-strong); background: var(--surface-raised); font-family: var(--body); font-weight: 600; padding: 8px 10px; }
+.subtab { border-radius: 999px; background: var(--chip); border-color: transparent; }
+.subtab.sel { background: var(--accent); border-color: var(--accent); color: #fff; }
+.subtab:hover:not(.sel) { border-color: var(--border-strong); }
+.ctabs { border-bottom-color: var(--border-strong); }
+.ctab.sel { color: var(--accent); border-bottom-color: var(--accent); }
+.ctabs.dup { display: none; }
+/* cards: every section is one */
+.sect { background: var(--surface-raised); border: var(--bw) solid var(--border-strong); border-radius: var(--rad); padding: 18px 20px 20px; box-shadow: var(--shadow); margin: 20px 0 0; }
+.sect > h2:first-child, .sect > .sd + *, h2 { margin-top: 0; }
+h2 { font-size: 22px; font-weight: 400; text-transform: none; letter-spacing: 0; margin: 20px 0 12px; padding-bottom: 8px; border-bottom: 1px solid var(--border-strong); }
+.sect h2 { margin-top: 0; }
+.sd { margin: -6px 0 14px; }
+.digestgrid { gap: 20px; }
+.tile { border: var(--bw) solid var(--border-strong); border-radius: calc(var(--rad) - 4px); box-shadow: var(--shadow); padding: 14px 16px; }
+.tile .k { font-size: 12px; letter-spacing: .04em; font-weight: 700; }
+.tile .v { font-size: 34px; font-weight: 400; letter-spacing: 0; line-height: 1.05; margin-top: 6px; }
+.tiles-6 { padding: 14px; margin: -14px; }
+.hero, .ccard, .blk, .rpchat, .gradecard, .pcard, .fcface, .quizopt, .matchtile, .scroll { border-radius: 14px; }
+.hero, .ccard, .rpchat, .gradecard, .pcard, .scroll { border-width: var(--bw); border-color: var(--border-strong); }
+.ccard { background: var(--card2); }
+.ccard .blk, .ccard .anal { background: var(--surface-raised); }
+tr.tot td { background: var(--card2); }
+tbody tr:hover { background: color-mix(in oklab, var(--accent) 8%, transparent); }
+.scroll table { background: var(--surface-raised); }
+#tip { border-radius: 10px; border-width: 1.5px; background: var(--surface-raised); }
+.linkbtn, a { color: var(--accent); }
+.livebanner .livenow { font-weight: 700; }
+.icon-btn:hover { background: var(--chip); }
+.objrow:hover { background: var(--card2); }
+.objrow.sel { background: color-mix(in oklab, var(--accent) 12%, var(--surface-raised)); }
+:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
+
+/* header: greeting, search, the day pill (Frank, 2026-10-01) */
+.top { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; padding-top: 18px; }
+.greetwrap { flex: 1 1 320px; min-width: 0; }
+.eyebrow { font-size: 11px; letter-spacing: .14em; text-transform: uppercase; color: var(--text-muted); font-weight: 700; }
+.top h1.greet { margin: 2px 0 0; font: 400 clamp(24px, 2.4vw, 34px)/1.1 var(--display); text-wrap: balance; }
+.search { position: relative; flex: 0 1 380px; }
+.search label { display: flex; align-items: center; gap: 10px; height: 40px; border: 1.5px solid var(--border-strong); border-radius: 12px; padding: 0 12px; background: var(--surface-raised); color: var(--text-muted); }
+.search input { border: 0; outline: 0; flex: 1; min-width: 0; font: 500 14px var(--body); background: transparent; color: var(--text-primary); }
+.search input::-webkit-search-cancel-button { -webkit-appearance: none; }
+.search kbd { font: 600 11px var(--body); border: 1px solid var(--border-strong); border-radius: 6px; padding: 2px 6px; color: var(--text-muted); }
+.results { position: absolute; left: 0; right: 0; top: 46px; z-index: 55; background: var(--surface-raised); border: 1.5px solid var(--border-strong); border-radius: 14px; box-shadow: 0 12px 30px rgba(42,35,32,.18); padding: 8px; max-height: 440px; overflow: auto; }
+.results[hidden] { display: none; }
+.results h5 { margin: 8px 8px 4px; font-size: 11px; letter-spacing: .12em; text-transform: uppercase; color: var(--text-muted); }
+.results button { display: flex; justify-content: space-between; gap: 12px; width: 100%; text-align: left; border: 0; background: none; font: 500 14px var(--body); padding: 8px 10px; border-radius: 9px; cursor: pointer; color: var(--text-primary); }
+.results button:hover, .results button.sel { background: var(--card2); }
+.results button span { color: var(--text-muted); font-size: 12.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 55%; }
+.results .none { padding: 10px; color: var(--text-muted); font-size: 13px; }
+@media (max-width: 760px) { .search { flex-basis: 100%; order: 3; } .top .sub { margin-left: 0; } }
+
+/* group-chat feeds and the to-do card (Frank, 2026-10-01: "the group chat
+   option, to replace the current live feed format"; "at the desk sounds like
+   its being worked on, rename it to something that sounds like its off the desk") */
+.chatbox { display: flex; flex-direction: column; gap: 8px; max-height: 560px; overflow: auto; padding: 4px 2px; }
+.chatbox .hr { align-self: center; font-size: 10px; font-weight: 800; letter-spacing: .1em; text-transform: uppercase; background: var(--chip); padding: 3px 10px; border-radius: 999px; color: var(--text-muted); margin: 4px 0; }
+.chatbox .bub { max-width: 86%; padding: 8px 12px; border-radius: 14px; background: var(--card2); border: 1.5px solid var(--border); font: inherit; font-size: 13.5px; line-height: 1.45; color: var(--text-primary); align-self: flex-start; border-bottom-left-radius: 4px; text-align: left; }
+.chatbox button.bub { cursor: pointer; }
+.chatbox button.bub:hover { border-color: var(--accent); }
+.chatbox .bub.me { align-self: flex-end; background: var(--goodbg); border-color: var(--goodbd); border-bottom-left-radius: 14px; border-bottom-right-radius: 4px; }
+.chatbox .bub small { display: block; font-size: 10.5px; font-weight: 800; margin-bottom: 3px; color: var(--text-secondary); }
+.chatbox .bub small .pbadge { font-size: 10.5px; padding: 0 6px; margin-right: 2px; }
+.chatbox .bub .tm { font-size: 10.5px; color: var(--text-muted); float: right; margin: 4px 0 0 10px; }
+.chatbox .pinned { background: var(--side); color: var(--sideInk); border-radius: 10px; padding: 8px 11px; font-size: 12.5px; position: sticky; top: 0; z-index: 1; }
+html[data-look="mesa"] .chatbox .pinned { background: var(--text-primary); color: var(--surface); }
+.todo { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
+.todo li { display: flex; gap: 12px; align-items: center; border: 1.5px solid var(--border); border-radius: 12px; padding: 10px 12px; background: var(--card2); }
+.todo b.n { font: 400 26px/1 var(--display); min-width: 40px; text-align: center; }
+.todo .t { flex: 1; font-size: 13.5px; min-width: 0; }
+.todo .t small { display: block; color: var(--text-muted); font-size: 12px; }
+.todo li.bad b.n { color: var(--bad); } .todo li.warn b.n { color: var(--warn); } .todo li.ok b.n { color: var(--good); }
+.todo button { font: 600 12px var(--body); border: 1px solid var(--border-strong); background: var(--surface-raised); border-radius: 8px; padding: 6px 10px; cursor: pointer; color: var(--text-primary); white-space: nowrap; }
+.todo button:hover { border-color: var(--accent); }
+
+/* The coaching card's flow is in its badge (outcomeBadgeHtml), so the striped
+   left edge and its legend are gone (Frank, 2026-09-30 preview review: "remove
+   that left colored tab from the cards, and the legend, i like the badge"). */
+.flowedge, .flowleg { display: none; }
+.sect.nolog .controls, .sect.nolog .btn { display: none; }
+.ccard.found { box-shadow: 0 0 0 3px var(--accent); }
+.ccard > summary.cchead { border-left: 1px solid var(--border) !important; }
+@media (max-width: 760px) {
+  .tabs { min-height: 0; max-height: none; position: static; flex-direction: row; flex-wrap: wrap; padding: 10px 12px; gap: 6px; align-items: center; }
+  .brand { margin: 0 8px 0 0; font-size: 20px; }
+  .navgrp, .subnav, .setbtn small { display: none; }
+  .setbtn { margin: 0 0 0 auto; width: auto; padding: 8px 10px; }
+  .tab { width: auto; border-bottom: 0; }
+  .tab[aria-selected="true"] { background: var(--accent); color: #fff; border-bottom-color: transparent; }
+  .top { padding-top: 14px; }
+  .top h1 { font-size: 24px; }
+}
 /* Road Map (Frank, 2026-09-30): Learning Center > Road Map, the plain-
    language guides in blueprints.js. One reading column. */
 .bp { max-width: 760px; }
@@ -861,27 +979,69 @@ tr.rdrill-row.on td { box-shadow: inset 0 -2px 0 var(--s1); }
 .tourcard .tbtns .tback { background: none; color: var(--text-primary); border: 1px solid var(--border-strong); }
 @media (max-width: 760px) { .tabs .tourbtn { margin-top: 0; margin-left: auto; flex: none; white-space: nowrap; } }
 @media (prefers-reduced-motion: reduce) { .tourspot { transition: none; } }
+/* The tour's card is a Field note (Frank, 2026-10-01: option 3): a ruled index
+   card with a paper clip, the thing explained left lit in green. After the
+   tour's own rules above, so these win. */
+.tourspot { border-radius: 14px; box-shadow: 0 0 0 9999px rgba(42,35,32,.55); outline: 3px solid var(--livegreen); outline-offset: 3px; }
+.tourcard { width: min(380px, calc(100vw - 24px)); background: #fffdf5; color: #2a2320; border: 1px solid #d9c8b4; border-radius: 4px; box-shadow: 0 14px 40px rgba(0,0,0,.28);
+  padding: 0 0 12px; background-image: linear-gradient(0deg, transparent 0 27px, #f1d9d9 27px 28px); background-size: 100% 28px; background-position: 0 56px; font-family: var(--body); }
+.tourcard::before { content: ""; position: absolute; top: -14px; left: 28px; width: 22px; height: 40px; border: 3px solid #9a9a9a; border-radius: 11px; border-bottom: 0; }
+.tourcard .tstep { position: absolute; top: 13px; right: 16px; width: 30px; height: 30px; border-radius: 50%; background: #2a2320; color: #fff; display: flex; align-items: center; justify-content: center; font: 700 11px var(--body); letter-spacing: 0; text-transform: none; margin: 0; white-space: nowrap; }
+.tourcard h4 { height: 56px; margin: 0; padding: 0 56px 0 16px; display: flex; align-items: center; border-bottom: 2px solid #e59a9a; font: 400 20px var(--display); }
+.tourcard p { margin: 0; padding: 10px 16px 0; font-size: 14px; line-height: 28px; color: #2a2320; }
+.tourcard .tbtns { padding: 8px 16px 0; }
+.tourcard .tbtns .tnext { background: #b5532f; border-color: #b5532f; color: #fff; border-radius: 10px; }
+.tourcard .tbtns .tback { background: #e8dac9; border-color: #e8dac9; color: #2a2320; border-radius: 10px; }
+.tourcard .tbtns .tskip { color: #6e5f53; }
+.tabs .tourbtn { margin-top: auto; background: var(--side2); color: var(--sideInk); border: 0; border-radius: 12px; padding: 11px 12px; font: 600 14px var(--body); }
+.tabs .tourbtn:hover { color: #fff; border-color: transparent; }
+.tabs .tourbtn + .setbtn { margin-top: 6px; }
 </style>
 </head>
 <body>
-<div class="top">
-  <h1>Sales Floor</h1>
-  <span class="sub" id="topsub">loading…</span>
-  <button class="thbtn" id="thbtn" type="button"><span id="thico">◑</span><span id="thlbl">System</span></button>
-</div>
 <div class="shell">
-  <nav class="tabs" role="tablist">
+  <nav class="tabs" role="tablist" aria-label="Main menu">
+    <div class="brand">Flores<br><span>Insurance</span></div>
+    <div class="navgrp">Apollo · Sales</div>
     <button class="tab" role="tab" aria-selected="true"  data-v="salescenter">Sales Center</button>
+    <div class="subnav" data-for="salescenter"></div>
     <button class="tab" role="tab" aria-selected="false" data-v="coaching">Coaching Center</button>
+    <div class="subnav" data-for="coaching"></div>
     <button class="tab" role="tab" aria-selected="false" data-v="learning">Learning Center</button>
+    <div class="subnav" data-for="learning"></div>
+    <div class="navgrp">Athena · Service</div>
     <button class="tab" role="tab" aria-selected="false" data-v="service">Service Center</button>
+    <div class="subnav" data-for="service"></div>
+    <div class="navgrp" id="navcom" hidden>Cerberus · Commercial</div>
     <button class="tab" role="tab" aria-selected="false" data-v="commercial" hidden>Commercial Center</button>
+    <div class="subnav" data-for="commercial"></div>
     <button class="tourbtn" id="tourbtn" type="button">Take the tour</button>
+    <button type="button" class="setbtn" id="setBtn" aria-haspopup="dialog" aria-expanded="false"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg><span>Settings<small id="setSub">Sonoran · Light</small></span></button>
+    <div class="setpan" id="setPan" role="dialog" aria-label="Settings" hidden>
+      <div class="hrow"><h3>Look</h3>
+        <div class="modes" id="modes" role="group" aria-label="Light or dark">
+          <button type="button" data-mode="light" aria-label="Light" title="Light"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg></button>
+          <button type="button" data-mode="dark" aria-label="Dark" title="Dark"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg></button>
+          <button type="button" data-mode="system" aria-label="Match my device" title="Match my device"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="3" y="4" width="18" height="12" rx="2"/><path d="M8 20h8M12 16v4"/></svg></button>
+        </div></div>
+      <div class="looks" id="looks"></div>
+    </div>
   </nav>
-  <main class="main">
-    <div id="centerbar"></div>
-    <div id="view"><div class="empty">Loading…</div></div>
-  </main>
+  <div class="wrap">
+    <div class="top">
+      <div class="greetwrap"><div class="eyebrow">Sales Floor</div><h1 class="greet" id="greet">Welcome back.</h1></div>
+      <div class="search">
+        <label for="q"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg>
+          <input id="q" type="search" placeholder="Find a lead, producer, page…" autocomplete="off" aria-controls="res"><kbd>Ctrl K</kbd></label>
+        <div class="results" id="res" hidden></div>
+      </div>
+      <span class="sub" id="topsub">loading…</span>
+    </div>
+    <main class="main">
+      <div id="centerbar"></div>
+      <div id="view"><div class="empty">Loading…</div></div>
+    </main>
+  </div>
 </div>
 <div id="tip" role="tooltip"></div>
 
@@ -1017,7 +1177,7 @@ let view = "digest";
 // page's own pill-style .subtabs for anything inside it. A Center with one
 // page shows just that one tab.
 const CENTERS = {
-  salescenter: [["digest", "Digest"], ["sales", "Sales"], ["messages", "Texts & Emails"]],
+  salescenter: [["digest", "Digest"], ["post", "The Flores Post"], ["editions", "Editions"], ["sales", "Sales"], ["messages", "Texts & Emails"]],
   coaching: [["coaching", "Coaching"]],
   learning: [["roleplay", "Role Play"], ["rphistory", "Session History"], ["training", "Training"], ["blueprint", "Apollo's Road Map"]],
   service: [["service", "Service Digest"], ["renewals", "Renewals"], ["athenamap", "Athena's Road Map"]],
@@ -1026,6 +1186,7 @@ const CENTERS = {
 const centerPick = Object.fromEntries(Object.entries(CENTERS).map(([c, pages]) => [c, pages[0][0]]));
 const centerOf = v => Object.keys(CENTERS).find(c => CENTERS[c].some(([k]) => k === v)) || v;
 function paintCenterBar() {
+  paintSideNav();
   const c = centerOf(view), bar = $("#centerbar");
   if (!bar) return;
   if (!CENTERS[c]) { bar.innerHTML = ""; return; }
@@ -1042,7 +1203,7 @@ function paintCenterBar() {
     });
     return;
   }
-  bar.innerHTML = `<div class="ctabs" role="tablist">${CENTERS[c].map(([k, label]) =>
+  bar.innerHTML = `<div class="ctabs dup" role="tablist">${CENTERS[c].map(([k, label]) =>
     `<button class="ctab${k === view ? " sel" : ""}" role="tab" aria-selected="${k === view}" data-cv="${k}">${label}</button>`).join("")}</div>`;
   bar.querySelectorAll(".ctab").forEach(b => b.onclick = () => goView(b.dataset.cv));
 }
@@ -1144,22 +1305,333 @@ function hoverable(node, html) {
   node.addEventListener("mouseleave", () => { tip.style.opacity = 0; });
 }
 
-/* ---- theme: system -> light -> dark, remembered per browser --------------- */
+/* ---- look + light / dark (Frank, 2026-10-01) -------------------------------
+   Five looks, each with its Desert Night; picked in Settings at the bottom
+   of the menu and remembered per browser. "system" follows the device. */
+const LOOKS = [["sonoran", "Sonoran", ["#f3e9dc", "#2a2320", "#b5532f"]], ["saguaro", "Saguaro", ["#f1ece1", "#24382c", "#3e6b4f"]],
+  ["turquoise", "Turquoise & Silver", ["#eeebe5", "#1d2a33", "#1f8a8a"]], ["canyon", "Canyon Sunset", ["#f6e6d6", "#5a2416", "#d9622b"]],
+  ["mesa", "Mesa Minimal", ["#faf7f2", "#efe6da", "#b5532f"]]];
+const TH = { look: "sonoran", mode: "system" };
 (function () {
-  const K = "board-theme", R = document.documentElement, b = $("#thbtn"),
-        ico = $("#thico"), lbl = $("#thlbl");
-  const M = ["system", "light", "dark"],
-        T = { system: ["◑", "System"], light: ["☀", "Light"], dark: ["☾", "Dark"] };
-  const read = () => { try { const v = localStorage.getItem(K); return M.includes(v) ? v : "system"; } catch (_) { return "system"; } };
-  const apply = (m, save) => {
-    if (m === "system") { delete R.dataset.theme; R.style.colorScheme = ""; }
-    else { R.dataset.theme = m; R.style.colorScheme = m; }
-    ico.textContent = T[m][0]; lbl.textContent = T[m][1];
-    if (save) try { localStorage.setItem(K, m); } catch (_) {}
-  };
-  let cur = read(); apply(cur, false);
-  b.addEventListener("click", () => { cur = M[(M.indexOf(cur) + 1) % M.length]; apply(cur, true); });
+  try {
+    const v = JSON.parse(localStorage.getItem("board-look") || "null");
+    if (v && LOOKS.some(l => l[0] === v.look)) Object.assign(TH, v);
+    else { const old = localStorage.getItem("board-theme"); if (["light", "dark", "system"].includes(old)) TH.mode = old; }
+  } catch (_) {}
 })();
+const _darkMq = window.matchMedia("(prefers-color-scheme: dark)");
+function applyTheme(save) {
+  const dark = TH.mode === "dark" || (TH.mode === "system" && _darkMq.matches);
+  const R = document.documentElement;
+  R.setAttribute("data-look", TH.look); R.setAttribute("data-mode", dark ? "dark" : "light"); R.style.colorScheme = dark ? "dark" : "light";
+  const lk = LOOKS.find(l => l[0] === TH.look);
+  const sub = $("#setSub"); if (sub) sub.textContent = `${lk[1]} · ${TH.mode === "system" ? "Device" : dark ? "Dark" : "Light"}`;
+  const looks = $("#looks"); if (looks) looks.innerHTML = LOOKS.map(([k, n, c]) =>
+    `<button type="button" data-look="${k}" aria-pressed="${k === TH.look}"><span class="sw3"><i style="background:${c[0]}"></i><i style="background:${c[1]}"></i><i style="background:${c[2]}"></i></span>${n}</button>`).join("");
+  $$("#modes button").forEach(b => b.setAttribute("aria-pressed", String(b.dataset.mode === TH.mode)));
+  if (save) try { localStorage.setItem("board-look", JSON.stringify(TH)); } catch (_) {}
+}
+_darkMq.addEventListener("change", () => applyTheme(false));
+(function () {
+  const btn = $("#setBtn"), pan = $("#setPan");
+  if (!btn || !pan) return;
+  const close = () => { pan.hidden = true; btn.setAttribute("aria-expanded", "false"); };
+  btn.addEventListener("click", () => { const open = pan.hidden; pan.hidden = !open; btn.setAttribute("aria-expanded", String(open)); });
+  document.addEventListener("click", e => {
+    const l = e.target.closest("#looks [data-look]"); if (l) { TH.look = l.dataset.look; applyTheme(true); return; }
+    const m = e.target.closest("#modes [data-mode]"); if (m) { TH.mode = m.dataset.mode; applyTheme(true); return; }
+    if (!e.target.closest("#setPan, #setBtn")) close();
+  });
+  document.addEventListener("keydown", e => { if (e.key === "Escape") close(); });
+})();
+applyTheme(false);
+
+
+/* ---- who is looking, and the greeting (Frank, 2026-10-01: "random things
+   like when i open a new chat with claude? clever short little phrases") ---- */
+let ME = { email: "", name: "" };
+async function loadMe() {
+  try { const r = await fetch("/api/me", { cache: "no-store" }); if (r.ok) ME = await r.json(); } catch (_) {}
+  // A producer practices as themselves (Frank, 2026-10-01); Frank and the ops
+  // viewers (rpScope.all) still pick who, and the Beta tester.
+  const rp = ME.roleplay || {};
+  if (rp.producer && !rp.all) { rpProducer = rp.producer; rpFetchHistory().catch(() => {}); }
+}
+const rpLocked = () => !!((ME.roleplay || {}).producer) && !(ME.roleplay || {}).all;
+function businessDaysUntil(fromIso, toIso) {
+  let n = 0;
+  for (let d = new Date(fromIso + "T12:00:00Z"); isoDate(d) < toIso; d.setUTCDate(d.getUTCDate() + 1)) {
+    const w = d.getUTCDay(); if (w !== 0 && w !== 6) n++;
+  }
+  return n;
+}
+function greetingText() {
+  const n = ME.name || "team";
+  const az = new Date(Date.now() - 7 * 3600000), h = az.getUTCHours(), dow = az.getUTCDay();
+  const any = [`Welcome back, ${n}.`, `Back at it, ${n}.`, `Let's sell something, ${n}.`, `Ready when you are, ${n}.`, `What's the move, ${n}?`,
+    `The phones missed you, ${n}.`, `Hot out there. Hotter leads, ${n}.`, `Another day in the desert, ${n}.`, `Quotes don't present themselves, ${n}.`,
+    `Somebody out there needs a bundle, ${n}.`, `Good to see you, ${n}.`, `Let's find some households, ${n}.`, `Assume the sale, ${n}.`,
+    `Every dial is a maybe, ${n}.`, `Voicemails build character, ${n}.`, `Somewhere a renter needs a home policy, ${n}.`, `Ask for the sale, ${n}. Then stop talking.`,
+    `Present it, don't send it, ${n}.`, `Ten minutes on the phone beats ten emails, ${n}.`, `The best quote is the one they hear, ${n}.`,
+    `One more household, ${n}.`, `Dry heat, warm leads, ${n}.`, `Sun's up, rates are in, ${n}.`, `Cactus tough, ${n}.`, `Saguaro-strong today, ${n}.`,
+    `Hello again, ${n}.`, `Look who's here. ${n}.`, `Let's make the board glow, ${n}.`, `Green numbers only, ${n}.`, `Nice to have you, ${n}.`,
+    `Every no gets you closer to a yes, ${n}.`, `Bundle it, ${n}. Always bundle it.`, `Somebody's renewal is about to go up, ${n}.`,
+    `The follow-up is where the money is, ${n}.`, `Call backs are gold, ${n}.`, `Speed to dial, ${n}. Speed to dial.`, `Coverage is a promise, ${n}.`,
+    `Today's a good day to close, ${n}.`, `Fortune favors the dialer, ${n}.`, `The leaderboard awaits, ${n}.`, `Big day energy, ${n}.`,
+    `Let's see what the desert brought in, ${n}.`, `Numbers don't lie, ${n}. Let's read them.`, `The board's warm, ${n}.`, `Pull up a chair, ${n}.`];
+  const tod = h < 12 ? [`Morning, ${n}. Phones are warm.`, `Rise and quote, ${n}.`, `Coffee first, then closes, ${n}.`, `Good morning, ${n}.`,
+      `Early bird gets the bundle, ${n}.`, `Morning, ${n}. Beat the heat, beat the goal.`, `First call of the day is the easiest, ${n}.`, `Fresh coffee, fresh leads, ${n}.`]
+    : h < 17 ? [`Good afternoon, ${n}.`, `Afternoon, ${n}. Plenty of day left.`, `Second half, ${n}. Finish strong.`, `Afternoon push, ${n}.`,
+      `Post-lunch power hour, ${n}.`, `Afternoon, ${n}. People pick up after 3.`, `Still time to make it a great day, ${n}.`, `The 4 o'clock close is real, ${n}.`]
+    : [`Evening, ${n}. Let's see how it went.`, `Good evening, ${n}.`, `Clocking out soon, ${n}?`, `Sunset over the desert, numbers on the board, ${n}.`, `Long day, ${n}. Good work.`];
+  const day = { 1: [`Fresh week, ${n}.`, `Monday, ${n}. Call backs first.`, `New week, new households, ${n}.`],
+    2: [`Taco Tuesday, ${n}. Sell like it.`, `Tuesday, ${n}. Momentum day.`],
+    3: [`Hump day, ${n}. Over the top.`, `Midweek, ${n}. Halfway to Friday.`],
+    4: [`Thursday, ${n}. One more push.`, `Almost Friday, ${n}.`],
+    5: [`Friday, ${n}. Close it out.`, `Made it to Friday, ${n}.`, `Friday, ${n}. Leave nothing on the table.`],
+    0: [`Sunday, ${n}. The board rests too.`], 6: [`Saturday, ${n}? Dedicated.`] }[dow] || [];
+  const today = isoDate(azTodayDate()), end = folioEndFor(today);
+  const daysLeft = end ? businessDaysUntil(today, end) + (end >= today ? 1 : 0) : 99;
+  const live = cur && curLive && rangeMode === "day" && cur.date === today;
+  const soldToday = live ? ((cur.totals || {}).pol || 0) : null;
+  const ctx = [
+    ...(daysLeft <= 3 ? [`${daysLeft === 1 ? "Last day" : daysLeft + " days left"} in the folio, ${n}.`, `Clock's ticking on the folio, ${n}.`] : []),
+    ...(soldToday === 0 && h >= 10 ? [`First sale's still out there, ${n}.`, `Nobody's sold yet, ${n}. Be first.`] : []),
+    ...(soldToday >= 4 ? [`${soldToday} policies sold already, ${n}.`, `Strong day so far, ${n}.`] : [])];
+  const pool = [...any, ...tod, ...tod, ...day, ...day, ...ctx, ...ctx, ...ctx];
+  return pool[Math.floor(Math.random() * pool.length)];
+}
+let greetingOnce = "";
+function paintGreeting(force) {
+  const g = $("#greet"); if (!g) return;
+  if (force || !greetingOnce) greetingOnce = greetingText();
+  g.textContent = greetingOnce;
+}
+
+/* ---- search (Frank, 2026-10-01: the search bar, Ctrl K) --------------------
+   Pages, sections on the page you are on, producers, and every lead on the
+   loaded day (its calls, lists, texts, misfiled). A lead opens its coaching
+   card when it has one, else its AgencyZoom record. */
+const SEARCH_PAGES = [["Digest", "Sales Center", "digest"], ["Sales", "Sales Center · log and breakdown", "sales"], ["Texts & Emails", "Sales Center", "messages"],
+  ["Coaching Center", "Apollo · cards, objections, wins and losses", "coaching"], ["Role Play", "Learning Center", "roleplay"], ["Session History", "Learning Center", "rphistory"],
+  ["Training", "Learning Center", "training"], ["Service Digest", "Service Center · Athena", "service"], ["Renewals", "Service Center · Athena", "renewals"], ["Commercial Center", "Cerberus", "commercial"]];
+function searchIndex() {
+  const out = [];
+  for (const [l, sub, v] of SEARCH_PAGES) if (v !== "commercial" || !$('.tab[data-v="commercial"]').hidden) out.push({ g: "Pages", l, s: sub, go: () => goView(v) });
+  $$("#view h2").forEach(h => { const t = h.textContent.trim(); if (t) out.push({ g: "On this page", l: t, s: "", go: () => h.scrollIntoView({ behavior: "smooth", block: "start" }) }); });
+  for (const p of PRODUCER_ROSTER) out.push({ g: "Producers", l: p, s: "Digest, filtered to them", go: () => { producerFilter = p; if (view !== "digest") goView("digest"); else paint(); } });
+  const seen = new Map();
+  const lead = (name, id, who, what, go) => {
+    if (!name) return; const k = id || name;
+    const e = seen.get(k) || { g: "Leads", l: name, s: "", id, who, parts: [], go: null };
+    if (what && !e.parts.includes(what)) e.parts.push(what);
+    if (go && !e.go) e.go = go;
+    seen.set(k, e);
+  };
+  if (cur) {
+    for (const c of cur.calls || []) lead(c.lead, c.lead_id, c.who, "coaching card", () => openCoachingCard(c));
+    const R = cur.rows || {};
+    for (const r of R.sold_leads || []) lead(r.lead, r.lead_id, r.who, "sold");
+    for (const r of R.quoted || []) lead(r.lead, r.lead_id, r.who, "quoted");
+    for (const r of R.contacts || []) lead(r.lead, r.lead_id, r.who, "reached");
+    for (const r of R.dials || []) lead(r.lead, r.lead_id, r.who, "dialled");
+    for (const r of (cur.messages || {}).replies || []) lead(r.lead, r.lead_id, r.who, "texted");
+    for (const r of cur.misfiled || []) lead(r.lead, r.lead_id, r.assigned, "misfiled");
+  }
+  for (const e of seen.values()) {
+    e.s = `${(e.who || "").split(" ")[0]}${e.parts.length ? " · " + e.parts.join(", ") : ""}`;
+    if (!e.go) e.go = e.id ? () => window.open(AZ_URL.lead + encodeURIComponent(e.id), "_blank", "noopener") : null;
+    if (e.go) out.push(e);
+  }
+  return out;
+}
+async function openCoachingCard(c) {
+  if (view !== "coaching" || coachSubTab !== "cards") { coachSubTab = "cards"; if (view !== "coaching") await goView("coaching"); else repaintCoaching(); }
+  // goView paints without awaiting, and the Coaching tab repaints once more
+  // as it finishes loading: wait for the page to hold still with cards on it.
+  for (let i = 0, last = -1; i < 40; i++) {
+    await new Promise(r => setTimeout(r, 150));
+    const n = $("#view").innerHTML.length;
+    if ($("#view .ccard") && n === last) break;
+    last = n;
+  }
+  const find = () => $$("#view .ccard").find(el => {
+    const n = (el.querySelector(".cname") || {}).textContent || "", m = (el.querySelector(".cmeta") || {}).textContent || "";
+    return n.trim() === (c.lead || "").trim() && m.includes((c.who || "").trim()) && (!c.time || m.includes(c.time));
+  }) || $$("#view .ccard").find(el => ((el.querySelector(".cname") || {}).textContent || "").trim() === (c.lead || "").trim());
+  const card = find();
+  if (card) { card.open = true; card.scrollIntoView({ behavior: "smooth", block: "start" }); card.classList.add("found"); setTimeout(() => card.classList.remove("found"), 2400); }
+}
+(function wireSearch() {
+  const q = $("#q"), res = $("#res"); if (!q || !res) return;
+  let hits = [], sel = 0;
+  const close = () => { res.hidden = true; };
+  const show = () => {
+    const raw = q.value.trim(), qq = raw.toLowerCase();
+    const all = searchIndex();
+    hits = (qq ? all.filter(e => e.l.toLowerCase().includes(qq) || (e.s || "").toLowerCase().includes(qq))
+               : all.filter(e => e.g === "Pages" || e.g === "On this page")).slice(0, 14);
+    sel = 0;
+    const groups = [...new Set(hits.map(h => h.g))];
+    res.innerHTML = hits.length ? groups.map(g => `<h5>${g}</h5>` + hits.map((h, i) => h.g === g
+      ? `<button type="button" data-i="${i}" class="${i === sel ? "sel" : ""}">${cesc(h.l)}<span>${cesc(h.s || "")}</span></button>` : "").join("")).join("")
+      : `<div class="none">Nothing on this day matches “${cesc(raw)}”.</div>`;
+    res.hidden = false;
+  };
+  const pick = i => { const h = hits[i]; if (!h) return; close(); q.blur(); h.go(); };
+  q.addEventListener("focus", show); q.addEventListener("input", show);
+  q.addEventListener("keydown", e => {
+    if (e.key === "Escape") { close(); q.blur(); }
+    else if (e.key === "ArrowDown" || e.key === "ArrowUp") { e.preventDefault(); sel = (sel + (e.key === "ArrowDown" ? 1 : hits.length - 1)) % Math.max(hits.length, 1);
+      $$("#res button").forEach(b => b.classList.toggle("sel", +b.dataset.i === sel)); }
+    else if (e.key === "Enter") { e.preventDefault(); pick(sel); }
+  });
+  res.addEventListener("mousedown", e => { const b = e.target.closest("button[data-i]"); if (b) { e.preventDefault(); pick(+b.dataset.i); } });
+  document.addEventListener("click", e => { if (!e.target.closest(".search")) close(); });
+  document.addEventListener("keydown", e => { if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "k") { e.preventDefault(); q.focus(); q.select(); } });
+})();
+
+
+/* ---- the day as a group chat (Frank, 2026-10-01) ---------------------------
+   Apollo on the left (calls it coached, texts that came in), the producers'
+   own moments on the right in their badge colour (sales, quotes presented,
+   quotes sent), an hour divider between, newest at the bottom. A feed line
+   never names a stage: "Mike presented $2,500 in premium", never "moved a
+   lead to Quotes Presented". A line opens the card or the list it came from. */
+function feedMins(t) {
+  if (!t) return null;
+  const s = String(t);
+  let m = /^(\d{1,2}):(\d{2})\s*(AM|PM)$/i.exec(s);
+  if (m) { let h = +m[1] % 12; if (/pm/i.test(m[3])) h += 12; return h * 60 + +m[2]; }
+  m = /^(?:(\d{2})-(\d{2}) )?(\d{1,2}):(\d{2})$/.exec(s);
+  if (m) { const mins = +m[3] * 60 + +m[4]; return m[1] ? mins - 1440 : mins; }   // "09-29 19:02" = the evening before
+  if (/T/.test(s)) { const d = new Date(s); if (!isNaN(d)) { const az = new Date(d.getTime() - 7 * 3600000); return az.getUTCHours() * 60 + az.getUTCMinutes(); } }
+  return null;
+}
+const feedClock = mins => { if (mins == null) return ""; const m = ((mins % 1440) + 1440) % 1440, h = Math.floor(m / 60), mm = m % 60; return `${h % 12 || 12}:${String(mm).padStart(2, "0")} ${h < 12 ? "AM" : "PM"}`; };
+const feedHour = mins => { if (mins == null) return ""; if (mins < 0) return "Last night"; const h = Math.floor(mins / 60); return `${h % 12 || 12} ${h < 12 ? "AM" : "PM"}`; };
+const firstName = n => String(n || "").split(" ")[0];
+const nowAzMins = () => { const az = new Date(Date.now() - 7 * 3600000); return az.getUTCHours() * 60 + az.getUTCMinutes(); };
+const money0 = n => "$" + Math.round(+n || 0).toLocaleString("en-US");
+function chatFeedHtml(items, host, pin) {
+  const sorted = [...items].sort((a, b) => (a.t ?? 9e9) - (b.t ?? 9e9));
+  let last = null; const parts = [];
+  for (const it of sorted) {
+    const hl = it.t == null ? (it.group || "") : feedHour(it.t);
+    if (hl !== last) { parts.push(`<div class="hr">${cesc(hl)}</div>`); last = hl; }
+    const attrs = it.call != null ? ` data-feedcall="${it.call}"` : it.goview ? ` data-goview="${it.goview}"` : it.ddrill ? ` data-ddrill="${it.ddrill}"` : it.h2 ? ` data-feedh2="${cesc(it.h2)}"` : "";
+    const tag = attrs ? "button" : "div";
+    const name = it.me ? (DOT[it.who] ? pbadge(DOT[it.who], firstName(it.who)) : cesc(firstName(it.who))) : cesc(host);
+    parts.push(`<${tag}${attrs}${attrs ? ' type="button"' : ""} class="bub${it.me ? " me" : ""}"><small>${name}${it.kind ? ` · ${cesc(it.kind)}` : ""}</small>${cesc(it.text)}${it.t != null ? `<span class="tm">${feedClock(it.t)}</span>` : ""}</${tag}>`);
+  }
+  return `<div class="chatbox">${pin ? `<div class="pinned">📌 ${cesc(pin)}</div>` : ""}${parts.join("") || '<div class="empty">Nothing yet.</div>'}</div>`;
+}
+function digestFeedItems(d, who) {
+  const items = [], mine = p => !who || p === who;
+  (d.calls || []).forEach((c, i) => {
+    if (!mine(c.who)) return;
+    const sold = /sold/i.test(c.catc || "") || /^sold/i.test(c.cat || "");
+    const dir = c.direction === "call in" ? "took a call from" : c.direction === "call back" ? "got a call back from" : "reached";
+    const nflags = (c.flags || []).length;
+    items.push({ t: feedMins(c.time), who: c.who, me: sold, call: i, kind: sold ? "Sale" : "Call",
+      text: sold ? `${firstName(c.who)} closed ${c.lead} on the call · ${c.dur || ""}`
+        : `${firstName(c.who)} ${dir} ${c.lead} · ${c.dur || ""} · ${c.cat || ""}${nflags ? ` · ${nflags} flag${nflags > 1 ? "s" : ""}` : ""}` });
+  });
+  const M = d.messages || {};
+  for (const r of M.replies || []) {
+    if (!mine(r.who) || r.ack || r.optout) continue;
+    const w = r.answered_by ? `answered${r.minutes != null ? ` in ${fmtMins(r.minutes)}` : ""}` : "still waiting";
+    items.push({ t: feedMins(r.at), who: r.who, me: false, goview: "messages", kind: "Text", text: `${r.lead} texted ${firstName(r.who)}: “${String(r.said || "").slice(0, 90)}” · ${w}` });
+  }
+  for (const q of M.quotes || []) {
+    if (!mine(q.who)) continue;
+    items.push({ t: feedMins(q.at), who: q.who, me: true, goview: "messages", kind: "Quote sent", text: `${firstName(q.who)} sent the quote to ${q.lead} by ${q.channel}${q.opened ? " · opened" : ""}` });
+  }
+  const R = d.rows || {};
+  for (const r of R.quoted || []) {
+    if (!mine(r.who)) continue;
+    const prem = +String(r.premium || "").replace(/[^0-9.]/g, "");
+    items.push({ t: null, group: "Quotes today", who: r.who, me: true, kind: "Quoted", ddrill: "quoted",
+      text: prem ? `${firstName(r.who)} presented ${money0(prem)} in premium to ${r.lead}` : `${firstName(r.who)} presented a quote to ${r.lead}` });
+  }
+  for (const r of R.sold || []) {
+    if (!mine(r.who)) continue;
+    items.push({ t: null, group: "Sales today", who: r.who, me: true, kind: "Sale", ddrill: "sold", text: `${firstName(r.who)} sold ${r.product} · ${money0(r.premium)}${r.source ? ` · ${r.source}` : ""}` });
+  }
+  return items;
+}
+function digestFeedHtml(d, who) {
+  const items = digestFeedItems(d, who);
+  const T = (who ? (d.producers || []).find(p => p.name === who) : d.totals) || {};
+  const pin = `${T.pol || 0} ${T.pol === 1 ? "policy" : "policies"} · ${money0(T.ps)} sold · ${T.hh || 0} HH quoted · ${T.dials || 0} dials · ${T.live || 0} live`;
+  const live = curLive && rangeMode === "day";
+  return `<div class="sect"><h2>${live ? "Today, so far" : "How the day went"}</h2>
+    <p class="sd">Apollo's group chat: every coached call, text and quote as it happened. A line opens the card or the list it came from.</p>
+    ${chatFeedHtml(items, "Apollo", pin)}</div>`;
+}
+/* What is waiting on a person right now (live), or what the day left behind. */
+function needsNowRows(d, who) {
+  const mine = p => !who || p === who, live = curLive && rangeMode === "day";
+  const tally = (arr, key) => { const c = {}; arr.forEach(x => { const k = firstName(key(x)); c[k] = (c[k] || 0) + 1; }); return Object.entries(c).sort((a, b) => b[1] - a[1]).map(([k, n]) => `${k} ${n}`).join(" · "); };
+  const rows = [];
+  const waiting = ((d.messages || {}).replies || []).filter(r => mine(r.who) && !r.answered_by && !r.ack && !r.optout);
+  const end = live ? nowAzMins() : 17 * 60 + 30;
+  const oldest = waiting.length ? Math.max(0, ...waiting.map(r => { const t = feedMins(r.at); return t == null ? 0 : end - t; })) : 0;
+  rows.push({ n: waiting.length, cls: waiting.length ? "bad" : "ok", t: `text${waiting.length === 1 ? "" : "s"} waiting on a reply`,
+    sub: waiting.length ? `Oldest ${fmtMins(oldest)} · ${tally(waiting, r => r.who)}` : "Every text answered", goview: "messages", btn: "Open" });
+  const mis = (d.misfiled || []).filter(r => mine(r.assigned));
+  rows.push({ n: mis.length, cls: mis.length ? "warn" : "ok", t: `open lead${mis.length === 1 ? "" : "s"} misfiled in “Pipeline”`,
+    sub: mis.length ? tally(mis, r => r.assigned) : "Nothing misfiled", h2: "Pipeline", btn: "See them" });
+  const risk = ((d.recontact || {}).at_risk || []).filter(r => mine(r.producer));
+  if (risk.length) rows.push({ n: risk.length, cls: "warn", t: "quoted leads going cold", sub: `No dial in 3+ business days · ${tally(risk, r => r.producer)}`, goview: "coaching", btn: "Coaching" });
+  return rows;
+}
+function needsNowHtml(d, who) {
+  const live = curLive && rangeMode === "day", rows = needsNowRows(d, who);
+  const html = rows.map(r => `<li class="${r.cls}"><b class="n">${r.n}</b><div class="t">${cesc(r.t)}<small>${cesc(r.sub)}</small></div>${
+    r.n ? `<button type="button"${r.goview ? ` data-goview="${r.goview}"` : ` data-feedh2="${cesc(r.h2)}"`}>${cesc(r.btn)}</button>` : ""}</li>`).join("");
+  return `<div class="sect"><h2>${live ? "Needs someone now" : "Left on the desk"}</h2>
+    <p class="sd">${live ? "What is waiting on a person at this minute." : "What the day ended with still waiting."}</p><ul class="todo">${html}</ul></div>`;
+}
+/* Athena's side: what the service team got off the desk today. */
+function svcFeedHtml(m) {
+  const items = [];
+  for (const r of (m.srs || {}).completed || []) items.push({ t: null, group: "SRs completed", who: r.by, me: true, kind: "SR done",
+    text: `${firstName(r.by)} completed ${r.subject || "an SR"} for ${r.name || "a customer"}${r.hours != null ? ` · ${fmtDur(+r.hours)} open` : ""}` });
+  for (const r of (m.callbacks || {}).rows || []) {
+    if (r.back_at) items.push({ t: feedMins(r.back_at), who: r.back_by || r.by, me: true, kind: "Call back", text: `${firstName(r.back_by || r.by)} called ${r.name || "a customer"} back · ${r.minutes != null ? fmtMins(+r.minutes) + " after the missed call" : ""}` });
+    else items.push({ t: feedMins(r.missed), who: r.by, me: false, kind: "Missed call", text: `Missed call from ${r.name || "a number"} · not returned yet` });
+  }
+  for (const c of (m.front || {}).calls || []) items.push({ t: feedMins(c.at), who: c.who, me: true, kind: "Answered", text: `${firstName(c.who)} picked up a call · ${c.seconds >= 60 ? Math.floor(c.seconds / 60) + "m " + (c.seconds % 60) + "s" : (c.seconds || 0) + "s"}` });
+  const MM = m.messages || {};
+  for (const r of MM.replies || []) items.push({ t: feedMins(r.at), who: r.who, me: false, kind: "Text", text: `${r.name || "A customer"} texted ${firstName(r.who)}: “${String(r.said || "").slice(0, 90)}” · ${r.answered_by ? "answered" : r.ack ? "ok / thanks" : "still waiting"}` });
+  for (const r of MM.sent || []) if (!r.auto) items.push({ t: feedMins(r.at), who: r.who, me: true, kind: r.channel === "email" ? "Email" : "Text", text: `${firstName(r.who)} to ${r.name || "a customer"}: “${String(r.text || r.subject || "").slice(0, 90)}”` });
+  for (const t of m.task_rows || []) if (t.done) items.push({ t: null, group: "Tasks done", who: t.done_by || "", me: true, kind: "Task", text: `${firstName(t.done_by)} finished “${t.title}”${t.customer ? ` for ${t.customer}` : ""}` });
+  const done = ((m.srs || {}).completed || []).length, tasks = Object.values(m.tasks || {});
+  const pin = `${done} SR${done === 1 ? "" : "s"} completed · ${tasks.reduce((a, x) => a + (x.completed || 0), 0)} of ${tasks.reduce((a, x) => a + (x.due || 0), 0)} tasks · ${((m.front || {}).calls || []).length} calls answered`;
+  return `<div class="sect"><h2>Off the desk · done today</h2>
+    <p class="sd">Athena's group chat: every SR closed, call answered, call back, text and task as it happened.</p>${chatFeedHtml(items, "Athena", pin)}</div>`;
+}
+function wireFeed() {
+  $$("#view [data-feedcall]").forEach(b => b.onclick = () => { const c = ((cur && cur.calls) || [])[+b.dataset.feedcall]; if (c) openCoachingCard(c); });
+  $$("#view [data-feedh2]").forEach(b => b.onclick = () => {
+    const re = new RegExp(b.dataset.feedh2, "i"), h = $$("#view h2").find(x => re.test(x.textContent));
+    if (h) h.scrollIntoView({ behavior: "smooth", block: "start" });
+  });
+}
+
+/* The menu lists each Center's pages under it (the Center's own header tabs
+   stay for the Coaching Center, whose three are views of one page). */
+function paintSideNav() {
+  $$(".subnav").forEach(n => {
+    const c = n.dataset.for, pages = CENTERS[c] || [];
+    const show = pages.length > 1 && c !== "coaching";
+    n.hidden = !show;
+    n.innerHTML = show ? pages.map(([k, label]) =>
+      `<button type="button" class="stab" data-cv="${k}" aria-current="${k === view ? "page" : "false"}">${label}</button>`).join("") : "";
+    n.querySelectorAll("[data-cv]").forEach(b => b.onclick = () => goView(b.dataset.cv));
+  });
+}
 
 /* ---- Digest tab ------------------------------------------------------------
    Ranked like the leaderboard, medals on the top three. Each stat is coloured
@@ -2670,6 +3142,7 @@ function digestPanel(d, who) {
   // card in that family rather than a new kind of section.
   return `${liveBannerHtml(d, who)}
   ${digestDay(d, who)}
+  ${rangeMode === "day" ? `<div class="digestgrid"><div>${digestFeedHtml(d, who)}</div><div>${needsNowHtml(d, who)}</div></div>` : ""}
   <div class="digestgrid">
     <div>${outcomeBreakdownHtml(d, who)}${taskCompletionHtml(d, who)}${speedPanel(d, who)}${speedReplyPanel(d, who)}</div>
     <div>${utilizationHtml(d, who)}${householdCompletionHtml(d, who)}${coachQualityHtml(d, who)}</div>
@@ -2686,6 +3159,7 @@ function digestPanel(d, who) {
    2026-09-15: "i want the whole digest filtered to those days, and coaching
    cards to those days"). */
 let curRangeLabel = "", curRangeSub = "";
+let curRangeDocs = [];   // the days behind a merged range (The Flores Post reads them one by one)
 function rangeHeaderHtml() {
   return curRangeLabel ? `<div class="sect"><h2>${curRangeLabel}</h2><p class="sd">${curRangeSub}</p></div>` : "";
 }
@@ -4469,7 +4943,7 @@ function roleplayPanel() {
       <b>${weak.map(([c, n]) => `${c} (${n}×)`).join(", ")}</b>. The prospect below will lean on objections like these instead of
       generic ones. <b>Professional</b> cycles through them without giving in easily -- a good place to practice this.</div>` : "";
     return `<div class="sect"><h2>Role Play</h2>
-      <p class="sd">Practicing as <b>${rpProducer}</b>. <button class="ghost" id="rpChangeProducer" type="button" style="margin-left:6px">change</button></p>
+      <p class="sd">Practicing as <b>${rpProducer}</b>.${rpLocked() ? "" : ` <button class="ghost" id="rpChangeProducer" type="button" style="margin-left:6px">change</button>`}</p>
       ${rpIsBeta() ? `<div class="note" style="border:1px dashed var(--border-strong);border-radius:8px;padding:10px 14px;margin-bottom:12px"><b>Beta / testing.</b> This session runs on <b>${rpWeakFor() || "a real producer"}</b>'s real activity -- the objections their calls have been losing on -- and moves to the next producer with each session. Graded like any session, but saved to the beta area: it never counts toward any producer's history or weak spots.</div>` : ""}
       ${recHtml}
       <div class="pcards">${RP_PERSONAS.map(p => `<div class="pcard" data-persona="${p.key}">
@@ -4527,9 +5001,9 @@ function rpOpenDebrief(print) {
   const w = window.open("", "_blank", "width=820,height=900");
   if (!w) { alert("Your browser blocked the new window -- allow pop-ups for this board and try again."); return; }
   const css = [...document.querySelectorAll("style")].map(el => el.textContent).join("\n");
-  const theme = document.documentElement.dataset.theme;
+  const R = document.documentElement;
   w.document.open();
-  w.document.write(`<!doctype html><html${theme ? ` data-theme="${theme}"` : ""}><head><meta charset="utf-8">
+  w.document.write(`<!doctype html><html data-look="${R.getAttribute("data-look") || "sonoran"}" data-mode="${R.getAttribute("data-mode") || "light"}"><head><meta charset="utf-8">
     <meta name="viewport" content="width=device-width,initial-scale=1"><title>${d.title} · ${d.producer}</title>
     <style>${css}
     body { padding: 20px 24px 40px; max-width: 900px; margin: 0 auto; }
@@ -5659,8 +6133,12 @@ function salesPanel(data) {
   const viewingEnd = data.folio_end || curEnd;
   const isCurrent = !curEnd || viewingEnd === curEnd;
   const folioOpts = salesFolioOptions();
-  const producerOpts = [`<option value="">Who's logging?</option>`]
-    .concat(SALES_LOGGER_ROSTER.map(p => `<option value="${cesc(p)}"${p === salesProducer ? " selected" : ""}>${cesc(p)}</option>`)).join("");
+  // Who this login may log for (the Worker's identityOf; Frank, 2026-10-01):
+  // one name is picked for them, none hides the form.
+  const canLog = (ME.canLogFor || []).filter(p => SALES_LOGGER_ROSTER.includes(p));
+  if (canLog.length === 1) salesProducer = canLog[0];
+  const producerOpts = (canLog.length === 1 ? [] : [`<option value="">Who's logging?</option>`])
+    .concat(canLog.map(p => `<option value="${cesc(p)}"${p === salesProducer ? " selected" : ""}>${cesc(p)}</option>`)).join("");
   const sourceOpts = [`<option value="">Lead source</option>`]
     .concat((salesLeadSourceCache || []).map(s => `<option value="${cesc(s)}">${cesc(s)}</option>`)).join("");
   // Client name links to the real AgencyZoom customer account when its id
@@ -5695,13 +6173,14 @@ function salesPanel(data) {
     <td>${cesc(e.term || "")}</td>
     <td><select data-track="docs_signed" data-id="${cesc(e.id)}" data-day="${cesc(e.day)}">${docsSignedOpts(e.docs_signed || "")}</select></td>
     <td><input type="checkbox" data-track="review_sent" data-id="${cesc(e.id)}" data-day="${cesc(e.day)}" ${e.review_sent ? "checked" : ""}></td>
-    <td><button class="icon-btn del-btn" data-del="${cesc(e.id)}" data-day="${cesc(e.day)}" type="button" title="Delete" aria-label="Delete">${TRASH_ICON}</button></td>
+    <td>${(ME.canLogFor || []).includes(e.producer) ? `<button class="icon-btn del-btn" data-del="${cesc(e.id)}" data-day="${cesc(e.day)}" type="button" title="Delete" aria-label="Delete">${TRASH_ICON}</button>` : ""}</td>
   </tr>`).join("");
 
-  return `${salesTotalsHtml(entries)}<div class="sect">
+  return `${salesTotalsHtml(entries)}<div class="sect${canLog.length ? "" : " nolog"}">
     <h2>Log a sale</h2>
     <p class="sd">Same-day list for immediate visibility -- AgencyZoom stays the official Premium Sold number.${
-      isCurrent ? "" : ` Always logs against today, even while you're looking at an older folio below.`}</p>
+      isCurrent ? "" : ` Always logs against today, even while you're looking at an older folio below.`}</p>${
+    canLog.length ? "" : `<p class="note">Your login cannot log sales. Frank, Amanda and Crystal log for everyone; Coral and Sarahi for each other; every other producer their own.</p>`}
     <div class="controls" style="flex-wrap:wrap;gap:10px;align-items:center">
       <select id="salesProdSel" style="${prodSelStyle(salesProducer)}">${producerOpts}</select>
       <label style="display:flex;align-items:center;gap:5px;font-size:12.5px">Date sold <input id="salesDateSold" type="date" value="${salesDay}"></label>
@@ -6116,7 +6595,7 @@ async function ensureCurForRange() {
   const { from, to, label } = b;
   const docs = await fetchRangeDocs(from || "", to);
   if (!docs.length) return `No reports in ${from || "the start"} → ${to}.`;
-  cur = mergeDayDocs(docs); curLive = false;
+  cur = mergeDayDocs(docs); curLive = false; curRangeDocs = docs;
   cur.label = label;
   curRangeLabel = label; curRangeSub = `${from || "the start"} → ${to}`;
   return null;
@@ -6137,7 +6616,7 @@ function paintFailed(e, controls = true) {
   catch (_) { v.innerHTML = drawErrorHtml(e); }
 }
 async function paint() {
-  try { await paintTab(); } catch (e) { paintFailed(e); }
+  try { await paintTab(); wireFeed(); } catch (e) { paintFailed(e); }
 }
 async function paintTab() {
   const v = $("#view");
@@ -6159,6 +6638,24 @@ async function paintTab() {
       el.onkeydown = e => { if (e.key === "Enter" || e.key === " ") go(e); };
     });
     v.querySelectorAll("[data-ddrill-close]").forEach(el => el.onclick = e => { e.preventDefault(); digDrill = ""; paint(); });
+  } else if (view === "post") {
+    v.innerHTML = rangeControlHtml() + '<div class="empty">Loading…</div>';
+    wireRangeControl();
+    const err = await ensureCurForRange();
+    $("#topsub").textContent = "The Flores Post" + (cur ? " · " + (cur.label || cur.date || curRangeLabel) : "");
+    let body;
+    try { body = await postPanel(err); } catch (e) { console.error(e); body = drawErrorHtml(e); }
+    v.innerHTML = rangeControlHtml() + body;
+    wireRangeControl(); wirePost();
+  } else if (view === "editions") {
+    v.innerHTML = rangeControlHtml() + '<div class="empty">Loading…</div>';
+    wireRangeControl();
+    const err = await ensureCurForRange();
+    $("#topsub").textContent = "Editions" + (cur ? " · " + (cur.label || cur.date || curRangeLabel) : "");
+    let body;
+    try { body = await editionsPanel(err); } catch (e) { console.error(e); body = drawErrorHtml(e); }
+    v.innerHTML = rangeControlHtml() + body;
+    wireRangeControl();
   } else if (view === "messages") {
     if (rangeMode !== "day") v.innerHTML = rangeControlHtml() + producerControlHtml() + '<div class="empty">Loading…</div>';
     const err = await ensureCurForRange();
@@ -7029,7 +7526,8 @@ function playbookHtml(m) {
     <p class="sd"><i>${cesc(PB.closing)}</i></p></details></div>`;
 }
 function servicePanel(m) {
-  return `${playbookHtml(m)}${serviceStatsHtml(m)}
+  return `${playbookHtml(m)}${serviceStatsHtml(m)}${rangeMode === "day" ? svcFeedHtml(m) : ""}
+    ${m.playbook ? noteStandardHtml(m) : ""}
     ${svcMessagesHtml(m)}
     <div class="digestgrid">
       <div>${m.playbook ? noteStandardHtml(m) : ""}${completionTimeHtml(m)}${latePaymentsHtml(m)}</div>
@@ -7567,6 +8065,8 @@ async function initCommercial() {
     COMMERCIAL_DAYS = (await r.json()).days || [];
     const t = $('.tab[data-v="commercial"]');
     if (t) t.hidden = false;
+    const g = $("#navcom");
+    if (g) g.hidden = false;
   } catch (_) {}
 }
 async function fetchCommercialDocs(days) {
@@ -7803,7 +8303,9 @@ const TOUR_STEPS = [
   { title: "Welcome to the Sales Floor",
     text: "This is the agency's board. It shows how the day is going, coaches every recorded sales call, and gives you places to practise. This tour takes about two minutes." },
   { find: () => $("nav.tabs"), title: "The left bar",
-    text: "Each entry is a Center: Sales, Coaching, Learning and Service. Every Center has its own tabs across the top of the page." },
+    text: "Three desks: Apollo for sales, Athena for service, Cerberus for commercial. Each Center lists its pages under it. Settings at the bottom picks your look: five looks, each with a dark side." },
+  { find: () => $(".top .search"), title: "Search",
+    text: "Ctrl K from anywhere: pages, the sections on the page you are on, producers, and every lead on the loaded day. A lead opens its coaching card or its AgencyZoom record." },
   { view: "digest", find: () => $("#view .controls"), title: "Pick a day and a person",
     text: "Choose a single day, a week, month to date, a folio or your own dates, and everyone or one producer. The same choice follows you from page to page." },
   { view: "digest", find: () => $("#view .tiles"), title: "The day at a glance",
@@ -7812,6 +8314,12 @@ const TOUR_STEPS = [
     text: "Seven categories, 5 points for first down to 1 for fifth. Click a producer's number to see the calls or accounts it counts." },
   { view: "digest", find: () => tourSection("Speed to Dial") || tourSection("Household Completion"), title: "Speed, tasks and households",
     text: "How fast new internet leads were called and texts were answered, how many of today's tasks got done, and how many policies each household bought." },
+  { view: "digest", find: () => $("#view .chatbox"), title: "The day as a chat",
+    text: "Apollo on the left: every coached call and text as it happened. The producers on the right: each sale, quote presented and quote sent. A line opens its coaching card. Beside it, what needs someone right now." },
+  { view: "post", find: () => $("#view .paper .mast") || $("#view .press"), title: "The Flores Post",
+    text: "A published day or a folio as a newspaper: the headline, the goal board, what to try on a slow day, and Primetime, the sports section, with the standings." },
+  { view: "editions", find: () => $("#view .edtabs") || $("#view .press"), title: "The editions",
+    text: "Six more ways to read the same day: The Flores Feed, Fourth and Goal, KFLR The Close, FLRS 500, Cold Call Comics and CLOSER. React, vote, comment: everyone sees the same tally." },
   { view: "sales", title: "The Sales sheet",
     text: "Log a sale, look back at any folio, or break sales down by lead source, product or producer. Live sales are added here automatically." },
   { view: "messages", title: "Texts & Emails",
@@ -7890,7 +8398,7 @@ async function tourShow(i) {
   }
   const { card } = tourEls();
   const last = i === TOUR_STEPS.length - 1;
-  card.innerHTML = `<div class="tstep">${i + 1} of ${TOUR_STEPS.length}</div>
+  card.innerHTML = `<div class="tstep" title="${i + 1} of ${TOUR_STEPS.length}">${i + 1}</div>
     <h4 id="tourtitle">${cesc(st.title)}</h4><p>${cesc(st.text)}</p>
     <div class="tbtns">${last ? "" : '<button class="tskip" type="button">Skip tour</button>'}
       ${i ? '<button class="tback" type="button">Back</button>' : ""}
@@ -7991,9 +8499,14 @@ paintCenterBar();
   }
   DAYS = days;
   initCommercial();   // unhides the Commercial Center for Frank only
+  await loadMe();
+  paintGreeting(true);
   initMe();           // Apollo's Road Map (ARM) for managers only
   await loadDay(days[0]);
+  paintGreeting(true);   // again, now that it knows the day (sales, the folio clock)
 })();
 </script>
+<script src="post.js"></script>
+<script src="editions.js"></script>
 </body>
 </html>
