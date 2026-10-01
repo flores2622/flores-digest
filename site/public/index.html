@@ -916,6 +916,66 @@ html[data-look="mesa"] .chatbox .pinned { background: var(--text-primary); color
 .todo button { font: 600 12px var(--body); border: 1px solid var(--border-strong); background: var(--surface-raised); border-radius: 8px; padding: 6px 10px; cursor: pointer; color: var(--text-primary); white-space: nowrap; }
 .todo button:hover { border-color: var(--accent); }
 
+
+/* ---- Coaching Center and Learning Center, with colour (Frank, 2026-10-01:
+   "i want more color and design in the learning and coaching center, as
+   well as the roadmaps") -------------------------------------------------- */
+.coachsec { border-top: 6px solid var(--pc); }
+.coachsec > h2 .pbadge { font-size: 15px; padding: 3px 12px; border-radius: 8px; }
+.ccard { border-left: 6px solid var(--cc) !important; }
+.qc { background: var(--card2); border-left: 4px solid var(--accent); border-radius: 0 10px 10px 0; padding: 10px 12px; }
+.qc .qh { color: var(--accent); font-weight: 800; }
+.qc .qk.s { color: var(--accent); }
+.ccard .bl { color: var(--accent); font-weight: 800; } .ccard .blk { border-radius: 12px; }
+.objrow { border: 1.5px solid transparent; }
+.objrow:hover, .objrow.sel { border-color: var(--border-strong); background: var(--card2); }
+.objtrack { height: 18px; border-radius: 9px; background: color-mix(in oklab, var(--bad) 26%, var(--surface)); }
+.objwon { background: var(--good); border-radius: 9px; }
+.objn { background: var(--chip); border-radius: 999px; padding: 2px 9px; font-weight: 700; color: var(--text-secondary); }
+.hero { border-top: 4px solid var(--accent); border-radius: 14px; }
+.hero:nth-of-type(3n+2) { border-top-color: var(--s1); } .hero:nth-of-type(3n) { border-top-color: var(--s3); }
+.hero .hl { font: 400 20px var(--display); }
+.ast td b { color: var(--text-primary); }
+/* Learning Center */
+.lchero { background: linear-gradient(135deg, var(--side) 0%, var(--side2) 100%); color: var(--sideInk); border-color: var(--side2); }
+.lchero h2, .lchero .sd, .lchero p { color: inherit; } .lchero h2 { border-bottom-color: rgba(255,255,255,.18); font-size: 28px; }
+.lchero .sd b { color: var(--brand2); } .lchero a { color: var(--brand2); }
+.lchero .scroll, .lchero table, .lchero td, .lchero .histrow, .lchero .pcard { color: var(--text-primary); } .lchero .note { color: inherit; opacity: .92; border-color: rgba(255,255,255,.35) !important; } .lchero .scroll { background: var(--surface-raised); border-radius: 12px; }
+.lchero select, .lchero .ghost, .lchero .btn { background: rgba(255,255,255,.1); color: inherit; border-color: rgba(255,255,255,.3); }
+html[data-look="mesa"] .lchero { background: linear-gradient(135deg, var(--text-primary), #4a3f38); color: var(--surface); }
+.pcard { border-top: 6px solid var(--pc, var(--border-strong)); border-radius: 14px; background: linear-gradient(180deg, color-mix(in oklab, var(--pc, var(--border-strong)) 14%, var(--surface-raised)), var(--surface-raised) 70%); padding-top: 16px; }
+.pcard .pn { font: 400 20px var(--display); } .pcard .pn::before { content: var(--ic, ""); margin-right: 8px; }
+.pcard[data-persona="easy"] { --pc: var(--s3); --ic: "🌵"; } .pcard[data-persona="medium"] { --pc: var(--s4); --ic: "🌤️"; } .pcard[data-persona="hard"] { --pc: var(--accent); --ic: "🔥"; }
+.pcard.sel { box-shadow: 0 0 0 2px var(--pc) inset; border-color: var(--pc); }
+#view[data-view="rphistory"] th, #view[data-view="roleplay"] th, #view[data-view="training"] th { background: var(--card2); }
+.histrow:nth-child(even) { background: var(--card2); } .histrow { padding: 9px 10px; border-radius: 8px; border: 0; }
+.subtab[data-deck="0"].sel { background: var(--s3); border-color: var(--s3); } .subtab[data-deck="1"].sel { background: var(--s1); border-color: var(--s1); }
+.subtab[data-deck="2"].sel { background: var(--s4); border-color: var(--s4); } .subtab[data-deck="3"].sel { background: var(--s7); border-color: var(--s7); }
+.refdeck { border-top: 6px solid var(--dc, var(--accent)); }
+.refcard { border-left: 4px solid var(--dc, var(--accent)); padding-left: 14px; border-bottom: 0; margin-bottom: 10px; background: var(--card2); border-radius: 0 12px 12px 0; padding-top: 10px; padding-bottom: 10px; }
+.refcard h3 { color: var(--dc, var(--accent)); font: 400 18px var(--display); }
+.fcface { background: linear-gradient(160deg, var(--surface-raised), var(--card2)); border: 2px solid var(--accent); }
+.fcback { background: linear-gradient(160deg, var(--card2), var(--surface-raised)); border-color: var(--s3); }
+.quizq { font: 400 22px var(--display); } .quizopt { border-radius: 12px; } .quizopt:hover:not(:disabled) { border-color: var(--accent); background: var(--card2); }
+.matchtile { border-radius: 12px; } .matchtile.sel { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent) inset; }
+/* Road Maps: Apollo's clay, Athena's sage */
+#view[data-view="athenamap"] { --rm: var(--s3); } #view[data-view="blueprint"] { --rm: var(--accent); }
+#view .bp { max-width: 980px; counter-reset: bps; }
+#view .bp .bptitle { background: linear-gradient(135deg, var(--side), var(--side2)); color: var(--sideInk); padding: 24px 26px 18px; border-radius: 16px 16px 0 0; border: 0; margin: 0; font-size: 32px; }
+html[data-look="mesa"] #view .bp .bptitle { background: linear-gradient(135deg, var(--text-primary), #4a3f38); color: var(--surface); }
+#view .bp .bpwho { background: var(--side2); color: var(--sideInk); margin: 0; padding: 12px 26px; font-size: 15px; }
+html[data-look="mesa"] #view .bp .bpwho { background: #4a3f38; color: var(--surface); }
+#view .bp .bpdate { background: var(--side2); color: var(--sideInk); opacity: .75; margin: 0 0 18px; padding: 0 26px 14px; border-radius: 0 0 16px 16px; }
+html[data-look="mesa"] #view .bp .bpdate { background: #4a3f38; color: var(--surface); }
+#view .bp .bptoc { gap: 6px; margin: 0 0 18px; } .bp .bptoc a { background: var(--chip); border: 0; border-radius: 999px; padding: 5px 11px; font-weight: 600; color: var(--text-primary); }
+#view .bp .bptoc a:hover { background: var(--rm); color: #fff; }
+#view .bp section { border: var(--bw) solid var(--border-strong); border-left: 6px solid var(--sc, var(--rm)); border-radius: 14px; background: var(--surface-raised); padding: 14px 20px 10px; margin-top: 14px; box-shadow: var(--shadow); }
+#view .bp section:nth-of-type(4n+2) { --sc: var(--s1); } .bp section:nth-of-type(4n+3) { --sc: var(--s3); } .bp section:nth-of-type(4n) { --sc: var(--s7); }
+#view .bp h3 { font: 400 22px var(--display); display: flex; align-items: center; gap: 10px; margin: 2px 0 10px; }
+#view .bp h3::before { counter-increment: bps; content: counter(bps); display: inline-flex; align-items: center; justify-content: center; width: 28px; height: 28px; border-radius: 50%; background: var(--sc, var(--rm)); color: #fff; font: 700 13px var(--body); flex: none; }
+#view .bp dt { color: var(--sc, var(--rm)); }
+#view .bp th { background: var(--card2); } .bp strong { color: var(--sc, var(--rm)); }
+#view .bp ul li::marker, .bp ol li::marker { color: var(--sc, var(--rm)); font-weight: 700; }
 /* The coaching card's flow is in its badge (outcomeBadgeHtml), so the striped
    left edge and its legend are gone (Frank, 2026-09-30 preview review: "remove
    that left colored tab from the cards, and the legend, i like the badge"). */
@@ -3896,7 +3956,9 @@ function card(c) {
       ${outcomeBadgeHtml(call.cat, call.catc, [[call.kind || "", ""]])}</span>`).join("")}</div>` : "";
   const typeParts = c.calltype && c.calltype[0] !== "sales" ? [[c.calltype[0], c.calltype[1] || ""]] : [];
   const edge = flowEdge(c);
-  return `<details class="ccard">
+  const CATC_COLOR = { sold_on_call: "#008300", quoted_call_open: "#9fc2ed", followup_open: "#9fc2ed", quoted_call_lost: "#e34948", followup_lost: "#e34948",
+    dead_no_quote: "#e0d400", live_quote_ok: "#eda100", live_no_quote: "#eda100", callback_no_contact: "#b9b7b3" };
+  return `<details class="ccard" style="--cc:${CATC_COLOR[c.catc] || "var(--border-strong)"}">
    <summary class="blk cchead" style="border-left:10px solid transparent">
      <span class="flowedge" style="--fc:${edge.color}"${edge.label ? ` title="${escAttr(edge.label + (edge.why ? ": " + edge.why : ""))}" aria-label="${escAttr(edge.label)}"` : ""}></span>
      <div class="chead"><div><div class="cname">${c.lead_id
@@ -4289,7 +4351,7 @@ function coachingPanel(d, who) {
     const mine = d.calls.filter(c => c.who === p && matches(c));
     if (!mine.length) return;
     shown += mine.length;
-    out += `<div class="sect"><h2>${p}</h2><p class="sd">${mine.length} coached call${mine.length > 1 ? "s" : ""}${objFilterCat ? ` carrying "${cesc(objFilterCat)}"` : ""}</p>
+    out += `<div class="sect coachsec" style="--pc:${DOT[p] || "var(--border-strong)"}"><h2>${pbadge(DOT[p] || "#8a877f", p)}</h2><p class="sd">${mine.length} coached call${mine.length > 1 ? "s" : ""}${objFilterCat ? ` carrying "${cesc(objFilterCat)}"` : ""}</p>
       ${mine.map(card).join("")}</div>`;
   });
   if (!shown) {
@@ -4921,7 +4983,7 @@ function roleplayPanel() {
     .concat([`<option value="${RP_BETA}"${rpIsBeta() ? " selected" : ""}>Beta / testing (not counted)</option>`]).join("");
 
   if (!rpProducer) {
-    return `<div class="sect"><h2>Role Play</h2>
+    return `<div class="sect lchero"><h2>Role Play</h2>
       <p class="sd">Practice objection handling and closing against a prospect character built from the
       agency's own closing script. Pick who's practicing to start.</p>
       <select id="rpProdSel">${producerOpts}</select></div>
@@ -4942,7 +5004,7 @@ function roleplayPanel() {
       <b>Recommended:</b> in the last 4 weeks, ${rpWeakFor().split(" ")[0]}'s real calls show unresolved objections most often around
       <b>${weak.map(([c, n]) => `${c} (${n}×)`).join(", ")}</b>. The prospect below will lean on objections like these instead of
       generic ones. <b>Professional</b> cycles through them without giving in easily -- a good place to practice this.</div>` : "";
-    return `<div class="sect"><h2>Role Play</h2>
+    return `<div class="sect lchero"><h2>Role Play</h2>
       <p class="sd">Practicing as <b>${rpProducer}</b>.${rpLocked() ? "" : ` <button class="ghost" id="rpChangeProducer" type="button" style="margin-left:6px">change</button>`}</p>
       ${rpIsBeta() ? `<div class="note" style="border:1px dashed var(--border-strong);border-radius:8px;padding:10px 14px;margin-bottom:12px"><b>Beta / testing.</b> This session runs on <b>${rpWeakFor() || "a real producer"}</b>'s real activity -- the objections their calls have been losing on -- and moves to the next producer with each session. Graded like any session, but saved to the beta area: it never counts toward any producer's history or weak spots.</div>` : ""}
       ${recHtml}
@@ -5305,9 +5367,9 @@ function rphPanel() {
   const custom = rphState.preset === "custom" ? `<input type="date" id="rphFrom" value="${rphState.from}"> to <input type="date" id="rphTo" value="${rphState.to}">` : "";
   const controls = `<div class="rprow" style="gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:12px">
     <select id="rphPreset">${presetOpts}</select>${custom}${prodOpts}${betaBtn}</div>`;
-  if (!rphData) return `<div class="sect"><h2>Session History</h2>${controls}<div class="empty">Loading…</div></div>`;
-  if (rphData.error) return `<div class="sect"><h2>Session History</h2>${controls}<div class="empty">Could not load sessions (${rphEsc(rphData.error)}).</div></div>`;
-  if (!scope.all && !scope.producer) return `<div class="sect"><h2>Session History</h2>
+  if (!rphData) return `<div class="sect lchero"><h2>Session History</h2>${controls}<div class="empty">Loading…</div></div>`;
+  if (rphData.error) return `<div class="sect lchero"><h2>Session History</h2>${controls}<div class="empty">Could not load sessions (${rphEsc(rphData.error)}).</div></div>`;
+  if (!scope.all && !scope.producer) return `<div class="sect lchero"><h2>Session History</h2>
     <div class="empty">Session history is for the producers and managers. Your sign-in isn't one of them.</div></div>`;
   const rows = rphData.sessions.filter(x => !rphState.producer || rphState.beta || x.producer === rphState.producer);
   const intro = rphState.beta ? "Beta / testing sessions -- never counted toward any producer."
@@ -5323,7 +5385,7 @@ function rphPanel() {
         ${x.key === rphOpenKey ? "▾" : "▸"}</span>
     </div>${x.key === rphOpenKey ? rphSessionHtml(rphFull[x.key]) : ""}`).join("")
     : `<div class="empty">No sessions in this period.</div>`;
-  return `<div class="sect"><h2>Session History</h2>
+  return `<div class="sect lchero"><h2>Session History</h2>
     <p class="sd">${intro}</p>${controls}
     ${rphSummaryHtml(rows, scope)}</div>
     <div class="sect"><h2>Sessions (${rows.length})</h2>${list}</div>`;
@@ -5711,6 +5773,7 @@ function shuffledOrder(n) {
 // no blank line before the next paragraph either -- e.g. "- ...\n  ...\nThe
 // failure mode..."). Indentation, not blank lines, is what marks a
 // continuation vs. a new paragraph that just happens to follow a list.
+const DECK_COLORS = ["var(--s3)", "var(--s1)", "var(--s4)", "var(--s7)", "var(--accent)"];
 function trainingMd(text) {
   const lines = text.split("\n");
   let html = "", inList = false;
@@ -5775,7 +5838,7 @@ function trainingPanel(data) {
 function refBody(deck) {
   const cards = deck.cards.map(c =>
     `<div class="refcard"><h3>${c.front}</h3><div class="fctext-back">${trainingMd(c.back)}</div></div>`).join("");
-  return `<div class="sect refdeck">
+  return `<div class="sect refdeck" style="--dc:${DECK_COLORS[trainingDeckIdx % DECK_COLORS.length]}">
     <div class="bl">${deck.name} &middot; ${deck.cards.length} ${deck.cards.length === 1 ? "term" : "terms"}</div>
     ${cards}
   </div>`;
@@ -6620,6 +6683,7 @@ async function paint() {
 }
 async function paintTab() {
   const v = $("#view");
+  v.dataset.view = view;
   if (view === "digest") {
     if (rangeMode !== "day") v.innerHTML = rangeControlHtml() + producerControlHtml() + '<div class="empty">Loading…</div>';
     const err = await ensureCurForRange();
