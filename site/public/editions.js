@@ -2,10 +2,10 @@
    Six ways to read a published day or a folio, each with its own mechanic,
    all drawn from the same day documents as the Digest and The Flores Post:
      The Flores Feed   a social timeline: stories, reactions, comments, a poll
-     Gridiron          a football game: scoreboard, drives, player cards, MVP vote
-     The Drive Home    a podcast: segments, the Villain, the Countdown, the Mailbag
-     The Closing Bell  a market close: producers as stocks priced on folio premium
-     Dial Tones        a comic strip: panels from the day's calls, a boss fight, a duel
+     Fourth and Goal   a football game: scoreboard, drives, player cards, MVP vote
+     KFLR The Close    a podcast: segments, the Villain, the Countdown, the Mailbag
+     FLRS 500          a market close: producers as stocks priced on folio premium
+     Cold Call Comics  a comic strip: panels from the day's calls, a boss fight, a duel
      CLOSER            a magazine: cover, cover story, drawn infographic, podium
    Every one carries the leaderboard and real figures. What people do on them
    (reactions, comments, poll and MVP votes, mailbag notes, panel likes) is
@@ -59,7 +59,7 @@
 .edmodal { position: fixed; inset: 0; background: rgba(0,0,0,.55); display: flex; align-items: center; justify-content: center; z-index: 80; padding: 20px; }
 .edmodal .edcard { width: min(680px, 100%); max-height: 85vh; overflow: auto; }
 .tx p { margin: 0; font-size: 15px; line-height: 1.55; padding: 6px 8px; border-radius: 8px; } .tx p.on { background: color-mix(in oklab, var(--accent) 12%, transparent); } .tx p b { color: var(--accent-d); }
-/* Gridiron */
+/* Fourth and Goal */
 .gi { background: #0f2a1e; color: #fff; border-radius: 20px; overflow: hidden; box-shadow: var(--shadow); display: flex; flex-direction: column; }
 .gi .sb { background: #071a12; display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; padding: 14px 26px; gap: 16px; border-bottom: 4px solid #ffd27a; }
 .gi .tm { display: flex; align-items: center; gap: 14px; } .gi .tm b { font: 400 44px/1 'Bebas Neue', Impact, sans-serif; letter-spacing: .06em; } .gi .tm .pt { font: 400 64px/1 'Bebas Neue', Impact, sans-serif; color: #ffd27a; }
@@ -88,7 +88,7 @@
 .gflag { display: flex; gap: 10px; align-items: flex-start; padding: 6px 0; border-bottom: 1px solid #1f4a35; } .gflag i { width: 14px; height: 18px; background: #ffd27a; clip-path: polygon(0 0, 100% 0, 70% 50%, 100% 100%, 0 100%); flex: none; margin-top: 2px; }
 .vs { display: flex; gap: 10px; align-items: center; } .vs .bar { flex: 1; height: 10px; background: #0b2318; border-radius: 5px; overflow: hidden; } .vs .bar i { display: block; height: 100%; background: #ffd27a; }
 .gi .lbt, .gi .lbt td, .gi .lbt th { color: #fff; } .gi .lbt th { color: #9fd3b6; border-color: #ffd27a; } .gi .lbt td { border-color: #1f4a35; } .gi .lbt tr.tot td { border-color: #ffd27a; }
-/* Drive Home */
+/* KFLR The Close */
 .pod { display: grid; grid-template-columns: 400px minmax(0, 1fr); gap: 20px; align-items: start; }
 .art { aspect-ratio: 1; border-radius: 20px; color: #fff; padding: 24px; display: flex; flex-direction: column; justify-content: space-between; box-shadow: var(--shadow); }
 .art b { font: 400 40px/1 var(--display); } .art span { font-size: 12px; letter-spacing: .12em; text-transform: uppercase; font-weight: 800; }
@@ -100,7 +100,7 @@
 .hp { height: 14px; border-radius: 7px; background: var(--badbg); overflow: hidden; border: 1.5px solid var(--accent); } .hp i { display: block; height: 100%; background: var(--accent); }
 .cnt { display: flex; flex-direction: column; gap: 6px; } .cnt div { display: grid; grid-template-columns: 50px 1fr auto; gap: 10px; align-items: center; padding: 8px 10px; border-radius: 10px; background: var(--card2); } .cnt div b { font: 400 30px/1 var(--display); color: var(--accent); }
 .mail { display: flex; flex-direction: column; gap: 8px; } .mail .m { background: var(--card2); border-radius: 12px; padding: 10px 12px; font-size: 14px; line-height: 1.45; } .mail .m b { display: block; font-size: 12px; color: var(--text-muted); margin-bottom: 2px; }
-/* Closing Bell */
+/* FLRS 500 */
 .mkt { background: #0b0f14; color: #e8edf2; border-radius: 20px; overflow: hidden; box-shadow: var(--shadow); font-family: 'JetBrains Mono', ui-monospace, monospace; }
 .tape { background: #111820; padding: 8px 0; white-space: nowrap; overflow: hidden; font-size: 14px; border-bottom: 1px solid #1f2a36; } .tape span { margin-right: 36px; }
 .up { color: #4ade80; } .dn { color: #f87171; } .fl { color: #9fb0c8; }
@@ -114,7 +114,7 @@
 .rng { display: flex; gap: 4px; } .rng button { border: 1px solid #1f2a36; background: #0b0f14; color: #9fb0c8; border-radius: 6px; padding: 4px 10px; font: 700 12px 'JetBrains Mono', monospace; cursor: pointer; } .rng button[aria-pressed="true"] { background: #1f2a36; color: #fff; }
 .anal { background: #111820; border: 1px solid #1f2a36; border-radius: 14px; padding: 16px; font-family: var(--body); display: flex; flex-direction: column; gap: 8px; font-size: 14px; line-height: 1.5; } .anal h4 { margin: 0; font: 400 22px var(--display); color: #fff; } .anal p { margin: 0; }
 .anal .r { display: flex; justify-content: space-between; border-bottom: 1px solid #1f2a36; padding: 5px 0; font-family: 'JetBrains Mono', monospace; font-size: 13px; }
-/* Dial Tones */
+/* Cold Call Comics */
 .comic { background: #fffdf7; color: #2a2320; border: 3px solid #2a2320; border-radius: 8px; padding: 22px; display: flex; flex-direction: column; gap: 14px; font-family: 'Comic Neue', cursive; box-shadow: var(--shadow); }
 .comic .title { display: flex; justify-content: space-between; align-items: baseline; border-bottom: 3px solid #2a2320; padding-bottom: 6px; gap: 10px; flex-wrap: wrap; } .comic .title b { font: 400 54px/1 Bangers, Impact, sans-serif; letter-spacing: .04em; color: #b5532f; }
 .panels { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; }
@@ -156,7 +156,7 @@
   const st = document.createElement("style"); st.textContent = css; document.head.appendChild(st);
 })();
 
-const ED_PUBS = [["feed", "The Flores Feed"], ["grid", "Gridiron"], ["pod", "The Drive Home"], ["mkt", "The Closing Bell"], ["comic", "Dial Tones"], ["closer", "CLOSER"]];
+const ED_PUBS = [["feed", "The Flores Feed"], ["grid", "Fourth and Goal"], ["pod", "KFLR The Close"], ["mkt", "FLRS 500"], ["comic", "Cold Call Comics"], ["closer", "CLOSER"]];
 let edPub = "feed";
 try { const v = localStorage.getItem("board-edition"); if (ED_PUBS.some(p => p[0] === v)) edPub = v; } catch (_) {}
 const edMine = { watch: {}, cover: "", flip: {}, seen: {} };   // this viewer's own picks
@@ -350,7 +350,7 @@ function edSegs(X) {
 function edPod(X) {
   const S = edShared.state, mail = S.mail || [], segs = edSegs(X), seg = Math.min(edSeg, segs.length - 1), o = X.F.objs[0];
   const ep = X.isFolio ? "Folio special" : `Episode ${Math.max(1, DAYS.length - DAYS.indexOf(X.dayKey))}`;
-  return `<div class="pod"><div class="col"><div class="art" style="background:radial-gradient(circle at 50% 62%,#ffd27a 0,#ffd27a 22%,#e59a6f 23%,#b5532f 60%,#5a2416 100%)"><span>The Flores Drive Home</span><div><b>${edEsc(X.isFolio ? "The folio" : pdow3(X.dayKey) + ",")}<br>${edEsc(X.isFolio ? "so far" : pmd(X.dayKey))}</b><div style="margin-top:8px;font-size:14px">${ep} · Apollo</div></div></div>
+  return `<div class="pod"><div class="col"><div class="art" style="background:radial-gradient(circle at 50% 62%,#ffd27a 0,#ffd27a 22%,#e59a6f 23%,#b5532f 60%,#5a2416 100%)"><span>KFLR · The Close</span><div><b>${edEsc(X.isFolio ? "The folio" : pdow3(X.dayKey) + ",")}<br>${edEsc(X.isFolio ? "so far" : pmd(X.dayKey))}</b><div style="margin-top:8px;font-size:14px">${ep} · Apollo</div></div></div>
    <div class="edcard"><div class="player"><button type="button" id="edplay" aria-label="Play">${edPlaying ? "❚❚" : "▶"}</button><div class="wave">${Array.from({ length: 60 }, (_, i) => `<i class="${i <= (seg + 1) * 60 / segs.length ? "on" : ""}" style="height:${20 + Math.round(26 * Math.abs(Math.sin(i * 1.7)))}%"></i>`).join("")}</div><span class="note" id="edpos">${segs[seg][1]} / 14:02</span></div><div class="hrow"><span class="note">Play steps through the segments</span><span class="echip">the board</span></div></div>
    <div class="edcard"><h3>Villain of the Day</h3><div class="hrow"><b style="font:400 24px var(--display)">${o ? `"${edEsc(o[0])}"` : "None"}</b><span class="echip ${o && o[2] < o[1] ? "r" : "g"}">${o ? `${o[1]} up · ${o[2]} down` : "quiet"}</span></div><div class="hp"><i style="width:${o ? Math.round(100 * (o[1] - o[2]) / o[1]) : 0}%"></i></div><p style="margin:0;font-size:14px;line-height:1.5">${o ? `${plural(o[1], "call")} hit it. Health bar at ${Math.round(100 * (o[1] - o[2]) / o[1])}%: ${o[2] ? `${o[2]} landed` : "nobody landed a hit"}.` : "No objections were raised on a coached call."}</p></div>
    <div class="edcard"><h3>The Countdown</h3><div class="cnt">${[...X.order].reverse().map((f, i) => `<div><b>${X.order.length - i}</b><span style="display:flex;align-items:center;gap:8px">${edAvatar(X, f, 28)}${edEsc(X.full[f])}</span><span class="note">${X.NUM[f].pts} pts · ${pmoney(X.NUM[f].ps)}</span></div>`).join("")}</div></div></div>
@@ -389,7 +389,7 @@ function edMkt(X) {
   const up = rows.filter(r => r.chg > 0), flat = rows.filter(r => !r.chg);
   const when = X.isFolio ? "this folio" : pdow(X.dayKey);
   return `<div class="mkt"><div class="tape">${[...rows, ...rows].map(r => `<span><b>${r.sym}</b> ${pmoney(r.last)} <span class="${r.chg ? "up" : "fl"}">${r.chg ? "▲" : "■"} ${r.chg ? pmoney(r.chg) : "0.00"}</span></span>`).join("")}<span><b>FLRS</b> ${pmoney(X.FTOT)} <span class="${team.chg ? "up" : "fl"}">${team.chg ? "▲ " + pmoney(team.chg) : "■ 0.00"}</span></span></div>
-   <div class="g"><div><div class="hrow"><div><div class="lab" style="color:#9fb0c8">Market close · ${edEsc(X.isFolio ? "the folio so far" : plong(X.dayKey))}</div><h2>The Closing Bell</h2></div><div style="text-align:right"><span class="fl">${cur.sym} · ${edEsc(cur.f === "Team" ? "Team" : X.full[cur.f])}</span><div class="up" style="font-size:40px;line-height:1">${Math.round(cur.last).toLocaleString()}</div><span class="${cur.chg ? "up" : "fl"}">${cur.chg ? `▲ +${Math.round(cur.chg).toLocaleString()} (${cur.open ? Math.round(cur.chg / cur.open * 100) + "%" : "new"}) ${edEsc(when)}` : `unchanged ${edEsc(when)}`}</span></div></div>
+   <div class="g"><div><div class="hrow"><div><div class="lab" style="color:#9fb0c8">Market close · ${edEsc(X.isFolio ? "the folio so far" : plong(X.dayKey))}</div><h2>FLRS 500</h2></div><div style="text-align:right"><span class="fl">${cur.sym} · ${edEsc(cur.f === "Team" ? "Team" : X.full[cur.f])}</span><div class="up" style="font-size:40px;line-height:1">${Math.round(cur.last).toLocaleString()}</div><span class="${cur.chg ? "up" : "fl"}">${cur.chg ? `▲ +${Math.round(cur.chg).toLocaleString()} (${cur.open ? Math.round(cur.chg / cur.open * 100) + "%" : "new"}) ${edEsc(when)}` : `unchanged ${edEsc(when)}`}</span></div></div>
     <div class="chartbox"><div class="hrow"><div class="rng">${[["1d", "1D"], ["1w", "1W"], ["folio", "FOLIO"]].map(([k, l]) => `<button type="button" data-rng="${k}" aria-pressed="${edRng === k}">${l}</button>`).join("")}</div><span class="fl" style="font-size:12px">price = folio premium to date · open ${pmoney(cur.open)} · folio high ${pmoney(cur.hi)}</span></div>${edChart(X, curF)}</div>
     <div class="scroll" style="margin-top:14px"><table><thead><tr><th></th><th>Sym</th><th>Producer</th><th>Last</th><th>Chg</th><th>HH</th><th>Dials</th><th>Contact</th><th>Quoted</th><th>Util</th><th>RP</th><th>Pts</th><th>Rating</th></tr></thead><tbody>
      <tr class="mk ${edSel === "FLRS" ? "on" : ""}" data-sym="FLRS"><td></td><td class="sym">FLRS</td><td>Team · index</td><td>${pmoney(X.FTOT)}</td><td class="${team.chg ? "up" : "fl"}">${team.chg ? "+" + pmoney(team.chg) : "0.00"}</td><td>${F.hhSold ? "+" + F.hhSold : "0"}</td><td>${F.dials}</td><td>${ppct(F.rate)}</td><td>${pmoney(F.pq)}</td><td>${F.util != null ? ppct(F.util) : "—"}</td><td>${X.T.rp != null ? Math.round(X.T.rp) : "—"}</td><td></td><td class="${F.ps ? "up" : "dn"}">${F.ps ? "BUY" : "HOLD"}</td></tr>
@@ -400,7 +400,7 @@ function edMkt(X) {
     <h4 style="margin-top:8px">Full board</h4>${edLbt(X, "lbt").replace('class="lbt"', 'class="lbt" style="font-size:12px;min-width:860px"')}</div></div></div>`;
 }
 
-/* ===== DIAL TONES ===== */
+/* ===== COLD CALL COMICS ===== */
 function edComic(X) {
   const S = edShared.state, F = X.F, likes = S.likes || {};
   const fig = (c, n, x) => `<div class="fig" style="left:${x}"><div class="hd" style="background:${c}"></div><div class="bd" style="background:${c}99"></div><small>${edEsc(n)}</small></div>`;
@@ -423,7 +423,7 @@ function edComic(X) {
   if (cross) panels.push({ cap: `Final. ${cross.w}’s quiet cross-sell.`, html: `<div class="sbb" style="left:8%;top:10%">While I have you: the ${edEsc(cross.prod.replace(/^.*-/, "").toLowerCase())} isn’t covered yet.</div><div class="fx" style="right:8%;bottom:36%;font-size:26px">+${pmoney(X.SALES.filter(s => s.w === cross.w && /existing|cross/i.test(s.src)).reduce((a, s) => a + s.amt, 0))}</div>${fig(X.C[cross.w], cross.w, "40%")}` });
   if (!F.ps) panels.push({ cap: `${edEsc(edWhen(X))}. Nothing crossed the line.`, cls: "tumble", html: `<div class="tw"></div><div class="fx" style="left:10%;top:14%;font-size:22px">TUMBLEWEED</div>${fig("#c9b8a8", "", "70%")}` });
   panels.push({ cap: `Final.`, cls: "last", html: `<b>${pmoney(F.ps)}</b><span>${plural(F.pol, "policy", "policies")} · ${F.hhSold} of ${F.hh} households${F.closeHH != null ? ` · ${ppct(F.closeHH, 0)} close` : ""}</span><span style="font-size:13px">${X.order.map(f => `${f} ${X.NUM[f].pts}`).join(" · ")}</span><span style="font-size:12px;color:#e59a6f">${F.objs[0] ? `${edEsc(F.objs[0][0])} ${F.objs[0][2]}-for-${F.objs[0][1]}. ` : ""}${F.misfiled} leads misfiled.</span>` });
-  return `<div class="comic"><div class="title"><b>DIAL TONES</b><span style="font-weight:700">${edEsc(X.isFolio ? "The folio so far" : plong(X.dayKey))} · drawn by Apollo</span></div>
+  return `<div class="comic"><div class="title"><b>COLD CALL COMICS</b><span style="font-weight:700">${edEsc(X.isFolio ? "The folio so far" : plong(X.dayKey))} · drawn by Apollo</span></div>
   <div class="panels">${panels.map((p, i) => { const by = likes[i] || []; return `<div class="panel ${p.cls || ""}"${p.style ? ` style="${p.style}"` : ""}><div class="cap">${edEsc(p.cap)}</div><div class="scene">${p.html}</div><button type="button" class="plike" data-like="${i}" aria-pressed="${by.includes(edMe())}" title="${edEsc(by.join(", "))}">😂 ${by.length || ""}</button></div>`; }).join("")}</div>
   <div style="font-family:var(--body);display:flex;flex-direction:column;gap:12px;border-top:3px solid #2a2320;padding-top:14px"><div class="hrow"><b style="font:400 30px Bangers,Impact,sans-serif;letter-spacing:.04em">THE BOX SCORE</b><span class="lab">final · the whole leaderboard</span></div>${edLbt(X)}</div>
   <p class="note" style="font-family:var(--body)">Running gags come from the data: a duel when two producers close, a boss fight for the objection that cost most, a tumbleweed on a zero day, Apollo’s thought bubble whenever a quote goes by email.</p></div>`;

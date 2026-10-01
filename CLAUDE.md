@@ -1360,8 +1360,9 @@ $2,500 in premium"): the Digest's day reads as Apollo's group chat
   What to look for and the goal board. **Primetime is a permanent part of
   the paper and the only place it carries the standings.** No links back to
   the Digest ("tabs on the left is enough").
-- **The Editions** (`site/public/editions.js`): The Flores Feed, Gridiron,
-  The Drive Home, The Closing Bell, Dial Tones, CLOSER -- each with its own
+- **The Editions** (`site/public/editions.js`): The Flores Feed, Fourth and
+  Goal, KFLR The Close, FLRS 500, Cold Call Comics, CLOSER (Frank named
+  them, 2026-10-01) -- each with its own
   mechanic, every one carrying the leaderboard, all from the same
   documents. What people do on them (reactions, comments, poll and MVP
   votes, mailbag notes, panel likes) is shared through the Worker's
