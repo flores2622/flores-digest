@@ -862,6 +862,29 @@ tbody tr:hover { background: color-mix(in oklab, var(--accent) 8%, transparent);
 .results button span { color: var(--text-muted); font-size: 12.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 55%; }
 .results .none { padding: 10px; color: var(--text-muted); font-size: 13px; }
 @media (max-width: 760px) { .search { flex-basis: 100%; order: 3; } .top .sub { margin-left: 0; } }
+
+/* group-chat feeds and the to-do card (Frank, 2026-10-01: "the group chat
+   option, to replace the current live feed format"; "at the desk sounds like
+   its being worked on, rename it to something that sounds like its off the desk") */
+.chatbox { display: flex; flex-direction: column; gap: 8px; max-height: 560px; overflow: auto; padding: 4px 2px; }
+.chatbox .hr { align-self: center; font-size: 10px; font-weight: 800; letter-spacing: .1em; text-transform: uppercase; background: var(--chip); padding: 3px 10px; border-radius: 999px; color: var(--text-muted); margin: 4px 0; }
+.chatbox .bub { max-width: 86%; padding: 8px 12px; border-radius: 14px; background: var(--card2); border: 1.5px solid var(--border); font: inherit; font-size: 13.5px; line-height: 1.45; color: var(--text-primary); align-self: flex-start; border-bottom-left-radius: 4px; text-align: left; }
+.chatbox button.bub { cursor: pointer; }
+.chatbox button.bub:hover { border-color: var(--accent); }
+.chatbox .bub.me { align-self: flex-end; background: var(--goodbg); border-color: var(--goodbd); border-bottom-left-radius: 14px; border-bottom-right-radius: 4px; }
+.chatbox .bub small { display: block; font-size: 10.5px; font-weight: 800; margin-bottom: 3px; color: var(--text-secondary); }
+.chatbox .bub small .pbadge { font-size: 10.5px; padding: 0 6px; margin-right: 2px; }
+.chatbox .bub .tm { font-size: 10.5px; color: var(--text-muted); float: right; margin: 4px 0 0 10px; }
+.chatbox .pinned { background: var(--side); color: var(--sideInk); border-radius: 10px; padding: 8px 11px; font-size: 12.5px; position: sticky; top: 0; z-index: 1; }
+html[data-look="mesa"] .chatbox .pinned { background: var(--text-primary); color: var(--surface); }
+.todo { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
+.todo li { display: flex; gap: 12px; align-items: center; border: 1.5px solid var(--border); border-radius: 12px; padding: 10px 12px; background: var(--card2); }
+.todo b.n { font: 400 26px/1 var(--display); min-width: 40px; text-align: center; }
+.todo .t { flex: 1; font-size: 13.5px; min-width: 0; }
+.todo .t small { display: block; color: var(--text-muted); font-size: 12px; }
+.todo li.bad b.n { color: var(--bad); } .todo li.warn b.n { color: var(--warn); } .todo li.ok b.n { color: var(--good); }
+.todo button { font: 600 12px var(--body); border: 1px solid var(--border-strong); background: var(--surface-raised); border-radius: 8px; padding: 6px 10px; cursor: pointer; color: var(--text-primary); white-space: nowrap; }
+.todo button:hover { border-color: var(--accent); }
 /* The coaching card's flow is in its badge (outcomeBadgeHtml), so the striped
    left edge and its legend are gone (Frank, 2026-09-30 preview review: "remove
    that left colored tab from the cards, and the legend, i like the badge"). */
@@ -1365,6 +1388,127 @@ async function openCoachingCard(c) {
   document.addEventListener("click", e => { if (!e.target.closest(".search")) close(); });
   document.addEventListener("keydown", e => { if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "k") { e.preventDefault(); q.focus(); q.select(); } });
 })();
+
+
+/* ---- the day as a group chat (Frank, 2026-10-01) ---------------------------
+   Apollo on the left (calls it coached, texts that came in), the producers'
+   own moments on the right in their badge colour (sales, quotes presented,
+   quotes sent), an hour divider between, newest at the bottom. A feed line
+   never names a stage: "Mike presented $2,500 in premium", never "moved a
+   lead to Quotes Presented". A line opens the card or the list it came from. */
+function feedMins(t) {
+  if (!t) return null;
+  const s = String(t);
+  let m = /^(\d{1,2}):(\d{2})\s*(AM|PM)$/i.exec(s);
+  if (m) { let h = +m[1] % 12; if (/pm/i.test(m[3])) h += 12; return h * 60 + +m[2]; }
+  m = /^(?:(\d{2})-(\d{2}) )?(\d{1,2}):(\d{2})$/.exec(s);
+  if (m) { const mins = +m[3] * 60 + +m[4]; return m[1] ? mins - 1440 : mins; }   // "09-29 19:02" = the evening before
+  if (/T/.test(s)) { const d = new Date(s); if (!isNaN(d)) { const az = new Date(d.getTime() - 7 * 3600000); return az.getUTCHours() * 60 + az.getUTCMinutes(); } }
+  return null;
+}
+const feedClock = mins => { if (mins == null) return ""; const m = ((mins % 1440) + 1440) % 1440, h = Math.floor(m / 60), mm = m % 60; return `${h % 12 || 12}:${String(mm).padStart(2, "0")} ${h < 12 ? "AM" : "PM"}`; };
+const feedHour = mins => { if (mins == null) return ""; if (mins < 0) return "Last night"; const h = Math.floor(mins / 60); return `${h % 12 || 12} ${h < 12 ? "AM" : "PM"}`; };
+const firstName = n => String(n || "").split(" ")[0];
+const nowAzMins = () => { const az = new Date(Date.now() - 7 * 3600000); return az.getUTCHours() * 60 + az.getUTCMinutes(); };
+const money0 = n => "$" + Math.round(+n || 0).toLocaleString("en-US");
+function chatFeedHtml(items, host, pin) {
+  const sorted = [...items].sort((a, b) => (a.t ?? 9e9) - (b.t ?? 9e9));
+  let last = null; const parts = [];
+  for (const it of sorted) {
+    const hl = it.t == null ? (it.group || "") : feedHour(it.t);
+    if (hl !== last) { parts.push(`<div class="hr">${cesc(hl)}</div>`); last = hl; }
+    const attrs = it.call != null ? ` data-feedcall="${it.call}"` : it.goview ? ` data-goview="${it.goview}"` : it.ddrill ? ` data-ddrill="${it.ddrill}"` : it.h2 ? ` data-feedh2="${cesc(it.h2)}"` : "";
+    const tag = attrs ? "button" : "div";
+    const name = it.me ? (DOT[it.who] ? pbadge(DOT[it.who], firstName(it.who)) : cesc(firstName(it.who))) : cesc(host);
+    parts.push(`<${tag}${attrs}${attrs ? ' type="button"' : ""} class="bub${it.me ? " me" : ""}"><small>${name}${it.kind ? ` · ${cesc(it.kind)}` : ""}</small>${cesc(it.text)}${it.t != null ? `<span class="tm">${feedClock(it.t)}</span>` : ""}</${tag}>`);
+  }
+  return `<div class="chatbox">${pin ? `<div class="pinned">📌 ${cesc(pin)}</div>` : ""}${parts.join("") || '<div class="empty">Nothing yet.</div>'}</div>`;
+}
+function digestFeedHtml(d, who) {
+  const items = [], mine = p => !who || p === who;
+  (d.calls || []).forEach((c, i) => {
+    if (!mine(c.who)) return;
+    const sold = /sold/i.test(c.catc || "") || /^sold/i.test(c.cat || "");
+    const dir = c.direction === "call in" ? "took a call from" : c.direction === "call back" ? "got a call back from" : "reached";
+    const nflags = (c.flags || []).length;
+    items.push({ t: feedMins(c.time), who: c.who, me: sold, call: i, kind: sold ? "Sale" : "Call",
+      text: sold ? `${firstName(c.who)} closed ${c.lead} on the call · ${c.dur || ""}`
+        : `${firstName(c.who)} ${dir} ${c.lead} · ${c.dur || ""} · ${c.cat || ""}${nflags ? ` · ${nflags} flag${nflags > 1 ? "s" : ""}` : ""}` });
+  });
+  const M = d.messages || {};
+  for (const r of M.replies || []) {
+    if (!mine(r.who) || r.ack || r.optout) continue;
+    const w = r.answered_by ? `answered${r.minutes != null ? ` in ${fmtMins(r.minutes)}` : ""}` : "still waiting";
+    items.push({ t: feedMins(r.at), who: r.who, me: false, goview: "messages", kind: "Text", text: `${r.lead} texted ${firstName(r.who)}: “${String(r.said || "").slice(0, 90)}” · ${w}` });
+  }
+  for (const q of M.quotes || []) {
+    if (!mine(q.who)) continue;
+    items.push({ t: feedMins(q.at), who: q.who, me: true, goview: "messages", kind: "Quote sent", text: `${firstName(q.who)} sent the quote to ${q.lead} by ${q.channel}${q.opened ? " · opened" : ""}` });
+  }
+  const R = d.rows || {};
+  for (const r of R.quoted || []) {
+    if (!mine(r.who)) continue;
+    const prem = +String(r.premium || "").replace(/[^0-9.]/g, "");
+    items.push({ t: null, group: "Quotes today", who: r.who, me: true, kind: "Quoted", ddrill: "quoted",
+      text: prem ? `${firstName(r.who)} presented ${money0(prem)} in premium to ${r.lead}` : `${firstName(r.who)} presented a quote to ${r.lead}` });
+  }
+  for (const r of R.sold || []) {
+    if (!mine(r.who)) continue;
+    items.push({ t: null, group: "Sales today", who: r.who, me: true, kind: "Sale", ddrill: "sold", text: `${firstName(r.who)} sold ${r.product} · ${money0(r.premium)}${r.source ? ` · ${r.source}` : ""}` });
+  }
+  const T = (who ? (d.producers || []).find(p => p.name === who) : d.totals) || {};
+  const pin = `${T.pol || 0} ${T.pol === 1 ? "policy" : "policies"} · ${money0(T.ps)} sold · ${T.hh || 0} HH quoted · ${T.dials || 0} dials · ${T.live || 0} live`;
+  const live = curLive && rangeMode === "day";
+  return `<div class="sect"><h2>${live ? "Today, so far" : "How the day went"}</h2>
+    <p class="sd">Apollo's group chat: every coached call, text and quote as it happened. A line opens the card or the list it came from.</p>
+    ${chatFeedHtml(items, "Apollo", pin)}</div>`;
+}
+/* What is waiting on a person right now (live), or what the day left behind. */
+function needsNowHtml(d, who) {
+  const mine = p => !who || p === who, live = curLive && rangeMode === "day";
+  const tally = (arr, key) => { const c = {}; arr.forEach(x => { const k = firstName(key(x)); c[k] = (c[k] || 0) + 1; }); return Object.entries(c).sort((a, b) => b[1] - a[1]).map(([k, n]) => `${k} ${n}`).join(" · "); };
+  const rows = [];
+  const waiting = ((d.messages || {}).replies || []).filter(r => mine(r.who) && !r.answered_by && !r.ack && !r.optout);
+  const end = live ? nowAzMins() : 17 * 60 + 30;
+  const oldest = waiting.length ? Math.max(0, ...waiting.map(r => { const t = feedMins(r.at); return t == null ? 0 : end - t; })) : 0;
+  rows.push({ n: waiting.length, cls: waiting.length ? "bad" : "ok", t: `text${waiting.length === 1 ? "" : "s"} waiting on a reply`,
+    sub: waiting.length ? `Oldest ${fmtMins(oldest)} · ${tally(waiting, r => r.who)}` : "Every text answered", goview: "messages", btn: "Open" });
+  const mis = (d.misfiled || []).filter(r => mine(r.assigned));
+  rows.push({ n: mis.length, cls: mis.length ? "warn" : "ok", t: `open lead${mis.length === 1 ? "" : "s"} misfiled in “Pipeline”`,
+    sub: mis.length ? tally(mis, r => r.assigned) : "Nothing misfiled", h2: "Pipeline", btn: "See them" });
+  const risk = ((d.recontact || {}).at_risk || []).filter(r => mine(r.producer));
+  if (risk.length) rows.push({ n: risk.length, cls: "warn", t: "quoted leads going cold", sub: `No dial in 3+ business days · ${tally(risk, r => r.producer)}`, goview: "coaching", btn: "Coaching" });
+  const html = rows.map(r => `<li class="${r.cls}"><b class="n">${r.n}</b><div class="t">${cesc(r.t)}<small>${cesc(r.sub)}</small></div>${
+    r.n ? `<button type="button"${r.goview ? ` data-goview="${r.goview}"` : ` data-feedh2="${cesc(r.h2)}"`}>${cesc(r.btn)}</button>` : ""}</li>`).join("");
+  return `<div class="sect"><h2>${live ? "Needs someone now" : "Left on the desk"}</h2>
+    <p class="sd">${live ? "What is waiting on a person at this minute." : "What the day ended with still waiting."}</p><ul class="todo">${html}</ul></div>`;
+}
+/* Athena's side: what the service team got off the desk today. */
+function svcFeedHtml(m) {
+  const items = [];
+  for (const r of (m.srs || {}).completed || []) items.push({ t: null, group: "SRs completed", who: r.by, me: true, kind: "SR done",
+    text: `${firstName(r.by)} completed ${r.subject || "an SR"} for ${r.name || "a customer"}${r.hours != null ? ` · ${fmtDur(+r.hours)} open` : ""}` });
+  for (const r of (m.callbacks || {}).rows || []) {
+    if (r.back_at) items.push({ t: feedMins(r.back_at), who: r.back_by || r.by, me: true, kind: "Call back", text: `${firstName(r.back_by || r.by)} called ${r.name || "a customer"} back · ${r.minutes != null ? fmtMins(+r.minutes) + " after the missed call" : ""}` });
+    else items.push({ t: feedMins(r.missed), who: r.by, me: false, kind: "Missed call", text: `Missed call from ${r.name || "a number"} · not returned yet` });
+  }
+  for (const c of (m.front || {}).calls || []) items.push({ t: feedMins(c.at), who: c.who, me: true, kind: "Answered", text: `${firstName(c.who)} picked up a call · ${c.seconds >= 60 ? Math.floor(c.seconds / 60) + "m " + (c.seconds % 60) + "s" : (c.seconds || 0) + "s"}` });
+  const MM = m.messages || {};
+  for (const r of MM.replies || []) items.push({ t: feedMins(r.at), who: r.who, me: false, kind: "Text", text: `${r.name || "A customer"} texted ${firstName(r.who)}: “${String(r.said || "").slice(0, 90)}” · ${r.answered_by ? "answered" : r.ack ? "ok / thanks" : "still waiting"}` });
+  for (const r of MM.sent || []) if (!r.auto) items.push({ t: feedMins(r.at), who: r.who, me: true, kind: r.channel === "email" ? "Email" : "Text", text: `${firstName(r.who)} to ${r.name || "a customer"}: “${String(r.text || r.subject || "").slice(0, 90)}”` });
+  for (const t of m.task_rows || []) if (t.done) items.push({ t: null, group: "Tasks done", who: t.done_by || "", me: true, kind: "Task", text: `${firstName(t.done_by)} finished “${t.title}”${t.customer ? ` for ${t.customer}` : ""}` });
+  const done = ((m.srs || {}).completed || []).length, tasks = Object.values(m.tasks || {});
+  const pin = `${done} SR${done === 1 ? "" : "s"} completed · ${tasks.reduce((a, x) => a + (x.completed || 0), 0)} of ${tasks.reduce((a, x) => a + (x.due || 0), 0)} tasks · ${((m.front || {}).calls || []).length} calls answered`;
+  return `<div class="sect"><h2>Off the desk · done today</h2>
+    <p class="sd">Athena's group chat: every SR closed, call answered, call back, text and task as it happened.</p>${chatFeedHtml(items, "Athena", pin)}</div>`;
+}
+function wireFeed() {
+  $$("#view [data-feedcall]").forEach(b => b.onclick = () => { const c = ((cur && cur.calls) || [])[+b.dataset.feedcall]; if (c) openCoachingCard(c); });
+  $$("#view [data-feedh2]").forEach(b => b.onclick = () => {
+    const re = new RegExp(b.dataset.feedh2, "i"), h = $$("#view h2").find(x => re.test(x.textContent));
+    if (h) h.scrollIntoView({ behavior: "smooth", block: "start" });
+  });
+}
 
 /* The menu lists each Center's pages under it (the Center's own header tabs
    stay for the Coaching Center, whose three are views of one page). */
@@ -2840,6 +2984,7 @@ function digestPanel(d, who) {
   // card in that family rather than a new kind of section.
   return `${liveBannerHtml(d, who)}
   ${digestDay(d, who)}
+  ${rangeMode === "day" ? `<div class="digestgrid"><div>${digestFeedHtml(d, who)}</div><div>${needsNowHtml(d, who)}</div></div>` : ""}
   <div class="digestgrid">
     <div>${outcomeBreakdownHtml(d, who)}${taskCompletionHtml(d, who)}${speedPanel(d, who)}${speedReplyPanel(d, who)}</div>
     <div>${utilizationHtml(d, who)}${householdCompletionHtml(d, who)}${coachQualityHtml(d, who)}</div>
@@ -6277,7 +6422,7 @@ function paintFailed(e, controls = true) {
   catch (_) { v.innerHTML = drawErrorHtml(e); }
 }
 async function paint() {
-  try { await paintTab(); } catch (e) { paintFailed(e); }
+  try { await paintTab(); wireFeed(); } catch (e) { paintFailed(e); }
 }
 async function paintTab() {
   const v = $("#view");
@@ -7165,7 +7310,7 @@ function playbookHtml(m) {
     <p class="sd"><i>${cesc(PB.closing)}</i></p></details></div>`;
 }
 function servicePanel(m) {
-  return `${playbookHtml(m)}${serviceStatsHtml(m)}
+  return `${playbookHtml(m)}${serviceStatsHtml(m)}${rangeMode === "day" ? svcFeedHtml(m) : ""}
     ${m.playbook ? noteStandardHtml(m) : ""}
     ${svcMessagesHtml(m)}
     ${SR_OUTCOME_SECTIONS.map(([p, t, w, b]) => srOutcomeHtml(m, p, t, w, b)).join("")}
