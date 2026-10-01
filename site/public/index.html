@@ -1288,8 +1288,8 @@ function digestDay(d, who) {
          `${t.pol ?? 0} polic${(t.pol ?? 0) === 1 ? "y" : "ies"}${hhSold ? ` &middot; ${((t.pol || 0) / hhSold).toFixed(1)} per HH` : ""}`, "", liveOn(d, "hhsold")],
     // Life, its own stat (Frank, 2026-09-30: "i dont want it to count as a HH
     // or premium, make it its own stat"): never in the tiles above, the
-    // leaderboard or the closing ratio. No goal yet, so no colour.
-    ["Life Sold", `${t.life ?? 0} Pol<br>${money(t.life_ps || 0)}`, "counted apart", "", liveOn(d, "sales")],
+    // leaderboard or the closing ratio. Goal: 1 a week each (lifeTier).
+    ["Life Sold", `${t.life ?? 0} Pol<br>${money(t.life_ps || 0)}`, lifeNote(d, t, !focus), TI[lifeTier(d, t, !focus)] || "", liveOn(d, "sales")],
   ];
   if (t.util != null) tiles.push(["Utilization", t.util + "%", "weighted", tc("util"), liveOn(d, "util")]);
   const DRILL = { "Dials": "dials", "Live contacts": "contacts", "HH/Prem. Quoted": "quoted", "Pol/Prem. Sold": "sold", "HH/Prem. Sold": "sold", "Life Sold": "life" };
@@ -1335,6 +1335,35 @@ function digestDay(d, who) {
   ${digDrillFor(d, who, ["dials", "contacts", "quoted", "sold", "life", "closing"])}
   ${teamLeaderboardHtml(d, who)}
   ${digDrillFor(d, who, ["lb"])}`;
+}
+
+/* The life goal (Frank, 2026-10-01: "make the goal 1 life policy a week"),
+   a mirror of digest_config.life_week_tier -- keep them in step. One a week
+   per producer, five for the team. A day: green once this week (Monday to
+   the day) has the goal, yellow before Friday without it, red on Friday
+   without it. A range: one a week for every week in it -- green at the
+   goal, yellow with some, red with none. A day built before the goal has
+   no week count and uses its own. */
+const LIFE_WEEKLY_GOAL = 1;
+function lifeGoal(d, team) {
+  const per = LIFE_WEEKLY_GOAL * (team ? TEAM_SCALE : 1);
+  const days = d.days || [];
+  if (days.length <= 1) return { per, weeks: 1, range: false };
+  const weeks = new Set(days.map(x => { const t = new Date(x + "T12:00:00Z"); t.setUTCDate(t.getUTCDate() - ((t.getUTCDay() + 6) % 7)); return t.toISOString().slice(0, 10); }));
+  return { per, weeks: weeks.size, range: true };
+}
+function lifeTier(d, t, team) {
+  const g = lifeGoal(d, team);
+  if (g.range) { const n = t.life || 0; return n >= g.per * g.weeks ? "green" : n > 0 ? "yellow" : "red"; }
+  const wk = t.life_week ?? t.life ?? 0;
+  if (wk >= g.per) return "green";
+  const dow = d.date ? new Date(d.date + "T12:00:00Z").getUTCDay() : 1;
+  return dow === 5 || dow === 6 || dow === 0 ? "red" : "yellow";
+}
+function lifeNote(d, t, team) {
+  const g = lifeGoal(d, team);
+  if (g.range) return `goal ${g.per * g.weeks} (${g.per} a week)`;
+  return `${t.life_week ?? t.life ?? 0} of ${g.per} this week`;
 }
 
 /* Household Completion (Frank, 2026-09-23: "know if they completed an
@@ -2459,13 +2488,17 @@ function applyLive(base, L) {
       const x = L.sales.data[p.name]; if (!x) continue;
       p.cp_pol = p.pol || 0; p.cp_ps = p.ps || 0;
       p.pol = x.pol; p.ps = x.ps; p.cross_sell = x.cross_sell;
-      if (x.life != null) { p.life = x.life; p.life_ps = x.life_ps; }
+      if (x.life != null) {
+        // The week so far is the checkpoint's earlier days plus today's live.
+        const prior = (p.life_week ?? p.life ?? 0) - (p.life ?? 0);
+        p.life = x.life; p.life_ps = x.life_ps; p.life_week = prior + x.life;
+      }
       const row = tiers[p.name] || (tiers[p.name] = {});
       if (p.pol > 0) { streak[p.name] = 0; row.pol = "green"; }
       if (p.ps) row.ps = "green";
     }
     T.pol = sum("pol"); T.ps = sum("ps"); T.cross_sell = sum("cross_sell");
-    T.life = sum("life"); T.life_ps = sum("life_ps");
+    T.life = sum("life"); T.life_ps = sum("life_ps"); T.life_week = sum("life_week");
     const team = tiers.team || (tiers.team = {});
     team.pol = tierColor("policy_count", T.pol || 0);
     team.ps = T.ps ? "green" : team.pol;

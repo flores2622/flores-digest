@@ -126,6 +126,25 @@ def is_life_lead(lead):
     return lead_sources.norm(lead.get("leadSourceName")) in LIFE_LEAD_SOURCES
 
 
+# The life goal (Frank, 2026-10-01: "make the goal 1 life policy a week"):
+# per producer, Monday to Friday. Green once the week has one; yellow before
+# Friday without one (still time); red on Friday without one. The team's goal
+# is one each (x TEAM_SCALE). site/public/index.html lifeTier mirrors this --
+# keep them in step.
+LIFE_WEEKLY_GOAL = 1
+
+
+def week_start(day):
+    d = dt.date.fromisoformat(day)
+    return (d - dt.timedelta(days=d.weekday())).isoformat()
+
+
+def life_week_tier(count, day, goal=LIFE_WEEKLY_GOAL):
+    if (count or 0) >= goal:
+        return "green"
+    return "red" if dt.date.fromisoformat(day).weekday() >= 4 else "yellow"
+
+
 def life_sales(day, policies, source_map, ids):
     """{name: (count, premium)} of real LIFE sales on `day` -- counted apart,
     never in Premium Sold or the policy count."""

@@ -23,7 +23,7 @@
    [[term, meaning], ...]} or {table: {head: [...], rows: [[...], ...]}}.
    **bold** works inside any text. Nothing else is interpreted. */
 window.BLUEPRINTS = {
-  updated: "2026-09-30",
+  updated: "2026-10-01",
   guides: [
 
   /* ------------------------------------------------------------------ */
@@ -83,7 +83,7 @@ window.BLUEPRINTS = {
           ["Avg Talk Time", "Average length of the day's conversations, call-ins included."],
           ["HH / Prem. Quoted", "Households quoted and the premium quoted. A household counts once however many quotes it got. A quote counts when AgencyZoom's quote date is today, the producer moved the lead into a quoted stage, or the producer's note says a quote was sent."],
           ["HH / Prem. Sold", "Households marked sold, and the premium on the policies sold. **BOB and Rewrite are not sales.** A renewal is not a sale. Selling a product the household doesn't have yet is a sale, even to a twenty-year customer. **Life insurance is not counted here.**"],
-          ["Life Sold", "Life policies sold (term, whole, universal life) and their premium, **counted on their own**. They never count as a household sold, in Premium Sold, on the leaderboard or in the closing ratio."],
+          ["Life Sold", "Life policies sold (term, whole, universal life) and their premium, **counted on their own**. They never count as a household sold, in Premium Sold, on the leaderboard or in the closing ratio. **The goal is 1 life policy a week per producer** (5 for the team): green once the week has one, yellow Monday to Thursday without one, red on Friday without one."],
           ["Closing Ratio", "Households sold over households quoted, and premium sold over premium quoted."],
           ["Speed to Dial", "For internet leads that arrived today (SureQuote, MAV), how long until the first dial. The Team card is the middle of everyone's times."],
           ["Speed to Reply", "When a lead texts or emails us, how long until the producer answered by text, email or call. Green at 15 minutes or less, red over an hour. Replies still waiting are listed."],
@@ -475,7 +475,7 @@ window.BLUEPRINTS = {
           ["Avg talk time", "7 minutes"],
           ["Households quoted", "5 a day"],
           ["Closing ratio", "25% of households quoted"],
-          ["Life sold", "Its own number, no goal yet"],
+          ["Life sold", "1 life policy a week"],
           ["Task completion", "100%"],
           ["Role play score", "80"],
         ] } },

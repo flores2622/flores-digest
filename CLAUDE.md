@@ -340,6 +340,11 @@ Everything caches under `data/`, so a re-run resumes rather than restarting.
   life sale apart the same way (`live_basis.life`). The Sales sheet still
   lists it. BOB life policies stay not-a-sale: no producer had a counted
   life sale in September (Crystal's two, 09-02 and 09-15, were BOB).
+  **The goal is 1 life policy a week** (Frank, 2026-10-01), per producer,
+  Monday to Friday (team: 1 x `TEAM_SCALE`): `digest_config.life_week_tier`
+  over the board's `life_week` (Monday to the day; `lifeTier` in index.html
+  mirrors it) -- green once the week has one, yellow before Friday without
+  one, red on Friday without one. A range wants 1 per week it touches.
 - **A renewal is not new business.** Neither is servicing, a payment, a claim,
   or chasing paperwork on a policy already sold.
 - **Selling a product the household does not have yet IS new business**, even to
