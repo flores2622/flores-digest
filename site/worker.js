@@ -120,6 +120,10 @@ export default {
         return getLeadSources(env);
       }
 
+      if (parts[1] === "me" && parts.length === 2) {
+        return whoAmI(request);
+      }
+
       if (parts[1] === "roleplay") {
         if (parts[2] === "turn" && request.method === "POST") {
           return roleplayTurn(request, env);
@@ -1496,6 +1500,23 @@ const RP_PRODUCER_EMAILS = {
   "sarahi@floresinsuranceagency.com": "Sarahi Chin",
 };
 const RP_INDEX_KEY = "roleplay-index.json";
+
+
+/** GET /api/me -> {email, name}: who Access says is looking, with the first
+ * name the board greets them by (Frank, 2026-10-01). Producers from
+ * RP_PRODUCER_EMAILS; everyone else the mailbox name, capitalised. */
+const FIRST_NAMES = {
+  "frank@floresinsuranceagency.com": "Frank", "francisco@floresinsuranceagency.com": "Francisco",
+  "veronica@floresinsuranceagency.com": "Veronica", "amanda@floresinsuranceagency.com": "Amanda",
+  "debbie@floresinsuranceagency.com": "Debbie",
+};
+function whoAmI(request) {
+  const email = String((ACCESS_IDENTITY.get(request) || {}).email || "").toLowerCase();
+  const full = RP_PRODUCER_EMAILS[email];
+  const name = FIRST_NAMES[email] || (full ? full.split(" ")[0] : "") ||
+    (email.split("@")[0].split(/[._-]/)[0] || "").replace(/^./, (c) => c.toUpperCase());
+  return json({ email, name });
+}
 
 function rpScope(request, env) {
   const who = String((ACCESS_IDENTITY.get(request) || {}).email || "").toLowerCase();

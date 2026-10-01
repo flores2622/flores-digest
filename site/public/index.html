@@ -843,10 +843,30 @@ tbody tr:hover { background: color-mix(in oklab, var(--accent) 8%, transparent);
 .objrow:hover { background: var(--card2); }
 .objrow.sel { background: color-mix(in oklab, var(--accent) 12%, var(--surface-raised)); }
 :focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
+
+/* header: greeting, search, the day pill (Frank, 2026-10-01) */
+.top { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; padding-top: 18px; }
+.greetwrap { flex: 1 1 320px; min-width: 0; }
+.eyebrow { font-size: 11px; letter-spacing: .14em; text-transform: uppercase; color: var(--text-muted); font-weight: 700; }
+.top h1.greet { margin: 2px 0 0; font: 400 clamp(24px, 2.4vw, 34px)/1.1 var(--display); text-wrap: balance; }
+.search { position: relative; flex: 0 1 380px; }
+.search label { display: flex; align-items: center; gap: 10px; height: 40px; border: 1.5px solid var(--border-strong); border-radius: 12px; padding: 0 12px; background: var(--surface-raised); color: var(--text-muted); }
+.search input { border: 0; outline: 0; flex: 1; min-width: 0; font: 500 14px var(--body); background: transparent; color: var(--text-primary); }
+.search input::-webkit-search-cancel-button { -webkit-appearance: none; }
+.search kbd { font: 600 11px var(--body); border: 1px solid var(--border-strong); border-radius: 6px; padding: 2px 6px; color: var(--text-muted); }
+.results { position: absolute; left: 0; right: 0; top: 46px; z-index: 55; background: var(--surface-raised); border: 1.5px solid var(--border-strong); border-radius: 14px; box-shadow: 0 12px 30px rgba(42,35,32,.18); padding: 8px; max-height: 440px; overflow: auto; }
+.results[hidden] { display: none; }
+.results h5 { margin: 8px 8px 4px; font-size: 11px; letter-spacing: .12em; text-transform: uppercase; color: var(--text-muted); }
+.results button { display: flex; justify-content: space-between; gap: 12px; width: 100%; text-align: left; border: 0; background: none; font: 500 14px var(--body); padding: 8px 10px; border-radius: 9px; cursor: pointer; color: var(--text-primary); }
+.results button:hover, .results button.sel { background: var(--card2); }
+.results button span { color: var(--text-muted); font-size: 12.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 55%; }
+.results .none { padding: 10px; color: var(--text-muted); font-size: 13px; }
+@media (max-width: 760px) { .search { flex-basis: 100%; order: 3; } .top .sub { margin-left: 0; } }
 /* The coaching card's flow is in its badge (outcomeBadgeHtml), so the striped
    left edge and its legend are gone (Frank, 2026-09-30 preview review: "remove
    that left colored tab from the cards, and the legend, i like the badge"). */
 .flowedge, .flowleg { display: none; }
+.ccard.found { box-shadow: 0 0 0 3px var(--accent); }
 .ccard > summary.cchead { border-left: 1px solid var(--border) !important; }
 @media (max-width: 760px) {
   .tabs { min-height: 0; max-height: none; position: static; flex-direction: row; flex-wrap: wrap; padding: 10px 12px; gap: 6px; align-items: center; }
@@ -890,7 +910,12 @@ tbody tr:hover { background: color-mix(in oklab, var(--accent) 8%, transparent);
   </nav>
   <div class="wrap">
     <div class="top">
-      <h1>Sales Floor</h1>
+      <div class="greetwrap"><div class="eyebrow">Sales Floor</div><h1 class="greet" id="greet">Welcome back.</h1></div>
+      <div class="search">
+        <label for="q"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg>
+          <input id="q" type="search" placeholder="Find a lead, producer, page…" autocomplete="off" aria-controls="res"><kbd>Ctrl K</kbd></label>
+        <div class="results" id="res" hidden></div>
+      </div>
       <span class="sub" id="topsub">loading…</span>
     </div>
     <main class="main">
@@ -1200,6 +1225,146 @@ _darkMq.addEventListener("change", () => applyTheme(false));
   document.addEventListener("keydown", e => { if (e.key === "Escape") close(); });
 })();
 applyTheme(false);
+
+
+/* ---- who is looking, and the greeting (Frank, 2026-10-01: "random things
+   like when i open a new chat with claude? clever short little phrases") ---- */
+let ME = { email: "", name: "" };
+async function loadMe() {
+  try { const r = await fetch("/api/me", { cache: "no-store" }); if (r.ok) ME = await r.json(); } catch (_) {}
+}
+function businessDaysUntil(fromIso, toIso) {
+  let n = 0;
+  for (let d = new Date(fromIso + "T12:00:00Z"); isoDate(d) < toIso; d.setUTCDate(d.getUTCDate() + 1)) {
+    const w = d.getUTCDay(); if (w !== 0 && w !== 6) n++;
+  }
+  return n;
+}
+function greetingText() {
+  const n = ME.name || "team";
+  const az = new Date(Date.now() - 7 * 3600000), h = az.getUTCHours(), dow = az.getUTCDay();
+  const any = [`Welcome back, ${n}.`, `Back at it, ${n}.`, `Let's sell something, ${n}.`, `Ready when you are, ${n}.`, `What's the move, ${n}?`,
+    `The phones missed you, ${n}.`, `Hot out there. Hotter leads, ${n}.`, `Another day in the desert, ${n}.`, `Quotes don't present themselves, ${n}.`,
+    `Somebody out there needs a bundle, ${n}.`, `Good to see you, ${n}.`, `Let's find some households, ${n}.`, `Assume the sale, ${n}.`,
+    `Every dial is a maybe, ${n}.`, `Voicemails build character, ${n}.`, `Somewhere a renter needs a home policy, ${n}.`, `Ask for the sale, ${n}. Then stop talking.`,
+    `Present it, don't send it, ${n}.`, `Ten minutes on the phone beats ten emails, ${n}.`, `The best quote is the one they hear, ${n}.`,
+    `One more household, ${n}.`, `Dry heat, warm leads, ${n}.`, `Sun's up, rates are in, ${n}.`, `Cactus tough, ${n}.`, `Saguaro-strong today, ${n}.`,
+    `Hello again, ${n}.`, `Look who's here. ${n}.`, `Let's make the board glow, ${n}.`, `Green numbers only, ${n}.`, `Nice to have you, ${n}.`,
+    `Every no gets you closer to a yes, ${n}.`, `Bundle it, ${n}. Always bundle it.`, `Somebody's renewal is about to go up, ${n}.`,
+    `The follow-up is where the money is, ${n}.`, `Call backs are gold, ${n}.`, `Speed to dial, ${n}. Speed to dial.`, `Coverage is a promise, ${n}.`,
+    `Today's a good day to close, ${n}.`, `Fortune favors the dialer, ${n}.`, `The leaderboard awaits, ${n}.`, `Big day energy, ${n}.`,
+    `Let's see what the desert brought in, ${n}.`, `Numbers don't lie, ${n}. Let's read them.`, `The board's warm, ${n}.`, `Pull up a chair, ${n}.`];
+  const tod = h < 12 ? [`Morning, ${n}. Phones are warm.`, `Rise and quote, ${n}.`, `Coffee first, then closes, ${n}.`, `Good morning, ${n}.`,
+      `Early bird gets the bundle, ${n}.`, `Morning, ${n}. Beat the heat, beat the goal.`, `First call of the day is the easiest, ${n}.`, `Fresh coffee, fresh leads, ${n}.`]
+    : h < 17 ? [`Good afternoon, ${n}.`, `Afternoon, ${n}. Plenty of day left.`, `Second half, ${n}. Finish strong.`, `Afternoon push, ${n}.`,
+      `Post-lunch power hour, ${n}.`, `Afternoon, ${n}. People pick up after 3.`, `Still time to make it a great day, ${n}.`, `The 4 o'clock close is real, ${n}.`]
+    : [`Evening, ${n}. Let's see how it went.`, `Good evening, ${n}.`, `Clocking out soon, ${n}?`, `Sunset over the desert, numbers on the board, ${n}.`, `Long day, ${n}. Good work.`];
+  const day = { 1: [`Fresh week, ${n}.`, `Monday, ${n}. Call backs first.`, `New week, new households, ${n}.`],
+    2: [`Taco Tuesday, ${n}. Sell like it.`, `Tuesday, ${n}. Momentum day.`],
+    3: [`Hump day, ${n}. Over the top.`, `Midweek, ${n}. Halfway to Friday.`],
+    4: [`Thursday, ${n}. One more push.`, `Almost Friday, ${n}.`],
+    5: [`Friday, ${n}. Close it out.`, `Made it to Friday, ${n}.`, `Friday, ${n}. Leave nothing on the table.`],
+    0: [`Sunday, ${n}. The board rests too.`], 6: [`Saturday, ${n}? Dedicated.`] }[dow] || [];
+  const today = isoDate(azTodayDate()), end = folioEndFor(today);
+  const daysLeft = end ? businessDaysUntil(today, end) + (end >= today ? 1 : 0) : 99;
+  const live = cur && curLive && rangeMode === "day" && cur.date === today;
+  const soldToday = live ? ((cur.totals || {}).pol || 0) : null;
+  const ctx = [
+    ...(daysLeft <= 3 ? [`${daysLeft === 1 ? "Last day" : daysLeft + " days left"} in the folio, ${n}.`, `Clock's ticking on the folio, ${n}.`] : []),
+    ...(soldToday === 0 && h >= 10 ? [`First sale's still out there, ${n}.`, `Nobody's sold yet, ${n}. Be first.`] : []),
+    ...(soldToday >= 4 ? [`${soldToday} policies sold already, ${n}.`, `Strong day so far, ${n}.`] : [])];
+  const pool = [...any, ...tod, ...tod, ...day, ...day, ...ctx, ...ctx, ...ctx];
+  return pool[Math.floor(Math.random() * pool.length)];
+}
+let greetingOnce = "";
+function paintGreeting(force) {
+  const g = $("#greet"); if (!g) return;
+  if (force || !greetingOnce) greetingOnce = greetingText();
+  g.textContent = greetingOnce;
+}
+
+/* ---- search (Frank, 2026-10-01: the search bar, Ctrl K) --------------------
+   Pages, sections on the page you are on, producers, and every lead on the
+   loaded day (its calls, lists, texts, misfiled). A lead opens its coaching
+   card when it has one, else its AgencyZoom record. */
+const SEARCH_PAGES = [["Digest", "Sales Center", "digest"], ["Sales", "Sales Center · log and breakdown", "sales"], ["Texts & Emails", "Sales Center", "messages"],
+  ["Coaching Center", "Apollo · cards, objections, wins and losses", "coaching"], ["Role Play", "Learning Center", "roleplay"], ["Session History", "Learning Center", "rphistory"],
+  ["Training", "Learning Center", "training"], ["Service Digest", "Service Center · Athena", "service"], ["Renewals", "Service Center · Athena", "renewals"], ["Commercial Center", "Cerberus", "commercial"]];
+function searchIndex() {
+  const out = [];
+  for (const [l, sub, v] of SEARCH_PAGES) if (v !== "commercial" || !$('.tab[data-v="commercial"]').hidden) out.push({ g: "Pages", l, s: sub, go: () => goView(v) });
+  $$("#view h2").forEach(h => { const t = h.textContent.trim(); if (t) out.push({ g: "On this page", l: t, s: "", go: () => h.scrollIntoView({ behavior: "smooth", block: "start" }) }); });
+  for (const p of PRODUCER_ROSTER) out.push({ g: "Producers", l: p, s: "Digest, filtered to them", go: () => { producerFilter = p; if (view !== "digest") goView("digest"); else paint(); } });
+  const seen = new Map();
+  const lead = (name, id, who, what, go) => {
+    if (!name) return; const k = id || name;
+    const e = seen.get(k) || { g: "Leads", l: name, s: "", id, who, parts: [], go: null };
+    if (what && !e.parts.includes(what)) e.parts.push(what);
+    if (go && !e.go) e.go = go;
+    seen.set(k, e);
+  };
+  if (cur) {
+    for (const c of cur.calls || []) lead(c.lead, c.lead_id, c.who, "coaching card", () => openCoachingCard(c));
+    const R = cur.rows || {};
+    for (const r of R.sold_leads || []) lead(r.lead, r.lead_id, r.who, "sold");
+    for (const r of R.quoted || []) lead(r.lead, r.lead_id, r.who, "quoted");
+    for (const r of R.contacts || []) lead(r.lead, r.lead_id, r.who, "reached");
+    for (const r of R.dials || []) lead(r.lead, r.lead_id, r.who, "dialled");
+    for (const r of (cur.messages || {}).replies || []) lead(r.lead, r.lead_id, r.who, "texted");
+    for (const r of cur.misfiled || []) lead(r.lead, r.lead_id, r.assigned, "misfiled");
+  }
+  for (const e of seen.values()) {
+    e.s = `${(e.who || "").split(" ")[0]}${e.parts.length ? " · " + e.parts.join(", ") : ""}`;
+    if (!e.go) e.go = e.id ? () => window.open(AZ_URL.lead + encodeURIComponent(e.id), "_blank", "noopener") : null;
+    if (e.go) out.push(e);
+  }
+  return out;
+}
+async function openCoachingCard(c) {
+  if (view !== "coaching" || coachSubTab !== "cards") { coachSubTab = "cards"; if (view !== "coaching") await goView("coaching"); else repaintCoaching(); }
+  // goView paints without awaiting, and the Coaching tab repaints once more
+  // as it finishes loading: wait for the page to hold still with cards on it.
+  for (let i = 0, last = -1; i < 40; i++) {
+    await new Promise(r => setTimeout(r, 150));
+    const n = $("#view").innerHTML.length;
+    if ($("#view .ccard") && n === last) break;
+    last = n;
+  }
+  const find = () => $$("#view .ccard").find(el => {
+    const n = (el.querySelector(".cname") || {}).textContent || "", m = (el.querySelector(".cmeta") || {}).textContent || "";
+    return n.trim() === (c.lead || "").trim() && m.includes((c.who || "").trim()) && (!c.time || m.includes(c.time));
+  }) || $$("#view .ccard").find(el => ((el.querySelector(".cname") || {}).textContent || "").trim() === (c.lead || "").trim());
+  const card = find();
+  if (card) { card.open = true; card.scrollIntoView({ behavior: "smooth", block: "start" }); card.classList.add("found"); setTimeout(() => card.classList.remove("found"), 2400); }
+}
+(function wireSearch() {
+  const q = $("#q"), res = $("#res"); if (!q || !res) return;
+  let hits = [], sel = 0;
+  const close = () => { res.hidden = true; };
+  const show = () => {
+    const raw = q.value.trim(), qq = raw.toLowerCase();
+    const all = searchIndex();
+    hits = (qq ? all.filter(e => e.l.toLowerCase().includes(qq) || (e.s || "").toLowerCase().includes(qq))
+               : all.filter(e => e.g === "Pages" || e.g === "On this page")).slice(0, 14);
+    sel = 0;
+    const groups = [...new Set(hits.map(h => h.g))];
+    res.innerHTML = hits.length ? groups.map(g => `<h5>${g}</h5>` + hits.map((h, i) => h.g === g
+      ? `<button type="button" data-i="${i}" class="${i === sel ? "sel" : ""}">${cesc(h.l)}<span>${cesc(h.s || "")}</span></button>` : "").join("")).join("")
+      : `<div class="none">Nothing on this day matches “${cesc(raw)}”.</div>`;
+    res.hidden = false;
+  };
+  const pick = i => { const h = hits[i]; if (!h) return; close(); q.blur(); h.go(); };
+  q.addEventListener("focus", show); q.addEventListener("input", show);
+  q.addEventListener("keydown", e => {
+    if (e.key === "Escape") { close(); q.blur(); }
+    else if (e.key === "ArrowDown" || e.key === "ArrowUp") { e.preventDefault(); sel = (sel + (e.key === "ArrowDown" ? 1 : hits.length - 1)) % Math.max(hits.length, 1);
+      $$("#res button").forEach(b => b.classList.toggle("sel", +b.dataset.i === sel)); }
+    else if (e.key === "Enter") { e.preventDefault(); pick(sel); }
+  });
+  res.addEventListener("mousedown", e => { const b = e.target.closest("button[data-i]"); if (b) { e.preventDefault(); pick(+b.dataset.i); } });
+  document.addEventListener("click", e => { if (!e.target.closest(".search")) close(); });
+  document.addEventListener("keydown", e => { if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "k") { e.preventDefault(); q.focus(); q.select(); } });
+})();
 
 /* The menu lists each Center's pages under it (the Center's own header tabs
    stay for the Coaching Center, whose three are views of one page). */
@@ -7687,7 +7852,10 @@ paintCenterBar();
   }
   DAYS = days;
   initCommercial();   // unhides the Commercial Center for Frank only
+  await loadMe();
+  paintGreeting(true);
   await loadDay(days[0]);
+  paintGreeting(true);   // again, now that it knows the day (sales, the folio clock)
 })();
 </script>
 </body>
