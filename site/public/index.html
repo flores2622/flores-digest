@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Sales Floor — Flores Insurance Agency</title>
-<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=Manrope:wght@400;500;600;700;800&family=Fraunces:opsz,wght@9..144,400;9..144,700&family=Public+Sans:wght@400;500;700;800&family=Bitter:wght@400;600&family=Work+Sans:wght@400;500;700;800&family=Instrument+Serif&family=Instrument+Sans:wght@400;500;700&family=Bebas+Neue&family=Bangers&family=Comic+Neue:wght@400;700&family=JetBrains+Mono:wght@400;700&display=swap">
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=Manrope:wght@400;500;600;700;800&family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,700&family=Public+Sans:wght@400;500;700;800&family=Bitter:wght@400;600&family=Work+Sans:wght@400;500;700;800&family=Instrument+Serif&family=Instrument+Sans:wght@400;500;700&family=Bebas+Neue&family=Bangers&family=Comic+Neue:wght@400;700&family=JetBrains+Mono:wght@400;700&display=swap">
 <style>
 /* ---------------------------------------------------------------------------
    Palette. Categorical slots 1-5 in fixed order, validated in both modes:
@@ -27,6 +27,7 @@
 :root {
   color-scheme: light;
   --display: 'DM Serif Display', Georgia, serif;
+  --dw: 400;   /* the display face's heavier cut, where it has one */
   --body: Manrope, system-ui, -apple-system, "Segoe UI", sans-serif;
   --surface:        #f3e9dc;   /* sand: the page */
   --surface-raised: #fffaf3;   /* cream: every card */
@@ -61,13 +62,13 @@
   --bad:    #a80000; --badbg:  #fce3e3; --badbd:  #f0b4b4;
   --gold:   #9a6f00; --silver: #6f6f6f; --bronze: #9a5f2b;
 }
-html[data-look="saguaro"] { --display: 'Fraunces', Georgia, serif; --body: 'Public Sans', system-ui, sans-serif;
+html[data-look="saguaro"] { --display: 'Fraunces', Georgia, serif; --dw: 600; --body: 'Public Sans', system-ui, sans-serif;
   --surface: #f1ece1; --surface-raised: #fdfbf6; --card2: #f4f0e6; --chip: #e6e3d6; --text-primary: #1f2a22; --text-muted: #5d6b5f; --text-secondary: #50605a;
   --grid: #e4e2d6; --border: #dcdfd0; --border-strong: #c9cdb9; --accent: #3e6b4f; --accent-d: #2b4f39; --side: #24382c; --side2: #2f4a3a; --sideInk: #dfe7dd; --brand: #f1ece1; --brand2: #b9d3a8; --rad: 12px; }
-html[data-look="turquoise"] { --display: 'Bitter', Georgia, serif; --body: 'Work Sans', system-ui, sans-serif;
+html[data-look="turquoise"] { --display: 'Bitter', Georgia, serif; --dw: 600; --body: 'Work Sans', system-ui, sans-serif;
   --surface: #eeebe5; --surface-raised: #fbfaf7; --card2: #f2f0eb; --chip: #e3e0da; --text-primary: #1d2a33; --text-muted: #5d6a73; --text-secondary: #4e5b64;
   --grid: #e3e0da; --border: #dcdfe1; --border-strong: #c8cdd0; --accent: #1f8a8a; --accent-d: #156464; --side: #1d2a33; --side2: #2a3a46; --sideInk: #d6dee3; --brand: #eeebe5; --brand2: #6cc7c4; --rad: 10px; }
-html[data-look="canyon"] { --display: 'Fraunces', Georgia, serif;
+html[data-look="canyon"] { --display: 'Fraunces', Georgia, serif; --dw: 600;
   --surface: #f6e6d6; --surface-raised: #fff8f0; --card2: #fbeee2; --chip: #f1dcc8; --text-primary: #3a1d12; --text-muted: #7d5a48; --text-secondary: #6a4a3a;
   --grid: #f0dccb; --border: #ecd2bb; --border-strong: #e0b994; --accent: #d9622b; --accent-d: #a8441a; --side: #5a2416; --side2: #733021; --sideInk: #f6dcc8; --brand: #fff1e4; --brand2: #ffb27e; --rad: 18px; --bw: 2.5px; }
 html[data-look="canyon"] h1, html[data-look="canyon"] h2, html[data-look="canyon"] .tile .v { font-weight: 700; }
@@ -798,8 +799,15 @@ tr.rdrill-row.on td { box-shadow: inset 0 -2px 0 var(--s1); }
 /* ---- The Arizona look: shell and cards (Frank, 2026-10-01) ------------------
    Overrides of the rules above, in cascade order, so every view keeps its
    markup, hooks, tiers and lists and only the dress changed. */
-body { font-family: var(--body); font-size: 14px; }
+/* Weight (Frank, 2026-10-01: "its thinner than it was"): the restyle swapped
+   the system font for Manrope at 400, which reads lighter than Segoe UI.
+   Text sits at 500 in every look; the serif numbers and headings take the
+   face's heavier cut where it has one (--dw: Fraunces and Bitter at 600;
+   DM Serif Display and Instrument Serif have one weight and stay as cut). */
+body { font-family: var(--body); font-size: 14px; font-weight: 500; }
 h1, h2, .tile .v { font-family: var(--display); }
+.sd, .tile .n, .n, .note, td, .sect p, .hero p { font-weight: 500; }
+b, strong, th, .tile .k { font-weight: 700; }
 .shell { min-height: 100vh; }
 /* the menu */
 .tabs { width: 232px; background: var(--side); color: var(--sideInk); border-right: none; padding: 22px 14px 16px; gap: 2px;
@@ -836,7 +844,7 @@ html[data-look="mesa"] .tab:hover, html[data-look="mesa"] .tab[aria-selected="tr
 /* the page column */
 .wrap { flex: 1; min-width: 0; display: flex; flex-direction: column; }
 .top { background: transparent; color: var(--text-primary); padding: 22px 24px 0; max-width: 1600px; width: 100%; margin: 0 auto; align-items: center; }
-.top h1 { font-size: 30px; font-weight: 400; letter-spacing: 0; }
+.top h1 { font-size: 30px; font-weight: var(--dw); letter-spacing: 0; }
 .top .sub { margin-left: auto; font-size: 13px; color: var(--text-primary); background: var(--chip); padding: 6px 12px; border-radius: 999px; font-weight: 600; }
 .top .sub:empty { display: none; }
 .main { padding: 14px 24px 60px; width: 100%; }   /* margin:auto turns off the column's stretch; without this the page was as wide as its content */
@@ -851,13 +859,13 @@ select, button.ghost, .btn, input[type="date"] { border-radius: 10px; border-col
 /* cards: every section is one */
 .sect { background: var(--surface-raised); border: var(--bw) solid var(--border-strong); border-radius: var(--rad); padding: 18px 20px 20px; box-shadow: var(--shadow); margin: 20px 0 0; }
 .sect > h2:first-child, .sect > .sd + *, h2 { margin-top: 0; }
-h2 { font-size: 22px; font-weight: 400; text-transform: none; letter-spacing: 0; margin: 20px 0 12px; padding-bottom: 8px; border-bottom: 1px solid var(--border-strong); }
+h2 { font-size: 22px; font-weight: var(--dw); text-transform: none; letter-spacing: 0; margin: 20px 0 12px; padding-bottom: 8px; border-bottom: 1px solid var(--border-strong); }
 .sect h2 { margin-top: 0; }
 .sd { margin: -6px 0 14px; }
 .digestgrid { gap: 20px; }
 .tile { border: var(--bw) solid var(--border-strong); border-radius: calc(var(--rad) - 4px); box-shadow: var(--shadow); padding: 14px 16px; }
 .tile .k { font-size: 12px; letter-spacing: .04em; font-weight: 700; }
-.tile .v { font-size: 34px; font-weight: 400; letter-spacing: 0; line-height: 1.05; margin-top: 6px; }
+.tile .v { font-size: 34px; font-weight: var(--dw); letter-spacing: 0; line-height: 1.05; margin-top: 6px; }
 .tiles-6 { padding: 14px; margin: -14px; }
 .hero, .ccard, .blk, .rpchat, .gradecard, .pcard, .fcface, .quizopt, .matchtile, .scroll { border-radius: 14px; }
 .hero, .ccard, .rpchat, .gradecard, .pcard, .scroll { border-width: var(--bw); border-color: var(--border-strong); }
@@ -878,7 +886,7 @@ tbody tr:hover { background: color-mix(in oklab, var(--accent) 8%, transparent);
 .top { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; padding-top: 18px; }
 .greetwrap { flex: 1 1 320px; min-width: 0; }
 .eyebrow { font-size: 11px; letter-spacing: .14em; text-transform: uppercase; color: var(--text-muted); font-weight: 700; }
-.top h1.greet { margin: 2px 0 0; font: 400 clamp(24px, 2.4vw, 34px)/1.1 var(--display); text-wrap: balance; }
+.top h1.greet { margin: 2px 0 0; font: var(--dw) clamp(24px, 2.4vw, 34px)/1.1 var(--display); text-wrap: balance; }
 .search { position: relative; flex: 0 1 380px; }
 .search label { display: flex; align-items: center; gap: 10px; height: 40px; border: 1.5px solid var(--border-strong); border-radius: 12px; padding: 0 12px; background: var(--surface-raised); color: var(--text-muted); }
 .search input { border: 0; outline: 0; flex: 1; min-width: 0; font: 500 14px var(--body); background: transparent; color: var(--text-primary); }
@@ -909,7 +917,7 @@ tbody tr:hover { background: color-mix(in oklab, var(--accent) 8%, transparent);
 html[data-look="mesa"] .chatbox .pinned { background: var(--text-primary); color: var(--surface); }
 .todo { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
 .todo li { display: flex; gap: 12px; align-items: center; border: 1.5px solid var(--border); border-radius: 12px; padding: 10px 12px; background: var(--card2); }
-.todo b.n { font: 400 26px/1 var(--display); min-width: 40px; text-align: center; }
+.todo b.n { font: var(--dw) 26px/1 var(--display); min-width: 40px; text-align: center; }
 .todo .t { flex: 1; font-size: 13.5px; min-width: 0; }
 .todo .t small { display: block; color: var(--text-muted); font-size: 12px; }
 .todo li.bad b.n { color: var(--bad); } .todo li.warn b.n { color: var(--warn); } .todo li.ok b.n { color: var(--good); }
@@ -934,7 +942,7 @@ html[data-look="mesa"] .chatbox .pinned { background: var(--text-primary); color
 .objn { background: var(--chip); border-radius: 999px; padding: 2px 9px; font-weight: 700; color: var(--text-secondary); }
 .hero { border-top: 4px solid var(--accent); border-radius: 14px; }
 .hero:nth-of-type(3n+2) { border-top-color: var(--s1); } .hero:nth-of-type(3n) { border-top-color: var(--s3); }
-.hero .hl { font: 400 20px var(--display); }
+.hero .hl { font: var(--dw) 20px var(--display); }
 .ast td b { color: var(--text-primary); }
 /* Learning Center */
 .lchero { background: linear-gradient(135deg, var(--side) 0%, var(--side2) 100%); color: var(--sideInk); border-color: var(--side2); }
@@ -944,7 +952,7 @@ html[data-look="mesa"] .chatbox .pinned { background: var(--text-primary); color
 .lchero select, .lchero .ghost, .lchero .btn { background: rgba(255,255,255,.1); color: inherit; border-color: rgba(255,255,255,.3); }
 html[data-look="mesa"] .lchero { background: linear-gradient(135deg, var(--text-primary), #4a3f38); color: var(--surface); }
 .pcard { border-top: 6px solid var(--pc, var(--border-strong)); border-radius: 14px; background: linear-gradient(180deg, color-mix(in oklab, var(--pc, var(--border-strong)) 14%, var(--surface-raised)), var(--surface-raised) 70%); padding-top: 16px; }
-.pcard .pn { font: 400 20px var(--display); } .pcard .pn::before { content: var(--ic, ""); margin-right: 8px; }
+.pcard .pn { font: var(--dw) 20px var(--display); } .pcard .pn::before { content: var(--ic, ""); margin-right: 8px; }
 .pcard[data-persona="easy"] { --pc: var(--s3); --ic: "🌵"; } .pcard[data-persona="medium"] { --pc: var(--s4); --ic: "🌤️"; } .pcard[data-persona="hard"] { --pc: var(--accent); --ic: "🔥"; }
 .pcard.sel { box-shadow: 0 0 0 2px var(--pc) inset; border-color: var(--pc); }
 #view[data-view="rphistory"] th, #view[data-view="roleplay"] th, #view[data-view="training"] th { background: var(--card2); }
@@ -953,10 +961,10 @@ html[data-look="mesa"] .lchero { background: linear-gradient(135deg, var(--text-
 .subtab[data-deck="2"].sel { background: var(--s4); border-color: var(--s4); } .subtab[data-deck="3"].sel { background: var(--s7); border-color: var(--s7); }
 .refdeck { border-top: 6px solid var(--dc, var(--accent)); }
 .refcard { border-left: 4px solid var(--dc, var(--accent)); padding-left: 14px; border-bottom: 0; margin-bottom: 10px; background: var(--card2); border-radius: 0 12px 12px 0; padding-top: 10px; padding-bottom: 10px; }
-.refcard h3 { color: var(--dc, var(--accent)); font: 400 18px var(--display); }
+.refcard h3 { color: var(--dc, var(--accent)); font: var(--dw) 18px var(--display); }
 .fcface { background: linear-gradient(160deg, var(--surface-raised), var(--card2)); border: 2px solid var(--accent); }
 .fcback { background: linear-gradient(160deg, var(--card2), var(--surface-raised)); border-color: var(--s3); }
-.quizq { font: 400 22px var(--display); } .quizopt { border-radius: 12px; } .quizopt:hover:not(:disabled) { border-color: var(--accent); background: var(--card2); }
+.quizq { font: var(--dw) 22px var(--display); } .quizopt { border-radius: 12px; } .quizopt:hover:not(:disabled) { border-color: var(--accent); background: var(--card2); }
 .matchtile { border-radius: 12px; } .matchtile.sel { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent) inset; }
 /* Road Maps: Apollo's clay, Athena's sage */
 #view[data-view="athenamap"] { --rm: var(--s3); } #view[data-view="blueprint"] { --rm: var(--accent); }
@@ -971,7 +979,7 @@ html[data-look="mesa"] #view .bp .bpdate { background: #4a3f38; color: var(--sur
 #view .bp .bptoc a:hover { background: var(--rm); color: #fff; }
 #view .bp section { border: var(--bw) solid var(--border-strong); border-left: 6px solid var(--sc, var(--rm)); border-radius: 14px; background: var(--surface-raised); padding: 14px 20px 10px; margin-top: 14px; box-shadow: var(--shadow); }
 #view .bp section:nth-of-type(4n+2) { --sc: var(--s1); } .bp section:nth-of-type(4n+3) { --sc: var(--s3); } .bp section:nth-of-type(4n) { --sc: var(--s7); }
-#view .bp h3 { font: 400 22px var(--display); display: flex; align-items: center; gap: 10px; margin: 2px 0 10px; }
+#view .bp h3 { font: var(--dw) 22px var(--display); display: flex; align-items: center; gap: 10px; margin: 2px 0 10px; }
 #view .bp h3::before { counter-increment: bps; content: counter(bps); display: inline-flex; align-items: center; justify-content: center; width: 28px; height: 28px; border-radius: 50%; background: var(--sc, var(--rm)); color: #fff; font: 700 13px var(--body); flex: none; }
 #view .bp dt { color: var(--sc, var(--rm)); }
 #view .bp th { background: var(--card2); } .bp strong { color: var(--sc, var(--rm)); }
@@ -992,7 +1000,7 @@ html[data-look="mesa"] .svchero { background: linear-gradient(135deg, var(--text
 .pstrip { border-top: 6px solid var(--pc) !important; border-radius: 14px; background: linear-gradient(180deg, color-mix(in oklab, var(--pc) 16%, var(--surface-raised)), var(--surface-raised) 65%); transition: transform .15s, box-shadow .15s; }
 .pstrip:hover { transform: translateY(-2px); box-shadow: 0 6px 18px rgba(0,0,0,.14); }
 .pstrip.on { border-color: var(--pc) !important; box-shadow: 0 0 0 2px var(--pc) inset; }
-.pstrip .v { font-family: var(--display); font-weight: 400; }
+.pstrip .v { font-family: var(--display); font-weight: var(--dw); }
 .ptotals { border-left: 6px solid var(--pc); background: var(--surface-raised); border-radius: 14px; }
 .ptotals > div:first-child b { font-size: 15px; }
 .statgrid .tile { border-top: 4px solid var(--hc, var(--border-strong)); border-radius: 12px; background: linear-gradient(180deg, color-mix(in oklab, var(--hc, var(--border-strong)) 9%, var(--surface-raised)), var(--surface-raised) 60%); }
