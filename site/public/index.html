@@ -9032,7 +9032,12 @@ function coeusMd(md) {
       out.push(`<${ordered ? "ol" : "ul"}>${items.join("")}</${ordered ? "ol" : "ul"}>`);
       continue;
     }
-    const para = []; while (i < lines.length && lines[i].trim() && !isRow(lines[i]) && !/^\s{0,3}#{1,6}\s+/.test(lines[i]) && !/^\s*([-*•]|\d+[.)])\s+/.test(lines[i])) para.push(lines[i++].trim());
+    // The first line is always taken, whatever it looks like: a table row
+    // whose separator has not streamed in yet is plain text for now. Without
+    // this the loop never advanced on such a line and the tab froze
+    // (2026-10-01, the first two real questions).
+    const para = [lines[i++].trim()];
+    while (i < lines.length && lines[i].trim() && !isRow(lines[i]) && !/^\s{0,3}#{1,6}\s+/.test(lines[i]) && !/^\s*([-*•]|\d+[.)])\s+/.test(lines[i])) para.push(lines[i++].trim());
     out.push(`<p>${inline(para.join(" "))}</p>`);
   }
   return out.join("");
