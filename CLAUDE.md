@@ -358,7 +358,10 @@ Everything caches under `data/`, so a re-run resumes rather than restarting.
   policy read). Policy records carry no customer, so that tie is the only
   one; it changed no other September lead. So life is never in Policies, Premium Sold, HH
   Sold, Household Completion, the leaderboard or the closing ratio; the
-  Digest's **Life Sold** tile shows it (its list is `rows.life`), the email
+  Digest's **Life Sold** tile shows it (its list is `rows.life`) **as a count
+  of policies, never a premium figure** (Frank, 2026-10-02: "we dont track
+  that at all" -- the email's card, the guide and Coeus's readings the
+  same; `life_premium` / `life_ps` stay in the documents, unshown), the email
   adds a Life Sold card only on a day with one, and the Worker keeps a live
   life sale apart the same way (`live_basis.life`). The Sales sheet still
   lists it. BOB life policies stay not-a-sale: no producer had a counted

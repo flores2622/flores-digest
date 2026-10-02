@@ -2151,7 +2151,8 @@ function digestDay(d, who) {
     // Life, its own stat (Frank, 2026-09-30: "i dont want it to count as a HH
     // or premium, make it its own stat"): never in the tiles above, the
     // leaderboard or the closing ratio. Goal: 1 a week each (lifeTier).
-    ["Life Sold", `${t.life ?? 0} Pol<br>${money(t.life_ps || 0)}`, lifeNote(d, t, !focus), TI[lifeTier(d, t, !focus)] || "", liveOn(d, "sales")],
+    // Policies only -- no premium (Frank, 2026-10-02: "we dont track that at all").
+    ["Life Sold", `${t.life ?? 0} Pol`, lifeNote(d, t, !focus), TI[lifeTier(d, t, !focus)] || "", liveOn(d, "sales")],
   ];
   if (t.util != null) tiles.push(["Utilization", t.util + "%", "weighted", tc("util"), liveOn(d, "util")]);
   const DRILL = { "Dials": "dials", "Live contacts": "contacts", "HH/Prem. Quoted": "quoted", "Pol/Prem. Sold": "sold", "HH/Prem. Sold": "sold", "Life Sold": "life" };
