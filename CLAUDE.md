@@ -40,6 +40,22 @@ Everything caches under `data/`, so a re-run resumes rather than restarting.
   carrier id (Farmers 484668, 484654, 1030958; BW 186, 2448054; Foremost
   102, 262). The nightly sync re-applies it to the last 14 days' auto rows,
   never to a row a person typed or edited.
+- **Sales > Commission is Frank's commission schedules, live** (Frank,
+  2026-10-02). `site/commission.js` holds his Commission Sheet (Crystal,
+  Lorena, Mike: $25k 3% Good ... $50k+ 5% Outstanding on the whole premium)
+  and Team Commission Sheet (Sarahi + Coral combined, $50k ... $100k+, split
+  50/50) and the extras (life $100 each whatever the tier; new-household
+  bundle $50 and existing-household cross-sell $25 a line once the tier
+  minimum is met, Auto / Home / Renters / Foremost lines; umbrella $25;
+  Farmers business 3.5% of premium, NOT toward the tier; Kraft Lake $300 at
+  $10k with the tier met). **The premium is the folio's Sales sheet** and
+  "anything on the sales sheet counts" toward the tier (business aside); a
+  Winback is a new household; a household is the row's customer id, else
+  its client name. The Worker works it out at `/api/commission/<folio end>`
+  and sends only what the viewer may see -- **a producer their own, Sarahi
+  and Coral their team, Frank and Amanda everyone** (`COMMISSION_ALL`). The
+  board refreshes it every two minutes on the current folio. If the
+  schedules change, change `commission.js` and the Road Map line together.
 - **Apollo judges each call against its lead source** (Frank, 2026-09-24).
   `coaching_cards._ask_card` sends `lead_sources.prompt_block()`; METHODOLOGY.md's
   "Lead source" section says how to use it, and the card's `leadfit` verdict

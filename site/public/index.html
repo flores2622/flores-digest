@@ -259,6 +259,47 @@ body {
   .main { max-width: none; min-width: 0; width: 100%; }
 }
 .subtabs { display: flex; gap: 6px; margin-bottom: 18px; }
+/* Commission sub-tab: the board's own cards, not a spreadsheet grid. */
+.commgrid { display: grid; grid-template-columns: repeat(auto-fit, minmax(520px, 1fr)); gap: 0 20px; }
+@media (max-width: 1100px) { .commgrid { grid-template-columns: 1fr; } }
+.commhead { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; margin-bottom: 12px; }
+.commhead h2 { margin: 0; display: flex; align-items: center; gap: 8px; }
+.commfigs { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
+@media (max-width: 640px) { .commfigs { grid-template-columns: 1fr; } }
+.commfig { background: var(--card2); border: 1px solid var(--border); border-radius: calc(var(--rad) - 6px); padding: 12px 14px; min-width: 0; }
+.commfig.commhero { background: var(--surface-raised); border: var(--bw) solid var(--accent-d); }
+.commfig .k { font-size: 11px; text-transform: uppercase; letter-spacing: .06em; color: var(--text-muted); }
+.commfig .v { font-family: var(--display); font-weight: var(--dw); font-size: 30px; line-height: 1.1; margin-top: 4px; font-variant-numeric: tabular-nums; }
+.commfig.commhero .v { color: var(--accent-d); }
+.commfig .n { font-size: 12.5px; color: var(--text-secondary); margin-top: 4px; line-height: 1.4; }
+.cladder { margin: 34px 2px 14px; min-width: 0; }
+.commcard { min-width: 0; }
+.cl-track { position: relative; height: 12px; border-radius: 6px; background: var(--bar-track); }
+.cl-fill { position: absolute; left: 0; top: 0; bottom: 0; border-radius: 6px; background: var(--good); transition: width .4s; }
+.cl-fill.below { background: var(--accent); }
+.cl-you { position: absolute; top: -26px; transform: translateX(-50%); }
+.cl-you span { display: inline-block; font-size: 11.5px; font-weight: 700; background: var(--text-primary); color: var(--surface-raised); border-radius: 6px; padding: 2px 7px; white-space: nowrap; }
+.cl-segs { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); margin-top: 6px; }
+.cl-seg { border-left: 2px solid var(--border-strong); padding: 2px 0 0 5px; min-width: 0; }
+.cl-seg b { display: block; font-size: 11px; font-weight: 600; color: var(--text-secondary); overflow-wrap: anywhere; line-height: 1.25; }
+.cl-seg span { display: block; font-size: 10.5px; color: var(--text-muted); overflow-wrap: anywhere; line-height: 1.3; }
+.cl-seg.on { border-left-color: var(--good); }
+.cl-seg.on b { color: var(--good); }
+.cl-seg.now b { text-decoration: underline; text-underline-offset: 3px; }
+@media (max-width: 640px) { .cl-seg b { font-size: 9.5px; } .cl-seg span { font-size: 9px; } }
+.commsplit { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin: 6px 0 4px; }
+.commwarn { color: var(--warn); margin: 10px 0 0; }
+.commxs { margin-top: 12px; display: flex; flex-direction: column; gap: 6px; }
+.commx { border: 1px solid var(--border); border-radius: calc(var(--rad) - 8px); background: var(--card2); padding: 8px 12px; margin-top: 6px; }
+.commx summary { display: flex; align-items: center; gap: 10px; cursor: pointer; list-style: none; }
+.commx summary::-webkit-details-marker { display: none; }
+.commx summary::before { content: "▸"; color: var(--text-muted); font-size: 11px; }
+.commx[open] summary::before { content: "▾"; }
+.commx-l { flex: 1; font-weight: 600; font-size: 13.5px; }
+.commx-c { font-size: 12px; color: var(--text-muted); background: var(--chip); border-radius: 10px; padding: 1px 8px; }
+.commx-p { font-variant-numeric: tabular-nums; font-weight: 700; min-width: 70px; text-align: right; }
+.commx-p.pend { color: var(--warn); font-weight: 600; font-size: 12px; }
+.commrows { margin-top: 8px; font-size: 12.5px; }
 .subtab {
   background: var(--surface); border: 1px solid var(--border-strong); border-radius: 20px;
   padding: 6px 14px; font: inherit; font-weight: 600; font-size: 12px; color: var(--text-secondary); cursor: pointer;
@@ -6555,6 +6596,7 @@ function salesSubTabsHtml() {
   return `<div class="subtabs">
     <button class="subtab${salesSubTab === "log" ? " sel" : ""}" data-sst="log" type="button">Log</button>
     <button class="subtab${salesSubTab === "breakdown" ? " sel" : ""}" data-sst="breakdown" type="button">Breakdown</button>
+    <button class="subtab${salesSubTab === "commission" ? " sel" : ""}" data-sst="commission" type="button">Commission</button>
   </div>`;
 }
 // Repaints whichever Sales sub-tab is active from the already-loaded data
@@ -6567,15 +6609,143 @@ function repaintSales() {
 function repaintSalesBody() {
   const data = salesLastData || { entries: [] };
   $("#view").innerHTML = salesSubTabsHtml()
-    + (salesSubTab === "breakdown" ? salesBreakdownPanel(data) : salesPanel(data));
+    + (salesSubTab === "breakdown" ? salesBreakdownPanel(data)
+      : salesSubTab === "commission" ? commissionPanel(data) : salesPanel(data));
   wireSalesSubTabs();
-  if (salesSubTab === "breakdown") wireSalesBreakdownPanel(); else wireSalesPanel(data);
+  if (salesSubTab === "breakdown") wireSalesBreakdownPanel();
+  else if (salesSubTab === "commission") wireCommissionPanel();
+  else wireSalesPanel(data);
 }
 function wireSalesSubTabs() {
   document.querySelectorAll(".subtab[data-sst]").forEach(el => el.onclick = () => {
     salesSubTab = el.dataset.sst;
     repaintSales();
+    if (salesSubTab === "commission") paintCommission(salesLastData || { entries: [] });
   });
+}
+
+/* Commission sub-tab (Frank, 2026-10-02: "build this into the digest ... on
+   its own tab, in the sales section, right of the breakdown tab, and since
+   its a calculator, make it reflect live where they stand"; "follow the
+   current theme and display, not like an excel sheet"). The Worker works it
+   out (site/commission.js, Frank's Commission Sheet and Team Commission
+   Sheet) from the picked folio's Sales sheet and sends only what the viewer
+   may see: a producer their own, Sarahi and Coral their team, Frank and
+   Amanda everyone. Refreshed every two minutes while the current folio is
+   on screen, since the sheet itself is live. Estimates -- the sheets say
+   rates are subject to change. */
+let commDoc = null, commTimer = null;
+const commMoney = x => "$" + Math.round(x || 0).toLocaleString();
+const commMoney2 = x => "$" + (x || 0).toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 2 });
+const commPct = r => (Math.round(r * 10000) / 100) + "%";
+const commK = x => x >= 1000 ? "$" + (Math.round(x / 100) / 10).toString().replace(/\.0$/, "") + "k" : "$" + x;
+async function loadCommission(end) {
+  try {
+    const r = await fetch(`/api/commission/${end}`, { cache: "no-store" });
+    commDoc = r.ok ? await r.json() : { error: r.status };
+  } catch (_) { commDoc = { error: "offline" }; }
+  return commDoc;
+}
+function commLadderHtml(u) {
+  // Equal steps, one per tier (the tiers are only $5,000 or $10,000 apart,
+  // so a dollar scale piles their labels on top of each other): the first
+  // step runs from $0 to the first tier, the last from the top tier to one
+  // more step beyond it, and the marker sits in its step by dollars.
+  const tiers = u.tiers, n = tiers.length, step = 100 / (n + 1);
+  const gapTop = tiers[n - 1].min - tiers[n - 2].min;
+  const edges = [0, ...tiers.map(t => t.min), tiers[n - 1].min + gapTop];
+  let i = 0;
+  while (i < n && u.premium >= edges[i + 1]) i++;
+  const frac = Math.min(1, (u.premium - edges[i]) / (edges[i + 1] - edges[i]));
+  const pos = Math.min(100, (i + frac) * step);
+  const segs = [`<div class="cl-seg${u.tier ? " on" : ""}"><b>Start</b><span>$0</span></div>`]
+    .concat(tiers.map(t => `<div class="cl-seg${u.premium >= t.min ? " on" : ""}${u.tier && u.tier.name === t.name ? " now" : ""}">
+      <b>${t.name}</b><span>${commK(t.min)} · ${commPct(t.rate)}</span></div>`)).join("");
+  return `<div class="cladder" role="img" aria-label="${commMoney(u.premium)}; the first tier starts at ${commMoney(tiers[0].min)}">
+    <div class="cl-track"><div class="cl-fill${u.tier ? "" : " below"}" style="width:${pos.toFixed(2)}%"></div>
+    <div class="cl-you" style="left:${Math.max(4, Math.min(96, pos)).toFixed(2)}%"><span>${commMoney(u.premium)}</span></div></div>
+    <div class="cl-segs">${segs}</div></div>`;
+}
+function commRowsHtml(rows, withPay) {
+  if (!rows.length) return `<p class="sd" style="margin:8px 0 0">None this folio.</p>`;
+  return `<div class="scroll"><table class="rtable commrows"><thead><tr><th>Sold</th><th>Producer</th><th>Client</th><th>Product</th><th>Lead source</th><th class="num">Premium</th>${withPay ? '<th class="num">Pays</th>' : ""}</tr></thead><tbody>${
+    rows.map(r => `<tr><td>${r.day ? fmtShortDate(r.day) : ""}</td><td>${cesc((r.producer || "").split(" ")[0])}</td><td>${cesc(r.client || "—")}</td>
+      <td>${cesc(r.product)}</td><td>${cesc(r.lead_source || "")}</td><td class="num">${commMoney2(r.premium)}</td>${withPay ? `<td class="num">${r.pay ? commMoney2(r.pay) : "—"}</td>` : ""}</tr>`).join("")
+  }</tbody></table></div>`;
+}
+function commUnitHtml(u, isCurrent) {
+  const team = u.schedule === "team";
+  const t = u.tier, n = u.next;
+  const chip = t ? `<span class="chip c-g">${t.name} · ${commPct(t.rate)}</span>`
+    : `<span class="chip c-n">Below the first tier</span>`;
+  const nextLine = n
+    ? `<div class="v">${commMoney(n.gap)}</div><div class="n">to <b>${n.name}</b> (${commPct(n.rate)}) &middot; at ${commMoney(n.min)} the tier pays ${commMoney(n.min * n.rate)}${team ? ", split 50/50" : ""}</div>`
+    : `<div class="v">Top tier</div><div class="n">${commPct(t.rate)} on every dollar</div>`;
+  const pending = u.lines.filter(l => l.pending);
+  const extras = u.lines.filter(l => l.count).map(l => `<details class="commx">
+      <summary><span class="commx-l">${cesc(l.label)}</span><span class="commx-c">${l.count}</span>
+      <span class="commx-p${l.pending ? " pend" : ""}">${l.pending ? "after the tier" : commMoney2(l.pay)}</span></summary>
+      <p class="sd" style="margin:6px 0 0">${cesc(l.note)}</p>${commRowsHtml(l.rows, true)}</details>`).join("");
+  const members = team ? `<div class="commsplit">${u.members.map(m => `<div class="tile">
+      <div class="k">${pbadge(DOT[m.name] || TEAM_DOT, m.name.split(" ")[0])}</div>
+      <div class="v">${commMoney(m.total)}</div>
+      <div class="n">${commMoney(m.premium)} premium · ${m.sales} sale${m.sales === 1 ? "" : "s"}</div>
+      <div class="n">${commMoney(m.share)} tier share${m.extras ? ` + ${commMoney2(m.extras)} extras` : ""}</div></div>`).join("")}</div>` : "";
+  const head = team ? `${pbadge(TEAM_DOT, "Team")} ${cesc(u.label)}` : pbadge(DOT[u.members[0]] || TEAM_DOT, u.label);
+  return `<div class="sect commcard">
+    <div class="commhead"><h2>${head}</h2>${chip}</div>
+    <div class="commfigs">
+      <div class="commfig"><div class="k">${team ? "Team premium toward the tier" : "Premium toward the tier"}</div>
+        <div class="v">${commMoney(u.premium)}</div><div class="n">${u.sales} sale${u.sales === 1 ? "" : "s"} on the Sales sheet${isCurrent ? " so far" : ""}</div></div>
+      <div class="commfig commhero"><div class="k">Estimated commission</div>
+        <div class="v">${commMoney(u.total)}</div><div class="n">${t ? `${commMoney(u.base)} at ${commPct(t.rate)}` : "No tier commission yet"}${u.extras ? ` + ${commMoney2(u.extras)} extras` : ""}</div></div>
+      <div class="commfig"><div class="k">${n ? "Next tier" : "Tier"}</div>${nextLine}</div>
+    </div>
+    ${commLadderHtml(u)}
+    ${members}
+    ${pending.length ? `<p class="sd commwarn">Extras waiting on the tier: ${pending.map(l => `${l.count} ${l.label.toLowerCase()}`).join(", ")} &mdash; they pay once ${team ? "the team reaches" : "you reach"} ${commMoney(u.tiers[0].min)}.</p>` : ""}
+    <div class="commxs">${extras || `<p class="sd" style="margin:0">No life, umbrella, bundle, cross-sell, business or Kraft Lake sales yet.</p>`}</div>
+    <details class="commx"><summary><span class="commx-l">Sales counted toward the tier</span><span class="commx-c">${u.rows.length}</span><span class="commx-p">${commMoney(u.premium)}</span></summary>
+      ${commRowsHtml(u.rows, false)}</details>
+  </div>`;
+}
+function commissionPanel(data) {
+  const today = isoDate(azTodayDate());
+  const curEnd = folioEndFor(today);
+  const end = data.folio_end || curEnd;
+  const isCurrent = !curEnd || end === curEnd;
+  const folioOpts = salesFolioOptions();
+  const left = isCurrent && end ? Math.max(0, Math.round((new Date(end + "T12:00:00") - new Date(today + "T12:00:00")) / 864e5)) : null;
+  const head = `<div class="sect"><h2>Commission</h2>
+    <div class="controls" style="margin-bottom:10px">${folioOpts ? `<select id="commFolioSel" aria-label="Folio period">${folioOpts}</select>` : ""}</div>
+    <p class="sd" style="margin-bottom:0">Where ${commDoc && commDoc.all ? "everyone stands" : "you stand"} on the commission schedule for ${isCurrent ? "this folio" : `the folio ending ${fmtMDY(end)}`}, from the Sales sheet${isCurrent ? ", updated as sales are logged" : ""}. Estimates &mdash; rates are subject to change. Business policies don't count toward the tier.${left != null ? ` <b>${left === 0 ? "Last day of the folio." : `${left} day${left === 1 ? "" : "s"} left in the folio.`}</b>` : ""}</p></div>`;
+  if (!commDoc || commDoc.folio_end !== end) return head + '<div class="empty">Loading…</div>';
+  if (commDoc.error) return head + `<div class="empty">Couldn't load commission (${cesc(String(commDoc.error))}). Try again in a minute.</div>`;
+  if (!commDoc.units.length) return head + '<div class="empty">Commission shows here for each producer, and for Frank and Amanda.</div>';
+  return head + `<div class="commgrid">${commDoc.units.map(u => commUnitHtml(u, isCurrent)).join("")}</div>`;
+}
+async function paintCommission(data) {
+  const end = data.folio_end || folioEndFor(isoDate(azTodayDate()));
+  if (!end) return;
+  clearTimeout(commTimer);
+  if (!commDoc || commDoc.folio_end !== end) await loadCommission(end);
+  if (view !== "sales" || salesSubTab !== "commission") return;
+  repaintSales();
+  if (end === folioEndFor(isoDate(azTodayDate())))
+    commTimer = setTimeout(async () => {
+      if (view !== "sales" || salesSubTab !== "commission") return;
+      await loadCommission(end); repaintSales();
+      paintCommission(salesLastData || data);
+    }, 120000);
+}
+function wireCommissionPanel() {
+  const sel = $("#commFolioSel");
+  if (sel) sel.onchange = async () => {
+    salesFolioPick = sel.value;
+    commDoc = null;
+    salesLastData = await loadSalesLog(salesDay, salesFolioPick);
+    repaintSales();
+  };
 }
 
 // Breakdown sub-tab (Frank, 2026-09-21): the same folio's entries the Log
@@ -6975,6 +7145,7 @@ async function paintTab() {
     const [data] = await Promise.all([loadSalesLog(salesDay, salesFolioPick), loadLeadSources()]);
     salesLastData = data;
     repaintSales();
+    if (salesSubTab === "commission") { commDoc = null; paintCommission(data); }
   } else if (view === "service") {
     await paintService();
   } else if (view === "renewals") {
@@ -8580,7 +8751,7 @@ const TOUR_STEPS = [
   { view: "editions", find: () => $("#view .edtabs") || $("#view .press"), title: "The editions",
     text: "A published day or a folio, seven ways: The Flores Post (the newspaper, with Primetime), The Flores Feed, Fourth and Goal, KFLR The Close, FLRS 500, Cold Call Comics and CLOSER. React, vote, comment: everyone sees the same tally." },
   { view: "sales", title: "The Sales sheet",
-    text: "Log a sale, look back at any folio, or break sales down by lead source, product or producer. Live sales are added here automatically." },
+    text: "Log a sale, look back at any folio, or break sales down by lead source, product or producer. Live sales are added here automatically. The Commission tab shows where you stand on the commission schedule this folio." },
   { view: "messages", title: "Texts & Emails",
     text: "Every text and email with a lead: what each producer typed, the replies still waiting, and how quickly replies were answered. Automated messages are counted separately." },
   { view: "coaching", sub: "detail", find: () => $("#centerbar .ctabs"), title: "Coaching cards",
