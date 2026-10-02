@@ -3,15 +3,17 @@
    and agency zoom"). Sales Center > Lead Scrub, shown only to the people
    /api/scrub answers (site/scrub.js, SCRUB_VIEWERS).
 
-   A manager imports an AgencyZoom lead export (CSV) as a scrub list; the
-   columns are matched by their headers and can be changed before importing.
-   Each lead then gets its Apex status and its AgencyZoom status with the
-   Duplicates Cleaned and Tagged boxes beside it, saved as soon as it is
-   picked, with who and when on hover. The fields and their options come
-   from the Worker (FIELDS), so this draws whatever it is sent. Filters by
-   who the lead is assigned to, what is left to do and a search; leads on
-   the same phone or email are marked so the duplicates are easy to find;
-   the list downloads as a CSV with every status. Uses the board's own
+   A manager imports the report (Excel or CSV, as it comes) as a scrub
+   list; the columns are matched by their headers and can be changed before
+   importing. Each client is then worked in the columns of Frank's sheet --
+   Client, Month, Apex Status, AZ Status (Duplicates Cleaned and Tagged
+   beside it), Lead Status, Action Taken, Date, Rep, Notes, Next Step --
+   each saved as soon as it is typed or ticked, redrawing only its own row,
+   with who and when on hover. The columns and their suggestions come from
+   the Worker (FIELDS), so this draws whatever it is sent. Filters by rep,
+   what is left to do, any detail on the report and a search; clients on
+   the same phone or email are marked; the list downloads as a CSV in the
+   sheet's column order. Uses the board's own
    helpers ($, $$, cesc, pbadge, DOT, CENTERS, SEARCH_PAGES, paintCenterBar),
    so it loads after index.html's main script. */
 (function () {
@@ -153,18 +155,17 @@
   }
 
   /* ---- what is left on a lead ---- */
-  const DONE = () => (SC && SC.done_statuses) || ["Updated", "No changes needed"];
+  const DONE = () => (LIST && LIST.done_fields) || (SC && SC.done_fields) || ["apex", "az", "lead"];
+  const filled = v => !!String(v == null ? "" : v).trim();
   function leftOn(l) {
-    const s = l.s || {}, d = DONE(), left = [];
-    if (!d.includes(s.apex)) left.push("apex");
-    if (!d.includes(s.az)) left.push("az");
+    const s = l.s || {}, left = DONE().filter(k => !filled(s[k]));
     if (!s.az_dups) left.push("az_dups");
     if (!s.az_tagged) left.push("az_tagged");
     return left;
   }
-  const TODO = [["", "Everything"], ["open", "Not done"], ["done", "Done"], ["apex", "Needs Apex"],
-    ["az", "Needs AgencyZoom"], ["az_dups", "Duplicates not cleaned"], ["az_tagged", "Not tagged"], ["dupe", "Same phone or email as another lead"],
-    ["problem", "Not found / needs follow-up"]];
+  const TODO = [["", "Everything"], ["open", "Not done"], ["done", "Done"], ["apex", "No Apex Status"],
+    ["az", "No AZ Status"], ["lead", "No Lead Status"], ["az_dups", "Duplicates not cleaned"], ["az_tagged", "Not tagged"],
+    ["next", "Has a next step"], ["today", "Worked today"], ["dupe", "Same phone or email as another lead"]];
 
   function dupeSets(leads) {
     const by = {};
@@ -181,7 +182,8 @@
   function filtered() {
     const leads = LIST.list.leads, dupes = dupeSets(leads), q = scF.q.toLowerCase().trim();
     return { dupes, rows: leads.filter(l => {
-      if (scF.who && (l.assigned || "") !== scF.who) return false;
+      const s = l.s || {};
+      if (scF.who && (s.rep || "") !== scF.who) return false;
       if (scF.x) {
         const [c, val] = scF.x.split("\u0001");
         if (!String((l.extra || {})[c] || "").split(", ").includes(val)) return false;
@@ -190,10 +192,12 @@
       const t = scF.todo;
       if (t === "open" && !left.length) return false;
       if (t === "done" && left.length) return false;
-      if (["apex", "az", "az_dups", "az_tagged"].includes(t) && !left.includes(t)) return false;
+      if (["apex", "az", "lead", "az_dups", "az_tagged"].includes(t) && !left.includes(t)) return false;
+      if (t === "next" && (!filled(s.next) || /^none$/i.test(s.next.trim()))) return false;
+      if (t === "today" && s.date !== LIST.today) return false;
       if (t === "dupe" && !dupes[l.id]) return false;
-      if (t === "problem" && !["Not found", "Needs follow-up"].some(x => (l.s || {}).apex === x || (l.s || {}).az === x)) return false;
-      if (q && ![l.name, l.phone, l.email, l.az_id, l.source, l.stage, (l.s || {}).notes].some(v => String(v || "").toLowerCase().includes(q))
+      if (q && ![l.name, l.phone, l.email, l.az_id, l.source, l.stage, s.notes, s.action, s.next, s.rep, ...Object.values(l.extra || {})]
+        .some(v => String(v || "").toLowerCase().includes(q))
         && !(digits(q) && digits(l.phone).includes(digits(q)))) return false;
       return true;
     }) };
@@ -206,25 +210,27 @@
       <small>of ${of.toLocaleString()} · ${pct}%</small><i style="width:${pct}%"></i></div>`;
   }
   function progressHtml(s) {
-    return `<div class="sctiles">${tile("Fully done", s.done, s.count, "var(--good)")}${tile("Apex", s.apex, s.count, "var(--s3)")}
-      ${tile("AgencyZoom", s.az, s.count, "var(--s4)")}${tile("Duplicates Cleaned", s.az_dups, s.count, "var(--s5)")}
-      ${tile("Tagged", s.az_tagged, s.count, "var(--accent)")}</div>`;
+    return `<div class="sctiles">${tile("Fully done", s.done, s.count, "var(--good)")}${tile("Apex Status", s.apex, s.count, "var(--s3)")}
+      ${tile("AZ Status", s.az, s.count, "var(--s4)")}${tile("Duplicates Cleaned", s.az_dups, s.count, "var(--s5)")}
+      ${tile("Tagged", s.az_tagged, s.count, "var(--accent)")}${tile("Lead Status", s.lead || 0, s.count, "var(--warn)")}</div>`;
   }
 
   function pickerHtml() {
     const lists = SC.lists || [];
     return `<div class="sect svchero schero" style="--sc:var(--s3)">
       <h2>Lead Scrub</h2>
-      <p class="sd">Every lead on a scrub list is checked off in <b>Apex</b> and in <b>AgencyZoom</b>, where its duplicates are cleaned and it is tagged. A lead is done when all four are.</p>
+      <p class="sd">Each client on a scrub list is checked in <b>Apex</b> and in <b>AgencyZoom</b>: its status in both, its duplicates cleaned and tagged in AgencyZoom, and the lead updated. A client is done when Apex Status, AZ Status and Lead Status are filled in and both boxes are ticked.</p>
       <div class="controls">
         ${lists.length ? `<select id="scList" aria-label="Scrub list"><option value="">Pick a list…</option>${lists.map(l =>
           `<option value="${cesc(l.id)}"${l.id === scId ? " selected" : ""}>${cesc(l.name)} · ${l.done}/${l.count} done</option>`).join("")}</select>` : ""}
         ${SC.can_edit ? '<button type="button" class="btn ropri" id="scNew">Import a lead list</button>' : ""}
       </div>
       ${scMsg ? `<p class="romsg ${scMsg.err ? "bad" : "good"}" role="${scMsg.err ? "alert" : "status"}">${cesc(scMsg.err || scMsg.ok)}</p>` : ""}
-      ${!lists.length && !scImport ? `<div class="empty">No scrub lists yet.${SC.can_edit ? " Export the leads from AgencyZoom as a CSV and import it here." : " A manager imports the first one."}</div>` : ""}
+      ${!lists.length && !scImport ? `<div class="empty">No scrub lists yet.${SC.can_edit ? " Import the report (Excel or CSV) as it comes." : ""}</div>` : ""}
     </div>`;
   }
+
+  const thisMonth = () => { try { return new Date((SC && SC.today || "") + "T12:00:00").toLocaleDateString("en-US", { month: "short", year: "numeric" }); } catch (_) { return ""; } };
 
   function importHtml() {
     const { headers, rows, map, name } = scImport;
@@ -234,38 +240,78 @@
     const xcols = [...new Set(preview.flatMap(r => Object.keys(r.extra)))];
     return `<div class="sect" style="--sc:var(--s4)">
       <h2>Import a lead list</h2>
-      <p class="sd">${rows.length.toLocaleString()} rows in the file${scImport.merge ? `, ${importRows().length.toLocaleString()} people` : ""}. Check which column is which; every other column (line of business, risk segment, dates ...) is kept on the lead as detail.</p>
-      <label class="sccheck${scImport.merge ? " on" : ""}" style="margin-bottom:10px"><input type="checkbox" id="scMerge"${scImport.merge ? " checked" : ""}> One lead per person (rows with the same name are combined)</label>
+      <p class="sd">${rows.length.toLocaleString()} rows in the file${scImport.merge ? `, ${importRows().length.toLocaleString()} people` : ""}. Check which column is which; every other column (line of business, risk segment, dates ...) is kept on the client as detail.</p>
+      <label class="sccheck${scImport.merge ? " on" : ""}" style="margin-bottom:10px"><input type="checkbox" id="scMerge"${scImport.merge ? " checked" : ""}> One client per person (rows with the same name are combined)</label>
       <div class="scmap">
         <label>List name <input type="text" id="scName" value="${cesc(name)}" maxlength="120"></label>
-        ${COLS.map(([k, l]) => `<label>${cesc(l)} ${opt(k)}</label>`).join("")}
+        <label>Month <input type="text" id="scMonth" value="${cesc(scImport.month != null ? scImport.month : thisMonth())}" maxlength="40"></label>
+        ${COLS.map(([k, l]) => `<label>${cesc(k === "name" ? "Client" : l)} ${opt(k)}</label>`).join("")}
         ${map.name < 0 ? `<label>First name ${opt("first")}</label><label>Last name ${opt("last")}</label>` : ""}
       </div>
-      <div class="scroll"><table class="rotab"><thead><tr>${COLS.filter(([k]) => preview.some(r => r[k])).map(([, l]) => `<th class="t">${cesc(l)}</th>`).join("")}${xcols.map(c => `<th class="t">${cesc(c)}</th>`).join("")}</tr></thead>
+      <div class="scroll"><table class="rotab"><thead><tr>${COLS.filter(([k]) => preview.some(r => r[k])).map(([k, l]) => `<th class="t">${cesc(k === "name" ? "Client" : l)}</th>`).join("")}${xcols.map(c => `<th class="t">${cesc(c)}</th>`).join("")}</tr></thead>
         <tbody>${preview.map(r => `<tr>${COLS.filter(([k]) => preview.some(x => x[k])).map(([k]) => `<td class="t">${cesc(r[k])}</td>`).join("")}${xcols.map(c => `<td class="t">${cesc(r.extra[c] || "")}</td>`).join("")}</tr>`).join("")}</tbody></table></div>
       <div class="rorow" style="margin-top:10px">
-        <button type="button" class="btn ropri" id="scGo">Import ${importRows().length.toLocaleString()} leads</button>
+        <button type="button" class="btn ropri" id="scGo">Import ${importRows().length.toLocaleString()} clients</button>
         ${scId && LIST ? `<button type="button" class="btn" id="scAddTo">Add them to “${cesc(LIST.list.name)}”</button>` : ""}
         <button type="button" class="btn" id="scCancel">Cancel</button></div>
     </div>`;
   }
 
+  // Suggestions for a choice / rep column: the field's own plus what the list already uses.
+  function datalists() {
+    const out = [];
+    for (const f of LIST.fields) {
+      if (f.type !== "choice" && f.type !== "rep") continue;
+      const vals = new Set(f.options || []);
+      if (f.type === "rep") for (const n of ["Frank", "Francisco", "Veronica", "Amanda", LIST.me]) if (n) vals.add(n);
+      for (const l of LIST.list.leads) { const v = (l.s || {})[f.key]; if (filled(v)) vals.add(v); }
+      out.push(`<datalist id="scdl-${f.key}">${[...vals].map(v => `<option value="${cesc(v)}">`).join("")}</datalist>`);
+    }
+    return out.join("");
+  }
+
+  function tone(f, v) {
+    if (!filled(v)) return "";
+    if (f.key === "apex" || f.key === "az") return /^active$/i.test(v) ? "ok" : /inactive|cancel|not in|not found/i.test(v) ? "bad" : "mid";
+    if (f.key === "lead") return "ok";
+    if (f.key === "next") return /^none$/i.test(v) ? "ok" : "mid";
+    return "";
+  }
+
   function cellHtml(l, f) {
     const s = l.s || {}, by = (l.by || {})[f.key];
     const tip = by ? ` title="${cesc(by.who)} · ${cesc(when(by.at))}"` : "";
+    const data = `data-sclead="${cesc(l.id)}" data-scfield="${f.key}" aria-label="${cesc(f.label)}"${tip}`;
+    const v = s[f.key] == null ? "" : s[f.key];
     if (f.type === "check") {
-      return `<label class="sccheck${s[f.key] ? " on" : ""}"${tip}><input type="checkbox" data-sclead="${cesc(l.id)}" data-scfield="${f.key}"${s[f.key] ? " checked" : ""}> ${cesc(f.label)}</label>`;
+      return `<label class="sccheck${v ? " on" : ""}"${tip}><input type="checkbox" ${data}${v ? " checked" : ""}> ${cesc(f.label)}</label>`;
     }
-    const v = s[f.key] || f.options[0];
-    const cls = DONE().includes(v) ? "ok" : /not found|follow/i.test(v) ? "bad" : v === f.options[0] ? "" : "mid";
-    return `<select class="scsel ${cls}" data-sclead="${cesc(l.id)}" data-scfield="${f.key}" aria-label="${cesc(f.label)}"${tip}>${f.options.map(o =>
-      `<option${o === v ? " selected" : ""}>${cesc(o)}</option>`).join("")}</select>`;
+    if (f.type === "date") return `<input type="date" class="scin scdate" ${data} value="${cesc(v)}">`;
+    const list = f.type === "choice" || f.type === "rep" ? ` list="scdl-${f.key}"` : "";
+    return `<input type="text" class="scin ${tone(f, v)}${f.key === "notes" ? " scwide" : ""}" ${data}${list} value="${cesc(v)}" maxlength="${f.max || 120}" placeholder="${cesc(f.key === "notes" ? "Notes" : "—")}">`;
+  }
+
+  let lastDupes = {};
+  function rowHtml(l) {
+    const F = k => LIST.fields.find(f => f.key === k);
+    const besides = k => LIST.fields.filter(f => f.beside === k);
+    const cols = LIST.fields.filter(f => !f.beside);
+    const left = leftOn(l), extra = Object.entries(l.extra || {}).filter(([k]) => k !== "Rows in export");
+    const cell = f => { const bs = besides(f.key);
+      return `<td class="t sc-${f.key}">${cellHtml(l, f)}${bs.length ? `<div class="scbeside">${bs.map(b => cellHtml(l, b)).join("")}</div>` : ""}</td>`; };
+    return `<tr class="${left.length ? "" : "scdone"}" data-row="${cesc(l.id)}">
+      <td class="t scclient"><b>${cesc(l.name || "(no name)")}</b>${lastDupes[l.id] ? ` <span class="scdupe" title="${lastDupes[l.id]} clients share this phone or email">dup ×${lastDupes[l.id]}</span>` : ""}
+        ${[l.phone, l.email].some(Boolean) ? `<div class="scsub">${[l.phone, l.email].filter(Boolean).map(cesc).join(" · ")}</div>` : ""}
+        ${l.az_id || l.stage || l.assigned ? `<div class="scsub">${[l.az_id && "AZ " + l.az_id, l.stage, l.assigned && first(l.assigned)].filter(Boolean).map(cesc).join(" · ")}</div>` : ""}
+        ${extra.length ? `<div class="scx">${extra.map(([k, v]) => `<span title="${cesc(k)}">${cesc(v)}</span>`).join("")}</div>` : ""}</td>
+      ${cols.map(cell).join("")}
+      <td>${left.length ? `<span class="scleft" title="Still to do: ${cesc(left.map(k => (F(k) || {}).label || k).join(", "))}">${left.length}</span>` : '<span class="scok" title="Done in both">✓</span>'}${LIST.can_edit ? `<button type="button" class="icon-btn del-btn" data-scrm="${cesc(l.id)}" aria-label="Take this client off the list" title="Take this client off the list">✕</button>` : ""}</td>
+    </tr>`;
   }
 
   function listHtml() {
     const L = LIST.list, s = LIST.summary, fields = LIST.fields;
-    const apex = fields.filter(f => !f.group && f.key !== "az"), az = fields.filter(f => f.key === "az" || f.group === "az");
-    const who = [...new Set(L.leads.map(l => l.assigned || ""))].sort();
+    const reps = [...new Set(L.leads.map(l => (l.s || {}).rep || "").filter(Boolean))].sort();
     // A filter on any detail column with a handful of values (LOB, risk segment, status).
     const xv = {};
     for (const l of L.leads) for (const [c, v] of Object.entries(l.extra || {})) for (const one of String(v).split(", ")) (xv[c] = xv[c] || new Set()).add(one);
@@ -273,39 +319,26 @@
       .map(([c, set]) => `<optgroup label="${cesc(c)}">${[...set].sort().map(v => { const k = c + "\u0001" + v;
         return `<option value="${cesc(k)}"${k === scF.x ? " selected" : ""}>${cesc(c)}: ${cesc(v)}</option>`; }).join("")}</optgroup>`).join("");
     const { rows, dupes } = filtered();
-    const anyAssigned = L.leads.some(l => l.assigned || l.source);
-    const shown = rows.slice(0, scShow);
-    const tr = shown.map(l => {
-      const left = leftOn(l), extra = Object.entries(l.extra || {});
-      return `<tr class="${left.length ? "" : "scdone"}" data-row="${cesc(l.id)}">
-        <td class="t"><b>${cesc(l.name || "(no name)")}</b>${dupes[l.id] ? ` <span class="scdupe" title="${dupes[l.id]} leads share this phone or email">dup ×${dupes[l.id]}</span>` : ""}
-          <div class="scsub">${[l.phone, l.email].filter(Boolean).map(cesc).join(" · ")}</div>
-          ${l.az_id ? `<div class="scsub">AZ ${cesc(l.az_id)}${l.stage ? " · " + cesc(l.stage) : ""}</div>` : l.stage ? `<div class="scsub">${cesc(l.stage)}</div>` : ""}
-          ${extra.length ? `<div class="scx">${extra.map(([k, v]) => `<span title="${cesc(k)}"><i>${cesc(k)}</i> ${cesc(v)}</span>`).join("")}</div>` : ""}</td>
-        ${anyAssigned ? `<td class="t">${badge(l.assigned)}${l.source ? `<div class="scsub">${cesc(l.source)}</div>` : ""}</td>` : ""}
-        <td class="t scapex">${apex.map(f => cellHtml(l, f)).join("")}</td>
-        <td class="t scaz">${az.map(f => cellHtml(l, f)).join("")}</td>
-        <td class="t"><input type="text" class="scnote" data-sclead="${cesc(l.id)}" data-scfield="notes" value="${cesc((l.s || {}).notes || "")}" maxlength="500" placeholder="Note"${(l.by || {}).notes ? ` title="${cesc(l.by.notes.who)} · ${cesc(when(l.by.notes.at))}"` : ""}></td>
-        <td>${left.length ? "" : '<span class="scok" title="Done in both">✓</span>'}${LIST.can_edit ? `<button type="button" class="icon-btn del-btn" data-scrm="${cesc(l.id)}" aria-label="Take this lead off the list" title="Take this lead off the list">✕</button>` : ""}</td>
-      </tr>`;
-    }).join("");
+    lastDupes = dupes;
+    const head = fields.filter(f => !f.beside).map(f => `<th class="t">${cesc(f.label)}</th>`).join("");
     return `<div class="sect" style="--sc:var(--s3)">
       <h2>${cesc(L.name)}</h2>
-      <p class="sd">Imported ${cesc(when(L.created_at))} by ${cesc(L.created_by || "")}. Every change saves at once; hover a status to see who set it.</p>
+      <p class="sd">${L.month ? cesc(L.month) + " · " : ""}Imported ${cesc(when(L.created_at))} by ${cesc(L.created_by || "")}. Every change saves at once and fills in the Date and Rep; hover a box to see who set it.</p>
       ${progressHtml(s)}
       <div class="controls scfilters">
-        <input type="search" id="scQ" placeholder="Search name, phone, email, ID" value="${cesc(scF.q)}" aria-label="Search">
+        <input type="search" id="scQ" placeholder="Search client, notes, details" value="${cesc(scF.q)}" aria-label="Search">
         ${xopts ? `<select id="scX" aria-label="Detail"><option value="">Any detail</option>${xopts}</select>` : ""}
-        <select id="scWho" aria-label="Assigned to"${who.length < 2 ? " hidden" : ""}><option value="">Everyone</option>${who.map(w => `<option value="${cesc(w)}"${w === scF.who ? " selected" : ""}>${cesc(w || "Unassigned")}</option>`).join("")}</select>
+        ${reps.length ? `<select id="scWho" aria-label="Rep"><option value="">Every rep</option>${reps.map(w => `<option value="${cesc(w)}"${w === scF.who ? " selected" : ""}>${cesc(w)}</option>`).join("")}</select>` : ""}
         <select id="scTodo" aria-label="Show">${TODO.map(([k, l]) => `<option value="${k}"${k === scF.todo ? " selected" : ""}>${cesc(l)}</option>`).join("")}</select>
         <span class="romute">${rows.length.toLocaleString()} shown</span>
         <span style="flex:1"></span>
         <button type="button" class="btn" id="scCsv">Download CSV</button>
         ${LIST.can_edit ? `<button type="button" class="ghost rosmall" id="scRename">Rename</button><button type="button" class="ghost rosmall" id="scDel">Delete list</button>` : ""}
       </div>
-      ${rows.length ? `<div class="scroll"><table class="rotab sctab"><thead><tr><th class="t">Lead</th>${anyAssigned ? '<th class="t">Assigned</th>' : ""}<th class="t">Apex</th><th class="t">AgencyZoom</th><th class="t">Note</th><th></th></tr></thead><tbody>${tr}</tbody></table></div>
+      ${datalists()}
+      ${rows.length ? `<div class="scroll"><table class="rotab sctab"><thead><tr><th class="t">Client</th>${head}<th></th></tr></thead><tbody>${rows.slice(0, scShow).map(rowHtml).join("")}</tbody></table></div>
         ${rows.length > scShow ? `<div class="rorow" style="margin-top:10px"><button type="button" class="btn" id="scMore">Show ${Math.min(200, rows.length - scShow)} more</button></div>` : ""}`
-        : '<div class="empty">No leads match.</div>'}
+        : '<div class="empty">No clients match.</div>'}
     </div>`;
   }
 
@@ -325,7 +358,16 @@
   }
   async function reloadLists() { try { SC = await api(""); } catch (_) {} }
 
-  // One change: shown at once, saved, then the server's copy of the lead.
+  function showMsg() {
+    const old = $("#view .schero .romsg");
+    if (old) old.remove();
+    if (!scMsg) return;
+    const c = $("#view .schero .controls");
+    if (c) c.insertAdjacentHTML("afterend", `<p class="romsg ${scMsg.err ? "bad" : "good"}" role="${scMsg.err ? "alert" : "status"}">${cesc(scMsg.err || scMsg.ok)}</p>`);
+  }
+
+  // One change: saved, then the server's copy of the client redraws just its
+  // row (so typing in the next box is never lost) and the tiles.
   async function setField(leadId, field, value) {
     const L = LIST;                         // the list the change was made on, even if another opens meanwhile
     const lead = L && L.list.leads.find(l => l.id === leadId);
@@ -337,22 +379,31 @@
       Object.assign(lead, out.lead); L.summary = out.summary; scMsg = null;
       const card = (SC.lists || []).find(x => x.id === L.list.id); if (card) Object.assign(card, out.summary);
     } catch (e) { lead.s[field] = was; scMsg = { err: `Not saved: ${e.message}` }; }
-    if (field !== "notes") repaint();
-    else if (LIST === L) { const t = $("#view .sctiles"); if (t) t.outerHTML = progressHtml(L.summary); }
+    if (LIST !== L || view !== "scrub") return;
+    showMsg();
+    const t = $("#view .sctiles"); if (t) t.outerHTML = progressHtml(L.summary);
+    const tr = $(`#view tr[data-row="${CSS.escape(leadId)}"]`);
+    if (tr) {
+      const active = document.activeElement, keep = active && tr.contains(active) ? active.dataset.scfield : "";
+      tr.outerHTML = rowHtml(lead);
+      const nu = $(`#view tr[data-row="${CSS.escape(leadId)}"]`);
+      wireRow(nu);
+      if (keep) { const e = nu.querySelector(`[data-scfield="${keep}"]`); if (e && e.type !== "checkbox") e.focus(); }
+    }
   }
 
   function download() {
     const L = LIST.list, fields = LIST.fields;
     const extras = [...new Set(L.leads.flatMap(l => Object.keys(l.extra || {})))];
-    const head = [...COLS.map(c => c[1]), ...fields.map(f => f.label), "Note", "Done", "Last changed by", ...extras];
+    const head = ["Client", ...fields.map(f => f.label), "Done", "Phone", "Email", "AgencyZoom ID", ...extras];
     const lines = [head.map(csvCell).join(",")];
     for (const l of filtered().rows) {
-      const s = l.s || {}, last = Object.values(l.by || {}).sort((a, b) => String(b.at).localeCompare(String(a.at)))[0];
-      lines.push([...COLS.map(([k]) => l[k] || ""), ...fields.map(f => f.type === "check" ? (s[f.key] ? "Yes" : "No") : (s[f.key] || "")),
-        s.notes || "", leftOn(l).length ? "No" : "Yes", last ? `${last.who} ${when(last.at)}` : "", ...extras.map(k => (l.extra || {})[k] || "")].map(csvCell).join(","));
+      const s = l.s || {};
+      lines.push([l.name || "", ...fields.map(f => f.type === "check" ? (s[f.key] ? "Yes" : "No") : (s[f.key] || "")),
+        leftOn(l).length ? "No" : "Yes", l.phone || "", l.email || "", l.az_id || "", ...extras.map(k => (l.extra || {})[k] || "")].map(csvCell).join(","));
     }
     const a = document.createElement("a");
-    a.href = URL.createObjectURL(new Blob([lines.join("\r\n")], { type: "text/csv" }));
+    a.href = URL.createObjectURL(new Blob(["﻿" + lines.join("\r\n")], { type: "text/csv" }));
     a.download = `${L.name.replace(/[^\w -]+/g, "").trim() || "lead-scrub"}.csv`;
     document.body.appendChild(a); a.click(); a.remove();
   }
@@ -372,6 +423,22 @@
     inp.click();
   }
 
+  function wireRow(tr) {
+    tr.querySelectorAll("[data-scfield]").forEach(e => e.onchange = () =>
+      setField(e.dataset.sclead, e.dataset.scfield, e.type === "checkbox" ? e.checked : e.value.trim()));
+    tr.querySelectorAll("input.scin[type=text]").forEach(e => e.onkeydown = ev => { if (ev.key === "Enter") e.blur(); });
+    const rm = tr.querySelector("[data-scrm]"); if (rm) rm.onclick = () => removeLead(rm.dataset.scrm);
+  }
+  async function removeLead(id) {
+    const l = LIST.list.leads.find(x => x.id === id);
+    if (!l || !confirm(`Take ${l.name || "this client"} off the list?`)) return;
+    try {
+      const out = await api(scId, { op: "remove", lead: l.id });
+      LIST.list.leads = LIST.list.leads.filter(x => x.id !== l.id); LIST.summary = out.summary;
+    } catch (e) { scMsg = { err: e.message }; }
+    repaint();
+  }
+
   function wire() {
     const v = $("#view");
     const sel = $("#scList"); if (sel) sel.onchange = () => { scMsg = null; openList(sel.value); };
@@ -379,18 +446,19 @@
     if (scImport) {
       v.querySelectorAll("[data-scmap]").forEach(s => s.onchange = () => { scImport.map[s.dataset.scmap] = +s.value; scImport.name = $("#scName").value; repaint(); });
       $("#scName").oninput = e => { scImport.name = e.target.value; };
+      $("#scMonth").oninput = e => { scImport.month = e.target.value; };
       $("#scMerge").onchange = e => { scImport.merge = e.target.checked; scImport.name = $("#scName").value; repaint(); };
       $("#scCancel").onclick = () => { scImport = null; repaint(); };
       const go = async (addTo) => {
-        const rows = importRows(), name = $("#scName").value.trim();
+        const rows = importRows(), name = $("#scName").value.trim(), month = $("#scMonth").value.trim();
         try {
           if (addTo) {
-            const out = await api(scId, { op: "add", rows });
-            scMsg = { ok: `Added ${out.added.toLocaleString()} leads to ${LIST.list.name}.` };
+            const out = await api(scId, { op: "add", rows, month });
+            scMsg = { ok: `Added ${out.added.toLocaleString()} clients to ${LIST.list.name}.` };
             scImport = null; await reloadLists(); await openList(scId);
           } else {
-            const out = await api("", { op: "create", name, rows });
-            scMsg = { ok: `Imported ${out.summary.count.toLocaleString()} leads as “${out.summary.name}”.` };
+            const out = await api("", { op: "create", name, month, rows });
+            scMsg = { ok: `Imported ${out.summary.count.toLocaleString()} clients as “${out.summary.name}”.` };
             scImport = null; await reloadLists(); await openList(out.summary.id);
           }
         } catch (e) { scMsg = { err: e.message }; repaint(); }
@@ -399,9 +467,7 @@
       const at = $("#scAddTo"); if (at) at.onclick = () => go(true);
     }
     if (!LIST) return;
-    v.querySelectorAll("select.scsel").forEach(s => s.onchange = () => setField(s.dataset.sclead, s.dataset.scfield, s.value));
-    v.querySelectorAll(".sccheck input").forEach(c => c.onchange = () => setField(c.dataset.sclead, c.dataset.scfield, c.checked));
-    v.querySelectorAll("input.scnote").forEach(n => n.onchange = () => setField(n.dataset.sclead, "notes", n.value.trim()));
+    v.querySelectorAll(".sctab tbody tr").forEach(wireRow);
     const q = $("#scQ"); if (q) q.oninput = () => { scF.q = q.value; scShow = 200; repaint(); };
     const w = $("#scWho"); if (w) w.onchange = () => { scF.who = w.value; scShow = 200; repaint(); };
     const x = $("#scX"); if (x) x.onchange = () => { scF.x = x.value; scShow = 200; repaint(); };
@@ -418,15 +484,6 @@
       try { await api(scId, { op: "delete" }); scMsg = { ok: `Deleted ${LIST.list.name}.` }; LIST = null; scId = ""; await reloadLists(); } catch (e) { scMsg = { err: e.message }; }
       repaint();
     };
-    v.querySelectorAll("[data-scrm]").forEach(b => b.onclick = async () => {
-      const l = LIST.list.leads.find(x => x.id === b.dataset.scrm);
-      if (!l || !confirm(`Take ${l.name || "this lead"} off the list?`)) return;
-      try {
-        const out = await api(scId, { op: "remove", lead: l.id });
-        LIST.list.leads = LIST.list.leads.filter(x => x.id !== l.id); LIST.summary = out.summary;
-      } catch (e) { scMsg = { err: e.message }; }
-      repaint();
-    });
   }
 
   window.scrubPaint = async function scrubPaint() {
@@ -441,7 +498,7 @@
 
   const css = document.createElement("style");
   css.textContent = `
-.sctiles { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 12px; margin: 10px 0 14px; }
+.sctiles { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 12px; margin: 10px 0 14px; }
 @media (max-width: 900px) { .sctiles { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 .sctile { position: relative; overflow: hidden; background: var(--surface-raised); border: var(--bw, 2px) solid var(--border-strong); border-top: 5px solid var(--th); border-radius: 12px; padding: 10px 12px 14px; }
 .sctile span { display: block; text-transform: uppercase; letter-spacing: .07em; font-size: 11px; font-weight: 700; color: var(--text-muted); }
@@ -456,20 +513,26 @@
 .sctab td { vertical-align: top; }
 .sctab tr.scdone td { background: color-mix(in oklab, var(--good) 9%, transparent); }
 .scsub { font-size: 12px; color: var(--text-secondary); }
-.scapex, .scaz { min-width: 170px; }
-.scaz { display: flex; flex-direction: column; gap: 5px; }
-.scsel { font: inherit; font-size: 13px; padding: 5px 8px; border-radius: 8px; border: 1px solid var(--border-strong); background: var(--surface); color: var(--text-primary); }
-.scsel.ok { border-color: var(--good); background: color-mix(in oklab, var(--good) 16%, var(--surface)); }
-.scsel.mid { border-color: var(--warn); }
-.scsel.bad { border-color: var(--bad); background: color-mix(in oklab, var(--bad) 14%, var(--surface)); }
+.sctab th small { font-weight: 500; color: var(--text-muted); }
+.scclient { min-width: 190px; max-width: 260px; }
+.scin { box-sizing: border-box; font: inherit; font-size: 13px; padding: 5px 7px; border-radius: 8px; border: 1px solid var(--border); background: var(--surface); color: var(--text-primary); width: 128px; }
+.scin:focus { border-color: var(--accent); outline: none; }
+.scin.scwide { width: 220px; }
+.scin.scdate { width: 132px; }
+.sc-month .scin { width: 86px; } .sc-rep .scin { width: 96px; }
+.scin.ok { border-color: var(--good); background: color-mix(in oklab, var(--good) 14%, var(--surface)); }
+.scin.mid { border-color: var(--warn); background: color-mix(in oklab, var(--warn) 10%, var(--surface)); }
+.scin.bad { border-color: var(--bad); background: color-mix(in oklab, var(--bad) 12%, var(--surface)); }
+.sc-az .scin { width: 100%; min-width: 150px; }
+.scbeside { display: flex; gap: 4px; margin-top: 4px; }
+.scbeside .sccheck { font-size: 12px; white-space: nowrap; padding: 1px 6px; }
+.scleft { display: inline-block; min-width: 20px; text-align: center; font-size: 12px; font-weight: 700; color: var(--text-muted); border: 1px solid var(--border); border-radius: 10px; margin-right: 4px; }
 .sccheck { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; cursor: pointer; padding: 2px 8px; border-radius: 8px; border: 1px solid var(--border); width: fit-content; }
 .sccheck.on { border-color: var(--good); background: color-mix(in oklab, var(--good) 14%, transparent); font-weight: 600; }
-.scnote { font: inherit; font-size: 13px; padding: 5px 8px; border-radius: 8px; border: 1px solid var(--border); background: var(--surface); color: var(--text-primary); min-width: 160px; width: 100%; }
 .scdupe { font-size: 11px; font-weight: 700; color: var(--warn); border: 1px solid var(--warn); border-radius: 6px; padding: 0 5px; }
 .scok { color: var(--good); font-weight: 800; font-size: 18px; margin-right: 4px; }
 .scx { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 4px; }
-.scx span { font-size: 12px; padding: 1px 6px; border-radius: 6px; background: color-mix(in oklab, var(--s4) 14%, transparent); }
-.scx i { font-style: normal; color: var(--text-muted); }
+.scx span { font-size: 11px; padding: 1px 6px; border-radius: 6px; background: color-mix(in oklab, var(--s4) 14%, transparent); }
 `;
   document.head.appendChild(css);
 })();

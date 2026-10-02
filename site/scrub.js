@@ -1,17 +1,21 @@
 /* The lead scrub tracker (Frank, 2026-10-02: "an interactive way to track a
    list of leads we are scrubbing, making sure they are updated in both apex
-   and agency zoom"). A lead list exported from AgencyZoom is imported as a
-   scrub list; each lead is then marked off as it is cleaned up in both
-   systems:
+   and agency zoom"). A lead list (the Farmers quote report, or any export)
+   is imported as a scrub list, and each lead is worked in the columns of
+   Frank's sheet (his screenshot, 2026-10-02):
 
-     Apex          its status in Apex
-     AgencyZoom    its status in AgencyZoom, plus two boxes beside it:
-                   Duplicates Cleaned and Tagged
+     Client  Month  Apex Status  AZ Status  Lead Status  Action Taken
+     Date  Rep  Notes  Next Step
 
-   A lead is DONE when Apex and AgencyZoom both read a finished status
-   (DONE_STATUSES) and both AgencyZoom boxes are ticked. The options are
-   FIELDS below and nowhere else -- the board draws whatever this sends, so
-   changing an option is a change here only (and the Road Map line).
+   with the two boxes he asked for beside AZ Status: Duplicates Cleaned and
+   Tagged. The status columns suggest the usual answers ("Active",
+   "Updated / Smart Cycled", "Account reviewed") and take anything typed.
+   Date and Rep stamp themselves -- today in Arizona, and whoever made the
+   change -- unless someone sets them by hand. A lead is DONE when Apex
+   Status, AZ Status and Lead Status are filled in and both boxes are
+   ticked. The columns are FIELDS below and nowhere else -- the board draws
+   whatever this sends, so a column or a suggestion changes here only (and
+   the Road Map line).
 
    One R2 file per list, scrub/lists/<id>.json, with the list's progress in
    its customMetadata so the picker never reads every list. Writes are
@@ -24,17 +28,27 @@
 
 const PREFIX = "scrub/lists/";
 
-const STATUS = ["Not started", "Updated", "No changes needed", "Not found", "Needs follow-up"];
+// type: choice = suggestions plus free text; check = a box (shown with the
+// field it names in `beside`); text; date (YYYY-MM-DD); rep (a name).
 export const FIELDS = [
-  { key: "apex", label: "Apex", type: "select", options: STATUS },
-  { key: "az", label: "AgencyZoom", type: "select", options: STATUS },
-  { key: "az_dups", label: "Duplicates Cleaned", type: "check", group: "az" },
-  { key: "az_tagged", label: "Tagged", type: "check", group: "az" },
+  { key: "month", label: "Month", type: "text" },
+  { key: "apex", label: "Apex Status", type: "choice", options: ["Active", "Inactive", "Cancelled", "Not in Apex"] },
+  { key: "az", label: "AZ Status", type: "choice", options: ["Active", "Inactive", "Cancelled", "Not in AgencyZoom"] },
+  { key: "az_dups", label: "Duplicates Cleaned", type: "check", beside: "az" },
+  { key: "az_tagged", label: "Tagged", type: "check", beside: "az" },
+  { key: "lead", label: "Lead Status", type: "choice", options: ["Updated / Smart Cycled", "Updated", "X-date set", "Marked sold", "Marked lost", "No change needed"] },
+  { key: "action", label: "Action Taken", type: "choice", options: ["Account reviewed", "Called client", "Left voicemail", "Texted", "Emailed", "Duplicates merged"] },
+  { key: "date", label: "Date", type: "date" },
+  { key: "rep", label: "Rep", type: "rep" },
+  { key: "notes", label: "Notes", type: "text", max: 500 },
+  { key: "next", label: "Next Step", type: "choice", options: ["None", "Follow up", "Call back", "Requote", "Set X-date"] },
 ];
-export const DONE_STATUSES = ["Updated", "No changes needed"];
+// Filled in for a lead to be done (plus both boxes).
+export const DONE_FIELDS = ["apex", "az", "lead"];
 const COLS = ["name", "phone", "email", "az_id", "assigned", "source", "stage"];
 const MAX_ROWS = 5000, MAX_EXTRA = 30, MAX_VAL = 200;
 
+const azToday = () => new Date(Date.now() - 7 * 3600000).toISOString().slice(0, 10);
 const emails = (s) => String(s || "").toLowerCase().split(",").map((x) => x.trim()).filter(Boolean);
 function access(me, env) {
   const edit = emails(env.SCRUB_EDITORS).includes(me.email);
@@ -46,15 +60,15 @@ const str = (v, n = MAX_VAL) => String(v == null ? "" : v).trim().slice(0, n);
 
 export function isDone(s) {
   s = s || {};
-  return DONE_STATUSES.includes(s.apex) && DONE_STATUSES.includes(s.az) && !!s.az_dups && !!s.az_tagged;
+  return DONE_FIELDS.every((k) => String(s[k] || "").trim()) && !!s.az_dups && !!s.az_tagged;
 }
 function summary(list) {
   const leads = list.leads || [];
-  const ok = (k) => leads.filter((l) => DONE_STATUSES.includes((l.s || {})[k])).length;
+  const ok = (k) => leads.filter((l) => String((l.s || {})[k] || "").trim()).length;
   return {
     id: list.id, name: list.name, created_at: list.created_at, created_by: list.created_by,
     count: leads.length, done: leads.filter((l) => isDone(l.s)).length,
-    apex: ok("apex"), az: ok("az"),
+    apex: ok("apex"), az: ok("az"), lead: ok("lead"),
     az_dups: leads.filter((l) => (l.s || {}).az_dups).length,
     az_tagged: leads.filter((l) => (l.s || {}).az_tagged).length,
     updated_at: list.updated_at || list.created_at,
@@ -77,10 +91,10 @@ async function save(env, list, etag) {
   return (await env.BOARD.put(PREFIX + list.id + ".json", JSON.stringify(list), opts)) !== null;
 }
 
-function cleanRows(rows) {
+function cleanRows(rows, month) {
   if (!Array.isArray(rows)) return [];
   return rows.slice(0, MAX_ROWS).map((r) => {
-    const lead = { id: crypto.randomUUID().slice(0, 12), extra: {}, s: { apex: STATUS[0], az: STATUS[0], az_dups: false, az_tagged: false, notes: "" }, by: {} };
+    const lead = { id: crypto.randomUUID().slice(0, 12), extra: {}, s: { month: str(month, 40), az_dups: false, az_tagged: false }, by: {} };
     for (const c of COLS) lead[c] = str((r || {})[c]);
     const extra = (r && typeof r.extra === "object" && r.extra) || {};
     for (const [k, v] of Object.entries(extra).slice(0, MAX_EXTRA)) lead.extra[str(k, 60)] = str(v);
@@ -94,7 +108,7 @@ export async function scrubGet(request, env, identityOf, id) {
   const me = identityOf(request, env);
   const a = access(me, env);
   if (!a.see) return json({ error: "not permitted" }, 403);
-  const base = { fields: FIELDS, done_statuses: DONE_STATUSES, can_edit: a.edit, me: me.name };
+  const base = { fields: FIELDS, done_fields: DONE_FIELDS, can_edit: a.edit, me: me.name, today: azToday() };
   if (id) {
     const got = await load(env, id);
     if (!got) return json({ error: "no such list" }, 404);
@@ -109,7 +123,7 @@ export async function scrubGet(request, env, identityOf, id) {
       const n = (k) => Number(m[k] || 0);
       lists.push({ id: m.id || o.key.slice(PREFIX.length, -5), name: m.name || "", created_at: m.created_at || "",
         created_by: m.created_by || "", updated_at: m.updated_at || "", count: n("count"), done: n("done"),
-        apex: n("apex"), az: n("az"), az_dups: n("az_dups"), az_tagged: n("az_tagged") });
+        apex: n("apex"), az: n("az"), lead: n("lead"), az_dups: n("az_dups"), az_tagged: n("az_tagged") });
     }
     cursor = page.truncated ? page.cursor : undefined;
   } while (cursor);
@@ -119,7 +133,8 @@ export async function scrubGet(request, env, identityOf, id) {
 
 /** POST /api/scrub {op: "create", name, rows}               editors
  *  POST /api/scrub/<id> {op, ...}
- *    set     {lead, field, value}   anyone who sees it; field is a FIELDS key or "notes"
+ *    set     {lead, field, value}   anyone who sees it; field is a FIELDS key.
+ *                                   Date and Rep are stamped unless set by hand
  *    add     {rows}                 editors: more leads onto the list
  *    rename  {name}                 editors
  *    remove  {lead}                 editors: one lead off the list
@@ -136,10 +151,11 @@ export async function scrubPost(request, env, identityOf, id) {
   if (!id) {
     if (op !== "create") return json({ error: "bad op" }, 400);
     if (!a.edit) return json({ error: "only a manager can import a list" }, 403);
-    const leads = cleanRows(body.rows);
+    const month = str(body.month, 40);
+    const leads = cleanRows(body.rows, month);
     if (!leads.length) return json({ error: "no leads in that file" }, 400);
     const list = { id: crypto.randomUUID().slice(0, 8), name: str(body.name, 120) || `Scrub ${now.slice(0, 10)}`,
-      created_at: now, created_by: me.name, leads };
+      month, created_at: now, created_by: me.name, leads };
     if (!(await save(env, list, null))) return json({ error: "could not save -- try again" }, 503);
     return json({ ok: true, summary: summary(list) });
   }
@@ -167,21 +183,28 @@ function apply(list, body, me, a, now) {
     if (!lead) return { error: "lead not found", status: 404 };
     const key = String(body.field || "");
     const f = FIELDS.find((x) => x.key === key);
+    if (!f) return { error: "bad field" };
     let value;
-    if (key === "notes") value = str(body.value, 500);
-    else if (!f) return { error: "bad field" };
-    else if (f.type === "check") value = !!body.value;
-    else if (f.options.includes(body.value)) value = body.value;
-    else return { error: "bad value" };
+    if (f.type === "check") value = !!body.value;
+    else if (f.type === "date") {
+      value = str(body.value, 10);
+      if (value && !/^\d{4}-\d{2}-\d{2}$/.test(value)) return { error: "bad date" };
+    } else value = str(body.value, f.max || 120);
     lead.s = lead.s || {};
-    lead.s[key] = value;
     lead.by = lead.by || {};
+    lead.s[key] = value;
     lead.by[key] = { who: me.name, at: now };
+    // Who worked it and when, as the sheet keeps them: stamped by any other
+    // change, overwritten by hand only through their own column.
+    if (key !== "date" && key !== "rep" && key !== "month") {
+      lead.s.date = azToday();
+      lead.s.rep = me.name;
+    }
     return { lead };
   }
   if (!a.edit) return { error: "only a manager can change the list itself", status: 403 };
   if (op === "add") {
-    const more = cleanRows(body.rows);
+    const more = cleanRows(body.rows, body.month != null ? body.month : list.month);
     if (list.leads.length + more.length > MAX_ROWS) return { error: `a list holds ${MAX_ROWS} leads at most` };
     list.leads.push(...more);
     return { added: more.length };
