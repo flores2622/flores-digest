@@ -847,7 +847,12 @@ regular language, not AI prompt language"; "Apollos road map should be the
 name of the full tab, with a dropdown that has options for manager/coaching,
 and one for the 3 producer levels"): **Manager / Coaching** (the ARM, shown
 only to `ROLEPLAY_HISTORY_VIEWERS`, via the Worker's `/api/me`) and **New /
-Mid-Level / Experienced Producer** for everyone. **Service Center > Athena's
+Mid-Level / Experienced Producer** for everyone, plus the **Out of Office
+Checklist** (Frank, 2026-10-02: a producer's hand-over before time off, each
+box with its how-to steps; ticks are kept per browser; **a sale closed while
+they are out stays theirs only if the notes, files and information are in
+AgencyZoom -- if the producer binding it has to dig or lacks the pieces, it
+becomes that producer's sale**). **Service Center > Athena's
 Road Map** is the service team's (Frank, 2026-09-30: "make an Athena Road Map
 for the service team too"): Amanda's Service Playbook in plain words plus how
 the Service Center counts, for everyone; when `service_playbook.py` changes,

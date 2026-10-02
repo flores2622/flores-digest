@@ -20,7 +20,10 @@
 
    Format: each guide is a list of sections {h, body}; body items are a
    paragraph string, {list: [...]}, {steps: [...]} (numbered), {terms:
-   [[term, meaning], ...]} or {table: {head: [...], rows: [[...], ...]}}.
+   [[term, meaning], ...]}, {table: {head: [...], rows: [[...], ...]}},
+   {checks: [[box, [step, ...]], ...]} (tick boxes, each with its numbered
+   how-to steps; ticks are kept per browser) or {code: "..."} (a block to
+   copy as it stands, e.g. a note template).
    **bold** works inside any text. Nothing else is interpreted.
 
    The Worker imports this file too (site/coeus.js): Coeus answers "what does
@@ -702,5 +705,181 @@
       ] },
     ] },
 
+
+  /* ------------------------------------------------------------------ */
+  /* Frank, 2026-10-02: the producer out-of-office checklist "with specific
+     instructions on how to do those things", built into the board. */
+  { key: "ooo", map: "apollo", label: "Out of Office Checklist", title: "Out of Office Checklist",
+    who: "For producers taking time off: everything to hand over before you leave, and how to do each step. Tick the boxes as you go; your ticks stay in this browser.",
+    sections: [
+    { h: "How to use this checklist",
+      body: [
+        "Start **two business days before you leave** and finish by the end of your last day. Each box has the steps for doing it underneath.",
+        "**The main rule:** don't just tell someone you'll be gone. Set them up to cover you. If a client calls tomorrow asking for you, another team member should be able to open the account and know exactly what's going on.",
+        "**Who gets the sale:** a sale that closes while you're gone stays yours only if your notes, files and information are properly in AgencyZoom. If the producer helping bind it has to go digging or investigating, or doesn't have the pieces needed to finalize it for you, it becomes their sale.",
+        "Before you start, agree with Amanda or Frank on the producer covering you, and get that producer's yes. Write down your dates out, who covers your leads and quotes, who covers your calls (usually the same producer), and Amanda as the manager to go to if they get stuck.",
+      ] },
+
+    { h: "1. Email",
+      body: [
+        "These are Gmail steps for your agency address. Do them on your last afternoon.",
+        { checks: [
+          ["**Set your out-of-office reply**", [
+            "In Gmail, click the gear (top right), then **See all settings**.",
+            "On the **General** tab, scroll to **Vacation responder** and pick **Vacation responder on**.",
+            "Set **First day** to your first day out; tick **Last day** and set it to the day before you're back.",
+            "Subject: \"Out of office until <day you're back>\".",
+            "Message: \"Thank you for your email. I'm out of the office until <day>. For quotes or new policies, please contact <covering producer> at <their email> or <office phone>. For billing, claims or changes to an existing policy, please call our service team at <office phone>.\"",
+            "Leave **Only send a response to people in my Contacts** unticked, so new leads get it too, then **Save Changes**.",
+          ] ],
+          ["**Send sales emails to the person covering you**", [
+            "In Gmail settings, open **Forwarding and POP/IMAP** and click **Add a forwarding address**; enter the covering producer's email.",
+            "Gmail emails them a confirmation code. Get it from them and enter it to verify.",
+            "Pick **Forward a copy of incoming mail to** their address and **keep Gmail's copy in the Inbox**, so nothing is lost. **Save Changes**.",
+            "Can't do forwarding? Ask Amanda to add the covering producer as a delegate on your mailbox instead.",
+          ] ],
+          ["**Answer urgent and current client emails before you leave**", [
+            "Search your inbox for is:unread, and anything from the last 7 days that's waiting on you.",
+            "Reply to each one, or tell the client who will help them while you're out.",
+            "Anything you can't finish goes on the lead in AgencyZoom as a note (section 2), never only in your inbox.",
+          ] ],
+          ["**Make sure no lead or prospect is sitting in your inbox**", [
+            "Look for dec pages, IDs, VINs, signed forms and \"call me\" emails from prospects.",
+            "Upload each document to that lead's file in AgencyZoom and add a note saying what it is.",
+            "If an email changes what happens next, write that on the lead too.",
+          ] ],
+        ] },
+      ] },
+
+    { h: "2. Leads and new business",
+      body: [
+        "Every open lead of yours leaves with a clear next step and an owner. **Don't leave a lead with no clear next step.**",
+        { checks: [
+          ["**Pull up all your open leads and active prospects**", [
+            "In AgencyZoom, open **Leads** and filter **Assigned To** to you.",
+            "Look at **1 Pipeline**, **1-1 QNC** and **Life Pipeline** first, sorted by last activity, newest first.",
+            "Focus on the stages where someone is waiting on you: **Contacted, In Progress**, **Ready to Present**, **Quotes Presented** and **FSD (Pending Bind)**.",
+            "Check **Pipeline** (no number) too. It should be empty; move anything there into 1 Pipeline.",
+          ] ],
+          ["**Pick out the leads that need follow-up while you're gone**", [
+            "Anything with a call back, quote or document due while you're out.",
+            "Anything in Quotes Presented or Ready to Present.",
+            "Anything pending bind: waiting on a signature, a payment or an inspection.",
+            "New leads not dialled yet. These are often best handed over completely.",
+          ] ],
+          ["**Assign or reroute those leads to the person covering you**", [
+            "One lead: open it, click **Edit**, change **Assigned To** to the covering producer and **Save**.",
+            "Many leads: tick them in the Leads list and use **Bulk Actions** to change the assigned agent.",
+            "Open each lead's **Tasks** and reassign any open task due while you're out, with a clear due date.",
+            "Never move a lead into IL Interested or Transfer Pending. Those aren't our stages.",
+            "Leads that can wait stay with you, with a task dated the day you're back.",
+          ] ],
+          ["**Add a hand-off note on every lead you hand over**", [
+            "Open the lead, click **Notes**, then **Add Note**.",
+            "Start it with OUT OF OFFICE HAND-OFF so the covering producer can spot it.",
+            "Fill in all six lines of the template below.",
+          ] ],
+        ] },
+        "**Hand-off note template.** Copy it, then fill it in:",
+        { code: "OUT OF OFFICE HAND-OFF (<your name>, out <dates>)\nWants: <products, e.g. auto + home>\nQuote status: <not started / in progress / presented on <date> / sent <date>>\nDiscussed: <drivers, vehicles, current carrier & premium, discounts, objections>\nWaiting on: <them: dec page, license, VINs / us: a rate, underwriting>\nNext step: <what to do, and by when>\nBest way to reach: <call / text, best time, language>" },
+        "**Example note:** \"OUT OF OFFICE HAND-OFF (Lorena, out 10/6 to 10/8). Spoke with client 10/1. Interested in auto + home. Quote sent 10/1, waiting on driver's license. Follow up Friday 10/3 if no response. Best by text after 5 PM, prefers Spanish.\"",
+        "The test for a good note: could the covering producer call this person without asking you anything?",
+      ] },
+
+    { h: "3. Inbound calls",
+      body: [
+        "Your direct line keeps ringing while you're out. Decide where those calls go before you leave.",
+        { checks: [
+          ["**Confirm who covers your calls, your sales leads and your quote and client follow-ups**", []],
+          ["**Forward your direct line in RingCentral**", [
+            "Sign in to the RingCentral web portal, or open the app's **Settings**, then **Phone**.",
+            "Under **Call Handling & Forwarding**, add a rule for the dates you're out that sends calls to the covering producer's extension; unanswered calls go to your voicemail.",
+            "Set your status to **Do Not Disturb** or **Away**, so the front desk sees you're out before transferring.",
+            "Can't find the setting? Ask Amanda to set it up from the admin side.",
+          ] ],
+          ["**Record an out-of-office voicemail greeting**", [
+            "In RingCentral, open **Settings**, then **Phone**, then **Voicemail Greeting**, and record a new one.",
+            "Script: \"Hi, you've reached <name> at Flores Insurance. I'm out of the office until <day>. For a quote, press 0 or call <office phone> and ask for <covering producer>. For billing, claims or policy changes, ask for our service team.\"",
+          ] ],
+          ["**Tell Debbie and the team where to send calls for you**", [
+            "Debbie answers about 90% of inbound calls, so she has to know first.",
+            "Send her, the covering producer and Amanda the routing below.",
+          ] ],
+        ] },
+        "**If a client calls while you're gone:**",
+        { table: { head: ["Who's calling", "Where the call goes"], rows: [
+          ["Existing client with a service need (billing, claim, change, ID cards)", "Service: Debbie, Amanda or Crystal"],
+          ["Someone you were already quoting or selling to", "The producer covering you"],
+          ["A new lead", "The designated sales team member"],
+          ["A client who asks for you by name", "The producer covering you. They read your hand-off note and help, instead of saying \"call back next week\""],
+        ] } },
+        "If the covering producer can't help with something, they take a message and set a dated task. They never just tell the client to call back.",
+      ] },
+
+    { h: "4. Appointments",
+      body: [
+        "Every appointment on the days you're out is either covered or moved, and the client knows which.",
+        { checks: [
+          ["**List the appointments booked while you're gone**", [
+            "Open your calendar (Google Calendar and the AgencyZoom calendar) and look at every day you're out.",
+            "In AgencyZoom, check **Tasks** assigned to you and due on those days. Call backs booked as tasks count.",
+          ] ],
+          ["**Make sure the covering producer knows which appointments are yours**", [
+            "Add them as a guest on each calendar event, or forward the invite.",
+            "Reassign the matching AgencyZoom task to them.",
+            "Send them one list: name, day and time, phone, and what the appointment is for.",
+          ] ],
+          ["**Reschedule anything that can't be covered**", [
+            "Call or text the client before you leave: \"I'll be out on <day>. Can we move our call to <new day and time>?\"",
+            "Move the calendar event and the AgencyZoom task to the new date.",
+            "Note it on the lead: \"Rescheduled from <old> to <new>, I'm out.\"",
+          ] ],
+          ["**Add context where the covering producer needs it**", [
+            "Paste the hand-off note, or a link to the lead, in the calendar event's description.",
+            "Say what the call should end with: a quote presented, a policy bound, or a dated next step.",
+          ] ],
+        ] },
+      ] },
+
+    { h: "5. Active quotes",
+      body: [
+        "If someone else takes over, they should be able to open the account and know exactly what to do next. For every quote that may need attention while you're gone, answer these five in a note on the lead:",
+        { checks: [
+          ["**Quote completed?**", ["Make sure the final quote is saved on the lead in AgencyZoom with its premium, and the quote PDF is in the lead's files. Still working on it? Write down what's missing (a driver, a VIN, a coverage choice)."]],
+          ["**Quote sent?**", ["Emailed or texted: put the date and how it went in the note. Presented on the phone: say so, and move the lead to **Quotes Presented**."]],
+          ["**Client contacted?**", ["Note the last time you actually spoke and what they said, e.g. \"wants to compare with State Farm\" or \"spouse has to agree\"."]],
+          ["**Follow-up needed?**", ["Create an AgencyZoom task on the lead with the date and what to say. A follow-up with no date doesn't count."]],
+          ["**Who is responsible for the follow-up?**", ["Assign that task to the covering producer, or to yourself only if the date is after you're back."]],
+        ] },
+        "For a sale pending bind (FSD), also write down what's left to finish it (signature, down payment, inspection, proof of prior) and who is doing each one.",
+      ] },
+
+    { h: "6. Final check before leaving",
+      body: [
+        "Ask yourself: **\"If a client calls tomorrow asking for me, can another team member open the account and know exactly what's going on?\"** Spend 15 minutes with the covering producer on your last afternoon and go through this together.",
+        { checks: [
+          ["Emails routed: out-of-office reply on, forwarding set", []],
+          ["Leads assigned: every lead that needs follow-up is on the covering producer", []],
+          ["Quotes documented: every active quote answers the five questions", []],
+          ["Follow-ups assigned: every follow-up is a dated task with an owner", []],
+          ["Appointments covered or rescheduled", []],
+          ["Important client information is in the lead notes, not in your head or your inbox", []],
+          ["Team knows who is covering what: Debbie, the covering producer and Amanda all have the routing", []],
+          ["Phone forwarded and out-of-office voicemail recorded", []],
+        ] },
+      ] },
+
+    { h: "The day you're back",
+      body: [
+        { checks: [
+          ["Turn off Gmail's vacation responder, and set forwarding to **Disable forwarding**", []],
+          ["Turn off RingCentral forwarding, set your status to **Available** and record your normal greeting", []],
+          ["Meet the covering producer for 10 minutes: what was sold, quoted and promised while you were out", []],
+          ["Take back the leads that are still open, keeping any notes they added", []],
+        ] },
+        "A sale the covering producer closed from your notes and files is yours; one they had to dig for, or couldn't finish without chasing the pieces, is theirs.",
+        "**Main rule:** don't just tell someone you're going to be gone. Set them up to cover you.",
+      ] },
+    ] },
   ],
 };

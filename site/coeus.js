@@ -51,6 +51,8 @@ function guideText(g) {
     if (it.list) return it.list.map((x) => `- ${x}`).join("\n");
     if (it.steps) return it.steps.map((x, i) => `${i + 1}. ${x}`).join("\n");
     if (it.terms) return it.terms.map(([a, b]) => `- ${a}: ${b}`).join("\n");
+    if (it.checks) return it.checks.map(([box, steps]) => [`- [ ] ${box}`, ...(steps || []).map((x, i) => `    ${i + 1}. ${x}`)].join("\n")).join("\n");
+    if (it.code) return "```\n" + it.code + "\n```";
     if (it.table) return [`| ${it.table.head.join(" | ")} |`, `| ${it.table.head.map(() => "---").join(" | ")} |`,
       ...it.table.rows.map((r) => `| ${r.join(" | ")} |`)].join("\n");
     return "";
