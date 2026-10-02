@@ -1288,7 +1288,12 @@ Crystal (hybrid); credit always goes to whoever COMPLETED the SR or task.
   **The type of claim is the SR's own AgencyZoom category** (`CLAIM_TYPES`:
   Auto 40942, Home 40944, Commercial 40943, Work Comp 40945, Life 40946;
   anything else "Not set"), and **close time** is created -> completed,
-  shown per type (median and 90% within). AgencyZoom lets anyone
+  shown per type (median and 90% within). **Commercial and Work Comp
+  claims are Cerberus's** (Frank, 2026-10-02: "commercial";
+  `claims.COMMERCIAL_CATEGORIES`): `commercial.is_commercial_sr` counts
+  them, so they leave every Service Center figure, and `commercial/<day>.json`
+  carries them as its own `claims` (kept out of the open queue and the
+  completed SRs), drawn as the Commercial Center's Claims section. AgencyZoom lets anyone
   create one, so a claim created from `RULE_FROM` (2026-10-02) on whose
   `createdBy` is not licensed, or whose `csr` is not, is a flag. Each service
   day carries `claims` (opened / completed / open / flags, rows); the

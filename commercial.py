@@ -19,6 +19,9 @@ WHICH SRs ARE COMMERCIAL (Frank, 2026-09-24):
     commercial policy") and no policy number, so the household is the only
     signal. Frank's own Service Pipeline SRs are a mix of personal and
     commercial work, which is why the household test is required as well.
+  - a Commercial or Work Comp CLAIM (claims.COMMERCIAL_CATEGORIES, Frank,
+    2026-10-02), whoever opened it -- Cerberus lists them as its own Claims
+    section, apart from the queue and the completed SRs.
 The service team's work on a commercial household (Debbie's late payments,
 Amanda's personal renewals for a business owner) is NOT commercial: credit
 stays with whoever completed it, and it stays in Athena.
@@ -32,6 +35,8 @@ A HOUSEHOLD'S POLICIES come from the household map
 policy records themselves carry no household.
 """
 import re
+
+import claims
 
 FRANK_ID = 82589                     # AgencyZoom user id; also the CSR id on SRs
 FRANK_NAME = "Frank Flores"          # as an SR's modifiedBy prints it
@@ -76,7 +81,7 @@ def is_commercial_sr(sr, commercial_hh):
     """True when an SR (live or completed) is commercial work. `commercial_hh`
     is households(hh)[0]."""
     wf = sr.get("workflowName")
-    if wf in RENEWAL_WORKFLOWS:
+    if wf in RENEWAL_WORKFLOWS or claims.is_commercial_claim(sr):
         return True
     if wf not in SERVICE_WORKFLOWS or sr.get("householdId") not in commercial_hh:
         return False

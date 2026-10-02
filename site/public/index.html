@@ -7492,7 +7492,7 @@ function mergeServiceDocs(docs) {
     front: { days: 0, calls: [], created: [] }, playbook: null, callTx: {},
     claims: { days: 0, opened: [], completed: [], flags: [], open: ((last.claims || {}).open) || null,
       licensed: ((last.claims || {}).licensed) || ["Amanda Torricellas", "Crystal Mango"], ruleFrom: ((last.claims || {}).rule_from) || "2026-10-02",
-      types: ((last.claims || {}).types) || ["Auto", "Home", "Commercial", "Work Comp", "Life", "Not set"] },
+      types: ((last.claims || {}).types) || ["Auto", "Home", "Life", "Not set"] },
     openRows: (last.srs || {}).open_rows || null,
     backlog: (last.srs || {}).backlog || {}, lateStages: (last.srs || {}).late_payment_stages || [],
     outcomes: (last.renewals || {}).outcomes || [], resolutionsFrom: (last.renewals || {}).resolutions_from,
@@ -8873,9 +8873,12 @@ function mergeCommercialDocs(docs) {
   const last = docs[docs.length - 1];
   const m = { days: docs.map(x => x.date), completed: [], unnamed: {},
     open: q ? q.open : null, asOf: q ? q.date : null,
-    outcomes: last.outcomes || [], resolutionsFrom: last.resolutions_from };
+    outcomes: last.outcomes || [], resolutionsFrom: last.resolutions_from,
+    claims: { days: 0, opened: [], completed: [], flags: [], open: ((last.claims || {}).open) || null,
+      types: ((last.claims || {}).types) || ["Commercial", "Work Comp"] } };
   for (const x of docs) {
     m.completed.push(...(x.completed || []));
+    if (x.claims) { m.claims.days++; for (const k of ["opened", "completed", "flags"]) m.claims[k].push(...(x.claims[k] || [])); }
     for (const [k, n] of Object.entries(x.unnamed || {})) m.unnamed[k] = (m.unnamed[k] || 0) + n;
   }
   return m;
@@ -8962,6 +8965,35 @@ function comCompletedHtml(m) {
     <tbody>${tr}</tbody></table></div>
     <div class="scroll" style="margin-top:12px"><table class="comtab"><thead><tr><th>Completed</th><th class="t">Account</th><th class="t">Outcome</th><th class="num">Took</th><th class="t">By</th></tr></thead><tbody>${list}</tbody></table></div></div>`;
 }
+/* Commercial and Work Comp claims (claims.py, Frank 2026-10-02: "commercial")
+   -- Cerberus's, with the Service Center's rules: the type is the SR's
+   category, close time is created to completed, and one opened by, or
+   assigned to, someone not licensed is flagged. Kept apart from the queue. */
+function comClaimsHtml(m) {
+  const C = m.claims;
+  if (!C.days) return "";
+  const hrs = C.completed.map(r => r.hours).filter(h => h != null);
+  const open = C.open || [];
+  const typeRows = C.types.map(t => { const of = r => r.type === t, h = C.completed.filter(of).map(r => r.hours).filter(x => x != null);
+    return `<tr><td>${cesc(t)}</td><td class="num">${C.opened.filter(of).length}</td><td class="num">${C.completed.filter(of).length}</td><td class="num">${open.filter(of).length}</td>
+      <td class="num">${h.length ? fmtDur(svcMedian(h)) : "—"}</td><td class="num">${h.length ? fmtDur(svcPctile(h, 0.9)) : "—"}</td></tr>`; }).join("");
+  const list = (rs, empty) => rs.length ? `<div class="scroll"><table class="comtab"><thead><tr><th>Opened</th><th class="t">Account</th><th class="t">Type</th><th class="t">Opened by</th><th class="t">Assigned</th><th class="num">Age / took</th></tr></thead><tbody>${rs.map(r => `<tr>
+      <td>${r.created ? fmtMDY(r.created) : "—"}</td><td class="t">${cesc(r.name || "—")}<div style="font-size:11.5px;color:var(--text-muted)">${cesc(r.subject || "")}</div></td>
+      <td class="t">${cesc(r.type)}</td><td class="t">${cesc((r.opened_by || "—").split(" ")[0])}${(r.problems || []).length ? ' <span class="chip c-r">Not licensed</span>' : ""}</td>
+      <td class="t">${cesc((r.assigned || "—").split(" ")[0])}</td><td class="num">${r.hours != null ? fmtDur(r.hours) : r.days_open != null ? Math.round(r.days_open) + "d open" : "—"}</td></tr>`).join("")}</tbody></table></div>` : `<p class="sd">${empty}</p>`;
+  return `<div class="sect svcsec" style="--sc:var(--s7)"><h2>Claims</h2>
+    <p class="sd">Commercial and Work Comp claims (the SR's category in AgencyZoom's Claim pipeline). Only a licensed rep opens and works a claim; one opened by, or assigned to, anyone else is marked Not licensed. Close time is from the day it was opened to the day it was completed.</p>
+    <div class="tiles statgrid">
+      <div class="tile" style="--hc:var(--s7)"><div class="k">Open Claims</div><div class="v">${C.open ? open.length : "—"}</div><div class="n">${open.filter(r => r.overdue).length} overdue</div></div>
+      <div class="tile" style="--hc:var(--s1)"><div class="k">Opened</div><div class="v">${C.opened.length}</div><div class="n">in this period</div></div>
+      <div class="tile" style="--hc:var(--good)"><div class="k">Completed</div><div class="v">${C.completed.length}</div><div class="n">${hrs.length ? `median ${fmtDur(svcMedian(hrs))} to close` : "created to completed"}</div></div>
+      <div class="tile" style="--hc:${C.flags.length ? "var(--bad)" : "var(--good)"}"><div class="k">Not Licensed</div><div class="v${C.flags.length ? " tr" : " tg"}">${C.flags.length}</div><div class="n">opened or assigned outside the licensed reps</div></div>
+    </div>
+    <div class="scroll" style="margin-top:12px"><table><thead><tr><th>Type</th><th class="num">Opened</th><th class="num">Completed</th><th class="num">Open now</th><th class="num">Median to close</th><th class="num">90% within</th></tr></thead><tbody>${typeRows}</tbody></table></div>
+    <details class="msgd" style="margin-top:10px"><summary style="cursor:pointer">Open claims (${open.length})</summary>${list(open, "None open.")}</details>
+    <details class="msgd"><summary style="cursor:pointer">Completed claims (${C.completed.length})</summary>${list(C.completed, "None completed in this period.")}</details>
+    ${C.flags.length ? `<details class="msgd" open><summary style="cursor:pointer;color:var(--bad)">Not licensed (${C.flags.length})</summary>${list(C.flags, "")}</details>` : ""}</div>`;
+}
 async function paintCommercial() {
   try { await paintCommercialTab(); } catch (e) { paintFailed(e); }
 }
@@ -8988,7 +9020,7 @@ async function paintCommercialTab() {
     v.innerHTML = controls + `<div class="empty">No Cerberus report for ${rangeMode === "day" ? "this day" : "this range"} yet.</div>`;
   } else {
     const m = mergeCommercialDocs(docs);
-    v.innerHTML = controls + comQueueHtml(m) + comOutcomesHtml(m) + comCompletedHtml(m);
+    v.innerHTML = controls + comQueueHtml(m) + comOutcomesHtml(m) + comClaimsHtml(m) + comCompletedHtml(m);
   }
   wireRangeControl();
 }

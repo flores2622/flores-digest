@@ -43,6 +43,12 @@ LICENSED = {82589: "Frank Flores", 82372: "Francisco Flores", 82592: "Veronica F
 CLAIM_TYPES = {40942: "Auto", 40944: "Home", 40943: "Commercial",
                40945: "Work Comp", 40946: "Life"}
 NOT_SET = "Not set"
+# Commercial and Work Comp claims are Cerberus's (Frank, 2026-10-02:
+# "commercial"): commercial.is_commercial_sr counts them, so they leave the
+# Service Center and show on the Commercial Center instead -- same rules.
+COMMERCIAL_CATEGORIES = {40943, 40945}
+SERVICE_TYPES = [t for c, t in CLAIM_TYPES.items() if c not in COMMERCIAL_CATEGORIES] + [NOT_SET]
+COMMERCIAL_TYPES = [CLAIM_TYPES[c] for c in sorted(COMMERCIAL_CATEGORIES)]
 LICENSED_NAMES = set(LICENSED.values())
 RULE_FROM = "2026-10-02"
 
@@ -57,6 +63,10 @@ def _csr_name(csr):
     import service_digest
     full = {v["az_id"]: k for k, v in service_digest.SERVICE_TEAM.items()}
     return full.get(csr) or CSR_NAMES.get(csr) or (f"employee {csr}" if csr else None)
+
+
+def is_commercial_claim(sr):
+    return is_claim(sr) and sr.get("categoryId") in COMMERCIAL_CATEGORIES
 
 
 def problems(sr):
@@ -98,7 +108,7 @@ def _row(sr, day):
     return row
 
 
-def figures(day, done, live):
+def figures(day, done, live, types=SERVICE_TYPES):
     """The day's claims from the day's saved SR files: `done` is every
     completed SR (service_digest.completed_tickets), `live` every live one as
     of the day (data/az_service_tickets_<day>.json)."""
@@ -111,7 +121,7 @@ def figures(day, done, live):
     done_ids = {t.get("id") for t in done_c if str(t.get("completeDate") or "")[:10] <= day}
     still_open = [_row(t, day) for t in live_c if t.get("id") not in done_ids]
     return {"licensed": sorted(LICENSED_NAMES), "rule_from": RULE_FROM,
-            "types": list(CLAIM_TYPES.values()) + [NOT_SET],
+            "types": list(types),
             "opened": opened, "completed": completed, "open": still_open,
             "flags": [r for r in opened if r["problems"]]}
 
