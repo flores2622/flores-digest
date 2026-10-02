@@ -1548,48 +1548,30 @@ $2,500 in premium"): the Digest's day reads as Apollo's group chat
   and tile numbers take the face's heavier cut where it has one (`--dw`:
   Fraunces and Bitter at 600; DM Serif Display and Instrument Serif have one
   weight and stay as cut, never a synthesized bold).
-- **The Digest has a skyline** (Frank, 2026-10-02: "give the digest some
-  life? Color, background images, etc"): the headline tiles sit under a
-  drawn Sonoran scene (`.skyline`, an inline SVG in the stylesheet -- sky,
-  sun, mesas, saguaros; Desert Night has stars) with the day's name on the
-  sky; the page carries a faint saguaro-and-sun pattern (`.main`); every
-  Digest tile is tinted by its own tier (green / amber / red top rule, from
-  the number's `tg` / `ty` / `tr`), and each section wears a hue on its top
-  rule (leaderboard, feed and coaching in the accent; Needs someone / Left
-  on the desk and Speed to Dial amber; Call Outcome blue; Task Completion
-  purple; Utilization and Household Completion green; Speed to Reply rose;
-  misfiled leads red). No figure, list or hook changed. **The skyline runs
-  on under the leaderboard** (Frank, 2026-10-02: "make it flow onto the
-  leaderboard as well"): the Team Leaderboard card, and the lists the
-  tiles and leaderboard open, sit inside `.skyline`, and the picture runs
-  on under them -- **no: the leaderboard is its own card with the scene
-  INSIDE it** (Frank, 2026-10-02: "in the background of the leaderboard
-  itself, not a background behind the 2 cards"): `teamLeaderboardHtml`'s
-  section is `skyline lbsky` with ITS OWN picture (Frank, 2026-10-02:
-  "the top should be the skyline and the bottom should be the landscape"):
-  by day a high-noon desert -- blue sky, clouds, red-rock buttes, a
-  two-lane highway running from the bottom to the horizon with the podium
-  at its end, big saguaros in the foreground -- and in Desert Night the
-  Milky Way, a moon over the buttes and a campfire by the road (Frank,
-  2026-10-02: "this is so bland compared to the rest, get creative"). The
-  podium stands under two spotlight beams in a pool of light, first place
-  wears a crown and a glow, the steps are gold / silver / bronze; the table
-  sits on a near-opaque sheet. The tiles' card keeps the sunset skyline.
-- **One leaderboard for every edition, fitted by priority** (Frank,
-  2026-10-02: "this is also the only leaderboard you didnt include all the
-  info in, but it has the space ... make the ones that we have to scroll
-  have the space and give the big ones the info they have space for, by
-  priority"): `lbTableHtml` in post.js draws the Digest's columns in the
-  Digest's order, each tagged with a priority (`LB_COLS`: Pts 1, Prem. Sold
-  2, HH Sold 3, HH Quoted 4, Prem. Quoted 5, Dials 6, Contact Rate 7, Role
-  Play 8, Avg Talk 9, Sent the Quote 10, Texts / Emails 11, Util. 12). The
-  table never scrolls: container queries on `.lbwrap` drop the
-  lowest-priority columns as its box narrows (about 92px a column) and a
-  wide box shows every one. The Post's Primetime standings use it (its
-  numbers from `lbNums(F)`, with # and ★), and every edition's `edLbt`
-  does; the three that sat in a side column -- FLRS 500's full tape,
-  CLOSER's masthead, KFLR's playlist -- moved to the full width of their
-  edition.
+- **The Digest's two top cards share one Sedona picture** (Frank,
+  2026-10-02: "give the digest some life? Color, background images, etc",
+  then "the top of the leaderboard background should be the horizon so just
+  a piece of the skyline, and the top cards background should be the tip of
+  the red rocks and cactuses and the skyline with constellations, the moon,
+  birds"). One drawing, in the stylesheet as two crops of the same inline
+  SVG (`scene()` in the session's build script; `.skyline` shows it from
+  the top, `.lbsky` from `SPLIT` = 377 of 1700 viewBox units down): a dusk
+  sky (Desert Night: night with the Milky Way) with constellations, the
+  moon, birds and thin lit clouds; Sedona-style rounded, layered red-rock
+  formations and tall saguaros whose tips rise into the tiles' card; below
+  the horizon the desert floor with a two-lane highway running to the
+  podium, scrub, big foreground saguaros and, at night, a campfire. The
+  tiles sit on the rock bodies; the leaderboard's title sits on the sliver
+  of sky and rock bases at its top, the podium stands on the road under two
+  spotlight beams with a crown and glow on first place and gold / silver /
+  bronze steps, and the table is on a near-opaque sheet. The page carries a
+  faint saguaro-and-sun pattern (`.main`); every Digest tile is tinted by
+  its tier (green / amber / red top rule from the number's `tg` / `ty` /
+  `tr`); each section wears a hue on its top rule (leaderboard, feed and
+  coaching in the accent; Needs someone / Left on the desk and Speed to
+  Dial amber; Call Outcome blue; Task Completion purple; Utilization and
+  Household Completion green; Speed to Reply rose; misfiled leads red). No
+  figure, list or hook changed.
 - **Every edition downloads** (Frank, 2026-10-02: "make the editions
   downloadable"): **Download PDF** (the edition alone in a new window, the
   print dialog opened once its fonts load -- Save as PDF) and **Save page**
