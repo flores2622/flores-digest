@@ -1634,8 +1634,11 @@ sheet on its back.
   coaching cards themselves some life? something with the outcome if
   possible"): a drawn strip across the top of the card header, picked by
   the card's `catc` (`data-oc` on the `.ccard`; the scenes are inline SVGs
-  in the stylesheet, light and Desert Night) with the outcome named in a
-  pill at its right (`data-ocl`): sold on the call = the close (sunburst, a
+  in the stylesheet, light and Desert Night) with Apollo's own outcome
+  badge as the ONE pill at its right (`.ocpill`, call type and flow on
+  hover -- Frank, 2026-10-02: "we have 3 different pills on the coaching
+  cards rn, need to consolidate"; the strip's generic label and the
+  badge's old spot in the header are gone): sold on the call = the close (sunburst, a
   flag on the summit, confetti, saguaros in bloom); quoted or follow-up
   still open = still on the road (dawn, the highway, a NEXT CALL sign);
   quoted or follow-up lost = a grey dusk with a tumbleweed; no quote = a
