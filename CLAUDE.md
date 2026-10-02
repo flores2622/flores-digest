@@ -1551,10 +1551,14 @@ $2,500 in premium"): the Digest's day reads as Apollo's group chat
   itself, not a background behind the 2 cards"): `teamLeaderboardHtml`'s
   section is `skyline lbsky` with ITS OWN picture (Frank, 2026-10-02:
   "the top should be the skyline and the bottom should be the landscape"):
-  a ground-level desert -- far sand in haze at the top, bands of floor
-  coming forward with saguaros growing larger toward the bottom, prickly
-  pear, rocks and a dry wash -- the podium standing on it and the table on
-  a near-opaque sheet. The tiles' card keeps the skyline (sky, sun, mesas).
+  by day a high-noon desert -- blue sky, clouds, red-rock buttes, a
+  two-lane highway running from the bottom to the horizon with the podium
+  at its end, big saguaros in the foreground -- and in Desert Night the
+  Milky Way, a moon over the buttes and a campfire by the road (Frank,
+  2026-10-02: "this is so bland compared to the rest, get creative"). The
+  podium stands under two spotlight beams in a pool of light, first place
+  wears a crown and a glow, the steps are gold / silver / bronze; the table
+  sits on a near-opaque sheet. The tiles' card keeps the sunset skyline.
 - **One leaderboard for every edition, fitted by priority** (Frank,
   2026-10-02: "this is also the only leaderboard you didnt include all the
   info in, but it has the space ... make the ones that we have to scroll
