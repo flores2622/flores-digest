@@ -1532,6 +1532,17 @@ $2,500 in premium"): the Digest's day reads as Apollo's group chat
   and tile numbers take the face's heavier cut where it has one (`--dw`:
   Fraunces and Bitter at 600; DM Serif Display and Instrument Serif have one
   weight and stay as cut, never a synthesized bold).
+- **The Digest has a skyline** (Frank, 2026-10-02: "give the digest some
+  life? Color, background images, etc"): the headline tiles sit under a
+  drawn Sonoran scene (`.skyline`, an inline SVG in the stylesheet -- sky,
+  sun, mesas, saguaros; Desert Night has stars) with the day's name on the
+  sky; the page carries a faint saguaro-and-sun pattern (`.main`); every
+  Digest tile is tinted by its own tier (green / amber / red top rule, from
+  the number's `tg` / `ty` / `tr`), and each section wears a hue on its top
+  rule (leaderboard, feed and coaching in the accent; Needs someone / Left
+  on the desk and Speed to Dial amber; Call Outcome blue; Task Completion
+  purple; Utilization and Household Completion green; Speed to Reply rose;
+  misfiled leads red). No figure, list or hook changed.
 - The local harness used to check all of this (a mock of the Worker over
   saved day documents, Playwright captures) lives in the session's
   scratchpad, not the repo; `design/flores-board-preview.html` is the

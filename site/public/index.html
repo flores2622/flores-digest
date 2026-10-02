@@ -1041,6 +1041,29 @@ html[data-look="mesa"] .renhero { background: linear-gradient(135deg, color-mix(
 #view[data-view="commercial"] .svchero .tile .v { font-size: 30px; }
 #view[data-view="commercial"] .svchero .scroll { margin-top: 6px; }
 #view[data-view="commercial"] tr.tot td, #view[data-view="commercial"] .scroll table tbody tr:hover td { background: color-mix(in oklab, var(--s7) 8%, transparent); }
+/* ---- The Digest, with life (Frank, 2026-10-02: "give the digest some life?
+   Color, background images, etc"). The headline tiles sit on a drawn Sonoran
+   skyline (an inline SVG: sky, sun, mesas, saguaros -- Desert Night has
+   stars), the page carries a faint desert pattern, each tile is tinted by
+   its own tier, and every section wears a hue on its top rule. --------- */
+.main { background-image: url("data:image/svg+xml;utf8,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%22260%22 height=%22260%22 viewBox=%220 0 260 260%22%3E%3Cg fill=%22none%22 stroke=%22%23000%22 stroke-width=%222%22 stroke-linecap=%22round%22 opacity=%22.07%22%3E%3Cpath d=%22M40 200v-70M40 160h-14v-22M40 150h14v-18%22/%3E%3Cpath d=%22M190 90v-50M190 70h-10v-14M190 62h10v-10%22/%3E%3Ccircle cx=%22120%22 cy=%2240%22 r=%229%22/%3E%3Cpath d=%22M120 22v-6M120 64v-6M102 40h-6M144 40h-6%22/%3E%3Cpath d=%22M60 250c10-8 20-8 30 0s20 8 30 0%22/%3E%3Cpath d=%22M160 240c10-8 20-8 30 0s20 8 30 0%22/%3E%3C/g%3E%3C/svg%3E"); background-size: 260px 260px; }
+html[data-mode="dark"] .main { background-image: url("data:image/svg+xml;utf8,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%22260%22 height=%22260%22 viewBox=%220 0 260 260%22%3E%3Cg fill=%22none%22 stroke=%22%23fff%22 stroke-width=%222%22 stroke-linecap=%22round%22 opacity=%22.07%22%3E%3Cpath d=%22M40 200v-70M40 160h-14v-22M40 150h14v-18%22/%3E%3Cpath d=%22M190 90v-50M190 70h-10v-14M190 62h10v-10%22/%3E%3Ccircle cx=%22120%22 cy=%2240%22 r=%229%22/%3E%3Cpath d=%22M120 22v-6M120 64v-6M102 40h-6M144 40h-6%22/%3E%3Cpath d=%22M60 250c10-8 20-8 30 0s20 8 30 0%22/%3E%3Cpath d=%22M160 240c10-8 20-8 30 0s20 8 30 0%22/%3E%3C/g%3E%3C/svg%3E"); }
+.skyline { position: relative; border-radius: calc(var(--rad) + 4px); overflow: hidden; padding: 150px 18px 18px; margin: 0 0 4px; border: var(--bw) solid var(--border-strong); box-shadow: var(--shadow); background: #4a2416 url("data:image/svg+xml;utf8,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 1600 300%22 preserveAspectRatio=%22xMidYMin slice%22%3E%3Cdefs%3E%3ClinearGradient id=%22s%22 x1=%220%22 y1=%220%22 x2=%220%22 y2=%221%22%3E%3Cstop offset=%220%22 stop-color=%22%23f8d7ae%22/%3E%3Cstop offset=%22.5%22 stop-color=%22%23f2a97c%22/%3E%3Cstop offset=%221%22 stop-color=%22%23d9754a%22/%3E%3C/linearGradient%3E%3CradialGradient id=%22g%22%3E%3Cstop offset=%220%22 stop-color=%22%23ffe08a%22 stop-opacity=%22.85%22/%3E%3Cstop offset=%221%22 stop-color=%22%23ffe08a%22 stop-opacity=%220%22/%3E%3C/radialGradient%3E%3C/defs%3E%3Crect width=%221600%22 height=%22172%22 fill=%22url(%23s)%22/%3E%3Ccircle cx=%221180%22 cy=%2292%22 r=%22130%22 fill=%22url(%23g)%22/%3E%3Ccircle cx=%221180%22 cy=%2292%22 r=%2240%22 fill=%22%23ffe08a%22/%3E%3Cpath d=%22M0 150 L110 118 L190 128 L300 92 L400 112 L520 98 L640 132 L760 118 L900 142 L1040 120 L1160 138 L1280 104 L1400 128 L1500 114 L1600 136 V172 H0 Z%22 fill=%22%23b85f3b%22 opacity=%22.8%22/%3E%3Cpath d=%22M0 166 L90 154 L180 162 L300 146 L400 158 L560 142 L700 162 L860 150 L1000 166 L1150 154 L1300 164 L1450 150 L1600 160 V172 H0 Z%22 fill=%22%237a3a22%22/%3E%3Crect x=%2280%22 y=%2267%22 width=%2220%22 height=%22113%22 rx=%2210.0%22 fill=%22%232a2320%22/%3E%3Cpath d=%22M80 119.5 h-18.0 v-33.6 a10.0 10.0 0 0 1 20 0 v23.6 z%22 fill=%22%232a2320%22/%3E%3Cpath d=%22M100 127.9 h18.0 v-27.3 a10.0 10.0 0 0 0 -20 0 v17.3 z%22 fill=%22%232a2320%22/%3E%3Crect x=%22210%22 y=%22110%22 width=%2215%22 height=%2270%22 rx=%227.5%22 fill=%22%232a2320%22/%3E%3Cpath d=%22M210 141.0 h-13.5 v-19.84 a7.5 7.5 0 0 1 15 0 v12.34 z%22 fill=%22%232a2320%22/%3E%3Cpath d=%22M225 145.96 h13.5 v-16.12 a7.5 7.5 0 0 0 -15 0 v8.620000000000001 z%22 fill=%22%232a2320%22/%3E%3Crect x=%22640%22 y=%22124%22 width=%2213%22 height=%2256%22 rx=%226.5%22 fill=%22%232a2320%22/%3E%3Cpath d=%22M640 148.0 h-11.700000000000001 v-15.36 a6.5 6.5 0 0 1 13 0 v8.86 z%22 fill=%22%232a2320%22/%3E%3Cpath d=%22M653 151.84 h11.700000000000001 v-12.48 a6.5 6.5 0 0 0 -13 0 v5.98 z%22 fill=%22%232a2320%22/%3E%3Crect x=%221330%22 y=%2292%22 width=%2217%22 height=%2288%22 rx=%228.5%22 fill=%22%232a2320%22/%3E%3Cpath d=%22M1330 132.0 h-15.3 v-25.6 a8.5 8.5 0 0 1 17 0 v17.1 z%22 fill=%22%232a2320%22/%3E%3Cpath d=%22M1347 138.4 h15.3 v-20.8 a8.5 8.5 0 0 0 -17 0 v12.3 z%22 fill=%22%232a2320%22/%3E%3Crect x=%221470%22 y=%2252%22 width=%2220%22 height=%22128%22 rx=%2210.0%22 fill=%22%232a2320%22/%3E%3Cpath d=%22M1470 112.0 h-18.0 v-38.4 a10.0 10.0 0 0 1 20 0 v28.4 z%22 fill=%22%232a2320%22/%3E%3Cpath d=%22M1490 121.6 h18.0 v-31.200000000000003 a10.0 10.0 0 0 0 -20 0 v21.200000000000003 z%22 fill=%22%232a2320%22/%3E%3Crect y=%22172%22 width=%221600%22 height=%22128%22 fill=%22%234a2416%22/%3E%3C/svg%3E") center top / 100% auto no-repeat; }
+html[data-mode="dark"] .skyline { background: #140d10 url("data:image/svg+xml;utf8,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 1600 300%22 preserveAspectRatio=%22xMidYMin slice%22%3E%3Cdefs%3E%3ClinearGradient id=%22s%22 x1=%220%22 y1=%220%22 x2=%220%22 y2=%221%22%3E%3Cstop offset=%220%22 stop-color=%22%23120f24%22/%3E%3Cstop offset=%22.5%22 stop-color=%22%232a1b36%22/%3E%3Cstop offset=%221%22 stop-color=%22%234a2a33%22/%3E%3C/linearGradient%3E%3CradialGradient id=%22g%22%3E%3Cstop offset=%220%22 stop-color=%22%23f0c070%22 stop-opacity=%22.85%22/%3E%3Cstop offset=%221%22 stop-color=%22%23f0c070%22 stop-opacity=%220%22/%3E%3C/radialGradient%3E%3C/defs%3E%3Crect width=%221600%22 height=%22172%22 fill=%22url(%23s)%22/%3E%3Ccircle cx=%22120%22 cy=%2230%22 r=%221.5%22 fill=%22%23fff%22 opacity=%220.8%22/%3E%3Ccircle cx=%22300%22 cy=%2260%22 r=%221%22 fill=%22%23fff%22 opacity=%220.6%22/%3E%3Ccircle cx=%22480%22 cy=%2220%22 r=%221.2%22 fill=%22%23fff%22 opacity=%220.7%22/%3E%3Ccircle cx=%22700%22 cy=%2245%22 r=%221%22 fill=%22%23fff%22 opacity=%220.5%22/%3E%3Ccircle cx=%22900%22 cy=%2215%22 r=%221.4%22 fill=%22%23fff%22 opacity=%220.8%22/%3E%3Ccircle cx=%221000%22 cy=%2270%22 r=%221%22 fill=%22%23fff%22 opacity=%220.6%22/%3E%3Ccircle cx=%221300%22 cy=%2230%22 r=%221.3%22 fill=%22%23fff%22 opacity=%220.7%22/%3E%3Ccircle cx=%221500%22 cy=%2255%22 r=%221%22 fill=%22%23fff%22 opacity=%220.5%22/%3E%3Ccircle cx=%221400%22 cy=%22100%22 r=%220.9%22 fill=%22%23fff%22 opacity=%220.5%22/%3E%3Ccircle cx=%22200%22 cy=%22110%22 r=%220.9%22 fill=%22%23fff%22 opacity=%220.4%22/%3E%3Ccircle cx=%22620%22 cy=%2295%22 r=%221.1%22 fill=%22%23fff%22 opacity=%220.5%22/%3E%3Ccircle cx=%221180%22 cy=%2292%22 r=%22130%22 fill=%22url(%23g)%22/%3E%3Ccircle cx=%221180%22 cy=%2292%22 r=%2240%22 fill=%22%23f0c070%22/%3E%3Cpath d=%22M0 150 L110 118 L190 128 L300 92 L400 112 L520 98 L640 132 L760 118 L900 142 L1040 120 L1160 138 L1280 104 L1400 128 L1500 114 L1600 136 V172 H0 Z%22 fill=%22%233a2a3a%22 opacity=%22.8%22/%3E%3Cpath d=%22M0 166 L90 154 L180 162 L300 146 L400 158 L560 142 L700 162 L860 150 L1000 166 L1150 154 L1300 164 L1450 150 L1600 160 V172 H0 Z%22 fill=%22%23241a22%22/%3E%3Crect x=%2280%22 y=%2267%22 width=%2220%22 height=%22113%22 rx=%2210.0%22 fill=%22%230a0708%22/%3E%3Cpath d=%22M80 119.5 h-18.0 v-33.6 a10.0 10.0 0 0 1 20 0 v23.6 z%22 fill=%22%230a0708%22/%3E%3Cpath d=%22M100 127.9 h18.0 v-27.3 a10.0 10.0 0 0 0 -20 0 v17.3 z%22 fill=%22%230a0708%22/%3E%3Crect x=%22210%22 y=%22110%22 width=%2215%22 height=%2270%22 rx=%227.5%22 fill=%22%230a0708%22/%3E%3Cpath d=%22M210 141.0 h-13.5 v-19.84 a7.5 7.5 0 0 1 15 0 v12.34 z%22 fill=%22%230a0708%22/%3E%3Cpath d=%22M225 145.96 h13.5 v-16.12 a7.5 7.5 0 0 0 -15 0 v8.620000000000001 z%22 fill=%22%230a0708%22/%3E%3Crect x=%22640%22 y=%22124%22 width=%2213%22 height=%2256%22 rx=%226.5%22 fill=%22%230a0708%22/%3E%3Cpath d=%22M640 148.0 h-11.700000000000001 v-15.36 a6.5 6.5 0 0 1 13 0 v8.86 z%22 fill=%22%230a0708%22/%3E%3Cpath d=%22M653 151.84 h11.700000000000001 v-12.48 a6.5 6.5 0 0 0 -13 0 v5.98 z%22 fill=%22%230a0708%22/%3E%3Crect x=%221330%22 y=%2292%22 width=%2217%22 height=%2288%22 rx=%228.5%22 fill=%22%230a0708%22/%3E%3Cpath d=%22M1330 132.0 h-15.3 v-25.6 a8.5 8.5 0 0 1 17 0 v17.1 z%22 fill=%22%230a0708%22/%3E%3Cpath d=%22M1347 138.4 h15.3 v-20.8 a8.5 8.5 0 0 0 -17 0 v12.3 z%22 fill=%22%230a0708%22/%3E%3Crect x=%221470%22 y=%2252%22 width=%2220%22 height=%22128%22 rx=%2210.0%22 fill=%22%230a0708%22/%3E%3Cpath d=%22M1470 112.0 h-18.0 v-38.4 a10.0 10.0 0 0 1 20 0 v28.4 z%22 fill=%22%230a0708%22/%3E%3Cpath d=%22M1490 121.6 h18.0 v-31.200000000000003 a10.0 10.0 0 0 0 -20 0 v21.200000000000003 z%22 fill=%22%230a0708%22/%3E%3Crect y=%22172%22 width=%221600%22 height=%22128%22 fill=%22%23140d10%22/%3E%3C/svg%3E") center top / 100% auto no-repeat; }
+@media (max-width: 1100px) { .skyline { padding-top: 110px; } }
+.skyline .tiles-6 { padding: 0; margin: 0; position: relative; }
+.skyline .tile { background: color-mix(in oklab, var(--surface-raised) 94%, transparent); backdrop-filter: blur(2px); border-color: color-mix(in oklab, var(--border-strong) 60%, transparent); }
+.skyline .sky-k { position: absolute; left: 22px; right: 22px; top: 16px; display: flex; justify-content: space-between; align-items: baseline; gap: 12px; color: #fff; text-shadow: 0 1px 3px rgba(0,0,0,.5); flex-wrap: wrap; }
+.skyline .sky-k b { font: var(--dw) 30px var(--display); letter-spacing: 0; }
+.skyline .sky-k span { font-size: 13px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; opacity: .92; }
+#view[data-view="digest"] .tile { border-top: 4px solid var(--hc, var(--border-strong)); border-radius: 12px; background: linear-gradient(180deg, color-mix(in oklab, var(--hc, var(--border-strong)) 10%, var(--surface-raised)), var(--surface-raised) 60%); }
+#view[data-view="digest"] .tile:has(> .v.tg), #view[data-view="digest"] .tile:has(> .v > .tg:first-child) { --hc: var(--good); }
+#view[data-view="digest"] .tile:has(> .v.ty), #view[data-view="digest"] .tile:has(> .v > .ty:first-child) { --hc: var(--warn, #b45309); }
+#view[data-view="digest"] .tile:has(> .v.tr), #view[data-view="digest"] .tile:has(> .v > .tr:first-child) { --hc: var(--bad); }
+#view[data-view="digest"] .tile.rdrill.on { border-color: var(--hc, var(--s1)); box-shadow: 0 0 0 2px var(--hc, var(--s1)) inset; }
+#view[data-view="digest"] th { background: var(--card2); }
+#view[data-view="digest"] .svcsec .chatbox { background: color-mix(in oklab, var(--sc) 6%, var(--surface)); border-radius: 12px; }
+#view[data-view="digest"] .chatbox .bub.me { border-left: 3px solid var(--good); }
 /* The coaching card's flow is in its badge (outcomeBadgeHtml), so the striped
    left edge and its legend are gone (Frank, 2026-09-30 preview review: "remove
    that left colored tab from the cards, and the legend, i like the badge"). */
@@ -1690,7 +1713,7 @@ function digestFeedHtml(d, who) {
   const T = (who ? (d.producers || []).find(p => p.name === who) : d.totals) || {};
   const pin = `${T.pol || 0} ${T.pol === 1 ? "policy" : "policies"} · ${money0(T.ps)} sold · ${T.hh || 0} HH quoted · ${T.dials || 0} dials · ${T.live || 0} live`;
   const live = curLive && rangeMode === "day";
-  return `<div class="sect"><h2>${live ? "Today, so far" : "How the day went"}</h2>
+  return `<div class="sect svcsec" style="--sc:var(--accent)"><h2>${live ? "Today, so far" : "How the day went"}</h2>
     <p class="sd">Apollo's group chat: every coached call, text and quote as it happened. A line opens the card or the list it came from.</p>
     ${chatFeedHtml(items, "Apollo", pin)}</div>`;
 }
@@ -1715,7 +1738,7 @@ function needsNowHtml(d, who) {
   const live = curLive && rangeMode === "day", rows = needsNowRows(d, who);
   const html = rows.map(r => `<li class="${r.cls}"><b class="n">${r.n}</b><div class="t">${cesc(r.t)}<small>${cesc(r.sub)}</small></div>${
     r.n ? `<button type="button"${r.goview ? ` data-goview="${r.goview}"` : ` data-feedh2="${cesc(r.h2)}"`}>${cesc(r.btn)}</button>` : ""}</li>`).join("");
-  return `<div class="sect"><h2>${live ? "Needs someone now" : "Left on the desk"}</h2>
+  return `<div class="sect svcsec" style="--sc:var(--s4)"><h2>${live ? "Needs someone now" : "Left on the desk"}</h2>
     <p class="sd">${live ? "What is waiting on a person at this minute." : "What the day ended with still waiting."}</p><ul class="todo">${html}</ul></div>`;
 }
 /* Athena's side: what the service team got off the desk today. */
@@ -1935,7 +1958,9 @@ function digestDay(d, who) {
    <div class="v"><span class="${closingHhTier}">${pct(hhClosingRatio)}</span> <span class="n" style="font-weight:400">households</span><br><span class="${tc("closing_pq")}">${pct(premClosingRatio)}</span> <span class="n" style="font-weight:400">premium</span></div>
   </div>`;
 
-  return `<div class="tiles tiles-6">${tilesHtml}${closingRatioTileHtml}</div>
+  const skyTitle = focus ? `${firstName(focus.name)}'s ${rangeMode === "day" ? "day" : "range"}` : (rangeMode === "day" ? (curLive ? "Today, so far" : "The day on the floor") : (curRangeLabel || "The range"));
+  const skySub = rangeMode === "day" && d.date ? new Date(d.date + "T12:00:00").toLocaleDateString(undefined, { weekday: "long", month: "long", day: "numeric" }) : (curRangeSub || "");
+  return `<div class="skyline"><div class="sky-k"><b>${cesc(skyTitle)}</b><span>${cesc(skySub)}</span></div><div class="tiles tiles-6">${tilesHtml}${closingRatioTileHtml}</div></div>
   ${digDrillFor(d, who, ["dials", "contacts", "quoted", "sold", "life", "closing"])}
   ${teamLeaderboardHtml(d, who)}
   ${digDrillFor(d, who, ["lb"])}`;
@@ -2039,7 +2064,7 @@ function householdCompletionHtml(d, who) {
   const teamCard = focus ? "" : card("Team", "", T, true, hasRows ? teamTier : null);
   if (!cards && !teamCard) return "";
 
-  return `<div class="sect"><h2>Household Completion</h2>
+  return `<div class="sect svcsec" style="--sc:var(--s3)"><h2>Household Completion</h2>
    <p class="sd">Policies sold per household sold. Existing customer = a cross-sell to a household we already had.</p>
    <div class="tiles">${cards}${teamCard}</div>${digDrillFor(d, who, ["hhc"])}</div>`;
 }
@@ -2172,7 +2197,7 @@ function teamLeaderboardHtml(d, who) {
     ${T.util != null ? `<td class="num ${tt("util")}${lv("util")}">${T.util}%</td>` : ""}</tr>`;
 
   const rangeNote = !focus && lb.averaged ? `<p class="sd">Ranked on the ${lb.days} reporting days: each producer's per-day averages over the days they worked, scored like a single day. For the ranking a missed role play counts as 0; the Role Play column is the average of the sessions they did.</p>` : "";
-  return `<div class="sect"><h2>Team Leaderboard</h2>
+  return `<div class="sect svcsec" style="--sc:var(--accent)"><h2>Team Leaderboard</h2>
    ${rangeNote}${podium}
    <div class="scroll"><table><thead><tr><th>Producer</th>${hasRoleplay ? "<th class=\"num\">Role Play</th>" : ""}
    <th class="num">Call Volume</th><th class="num">Avg Talk Time</th><th class="num">Contact Rate</th>
@@ -2321,7 +2346,7 @@ function taskCompletionHtml(d, who) {
   const tot = focus || T.total == null ? "" : `<tr class="tot rdrill-row${digDrill === "tasks" ? " on" : ""}" data-ddrill="tasks" tabindex="0" role="button"><td><span class="who">${pbadge(TEAM_DOT, "Team")}</span></td>
     <td class="num${lt}">${T.total ?? 0}</td><td class="num${lt}">${T.completed ?? 0}</td>
     <td class="num ${TI[((d.tiers || {})["team"] || {})["tasks"]] || ""}${lt}">${(+(T.pct ?? 0)).toFixed(1)}%</td></tr>`;
-  return `<div class="sect"><h2>Task Completion Rate</h2>
+  return `<div class="sect svcsec" style="--sc:var(--s7)"><h2>Task Completion Rate</h2>
    <div class="scroll"><table><thead><tr><th>Producer</th><th class="num">Due</th>
    <th class="num">Done</th><th class="num">Rate</th></tr></thead>
    <tbody>${rows}${tot}</tbody></table></div>${digDrillFor(d, who, ["tasks"])}</div>`;
@@ -2352,7 +2377,7 @@ function outcomeBreakdownHtml(d, who) {
   }).join("");
   const legend = OUTCOME_SEGMENTS.map(([label, cvar]) =>
     `<span class="oleg-item${digDrill === "outcome:" + label ? " on" : ""}" data-ddrill="outcome:${label}" role="button" tabindex="0" style="cursor:pointer"><span class="pd" style="background:var(${cvar})"></span>${label}</span>`).join("");
-  return `<div class="sect"><h2>Call Outcome Breakdown</h2>
+  return `<div class="sect svcsec" style="--sc:var(--s1)"><h2>Call Outcome Breakdown</h2>
    ${rows}<div class="oleg">${legend}</div>${digDrillFor(d, who, ["outcome"])}</div>`;
 }
 
@@ -2384,7 +2409,7 @@ function utilizationHtml(d, who) {
   const teamCard = focus || T.util == null ? "" : `<div class="tile${ul}" style="border-color:var(--border-strong)">
     <div class="k">Team</div><div class="v ${TI[((d.tiers || {})["team"] || {})["util"]] || ""}">${T.util}%</div>
     <div class="n">weighted</div></div>`;
-  return `<div class="sect"><h2>Utilization and Efficiency</h2>
+  return `<div class="sect svcsec" style="--sc:var(--s3)"><h2>Utilization and Efficiency</h2>
    <div class="tiles">${cards}${teamCard}</div></div>`;
 }
 
@@ -2413,7 +2438,7 @@ function coachQualityHtml(d, who) {
     ${bar(color, "Avg Sentiment", c.sentiment || 0)}
     ${bar(color, "Role Play", c.roleplay || 0)}
     </div>`; }).join("");
-  return `<div class="sect"><h2>Coaching &amp; Call Quality</h2>
+  return `<div class="sect svcsec" style="--sc:var(--accent)"><h2>Coaching &amp; Call Quality</h2>
    <p class="sd">Coach AI (TRAQ). Avg Call Score and Avg Sentiment are excluded from the leaderboard — TRAQ
    scores a voicemail as a call (~3 against a live call's ~292), so both track who answered more than how
    the call went.</p>
@@ -2422,7 +2447,7 @@ function coachQualityHtml(d, who) {
 
 function speedPanel(d, who) {
   const s = d.speed_to_dial;
-  if (!s) return `<div class="sect"><h2>Speed to Dial</h2>
+  if (!s) return `<div class="sect svcsec" style="--sc:var(--s4)"><h2>Speed to Dial</h2>
     <p class="sd">No internet leads were assigned today, so there is nothing to time.</p></div>`;
   const entries = who ? Object.entries(s.per || {}).filter(([n]) => n === who) : Object.entries(s.per || {});
   const cards = entries.map(([n, v]) => `
@@ -2434,9 +2459,9 @@ function speedPanel(d, who) {
       <div class="k">Team</div><div class="v">${hhmm(s.team.median)}</div>
       <div class="n">median of all ${s.team.n} leads</div>
       <div class="n" style="margin-top:5px">quickest ${hhmm(s.team.quickest)} · longest ${hhmm(s.team.longest)}</div></div>` : "");
-  if (who && !cards) return `<div class="sect"><h2>Speed to Dial</h2>
+  if (who && !cards) return `<div class="sect svcsec" style="--sc:var(--s4)"><h2>Speed to Dial</h2>
     <p class="sd">No internet leads assigned to ${who} today.</p></div>`;
-  return `<div class="sect"><h2>Speed to Dial</h2>
+  return `<div class="sect svcsec" style="--sc:var(--s4)"><h2>Speed to Dial</h2>
     <p class="sd">${s.note || ""} Producers with no internet leads are not shown.</p>
     <div class="tiles">${cards}</div>${digDrillFor(d, who, ["speed"])}</div>`;
 }
@@ -2633,7 +2658,7 @@ function speedReplyPanel(d, who) {
   if (!M) return "";
   const names = PRODUCER_ROSTER.filter(n => !who || n === who);
   const rows = (M.replies || []).filter(r => names.includes(r.who) && !r.ack && !r.optout);
-  if (!rows.length) return `<div class="sect"><h2>Speed to Reply</h2>
+  if (!rows.length) return `<div class="sect svcsec" style="--sc:var(--s5, #d55181)"><h2>Speed to Reply</h2>
     <p class="sd">No lead wrote in by text or email${who ? ` to ${who}` : ""} that needed an answer.</p></div>`;
   const live = liveOn(d, "messages") ? " isLive" : "";
   const tile = (label, rs, team) => {
@@ -2647,7 +2672,7 @@ function speedReplyPanel(d, who) {
   const cards = names.map(n => [n, rows.filter(r => r.who === n)]).filter(([, rs]) => rs.length)
     .map(([n, rs]) => tile(pbadge(DOT[n] || "#8a877f", n.split(" ")[0]), rs)).join("")
     + (!who ? tile("Team", rows, true) : "");
-  return `<div class="sect"><h2>Speed to Reply</h2>
+  return `<div class="sect svcsec" style="--sc:var(--s5, #d55181)"><h2>Speed to Reply</h2>
     <p class="sd">Time from a lead's text or email to the next text, email or call back; one that came in while the
     office was closed starts at 8:30. Green is 15 minutes or less, red over an hour.
     <a href="#" data-goview="messages">See who is waiting</a>.</p>
@@ -2665,7 +2690,7 @@ function misfiledPanel(d, who) {
     <td><a href="${AZ_URL.lead}${encodeURIComponent(r.lead_id)}" target="_blank" rel="noopener">${cesc(r.lead)}</a></td>
     <td>${cesc(r.assigned || "—")}</td><td>${cesc(r.stage || "")}</td><td>${cesc(r.source || "")}</td>
     <td class="num">${r.last_activity ? fmtShortDate(r.last_activity) : "—"}</td></tr>`).join("");
-  return `<div class="sect"><h2>Leads to move out of "Pipeline"</h2>
+  return `<div class="sect svcsec" style="--sc:var(--bad)"><h2>Leads to move out of "Pipeline"</h2>
    <p class="sd">${all.length} open lead${all.length === 1 ? "" : "s"} misfiled in "Pipeline" by an integration. Move each into 1 Pipeline.</p>
    <div class="scroll"><table><thead><tr><th>Lead</th><th>Assigned</th><th>Stage</th><th>Source</th>
    <th class="num">Last activity</th></tr></thead><tbody>${rows}</tbody></table></div></div>`;
@@ -2860,7 +2885,7 @@ function auditPanel(d, who) {
       <tbody>${body}</tbody></table></div></div></details>`;
   }).join("");
   if (!sections) return "";
-  return `<div class="sect"><h2>Task Completion Audit</h2>${sections}</div>`;
+  return `<div class="sect svcsec" style="--sc:var(--s7)"><h2>Task Completion Audit</h2>${sections}</div>`;
 }
 
 // True when `cur` was not a finalized days/<day>.json but a fallback from
