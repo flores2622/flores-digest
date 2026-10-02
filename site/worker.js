@@ -57,7 +57,7 @@ import ROLEPLAY_MD from "../coaching/ROLEPLAY.md";
 import TRAINING_MD from "../coaching/TRAINING.md";
 import { getLive, scheduledLive } from "./live.js";
 import { commission } from "./commission.js";
-import { coeusChat, coeusChats } from "./coeus.js";
+import { coeusChat, coeusChats, coeusUsage } from "./coeus.js";
 import { leadsIndex } from "./lead_index.js";
 
 export default {
@@ -142,6 +142,10 @@ export default {
           identityOf, rpScope, rpMaySee,
           commercialAllowed: (req, e) => requireCommercial(req, e) === null,
         });
+      }
+      // What Coeus has cost, per person (Frank, 2026-10-02); COEUS_USAGE_VIEWERS.
+      if (parts[1] === "coeus" && parts[2] === "usage" && parts.length === 3 && request.method === "GET") {
+        return coeusUsage(request, env, { identityOf }, url);
       }
       // Saved chats, per login (Frank, 2026-10-01: "will it save the chats?").
       if (parts[1] === "coeus" && parts[2] === "chats" && parts.length <= 4) {
