@@ -6,7 +6,7 @@
    One manager guide (Apollo's Road Map, the ARM), Athena's Road Map for the
    service team (Frank, 2026-09-30: "make an Athena Road Map for the service
    team too"), and three producer guides (new,
-   mid-level, experienced). The board renders them on Learning Center >
+   mid-level, experienced). The board renders them on Apollo's Academy >
    Apollo's Road Map and Service Center > Athena's Road Map (blueprintPanel in
    index.html). Frank, 2026-09-30: "call it Apollo's Road Map (ARM)";
    "Apollos road map should be the name of the full tab, with a dropdown
@@ -64,20 +64,20 @@
 
     { h: "Where everything is",
       body: [
-        "The left bar holds the Centers. Each Center has tabs across the top. Every page shares two filters at the top: **the day or range** (a single day, this week, month to date, year to date, a folio, or custom dates) and **the producer** (everyone, or one person). **Every number, card and bar opens the accounts behind it**; click it and the list appears underneath.",
+        "The left bar holds the Centers: the Sales Center, **Apollo's Academy** (the coaching cards plus Role Play, Session History, Training and this Road Map), the Service Center and the Commercial Center. **Each Center opens like a dropdown to its pages**; click its arrow to open or close it. Each Center also has tabs across the top. Every page shares two filters at the top: **the day or range** (a single day, this week, month to date, year to date, a folio, or custom dates) and **the producer** (everyone, or one person). **Every number, card and bar opens the accounts behind it**; click it and the list appears underneath.",
         "**Ask Coeus** when you cannot find something or want a number read out: the button at the bottom right of every page. It knows which page, day and producer you are looking at, so \"how did we do?\" means that day and that person.",
         { table: { head: ["Where", "What it's for"], rows: [
           ["Sales Center > Digest", "The day at a glance: dials, contacts, quotes, sales, closing ratio, the leaderboard, speed to dial and reply, task completion, household completion, utilization, Coach AI scores."],
           ["Sales Center > Sales", "The Sales sheet. Log a sale, look back at any folio, and break sales down by lead source, product or producer. Self-reported, not the official Premium Sold. Live sales are added to it automatically."],
           ["Sales Center > Sales > Commission", "Where each producer stands on the commission schedule this folio, worked out from the Sales sheet as sales are logged: their tier and rate, how far to the next tier and what it pays, and the extras (life $100 each whatever the tier; a bundle to a new household $50 and a cross-sell to an existing household $25 a line once the tier minimum is met; umbrella $25; Farmers business 3.5% of the premium, which doesn't count toward the tier; Kraft Lake $300). Crystal, Lorena and Mike are on the individual schedule; Sarahi and Coral share the team schedule, split 50/50. A Winback counts as a new household. Each producer sees only their own (Sarahi and Coral their team's); Frank and Amanda see everyone. Estimates: a wrong entry on the Sales sheet changes it, and the rates are subject to change."],
           ["Sales Center > Texts & Emails", "Every text and email with a lead: what each producer typed (automation counted apart), replies still waiting, and how fast replies were answered."],
-          ["Coaching Center > Cards", "One coaching card per recorded sales conversation. Filter by producer, day or objection."],
-          ["Coaching Center > Objections", "Every objection Apollo found, grouped, with how each was handled."],
-          ["Coaching Center > Wins and Losses", "Patterns across calls: assumed the quote, assumed the sale, sent the quote instead of keeping them on the phone, and the patterns that only show up across many calls, each with the calls behind it."],
-          ["Learning Center > Role Play", "Practice calls against an AI prospect, graded by Apollo."],
-          ["Learning Center > Session History", "Every graded Role Play session. Managers see everyone's; a producer sees their own."],
-          ["Learning Center > Training", "Flashcards, quizzes and matching games on objections, information gathering and technique."],
-          ["Learning Center > Apollo's Road Map", "This guide (Manager / Coaching) and the three producer guides, picked from the dropdown. Athena's Road Map is in the Service Center."],
+          ["Apollo's Academy > Cards", "One coaching card per recorded sales conversation. Filter by producer, day or objection."],
+          ["Apollo's Academy > Objections", "Every objection Apollo found, grouped, with how each was handled."],
+          ["Apollo's Academy > Wins and Losses", "Patterns across calls: assumed the quote, assumed the sale, sent the quote instead of keeping them on the phone, and the patterns that only show up across many calls, each with the calls behind it."],
+          ["Apollo's Academy > Role Play", "Practice calls against an AI prospect, graded by Apollo."],
+          ["Apollo's Academy > Session History", "Every graded Role Play session. Managers see everyone's; a producer sees their own."],
+          ["Apollo's Academy > Training", "Flashcards, quizzes and matching games on objections, information gathering and technique."],
+          ["Apollo's Academy > Apollo's Road Map", "This guide (Manager / Coaching) and the three producer guides, picked from the dropdown. Athena's Road Map is in the Service Center."],
           ["Service Center", "Athena's side: the Service Digest and the Renewals tab."],
         ] } },
         "Anyone can press **Take the tour** at the bottom of the left bar for a walk through the board.",
@@ -222,7 +222,7 @@
         "**Every morning (10 minutes)**",
         { steps: [
           "Open Sales Center > Digest on yesterday. Look at the red tiles and the leaderboard.",
-          "Open Coaching Center > Wins and Losses for the last week. Note each producer's Sent the Quote count and assumed-the-quote rate.",
+          "Open Apollo's Academy > Wins and Losses for the last week. Note each producer's Sent the Quote count and assumed-the-quote rate.",
           "Pick one card per producer to listen to. Start with red flags: Quote not presented, No next step, Objection dropped.",
         ] },
         "**Each producer, once a week (20 minutes)**",
@@ -544,8 +544,8 @@
 
     { h: "Practise with Role Play",
       body: [
-        "Learning Center > Role Play gives you a practice call with an AI prospect. Start on **Beginner**. Talk to them like a real person: they'll chat back if you build rapport. When you finish, Apollo grades you on four things: assumptive language, answering the real concern, asking again right after an objection, and keeping the call moving.",
-        "Use Learning Center > **Training** for flashcards on objections and what to ask.",
+        "Apollo's Academy > Role Play gives you a practice call with an AI prospect. Start on **Beginner**. Talk to them like a real person: they'll chat back if you build rapport. When you finish, Apollo grades you on four things: assumptive language, answering the real concern, asking again right after an objection, and keeping the call moving.",
+        "Use Apollo's Academy > **Training** for flashcards on objections and what to ask.",
       ] },
 
     { h: "Your first 30 days",
@@ -566,7 +566,7 @@
     { h: "Where to focus",
       body: [
         "You know how to run a call. Now the gains come from consistency: assuming every time, handling objections instead of accepting them, and treating follow-ups as their own kind of call.",
-        "Coaching Center > **Wins and Losses** is your scoreboard for this. It shows, for you and the team, how often you assumed the quote, assumed the sale, and sent the quote instead of keeping them on the phone, with every call behind each number.",
+        "Apollo's Academy > **Wins and Losses** is your scoreboard for this. It shows, for you and the team, how often you assumed the quote, assumed the sale, and sent the quote instead of keeping them on the phone, with every call behind each number.",
         "**Ask Coeus** (the round button at the bottom right) for your own figures over any range, what your cards keep flagging, and what to say instead.",
       ] },
 
@@ -663,7 +663,7 @@
       body: [
         { list: [
           "Role Play on **Professional**. The prospect is skeptical and holds objections; make them earn it.",
-          "Drill the objection group you lose most (Coaching Center > Objections, filtered to you).",
+          "Drill the objection group you lose most (Apollo's Academy > Objections, filtered to you).",
           "Read your Wins and Losses monthly, not just your sales.",
           "Help newer producers: sit in on a Role Play or play them one of your strong calls.",
         ] },

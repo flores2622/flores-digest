@@ -862,6 +862,10 @@ b, strong, th, .tile .k { font-weight: 700; }
 .tab[aria-selected="true"] { color: #fff; background: var(--side2); border-left-color: transparent; }
 html[data-look="mesa"] .tab:hover, html[data-look="mesa"] .tab[aria-selected="true"] { color: var(--text-primary); }
 .subnav { display: flex; flex-direction: column; gap: 1px; margin: 1px 0 4px; }
+.tab.hasdrop { display: flex; align-items: center; justify-content: space-between; gap: 6px; }
+.tab .chev { display: inline-flex; align-items: center; justify-content: center; width: 24px; height: 24px; margin: -4px -4px -4px 0; border-radius: 7px; opacity: .75; transition: transform .15s; }
+.tab .chev:hover { opacity: 1; background: rgba(255,255,255,.12); }
+.tab[aria-expanded="true"] .chev { transform: rotate(180deg); }
 .subnav[hidden] { display: none; }
 .stab { display: block; width: 100%; text-align: left; border: 0; background: none; font: inherit; font-size: 13px; padding: 7px 10px 7px 24px; border-radius: 10px; color: var(--sideInk); opacity: .85; cursor: pointer; }
 .stab:hover { opacity: 1; background: var(--side2); }
@@ -896,7 +900,8 @@ select, button.ghost, .btn, input[type="date"] { border-radius: 10px; border-col
 .subtab:hover:not(.sel) { border-color: var(--border-strong); }
 .ctabs { border-bottom-color: var(--border-strong); }
 .ctab.sel { color: var(--accent); border-bottom-color: var(--accent); }
-.ctabs.dup { display: none; }
+.ctabs.dup, .ctab.dupi { display: none; }
+@media (max-width: 760px) { .ctabs.dup { display: flex; } .ctab.dupi { display: inline-block; } }
 /* cards: every section is one */
 .sect { background: var(--surface-raised); border: var(--bw) solid var(--border-strong); border-radius: var(--rad); padding: 18px 20px 20px; box-shadow: var(--shadow); margin: 20px 0 0; }
 .sect > h2:first-child, .sect > .sd + *, h2 { margin-top: 0; }
@@ -964,6 +969,42 @@ html[data-look="mesa"] .chatbox .pinned { background: var(--text-primary); color
 .todo li.bad b.n { color: var(--bad); } .todo li.warn b.n { color: var(--warn); } .todo li.ok b.n { color: var(--good); }
 .todo button { font: 600 12px var(--body); border: 1px solid var(--border-strong); background: var(--surface-raised); border-radius: 8px; padding: 6px 10px; cursor: pointer; color: var(--text-primary); white-space: nowrap; }
 .todo button:hover { border-color: var(--accent); }
+.todo li.flip { cursor: pointer; perspective: 1400px; padding: 0; border: 0; background: transparent; display: block; }
+.todo li.flip .flipin { position: relative; transition: transform .55s cubic-bezier(.4, .2, .2, 1); transform-style: preserve-3d; }
+/* the face showing sits in the flow and sets the height; the other is laid over it, hidden by backface-visibility */
+.todo li.flip .face { backface-visibility: hidden; -webkit-backface-visibility: hidden; border: 1.5px solid var(--border); border-radius: 12px; background: var(--card2); padding: 10px 12px; box-sizing: border-box; }
+.todo li.flip .face.front { display: flex; gap: 12px; align-items: center; }
+.todo li.flip .face.back { position: absolute; inset: 0; transform: rotateY(180deg); background: var(--surface-raised); border-color: var(--border-strong); overflow: hidden; }
+.todo li.flip.on .face.front { position: absolute; inset: 0; }
+.todo li.flip.on .face.back { position: static; }
+.todo li.flip.on .flipin { transform: rotateY(180deg); }
+.todo li.flip.on .face.front { pointer-events: none; }
+.todo li.flip:not(.on) .face.back { pointer-events: none; }
+.todo .flipcue { font-size: 11px; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; color: var(--text-muted); white-space: nowrap; }
+.todo li.flip:hover .flipcue { color: var(--accent); }
+.todo .bk-h { display: flex; justify-content: space-between; align-items: center; gap: 8px; margin-bottom: 8px; font-size: 13px; } .todo .bk-h span { display: flex; gap: 6px; }
+.todo .accts { list-style: none; margin: 0; padding: 0; max-height: 260px; overflow: auto; display: flex; flex-direction: column; gap: 4px; }
+.todo .accts li { display: grid; grid-template-columns: auto auto minmax(0, 1fr); gap: 8px; align-items: center; font-size: 12.5px; padding: 4px 6px; border-radius: 8px; }
+.todo .accts li:nth-child(odd) { background: color-mix(in oklab, var(--sc, var(--s4)) 7%, transparent); }
+.todo .accts button.acct { border: 0; background: none; padding: 0; font: 700 13px var(--body); color: var(--accent); cursor: pointer; text-align: left; }
+.todo .accts button.acct:hover { text-decoration: underline; }
+.todo .accts small { color: var(--text-muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.todo .accts .who .pbadge { font-size: 10.5px; }
+/* a card flipping to its list */
+.flipsect { perspective: 2200px; }
+.flipsect .flipinner { position: relative; transition: transform .6s cubic-bezier(.4, .2, .2, 1); transform-style: preserve-3d; }
+.flipsect .flipface { backface-visibility: hidden; -webkit-backface-visibility: hidden; }
+.flipsect .flipface.back { position: absolute; inset: 0; transform: rotateY(180deg); overflow: hidden; }
+.flipsect.on .flipinner { transform: rotateY(180deg); }
+.flipsect.on .flipface.front { position: absolute; inset: 0; overflow: hidden; pointer-events: none; }
+.flipsect.on .flipface.back { position: static; overflow: visible; }
+.flipsect .flipface.back .rdrill-list > div:first-child { margin-top: 0 !important; }
+.flipsect .flipfront { font: 700 12px var(--body); border: 1px solid var(--border-strong); background: var(--surface-raised); border-radius: 8px; padding: 6px 10px; text-decoration: none; color: var(--text-primary); white-space: nowrap; }
+.flipsect .flipfront:hover { border-color: var(--accent); }
+/* the scene cards show a plain sheet on the back */
+.skyline.flipsect.on, .lbsky.flipsect.on, .svchero.flipsect.on, .renhero.flipsect.on { background: var(--surface-raised); color: var(--text-primary); padding: 18px 20px 20px; }
+.skyline.flipsect.on .sky-k { display: none; }
+.lbsky.flipsect.on h2, .svchero.flipsect.on h2, .renhero.flipsect.on h2 { color: inherit; }
 
 
 /* ---- Coaching Center and Learning Center, with colour (Frank, 2026-10-01:
@@ -1190,7 +1231,7 @@ tr.found td { background: color-mix(in oklab, var(--accent) 18%, transparent) !i
 @media (max-width: 760px) {
   .tabs { min-height: 0; max-height: none; position: static; flex-direction: row; flex-wrap: wrap; padding: 10px 12px; gap: 6px; align-items: center; }
   .brand { margin: 0 8px 0 0; font-size: 20px; }
-  .navgrp, .subnav, .setbtn small { display: none; }
+  .navgrp, .subnav, .setbtn small, .tab .chev { display: none; }
   .setbtn { margin: 0 0 0 auto; width: auto; padding: 8px 10px; }
   .tab { width: auto; border-bottom: 0; }
   .tab[aria-selected="true"] { background: var(--accent); color: #fff; border-bottom-color: transparent; }
@@ -1354,10 +1395,8 @@ tr.found td { background: color-mix(in oklab, var(--accent) 18%, transparent) !i
     <div class="navgrp">Apollo · Sales</div>
     <button class="tab" role="tab" aria-selected="true"  data-v="salescenter">Sales Center</button>
     <div class="subnav" data-for="salescenter"></div>
-    <button class="tab" role="tab" aria-selected="false" data-v="coaching">Coaching Center</button>
-    <div class="subnav" data-for="coaching"></div>
-    <button class="tab" role="tab" aria-selected="false" data-v="learning">Learning Center</button>
-    <div class="subnav" data-for="learning"></div>
+    <button class="tab" role="tab" aria-selected="false" data-v="academy">Apollo's Academy</button>
+    <div class="subnav" data-for="academy"></div>
     <div class="navgrp">Athena · Service</div>
     <button class="tab" role="tab" aria-selected="false" data-v="service">Service Center</button>
     <div class="subnav" data-for="service"></div>
@@ -1536,8 +1575,9 @@ let view = "digest";
 // page shows just that one tab.
 const CENTERS = {
   salescenter: [["digest", "Digest"], ["editions", "Editions"], ["sales", "Sales"], ["messages", "Texts & Emails"]],
-  coaching: [["coaching", "Coaching"]],
-  learning: [["roleplay", "Role Play"], ["rphistory", "Session History"], ["training", "Training"], ["blueprint", "Apollo's Road Map"]],
+  // Apollo's Academy (Frank, 2026-10-02: the Coaching and Learning Centers
+  // in one): the coaching page's three views come first, then practice.
+  academy: [["coaching", "Coaching"], ["roleplay", "Role Play"], ["rphistory", "Session History"], ["training", "Training"], ["blueprint", "Apollo's Road Map"]],
   service: [["service", "Service Digest"], ["renewals", "Renewals"], ["athenamap", "Athena's Road Map"]],
   commercial: [["commercial", "Commercial"]],
 };
@@ -1548,22 +1588,39 @@ function paintCenterBar() {
   const c = centerOf(view), bar = $("#centerbar");
   if (!bar) return;
   if (!CENTERS[c]) { bar.innerHTML = ""; return; }
-  // Coaching Center's header tabs are its three views of one page (Frank,
+  // The coaching page's three views are tabs of their own (Frank,
   // 2026-09-25: "i want those bubbles to be tabs on the main header,
-  // Cards>Objections>Wins and Losses"), switched by coachSubTab.
-  if (c === "coaching") {
-    bar.innerHTML = `<div class="ctabs" role="tablist">${COACH_TABS.map(([k, label]) =>
-      `<button class="ctab${k === coachSubTab ? " sel" : ""}" role="tab" aria-selected="${k === coachSubTab}" data-st="${k}">${label}</button>`).join("")}</div>`;
-    bar.querySelectorAll(".ctab").forEach(b => b.onclick = () => {
-      coachSubTab = b.dataset.st;
-      if (view !== "coaching") { goView("coaching"); return; }
-      if (cur) repaintCoaching(); else paintCenterBar();
-    });
+  // Cards>Objections>Wins and Losses"), switched by coachSubTab -- in
+  // Apollo's Academy beside its other pages.
+  // The menu's dropdown already lists a Center's pages, so on a computer
+  // the header shows only the coaching page's own three views; on a phone
+  // (no dropdown) it shows every page.
+  const items = centerItems(c), coachHere = view === "coaching";
+  bar.innerHTML = `<div class="ctabs${coachHere ? "" : " dup"}" role="tablist">${items.map(it => {
+    const on = itemOn(it);
+    return `<button class="ctab${on ? " sel" : ""}${coachHere && !it.st ? " dupi" : ""}" role="tab" aria-selected="${on}" data-cv="${it.v}"${it.st ? ` data-st="${it.st}"` : ""}>${it.label}</button>`;
+  }).join("")}</div>`;
+  bar.querySelectorAll(".ctab").forEach(b => b.onclick = () => openItem(b.dataset.cv, b.dataset.st));
+}
+/* A Center's entries, in the menu and in its header: its pages, with the
+   coaching page's three views standing in for it. */
+function centerItems(c) {
+  const out = [];
+  for (const [v, label] of CENTERS[c] || []) {
+    if (v === "coaching") for (const [st, l] of COACH_TABS) out.push({ v, st, label: l });
+    else out.push({ v, label });
+  }
+  return out;
+}
+const itemOn = it => it.v === view && (!it.st || it.st === coachSubTab);
+function openItem(v, st) {
+  if (st) {
+    coachSubTab = st;
+    if (view !== "coaching") { goView("coaching"); return; }
+    if (cur) repaintCoaching(); else paintCenterBar();
     return;
   }
-  bar.innerHTML = `<div class="ctabs dup" role="tablist">${CENTERS[c].map(([k, label]) =>
-    `<button class="ctab${k === view ? " sel" : ""}" role="tab" aria-selected="${k === view}" data-cv="${k}">${label}</button>`).join("")}</div>`;
-  bar.querySelectorAll(".ctab").forEach(b => b.onclick = () => goView(b.dataset.cv));
+  goView(v);
 }
 // One producer filter shared by the Digest and Coaching tabs. "" = whole
 // agency. This is the roster CLAUDE.md treats as producers (not Debbie or
@@ -1771,8 +1828,8 @@ function paintGreeting(force) {
    loaded day (its calls, lists, texts, misfiled). A lead opens its coaching
    card when it has one, else its AgencyZoom record. */
 const SEARCH_PAGES = [["Digest", "Sales Center", "digest"], ["Sales", "Sales Center · log and breakdown", "sales"], ["Texts & Emails", "Sales Center", "messages"],
-  ["Coaching Center", "Apollo · cards, objections, wins and losses", "coaching"], ["Role Play", "Learning Center", "roleplay"], ["Session History", "Learning Center", "rphistory"],
-  ["Training", "Learning Center", "training"], ["Service Digest", "Service Center · Athena", "service"], ["Renewals", "Service Center · Athena", "renewals"], ["Commercial Center", "Cerberus", "commercial"]];
+  ["Coaching", "Apollo's Academy · cards, objections, wins and losses", "coaching"], ["Role Play", "Apollo's Academy", "roleplay"], ["Session History", "Apollo's Academy", "rphistory"],
+  ["Training", "Apollo's Academy", "training"], ["Apollo's Road Map", "Apollo's Academy", "blueprint"], ["Service Digest", "Service Center · Athena", "service"], ["Renewals", "Service Center · Athena", "renewals"], ["Commercial Center", "Cerberus", "commercial"]];
 function searchIndex() {
   const out = [];
   for (const [l, sub, v] of SEARCH_PAGES) if (v !== "commercial" || !$('.tab[data-v="commercial"]').hidden) out.push({ g: "Pages", l, s: sub, go: () => goView(v) });
@@ -1847,6 +1904,17 @@ async function openLeadCard(e) {
   }
   const parts = e.parts || [];
   if (parts.includes("texted") && parts.length === 1) { goView("messages"); return; }
+  if (parts.includes("misfiled") && parts.length === 1) {
+    if (view !== "digest") await goView("digest");
+    for (let i = 0; i < 20; i++) {
+      await new Promise(r => setTimeout(r, 150));
+      const h = $$("#view h2").find(h => /Pipeline/.test(h.textContent)); if (!h) continue;
+      const row = $$("#view tr").find(tr => tr.textContent.toLowerCase().includes(want));
+      (row || h).scrollIntoView({ behavior: "smooth", block: "center" });
+      if (row) { row.classList.add("found"); setTimeout(() => row.classList.remove("found"), 2600); }
+      return;
+    }
+  }
   const k = parts.includes("sold") ? "sold" : parts.includes("quoted") ? "quoted" : parts.includes("reached") ? "contacts" : parts.includes("misfiled") ? "" : "dials";
   if (producerFilter && e.who && producerFilter !== e.who) producerFilter = "";
   digDrill = k;
@@ -1991,18 +2059,31 @@ function needsNowRows(d, who) {
   const end = live ? nowAzMins() : 17 * 60 + 30;
   const oldest = waiting.length ? Math.max(0, ...waiting.map(r => { const t = feedMins(r.at); return t == null ? 0 : end - t; })) : 0;
   rows.push({ n: waiting.length, cls: waiting.length ? "bad" : "ok", t: `text${waiting.length === 1 ? "" : "s"} waiting on a reply`,
-    sub: waiting.length ? `Oldest ${fmtMins(oldest)} · ${tally(waiting, r => r.who)}` : "Every text answered", goview: "messages", btn: "Open" });
+    sub: waiting.length ? `Oldest ${fmtMins(oldest)} · ${tally(waiting, r => r.who)}` : "Every text answered", goview: "messages", btn: "Texts & Emails",
+    accts: waiting.map(r => ({ l: r.lead, id: r.lead_id, who: r.who, parts: "texted", note: `${r.at || ""}${r.said ? ` · “${String(r.said).slice(0, 90)}${String(r.said).length > 90 ? "…" : ""}”` : ""}` })) });
   const mis = (d.misfiled || []).filter(r => mine(r.assigned));
   rows.push({ n: mis.length, cls: mis.length ? "warn" : "ok", t: `open lead${mis.length === 1 ? "" : "s"} misfiled in “Pipeline”`,
-    sub: mis.length ? tally(mis, r => r.assigned) : "Nothing misfiled", h2: "Pipeline", btn: "See them" });
+    sub: mis.length ? tally(mis, r => r.assigned) : "Nothing misfiled", h2: "Pipeline", btn: "The list",
+    accts: mis.map(r => ({ l: r.lead, id: r.lead_id, who: r.assigned, parts: "misfiled", note: `${r.stage || ""}${r.source ? ` · ${r.source}` : ""}${r.last_activity ? ` · last ${fmtShortDate(String(r.last_activity).slice(0, 10))}` : ""}` })) });
   const risk = ((d.recontact || {}).at_risk || []).filter(r => mine(r.producer));
-  if (risk.length) rows.push({ n: risk.length, cls: "warn", t: "quoted leads going cold", sub: `No dial in 3+ business days · ${tally(risk, r => r.producer)}`, goview: "coaching", btn: "Coaching" });
+  if (risk.length) rows.push({ n: risk.length, cls: "warn", t: "quoted leads going cold", sub: `No dial in 3+ business days · ${tally(risk, r => r.producer)}`, goview: "coaching", btn: "Coaching",
+    accts: risk.map(r => ({ l: r.lead_name, id: r.lead_id, who: r.producer, parts: "quoted", note: `${r.stage || ""} · ${r.business_days} business day${r.business_days === 1 ? "" : "s"}${r.last_dial ? ` · last dial ${fmtShortDate(r.last_dial)}` : ""}${r.flag ? ` · ${r.flag}` : ""}` })) });
   return rows;
 }
+/* Each row is a card that FLIPS to the accounts behind its number (Frank,
+   2026-10-02: "left on the desk card should drop down what was actually
+   left on the desk ... make it so that the card flips"): the front is the
+   count and the line, the back every account, each opening its coaching
+   card (openLeadCard), with the page button beside. */
+let needsFlipped = new Set();
 function needsNowHtml(d, who) {
   const live = curLive && rangeMode === "day", rows = needsNowRows(d, who);
-  const html = rows.map(r => `<li class="${r.cls}"><b class="n">${r.n}</b><div class="t">${cesc(r.t)}<small>${cesc(r.sub)}</small></div>${
-    r.n ? `<button type="button"${r.goview ? ` data-goview="${r.goview}"` : ` data-feedh2="${cesc(r.h2)}"`}>${cesc(r.btn)}</button>` : ""}</li>`).join("");
+  const html = rows.map((r, i) => {
+    const pageBtn = r.n ? `<button type="button"${r.goview ? ` data-goview="${r.goview}"` : ` data-feedh2="${cesc(r.h2)}"`}>${cesc(r.btn)}</button>` : "";
+    const key = r.t.replace(/[^a-z]/gi, "").slice(0, 24);
+    const back = r.accts && r.accts.length ? `<div class="face back"><div class="bk-h"><b>${r.n} ${cesc(r.t)}</b><span>${pageBtn}<button type="button" class="flipback" data-flipback>▲ Front</button></span></div>
+      <ul class="accts">${r.accts.map(a => `<li><button type="button" class="acct" data-acct-l="${cesc(a.l || "")}" data-acct-id="${cesc(a.id ?? "")}" data-acct-who="${cesc(a.who || "")}" data-acct-parts="${a.parts || ""}">${cesc(a.l || "—")}</button><span class="who">${pbadge(DOT[a.who] || TEAM_DOT, firstName(a.who || ""))}</span><small>${cesc(a.note || "")}</small></li>`).join("")}</ul></div>` : "";
+    return `<li class="${r.cls}${back ? " flip" : ""}${back && needsFlipped.has(key) ? " on" : ""}" data-flipkey="${key}"><div class="flipin"><div class="face front"><b class="n">${r.n}</b><div class="t">${cesc(r.t)}<small>${cesc(r.sub)}</small></div>${back ? `<span class="flipcue" aria-hidden="true">accounts ▸</span>` : pageBtn}</div>${back}</div></li>`; }).join("");
   return `<div class="sect svcsec" style="--sc:var(--s4)"><h2>${live ? "Needs someone now" : "Left on the desk"}</h2>
     <p class="sd">${live ? "What is waiting on a person at this minute." : "What the day ended with still waiting."}</p><ul class="todo">${html}</ul></div>`;
 }
@@ -2025,7 +2106,18 @@ function svcFeedHtml(m) {
   return `<div class="sect"><h2>Off the desk · done today</h2>
     <p class="sd">Athena's group chat: every SR closed, call answered, call back, text and task as it happened.</p>${chatFeedHtml(items, "Athena", pin)}</div>`;
 }
+function wireNeedsNow() {
+  $$("#view .todo li.flip").forEach(li => {
+    li.addEventListener("click", e => {
+      if (e.target.closest("button.acct, [data-goview], [data-feedh2], a")) return;
+      li.classList.toggle("on"); const k = li.dataset.flipkey;
+      if (li.classList.contains("on")) needsFlipped.add(k); else needsFlipped.delete(k);
+    });
+  });
+  $$("#view .todo button.acct").forEach(b => b.onclick = e => { e.stopPropagation(); openLeadCard({ l: b.dataset.acctL, id: b.dataset.acctId, who: b.dataset.acctWho, parts: b.dataset.acctParts ? [b.dataset.acctParts] : [] }); });
+}
 function wireFeed() {
+  wireNeedsNow();
   $$("#view [data-feedcall]").forEach(b => b.onclick = () => { const c = ((cur && cur.calls) || [])[+b.dataset.feedcall]; if (c) openCoachingCard(c); });
   $$("#view [data-feedh2]").forEach(b => b.onclick = () => {
     const re = new RegExp(b.dataset.feedh2, "i"), h = $$("#view h2").find(x => re.test(x.textContent));
@@ -2033,16 +2125,37 @@ function wireFeed() {
   });
 }
 
-/* The menu lists each Center's pages under it (the Center's own header tabs
-   stay for the Coaching Center, whose three are views of one page). */
+/* Every Center in the menu is a dropdown of its pages (Frank, 2026-10-02:
+   "make all the sections dropdowns"). The Center you are in opens itself;
+   the arrow opens or closes any of them without leaving the page, and what
+   was left open is remembered in this browser. A one-page Center (the
+   Commercial Center) has no dropdown. */
+const NAV_OPEN_KEY = "board-nav-open";
+let navOpen = (() => { try { return new Set(JSON.parse(localStorage.getItem(NAV_OPEN_KEY) || "[]")); } catch (_) { return new Set(); } })();
+const saveNavOpen = () => { try { localStorage.setItem(NAV_OPEN_KEY, JSON.stringify([...navOpen])); } catch (_) {} };
 function paintSideNav() {
+  const here = centerOf(view);
   $$(".subnav").forEach(n => {
-    const c = n.dataset.for, pages = CENTERS[c] || [];
-    const show = pages.length > 1 && c !== "coaching";
-    n.hidden = !show;
-    n.innerHTML = show ? pages.map(([k, label]) =>
-      `<button type="button" class="stab" data-cv="${k}" aria-current="${k === view ? "page" : "false"}">${label}</button>`).join("") : "";
-    n.querySelectorAll("[data-cv]").forEach(b => b.onclick = () => goView(b.dataset.cv));
+    const c = n.dataset.for, items = centerItems(c);
+    const drop = items.length > 1, open = drop && navOpen.has(c);
+    const tab = $(`.tab[data-v="${c}"]`);
+    if (tab) {
+      tab.classList.toggle("hasdrop", drop);
+      tab.setAttribute("aria-expanded", drop ? String(open) : "false");
+      let chev = tab.querySelector(".chev");
+      if (drop && !chev) {
+        chev = document.createElement("span");
+        chev.className = "chev"; chev.setAttribute("role", "button");
+        chev.setAttribute("aria-label", "Show or hide its pages");
+        chev.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg>';
+        chev.onclick = e => { e.stopPropagation(); navOpen.has(c) ? navOpen.delete(c) : navOpen.add(c); saveNavOpen(); paintSideNav(); };
+        tab.appendChild(chev);
+      }
+    }
+    n.hidden = !open;
+    n.innerHTML = open ? items.map(it =>
+      `<button type="button" class="stab" data-cv="${it.v}"${it.st ? ` data-st="${it.st}"` : ""} aria-current="${itemOn(it) && c === here ? "page" : "false"}">${it.label}</button>`).join("") : "";
+    n.querySelectorAll("[data-cv]").forEach(b => b.onclick = () => openItem(b.dataset.cv, b.dataset.st));
   });
 }
 
@@ -2233,10 +2346,12 @@ function digestDay(d, who) {
   // The leaderboard card carries the same scene inside it (Frank,
   // 2026-10-02: "in the background of the leaderboard itself, not a
   // background behind the 2 cards"): see teamLeaderboardHtml's .lbsky.
-  return `<div class="skyline"><div class="sky-k"><b>${cesc(skyTitle)}</b><span>${cesc(skySub)}</span></div><div class="tiles tiles-6">${tilesHtml}${closingRatioTileHtml}</div></div>
-  ${digDrillFor(d, who, ["dials", "contacts", "quoted", "sold", "life", "closing"])}
-  ${teamLeaderboardHtml(d, who)}
-  ${digDrillFor(d, who, ["lb"])}`;
+  // Each list sits INSIDE the card it belongs to, so the card flips to it
+  // (flipLists): the tiles' list in the skyline card, the leaderboard's in
+  // the leaderboard card.
+  return `<div class="skyline"><div class="sky-k"><b>${cesc(skyTitle)}</b><span>${cesc(skySub)}</span></div><div class="tiles tiles-6">${tilesHtml}${closingRatioTileHtml}</div>
+  ${digDrillFor(d, who, ["dials", "contacts", "quoted", "sold", "life", "closing"])}</div>
+  ${teamLeaderboardHtml(d, who).replace(/<\/div>\s*$/, digDrillFor(d, who, ["lb"]) + "</div>")}`;
 }
 
 /* The life goal (Frank, 2026-10-01: "make the goal 1 life policy a week"),
@@ -7186,7 +7301,7 @@ function paintFailed(e, controls = true) {
 /* A vista for every page (Frank, 2026-10-02). Placed under the range
    controls (or first) whenever #view is repainted; the Digest and the
    Editions draw their own. */
-const VISTAS = {"sales": ["Sales", "the monsoon: premium coming in"], "messages": ["Texts & Emails", "every line, every reply"], "coaching": ["Coaching Center", "the campfire: every call, read back"], "roleplay": ["Role Play", "the arena"], "rphistory": ["Session History", "tonight, every session replayed"], "training": ["Training", "the trail up"], "blueprint": ["Apollo's Road Map", "the route, in plain words"], "athenamap": ["Athena's Road Map", "the service route, in plain words"], "service": ["Service Digest", "the ranch: keeping the book"], "renewals": ["Renewals", "the bloom: what came back"], "commercial": ["Commercial Center", "downtown: Cerberus's book"]};
+const VISTAS = {"sales": ["Sales", "the monsoon: premium coming in"], "messages": ["Texts & Emails", "every line, every reply"], "coaching": ["Coaching", "the campfire: every call, read back"], "roleplay": ["Role Play", "the arena"], "rphistory": ["Session History", "tonight, every session replayed"], "training": ["Training", "the trail up"], "blueprint": ["Apollo's Road Map", "the route, in plain words"], "athenamap": ["Athena's Road Map", "the service route, in plain words"], "service": ["Service Digest", "the ranch: keeping the book"], "renewals": ["Renewals", "the bloom: what came back"], "commercial": ["Commercial Center", "downtown: Cerberus's book"]};
 function placeVista() {
   const v = $("#view"), key = v.dataset.view;
   if (!VISTAS[key] || v.querySelector(":scope > .vista")) return;
@@ -7195,7 +7310,28 @@ function placeVista() {
   const c = v.querySelector(":scope > .controls");
   if (c) c.insertAdjacentHTML("afterend", html); else v.insertAdjacentHTML("afterbegin", html);
 }
-new MutationObserver(() => placeVista()).observe(document.getElementById("view"), { childList: true });
+/* Every card that opens a list FLIPS to it (Frank, 2026-10-02: "any card
+   that drops down data"): after a paint, each open list (`.rdrill-list`)
+   is moved to the back of the card it sits in (the nearest section or the
+   skyline), the card's own content becomes the front, and the card turns
+   over; its Close becomes "▲ Front", which turns it back before the repaint. */
+function flipLists() {
+  $$("#view .rdrill-list").forEach(list => {
+    if (list.closest(".flipface")) return;
+    const host = list.closest(".sect, .skyline"); if (!host || host.classList.contains("flipsect")) return;
+    const front = document.createElement("div"); front.className = "flipface front";
+    const back = document.createElement("div"); back.className = "flipface back";
+    const inner = document.createElement("div"); inner.className = "flipinner";
+    while (host.firstChild) front.appendChild(host.firstChild);
+    list.remove(); back.appendChild(list);
+    list.querySelectorAll("[data-ddrill-close], [data-sdrill-close], [data-drill-close]").forEach(a => { a.textContent = "▲ Front"; a.classList.add("flipfront"); });
+    inner.append(front, back); host.appendChild(inner); host.classList.add("flipsect");
+    requestAnimationFrame(() => requestAnimationFrame(() => host.classList.add("on")));
+  });
+}
+// Turn a flipped card back, then run the repaint that removes its list.
+function unflipThen(el, fn) { const h = el && el.closest(".flipsect.on"); if (h) { h.classList.remove("on"); setTimeout(fn, 420); } else fn(); }
+new MutationObserver(() => { placeVista(); flipLists(); }).observe(document.getElementById("view"), { childList: true });
 async function paint() {
   try { await paintTab(); wireFeed(); } catch (e) { paintFailed(e); }
 }
@@ -7219,7 +7355,7 @@ async function paintTab() {
       el.onclick = go;
       el.onkeydown = e => { if (e.key === "Enter" || e.key === " ") go(e); };
     });
-    v.querySelectorAll("[data-ddrill-close]").forEach(el => el.onclick = e => { e.preventDefault(); digDrill = ""; paint(); });
+    v.querySelectorAll("[data-ddrill-close]").forEach(el => el.onclick = e => { e.preventDefault(); unflipThen(el, () => { digDrill = ""; paint(); }); });
   } else if (view === "post") {
     v.innerHTML = rangeControlHtml() + '<div class="empty">Loading…</div>';
     wireRangeControl();
@@ -8158,7 +8294,7 @@ async function paintServiceTab() {
       el.onclick = go;
       el.onkeydown = e => { if (e.key === "Enter" || e.key === " ") go(e); };
     });
-    v.querySelectorAll("[data-sdrill-close]").forEach(el => el.onclick = e => { e.preventDefault(); svcDrill = ""; paint(); });
+    v.querySelectorAll("[data-sdrill-close]").forEach(el => el.onclick = e => { e.preventDefault(); unflipThen(el, () => { svcDrill = ""; paint(); }); });
     v.querySelectorAll("[data-sperson]").forEach(el => {
       const go = e => { if (e) e.preventDefault(); const x = el.dataset.sperson;
         svcPerson = x && svcPerson !== x ? x : ""; if (svcDrill.startsWith("g-")) svcDrill = ""; paint(); };
@@ -8618,7 +8754,7 @@ async function paintRenewalsTab() {
     el.onkeydown = e => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); go(); } };
   });
   const close = v.querySelector("[data-drill-close]");
-  if (close) close.onclick = e => { e.preventDefault(); renDrill = ""; paintRenewals(); };
+  if (close) close.onclick = e => { e.preventDefault(); unflipThen(close, () => { renDrill = ""; paintRenewals(); }); };
   v.querySelectorAll("[data-rperson]").forEach(el => {
     const go = e => { if (e) e.preventDefault(); const x = el.dataset.rperson;
       renPerson = x && renPerson !== x ? x : ""; if (renDrill.startsWith("rw:") && !renDrill.startsWith("rw:pipe:")) renDrill = ""; paintRenewals(); };
@@ -8891,7 +9027,7 @@ const TOUR_STEPS = [
   { title: "Welcome to the Sales Floor",
     text: "This is the agency's board. It shows how the day is going, coaches every recorded sales call, and gives you places to practise. This tour takes about two minutes." },
   { find: () => $("nav.tabs"), title: "The left bar",
-    text: "Three desks: Apollo for sales, Athena for service, Cerberus for commercial. Each Center lists its pages under it. Settings at the bottom picks your look: five looks, each with a dark side." },
+    text: "Three desks: Apollo for sales, Athena for service, Cerberus for commercial. Each Center opens like a dropdown to its pages: click its arrow to open or close it. Settings at the bottom picks your look: five looks, each with a dark side." },
   { find: () => $(".top .search"), title: "Search",
     text: "Ctrl K from anywhere: pages, the sections on the page you are on, producers, and every lead. Every lead on every published day: a lead opens its newest coaching card, on whatever day it was, and with no card, its row on the Digest." },
   { find: () => $("#coeusfab"), title: "Ask Coeus",
@@ -8912,8 +9048,8 @@ const TOUR_STEPS = [
     text: "Log a sale, look back at any folio, or break sales down by lead source, product or producer. Live sales are added here automatically. The Commission tab shows where you stand on the commission schedule this folio." },
   { view: "messages", title: "Texts & Emails",
     text: "Every text and email with a lead: what each producer typed, the replies still waiting, and how quickly replies were answered. Automated messages are counted separately." },
-  { view: "coaching", sub: "detail", find: () => $("#centerbar .ctabs"), title: "Coaching cards",
-    text: "Apollo reviews every recorded sales conversation and writes a card: what the call was for, a score on each step, the objections and better lines to use, flags, and the recording with its transcript. Click a line of the transcript to jump there." },
+  { view: "coaching", sub: "detail", find: () => $("#centerbar .ctabs"), title: "Apollo's Academy: coaching cards",
+    text: "Apollo's Academy is where the coaching and the practice live. Apollo reviews every recorded sales conversation and writes a card: what the call was for, a score on each step, the objections and better lines to use, flags, and the recording with its transcript. Click a line of the transcript to jump there." },
   { view: "coaching", sub: "objections", title: "Objections",
     text: "Every objection Apollo found, grouped, with how each one was handled. Filter to one person to see what they lose to most." },
   { view: "coaching", sub: "wins", title: "Wins and Losses",
@@ -8929,7 +9065,7 @@ const TOUR_STEPS = [
   { view: "service", title: "The Service Center",
     text: "Athena's side: the service team's SRs, tasks, call backs and texts, and the Renewals tab. Athena's Road Map, the last tab here, explains it all." },
   { find: () => $("#tourbtn"), title: "That's the tour",
-    text: "You can take it again any time from this button. Apollo's Road Map in the Learning Center and Athena's in the Service Center go into more detail." },
+    text: "You can take it again any time from this button. Apollo's Road Map in Apollo's Academy and Athena's in the Service Center go into more detail." },
 ];
 const tourSection = title => [...$$("#view .sect")].find(sec => {
   const h = sec.querySelector("h2");
@@ -9050,12 +9186,17 @@ async function goView(next) {
   view = next;
   const c = centerOf(view);
   if (CENTERS[c]) centerPick[c] = view;
+  if (centerItems(c).length > 1 && !navOpen.has(c)) { navOpen.add(c); saveNavOpen(); }
   $$(".tab").forEach(x => x.setAttribute("aria-selected", String(x.dataset.v === c)));
   paintCenterBar();
   paint();
 }
 $$(".tab").forEach(t => t.onclick = () => {
   const c = t.dataset.v;
+  // The Center you are already in: its name opens or closes its dropdown.
+  if (centerOf(view) === c && centerItems(c).length > 1) {
+    navOpen.has(c) ? navOpen.delete(c) : navOpen.add(c); saveNavOpen(); paintSideNav(); return;
+  }
   goView(CENTERS[c] ? centerPick[c] : c);
 });
 paintCenterBar();

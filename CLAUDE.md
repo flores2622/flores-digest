@@ -120,7 +120,7 @@ Everything caches under `data/`, so a re-run resumes rather than restarting.
   phone**: asking for them and ending with "I'll review it and call you
   back" is getting off the phone, "producer" (Coral / Randell Otis 09-25:
   "she should review it with him on the phone").
-  Coaching Center > Wins and Losses counts it per producer and lists the
+  Apollo's Academy > Wins and Losses counts it per producer and lists the
   calls. **Every assumption stat is there too** (Frank, 2026-09-28): the quote,
   the sale, and a follow-up's up front / objections / end, per producer and
   team, off each card's own verdicts (n/a counts neither way), each with its
@@ -284,7 +284,7 @@ Everything caches under `data/`, so a re-run resumes rather than restarting.
   began as an email -- Frank, 2026-09-30); narrow screens stack.
 - **Every graded Role Play session is kept and can be read back** (Frank,
   2026-09-29: "a full history of role play sessions ... producers see their
-  own"). Learning Center > **Session History**: a date range (7 / 30 / 90
+  own"). Apollo's Academy > **Session History**: a date range (7 / 30 / 90
   days, all time, custom), a summary per producer (sessions, resolved,
   checklist met, the checklist items missed most, the objections drilled),
   and every session, which opens in place to Apollo's grade and the whole
@@ -762,7 +762,19 @@ page (2026-09-30).
 
 ## Apollo's Road Map (ARM) and the tour
 
-**Learning Center > Apollo's Road Map is one tab with a dropdown** (Frank,
+**Apollo's Academy is the Coaching and Learning Centers in one** (Frank,
+2026-10-02: "I like Apollos academy, do it"): one menu entry
+(`CENTERS.academy`) whose header tabs are the coaching page's three views
+(Cards, Objections, Wins and Losses -- still one `coaching` view switched by
+`coachSubTab`) followed by Role Play, Session History, Training and Apollo's
+Road Map (`centerItems` / `openItem`). **Every Center in the menu is a
+dropdown of its pages** (Frank, same day: "make all the sections
+dropdowns"): the Center you are in opens itself, clicking its name again or
+the arrow on any Center opens or closes it without leaving the page, and
+what is left open is remembered per browser (`board-nav-open`); a one-page
+Center has no arrow, and phones keep the one-row menu with no dropdowns.
+
+**Apollo's Academy > Apollo's Road Map is one tab with a dropdown** (Frank,
 2026-09-30: "if Im out for a week and want amanda to coach, she should know
 what everything means, how the model coaches, where everything is ... in
 regular language, not AI prompt language"; "Apollos road map should be the
@@ -1469,6 +1481,26 @@ with a 2px border. **A feed line never names a stage** ("Mike presented
 $2,500 in premium"): the Digest's day reads as Apollo's group chat
 (`digestFeedItems`) beside **Needs someone now** / **Left on the desk**
 (`needsNowRows`); the Service Digest's is **Off the desk · done today**.
+**Each Left on the desk / Needs someone now row is a card that FLIPS**
+(Frank, 2026-10-02: "left on the desk card should drop down what was
+actually left on the desk ... make it so that the card flips"): the front
+is the count and its line ("accounts ▸"), a click turns it over to every
+account behind the number -- the waiting texts with the time and what the
+lead said, the misfiled leads with stage and source, the quoted leads
+going cold with days since the last dial -- each name opening the lead's
+coaching card through the search's `openLeadCard` (a misfiled lead with no
+card goes to the Pipeline list, row lit), with the page button and "▲
+Front" beside. The showing face sets the card's height; which rows are
+turned survives a repaint (`needsFlipped`). **And every card that opens a
+list flips to it** (Frank, 2026-10-02: "any card that drops down data"):
+after a paint, `flipLists` moves each open list (`.rdrill-list` -- the
+Digest's tiles and leaderboard, the Service Center's stat cards, the
+Renewals rates and Renewal SR Work, the outcome bars) to the back of the
+nearest section or skyline card, the card's own content becomes the front,
+and the card turns over; its Close reads "▲ Front" and `unflipThen` turns
+it back before the repaint clears the list. The Digest's two loose lists
+moved inside the cards they belong to for this. A scene card shows a plain
+sheet on its back.
 - **The Flores Post** (`site/public/post.js`) is the first of the Editions
   (Frank, 2026-10-01: "the flores post should also be one of the
   editions"; it was its own page for a day), written in rules from the day documents -- nothing typed,
@@ -1490,7 +1522,7 @@ $2,500 in premium"): the Digest's day reads as Apollo's group chat
   documents. What people do on them (reactions, comments, poll and MVP
   votes, mailbag notes, panel likes) is shared through the Worker's
   `/api/editions/<key>` in R2 (`editions/<day>.json`,
-  `editions/folio-<end>.json`), one each per person by the Access name;
+  `editions/folio-<end>.json`), one each per person by the Access name -- **and the names show on hover** (Frank, 2026-10-02: "how do we know who it was that reacted, voted or interacted" -- "hover"): a reaction button, a poll bar, an MVP button and a panel's like each carry the names as their tooltip; comments and mailbag notes print the name;
   a viewer's own picks (watchlist, cover photo, card flips) stay in their
   browser. The `/api/me` first names live in the Worker's `FIRST_NAMES` +
   `RP_PRODUCER_EMAILS`.
@@ -1504,7 +1536,7 @@ $2,500 in premium"): the Digest's day reads as Apollo's group chat
   role plays as themselves**: the picker and "change" are gone for them
   and `roleplayGrade` refuses another name; Frank and the ops viewers
   (`rpScope.all`) still pick who, and the Beta tester.
-- **The Coaching and Learning Centers and both Road Maps carry colour**
+- **Apollo's Academy (then the Coaching and Learning Centers) and both Road Maps carry colour**
   (Frank, 2026-10-01: "more color and design"): a coaching section wears
   its producer's badge colour (a card's coloured left edge came and went -- Frank, 2026-10-02: "remove the left tab color, the badge is enough"), Quick
   coaching is a tinted panel; objection bars are red with the won share
