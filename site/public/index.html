@@ -1767,12 +1767,18 @@ function searchIndex() {
     for (const r of (cur.messages || {}).replies || []) lead(r.lead, r.lead_id, r.who, "texted");
     for (const r of cur.misfiled || []) lead(r.lead, r.lead_id, r.assigned, "misfiled");
   }
+  for (const x of LEADS_ALL || []) {
+    const k = x.id || x.l;
+    if (seen.has(k) || [...seen.values()].some(e => (e.l || "").toLowerCase() === (x.l || "").toLowerCase())) continue;
+    const [d, f] = x.days[0] || ["", ""];
+    seen.set(k, { g: "Leads", l: x.l, s: "", id: x.id, who: x.who, parts: [...f].map(c => LEAD_FLAG[c]).filter(Boolean), go: null, when: d });
+  }
   for (const e of seen.values()) {
-    e.s = `${(e.who || "").split(" ")[0]}${e.parts.length ? " · " + e.parts.join(", ") : ""}`;
+    e.s = `${(e.who || "").split(" ")[0]}${e.when ? " · " + fmtShortDate(e.when) : ""}${e.parts.length ? " · " + e.parts.join(", ") : ""}`;
     // A lead the search finds opens its coaching card, never AgencyZoom
     // (Frank, 2026-10-02: "the link is on the coaching card if they want to
     // go there"): today's card if there is one, else the newest recent one.
-    if (!e.go) { e.go = () => openLeadCard(e); e.s += " · looks for its card"; }
+    if (!e.go) { e.go = () => openLeadCard(e); if (!e.parts.includes("coaching card")) e.s += " · opens its row"; }
     out.push(e);
   }
   return out;
@@ -1780,12 +1786,30 @@ function searchIndex() {
 /* A lead with no coaching card on the loaded day: look back through the
    recent published days for one and open it there (switching the day);
    with none, open the Digest list the lead is in and light its row. */
+/* The all-time lead index (Frank, 2026-10-02: "can it just be a universal
+   all time search?"): every lead on every published day, from the Worker's
+   /api/leads, fetched once per tab the first time the search is used. */
+let LEADS_ALL = null, leadsAllLoading = null;
+const LEAD_FLAG = { c: "coaching card", s: "sold", q: "quoted", r: "reached", d: "dialled", t: "texted", m: "misfiled" };
+function loadLeadIndex() {
+  if (LEADS_ALL || leadsAllLoading) return leadsAllLoading;
+  leadsAllLoading = (async () => { try { const r = await fetch("/api/leads", { cache: "no-store" }); if (r.ok) LEADS_ALL = (await r.json()).leads || []; } catch (_) {} })();
+  return leadsAllLoading;
+}
 const leadDayCache = new Map();
 async function openLeadCard(e) {
   const want = (e.l || "").trim().toLowerCase();
   const match = c => (e.id && c.lead_id != null && String(c.lead_id) === String(e.id)) || (c.lead || "").trim().toLowerCase() === want;
   const today = cur && cur.date;
-  for (const d of DAYS.filter(d => d !== today).slice(0, 20)) {
+  // the index knows which day holds the newest card; failing that, the
+  // newest day the lead was on at all
+  const ix = (LEADS_ALL || []).find(x => (e.id && x.id && String(x.id) === String(e.id)) || (x.l || "").trim().toLowerCase() === want);
+  if (ix) {
+    const cardDay = (ix.days.find(([d, f]) => f.includes("c") && d !== today) || [])[0];
+    if (cardDay) { await loadDay(cardDay); const c = (cur && cur.calls || []).find(match); if (c) { await openCoachingCard(c); return; } }
+    const anyDay = (ix.days[0] || [])[0];
+    if (anyDay && anyDay !== today) { await loadDay(anyDay); e = { ...e, parts: [...(ix.days[0][1] || "")].map(f => LEAD_FLAG[f]).filter(Boolean) }; }
+  } else for (const d of DAYS.filter(d => d !== today).slice(0, 20)) {
     let doc = leadDayCache.get(d);
     if (doc === undefined) { try { const r = await fetch(`/api/days/${d}`, { cache: "no-store" }); doc = r.ok ? await r.json() : null; } catch (_) { doc = null; } leadDayCache.set(d, doc); }
     const c = ((doc || {}).calls || []).find(match);
@@ -1825,6 +1849,7 @@ async function openCoachingCard(c) {
   let hits = [], sel = 0;
   const close = () => { res.hidden = true; };
   const show = () => {
+    if (!LEADS_ALL) { const p = loadLeadIndex(); if (p) p.then(() => { if (!res.hidden) show(); }); }
     const raw = q.value.trim(), qq = raw.toLowerCase();
     const all = searchIndex();
     hits = (qq ? all.filter(e => e.l.toLowerCase().includes(qq) || (e.s || "").toLowerCase().includes(qq))
@@ -1833,7 +1858,7 @@ async function openCoachingCard(c) {
     const groups = [...new Set(hits.map(h => h.g))];
     res.innerHTML = hits.length ? groups.map(g => `<h5>${g}</h5>` + hits.map((h, i) => h.g === g
       ? `<button type="button" data-i="${i}" class="${i === sel ? "sel" : ""}">${cesc(h.l)}<span>${cesc(h.s || "")}</span></button>` : "").join("")).join("")
-      : `<div class="none">Nothing on this day matches “${cesc(raw)}”.</div>`;
+      : `<div class="none">${LEADS_ALL ? `Nothing matches “${cesc(raw)}” on any published day.` : `Nothing on this day matches “${cesc(raw)}”${leadsAllLoading ? " · loading every day…" : ""}.`}</div>`;
     res.hidden = false;
   };
   const pick = i => { const h = hits[i]; if (!h) return; close(); q.blur(); h.go(); };
@@ -8833,7 +8858,7 @@ const TOUR_STEPS = [
   { find: () => $("nav.tabs"), title: "The left bar",
     text: "Three desks: Apollo for sales, Athena for service, Cerberus for commercial. Each Center lists its pages under it. Settings at the bottom picks your look: five looks, each with a dark side." },
   { find: () => $(".top .search"), title: "Search",
-    text: "Ctrl K from anywhere: pages, the sections on the page you are on, producers, and every lead on the loaded day. A lead opens its coaching card -- today's, or the newest recent one -- and with no card, its row on the Digest." },
+    text: "Ctrl K from anywhere: pages, the sections on the page you are on, producers, and every lead. Every lead on every published day: a lead opens its newest coaching card, on whatever day it was, and with no card, its row on the Digest." },
   { find: () => $("#coeusfab"), title: "Ask Coeus",
     text: "The owl is the board's assistant. Ask it how a day or a week went, what a producer should work on, what Apollo saw on a call, how to answer an objection, or what any number means. It reads the same reports the board draws. Ctrl / opens it from anywhere." },
   { view: "digest", find: () => $("#view .controls"), title: "Pick a day and a person",

@@ -1602,14 +1602,23 @@ $2,500 in premium"): the Digest's day reads as Apollo's group chat
   dust devil under a hazy sky; reached = two saguaros talking at noon;
   voicemail = an owl asleep on a cactus under the moon. The badge, flow
   edge, Quick coaching and everything below are unchanged.
-- **A lead in the search opens its coaching card, never AgencyZoom** (Frank,
-  2026-10-02: "the link is on the coaching card if they want to go there"):
-  today's card when the loaded day has one; otherwise `openLeadCard` looks
-  back through the 20 newest published days (documents cached in the tab)
-  for a card on that lead by id or name, loads that day and opens it; with
-  none anywhere, it opens the Digest list the lead is in (sold, quoted,
-  contacts, dials; a texted-only lead goes to Texts & Emails) and lights the
-  row (`tr.found`). The tour step says so.
+- **The search is all-time** (Frank, 2026-10-02: "can it just be a
+  universal all time search?") **and a lead opens its coaching card, never
+  AgencyZoom** ("the link is on the coaching card if they want to go
+  there"). The Worker's `GET /api/leads` (`site/lead_index.js`) serves one
+  compact row per lead across every published day -- name, AgencyZoom id,
+  producer and, per day, what it was there as (c card, s sold, q quoted, r
+  reached, d dialled, t texted, m misfiled) -- kept in R2 at
+  `worker-private/lead_index.json` and topped up with any newly published
+  day on each request (never the whole bucket twice); the same Access gate
+  as the day documents, since it is customer NPI. The browser fetches it
+  once per tab the first time the search is used (`loadLeadIndex`,
+  `LEADS_ALL`) and lists every lead with its producer and newest day;
+  picking one (`openLeadCard`) loads the newest day that holds a coaching
+  card for it and opens the card, else the newest day it was on and the
+  Digest list it sits in with the row lit (`tr.found`); a texted-only lead
+  goes to Texts & Emails. Today's live leads still come from the loaded
+  document. The tour step says so.
 - **Every edition downloads** (Frank, 2026-10-02: "make the editions
   downloadable"): **Download PDF** (the edition alone in a new window, the
   print dialog opened once its fonts load -- Save as PDF) and **Save page**
