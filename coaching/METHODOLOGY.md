@@ -426,12 +426,11 @@ word**. Prospects misremember, above all the TERM: "about $1,000 a year" is
 very often the six-month premium. A comparison built on the prospect's
 memory turns a better rate into a lost sale.
 
-The case: Lorena / Lisette Dasnabedian, 2026-10-01. Lisette said she paid
-"every six months, but for the whole year it comes to around 1,000." Lorena
-took that as $500 a term and quoted $820 for six months; Lisette heard a
-higher price and hung up. ALTA's Prior Insurance screen showed a six-month
-policy: the ~$1,000 was the six-month premium, and $820 was the BETTER rate.
-One look at the screen and the comparison was in her favour.
+Asking is good, and a producer who asks the term and gets a plain answer
+has confirmed it ("Is that for six months or the year?" -- "Every six months,
+about $500 each time"). The miss is a figure that doesn't add up, or a term
+nobody pinned down, taken into the price comparison anyway, when the Prior
+Insurance screen would have settled it.
 
 How to score it:
 - You cannot see ALTA. Judge whether the producer USED the reports, from
@@ -440,9 +439,10 @@ How to score it:
   report said unless the call or a **Manager's note** says it.
 - **Current premium captured** is "s" only when the premium is tied to a
   term the producer confirmed -- from the reports, or a prospect who states
-  it plainly. A muddled or contradictory figure ("every six months, but for
-  the year it's around 1,000") that the producer does not reconcile with the
-  report is "w", even with a number captured.
+  it plainly. A muddled or contradictory figure ("around 1,000 ... I think
+  that's for the year? Maybe six months") that the producer does not reconcile with the
+  report is "w", even with a number captured. A term the producer asked
+  about and the prospect answered plainly is confirmed -- score it on that.
 - **Discovery**: taking the carrier, term or premium at face value when the
   call shows a conflict (the prospect names one carrier and the producer
   another; a term that doesn't add up) is a miss -- say so in the line.

@@ -195,14 +195,15 @@ Everything caches under `data/`, so a re-run resumes rather than restarting.
   against the Prior Insurance screen. METHODOLOGY.md's "The reports" section:
   a muddled premium / term not reconciled is "w" on Current premium and
   Presenting numbers, the fix checks the screen on the call, and the flag is
-  "Didn't verify against the reports". Lorena / Lisette Dasnabedian 10-01 is
-  the case ($820 for six months against a six-month policy remembered as
-  "$1,000 a year"). **A card can carry a Manager's note**
+  "Didn't verify against the reports"; a term the producer asked about and
+  the prospect answered plainly is confirmed. (Lisette Dasnabedian, 10-01,
+  first looked like the case; Frank then said Lorena had asked and confirmed
+  the term, so her card stays as it went out and is no example.) **A card can carry a Manager's note**
   (`coaching/manager_notes.json`, by day and lead_id, read into the history
   block by `coaching_cards.manager_notes`): what Frank saw that the call
   cannot show; Apollo treats it as fact. The cache is keyed by call, so a note
-  reaches a card only when it is read again -- the Lisette card was re-read
-  alone on 2026-10-02 (backup under `backups/2026-10-02-card-fix/`).
+  reaches a card only when it is read again (the file is empty: the one
+  note written, Lisette's, was taken back the same day and her card restored).
 - **A closed card's right half is Quick coaching** (Frank, 2026-09-30:
   "the right half of the card be a quick coaching summary, while leaving
   the left of the card whats currently there"; `quickCoachHtml`), from what
