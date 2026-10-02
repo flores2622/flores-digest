@@ -1555,6 +1555,21 @@ $2,500 in premium"): the Digest's day reads as Apollo's group chat
   coming forward with saguaros growing larger toward the bottom, prickly
   pear, rocks and a dry wash -- the podium standing on it and the table on
   a near-opaque sheet. The tiles' card keeps the skyline (sky, sun, mesas).
+- **One leaderboard for every edition, fitted by priority** (Frank,
+  2026-10-02: "this is also the only leaderboard you didnt include all the
+  info in, but it has the space ... make the ones that we have to scroll
+  have the space and give the big ones the info they have space for, by
+  priority"): `lbTableHtml` in post.js draws the Digest's columns in the
+  Digest's order, each tagged with a priority (`LB_COLS`: Pts 1, Prem. Sold
+  2, HH Sold 3, HH Quoted 4, Prem. Quoted 5, Dials 6, Contact Rate 7, Role
+  Play 8, Avg Talk 9, Sent the Quote 10, Texts / Emails 11, Util. 12). The
+  table never scrolls: container queries on `.lbwrap` drop the
+  lowest-priority columns as its box narrows (about 92px a column) and a
+  wide box shows every one. The Post's Primetime standings use it (its
+  numbers from `lbNums(F)`, with # and ★), and every edition's `edLbt`
+  does; the three that sat in a side column -- FLRS 500's full tape,
+  CLOSER's masthead, KFLR's playlist -- moved to the full width of their
+  edition.
 - **Every edition downloads** (Frank, 2026-10-02: "make the editions
   downloadable"): **Download PDF** (the edition alone in a new window, the
   print dialog opened once its fonts load -- Save as PDF) and **Save page**
