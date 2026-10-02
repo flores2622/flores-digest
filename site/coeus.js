@@ -275,7 +275,7 @@ function producerLine(p, doc) {
   return {
     name: p.name, dials: p.dials, live_contacts: p.live, contact_rate_pct: p.rate, avg_talk_seconds: p.talk, call_ins: p.inbound || 0,
     hh_quoted: p.hh, premium_quoted: p.pq, policies_sold: p.pol, premium_sold: p.ps, hh_sold: hhSold((doc.rows || {}).sold_leads, p.name),
-    life_policies: p.life || 0, life_premium: p.life_ps || 0, life_this_week: p.life_week,
+    life_policies: p.life || 0, life_this_week: p.life_week,
     cross_sells: p.cross_sell || 0, utilization_pct: p.util, tracked: p.util_total, productive: p.util_prod,
     tasks_due: (p.tasks || {}).total, tasks_done: (p.tasks || {}).completed,
     coach_ai: p.coach && Object.keys(p.coach).length ? { calls: p.coach.calls, call_score: p.coach.score, sentiment: p.coach.sentiment, role_play: p.coach.roleplay } : null,
@@ -295,7 +295,7 @@ function compactSales(doc, source, sections, who) {
     note: source.startsWith("checkpoint") ? "Today so far, as of the last hourly checkpoint. The board's live tiles may be a little ahead." : undefined,
     team: {
       dials: t.dials, live_contacts: t.live, contact_rate_pct: t.rate, avg_talk_seconds: t.talk, hh_quoted: t.hh, premium_quoted: t.pq,
-      policies_sold: t.pol, premium_sold: t.ps, hh_sold: hhSold((doc.rows || {}).sold_leads, ""), life_policies: t.life, life_premium: t.life_ps,
+      policies_sold: t.pol, premium_sold: t.ps, hh_sold: hhSold((doc.rows || {}).sold_leads, ""), life_policies: t.life,
       life_this_week: t.life_week, cross_sells: t.cross_sell, utilization_pct: t.util, role_play_avg: t.roleplay, tasks: t.tasks,
       speed_to_dial: (doc.speed_to_dial || {}).team || null, tier_colours: (doc.tiers || {}).team,
     },
@@ -361,12 +361,12 @@ async function toolSalesRange(env, inp) {
     const dayHasRp = (doc.producers || []).some((p) => (p.coach || {}).roleplay);
     for (const p of doc.producers || []) {
       const r = per[p.name] || (per[p.name] = { name: p.name, days_worked: 0, dials: 0, live_contacts: 0, call_ins: 0, hh_quoted: 0, premium_quoted: 0, policies_sold: 0, premium_sold: 0,
-        hh_sold: 0, life_policies: 0, life_premium: 0, talk_w: 0, convos: 0, tasks_due: 0, tasks_done: 0, rp_sum: 0, rp_n: 0, rp_scored_sum: 0, rp_scored_n: 0,
+        hh_sold: 0, life_policies: 0, talk_w: 0, convos: 0, tasks_due: 0, tasks_done: 0, rp_sum: 0, rp_n: 0, rp_scored_sum: 0, rp_scored_n: 0,
         coach_calls: 0, coach_w: 0, util_total: 0, util_prod: 0, coached_calls: 0, quote_came_up: 0, quote_sent_instead: 0, assumed_quote: 0, asked_for_quote: 0 });
       const worked = !!(p.total_dials || p.dials || p.live || p.hh || p.pol || p.ps || (p.coach || {}).roleplay);
       if (worked) r.days_worked++;
       r.dials += p.dials || 0; r.live_contacts += p.live || 0; r.call_ins += p.inbound || 0; r.hh_quoted += p.hh || 0; r.premium_quoted += p.pq || 0;
-      r.policies_sold += p.pol || 0; r.premium_sold += p.ps || 0; r.life_policies += p.life || 0; r.life_premium += p.life_ps || 0;
+      r.policies_sold += p.pol || 0; r.premium_sold += p.ps || 0; r.life_policies += p.life || 0;
       r.hh_sold += hhSold((doc.rows || {}).sold_leads, p.name);
       const convos = (p.live || 0) + (p.inbound || 0);
       r.talk_w += (p.talk || 0) * convos; r.convos += convos; team.talk_w += (p.talk || 0) * convos; team.convos += convos;
@@ -389,7 +389,7 @@ async function toolSalesRange(env, inp) {
   const fin = (r) => ({
     name: r.name, days_worked: r.days_worked, dials: r.dials, live_contacts: r.live_contacts, contact_rate_pct: pct(r.live_contacts, r.dials), call_ins: r.call_ins,
     avg_talk_seconds: r.convos ? Math.round(r.talk_w / r.convos) : 0, hh_quoted: r.hh_quoted, premium_quoted: r.premium_quoted,
-    policies_sold: r.policies_sold, premium_sold: r.premium_sold, hh_sold: r.hh_sold, life_policies: r.life_policies, life_premium: r.life_premium,
+    policies_sold: r.policies_sold, premium_sold: r.premium_sold, hh_sold: r.hh_sold, life_policies: r.life_policies,
     closing_ratio_hh_pct: pct(r.hh_sold, r.hh_quoted), closing_ratio_premium_pct: pct(r.premium_sold, r.premium_quoted),
     per_day_worked: r.days_worked ? { dials: Math.round(r.dials / r.days_worked), hh_quoted: Math.round((10 * r.hh_quoted) / r.days_worked) / 10, premium_quoted: Math.round(r.premium_quoted / r.days_worked), premium_sold: Math.round(r.premium_sold / r.days_worked) } : null,
     tasks_due: r.tasks_due, tasks_done: r.tasks_done, task_completion_pct: pct(r.tasks_done, r.tasks_due),

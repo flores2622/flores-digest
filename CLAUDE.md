@@ -358,7 +358,10 @@ Everything caches under `data/`, so a re-run resumes rather than restarting.
   policy read). Policy records carry no customer, so that tie is the only
   one; it changed no other September lead. So life is never in Policies, Premium Sold, HH
   Sold, Household Completion, the leaderboard or the closing ratio; the
-  Digest's **Life Sold** tile shows it (its list is `rows.life`), the email
+  Digest's **Life Sold** tile shows it (its list is `rows.life`) **as a count
+  of policies, never a premium figure** (Frank, 2026-10-02: "we dont track
+  that at all" -- the email's card, the guide and Coeus's readings the
+  same; `life_premium` / `life_ps` stay in the documents, unshown), the email
   adds a Life Sold card only on a day with one, and the Worker keeps a live
   life sale apart the same way (`live_basis.life`). The Sales sheet still
   lists it. BOB life policies stay not-a-sale: no producer had a counted
@@ -823,7 +826,12 @@ every 5 minutes (`live/<day>-customers.json`); `mergeSoldLeads` keeps the
 checkpoint's customer rows and drops one once a lead for that household is
 marked sold. The Sales sheet names an unnamed sale from it too, and the
 nightly names an auto row the live refresh added without one. **Premium Sold is still the policies' own premium** and the
-policy count still shows beside it (policies per HH). A lead can be marked
+policy count still shows beside it (policies per HH). **A household sold
+is a green day** (Frank, 2026-10-02: "the same way that any premium sold
+is green for tiering, it should apply to HH as well"): the HH half of the
+tile and the leaderboard's HH Sold cells are green whenever the count is
+above zero, else the policy tier (the streak; the team's count), on the
+board only -- the documents' tiers are unchanged. A lead can be marked
 sold a few days off its policy's soldDate, so a day can show a household
 with no policy or the reverse. A day with no sold-lead rows keeps the old
 Policies display. The emailed digest is unchanged.
