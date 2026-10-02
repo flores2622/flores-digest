@@ -17,7 +17,7 @@
   const ROT_HUE = { personal: "var(--s3)", life: "var(--s5)", mexico: "var(--s4)" };
   const ROT_SUB = { personal: "Auto, home, renters and the rest of personal lines",
     life: "Life insurance", mexico: "Policies for Mexico" };
-  const KIND = { in: "Given", skip: "Out / busy", out: "Out of turn" };
+  const KIND = { in: "Given", skip: "Out", busy: "Covered", out: "Out of turn" };
   let ROT = null;                 // the last /api/rotation answer
   let rotFolio = "";              // a FOLIO_CLOSE_DATES entry; "" = the current folio
   let rotEdit = "";               // which rotation's order is being changed
@@ -51,15 +51,29 @@
     return { end, start: folioStartFor(end) || "0000-00-00" };
   }
 
+  // The order from whoever is up: one full lap, with anyone who covered
+  // for a busy person marked -- the rotation passes over them once.
   function upcoming(list) {
-    const o = list.order, i = Math.max(0, o.indexOf(list.next));
-    return o.map((_, k) => o[(i + k) % o.length]);
+    const o = list.order, i = Math.max(0, o.indexOf(list.next)), owed = list.owed || [];
+    return o.map((_, k) => { const p = o[(i + k) % o.length]; return { p, pass: k > 0 && owed.includes(p) }; });
+  }
+  // Who takes it when whoever is up is busy (the Worker's coverFor).
+  function coverFor(list) {
+    const o = list.order, owed = list.owed || [];
+    let n = list.next;
+    for (let k = 0; k < o.length; k++) {
+      n = o[(o.indexOf(n) + 1) % o.length];
+      if (n === list.next) return "";
+      if (!owed.includes(n)) return n;
+    }
+    return "";
   }
 
   function cardHtml(key) {
     const list = ROT.lists[key];
     const msg = rotMsg[key] || {};
-    const up = upcoming(list);
+    const up = upcoming(list), cover = coverFor(list);
+    const afterUp = (up.slice(1).find(x => !x.pass) || {}).p || "";
     if (rotEdit === key) return editHtml(key);
     const others = list.order.filter(p => p !== list.next);
     const how = (ROT.how || []).map(h => `<option value="${cesc(h)}">${cesc(h[0].toUpperCase() + h.slice(1))}</option>`).join("");
@@ -67,14 +81,15 @@
       <div class="rohead"><h3>${cesc(list.label)}</h3>${ROT.can_edit ? `<button type="button" class="ghost rosmall" data-roedit="${key}">Change order</button>` : ""}</div>
       <p class="rosub">${cesc(ROT_SUB[key] || "")}</p>
       <div class="roup"><span>Up next</span>${list.next ? `<strong style="--pc:${DOT[list.next] || "var(--text-primary)"}">${cesc(first(list.next))}</strong>` : "<strong>nobody</strong>"}</div>
-      <ol class="roorder" aria-label="The order from here">${up.map((p, i) => `<li${i === 0 ? ' class="now"' : ""}>${badge(p)}</li>`).join("")}</ol>
+      <ol class="roorder" aria-label="The order from here">${up.map((x, i) => `<li class="${i === 0 ? "now" : ""}${x.pass ? " ropass" : ""}"${x.pass ? ` title="${cesc(first(x.p))} covered for someone busy, so the rotation passes over them once"` : ""}>${badge(x.p)}${x.pass ? "<small>passes</small>" : ""}</li>`).join("")}</ol>
       <div class="roform">
         <input type="text" class="roclient" placeholder="Client name" maxlength="120" aria-label="Client name">
         <div class="rorow"><select class="rohow" aria-label="Call in or walk in">${how}</select>
           <input type="text" class="ronotes" placeholder="Note (optional)" maxlength="300" aria-label="Note"></div>
         <div class="rorow">
           <button type="button" class="btn ropri" data-rogive="${key}"${rotBusy || !list.next ? " disabled" : ""}>Give to ${cesc(first(list.next))}</button>
-          <button type="button" class="btn" data-roskip="${key}"${rotBusy || !list.next ? " disabled" : ""} title="${cesc(first(list.next))} is out or busy: their turn passes to ${cesc(first(up[1] || ""))}">${cesc(first(list.next))} is out</button>
+          <button type="button" class="btn" data-robusy="${key}" data-cover="${cesc(cover)}"${rotBusy || !cover ? " disabled" : ""} title="${cesc(first(list.next))} is busy: this client goes to ${cesc(first(cover))}, and ${cesc(first(list.next))} stays up for the next one">${cesc(first(list.next))} is busy → ${cesc(first(cover))}</button>
+          <button type="button" class="btn" data-roskip="${key}"${rotBusy || !list.next ? " disabled" : ""} title="${cesc(first(list.next))} is out: their turn passes to ${cesc(first(afterUp))} and nobody gets a client">${cesc(first(list.next))} is out</button>
         </div>
         ${others.length ? `<div class="rorow roout"><span>Client asked for</span><select class="roasked" aria-label="Client asked for"><option value="" selected>Pick who…</option>${others.map(p => `<option value="${cesc(p)}">${cesc(first(p))}</option>`).join("")}</select>
           <button type="button" class="btn" data-roout="${key}"${rotBusy ? " disabled" : ""} title="Give it to them without using the rotation: ${cesc(first(list.next))} stays up">Give out of turn</button></div>` : ""}
@@ -114,7 +129,8 @@
       const cells = people.map(p => {
         const got = mine.filter(e => e.producer === p && e.kind !== "skip").length;
         const out = mine.filter(e => e.producer === p && e.kind === "skip").length;
-        return `<span class="rotal">${badge(p)} <b>${got}</b>${out ? `<small>${out} out</small>` : ""}</span>`;
+        const busy = mine.filter(e => e.busy === p).length;
+        return `<span class="rotal">${badge(p)} <b>${got}</b>${busy ? `<small>${busy} busy</small>` : ""}${out ? `<small>${out} out</small>` : ""}</span>`;
       }).join("");
       return `<div class="rotrow"><span class="rotlbl" style="--rh:${ROT_HUE[key]}">${cesc(list.label)}</span>${cells}</div>`;
     }).join("");
@@ -134,7 +150,7 @@
     const rows = entries.map(e => `<tr>
       <td>${cesc(fmtShortDate(e.date))}</td>
       <td class="t"><span class="rotlbl" style="--rh:${ROT_HUE[e.list] || "var(--border-strong)"}">${cesc((ROT.lists[e.list] || {}).label || e.list)}</span></td>
-      <td class="t">${badge(e.producer)}</td>
+      <td class="t">${badge(e.producer)}${e.kind === "busy" && e.busy ? ` <small class="romute">for ${cesc(first(e.busy))}</small>` : ""}</td>
       <td class="t">${e.kind === "skip" ? '<span class="romute">nobody — turn passed</span>' : cesc(e.client)}</td>
       <td class="t">${cesc(e.how || "")}</td>
       <td class="t"><span class="rokind k-${cesc(e.kind)}">${cesc(KIND[e.kind] || e.kind)}</span></td>
@@ -193,6 +209,12 @@
       const key = b.dataset.roskip, list = ROT.lists[key], f = vals(b);
       const ok = await post({ op: "log", list: key, kind: "skip", producer: list.next, expect: list.next, notes: f.notes, date: f.date }, key);
       if (ok) { rotMsg[key] = { ok: `${first(ok.entry.producer)}'s turn passed. ${first(ROT.lists[key].next)} is up next.` }; repaint(); }
+    });
+    v.querySelectorAll("[data-robusy]").forEach(b => b.onclick = async () => {
+      const key = b.dataset.robusy, list = ROT.lists[key], f = vals(b), cover = b.dataset.cover;
+      if (!f.client) { rotMsg[key] = { err: "Type the client's name first." }; repaint(); return; }
+      const ok = await post({ op: "log", list: key, kind: "busy", producer: cover, expect: list.next, ...f }, key);
+      if (ok) { rotMsg[key] = { ok: `${f.client} went to ${first(cover)} while ${first(ok.entry.busy)} is busy. ${first(ROT.lists[key].next)} is still up next.` }; repaint(); }
     });
     v.querySelectorAll("[data-roout]").forEach(b => b.onclick = async () => {
       const key = b.dataset.roout, f = vals(b), who = card(b).querySelector(".roasked").value;
@@ -301,7 +323,8 @@
 .rotal { display: inline-flex; align-items: center; gap: 5px; } .rotal small { color: var(--text-muted); }
 .rotab td, .rotab th { vertical-align: middle; text-align: left; }
 .romute { color: var(--text-muted); }
-.rokind { font-size: 12px; font-weight: 600; } .rokind.k-skip { color: var(--warn); } .rokind.k-out { color: var(--text-secondary); }
+.rokind { font-size: 12px; font-weight: 600; } .rokind.k-skip { color: var(--warn); } .rokind.k-out { color: var(--text-secondary); } .rokind.k-busy { color: var(--accent); }
+.roorder li.ropass { opacity: .45; } .roorder li.ropass small { margin-left: 4px; font-size: 11px; color: var(--text-muted); }
 `;
   document.head.appendChild(css);
 })();
