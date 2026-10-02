@@ -1549,9 +1549,12 @@ $2,500 in premium"): the Digest's day reads as Apollo's group chat
   on under them -- **no: the leaderboard is its own card with the scene
   INSIDE it** (Frank, 2026-10-02: "in the background of the leaderboard
   itself, not a background behind the 2 cards"): `teamLeaderboardHtml`'s
-  section is `skyline lbsky`, the title on the sky, the podium standing on
-  the desert (dune bands with small saguaros and rocks run down the scene),
-  the table on a near-opaque sheet. The tiles' card is unchanged.
+  section is `skyline lbsky` with ITS OWN picture (Frank, 2026-10-02:
+  "the top should be the skyline and the bottom should be the landscape"):
+  a ground-level desert -- far sand in haze at the top, bands of floor
+  coming forward with saguaros growing larger toward the bottom, prickly
+  pear, rocks and a dry wash -- the podium standing on it and the table on
+  a near-opaque sheet. The tiles' card keeps the skyline (sky, sun, mesas).
 - **Every edition downloads** (Frank, 2026-10-02: "make the editions
   downloadable"): **Download PDF** (the edition alone in a new window, the
   print dialog opened once its fonts load -- Save as PDF) and **Save page**
