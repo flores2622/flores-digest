@@ -1345,6 +1345,17 @@ tr.found td { background: color-mix(in oklab, var(--accent) 18%, transparent) !i
 .coeus .clist .crow .cdel { background: none; border: 0; color: var(--text-muted); cursor: pointer; font-size: 15px; padding: 2px 6px; border-radius: 6px; }
 .coeus .clist .crow .cdel:hover { color: var(--bad); background: var(--badbg); }
 .coeus .clist .cnone { color: var(--text-muted); font-size: 13.5px; }
+/* Usage (Frank, 2026-10-02): what Coeus has cost, per person, for the
+   usage viewers only. */
+.coeus .cusage table { border-collapse: collapse; width: 100%; font-size: 13px; margin: 8px 0 12px; }
+.coeus .cusage th, .coeus .cusage td { border: 1px solid var(--border); padding: 5px 7px; text-align: right; }
+.coeus .cusage th:first-child, .coeus .cusage td:first-child { text-align: left; }
+.coeus .cusage th { background: var(--chip); font-weight: 700; font-size: 11.5px; text-transform: uppercase; letter-spacing: .04em; }
+.coeus .cusage tr.tot td { font-weight: 700; border-top: 2px solid var(--border-strong); }
+.coeus .cusage .cnote { color: var(--text-muted); font-size: 12.5px; line-height: 1.45; }
+.coeus .cusage .crng { display: flex; gap: 6px; margin: 6px 0 4px; }
+.coeus .cusage .crng button { background: none; border: 1px solid var(--border-strong); color: var(--text-secondary); border-radius: 999px; padding: 4px 10px; font: 500 12.5px var(--body); cursor: pointer; }
+.coeus .cusage .crng button[aria-pressed="true"] { background: var(--chip); color: var(--text-primary); }
 .coeus .cmsgs { flex: 1; overflow-y: auto; overflow-x: hidden; padding: 14px 16px; display: flex; flex-direction: column; gap: 10px; scroll-behavior: smooth; }
 .coeus .cbub { max-width: 92%; min-width: 0; padding: 9px 13px; border-radius: 14px; font-size: 14px; line-height: 1.5; border: 1.5px solid var(--border); background: var(--card2); align-self: flex-start; border-bottom-left-radius: 4px; overflow-wrap: anywhere; }
 .coeus .cbub.me { align-self: flex-end; background: var(--chip); border-bottom-left-radius: 14px; border-bottom-right-radius: 4px; white-space: pre-wrap; }
@@ -1424,7 +1435,7 @@ tr.found td { background: color-mix(in oklab, var(--accent) 18%, transparent) !i
 <button type="button" class="coeusfab" id="coeusfab" aria-haspopup="dialog" aria-expanded="false" aria-label="Ask Coeus" title="Ask Coeus (Ctrl /)"><svg class="owl" viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M13 9 L17 14 L31 14 L35 9 L37 24 L33 38 L24 42 L15 38 L11 24 Z"/><path d="M17 14 L13 24 M31 14 L35 24 M17 14 L24 19 L31 14 M11 24 L24 27 L37 24" stroke-width="1.2" opacity=".7"/><circle cx="13" cy="9" r="1.6" fill="currentColor" stroke="none"/><circle cx="17" cy="14" r="1.6" fill="currentColor" stroke="none"/><circle cx="31" cy="14" r="1.6" fill="currentColor" stroke="none"/><circle cx="35" cy="9" r="1.6" fill="currentColor" stroke="none"/><circle cx="37" cy="24" r="1.6" fill="currentColor" stroke="none"/><circle cx="33" cy="38" r="1.6" fill="currentColor" stroke="none"/><circle cx="24" cy="42" r="1.6" fill="currentColor" stroke="none"/><circle cx="15" cy="38" r="1.6" fill="currentColor" stroke="none"/><circle cx="11" cy="24" r="1.6" fill="currentColor" stroke="none"/><circle cx="24" cy="19" r="1.6" fill="currentColor" stroke="none"/><circle cx="24" cy="27" r="1.6" fill="currentColor" stroke="none"/><g class="eyes"><circle cx="18" cy="23" r="3.6" fill="currentColor" stroke="none"/><circle cx="30" cy="23" r="3.6" fill="currentColor" stroke="none"/><circle cx="18" cy="23" r="1.3" fill="var(--accent)" stroke="none"/><circle cx="30" cy="23" r="1.3" fill="var(--accent)" stroke="none"/></g><path d="M24 27 L24 31" stroke-width="1.8"/></svg></button>
 <aside class="coeus" id="coeus" role="dialog" aria-label="Coeus" aria-hidden="true">
   <div class="chead"><div class="cmark" aria-hidden="true"><svg class="owl" viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M13 9 L17 14 L31 14 L35 9 L37 24 L33 38 L24 42 L15 38 L11 24 Z"/><path d="M17 14 L13 24 M31 14 L35 24 M17 14 L24 19 L31 14 M11 24 L24 27 L37 24" stroke-width="1.2" opacity=".7"/><circle cx="13" cy="9" r="1.6" fill="currentColor" stroke="none"/><circle cx="17" cy="14" r="1.6" fill="currentColor" stroke="none"/><circle cx="31" cy="14" r="1.6" fill="currentColor" stroke="none"/><circle cx="35" cy="9" r="1.6" fill="currentColor" stroke="none"/><circle cx="37" cy="24" r="1.6" fill="currentColor" stroke="none"/><circle cx="33" cy="38" r="1.6" fill="currentColor" stroke="none"/><circle cx="24" cy="42" r="1.6" fill="currentColor" stroke="none"/><circle cx="15" cy="38" r="1.6" fill="currentColor" stroke="none"/><circle cx="11" cy="24" r="1.6" fill="currentColor" stroke="none"/><circle cx="24" cy="19" r="1.6" fill="currentColor" stroke="none"/><circle cx="24" cy="27" r="1.6" fill="currentColor" stroke="none"/><g class="eyes"><circle cx="18" cy="23" r="3.6" fill="currentColor" stroke="none"/><circle cx="30" cy="23" r="3.6" fill="currentColor" stroke="none"/><circle cx="18" cy="23" r="1.3" fill="var(--accent)" stroke="none"/><circle cx="30" cy="23" r="1.3" fill="var(--accent)" stroke="none"/></g><path d="M24 27 L24 31" stroke-width="1.8"/></svg></div><div class="ctitle"><h3>Coeus</h3><small>Numbers, coaching, and how the board works</small></div>
-    <div class="cx"><button type="button" id="coeusHist" title="Your past chats" aria-pressed="false">Past chats</button><button type="button" id="coeusClear" title="Start a new conversation">New chat</button><button type="button" id="coeusClose" aria-label="Close">✕</button></div></div>
+    <div class="cx"><button type="button" id="coeusUsage" title="What Coeus has cost, per person" aria-pressed="false" hidden>Usage</button><button type="button" id="coeusHist" title="Your past chats" aria-pressed="false">Past chats</button><button type="button" id="coeusClear" title="Start a new conversation">New chat</button><button type="button" id="coeusClose" aria-label="Close">✕</button></div></div>
   <div class="cmsgs" id="coeusMsgs" aria-live="polite"></div>
   <div class="cchips" id="coeusChips"></div>
   <div class="cstatus" id="coeusStatus"></div>
@@ -9233,7 +9244,7 @@ paintCenterBar();
    this day and this person. The Worker streams back status lines while it
    reads the documents and the answer as it is written. The conversation
    lives in this browser tab (sessionStorage) until New chat. */
-const COEUS = { id: "", msgs: [], busy: false, open: false, mode: "chat", list: null };
+const COEUS = { id: "", msgs: [], busy: false, open: false, mode: "chat", list: null, usage: null, usageDays: 30, usageOk: null };
 try { const st = JSON.parse(sessionStorage.getItem("coeus-chat") || "{}"); if (Array.isArray(st.msgs)) { COEUS.msgs = st.msgs; COEUS.id = st.id || ""; } } catch (_) {}
 const coeusNewId = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
 function coeusSave() { try { sessionStorage.setItem("coeus-chat", JSON.stringify({ id: COEUS.id, msgs: COEUS.msgs.slice(-60) })); } catch (_) {} }
@@ -9270,6 +9281,30 @@ function coeusWhen(iso) {
   const t = d.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", timeZone: "America/Phoenix" });
   if (az(d) === az(now)) return `Today · ${t}`;
   return d.toLocaleDateString("en-US", { month: "short", day: "numeric", timeZone: "America/Phoenix" }) + ` · ${t}`;
+}
+/* What Coeus has cost, per person (Frank, 2026-10-02): the Worker says who
+   may see it (a 403 hides the button). One key pays for everyone; this is
+   who used it. */
+async function coeusLoadUsage() {
+  const to = isoDate(azTodayDate()), from = isoDate(new Date(azTodayDate().getTime() - (COEUS.usageDays - 1) * 86400000));
+  try {
+    const r = await fetch(`/api/coeus/usage?from=${from}&to=${to}`, { cache: "no-store" });
+    COEUS.usageOk = r.ok; COEUS.usage = r.ok ? await r.json() : null;
+  } catch (_) { COEUS.usageOk = false; COEUS.usage = null; }
+  const b = $("#coeusUsage"); if (b) b.hidden = !COEUS.usageOk;
+}
+function coeusUsageHtml() {
+  const u = COEUS.usage;
+  const rng = `<div class="crng">${[7, 30, 90].map(n => `<button type="button" data-udays="${n}" aria-pressed="${n === COEUS.usageDays}">${n} days</button>`).join("")}</div>`;
+  if (!u) return `<div class="clist cusage"><h4>Coeus usage</h4>${rng}<div class="cnone">Loading…</div></div>`;
+  const usd = x => "$" + (x || 0).toFixed(2);
+  const k = n => (n || 0) >= 1e6 ? (n / 1e6).toFixed(1) + "M" : (n || 0) >= 1e3 ? Math.round(n / 1e3) + "k" : String(n || 0);
+  const rows = u.people.map(p => `<tr><td>${cesc(p.name || p.email)}</td><td>${p.questions}</td><td>${k(p.input + p.cache_write + p.cache_read)}</td><td>${k(p.output)}</td><td>${usd(p.cost)}</td></tr>`).join("");
+  return `<div class="clist cusage"><h4>Coeus usage</h4>${rng}
+    <table><thead><tr><th>Who</th><th>Asked</th><th>Read</th><th>Wrote</th><th>Est. cost</th></tr></thead><tbody>${rows || `<tr><td colspan="5" style="text-align:left;color:var(--text-muted)">No questions in this range.</td></tr>`}
+    <tr class="tot"><td>Everyone</td><td>${u.total.questions}</td><td></td><td></td><td>${usd(u.total.cost)}</td></tr></tbody></table>
+    <div class="cnote">${cesc(u.from)} to ${cesc(u.to)}. One API key pays for every question; this is who asked. Read and Wrote are tokens (the standing instructions are cached, so most reads are cheap). Cost is estimated at the model's list prices, not the bill.</div>
+  </div>`;
 }
 function coeusListHtml() {
   if (COEUS.list === null) return '<div class="clist"><h4>Past chats</h4><div class="cnone">Loading…</div></div>';
@@ -9348,8 +9383,9 @@ function coeusChips() {
 function coeusRender() {
   const box = $("#coeusMsgs"); if (!box) return;
   const hist = $("#coeusHist"); if (hist) hist.setAttribute("aria-pressed", String(COEUS.mode === "list"));
-  if (COEUS.mode === "list") {
-    box.innerHTML = coeusListHtml();
+  const ub = $("#coeusUsage"); if (ub) ub.setAttribute("aria-pressed", String(COEUS.mode === "usage"));
+  if (COEUS.mode === "list" || COEUS.mode === "usage") {
+    box.innerHTML = COEUS.mode === "list" ? coeusListHtml() : coeusUsageHtml();
     const chips = $("#coeusChips"); if (chips) chips.innerHTML = "";
     box.scrollTop = 0;
     return;
@@ -9371,7 +9407,7 @@ function coeusOpen(open) {
   COEUS.open = open !== false;
   const d = $("#coeus"), b = $("#coeusfab");
   d.classList.toggle("open", COEUS.open); d.setAttribute("aria-hidden", String(!COEUS.open)); b.setAttribute("aria-expanded", String(COEUS.open));
-  if (COEUS.open) { coeusRender(); setTimeout(() => { const t = $("#coeusIn"); if (t) t.focus(); }, 60); }
+  if (COEUS.open) { coeusRender(); setTimeout(() => { const t = $("#coeusIn"); if (t) t.focus(); }, 60); if (COEUS.usageOk === null) coeusLoadUsage(); }
 }
 async function coeusSend(text) {
   text = String(text || "").trim();
@@ -9424,7 +9460,13 @@ async function coeusSend(text) {
     COEUS.mode = "list"; coeusRender();
     await coeusLoadList(); if (COEUS.mode === "list") coeusRender();
   };
+  $("#coeusUsage").onclick = async () => {
+    if (COEUS.mode === "usage") { COEUS.mode = "chat"; coeusRender(); return; }
+    COEUS.mode = "usage"; coeusRender();
+    await coeusLoadUsage(); if (COEUS.mode === "usage") coeusRender();
+  };
   $("#coeusMsgs").addEventListener("click", e => {
+    const ud = e.target.closest("[data-udays]"); if (ud) { COEUS.usageDays = +ud.dataset.udays; COEUS.usage = null; coeusRender(); coeusLoadUsage().then(() => { if (COEUS.mode === "usage") coeusRender(); }); return; }
     const o = e.target.closest("[data-open]"); if (o) { coeusOpenChat(o.dataset.open); return; }
     const d = e.target.closest("[data-del]"); if (d) coeusDeleteChat(d.dataset.del);
   });

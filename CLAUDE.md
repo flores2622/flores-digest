@@ -1720,6 +1720,18 @@ over `text/event-stream` with status lines while it reads.
 - Same model as Role Play (`claude-sonnet-5`, thinking off), up to six tool
   rounds then a forced answer. It needs the Worker's `ANTHROPIC_API_KEY`;
   without it the drawer says Coeus is not configured.
+- **One key pays for everyone; usage is tracked per person** (Frank,
+  2026-10-02: "whos usage does the chat bot use?" -- a Claude seat is a
+  separate product and never pays for Coeus or receives its chats). Every
+  answer's tokens (input, cache write, cache read, output, from the
+  stream's `message_start` / `message_delta`) are added to
+  `coeus-usage/<day>.json` under the asker (`recordUsage`), with an
+  estimated cost at the model's list prices (`PRICE`; update it if the
+  model or prices change). `GET /api/coeus/usage?from=&to=` adds it up per
+  person and per day for `COEUS_USAGE_VIEWERS` (wrangler.jsonc, Frank);
+  the drawer's **Usage** button shows it (hidden on a 403), and the
+  `coeus_usage` tool lets those viewers ask Coeus itself. The figure is an
+  estimate, not the bill.
 - **When the board changes, Coeus changes with it** through `blueprints.js`
   -- another reason to keep the guides current in the same change. A new
   figure Coeus should read needs its compact reading added in `coeus.js`.
