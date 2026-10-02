@@ -120,7 +120,7 @@ Everything caches under `data/`, so a re-run resumes rather than restarting.
   phone**: asking for them and ending with "I'll review it and call you
   back" is getting off the phone, "producer" (Coral / Randell Otis 09-25:
   "she should review it with him on the phone").
-  Coaching Center > Wins and Losses counts it per producer and lists the
+  Apollo's Academy > Wins and Losses counts it per producer and lists the
   calls. **Every assumption stat is there too** (Frank, 2026-09-28): the quote,
   the sale, and a follow-up's up front / objections / end, per producer and
   team, off each card's own verdicts (n/a counts neither way), each with its
@@ -284,7 +284,7 @@ Everything caches under `data/`, so a re-run resumes rather than restarting.
   began as an email -- Frank, 2026-09-30); narrow screens stack.
 - **Every graded Role Play session is kept and can be read back** (Frank,
   2026-09-29: "a full history of role play sessions ... producers see their
-  own"). Learning Center > **Session History**: a date range (7 / 30 / 90
+  own"). Apollo's Academy > **Session History**: a date range (7 / 30 / 90
   days, all time, custom), a summary per producer (sessions, resolved,
   checklist met, the checklist items missed most, the objections drilled),
   and every session, which opens in place to Apollo's grade and the whole
@@ -762,7 +762,19 @@ page (2026-09-30).
 
 ## Apollo's Road Map (ARM) and the tour
 
-**Learning Center > Apollo's Road Map is one tab with a dropdown** (Frank,
+**Apollo's Academy is the Coaching and Learning Centers in one** (Frank,
+2026-10-02: "I like Apollos academy, do it"): one menu entry
+(`CENTERS.academy`) whose header tabs are the coaching page's three views
+(Cards, Objections, Wins and Losses -- still one `coaching` view switched by
+`coachSubTab`) followed by Role Play, Session History, Training and Apollo's
+Road Map (`centerItems` / `openItem`). **Every Center in the menu is a
+dropdown of its pages** (Frank, same day: "make all the sections
+dropdowns"): the Center you are in opens itself, clicking its name again or
+the arrow on any Center opens or closes it without leaving the page, and
+what is left open is remembered per browser (`board-nav-open`); a one-page
+Center has no arrow, and phones keep the one-row menu with no dropdowns.
+
+**Apollo's Academy > Apollo's Road Map is one tab with a dropdown** (Frank,
 2026-09-30: "if Im out for a week and want amanda to coach, she should know
 what everything means, how the model coaches, where everything is ... in
 regular language, not AI prompt language"; "Apollos road map should be the
@@ -1515,7 +1527,7 @@ turned survives a repaint (`needsFlipped`).
   role plays as themselves**: the picker and "change" are gone for them
   and `roleplayGrade` refuses another name; Frank and the ops viewers
   (`rpScope.all`) still pick who, and the Beta tester.
-- **The Coaching and Learning Centers and both Road Maps carry colour**
+- **Apollo's Academy (then the Coaching and Learning Centers) and both Road Maps carry colour**
   (Frank, 2026-10-01: "more color and design"): a coaching section wears
   its producer's badge colour (a card's coloured left edge came and went -- Frank, 2026-10-02: "remove the left tab color, the badge is enough"), Quick
   coaching is a tinted panel; objection bars are red with the won share
