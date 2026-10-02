@@ -60,6 +60,7 @@ import { commission } from "./commission.js";
 import { coeusChat, coeusChats, coeusUsage } from "./coeus.js";
 import { leadsIndex } from "./lead_index.js";
 import { rotationGet, rotationPost } from "./rotation.js";
+import { claimsForViewer } from "./claims_view.js";
 
 export default {
   // Live figures between checkpoints (site/live.js): the cron in
@@ -100,7 +101,7 @@ export default {
 
       if (parts[1] === "service") {
         if (parts.length === 2) return listService(env);
-        if (parts.length === 3) return getService(env, parts[2]);
+        if (parts.length === 3) return getService(env, parts[2], rpScope(request, env).all);
       }
 
       if (parts[1] === "commission" && parts.length === 3) {
@@ -328,8 +329,9 @@ async function listService(env) {
   return json({ days });
 }
 
-/** GET /api/service/:day -> the Service tab's document for that day. */
-async function getService(env, day) {
+/** GET /api/service/:day -> the Service tab's document for that day. The
+ * not-licensed claim flags go to the ops team only (claims_view.js). */
+async function getService(env, day, ops) {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(day)) {
     return json({ error: "bad day" }, 400);
   }
@@ -337,6 +339,7 @@ async function getService(env, day) {
   if (obj === null) {
     return json({ error: "no service report for this day", day }, 404);
   }
+  if (!ops) return json(claimsForViewer(await obj.json(), false));
   return new Response(obj.body, {
     headers: {
       "content-type": "application/json; charset=utf-8",
