@@ -1297,9 +1297,18 @@ Crystal (hybrid); credit always goes to whoever COMPLETED the SR or task.
   completed SRs), drawn as the Commercial Center's Claims section. AgencyZoom lets anyone
   create one, so a claim created from `RULE_FROM` (2026-10-02) on whose
   `createdBy` is not licensed, or whose `csr` is not, is a flag. Each service
-  day carries `claims` (opened / completed / open / flags, rows); the
-  Service Center's **Claims** section shows them, every tile opening its
-  list. If a rep is licensed or leaves, change `LICENSED` and Athena's Road
+  day carries `claims` (opened / completed / open / flags, rows).
+  **The Claims Center is its own page** (Frank, 2026-10-02: "finish the
+  claims center"; `CENTERS.claims`, `paintClaims`, under Athena · Service in
+  the menu; it left the Service Digest), from the service days and their date
+  filter: a hero with a card per person who touched a claim (opened /
+  closed / open / median to close; a red "Not licensed" card for anyone
+  else; a click filters the page, `claimPerson`) and Open / Overdue /
+  Opened / Completed / Not Licensed; Close Time by Type; Open Claims by age
+  (0-7, 8-30, 31-90, 90+ days) and stage. Every tile and row opens its
+  claims (`claim:<list>[:<person>]`, `claimsDrill`). Its tour step, vista
+  ("after the storm"), Coeus prompts and Athena's Road Map section go with
+  it. Commercial / Work Comp claims stay on the Commercial Center. If a rep is licensed or leaves, change `LICENSED` and Athena's Road
   Map together.
 - **Documents hold rows, never medians**, so the board can add any range up.
   **Every card opens the rows it counts** (Frank, 2026-09-25), so the rows

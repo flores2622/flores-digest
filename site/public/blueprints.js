@@ -79,6 +79,7 @@
           ["Apollo's Academy > Training", "Flashcards, quizzes and matching games on objections, information gathering and technique."],
           ["Apollo's Academy > Apollo's Road Map", "This guide (Manager / Coaching) and the three producer guides, picked from the dropdown. Athena's Road Map is in the Service Center."],
           ["Service Center", "Athena's side: the Service Digest and the Renewals tab."],
+          ["Claims Center", "Every claim: what's open, who opened and worked it, close time by type, and any claim opened by someone who isn't licensed."],
         ] } },
         "Anyone can press **Take the tour** at the bottom of the left bar for a walk through the board.",
       ] },
@@ -361,7 +362,7 @@
           ["Opportunities", "Sales opportunities in the SRs: worked (quoted, a lead set, or passed to a producer) or not noted."],
           ["Utilization", "Insightful's productive time over tracked time."],
         ] },
-        "Under the cards: Texts & Emails, Note Standard, Completion Time, Claims, and each pipeline's outcomes.",
+        "Under the cards: Texts & Emails, Note Standard, Completion Time, and each pipeline's outcomes. Claims have their own page, the Claims Center.",
         "**Card, bank account and social security numbers are removed** from texts and call transcripts before they reach the board. A call where a number was said shows as text only, never the recording.",
       ] },
 
@@ -373,9 +374,28 @@
           ["Service Pipeline", "Changes, endorsements and basic service. Outcome read from your note: change made, policy cancelled, other service, not done, or unable to contact."],
           ["Late Payments", "The only pipeline worked stage by stage. Outcome: paid, cancelled for non-pay, client cancelled, unable to contact, or other. \"Saved\" is paid over paid or cancelled."],
           ["Contingencies", "Anything pending on a policy (AgencyZoom calls it Missing Documents). Outcome: cleared, policy cancelled, closed without clearing, or unable to contact. It also shows whether the selling producer or the service team closed it."],
-          ["Claim", "Every claim, opened in AgencyZoom's Claim pipeline. **Only a licensed rep opens or works one: Amanda or Crystal, or Frank, Francisco or Veronica.** Pick the **type of claim as the SR's category** (Claim: Auto, Claim: Home, Claim: Life, Claim: Specialty, Claim: Commercial, Work Comp Claim); one left on any other category shows as \"Not set\". **Commercial and Work Comp claims are Frank's**: they show on the Commercial Center, not here. The Service Center's Claims section shows the open claims, the ones opened and completed, how long each type took to close (from the day it was opened to the day it was completed), and any claim opened by, or assigned to, someone who isn't licensed, from October 2, 2026 on. Move one of those to Amanda or Crystal."],
+          ["Claim", "Every claim. It has its own page, the **Claims Center**, below."],
         ] },
         "Service Pipeline, Late Payments and Contingencies SRs are all closed on **Completed**, so Athena reads the outcome from your note. A note that says what happened gets the right outcome; no note reads as \"No note\".",
+      ] },
+
+    { h: "The Claims Center",
+      body: [
+        "Every claim is an SR in AgencyZoom's **Claim** pipeline, and it has its own page in the menu: the **Claims Center**, under the Service Center.",
+        { list: [
+          "**Only a licensed rep opens or works a claim:** Amanda or Crystal, or Frank, Francisco or Veronica. **Debbie doesn't open claims**: a client calling with a claim goes to Amanda or Crystal.",
+          "**Pick the type of claim as the SR's category** when you open it: Claim: Auto, Claim: Home, Claim: Life or Claim: Specialty. A claim left on any other category shows as **Not set** until someone picks one.",
+          "**Commercial and Work Comp claims are Frank's.** Opened as Claim: Commercial or Work Comp Claim, they show on the Commercial Center, not here.",
+        ] },
+        "What the page shows, for the day or dates you pick:",
+        { terms: [
+          ["One card per person", "What each licensed rep opened, closed and holds open now, and their median time to close. Click a card to see only theirs; click it again for the team. Anyone who opened or holds a claim without being licensed gets a red card of their own."],
+          ["Open, Overdue, Opened, Completed", "Open is every claim still open at the end of the day; Overdue is the ones past their due date. Completed shows the median time to close and the time 90% closed within."],
+          ["Not Licensed", "Any claim opened by, or assigned to, someone who isn't licensed, from October 2, 2026 on. Move each one to Amanda or Crystal."],
+          ["Close Time by Type", "For each type of claim: how many were opened, completed and are still open, and how long they took, from the day opened to the day completed."],
+          ["Open Claims", "Where the open claims sit, by stage and by how long they've been open (0-7 days, 8-30, 31-90, 90+)."],
+        ] },
+        "Every number opens the claims behind it.",
       ] },
 
     { h: "Renewals",
