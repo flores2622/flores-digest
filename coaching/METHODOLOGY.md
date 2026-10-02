@@ -461,33 +461,36 @@ How to score it:
 
 ## Occupation discounts: ask what they do (Frank, 2026-10-02)
 
-Farmers gives an occupational (affinity) discount to these groups:
+Farmers gives an occupational (affinity) discount to these groups -- Frank's
+list as written (2026-10-02), each group with what it covers:
 
-- Agents and employees of agents; district managers and their employees;
-  Farmers employees
-- Architects
-- Association Partnership and Employer Partnership members (FPP)
-- Aviation professionals
-- Certified Financial Planners (CFPs)
-- Certified Public Accountants (CPAs)
-- Dentists
-- Educators: college professors / instructors, elementary or secondary
-  educators (K-12)
-- Engineers
-- FIG Federal Credit Union members
-- Firefighters
-- Lawyers and judges
-- Librarians
-- Military: active, veterans, retired (not in California)
-- Physicians and surgeons
-- Police and law enforcement officers
-- Registered nurses
-- **Retirees of an eligible business and professional group** -- a retired
-  teacher, nurse, engineer, firefighter... still qualifies
-- Scientists
-- Veterinarians
-
-(The guidelines are state specific; this is the list Frank gave.)
+- **Agents/Employees**: Agent & Employees of Agents; District Managers and
+  Employees of District Managers; Employees
+- **All Affinity Groups**: Affinity Guidelines -- All Affinity Groups
+  (State Specific)
+- **Architects**: Architects
+- **Association Partnership**: Association Partnership (FPP)
+- **Aviation**: Aviation Professional
+- **Certified Financial Planners**: Certified Financial Planners (CFP's)
+- **Certified Public Accountant**: Certified Public Accountant
+- **Dentists**: Dentists
+- **Educators**: College Professors/Instructors; Elementary or Secondary
+  Educators (Grades K-12)
+- **Employer Partnership**: Employer Partnership (FPP)
+- **Engineers**: Engineers
+- **FIG Federal Credit Union**: FIG Federal Credit Union Members
+- **Firefighters**: Firefighters
+- **Lawyers and Judges**: Lawyers/Judges
+- **Librarians**: Librarians
+- **Military**: Active Military; Military Veterans; Retired Military
+  (*Not available in CA)
+- **Physicians and Surgeons**: Physicians / Surgeons
+- **Police Officers**: Police Officers / Law Enforcement Officers
+- **Registered Nurses**: Registered Nurses
+- **Retirees**: Retirees of an Eligible Business and Professional Group --
+  a retired teacher, nurse, engineer, firefighter... still qualifies
+- **Scientists**: Scientists
+- **Veterinarians**: Veterinarians
 
 **Ask it open, then dig.** "What do you do for a living?" -- and when the
 answer is "I'm retired", "What did you retire from?", because a retiree of

@@ -407,15 +407,17 @@ surgeons, registered nurses, veterinarians.
 
 ### Which careers qualify? (service and education)
 
-Educators (college professors and instructors, K-12 teachers), firefighters,
-police and law enforcement officers, and the military: active duty, veterans
-and retired military (not available in California).
+Educators (college professors and instructors, elementary and secondary
+teachers, grades K-12), firefighters, police and law enforcement officers,
+and the military: active military, military veterans and retired military
+(retired military is not available in California).
 
 ### Which careers qualify? (the rest)
 
-Agents and their employees, district managers and their employees, Farmers
-employees, Association Partnership and Employer Partnership members (FPP),
-FIG Federal Credit Union members, and retirees of any eligible group.
+Agents and employees of agents, district managers and employees of district
+managers, employees, Association Partnership (FPP), Employer Partnership
+(FPP), FIG Federal Credit Union members, and retirees of an eligible business
+and professional group. The guidelines for every group are state specific.
 
 ### The prospect is a retired nurse. Do they get the discount?
 
