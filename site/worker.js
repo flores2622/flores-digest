@@ -58,6 +58,7 @@ import TRAINING_MD from "../coaching/TRAINING.md";
 import { getLive, scheduledLive } from "./live.js";
 import { commission } from "./commission.js";
 import { coeusChat, coeusChats } from "./coeus.js";
+import { leadsIndex } from "./lead_index.js";
 
 export default {
   // Live figures between checkpoints (site/live.js): the cron in
@@ -81,6 +82,9 @@ export default {
         if (parts.length === 2) return listDays(env);
         if (parts.length === 3) return getDay(env, parts[2]);
       }
+      // The all-time lead index behind the search (lead_index.js): the same
+      // NPI as the day documents, behind the same gate.
+      if (parts[1] === "leads" && parts.length === 2) return leadsIndex(env);
 
       if (parts[1] === "months" && parts.length === 3) {
         return getMonth(env, parts[2]);
