@@ -1546,10 +1546,12 @@ $2,500 in premium"): the Digest's day reads as Apollo's group chat
   on under the leaderboard** (Frank, 2026-10-02: "make it flow onto the
   leaderboard as well"): the Team Leaderboard card, and the lists the
   tiles and leaderboard open, sit inside `.skyline`, and the picture runs
-  on under them (Frank, 2026-10-02: "i dont see the bckgrnd on the
-  ldrbrd" -- a plain brown floor read as nothing): dune bands with small
-  saguaros and rocks all the way down the scene, and the leaderboard card
-  is see-through (78%) so they show behind the podium.
+  on under them -- **no: the leaderboard is its own card with the scene
+  INSIDE it** (Frank, 2026-10-02: "in the background of the leaderboard
+  itself, not a background behind the 2 cards"): `teamLeaderboardHtml`'s
+  section is `skyline lbsky`, the title on the sky, the podium standing on
+  the desert (dune bands with small saguaros and rocks run down the scene),
+  the table on a near-opaque sheet. The tiles' card is unchanged.
 - **Every edition downloads** (Frank, 2026-10-02: "make the editions
   downloadable"): **Download PDF** (the edition alone in a new window, the
   print dialog opened once its fonts load -- Save as PDF) and **Save page**
