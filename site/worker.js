@@ -57,7 +57,7 @@ import ROLEPLAY_MD from "../coaching/ROLEPLAY.md";
 import TRAINING_MD from "../coaching/TRAINING.md";
 import { getLive, scheduledLive } from "./live.js";
 import { commission } from "./commission.js";
-import { coeusChat, coeusChats } from "./coeus.js";
+import { coeusChat, coeusChats, coeusUsage } from "./coeus.js";
 import { leadsIndex } from "./lead_index.js";
 
 export default {
@@ -143,9 +143,19 @@ export default {
           commercialAllowed: (req, e) => requireCommercial(req, e) === null,
         });
       }
+      // What Coeus has cost, per person (Frank, 2026-10-02); COEUS_USAGE_VIEWERS.
+      if (parts[1] === "coeus" && parts[2] === "usage" && parts.length === 3 && request.method === "GET") {
+        return coeusUsage(request, env, { identityOf }, url);
+      }
       // Saved chats, per login (Frank, 2026-10-01: "will it save the chats?").
       if (parts[1] === "coeus" && parts[2] === "chats" && parts.length <= 4) {
         return coeusChats(request, env, { identityOf }, parts[3] || "");
+      }
+
+      // Managers' sticky notes on coaching cards (Frank, 2026-10-02).
+      if (parts[1] === "cardnotes" && parts.length === 2) {
+        if (request.method === "GET") return cardNotesGet(request, env);
+        if (request.method === "POST") return cardNotesPost(request, env);
       }
 
       if (parts[1] === "editions" && parts.length === 3) {
@@ -1650,6 +1660,51 @@ async function editionsPost(request, env, key) {
   }
   await env.BOARD.put(k, JSON.stringify(s), { httpMetadata: { contentType: "application/json" } });
   return json(s);
+}
+
+/* Sticky notes (Frank, 2026-10-02: "add the managers 'Sticky note' on it.
+ * Any way apollo can learn from my sticky notes?"): a manager -- the Role
+ * Play history viewers, rpScope.all -- pins a note to a coaching card;
+ * everyone signed in sees it on the card. One small file in R2
+ * (card-notes/notes.json). A note marked `teach` is read by the nightly and
+ * the checkpoints into every new coaching read (coaching_cards.lessons_block)
+ * and, on its own card, into that card's next read (manager_notes). */
+const CARD_NOTES_KEY = "card-notes/notes.json";
+async function cardNotesRead(env) {
+  const obj = await env.BOARD.get(CARD_NOTES_KEY);
+  if (!obj) return [];
+  try { return (await obj.json()).notes || []; } catch (_) { return []; }
+}
+async function cardNotesGet(request, env) {
+  if (!identityOf(request, env).email) return json({ error: "not signed in" }, 403);
+  return json({ notes: await cardNotesRead(env) });
+}
+async function cardNotesPost(request, env) {
+  const me = identityOf(request, env);
+  if (!me.all) return json({ error: "only managers write sticky notes" }, 403);
+  let body;
+  try { body = await request.json(); } catch (_) { return json({ error: "bad request body" }, 400); }
+  const notes = await cardNotesRead(env);
+  const text = String(body.text || "").trim().slice(0, 2000);
+  const teach = body.teach !== false;
+  if (body.op === "add") {
+    const day = String(body.day || ""), lead_id = body.lead_id == null ? null : Number(body.lead_id);
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(day) || !text) return json({ error: "a sticky note needs a day and text" }, 400);
+    notes.push({ id: crypto.randomUUID(), day, lead_id: Number.isFinite(lead_id) ? lead_id : null,
+      lead: String(body.lead || "").slice(0, 120), who: String(body.who || "").slice(0, 80),
+      text, teach, by: me.name || "manager", at: new Date().toISOString() });
+  } else if (body.op === "edit" || body.op === "del") {
+    const i = notes.findIndex((n) => n.id === body.id);
+    if (i < 0) return json({ error: "no such note" }, 404);
+    if (body.op === "del") notes.splice(i, 1);
+    else {
+      if (text) notes[i].text = text;
+      if (typeof body.teach === "boolean") notes[i].teach = body.teach;
+      notes[i].edited = new Date().toISOString(); notes[i].edited_by = me.name || "manager";
+    }
+  } else return json({ error: "unknown op" }, 400);
+  await env.BOARD.put(CARD_NOTES_KEY, JSON.stringify({ notes }), { httpMetadata: { contentType: "application/json" } });
+  return json({ notes });
 }
 
 function rpScope(request, env) {

@@ -188,6 +188,46 @@ Everything caches under `data/`, so a re-run resumes rather than restarting.
   was 16,000 / 12,000 silently), the card's first budget is 9,000 tokens,
   each new card keeps `model`, and `_bool_pair` reads "true"/"false"/"null"/
   "n/a" strings for what they say (a bare None is None, never False).
+- **Verify against the reports** (Frank, 2026-10-02): ALTA's reports show
+  drivers, vehicles, limits, coverages, dates, prior carrier, policy status
+  and the term; discovery buys time, builds rapport and finds what they
+  don't, but what the prospect says about their current policy is checked
+  against the Prior Insurance screen. METHODOLOGY.md's "The reports" section:
+  a muddled premium / term not reconciled is "w" on Current premium and
+  Presenting numbers, the fix checks the screen on the call, and the flag is
+  "Didn't verify against the reports"; a term the producer asked about and
+  the prospect answered plainly is confirmed. (Lisette Dasnabedian, 10-01,
+  first looked like the case; Frank then said Lorena had asked and confirmed
+  the term, so her card stays as it went out and is no example.) **A card can carry a Manager's note**
+  (`coaching/manager_notes.json`, by day and lead_id, read into the history
+  block by `coaching_cards.manager_notes`): what Frank saw that the call
+  cannot show; Apollo treats it as fact. The cache is keyed by call, so a note
+  reaches a card only when it is read again (the file is empty: the one
+  note written, Lisette's, was taken back the same day and her card restored).
+- **Occupation discounts: ask what they do** (Frank, 2026-10-02): Farmers'
+  affinity groups (Frank's list, in METHODOLOGY.md's "Occupation discounts"
+  and TRAINING.md's Occupation Discounts deck -- change both together) and the
+  rule: "What do you do for a living?", then "What did you retire from?" --
+  retirees of an eligible group qualify. A closed checklist ("retired,
+  military, teacher, nurse?") or "retired" left there is weak Discovery and the
+  flag "Occupation discount not dug into"; a qualifying occupation left out of
+  the quote is a Presenting-numbers miss. Lorena / Lisette Dasnabedian 10-01
+  is the case.
+- **Managers' sticky notes on coaching cards** (Frank, 2026-10-02: "add the
+  managers 'Sticky note' on it. Any way apollo can learn from my sticky
+  notes?"). A manager (`rpScope.all`) writes one in the box at the top of an
+  open card; everyone sees it in yellow on the card's front
+  (`stickyFrontHtml` / `stickyEditHtml`, matched by day + lead_id + producer).
+  The Worker keeps them in R2 `card-notes/notes.json` (`/api/cardnotes`: GET
+  for anyone signed in, POST add / edit / del for managers only). **Apollo
+  learns from them**: every note left on "Apollo learns this" goes into the
+  instructions of every coaching read from then on
+  (`coaching_cards.lessons_block`, newest 40 / 9,000 characters, after
+  METHODOLOGY.md, whose "Manager's note and the managers' sticky notes"
+  section says how to use them -- the lesson, never a fact about this call),
+  and every note on a card is that card's Manager's note if it is read again
+  (`manager_notes`). Cards already written are not re-read. The first is
+  Frank's on Lorena / Lisette Dasnabedian 10-01.
 - **A closed card's right half is Quick coaching** (Frank, 2026-09-30:
   "the right half of the card be a quick coaching summary, while leaving
   the left of the card whats currently there"; `quickCoachHtml`), from what
@@ -1723,6 +1763,18 @@ over `text/event-stream` with status lines while it reads.
 - Same model as Role Play (`claude-sonnet-5`, thinking off), up to six tool
   rounds then a forced answer. It needs the Worker's `ANTHROPIC_API_KEY`;
   without it the drawer says Coeus is not configured.
+- **One key pays for everyone; usage is tracked per person** (Frank,
+  2026-10-02: "whos usage does the chat bot use?" -- a Claude seat is a
+  separate product and never pays for Coeus or receives its chats). Every
+  answer's tokens (input, cache write, cache read, output, from the
+  stream's `message_start` / `message_delta`) are added to
+  `coeus-usage/<day>.json` under the asker (`recordUsage`), with an
+  estimated cost at the model's list prices (`PRICE`; update it if the
+  model or prices change). `GET /api/coeus/usage?from=&to=` adds it up per
+  person and per day for `COEUS_USAGE_VIEWERS` (wrangler.jsonc, Frank);
+  the drawer's **Usage** button shows it (hidden on a 403), and the
+  `coeus_usage` tool lets those viewers ask Coeus itself. The figure is an
+  estimate, not the bill.
 - **When the board changes, Coeus changes with it** through `blueprints.js`
   -- another reason to keep the guides current in the same change. A new
   figure Coeus should read needs its compact reading added in `coeus.js`.

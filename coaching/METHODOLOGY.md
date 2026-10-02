@@ -368,7 +368,8 @@ still gets an "m" there, same as on a sales call.
   `greeting` instead.
 - **Discovery** — asks about the household's actual situation before
   pitching: current carrier, what matters to them (price vs. coverage vs.
-  service), any recent life change (new car, new driver, moved, new baby).
+  service), any recent life change (new car, new driver, moved, new baby),
+  and **what they do for a living** (the occupation discounts, below).
   Reciting a pitch without first asking anything is "m", not "w".
 - **Current premium captured** — got the actual number the prospect is
   paying now, not an assumed or ballpark figure the producer never
@@ -410,6 +411,126 @@ still gets an "m" there, same as on a sales call.
   "s"/"w"/"m" if the call itself gives direct evidence (e.g. the producer
   says "let me put a note in the system for X" and either does or visibly
   skips it). Do not guess at what happened after the call ended.
+
+## The reports: verify, don't just take their word (Frank, 2026-10-02)
+
+The producer quotes in Farmers' quoting system (ALTA), and before the call
+gets far it has already pulled reports on the prospect: **drivers, vehicles,
+limits, coverages, dates (effective / expiration), prior carrier, policy
+status, the term (6 or 12 months)** and a bit more. The Prior Insurance
+screen shows the current carrier, its term and dates. Discovery is still
+worth doing -- to buy time while the quote builds, to build rapport, and to
+find what the reports cannot (why they're shopping, a life change, what
+matters to them, other policies) -- but **what the prospect says about their
+current policy must be checked against the reports, not taken on their
+word**. Prospects misremember, above all the TERM: "about $1,000 a year" is
+very often the six-month premium. A comparison built on the prospect's
+memory turns a better rate into a lost sale.
+
+Asking is good, and a producer who asks the term and gets a plain answer
+has confirmed it ("Is that for six months or the year?" -- "Every six months,
+about $500 each time"). The miss is a figure that doesn't add up, or a term
+nobody pinned down, taken into the price comparison anyway, when the Prior
+Insurance screen would have settled it.
+
+How to score it:
+- You cannot see ALTA. Judge whether the producer USED the reports, from
+  what is said on the call ("I see here you're the only driver", "I'm
+  showing you're with Allstate on a six-month policy"). Never state what a
+  report said unless the call or a **Manager's note** says it.
+- **Current premium captured** is "s" only when the premium is tied to a
+  term the producer confirmed -- from the reports, or a prospect who states
+  it plainly. A muddled or contradictory figure ("around 1,000 ... I think
+  that's for the year? Maybe six months") that the producer does not reconcile with the
+  report is "w", even with a number captured. A term the producer asked
+  about and the prospect answered plainly is confirmed -- score it on that.
+- **Discovery**: taking the carrier, term or premium at face value when the
+  call shows a conflict (the prospect names one carrier and the producer
+  another; a term that doesn't add up) is a miss -- say so in the line.
+- **Presenting numbers**: a price compared on a different term than what
+  they pay ("820 for six months" against "1,000 a year") without converting
+  it, or without checking which term the 1,000 really is, is "w".
+- **A price objection resting on an unverified comparison** is not
+  overcome by a discount: the fix checks the report on the call, in the
+  producer's own words: "Let me pull up your current policy on my screen...
+  I'm showing your policy with them is a six-month term, so that $1,000 is
+  for six months. We're at $820 for the same six months -- $180 less every
+  six months." Use the real figures only when they are known (the call or a
+  Manager's note); otherwise the line says to check the screen, not a number.
+- Flag it (category Discovery missed): "Didn't verify against the reports".
+
+## Occupation discounts: ask what they do (Frank, 2026-10-02)
+
+Farmers gives an occupational (affinity) discount to these groups -- Frank's
+list as written (2026-10-02), each group with what it covers:
+
+- **Agents/Employees**: Agent & Employees of Agents; District Managers and
+  Employees of District Managers; Employees
+- **All Affinity Groups**: Affinity Guidelines -- All Affinity Groups
+  (State Specific)
+- **Architects**: Architects
+- **Association Partnership**: Association Partnership (FPP)
+- **Aviation**: Aviation Professional
+- **Certified Financial Planners**: Certified Financial Planners (CFP's)
+- **Certified Public Accountant**: Certified Public Accountant
+- **Dentists**: Dentists
+- **Educators**: College Professors/Instructors; Elementary or Secondary
+  Educators (Grades K-12)
+- **Employer Partnership**: Employer Partnership (FPP)
+- **Engineers**: Engineers
+- **FIG Federal Credit Union**: FIG Federal Credit Union Members
+- **Firefighters**: Firefighters
+- **Lawyers and Judges**: Lawyers/Judges
+- **Librarians**: Librarians
+- **Military**: Active Military; Military Veterans; Retired Military
+  (*Not available in CA)
+- **Physicians and Surgeons**: Physicians / Surgeons
+- **Police Officers**: Police Officers / Law Enforcement Officers
+- **Registered Nurses**: Registered Nurses
+- **Retirees**: Retirees of an Eligible Business and Professional Group --
+  a retired teacher, nurse, engineer, firefighter... still qualifies
+- **Scientists**: Scientists
+- **Veterinarians**: Veterinarians
+
+**Ask it open, then dig.** "What do you do for a living?" -- and when the
+answer is "I'm retired", "What did you retire from?", because a retiree of
+an eligible group still qualifies. A closed checklist ("Are you retired,
+military, teacher or nurse?") is weak: it names four of twenty groups, the
+prospect often doesn't hear the whole question and answers one word, and
+"I'm retired" then ends the dig when it should start it. The case: Lorena /
+Lisette Dasnabedian, 2026-10-01 -- "are you retired, military, teacher,
+nurse?", "I'm retired", and nothing more, so whether Lisette retired from a
+qualifying occupation was never found out.
+
+How to score it:
+- **Discovery** on a first or finish-quote call: the occupation asked open
+  and followed up (retired -> from what) is part of a strong discovery; a
+  closed list, or "retired" left there, is "w" for this part; never asked
+  on a call that built a quote is a gap -- say which in the line.
+- When the prospect names a qualifying occupation (or a retiree of one),
+  the producer should say the discount is in the quote; a price presented
+  with a discount left out is a miss on **Presenting numbers**.
+- The better line: "What do you do for a living?" ... "Retired? Congrats --
+  what did you retire from? Some careers still get a discount after you
+  retire." Flag it (category Discovery missed): "Occupation discount not
+  dug into".
+- On a follow-up the occupation is "n" if an earlier call already got it.
+
+## Manager's note and the managers' sticky notes
+
+A card's history can carry a **Manager's note**: something Frank or a
+manager saw that the call cannot show (an ALTA screen, a policy record), or
+a sticky note a manager pinned to this lead's card. It is fact about this
+call. Use it for every verdict it bears on, and quote it in the lines it
+changes; never contradict it.
+
+**The managers' sticky notes** (Frank, 2026-10-02) may follow these
+instructions as a list: what Frank and the managers wrote on earlier cards
+and asked you to learn from. They are coaching, in the managers' own words,
+on top of everything above -- where one is more specific than a rule here,
+it wins. Apply a lesson only where the call in front of you shows the same
+thing, coach it in the same terms, and never quote a note or name the call
+it was written on. A lesson is never a fact about this call.
 
 ## Lead source (Frank, 2026-09-24)
 
