@@ -800,6 +800,32 @@ A tab that fails to draw (an old or partial document) shows "This section
 could not be drawn: <message>" under its date controls instead of a blank
 page (2026-09-30).
 
+## The new-business rotation
+
+**Sales Center > Rotation replaces Debbie's "Rotation Sheet"** in Google Drive
+(Frank, 2026-10-02: "its how we rotate new business walkin and call ins ...
+i want this to be part of the board"). `site/rotation.js` (Worker,
+`/api/rotation`) keeps one R2 file, `rotation/state.json`: three rotations
+with their order and who is next, and every turn logged. **Personal lines**
+is every producer and Amanda, **never Mike**; **Life** is Mike, Lorena and
+Coral; **Mexico policies** is Lorena, Amanda, Crystal, Mike, Coral and
+Sarahi. A turn is `in` (given to whoever is up; the rotation moves on),
+`skip` (they were out or busy; it moves on with nobody given) or `out` (out
+of turn, the client asked for someone; it does not move). A turn carries who
+was up when it was logged, so two people logging at once can't hand out the
+same turn (409). Taking back the newest turn on a rotation gives that person
+the turn back. **Only Debbie, Crystal and the ops team see it**
+(`ROTATION_VIEWERS`, wrangler.jsonc -- "only be visible to debiie, crystal,
+and the ops team"); anyone else gets a 403 and the page never enters the
+menu or the search (`site/public/rotation.js` adds it only when the Worker
+answers). Everyone who sees it logs turns; `ROTATION_EDITORS` (Debbie and
+the ops team) change an order or who is next; a line is removed by whoever
+logged it or an editor. The board shows the folio's log and each person's
+count, any past folio from the picker. The sheet's Sep 19 - Oct 19 tab was
+carried in on 2026-10-02 (logged by "Debbie (Rotation Sheet)"; Crystal's
+blank slot as a skip); earlier folios stay in the sheet. Producers have no
+tour step for it, since they can't open it.
+
 ## Apollo's Road Map (ARM) and the tour
 
 **Apollo's Academy is the Coaching and Learning Centers in one** (Frank,
