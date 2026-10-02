@@ -61,6 +61,9 @@ PIPELINES = (
     # stays missing_docs so earlier days' rows still add up with new ones.
     ("missing_docs", "Contingencies", {"Contingencies", "Missing Documents"}, "docs"),
     ("reinstatement", "Reinstatement", {"Reinstatement"}, "other"),
+    # Claims (Frank, 2026-10-02): opened and worked only by a licensed
+    # service rep -- claims.py is the definition, and the day's `claims`.
+    ("claims", "Claims", {"Claim"}, "claim"),
 )
 RENEWALS = {w for _, _, ws, kind in PIPELINES if kind == "renewal" for w in ws}
 CHANGES = {"Service Pipeline"}
@@ -596,6 +599,13 @@ def build(day, log=log, refresh_households=True):
     except Exception as e:
         log(f"  texts and emails failed ({type(e).__name__}: {e})")
         messages = None
+    # Claims (claims.py, Frank 2026-10-02): licensed reps only.
+    try:
+        import claims as claims_mod
+        claims = claims_mod.figures(day, done, live)
+    except Exception as e:
+        log(f"  claims failed ({type(e).__name__}: {e})")
+        claims = None
     try:
         import service_retention as sr
         rows, unnamed = sr.renewal_srs(
@@ -619,6 +629,7 @@ def build(day, log=log, refresh_households=True):
         "srs": sr_figures(day, done, live, log=log),
         "pipelines": [[k, label, kind] for k, label, _, kind in PIPELINES],
         "renewals": renewals,
+        "claims": claims,
         "callbacks": callbacks,
         "dials": dials,
         "messages": messages,

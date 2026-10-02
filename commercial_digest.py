@@ -30,6 +30,7 @@ import json
 import pathlib
 import re
 
+import claims
 import commercial
 
 ROOT = pathlib.Path(__file__).resolve().parent
@@ -111,7 +112,7 @@ def completed_rows(day, done, hh, chains, az=None, log=log):
     import service_retention as sr_mod
     com_any, _ = commercial.households(hh)
     srs = [t for t in done if _d(t.get("completeDate")) == day
-           and commercial.is_commercial_sr(t, com_any)]
+           and commercial.is_commercial_sr(t, com_any) and not claims.is_claim(t)]
     if not srs:
         return [], {}
     pn2hh = {sr_mod._NORM(k): v for k, v in sr_mod.policy_households(hh).items()}
@@ -144,7 +145,7 @@ def open_rows(day, live, hh, chains):
     com_any, _ = commercial.households(hh)
     out = []
     for t in live:
-        if not commercial.is_commercial_sr(t, com_any):
+        if not commercial.is_commercial_sr(t, com_any) or claims.is_claim(t):
             continue
         created = _d(t.get("createDate"))
         if created and created > day:
@@ -187,6 +188,11 @@ def build(day, done=None, live=None, log=log):
         "open": open_rows(day, live, hh, chains) if live is not None else None,
         "outcomes": outcomes,
         "resolutions_from": since,
+        # Commercial and Work Comp claims (claims.py): same rows as the
+        # Service Center's Claims, kept apart from the queue above.
+        "claims": claims.figures(day, [t for t in done if claims.is_commercial_claim(t)],
+                                 [t for t in (live or []) if claims.is_commercial_claim(t)],
+                                 types=claims.COMMERCIAL_TYPES),
     }
 
 

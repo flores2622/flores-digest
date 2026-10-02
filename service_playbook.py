@@ -29,6 +29,7 @@ ROLES = {
             "Monitor the overall service workload", "Delegate work appropriately",
             "Handle complex or sensitive service issues", "Handle Spanish-speaking service clients",
             "Handle more involved policy changes and coverage questions", "Review renewals and coverage requests",
+            "Open and work claims (licensed reps only)",
             "Monitor missed calls, texts, faxes, and pending tasks", "Audit service notes and follow-up",
             "Train and support service team members", "Identify bottlenecks and redistribute work",
             "Step in when a team member needs assistance", "Escalate unresolved issues when necessary",
@@ -43,7 +44,8 @@ ROLES = {
             "Handle routine policy service requests", "Answer policy questions", "Process policy changes",
             "Assist with billing/service questions", "Follow up on outstanding items",
             "Handle vehicle and driver changes", "Assist with lienholder/mortgagee changes",
-            "Handle document and ID card requests", "Review renewal questions", "Maintain accurate account notes",
+            "Handle document and ID card requests", "Review renewal questions",
+            "Open and work claims (licensed reps only)", "Maintain accurate account notes",
             "Complete assigned tasks", "Identify opportunities that should be passed to a producer",
             "Ask for help when an issue is outside their knowledge or authority",
         ],
@@ -58,6 +60,7 @@ ROLES = {
         "responsibilities": [
             "Answer incoming calls", "Greet walk-in clients", "Assist with basic billing questions",
             "Identify what the client needs", "Route clients appropriately", "Assign service requests",
+            "Take a claim call to a licensed rep (Amanda or Crystal) -- the Front Desk does not open claims",
             "Monitor account alerts", "Handle NOCs and designated administrative tasks",
             "Make sure messages and tasks are assigned correctly",
         ],
@@ -92,10 +95,14 @@ REQUEST_TYPES = {
     "sales_opportunity": ("New business / cross-sell / requote / new coverage", "producer"),
     "owner_escalation": ("Issue requiring owner/producer escalation", "frank"),
     "cancellation": ("Cancellation", "service"),
-    "claim": ("Claim", "service"),
+    # Claims are opened and worked by a licensed rep only -- of the service
+    # team Amanda or Crystal, plus the ops team (Frank, 2026-10-02: "Debbie is
+    # not licensed, she cannot open claims moving forward"). claims.py flags a claim SR anyone else opens.
+    "claim": ("Claim", "licensed"),
     "other": ("Other", "service"),
 }
 ROUTINE = {k for k, (_, owner) in REQUEST_TYPES.items() if owner in ("service", "front_desk")}
+from claims import LICENSED_NAMES as LICENSED      # who may open and work a claim
 WHEN_IN_DOUBT = "When in doubt, start with the Service Team. We determine where the request needs to go."
 
 # A note should answer these (Account & Note Standards).
@@ -175,7 +182,7 @@ def as_doc():
     """The playbook as the board reads it (each service day's `playbook`)."""
     return {"purpose": PURPOSE, "standard": STANDARD, "roles": ROLES, "role_of": ROLE_OF,
             "request_types": {k: list(v) for k, v in REQUEST_TYPES.items()}, "routine": sorted(ROUTINE),
-            "sells": sorted(SELLS),
+            "sells": sorted(SELLS), "licensed": sorted(LICENSED),
             "when_in_doubt": WHEN_IN_DOUBT, "note_parts": NOTE_PARTS, "good_note": GOOD_NOTE,
             "vague_note": VAGUE_NOTE, "service_vs_sales": SERVICE_VS_SALES, "communication": COMMUNICATION,
             "priority": PRIORITY, "checklist": CHECKLIST, "expectations": EXPECTATIONS, "closing": CLOSING}

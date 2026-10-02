@@ -34,7 +34,8 @@
  */
 import METHODOLOGY_MD from "../coaching/METHODOLOGY.md";
 import TRAINING_MD from "../coaching/TRAINING.md";
-import "./public/blueprints.js";   // sets BLUEPRINTS on the global (window in the browser)
+import "./public/blueprints.js";
+import { claimsForViewer } from "./claims_view.js";   // sets BLUEPRINTS on the global (window in the browser)
 
 const MODEL = "claude-sonnet-5";
 const MAX_ROUNDS = 6;        // tool rounds before the answer is forced
@@ -100,7 +101,7 @@ How to answer:
 /* ---- tools ------------------------------------------------------------ */
 
 const SALES_SECTIONS = ["sold", "quoted", "contacts", "dials", "speed", "tasks", "messages", "misfiled", "life"];
-const SERVICE_SECTIONS = ["srs", "open", "tasks", "callbacks", "dials", "messages", "front", "renewals"];
+const SERVICE_SECTIONS = ["srs", "open", "tasks", "callbacks", "dials", "messages", "front", "renewals", "claims"];
 
 const TOOLS = [
   { name: "list_days",
@@ -126,7 +127,7 @@ const TOOLS = [
       name: { type: "string" }, days: { type: "integer", description: "How many published days back to search (default 10, max 20)" },
       before: { type: "string", description: "Start from this day instead of the newest (YYYY-MM-DD)" } } } },
   { name: "service_day",
-    description: "One day's Service Center (Athena): SRs completed by person and pipeline with completion hours, the backlog (open and overdue per person), Late Payment stages, service tasks, call backs, dials, texts and emails, calls answered and SRs created at the front desk, renewal SR outcomes and the pipeline outcome breakdowns, note standard and opportunities, utilization. `sections` adds rows: srs (every completed SR), open (the open SRs), tasks, callbacks, dials, messages, front, renewals (every renewal SR row).",
+    description: "One day's Service Center (Athena): SRs completed by person and pipeline with completion hours, the backlog (open and overdue per person), Late Payment stages, service tasks, call backs, dials, texts and emails, calls answered and SRs created at the front desk, renewal SR outcomes and the pipeline outcome breakdowns, note standard and opportunities, utilization. `sections` adds rows: srs (every completed SR), open (the open SRs), tasks, callbacks, dials, messages, front, renewals (every renewal SR row), claims (every claim opened, completed and open).",
     input_schema: { type: "object", required: ["day"], properties: {
       day: { type: "string" }, sections: { type: "array", items: { type: "string", enum: SERVICE_SECTIONS } } } } },
   { name: "renewals",
@@ -475,6 +476,12 @@ function compactService(doc, sections) {
     callbacks: summarize(doc.callbacks), dials: summarize(doc.dials), texts_and_emails: summarize(doc.messages),
     front_desk: summarize(doc.front), renewal_srs: summarize(doc.renewals), utilization: doc.utilization,
     roles_and_note_standard: summarize(doc.roles || doc.audit), playbook_roles: (doc.playbook || {}).roles,
+    // Claims (claims.py): licensed reps only; not_licensed (the flags) is the ops team's alone
+    // -- claimsForViewer empties it for everyone else.
+    claims: doc.claims ? { licensed: doc.claims.licensed, rule_from: doc.claims.rule_from,
+      opened: (doc.claims.opened || []).length, completed: (doc.claims.completed || []).length,
+      completed_by_type: tallyRows(doc.claims.completed || []), open_by_type: tallyRows(doc.claims.open || []),
+      open_end_of_day: (doc.claims.open || []).length, not_licensed: trim(doc.claims.flags, 20, 160) } : null,
   };
   for (const s of sections || []) {
     if (s === "srs") out.rows_srs = trim(done, 80, 200);
@@ -485,6 +492,7 @@ function compactService(doc, sections) {
     if (s === "messages") out.rows_messages = trim(doc.messages, 60, 240);
     if (s === "front") out.rows_front = trim(doc.front, 60, 200);
     if (s === "renewals") out.rows_renewals = trim(doc.renewals, 80, 240);
+    if (s === "claims" && doc.claims) out.rows_claims = { opened: trim(doc.claims.opened, 60, 200), completed: trim(doc.claims.completed, 60, 200), open: trim(doc.claims.open, 60, 200) };
   }
   return out;
 }
@@ -507,7 +515,7 @@ function summarize(v) {
 function tallyRows(rows) {
   const out = { rows: rows.length };
   if (!rows.length || typeof rows[0] !== "object") return rows.length <= 12 ? trim(rows, 12, 100) : out;
-  for (const f of ["who", "by", "person", "team", "pipeline", "outcome", "status", "kind", "renewal", "answered", "done", "done_by", "role", "bucket", "direction"]) {
+  for (const f of ["who", "by", "person", "team", "pipeline", "outcome", "status", "kind", "renewal", "answered", "done", "done_by", "role", "bucket", "direction", "type"]) {
     if (rows.some((r) => r && r[f] !== undefined && (typeof r[f] !== "object"))) {
       const t = {}; for (const r of rows) { const k = String(r[f]); t[k] = (t[k] || 0) + 1; }
       if (Object.keys(t).length <= 12) out[`by_${f}`] = t;
@@ -520,11 +528,11 @@ function tallyRows(rows) {
   return out;
 }
 
-async function toolServiceDay(env, inp) {
+async function toolServiceDay(env, inp, scope) {
   if (!ISO.test(inp.day || "")) return { error: "bad day" };
   const doc = await r2json(env, `service/${inp.day}.json`);
   if (!doc) return { error: `no Service Center page for ${inp.day}` };
-  return compactService(doc, inp.sections);
+  return compactService(claimsForViewer(doc, !!(scope && scope.all)), inp.sections);
 }
 
 async function toolRenewals(env, inp) {
@@ -609,7 +617,7 @@ async function runTool(name, inp, ctx) {
       case "sales_range": return await toolSalesRange(env, inp);
       case "coaching_cards": return await toolCards(env, inp);
       case "find_lead": return await toolFindLead(env, inp);
-      case "service_day": return await toolServiceDay(env, inp);
+      case "service_day": return await toolServiceDay(env, inp, scope);
       case "renewals": return await toolRenewals(env, inp);
       case "commercial_day": return await toolCommercial(env, inp, commercial);
       case "roleplay_sessions": return await toolRoleplay(env, inp, scope, rpMaySee);

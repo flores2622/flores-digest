@@ -1315,6 +1315,50 @@ Crystal (hybrid); credit always goes to whoever COMPLETED the SR or task.
   route numbers with the customers and leads as of the backfill. A day that
   already has `calls_tx` is skipped (`--force` redoes it); the recordings
   go to R2 and leave the disk as each day finishes.
+- **Claims are opened and worked by a licensed service rep only** (Frank,
+  2026-10-02: "Licensed service reps will be the only ones able to open
+  claims, amanda and crystal are the only 2 licensed reps of that team.
+  Debbie is not licensed, she cannot open claims moving forward").
+  `claims.py` is the one definition: an SR in AgencyZoom's **Claim**
+  workflow (id 23672; one test SR before this, Veronica 2026-03-11), and
+  `LICENSED` -- **the ops team and Crystal** (Frank, 2026-10-02: Frank
+  82589, Francisco 82372, Veronica 82592, Amanda 105006, Crystal 174445);
+  the playbook's `claim` request type is owned by "licensed" and imports it.
+  Nothing is blocked in AgencyZoom (Frank: no) -- the board flags.
+  **The type of claim is the SR's own AgencyZoom category** (`CLAIM_TYPES`:
+  Auto 40942, Home 40944, Life 40946, Specialty 25618, Commercial 40943,
+  Work Comp 40945 -- by id; Frank renamed them "Claim: ..." 2026-10-02;
+  anything else "Not set"), and **close time** is created -> completed,
+  shown per type (median and 90% within). **Commercial and Work Comp
+  claims are Cerberus's** (Frank, 2026-10-02: "commercial";
+  `claims.COMMERCIAL_CATEGORIES`): `commercial.is_commercial_sr` counts
+  them, so they leave every Service Center figure, and `commercial/<day>.json`
+  carries them as its own `claims` (kept out of the open queue and the
+  completed SRs), drawn as the Commercial Center's Claims section. AgencyZoom lets anyone
+  create one, so a claim created from `RULE_FROM` (2026-10-02) on whose
+  `createdBy` is not licensed, or whose `csr` is not, is a flag. Each service
+  day carries `claims` (opened / completed / open / flags, rows).
+  **The Claims Center is its own page** (Frank, 2026-10-02: "finish the
+  claims center"; `CENTERS.claims`, `paintClaims`, under Athena · Service in
+  the menu; it left the Service Digest), from the service days and their date
+  filter: a hero with a card per person who touched a claim (opened /
+  closed / open / median to close; a red "Not licensed" card for anyone
+  else; a click filters the page, `claimPerson`) and Open / Overdue /
+  Opened / Completed / Not Licensed; Close Time by Type; Open Claims by age
+  (0-7, 8-30, 31-90, 90+ days) and stage. Every tile and row opens its
+  claims (`claim:<list>[:<person>]`, `claimsDrill`). Its tour step, vista
+  ("after the storm"), Coeus prompts and Athena's Road Map section go with
+  it. Commercial / Work Comp claims stay on the Commercial Center.
+  **Only the ops team sees "Not licensed", and nothing describes it**
+  (Frank, 2026-10-02: "remove any not licensed description, and only the
+  ops team should see the not licensed card"): the red person card, the Not
+  Licensed tile, its list and the chip in the Opened by column show only
+  when `/api/me`'s `all` is true (`claimsOps`, = `ROLEPLAY_HISTORY_VIEWERS`),
+  and the Worker takes the flags out of every service day for anyone else
+  (`site/claims_view.js claimsForViewer`: no `flags`, no row `problems` /
+  `licensed`), Coeus's `service_day` tool too. No page text, guide, tour
+  step or Coeus prompt explains the flag. If a rep is licensed or leaves, change `LICENSED` and Athena's Road
+  Map together.
 - **Documents hold rows, never medians**, so the board can add any range up.
   **Every card opens the rows it counts** (Frank, 2026-09-25), so the rows
   carry what a list needs: SRs name, household (= the AgencyZoom customer
