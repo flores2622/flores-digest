@@ -23,7 +23,7 @@
    [[term, meaning], ...]} or {table: {head: [...], rows: [[...], ...]}}.
    **bold** works inside any text. Nothing else is interpreted. */
 window.BLUEPRINTS = {
-  updated: "2026-10-01",
+  updated: "2026-10-02",
   guides: [
 
   /* ------------------------------------------------------------------ */
@@ -61,6 +61,7 @@ window.BLUEPRINTS = {
         { table: { head: ["Where", "What it's for"], rows: [
           ["Sales Center > Digest", "The day at a glance: dials, contacts, quotes, sales, closing ratio, the leaderboard, speed to dial and reply, task completion, household completion, utilization, Coach AI scores."],
           ["Sales Center > Sales", "The Sales sheet. Log a sale, look back at any folio, and break sales down by lead source, product or producer. Self-reported, not the official Premium Sold. Live sales are added to it automatically."],
+          ["Sales Center > Sales > Commission", "Where each producer stands on the commission schedule this folio, worked out from the Sales sheet as sales are logged: their tier and rate, how far to the next tier and what it pays, and the extras (life $100 each whatever the tier; a bundle to a new household $50 and a cross-sell to an existing household $25 a line once the tier minimum is met; umbrella $25; Farmers business 3.5% of the premium, which doesn't count toward the tier; Kraft Lake $300). Crystal, Lorena and Mike are on the individual schedule; Sarahi and Coral share the team schedule, split 50/50. A Winback counts as a new household. Each producer sees only their own (Sarahi and Coral their team's); Frank and Amanda see everyone. Estimates: a wrong entry on the Sales sheet changes it, and the rates are subject to change."],
           ["Sales Center > Texts & Emails", "Every text and email with a lead: what each producer typed (automation counted apart), replies still waiting, and how fast replies were answered."],
           ["Coaching Center > Cards", "One coaching card per recorded sales conversation. Filter by producer, day or objection."],
           ["Coaching Center > Objections", "Every objection Apollo found, grouped, with how each was handled."],
@@ -462,6 +463,7 @@ window.BLUEPRINTS = {
           "Answer texts and emails from leads quickly. Speed to Reply turns green at 15 minutes.",
           "Write a note in AgencyZoom after every call: who you talked to, what they need, what happens next.",
           "Do one Role Play session.",
+          "Check Sales Center > Sales > Commission to see your tier this folio and how much more premium the next one needs. It updates as sales are logged, so keep the Sales sheet right.",
         ] },
         "Numbers with a **pulsing green glow** are live. The rest update every hour on the :55.",
       ] },

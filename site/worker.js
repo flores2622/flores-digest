@@ -56,6 +56,7 @@ import METHODOLOGY_MD from "../coaching/METHODOLOGY.md";
 import ROLEPLAY_MD from "../coaching/ROLEPLAY.md";
 import TRAINING_MD from "../coaching/TRAINING.md";
 import { getLive, scheduledLive } from "./live.js";
+import { commission } from "./commission.js";
 
 export default {
   // Live figures between checkpoints (site/live.js): the cron in
@@ -94,6 +95,10 @@ export default {
       if (parts[1] === "service") {
         if (parts.length === 2) return listService(env);
         if (parts.length === 3) return getService(env, parts[2]);
+      }
+
+      if (parts[1] === "commission" && parts.length === 3) {
+        return getCommission(request, env, parts[2]);
       }
 
       if (parts[1] === "renewals" && parts.length === 2) {
@@ -458,6 +463,16 @@ async function getSalesLogFolio(env, end) {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(end) || !FOLIO_CLOSE_DATES.includes(end)) {
     return json({ error: "bad folio end date" }, 400);
   }
+  const { start, entries } = await folioEntries(env, end);
+  return json({
+    folio_start: start,
+    folio_end: end,
+    entries,
+  });
+}
+
+/** Every saleslog entry in the folio ending `end`, newest-added first. */
+async function folioEntries(env, end) {
   const start = folioStartFor(end);
   const days = [];
   if (start) {
@@ -482,11 +497,28 @@ async function getSalesLogFolio(env, end) {
     for (const e of doc.entries || []) entries.push({ ...e, day });
   }
   entries.sort((a, b) => (b.created_at || "").localeCompare(a.created_at || ""));
-  return json({
-    folio_start: start,
-    folio_end: end,
-    entries,
-  });
+  return { start, entries };
+}
+
+/* GET /api/commission/:end -> where each producer stands on Frank's
+ * commission schedules this folio (commission.js), from the folio's Sales
+ * sheet -- live, since a sale reaches the sheet the refresh it is sold.
+ * Pay is private (Frank, 2026-10-02: "own only; managers all"): Frank and
+ * Amanda get every producer, a producer only their own (Sarahi and Coral
+ * their team's), anyone else none. Decided here, so nobody's browser is
+ * ever sent another person's figures. */
+const COMMISSION_ALL = new Set(["frank@floresinsuranceagency.com", "amanda@floresinsuranceagency.com"]);
+async function getCommission(request, env, end) {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(end) || !FOLIO_CLOSE_DATES.includes(end)) {
+    return json({ error: "bad folio end date" }, 400);
+  }
+  const me = identityOf(request, env);
+  const all = COMMISSION_ALL.has(me.email);
+  const { start, entries } = await folioEntries(env, end);
+  const units = commission(entries, (u) => all || (me.producer && u.members.includes(me.producer)));
+  return new Response(JSON.stringify({ folio_start: start, folio_end: end, all, units,
+    built_at: new Date().toISOString() }), { headers: {
+      "content-type": "application/json; charset=utf-8", "cache-control": "no-store" } });
 }
 
 // The Docs Signed dropdown's exact options, taken from the real Google
