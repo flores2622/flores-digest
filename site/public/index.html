@@ -985,6 +985,21 @@ html[data-look="mesa"] .chatbox .pinned { background: var(--text-primary); color
 .todo .accts button.acct:hover { text-decoration: underline; }
 .todo .accts small { color: var(--text-muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .todo .accts .who .pbadge { font-size: 10.5px; }
+/* a card flipping to its list */
+.flipsect { perspective: 2200px; }
+.flipsect .flipinner { position: relative; transition: transform .6s cubic-bezier(.4, .2, .2, 1); transform-style: preserve-3d; }
+.flipsect .flipface { backface-visibility: hidden; -webkit-backface-visibility: hidden; }
+.flipsect .flipface.back { position: absolute; inset: 0; transform: rotateY(180deg); overflow: hidden; }
+.flipsect.on .flipinner { transform: rotateY(180deg); }
+.flipsect.on .flipface.front { position: absolute; inset: 0; overflow: hidden; pointer-events: none; }
+.flipsect.on .flipface.back { position: static; overflow: visible; }
+.flipsect .flipface.back .rdrill-list > div:first-child { margin-top: 0 !important; }
+.flipsect .flipfront { font: 700 12px var(--body); border: 1px solid var(--border-strong); background: var(--surface-raised); border-radius: 8px; padding: 6px 10px; text-decoration: none; color: var(--text-primary); white-space: nowrap; }
+.flipsect .flipfront:hover { border-color: var(--accent); }
+/* the scene cards show a plain sheet on the back */
+.skyline.flipsect.on, .lbsky.flipsect.on, .svchero.flipsect.on, .renhero.flipsect.on { background: var(--surface-raised); color: var(--text-primary); padding: 18px 20px 20px; }
+.skyline.flipsect.on .sky-k { display: none; }
+.lbsky.flipsect.on h2, .svchero.flipsect.on h2, .renhero.flipsect.on h2 { color: inherit; }
 
 
 /* ---- Coaching Center and Learning Center, with colour (Frank, 2026-10-01:
@@ -2278,10 +2293,12 @@ function digestDay(d, who) {
   // The leaderboard card carries the same scene inside it (Frank,
   // 2026-10-02: "in the background of the leaderboard itself, not a
   // background behind the 2 cards"): see teamLeaderboardHtml's .lbsky.
-  return `<div class="skyline"><div class="sky-k"><b>${cesc(skyTitle)}</b><span>${cesc(skySub)}</span></div><div class="tiles tiles-6">${tilesHtml}${closingRatioTileHtml}</div></div>
-  ${digDrillFor(d, who, ["dials", "contacts", "quoted", "sold", "life", "closing"])}
-  ${teamLeaderboardHtml(d, who)}
-  ${digDrillFor(d, who, ["lb"])}`;
+  // Each list sits INSIDE the card it belongs to, so the card flips to it
+  // (flipLists): the tiles' list in the skyline card, the leaderboard's in
+  // the leaderboard card.
+  return `<div class="skyline"><div class="sky-k"><b>${cesc(skyTitle)}</b><span>${cesc(skySub)}</span></div><div class="tiles tiles-6">${tilesHtml}${closingRatioTileHtml}</div>
+  ${digDrillFor(d, who, ["dials", "contacts", "quoted", "sold", "life", "closing"])}</div>
+  ${teamLeaderboardHtml(d, who).replace(/<\/div>\s*$/, digDrillFor(d, who, ["lb"]) + "</div>")}`;
 }
 
 /* The life goal (Frank, 2026-10-01: "make the goal 1 life policy a week"),
@@ -7240,7 +7257,28 @@ function placeVista() {
   const c = v.querySelector(":scope > .controls");
   if (c) c.insertAdjacentHTML("afterend", html); else v.insertAdjacentHTML("afterbegin", html);
 }
-new MutationObserver(() => placeVista()).observe(document.getElementById("view"), { childList: true });
+/* Every card that opens a list FLIPS to it (Frank, 2026-10-02: "any card
+   that drops down data"): after a paint, each open list (`.rdrill-list`)
+   is moved to the back of the card it sits in (the nearest section or the
+   skyline), the card's own content becomes the front, and the card turns
+   over; its Close becomes "▲ Front", which turns it back before the repaint. */
+function flipLists() {
+  $$("#view .rdrill-list").forEach(list => {
+    if (list.closest(".flipface")) return;
+    const host = list.closest(".sect, .skyline"); if (!host || host.classList.contains("flipsect")) return;
+    const front = document.createElement("div"); front.className = "flipface front";
+    const back = document.createElement("div"); back.className = "flipface back";
+    const inner = document.createElement("div"); inner.className = "flipinner";
+    while (host.firstChild) front.appendChild(host.firstChild);
+    list.remove(); back.appendChild(list);
+    list.querySelectorAll("[data-ddrill-close], [data-sdrill-close], [data-drill-close]").forEach(a => { a.textContent = "▲ Front"; a.classList.add("flipfront"); });
+    inner.append(front, back); host.appendChild(inner); host.classList.add("flipsect");
+    requestAnimationFrame(() => requestAnimationFrame(() => host.classList.add("on")));
+  });
+}
+// Turn a flipped card back, then run the repaint that removes its list.
+function unflipThen(el, fn) { const h = el && el.closest(".flipsect.on"); if (h) { h.classList.remove("on"); setTimeout(fn, 420); } else fn(); }
+new MutationObserver(() => { placeVista(); flipLists(); }).observe(document.getElementById("view"), { childList: true });
 async function paint() {
   try { await paintTab(); wireFeed(); } catch (e) { paintFailed(e); }
 }
@@ -7264,7 +7302,7 @@ async function paintTab() {
       el.onclick = go;
       el.onkeydown = e => { if (e.key === "Enter" || e.key === " ") go(e); };
     });
-    v.querySelectorAll("[data-ddrill-close]").forEach(el => el.onclick = e => { e.preventDefault(); digDrill = ""; paint(); });
+    v.querySelectorAll("[data-ddrill-close]").forEach(el => el.onclick = e => { e.preventDefault(); unflipThen(el, () => { digDrill = ""; paint(); }); });
   } else if (view === "post") {
     v.innerHTML = rangeControlHtml() + '<div class="empty">Loading…</div>';
     wireRangeControl();
@@ -8203,7 +8241,7 @@ async function paintServiceTab() {
       el.onclick = go;
       el.onkeydown = e => { if (e.key === "Enter" || e.key === " ") go(e); };
     });
-    v.querySelectorAll("[data-sdrill-close]").forEach(el => el.onclick = e => { e.preventDefault(); svcDrill = ""; paint(); });
+    v.querySelectorAll("[data-sdrill-close]").forEach(el => el.onclick = e => { e.preventDefault(); unflipThen(el, () => { svcDrill = ""; paint(); }); });
     v.querySelectorAll("[data-sperson]").forEach(el => {
       const go = e => { if (e) e.preventDefault(); const x = el.dataset.sperson;
         svcPerson = x && svcPerson !== x ? x : ""; if (svcDrill.startsWith("g-")) svcDrill = ""; paint(); };
@@ -8663,7 +8701,7 @@ async function paintRenewalsTab() {
     el.onkeydown = e => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); go(); } };
   });
   const close = v.querySelector("[data-drill-close]");
-  if (close) close.onclick = e => { e.preventDefault(); renDrill = ""; paintRenewals(); };
+  if (close) close.onclick = e => { e.preventDefault(); unflipThen(close, () => { renDrill = ""; paintRenewals(); }); };
   v.querySelectorAll("[data-rperson]").forEach(el => {
     const go = e => { if (e) e.preventDefault(); const x = el.dataset.rperson;
       renPerson = x && renPerson !== x ? x : ""; if (renDrill.startsWith("rw:") && !renDrill.startsWith("rw:pipe:")) renDrill = ""; paintRenewals(); };
