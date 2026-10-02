@@ -7526,6 +7526,8 @@ async function paintTab() {
     await paintRenewals();
   } else if (view === "commercial") {
     await paintCommercial();
+  } else if (view === "rotation") {
+    await rotationPaint();   // rotation.js; only reachable for ROTATION_VIEWERS
   }
 }
 
@@ -9564,5 +9566,6 @@ async function coeusSend(text) {
 </script>
 <script src="post.js"></script>
 <script src="editions.js"></script>
+<script src="rotation.js"></script>
 </body>
 </html>

@@ -59,6 +59,7 @@ import { getLive, scheduledLive } from "./live.js";
 import { commission } from "./commission.js";
 import { coeusChat, coeusChats, coeusUsage } from "./coeus.js";
 import { leadsIndex } from "./lead_index.js";
+import { rotationGet, rotationPost } from "./rotation.js";
 
 export default {
   // Live figures between checkpoints (site/live.js): the cron in
@@ -150,6 +151,13 @@ export default {
       // Saved chats, per login (Frank, 2026-10-01: "will it save the chats?").
       if (parts[1] === "coeus" && parts[2] === "chats" && parts.length <= 4) {
         return coeusChats(request, env, { identityOf }, parts[3] || "");
+      }
+
+      // The new-business rotation (Frank, 2026-10-02): site/rotation.js,
+      // ROTATION_VIEWERS only.
+      if (parts[1] === "rotation" && parts.length === 2) {
+        if (request.method === "GET") return rotationGet(request, env, identityOf);
+        if (request.method === "POST") return rotationPost(request, env, identityOf);
       }
 
       // Managers' sticky notes on coaching cards (Frank, 2026-10-02).

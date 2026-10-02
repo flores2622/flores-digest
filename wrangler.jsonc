@@ -60,6 +60,12 @@
     // Who sees Role Play's voice ratings table (site/worker.js
     // roleplayVoiceRatings; Frank, 2026-09-29). Same format.
     "ROLEPLAY_VOICE_VIEWERS": "frank@floresinsuranceagency.com",
+    // Who sees the new-business rotation (site/rotation.js; Frank,
+    // 2026-10-02: "only be visible to debiie, crystal, and the ops team")
+    // and logs its turns; ROTATION_EDITORS also change an order or who is
+    // next. Same format.
+    "ROTATION_VIEWERS": "debbie@floresinsuranceagency.com,crystal@floresinsuranceagency.com,frank@floresinsuranceagency.com,francisco@floresinsuranceagency.com,veronica@floresinsuranceagency.com,amanda@floresinsuranceagency.com",
+    "ROTATION_EDITORS": "debbie@floresinsuranceagency.com,frank@floresinsuranceagency.com,francisco@floresinsuranceagency.com,veronica@floresinsuranceagency.com,amanda@floresinsuranceagency.com",
     // Who sees EVERY producer's Role Play session history and the beta
     // sessions (site/worker.js rpScope; Frank, 2026-09-29). A producer always
     // sees their own. Same format.
