@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Sales Floor — Flores Insurance Agency</title>
-<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=Manrope:wght@400;500;600;700;800&family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,700&family=Public+Sans:wght@400;500;700;800&family=Bitter:wght@400;600&family=Work+Sans:wght@400;500;700;800&family=Instrument+Serif&family=Instrument+Sans:wght@400;500;700&family=Bebas+Neue&family=Bangers&family=Comic+Neue:wght@400;700&family=JetBrains+Mono:wght@400;700&display=swap">
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,700&family=Bebas+Neue&family=Bangers&family=Comic+Neue:wght@400;700&family=JetBrains+Mono:wght@400;700&display=swap">
 <style>
 /* ---------------------------------------------------------------------------
    Palette. Categorical slots 1-5 in fixed order, validated in both modes:
@@ -26,8 +26,8 @@
    in light mode and the tuned dark ones, exactly as before. */
 :root {
   color-scheme: light;
-  --display: 'DM Serif Display', Georgia, serif;
-  --dw: 400;   /* the display face's heavier cut, where it has one */
+  --display: 'Fraunces', Georgia, serif;   /* Canyon Sunset's, in every look (Frank, 2026-10-02) */
+  --dw: 700;   /* the display face's bold cut */
   --body: Manrope, system-ui, -apple-system, "Segoe UI", sans-serif;
   --surface:        #f3e9dc;   /* sand: the page */
   --surface-raised: #fffaf3;   /* cream: every card */
@@ -62,17 +62,16 @@
   --bad:    #a80000; --badbg:  #fce3e3; --badbd:  #f0b4b4;
   --gold:   #9a6f00; --silver: #6f6f6f; --bronze: #9a5f2b;
 }
-html[data-look="saguaro"] { --display: 'Fraunces', Georgia, serif; --dw: 600; --body: 'Public Sans', system-ui, sans-serif;
+html[data-look="saguaro"] {
   --surface: #f1ece1; --surface-raised: #fdfbf6; --card2: #f4f0e6; --chip: #e6e3d6; --text-primary: #1f2a22; --text-muted: #5d6b5f; --text-secondary: #50605a;
   --grid: #e4e2d6; --border: #dcdfd0; --border-strong: #c9cdb9; --accent: #3e6b4f; --accent-d: #2b4f39; --side: #24382c; --side2: #2f4a3a; --sideInk: #dfe7dd; --brand: #f1ece1; --brand2: #b9d3a8; --rad: 12px; }
-html[data-look="turquoise"] { --display: 'Bitter', Georgia, serif; --dw: 600; --body: 'Work Sans', system-ui, sans-serif;
+html[data-look="turquoise"] {
   --surface: #eeebe5; --surface-raised: #fbfaf7; --card2: #f2f0eb; --chip: #e3e0da; --text-primary: #1d2a33; --text-muted: #5d6a73; --text-secondary: #4e5b64;
   --grid: #e3e0da; --border: #dcdfe1; --border-strong: #c8cdd0; --accent: #1f8a8a; --accent-d: #156464; --side: #1d2a33; --side2: #2a3a46; --sideInk: #d6dee3; --brand: #eeebe5; --brand2: #6cc7c4; --rad: 10px; }
-html[data-look="canyon"] { --display: 'Fraunces', Georgia, serif; --dw: 600;
+html[data-look="canyon"] {
   --surface: #f6e6d6; --surface-raised: #fff8f0; --card2: #fbeee2; --chip: #f1dcc8; --text-primary: #3a1d12; --text-muted: #7d5a48; --text-secondary: #6a4a3a;
   --grid: #f0dccb; --border: #ecd2bb; --border-strong: #e0b994; --accent: #d9622b; --accent-d: #a8441a; --side: #5a2416; --side2: #733021; --sideInk: #f6dcc8; --brand: #fff1e4; --brand2: #ffb27e; --rad: 18px; --bw: 2.5px; }
-html[data-look="canyon"] h1, html[data-look="canyon"] h2, html[data-look="canyon"] .tile .v { font-weight: 700; }
-html[data-look="mesa"] { --display: 'Instrument Serif', Georgia, serif; --body: 'Instrument Sans', system-ui, sans-serif;
+html[data-look="mesa"] {
   --surface: #faf7f2; --surface-raised: #ffffff; --card2: #f7f3ec; --chip: #efe8de; --text-primary: #2a2320; --text-muted: #776a5f; --text-secondary: #5e5248;
   --grid: #efe8de; --border: #ece4d8; --border-strong: #e2d7c8; --side: #efe6da; --side2: #e2d5c4; --sideInk: #4a3f38; --brand: #2a2320; --brand2: #b5532f; --rad: 10px; --bw: 1px; --shadow: none; }
 html[data-look="mesa"] .tabs { border-right: 1px solid var(--border-strong); }
@@ -851,9 +850,10 @@ tr.rdrill-row.on td { box-shadow: inset 0 -2px 0 var(--s1); }
    markup, hooks, tiers and lists and only the dress changed. */
 /* Weight (Frank, 2026-10-01: "its thinner than it was"): the restyle swapped
    the system font for Manrope at 400, which reads lighter than Segoe UI.
-   Text sits at 500 in every look; the serif numbers and headings take the
-   face's heavier cut where it has one (--dw: Fraunces and Bitter at 600;
-   DM Serif Display and Instrument Serif have one weight and stay as cut). */
+   Text sits at 500 in every look. A look changes colours only, never the
+   faces (Frank, 2026-10-02: Mesa Minimal's Instrument Serif read thinner
+   again; "i like the canyon sunset font the most, make that one the
+   universal") -- Fraunces at 700 and Manrope everywhere. */
 body { font-family: var(--body); font-size: 14px; font-weight: 500; }
 h1, h2, .tile .v { font-family: var(--display); }
 .sd, .tile .n, .n, .note, td, .sect p, .hero p { font-weight: 500; }
