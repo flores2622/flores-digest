@@ -40,11 +40,14 @@
     return out;
   }
 
-  (async function scInit() {
-    try { SC = await api(""); } catch (_) { return; }
+  // Unhide the page for whoever the Worker lets see it. SCRUB_READY says
+  // whether it did, so a refresh on this page can reopen it (index.html).
+  window.SCRUB_READY = (async function scInit() {
+    try { SC = await api(""); } catch (_) { return false; }
     if (!CENTERS.salescenter.some(([k]) => k === "scrub")) CENTERS.salescenter.push(["scrub", "Lead Scrub"]);
     SEARCH_PAGES.push(["Lead Scrub", "Sales Center · leads cleaned up in Apex and AgencyZoom", "scrub"]);
     paintCenterBar();
+    return true;
   })();
 
   /* ---- CSV ---- */

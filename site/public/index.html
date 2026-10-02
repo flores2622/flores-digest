@@ -9677,6 +9677,7 @@ paintCenterBar();
     let ok = Object.values(CENTERS).some(pages => pages.some(([k]) => k === w.view));
     if (w.view === "commercial") { await commercialReady; ok = COMMERCIAL_DAYS !== null; }
     if (w.view === "rotation") ok = await (window.ROT_READY || Promise.resolve(false));
+    if (w.view === "scrub") ok = await (window.SCRUB_READY || Promise.resolve(false));
     if (ok) setViewQuiet(w.view);
   }
   if (w) {
