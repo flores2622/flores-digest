@@ -56,6 +56,7 @@ import METHODOLOGY_MD from "../coaching/METHODOLOGY.md";
 import ROLEPLAY_MD from "../coaching/ROLEPLAY.md";
 import TRAINING_MD from "../coaching/TRAINING.md";
 import { getLive, scheduledLive } from "./live.js";
+import { coeusChat } from "./coeus.js";
 
 export default {
   // Live figures between checkpoints (site/live.js): the cron in
@@ -122,6 +123,16 @@ export default {
 
       if (parts[1] === "me" && parts.length === 2) {
         return whoAmI(request, env);
+      }
+
+      // Coeus, the board's assistant (Frank, 2026-10-01): site/coeus.js.
+      // Who may see what is decided there from the same identity helpers
+      // the rest of this Worker uses.
+      if (parts[1] === "coeus" && parts.length === 2 && request.method === "POST") {
+        return coeusChat(request, env, ctx, {
+          identityOf, rpScope, rpMaySee,
+          commercialAllowed: (req, e) => requireCommercial(req, e) === null,
+        });
       }
 
       if (parts[1] === "editions" && parts.length === 3) {

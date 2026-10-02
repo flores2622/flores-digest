@@ -21,8 +21,14 @@
    Format: each guide is a list of sections {h, body}; body items are a
    paragraph string, {list: [...]}, {steps: [...]} (numbered), {terms:
    [[term, meaning], ...]} or {table: {head: [...], rows: [[...], ...]}}.
-   **bold** works inside any text. Nothing else is interpreted. */
-window.BLUEPRINTS = {
+   **bold** works inside any text. Nothing else is interpreted.
+
+   The Worker imports this file too (site/coeus.js): Coeus answers "what does
+   this number mean" questions from these same words, so the board and the
+   assistant can never disagree. That is why the assignment below lands on
+   `window` in the browser and on the global in the Worker -- keep it a plain
+   script (no import/export), or the <script src> in index.html breaks. */
+(typeof window !== "undefined" ? window : globalThis).BLUEPRINTS = {
   updated: "2026-10-01",
   guides: [
 
@@ -38,6 +44,7 @@ window.BLUEPRINTS = {
           ["Apollo", "Sales and coaching. Listens to every recorded sales conversation, writes a coaching card for it, and runs Role Play."],
           ["Athena", "Service. The Service Center: SRs, renewals, tasks, call backs, texts, and the Service Playbook."],
           ["Cerberus", "Commercial. Frank's alone; nobody else's numbers include commercial work."],
+          ["Coeus", "The board's assistant. The owl button at the bottom right of every page (or Ctrl /) opens a chat. Ask it how a day or a range went, what a producer should work on, what Apollo saw on a call, how to answer an objection, or what any number means and how it is counted. It reads the same published reports and checkpoints the board draws, these guides and Apollo's methodology, so it cannot tell you anything the board does not know, and it will say so. It knows who is asking: a producer can see every producer's figures, as on the board, but only their own Role Play sessions; the Commercial Center is Frank's alone."],
         ] },
         "The ARM covers Apollo. Anything commercial is Frank's and is left out of every producer figure.",
       ] },
@@ -58,6 +65,7 @@ window.BLUEPRINTS = {
     { h: "Where everything is",
       body: [
         "The left bar holds the Centers. Each Center has tabs across the top. Every page shares two filters at the top: **the day or range** (a single day, this week, month to date, year to date, a folio, or custom dates) and **the producer** (everyone, or one person). **Every number, card and bar opens the accounts behind it**; click it and the list appears underneath.",
+        "**Ask Coeus** when you cannot find something or want a number read out: the button at the bottom right of every page. It knows which page, day and producer you are looking at, so \"how did we do?\" means that day and that person.",
         { table: { head: ["Where", "What it's for"], rows: [
           ["Sales Center > Digest", "The day at a glance: dials, contacts, quotes, sales, closing ratio, the leaderboard, speed to dial and reply, task completion, household completion, utilization, Coach AI scores."],
           ["Sales Center > Sales", "The Sales sheet. Log a sale, look back at any folio, and break sales down by lead source, product or producer. Self-reported, not the official Premium Sold. Live sales are added to it automatically."],
@@ -275,6 +283,7 @@ window.BLUEPRINTS = {
           "**Credit goes to whoever completed the SR or task**, not whoever created it.",
           "Anything commercial is Frank's (Cerberus) and stays out of the service team's numbers. The team's work on a commercial household, like a payment or the owner's personal lines, still counts here.",
         ] },
+        "**Coeus**, the board's assistant (the round button at the bottom right, or Ctrl /), answers questions about the Service Center too: how the team did on a day, retention over a period, which renewals are at risk, and what any figure here means.",
       ] },
 
     { h: "The standard",
@@ -435,6 +444,7 @@ window.BLUEPRINTS = {
       body: [
         "The Sales Floor is where you see how your day is going and how to get better. Every recorded conversation you have with a lead is reviewed by **Apollo**, the agency's sales coach, and turned into a coaching card: what went well, what to fix, and the words you could have used.",
         "Nobody expects you to be good at this on day one. The point of the board is to show you one thing to work on at a time.",
+        "Stuck on what a number means, or what to say to an objection? **Ask Coeus**, the round button at the bottom right of every page. It explains the board in plain words and coaches from Apollo's own playbook.",
       ] },
 
     { h: "Words you'll hear",
@@ -555,6 +565,7 @@ window.BLUEPRINTS = {
       body: [
         "You know how to run a call. Now the gains come from consistency: assuming every time, handling objections instead of accepting them, and treating follow-ups as their own kind of call.",
         "Coaching Center > **Wins and Losses** is your scoreboard for this. It shows, for you and the team, how often you assumed the quote, assumed the sale, and sent the quote instead of keeping them on the phone, with every call behind each number.",
+        "**Ask Coeus** (the round button at the bottom right) for your own figures over any range, what your cards keep flagging, and what to say instead.",
       ] },
 
     { h: "Assuming the quote and the sale",
@@ -627,6 +638,7 @@ window.BLUEPRINTS = {
           "**Techniques, named.** Apollo marks six when you use them: elevator pitch, feel-felt-found, risk reversal, social proof, trial close, and takeaway / urgency. Look at which ones you lean on and which you never reach for.",
           "**The greeting on your own line.** When a lead calls you back, use their name: \"Hi David! How are you today?\" When you don't know who it is, \"This is Mike, how can I help?\" Leave out the agency name and the word insurance; people hang up when they hear they're being sold something.",
         ] },
+        "**Ask Coeus** (the round button at the bottom right) to pull your numbers over any range, or to compare your closing ratio and Sent the Quote count with the team's.",
       ] },
 
     { h: "Where experienced producers slip",
