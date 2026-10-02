@@ -1498,7 +1498,7 @@ $2,500 in premium"): the Digest's day reads as Apollo's group chat
   (`rpScope.all`) still pick who, and the Beta tester.
 - **The Coaching and Learning Centers and both Road Maps carry colour**
   (Frank, 2026-10-01: "more color and design"): a coaching section wears
-  its producer's badge colour, a card's left edge its outcome's, Quick
+  its producer's badge colour (a card's coloured left edge came and went -- Frank, 2026-10-02: "remove the left tab color, the badge is enough"), Quick
   coaching is a tinted panel; objection bars are red with the won share
   green; Role Play and Session History open on a dark hero card, the three
   prospects are green / amber / clay; each Training deck has its own colour;
