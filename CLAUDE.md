@@ -1545,8 +1545,11 @@ $2,500 in premium"): the Digest's day reads as Apollo's group chat
   misfiled leads red). No figure, list or hook changed. **The skyline runs
   on under the leaderboard** (Frank, 2026-10-02: "make it flow onto the
   leaderboard as well"): the Team Leaderboard card, and the lists the
-  tiles and leaderboard open, sit inside `.skyline` on a desert floor that
-  eases from the ground's brown to sand.
+  tiles and leaderboard open, sit inside `.skyline`, and the picture runs
+  on under them (Frank, 2026-10-02: "i dont see the bckgrnd on the
+  ldrbrd" -- a plain brown floor read as nothing): dune bands with small
+  saguaros and rocks all the way down the scene, and the leaderboard card
+  is see-through (78%) so they show behind the podium.
 - **Every edition downloads** (Frank, 2026-10-02: "make the editions
   downloadable"): **Download PDF** (the edition alone in a new window, the
   print dialog opened once its fonts load -- Save as PDF) and **Save page**
