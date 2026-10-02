@@ -74,7 +74,7 @@
           <button type="button" class="btn ropri" data-rogive="${key}"${rotBusy || !list.next ? " disabled" : ""}>Give to ${cesc(first(list.next))}</button>
           <button type="button" class="btn" data-roskip="${key}"${rotBusy || !list.next ? " disabled" : ""} title="${cesc(first(list.next))} is out or busy: their turn passes to ${cesc(first(up[1] || ""))}">${cesc(first(list.next))} is out</button>
         </div>
-        ${others.length ? `<div class="rorow roout"><span>Client asked for</span><select class="roasked" aria-label="Client asked for">${others.map(p => `<option value="${cesc(p)}">${cesc(first(p))}</option>`).join("")}</select>
+        ${others.length ? `<div class="rorow roout"><span>Client asked for</span><select class="roasked" aria-label="Client asked for"><option value="" selected>Pick who…</option>${others.map(p => `<option value="${cesc(p)}">${cesc(first(p))}</option>`).join("")}</select>
           <button type="button" class="btn" data-roout="${key}"${rotBusy ? " disabled" : ""} title="Give it to them without using the rotation: ${cesc(first(list.next))} stays up">Give out of turn</button></div>` : ""}
         ${msg.err ? `<p class="romsg bad" role="alert">${cesc(msg.err)}</p>` : msg.ok ? `<p class="romsg good" role="status">${cesc(msg.ok)}</p>` : ""}
       </div>
@@ -195,6 +195,7 @@
     v.querySelectorAll("[data-roout]").forEach(b => b.onclick = async () => {
       const key = b.dataset.roout, f = vals(b), who = card(b).querySelector(".roasked").value;
       if (!f.client) { rotMsg[key] = { err: "Type the client's name first." }; repaint(); return; }
+      if (!who) { rotMsg[key] = { err: "Pick who the client asked for." }; repaint(); return; }
       const ok = await post({ op: "log", list: key, kind: "out", producer: who, ...f }, key);
       if (ok) { rotMsg[key] = { ok: `${f.client} went to ${first(who)} out of turn. ${first(ROT.lists[key].next)} is still up.` }; repaint(); }
     });
@@ -241,13 +242,13 @@
     const kept = {};
     $$("#view .rocard").forEach(c => {
       const g = s => (c.querySelector(s) || {}).value;
-      kept[c.dataset.rot] = { client: g(".roclient"), how: g(".rohow"), notes: g(".ronotes") };
+      kept[c.dataset.rot] = { client: g(".roclient"), how: g(".rohow"), notes: g(".ronotes"), asked: g(".roasked") };
     });
     $("#view").innerHTML = panelHtml();
     $$("#view .rocard").forEach(c => {
       const k = kept[c.dataset.rot], m = rotMsg[c.dataset.rot] || {};
       if (!k || m.ok) return;                 // a saved turn clears its form
-      for (const [s, val] of [[".roclient", k.client], [".rohow", k.how], [".ronotes", k.notes]]) {
+      for (const [s, val] of [[".roclient", k.client], [".rohow", k.how], [".ronotes", k.notes], [".roasked", k.asked]]) {
         const el = c.querySelector(s); if (el && val != null) el.value = val;
       }
     });
