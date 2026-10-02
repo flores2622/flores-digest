@@ -37,11 +37,12 @@ LICENSED = {82589: "Frank Flores", 82372: "Francisco Flores", 82592: "Veronica F
             105006: "Amanda Torricellas", 174445: "Crystal Mango"}
 
 # The type of claim is the SR's own AgencyZoom category (Frank, 2026-10-02:
-# "type of claim"; /v1/api/service-categories). Any other category -- the
-# old "Claim Services" / "Claims: Filed ..." ones, or General -- is "Not set",
-# for the rep to pick the right one.
-CLAIM_TYPES = {40942: "Auto", 40944: "Home", 40943: "Commercial",
-               40945: "Work Comp", 40946: "Life"}
+# "type of claim"; /v1/api/service-categories). Matched by id, so a rename in
+# AgencyZoom breaks nothing: Frank renamed them "Claim: Auto" etc. on
+# 2026-10-02, and "Claim Services" (25618) became "Claim: Specialty". Any other
+# category (General ...) is "Not set", for the rep to pick the right one.
+CLAIM_TYPES = {40942: "Auto", 40944: "Home", 40946: "Life", 25618: "Specialty",
+               40943: "Commercial", 40945: "Work Comp"}
 NOT_SET = "Not set"
 # Commercial and Work Comp claims are Cerberus's (Frank, 2026-10-02:
 # "commercial"): commercial.is_commercial_sr counts them, so they leave the

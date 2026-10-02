@@ -1286,7 +1286,8 @@ Crystal (hybrid); credit always goes to whoever COMPLETED the SR or task.
   the playbook's `claim` request type is owned by "licensed" and imports it.
   Nothing is blocked in AgencyZoom (Frank: no) -- the board flags.
   **The type of claim is the SR's own AgencyZoom category** (`CLAIM_TYPES`:
-  Auto 40942, Home 40944, Commercial 40943, Work Comp 40945, Life 40946;
+  Auto 40942, Home 40944, Life 40946, Specialty 25618, Commercial 40943,
+  Work Comp 40945 -- by id; Frank renamed them "Claim: ..." 2026-10-02;
   anything else "Not set"), and **close time** is created -> completed,
   shown per type (median and 90% within). **Commercial and Work Comp
   claims are Cerberus's** (Frank, 2026-10-02: "commercial";
