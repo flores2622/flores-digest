@@ -1281,8 +1281,14 @@ Crystal (hybrid); credit always goes to whoever COMPLETED the SR or task.
   Debbie is not licensed, she cannot open claims moving forward").
   `claims.py` is the one definition: an SR in AgencyZoom's **Claim**
   workflow (id 23672; one test SR before this, Veronica 2026-03-11), and
-  `LICENSED` (Amanda 105006, Crystal 174445) -- the playbook's `claim`
-  request type is owned by "licensed" and imports it. AgencyZoom lets anyone
+  `LICENSED` -- **the ops team and Crystal** (Frank, 2026-10-02: Frank
+  82589, Francisco 82372, Veronica 82592, Amanda 105006, Crystal 174445);
+  the playbook's `claim` request type is owned by "licensed" and imports it.
+  Nothing is blocked in AgencyZoom (Frank: no) -- the board flags.
+  **The type of claim is the SR's own AgencyZoom category** (`CLAIM_TYPES`:
+  Auto 40942, Home 40944, Commercial 40943, Work Comp 40945, Life 40946;
+  anything else "Not set"), and **close time** is created -> completed,
+  shown per type (median and 90% within). AgencyZoom lets anyone
   create one, so a claim created from `RULE_FROM` (2026-10-02) on whose
   `createdBy` is not licensed, or whose `csr` is not, is a flag. Each service
   day carries `claims` (opened / completed / open / flags, rows); the

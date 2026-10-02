@@ -478,6 +478,7 @@ function compactService(doc, sections) {
     // Claims (claims.py): licensed reps only; flags = opened by or assigned to someone not licensed.
     claims: doc.claims ? { licensed: doc.claims.licensed, rule_from: doc.claims.rule_from,
       opened: (doc.claims.opened || []).length, completed: (doc.claims.completed || []).length,
+      completed_by_type: tallyRows(doc.claims.completed || []), open_by_type: tallyRows(doc.claims.open || []),
       open_end_of_day: (doc.claims.open || []).length, not_licensed: trim(doc.claims.flags, 20, 160) } : null,
   };
   for (const s of sections || []) {
@@ -512,7 +513,7 @@ function summarize(v) {
 function tallyRows(rows) {
   const out = { rows: rows.length };
   if (!rows.length || typeof rows[0] !== "object") return rows.length <= 12 ? trim(rows, 12, 100) : out;
-  for (const f of ["who", "by", "person", "team", "pipeline", "outcome", "status", "kind", "renewal", "answered", "done", "done_by", "role", "bucket", "direction"]) {
+  for (const f of ["who", "by", "person", "team", "pipeline", "outcome", "status", "kind", "renewal", "answered", "done", "done_by", "role", "bucket", "direction", "type"]) {
     if (rows.some((r) => r && r[f] !== undefined && (typeof r[f] !== "object"))) {
       const t = {}; for (const r of rows) { const k = String(r[f]); t[k] = (t[k] || 0) + 1; }
       if (Object.keys(t).length <= 12) out[`by_${f}`] = t;

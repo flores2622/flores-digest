@@ -4,11 +4,13 @@ be the only ones able to open claims, amanda and crystal are the only 2
 licensed reps of that team. Debbie is not licensed, she cannot open claims
 moving forward").
 
-A claim is an SR in AgencyZoom's "Claim" service workflow (workflowId 23672).
+A claim is an SR in AgencyZoom's "Claim" service workflow (workflowId 23672),
+and its type is the SR's category (CLAIM_TYPES). How long it took to close is
+created -> completed, like every other pipeline.
 Before 2026-10-02 it held one SR, a test (Veronica, 2026-03-11, "replace
 vehicle"), so the section starts empty.
 
-The rule: a claim SR is OPENED by a licensed service rep (`createdBy`) and
+The rule: a claim SR is OPENED by someone in LICENSED (`createdBy`) and
 WORKED by one (assigned `csr`). AgencyZoom does not stop anyone else from
 creating one, so Athena flags it instead: a claim opened on or after
 RULE_FROM by anyone outside LICENSED, or assigned to anyone outside it, is
@@ -27,9 +29,20 @@ import datetime as dt
 CLAIM_WORKFLOWS = {"Claim"}
 CLAIM_WORKFLOW_ID = 23672
 
-# The licensed service reps -- the only people who open and work claims.
-# By AgencyZoom employee id (the SR's `csr`) and by name (its `createdBy`).
-LICENSED = {105006: "Amanda Torricellas", 174445: "Crystal Mango"}
+# Who may open and work a claim: the ops team and Crystal (Frank,
+# 2026-10-02: "yes, the ops team and crystal") -- of the service team that is
+# Amanda and Crystal; Debbie is not licensed. By AgencyZoom employee id (the
+# SR's `csr`) and by name (its `createdBy`).
+LICENSED = {82589: "Frank Flores", 82372: "Francisco Flores", 82592: "Veronica Flores",
+            105006: "Amanda Torricellas", 174445: "Crystal Mango"}
+
+# The type of claim is the SR's own AgencyZoom category (Frank, 2026-10-02:
+# "type of claim"; /v1/api/service-categories). Any other category -- the
+# old "Claim Services" / "Claims: Filed ..." ones, or General -- is "Not set",
+# for the rep to pick the right one.
+CLAIM_TYPES = {40942: "Auto", 40944: "Home", 40943: "Commercial",
+               40945: "Work Comp", 40946: "Life"}
+NOT_SET = "Not set"
 LICENSED_NAMES = set(LICENSED.values())
 RULE_FROM = "2026-10-02"
 
@@ -67,6 +80,7 @@ def _row(sr, day):
                assigned=_csr_name(sr.get("csr")),
                stage=sr.get("workflowStageName") or None,
                due=str(sr.get("dueDate") or "")[:10] or None)
+    row["type"] = CLAIM_TYPES.get(sr.get("categoryId"), NOT_SET)
     row["licensed"] = row["opened_by"] in LICENSED_NAMES if row["opened_by"] else None
     row["problems"] = problems(sr)
     if sr.get("completeDate"):
@@ -97,6 +111,7 @@ def figures(day, done, live):
     done_ids = {t.get("id") for t in done_c if str(t.get("completeDate") or "")[:10] <= day}
     still_open = [_row(t, day) for t in live_c if t.get("id") not in done_ids]
     return {"licensed": sorted(LICENSED_NAMES), "rule_from": RULE_FROM,
+            "types": list(CLAIM_TYPES.values()) + [NOT_SET],
             "opened": opened, "completed": completed, "open": still_open,
             "flags": [r for r in opened if r["problems"]]}
 

@@ -95,9 +95,9 @@ REQUEST_TYPES = {
     "sales_opportunity": ("New business / cross-sell / requote / new coverage", "producer"),
     "owner_escalation": ("Issue requiring owner/producer escalation", "frank"),
     "cancellation": ("Cancellation", "service"),
-    # Claims are opened and worked by a licensed service rep only -- Amanda or
-    # Crystal (Frank, 2026-10-02: "Debbie is not licensed, she cannot open
-    # claims moving forward"). claims.py flags a claim SR anyone else opens.
+    # Claims are opened and worked by a licensed rep only -- of the service
+    # team Amanda or Crystal, plus the ops team (Frank, 2026-10-02: "Debbie is
+    # not licensed, she cannot open claims moving forward"). claims.py flags a claim SR anyone else opens.
     "claim": ("Claim", "licensed"),
     "other": ("Other", "service"),
 }
