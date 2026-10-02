@@ -1491,7 +1491,16 @@ going cold with days since the last dial -- each name opening the lead's
 coaching card through the search's `openLeadCard` (a misfiled lead with no
 card goes to the Pipeline list, row lit), with the page button and "▲
 Front" beside. The showing face sets the card's height; which rows are
-turned survives a repaint (`needsFlipped`).
+turned survives a repaint (`needsFlipped`). **And every card that opens a
+list flips to it** (Frank, 2026-10-02: "any card that drops down data"):
+after a paint, `flipLists` moves each open list (`.rdrill-list` -- the
+Digest's tiles and leaderboard, the Service Center's stat cards, the
+Renewals rates and Renewal SR Work, the outcome bars) to the back of the
+nearest section or skyline card, the card's own content becomes the front,
+and the card turns over; its Close reads "▲ Front" and `unflipThen` turns
+it back before the repaint clears the list. The Digest's two loose lists
+moved inside the cards they belong to for this. A scene card shows a plain
+sheet on its back.
 - **The Flores Post** (`site/public/post.js`) is the first of the Editions
   (Frank, 2026-10-01: "the flores post should also be one of the
   editions"; it was its own page for a day), written in rules from the day documents -- nothing typed,
