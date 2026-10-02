@@ -136,6 +136,9 @@ const TOOLS = [
   { name: "commercial_day",
     description: "The Commercial Center (Cerberus) for one day: commercial SRs completed with outcomes, and the open queue. Frank's alone; anyone else is refused.",
     input_schema: { type: "object", required: ["day"], properties: { day: { type: "string" } } } },
+  { name: "coeus_usage",
+    description: "What Coeus itself has cost: questions asked and estimated spend per person and per day over a date range (default the last 30 days). Only for the usage viewers; anyone else is refused.",
+    input_schema: { type: "object", properties: { from: { type: "string" }, to: { type: "string" } } } },
   { name: "roleplay_sessions",
     description: "Graded Role Play sessions between two dates: per producer -- sessions, resolved, checklist items met, the items missed most, objections drilled -- and each session's summary. A producer sees only their own; the history viewers see everyone's.",
     input_schema: { type: "object", required: ["from", "to"], properties: { from: { type: "string" }, to: { type: "string" }, producer: { type: "string" } } } },
@@ -610,6 +613,7 @@ async function runTool(name, inp, ctx) {
       case "renewals": return await toolRenewals(env, inp);
       case "commercial_day": return await toolCommercial(env, inp, commercial);
       case "roleplay_sessions": return await toolRoleplay(env, inp, scope, rpMaySee);
+      case "coeus_usage": return ctx.usageViewer ? await usageReport(env, inp.from, inp.to) : { error: "not permitted: Coeus's usage is for its viewers" };
       default: return { error: `unknown tool ${name}` };
     }
   } catch (e) {
@@ -631,6 +635,7 @@ function statusFor(name, inp) {
     case "renewals": return "Reading the Renewals report…";
     case "commercial_day": return `Reading the Commercial Center for ${d(inp.day)}…`;
     case "roleplay_sessions": return "Reading Role Play sessions…";
+    case "coeus_usage": return "Adding up Coeus's own usage…";
     default: return "Looking that up…";
   }
 }
@@ -678,6 +683,7 @@ async function streamRound(env, body, emit) {
   if (!r.ok || !r.body) throw new Error(`Claude API ${r.status}: ${(await r.text()).slice(0, 300)}`);
   const blocks = [], dec = new TextDecoder();
   let stop = null, buf = "";
+  const usage = { input: 0, cache_write: 0, cache_read: 0, output: 0 };
   const reader = r.body.getReader();
   for (;;) {
     const { value, done } = await reader.read();
@@ -688,7 +694,11 @@ async function streamRound(env, body, emit) {
       const line = buf.slice(0, i).trim(); buf = buf.slice(i + 1);
       if (!line.startsWith("data:")) continue;
       let ev; try { ev = JSON.parse(line.slice(5)); } catch (_) { continue; }
-      if (ev.type === "content_block_start") {
+      if (ev.type === "message_start" && ev.message && ev.message.usage) {
+        const u = ev.message.usage;
+        usage.input += u.input_tokens || 0; usage.cache_write += u.cache_creation_input_tokens || 0; usage.cache_read += u.cache_read_input_tokens || 0;
+        usage.output += u.output_tokens || 0;
+      } else if (ev.type === "content_block_start") {
         const b = ev.content_block || {};
         blocks[ev.index] = b.type === "tool_use" ? { type: "tool_use", id: b.id, name: b.name, json: "" } : { type: "text", text: b.text || "" };
       } else if (ev.type === "content_block_delta") {
@@ -697,6 +707,8 @@ async function streamRound(env, body, emit) {
         else if (ev.delta.type === "input_json_delta") b.json += ev.delta.partial_json || "";
       } else if (ev.type === "message_delta") {
         if (ev.delta && ev.delta.stop_reason) stop = ev.delta.stop_reason;
+        // message_delta's output_tokens is the running total for the message.
+        if (ev.usage && ev.usage.output_tokens != null) usage.output = Math.max(usage.output, ev.usage.output_tokens);
       } else if (ev.type === "error") {
         throw new Error(`Claude API: ${JSON.stringify(ev.error || ev).slice(0, 300)}`);
       }
@@ -705,7 +717,63 @@ async function streamRound(env, body, emit) {
   const content = blocks.filter(Boolean).map((b) => b.type === "tool_use"
     ? { type: "tool_use", id: b.id, name: b.name, input: (() => { try { return JSON.parse(b.json || "{}"); } catch (_) { return {}; } })() }
     : { type: "text", text: b.text }).filter((b) => b.type === "tool_use" || b.text);
-  return { content, stop };
+  return { content, stop, usage };
+}
+
+/* ---- usage per person (Frank, 2026-10-02: "whos usage does the chat bot
+   use?" -- option 1, track it on the board) ------------------------------
+   Every answer's tokens are added to coeus-usage/<day>.json under the
+   person who asked, with an estimated cost at the model's list prices.
+   GET /api/coeus/usage?from=&to= (COEUS_USAGE_VIEWERS) adds it up per
+   person and per day. One key still pays for everyone; this is who used it. */
+// claude-sonnet-5 list prices per million tokens (platform.claude.com/pricing,
+// 2026-10-02): input $2, output $10, cache write 1.25x input, cache read 0.1x.
+const PRICE = { input: 2.0, cache_write: 2.5, cache_read: 0.2, output: 10.0 };
+const costOf = (u) => (u.input * PRICE.input + u.cache_write * PRICE.cache_write + u.cache_read * PRICE.cache_read + u.output * PRICE.output) / 1e6;
+const USAGE_FIELDS = ["questions", "rounds", "input", "cache_write", "cache_read", "output"];
+async function recordUsage(env, me, usage, rounds) {
+  try {
+    const day = azToday(), key = `coeus-usage/${day}.json`;
+    const doc = (await r2json(env, key)) || { day, people: {} };
+    const who = String(me.email || "unknown").toLowerCase();
+    const p = doc.people[who] || (doc.people[who] = { name: me.name || who, questions: 0, rounds: 0, input: 0, cache_write: 0, cache_read: 0, output: 0, cost: 0 });
+    p.name = me.name || p.name; p.questions += 1; p.rounds += rounds;
+    for (const k of ["input", "cache_write", "cache_read", "output"]) p[k] += usage[k] || 0;
+    p.cost = Math.round(costOf(p) * 10000) / 10000;
+    await env.BOARD.put(key, JSON.stringify(doc), { httpMetadata: { contentType: "application/json" } });
+  } catch (_) { /* a lost usage line never fails an answer */ }
+}
+function usageAllowed(request, env, deps) {
+  const who = String((deps.identityOf(request, env) || {}).email || "").toLowerCase();
+  return !!who && String(env.COEUS_USAGE_VIEWERS || "").toLowerCase().split(",").map((x) => x.trim()).filter(Boolean).includes(who);
+}
+async function usageReport(env, from, to) {
+  const today = azToday();
+  to = ISO.test(to || "") ? to : today;
+  from = ISO.test(from || "") ? from : new Date(Date.parse(to) - 29 * 86400e3).toISOString().slice(0, 10);
+  if (from > to) [from, to] = [to, from];
+  const days = [];
+  for (let d = new Date(from + "T12:00:00Z"); d.toISOString().slice(0, 10) <= to; d.setUTCDate(d.getUTCDate() + 1)) days.push(d.toISOString().slice(0, 10));
+  const people = {}, perDay = [];
+  for (const day of days.slice(-120)) {
+    const doc = await r2json(env, `coeus-usage/${day}.json`);
+    if (!doc) continue;
+    const row = { day, questions: 0, cost: 0 };
+    for (const [email, p] of Object.entries(doc.people || {})) {
+      const t = people[email] || (people[email] = { email, name: p.name, questions: 0, rounds: 0, input: 0, cache_write: 0, cache_read: 0, output: 0, cost: 0, days: 0 });
+      for (const k of USAGE_FIELDS) t[k] += p[k] || 0;
+      t.cost += p.cost || 0; t.days += 1; t.name = p.name || t.name;
+      row.questions += p.questions || 0; row.cost += p.cost || 0;
+    }
+    perDay.push(row);
+  }
+  const list = Object.values(people).map((t) => ({ ...t, cost: Math.round(t.cost * 100) / 100, avg_cost_per_question: t.questions ? Math.round((t.cost / t.questions) * 1000) / 1000 : 0 })).sort((a, b) => b.cost - a.cost);
+  const total = list.reduce((a, t) => ({ questions: a.questions + t.questions, cost: a.cost + t.cost }), { questions: 0, cost: 0 });
+  return { from, to, people: list, per_day: perDay.map((r) => ({ ...r, cost: Math.round(r.cost * 100) / 100 })), total: { ...total, cost: Math.round(total.cost * 100) / 100 }, prices_per_million: PRICE, model: MODEL };
+}
+export async function coeusUsage(request, env, deps, url) {
+  if (!usageAllowed(request, env, deps)) return jsonResp({ error: "not permitted" }, 403);
+  return jsonResp(await usageReport(env, url.searchParams.get("from"), url.searchParams.get("to")));
 }
 
 export async function coeusChat(request, env, ctx, deps) {
@@ -721,7 +789,7 @@ export async function coeusChat(request, env, ctx, deps) {
     { type: "text", text: staticSystem(scope.all), cache_control: { type: "ephemeral" } },
     { type: "text", text: contextBlock(me, scope, commercial, body.context) },
   ];
-  const toolCtx = { env, scope, commercial, rpMaySee };
+  const toolCtx = { env, scope, commercial, rpMaySee, usageViewer: usageAllowed(request, env, deps) };
   const enc = new TextEncoder();
   const { readable, writable } = new TransformStream();
   const w = writable.getWriter();
@@ -730,12 +798,16 @@ export async function coeusChat(request, env, ctx, deps) {
   const run = async () => {
     try {
       const convo = messages.map((m) => ({ role: m.role, content: m.content }));
+      const used = { input: 0, cache_write: 0, cache_read: 0, output: 0 };
+      let rounds = 0;
       for (let round = 0; round < MAX_ROUNDS; round++) {
         const last = round === MAX_ROUNDS - 1;
-        const { content, stop } = await streamRound(env, {
+        const { content, stop, usage } = await streamRound(env, {
           model: MODEL, max_tokens: 1800, system, tools: TOOLS, messages: convo, thinking: { type: "disabled" },
           ...(last ? { tool_choice: { type: "none" } } : {}),
         }, emit);
+        rounds++;
+        for (const k in used) used[k] += usage[k] || 0;
         const uses = content.filter((b) => b.type === "tool_use");
         if (stop !== "tool_use" || !uses.length) break;
         // Anything said before reading ("Let me check.") stays its own line.
@@ -751,6 +823,7 @@ export async function coeusChat(request, env, ctx, deps) {
         await emit({ s: "" });
       }
       await emit({ done: true });
+      await recordUsage(env, me, used, rounds);
     } catch (e) {
       await emit({ error: String(e && e.message || e).slice(0, 300) });
     } finally {
