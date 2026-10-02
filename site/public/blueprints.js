@@ -143,7 +143,7 @@
         ] },
         "On a finish-quote call, anything an earlier call already captured is N/A, not Missing.",
         "**Verify against the reports.** ALTA's reports already show the drivers, vehicles, limits, coverages, dates, prior carrier, policy status and the term (six or twelve months). Discovery still matters: it buys time while the quote builds, builds rapport and finds what the reports don't. But what the prospect says about their current policy has to be checked against the **Prior Insurance** screen. People misremember the term: \"about $1,000 a year\" is often the six-month premium. Apollo marks the current premium and the price comparison weak when the producer takes the prospect's word on a figure that doesn't add up, and flags it as \"Didn't verify against the reports\".",
-        "A manager can add a **Manager's note** to a card, something seen in ALTA or a policy record that the call can't show, and Apollo reads the card with it.",
+        "**Sticky notes.** Open any coaching card and write a sticky note in the box at the top. Everyone sees it in yellow on the front of the card, so the producer gets your coaching right where they read Apollo's. Leave **Apollo learns this** ticked and Apollo uses the note on every call it reads from then on: it applies the lesson wherever a call shows the same thing, in your words. Untick it for a note that's only for that card. Cards already written aren't read again, so a lesson shows up on the next calls, not the old ones.",
         "It also marks six named techniques when they're used: elevator pitch, feel-felt-found, risk reversal, social proof, trial close, and takeaway / urgency.",
         "**Follow-ups** have their own six steps instead:",
         { steps: [
@@ -509,6 +509,7 @@
           "**Offer the bundle.** Home and auto together, and ask about anything else they have elsewhere.",
           "**Set a specific next step.** A day and a time, not \"I'll call you sometime.\"",
           "**Write your note** in AgencyZoom after the call.",
+          "**Read your sticky notes.** A yellow note on one of your coaching cards is from Frank or a manager, about that call.",
         ] },
         "Each step gets Strong, Weak, Missing, or N/A (there was no chance for it on that call). Missing is where to start.",
       ] },

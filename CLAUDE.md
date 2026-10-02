@@ -204,6 +204,21 @@ Everything caches under `data/`, so a re-run resumes rather than restarting.
   cannot show; Apollo treats it as fact. The cache is keyed by call, so a note
   reaches a card only when it is read again (the file is empty: the one
   note written, Lisette's, was taken back the same day and her card restored).
+- **Managers' sticky notes on coaching cards** (Frank, 2026-10-02: "add the
+  managers 'Sticky note' on it. Any way apollo can learn from my sticky
+  notes?"). A manager (`rpScope.all`) writes one in the box at the top of an
+  open card; everyone sees it in yellow on the card's front
+  (`stickyFrontHtml` / `stickyEditHtml`, matched by day + lead_id + producer).
+  The Worker keeps them in R2 `card-notes/notes.json` (`/api/cardnotes`: GET
+  for anyone signed in, POST add / edit / del for managers only). **Apollo
+  learns from them**: every note left on "Apollo learns this" goes into the
+  instructions of every coaching read from then on
+  (`coaching_cards.lessons_block`, newest 40 / 9,000 characters, after
+  METHODOLOGY.md, whose "Manager's note and the managers' sticky notes"
+  section says how to use them -- the lesson, never a fact about this call),
+  and every note on a card is that card's Manager's note if it is read again
+  (`manager_notes`). Cards already written are not re-read. The first is
+  Frank's on Lorena / Lisette Dasnabedian 10-01.
 - **A closed card's right half is Quick coaching** (Frank, 2026-09-30:
   "the right half of the card be a quick coaching summary, while leaving
   the left of the card whats currently there"; `quickCoachHtml`), from what

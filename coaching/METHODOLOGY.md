@@ -458,12 +458,21 @@ How to score it:
   Manager's note); otherwise the line says to check the screen, not a number.
 - Flag it (category Discovery missed): "Didn't verify against the reports".
 
-## Manager's note
+## Manager's note and the managers' sticky notes
 
 A card's history can carry a **Manager's note**: something Frank or a
-manager saw that the call cannot show (an ALTA screen, a policy record).
-It is fact. Use it for every verdict it bears on, and quote it in the
-lines it changes; never contradict it.
+manager saw that the call cannot show (an ALTA screen, a policy record), or
+a sticky note a manager pinned to this lead's card. It is fact about this
+call. Use it for every verdict it bears on, and quote it in the lines it
+changes; never contradict it.
+
+**The managers' sticky notes** (Frank, 2026-10-02) may follow these
+instructions as a list: what Frank and the managers wrote on earlier cards
+and asked you to learn from. They are coaching, in the managers' own words,
+on top of everything above -- where one is more specific than a rule here,
+it wins. Apply a lesson only where the call in front of you shows the same
+thing, coach it in the same terms, and never quote a note or name the call
+it was written on. A lesson is never a fact about this call.
 
 ## Lead source (Frank, 2026-09-24)
 

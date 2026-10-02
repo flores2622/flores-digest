@@ -136,7 +136,7 @@ def _ask_card(model, transcript, notes, seconds, producer, lead, call_count=1,
             f"{history_block or 'Lead history (before today): unavailable'}\n\n"
             f"Producer's own notes (may be empty):\n{notes or '(none)'}\n\n"
             f"Machine transcript:\n{transcript}"}]
-    base = {"model": model, "system": METHODOLOGY, "messages": msg}
+    base = {"model": model, "system": METHODOLOGY + lessons_block(), "messages": msg}
 
     # Same two failure modes as call_summary._ask, same fix -- see that
     # function's docstring for why thinking is disabled and truncation gets
@@ -758,18 +758,62 @@ def _history(producer, group, day, ctx, log=print):
 
 def manager_notes(day, group):
     """What Frank or a manager saw that the call cannot show -- an ALTA
-    screen, a policy record (Frank, 2026-10-02: Lisette Dasnabedian's
-    six-month term). coaching/manager_notes.json, by day and lead; the
-    card cache is keyed by call, so a note reaches a card only when it is
-    read (or re-read) after the note is written."""
+    screen, a policy record -- for this card: coaching/manager_notes.json,
+    plus the managers' sticky notes pinned to this lead's card that day
+    (sticky_notes). The card cache is keyed by call, so a note reaches a
+    card only when it is read (or re-read) after the note is written."""
     try:
         rows = json.loads((ROOT / "coaching/manager_notes.json").read_text())
     except (OSError, ValueError):
-        return ""
+        rows = []
     ids = {r.get("lead_id") for r in group if r.get("lead_id") is not None}
-    hits = [n for n in rows if n.get("day") == day and n.get("lead_id") in ids]
-    return "\n".join(f"Manager's note ({n.get('by', 'manager')}, {n.get('written', '')}): {n['note']}"
-                     for n in hits)
+    hits = [(n.get("by", "manager"), n.get("written", ""), n["note"]) for n in rows
+            if n.get("day") == day and n.get("lead_id") in ids]
+    hits += [(n.get("by", "manager"), str(n.get("at", ""))[:10], n["text"]) for n in sticky_notes()
+             if n.get("day") == day and n.get("lead_id") in ids and n.get("text")]
+    return "\n".join(f"Manager's note ({by}, {when}): {text}" for by, when, text in hits)
+
+
+# The managers' sticky notes on coaching cards (Frank, 2026-10-02: "Any way
+# apollo can learn from my sticky notes?"): written on the board, kept by the
+# Worker in R2 (card-notes/notes.json), read once per run. Never fails a run.
+_STICKY = None
+LESSON_NOTES, LESSON_CHARS = 40, 9000
+
+
+def sticky_notes(log=print):
+    global _STICKY
+    if _STICKY is None:
+        try:
+            import publish_board
+            cli, bucket = publish_board._client()
+            _STICKY = json.loads(cli.get_object(Bucket=bucket, Key="card-notes/notes.json")["Body"].read()).get("notes") or []
+        except Exception as e:
+            if "NoSuchKey" not in type(e).__name__ + str(e):
+                log(f"  sticky notes: not read ({type(e).__name__}) -- cards are read without them")
+            _STICKY = []
+    return _STICKY
+
+
+def lessons_block():
+    """Every sticky note marked "Apollo learns this", newest first, as part
+    of the instructions of every coaching read (METHODOLOGY.md's "Manager's
+    sticky notes" says how to use them). Capped so the instructions stay a
+    cacheable, steady prefix."""
+    out, size = [], 0
+    for n in sorted((n for n in sticky_notes() if n.get("teach") and n.get("text")),
+                    key=lambda n: str(n.get("at", "")), reverse=True)[:LESSON_NOTES]:
+        line = (f"- {n.get('by', 'Manager')}, {str(n.get('at', ''))[:10]}, on {n.get('who') or 'a producer'}'s "
+                f"call with {(n.get('lead') or 'a lead').split()[0]} ({n.get('day', '')}): {n['text'].strip()}")
+        if size + len(line) > LESSON_CHARS:
+            break
+        out.append(line); size += len(line)
+    if not out:
+        return ""
+    return ("\n\n## The managers' sticky notes (lessons from earlier cards)\n\n"
+            "Frank and the managers wrote these on earlier coaching cards and asked Apollo "
+            "to learn from them. Apply the lesson wherever the call in front of you shows the "
+            "same thing; they are not facts about this call.\n\n" + "\n".join(out))
 
 
 _LEADS_BY_ID = None
