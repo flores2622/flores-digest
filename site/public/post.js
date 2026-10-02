@@ -50,6 +50,17 @@
 .shead h3 { margin: 0; font: 400 28px var(--display); } .shead h3 em { font-size: 18px; color: var(--text-muted); }
 .shead .sd { margin: 0; }
 table.box { width: 100%; border-collapse: collapse; font-size: 15px; }
+.lbwrap { container-type: inline-size; width: 100%; overflow: hidden; }
+.lbwrap table { width: 100%; min-width: 0 !important; }
+@container (max-width: 1264px) { .lbwrap [data-p="12"] { display: none; } }
+@container (max-width: 1172px) { .lbwrap [data-p="11"] { display: none; } }
+@container (max-width: 1080px) { .lbwrap [data-p="10"] { display: none; } }
+@container (max-width: 988px) { .lbwrap [data-p="9"] { display: none; } }
+@container (max-width: 896px) { .lbwrap [data-p="8"] { display: none; } }
+@container (max-width: 804px) { .lbwrap [data-p="7"] { display: none; } }
+@container (max-width: 712px) { .lbwrap [data-p="6"] { display: none; } }
+@container (max-width: 620px) { .lbwrap [data-p="5"] { display: none; } }
+@container (max-width: 528px) { .lbwrap [data-p="4"] { display: none; } }
 table.box th { font-size: 11px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--text-muted); text-align: right; padding: 4px 0; border-bottom: 1px solid var(--text-primary); }
 table.box th:nth-child(-n+2), table.box td:nth-child(-n+2) { text-align: left; }
 table.box td { padding: 7px 0; border-bottom: 1px dotted var(--border-strong); text-align: right; font-size: 15px; }
@@ -91,7 +102,7 @@ html[data-look="mesa"] .tips { background: var(--text-primary); color: var(--sur
 .sp .big b { display: block; font: 400 44px/1 'Bebas Neue', Impact, sans-serif; }
 .sp .big span { font-size: 11px; font-weight: 800; letter-spacing: .1em; text-transform: uppercase; }
 .sp .take { font: italic 400 22px/1.35 var(--display); border-left: 5px solid var(--accent); padding-left: 14px; }
-table.box.spt { min-width: 620px; } table.box.spt th { font: 400 15px 'Bebas Neue', Impact, sans-serif; letter-spacing: .06em; color: var(--text-primary); border-bottom: 2px solid var(--text-primary); }
+table.box.spt th { padding: 6px 4px; } table.box.spt td { padding: 7px 4px; white-space: nowrap; } table.box.spt th { font: 400 15px 'Bebas Neue', Impact, sans-serif; letter-spacing: .06em; color: var(--text-primary); border-bottom: 2px solid var(--text-primary); }
 .sp .scroll { border: 0; }
 @media (max-width: 1000px) { .front { grid-template-columns: 1fr; } .row3 { grid-template-columns: 1fr; } .row3 > article { padding: 14px 0 !important; border-left: 0 !important; border-top: 1px solid var(--border-strong); } .goals, .tips { grid-template-columns: 1fr; } .paper { padding: 24px 20px; } .sp .big { grid-template-columns: repeat(2, minmax(0, 1fr)); } .tlr { grid-template-columns: 70px 1fr 70px; } .tlr .e { grid-column: 1 / -1; } }
 `;
@@ -205,6 +216,57 @@ function slowTips(F, when) {
   if (F.rate < 13) tries.push(`<b>Move the dial block later.</b> The contact rate was ${ppct(F.rate)}; people pick up more after 3 PM than before noon.`);
   return tries;
 }
+/* One leaderboard for every edition (Frank, 2026-10-02: "this is also the
+   only leaderboard you didnt include all the info in, but it has the space
+   ... make the ones that we have to scroll have the space and give the big
+   ones the info they have space for, by priority"): the Digest's columns in
+   the Digest's order, each with a priority. The table never scrolls: as its
+   box narrows it drops the lowest-priority columns (container queries in
+   the stylesheet below), and a wide box shows every one. */
+const LB_COLS = [["Role Play", "rp", 8], ["Dials", "dials", 6], ["Avg Talk", "talk", 9], ["Contact Rate", "rate", 7], ["Texts / Emails", "msgs", 11],
+  ["Sent the Quote", "sent", 10], ["HH Quoted", "hh", 4], ["Prem. Quoted", "pq", 5], ["HH Sold", "hhSold", 3], ["Prem. Sold", "ps", 2], ["Util.", "util", 12], ["Pts", "pts", 1]];
+const lbTalk = s => `${Math.floor((s || 0) / 60)}:${String(Math.round(s || 0) % 60).padStart(2, "0")}`;
+function lbCell(n, key, team) {
+  switch (key) {
+    case "rp": return n.rp != null && n.rp !== 0 ? String(Math.round(n.rp)) : (n.rp === 0 && !team ? "0" : "—");
+    case "dials": return String(n.dials || 0);
+    case "talk": return lbTalk(n.talk);
+    case "rate": return `${ppct(n.rate)} (${n.live || 0})`;
+    case "msgs": return `${n.texts || 0} / ${n.emails || 0}`;
+    case "sent": return n.quoteUp ? `${n.sent} of ${n.quoteUp}` : "—";
+    case "hh": return String(n.hh || 0);
+    case "pq": return pmoney(n.pq);
+    case "hhSold": return `${n.hhSold || 0} (${n.pol || 0} pol)`;
+    case "ps": return pmoney(n.ps);
+    case "util": return n.util != null ? ppct(n.util) : "—";
+    case "pts": return team ? "" : `<b>${n.pts || 0}</b>`;
+  }
+  return "";
+}
+function lbTableHtml(order, NUM, T, full, opts = {}) {
+  const cls = opts.cls || "lbt", rank = !!opts.rank;
+  const th = LB_COLS.map(([l, , p]) => `<th data-p="${p}">${l}</th>`).join("");
+  const tr = (f, i) => `<tr>${rank ? `<td>${i + 1}</td>` : ""}<td><b>${cesc(full ? (full[f] || f) : f)}</b>${rank && i === 0 ? " ★" : ""}</td>${LB_COLS.map(([, k, p]) => `<td data-p="${p}">${lbCell(NUM[f], k, false)}</td>`).join("")}</tr>`;
+  return `<div class="lbwrap"><table class="${cls}"><thead><tr>${rank ? "<th>#</th>" : ""}<th>Producer</th>${th}</tr></thead><tbody>${order.map(tr).join("")}${
+    T ? `<tr class="tot">${rank ? "<td></td>" : ""}<td><b>Team</b></td>${LB_COLS.map(([, k, p]) => `<td data-p="${p}">${lbCell(T, k, true)}</td>`).join("")}</tr>` : ""}</tbody></table></div>`;
+}
+// The Post's own numbers for it, from postFacts (the editions build the same
+// shape in edFacts).
+function lbNums(F) {
+  const d = F.d, M = (d.messages || {}).producers || {}, so = c => Array.isArray(c.sendoff) ? c.sendoff[0] : c.sendoff;
+  const NUM = {};
+  for (const name of F.order) {
+    const x = F.byName[name] || {}, mp = M[name] || {}, calls = F.calls.filter(c => c.who === name);
+    NUM[name] = { dials: +x.dials || 0, live: +x.live || 0, rate: +x.rate || 0, hh: +x.hh || 0, pq: +x.pq || 0, ps: +x.ps || 0, pol: +x.pol || 0, talk: +x.talk || 0,
+      rp: x.coach && x.coach.roleplay != null ? +x.coach.roleplay : (x.rp_scored != null ? Math.round(x.rp_scored) : 0), util: x.util != null ? +x.util : null,
+      texts: +mp.texts || 0, emails: +mp.emails || 0, hhSold: F.hhSoldBy(name), pts: x.pts || 0,
+      quoteUp: calls.filter(c => so(c) != null).length, sent: calls.filter(c => so(c) === "producer").length };
+  }
+  const sum = k => Object.values(NUM).reduce((a, n) => a + (n[k] || 0), 0);
+  const T = { dials: F.dials, live: F.live, rate: F.rate, hh: F.hh, pq: F.pq, ps: F.ps, pol: F.pol, hhSold: F.hhSold, talk: F.talk, util: F.util, rp: (F.T || {}).roleplay,
+    texts: sum("texts"), emails: sum("emails"), sent: F.sendoffs.length, quoteUp: sum("quoteUp") };
+  return { NUM, T };
+}
 function standingsRows(F, isFolio) {
   return F.order.map(n => { const p = F.byName[n]; return [n, p.pts, F.hhSoldBy(n), pmoney(p.ps), p]; });
 }
@@ -223,8 +285,7 @@ function primetimeHtml(F, nums, isFolio, take) {
     <div class="big">${nums.slice(0, 5).map(([k, v]) => `<div><b>${cesc(v)}</b><span>${cesc(k)}</span></div>`).join("")}</div>
     <div class="take">${cesc(take)}</div>
     <div class="lab kick">The standings${isFolio ? " · per-day averages" : ""}</div>
-    <div class="scroll"><table class="box spt"><thead><tr><th>#</th><th>Producer</th><th>Dials</th><th>Cont</th><th>HH Q</th><th>HH sold</th><th>Prem</th><th>Pts</th></tr></thead><tbody>${
-      rows.map((r, i) => { const p = r[4]; return `<tr><td>${i + 1}</td><td>${cesc(r[0])}${i === 0 ? " ★" : ""}</td><td>${p.dials || 0}</td><td>${p.live || 0}</td><td>${p.hh || 0}</td><td>${r[2]}</td><td>${r[3]}</td><td><b>${r[1]}</b></td></tr>`; }).join("")}</tbody></table></div>
+    ${(() => { const { NUM, T } = lbNums(F); return lbTableHtml(F.order, NUM, T, null, { cls: "box spt", rank: true }); })()}
     <div class="row3" style="border-top:0;padding-top:0">
       <article><div class="lab kick">Player of the ${isFolio ? "folio" : "day"}</div><h3>${top ? cesc(top[0]) : "—"}</h3><p>${top ? `${plural(top[2], "household")} · ${top[3]} · ${top[1]} pts` : "No standings yet."}</p></article>
       <article><div class="lab kick">Play of the ${isFolio ? "folio" : "day"}</div><h3>${play ? cesc(`${pfirst(play.who)} and ${play.lead}`) : "No coached calls"}</h3><p>${play ? cesc(`${play.time ? play.time + ". " : ""}${(play.summary || "").slice(0, 220)}${(play.summary || "").length > 220 ? "…" : ""}`) : ""}</p></article>

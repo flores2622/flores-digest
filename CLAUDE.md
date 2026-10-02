@@ -1567,10 +1567,29 @@ $2,500 in premium"): the Digest's day reads as Apollo's group chat
   itself, not a background behind the 2 cards"): `teamLeaderboardHtml`'s
   section is `skyline lbsky` with ITS OWN picture (Frank, 2026-10-02:
   "the top should be the skyline and the bottom should be the landscape"):
-  a ground-level desert -- far sand in haze at the top, bands of floor
-  coming forward with saguaros growing larger toward the bottom, prickly
-  pear, rocks and a dry wash -- the podium standing on it and the table on
-  a near-opaque sheet. The tiles' card keeps the skyline (sky, sun, mesas).
+  by day a high-noon desert -- blue sky, clouds, red-rock buttes, a
+  two-lane highway running from the bottom to the horizon with the podium
+  at its end, big saguaros in the foreground -- and in Desert Night the
+  Milky Way, a moon over the buttes and a campfire by the road (Frank,
+  2026-10-02: "this is so bland compared to the rest, get creative"). The
+  podium stands under two spotlight beams in a pool of light, first place
+  wears a crown and a glow, the steps are gold / silver / bronze; the table
+  sits on a near-opaque sheet. The tiles' card keeps the sunset skyline.
+- **One leaderboard for every edition, fitted by priority** (Frank,
+  2026-10-02: "this is also the only leaderboard you didnt include all the
+  info in, but it has the space ... make the ones that we have to scroll
+  have the space and give the big ones the info they have space for, by
+  priority"): `lbTableHtml` in post.js draws the Digest's columns in the
+  Digest's order, each tagged with a priority (`LB_COLS`: Pts 1, Prem. Sold
+  2, HH Sold 3, HH Quoted 4, Prem. Quoted 5, Dials 6, Contact Rate 7, Role
+  Play 8, Avg Talk 9, Sent the Quote 10, Texts / Emails 11, Util. 12). The
+  table never scrolls: container queries on `.lbwrap` drop the
+  lowest-priority columns as its box narrows (about 92px a column) and a
+  wide box shows every one. The Post's Primetime standings use it (its
+  numbers from `lbNums(F)`, with # and ★), and every edition's `edLbt`
+  does; the three that sat in a side column -- FLRS 500's full tape,
+  CLOSER's masthead, KFLR's playlist -- moved to the full width of their
+  edition.
 - **Every edition downloads** (Frank, 2026-10-02: "make the editions
   downloadable"): **Download PDF** (the edition alone in a new window, the
   print dialog opened once its fonts load -- Save as PDF) and **Save page**
@@ -1582,6 +1601,48 @@ $2,500 in premium"): the Digest's day reads as Apollo's group chat
   saved day documents, Playwright captures) lives in the session's
   scratchpad, not the repo; `design/flores-board-preview.html` is the
   approved mock-up the restyle followed.
+
+## Coeus -- the board's assistant (2026-10-01)
+
+**Coeus is the chat bot on the board** (Frank, 2026-10-01: "a chat bot named
+Coeus that can help answer data questions, coaching questions, or anything
+about the board"), beside Apollo, Athena and Cerberus. The round button at
+the bottom right of every page (or Ctrl /) opens the drawer -- its icon is
+**the constellation owl** (Frank chose it over the axis globe, pole and
+ring, North Star compass, owl in the moon and owl under the pole star,
+2026-10-01: Coeus is the axis of the sky and the Titan of inquiry; the owl
+is drawn as a constellation with two star eyes, which pulse while it
+reads); "Ask Coeus" is
+also in the search. `POST /api/coeus` (`site/coeus.js`) streams its answer
+over `text/event-stream` with status lines while it reads.
+- **What it knows is the board's own words**: `blueprints.js` (every guide,
+  the Manager / Coaching one only for `ROLEPLAY_HISTORY_VIEWERS`, like the
+  tab), METHODOLOGY.md from "Core judgment" to "Output format", and
+  TRAINING.md, in one prompt-cached system block shared by every viewer
+  (~26k tokens for a manager, ~21k for staff; a tenth after the first read
+  in five minutes). **ROLEPLAY.md's personas are never given to it** -- they
+  are the answer key. The Worker imports `blueprints.js` for this, which is
+  why that file assigns to `window` in the browser and the global in the
+  Worker: keep it a plain script.
+- **Every figure comes from a tool read of R2, never from memory**: the
+  published day (`days/`, or today's `intraday/` checkpoint, said so),
+  a range added up like `mergeDayDocs` (up to 45 days), the coaching cards
+  (compact, or one lead's in full with its transcript), a lead search over
+  recent days, the Service Center page, the Renewals report, the Commercial
+  Center (COMMERCIAL_VIEWERS only) and the Role Play index (by `rpScope`).
+  No AgencyZoom, RingCentral or Insightful request is ever made. Each tool
+  hands back a compact reading (`compactSales`, `compactCard`, ...); a
+  document is far too big to send whole.
+- **It knows what is on screen**: the page, the day or range and the
+  producer filter travel with each question, so "how did we do?" is that
+  day and that person. The conversation lives in the browser tab
+  (sessionStorage) until New chat; the Worker keeps nothing.
+- Same model as Role Play (`claude-sonnet-5`, thinking off), up to six tool
+  rounds then a forced answer. It needs the Worker's `ANTHROPIC_API_KEY`;
+  without it the drawer says Coeus is not configured.
+- **When the board changes, Coeus changes with it** through `blueprints.js`
+  -- another reason to keep the guides current in the same change. A new
+  figure Coeus should read needs its compact reading added in `coeus.js`.
 
 ## Never
 
