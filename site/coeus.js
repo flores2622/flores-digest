@@ -79,6 +79,7 @@ You are Coeus, the assistant on the Flores Insurance Agency's Sales Floor board 
 
 How to answer:
 - Short and plain. Lead with the answer. A comparison across producers or days goes in a small markdown table; a single figure in a sentence. Money as $1,234; a rate as 23%; talk time as 4m 12s.
+- The chat window is narrow (about 420px). A table has at most 4 columns with short headers (a first name, "Team", "Goal"), and never more than one figure per cell; put the measures down the first column and the people across. Anything wider goes as a list instead.
 - Plain words only: no field names, file names, JSON keys or code. Call things what the board calls them (Dials, Live contacts, HH Quoted, Premium Sold, Household Completion, Speed to Dial, SRs, Role Play).
 - When a question is about "today", "yesterday", "this week", "last Friday" or "the folio", work out the dates from today's date and the published days (list_days) and say which you used. Arizona has no daylight saving time.
 - Today's figures are the latest hourly checkpoint; the board itself keeps some tiles live between checkpoints (a pulsing green glow), so a live tile may be a little ahead of what you read. Say so when it matters.
@@ -760,6 +761,61 @@ export async function coeusChat(request, env, ctx, deps) {
   return new Response(readable, {
     headers: { "content-type": "text/event-stream; charset=utf-8", "cache-control": "no-store, no-transform", "x-accel-buffering": "no" },
   });
+}
+
+/* ---- saved chats (Frank, 2026-10-01: "will it save the chats?") --------
+   Every conversation is kept per login in R2 under coeus-chats/<email>/:
+   one file per chat and an index of titles, so Past chats follows the
+   person from desk to phone. The browser saves after every answer; New
+   chat starts a new id and leaves the old one on the list. Each person
+   keeps their newest 100; a chat holds its last 60 turns.
+     GET  /api/coeus/chats          -> {chats: [{id, title, updated, n}]}
+     GET  /api/coeus/chats/<id>     -> {id, title, updated, messages}
+     POST /api/coeus/chats/<id>     {messages, title} saves; {delete: true} removes */
+const CHAT_MAX = 100, CHAT_TURNS = 60;
+const chatSlug = (email) => String(email || "").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
+function storeMessages(raw) {
+  return (Array.isArray(raw) ? raw : []).filter((m) => m && (m.role === "user" || m.role === "assistant") && typeof m.content === "string" && m.content.trim())
+    .map((m) => ({ role: m.role, content: clip(m.content, 12000), ...(m.error ? { error: true } : {}) })).slice(-CHAT_TURNS);
+}
+export async function coeusChats(request, env, deps, id) {
+  const me = deps.identityOf(request, env);
+  if (!me.email) return jsonResp({ error: "not signed in" }, 403);
+  const base = `coeus-chats/${chatSlug(me.email)}/`, idxKey = base + "index.json";
+  const readIdx = async () => { const x = await r2json(env, idxKey); return x && Array.isArray(x.chats) ? x : { chats: [] }; };
+  const putJson = (k, v) => env.BOARD.put(k, JSON.stringify(v), { httpMetadata: { contentType: "application/json" } });
+  if (!id) {
+    if (request.method !== "GET") return jsonResp({ error: "method not allowed" }, 405);
+    const idx = await readIdx();
+    return jsonResp({ chats: idx.chats.sort((a, b) => (a.updated < b.updated ? 1 : -1)) });
+  }
+  if (!/^[a-z0-9]{6,24}$/.test(id)) return jsonResp({ error: "bad chat id" }, 400);
+  const key = base + id + ".json";
+  if (request.method === "GET") {
+    const c = await r2json(env, key);
+    return c ? jsonResp(c) : jsonResp({ error: "no such chat" }, 404);
+  }
+  if (request.method !== "POST") return jsonResp({ error: "method not allowed" }, 405);
+  let body;
+  try { body = await request.json(); } catch (_) { return jsonResp({ error: "bad request body" }, 400); }
+  const idx = await readIdx();
+  if (body.delete) {
+    await env.BOARD.delete(key);
+    idx.chats = idx.chats.filter((c) => c.id !== id);
+    await putJson(idxKey, idx);
+    return jsonResp({ ok: true });
+  }
+  const messages = storeMessages(body.messages);
+  if (!messages.length) return jsonResp({ error: "nothing to save" }, 400);
+  const title = clip(String(body.title || (messages.find((m) => m.role === "user") || {}).content || "New chat").replace(/\s+/g, " ").trim(), 80);
+  const updated = new Date().toISOString();
+  await putJson(key, { id, title, updated, messages });
+  const row = { id, title, updated, n: messages.length };
+  const kept = [row, ...idx.chats.filter((c) => c.id !== id)];
+  for (const old of kept.slice(CHAT_MAX)) { try { await env.BOARD.delete(base + old.id + ".json"); } catch (_) {} }
+  idx.chats = kept.slice(0, CHAT_MAX);
+  await putJson(idxKey, idx);
+  return jsonResp({ ok: true, chat: row });
 }
 
 function jsonResp(body, status) {
