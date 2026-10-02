@@ -1510,7 +1510,7 @@ sheet on its back.
   documents. What people do on them (reactions, comments, poll and MVP
   votes, mailbag notes, panel likes) is shared through the Worker's
   `/api/editions/<key>` in R2 (`editions/<day>.json`,
-  `editions/folio-<end>.json`), one each per person by the Access name;
+  `editions/folio-<end>.json`), one each per person by the Access name -- **and the names show on hover** (Frank, 2026-10-02: "how do we know who it was that reacted, voted or interacted" -- "hover"): a reaction button, a poll bar, an MVP button and a panel's like each carry the names as their tooltip; comments and mailbag notes print the name;
   a viewer's own picks (watchlist, cover photo, card flips) stay in their
   browser. The `/api/me` first names live in the Worker's `FIRST_NAMES` +
   `RP_PRODUCER_EMAILS`.
