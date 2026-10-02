@@ -637,6 +637,15 @@ td.num.msgbad { color: var(--bad); font-weight: 600; }
 .chbody { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 16px; align-items: start; }
 .chbody.one { grid-template-columns: minmax(0, 1fr); }
 @media (max-width: 900px) { .chbody { grid-template-columns: minmax(0, 1fr); } }
+.snotes:empty { display: none; }
+.snotes { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
+.sticky { background: #fff1a8; color: #3b3000; border-radius: 3px 3px 12px 3px; padding: 8px 11px 7px; max-width: 520px;
+  box-shadow: 0 2px 6px rgba(0,0,0,.18); font-size: 13px; line-height: 1.45; border-top: 6px solid #f3d34a; }
+.sticky .stx { white-space: pre-wrap; }
+.sticky .sby { font-size: 11px; opacity: .75; margin-top: 3px; }
+.snblk .snrow { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin: 6px 0; }
+.snblk .sntext { flex: 1 1 320px; min-width: 0; font: inherit; padding: 7px 9px; border-radius: 8px; border: 1px solid var(--border-strong); background: #fff8cf; color: #3b3000; }
+.snblk .snteach { font-size: 12.5px; display: inline-flex; gap: 5px; align-items: center; }
 .qc { margin-top: 9px; border-left: 3px solid var(--border-strong); padding: 2px 0 2px 12px; font-size: 12.5px; line-height: 1.5; }
 .qc .qh { font-size: 10px; text-transform: uppercase; letter-spacing: .05em; color: var(--text-secondary); margin-bottom: 4px; }
 .qc .qr { display: flex; gap: 8px; margin: 3px 0; }
@@ -4375,6 +4384,73 @@ function stageFitHtml(c) {
    the sale (the detail on hover), and one line to say next time: the fix
    for the first objection not overcome, else "what assumptive sounds
    like". Nothing to say, no panel. */
+/* ---- Managers' sticky notes (Frank, 2026-10-02: "add the managers 'Sticky
+   note' on it. Any way apollo can learn from my sticky notes?") ----------
+   A manager pins a note to a coaching card; everyone sees it on the card's
+   front. One marked "Apollo learns this" goes into every coaching read from
+   then on, and into this card's own read if it is ever read again. The
+   Worker keeps them (/api/cardnotes, R2 card-notes/notes.json). */
+let CARD_NOTES = null, cardNotesLoading = false;
+const CARD_BY_KEY = {};
+const isManager = () => !!(IS_MANAGER || (ME && ME.all));
+const cardKey = c => `${c.day || ""}|${c.lead_id != null ? c.lead_id : "n:" + (c.lead || "")}|${c.who || ""}`;
+function notesFor(c) {
+  if (CARD_NOTES === null) { loadCardNotes(); return []; }
+  return CARD_NOTES.filter(n => n.day === c.day && (c.lead_id != null ? n.lead_id === c.lead_id : n.lead === c.lead)
+    && (!n.who || !c.who || n.who === c.who));
+}
+async function loadCardNotes(force) {
+  if (cardNotesLoading || (CARD_NOTES !== null && !force)) return;
+  cardNotesLoading = true;
+  try {
+    const r = await fetch("/api/cardnotes", { cache: "no-store" });
+    CARD_NOTES = r.ok ? ((await r.json()).notes || []) : [];
+  } catch (_) { CARD_NOTES = []; }
+  cardNotesLoading = false;
+  repaintStickies();
+}
+const snDate = iso => { const d = new Date(iso); return isNaN(d) ? "" : d.toLocaleDateString("en-US", { month: "short", day: "numeric", timeZone: "America/Phoenix" }); };
+function stickyFrontHtml(c) {
+  return notesFor(c).map(n => `<div class="sticky"><div class="stx">${cesc(n.text)}</div>
+    <div class="sby">— ${cesc(n.by || "Manager")} · ${cesc(snDate(n.at))}${n.teach ? ` · <span title="Apollo learns from this note">Apollo learns this</span>` : ""}</div></div>`).join("");
+}
+function stickyEditHtml(c) {
+  const ns = notesFor(c);
+  return `<div class="bl">Sticky notes</div>
+    ${ns.map(n => `<div class="snrow" data-snid="${escAttr(n.id)}"><textarea class="sntext" rows="2" aria-label="Sticky note">${cesc(n.text)}</textarea>
+      <label class="snteach"><input type="checkbox" class="snteachbox"${n.teach ? " checked" : ""}> Apollo learns this</label>
+      <button type="button" class="btn" data-sn="save">Save</button> <button type="button" class="btn ghost" data-sn="del">Delete</button></div>`).join("")}
+    <div class="snrow snnew"><textarea class="sntext" rows="2" placeholder="Add a sticky note to this card. Everyone sees it on the front of the card." aria-label="New sticky note"></textarea>
+      <label class="snteach"><input type="checkbox" class="snteachbox" checked> Apollo learns this</label>
+      <button type="button" class="btn" data-sn="add">Add note</button></div>
+    <div class="sd">With "Apollo learns this", Apollo uses the note on every call it reads from now on, and on this card if it is ever read again. Cards already written are not re-read.</div>`;
+}
+function repaintStickies() {
+  $$("#view .ccard[data-ck]").forEach(el => {
+    const c = CARD_BY_KEY[el.dataset.ck]; if (!c) return;
+    const f = el.querySelector(".snotes"); if (f) f.innerHTML = stickyFrontHtml(c);
+    const e = el.querySelector(".snblk"); if (e) e.innerHTML = stickyEditHtml(c);
+  });
+}
+document.addEventListener("click", async ev => {
+  const b = ev.target.closest("[data-sn]"); if (!b) return;
+  const el = b.closest(".ccard[data-ck]"), row = b.closest(".snrow"), c = el && CARD_BY_KEY[el.dataset.ck];
+  if (!c || !row) return;
+  const text = (row.querySelector(".sntext") || {}).value || "", teach = !!(row.querySelector(".snteachbox") || {}).checked;
+  const op = b.dataset.sn, body = op === "add" ? { op, day: c.day, lead_id: c.lead_id, lead: c.lead, who: c.who, text, teach }
+    : op === "save" ? { op: "edit", id: row.dataset.snid, text, teach } : { op: "del", id: row.dataset.snid };
+  if (op === "add" && !text.trim()) return;
+  if (op === "del" && !confirm("Delete this sticky note?")) return;
+  b.disabled = true;
+  try {
+    const r = await fetch("/api/cardnotes", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(body) });
+    const j = await r.json();
+    if (!r.ok) throw new Error(j.error || r.status);
+    CARD_NOTES = j.notes || [];
+    repaintStickies();
+  } catch (e) { b.disabled = false; alert("Could not save the sticky note: " + e.message); }
+});
+
 function quickCoachHtml(c) {
   const top = xs => (xs || []).filter(x => x && x[0]).slice(0, 2);
   const good = top(c.good), bad = top(c.bad);
@@ -4448,7 +4524,8 @@ function card(c) {
     dead_no_quote: "#e0d400", live_quote_ok: "#eda100", live_no_quote: "#eda100", callback_no_contact: "#b9b7b3" };
   const OC_LABEL = { sold_on_call: "Sold on the call", quoted_call_open: "Quoted · still open", followup_open: "Follow-up · still open", quoted_call_lost: "Quoted · lost", followup_lost: "Follow-up · lost",
     dead_no_quote: "No quote", live_quote_ok: "Reached · quote in play", live_no_quote: "Reached · no quote", callback_no_contact: "Voicemail" };
-  return `<details class="ccard" data-oc="${cesc(c.catc || "")}" style="--cc:${CATC_COLOR[c.catc] || "var(--border-strong)"}">
+  const ck = cardKey(c); CARD_BY_KEY[ck] = c;
+  return `<details class="ccard" data-ck="${escAttr(ck)}" data-oc="${cesc(c.catc || "")}" style="--cc:${CATC_COLOR[c.catc] || "var(--border-strong)"}">
    <summary class="blk cchead" style="border-left:10px solid transparent"${OC_LABEL[c.catc] ? ` data-ocl="${OC_LABEL[c.catc]}"` : ""}>
      <span class="flowedge" style="--fc:${edge.color}"${edge.label ? ` title="${escAttr(edge.label + (edge.why ? ": " + edge.why : ""))}" aria-label="${escAttr(edge.label)}"` : ""}></span>
      <div class="chead"><div><div class="cname">${c.lead_id
@@ -4461,9 +4538,10 @@ function card(c) {
      ${(() => { const qc = quickCoachHtml(c); return `<div class="chbody${qc ? "" : " one"}"><div>
      <div class="sum">${cesc(c.summary || "")}</div>
      ${(c.flags && c.flags.length) || (c.exit && c.exit[0] === true) ? `<div style="margin-top:8px">${
-       flagBadgesHtml(c)}</div>` : ""}</div>${qc}</div>`; })()}
+       flagBadgesHtml(c)}</div>` : ""}<div class="snotes">${stickyFrontHtml(c)}</div></div>${qc}</div>`; })()}
      <div class="cexp"><span class="ar">▼</span>Expand<span class="ar">▼</span></div>
    </summary>
+   ${isManager() ? `<div class="blk snblk">${stickyEditHtml(c)}</div>` : ""}
    ${c.askq || c.assume ? `<div class="blk"><div class="bl">The Assumption</div><table class="askt">
      ${c.assume ? assumeRowsHtml(c.assume) : `<tr><td class="k">Assumed the quote</td><td class="v">${bdg(c.askq[0])}</td><td>${cesc(c.askq[1] || "")}</td></tr>
      <tr><td class="k">Assumed the sale</td><td class="v">${bdg((c.asks || [])[0])}</td><td>${cesc((c.asks || [])[1] || "")}</td></tr>`}${
@@ -8971,6 +9049,8 @@ async function initMe() {
     if (r.ok) IS_MANAGER = !!(await r.json()).all;
   } catch (_) {}
   if (view === "blueprint") paint();
+  // the sticky-note box on each card is a manager's
+  if (view === "coaching" && cur && IS_MANAGER) repaintCoaching();
 }
 function bpGuides(map) {
   const all = ((window.BLUEPRINTS || {}).guides || []);
