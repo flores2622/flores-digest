@@ -1075,6 +1075,16 @@ html[data-look="mesa"] #view .bp .bpdate { background: #4a3f38; color: var(--sur
 #view .bp dt { color: var(--sc, var(--rm)); }
 #view .bp th { background: var(--card2); } .bp strong { color: var(--sc, var(--rm)); }
 #view .bp ul li::marker, .bp ol li::marker { color: var(--sc, var(--rm)); font-weight: 700; }
+#view .bp ul.bpchecks { list-style: none; padding-left: 0; }
+#view .bp ul.bpchecks > li { margin: 0 0 10px; }
+#view .bp ul.bpchecks > li > label { display: flex; gap: 10px; align-items: flex-start; cursor: pointer; }
+#view .bp ul.bpchecks input { width: 18px; height: 18px; margin-top: 2px; flex: none; accent-color: var(--sc, var(--rm)); }
+#view .bp ul.bpchecks > li.done > label span { text-decoration: line-through; opacity: .6; }
+#view .bp ul.bpchecks ol { margin: 6px 0 0 28px; }
+#view .bp .bpcode { position: relative; margin: 8px 0 12px; }
+#view .bp .bpcode pre { white-space: pre-wrap; background: var(--card2); border: var(--bw) solid var(--border-strong); border-radius: 10px; padding: 12px 14px; margin: 0; font-size: 13px; overflow-x: auto; }
+#view .bp .bpcode button { position: absolute; top: 8px; right: 8px; }
+#view .bp .bpclear { margin-top: 16px; }
 /* ---- Service Center and Renewals, with colour (Frank, 2026-10-01: "now do
    the same for the service center and renewals"). Athena's colour is sage
    (--s3); each section carries its own hue on a top rule (--sc), each
@@ -9060,8 +9070,18 @@ function bpGuides(map) {
 }
 // **bold** is the only markup the guides use.
 const bpText = t => cesc(t).replace(/\*\*([^*]+)\*\*/g, "<strong>$1</strong>");
-function bpItem(it) {
+/* Checklist ticks (the Out of Office Checklist, Frank, 2026-10-02) are a
+   per-viewer convenience, kept in this browser only. */
+const BP_TICKS_KEY = "board-bp-ticks";
+let bpTicks = (() => { try { return JSON.parse(localStorage.getItem(BP_TICKS_KEY) || "{}") || {}; } catch (_) { return {}; } })();
+const saveBpTicks = () => { try { localStorage.setItem(BP_TICKS_KEY, JSON.stringify(bpTicks)); } catch (_) {} };
+function bpItem(it, id) {
   if (typeof it === "string") return `<p>${bpText(it)}</p>`;
+  if (it.checks) return `<ul class="bpchecks">${it.checks.map(([box, steps], j) => {
+    const k = `${id}-${j}`, on = !!bpTicks[k];
+    return `<li class="${on ? "done" : ""}"><label><input type="checkbox" data-bptick="${k}"${on ? " checked" : ""}> <span>${bpText(box)}</span></label>${(steps || []).length ? `<ol>${steps.map(x => `<li>${bpText(x)}</li>`).join("")}</ol>` : ""}</li>`;
+  }).join("")}</ul>`;
+  if (it.code) return `<div class="bpcode"><pre>${cesc(it.code)}</pre><button type="button" class="btn" data-bpcopy>Copy</button></div>`;
   if (it.list) return `<ul>${it.list.map(x => `<li>${bpText(x)}</li>`).join("")}</ul>`;
   if (it.steps) return `<ol>${it.steps.map(x => `<li>${bpText(x)}</li>`).join("")}</ol>`;
   if (it.terms) return `<dl>${it.terms.map(([a, b]) => `<dt>${bpText(a)}</dt><dd>${bpText(b)}</dd>`).join("")}</dl>`;
@@ -9080,6 +9100,7 @@ function blueprintPanel(map) {
   const upd = (window.BLUEPRINTS || {}).updated;
   const pick = guides.length > 1 ? `<div class="controls bppick"><label for="bpsel">Guide</label>
     <select id="bpsel">${guides.map(x => `<option value="${x.key}"${x.key === g.key ? " selected" : ""}>${cesc(x.label || x.title)}</option>`).join("")}</select></div>` : "";
+  const hasChecks = g.sections.some(sec => sec.body.some(it => it && it.checks));
   const toc = g.sections.map((sec, i) => `<a href="#bp-${g.key}-${i}" data-bpjump="bp-${g.key}-${i}">${cesc(sec.h)}</a>`).join("");
   return `${pick}
   <div class="bp">
@@ -9087,12 +9108,28 @@ function blueprintPanel(map) {
     <p class="bpwho">${bpText(g.who)}</p>
     ${upd ? `<p class="bpdate">Last updated ${cesc(fmtShortDate(upd))}</p>` : ""}
     <nav class="bptoc" aria-label="Sections">${toc}</nav>
-    ${g.sections.map((sec, i) => `<section id="bp-${g.key}-${i}"><h3>${cesc(sec.h)}</h3>${sec.body.map(bpItem).join("")}</section>`).join("")}
+    ${g.sections.map((sec, i) => `<section id="bp-${g.key}-${i}"><h3>${cesc(sec.h)}</h3>${sec.body.map((it, j) => bpItem(it, `${g.key}-${i}-${j}`)).join("")}</section>`).join("")}
+    ${hasChecks ? `<p class="bpclear"><button type="button" class="btn" data-bpclear="${g.key}">Clear my ticks</button></p>` : ""}
   </div>`;
 }
 function wireBlueprintPanel() {
   const sel = $("#bpsel");
   if (sel) sel.onchange = () => { bpPick[view === "athenamap" ? "athena" : "apollo"] = sel.value; paint(); window.scrollTo(0, 0); };
+  $$("#view [data-bptick]").forEach(c => c.onchange = () => {
+    if (c.checked) bpTicks[c.dataset.bptick] = 1; else delete bpTicks[c.dataset.bptick];
+    saveBpTicks();
+    c.closest("li").classList.toggle("done", c.checked);
+  });
+  $$("#view [data-bpclear]").forEach(b => b.onclick = () => {
+    const pre = b.dataset.bpclear + "-";
+    Object.keys(bpTicks).forEach(k => { if (k.startsWith(pre)) delete bpTicks[k]; });
+    saveBpTicks(); paint();
+  });
+  $$("#view [data-bpcopy]").forEach(b => b.onclick = async () => {
+    const t = b.parentElement.querySelector("pre").textContent;
+    try { await navigator.clipboard.writeText(t); b.textContent = "Copied"; } catch (_) { b.textContent = "Select and copy"; }
+    setTimeout(() => { b.textContent = "Copy"; }, 1800);
+  });
   $$("#view [data-bpjump]").forEach(a => a.onclick = e => {
     e.preventDefault();
     const t = document.getElementById(a.dataset.bpjump);
@@ -9143,7 +9180,7 @@ const TOUR_STEPS = [
   { view: "training", title: "Training",
     text: "Flashcards, quizzes and matching games on objections, what to ask, and technique." },
   { view: "blueprint", find: () => $("#view .bppick") || $("#view .bp"), title: "Apollo's Road Map",
-    text: "Plain-language guides to the sales side of the board. Pick one from the dropdown: New, Mid-Level or Experienced Producer, and Manager / Coaching for managers." },
+    text: "Plain-language guides to the sales side of the board. Pick one from the dropdown: New, Mid-Level or Experienced Producer, the Out of Office Checklist for time off, and Manager / Coaching for managers." },
   { view: "service", title: "The Service Center",
     text: "Athena's side: the service team's SRs, tasks, call backs and texts, and the Renewals tab. Athena's Road Map, the last tab here, explains it all." },
   { find: () => $("#tourbtn"), title: "That's the tour",
