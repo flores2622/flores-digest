@@ -862,6 +862,10 @@ b, strong, th, .tile .k { font-weight: 700; }
 .tab[aria-selected="true"] { color: #fff; background: var(--side2); border-left-color: transparent; }
 html[data-look="mesa"] .tab:hover, html[data-look="mesa"] .tab[aria-selected="true"] { color: var(--text-primary); }
 .subnav { display: flex; flex-direction: column; gap: 1px; margin: 1px 0 4px; }
+.tab.hasdrop { display: flex; align-items: center; justify-content: space-between; gap: 6px; }
+.tab .chev { display: inline-flex; align-items: center; justify-content: center; width: 24px; height: 24px; margin: -4px -4px -4px 0; border-radius: 7px; opacity: .75; transition: transform .15s; }
+.tab .chev:hover { opacity: 1; background: rgba(255,255,255,.12); }
+.tab[aria-expanded="true"] .chev { transform: rotate(180deg); }
 .subnav[hidden] { display: none; }
 .stab { display: block; width: 100%; text-align: left; border: 0; background: none; font: inherit; font-size: 13px; padding: 7px 10px 7px 24px; border-radius: 10px; color: var(--sideInk); opacity: .85; cursor: pointer; }
 .stab:hover { opacity: 1; background: var(--side2); }
@@ -896,7 +900,8 @@ select, button.ghost, .btn, input[type="date"] { border-radius: 10px; border-col
 .subtab:hover:not(.sel) { border-color: var(--border-strong); }
 .ctabs { border-bottom-color: var(--border-strong); }
 .ctab.sel { color: var(--accent); border-bottom-color: var(--accent); }
-.ctabs.dup { display: none; }
+.ctabs.dup, .ctab.dupi { display: none; }
+@media (max-width: 760px) { .ctabs.dup { display: flex; } .ctab.dupi { display: inline-block; } }
 /* cards: every section is one */
 .sect { background: var(--surface-raised); border: var(--bw) solid var(--border-strong); border-radius: var(--rad); padding: 18px 20px 20px; box-shadow: var(--shadow); margin: 20px 0 0; }
 .sect > h2:first-child, .sect > .sd + *, h2 { margin-top: 0; }
@@ -1226,7 +1231,7 @@ tr.found td { background: color-mix(in oklab, var(--accent) 18%, transparent) !i
 @media (max-width: 760px) {
   .tabs { min-height: 0; max-height: none; position: static; flex-direction: row; flex-wrap: wrap; padding: 10px 12px; gap: 6px; align-items: center; }
   .brand { margin: 0 8px 0 0; font-size: 20px; }
-  .navgrp, .subnav, .setbtn small { display: none; }
+  .navgrp, .subnav, .setbtn small, .tab .chev { display: none; }
   .setbtn { margin: 0 0 0 auto; width: auto; padding: 8px 10px; }
   .tab { width: auto; border-bottom: 0; }
   .tab[aria-selected="true"] { background: var(--accent); color: #fff; border-bottom-color: transparent; }
@@ -1379,10 +1384,8 @@ tr.found td { background: color-mix(in oklab, var(--accent) 18%, transparent) !i
     <div class="navgrp">Apollo · Sales</div>
     <button class="tab" role="tab" aria-selected="true"  data-v="salescenter">Sales Center</button>
     <div class="subnav" data-for="salescenter"></div>
-    <button class="tab" role="tab" aria-selected="false" data-v="coaching">Coaching Center</button>
-    <div class="subnav" data-for="coaching"></div>
-    <button class="tab" role="tab" aria-selected="false" data-v="learning">Learning Center</button>
-    <div class="subnav" data-for="learning"></div>
+    <button class="tab" role="tab" aria-selected="false" data-v="academy">Apollo's Academy</button>
+    <div class="subnav" data-for="academy"></div>
     <div class="navgrp">Athena · Service</div>
     <button class="tab" role="tab" aria-selected="false" data-v="service">Service Center</button>
     <div class="subnav" data-for="service"></div>
@@ -1561,8 +1564,9 @@ let view = "digest";
 // page shows just that one tab.
 const CENTERS = {
   salescenter: [["digest", "Digest"], ["editions", "Editions"], ["sales", "Sales"], ["messages", "Texts & Emails"]],
-  coaching: [["coaching", "Coaching"]],
-  learning: [["roleplay", "Role Play"], ["rphistory", "Session History"], ["training", "Training"], ["blueprint", "Apollo's Road Map"]],
+  // Apollo's Academy (Frank, 2026-10-02: the Coaching and Learning Centers
+  // in one): the coaching page's three views come first, then practice.
+  academy: [["coaching", "Coaching"], ["roleplay", "Role Play"], ["rphistory", "Session History"], ["training", "Training"], ["blueprint", "Apollo's Road Map"]],
   service: [["service", "Service Digest"], ["renewals", "Renewals"], ["athenamap", "Athena's Road Map"]],
   commercial: [["commercial", "Commercial"]],
 };
@@ -1573,22 +1577,39 @@ function paintCenterBar() {
   const c = centerOf(view), bar = $("#centerbar");
   if (!bar) return;
   if (!CENTERS[c]) { bar.innerHTML = ""; return; }
-  // Coaching Center's header tabs are its three views of one page (Frank,
+  // The coaching page's three views are tabs of their own (Frank,
   // 2026-09-25: "i want those bubbles to be tabs on the main header,
-  // Cards>Objections>Wins and Losses"), switched by coachSubTab.
-  if (c === "coaching") {
-    bar.innerHTML = `<div class="ctabs" role="tablist">${COACH_TABS.map(([k, label]) =>
-      `<button class="ctab${k === coachSubTab ? " sel" : ""}" role="tab" aria-selected="${k === coachSubTab}" data-st="${k}">${label}</button>`).join("")}</div>`;
-    bar.querySelectorAll(".ctab").forEach(b => b.onclick = () => {
-      coachSubTab = b.dataset.st;
-      if (view !== "coaching") { goView("coaching"); return; }
-      if (cur) repaintCoaching(); else paintCenterBar();
-    });
+  // Cards>Objections>Wins and Losses"), switched by coachSubTab -- in
+  // Apollo's Academy beside its other pages.
+  // The menu's dropdown already lists a Center's pages, so on a computer
+  // the header shows only the coaching page's own three views; on a phone
+  // (no dropdown) it shows every page.
+  const items = centerItems(c), coachHere = view === "coaching";
+  bar.innerHTML = `<div class="ctabs${coachHere ? "" : " dup"}" role="tablist">${items.map(it => {
+    const on = itemOn(it);
+    return `<button class="ctab${on ? " sel" : ""}${coachHere && !it.st ? " dupi" : ""}" role="tab" aria-selected="${on}" data-cv="${it.v}"${it.st ? ` data-st="${it.st}"` : ""}>${it.label}</button>`;
+  }).join("")}</div>`;
+  bar.querySelectorAll(".ctab").forEach(b => b.onclick = () => openItem(b.dataset.cv, b.dataset.st));
+}
+/* A Center's entries, in the menu and in its header: its pages, with the
+   coaching page's three views standing in for it. */
+function centerItems(c) {
+  const out = [];
+  for (const [v, label] of CENTERS[c] || []) {
+    if (v === "coaching") for (const [st, l] of COACH_TABS) out.push({ v, st, label: l });
+    else out.push({ v, label });
+  }
+  return out;
+}
+const itemOn = it => it.v === view && (!it.st || it.st === coachSubTab);
+function openItem(v, st) {
+  if (st) {
+    coachSubTab = st;
+    if (view !== "coaching") { goView("coaching"); return; }
+    if (cur) repaintCoaching(); else paintCenterBar();
     return;
   }
-  bar.innerHTML = `<div class="ctabs dup" role="tablist">${CENTERS[c].map(([k, label]) =>
-    `<button class="ctab${k === view ? " sel" : ""}" role="tab" aria-selected="${k === view}" data-cv="${k}">${label}</button>`).join("")}</div>`;
-  bar.querySelectorAll(".ctab").forEach(b => b.onclick = () => goView(b.dataset.cv));
+  goView(v);
 }
 // One producer filter shared by the Digest and Coaching tabs. "" = whole
 // agency. This is the roster CLAUDE.md treats as producers (not Debbie or
@@ -1796,8 +1817,8 @@ function paintGreeting(force) {
    loaded day (its calls, lists, texts, misfiled). A lead opens its coaching
    card when it has one, else its AgencyZoom record. */
 const SEARCH_PAGES = [["Digest", "Sales Center", "digest"], ["Sales", "Sales Center · log and breakdown", "sales"], ["Texts & Emails", "Sales Center", "messages"],
-  ["Coaching Center", "Apollo · cards, objections, wins and losses", "coaching"], ["Role Play", "Learning Center", "roleplay"], ["Session History", "Learning Center", "rphistory"],
-  ["Training", "Learning Center", "training"], ["Service Digest", "Service Center · Athena", "service"], ["Renewals", "Service Center · Athena", "renewals"], ["Commercial Center", "Cerberus", "commercial"]];
+  ["Coaching", "Apollo's Academy · cards, objections, wins and losses", "coaching"], ["Role Play", "Apollo's Academy", "roleplay"], ["Session History", "Apollo's Academy", "rphistory"],
+  ["Training", "Apollo's Academy", "training"], ["Apollo's Road Map", "Apollo's Academy", "blueprint"], ["Service Digest", "Service Center · Athena", "service"], ["Renewals", "Service Center · Athena", "renewals"], ["Commercial Center", "Cerberus", "commercial"]];
 function searchIndex() {
   const out = [];
   for (const [l, sub, v] of SEARCH_PAGES) if (v !== "commercial" || !$('.tab[data-v="commercial"]').hidden) out.push({ g: "Pages", l, s: sub, go: () => goView(v) });
@@ -2093,16 +2114,37 @@ function wireFeed() {
   });
 }
 
-/* The menu lists each Center's pages under it (the Center's own header tabs
-   stay for the Coaching Center, whose three are views of one page). */
+/* Every Center in the menu is a dropdown of its pages (Frank, 2026-10-02:
+   "make all the sections dropdowns"). The Center you are in opens itself;
+   the arrow opens or closes any of them without leaving the page, and what
+   was left open is remembered in this browser. A one-page Center (the
+   Commercial Center) has no dropdown. */
+const NAV_OPEN_KEY = "board-nav-open";
+let navOpen = (() => { try { return new Set(JSON.parse(localStorage.getItem(NAV_OPEN_KEY) || "[]")); } catch (_) { return new Set(); } })();
+const saveNavOpen = () => { try { localStorage.setItem(NAV_OPEN_KEY, JSON.stringify([...navOpen])); } catch (_) {} };
 function paintSideNav() {
+  const here = centerOf(view);
   $$(".subnav").forEach(n => {
-    const c = n.dataset.for, pages = CENTERS[c] || [];
-    const show = pages.length > 1 && c !== "coaching";
-    n.hidden = !show;
-    n.innerHTML = show ? pages.map(([k, label]) =>
-      `<button type="button" class="stab" data-cv="${k}" aria-current="${k === view ? "page" : "false"}">${label}</button>`).join("") : "";
-    n.querySelectorAll("[data-cv]").forEach(b => b.onclick = () => goView(b.dataset.cv));
+    const c = n.dataset.for, items = centerItems(c);
+    const drop = items.length > 1, open = drop && navOpen.has(c);
+    const tab = $(`.tab[data-v="${c}"]`);
+    if (tab) {
+      tab.classList.toggle("hasdrop", drop);
+      tab.setAttribute("aria-expanded", drop ? String(open) : "false");
+      let chev = tab.querySelector(".chev");
+      if (drop && !chev) {
+        chev = document.createElement("span");
+        chev.className = "chev"; chev.setAttribute("role", "button");
+        chev.setAttribute("aria-label", "Show or hide its pages");
+        chev.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg>';
+        chev.onclick = e => { e.stopPropagation(); navOpen.has(c) ? navOpen.delete(c) : navOpen.add(c); saveNavOpen(); paintSideNav(); };
+        tab.appendChild(chev);
+      }
+    }
+    n.hidden = !open;
+    n.innerHTML = open ? items.map(it =>
+      `<button type="button" class="stab" data-cv="${it.v}"${it.st ? ` data-st="${it.st}"` : ""} aria-current="${itemOn(it) && c === here ? "page" : "false"}">${it.label}</button>`).join("") : "";
+    n.querySelectorAll("[data-cv]").forEach(b => b.onclick = () => openItem(b.dataset.cv, b.dataset.st));
   });
 }
 
@@ -7248,7 +7290,7 @@ function paintFailed(e, controls = true) {
 /* A vista for every page (Frank, 2026-10-02). Placed under the range
    controls (or first) whenever #view is repainted; the Digest and the
    Editions draw their own. */
-const VISTAS = {"sales": ["Sales", "the monsoon: premium coming in"], "messages": ["Texts & Emails", "every line, every reply"], "coaching": ["Coaching Center", "the campfire: every call, read back"], "roleplay": ["Role Play", "the arena"], "rphistory": ["Session History", "tonight, every session replayed"], "training": ["Training", "the trail up"], "blueprint": ["Apollo's Road Map", "the route, in plain words"], "athenamap": ["Athena's Road Map", "the service route, in plain words"], "service": ["Service Digest", "the ranch: keeping the book"], "renewals": ["Renewals", "the bloom: what came back"], "commercial": ["Commercial Center", "downtown: Cerberus's book"]};
+const VISTAS = {"sales": ["Sales", "the monsoon: premium coming in"], "messages": ["Texts & Emails", "every line, every reply"], "coaching": ["Coaching", "the campfire: every call, read back"], "roleplay": ["Role Play", "the arena"], "rphistory": ["Session History", "tonight, every session replayed"], "training": ["Training", "the trail up"], "blueprint": ["Apollo's Road Map", "the route, in plain words"], "athenamap": ["Athena's Road Map", "the service route, in plain words"], "service": ["Service Digest", "the ranch: keeping the book"], "renewals": ["Renewals", "the bloom: what came back"], "commercial": ["Commercial Center", "downtown: Cerberus's book"]};
 function placeVista() {
   const v = $("#view"), key = v.dataset.view;
   if (!VISTAS[key] || v.querySelector(":scope > .vista")) return;
@@ -8974,7 +9016,7 @@ const TOUR_STEPS = [
   { title: "Welcome to the Sales Floor",
     text: "This is the agency's board. It shows how the day is going, coaches every recorded sales call, and gives you places to practise. This tour takes about two minutes." },
   { find: () => $("nav.tabs"), title: "The left bar",
-    text: "Three desks: Apollo for sales, Athena for service, Cerberus for commercial. Each Center lists its pages under it. Settings at the bottom picks your look: five looks, each with a dark side." },
+    text: "Three desks: Apollo for sales, Athena for service, Cerberus for commercial. Each Center opens like a dropdown to its pages: click its arrow to open or close it. Settings at the bottom picks your look: five looks, each with a dark side." },
   { find: () => $(".top .search"), title: "Search",
     text: "Ctrl K from anywhere: pages, the sections on the page you are on, producers, and every lead. Every lead on every published day: a lead opens its newest coaching card, on whatever day it was, and with no card, its row on the Digest." },
   { find: () => $("#coeusfab"), title: "Ask Coeus",
@@ -8995,8 +9037,8 @@ const TOUR_STEPS = [
     text: "Log a sale, look back at any folio, or break sales down by lead source, product or producer. Live sales are added here automatically. The Commission tab shows where you stand on the commission schedule this folio." },
   { view: "messages", title: "Texts & Emails",
     text: "Every text and email with a lead: what each producer typed, the replies still waiting, and how quickly replies were answered. Automated messages are counted separately." },
-  { view: "coaching", sub: "detail", find: () => $("#centerbar .ctabs"), title: "Coaching cards",
-    text: "Apollo reviews every recorded sales conversation and writes a card: what the call was for, a score on each step, the objections and better lines to use, flags, and the recording with its transcript. Click a line of the transcript to jump there." },
+  { view: "coaching", sub: "detail", find: () => $("#centerbar .ctabs"), title: "Apollo's Academy: coaching cards",
+    text: "Apollo's Academy is where the coaching and the practice live. Apollo reviews every recorded sales conversation and writes a card: what the call was for, a score on each step, the objections and better lines to use, flags, and the recording with its transcript. Click a line of the transcript to jump there." },
   { view: "coaching", sub: "objections", title: "Objections",
     text: "Every objection Apollo found, grouped, with how each one was handled. Filter to one person to see what they lose to most." },
   { view: "coaching", sub: "wins", title: "Wins and Losses",
@@ -9012,7 +9054,7 @@ const TOUR_STEPS = [
   { view: "service", title: "The Service Center",
     text: "Athena's side: the service team's SRs, tasks, call backs and texts, and the Renewals tab. Athena's Road Map, the last tab here, explains it all." },
   { find: () => $("#tourbtn"), title: "That's the tour",
-    text: "You can take it again any time from this button. Apollo's Road Map in the Learning Center and Athena's in the Service Center go into more detail." },
+    text: "You can take it again any time from this button. Apollo's Road Map in Apollo's Academy and Athena's in the Service Center go into more detail." },
 ];
 const tourSection = title => [...$$("#view .sect")].find(sec => {
   const h = sec.querySelector("h2");
@@ -9133,12 +9175,17 @@ async function goView(next) {
   view = next;
   const c = centerOf(view);
   if (CENTERS[c]) centerPick[c] = view;
+  if (centerItems(c).length > 1 && !navOpen.has(c)) { navOpen.add(c); saveNavOpen(); }
   $$(".tab").forEach(x => x.setAttribute("aria-selected", String(x.dataset.v === c)));
   paintCenterBar();
   paint();
 }
 $$(".tab").forEach(t => t.onclick = () => {
   const c = t.dataset.v;
+  // The Center you are already in: its name opens or closes its dropdown.
+  if (centerOf(view) === c && centerItems(c).length > 1) {
+    navOpen.has(c) ? navOpen.delete(c) : navOpen.add(c); saveNavOpen(); paintSideNav(); return;
+  }
   goView(CENTERS[c] ? centerPick[c] : c);
 });
 paintCenterBar();
