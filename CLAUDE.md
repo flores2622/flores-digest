@@ -1590,6 +1590,18 @@ $2,500 in premium"): the Digest's day reads as Apollo's group chat
   dusk with lit windows. The Digest keeps its skyline and the Editions
   their own looks. (`.paper` is The Flores Post's class -- the map banner
   is `.vmap`.)
+- **Every coaching card wears its outcome** (Frank, 2026-10-02: "give the
+  coaching cards themselves some life? something with the outcome if
+  possible"): a drawn strip across the top of the card header, picked by
+  the card's `catc` (`data-oc` on the `.ccard`; the scenes are inline SVGs
+  in the stylesheet, light and Desert Night) with the outcome named in a
+  pill at its right (`data-ocl`): sold on the call = the close (sunburst, a
+  flag on the summit, confetti, saguaros in bloom); quoted or follow-up
+  still open = still on the road (dawn, the highway, a NEXT CALL sign);
+  quoted or follow-up lost = a grey dusk with a tumbleweed; no quote = a
+  dust devil under a hazy sky; reached = two saguaros talking at noon;
+  voicemail = an owl asleep on a cactus under the moon. The badge, flow
+  edge, Quick coaching and everything below are unchanged.
 - **Every edition downloads** (Frank, 2026-10-02: "make the editions
   downloadable"): **Download PDF** (the edition alone in a new window, the
   print dialog opened once its fonts load -- Save as PDF) and **Save page**
