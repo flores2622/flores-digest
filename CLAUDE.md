@@ -842,9 +842,10 @@ CSV -- finds the header under the report's title block, drops empty columns,
 the "*Security Classification" column and the Total row, and by default
 makes one lead per person (the first list, Farmers' "Quotes with Risk
 Segment - 2 or 3 Star", Oct 2025: 167 quotes, 125 people); every unmatched
-column is kept on the lead as detail and filterable. `SCRUB_VIEWERS`
-(producers, Debbie, ops) mark leads; `SCRUB_EDITORS` (ops) import, rename,
-delete. The status options are a first cut, pending Frank's screenshot of
+column is kept on the lead as detail and filterable. **Only the ops team
+sees it** (Frank, 2026-10-02: "ops team"): `SCRUB_VIEWERS` and
+`SCRUB_EDITORS` are both Frank, Francisco, Veronica and Amanda; anyone else
+gets a 403 and the page never enters the menu or the search. The status options are a first cut, pending Frank's screenshot of
 the ones he wants.
 
 ## Apollo's Road Map (ARM) and the tour
