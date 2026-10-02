@@ -1627,7 +1627,13 @@ sheet on its back.
   400, which reads lighter. `body` is 500 in every look; the serif headings
   and tile numbers take the face's heavier cut where it has one (`--dw`:
   Fraunces and Bitter at 600; DM Serif Display and Instrument Serif have one
-  weight and stay as cut, never a synthesized bold).
+  weight and stay as cut, never a synthesized bold). **A look changes colours only, never
+  the fonts** (Frank, 2026-10-02: "the font should remain the same, just the
+  colors should change" -- Mesa Minimal's Instrument Serif and Instrument
+  Sans read thinner; then "i like the canyon sunset font the most, make
+  that one the universal"): every look is Fraunces at 700 for headings and
+  tile numbers (`--display` / `--dw`) and Manrope at 500 for text; the
+  per-look faces and their Google Fonts entries are gone.
 - **The Digest's two top cards share one Sedona picture** (Frank,
   2026-10-02: "give the digest some life? Color, background images, etc",
   then "the top of the leaderboard background should be the horizon so just
