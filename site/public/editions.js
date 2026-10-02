@@ -31,7 +31,8 @@
 .ed input.t { font: 500 14px var(--body); padding: 9px 11px; border: 1.5px solid var(--border-strong); border-radius: 10px; background: var(--surface-raised); color: var(--text-primary); width: 100%; min-width: 0; }
 .ed .av { width: 40px; height: 40px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; font: 700 13px var(--body); flex: none; position: relative; }
 .ed .av .st { position: absolute; right: -6px; bottom: -6px; background: var(--surface-raised); border: 2px solid var(--surface-raised); border-radius: 999px; font-size: 10px; padding: 1px 5px; color: var(--accent-d); font-weight: 800; }
-.ed table.lbt { width: 100%; border-collapse: collapse; font-size: 13.5px; min-width: 980px; }
+.ed table.lbt { width: 100%; border-collapse: collapse; font-size: 13.5px; }
+.ed table.lbt.mktlb { font-size: 12px; }
 .ed table.lbt th { font-size: 11px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--text-muted); text-align: right; padding: 8px 6px; border-bottom: 2px solid var(--text-primary); white-space: nowrap; }
 .ed table.lbt td { text-align: right; padding: 9px 6px; border-bottom: 1px solid var(--grid); white-space: nowrap; font-size: 13.5px; }
 .ed table.lbt th:first-child, .ed table.lbt td:first-child { text-align: left; }
@@ -169,6 +170,7 @@ html[data-mode="dark"] .ed .meme .row { background: #f3ece2; }
 .ed .gi .lbt tr.tot td { border-color: #ffd27a; }
 /* KFLR The Close */
 .ed .pod { display: grid; grid-template-columns: 400px minmax(0, 1fr); gap: 20px; align-items: start; }
+.ed .pod .playlist { grid-column: 1 / -1; }
 .ed .art { aspect-ratio: 1; border-radius: 20px; color: #fff; padding: 24px; display: flex; flex-direction: column; justify-content: space-between; box-shadow: var(--shadow); }
 .ed .art b { font: 400 40px/1 var(--display); }
 .ed .art span { font-size: 12px; letter-spacing: .12em; text-transform: uppercase; font-weight: 800; }
@@ -200,6 +202,8 @@ html[data-mode="dark"] .ed .meme .row { background: #f3ece2; }
 .ed .dn { color: #f87171; }
 .ed .fl { color: #9fb0c8; }
 .ed .mkt .g { display: grid; grid-template-columns: minmax(0, 1fr) 420px; gap: 22px; padding: 22px 26px; }
+.ed .mkt .mktfull { padding: 0 26px 24px; } .ed .mkt .mktfull h4 { margin: 0 0 8px; font: 400 20px var(--display); color: #e8edf2; }
+.ed .mkt .mktfull .lbt, .ed .mkt .mktfull .lbt td { color: #e8edf2; } .ed .mkt .mktfull .lbt th { color: #8fa3b5; border-color: #2a3a4a; } .ed .mkt .mktfull .lbt td { border-color: #1f2a36; } .ed .mkt .mktfull .lbt tr.tot td { border-color: #8fa3b5; }
 .ed .mkt h2 { margin: 0; font: 400 40px/1 var(--display); color: #fff; border: 0; padding: 0; text-transform: none; letter-spacing: 0; }
 .ed .mkt table { width: 100%; border-collapse: collapse; font-size: 14px; }
 .ed .mkt th { text-align: right; font-weight: 400; color: #9fb0c8; padding: 8px 8px; border-bottom: 1px solid #1f2a36; font-size: 11px; letter-spacing: .08em; text-transform: uppercase; white-space: nowrap; }
@@ -253,6 +257,7 @@ html[data-mode="dark"] .ed .meme .row { background: #f3ece2; }
 .ed .comic .lbt, .ed .comic .lbt td { color: #2a2320; }
 /* CLOSER */
 .ed .mag { display: grid; grid-template-columns: 560px minmax(0, 1fr); border-radius: 20px; overflow: hidden; border: var(--bw) solid var(--border-strong); box-shadow: var(--shadow); background: var(--surface-raised); }
+.ed .mag .masthead { grid-column: 1 / -1; padding: 14px 44px 36px; border-top: 1px solid var(--border); } .ed .mag .masthead .k { margin-bottom: 8px; }
 .ed .cover { background: #f6f1e7; color: #2a2320; padding: 36px; display: flex; flex-direction: column; gap: 16px; min-height: 760px; }
 .ed .cover .t { font: 400 104px/.9 var(--display); letter-spacing: -.02em; border-bottom: 4px solid #2a2320; padding-bottom: 12px; }
 .ed .cover .port { flex: 1; min-height: 360px; border-radius: 8px; position: relative; overflow: hidden; display: flex; align-items: flex-end; padding: 22px; color: #fff; font: 400 42px/1.05 var(--display); text-shadow: 0 1px 10px rgba(0,0,0,.4); }
@@ -357,14 +362,9 @@ function edFacts(d, folioRows, lastFolio, isFolio) {
 }
 const edFmtStd = s => s == null ? "—" : s < 60 ? `${s}s` : s < 3600 ? `${Math.floor(s / 60)}m ${s % 60}s` : `${Math.floor(s / 3600)}h ${Math.floor((s % 3600) / 60)}m`;
 const edTalk = s => `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`;
-function edLbt(X, cls = "lbt") {
-  const COLS = ["Role Play", "Dials", "Avg Talk", "Contact Rate", "Texts / Emails", "Sent the Quote", "HH Quoted", "Prem. Quoted", "HH Sold", "Prem. Sold", "Util.", "Pts"];
-  const row = (n) => [n.rp || "—", n.dials, edTalk(n.talk), `${ppct(n.rate)} (${n.live})`, `${n.texts} / ${n.emails}`, n.quoteUp ? `${n.sent} of ${n.quoteUp}` : "—", n.hh, pmoney(n.pq), `${n.hhSold} (${n.pol} pol)`, pmoney(n.ps), n.util != null ? ppct(n.util) : "—", n.pts];
-  const T = X.T;
-  const trow = [T.rp != null ? Math.round(T.rp) : "—", T.dials, edTalk(T.talk), `${ppct(T.rate)} (${T.live})`, `${T.texts} / ${T.emails}`, T.quoteUp ? `${T.sent} of ${T.quoteUp}` : "—", T.hh, pmoney(T.pq), `${T.hhSold} (${T.pol} pol)`, pmoney(T.ps), T.util != null ? ppct(T.util) : "—", ""];
-  return `<div class="scroll"><table class="${cls}"><thead><tr><th>Producer</th>${COLS.map(c => `<th>${c}</th>`).join("")}</tr></thead><tbody>${
-    X.order.map(f => `<tr><td><b>${edEsc(X.full[f])}</b></td>${row(X.NUM[f]).map(v => `<td>${v}</td>`).join("")}</tr>`).join("")}<tr class="tot"><td><b>Team</b></td>${trow.map(v => `<td>${v}</td>`).join("")}</tr></tbody></table></div>`;
-}
+// Every edition's leaderboard is post.js's lbTableHtml: the Digest's
+// columns by priority, fitted to its box (Frank, 2026-10-02).
+function edLbt(X, cls = "lbt") { return lbTableHtml(X.order, X.NUM, X.T, X.full, { cls }); }
 function edAvatar(X, w, size = 40) {
   const c = X.C[w] || "#2a2320", ini = X.INI[w] || w[0];
   return `<span class="av" style="background:${c};color:${typeof badgeTextColor === "function" ? badgeTextColor(c) : "#fff"};width:${size}px;height:${size}px">${edEsc(ini)}${X.streak[w] ? `<span class="st">🔥${X.streak[w]}</span>` : ""}</span>`;
@@ -541,7 +541,7 @@ function edPod(X) {
    <div class="edcard"><h3>Now playing · ${edEsc(segs[seg][2])}</h3>${edTx(segs[seg][4])}</div>
    <div class="edcard"><div class="hrow"><h3>Mailbag</h3><span class="note">${plural(mail.length, "note")}</span></div><div class="mail">${mail.length ? mail.slice(-6).map(m => `<div class="m"><b>${edEsc(m.who)} · ${edEsc(m.at)}</b>${edEsc(m.text)}</div>`).join("") : '<span class="note">Send Apollo a note. Tomorrow’s Mailbag answers them on air.</span>'}</div>
     <form data-mail style="display:flex;gap:8px"><input class="t" placeholder="Ask Apollo something, ${edEsc(edMe())}…" aria-label="Mailbag" maxlength="300"><button class="ebtn">Send</button></form></div>
-   <div class="edcard"><h3>The playlist · tonight’s numbers, track by track</h3>${edLbt(X)}</div></div></div>`;
+</div><div class="edcard playlist"><h3>The playlist · tonight’s numbers, track by track</h3>${edLbt(X)}</div></div>`;
 }
 
 /* ===== THE CLOSING BELL ===== */
@@ -579,7 +579,7 @@ function edMkt(X) {
    <div class="anal"><h4>Analyst note · Apollo</h4><p>${up.length} of ${rows.length} issues closed up ${edEsc(when)}.${up.map(r => ` ${r.sym} +${pmoney(r.chg)}${X.SALES.filter(s => s.w === r.f).length ? ` on ${plist([...new Set(X.SALES.filter(s => s.w === r.f).map(s => (s.src || "a sale").toLowerCase()))])}` : ""}.`).join("")}${flat.length ? ` ${plist(flat.map(r => r.sym))} flat${flat.some(r => r.n.pq) ? ` on heavy volume: ${pmoney(flat.reduce((a, r) => a + r.n.pq, 0))} quoted between them` : ""}.` : ""}</p>
     <p>The FLRS index is at ${pmoney(X.FTOT)} after ${plural(X.rows.length, "session")}${X.rows.filter(r => !r.ps).length ? ` with ${plural(X.rows.filter(r => !r.ps).length, "zero day")}` : ""}. Catalysts: ${plural(Math.max(0, F.hh - F.hhSold), "quoted household")}, ${F.atRisk} at risk, ${F.misfiled} misfiled.</p>
     <div class="r"><span>Closing ratio</span><b class="${F.closeHH >= 25 ? "up" : "dn"}">${F.closeHH == null ? "—" : ppct(F.closeHH)}</b></div><div class="r"><span>Contact rate</span><b class="${F.rate >= 13 ? "up" : "dn"}">${ppct(F.rate)}</b></div>${F.objs[0] ? `<div class="r"><span>${edEsc(F.objs[0][0])} overcome</span><b class="${F.objs[0][2] ? "up" : "dn"}">${F.objs[0][2]} of ${F.objs[0][1]}</b></div>` : ""}<div class="r"><span>Earnings (folio close)</span><b>${X.folioEnd ? pmd(X.folioEnd) : "—"}</b></div><div class="r" style="border:0"><span>Watchlist</span><b>${Object.keys(edMine.watch).filter(k => edMine.watch[k]).join(" · ") || "tap ★ on a row"}</b></div>
-    <h4 style="margin-top:8px">Closing prices · the full tape</h4>${edLbt(X, "lbt").replace('class="lbt"', 'class="lbt" style="font-size:12px;min-width:860px"')}</div></div></div>`;
+</div></div><div class="mktfull"><h4>Closing prices · the full tape</h4>${edLbt(X, "lbt mktlb")}</div></div>`;
 }
 
 /* ===== COLD CALL COMICS ===== */
@@ -691,7 +691,7 @@ function edCloser(X) {
     <div class="k" style="margin-top:8px">By the numbers · drawn, not tabled</div>
     <div class="info"><div><b>${pmoney(F.ps)}</b><span>new premium · ${plural(F.pol, "policy", "policies")}</span></div><div><div class="ring" style="--p:${F.closeHH == null ? 0 : Math.min(100, Math.round(F.closeHH))}%"><i>${F.closeHH == null ? "—" : ppct(F.closeHH, 0)}</i></div><span>${F.hhSold} of ${F.hh} households bought</span></div><div><b>${F.spBest ? edFmtStd(F.spBest[1].median) : "—"}</b><span>${F.spBest ? `${pfirst(F.spBest[0])}’s first dial · team ${edFmtStd(F.spTeam)}` : "no new internet leads"}</span></div><div><b>${F.objs[0] ? `${F.objs[0][2]}/${F.objs[0][1]}` : ppct(F.rate)}</b><span>${F.objs[0] ? `${edEsc(F.objs[0][0])} overcome` : "contact rate"}</span></div></div>
     <div class="k" style="margin-top:8px">The podium</div><div class="podium">${podOrder.map((f, i) => `<div><b>${edEsc(f)}</b><small>${X.NUM[f].pts} pts · ${pmoney(X.NUM[f].ps)}</small><div class="blk" style="height:${podH[i]}px;background:${X.C[f]}22;color:${X.C[f]}">${podRank[i]}</div></div>`).join("")}</div>
-    <div class="k" style="margin-top:8px">The masthead · who did what, in full</div>${edLbt(X)}</div></div>`;
+</div><div class="masthead"><div class="k">The masthead · who did what, in full</div>${edLbt(X)}</div></div>`;
 }
 
 /* ===== the page ===== */
