@@ -36,12 +36,14 @@
     return ROT;
   }
 
-  // Unhide the page for whoever the Worker lets see it.
-  (async function rotInit() {
-    try { if (!(await rotLoad())) return; } catch (_) { return; }
+  // Unhide the page for whoever the Worker lets see it. ROT_READY says
+  // whether it did, so a refresh on this page can reopen it (index.html init).
+  window.ROT_READY = (async function rotInit() {
+    try { if (!(await rotLoad())) return false; } catch (_) { return false; }
     if (!CENTERS.salescenter.some(([k]) => k === "rotation")) CENTERS.salescenter.push(["rotation", "Rotation"]);
     SEARCH_PAGES.push(["Rotation", "Sales Center · who gets the next walk-in or call-in", "rotation"]);
     paintCenterBar();
+    return true;
   })();
 
   function folioOf() {

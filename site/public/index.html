@@ -7463,6 +7463,34 @@ function unflipThen(el, fn) { const h = el && el.closest(".flipsect.on"); if (h)
 new MutationObserver(() => { placeVista(); flipLists(); }).observe(document.getElementById("view"), { childList: true });
 async function paint() {
   try { await paintTab(); wireFeed(); } catch (e) { paintFailed(e); }
+  saveWhere();
+}
+/* A refresh opens where you were (Frank, 2026-10-02: "when refreshing any
+   page, i want it to open back up where i was, not back to the digest"):
+   the page and its sub-tab, the day or range and the producer filter, kept
+   for this browser tab and read back by init(). */
+const WHERE_KEY = "board-where";
+let whereReady = false;     // nothing is saved until init() has restored
+function saveWhere() {
+  if (!whereReady) return;
+  try {
+    sessionStorage.setItem(WHERE_KEY, JSON.stringify({ view, coachSubTab, salesSubTab, bpPick, producerFilter,
+      rangeMode, customFrom, customTo, folioPick, day: rangeMode === "day" && cur ? cur.date : "" }));
+  } catch (_) {}
+}
+// A sub-tab click repaints only its own part, so save on the way out too.
+window.addEventListener("pagehide", () => saveWhere());
+function readWhere() {
+  try { return JSON.parse(sessionStorage.getItem(WHERE_KEY) || "null"); } catch (_) { return null; }
+}
+// Open a page without painting it (init paints once the day is loaded).
+function setViewQuiet(v) {
+  view = v;
+  const c = centerOf(view);
+  if (CENTERS[c]) centerPick[c] = view;
+  if (centerItems(c).length > 1 && !navOpen.has(c)) { navOpen.add(c); saveNavOpen(); }
+  $$(".tab").forEach(x => x.setAttribute("aria-selected", String(x.dataset.v === c)));
+  paintCenterBar();
 }
 async function paintTab() {
   const v = $("#view");
@@ -9559,11 +9587,33 @@ paintCenterBar();
     return;
   }
   DAYS = days;
-  initCommercial();   // unhides the Commercial Center for Frank only
+  const commercialReady = initCommercial();   // unhides the Commercial Center for Frank only
   await loadMe();
   paintGreeting(true);
   initMe();           // Apollo's Road Map (ARM) for managers only
-  await loadDay(days[0]);
+  // Where this tab was before a refresh. A page only some logins see
+  // (Commercial, Rotation) is reopened only once the Worker has let them in.
+  const w = readWhere();
+  if (w && w.view && w.view !== view) {
+    let ok = Object.values(CENTERS).some(pages => pages.some(([k]) => k === w.view));
+    if (w.view === "commercial") { await commercialReady; ok = COMMERCIAL_DAYS !== null; }
+    if (w.view === "rotation") ok = await (window.ROT_READY || Promise.resolve(false));
+    if (ok) setViewQuiet(w.view);
+  }
+  if (w) {
+    if (w.coachSubTab) coachSubTab = w.coachSubTab;
+    if (w.salesSubTab) salesSubTab = w.salesSubTab;
+    if (w.bpPick) Object.assign(bpPick, w.bpPick);
+    if (PRODUCER_ROSTER.includes(w.producerFilter)) producerFilter = w.producerFilter;
+  }
+  const day = w && w.rangeMode === "day" && days.includes(w.day) ? w.day : days[0];
+  if (w && w.rangeMode && w.rangeMode !== "day") {
+    // A range: set it before the first paint so the range is what draws.
+    rangeMode = w.rangeMode; customFrom = w.customFrom || ""; customTo = w.customTo || ""; folioPick = w.folioPick || "";
+  }
+  whereReady = true;
+  if (rangeMode === "day") await loadDay(day);
+  else { await ensureCurForRange(); await paint(); }
   paintGreeting(true);   // again, now that it knows the day (sales, the folio clock)
 })();
 
