@@ -1572,6 +1572,24 @@ $2,500 in premium"): the Digest's day reads as Apollo's group chat
   Dial amber; Call Outcome blue; Task Completion purple; Utilization and
   Household Completion green; Speed to Reply rose; misfiled leads red). No
   figure, list or hook changed.
+- **Every other page opens on a vista** (Frank, 2026-10-02: "do the rest
+  of the board, each with a different twist"): a 170px drawn banner under
+  the range controls (`.vista`, placed by `placeVista` from a
+  MutationObserver on `#view`, so every paint path gets it; `VISTAS` names
+  each page and its line), one inline-SVG scene per page in light and
+  Desert Night -- Sales: the monsoon (storm, lightning, rain); Texts &
+  Emails: telephone poles and wires at dawn with birds on the wires;
+  Coaching: the campfire circle at night; Role Play: a sunset arena with
+  fence rails and string lights; Session History: a drive-in screen, film
+  sprockets; Training: switchbacks up a mesa with a flag at each turn;
+  both Road Maps: a paper road map with a winding route (Apollo's red with
+  Dial / Discovery / Quote / Close, Athena's green with Listen / Understand
+  / Handle / Follow up), a 66 shield and a compass; Service: the ranch
+  (windmill, water tank, FLORES gate); Renewals: the desert in bloom
+  (poppies, ocotillo, saguaro flowers, butterflies); Commercial: downtown at
+  dusk with lit windows. The Digest keeps its skyline and the Editions
+  their own looks. (`.paper` is The Flores Post's class -- the map banner
+  is `.vmap`.)
 - **Every edition downloads** (Frank, 2026-10-02: "make the editions
   downloadable"): **Download PDF** (the edition alone in a new window, the
   print dialog opened once its fonts load -- Save as PDF) and **Save page**
