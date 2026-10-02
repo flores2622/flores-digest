@@ -60,6 +60,7 @@ import { commission } from "./commission.js";
 import { coeusChat, coeusChats, coeusUsage } from "./coeus.js";
 import { leadsIndex } from "./lead_index.js";
 import { rotationGet, rotationPost } from "./rotation.js";
+import { scrubGet, scrubPost } from "./scrub.js";
 import { claimsForViewer } from "./claims_view.js";
 
 export default {
@@ -159,6 +160,15 @@ export default {
       if (parts[1] === "rotation" && parts.length === 2) {
         if (request.method === "GET") return rotationGet(request, env, identityOf);
         if (request.method === "POST") return rotationPost(request, env, identityOf);
+      }
+
+      // The lead scrub tracker (Frank, 2026-10-02): site/scrub.js,
+      // SCRUB_VIEWERS / SCRUB_EDITORS only.
+      if (parts[1] === "scrub" && parts.length <= 3) {
+        const id = /^[a-z0-9-]{1,40}$/.test(parts[2] || "") ? parts[2] : "";
+        if (parts[2] && !id) return new Response("Not found", { status: 404 });
+        if (request.method === "GET") return scrubGet(request, env, identityOf, id);
+        if (request.method === "POST") return scrubPost(request, env, identityOf, id);
       }
 
       // Managers' sticky notes on coaching cards (Frank, 2026-10-02).

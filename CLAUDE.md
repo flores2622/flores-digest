@@ -826,6 +826,34 @@ carried in on 2026-10-02 (logged by "Debbie (Rotation Sheet)"; Crystal's
 blank slot as a skip); earlier folios stay in the sheet. Producers have no
 tour step for it, since they can't open it.
 
+## The lead scrub
+
+**Sales Center > Lead Scrub tracks a lead list being cleaned up in both Apex
+and AgencyZoom** (Frank, 2026-10-02). `site/scrub.js` (Worker, `/api/scrub`
+and `/api/scrub/<id>`) keeps one R2 file per list, `scrub/lists/<id>.json`,
+its progress in the object's customMetadata so the picker reads no list.
+**Its columns are Frank's scrub sheet** (his screenshot, 2026-10-02):
+Client, Month, Apex Status, AZ Status -- with the **Duplicates Cleaned** and
+**Tagged** boxes he asked for beside it -- Lead Status, Action Taken, Date,
+Rep, Notes, Next Step (`FIELDS`, the one place they live; the page draws
+whatever it is sent). The status columns suggest the sheet's answers
+("Active", "Updated / Smart Cycled", "Account reviewed", "None") and take
+anything typed. **Date and Rep stamp themselves** -- today in Arizona and
+whoever made the change -- on any other column's change, and can be set by
+hand. Month is set per list at import (default this month). Done = Apex
+Status, AZ Status and Lead Status filled in (`DONE_FIELDS`) and both boxes
+ticked. Every
+change keeps who and when. The import (`site/public/scrub.js`) takes the
+export as it comes -- xlsx (SheetJS from cdnjs, loaded only on import) or
+CSV -- finds the header under the report's title block, drops empty columns,
+the "*Security Classification" column and the Total row, and by default
+makes one lead per person (the first list, Farmers' "Quotes with Risk
+Segment - 2 or 3 Star", Oct 2025: 167 quotes, 125 people); every unmatched
+column is kept on the lead as detail and filterable. **Only the ops team
+sees it** (Frank, 2026-10-02: "ops team"): `SCRUB_VIEWERS` and
+`SCRUB_EDITORS` are both Frank, Francisco, Veronica and Amanda; anyone else
+gets a 403 and the page never enters the menu or the search.
+
 ## Apollo's Road Map (ARM) and the tour
 
 **Apollo's Academy is the Coaching and Learning Centers in one** (Frank,
