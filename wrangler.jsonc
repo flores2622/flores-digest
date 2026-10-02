@@ -66,6 +66,11 @@
     // next. Same format.
     "ROTATION_VIEWERS": "debbie@floresinsuranceagency.com,crystal@floresinsuranceagency.com,frank@floresinsuranceagency.com,francisco@floresinsuranceagency.com,veronica@floresinsuranceagency.com,amanda@floresinsuranceagency.com",
     "ROTATION_EDITORS": "debbie@floresinsuranceagency.com,frank@floresinsuranceagency.com,francisco@floresinsuranceagency.com,veronica@floresinsuranceagency.com,amanda@floresinsuranceagency.com",
+    // Who sees the lead scrub tracker and marks leads off (site/scrub.js;
+    // Frank, 2026-10-02); SCRUB_EDITORS also import, rename and delete
+    // lists. Same format.
+    "SCRUB_VIEWERS": "debbie@floresinsuranceagency.com,crystal@floresinsuranceagency.com,lorena@floresinsuranceagency.com,mike@floresinsuranceagency.com,coral@floresinsuranceagency.com,sarahi@floresinsuranceagency.com,frank@floresinsuranceagency.com,francisco@floresinsuranceagency.com,veronica@floresinsuranceagency.com,amanda@floresinsuranceagency.com",
+    "SCRUB_EDITORS": "frank@floresinsuranceagency.com,francisco@floresinsuranceagency.com,veronica@floresinsuranceagency.com,amanda@floresinsuranceagency.com",
     // Who sees EVERY producer's Role Play session history and the beta
     // sessions (site/worker.js rpScope; Frank, 2026-09-29). A producer always
     // sees their own. Same format.

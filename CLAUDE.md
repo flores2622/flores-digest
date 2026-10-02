@@ -826,6 +826,27 @@ carried in on 2026-10-02 (logged by "Debbie (Rotation Sheet)"; Crystal's
 blank slot as a skip); earlier folios stay in the sheet. Producers have no
 tour step for it, since they can't open it.
 
+## The lead scrub
+
+**Sales Center > Lead Scrub tracks a lead list being cleaned up in both Apex
+and AgencyZoom** (Frank, 2026-10-02). `site/scrub.js` (Worker, `/api/scrub`
+and `/api/scrub/<id>`) keeps one R2 file per list, `scrub/lists/<id>.json`,
+its progress in the object's customMetadata so the picker reads no list.
+Each lead has an **Apex** status, an **AgencyZoom** status and beside it the
+**Duplicates Cleaned** and **Tagged** boxes (`FIELDS` -- the one place the
+options live; the page draws whatever it is sent). Done = both statuses in
+`DONE_STATUSES` (Updated / No changes needed) and both boxes ticked. Every
+change keeps who and when. The import (`site/public/scrub.js`) takes the
+export as it comes -- xlsx (SheetJS from cdnjs, loaded only on import) or
+CSV -- finds the header under the report's title block, drops empty columns,
+the "*Security Classification" column and the Total row, and by default
+makes one lead per person (the first list, Farmers' "Quotes with Risk
+Segment - 2 or 3 Star", Oct 2025: 167 quotes, 125 people); every unmatched
+column is kept on the lead as detail and filterable. `SCRUB_VIEWERS`
+(producers, Debbie, ops) mark leads; `SCRUB_EDITORS` (ops) import, rename,
+delete. The status options are a first cut, pending Frank's screenshot of
+the ones he wants.
+
 ## Apollo's Road Map (ARM) and the tour
 
 **Apollo's Academy is the Coaching and Learning Centers in one** (Frank,
