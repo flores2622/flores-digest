@@ -725,15 +725,8 @@
 
     { h: "1. Email",
       body: [
-        "Do this on your last afternoon. Each step has a **Gmail** part and an **Outlook** part. Use the one for the email you use.",
+        "Do this on your last afternoon. The forwarding step has a **Gmail** part and an **Outlook** part. Use the one for the email you use.",
         { checks: [
-          ["**Set your out-of-office reply**", [
-            "**Gmail:** click the gear (top right), then **See all settings**. On the **General** tab, scroll to **Vacation responder** and pick **Vacation responder on**. Set **First day** to your first day out, tick **Last day** and set it to the day before you're back. Add the subject and message below, leave **Only send a response to people in my Contacts** unticked so new leads get it too, and click **Save Changes**.",
-            "**Outlook (web, or the new Outlook app):** click the gear (top right), then **Mail**, then **Automatic replies**. Turn on **Automatic replies**, tick **Send replies only during a time period** and set the start and end. Paste the message below, tick **Send replies outside your organization** so leads and clients get it too, and click **Save**.",
-            "**Outlook (classic desktop app):** click **File**, then **Automatic Replies**, then **Send automatic replies**. Set the time range, paste the message on both the **Inside My Organization** and **Outside My Organization** tabs, and click **OK**.",
-            "Subject (Gmail): \"Out of office until <day you're back>\".",
-            "Message: \"Thank you for your email. I'm out of the office until <day>. For quotes or new policies, please contact <covering producer> at <their email> or <office phone>. For billing, claims or changes to an existing policy, please call our service team at <office phone>.\"",
-          ] ],
           ["**Auto-forward your email to the person covering you**", [
             "**Gmail:** click the gear, then **See all settings**, then the **Forwarding and POP/IMAP** tab. Click **Add a forwarding address**, enter the covering producer's email, then **Next** and **Proceed**. Gmail emails them a confirmation code; get it from them, enter it and click **Verify**. Pick **Forward a copy of incoming mail to** their address and **keep Gmail's copy in the Inbox**, so nothing is lost. Click **Save Changes**.",
             "**Outlook (web, or the new Outlook app):** click the gear, then **Mail**, then **Forwarding**. Turn on **Enable forwarding**, enter the covering producer's email, tick **Keep a copy of forwarded messages**, and click **Save**.",
@@ -790,19 +783,9 @@
 
     { h: "3. Inbound calls",
       body: [
-        "Your direct line keeps ringing while you're out. Decide where those calls go before you leave.",
+        "You don't need to forward your phone. RingCentral already sends every unanswered call to the agency. What you set up is who handles the calls that come in for you.",
         { checks: [
           ["**Confirm who covers your calls, your sales leads and your quote and client follow-ups**", []],
-          ["**Forward your direct line in RingCentral**", [
-            "Sign in to the RingCentral web portal, or open the app's **Settings**, then **Phone**.",
-            "Under **Call Handling & Forwarding**, add a rule for the dates you're out that sends calls to the covering producer's extension; unanswered calls go to your voicemail.",
-            "Set your status to **Do Not Disturb** or **Away**, so the front desk sees you're out before transferring.",
-            "Can't find the setting? Ask Amanda to set it up from the admin side.",
-          ] ],
-          ["**Record an out-of-office voicemail greeting**", [
-            "In RingCentral, open **Settings**, then **Phone**, then **Voicemail Greeting**, and record a new one.",
-            "Script: \"Hi, you've reached <name> at Flores Insurance. I'm out of the office until <day>. For a quote, press 0 or call <office phone> and ask for <covering producer>. For billing, claims or policy changes, ask for our service team.\"",
-          ] ],
           ["**Tell Debbie and the team where to send calls for you**", [
             "Debbie answers about 90% of inbound calls, so she has to know first.",
             "Send her, the covering producer and Amanda the routing below.",
@@ -860,22 +843,20 @@
       body: [
         "Ask yourself: **\"If a client calls tomorrow asking for me, can another team member open the account and know exactly what's going on?\"** Spend 15 minutes with the covering producer on your last afternoon and go through this together.",
         { checks: [
-          ["Emails routed: out-of-office reply on, auto-forward set (Gmail or Outlook)", []],
+          ["Emails routed: auto-forward set (Gmail or Outlook)", []],
           ["Leads assigned: every lead that needs follow-up is on the covering producer", []],
           ["Quotes documented: every active quote answers the five questions", []],
           ["Follow-ups assigned: every follow-up is a dated task with an owner", []],
           ["Appointments covered or rescheduled", []],
           ["Important client information is in the lead notes, not in your head or your inbox", []],
           ["Team knows who is covering what: Debbie, the covering producer and Amanda all have the routing", []],
-          ["Phone forwarded and out-of-office voicemail recorded", []],
         ] },
       ] },
 
     { h: "The day you're back",
       body: [
         { checks: [
-          ["Turn off your out-of-office reply and email forwarding: in Gmail set forwarding to **Disable forwarding**; in Outlook turn off **Enable forwarding**, or delete the classic rule", []],
-          ["Turn off RingCentral forwarding, set your status to **Available** and record your normal greeting", []],
+          ["Turn off email forwarding: in Gmail set forwarding to **Disable forwarding**; in Outlook turn off **Enable forwarding**, or delete the classic rule", []],
           ["Meet the covering producer for 10 minutes: what was sold, quoted and promised while you were out", []],
           ["Take back the leads that are still open, keeping any notes they added", []],
         ] },
