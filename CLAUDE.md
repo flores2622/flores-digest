@@ -1809,9 +1809,22 @@ sheet on its back.
   podium, fuel spheres, the water tower, the assembly building, a tracking
   dish, a countdown clock; by day under a contrail, at night at ignition
   under floodlights, the Milky Way and the moon (`skyline.py` in the
-  session's scratchpad, same 1600x1700 split at 377). Its vistas and card
-  strips are drawn next; until they land, Space hides the desert's vistas
-  and shows a plain band on the cards.
+  session's scratchpad, same 1600x1700 split at 377). **Its vistas**
+  (`scenes.py` there; `VISTAS_BY_WORLD` carries each world's banner lines
+  and `placeVista` picks the world's): Sales liftoff over the ocean; Texts &
+  Emails the comms array; Coaching mission control with a replay on the big
+  screen; Role Play the simulator; Session History the flight recorder;
+  Training a rover course on the moon; both Road Maps a flight plan on
+  graph paper (Apollo's Dial / Discovery / Quote / Close in launch orange,
+  Athena's Listen / Understand / Handle / Follow up in green); Service the
+  station over Earth; Renewals the orbit that comes back around;
+  Commercial the moon base. **Its card strips**: sold = GO FOR LAUNCH
+  (liftoff, confetti); quoted or follow-up open = holding on the pad with
+  the clock running; lost = splashdown under a parachute in grey; no quote
+  = SCRUB, a red light on an empty pad; reached = two astronauts, comms
+  open; reached without a quote = on the tether; voicemail = a probe asleep
+  past a ringed planet. Captions sit at the left so the outcome pill at the
+  right never covers them.
 - The local harness used to check all of this (a mock of the Worker over
   saved day documents, Playwright captures) lives in the session's
   scratchpad, not the repo; `design/flores-board-preview.html` is the
