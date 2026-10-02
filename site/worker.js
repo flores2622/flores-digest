@@ -57,7 +57,7 @@ import ROLEPLAY_MD from "../coaching/ROLEPLAY.md";
 import TRAINING_MD from "../coaching/TRAINING.md";
 import { getLive, scheduledLive } from "./live.js";
 import { commission } from "./commission.js";
-import { coeusChat } from "./coeus.js";
+import { coeusChat, coeusChats } from "./coeus.js";
 import { leadsIndex } from "./lead_index.js";
 
 export default {
@@ -142,6 +142,10 @@ export default {
           identityOf, rpScope, rpMaySee,
           commercialAllowed: (req, e) => requireCommercial(req, e) === null,
         });
+      }
+      // Saved chats, per login (Frank, 2026-10-01: "will it save the chats?").
+      if (parts[1] === "coeus" && parts[2] === "chats" && parts.length <= 4) {
+        return coeusChats(request, env, { identityOf }, parts[3] || "");
       }
 
       if (parts[1] === "editions" && parts.length === 3) {

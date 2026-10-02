@@ -1664,8 +1664,19 @@ over `text/event-stream` with status lines while it reads.
   document is far too big to send whole.
 - **It knows what is on screen**: the page, the day or range and the
   producer filter travel with each question, so "how did we do?" is that
-  day and that person. The conversation lives in the browser tab
-  (sessionStorage) until New chat; the Worker keeps nothing.
+  day and that person. **Every conversation is saved per login** (Frank,
+  2026-10-01: "will it save the chats?"): the browser saves it after each
+  answer to `/api/coeus/chats/<id>` (`coeusChats`; R2
+  `coeus-chats/<email>/<id>.json` plus an `index.json` of titles, newest
+  100 per person, 60 turns each), **Past chats** in the drawer lists and
+  reopens them on any device, and New chat only starts another. The
+  current chat also rides in the tab's sessionStorage so a reload keeps it.
+- **Tables fit the drawer** (2026-10-01): the renderer wraps cells like
+  prose and scrolls a too-wide table inside its own box, and Coeus is told
+  to keep a table to four short columns with the measures down the first
+  column. A table row with no separator line yet (every table, for a
+  moment, while it streams) renders as text instead of hanging the page --
+  the first two real questions froze the tab that way.
 - Same model as Role Play (`claude-sonnet-5`, thinking off), up to six tool
   rounds then a forced answer. It needs the Worker's `ANTHROPIC_API_KEY`;
   without it the drawer says Coeus is not configured.

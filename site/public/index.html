@@ -1291,18 +1291,37 @@ tr.found td { background: color-mix(in oklab, var(--accent) 18%, transparent) !i
 .coeus .chead .cx { display: flex; gap: 6px; flex: none; }
 .coeus .chead .cx button { background: none; border: 1px solid var(--border-strong); color: var(--text-secondary); border-radius: 8px; padding: 5px 9px; font: 600 12px var(--body); cursor: pointer; }
 .coeus .chead .cx button:hover { color: var(--text-primary); border-color: var(--text-muted); }
-.coeus .cmsgs { flex: 1; overflow: auto; padding: 14px 16px; display: flex; flex-direction: column; gap: 10px; scroll-behavior: smooth; }
-.coeus .cbub { max-width: 92%; padding: 9px 13px; border-radius: 14px; font-size: 14px; line-height: 1.5; border: 1.5px solid var(--border); background: var(--card2); align-self: flex-start; border-bottom-left-radius: 4px; overflow-wrap: anywhere; }
+.coeus .chead .cx button[aria-pressed="true"] { background: var(--chip); color: var(--text-primary); }
+/* Past chats (Frank, 2026-10-01): every conversation is kept per login on
+   the server; this list opens in place of the messages. */
+.coeus .clist { display: flex; flex-direction: column; gap: 6px; }
+.coeus .clist h4 { margin: 0 0 4px; font: 400 17px var(--display); }
+.coeus .clist .crow { display: flex; align-items: center; gap: 8px; border: 1.5px solid var(--border); border-radius: 12px; background: var(--card2); padding: 8px 10px; }
+.coeus .clist .crow.cur { border-color: var(--accent); }
+.coeus .clist .crow .copen { flex: 1; min-width: 0; background: none; border: 0; text-align: left; font: inherit; font-size: 13.5px; color: var(--text-primary); cursor: pointer; padding: 0; }
+.coeus .clist .crow .copen b { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 600; }
+.coeus .clist .crow .copen small { color: var(--text-muted); font-size: 12px; }
+.coeus .clist .crow .cdel { background: none; border: 0; color: var(--text-muted); cursor: pointer; font-size: 15px; padding: 2px 6px; border-radius: 6px; }
+.coeus .clist .crow .cdel:hover { color: var(--bad); background: var(--badbg); }
+.coeus .clist .cnone { color: var(--text-muted); font-size: 13.5px; }
+.coeus .cmsgs { flex: 1; overflow-y: auto; overflow-x: hidden; padding: 14px 16px; display: flex; flex-direction: column; gap: 10px; scroll-behavior: smooth; }
+.coeus .cbub { max-width: 92%; min-width: 0; padding: 9px 13px; border-radius: 14px; font-size: 14px; line-height: 1.5; border: 1.5px solid var(--border); background: var(--card2); align-self: flex-start; border-bottom-left-radius: 4px; overflow-wrap: anywhere; }
 .coeus .cbub.me { align-self: flex-end; background: var(--chip); border-bottom-left-radius: 14px; border-bottom-right-radius: 4px; white-space: pre-wrap; }
 .coeus .cbub.err { border-color: var(--badbd); background: var(--badbg); color: var(--bad); }
 .coeus .cbub p { margin: 0 0 8px; } .coeus .cbub p:last-child { margin-bottom: 0; }
 .coeus .cbub ul, .coeus .cbub ol { margin: 4px 0 8px; padding-left: 20px; } .coeus .cbub li { margin: 2px 0; }
 .coeus .cbub h4 { margin: 6px 0 4px; font: 700 14px var(--body); }
 .coeus .cbub code { font-size: 13px; background: var(--chip); padding: 0 4px; border-radius: 4px; }
-.coeus .cbub table { border-collapse: collapse; margin: 6px 0 8px; font-size: 13px; width: 100%; }
-.coeus .cbub th, .coeus .cbub td { border: 1px solid var(--border); padding: 4px 7px; text-align: left; vertical-align: top; }
+/* A table wraps its words like prose and scrolls inside its own box when
+   it is still too wide (2026-10-01: with no-wrap cells and the whole pane
+   scrolling, the first column broke one letter per line and the numbers
+   sat off-screen). */
+.coeus .cbub .tw { overflow-x: auto; max-width: 100%; margin: 6px 0 8px; }
+.coeus .cbub table { border-collapse: collapse; font-size: 13px; width: 100%; table-layout: auto; }
+.coeus .cbub th, .coeus .cbub td { border: 1px solid var(--border); padding: 4px 7px; text-align: left; vertical-align: top; overflow-wrap: normal; word-break: normal; white-space: normal; line-height: 1.35; }
 .coeus .cbub th { background: var(--chip); font-weight: 700; }
-.coeus .cbub td:not(:first-child), .coeus .cbub th:not(:first-child) { text-align: right; white-space: nowrap; }
+.coeus .cbub td:first-child, .coeus .cbub th:first-child { min-width: 7em; }
+.coeus .cbub td:not(:first-child), .coeus .cbub th:not(:first-child) { text-align: right; }
 .coeus .cstatus { font-size: 12.5px; color: var(--text-muted); font-style: italic; padding: 0 4px; min-height: 18px; }
 .coeus .cchips { display: flex; flex-wrap: wrap; gap: 6px; padding: 0 16px 10px; }
 .coeus .cchips button { background: none; border: 1px solid var(--border-strong); color: var(--text-secondary); border-radius: 999px; padding: 5px 11px; font: 500 12.5px var(--body); cursor: pointer; text-align: left; }
@@ -1366,7 +1385,7 @@ tr.found td { background: color-mix(in oklab, var(--accent) 18%, transparent) !i
 <button type="button" class="coeusfab" id="coeusfab" aria-haspopup="dialog" aria-expanded="false" aria-label="Ask Coeus" title="Ask Coeus (Ctrl /)"><svg class="owl" viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M13 9 L17 14 L31 14 L35 9 L37 24 L33 38 L24 42 L15 38 L11 24 Z"/><path d="M17 14 L13 24 M31 14 L35 24 M17 14 L24 19 L31 14 M11 24 L24 27 L37 24" stroke-width="1.2" opacity=".7"/><circle cx="13" cy="9" r="1.6" fill="currentColor" stroke="none"/><circle cx="17" cy="14" r="1.6" fill="currentColor" stroke="none"/><circle cx="31" cy="14" r="1.6" fill="currentColor" stroke="none"/><circle cx="35" cy="9" r="1.6" fill="currentColor" stroke="none"/><circle cx="37" cy="24" r="1.6" fill="currentColor" stroke="none"/><circle cx="33" cy="38" r="1.6" fill="currentColor" stroke="none"/><circle cx="24" cy="42" r="1.6" fill="currentColor" stroke="none"/><circle cx="15" cy="38" r="1.6" fill="currentColor" stroke="none"/><circle cx="11" cy="24" r="1.6" fill="currentColor" stroke="none"/><circle cx="24" cy="19" r="1.6" fill="currentColor" stroke="none"/><circle cx="24" cy="27" r="1.6" fill="currentColor" stroke="none"/><g class="eyes"><circle cx="18" cy="23" r="3.6" fill="currentColor" stroke="none"/><circle cx="30" cy="23" r="3.6" fill="currentColor" stroke="none"/><circle cx="18" cy="23" r="1.3" fill="var(--accent)" stroke="none"/><circle cx="30" cy="23" r="1.3" fill="var(--accent)" stroke="none"/></g><path d="M24 27 L24 31" stroke-width="1.8"/></svg></button>
 <aside class="coeus" id="coeus" role="dialog" aria-label="Coeus" aria-hidden="true">
   <div class="chead"><div class="cmark" aria-hidden="true"><svg class="owl" viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M13 9 L17 14 L31 14 L35 9 L37 24 L33 38 L24 42 L15 38 L11 24 Z"/><path d="M17 14 L13 24 M31 14 L35 24 M17 14 L24 19 L31 14 M11 24 L24 27 L37 24" stroke-width="1.2" opacity=".7"/><circle cx="13" cy="9" r="1.6" fill="currentColor" stroke="none"/><circle cx="17" cy="14" r="1.6" fill="currentColor" stroke="none"/><circle cx="31" cy="14" r="1.6" fill="currentColor" stroke="none"/><circle cx="35" cy="9" r="1.6" fill="currentColor" stroke="none"/><circle cx="37" cy="24" r="1.6" fill="currentColor" stroke="none"/><circle cx="33" cy="38" r="1.6" fill="currentColor" stroke="none"/><circle cx="24" cy="42" r="1.6" fill="currentColor" stroke="none"/><circle cx="15" cy="38" r="1.6" fill="currentColor" stroke="none"/><circle cx="11" cy="24" r="1.6" fill="currentColor" stroke="none"/><circle cx="24" cy="19" r="1.6" fill="currentColor" stroke="none"/><circle cx="24" cy="27" r="1.6" fill="currentColor" stroke="none"/><g class="eyes"><circle cx="18" cy="23" r="3.6" fill="currentColor" stroke="none"/><circle cx="30" cy="23" r="3.6" fill="currentColor" stroke="none"/><circle cx="18" cy="23" r="1.3" fill="var(--accent)" stroke="none"/><circle cx="30" cy="23" r="1.3" fill="var(--accent)" stroke="none"/></g><path d="M24 27 L24 31" stroke-width="1.8"/></svg></div><div class="ctitle"><h3>Coeus</h3><small>Numbers, coaching, and how the board works</small></div>
-    <div class="cx"><button type="button" id="coeusClear" title="Start a new conversation">New chat</button><button type="button" id="coeusClose" aria-label="Close">✕</button></div></div>
+    <div class="cx"><button type="button" id="coeusHist" title="Your past chats" aria-pressed="false">Past chats</button><button type="button" id="coeusClear" title="Start a new conversation">New chat</button><button type="button" id="coeusClose" aria-label="Close">✕</button></div></div>
   <div class="cmsgs" id="coeusMsgs" aria-live="polite"></div>
   <div class="cchips" id="coeusChips"></div>
   <div class="cstatus" id="coeusStatus"></div>
@@ -9068,9 +9087,51 @@ paintCenterBar();
    this day and this person. The Worker streams back status lines while it
    reads the documents and the answer as it is written. The conversation
    lives in this browser tab (sessionStorage) until New chat. */
-const COEUS = { msgs: [], busy: false, open: false };
-try { COEUS.msgs = JSON.parse(sessionStorage.getItem("coeus-chat") || "[]"); } catch (_) { COEUS.msgs = []; }
-function coeusSave() { try { sessionStorage.setItem("coeus-chat", JSON.stringify(COEUS.msgs.slice(-40))); } catch (_) {} }
+const COEUS = { id: "", msgs: [], busy: false, open: false, mode: "chat", list: null };
+try { const st = JSON.parse(sessionStorage.getItem("coeus-chat") || "{}"); if (Array.isArray(st.msgs)) { COEUS.msgs = st.msgs; COEUS.id = st.id || ""; } } catch (_) {}
+const coeusNewId = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
+function coeusSave() { try { sessionStorage.setItem("coeus-chat", JSON.stringify({ id: COEUS.id, msgs: COEUS.msgs.slice(-60) })); } catch (_) {} }
+/* Every conversation is kept per login on the server (Frank, 2026-10-01:
+   "will it save the chats?"): saved after each answer, listed under Past
+   chats, and New chat only starts another. */
+async function coeusPersist() {
+  const msgs = COEUS.msgs.filter(m => !m.error);
+  if (!msgs.length) return;
+  if (!COEUS.id) COEUS.id = coeusNewId();
+  try {
+    const r = await fetch(`/api/coeus/chats/${COEUS.id}`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ messages: msgs }) });
+    if (r.ok) { const { chat } = await r.json(); if (chat && COEUS.list) COEUS.list = [chat, ...COEUS.list.filter(c => c.id !== chat.id)]; }
+  } catch (_) {}
+}
+async function coeusLoadList() {
+  try { const r = await fetch("/api/coeus/chats", { cache: "no-store" }); if (r.ok) COEUS.list = (await r.json()).chats || []; else COEUS.list = []; } catch (_) { COEUS.list = []; }
+}
+async function coeusOpenChat(id) {
+  try {
+    const r = await fetch(`/api/coeus/chats/${id}`, { cache: "no-store" }); if (!r.ok) return;
+    const c = await r.json(); COEUS.id = c.id; COEUS.msgs = c.messages || []; COEUS.mode = "chat"; coeusSave(); coeusRender();
+  } catch (_) {}
+}
+async function coeusDeleteChat(id) {
+  try { await fetch(`/api/coeus/chats/${id}`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ delete: true }) }); } catch (_) {}
+  COEUS.list = (COEUS.list || []).filter(c => c.id !== id);
+  if (COEUS.id === id) { COEUS.id = ""; COEUS.msgs = []; coeusSave(); }
+  coeusRender();
+}
+function coeusWhen(iso) {
+  const d = new Date(iso), now = new Date(); if (isNaN(d)) return "";
+  const az = x => new Date(x.getTime() - 7 * 3600000).toISOString().slice(0, 10);
+  const t = d.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", timeZone: "America/Phoenix" });
+  if (az(d) === az(now)) return `Today · ${t}`;
+  return d.toLocaleDateString("en-US", { month: "short", day: "numeric", timeZone: "America/Phoenix" }) + ` · ${t}`;
+}
+function coeusListHtml() {
+  if (COEUS.list === null) return '<div class="clist"><h4>Past chats</h4><div class="cnone">Loading…</div></div>';
+  if (!COEUS.list.length) return '<div class="clist"><h4>Past chats</h4><div class="cnone">No saved chats yet. Every conversation you have with Coeus is kept here, on any device you sign in from.</div></div>';
+  return `<div class="clist"><h4>Past chats</h4>${COEUS.list.map(c => `<div class="crow${c.id === COEUS.id ? " cur" : ""}">
+    <button type="button" class="copen" data-open="${cesc(c.id)}"><b>${cesc(c.title || "Chat")}</b><small>${cesc(coeusWhen(c.updated))} · ${c.n || 0} messages</small></button>
+    <button type="button" class="cdel" data-del="${cesc(c.id)}" title="Delete this chat" aria-label="Delete this chat">✕</button></div>`).join("")}</div>`;
+}
 function coeusPageLabel() {
   for (const pages of Object.values(CENTERS)) { const p = pages.find(([k]) => k === view); if (p) return p[1]; }
   return view;
@@ -9099,7 +9160,9 @@ function coeusMd(md) {
       const cells = r => r.trim().replace(/^\||\|$/g, "").split("|").map(x => inline(x.trim()));
       const head = cells(l); i += 2; const rows = [];
       while (i < lines.length && isRow(lines[i])) rows.push(cells(lines[i++]));
-      out.push(`<table><thead><tr>${head.map(h => `<th>${h}</th>`).join("")}</tr></thead><tbody>${rows.map(r => `<tr>${r.map(c => `<td>${c}</td>`).join("")}</tr>`).join("")}</tbody></table>`);
+      // Every row gets the header's column count: a short row is padded, a long one cut.
+      const n = head.length, fit = r => r.length >= n ? r.slice(0, n) : [...r, ...Array(n - r.length).fill("")];
+      out.push(`<div class="tw"><table><thead><tr>${head.map(h => `<th>${h}</th>`).join("")}</tr></thead><tbody>${rows.map(r => `<tr>${fit(r).map(c => `<td>${c}</td>`).join("")}</tr>`).join("")}</tbody></table></div>`);
       continue;
     }
     const h = l.match(/^\s{0,3}#{1,6}\s+(.*)$/); if (h) { out.push(`<h4>${inline(h[1])}</h4>`); i++; continue; }
@@ -9138,6 +9201,13 @@ function coeusChips() {
 }
 function coeusRender() {
   const box = $("#coeusMsgs"); if (!box) return;
+  const hist = $("#coeusHist"); if (hist) hist.setAttribute("aria-pressed", String(COEUS.mode === "list"));
+  if (COEUS.mode === "list") {
+    box.innerHTML = coeusListHtml();
+    const chips = $("#coeusChips"); if (chips) chips.innerHTML = "";
+    box.scrollTop = 0;
+    return;
+  }
   if (!COEUS.msgs.length) {
     const n = (ME.name || "").trim();
     box.innerHTML = `<div class="cwelcome"><b>Hi${n ? " " + n : ""}, I'm Coeus.</b> Ask me about the numbers on any day or range, a lead, what Apollo saw on a call, how to handle an objection, or what anything on the board means. I read the same reports the board draws, so I can only tell you what has been published or checkpointed.</div>`;
@@ -9160,6 +9230,8 @@ function coeusOpen(open) {
 async function coeusSend(text) {
   text = String(text || "").trim();
   if (!text || COEUS.busy) return;
+  COEUS.mode = "chat";
+  if (!COEUS.id) COEUS.id = coeusNewId();
   COEUS.msgs.push({ role: "user", content: text });
   COEUS.busy = true; coeusSave(); coeusRender();
   const status = $("#coeusStatus"), box = $("#coeusMsgs");
@@ -9193,13 +9265,23 @@ async function coeusSend(text) {
   if (reply.trim()) COEUS.msgs.push({ role: "assistant", content: reply.trim() });
   if (err) COEUS.msgs.push({ role: "assistant", content: reply.trim() ? `(${err})` : `Coeus could not answer: ${err}`, error: true });
   coeusSave(); coeusRender();
+  coeusPersist();
 }
 (function wireCoeus() {
   const fab = $("#coeusfab"), form = $("#coeusForm"), ta = $("#coeusIn");
   if (!fab || !form) return;
   fab.onclick = () => coeusOpen(!COEUS.open);
   $("#coeusClose").onclick = () => coeusOpen(false);
-  $("#coeusClear").onclick = () => { if (COEUS.busy) return; COEUS.msgs = []; coeusSave(); coeusRender(); ta.focus(); };
+  $("#coeusClear").onclick = () => { if (COEUS.busy) return; COEUS.id = ""; COEUS.msgs = []; COEUS.mode = "chat"; coeusSave(); coeusRender(); ta.focus(); };
+  $("#coeusHist").onclick = async () => {
+    if (COEUS.mode === "list") { COEUS.mode = "chat"; coeusRender(); return; }
+    COEUS.mode = "list"; coeusRender();
+    await coeusLoadList(); if (COEUS.mode === "list") coeusRender();
+  };
+  $("#coeusMsgs").addEventListener("click", e => {
+    const o = e.target.closest("[data-open]"); if (o) { coeusOpenChat(o.dataset.open); return; }
+    const d = e.target.closest("[data-del]"); if (d) coeusDeleteChat(d.dataset.del);
+  });
   form.onsubmit = e => { e.preventDefault(); const t = ta.value; ta.value = ""; ta.style.height = ""; coeusSend(t); };
   ta.addEventListener("keydown", e => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); form.requestSubmit(); } });
   ta.addEventListener("input", () => { ta.style.height = ""; ta.style.height = Math.min(ta.scrollHeight, 140) + "px"; });
