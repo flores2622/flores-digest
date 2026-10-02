@@ -1185,6 +1185,7 @@ html[data-mode="dark"] .ccard[data-oc="callback_no_contact"] > summary.cchead::b
 .flowedge, .flowleg { display: none; }
 .sect.nolog .controls, .sect.nolog .btn { display: none; }
 .ccard.found { box-shadow: 0 0 0 3px var(--accent); }
+tr.found td { background: color-mix(in oklab, var(--accent) 18%, transparent) !important; }
 .ccard > summary.cchead { border-left: 1px solid var(--border) !important; }
 @media (max-width: 760px) {
   .tabs { min-height: 0; max-height: none; position: static; flex-direction: row; flex-wrap: wrap; padding: 10px 12px; gap: 6px; align-items: center; }
@@ -1768,10 +1769,39 @@ function searchIndex() {
   }
   for (const e of seen.values()) {
     e.s = `${(e.who || "").split(" ")[0]}${e.parts.length ? " · " + e.parts.join(", ") : ""}`;
-    if (!e.go) e.go = e.id ? () => window.open(AZ_URL.lead + encodeURIComponent(e.id), "_blank", "noopener") : null;
-    if (e.go) out.push(e);
+    // A lead the search finds opens its coaching card, never AgencyZoom
+    // (Frank, 2026-10-02: "the link is on the coaching card if they want to
+    // go there"): today's card if there is one, else the newest recent one.
+    if (!e.go) { e.go = () => openLeadCard(e); e.s += " · looks for its card"; }
+    out.push(e);
   }
   return out;
+}
+/* A lead with no coaching card on the loaded day: look back through the
+   recent published days for one and open it there (switching the day);
+   with none, open the Digest list the lead is in and light its row. */
+const leadDayCache = new Map();
+async function openLeadCard(e) {
+  const want = (e.l || "").trim().toLowerCase();
+  const match = c => (e.id && c.lead_id != null && String(c.lead_id) === String(e.id)) || (c.lead || "").trim().toLowerCase() === want;
+  const today = cur && cur.date;
+  for (const d of DAYS.filter(d => d !== today).slice(0, 20)) {
+    let doc = leadDayCache.get(d);
+    if (doc === undefined) { try { const r = await fetch(`/api/days/${d}`, { cache: "no-store" }); doc = r.ok ? await r.json() : null; } catch (_) { doc = null; } leadDayCache.set(d, doc); }
+    const c = ((doc || {}).calls || []).find(match);
+    if (c) { await loadDay(d); await openCoachingCard(c); return; }
+  }
+  const parts = e.parts || [];
+  if (parts.includes("texted") && parts.length === 1) { goView("messages"); return; }
+  const k = parts.includes("sold") ? "sold" : parts.includes("quoted") ? "quoted" : parts.includes("reached") ? "contacts" : parts.includes("misfiled") ? "" : "dials";
+  if (producerFilter && e.who && producerFilter !== e.who) producerFilter = "";
+  digDrill = k;
+  if (view !== "digest") await goView("digest"); else paint();
+  for (let i = 0; i < 20; i++) {
+    await new Promise(r => setTimeout(r, 150));
+    const row = $$("#view tr").find(tr => tr.textContent.toLowerCase().includes(want));
+    if (row) { row.classList.add("found"); row.scrollIntoView({ behavior: "smooth", block: "center" }); setTimeout(() => row.classList.remove("found"), 2600); return; }
+  }
 }
 async function openCoachingCard(c) {
   if (view !== "coaching" || coachSubTab !== "cards") { coachSubTab = "cards"; if (view !== "coaching") await goView("coaching"); else repaintCoaching(); }
@@ -8803,7 +8833,7 @@ const TOUR_STEPS = [
   { find: () => $("nav.tabs"), title: "The left bar",
     text: "Three desks: Apollo for sales, Athena for service, Cerberus for commercial. Each Center lists its pages under it. Settings at the bottom picks your look: five looks, each with a dark side." },
   { find: () => $(".top .search"), title: "Search",
-    text: "Ctrl K from anywhere: pages, the sections on the page you are on, producers, and every lead on the loaded day. A lead opens its coaching card or its AgencyZoom record." },
+    text: "Ctrl K from anywhere: pages, the sections on the page you are on, producers, and every lead on the loaded day. A lead opens its coaching card -- today's, or the newest recent one -- and with no card, its row on the Digest." },
   { find: () => $("#coeusfab"), title: "Ask Coeus",
     text: "The owl is the board's assistant. Ask it how a day or a week went, what a producer should work on, what Apollo saw on a call, how to answer an objection, or what any number means. It reads the same reports the board draws. Ctrl / opens it from anywhere." },
   { view: "digest", find: () => $("#view .controls"), title: "Pick a day and a person",
