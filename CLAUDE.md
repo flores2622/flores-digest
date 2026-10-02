@@ -826,7 +826,12 @@ every 5 minutes (`live/<day>-customers.json`); `mergeSoldLeads` keeps the
 checkpoint's customer rows and drops one once a lead for that household is
 marked sold. The Sales sheet names an unnamed sale from it too, and the
 nightly names an auto row the live refresh added without one. **Premium Sold is still the policies' own premium** and the
-policy count still shows beside it (policies per HH). A lead can be marked
+policy count still shows beside it (policies per HH). **A household sold
+is a green day** (Frank, 2026-10-02: "the same way that any premium sold
+is green for tiering, it should apply to HH as well"): the HH half of the
+tile and the leaderboard's HH Sold cells are green whenever the count is
+above zero, else the policy tier (the streak; the team's count), on the
+board only -- the documents' tiers are unchanged. A lead can be marked
 sold a few days off its policy's soldDate, so a day can show a household
 with no policy or the reverse. A day with no sold-lead rows keeps the old
 Policies display. The emailed digest is unchanged.
