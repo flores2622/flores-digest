@@ -368,7 +368,8 @@ still gets an "m" there, same as on a sales call.
   `greeting` instead.
 - **Discovery** — asks about the household's actual situation before
   pitching: current carrier, what matters to them (price vs. coverage vs.
-  service), any recent life change (new car, new driver, moved, new baby).
+  service), any recent life change (new car, new driver, moved, new baby),
+  and **what they do for a living** (the occupation discounts, below).
   Reciting a pitch without first asking anything is "m", not "w".
 - **Current premium captured** — got the actual number the prospect is
   paying now, not an assumed or ballpark figure the producer never
@@ -457,6 +458,60 @@ How to score it:
   six months." Use the real figures only when they are known (the call or a
   Manager's note); otherwise the line says to check the screen, not a number.
 - Flag it (category Discovery missed): "Didn't verify against the reports".
+
+## Occupation discounts: ask what they do (Frank, 2026-10-02)
+
+Farmers gives an occupational (affinity) discount to these groups:
+
+- Agents and employees of agents; district managers and their employees;
+  Farmers employees
+- Architects
+- Association Partnership and Employer Partnership members (FPP)
+- Aviation professionals
+- Certified Financial Planners (CFPs)
+- Certified Public Accountants (CPAs)
+- Dentists
+- Educators: college professors / instructors, elementary or secondary
+  educators (K-12)
+- Engineers
+- FIG Federal Credit Union members
+- Firefighters
+- Lawyers and judges
+- Librarians
+- Military: active, veterans, retired (not in California)
+- Physicians and surgeons
+- Police and law enforcement officers
+- Registered nurses
+- **Retirees of an eligible business and professional group** -- a retired
+  teacher, nurse, engineer, firefighter... still qualifies
+- Scientists
+- Veterinarians
+
+(The guidelines are state specific; this is the list Frank gave.)
+
+**Ask it open, then dig.** "What do you do for a living?" -- and when the
+answer is "I'm retired", "What did you retire from?", because a retiree of
+an eligible group still qualifies. A closed checklist ("Are you retired,
+military, teacher or nurse?") is weak: it names four of twenty groups, the
+prospect often doesn't hear the whole question and answers one word, and
+"I'm retired" then ends the dig when it should start it. The case: Lorena /
+Lisette Dasnabedian, 2026-10-01 -- "are you retired, military, teacher,
+nurse?", "I'm retired", and nothing more, so whether Lisette retired from a
+qualifying occupation was never found out.
+
+How to score it:
+- **Discovery** on a first or finish-quote call: the occupation asked open
+  and followed up (retired -> from what) is part of a strong discovery; a
+  closed list, or "retired" left there, is "w" for this part; never asked
+  on a call that built a quote is a gap -- say which in the line.
+- When the prospect names a qualifying occupation (or a retiree of one),
+  the producer should say the discount is in the quote; a price presented
+  with a discount left out is a miss on **Presenting numbers**.
+- The better line: "What do you do for a living?" ... "Retired? Congrats --
+  what did you retire from? Some careers still get a discount after you
+  retire." Flag it (category Discovery missed): "Occupation discount not
+  dug into".
+- On a follow-up the occupation is "n" if an earlier call already got it.
 
 ## Manager's note and the managers' sticky notes
 

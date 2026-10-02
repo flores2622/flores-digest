@@ -142,6 +142,7 @@
           "CRM after the call (the note in AgencyZoom)",
         ] },
         "On a finish-quote call, anything an earlier call already captured is N/A, not Missing.",
+        "**Occupation discounts.** Apollo expects the occupation asked open (\"What do you do for a living?\") and followed up (\"What did you retire from?\"), since retirees of an eligible career still qualify. A yes / no checklist, or \"retired\" left there, is weak discovery and gets the \"Occupation discount not dug into\" flag. A price presented without a discount the prospect qualifies for counts against presenting the numbers. The whole list is in the Training tab's Occupation Discounts deck.",
         "**Verify against the reports.** ALTA's reports already show the drivers, vehicles, limits, coverages, dates, prior carrier, policy status and the term (six or twelve months). Discovery still matters: it buys time while the quote builds, builds rapport and finds what the reports don't. But what the prospect says about their current policy has to be checked against the **Prior Insurance** screen. People misremember the term: \"about $1,000 a year\" is often the six-month premium. Apollo marks the current premium and the price comparison weak when the producer takes the prospect's word on a figure that doesn't add up, and flags it as \"Didn't verify against the reports\".",
         "**Sticky notes.** Open any coaching card and write a sticky note in the box at the top. Everyone sees it in yellow on the front of the card, so the producer gets your coaching right where they read Apollo's. Leave **Apollo learns this** ticked and Apollo uses the note on every call it reads from then on: it applies the lesson wherever a call shows the same thing, in your words. Untick it for a note that's only for that card. Cards already written aren't read again, so a lesson shows up on the next calls, not the old ones.",
         "It also marks six named techniques when they're used: elevator pitch, feel-felt-found, risk reversal, social proof, trial close, and takeaway / urgency.",
@@ -501,7 +502,7 @@
         "Apollo scores your first conversations on nine steps. Here they are in plain terms:",
         { steps: [
           "**Open well.** Say your name and the agency, and make sure you're talking to the right person. \"Hi Maria, this is Lorena with Farmers.\"",
-          "**Ask questions (discovery).** Who drives, what vehicles, the home, who's in the household.",
+          "**Ask questions (discovery).** Who drives, what vehicles, the home, who's in the household, and **what they do for a living**. Farmers has occupation discounts for about twenty careers (teachers, nurses, engineers, military, police, firefighters and more). Ask it open, never as a yes / no list, and if they say they're retired, ask what they retired from: a retiree of those careers still gets the discount. The Training tab has a deck with the whole list.",
           "**Get what they pay now, and check it.** You can't beat a price you don't know. Look at the **Prior Insurance** screen in ALTA: is their policy six months or a year? \"About $1,000 a year\" is often the six-month price.",
           "**Get their renewal date.** If now isn't the time, you know when is.",
           "**Know the product.** Answer their questions clearly.",

@@ -204,6 +204,15 @@ Everything caches under `data/`, so a re-run resumes rather than restarting.
   cannot show; Apollo treats it as fact. The cache is keyed by call, so a note
   reaches a card only when it is read again (the file is empty: the one
   note written, Lisette's, was taken back the same day and her card restored).
+- **Occupation discounts: ask what they do** (Frank, 2026-10-02): Farmers'
+  affinity groups (Frank's list, in METHODOLOGY.md's "Occupation discounts"
+  and TRAINING.md's Occupation Discounts deck -- change both together) and the
+  rule: "What do you do for a living?", then "What did you retire from?" --
+  retirees of an eligible group qualify. A closed checklist ("retired,
+  military, teacher, nurse?") or "retired" left there is weak Discovery and the
+  flag "Occupation discount not dug into"; a qualifying occupation left out of
+  the quote is a Presenting-numbers miss. Lorena / Lisette Dasnabedian 10-01
+  is the case.
 - **Managers' sticky notes on coaching cards** (Frank, 2026-10-02: "add the
   managers 'Sticky note' on it. Any way apollo can learn from my sticky
   notes?"). A manager (`rpScope.all`) writes one in the box at the top of an
