@@ -964,6 +964,27 @@ html[data-look="mesa"] .chatbox .pinned { background: var(--text-primary); color
 .todo li.bad b.n { color: var(--bad); } .todo li.warn b.n { color: var(--warn); } .todo li.ok b.n { color: var(--good); }
 .todo button { font: 600 12px var(--body); border: 1px solid var(--border-strong); background: var(--surface-raised); border-radius: 8px; padding: 6px 10px; cursor: pointer; color: var(--text-primary); white-space: nowrap; }
 .todo button:hover { border-color: var(--accent); }
+.todo li.flip { cursor: pointer; perspective: 1400px; padding: 0; border: 0; background: transparent; display: block; }
+.todo li.flip .flipin { position: relative; transition: transform .55s cubic-bezier(.4, .2, .2, 1); transform-style: preserve-3d; }
+/* the face showing sits in the flow and sets the height; the other is laid over it, hidden by backface-visibility */
+.todo li.flip .face { backface-visibility: hidden; -webkit-backface-visibility: hidden; border: 1.5px solid var(--border); border-radius: 12px; background: var(--card2); padding: 10px 12px; box-sizing: border-box; }
+.todo li.flip .face.front { display: flex; gap: 12px; align-items: center; }
+.todo li.flip .face.back { position: absolute; inset: 0; transform: rotateY(180deg); background: var(--surface-raised); border-color: var(--border-strong); overflow: hidden; }
+.todo li.flip.on .face.front { position: absolute; inset: 0; }
+.todo li.flip.on .face.back { position: static; }
+.todo li.flip.on .flipin { transform: rotateY(180deg); }
+.todo li.flip.on .face.front { pointer-events: none; }
+.todo li.flip:not(.on) .face.back { pointer-events: none; }
+.todo .flipcue { font-size: 11px; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; color: var(--text-muted); white-space: nowrap; }
+.todo li.flip:hover .flipcue { color: var(--accent); }
+.todo .bk-h { display: flex; justify-content: space-between; align-items: center; gap: 8px; margin-bottom: 8px; font-size: 13px; } .todo .bk-h span { display: flex; gap: 6px; }
+.todo .accts { list-style: none; margin: 0; padding: 0; max-height: 260px; overflow: auto; display: flex; flex-direction: column; gap: 4px; }
+.todo .accts li { display: grid; grid-template-columns: auto auto minmax(0, 1fr); gap: 8px; align-items: center; font-size: 12.5px; padding: 4px 6px; border-radius: 8px; }
+.todo .accts li:nth-child(odd) { background: color-mix(in oklab, var(--sc, var(--s4)) 7%, transparent); }
+.todo .accts button.acct { border: 0; background: none; padding: 0; font: 700 13px var(--body); color: var(--accent); cursor: pointer; text-align: left; }
+.todo .accts button.acct:hover { text-decoration: underline; }
+.todo .accts small { color: var(--text-muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.todo .accts .who .pbadge { font-size: 10.5px; }
 
 
 /* ---- Coaching Center and Learning Center, with colour (Frank, 2026-10-01:
@@ -1836,6 +1857,17 @@ async function openLeadCard(e) {
   }
   const parts = e.parts || [];
   if (parts.includes("texted") && parts.length === 1) { goView("messages"); return; }
+  if (parts.includes("misfiled") && parts.length === 1) {
+    if (view !== "digest") await goView("digest");
+    for (let i = 0; i < 20; i++) {
+      await new Promise(r => setTimeout(r, 150));
+      const h = $$("#view h2").find(h => /Pipeline/.test(h.textContent)); if (!h) continue;
+      const row = $$("#view tr").find(tr => tr.textContent.toLowerCase().includes(want));
+      (row || h).scrollIntoView({ behavior: "smooth", block: "center" });
+      if (row) { row.classList.add("found"); setTimeout(() => row.classList.remove("found"), 2600); }
+      return;
+    }
+  }
   const k = parts.includes("sold") ? "sold" : parts.includes("quoted") ? "quoted" : parts.includes("reached") ? "contacts" : parts.includes("misfiled") ? "" : "dials";
   if (producerFilter && e.who && producerFilter !== e.who) producerFilter = "";
   digDrill = k;
@@ -1980,18 +2012,31 @@ function needsNowRows(d, who) {
   const end = live ? nowAzMins() : 17 * 60 + 30;
   const oldest = waiting.length ? Math.max(0, ...waiting.map(r => { const t = feedMins(r.at); return t == null ? 0 : end - t; })) : 0;
   rows.push({ n: waiting.length, cls: waiting.length ? "bad" : "ok", t: `text${waiting.length === 1 ? "" : "s"} waiting on a reply`,
-    sub: waiting.length ? `Oldest ${fmtMins(oldest)} · ${tally(waiting, r => r.who)}` : "Every text answered", goview: "messages", btn: "Open" });
+    sub: waiting.length ? `Oldest ${fmtMins(oldest)} · ${tally(waiting, r => r.who)}` : "Every text answered", goview: "messages", btn: "Texts & Emails",
+    accts: waiting.map(r => ({ l: r.lead, id: r.lead_id, who: r.who, parts: "texted", note: `${r.at || ""}${r.said ? ` · “${String(r.said).slice(0, 90)}${String(r.said).length > 90 ? "…" : ""}”` : ""}` })) });
   const mis = (d.misfiled || []).filter(r => mine(r.assigned));
   rows.push({ n: mis.length, cls: mis.length ? "warn" : "ok", t: `open lead${mis.length === 1 ? "" : "s"} misfiled in “Pipeline”`,
-    sub: mis.length ? tally(mis, r => r.assigned) : "Nothing misfiled", h2: "Pipeline", btn: "See them" });
+    sub: mis.length ? tally(mis, r => r.assigned) : "Nothing misfiled", h2: "Pipeline", btn: "The list",
+    accts: mis.map(r => ({ l: r.lead, id: r.lead_id, who: r.assigned, parts: "misfiled", note: `${r.stage || ""}${r.source ? ` · ${r.source}` : ""}${r.last_activity ? ` · last ${fmtShortDate(String(r.last_activity).slice(0, 10))}` : ""}` })) });
   const risk = ((d.recontact || {}).at_risk || []).filter(r => mine(r.producer));
-  if (risk.length) rows.push({ n: risk.length, cls: "warn", t: "quoted leads going cold", sub: `No dial in 3+ business days · ${tally(risk, r => r.producer)}`, goview: "coaching", btn: "Coaching" });
+  if (risk.length) rows.push({ n: risk.length, cls: "warn", t: "quoted leads going cold", sub: `No dial in 3+ business days · ${tally(risk, r => r.producer)}`, goview: "coaching", btn: "Coaching",
+    accts: risk.map(r => ({ l: r.lead_name, id: r.lead_id, who: r.producer, parts: "quoted", note: `${r.stage || ""} · ${r.business_days} business day${r.business_days === 1 ? "" : "s"}${r.last_dial ? ` · last dial ${fmtShortDate(r.last_dial)}` : ""}${r.flag ? ` · ${r.flag}` : ""}` })) });
   return rows;
 }
+/* Each row is a card that FLIPS to the accounts behind its number (Frank,
+   2026-10-02: "left on the desk card should drop down what was actually
+   left on the desk ... make it so that the card flips"): the front is the
+   count and the line, the back every account, each opening its coaching
+   card (openLeadCard), with the page button beside. */
+let needsFlipped = new Set();
 function needsNowHtml(d, who) {
   const live = curLive && rangeMode === "day", rows = needsNowRows(d, who);
-  const html = rows.map(r => `<li class="${r.cls}"><b class="n">${r.n}</b><div class="t">${cesc(r.t)}<small>${cesc(r.sub)}</small></div>${
-    r.n ? `<button type="button"${r.goview ? ` data-goview="${r.goview}"` : ` data-feedh2="${cesc(r.h2)}"`}>${cesc(r.btn)}</button>` : ""}</li>`).join("");
+  const html = rows.map((r, i) => {
+    const pageBtn = r.n ? `<button type="button"${r.goview ? ` data-goview="${r.goview}"` : ` data-feedh2="${cesc(r.h2)}"`}>${cesc(r.btn)}</button>` : "";
+    const key = r.t.replace(/[^a-z]/gi, "").slice(0, 24);
+    const back = r.accts && r.accts.length ? `<div class="face back"><div class="bk-h"><b>${r.n} ${cesc(r.t)}</b><span>${pageBtn}<button type="button" class="flipback" data-flipback>▲ Front</button></span></div>
+      <ul class="accts">${r.accts.map(a => `<li><button type="button" class="acct" data-acct-l="${cesc(a.l || "")}" data-acct-id="${cesc(a.id ?? "")}" data-acct-who="${cesc(a.who || "")}" data-acct-parts="${a.parts || ""}">${cesc(a.l || "—")}</button><span class="who">${pbadge(DOT[a.who] || TEAM_DOT, firstName(a.who || ""))}</span><small>${cesc(a.note || "")}</small></li>`).join("")}</ul></div>` : "";
+    return `<li class="${r.cls}${back ? " flip" : ""}${back && needsFlipped.has(key) ? " on" : ""}" data-flipkey="${key}"><div class="flipin"><div class="face front"><b class="n">${r.n}</b><div class="t">${cesc(r.t)}<small>${cesc(r.sub)}</small></div>${back ? `<span class="flipcue" aria-hidden="true">accounts ▸</span>` : pageBtn}</div>${back}</div></li>`; }).join("");
   return `<div class="sect svcsec" style="--sc:var(--s4)"><h2>${live ? "Needs someone now" : "Left on the desk"}</h2>
     <p class="sd">${live ? "What is waiting on a person at this minute." : "What the day ended with still waiting."}</p><ul class="todo">${html}</ul></div>`;
 }
@@ -2014,7 +2059,18 @@ function svcFeedHtml(m) {
   return `<div class="sect"><h2>Off the desk · done today</h2>
     <p class="sd">Athena's group chat: every SR closed, call answered, call back, text and task as it happened.</p>${chatFeedHtml(items, "Athena", pin)}</div>`;
 }
+function wireNeedsNow() {
+  $$("#view .todo li.flip").forEach(li => {
+    li.addEventListener("click", e => {
+      if (e.target.closest("button.acct, [data-goview], [data-feedh2], a")) return;
+      li.classList.toggle("on"); const k = li.dataset.flipkey;
+      if (li.classList.contains("on")) needsFlipped.add(k); else needsFlipped.delete(k);
+    });
+  });
+  $$("#view .todo button.acct").forEach(b => b.onclick = e => { e.stopPropagation(); openLeadCard({ l: b.dataset.acctL, id: b.dataset.acctId, who: b.dataset.acctWho, parts: b.dataset.acctParts ? [b.dataset.acctParts] : [] }); });
+}
 function wireFeed() {
+  wireNeedsNow();
   $$("#view [data-feedcall]").forEach(b => b.onclick = () => { const c = ((cur && cur.calls) || [])[+b.dataset.feedcall]; if (c) openCoachingCard(c); });
   $$("#view [data-feedh2]").forEach(b => b.onclick = () => {
     const re = new RegExp(b.dataset.feedh2, "i"), h = $$("#view h2").find(x => re.test(x.textContent));

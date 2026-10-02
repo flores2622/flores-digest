@@ -1469,6 +1469,17 @@ with a 2px border. **A feed line never names a stage** ("Mike presented
 $2,500 in premium"): the Digest's day reads as Apollo's group chat
 (`digestFeedItems`) beside **Needs someone now** / **Left on the desk**
 (`needsNowRows`); the Service Digest's is **Off the desk · done today**.
+**Each Left on the desk / Needs someone now row is a card that FLIPS**
+(Frank, 2026-10-02: "left on the desk card should drop down what was
+actually left on the desk ... make it so that the card flips"): the front
+is the count and its line ("accounts ▸"), a click turns it over to every
+account behind the number -- the waiting texts with the time and what the
+lead said, the misfiled leads with stage and source, the quoted leads
+going cold with days since the last dial -- each name opening the lead's
+coaching card through the search's `openLeadCard` (a misfiled lead with no
+card goes to the Pipeline list, row lit), with the page button and "▲
+Front" beside. The showing face sets the card's height; which rows are
+turned survives a repaint (`needsFlipped`).
 - **The Flores Post** (`site/public/post.js`) is the first of the Editions
   (Frank, 2026-10-01: "the flores post should also be one of the
   editions"; it was its own page for a day), written in rules from the day documents -- nothing typed,
