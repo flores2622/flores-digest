@@ -296,9 +296,9 @@
     { h: "The three roles",
       body: [
         { terms: [
-          ["Service Lead: Amanda", "Oversight, delegation, complex service, training, and keeping the department moving. Handles complex or sensitive issues, Spanish-speaking service clients, involved policy changes and coverage questions, and reviews renewals. Watches missed calls, texts and pending tasks, audits notes, and steps in when someone needs help. **The Service Lead is not the default person for every request**; the goal is to delegate and support, not become the team's backlog."],
-          ["Service Team Member: Crystal", "Handles day-to-day service independently: policy questions and changes, billing questions, vehicles and drivers, lienholders, documents and ID cards, renewal questions, and follow-ups. **If you can handle it, handle it.** Check the account, the policy and the notes before passing anything on. Crystal also sells, so she works an opportunity herself."],
-          ["Front Desk: Debbie", "The first impression of the agency. Answers calls, greets walk-ins, handles basic billing, NOCs and admin tasks, and gets each client to the right person. **The front desk doesn't need to solve every issue**; the goal is to identify the need and route it confidently. Debbie passes sales opportunities to a producer."],
+          ["Service Lead: Amanda", "Oversight, delegation, complex service, training, and keeping the department moving. Handles complex or sensitive issues, Spanish-speaking service clients, involved policy changes and coverage questions, and reviews renewals. Watches missed calls, texts and pending tasks, audits notes, and steps in when someone needs help. A licensed rep, so she opens and works claims. **The Service Lead is not the default person for every request**; the goal is to delegate and support, not become the team's backlog."],
+          ["Service Team Member: Crystal", "Handles day-to-day service independently: policy questions and changes, billing questions, vehicles and drivers, lienholders, documents and ID cards, renewal questions, and follow-ups. **If you can handle it, handle it.** Check the account, the policy and the notes before passing anything on. Crystal also sells, so she works an opportunity herself. A licensed rep, so she opens and works claims."],
+          ["Front Desk: Debbie", "The first impression of the agency. Answers calls, greets walk-ins, handles basic billing, NOCs and admin tasks, and gets each client to the right person. **The front desk doesn't need to solve every issue**; the goal is to identify the need and route it confidently. Debbie passes sales opportunities to a producer. **Debbie doesn't open claims**: a client calling with a claim goes to Amanda or Crystal."],
         ] },
       ] },
 
@@ -307,7 +307,8 @@
         { table: { head: ["Request", "Who"], rows: [
           ["Basic billing question, NOC or admin", "Front Desk"],
           ["Documents, ID cards, address, vehicle, driver or lienholder change", "Service team"],
-          ["Routine policy change, renewal question, cancellation, claim", "Service team"],
+          ["Routine policy change, renewal question, cancellation", "Service team"],
+          ["A claim", "A licensed rep only: Amanda or Crystal"],
           ["Complex coverage question or an unresolved issue", "Service Lead"],
           ["New business, a cross-sell, a requote, new coverage", "A producer (Crystal and Amanda can work it themselves)"],
           ["Anything that needs the owner", "Frank"],
@@ -360,7 +361,7 @@
           ["Opportunities", "Sales opportunities in the SRs: worked (quoted, a lead set, or passed to a producer) or not noted."],
           ["Utilization", "Insightful's productive time over tracked time."],
         ] },
-        "Under the cards: Texts & Emails, Note Standard, Completion Time, and each pipeline's outcomes.",
+        "Under the cards: Texts & Emails, Note Standard, Completion Time, Claims, and each pipeline's outcomes.",
         "**Card, bank account and social security numbers are removed** from texts and call transcripts before they reach the board. A call where a number was said shows as text only, never the recording.",
       ] },
 
@@ -372,6 +373,7 @@
           ["Service Pipeline", "Changes, endorsements and basic service. Outcome read from your note: change made, policy cancelled, other service, not done, or unable to contact."],
           ["Late Payments", "The only pipeline worked stage by stage. Outcome: paid, cancelled for non-pay, client cancelled, unable to contact, or other. \"Saved\" is paid over paid or cancelled."],
           ["Contingencies", "Anything pending on a policy (AgencyZoom calls it Missing Documents). Outcome: cleared, policy cancelled, closed without clearing, or unable to contact. It also shows whether the selling producer or the service team closed it."],
+          ["Claim", "Every claim, opened in AgencyZoom's Claim pipeline. **Only a licensed service rep opens or works one: Amanda or Crystal.** The Service Center's Claims section shows the open claims, the ones opened and completed, and any claim opened by, or assigned to, someone who isn't licensed, from October 2, 2026 on. Move one of those to Amanda or Crystal."],
         ] },
         "Service Pipeline, Late Payments and Contingencies SRs are all closed on **Completed**, so Athena reads the outcome from your note. A note that says what happened gets the right outcome; no note reads as \"No note\".",
       ] },

@@ -100,7 +100,7 @@ How to answer:
 /* ---- tools ------------------------------------------------------------ */
 
 const SALES_SECTIONS = ["sold", "quoted", "contacts", "dials", "speed", "tasks", "messages", "misfiled", "life"];
-const SERVICE_SECTIONS = ["srs", "open", "tasks", "callbacks", "dials", "messages", "front", "renewals"];
+const SERVICE_SECTIONS = ["srs", "open", "tasks", "callbacks", "dials", "messages", "front", "renewals", "claims"];
 
 const TOOLS = [
   { name: "list_days",
@@ -126,7 +126,7 @@ const TOOLS = [
       name: { type: "string" }, days: { type: "integer", description: "How many published days back to search (default 10, max 20)" },
       before: { type: "string", description: "Start from this day instead of the newest (YYYY-MM-DD)" } } } },
   { name: "service_day",
-    description: "One day's Service Center (Athena): SRs completed by person and pipeline with completion hours, the backlog (open and overdue per person), Late Payment stages, service tasks, call backs, dials, texts and emails, calls answered and SRs created at the front desk, renewal SR outcomes and the pipeline outcome breakdowns, note standard and opportunities, utilization. `sections` adds rows: srs (every completed SR), open (the open SRs), tasks, callbacks, dials, messages, front, renewals (every renewal SR row).",
+    description: "One day's Service Center (Athena): SRs completed by person and pipeline with completion hours, the backlog (open and overdue per person), Late Payment stages, service tasks, call backs, dials, texts and emails, calls answered and SRs created at the front desk, renewal SR outcomes and the pipeline outcome breakdowns, note standard and opportunities, utilization. `sections` adds rows: srs (every completed SR), open (the open SRs), tasks, callbacks, dials, messages, front, renewals (every renewal SR row), claims (every claim opened, completed and open).",
     input_schema: { type: "object", required: ["day"], properties: {
       day: { type: "string" }, sections: { type: "array", items: { type: "string", enum: SERVICE_SECTIONS } } } } },
   { name: "renewals",
@@ -475,6 +475,10 @@ function compactService(doc, sections) {
     callbacks: summarize(doc.callbacks), dials: summarize(doc.dials), texts_and_emails: summarize(doc.messages),
     front_desk: summarize(doc.front), renewal_srs: summarize(doc.renewals), utilization: doc.utilization,
     roles_and_note_standard: summarize(doc.roles || doc.audit), playbook_roles: (doc.playbook || {}).roles,
+    // Claims (claims.py): licensed reps only; flags = opened by or assigned to someone not licensed.
+    claims: doc.claims ? { licensed: doc.claims.licensed, rule_from: doc.claims.rule_from,
+      opened: (doc.claims.opened || []).length, completed: (doc.claims.completed || []).length,
+      open_end_of_day: (doc.claims.open || []).length, not_licensed: trim(doc.claims.flags, 20, 160) } : null,
   };
   for (const s of sections || []) {
     if (s === "srs") out.rows_srs = trim(done, 80, 200);
@@ -485,6 +489,7 @@ function compactService(doc, sections) {
     if (s === "messages") out.rows_messages = trim(doc.messages, 60, 240);
     if (s === "front") out.rows_front = trim(doc.front, 60, 200);
     if (s === "renewals") out.rows_renewals = trim(doc.renewals, 80, 240);
+    if (s === "claims" && doc.claims) out.rows_claims = { opened: trim(doc.claims.opened, 60, 200), completed: trim(doc.claims.completed, 60, 200), open: trim(doc.claims.open, 60, 200) };
   }
   return out;
 }

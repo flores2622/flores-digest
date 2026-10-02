@@ -7490,6 +7490,8 @@ function mergeServiceDocs(docs) {
     tasks: {}, completed: [], renewals: [], unnamed: {}, callbacks: [], util: {}, taskRows: [], dials: [], dialDays: 0,
     msg: { days: 0, people: {}, replies: [], sent: [] },
     front: { days: 0, calls: [], created: [] }, playbook: null, callTx: {},
+    claims: { days: 0, opened: [], completed: [], flags: [], open: ((last.claims || {}).open) || null,
+      licensed: ((last.claims || {}).licensed) || ["Amanda Torricellas", "Crystal Mango"], ruleFrom: ((last.claims || {}).rule_from) || "2026-10-02" },
     openRows: (last.srs || {}).open_rows || null,
     backlog: (last.srs || {}).backlog || {}, lateStages: (last.srs || {}).late_payment_stages || [],
     outcomes: (last.renewals || {}).outcomes || [], resolutionsFrom: (last.renewals || {}).resolutions_from,
@@ -7518,6 +7520,10 @@ function mergeServiceDocs(docs) {
       m.front.created.push(...(x.front.created || []).map(r => Object.assign({ day: x.date }, r)));
     }
     if (x.playbook) m.playbook = x.playbook;
+    if (x.claims) {
+      m.claims.days++;
+      for (const k of ["opened", "completed", "flags"]) m.claims[k].push(...(x.claims[k] || []).map(r => Object.assign({ day: x.date }, r)));
+    }
     // Full transcripts of the team's recorded calls (service_calls.py),
     // by recording id, each with its day for the recording's URL.
     for (const [id, t] of Object.entries(x.calls_tx || {})) m.callTx[id] = Object.assign({ day: x.date }, t);
@@ -7776,6 +7782,45 @@ function missingDocsHtml(m) {
     <p class="sd">Any contingency pending on a policy: ${rs.length} completed in this period, median ${fmtDur(svcMedian(rs.map(r => r.hours)))} from created to completed, and who took care of it. The selling producer is whoever sold the household's policy just before the SR was created.</p>
     <div class="tiles">${chips}</div>${svcDrillFor(m, ["hand"])}</div>`;
 }
+/* Claims (claims.py, Frank 2026-10-02): the Claim pipeline, opened and worked
+   only by a licensed service rep -- Amanda or Crystal. AgencyZoom lets anyone
+   create one, so a claim opened by, or assigned to, anyone else from
+   2026-10-02 on is listed as Not licensed. */
+const CLAIM_WHY = { opened: "opened by someone not licensed", assigned: "assigned to someone not licensed" };
+function claimOpenedTable(rs) {
+  if (!rs.length) return '<p class="sd">None.</p>';
+  const rows = [...rs].sort((a, b) => (b.problems || []).length - (a.problems || []).length || (b.created || "").localeCompare(a.created || "")).map(r => `<tr>
+    <td>${renDate(r.created)}</td><td>${svcLink("customer", r.household, r.name)}</td><td>${cesc(r.subject || "")}${r.stage ? `<div style="font-size:11.5px;color:var(--text-muted)">${cesc(r.stage)}</div>` : ""}</td>
+    <td>${svcFirst(r.opened_by)} ${r.licensed ? '<span class="chip c-g">Licensed</span>' : r.opened_by ? '<span class="chip c-r">Not licensed</span>' : ""}</td>
+    <td>${svcFirst(r.assigned)}</td>
+    <td>${(r.problems || []).map(p => `<span class="chip c-r">${CLAIM_WHY[p] || p}</span>`).join(" ") || (r.done ? `<span class="chip c-g">Completed</span> ${renDate(r.done)}` : "Open")}</td></tr>`).join("");
+  return `<div class="scroll"><table class="rtable"><thead><tr><th>Opened</th><th>Customer</th><th>Claim</th><th>Opened by</th><th>Assigned</th><th>Status</th></tr></thead><tbody>${rows}</tbody></table></div>`;
+}
+function claimsDrill(m, a) {
+  const C = m.claims;
+  if (a === "open") return svcDrillList(`Open claims${C.open ? " · " + C.open.length : ""}`, `As of ${fmtShortDate(m.days[m.days.length - 1])}, overdue first.`,
+    svcOpenTable(C.open && C.open.map(r => Object.assign({}, r, { by: r.assigned, pipeline: "claims" })), m));
+  if (a === "opened") return svcDrillList(`Claims opened · ${C.opened.length}`, "Every claim SR created in this period, and who opened it.", claimOpenedTable(C.opened));
+  if (a === "completed") return svcDrillList(`Claims completed · ${C.completed.length}`, "", svcSrTable(C.completed.map(r => Object.assign({}, r, { by_name: r.completed_by, pipeline: "claims" })), m, false));
+  if (a === "flags") return svcDrillList(`Not licensed · ${C.flags.length}`, "Claims opened by, or assigned to, someone who is not a licensed service rep. Move the claim to Amanda or Crystal.", claimOpenedTable(C.flags));
+  return "";
+}
+function claimsHtml(m) {
+  const C = m.claims;
+  if (!C.days) return "";
+  const hrs = C.completed.map(r => r.hours).filter(h => h != null);
+  const od = (C.open || []).filter(r => r.overdue).length;
+  const who = C.licensed.map(n => n.split(" ")[0]).join(" and ");
+  return `<div class="sect svcsec" style="--sc:var(--s5, #d55181)"><h2>Claims</h2>
+    <p class="sd">The Claim pipeline. Only a licensed service rep opens and works a claim: ${cesc(who)}. The Front Desk takes a claim call to one of them.
+    A claim opened by, or assigned to, anyone else from ${fmtShortDate(C.ruleFrom)} on is listed as Not licensed.${C.days < m.days.length ? ` Only ${C.days} of the ${m.days.length} days in this range have claims figures.` : ""}</p>
+    <div class="tiles">
+      <div${sdk("claim:open")}><div class="k">Open Claims</div><div class="v">${C.open ? C.open.length : "—"}</div><div class="n">${od ? `<span style="color:var(--bad);font-weight:600">${od} overdue</span>` : "none overdue"} &middot; as of ${fmtShortDate(m.days[m.days.length - 1])}</div></div>
+      <div${sdk("claim:opened")}><div class="k">Opened</div><div class="v">${C.opened.length}</div><div class="n">${C.licensed.map(n => `${n.split(" ")[0]} ${C.opened.filter(r => r.opened_by === n).length}`).join(" &middot; ")}</div></div>
+      <div${sdk("claim:completed")}><div class="k">Completed</div><div class="v">${C.completed.length}</div><div class="n">${hrs.length ? `median ${fmtDur(svcMedian(hrs))} open` : "created to completed"}</div></div>
+      <div${sdk("claim:flags")}><div class="k">Not Licensed</div><div class="v" style="color:var(--${C.flags.length ? "bad" : "good"})">${C.flags.length}</div><div class="n">${C.flags.length ? "opened or assigned outside the licensed reps" : "every claim with a licensed rep"}</div></div>
+    </div>${svcDrillFor(m, ["claim"])}</div>`;
+}
 const SERVICE_TITLES = { "Amanda Torricellas": "Ops Mngr" };
 /* Every Service Center card opens the list of what it counts (Frank,
    2026-09-25), like the Renewals cards: SRs, service tasks, call backs, open
@@ -7908,6 +7953,7 @@ function svcDrillFor(m, keys) {
   const pipeName = Object.fromEntries((m.pipelines || []).map(([x, l]) => [x, l]));
   const cbDone = m.callbacks.filter(r => r.minutes != null);
   const n = x => `${x.length} `;
+  if (kind === "claim") return claimsDrill(m, a);
   if (kind === "openall") { const o = m.openRows; return svcDrillList(`Team · open SRs${o ? " · " + o.length : ""}`, `Overdue first, as of ${fmtShortDate(m.days[m.days.length - 1])}.`, svcOpenTable(o, m)); }
   if (kind === "dials") { const rs = m.dials.filter(r => a === "team" || r.who === a);
     return svcDrillList(`${a === "team" ? "Team" : cesc(a.split(" ")[0])} · dials · ${rs.length} number${rs.length === 1 ? "" : "s"}`,
@@ -8231,7 +8277,7 @@ function playbookHtml(m) {
     <div class="n" style="font-style:italic;margin:6px 0">${cesc(R.primary)}</div>
     <ul style="margin:0 0 6px 18px;padding:0;font-size:12.5px">${R.responsibilities.map(x => `<li>${cesc(x)}</li>`).join("")}</ul>
     <div class="n" style="font-size:12px"><b>Expectation:</b> ${cesc(R.expectation)}</div></div>`).join("");
-  const who = Object.values(PB.request_types).map(([l, o]) => `<tr><td>${cesc(l)}</td><td>${cesc({ service: "Service", front_desk: "Front Desk / Service", lead: "Service Lead / Producer", producer: "Producer", frank: "Frank" }[o] || o)}</td></tr>`).join("");
+  const who = Object.values(PB.request_types).map(([l, o]) => `<tr><td>${cesc(l)}</td><td>${cesc({ service: "Service", front_desk: "Front Desk / Service", lead: "Service Lead / Producer", producer: "Producer", frank: "Frank", licensed: "Licensed rep only (" + (PB.licensed || ["Amanda", "Crystal"]).map(n => n.split(" ")[0]).join(", ") + ")" }[o] || o)}</td></tr>`).join("");
   const exp = Object.entries(PB.expectations).map(([k, v]) => `<li><b>${cesc(k)}.</b> ${cesc(v)}</li>`).join("");
   return `<div class="sect svcbook" style="--sc:var(--s3)"><details class="msgd"><summary style="cursor:pointer"><h2 style="display:inline">Service Playbook</h2> <span style="color:var(--text-muted);font-size:12.5px">what each role owns, as Amanda wrote it</span></summary>
     <p class="sd" style="margin-top:8px">${cesc(PB.purpose)}</p>
@@ -8248,7 +8294,7 @@ function servicePanel(m) {
   return `${playbookHtml(m)}${serviceStatsHtml(m)}${rangeMode === "day" ? svcFeedHtml(m) : ""}
     ${svcMessagesHtml(m)}
     <div class="digestgrid">
-      <div>${m.playbook ? noteStandardHtml(m) : ""}${completionTimeHtml(m)}${latePaymentsHtml(m)}</div>
+      <div>${m.playbook ? noteStandardHtml(m) : ""}${completionTimeHtml(m)}${latePaymentsHtml(m)}${claimsHtml(m)}</div>
       <div>${SR_OUTCOME_SECTIONS.map(([p, t, w, b]) => srOutcomeHtml(m, p, t, w, b)).join("")}${missingDocsHtml(m)}</div>
     </div>
 `;

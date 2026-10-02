@@ -1275,6 +1275,20 @@ Crystal (hybrid); credit always goes to whoever COMPLETED the SR or task.
   route numbers with the customers and leads as of the backfill. A day that
   already has `calls_tx` is skipped (`--force` redoes it); the recordings
   go to R2 and leave the disk as each day finishes.
+- **Claims are opened and worked by a licensed service rep only** (Frank,
+  2026-10-02: "Licensed service reps will be the only ones able to open
+  claims, amanda and crystal are the only 2 licensed reps of that team.
+  Debbie is not licensed, she cannot open claims moving forward").
+  `claims.py` is the one definition: an SR in AgencyZoom's **Claim**
+  workflow (id 23672; one test SR before this, Veronica 2026-03-11), and
+  `LICENSED` (Amanda 105006, Crystal 174445) -- the playbook's `claim`
+  request type is owned by "licensed" and imports it. AgencyZoom lets anyone
+  create one, so a claim created from `RULE_FROM` (2026-10-02) on whose
+  `createdBy` is not licensed, or whose `csr` is not, is a flag. Each service
+  day carries `claims` (opened / completed / open / flags, rows); the
+  Service Center's **Claims** section shows them, every tile opening its
+  list. If a rep is licensed or leaves, change `LICENSED` and Athena's Road
+  Map together.
 - **Documents hold rows, never medians**, so the board can add any range up.
   **Every card opens the rows it counts** (Frank, 2026-09-25), so the rows
   carry what a list needs: SRs name, household (= the AgencyZoom customer
