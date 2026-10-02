@@ -1308,7 +1308,16 @@ Crystal (hybrid); credit always goes to whoever COMPLETED the SR or task.
   (0-7, 8-30, 31-90, 90+ days) and stage. Every tile and row opens its
   claims (`claim:<list>[:<person>]`, `claimsDrill`). Its tour step, vista
   ("after the storm"), Coeus prompts and Athena's Road Map section go with
-  it. Commercial / Work Comp claims stay on the Commercial Center. If a rep is licensed or leaves, change `LICENSED` and Athena's Road
+  it. Commercial / Work Comp claims stay on the Commercial Center.
+  **Only the ops team sees "Not licensed", and nothing describes it**
+  (Frank, 2026-10-02: "remove any not licensed description, and only the
+  ops team should see the not licensed card"): the red person card, the Not
+  Licensed tile, its list and the chip in the Opened by column show only
+  when `/api/me`'s `all` is true (`claimsOps`, = `ROLEPLAY_HISTORY_VIEWERS`),
+  and the Worker takes the flags out of every service day for anyone else
+  (`site/claims_view.js claimsForViewer`: no `flags`, no row `problems` /
+  `licensed`), Coeus's `service_day` tool too. No page text, guide, tour
+  step or Coeus prompt explains the flag. If a rep is licensed or leaves, change `LICENSED` and Athena's Road
   Map together.
 - **Documents hold rows, never medians**, so the board can add any range up.
   **Every card opens the rows it counts** (Frank, 2026-09-25), so the rows

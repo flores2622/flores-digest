@@ -34,7 +34,8 @@
  */
 import METHODOLOGY_MD from "../coaching/METHODOLOGY.md";
 import TRAINING_MD from "../coaching/TRAINING.md";
-import "./public/blueprints.js";   // sets BLUEPRINTS on the global (window in the browser)
+import "./public/blueprints.js";
+import { claimsForViewer } from "./claims_view.js";   // sets BLUEPRINTS on the global (window in the browser)
 
 const MODEL = "claude-sonnet-5";
 const MAX_ROUNDS = 6;        // tool rounds before the answer is forced
@@ -475,7 +476,8 @@ function compactService(doc, sections) {
     callbacks: summarize(doc.callbacks), dials: summarize(doc.dials), texts_and_emails: summarize(doc.messages),
     front_desk: summarize(doc.front), renewal_srs: summarize(doc.renewals), utilization: doc.utilization,
     roles_and_note_standard: summarize(doc.roles || doc.audit), playbook_roles: (doc.playbook || {}).roles,
-    // Claims (claims.py): licensed reps only; flags = opened by or assigned to someone not licensed.
+    // Claims (claims.py): licensed reps only; not_licensed (the flags) is the ops team's alone
+    // -- claimsForViewer empties it for everyone else.
     claims: doc.claims ? { licensed: doc.claims.licensed, rule_from: doc.claims.rule_from,
       opened: (doc.claims.opened || []).length, completed: (doc.claims.completed || []).length,
       completed_by_type: tallyRows(doc.claims.completed || []), open_by_type: tallyRows(doc.claims.open || []),
@@ -526,11 +528,11 @@ function tallyRows(rows) {
   return out;
 }
 
-async function toolServiceDay(env, inp) {
+async function toolServiceDay(env, inp, scope) {
   if (!ISO.test(inp.day || "")) return { error: "bad day" };
   const doc = await r2json(env, `service/${inp.day}.json`);
   if (!doc) return { error: `no Service Center page for ${inp.day}` };
-  return compactService(doc, inp.sections);
+  return compactService(claimsForViewer(doc, !!(scope && scope.all)), inp.sections);
 }
 
 async function toolRenewals(env, inp) {
@@ -615,7 +617,7 @@ async function runTool(name, inp, ctx) {
       case "sales_range": return await toolSalesRange(env, inp);
       case "coaching_cards": return await toolCards(env, inp);
       case "find_lead": return await toolFindLead(env, inp);
-      case "service_day": return await toolServiceDay(env, inp);
+      case "service_day": return await toolServiceDay(env, inp, scope);
       case "renewals": return await toolRenewals(env, inp);
       case "commercial_day": return await toolCommercial(env, inp, commercial);
       case "roleplay_sessions": return await toolRoleplay(env, inp, scope, rpMaySee);

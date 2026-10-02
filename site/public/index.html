@@ -7793,18 +7793,19 @@ function missingDocsHtml(m) {
     <div class="tiles">${chips}</div>${svcDrillFor(m, ["hand"])}</div>`;
 }
 /* Claims (claims.py, Frank 2026-10-02): the Claim pipeline, opened and worked
-   only by a licensed rep -- the ops team and Crystal. AgencyZoom lets anyone
-   create one, so a claim opened by, or assigned to, anyone else from
-   2026-10-02 on is listed as Not licensed. The type is the SR's AgencyZoom
+   only by a licensed rep -- the ops team and Crystal. A claim opened by, or
+   assigned to, anyone else from 2026-10-02 on is flagged, and only the ops
+   team sees the flags (claimsOps; the Worker strips them for everyone else,
+   claims_view.js, Frank 2026-10-02). The type is the SR's AgencyZoom
    category; close time is created to completed, per type. */
-const CLAIM_WHY = { opened: "opened by someone not licensed", assigned: "assigned to someone not licensed" };
+const claimsOps = () => !!(ME && ME.all);
 function claimOpenedTable(rs) {
   if (!rs.length) return '<p class="sd">None.</p>';
   const rows = [...rs].sort((a, b) => (b.problems || []).length - (a.problems || []).length || (b.created || "").localeCompare(a.created || "")).map(r => `<tr>
     <td>${renDate(r.created)}</td><td>${svcLink("customer", r.household, r.name)}</td><td>${cesc(r.subject || "")}<div style="font-size:11.5px;color:var(--text-muted)">${cesc(r.type || "Not set")}${r.stage ? ` &middot; ${cesc(r.stage)}` : ""}</div></td>
-    <td>${svcFirst(r.opened_by)} ${r.licensed ? '<span class="chip c-g">Licensed</span>' : r.opened_by ? '<span class="chip c-r">Not licensed</span>' : ""}</td>
+    <td>${svcFirst(r.opened_by)}${claimsOps() && (r.problems || []).length ? ' <span class="chip c-r">Not licensed</span>' : ""}</td>
     <td>${svcFirst(r.assigned)}</td>
-    <td>${(r.problems || []).map(p => `<span class="chip c-r">${CLAIM_WHY[p] || p}</span>`).join(" ") || (r.done ? `<span class="chip c-g">Completed</span> ${renDate(r.done)}` : "Open")}</td></tr>`).join("");
+    <td>${r.done ? `<span class="chip c-g">Completed</span> ${renDate(r.done)}` : "Open"}</td></tr>`).join("");
   return `<div class="scroll"><table class="rtable"><thead><tr><th>Opened</th><th>Customer</th><th>Claim</th><th>Opened by</th><th>Assigned</th><th>Status</th></tr></thead><tbody>${rows}</tbody></table></div>`;
 }
 /* The Claims Center (Frank, 2026-10-02: "finish the claims center") -- its
@@ -7833,7 +7834,7 @@ function claimsDrill(m, a, b, c) {
   if (a === "completed") return svcDrillList(`${tag}Claims completed · ${X.completed.length}`, "From the day each was opened to the day it was completed.", svcSrTable(claimDone(X.completed), m, false));
   if (a === "overdue") { const rs = (X.open || []).filter(r => r.overdue);
     return svcDrillList(`${tag}Overdue claims · ${rs.length}`, "Open claims past their due date.", svcOpenTable(claimOpen(rs), m)); }
-  if (a === "flags") return svcDrillList(`${tag}Not licensed · ${X.flags.length}`, "Claims opened by, or assigned to, someone who is not a licensed rep. Move the claim to Amanda or Crystal.", claimOpenedTable(X.flags));
+  if (a === "flags") return claimsOps() ? svcDrillList(`${tag}Not licensed · ${X.flags.length}`, "", claimOpenedTable(X.flags)) : "";
   if (a === "type") { const of = r => (r.type || "Not set") === b;
     const done = C.completed.filter(of), open = (C.open || []).filter(of);
     return svcDrillList(`${cesc(b)} claims · ${done.length} completed, ${open.length} open`, b === "Not set" ? "Claims with no claim category picked in AgencyZoom (Claim: Auto, Claim: Home, ...). Set the category on the SR." : "",
@@ -7858,11 +7859,11 @@ function claimsCenterHtml(m) {
   // who opened or holds one without being licensed.
   const touched = new Set([...C.opened.map(r => r.opened_by), ...C.completed.map(r => r.completed_by), ...(C.open || []).map(r => r.assigned)].filter(Boolean));
   const people = C.licensed.filter(x => touched.has(x) || ["Amanda Torricellas", "Crystal Mango"].includes(x));
-  if ([...touched].some(x => !lic.has(x))) people.push("others");
+  if (claimsOps() && [...touched].some(x => !lic.has(x))) people.push("others");
   if (n && !people.includes(n)) claimPerson = "";
   const strip = people.map(x => { const P = claimsOf(m, x), h = hrsOf(P.completed), on = x === n;
     return `<div class="tile rdrill pstrip${on ? " on" : ""}" data-cperson="${cesc(x)}" role="button" tabindex="0" style="text-align:left;--pc:${x === "others" ? "var(--bad)" : DOT[x] || TEAM_DOT}">
-      <div style="display:flex;justify-content:space-between;align-items:baseline;gap:8px">${pbadge(x === "others" ? "#b91c1c" : DOT[x] || TEAM_DOT, first(x))}<span class="n">${x === "others" ? "should not hold claims" : "licensed"}</span></div>
+      <div style="display:flex;justify-content:space-between;align-items:baseline;gap:8px">${pbadge(x === "others" ? "#b91c1c" : DOT[x] || TEAM_DOT, first(x))}<span class="n">${x === "others" ? "" : "licensed"}</span></div>
       <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:4px;text-align:center;margin-top:10px">
         <div><div class="v" style="font-size:19px">${P.opened.length}</div><div class="n">opened</div></div>
         <div><div class="v" style="font-size:19px">${P.completed.length}</div><div class="n">closed</div></div>
@@ -7871,14 +7872,14 @@ function claimsCenterHtml(m) {
   const hrs = hrsOf(X.completed), od = (X.open || []).filter(r => r.overdue).length;
   const hero = `<div class="sect svchero" style="--sc:var(--s5, #d55181)"><h2>Claims${n ? ` · ${cesc(first(n))}` : ""}</h2>
     <p class="sd">AgencyZoom's Claim pipeline. Only a licensed rep opens and works a claim: ${C.licensed.map(x => cesc(x.split(" ")[0])).join(", ")}. The Front Desk takes a claim call to Amanda or Crystal.
-    A claim opened by, or assigned to, anyone else from ${fmtShortDate(C.ruleFrom)} on is listed as Not licensed. ${n ? "Pick the person again to see the team." : "Pick a person to see theirs."}${part}</p>
+    ${n ? "Pick the person again to see the team." : "Pick a person to see theirs."}${part}</p>
     ${strip ? `<div class="svcstrip">${strip}</div><div style="height:12px"></div>` : ""}
     <div class="tiles statgrid">
       <div${sdk(pk("open"))} style="--hc:var(--s5, #d55181)"><div class="k">Open Claims</div><div class="v">${X.open ? X.open.length : "—"}</div><div class="n">${n ? "assigned to them" : "the whole pipeline"} &middot; as of ${asOf}</div></div>
       <div${sdk(pk("overdue"))} style="--hc:${od ? "var(--bad)" : "var(--good)"}"><div class="k">Overdue</div><div class="v${od ? " tr" : " tg"}">${od}</div><div class="n">open claims past their due date</div></div>
       <div${sdk(pk("opened"))} style="--hc:var(--s1)"><div class="k">Opened</div><div class="v">${X.opened.length}</div><div class="n">in this period</div></div>
       <div${sdk(pk("completed"))} style="--hc:var(--good)"><div class="k">Completed</div><div class="v">${X.completed.length}</div><div class="n">${hrs.length ? `median ${fmtDur(svcMedian(hrs))} to close &middot; 90% within ${fmtDur(svcPctile(hrs, 0.9))}` : "opened to completed"}</div></div>
-      <div${sdk(pk("flags"))} style="--hc:${X.flags.length ? "var(--bad)" : "var(--good)"}"><div class="k">Not Licensed</div><div class="v${X.flags.length ? " tr" : " tg"}">${X.flags.length}</div><div class="n">${X.flags.length ? "opened or assigned outside the licensed reps" : "every claim with a licensed rep"}</div></div>
+      ${claimsOps() ? `<div${sdk(pk("flags"))} style="--hc:${X.flags.length ? "var(--bad)" : "var(--good)"}"><div class="k">Not Licensed</div><div class="v${X.flags.length ? " tr" : " tg"}">${X.flags.length}</div><div class="n">this period</div></div>` : ""}
     </div>${svcDrillFor(m, ["claim:open", "claim:overdue", "claim:opened", "claim:completed", "claim:flags"])}</div>`;
   // Close time by type of claim (the SR's AgencyZoom category).
   const byType = C.types.map(t => { const of = r => (r.type || "Not set") === t, h = hrsOf(C.completed.filter(of));
@@ -9091,12 +9092,12 @@ function comClaimsHtml(m) {
       <td class="t">${cesc(r.type)}</td><td class="t">${cesc((r.opened_by || "—").split(" ")[0])}${(r.problems || []).length ? ' <span class="chip c-r">Not licensed</span>' : ""}</td>
       <td class="t">${cesc((r.assigned || "—").split(" ")[0])}</td><td class="num">${r.hours != null ? fmtDur(r.hours) : r.days_open != null ? Math.round(r.days_open) + "d open" : "—"}</td></tr>`).join("")}</tbody></table></div>` : `<p class="sd">${empty}</p>`;
   return `<div class="sect svcsec" style="--sc:var(--s7)"><h2>Claims</h2>
-    <p class="sd">Commercial and Work Comp claims (the SR's category in AgencyZoom's Claim pipeline). Only a licensed rep opens and works a claim; one opened by, or assigned to, anyone else is marked Not licensed. Close time is from the day it was opened to the day it was completed.</p>
+    <p class="sd">Commercial and Work Comp claims (the SR's category in AgencyZoom's Claim pipeline). Only a licensed rep opens and works a claim. Close time is from the day it was opened to the day it was completed.</p>
     <div class="tiles statgrid">
       <div class="tile" style="--hc:var(--s7)"><div class="k">Open Claims</div><div class="v">${C.open ? open.length : "—"}</div><div class="n">${open.filter(r => r.overdue).length} overdue</div></div>
       <div class="tile" style="--hc:var(--s1)"><div class="k">Opened</div><div class="v">${C.opened.length}</div><div class="n">in this period</div></div>
       <div class="tile" style="--hc:var(--good)"><div class="k">Completed</div><div class="v">${C.completed.length}</div><div class="n">${hrs.length ? `median ${fmtDur(svcMedian(hrs))} to close` : "created to completed"}</div></div>
-      <div class="tile" style="--hc:${C.flags.length ? "var(--bad)" : "var(--good)"}"><div class="k">Not Licensed</div><div class="v${C.flags.length ? " tr" : " tg"}">${C.flags.length}</div><div class="n">opened or assigned outside the licensed reps</div></div>
+      <div class="tile" style="--hc:${C.flags.length ? "var(--bad)" : "var(--good)"}"><div class="k">Not Licensed</div><div class="v${C.flags.length ? " tr" : " tg"}">${C.flags.length}</div><div class="n">this period</div></div>
     </div>
     <div class="scroll" style="margin-top:12px"><table><thead><tr><th>Type</th><th class="num">Opened</th><th class="num">Completed</th><th class="num">Open now</th><th class="num">Median to close</th><th class="num">90% within</th></tr></thead><tbody>${typeRows}</tbody></table></div>
     <details class="msgd" style="margin-top:10px"><summary style="cursor:pointer">Open claims (${open.length})</summary>${list(open, "None open.")}</details>
@@ -9268,7 +9269,7 @@ const TOUR_STEPS = [
   { view: "service", title: "The Service Center",
     text: "Athena's side: the service team's SRs, tasks, call backs and texts, and the Renewals tab. Athena's Road Map, the last tab here, explains it all." },
   { view: "claims", title: "The Claims Center",
-    text: "Every claim in AgencyZoom's Claim pipeline: what is open and how old it is, who opened and worked each one, and how long each type of claim takes to close. Only a licensed rep opens a claim; one opened by anyone else is flagged Not licensed. Click any number for the claims behind it." },
+    text: "Every claim in AgencyZoom's Claim pipeline: what is open and how old it is, who opened and worked each one, and how long each type of claim takes to close. Only a licensed rep opens a claim. Click any number for the claims behind it." },
   { find: () => $("#tourbtn"), title: "That's the tour",
     text: "You can take it again any time from this button. Apollo's Road Map in Apollo's Academy and Athena's in the Service Center go into more detail." },
 ];
@@ -9577,7 +9578,7 @@ function coeusChips() {
   const mine = (ME.roleplay || {}).producer;
   const day = rangeMode === "day" ? "today" : "this range";
   const base = view === "claims"
-    ? ["How many claims are open, and how old are they?", "How long do claims take to close, by type?", "Was any claim opened by someone not licensed?", "Who is allowed to open a claim?"]
+    ? ["How many claims are open, and how old are they?", "How long do claims take to close, by type?", "Who is allowed to open a claim?"]
     : view === "service" || view === "renewals" || view === "athenamap"
     ? ["How is the service team doing today?", "What is our retention over the last four weeks?", "Which renewals coming up are high risk?", "What does Athena count as a renewal SR?"]
     : view === "coaching"
