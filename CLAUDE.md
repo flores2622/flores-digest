@@ -1672,8 +1672,10 @@ sheet on its back.
   Dial / Discovery / Quote / Close, Athena's green with Listen / Understand
   / Handle / Follow up), a 66 shield and a compass; Service: the ranch
   (windmill, water tank, FLORES gate); Renewals: the desert in bloom
-  (poppies, ocotillo, saguaro flowers, butterflies); Commercial: downtown at
-  dusk with lit windows. The Digest keeps its skyline and the Editions
+  (poppies, ocotillo, saguaro flowers, butterflies); Commercial: a saloon
+  (Frank, 2026-10-02: "a saloon, not a city skyline" -- the false front and
+  SALOON sign, batwing doors, a lantern, barrels, a horse at the hitching
+  post, a wagon wheel; at night the windows and doorway glow). The Digest keeps its skyline and the Editions
   their own looks. (`.paper` is The Flores Post's class -- the map banner
   is `.vmap`.)
 - **Every coaching card wears its outcome** (Frank, 2026-10-02: "give the
