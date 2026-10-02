@@ -379,3 +379,54 @@ that up for you" said warmly, after real discovery and a real objection
 handled, is assumptive. Talking over someone or refusing to take a real "no"
 is not assumptive — it's just pushy, and it's the opposite of the trust an
 assumptive close is built on.
+
+## Occupation Discounts
+
+Farmers gives an occupational (affinity) discount to a long list of careers
+(Frank, 2026-10-02). Asking what someone does for a living is discovery and
+money on the quote, so never skip it and never ask it as a yes / no list.
+
+### How do you ask about the occupation discount?
+
+Ask it open: "What do you do for a living?" A checklist like "Are you
+retired, military, teacher or nurse?" names four of twenty groups, and the
+prospect often hears only the last word and answers "no" or "retired".
+
+### The prospect says "I'm retired." What do you ask next?
+
+"What did you retire from?" A retiree of an eligible business or
+professional group still qualifies: a retired teacher, nurse, engineer,
+firefighter or police officer keeps the discount. "Retired" is where the dig
+starts, not where it ends.
+
+### Which careers qualify? (the professionals)
+
+Architects, engineers, scientists, aviation professionals, CPAs, Certified
+Financial Planners, lawyers and judges, librarians, dentists, physicians and
+surgeons, registered nurses, veterinarians.
+
+### Which careers qualify? (service and education)
+
+Educators (college professors and instructors, elementary and secondary
+teachers, grades K-12), firefighters, police and law enforcement officers,
+and the military: active military, military veterans and retired military
+(retired military is not available in California).
+
+### Which careers qualify? (the rest)
+
+Agents and employees of agents, district managers and employees of district
+managers, employees, Association Partnership (FPP), Employer Partnership
+(FPP), FIG Federal Credit Union members, and retirees of an eligible business
+and professional group. The guidelines for every group are state specific.
+
+### The prospect is a retired nurse. Do they get the discount?
+
+Yes. Retirees of an eligible business and professional group qualify, and
+registered nurses are an eligible group. Say it on the call: "Since you
+retired from nursing, I'm adding your occupation discount to this quote."
+
+### They named a qualifying job. What do you do with it?
+
+Put the discount in the quote and say so when you present the price: "That
+includes your educator discount." A price presented without a discount they
+qualify for is money left on the table, and a reason for them to say no.

@@ -188,6 +188,46 @@ Everything caches under `data/`, so a re-run resumes rather than restarting.
   was 16,000 / 12,000 silently), the card's first budget is 9,000 tokens,
   each new card keeps `model`, and `_bool_pair` reads "true"/"false"/"null"/
   "n/a" strings for what they say (a bare None is None, never False).
+- **Verify against the reports** (Frank, 2026-10-02): ALTA's reports show
+  drivers, vehicles, limits, coverages, dates, prior carrier, policy status
+  and the term; discovery buys time, builds rapport and finds what they
+  don't, but what the prospect says about their current policy is checked
+  against the Prior Insurance screen. METHODOLOGY.md's "The reports" section:
+  a muddled premium / term not reconciled is "w" on Current premium and
+  Presenting numbers, the fix checks the screen on the call, and the flag is
+  "Didn't verify against the reports"; a term the producer asked about and
+  the prospect answered plainly is confirmed. (Lisette Dasnabedian, 10-01,
+  first looked like the case; Frank then said Lorena had asked and confirmed
+  the term, so her card stays as it went out and is no example.) **A card can carry a Manager's note**
+  (`coaching/manager_notes.json`, by day and lead_id, read into the history
+  block by `coaching_cards.manager_notes`): what Frank saw that the call
+  cannot show; Apollo treats it as fact. The cache is keyed by call, so a note
+  reaches a card only when it is read again (the file is empty: the one
+  note written, Lisette's, was taken back the same day and her card restored).
+- **Occupation discounts: ask what they do** (Frank, 2026-10-02): Farmers'
+  affinity groups (Frank's list, in METHODOLOGY.md's "Occupation discounts"
+  and TRAINING.md's Occupation Discounts deck -- change both together) and the
+  rule: "What do you do for a living?", then "What did you retire from?" --
+  retirees of an eligible group qualify. A closed checklist ("retired,
+  military, teacher, nurse?") or "retired" left there is weak Discovery and the
+  flag "Occupation discount not dug into"; a qualifying occupation left out of
+  the quote is a Presenting-numbers miss. Lorena / Lisette Dasnabedian 10-01
+  is the case.
+- **Managers' sticky notes on coaching cards** (Frank, 2026-10-02: "add the
+  managers 'Sticky note' on it. Any way apollo can learn from my sticky
+  notes?"). A manager (`rpScope.all`) writes one in the box at the top of an
+  open card; everyone sees it in yellow on the card's front
+  (`stickyFrontHtml` / `stickyEditHtml`, matched by day + lead_id + producer).
+  The Worker keeps them in R2 `card-notes/notes.json` (`/api/cardnotes`: GET
+  for anyone signed in, POST add / edit / del for managers only). **Apollo
+  learns from them**: every note left on "Apollo learns this" goes into the
+  instructions of every coaching read from then on
+  (`coaching_cards.lessons_block`, newest 40 / 9,000 characters, after
+  METHODOLOGY.md, whose "Manager's note and the managers' sticky notes"
+  section says how to use them -- the lesson, never a fact about this call),
+  and every note on a card is that card's Manager's note if it is read again
+  (`manager_notes`). Cards already written are not re-read. The first is
+  Frank's on Lorena / Lisette Dasnabedian 10-01.
 - **A closed card's right half is Quick coaching** (Frank, 2026-09-30:
   "the right half of the card be a quick coaching summary, while leaving
   the left of the card whats currently there"; `quickCoachHtml`), from what
@@ -1631,7 +1671,13 @@ sheet on its back.
   400, which reads lighter. `body` is 500 in every look; the serif headings
   and tile numbers take the face's heavier cut where it has one (`--dw`:
   Fraunces and Bitter at 600; DM Serif Display and Instrument Serif have one
-  weight and stay as cut, never a synthesized bold).
+  weight and stay as cut, never a synthesized bold). **A look changes colours only, never
+  the fonts** (Frank, 2026-10-02: "the font should remain the same, just the
+  colors should change" -- Mesa Minimal's Instrument Serif and Instrument
+  Sans read thinner; then "i like the canyon sunset font the most, make
+  that one the universal"): every look is Fraunces at 700 for headings and
+  tile numbers (`--display` / `--dw`) and Manrope at 500 for text; the
+  per-look faces and their Google Fonts entries are gone.
 - **The Digest's two top cards share one Sedona picture** (Frank,
   2026-10-02: "give the digest some life? Color, background images, etc",
   then "the top of the leaderboard background should be the horizon so just
@@ -1670,16 +1716,21 @@ sheet on its back.
   Dial / Discovery / Quote / Close, Athena's green with Listen / Understand
   / Handle / Follow up), a 66 shield and a compass; Service: the ranch
   (windmill, water tank, FLORES gate); Renewals: the desert in bloom
-  (poppies, ocotillo, saguaro flowers, butterflies); Commercial: downtown at
-  dusk with lit windows. The Digest keeps its skyline and the Editions
+  (poppies, ocotillo, saguaro flowers, butterflies); Commercial: a saloon
+  (Frank, 2026-10-02: "a saloon, not a city skyline" -- the false front and
+  SALOON sign, batwing doors, a lantern, barrels, a horse at the hitching
+  post, a wagon wheel; at night the windows and doorway glow). The Digest keeps its skyline and the Editions
   their own looks. (`.paper` is The Flores Post's class -- the map banner
   is `.vmap`.)
 - **Every coaching card wears its outcome** (Frank, 2026-10-02: "give the
   coaching cards themselves some life? something with the outcome if
   possible"): a drawn strip across the top of the card header, picked by
   the card's `catc` (`data-oc` on the `.ccard`; the scenes are inline SVGs
-  in the stylesheet, light and Desert Night) with the outcome named in a
-  pill at its right (`data-ocl`): sold on the call = the close (sunburst, a
+  in the stylesheet, light and Desert Night) with Apollo's own outcome
+  badge as the ONE pill at its right (`.ocpill`, call type and flow on
+  hover -- Frank, 2026-10-02: "we have 3 different pills on the coaching
+  cards rn, need to consolidate"; the strip's generic label and the
+  badge's old spot in the header are gone): sold on the call = the close (sunburst, a
   flag on the summit, confetti, saguaros in bloom); quoted or follow-up
   still open = still on the road (dawn, the highway, a NEXT CALL sign);
   quoted or follow-up lost = a grey dusk with a tumbleweed; no quote = a
