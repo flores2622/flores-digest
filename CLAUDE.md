@@ -1787,6 +1787,26 @@ sheet on its back.
   edition as it stands; buttons and reply boxes stay as they look but do
   nothing) at the right of the edition tabs (`edExportDoc` / `edDownload`
   in editions.js). The reaction GIFs and memes are CSS, so they travel.
+- **Worlds** (Frank, 2026-10-02: "i want to make different themes that they
+  can choose from, weve done desert/old west"; "editions should stay themed
+  to themselves. this should just be for design and font"; "start with
+  space"). A world is design and font: its own colour looks, its own
+  typeface pair and its own pictures (the Digest's skyline, the page vistas,
+  the coaching cards' outcome strips); figures, lists and hooks never
+  change, and **the Editions keep their own looks**. Settings has a World
+  row above the looks (`WORLDS`, each look in `LOOKS` names its world;
+  `TH.theme`, saved in `board-look`, `html[data-theme]`). **Space** is the
+  second world: Space Grotesk at 700 for headings and tile numbers, IBM
+  Plex Sans at 500 for text; looks Mission Control (cool grey, launch
+  orange), Deep Field (indigo / violet) and Mars (rust), each with its
+  night; the Digest's picture is the launch complex -- the FLORES rocket on
+  its pad with the service tower, the crawlerway running down to the
+  podium, fuel spheres, the water tower, the assembly building, a tracking
+  dish, a countdown clock; by day under a contrail, at night at ignition
+  under floodlights, the Milky Way and the moon (`skyline.py` in the
+  session's scratchpad, same 1600x1700 split at 377). Its vistas and card
+  strips are drawn next; until they land, Space hides the desert's vistas
+  and shows a plain band on the cards.
 - The local harness used to check all of this (a mock of the Worker over
   saved day documents, Playwright captures) lives in the session's
   scratchpad, not the repo; `design/flores-board-preview.html` is the
