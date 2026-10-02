@@ -1542,7 +1542,18 @@ $2,500 in premium"): the Digest's day reads as Apollo's group chat
   rule (leaderboard, feed and coaching in the accent; Needs someone / Left
   on the desk and Speed to Dial amber; Call Outcome blue; Task Completion
   purple; Utilization and Household Completion green; Speed to Reply rose;
-  misfiled leads red). No figure, list or hook changed.
+  misfiled leads red). No figure, list or hook changed. **The skyline runs
+  on under the leaderboard** (Frank, 2026-10-02: "make it flow onto the
+  leaderboard as well"): the Team Leaderboard card, and the lists the
+  tiles and leaderboard open, sit inside `.skyline` on a desert floor that
+  eases from the ground's brown to sand.
+- **Every edition downloads** (Frank, 2026-10-02: "make the editions
+  downloadable"): **Download PDF** (the edition alone in a new window, the
+  print dialog opened once its fonts load -- Save as PDF) and **Save page**
+  (one HTML file: the board's stylesheets, the look and mode, and the
+  edition as it stands; buttons and reply boxes stay as they look but do
+  nothing) at the right of the edition tabs (`edExportDoc` / `edDownload`
+  in editions.js). The reaction GIFs and memes are CSS, so they travel.
 - The local harness used to check all of this (a mock of the Worker over
   saved day documents, Playwright captures) lives in the session's
   scratchpad, not the repo; `design/flores-board-preview.html` is the

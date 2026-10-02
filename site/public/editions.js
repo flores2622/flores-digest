@@ -14,7 +14,8 @@
    flips) stay in their browser. Nothing here is paid for. */
 
 (function () {
-  const css = `.ed .edtabs { display: flex; gap: 6px; flex-wrap: wrap; margin: 0 0 16px; }
+  const css = `.ed .edtabs { display: flex; gap: 6px; flex-wrap: wrap; margin: 0 0 16px; align-items: center; }
+.ed .eddl { margin-left: auto; display: flex; gap: 6px; } .ed .eddl .ebtn { padding: 7px 12px; }
 .ed .edcard { background: var(--surface-raised); border: var(--bw) solid var(--border-strong); border-radius: var(--rad); box-shadow: var(--shadow); padding: 20px; display: flex; flex-direction: column; gap: 12px; min-width: 0; }
 .ed .edcard h2, .ed .edcard h3 { margin: 0; border: 0; padding: 0; text-transform: none; letter-spacing: 0; }
 .ed .edcard h2 { font-size: 26px; }
@@ -721,7 +722,40 @@ async function editionsPanel(err) {
   // The Flores Post is the first edition (Frank, 2026-10-01); it has its own
   // writer and gate in post.js.
   const body = edPub === "post" ? await postPanel(err) : ED_R[edPub](X);
-  return `<div class="ed"><div class="subtabs edtabs">${ED_PUBS.map(([k, l]) => `<button type="button" class="subtab ${k === edPub ? "sel" : ""}" data-pub="${k}">${l}</button>`).join("")}</div><div id="edbody">${body}</div></div>`;
+  return `<div class="ed"><div class="subtabs edtabs">${ED_PUBS.map(([k, l]) => `<button type="button" class="subtab ${k === edPub ? "sel" : ""}" data-pub="${k}">${l}</button>`).join("")}
+    <span class="eddl"><button type="button" class="ebtn q" data-eddl="pdf" title="Opens the print dialog; choose Save as PDF">Download PDF</button><button type="button" class="ebtn q" data-eddl="html" title="A single web page file of this edition, as it looks now">Save page</button></span></div><div id="edbody">${body}</div></div>`;
+}
+/* Downloadable editions (Frank, 2026-10-02: "make the editions
+   downloadable"): the edition as it stands, with the board's own styles, as
+   a single HTML file, or through the print dialog for a PDF. Buttons stay
+   as they look but do nothing; a live edition's pictures are CSS, so they
+   travel with it. */
+function edExportDoc() {
+  const R = document.documentElement, body = $("#edbody");
+  if (!body) return null;
+  const css = [...document.querySelectorAll("style")].map(el => el.textContent).join("\n");
+  const fonts = [...document.querySelectorAll('link[rel="stylesheet"]')].map(l => l.outerHTML).join("");
+  const pub = (ED_PUBS.find(p => p[0] === edPub) || [, "Edition"])[1];
+  const when = edX ? (edX.isFolio ? `Folio to ${edX.folioEnd || ""}` : plong(edX.dayKey)) : "";
+  const title = `${pub} · ${when}`;
+  const html = `<!doctype html><html lang="en" data-look="${R.getAttribute("data-look") || "sonoran"}" data-mode="${R.getAttribute("data-mode") || "light"}"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${edEsc(title)}</title>${fonts}<style>${css}
+body { margin: 0; padding: 24px; background: var(--surface); } .ed { max-width: 1600px; margin: 0 auto; } .ed button, .ed input, .ed form { pointer-events: none; } .ed form, .ed .eddl, .ed .edtabs { display: none; }
+@media print { body { padding: 0; } * { -webkit-print-color-adjust: exact; print-color-adjust: exact; } .pc, .sect, .tile, .mag, .comic .panel { break-inside: avoid; } }</style></head>
+<body><div class="ed"><div id="edbody">${body.innerHTML}</div></div></body></html>`;
+  const file = `${pub.replace(/[^A-Za-z0-9]+/g, "-").replace(/^-|-$/g, "")}-${edX ? (edX.isFolio ? "folio-" + (edX.folioEnd || "") : edX.dayKey) : "edition"}`;
+  return { html, title, file };
+}
+function edDownload(kind) {
+  const doc = edExportDoc(); if (!doc) return;
+  if (kind === "html") {
+    const a = document.createElement("a"); a.href = URL.createObjectURL(new Blob([doc.html], { type: "text/html" })); a.download = doc.file + ".html";
+    document.body.appendChild(a); a.click(); setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 1000); edToast("Saved " + a.download); return;
+  }
+  const w = window.open("", "_blank"); if (!w) { edToast("Allow pop-ups to download the PDF"); return; }
+  w.document.open(); w.document.write(doc.html); w.document.close();
+  w.document.title = doc.title;
+  const go = () => { try { w.focus(); w.print(); } catch (_) {} };
+  if (w.document.fonts && w.document.fonts.ready) w.document.fonts.ready.then(() => setTimeout(go, 300)); else setTimeout(go, 800);
 }
 function edRepaint() { const b = $("#edbody"); if (b && edX) { if (edPub === "post") { paint(); return; } b.innerHTML = ED_R[edPub](edX); } }
 function edOpenModal(h) { edCloseModal(); const m = document.createElement("div"); m.className = "edmodal ed"; m.id = "edmodal"; m.innerHTML = `<div class="edcard">${h}</div>`; m.addEventListener("click", e => { if (e.target === m) edCloseModal(); }); document.body.appendChild(m); }
@@ -731,6 +765,7 @@ document.addEventListener("click", async e => {
   const t = e.target, d = k => t.closest(`[data-${k}]`); let el;
   if (el = d("pub")) { edPub = el.dataset.pub; try { localStorage.setItem("board-edition", edPub); } catch (_) {} clearInterval(edTick); edPlaying = false; paint(); return; }
   if (el = d("rx")) { const id = el.closest("[data-post]").dataset.post; if (await edPost("rx", { id, emoji: el.dataset.rx })) edRepaint(); return; }
+  if (el = d("eddl")) { edDownload(el.dataset.eddl); return; }
   if (el = d("gifpick")) { edGifOpen = edGifOpen === el.dataset.gifpick ? "" : el.dataset.gifpick; edRepaint(); return; }
   if (el = d("gif")) { const id = el.closest("[data-post]").dataset.post; edGifOpen = ""; if (await edPost("cm", { id, gif: el.dataset.gif, text: "" })) edRepaint(); return; }
   if (el = d("story")) { const w = el.dataset.story; edMine.seen[edX.dayKey + w] = 1; edSaveMine(); const clip = w === "Apollo" ? { lines: edSegs(edX)[0][4].concat(edSegs(edX)[1][4]), call: null } : edClip(edX, w);
