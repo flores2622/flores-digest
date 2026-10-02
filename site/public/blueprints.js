@@ -142,6 +142,8 @@
           "CRM after the call (the note in AgencyZoom)",
         ] },
         "On a finish-quote call, anything an earlier call already captured is N/A, not Missing.",
+        "**Verify against the reports.** ALTA's reports already show the drivers, vehicles, limits, coverages, dates, prior carrier, policy status and the term (six or twelve months). Discovery still matters: it buys time while the quote builds, builds rapport and finds what the reports don't. But what the prospect says about their current policy has to be checked against the **Prior Insurance** screen. People misremember the term: \"about $1,000 a year\" is often the six-month premium. Apollo marks the current premium and the price comparison weak when the producer takes the prospect's word on a figure that doesn't add up, and flags it as \"Didn't verify against the reports\". (Lorena and Lisette Dasnabedian, Oct 1: $820 for six months was the better rate against a six-month policy, and the call was lost on a comparison nobody checked.)",
+        "A manager can add a **Manager's note** to a card, something seen in ALTA or a policy record that the call can't show, and Apollo reads the card with it.",
         "It also marks six named techniques when they're used: elevator pitch, feel-felt-found, risk reversal, social proof, trial close, and takeaway / urgency.",
         "**Follow-ups** have their own six steps instead:",
         { steps: [
@@ -500,7 +502,7 @@
         { steps: [
           "**Open well.** Say your name and the agency, and make sure you're talking to the right person. \"Hi Maria, this is Lorena with Farmers.\"",
           "**Ask questions (discovery).** Who drives, what vehicles, the home, who's in the household.",
-          "**Get what they pay now.** You can't beat a price you don't know.",
+          "**Get what they pay now, and check it.** You can't beat a price you don't know. Look at the **Prior Insurance** screen in ALTA: is their policy six months or a year? \"About $1,000 a year\" is often the six-month price.",
           "**Get their renewal date.** If now isn't the time, you know when is.",
           "**Know the product.** Answer their questions clearly.",
           "**Give them the numbers on the call.** Say the price and what it covers, while they're still on the phone.",
@@ -648,6 +650,7 @@
         { list: [
           "Sending the quote out of habit because the call is going well. The leaderboard's **Sent the Quote** column shows how often you do it.",
           "Skipping discovery because you've seen a hundred of these, then missing the current premium or renewal date.",
+          "Taking the prospect's word on what they pay instead of checking the Prior Insurance screen. A six-month policy read as a yearly one makes a better rate look higher.",
           "Letting a follow-up turn into a second first call.",
           "Not writing the note after the call. The next person to touch the lead, and Apollo's next card, depend on it.",
           "Moving a lead to the wrong stage. IL Interested and Transfer Pending aren't our stages.",

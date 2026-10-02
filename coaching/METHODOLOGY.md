@@ -411,6 +411,60 @@ still gets an "m" there, same as on a sales call.
   says "let me put a note in the system for X" and either does or visibly
   skips it). Do not guess at what happened after the call ended.
 
+## The reports: verify, don't just take their word (Frank, 2026-10-02)
+
+The producer quotes in Farmers' quoting system (ALTA), and before the call
+gets far it has already pulled reports on the prospect: **drivers, vehicles,
+limits, coverages, dates (effective / expiration), prior carrier, policy
+status, the term (6 or 12 months)** and a bit more. The Prior Insurance
+screen shows the current carrier, its term and dates. Discovery is still
+worth doing -- to buy time while the quote builds, to build rapport, and to
+find what the reports cannot (why they're shopping, a life change, what
+matters to them, other policies) -- but **what the prospect says about their
+current policy must be checked against the reports, not taken on their
+word**. Prospects misremember, above all the TERM: "about $1,000 a year" is
+very often the six-month premium. A comparison built on the prospect's
+memory turns a better rate into a lost sale.
+
+The case: Lorena / Lisette Dasnabedian, 2026-10-01. Lisette said she paid
+"every six months, but for the whole year it comes to around 1,000." Lorena
+took that as $500 a term and quoted $820 for six months; Lisette heard a
+higher price and hung up. ALTA's Prior Insurance screen showed a six-month
+policy: the ~$1,000 was the six-month premium, and $820 was the BETTER rate.
+One look at the screen and the comparison was in her favour.
+
+How to score it:
+- You cannot see ALTA. Judge whether the producer USED the reports, from
+  what is said on the call ("I see here you're the only driver", "I'm
+  showing you're with Allstate on a six-month policy"). Never state what a
+  report said unless the call or a **Manager's note** says it.
+- **Current premium captured** is "s" only when the premium is tied to a
+  term the producer confirmed -- from the reports, or a prospect who states
+  it plainly. A muddled or contradictory figure ("every six months, but for
+  the year it's around 1,000") that the producer does not reconcile with the
+  report is "w", even with a number captured.
+- **Discovery**: taking the carrier, term or premium at face value when the
+  call shows a conflict (the prospect names one carrier and the producer
+  another; a term that doesn't add up) is a miss -- say so in the line.
+- **Presenting numbers**: a price compared on a different term than what
+  they pay ("820 for six months" against "1,000 a year") without converting
+  it, or without checking which term the 1,000 really is, is "w".
+- **A price objection resting on an unverified comparison** is not
+  overcome by a discount: the fix checks the report on the call, in the
+  producer's own words: "Let me pull up your current policy on my screen...
+  I'm showing your policy with them is a six-month term, so that $1,000 is
+  for six months. We're at $820 for the same six months -- $180 less every
+  six months." Use the real figures only when they are known (the call or a
+  Manager's note); otherwise the line says to check the screen, not a number.
+- Flag it (category Discovery missed): "Didn't verify against the reports".
+
+## Manager's note
+
+A card's history can carry a **Manager's note**: something Frank or a
+manager saw that the call cannot show (an ALTA screen, a policy record).
+It is fact. Use it for every verdict it bears on, and quote it in the
+lines it changes; never contradict it.
+
 ## Lead source (Frank, 2026-09-24)
 
 Every call arrives with a "Lead source" block: the AgencyZoom lead source,

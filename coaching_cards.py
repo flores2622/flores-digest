@@ -748,10 +748,28 @@ def _history(producer, group, day, ctx, log=print):
     """lead_history.block, never raising: a card is still worth reading
     without its history."""
     try:
-        return lead_history.block(group, day, ctx, producer=producer)
+        text = lead_history.block(group, day, ctx, producer=producer)
     except Exception as e:
         log(f"    lead history: skipped ({type(e).__name__}: {e})")
+        text = ""
+    notes = manager_notes(day, group)
+    return (text + "\n\n" + notes).strip() if notes else text
+
+
+def manager_notes(day, group):
+    """What Frank or a manager saw that the call cannot show -- an ALTA
+    screen, a policy record (Frank, 2026-10-02: Lisette Dasnabedian's
+    six-month term). coaching/manager_notes.json, by day and lead; the
+    card cache is keyed by call, so a note reaches a card only when it is
+    read (or re-read) after the note is written."""
+    try:
+        rows = json.loads((ROOT / "coaching/manager_notes.json").read_text())
+    except (OSError, ValueError):
         return ""
+    ids = {r.get("lead_id") for r in group if r.get("lead_id") is not None}
+    hits = [n for n in rows if n.get("day") == day and n.get("lead_id") in ids]
+    return "\n".join(f"Manager's note ({n.get('by', 'manager')}, {n.get('written', '')}): {n['note']}"
+                     for n in hits)
 
 
 _LEADS_BY_ID = None

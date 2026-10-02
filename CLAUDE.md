@@ -188,6 +188,21 @@ Everything caches under `data/`, so a re-run resumes rather than restarting.
   was 16,000 / 12,000 silently), the card's first budget is 9,000 tokens,
   each new card keeps `model`, and `_bool_pair` reads "true"/"false"/"null"/
   "n/a" strings for what they say (a bare None is None, never False).
+- **Verify against the reports** (Frank, 2026-10-02): ALTA's reports show
+  drivers, vehicles, limits, coverages, dates, prior carrier, policy status
+  and the term; discovery buys time, builds rapport and finds what they
+  don't, but what the prospect says about their current policy is checked
+  against the Prior Insurance screen. METHODOLOGY.md's "The reports" section:
+  a muddled premium / term not reconciled is "w" on Current premium and
+  Presenting numbers, the fix checks the screen on the call, and the flag is
+  "Didn't verify against the reports". Lorena / Lisette Dasnabedian 10-01 is
+  the case ($820 for six months against a six-month policy remembered as
+  "$1,000 a year"). **A card can carry a Manager's note**
+  (`coaching/manager_notes.json`, by day and lead_id, read into the history
+  block by `coaching_cards.manager_notes`): what Frank saw that the call
+  cannot show; Apollo treats it as fact. The cache is keyed by call, so a note
+  reaches a card only when it is read again -- the Lisette card was re-read
+  alone on 2026-10-02 (backup under `backups/2026-10-02-card-fix/`).
 - **A closed card's right half is Quick coaching** (Frank, 2026-09-30:
   "the right half of the card be a quick coaching summary, while leaving
   the left of the card whats currently there"; `quickCoachHtml`), from what
