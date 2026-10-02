@@ -860,6 +860,13 @@ it changes with it. The words live in `site/public/blueprints.js`, nowhere
 else (`map` = which tab, `label` = the dropdown name).
 **Take the tour** at the foot of the left bar walks anyone through the
 board (`TOUR_STEPS` in index.html).
+**A refresh opens where you were** (Frank, 2026-10-02: "when refreshing any
+page, i want it to open back up where i was, not back to the digest"): the
+page, the coaching and Sales sub-tabs, the Road Map pick, the producer
+filter and the day or range are kept per browser tab (`saveWhere` after
+every paint and on `pagehide`, sessionStorage `board-where`) and read back by
+`init()`. Commercial and Rotation reopen only once the Worker has let that
+login in (`COMMERCIAL_DAYS`, `ROT_READY`); a new tab starts on the Digest.
 **KEEP THEM CURRENT, in the same change** (Frank: "continues updating as we
 make changes"): anything that changes what a number means, a goal, how
 Apollo reads or scores a call, what a page shows or where it sits, or adds

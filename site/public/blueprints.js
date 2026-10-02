@@ -85,6 +85,7 @@
           ["Service Center", "Athena's side: the Service Digest and the Renewals tab."],
           ["Claims Center", "Every claim: what's open, who opened and worked it, and close time by type."],
         ] } },
+        "**Refreshing the page keeps you where you were**: the same page, tab, day or range and producer. A new tab or window starts on the Digest.",
         "Anyone can press **Take the tour** at the bottom of the left bar for a walk through the board.",
       ] },
 
