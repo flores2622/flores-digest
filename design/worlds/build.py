@@ -35,9 +35,11 @@ def world_css(m):
     for key, fn in m.VISTA_FNS.items():
         L.append(f'{T} .vista-{key} {{ background-color: {lt}; background-image: {url(fn(False))}; }}')
         L.append(f'{D} .vista-{key} {{ background-color: {dt}; background-image: {url(fn(True))}; }}')
-    ink = getattr(m, "VMAP_INK", None)
+    ink = getattr(m, "VMAP_INK", None)  # a world drawn on light paper names dark ink; the rest keep white titles
     if ink:
         L.append(f'{T} .vista.vmap b, {T} .vista.vmap span {{ color: {ink[0]}; }} {D} .vista.vmap b, {D} .vista.vmap span {{ color: {ink[1]}; }}')
+    else:
+        L.append(f'{T} .vista.vmap b, {T} .vista.vmap span {{ color: #fff; text-shadow: 0 1px 3px rgba(0,0,0,.55); }}')
     for key, fn in m.STRIP_FNS.items():
         L.append(f'{T} .ccard[data-oc="{key}"] > summary.cchead::before {{ background-image: {url(fn(False))}; }}')
         L.append(f'{D} .ccard[data-oc="{key}"] > summary.cchead::before {{ background-image: {url(fn(True))}; }}')

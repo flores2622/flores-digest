@@ -1850,8 +1850,8 @@ sheet on its back.
   podium, fuel spheres, the water tower, the assembly building, a tracking
   dish, a countdown clock; by day under a contrail, at night at ignition
   under floodlights, the Milky Way and the moon (`skyline.py` in the
-  session's scratchpad, same 1600x1700 split at 377). **Its vistas**
-  (`scenes.py` there; `VISTAS_BY_WORLD` carries each world's banner lines
+  session's scratchpad, now `design/worlds/space_skyline.py`, same 1600x1700
+  split at 377). **Its vistas** (`scenes.py` there, now `space_scenes.py`; `VISTAS_BY_WORLD` carries each world's banner lines
   and `placeVista` picks the world's): Sales liftoff over the ocean; Texts &
   Emails the comms array; Coaching mission control with a replay on the big
   screen; Role Play the simulator; Session History the flight recorder;
@@ -1866,6 +1866,38 @@ sheet on its back.
   open; reached without a quote = on the tether; voicemail = a probe asleep
   past a ringed planet. Captions sit at the left so the outcome pill at the
   right never covers them.
+  **Then the rest** (Frank, 2026-10-03: "now do the rest of the themes we
+  said"): **Ocean** (Merriweather / Source Sans 3; Harbor, Sea Glass, Sunset
+  Pier -- the harbor at golden hour with the lighthouse, the podium on the
+  pier, FULL NET / LINE'S STILL OUT / THE ONE THAT GOT AWAY ...), **Mountain**
+  (Zilla Slab / Work Sans; Evergreen, Glacier, Aspen -- the peaks, the lake and
+  the ranger cabin, the podium on a granite summit slab, SUMMIT / TRAIL
+  CLOSED / HIBERNATING ...), **Game Day** (Oswald / Barlow; Home, Away, Night
+  Game -- the stadium with FLORES on the scoreboard, the podium on the 50,
+  TOUCHDOWN / 1ST & 10 / TURNOVER ...), **Retro Arcade** (Orbitron / Exo 2;
+  Synthwave, 8-Bit, Pinball -- the neon pixel city and HIGH SCORES, the grid
+  floor between rows of cabinets, LEVEL CLEARED / CONTINUE? / GAME OVER ...)
+  and **Phoenix** (Archivo / Inter; Valley Sunset, Copper, Monsoon -- the
+  camel mountain, the tower ridge, downtown and the light rail down a palm
+  boulevard to a plaza stage, FIREWORKS / NEXT TRAIN / HABOOB ...). Space got
+  a Claims banner too. No real teams, games, brands or landmarks' names.
+  **A world's pictures load only for whoever picks it** (2026-10-03): each
+  is `site/public/worlds/<key>.css`, added by `loadWorld` with the world's
+  Google Fonts; until it lands `data-wl` is off and the desert's pictures are
+  held back, so nobody sees the wrong world flash. index.html carries only
+  the looks, the type, the Settings list and the banner wording, between
+  `WORLDS:BEGIN` / `WORLDS-JS:BEGIN` / `WORLDS-VISTAS:BEGIN` markers.
+  **All of it is written by `python3 design/worlds/build.py`** from one module
+  per world in `design/worlds/` -- edit the module, never the CSS or the
+  marked blocks. `SPEC.md` there says what a world must define and where
+  things land (the tiles over units ~170-400 of the 1600x1700 picture, the
+  leaderboard from 377, the five-place podium row x 480-1130 / units 540-800
+  kept clear); `check.py <key>` validates it and `preview.cjs <key>` renders
+  the Digest and every banner and strip. The desert stays inline and
+  hand-made. A map banner's title is white unless the world names dark ink
+  (`VMAP_INK`, Space's graph paper). The menu's layer sits over the page
+  (`.tabs` z-index) -- it is sticky, and the Settings panel inside it had been
+  painted under the Digest's cards at its right edge.
 - The local harness used to check all of this (a mock of the Worker over
   saved day documents, Playwright captures) lives in the session's
   scratchpad, not the repo; `design/flores-board-preview.html` is the
