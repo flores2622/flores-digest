@@ -1898,6 +1898,22 @@ sheet on its back.
   (`VMAP_INK`, Space's graph paper). The menu's layer sits over the page
   (`.tabs` z-index) -- it is sticky, and the Settings panel inside it had been
   painted under the Digest's cards at its right edge.
+- **The board is a home-screen app** (Frank, 2026-10-03: "coeus icon, build
+  the app"): Safari > Share > Add to Home Screen opens it full screen under
+  Coeus's constellation owl on a night sky (`design/app_icon.py` draws it,
+  `app_icon.cjs` renders `site/public/app/` -- 180 for the iPhone, 192 / 512
+  and a maskable 512 for Android, a 32px favicon). `manifest.webmanifest`
+  (fetched with credentials -- Access gates every path) and the
+  `apple-mobile-web-app-*` tags name it **"Flores"** (Frank is choosing a new
+  name for the board: "it has become much more than a sales floor"; change
+  the manifest, the app-title tag and the page title together). It runs
+  under the status bar (black-translucent, viewport-fit=cover), so in
+  standalone the body takes the safe-area insets and a band of `--side` sits
+  behind the status bar. No service worker: nothing works offline, and the
+  app keeps its own Access login, separate from Safari's. **Phones get one
+  menu row** that scrolls sideways and sticks to the top -- the restyle's
+  232px menu width had stacked the phone menu into a column a screen tall.
+  The guide's "On your phone" line says how to install it.
 - The local harness used to check all of this (a mock of the Worker over
   saved day documents, Playwright captures) lives in the session's
   scratchpad, not the repo; `design/flores-board-preview.html` is the

@@ -2,8 +2,19 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Sales Floor — Flores Insurance Agency</title>
+<!-- The board as a phone app (Frank, 2026-10-03: "coeus icon, build the app"): Safari > Share >
+     Add to Home Screen opens it full screen under Coeus's owl. The name below is what the icon is
+     labelled; the manifest carries it for Android. Icons are drawn by design/app_icon.py. -->
+<link rel="manifest" href="manifest.webmanifest" crossorigin="use-credentials">
+<link rel="apple-touch-icon" href="app/icon-180.png">
+<link rel="icon" type="image/png" sizes="32x32" href="app/favicon-32.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Flores">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="theme-color" content="#14122b">
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,700&family=Bebas+Neue&family=Bangers&family=Comic+Neue:wght@400;700&family=JetBrains+Mono:wght@400;700&display=swap">
 <style>
 /* ---------------------------------------------------------------------------
@@ -953,6 +964,19 @@ html[data-look="mesa"] .tab:hover, html[data-look="mesa"] .tab[aria-selected="tr
 /* The menu is sticky, which makes it its own layer: lift that layer over the page so the Settings panel
    it holds is not painted under the Digest's positioned cards (it was, at its right edge). */
 .tabs { z-index: 30; }
+/* Opened from the home screen the page runs under the status bar and over the home bar
+   (black-translucent, viewport-fit=cover): keep everything clear of the notch, the rounded
+   corners in landscape and the home indicator. A Safari tab has no insets, so nothing moves there. */
+@media (display-mode: standalone) {
+  body { padding-top: env(safe-area-inset-top); padding-left: env(safe-area-inset-left); padding-right: env(safe-area-inset-right); padding-bottom: env(safe-area-inset-bottom); }
+  /* the status bar's white text sits on a band of the menu's own dark colour */
+  body::before { content: ""; position: fixed; top: 0; left: 0; right: 0; height: env(safe-area-inset-top); background: var(--side); z-index: 95; }
+  .coeusfab { bottom: calc(22px + env(safe-area-inset-bottom)); right: calc(22px + env(safe-area-inset-right)); }
+  .setpan { bottom: calc(16px + env(safe-area-inset-bottom)); }
+}
+@media (display-mode: standalone) and (max-width: 760px) {
+  .coeusfab { bottom: calc(14px + env(safe-area-inset-bottom)); right: calc(14px + env(safe-area-inset-right)); }
+}
 .looks button { display: flex; align-items: center; gap: 10px; border: 1.5px solid var(--border); background: transparent; border-radius: 10px; padding: 7px 8px; font: 600 13px var(--body); color: var(--text-primary); cursor: pointer; text-align: left; }
 .looks button[aria-pressed="true"] { border-color: var(--accent); background: var(--card2); }
 .sw3 { display: flex; gap: 2px; border-radius: 6px; overflow: hidden; }
@@ -1323,6 +1347,16 @@ tr.found td { background: color-mix(in oklab, var(--accent) 18%, transparent) !i
   .tab[aria-selected="true"] { background: var(--accent); color: #fff; border-bottom-color: transparent; }
   .top { padding-top: 14px; }
   .top h1 { font-size: 24px; }
+  /* the phone's menu is ONE row that scrolls sideways and stays at the top (2026-10-03, for the
+     home-screen app): the restyle's 232px menu width had stacked it into a column a screen tall */
+  .tabs { width: auto; flex-wrap: nowrap; overflow-x: auto; overflow-y: hidden; scrollbar-width: none; position: sticky; top: env(safe-area-inset-top, 0px); gap: 6px; }
+  .tabs::-webkit-scrollbar { display: none; }
+  .tabs > * { flex: none; }
+  .brand { font-size: 18px; margin: 0 6px 0 0; white-space: nowrap; } .brand br { display: none; } .brand span { margin-left: 4px; }
+  .tab { padding: 8px 12px; white-space: nowrap; }
+  .tabs .tourbtn { margin-left: 0; padding: 8px 12px; }
+  .setbtn { margin-left: 0; }
+  .search kbd { display: none; }
 }
 /* Road Map (Frank, 2026-09-30): Learning Center > Road Map, the plain-
    language guides in blueprints.js. One reading column. */
