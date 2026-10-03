@@ -10,7 +10,12 @@
    One R2 file, rotation/state.json: each rotation's order and who is next,
    and every turn ever logged. A turn is one of
      in    the walk-in / call-in went to whoever was next; the rotation moves on
-     skip  whoever was next was out or busy; it moves on with nobody given
+     skip  whoever was next was OUT; it moves on with nobody given
+     busy  whoever was next was BUSY (Frank, 2026-10-02: "when they are busy,
+           it should give it to the next producer, but still keep who was
+           busy up next"): the client goes to the next person in line, the
+           busy person stays up, and whoever covered is `owed` -- the
+           rotation passes over them once, so covering is their turn
      out   it went to someone out of turn (the client asked for them); it
            does NOT move on
    A turn names who was next when it was logged (`expect`), so two people
@@ -72,6 +77,29 @@ const after = (order, name) => {
   const i = order.indexOf(name);
   return order[(i + 1) % order.length];
 };
+// Who covers when `list.next` is busy: the next person after them who has
+// not already covered (and so is not owed a pass).
+export function coverFor(list) {
+  const owed = list.owed || [];
+  let n = list.next;
+  for (let i = 0; i < list.order.length; i++) {
+    n = after(list.order, n);
+    if (n === list.next) return "";
+    if (!owed.includes(n)) return n;
+  }
+  return "";
+}
+// Move the rotation on from `from`, passing once over anyone who covered for
+// a busy person. Returns who was passed, so a removed turn can put them back.
+function advance(list, from) {
+  const owed = list.owed || [], passed = [];
+  let n = after(list.order, from);
+  for (let i = 0; i < list.order.length && n !== from && owed.includes(n); i++) {
+    owed.splice(owed.indexOf(n), 1); passed.push(n); n = after(list.order, n);
+  }
+  list.owed = owed; list.next = n;
+  return passed;
+}
 
 /** GET /api/rotation -> {lists, entries, people, can_edit, me}. */
 export async function rotationGet(request, env, identityOf) {
@@ -107,12 +135,17 @@ function apply(state, body, me, a) {
     const list = state.lists[String(body.list || "")];
     if (!list) return { error: "no such rotation" };
     const kind = String(body.kind || "");
-    if (!["in", "skip", "out"].includes(kind)) return { error: "bad kind" };
+    if (!["in", "skip", "busy", "out"].includes(kind)) return { error: "bad kind" };
     const producer = String(body.producer || "");
     if (kind !== "out" && String(body.expect || "") !== list.next) {
       return { error: `the rotation moved: ${list.next.split(" ")[0]} is up now`, status: 409 };
     }
-    if (kind !== "out" && producer !== list.next) return { error: "that person is not up" };
+    if ((kind === "in" || kind === "skip") && producer !== list.next) return { error: "that person is not up" };
+    if (kind === "busy") {
+      const cover = coverFor(list);
+      if (!cover) return { error: "nobody else on this rotation can take it" };
+      if (producer !== cover) return { error: `the rotation moved: ${cover.split(" ")[0]} covers now`, status: 409 };
+    }
     if (kind === "out" && !list.order.includes(producer)) return { error: "that person is not on this rotation" };
     const client = String(body.client || "").trim().slice(0, 120);
     if (kind !== "skip" && !client) return { error: "who is the client?" };
@@ -123,8 +156,14 @@ function apply(state, body, me, a) {
       date, notes: String(body.notes || "").trim().slice(0, 300),
       logged_by: me.name, created_at: new Date().toISOString(),
     };
+    if (kind === "busy") {
+      entry.busy = list.next;                       // stays up
+      list.owed = (list.owed || []).concat([producer]);
+    } else if (kind !== "out") {
+      const passed = advance(list, producer);
+      if (passed.length) entry.passed = passed;
+    }
     state.entries.push(entry);
-    if (kind !== "out") list.next = after(list.order, producer);
     return { entry };
   }
   if (op === "del") {
@@ -136,9 +175,18 @@ function apply(state, body, me, a) {
     // Taking back the newest turn on a rotation gives that person the turn
     // back -- the usual reason is it was logged by mistake.
     const list = state.lists[e.list];
-    if (list && e.kind !== "out") {
-      const newer = state.entries.some((x) => x.list === e.list && x.kind !== "out" && x.created_at > e.created_at);
-      if (!newer && list.order.includes(e.producer)) list.next = e.producer;
+    if (list && e.kind === "busy") {
+      // Whoever covered is no longer owed a pass (if they still are).
+      const owed = list.owed || [], i = owed.indexOf(e.producer);
+      if (i >= 0) owed.splice(i, 1);
+      list.owed = owed;
+    } else if (list && e.kind !== "out") {
+      const newer = state.entries.some((x) => x.list === e.list && x.kind !== "out" && x.kind !== "busy" && x.created_at > e.created_at);
+      if (!newer && list.order.includes(e.producer)) {
+        list.next = e.producer;
+        // ...and anyone that turn passed over is owed their pass again.
+        list.owed = (list.owed || []).concat((e.passed || []).filter((p) => list.order.includes(p)));
+      }
     }
     return { ok: true };
   }
@@ -150,6 +198,7 @@ function apply(state, body, me, a) {
     if (!order.length) return { error: "a rotation needs someone on it" };
     if (order.some((p) => !ROTATION_PEOPLE.includes(p)) || new Set(order).size !== order.length) return { error: "bad order" };
     list.order = order;
+    list.owed = (list.owed || []).filter((p) => order.includes(p));
     const next = String(body.next || "");
     list.next = order.includes(next) ? next : order.includes(list.next) ? list.next : order[0];
     state.changes = (state.changes || []).concat([{ list: body.list, order, next: list.next, by: me.name, at: new Date().toISOString() }]).slice(-100);

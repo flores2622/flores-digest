@@ -810,8 +810,14 @@ with their order and who is next, and every turn logged. **Personal lines**
 is every producer and Amanda, **never Mike**; **Life** is Mike, Lorena and
 Coral; **Mexico policies** is Lorena, Amanda, Crystal, Mike, Coral and
 Sarahi. A turn is `in` (given to whoever is up; the rotation moves on),
-`skip` (they were out or busy; it moves on with nobody given) or `out` (out
-of turn, the client asked for someone; it does not move). A turn carries who
+`skip` (they were OUT; it moves on with nobody given), `busy` (Frank,
+2026-10-02: "when they are busy, it should give it to the next producer,
+but still keep who was busy up next": the client goes to the next person
+who hasn't already covered, the busy person stays up, and the coverer is
+`owed` -- the rotation passes over them once, so covering is their turn;
+`coverFor` / `advance`, the passes kept on the turn so taking it back
+restores them) or `out` (out of turn, the client asked for someone; it
+does not move). A turn carries who
 was up when it was logged, so two people logging at once can't hand out the
 same turn (409). Taking back the newest turn on a rotation gives that person
 the turn back. **Only Debbie, Crystal and the ops team see it**
