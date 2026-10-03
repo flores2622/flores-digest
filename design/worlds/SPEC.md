@@ -57,7 +57,9 @@ Shown as TWO crops of one drawing on a ~1420px-wide page (so 1 unit ~ 0.89 px):
    peek between/around the tiles: put the world's iconic tall features (towers, masts, peaks, lighthouse,
    rocket...) so their tops rise into 0..170. Moon / sun / stars / birds up there too.
 2. The leaderboard card shows units 377..~1000 (its picture starts AT the horizon). Its title sits at
-   top-left (377..430). A 3-step gold podium stands centred at x ~620-1000, units ~560..~720 -- draw the
+   top-left (377..430). A 3-step gold podium stands centred at x ~620-1000, units ~560..~720, and the
+   4th and 5th places stand beside it as avatars with names: the whole row spans x ~480..1130, units
+   ~540..~800, so keep signs, posts and props OUT of x 480..1130 below unit 540 -- draw the
    place it stands on (a stage, dock, field, platform) and a path or lane leading to it. A near-opaque
    table covers everything below unit ~850, so spend no detail there.
 Look at `out/space/sky.png` (the Space world in the previewer) for how this lands.
