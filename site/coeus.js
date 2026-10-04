@@ -72,9 +72,9 @@ function staticSystem(manager) {
   if (!STATIC_SYSTEM) {
     const guides = (globalThis.BLUEPRINTS || {}).guides || [];
     const build = (mgr) => [
-      `# Coeus
+      `# Apollo
 
-You are Coeus, the assistant on the Flores Insurance Agency's Sales Floor board (a Farmers agency in Arizona). The board's other brains are Apollo (sales coaching: it reads every recorded sales call and writes a coaching card, and runs Role Play), Athena (the service side) and Cerberus (commercial, Frank's alone). You answer three kinds of questions:
+You are Apollo, the assistant on Pantheon, the Flores Insurance Agency's board (a Farmers agency in Arizona). You are the same Apollo that coaches the sales side: Apollo reads every recorded sales call and writes its coaching card, and runs Role Play -- so when someone asks what "Apollo" saw on a call, that is your own read, on the card. The board's other names are Athena (the service side) and Cerberus (commercial, Frank's alone). You answer three kinds of questions:
 
 1. **Data** -- what the numbers are: a day, a range of days, a producer, a lead, the service team, renewals. ALWAYS read them with the tools; never recall or estimate a figure. Say which day or days a figure comes from.
 2. **Coaching** -- how Apollo judges a call, what a producer should work on, how to handle an objection, what to say instead. Ground it in Apollo's methodology below and, when the question is about real calls, in the cards' own verdicts (read them with coaching_cards). Speak the way a good sales manager would at someone's desk.
@@ -140,7 +140,7 @@ const TOOLS = [
     description: "The Commercial Center (Cerberus) for one day: commercial SRs completed with outcomes, and the open queue. Frank's alone; anyone else is refused.",
     input_schema: { type: "object", required: ["day"], properties: { day: { type: "string" } } } },
   { name: "coeus_usage",
-    description: "What Coeus itself has cost: questions asked and estimated spend per person and per day over a date range (default the last 30 days). Only for the usage viewers; anyone else is refused.",
+    description: "What you, the assistant, have cost: questions asked and estimated spend per person and per day over a date range (default the last 30 days). Only for the usage viewers; anyone else is refused.",
     input_schema: { type: "object", properties: { from: { type: "string" }, to: { type: "string" } } } },
   { name: "roleplay_sessions",
     description: "Graded Role Play sessions between two dates: per producer -- sessions, resolved, checklist items met, the items missed most, objections drilled -- and each session's summary. A producer sees only their own; the history viewers see everyone's.",
@@ -623,7 +623,7 @@ async function runTool(name, inp, ctx) {
       case "renewals": return await toolRenewals(env, inp);
       case "commercial_day": return await toolCommercial(env, inp, commercial);
       case "roleplay_sessions": return await toolRoleplay(env, inp, scope, rpMaySee);
-      case "coeus_usage": return ctx.usageViewer ? await usageReport(env, inp.from, inp.to) : { error: "not permitted: Coeus's usage is for its viewers" };
+      case "coeus_usage": return ctx.usageViewer ? await usageReport(env, inp.from, inp.to) : { error: "not permitted: Apollo's usage is for its viewers" };
       default: return { error: `unknown tool ${name}` };
     }
   } catch (e) {
@@ -645,7 +645,7 @@ function statusFor(name, inp) {
     case "renewals": return "Reading the Renewals report…";
     case "commercial_day": return `Reading the Commercial Center for ${d(inp.day)}…`;
     case "roleplay_sessions": return "Reading Role Play sessions…";
-    case "coeus_usage": return "Adding up Coeus's own usage…";
+    case "coeus_usage": return "Adding up Apollo's usage…";
     default: return "Looking that up…";
   }
 }
@@ -788,7 +788,7 @@ export async function coeusUsage(request, env, deps, url) {
 
 export async function coeusChat(request, env, ctx, deps) {
   const { identityOf, rpScope, rpMaySee, commercialAllowed } = deps;
-  if (!env.ANTHROPIC_API_KEY) return jsonResp({ error: "Coeus is not configured on this Worker (ANTHROPIC_API_KEY)" }, 503);
+  if (!env.ANTHROPIC_API_KEY) return jsonResp({ error: "Apollo is not configured on this Worker (ANTHROPIC_API_KEY)" }, 503);
   let body;
   try { body = await request.json(); } catch (_) { return jsonResp({ error: "bad request body" }, 400); }
   const messages = sanitizeMessages(body.messages);

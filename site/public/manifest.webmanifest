@@ -1,7 +1,7 @@
 {
-  "name": "Flores Insurance",
-  "short_name": "Flores",
-  "description": "The agency's board: sales, service, commercial, coaching and Coeus.",
+  "name": "Pantheon",
+  "short_name": "Pantheon",
+  "description": "Flores Insurance's board: sales, service, commercial, coaching and Apollo.",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",

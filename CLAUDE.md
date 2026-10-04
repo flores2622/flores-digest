@@ -1904,9 +1904,7 @@ sheet on its back.
   `app_icon.cjs` renders `site/public/app/` -- 180 for the iPhone, 192 / 512
   and a maskable 512 for Android, a 32px favicon). `manifest.webmanifest`
   (fetched with credentials -- Access gates every path) and the
-  `apple-mobile-web-app-*` tags name it **"Flores"** (Frank is choosing a new
-  name for the board: "it has become much more than a sales floor"; change
-  the manifest, the app-title tag and the page title together). It runs
+  `apple-mobile-web-app-*` tags name it **"Pantheon"**. It runs
   under the status bar (black-translucent, viewport-fit=cover), so in
   standalone the body takes the safe-area insets and a band of `--side` sits
   behind the status bar. No service worker: nothing works offline, and the
@@ -1918,6 +1916,23 @@ sheet on its back.
   saved day documents, Playwright captures) lives in the session's
   scratchpad, not the repo; `design/flores-board-preview.html` is the
   approved mock-up the restyle followed.
+
+## The board is Pantheon; its assistant is Apollo (2026-10-04)
+
+**The board is named Pantheon** (Frank, 2026-10-04: "let's name it
+Pantheon" -- it "has become much more than a sales floor"): the page title,
+the header's eyebrow, the tour's welcome, the guides, the app manifest and
+the home-screen title. Code comments and the Python docstrings still say
+"Sales Floor"; nothing a person reads does. **The chat assistant is named
+Apollo** ("rename the chat bot to apollo. leave the coeus icon for it"):
+the button, the drawer, the search entry, the tour step, the guides and
+its own instructions say Apollo, and it introduces itself as the SAME
+Apollo that reads every sales call and writes the coaching cards -- one
+Apollo, not two -- so "what Apollo saw on a call" is its own read. The
+owl icon stays. **Everything underneath keeps the Coeus name** so nothing
+saved is lost: `site/coeus.js`, `/api/coeus`, the R2 keys
+`coeus-chats/` and `coeus-usage/`, `COEUS_USAGE_VIEWERS`, the `coeus*`
+ids and classes. The section below still calls it Coeus for that reason.
 
 ## Coeus -- the board's assistant (2026-10-01)
 
