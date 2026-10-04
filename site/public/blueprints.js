@@ -32,23 +32,23 @@
    `window` in the browser and on the global in the Worker -- keep it a plain
    script (no import/export), or the <script src> in index.html breaks. */
 (typeof window !== "undefined" ? window : globalThis).BLUEPRINTS = {
-  updated: "2026-10-03",
+  updated: "2026-10-04",
   guides: [
 
   /* ------------------------------------------------------------------ */
   { key: "manager", map: "apollo", label: "Manager / Coaching", manager: true, title: "Apollo's Road Map (ARM)",
-    who: "For managers: how the Sales Floor works, what every number means, how Apollo coaches, and how to run coaching when Frank is out.",
+    who: "For managers: how Pantheon works, what every number means, how Apollo coaches, and how to run coaching when Frank is out.",
     sections: [
     { h: "What this is",
       body: [
-        "The Sales Floor is the agency's board. It pulls the day's calls from RingCentral, the leads, quotes, policies, tasks and notes from AgencyZoom, and utilization from Insightful, and turns them into one picture of the day.",
+        "Pantheon is the agency's board. It pulls the day's calls from RingCentral, the leads, quotes, policies, tasks and notes from AgencyZoom, and utilization from Insightful, and turns them into one picture of the day.",
         "It has three coaches, each with a name:",
         { terms: [
           ["Apollo", "Sales and coaching. Listens to every recorded sales conversation, writes a coaching card for it, and runs Role Play."],
           ["Athena", "Service. The Service Center: SRs, renewals, tasks, call backs, texts, and the Service Playbook."],
           ["Cerberus", "Commercial. Frank's alone; nobody else's numbers include commercial work."],
-          ["On your phone", "The board works as an app on an iPhone. Open it in Safari, tap **Share**, then **Add to Home Screen**: it gets Coeus's owl as its icon and opens full screen, without Safari's address bar. Sign in once inside the app, the same way as on the computer; it keeps its own sign-in, separate from Safari. On a phone the menu is one row across the top that scrolls sideways. On Android, Chrome offers **Install app** from its menu."],
-          ["Coeus", "The board's assistant. The owl button at the bottom right of every page (or Ctrl /) opens a chat. Ask it how a day or a range went, what a producer should work on, what Apollo saw on a call, how to answer an objection, or what any number means and how it is counted. It reads the same published reports and checkpoints the board draws, these guides and Apollo's methodology, so it cannot tell you anything the board does not know, and it will say so. It knows who is asking: a producer can see every producer's figures, as on the board, but only their own Role Play sessions; the Commercial Center is Frank's alone. Every conversation is kept for you under **Past chats**, on any device you sign in from; New chat starts another without losing the old one. One account pays for every question; **Usage** (Frank's view) shows who asked how much and what it cost."],
+          ["On your phone", "The board works as an app on an iPhone. Open it in Safari, tap **Share**, then **Add to Home Screen**: it gets the owl, Apollo's, as its icon and opens full screen, without Safari's address bar. Sign in once inside the app, the same way as on the computer; it keeps its own sign-in, separate from Safari. On a phone the menu is one row across the top that scrolls sideways. On Android, Chrome offers **Install app** from its menu."],
+          ["Apollo, the assistant", "The board's assistant is Apollo, the same Apollo that reads every sales call. The owl button at the bottom right of every page (or Ctrl /) opens a chat. Ask it how a day or a range went, what a producer should work on, what it saw on a call, how to answer an objection, or what any number means and how it is counted. It reads the same published reports and checkpoints the board draws, these guides and Apollo's methodology, so it cannot tell you anything the board does not know, and it will say so. It knows who is asking: a producer can see every producer's figures, as on the board, but only their own Role Play sessions; the Commercial Center is Frank's alone. Every conversation is kept for you under **Past chats**, on any device you sign in from; New chat starts another without losing the old one. One account pays for every question; **Usage** (Frank's view) shows who asked how much and what it cost."],
         ] },
         "The ARM covers Apollo. Anything commercial is Frank's and is left out of every producer figure.",
       ] },
@@ -69,7 +69,7 @@
     { h: "Where everything is",
       body: [
         "The left bar holds the Centers: the Sales Center, **Apollo's Academy** (the coaching cards plus Role Play, Session History, Training and this Road Map), the Service Center and the Commercial Center. **Each Center opens like a dropdown to its pages**; click its arrow to open or close it. Each Center also has tabs across the top. Every page shares two filters at the top: **the day or range** (a single day, this week, month to date, year to date, a folio, or custom dates) and **the producer** (everyone, or one person). **Every number, card and bar opens the accounts behind it**; click it and the list appears underneath.",
-        "**Ask Coeus** when you cannot find something or want a number read out: the button at the bottom right of every page. It knows which page, day and producer you are looking at, so \"how did we do?\" means that day and that person.",
+        "**Ask Apollo** when you cannot find something or want a number read out: the button at the bottom right of every page. It knows which page, day and producer you are looking at, so \"how did we do?\" means that day and that person.",
         { table: { head: ["Where", "What it's for"], rows: [
           ["Sales Center > Digest", "The day at a glance: dials, contacts, quotes, sales, closing ratio, the leaderboard, speed to dial and reply, task completion, household completion, utilization, Coach AI scores."],
           ["Sales Center > Sales", "The Sales sheet. Log a sale, look back at any folio, and break sales down by lead source, product or producer. Self-reported, not the official Premium Sold. Live sales are added to it automatically."],
@@ -289,14 +289,14 @@
     sections: [
     { h: "What Athena is",
       body: [
-        "Athena is the service side of the Sales Floor, the way Apollo is the sales side. It reads the day's service requests, tasks, calls, texts and emails from AgencyZoom and RingCentral, and shows them on the **Service Center**.",
+        "Athena is the service side of Pantheon, the way Apollo is the sales side. It reads the day's service requests, tasks, calls, texts and emails from AgencyZoom and RingCentral, and shows them on the **Service Center**.",
         "The rules Athena works from are **Amanda's Service Playbook**: the roles, who handles what, the note standard and the daily checklist. When the playbook changes, Athena changes with it.",
         { list: [
           "We say **SR** (service request), never \"ticket\".",
           "**Credit goes to whoever completed the SR or task**, not whoever created it.",
           "Anything commercial is Frank's (Cerberus) and stays out of the service team's numbers. The team's work on a commercial household, like a payment or the owner's personal lines, still counts here.",
         ] },
-        "**Coeus**, the board's assistant (the round button at the bottom right, or Ctrl /), answers questions about the Service Center too: how the team did on a day, retention over a period, which renewals are at risk, and what any figure here means.",
+        "**Apollo**, the board's assistant (the round button at the bottom right, or Ctrl /), answers questions about the Service Center too: how the team did on a day, retention over a period, which renewals are at risk, and what any figure here means.",
       ] },
 
     { h: "The standard",
@@ -475,9 +475,9 @@
     sections: [
     { h: "Welcome",
       body: [
-        "The Sales Floor is where you see how your day is going and how to get better. Every recorded conversation you have with a lead is reviewed by **Apollo**, the agency's sales coach, and turned into a coaching card: what went well, what to fix, and the words you could have used.",
+        "Pantheon is where you see how your day is going and how to get better. Every recorded conversation you have with a lead is reviewed by **Apollo**, the agency's sales coach, and turned into a coaching card: what went well, what to fix, and the words you could have used.",
         "Nobody expects you to be good at this on day one. The point of the board is to show you one thing to work on at a time.",
-        "Stuck on what a number means, or what to say to an objection? **Ask Coeus**, the round button at the bottom right of every page. It explains the board in plain words and coaches from Apollo's own playbook.",
+        "Stuck on what a number means, or what to say to an objection? **Ask Apollo**, the round button at the bottom right of every page. It explains the board in plain words and coaches from its own playbook.",
       ] },
 
     { h: "Words you'll hear",
@@ -600,7 +600,7 @@
       body: [
         "You know how to run a call. Now the gains come from consistency: assuming every time, handling objections instead of accepting them, and treating follow-ups as their own kind of call.",
         "Apollo's Academy > **Wins and Losses** is your scoreboard for this. It shows, for you and the team, how often you assumed the quote, assumed the sale, and sent the quote instead of keeping them on the phone, with every call behind each number.",
-        "**Ask Coeus** (the round button at the bottom right) for your own figures over any range, what your cards keep flagging, and what to say instead.",
+        "**Ask Apollo** (the round button at the bottom right) for your own figures over any range, what your cards keep flagging, and what to say instead.",
       ] },
 
     { h: "Assuming the quote and the sale",
@@ -673,7 +673,7 @@
           "**Techniques, named.** Apollo marks six when you use them: elevator pitch, feel-felt-found, risk reversal, social proof, trial close, and takeaway / urgency. Look at which ones you lean on and which you never reach for.",
           "**The greeting on your own line.** When a lead calls you back, use their name: \"Hi David! How are you today?\" When you don't know who it is, \"This is Mike, how can I help?\" Leave out the agency name and the word insurance; people hang up when they hear they're being sold something.",
         ] },
-        "**Ask Coeus** (the round button at the bottom right) to pull your numbers over any range, or to compare your closing ratio and Sent the Quote count with the team's.",
+        "**Ask Apollo** (the round button at the bottom right) to pull your numbers over any range, or to compare your closing ratio and Sent the Quote count with the team's.",
       ] },
 
     { h: "Where experienced producers slip",
