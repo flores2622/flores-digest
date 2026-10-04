@@ -89,17 +89,15 @@
 .ed .g-fine { background: linear-gradient(180deg, #ffb27e, #d9622b); } .ed .g-fine i:nth-child(3), .ed .g-fine i:nth-child(1) { animation: edflk .4s infinite alternate; }
 .ed .g-stonks { background: linear-gradient(180deg, #dbe9ff, #9ec1ff); } .ed .g-stonks i:first-child { animation: edrise 1.8s ease-out infinite; } @keyframes edrise { 0% { transform: translateY(14px) scale(.8); opacity: .4; } 100% { transform: translateY(-12px) scale(1.1); opacity: 1; } }
 .ed .g-slow i { animation: edcrawl 4s linear infinite; } @keyframes edcrawl { from { transform: translateX(-60px); } to { transform: translateX(60px); } }
-.ed .meme { border-radius: 14px; overflow: hidden; border: 2px solid #111; background: #111; color: #fff; font-family: Impact, "Anton", "Arial Black", "Helvetica Neue", sans-serif; text-transform: uppercase; letter-spacing: .02em; max-width: 520px; }
-.ed .meme .scene { position: relative; min-height: 220px; display: flex; align-items: center; justify-content: center; font-size: 84px; line-height: 1; background: var(--mbg, linear-gradient(160deg, #3a4a6a, #1d2537)); }
-.ed .meme .mt, .ed .meme .mb { position: absolute; left: 10px; right: 10px; text-align: center; font-size: 26px; line-height: 1.05; -webkit-text-stroke: 1px #000; text-shadow: 2px 2px 0 #000, -1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000; }
-.ed .meme .mt { top: 10px; } .ed .meme .mb { bottom: 10px; }
-.ed .meme .row { display: grid; grid-template-columns: 110px 1fr; align-items: center; background: #fff; color: #111; border-top: 2px solid #111; min-height: 86px; font-family: var(--body); text-transform: none; letter-spacing: 0; font-weight: 700; font-size: 16px; }
-.ed .meme .row > i { font-style: normal; font-size: 48px; text-align: center; background: #f3e9dc; height: 100%; display: flex; align-items: center; justify-content: center; }
-.ed .meme .row.no > i { background: #fde0d6; } .ed .meme .row.yes > i { background: #dcf3e3; }
-.ed .meme .row > span { padding: 10px 14px; }
-.ed .meme .row.b1 > i { font-size: 30px; } .ed .meme .row.b2 > i { font-size: 38px; } .ed .meme .row.b3 > i { font-size: 46px; } .ed .meme .row.b4 > i { font-size: 56px; background: linear-gradient(135deg, #ffe9a8, #ffb27e); }
-.ed .meme .cap { background: #111; color: #cfc6ba; font: 600 12px var(--body); text-transform: none; letter-spacing: 0; padding: 6px 12px; }
-html[data-mode="dark"] .ed .meme .row { background: #f3ece2; }
+.ed .meme { border-radius: 14px; overflow: hidden; border: 2px solid #111; background: #111; max-width: 520px; }
+.ed .meme .mimg { position: relative; container-type: inline-size; background: #222; }
+.ed .meme .mimg img { display: block; width: 100%; height: 100%; }
+.ed .meme .mbox { position: absolute; display: flex; align-items: center; justify-content: center; text-align: center; padding: 0 1.5cqw; box-sizing: border-box; line-height: 1.05; overflow: hidden; }
+.ed .meme .mbox.w { color: #fff; font-family: Impact, "Anton", "Arial Black", "Helvetica Neue", sans-serif; text-transform: uppercase; letter-spacing: .02em; -webkit-text-stroke: .5cqw #000; paint-order: stroke fill; text-shadow: .3cqw .3cqw 0 #000, -.3cqw -.3cqw 0 #000, .3cqw -.3cqw 0 #000, -.3cqw .3cqw 0 #000; }
+.ed .meme .mbox.t { align-items: flex-start; } .ed .meme .mbox.b { align-items: flex-end; }
+.ed .meme .mbox.d { color: #111; font: 700 1em Arial, "Helvetica Neue", sans-serif; padding: 0 3cqw; }
+.ed .meme .cap { background: #111; color: #cfc6ba; font: 600 12px var(--body); padding: 6px 12px 2px; }
+.ed .meme .mname { background: #111; color: #8f867b; font: 600 10.5px var(--body); letter-spacing: .08em; text-transform: uppercase; padding: 0 12px 7px; }
 .ed .stories { display: flex; gap: 14px; overflow: auto; padding: 2px; }
 .ed .stories button { width: 72px; flex: none; text-align: center; font: 500 12px var(--body); border: 0; background: none; color: inherit; cursor: pointer; }
 .ed .stories i { display: flex; align-items: center; justify-content: center; width: 62px; height: 62px; border-radius: 50%; margin: 0 auto 4px; border: 3px solid var(--accent); background: var(--surface-raised); font-weight: 800; font-style: normal; }
@@ -402,12 +400,33 @@ const ED_GIFS = {
 const edGifHtml = (k, cls = "") => ED_GIFS[k] ? `<span class="gif g-${k} ${cls}" title="${edEsc(ED_GIFS[k][0])}" role="img" aria-label="${edEsc(ED_GIFS[k][0])}">${ED_GIFS[k][1]}</span>` : "";
 const ED_GIF_LINK = /^https:\/\/(?:media\d*\.giphy\.com\/|media\.tenor\.com\/|i\.imgur\.com\/|\S+\.gif(?:\?\S*)?$)\S*$/i;
 const edCmText = t => ED_GIF_LINK.test(t.trim()) ? `<img class="gifimg" src="${edEsc(t.trim())}" alt="GIF" loading="lazy" referrerpolicy="no-referrer">` : edEsc(t);
-// Apollo's memes: picked by rule from the day, three at most, the classics
-// drawn with emoji and Impact. Each is a post of its own (reactions, replies).
+// Apollo's memes: picked by rule from the day, three at most, written on the
+// real templates (Frank, 2026-10-04: "can we use real ones?"), kept under
+// memes/ so nothing is hot-linked. Each template: file, size, name, what it
+// means (shown on hover) and where its words go -- boxes in % of the picture.
+const ED_MEME = {
+  fine: ["this-is-fine.jpg", 580, 282, "This Is Fine", "A dog sips coffee in a burning room: acting like a bad situation is fine.", [[2, 72, 96, 26, "w b"]]],
+  skeleton: ["waiting-skeleton.jpg", 298, 403, "Waiting Skeleton", "Waited so long they turned to bones.", "tb"],
+  cheers: ["dicaprio-cheers.jpg", 600, 400, "Leonardo DiCaprio Cheers", "Raising a glass to someone who earned it.", "tb"],
+  success: ["success-kid.jpg", 500, 500, "Success Kid", "A small, satisfying win.", "tb"],
+  drake: ["drake.jpg", 1200, 1200, "Drake Hotline Bling", "No thanks to the top one; yes to the bottom one.", [[50, 0, 50, 50, "d"], [50, 50, 50, 50, "d"]]],
+  simply: ["one-does-not-simply.jpg", 568, 335, "One Does Not Simply", "Boromir's warning: it is harder than it looks.", "tb"],
+  cmm: ["change-my-mind.jpg", 482, 361, "Change My Mind", "A strong opinion on a sign, held until someone proves it wrong.", [[2, 2, 96, 30, "w t"]]],
+  brain: ["brain.jpg", 857, 1202, "Expanding Brain", "Each idea is bigger than the last; the brightest brain is the best one.", [[0, 0, 46.5, 25, "d"], [0, 25, 46.5, 26, "d"], [0, 51, 46.5, 22.5, "d"], [0, 73.5, 46.5, 26.5, "d"]]],
+  harold: ["harold.jpg", 480, 601, "Hide the Pain Harold", "Smiling through something that hurts.", "tb"],
+  rollsafe: ["roll-safe.jpg", 702, 395, "Roll Safe", "Tapping his head: a 'smart' idea that is obvious once said.", "tb"],
+  exit: ["exit-12.jpg", 804, 767, "Left Exit 12 Off Ramp", "Swerving off at the last second, for the wrong exit.", [[18, 22, 30, 13, "w"], [48, 22, 30, 13, "w"], [12, 78, 60, 14, "w"]]],
+};
 const edMemeHtml = m => {
-  if (m.tpl === "drake") return `<div class="meme"><div class="row no"><i>✋</i><span>${edEsc(m.no)}</span></div><div class="row yes"><i>👉</i><span>${edEsc(m.yes)}</span></div>${m.cap ? `<div class="cap">${edEsc(m.cap)}</div>` : ""}</div>`;
-  if (m.tpl === "brain") return `<div class="meme">${m.tiers.map((t, i) => `<div class="row b${i + 1}"><i>${["🧠", "🧠✨", "🌌", "👽"][i]}</i><span>${edEsc(t)}</span></div>`).join("")}${m.cap ? `<div class="cap">${edEsc(m.cap)}</div>` : ""}</div>`;
-  return `<div class="meme"><div class="scene" style="${m.bg ? `--mbg:${m.bg}` : ""}"><span class="mt">${edEsc(m.top)}</span>${m.scene}<span class="mb">${edEsc(m.bottom)}</span></div>${m.cap ? `<div class="cap">${edEsc(m.cap)}</div>` : ""}</div>`;
+  const t = ED_MEME[m.k]; if (!t) return "";
+  const boxes = t[5] === "tb" ? [[2, 2, 96, 30, "w t"], [2, 68, 96, 30, "w b"]] : t[5];
+  const words = t[5] === "tb" ? [m.top, m.bottom] : m.t;
+  const box = ([x, y, w, h, kind], txt) => {
+    if (!txt) return "";
+    const base = kind === "d" ? 5.2 * w / 50 : 7 * w / 96, fs = Math.max(2.6, base * Math.min(1, 26 / String(txt).length) ** .55);
+    return `<span class="mbox ${kind}" style="left:${x}%;top:${y}%;width:${w}%;height:${h}%;font-size:${fs.toFixed(2)}cqw"><span>${edEsc(txt)}</span></span>`;
+  };
+  return `<div class="meme" title="${edEsc(`${t[3]}: ${t[4]}`)}"><div class="mimg" style="aspect-ratio:${t[1]}/${t[2]}"><img src="memes/${t[0]}" alt="${edEsc(t[3])} meme" loading="lazy">${boxes.map((b, i) => box(b, words[i])).join("")}</div>${m.cap ? `<div class="cap">${edEsc(m.cap)}</div>` : ""}<div class="mname">${edEsc(t[3])}</div></div>`;
 };
 function edMemes(X) {
   const F = X.F, top = X.order[0], n = top ? X.NUM[top] : null, when = X.isFolio ? "this folio" : pdow(X.dayKey), out = [];
@@ -415,20 +434,20 @@ function edMemes(X) {
   const sentBy = [...new Set(F.sendoffs.map(c => pfirst(c.who)))];
   const obj = F.objs[0], busy = obj && /busy|timing/i.test(obj[0]);
   // 1. the day itself
-  if (!F.ps && F.hh && F.sendoffs.length) out.push({ tpl: "pic", scene: "😮", bg: "linear-gradient(160deg,#ffe28a,#f2b134)", top: `SENT ${F.sendoffs.length} QUOTE${F.sendoffs.length === 1 ? "" : "S"} BY EMAIL`, bottom: "NOBODY CALLED BACK", cap: `${plural(F.hh, "household")} quoted ${when}, none closed. Present it on the call.` });
-  else if (!F.ps) out.push({ tpl: "pic", scene: "🐶☕", bg: "linear-gradient(180deg,#ffb27e,#b5532f)", top: `NO SALES ${up(when)}`, bottom: "THIS IS FINE", cap: `${plural(F.dials, "dial")}, ${plural(F.live, "conversation")}${F.hh ? `, ${plural(F.hh, "household")} still waiting on a close` : ""}.` });
-  else if (n && n.ps >= X.goal) out.push({ tpl: "pic", scene: "📈🧍", bg: "linear-gradient(180deg,#dbe9ff,#6fa0ff)", top: `${up(top)}: ${pmoney(n.ps)}`, bottom: "STONKS", cap: `Over the ${pmoney(X.goal)} day on ${plural(n.hhSold, "household")}. ${n.pts} points.` });
-  else if (n) out.push({ tpl: "pic", scene: "👶✊", bg: "linear-gradient(180deg,#cfe9ff,#7fb6ea)", top: `${up(top)} CLOSED ${n.hhSold || n.pol} ${n.hhSold === 1 ? "HOUSEHOLD" : "HOUSEHOLDS"}`, bottom: `${pmoney(n.ps)} ON THE BOARD`, cap: `The team's day: ${pmoney(F.ps)} across ${plural(F.pol, "policy", "policies")}.` });
+  if (!F.ps && F.hh && F.sendoffs.length) out.push({ k: "skeleton", top: "WAITING FOR THEM TO READ", bottom: `THE ${F.sendoffs.length === 1 ? "QUOTE" : F.sendoffs.length + " QUOTES"} WE EMAILED`, cap: `${plural(F.hh, "household")} quoted ${when}, none closed. Present it on the call.` });
+  else if (!F.ps) out.push({ k: "fine", top: `NO SALES ${up(when)}`, t: [`NO SALES ${up(when)}`], cap: `${plural(F.dials, "dial")}, ${plural(F.live, "conversation")}${F.hh ? `, ${plural(F.hh, "household")} still waiting on a close` : ""}.` });
+  else if (n && n.ps >= X.goal) out.push({ k: "cheers", top: `${up(top)}: ${pmoney(n.ps)}`, bottom: `OVER THE ${pmoney(X.goal)} DAY`, cap: `On ${plural(n.hhSold, "household")}. ${n.pts} points.` });
+  else if (n) out.push({ k: "success", top: `${up(top)} CLOSED ${n.hhSold || n.pol} ${(n.hhSold || n.pol) === 1 ? "HOUSEHOLD" : "HOUSEHOLDS"}`, bottom: `${pmoney(n.ps)} ON THE BOARD`, cap: `The team's day: ${pmoney(F.ps)} across ${plural(F.pol, "policy", "policies")}.` });
   // 2. how the quotes went
-  if (F.sendoffs.length) out.push({ tpl: "drake", no: "Emailing the quote and hoping they read it", yes: "Building it on the call and asking for the sale", cap: `${plural(F.sendoffs.length, "quote")} went out by email ${when}: ${plist(sentBy)}.` });
-  else if (busy) out.push({ tpl: "pic", scene: "🧙", bg: "linear-gradient(180deg,#5a4a3a,#1d1a17)", top: "ONE DOES NOT SIMPLY", bottom: "LET \"CALL ME BACK\" GO WITHOUT A TIME", cap: `${obj[0]} came up ${plural(obj[1], "time")}, overcome ${obj[2]}. "Is 5 or 6 better, or tomorrow morning?"` });
-  else if (obj) out.push({ tpl: "pic", scene: "🪧☕", bg: "linear-gradient(180deg,#bfe3c6,#5b9a6b)", top: `"${up(obj[0])}" IS NOT A NO`, bottom: "CHANGE MY MIND", cap: `${plural(obj[1], "call")} heard it ${when}; ${obj[2]} turned it around.` });
+  if (F.sendoffs.length) out.push({ k: "drake", t: ["Emailing the quote and hoping they read it", "Building it on the call and asking for the sale"], cap: `${plural(F.sendoffs.length, "quote")} went out by email ${when}: ${plist(sentBy)}.` });
+  else if (busy) out.push({ k: "simply", top: "ONE DOES NOT SIMPLY", bottom: "LET \"CALL ME BACK\" GO WITHOUT A TIME", cap: `${obj[0]} came up ${plural(obj[1], "time")}, overcome ${obj[2]}. "Is 5 or 6 better, or tomorrow morning?"` });
+  else if (obj) out.push({ k: "cmm", t: [`"${up(obj[0])}" IS NOT A NO`], cap: `${plural(obj[1], "call")} heard it ${when}; ${obj[2]} turned it around.` });
   // 3. the phones
-  if (F.spBest && F.spTeam != null) out.push({ tpl: "brain", tiers: ["Calling the new lead tomorrow", "Calling within the hour", `Team median: ${edFmtStd(F.spTeam)}`, `${pfirst(F.spBest[0])}: ${edFmtStd(F.spBest[1].median)}`], cap: "Speed to dial. The goal is 2 minutes." });
-  else if (F.rate < 13 && F.dials) out.push({ tpl: "pic", scene: "📵", bg: "linear-gradient(180deg,#e8dac9,#9b8a78)", top: "VOICEMAIL IS NOT A CONVERSATION", bottom: `${ppct(F.rate, 0)} CONTACT RATE`, cap: `${plural(F.dials, "dial")} reached ${plural(F.live, "person", "people")}. The goal is 13%.` });
-  else if (F.misfiled) out.push({ tpl: "pic", scene: "👀", bg: "linear-gradient(180deg,#f6d8c9,#c77d5e)", top: `${F.misfiled} LEAD${F.misfiled === 1 ? "" : "S"} SITTING IN "PIPELINE"`, bottom: "1 PIPELINE IS RIGHT THERE", cap: "Open leads misfiled by an integration. Someone move them." });
-  else if (X.SALES.some(s => /winback/i.test(s.src))) out.push({ tpl: "pic", scene: "🔁🏆", bg: "linear-gradient(180deg,#ffe9a8,#e59a6f)", top: "THEY LEFT.", bottom: "THEY CAME BACK.", cap: `${plist([...new Set(X.SALES.filter(s => /winback/i.test(s.src)).map(s => s.w))])} closed a winback ${when}.` });
-  return out.slice(0, 3).map((m, i) => ({ id: "m-" + (m.tpl === "pic" ? m.top.slice(0, 12).replace(/[^A-Z0-9]/g, "").toLowerCase() || i : m.tpl), who: "Apollo", when: "Meme desk", meme: m, text: m.cap || "" }));
+  if (F.spBest && F.spTeam != null) out.push({ k: "brain", t: ["Calling the new lead tomorrow", "Calling within the hour", `Team median: ${edFmtStd(F.spTeam)}`, `${pfirst(F.spBest[0])}: ${edFmtStd(F.spBest[1].median)}`], cap: "Speed to dial. The goal is 2 minutes." });
+  else if (F.rate < 13 && F.dials) out.push({ k: "harold", top: "VOICEMAIL IS NOT A CONVERSATION", bottom: `${ppct(F.rate, 0)} CONTACT RATE`, cap: `${plural(F.dials, "dial")} reached ${plural(F.live, "person", "people")}. The goal is 13%.` });
+  else if (F.misfiled) out.push({ k: "exit", t: ["1 PIPELINE", "\"PIPELINE\"", `${F.misfiled} OPEN LEAD${F.misfiled === 1 ? "" : "S"}`], cap: "Open leads an integration misfiled in \"Pipeline\". Someone move them to 1 Pipeline." });
+  else if (X.SALES.some(s => /winback/i.test(s.src))) out.push({ k: "rollsafe", top: "CAN'T LOSE A CUSTOMER", bottom: "IF YOU WIN THEM BACK", cap: `${plist([...new Set(X.SALES.filter(s => /winback/i.test(s.src)).map(s => s.w))])} closed a winback ${when}.` });
+  return out.slice(0, 3).map((m, i) => ({ id: "m-" + (m.top ? m.top.slice(0, 12).replace(/[^A-Z0-9]/g, "").toLowerCase() || i : m.k === "brain" ? "brain" : m.k), who: "Apollo", when: "Meme desk", meme: m, text: m.cap || "" }));
 }
 function edPosts(X) {
   const F = X.F, posts = [];
@@ -741,7 +760,7 @@ function edExportDoc() {
   const html = `<!doctype html><html lang="en" data-look="${R.getAttribute("data-look") || "sonoran"}" data-mode="${R.getAttribute("data-mode") || "light"}"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${edEsc(title)}</title>${fonts}<style>${css}
 body { margin: 0; padding: 24px; background: var(--surface); } .ed { max-width: 1600px; margin: 0 auto; } .ed button, .ed input, .ed form { pointer-events: none; } .ed form, .ed .eddl, .ed .edtabs { display: none; }
 @media print { body { padding: 0; } * { -webkit-print-color-adjust: exact; print-color-adjust: exact; } .pc, .sect, .tile, .mag, .comic .panel { break-inside: avoid; } }</style></head>
-<body><div class="ed"><div id="edbody">${body.innerHTML}</div></div></body></html>`;
+<body><div class="ed"><div id="edbody">${body.innerHTML.replace(/src="memes\//g, `src="${new URL("memes/", location.href).href}`)}</div></div></body></html>`;
   const file = `${pub.replace(/[^A-Za-z0-9]+/g, "-").replace(/^-|-$/g, "")}-${edX ? (edX.isFolio ? "folio-" + (edX.folioEnd || "") : edX.dayKey) : "edition"}`;
   return { html, title, file };
 }

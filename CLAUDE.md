@@ -1709,9 +1709,17 @@ sheet on its back.
   comment as `gif` (the Worker's `cm` op takes a gif with no text); a pasted
   Giphy / Tenor / .gif link shows as the picture. **Apollo's memes**
   (`edMemes`) are rule-written from the day -- three at most, the classics
-  (this is fine, stonks, Drake, expanding brain, one does not simply, change
-  my mind) drawn with emoji and Impact -- and sit in the timeline as posts
-  of their own. **CLOSER has its own copy** (Frank, 2026-10-01: "the
+  written on the real templates (Frank, 2026-10-04: "can we use real
+  ones?"; `ED_MEME`, the pictures in `site/public/memes/`, taken once from
+  Imgflip and served by us, never hot-linked): Waiting Skeleton (quotes
+  emailed, none closed), This Is Fine (no sales), Leonardo DiCaprio Cheers
+  (over the goal day), Success Kid (a close), Drake (emailing vs presenting
+  the quote), One Does Not Simply (Busy without a time), Change My Mind (the
+  top objection), Expanding Brain (speed to dial), Hide the Pain Harold
+  (contact rate under 13%), Left Exit 12 (leads misfiled in "Pipeline"),
+  Roll Safe (a winback). Each names its template under the caption and says
+  what it means on hover; Impact where the device has it, else Anton -- and
+  sit in the timeline as posts of their own. **CLOSER has its own copy** (Frank, 2026-10-01: "the
   magazine and the newspaper have the same wording, they should be
   different"): `edMagStory` profiles whoever carried the day, opening on the
   longest call Apollo heard with the producer's own words as the pull quote,
