@@ -5,7 +5,7 @@
      Fourth and Goal   a football game: scoreboard, drives, player cards, MVP vote
      KFLR The Close    a podcast: segments, the Villain, the Countdown, the Mailbag
      FLRS 500          a market close: producers as stocks priced on folio premium
-     Cold Call Comics  a comic strip: panels from the day's calls, a boss fight, a duel
+     Cold Call Comics  a comic strip: the day's story, its turning points in order
      CLOSER            a magazine: cover, cover story, drawn infographic, podium
    Every one carries the leaderboard and real figures. What people do on them
    (reactions, comments, poll and MVP votes, mailbag notes, panel likes) is
@@ -228,6 +228,9 @@
 .ed .comic .title b { font: 400 54px/1 Bangers, Impact, sans-serif; letter-spacing: .04em; color: #b5532f; }
 .ed .panels { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; }
 .ed .panel { border: 3px solid #2a2320; background: #fffaf3; aspect-ratio: 4 / 3; position: relative; overflow: hidden; display: flex; flex-direction: column; }
+.ed .comic .panel { aspect-ratio: 1 / 1; }
+.ed .panel .foot { border-top: 3px solid #2a2320; background: #fff; padding: 5px 64px 6px 10px; font-weight: 700; font-size: 12.5px; line-height: 1.3; }
+.ed .comic .sbb { z-index: 2; } .ed .sbb.rt::after { left: auto; right: 24px; }
 .ed .panel .cap { background: #fff2b8; border-bottom: 3px solid #2a2320; padding: 6px 10px; font-weight: 700; font-size: 14px; }
 .ed .scene { flex: 1; position: relative; background: linear-gradient(180deg, #f8efe4 60%, #e8dac9 60%); }
 .ed .fig { position: absolute; bottom: 14px; width: 70px; text-align: center; }
@@ -602,32 +605,69 @@ function edMkt(X) {
 }
 
 /* ===== COLD CALL COMICS ===== */
+/* The strip tells the day as a story (Frank, 2026-10-04: "i want it to be a
+   story based off the days events, not random interactions"): the floor
+   opens, then the day's turning points in the order they happened -- each
+   sale, the objection best handled and the one dropped, a quote sent by
+   email instead of presented, the fastest first dial, a sale written off a
+   call -- each in the words said at that moment (the coaching card's
+   objection lines and spine quotes; never a line with a long number in it),
+   and it ends on the tally with what is left open for tomorrow. */
 function edComic(X) {
   const S = edShared.state, F = X.F, likes = S.likes || {};
   const fig = (c, n, x) => `<div class="fig" style="left:${x}"><div class="hd" style="background:${c}"></div><div class="bd" style="background:${c}99"></div><small>${edEsc(n)}</small></div>`;
-  const panels = [];
-  const timed = [...F.calls].filter(c => c.time).sort((a, b) => feedMins(a.time) - feedMins(b.time));
-  const pick = timed.length <= 5 ? timed : [timed[0], timed[Math.floor(timed.length * .25)], timed[Math.floor(timed.length * .5)], timed[Math.floor(timed.length * .75)], timed[timed.length - 1]];
-  for (const c of pick) {
-    const w = pfirst(c.who), lines = String(c.transcript || "").split("\n").filter(l => l.trim() && !/^\[(outbound|inbound)/i.test(l));
-    const prodLine = (lines.find(l => /\(producer\)/.test(l)) || lines[0] || "").replace(/^\[\d+:\d+\]\s*/, "").replace(/^[^:]{0,40}:\s*/, "").slice(0, 90);
-    const leadLine = (lines.find(l => /\(lead\)|\(customer\)/.test(l)) || "").replace(/^\[\d+:\d+\]\s*/, "").replace(/^[^:]{0,40}:\s*/, "").slice(0, 60);
-    const sent = (Array.isArray(c.sendoff) ? c.sendoff[0] : c.sendoff) === "producer";
-    const fx = /sold/i.test(c.catc || "") ? "SOLD!" : c.dur && /^(\d+)s$/.test(c.dur) ? `${c.dur.toUpperCase()}!` : "";
-    panels.push({ cap: `${c.time}. ${w} ${c.direction === "call in" ? "takes a call-in" : c.direction === "call back" ? "gets a call back" : "dials"}${c.lead ? ` · ${c.lead}` : ""}.`,
-      html: `${prodLine ? `<div class="sbb" style="left:6%;top:8%">${edEsc(prodLine)}${prodLine.length >= 90 ? "…" : ""}</div>` : ""}${leadLine ? `<div class="sbb" style="right:4%;top:44%;max-width:40%">${edEsc(leadLine)}</div>` : ""}${sent ? `<div class="sbb th" style="right:3%;top:2%;max-width:34%;font-size:11px">Apollo: present it, don’t send it…</div>` : ""}${fx ? `<div class="fx" style="left:36%;bottom:30%;font-size:24px">${edEsc(fx)}</div>` : ""}${fig(X.C[w], w, leadLine ? "12%" : "40%")}${leadLine ? fig("#c9b8a8", "Lead", "64%") : ""}` });
+  const clip = (t, n = 110) => { t = String(t || "").replace(/\s+/g, " ").trim(); if (t.length <= n) return t; const c = t.slice(0, n); return c.slice(0, Math.max(c.lastIndexOf(" "), n - 20)).replace(/[,;:\s.]+$/, "") + "…"; };
+  const safe = t => t && !/\d{4,}|\d{3}[\s-]\d{2,}/.test(t);  // no account, card or phone numbers in a bubble
+  const quoted = t => (String(t || "").match(/(?:^|[\s(])['"“](.{8,}?)['"”](?=[\s.,;:)!?]|$)/) || [])[1] || "";
+  const leadOf = c => c && c.lead ? pfirst(c.lead) : "the lead";
+  const tlines = c => String(c.transcript || "").split("\n").map(l => /^(?:\[\d+:\d+\]\s*)?([^:\[\]]{1,40}):\s*(.+)$/.exec(l)).filter(Boolean).map(m => ({ who: m[1], prod: /\(producer\)/.test(m[1]), text: m[2] }));
+  const verb = c => c.direction === "call in" ? `takes a call from ${leadOf(c)}` : c.direction === "call back" ? `gets a call back from ${leadOf(c)}` : `dials ${leadOf(c)}`;
+  const mins = c => feedMins(c && c.time);
+  const at = c => c && c.time ? `${c.time}. ` : "Later. ";
+  const P = c => ({ n: pfirst(c.who), c: X.C[pfirst(c.who)] || "#b5532f" }), L = c => ({ n: leadOf(c), c: "#c9b8a8" });
+  // two people, the first speaker on the left: their line on top, the reply below on the right
+  const sc = (l, r, { fx, fxc } = {}) => `${l.text ? `<div class="sbb" style="left:4%;top:5%;max-width:${r && r.text ? 60 : 78}%">${edEsc(l.text)}</div>` : ""}${r && r.text ? `<div class="sbb rt" style="right:4%;top:${l.text ? 34 : 6}%;max-width:60%">${edEsc(r.text)}</div>` : ""}${fx ? `<div class="fx" style="left:50%;bottom:10%;transform:translateX(-50%) rotate(-8deg);font-size:24px${fxc ? `;color:${fxc}` : ""}">${edEsc(fx)}</div>` : ""}${fig(l.c, l.n, r ? "6%" : "40%")}${r ? fig(r.c, r.n, "calc(94% - 70px)") : ""}`;
+  // a spine moment's quote, said by the lead or by the producer
+  const spineSaid = (c, byLead) => { const lf = leadOf(c).toLowerCase(); for (const x of [...(c.spine || [])].reverse()) { if (!byLead && x[1] !== "g") continue; const q = quoted(x[3]); if (!q || !safe(q)) continue; const lead = /^(lead|prospect|customer|caller|he |she |they )/i.test(x[2]) || x[2].toLowerCase().startsWith(lf); if (lead === byLead) return q; } return ""; };
+  const beats = [];
+  // the sales made on a call: the close in their own words
+  const soldCalls = F.calls.filter(c => /sold/.test(c.catc || ""));
+  for (const c of soldCalls.slice(0, 3)) {
+    const ls = tlines(c), tail = ls.slice(Math.floor(ls.length * .6)), you = spineSaid(c, false) || ((tail.filter(l => l.prod && safe(l.text) && l.text.length >= 15).pop() || {}).text || ""), they = spineSaid(c, true) || ((tail.filter(l => /\((lead|customer)\)/.test(l.who) && safe(l.text) && l.text.length >= 10).pop() || {}).text || "");
+    beats.push({ t: mins(c) == null ? null : mins(c) + .5, pri: 1, cap: `${at(c)}${pfirst(c.who)} ${verb(c)}${c.dur ? ` (${c.dur})` : ""}. The close.`, foot: ((c.good || [])[0] || [])[0], html: sc({ ...P(c), text: clip(you) }, { ...L(c), text: clip(they, 80) }, { fx: "SOLD!", fxc: "#2f8f5b" }) });
   }
-  if (F.objs[0]) { const o = F.objs[0]; panels.push({ cap: `BOSS FIGHT. "${o[0]}"`, cls: "boss", html: `<div class="hp" style="position:absolute;left:10%;right:10%;top:10px;background:#fff"><i style="width:${Math.round(100 * (o[1] - o[2]) / o[1])}%"></i></div><div style="position:absolute;left:10%;top:28px;font-weight:700;font-size:12px;color:#fff">HP ${o[1] - o[2]}/${o[1]} · hits landed ${o[2]}</div><div class="mon">${edEsc(o[0].split(" / ")[0].toUpperCase())}</div>${X.order.slice(0, 2).map((f, i) => fig(X.C[f], "", i ? "78%" : "6%")).join("")}` }); }
-  const sellers = X.order.filter(f => X.NUM[f].ps).sort((a, b) => X.NUM[b].ps - X.NUM[a].ps);
-  if (sellers.length >= 2) { const [a, b] = sellers, na = X.NUM[a], nb = X.NUM[b]; panels.push({ cap: `Final. Back to back: ${a} and ${b} both close.`, cls: "duel", style: `--l:${X.C[a]};--r:${X.C[b]}`, html: `<div class="hpb" style="left:6%"><i style="width:100%"></i></div><div class="lab2" style="left:6%">${edEsc(a.toUpperCase())} · ${pmoney(na.ps)} · ${na.hhSold} HH</div><div class="hpb" style="right:6%"><i style="width:${Math.round(100 * nb.ps / na.ps)}%"></i></div><div class="lab2" style="right:6%">${edEsc(b.toUpperCase())} · ${pmoney(nb.ps)} · ${nb.hhSold} HH</div><div class="vsb">VS</div>${fig(X.C[a], a, "8%")}${fig(X.C[b], b, "70%")}<div class="fx" style="left:38%;bottom:14%;font-size:22px;color:#ffd27a">DUEL!</div>` }); }
-  const cross = X.SALES.find(s => /existing|cross/i.test(s.src));
-  if (cross) panels.push({ cap: `Final. ${cross.w}’s quiet cross-sell.`, html: `<div class="sbb" style="left:8%;top:10%">While I have you: the ${edEsc(cross.prod.replace(/^.*-/, "").toLowerCase())} isn’t covered yet.</div><div class="fx" style="right:8%;bottom:36%;font-size:26px">+${pmoney(X.SALES.filter(s => s.w === cross.w && /existing|cross/i.test(s.src)).reduce((a, s) => a + s.amt, 0))}</div>${fig(X.C[cross.w], cross.w, "40%")}` });
+  // a sale written with no sold call behind it: narration only
+  const soldBy = new Set(soldCalls.map(c => pfirst(c.who)));
+  for (const w of [...new Set(X.SALES.map(s => s.w))].filter(w => !soldBy.has(w)).slice(0, 2)) {
+    const mine = X.SALES.filter(s => s.w === w), kinds = {};
+    for (const s of mine) { const k = `${s.prod}${s.src.trim() ? ` (${s.src.trim()})` : ""}`; kinds[k] = (kinds[k] || 0) + 1; }
+    beats.push({ t: null, pri: 2, cap: `Meanwhile, ${w} writes ${plist(Object.entries(kinds).slice(0, 3).map(([k, n]) => n > 1 ? `${n} ${k}` : k))}.`, html: `<div class="fx" style="right:8%;top:16%;font-size:28px;color:#2f8f5b">+${pmoney(mine.reduce((a, s) => a + s.amt, 0))}</div>${fig(X.C[w] || "#b5532f", w, "30%")}` });
+  }
+  // the objections: the best handled and the one that got away -- the lead speaks first
+  const objs = F.calls.flatMap(c => (c.objs || []).map(o => ({ c, o }))).filter(x => x.o.they && x.o.you && safe(x.o.they) && safe(x.o.you));
+  const won = objs.filter(x => +x.o.score >= 8).sort((a, b) => b.o.score - a.o.score)[0];
+  const lost = objs.filter(x => +x.o.score <= 4 && !(won && x.c === won.c)).sort((a, b) => a.o.score - b.o.score)[0];
+  if (won) beats.push({ t: mins(won.c), pri: 2, cap: `${at(won.c)}${pfirst(won.c.who)} ${verb(won.c)}. "${won.o.group || won.o.cat}."`, foot: won.o.cat, html: sc({ ...L(won.c), text: clip(won.o.they, 80) }, { ...P(won.c), text: clip(won.o.you) }, { fx: "OVERCOME!", fxc: "#2f8f5b" }) });
+  if (lost) beats.push({ t: mins(lost.c), pri: 3, cap: `${at(lost.c)}${pfirst(lost.c.who)} ${verb(lost.c)}. "${lost.o.group || lost.o.cat}."`, foot: lost.o.fix ? `Apollo: ${clip(lost.o.fix, 120)}` : "", html: sc({ ...L(lost.c), text: clip(lost.o.they, 80) }, { ...P(lost.c), text: clip(lost.o.you, 90) }, { fx: "DROPPED", fxc: "#c0392b" }) });
+  // a quote sent instead of presented
+  const sent = F.calls.find(c => (Array.isArray(c.sendoff) ? c.sendoff[0] : c.sendoff) === "producer" && !(won && c === won.c) && !(lost && c === lost.c));
+  if (sent) {
+    const l = tlines(sent).filter(x => x.prod && safe(x.text) && /send|email|mand|correo|text/i.test(x.text)).pop();
+    beats.push({ t: mins(sent), pri: 3, cap: `${at(sent)}${pfirst(sent.who)} ${verb(sent)}. The quote goes by email.`, foot: "Apollo: present it on the call, don't send it.", html: sc({ ...P(sent), text: clip((q => safe(q) && q)(quoted(Array.isArray(sent.sendoff) ? sent.sendoff[1] : "")) || (l ? l.text : "") || "I'll send it over to you.") }, L(sent), { fx: "SENT ✉" }) });
+  }
+  // the fastest first dial on a new lead
+  if (F.spBest && F.spBest[1].median != null && F.spBest[1].median <= 120) beats.push({ t: null, pri: 4, cap: `A new lead lands. ${pfirst(F.spBest[0])} dials it in ${edFmtStd(F.spBest[1].median)}.`, html: `<div class="fx" style="left:40%;top:18%;font-size:30px">ZOOM!</div>${fig(X.C[pfirst(F.spBest[0])] || "#b5532f", pfirst(F.spBest[0]), "14%")}` });
+  // the most important six, then told in the order they happened
+  const story = beats.sort((a, b) => a.pri - b.pri).slice(0, 6).map((b, i) => ({ ...b, i })).sort((a, b) => (a.t ?? 1e4 + a.i) - (b.t ?? 1e4 + b.i));
+  const timed = F.calls.map(mins).filter(x => x != null), first = F.calls.find(c => mins(c) === Math.min(...timed));
+  const panels = [{ cap: X.isFolio ? "The folio so far." : `${pdow(X.dayKey)}${first ? `, ${first.time}` : ""}. The floor opens.`, html: `<div class="sbb" style="left:6%;top:8%;max-width:60%">${edEsc(first ? `${pfirst(first.who)} is on the phone first. ${plural(F.dials, "dial")} to go.` : `${plural(F.dials, "dial")} ahead.`)}</div>${X.order.slice(0, 5).map((f, i) => fig(X.C[f], f, `${8 + i * 18}%`)).join("")}` }, ...story];
   if (!F.ps) panels.push({ cap: `${edEsc(edWhen(X))}. Nothing crossed the line.`, cls: "tumble", html: `<div class="tw"></div><div class="fx" style="left:10%;top:14%;font-size:22px">TUMBLEWEED</div>${fig("#c9b8a8", "", "70%")}` });
-  panels.push({ cap: `Final.`, cls: "last", html: `<b>${pmoney(F.ps)}</b><span>${plural(F.pol, "policy", "policies")} · ${F.hhSold} of ${F.hh} households${F.closeHH != null ? ` · ${ppct(F.closeHH, 0)} close` : ""}</span><span style="font-size:13px">${X.order.map(f => `${f} ${X.NUM[f].pts}`).join(" · ")}</span><span style="font-size:12px;color:#e59a6f">${F.objs[0] ? `${edEsc(F.objs[0][0])} ${F.objs[0][2]}-for-${F.objs[0][1]}. ` : ""}${F.misfiled} leads misfiled.</span>` });
+  const open = Math.max(0, F.hh - F.hhSold);
+  panels.push({ cap: open ? `Final. To be continued: ${plural(open, "quoted household")} still open.` : "Final.", cls: "last", html: `<b>${pmoney(F.ps)}</b><span>${plural(F.pol, "policy", "policies")} · ${F.hhSold} of ${F.hh} households${F.closeHH != null ? ` · ${ppct(F.closeHH, 0)} close` : ""}</span><span style="font-size:13px">${X.order.map(f => `${f} ${X.NUM[f].pts}`).join(" · ")}</span>` });
   return `<div class="comic"><div class="title"><b>COLD CALL COMICS</b><span style="font-weight:700">${edEsc(X.isFolio ? "The folio so far" : plong(X.dayKey))} · drawn by Apollo</span></div>
-  <div class="panels">${panels.map((p, i) => { const by = likes[i] || []; return `<div class="panel ${p.cls || ""}"${p.style ? ` style="${p.style}"` : ""}><div class="cap">${edEsc(p.cap)}</div><div class="scene">${p.html}</div><button type="button" class="plike" data-like="${i}" title="${edEsc(by.length ? by.join(", ") : "No likes yet")}" aria-pressed="${by.includes(edMe())}" title="${edEsc(by.join(", "))}">😂 ${by.length || ""}</button></div>`; }).join("")}</div>
+  <div class="panels">${panels.map((p, i) => { const by = likes[i] || []; return `<div class="panel ${p.cls || ""}"${p.style ? ` style="${p.style}"` : ""}><div class="cap">${edEsc(p.cap)}</div><div class="scene">${p.html}</div>${p.foot ? `<div class="foot">${edEsc(p.foot)}</div>` : ""}<button type="button" class="plike" data-like="${i}" title="${edEsc(by.length ? by.join(", ") : "No likes yet")}" aria-pressed="${by.includes(edMe())}" title="${edEsc(by.join(", "))}">😂 ${by.length || ""}</button></div>`; }).join("")}</div>
   <div style="font-family:var(--body);display:flex;flex-direction:column;gap:12px;border-top:3px solid #2a2320;padding-top:14px"><div class="hrow"><b style="font:400 30px Bangers,Impact,sans-serif;letter-spacing:.04em">THE LAST PANEL</b><span class="lab">every number, no drawings</span></div>${edLbt(X)}</div>
-  <p class="note" style="font-family:var(--body)">Running gags come from the data: a duel when two producers close, a boss fight for the objection that cost most, a tumbleweed on a zero day, Apollo’s thought bubble whenever a quote goes by email.</p></div>`;
+  <p class="note" style="font-family:var(--body)">The day as it happened: its sales, the objection best handled and the one dropped, a quote sent instead of presented, the fastest first dial, in the words said on the calls and in the order they happened.</p></div>`;
 }
 
 /* ===== CLOSER ===== */

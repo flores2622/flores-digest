@@ -1719,7 +1719,17 @@ sheet on its back.
   (contact rate under 13%), Left Exit 12 (leads misfiled in "Pipeline"),
   Roll Safe (a winback). Each names its template under the caption and says
   what it means on hover; Impact where the device has it, else Anton -- and
-  sit in the timeline as posts of their own. **CLOSER has its own copy** (Frank, 2026-10-01: "the
+  sit in the timeline as posts of their own. **Cold Call Comics tells the day as a story** (Frank, 2026-10-04: "i
+  want it to be a story based off the days events, not random
+  interactions"; `edComic`): the floor opens at the first call, then up to
+  six of the day's turning points in the order they happened -- each sale
+  closed on a call, a sale written without one ("Meanwhile ..."), the
+  objection best handled and the one dropped (the card's own `they` / `you`
+  lines, the lead speaking first, Apollo's fix underneath), a quote sent
+  instead of presented, the fastest first dial -- in the words said at that
+  moment (objection lines, spine quotes, the sendoff verdict's quote; never
+  a line with a long number in it), ending on the tally and the quoted
+  households still open. **CLOSER has its own copy** (Frank, 2026-10-01: "the
   magazine and the newspaper have the same wording, they should be
   different"): `edMagStory` profiles whoever carried the day, opening on the
   longest call Apollo heard with the producer's own words as the pull quote,
