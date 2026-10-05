@@ -1878,8 +1878,12 @@ repaint clears the list).
   Desert Night -- Sales: the monsoon (storm, lightning, rain); Texts &
   Emails: telephone poles and wires at dawn with birds on the wires;
   Coaching: the campfire circle at night; Role Play: a sunset arena with
-  fence rails and string lights; Session History: a drive-in screen, film
-  sprockets; Training: switchbacks up a mesa with a flag at each turn;
+  fence rails and string lights; Session History: a night at the drive-in
+  (Frank, 2026-10-05: "get creative with this one") -- the screen runs the
+  call as a film strip (the phone ringing, the talk, the quote, the trophy)
+  with a replay bar, a projector beam with dust in the light, two rows of
+  cars with speaker posts, and a DRIVE-IN arrow sign, chasing bulbs, NOW
+  SHOWING YOUR BEST CALLS; Training: switchbacks up a mesa with a flag at each turn;
   both Road Maps: a paper road map with a winding route (Apollo's red with
   Dial / Discovery / Quote / Close, Athena's green with Listen / Understand
   / Handle / Follow up), a 66 shield and a compass; Service: the ranch
