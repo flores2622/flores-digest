@@ -8,7 +8,6 @@ def skyline(night): return _sk.scene(night)
 PATTERN = ('<svg xmlns="http://www.w3.org/2000/svg" width="260" height="260" viewBox="0 0 260 260"><g fill="none" stroke="#000" stroke-width="2" stroke-linecap="round" opacity=".07">'
            '<path d="M60 200 l0 -60 q10 -24 20 0 l0 60 z M60 185 l-12 14 M80 185 l12 14"/><circle cx="190" cy="70" r="10"/><ellipse cx="190" cy="70" rx="24" ry="7" transform="rotate(-20 190 70)"/>'
            '<path d="M120 230 l3 3 M20 40 l3 3 M230 200 l3 3 M150 120 l3 3"/><path d="M200 150 l10 0 M205 145 l0 10"/></g></svg>')
-VMAP_INK = ("#17306e", "#cfe0ff")
 def v_claims(n):  # after the storm: a repair crew on the station's damaged array
     o=[_sc.sky(240,n,day=("#0b1a3a","#17306e","#2a4a8a"))]; o.append(_sc.stars(120,1600,0,240,31))
     o.append(_sc.earth(1300, 420, 260, n))

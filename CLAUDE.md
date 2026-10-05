@@ -1923,9 +1923,12 @@ repaint clears the list).
   and `placeVista` picks the world's): Sales liftoff over the ocean; Texts &
   Emails the comms array; Coaching mission control with a replay on the big
   screen; Role Play the simulator; Session History the flight recorder;
-  Training a rover course on the moon; both Road Maps a flight plan on
-  graph paper (Apollo's Dial / Discovery / Quote / Close in launch orange,
-  Athena's Listen / Understand / Handle / Follow up in green); Service the
+  Training a rover course on the moon; both Road Maps a flight plan
+  across a galaxy (Frank, 2026-10-05: "if thats supposed to be a galaxy
+  make it look like one, not a white boxed background" -- it was graph
+  paper): nebulae, the Milky Way, a spiral galaxy, from Earth to a ringed
+  planet, Apollo's Dial / Discovery / Quote / Close in launch orange,
+  Athena's Listen / Understand / Handle / Follow up in green, titles white; Service the
   station over Earth; Renewals the orbit that comes back around;
   Commercial the moon base. **Its card strips**: sold = GO FOR LAUNCH
   (liftoff, confetti); quoted or follow-up open = holding on the pad with
@@ -1968,7 +1971,7 @@ repaint clears the list).
   kept clear); `check.py <key>` validates it and `preview.cjs <key>` renders
   the Digest and every banner and strip. The desert stays inline and
   hand-made. A map banner's title is white unless the world names dark ink
-  (`VMAP_INK`, Space's graph paper). The menu's layer sits over the page
+  (`VMAP_INK`; none does now that Space's map is a galaxy). The menu's layer sits over the page
   (`.tabs` z-index) -- it is sticky, and the Settings panel inside it had been
   painted under the Digest's cards at its right edge.
 - **The board is a home-screen app** (Frank, 2026-10-03: "coeus icon, build
