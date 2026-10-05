@@ -2043,9 +2043,11 @@ repaint clears the list).
   names ("dog leg left still doesnt make sense": the tee up by the
   clubhouse, the fairway running left from it and turning down to the green,
   trees inside the corner, a bunker outside the bend; the mowing stripes
-  straight down each leg -- from the green up to the bend, then along the
-  tee leg to the tee ("make the grass lines flow right", "the lines still
-  curve wrong"; a curved sweep looped over itself) -- and none on the green
+  straight down each leg as a mower does them -- the near leg's aimed at a
+  point far past the bend so they stay wide right up to it, then the tee
+  leg's running along it to the tee ("make the grass lines flow right",
+  "the lines still curve wrong", "how they cut off and theres a gap"; a
+  curved sweep and a mitred band both folded over at the sharp turn) -- and none on the green
   ("the green doesnt need to be striped"); the pin between second and first on
   the podium, "a more central spot", a player putting at the green's back-left and
   one reading the line on its right shoulder, both clear of the podium; the bag strapped on the cart's rear deck, and the cart given a tinted
