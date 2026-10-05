@@ -1,7 +1,7 @@
 """The Yuma world: the sunniest city on the river. Colour looks, fonts, the Digest picture, page banners, card strips.
 Drawn from the real places -- the river crossing and its two bridges, the old territorial prison on the bluff,
 the irrigated fields and date groves, the dunes, the flight line, the canals, the old main street -- never named."""
-import random, math
+import math, random
 
 KEY = "yuma"
 NAME = "Yuma"
@@ -282,9 +282,9 @@ def skyline(night):
       f'<path d="M{tx - tw / 2 - 2} {tt}H{tx + tw / 2 + 2}" stroke="{cr2}" stroke-width="3"/>'
       f'<path d="M{tx - tw / 2} {tt - 8}H{tx + tw / 2}M{tx - tw / 2} {tt - 8}V{tt}M{tx + tw / 2} {tt - 8}V{tt}M{tx - 30} {tt - 8}V{tt}M{tx + 30} {tt - 8}V{tt}" stroke="{rail}" stroke-width="1.6"/>'
       f'<path d="M{tx + 8} {tt - 8}V{tt - 30}M{tx + 22} {tt - 8}V{tt - 20}M{tx - 18} {tt - 8}V{tt - 16}" stroke="{rail}" stroke-width="1.6"/>')
-    bx = tx - 52; by = tt + 24
+    bx = tx - 48; by = tt + 24
     a(f'<circle cx="{bx}" cy="{by}" r="10" fill="#1f2a4a" stroke="#fff" stroke-width="1.5"/><path d="M{bx - 8} {by + 4}l5 -6l3 3l4 -6l4 9z" fill="#fff"/>'
-      f'<text x="{bx + 14}" y="{by + 5}" font-family="Georgia, serif" font-weight="bold" font-size="13" fill="{ink}" letter-spacing=".5">STAY COVERED</text>')
+      f'<text x="{tx + 14}" y="{by + 5}" text-anchor="middle" textLength="92" lengthAdjust="spacingAndGlyphs" font-family="Georgia, serif" font-weight="bold" font-size="13" fill="{ink}">STAY COVERED</text>')
     if n: a(f'<circle cx="{tx + 8}" cy="{tt - 32}" r="3.5" fill="#ff4a3a"/><circle cx="{tx + 8}" cy="{tt - 32}" r="12" fill="#ff4a3a" opacity=".3"/>')
     # far bank: fields and groves under the mountains' feet
     a(f'<rect x="0" y="{HZ - 6}" width="{W}" height="26" fill="{p["green2"]}"/>')
@@ -297,17 +297,45 @@ def skyline(night):
     a('<path d="' + ''.join(f'M{r.randint(560, 1560)} {r.randint(426, 532)}h{r.randint(20, 70)}' for _ in range(18)) + f'" stroke="#fff" stroke-opacity="{.22 if n else .5}" stroke-width="2.5" stroke-linecap="round"/>')
     # one bridge only (Frank, 2026-10-05, of the river: "too much going on here") -- the railroad truss,
     # its train, the far bank's palm clumps and the sign are gone
-    # the steel through-truss highway bridge, nearer: camelback spans on piers
-    dk = 498
-    for x in (800, 1060, 1320):
-        a(f'<rect x="{x - 10}" y="{dk + 6}" width="20" height="32" fill="{p["stone"]}"/><rect x="{x - 14}" y="{dk + 4}" width="28" height="6" fill="{p["stone2"]}"/>')
-    a(truss(540, 1580, dk, 4, 36, 20, p["steel"], 4, 6))
-    a(f'<rect x="530" y="{dk}" width="1070" height="9" fill="{p["steel2"]}"/>')
-    # its nameplate, the real one's name made insurance (Frank, 2026-10-05: "in real life the bridge is
-    # called Ocean to Ocean Bridge, make it insurance themed")
-    a(f'<path d="M870 {dk - 51}V{dk - 68}M980 {dk - 52}V{dk - 68}" stroke="{p["steel"]}" stroke-width="3"/>')
-    a(f'<rect x="830" y="{dk - 88}" width="190" height="20" rx="3" fill="{"#2f6a4a" if not n else "#1c3a2a"}" stroke="{p["ink"]}" stroke-width="1.5"/>'
-      f'<text x="925" y="{dk - 74}" text-anchor="middle" font-family="Arial, sans-serif" font-weight="bold" font-size="11" fill="{p["ink"]}" letter-spacing="1">COAST TO COAST COVERAGE</text>')
+    # the bridge as it stands (Frank, 2026-10-05: "make the yuma river bridge look like the real one"):
+    # one long silver Pennsylvania through truss -- the many-sided arched top chord, subdivided panels --
+    # from the bluff to a tall concrete pier in the river, then a short span on a dark Warren deck truss
+    dk = 498; x0, x1, x2 = 548, 1236, 1600
+    stl = p["steel"]; dark = "#4a5058" if not n else "#20242c"; con = p["stone"]
+    a(f'<rect x="{x1 - 20}" y="{dk + 6}" width="40" height="{540 - dk}" fill="{con}"/><rect x="{x1 - 26}" y="{dk + 2}" width="52" height="8" fill="{p["stone2"]}"/>'
+      f'<rect x="{x1 + 4}" y="{dk + 10}" width="16" height="{530 - dk}" fill="#000" opacity=".08"/>')
+    N = 12; pw = (x1 - x0) / N; hmin, hmax = 46, 104
+    top = lambda i: dk - (hmin + (hmax - hmin) * math.sin(math.pi * i / N)) if 0 < i < N else dk
+    X = lambda i: x0 + pw * i
+    def side(dx, dy, col, w):
+        d = [f"M{X(0) + dx:.0f} {dk + dy}L{X(1) + dx:.0f} {top(1) + dy:.0f}"]
+        d += [f"L{X(i) + dx:.0f} {top(i) + dy:.0f}" for i in range(2, N)]
+        d += [f"L{X(N) + dx:.0f} {dk + dy}"]
+        for i in range(1, N):
+            d.append(f"M{X(i) + dx:.0f} {dk + dy}V{top(i) + dy:.0f}")
+        for i in range(1, N - 1):
+            if i < N / 2: d.append(f"M{X(i) + dx:.0f} {top(i) + dy:.0f}L{X(i + 1) + dx:.0f} {dk + dy}")
+            else: d.append(f"M{X(i + 1) + dx:.0f} {top(i + 1) + dy:.0f}L{X(i) + dx:.0f} {dk + dy}")
+        for i in range(1, N - 1):            # the sub-struts that make it a Pennsylvania truss
+            xm = (X(i) + X(i + 1)) / 2; ym = (top(i) + top(i + 1)) / 2
+            d.append(f"M{xm + dx:.0f} {dk + dy}V{dk - (dk - ym) * .5 + dy:.0f}")
+        return f'<path d="{"".join(d)}" fill="none" stroke="{col}" stroke-width="{w}" stroke-linejoin="round"/>'
+    a(side(10, -6, stl, 2.5).replace('stroke="', 'opacity=".45" stroke="', 1))
+    a(side(0, 0, stl, 4))
+    # the short span: a dark Warren deck truss under the road to the far bank
+    wn = 5; ww = (x2 - x1) / wn
+    a('<path d="' + ''.join(f'M{x1 + ww * k:.0f} {dk + 8}L{x1 + ww * (k + .5):.0f} {dk + 40}L{x1 + ww * (k + 1):.0f} {dk + 8}' for k in range(wn))
+      + f'M{x1} {dk + 40}H{x2}" fill="none" stroke="{dark}" stroke-width="4"/>')
+    # the deck and its railing, the whole length
+    a(f'<rect x="{x0 - 10}" y="{dk}" width="{x2 - x0 + 10}" height="9" fill="{p["steel2"]}"/>'
+      f'<path d="M{x0} {dk - 8}H{x2}" stroke="{stl}" stroke-width="2"/>'
+      + '<path d="' + ''.join(f'M{x} {dk - 8}V{dk}' for x in range(x0, x2, 16)) + f'" stroke="{stl}" stroke-width="1.2"/>')
+    # its nameplate, hung under the top chord at mid-span: the real one's name made insurance
+    # (Frank, 2026-10-05: "in real life the bridge is called Ocean to Ocean Bridge, make it insurance themed")
+    pc = (x0 + x1) / 2; pt = top(N // 2)
+    a(f'<path d="M{pc - 70:.0f} {pt + 2:.0f}V{pt + 14:.0f}M{pc + 70:.0f} {pt + 2:.0f}V{pt + 14:.0f}" stroke="{stl}" stroke-width="2"/>')
+    a(f'<rect x="{pc - 96:.0f}" y="{pt + 14:.0f}" width="192" height="20" rx="3" fill="{"#2f6a4a" if not n else "#1c3a2a"}" stroke="{p["ink"]}" stroke-width="1.5"/>'
+      f'<text x="{pc:.0f}" y="{pt + 28:.0f}" text-anchor="middle" font-family="Arial, sans-serif" font-weight="bold" font-size="11" fill="{p["ink"]}" letter-spacing="1">COAST TO COAST COVERAGE</text>')
     if n:
         for x in range(600, 1600, 130): a(f'<circle cx="{x}" cy="{dk - 8}" r="22" fill="url(#glow)"/><circle cx="{x}" cy="{dk - 8}" r="3" fill="#ffe7a0"/>')
         for x in range(600, 1600, 130): a(f'<rect x="{x - 14}" y="{dk + 30}" width="28" height="3" fill="#ffd27a" opacity=".45"/>')

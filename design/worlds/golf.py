@@ -250,15 +250,23 @@ def skyline(night):
     # tall cypress framing both edges
     for x, b, h in [(40, 660, 560), (118, 620, 470), (1488, 640, 520), (1566, 680, 600)]:
         a(cypress(x, b, h, p["cyp"], p["trunk"]))
-    a(oak(190, 560, 170, p["tree"], p["tree2"], p["trunk"]))
     a(oak(1410, 520, 120, p["tree"], p["tree2"], p["trunk"]))
     # rough tones, and the shadows the big trees throw across the grass
     a(f'<path d="M0 {HZ + 90} Q300 {HZ + 60} 600 {HZ + 110} T1200 {HZ + 120} T1600 {HZ + 100} L1600 {H} L0 {H}Z" fill="{p["rough2"]}" opacity=".6"/>')
-    for x, y, rx in [(120, 662, 120), (1520, 672, 110), (230, 566, 80), (1440, 528, 60)]:
+    for x, y, rx in [(120, 662, 120), (1520, 672, 110), (1440, 528, 60)]:
         a(f'<ellipse cx="{x}" cy="{y}" rx="{rx}" ry="{rx * .16:.0f}" fill="#000" opacity="{.12 if not n else .2}"/>')
-    # another hole crossing the distance, its own green and flag
-    a(f'<path d="M80 452 C300 440 520 446 640 452 L640 462 C520 458 300 456 80 466Z" fill="{p["fair2"]}"/>'
-      f'<ellipse cx="120" cy="458" rx="34" ry="7" fill="{p["green"]}"/>' + flag(124, 458, 26, p["flag"]))
+    # another hole in the distance, a real dogleg left (Frank, 2026-10-05: "make the dog leg left more
+    # realistic"): the tee at the right, the fairway running left then bending up to its green, the
+    # corner guarded by a bunker and the trees inside the bend
+    dl = ("M624 488 C520 484 400 482 320 478 C260 474 210 462 178 448 C164 442 152 439 142 439 "
+          "L132 452 C150 457 190 471 236 485 C292 501 400 507 500 509 C560 510 600 509 624 508Z")
+    a(f'<path d="{dl}" fill="none" stroke="{p["fringe"]}" stroke-width="8" stroke-linejoin="round"/><path d="{dl}" fill="{p["fair"]}"/>')
+    a(f'<path d="M622 498 C500 496 360 494 300 490 C240 484 190 466 148 446" fill="none" stroke="{p["fair2"]}" stroke-width="7" opacity=".8"/>')
+    a(f'<rect x="610" y="490" width="30" height="10" rx="2" fill="{p["green2"]}"/><circle cx="618" cy="494" r="1.8" fill="#f3efe2"/><circle cx="632" cy="494" r="1.8" fill="#f3efe2"/>')
+    a(oak(262, 470, 52, p["tree"], p["tree2"], p["trunk"]) + oak(306, 474, 44, p["tree2"], p["tree"], p["trunk"]) + oak(226, 456, 38, p["tree"], p["tree2"], p["trunk"]))
+    a(f'<ellipse cx="214" cy="500" rx="22" ry="5" fill="{p["sand2"]}"/><ellipse cx="214" cy="499" rx="19" ry="4" fill="{p["sand"]}"/>')
+    a(f'<ellipse cx="124" cy="444" rx="36" ry="9" fill="{p["fringe"]}"/><ellipse cx="124" cy="444" rx="31" ry="7" fill="{p["green"]}"/>'
+      f'<ellipse cx="92" cy="449" rx="12" ry="3" fill="{p["sand"]}"/>' + flag(130, 444, 26, p["flag"]))
     # the hole, as the course has it: the tee box at the top, a fairway that bends down to the green,
     # organic edges, a band of first-cut rough, diagonal mowing stripes
     fw = "M786 438 C760 462 690 492 610 522 C540 548 500 562 486 574 L1124 574 C1100 556 1040 530 990 508 C920 478 850 458 826 438Z"
