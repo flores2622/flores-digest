@@ -1435,6 +1435,15 @@ def sync_sales_log(day):
         import sales_log_auto
         sales_log_auto.sync_day(day, log=log)
         since = (dt.date.fromisoformat(day) - dt.timedelta(days=14)).isoformat()
+        # The last two weeks too: a policy entered (or backdated) after its
+        # day's last sync, a premium corrected since, a name found since
+        # (Frank, 2026-10-05: Coral's $860 flood, entered 2:42 PM on 09-28,
+        # never reached the sheet). Only ever adds, or follows AgencyZoom on
+        # an auto row.
+        d = dt.date.fromisoformat(day) - dt.timedelta(days=1)
+        while d.isoformat() >= since:
+            sales_log_auto.sync_day(d.isoformat(), log=log)
+            d -= dt.timedelta(days=1)
         sales_log_auto.fix_products(log=log, since=since)
     except (Exception, SystemExit) as e:
         log(f"sales log auto failed ({type(e).__name__}: {e}) -- "

@@ -809,7 +809,10 @@ export function salesLogEntries(day, basis, policies, sourceNames, soldRaw) {
     if (!who || notSale.has(norm(sourceNames[p.leadSourceId]))) continue;
     const cands = (soldRaw || []).filter(l => String(l.agentId) === String(p.agentId)
       && String(l.leadSourceId) === String(p.leadSourceId));
-    const one = cands.length === 1 ? cands[0] : null;
+    // Duplicate lead records on ONE household are one customer
+    // (sales_log_auto.build_entries -- keep them in step).
+    const hhs = [...new Set(cands.filter(l => l.household != null).map(l => String(l.household)))];
+    const one = hhs.length === 1 ? cands.find(l => String(l.household) === hhs[0]) : null;
     out.push({
       producer: who,
       client_name: one && one.household != null ? one.name : "",
@@ -839,16 +842,30 @@ export async function syncSalesLog(env, day, basis, policies, sourceNames, soldR
   const doc = (await r2json(env, key)) || { day, entries: [] };
   const have = new Set(doc.entries.filter(e => e.az_policy_id != null).map(e => String(e.az_policy_id)));
   const typed = new Set(doc.entries.filter(e => e.policy_number && e.az_policy_id == null).map(e => e.policy_number));
-  let added = 0;
+  const byPid = new Map(doc.entries.filter(e => e.az_policy_id != null).map(e => [String(e.az_policy_id), e]));
+  let added = 0, changed = 0;
   for (const c of cands) {
-    if (c.az_policy_id != null && have.has(String(c.az_policy_id))) continue;
+    if (c.az_policy_id != null && have.has(String(c.az_policy_id))) {
+      // An auto row follows its policy: a premium or term corrected in
+      // AgencyZoom since, and a name found since (sales_log_auto.sync_day).
+      const e = byPid.get(String(c.az_policy_id));
+      if (e && e.source === "auto") {
+        for (const k of ["premium", "term", "effective_date"]) {
+          if (c[k] != null && c[k] !== "" && e[k] !== c[k]) { e[k] = c[k]; changed++; }
+        }
+        if (!e.client_name && c.client_name && e.notes === "Auto-added from AgencyZoom") {
+          e.client_name = c.client_name; e.az_customer_id = c.az_customer_id; changed++;
+        }
+      }
+      continue;
+    }
     if (c.policy_number && typed.has(c.policy_number)) continue;
     doc.entries.push({ ...c, id: crypto.randomUUID(), created_at: new Date().toISOString(), day,
       docs_signed: "", review_sent: false, notes: "Auto-added from AgencyZoom", source: "auto" });
     if (c.az_policy_id != null) have.add(String(c.az_policy_id));
     added++;
   }
-  if (added) await r2put(env, key, doc);
+  if (added || changed) await r2put(env, key, doc);
   return added;
 }
 

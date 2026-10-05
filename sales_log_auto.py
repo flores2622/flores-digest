@@ -147,12 +147,16 @@ def _customer_name(cust):
     return f"{(cust.get('firstname') or '').strip()} {(cust.get('lastname') or '').strip()}".strip()
 
 
-def build_entries(day, policies, leads, customers, source_map, ids):
+def build_entries(day, policies, leads, customers, source_map, ids, household_of=None):
     """One dict per genuine sale on `day` by someone in `ids`, ready to
     append to a saleslog document (still missing id/created_at/day/
     docs_signed/review_sent/notes/source, which sync_day fills in at
     write time -- kept out of here so this function stays a pure,
-    easily-tested read of the three corpora)."""
+    easily-tested read of the three corpora).
+
+    `household_of(policy, household_ids)`, when given, names the customer
+    record that holds the policy when the sold leads point at more than one
+    (or none) -- sync_day passes one that reads AgencyZoom."""
     customers_by_id = {c["id"]: c for c in customers if c.get("id") is not None}
     sold_leads = [l for l in leads if str(l.get("soldDate") or "").startswith(day)]
     # No lead marked sold: the day's new customer record for that producer,
@@ -175,12 +179,19 @@ def build_entries(day, policies, leads, customers, source_map, ids):
         candidates = [l for l in sold_leads
                       if l.get("assignedTo") == p.get("agentId")
                       and l.get("leadSourceId") == p.get("leadSourceId")]
-        if len(candidates) == 1:
-            hh_id = candidates[0].get("convertedHouseholdId")
-            cust = customers_by_id.get(hh_id) if hh_id else None
-            if cust:
-                client_name = _customer_name(cust)
-                az_customer_id = str(cust["id"])
+        # Duplicate lead records are pervasive: two sold leads on ONE
+        # household are one customer (Coral's Oscar Garcia, 09-28, whose
+        # home and auto went unnamed). Several households: the one whose
+        # own policy list holds this policy (household_of).
+        households = list(dict.fromkeys(l.get("convertedHouseholdId") for l in candidates
+                                        if l.get("convertedHouseholdId")))
+        hh_id = households[0] if len(households) == 1 else None
+        if hh_id is None and household_of:
+            hh_id = household_of(p, households)
+        cust = customers_by_id.get(hh_id) if hh_id else None
+        if cust:
+            client_name = _customer_name(cust)
+            az_customer_id = str(cust["id"])
         elif not candidates and who in by_customer:
             client_name = _customer_name(by_customer[who])
             az_customer_id = str(by_customer[who]["id"])
@@ -201,6 +212,42 @@ def build_entries(day, policies, leads, customers, source_map, ids):
     return out
 
 
+def _household_reader(log=print):
+    """household_of for build_entries: the customer record holding a policy.
+    Reads each candidate household's own policy list from AgencyZoom (a
+    few at most), else the household map's last read of the whole book
+    (service_retention). Policy records carry no customer, and this is the
+    only join there is."""
+    try:
+        import service_retention as sr
+        by_pn = sr.policy_households(sr.load_household_map(log=lambda *_: None))
+        norm = sr._pn
+    except Exception:
+        by_pn, norm = {}, (lambda x: str(x or "").strip())
+    az, cache = [], {}
+
+    def household_of(policy, household_ids):
+        want = norm(policy.get("policyNumber"))
+        if not want:
+            return None
+        for h in household_ids[:5]:
+            if h not in cache:
+                try:
+                    if not az:
+                        from az_client import AgencyZoom
+                        az.append(AgencyZoom())
+                    cache[h] = {norm(x.get("policyNumber"))
+                                for x in az[0].get(f"/v1/api/customers/{h}/policies") or []}
+                except Exception as e:
+                    log(f"  sales log auto: household {h} not read ({type(e).__name__})")
+                    cache[h] = set()
+            if want in cache[h]:
+                return h
+        h = by_pn.get(want)
+        return int(h) if h and str(h).isdigit() else h
+    return household_of
+
+
 def sync_day(day, log=print, dry_run=False):
     """Add any missing auto-entries for `day` to saleslog/<day>.json.
     Returns the number of entries added. Never touches an existing entry
@@ -211,7 +258,8 @@ def sync_day(day, log=print, dry_run=False):
     leads = json.loads((ROOT / "data/az_leads_all.json").read_text())
     customers = json.loads((ROOT / "data/az_customers_all.json").read_text())
     source_map = cfg.lead_source_map(leads)
-    candidates = build_entries(day, policies, leads, customers, source_map, _ids())
+    candidates = build_entries(day, policies, leads, customers, source_map, _ids(),
+                               household_of=_household_reader(log))
     if not candidates:
         log(f"  sales log auto: no new-business sales found for {day}")
         return 0
@@ -237,10 +285,23 @@ def sync_day(day, log=print, dry_run=False):
     existing_manual_policy_numbers = {e["policy_number"] for e in doc["entries"]
                                        if e.get("policy_number") and not e.get("az_policy_id")}
 
-    added = named = 0
+    added = named = changed = 0
     by_pid = {e["az_policy_id"]: e for e in doc["entries"] if e.get("az_policy_id")}
     for c in candidates:
         if c["az_policy_id"] in existing_policy_ids:
+            # An auto row mirrors its AgencyZoom policy, so a premium or term
+            # corrected there after the row was added follows it (Frank,
+            # 2026-10-05: Crystal's 557150684 sat at $701 on the sheet, $670
+            # in AgencyZoom and on the board). Nobody types these fields on an
+            # auto row -- the sheet only lets a person change docs signed and
+            # review sent.
+            e = by_pid.get(c["az_policy_id"])
+            if e and e.get("source") == "auto":
+                for k in ("premium", "term", "effective_date"):
+                    if c[k] not in (None, "") and e.get(k) != c[k]:
+                        log(f"  sales log auto: {day} {e.get('policy_number')} {k} {e.get(k)!r} -> {c[k]!r}")
+                        e[k] = c[k]
+                        changed += 1
             # An auto row the live refresh added with no name: name it now,
             # never a row a person has typed in or edited.
             e = by_pid.get(c["az_policy_id"])
@@ -264,11 +325,13 @@ def sync_day(day, log=print, dry_run=False):
         if c["az_policy_id"]:
             existing_policy_ids.add(c["az_policy_id"])
 
-    if not added and not named:
+    if not added and not named and not changed:
         log(f"  sales log auto: {len(candidates)} sale(s) found for {day}, all already logged")
         return 0
     if named:
         log(f"  sales log auto: named {named} auto row(s) for {day}")
+    if changed:
+        log(f"  sales log auto: {changed} field(s) brought in line with AgencyZoom for {day}")
 
     log(f"  sales log auto: {added} new sale(s) added for {day}"
         + (" [dry-run, not written]" if dry_run else ""))
