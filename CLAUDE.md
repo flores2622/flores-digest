@@ -2042,8 +2042,10 @@ repaint clears the list).
   round stone water reservoir with its outside stair, the open timber
   lookout and hip roof, the arched sally port with its strap-iron gate, the
   row of strap-iron cell doors), date palms and jagged ranges
-  between the tiles under a blazing sun with jets' contrails; the railroad
-  truss and the highway bridge (RIVER CROSSING) over the teal river; the
+  between the tiles under a blazing sun with jets' contrails; one bridge,
+  the arched highway truss, over the teal river (the railroad truss, its
+  train, the far bank's palms and the RIVER CROSSING sign came out --
+  Frank, 2026-10-05: "too much going on here"); the
   podium on a packed-earth yard framed by lettuce rows (FULL COVERAGE FARMS)
   and a date grove (PREMIUM DATES). Nothing is named. Banners: harvest
   trucks, the old depot's wires, the cellblock as a Lessons Yard, a

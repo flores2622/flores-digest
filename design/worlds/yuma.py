@@ -267,32 +267,20 @@ def skyline(night):
     # far bank: fields and groves under the mountains' feet
     a(f'<rect x="0" y="{HZ - 6}" width="{W}" height="26" fill="{p["green2"]}"/>')
     a(rows(0, HZ - 2, W, HZ + 18, 5, [p["green"], p["red"], p["soil"]], 3, "40 6"))
-    for x0, x1 in ((600, 760), (1000, 1120), (1380, 1560)):
-        for x in range(x0, x1, 22): a(palm(x, HZ + 4, 20, .24, p, dates=False))
     # the river
     a(f'<rect x="0" y="{HZ + 14}" width="{W}" height="{540 - HZ}" fill="url(#riv)"/>')
     if n: a('<path d="M1040 424 L1080 424 L1120 536 L1000 536Z" fill="#f6f0dc" opacity=".16"/>')
     else: a('<path d="M1030 424 L1090 424 L1140 536 L980 536Z" fill="#fff6d0" opacity=".25"/>')
     r = random.Random(4)
     a('<path d="' + ''.join(f'M{r.randint(560, 1560)} {r.randint(426, 532)}h{r.randint(20, 70)}' for _ in range(18)) + f'" stroke="#fff" stroke-opacity="{.22 if n else .5}" stroke-width="2.5" stroke-linecap="round"/>')
-    # the old railroad bridge, farther: a low rust truss with a freight crossing
-    rd = 436
-    for x in range(700, 1600, 226): a(f'<rect x="{x - 6}" y="{rd}" width="12" height="16" fill="{p["stone2"]}"/>')
-    tr = ("#7a5a44", "#3f6a52", "#8a3e2c") if not n else ("#2a2020", "#1a2a22", "#2a1a18")
-    for i, x in enumerate(range(1120, 1380, 52)): a(f'<rect x="{x}" y="{rd - 22}" width="48" height="20" rx="2" fill="{tr[i % 3]}"/>')
-    lc = "#2a3a50" if not n else "#151b28"
-    a(f'<path d="M1380 {rd - 2}V{rd - 26}H1412L1424 {rd - 14}V{rd - 2}Z" fill="{lc}"/><rect x="1386" y="{rd - 34}" width="12" height="10" fill="{lc}"/>')
-    if n: a(f'<circle cx="1426" cy="{rd - 10}" r="4" fill="#fff4c0"/><path d="M1428 {rd - 10}L1530 {rd - 20}L1530 {rd}Z" fill="#fff4c0" opacity=".2"/>')
-    a(f'<rect x="560" y="{rd - 2}" width="1040" height="6" fill="{p["rust"]}"/>')
-    a(truss(560, 1600, rd, 5, 24, 0, p["rust"], 3, 5, camel=False))
+    # one bridge only (Frank, 2026-10-05, of the river: "too much going on here") -- the railroad truss,
+    # its train, the far bank's palm clumps and the sign are gone
     # the steel through-truss highway bridge, nearer: camelback spans on piers
     dk = 498
     for x in (800, 1060, 1320):
         a(f'<rect x="{x - 10}" y="{dk + 6}" width="20" height="32" fill="{p["stone"]}"/><rect x="{x - 14}" y="{dk + 4}" width="28" height="6" fill="{p["stone2"]}"/>')
     a(truss(540, 1580, dk, 4, 36, 20, p["steel"], 4, 6))
     a(f'<rect x="530" y="{dk}" width="1070" height="9" fill="{p["steel2"]}"/>')
-    a(f'<rect x="868" y="{dk - 46}" width="114" height="18" rx="3" fill="{"#2f6a4a" if not n else "#1c3a2a"}" stroke="{p["ink"]}" stroke-width="1.5"/>'
-      f'<text x="925" y="{dk - 33}" text-anchor="middle" font-family="Arial, sans-serif" font-weight="bold" font-size="11" fill="{p["ink"]}" letter-spacing="1">RIVER CROSSING</text>')
     if n:
         for x in range(600, 1600, 130): a(f'<circle cx="{x}" cy="{dk - 8}" r="22" fill="url(#glow)"/><circle cx="{x}" cy="{dk - 8}" r="3" fill="#ffe7a0"/>')
         for x in range(600, 1600, 130): a(f'<rect x="{x - 14}" y="{dk + 30}" width="28" height="3" fill="#ffd27a" opacity=".45"/>')
