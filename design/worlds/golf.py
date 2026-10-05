@@ -109,6 +109,18 @@ def bunker(cx, cy, rx, ry, p, rot=0):
             f'<ellipse cx="{cx}" cy="{cy}" rx="{rx}" ry="{ry}" fill="{p["sand"]}"/>'
             f'<path d="M{cx - rx * .8:.0f} {cy - ry * .2:.0f} Q{cx} {cy - ry * 1.05:.0f} {cx + rx * .8:.0f} {cy - ry * .2:.0f}" fill="none" stroke="{p["sand2"]}" stroke-width="2" opacity=".6"/></g>')
 
+def bunker2(pts, p, n):
+    """a real greenside bunker: an irregular flashed shape, the far lip in shadow, the sand face lit"""
+    d = "M" + " ".join(f"{x},{y}" for x, y in pts[:1])
+    k = len(pts)
+    for i in range(k):
+        x0, y0 = pts[i]; x1, y1 = pts[(i + 1) % k]
+        d += f" Q{x0 + (x1 - x0) * .5 + (y1 - y0) * .18:.0f} {y0 + (y1 - y0) * .5 - (x1 - x0) * .18:.0f} {x1} {y1}"
+    d += "Z"
+    lip = p["rough2"] if not n else "#0b170f"
+    return (f'<path d="{d}" fill="{lip}" transform="translate(0 -4)"/><path d="{d}" fill="{p["sand2"]}"/>'
+            f'<path d="{d}" fill="{p["sand"]}" transform="translate(0 3) scale(1 .985)" opacity=".95"/>')
+
 def ball(x, y, r=4, c="#ffffff"):
     return f'<circle cx="{x}" cy="{y}" r="{r}" fill="{c}" stroke="#9aa0a0" stroke-width="{max(.6, r * .15):.1f}"/>'
 
@@ -240,12 +252,22 @@ def skyline(night):
         a(cypress(x, b, h, p["cyp"], p["trunk"]))
     a(oak(190, 560, 170, p["tree"], p["tree2"], p["trunk"]))
     a(oak(1410, 520, 120, p["tree"], p["tree2"], p["trunk"]))
-    # rough tones
+    # rough tones, and the shadows the big trees throw across the grass
     a(f'<path d="M0 {HZ + 90} Q300 {HZ + 60} 600 {HZ + 110} T1200 {HZ + 120} T1600 {HZ + 100} L1600 {H} L0 {H}Z" fill="{p["rough2"]}" opacity=".6"/>')
-    # the fairway, mown in bands, rolling toward the viewer
-    a(f'<path d="M700 432 C650 470 540 515 455 580 L1150 580 C1060 515 950 470 900 432Z" fill="{p["fair"]}"/>')
-    ys = [432, 440, 450, 462, 476, 494, 516, 542, 580]
-    a('<g clip-path="url(#fw)">' + ''.join(f'<rect x="400" y="{ys[i]}" width="800" height="{ys[i + 1] - ys[i]}" fill="{p["fair2"]}"/>' for i in range(0, len(ys) - 1, 2)) + '</g>')
+    for x, y, rx in [(120, 662, 120), (1520, 672, 110), (230, 566, 80), (1440, 528, 60)]:
+        a(f'<ellipse cx="{x}" cy="{y}" rx="{rx}" ry="{rx * .16:.0f}" fill="#000" opacity="{.12 if not n else .2}"/>')
+    # another hole crossing the distance, its own green and flag
+    a(f'<path d="M80 452 C300 440 520 446 640 452 L640 462 C520 458 300 456 80 466Z" fill="{p["fair2"]}"/>'
+      f'<ellipse cx="120" cy="458" rx="34" ry="7" fill="{p["green"]}"/>' + flag(124, 458, 26, p["flag"]))
+    # the hole, as the course has it: the tee box at the top, a fairway that bends down to the green,
+    # organic edges, a band of first-cut rough, diagonal mowing stripes
+    fw = "M786 438 C760 462 690 492 610 522 C540 548 500 562 486 574 L1124 574 C1100 556 1040 530 990 508 C920 478 850 458 826 438Z"
+    a(f'<path d="{fw}" fill="none" stroke="{p["fringe"]}" stroke-width="22" stroke-linejoin="round"/><path d="{fw}" fill="{p["fair"]}"/>')
+    a(f'<defs><clipPath id="fw2"><path d="{fw}"/></clipPath></defs>')
+    # mowing stripes run the length of the hole, converging on the tee
+    vx, vy = 806, 420
+    a('<g clip-path="url(#fw2)">' + ''.join(f'<path d="M{vx} {vy}L{vx + (k - 6) * 90} 600L{vx + (k - 5.5) * 90} 600Z" fill="{p["fair2"]}"/>' for k in range(0, 13, 2)) + '</g>')
+    a(f'<rect x="772" y="434" width="64" height="9" rx="3" fill="{p["green2"]}"/><circle cx="786" cy="438" r="2.4" fill="#f3efe2"/><circle cx="822" cy="438" r="2.4" fill="#f3efe2"/>')
     a(golfer(752, 462, .34, "stand", "#2f5a8a", "#e8e2d0", skin=p["skin"]) + bag(770, 462, .32, "#8a2a2a"))
     # the pond with its footbridge, left
     a(f'<path d="M30 660 Q60 612 200 618 Q330 622 410 660 Q450 700 380 728 Q250 760 110 742 Q20 726 30 660Z" fill="{p["water"]}"/>')
@@ -267,13 +289,21 @@ def skyline(night):
     a(f'<path d="{path}" fill="none" stroke="{p["path2"]}" stroke-width="34" stroke-linecap="round"/><path d="{path}" fill="none" stroke="{p["path"]}" stroke-width="28" stroke-linecap="round"/>')
     a(cart(1326, 626, 1.0, "#f2efe4" if not n else "#9a988e", p["roof"], "ON PAR"))
     for lx, lb in [(1186, 560), (1430, 592), (1240, 726)]: a(lamp(lx, lb, 54, n))
-    # bunkers around the green
-    a(bunker(590, 518, 74, 16, p, -4)); a(bunker(1088, 520, 52, 13, p, 5)); a(bunker(1290, 786, 86, 22, p, -3))
-    # the putting green, the podium's stage
-    a(f'<ellipse cx="800" cy="680" rx="394" ry="150" fill="{p["fringe"]}"/><ellipse cx="800" cy="680" rx="376" ry="138" fill="url(#gr)"/>')
-    a(f'<ellipse cx="700" cy="620" rx="210" ry="40" fill="#fff" opacity="{.10 if not n else .05}"/>')
-    # the pin at the back edge, above the stage
-    a(flag(900, 549, 92, p["flag"]))
+    # bunkers: a fairway bunker on the bend, greenside bunkers hugging the green's shoulders
+    a(bunker2([(640, 506), (700, 496), (724, 508), (676, 520), (636, 516)], p, n))
+    a(bunker2([(930, 482), (984, 486), (1006, 498), (958, 504), (924, 494)], p, n))
+    a(bunker2([(452, 566), (520, 556), (560, 568), (520, 584), (462, 584)], p, n))
+    a(bunker2([(1020, 820), (1100, 812), (1140, 836), (1070, 852), (1010, 846)], p, n))
+    # the putting green: kidney-shaped inside its collar, its own cut lines, the podium's stage
+    gp = ("M440 690 C430 610 590 574 800 578 C1010 574 1140 606 1132 690 C1126 768 1000 812 820 806 "
+          "C700 802 650 776 570 800 C480 822 446 760 440 690Z")
+    a(f'<path d="{gp}" fill="{p["fringe"]}" stroke="{p["fringe"]}" stroke-width="30" stroke-linejoin="round"/>')
+    a(f'<path d="{gp}" fill="url(#gr)"/>')
+    a(f'<defs><clipPath id="gc"><path d="{gp}"/></clipPath></defs><g clip-path="url(#gc)" opacity="{.10 if not n else .06}">'
+      + ''.join(f'<rect x="{x}" y="560" width="60" height="270" fill="#fff"/>' for x in range(430, 1150, 120)) + '</g>')
+    a(f'<ellipse cx="700" cy="620" rx="210" ry="34" fill="#fff" opacity="{.08 if not n else .04}"/>')
+    # the pin at the back of the green
+    a(flag(900, 590, 92, p["flag"]))
     # a few tufts in the rough, kept off the stage
     r = random.Random(11); tc = p["rough2"] if not n else "#0e1d15"
     for _ in range(30):
