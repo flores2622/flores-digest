@@ -691,13 +691,17 @@ def build(day, log=print):
     # means a day whose calls were already fully cached before this
     # existed still backfills recording_ids on its next rebuild, as long
     # as data/transcripts_<day>.json is still on disk.
-    audiorefs = {}
+    audiorefs, legmeta = {}, {}
     for p, r in rows:
         want = _wanted(legs.get((p, r["number"]), []))
         ids = [pathlib.Path(path).stem for path, *_ in want]
         if ids:
             audiorefs[_ck(p, r["number"])] = ids
+            # each read leg's direction, length and start -- the coaching card's Call 1, Call 2 ... and their
+            # clock times (coaching_cards._legs)
+            legmeta[_ck(p, r["number"])] = [[direction, dur, start] for _p, dur, _c, direction, _o, _pt, start in want]
     (ROOT / f"data/audiorefs_{day}.json").write_text(json.dumps(audiorefs))
+    (ROOT / f"data/legmeta_{day}.json").write_text(json.dumps(legmeta))
     if not todo:
         # Everything is cached. Do NOT return here: build_metrics rewrites
         # metrics_<day>.json from scratch on every run, so the summaries have

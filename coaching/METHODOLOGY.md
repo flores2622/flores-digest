@@ -1106,6 +1106,29 @@ for it"]`. Wrong: `"askq": false`. Same for "calltype", "asks" and "exit".
            "end" is true when it already closed up front; "start" / "end" are
            [null, "..."] when that part of the call never happened or was not
            recorded (No chance to assume).
+"legs"     ONLY when the transcript holds TWO OR MORE calls (two or more
+           "[outbound call, ...]" / "[inbound call, ...]" headers): an array
+           with ONE entry per header, in the order they appear, each
+           [outcome, one-sentence reason quoting that call]. Judge each call
+           ON ITS OWN, as it stood when THAT call ended -- a quote presented
+           in the morning call is "quoted_call_open" even if the afternoon
+           call sold it (Frank, 2026-10-05: "presented the quote on the phone
+           in the AM, then followed up in the PM and sold or lost it ... call
+           1 and call 2 on the same card"). "outcome" is EXACTLY one of:
+             "sold_on_call"      the sale was made on this call
+             "quoted_call_open"  a quote was presented on this call, still open
+             "quoted_call_lost"  a quote was presented on this call and the
+                                 prospect said no on it
+             "followup_open"     chased a quote already out, still open
+             "followup_lost"     chased a quote already out, the prospect said
+                                 no on it
+             "dead_no_quote"     the prospect said no before any quote
+             "live_quote_ok"     reached, agreed to a quote later (a call or
+                                 text back), no quote on this call
+             "live_no_quote"     reached, nothing came of it
+             "callback_no_contact" the lead rang back and no conversation
+                                 happened
+           Leave it out when the transcript is a single call.
 "spine"    an array of 4-8 [time, colour, headline, detail] entries walking
            through the call in order. "time" is the bracketed m:ss of the
            moment's line ("~m:ss" only on a transcript with no times; never

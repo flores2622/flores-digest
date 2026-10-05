@@ -127,6 +127,10 @@ def _ask_card(model, transcript, notes, seconds, producer, lead, call_count=1,
                    f"Total length across {call_count} calls with this same lead "
                    f"today: {seconds} seconds -- read the transcript below as ONE "
                    f"continuing relationship, in the order the calls happened")
+    n_legs = len(LEG_HEAD.findall(transcript or ""))
+    if n_legs > 1:
+        length_line += (f"\nThis transcript holds {n_legs} calls -- return `legs`, one outcome per call, "
+                        f"in the order of their headers")
     msg = [{"role": "user", "content":
             f"Producer on this call: {producer}\n"
             f"Lead: {lead or '(name unknown)'}\n"
@@ -175,6 +179,44 @@ def _ask_card(model, transcript, notes, seconds, producer, lead, call_count=1,
         if d2 and len(_clean_score(d2.get("fuscore"), FU_DIMS)) >= 3:
             d = d2
     return d
+
+
+# Each recorded conversation on a card opens with call_summary's own header, "[outbound call, 2m09s" /
+# "[inbound call, 0m33s -- ONLY THE OPENING ...]" -- the card's Call 1, Call 2 ... in the order they happened.
+LEG_HEAD = re.compile(r"^\[(outbound|inbound) call, (\d+)m(\d+)s", re.M)
+
+
+def _legs(d, producer, group, transcript, legmeta):
+    """Call 1, Call 2 ... on one card (Frank, 2026-10-05: "if we can make a call 1 and call 2 on the same card
+    that would be ideal"): one entry per recorded conversation in the transcript, in order, with its direction,
+    talk time, clock time (call_summary's legmeta, matched by direction and length) and, when Apollo judged the
+    calls one by one (`legs`, reads from 2026-10-05), that call's own outcome. [] for a single call."""
+    heads = [(m.group(1), int(m.group(2)) * 60 + int(m.group(3))) for m in LEG_HEAD.finditer(transcript or "")]
+    if len(heads) < 2:
+        return []
+    meta = []
+    for r in _distinct_calls(producer, group):
+        meta += legmeta.get(CS._ck(producer, r["number"]), [])
+    said = d.get("legs") if isinstance(d.get("legs"), list) and len(d.get("legs")) == len(heads) else None
+    out = []
+    for i, (direction, secs) in enumerate(heads):
+        at = ""
+        for j, m in enumerate(meta):
+            if m and m[0] == direction and abs((m[1] or 0) - secs) <= 1:
+                try:
+                    at = dt.datetime.fromisoformat(m[2].replace("Z", "+00:00")).astimezone(AZ).strftime("%-I:%M %p")
+                except (TypeError, ValueError, AttributeError):
+                    at = ""
+                meta[j] = None
+                break
+        leg = {"n": i + 1, "dir": direction, "dur": _dur(secs), "at": at}
+        v = said[i] if said else None
+        key = v[0] if isinstance(v, (list, tuple)) and v else v
+        if isinstance(key, str) and key in cfg.CALL_CATEGORIES:
+            leg.update(oc=key, cat=panels._cat_label(key),
+                       why=(v[1] if isinstance(v, (list, tuple)) and len(v) > 1 else "") or "")
+        out.append(leg)
+    return out
 
 
 def _dur(seconds):
@@ -1216,6 +1258,8 @@ def build(day, log=print):
     fx = json.loads(fx_path.read_text()) if fx_path.exists() else {}
     ar_path = ROOT / f"data/audiorefs_{day}.json"
     audiorefs = json.loads(ar_path.read_text()) if ar_path.exists() else {}
+    lm_path = ROOT / f"data/legmeta_{day}.json"
+    legmeta = json.loads(lm_path.read_text()) if lm_path.exists() else {}
 
     rows = [(p, r) for p, v in M.get("producers", {}).items()
             for r in v.get("call_detail", [])
@@ -1288,10 +1332,14 @@ def build(day, log=print):
     # Only the day's saved RC log (inbound.answered's transfer / direct route
     # for each call-in); nothing is fetched.
     route_ctx = lead_history.Context(day, log=log)
-    pairs = [(p, _finish_card(cache[_group_ck(p, grp)], p, grp, raw_dials, day,
-                               _group_transcript(p, grp, fx),
-                               _group_recordings(p, grp, audiorefs), ctx=route_ctx))
-             for p, grp in group_list if _group_ck(p, grp) in cache]
+    def _card(p, grp):
+        d, tx = cache[_group_ck(p, grp)], _group_transcript(p, grp, fx)
+        c = _finish_card(d, p, grp, raw_dials, day, tx, _group_recordings(p, grp, audiorefs), ctx=route_ctx)
+        legs = _legs(d, p, grp, tx, legmeta)
+        if legs:
+            c["legs"] = legs
+        return c
+    pairs = [(p, _card(p, grp)) for p, grp in group_list if _group_ck(p, grp) in cache]
     rank = {name: i for i, name in enumerate(ROSTER_ORDER)}
     pairs.sort(key=lambda pc: rank.get(pc[0], 99))
     all_cards = [c for _, c in pairs]
