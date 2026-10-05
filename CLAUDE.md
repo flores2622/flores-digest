@@ -1733,10 +1733,11 @@ repaint clears the list).
   prospect cards and the coaching cards.
 - **Everyone on The Flores Feed has an insurance handle** (Frank,
   2026-10-05: "give everyone a creative, insurance focused username";
-  `ED_HANDLES` in editions.js, by first name): @apollo.coaches,
-  @crystal.clear.coverage, @lorena.locks.the.rate, @mike.drop.deductible,
-  @coral.reef.coverage, @sarahi.safe.harbor, @amanda.underwrites.it,
-  @frank.full.coverage, @francisco.fine.print, @veronica.verified.value,
+  `ED_HANDLES` in editions.js, by first name; Frank picked them
+  2026-10-05): @coach.apollo, @mango.multipolicy, @lori.locks.the.rate,
+  @coral.covers.it.all, @amanda.approves, @frank.full.coverage,
+  @vero.vacation.approved -- and, until Frank picks theirs,
+  @mike.drop.deductible, @sarahi.safe.harbor, @francisco.fine.print,
   @debbie.first.line.of.defense; anyone else @<first>.always.covered. On
   posts, comments, Top accounts and the reply box.
 - **The front office chimes in** (Frank, 2026-10-05: "Francisco is our
