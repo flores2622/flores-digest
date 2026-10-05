@@ -2180,7 +2180,21 @@ repaint clears the list).
   floodway, the podium on a levee plaza among bluebonnets and live oaks, a
   LONE STAR COVERAGE sign (it was BIG D COVERAGE until Frank: "rename this") and a Texas flag; banners from the stacked interchange
   to the rodeo, the movie palace marquee and hail after a storm; the tour
-  card is the Lone Star guide. Nothing is named. Space got
+  card is the Lone Star guide. Nothing is named.
+  **Six more** (Frank, 2026-10-05: "start working on more sports ... add more fun as well"), each with its
+  own tour card (`TOUR` in the module, copied into `TOUR_SKIN`) and a moving Digest:
+  **Baseball** (Sports; Alfa Slab One / Barlow; Ballpark, Pinstripe, Sunday -- the park from behind home,
+  FULL COUNT COVERAGE on the scoreboard, the podium on the infield, a bullpen pitch and a fungo fly ball),
+  **Basketball** (Sports; Bungee / Barlow; Hardwood, Courtside, Street -- the arena on game night, the
+  NOTHING BUT NET PREMIUM scoreboard and insurance-word banners, a jump shot, the wave, a mascot),
+  **Autumn** (Scenic; Playfair Display / Nunito Sans; Maple, Harvest, Birch -- a New England valley, the
+  covered bridge, the steeple, HARVEST HOME COVERAGE farm stand, geese and falling leaves; its Harvest look's
+  key is `harvesthome`, since Yuma's Harvest is `harvest`), **Tropics** (Scenic; Pacifico / Nunito Sans;
+  Lagoon, Sunset, Palm -- the lagoon, overwater huts, the podium on a deck, NO LAPSE LAGOON), **Carnival**
+  (Fun; Rye / Nunito Sans; Midway, Big Top, Cotton Candy -- the midway, coaster, big top, Ferris wheel and
+  NO LAPSE LOOP carousel, the podium on a bandstand) and **Dinosaurs** (Fun; Fredoka / Nunito; Fern, Lava,
+  Amber -- a prehistoric valley, a sauropod browsing, a volcano, PREHISTORIC PROTECTION falls, an egg
+  that hatches). Space got
   a Claims banner too. No real teams, games, brands or landmarks' names.
   **A world's pictures load only for whoever picks it** (2026-10-03): each
   is `site/public/worlds/<key>.css`, added by `loadWorld` with the world's
