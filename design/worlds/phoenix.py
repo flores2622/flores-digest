@@ -289,23 +289,6 @@ def skyline(night):
     a(f'<path d="M0 {HZ + 62}L600 {HZ + 62}L560 {HZ + 150}L0 {HZ + 150}Z" fill="{"#8a7a7a" if not night else "#1c1824"}"/>')
     for x in (60, 330):
         a(f'<path d="M{x} {HZ + 56}l34 34h14v-10l-34 -34z" fill="{"#3a3048" if night else "#9a8a88"}"/>')
-    # the line shuffles on a 16-second loop (Frank, 2026-10-05: "make the planes shuffle, so one moves on the
-    # runway and takes off and one gets in the back of the line off to the left"): the jet at the front
-    # taxis onto the runway and is gone, the one behind pulls up, a new one joins the back from the left --
-    # at the loop's end every jet stands where the one ahead of it began, so it runs on seamlessly
-    jc = "#f2eef4" if not night else "#3a3450"; L = 16
-    def parked(x, anim, base_op=""):
-        return (f'<g{base_op}>{anim}' + jet(x, HZ + 112, .8, jc, night, gear=True, flip=False, ground=True) + '</g>')
-    tr = lambda vals, times: (f'<animateTransform attributeName="transform" type="translate" values="{vals}" keyTimes="{times}" dur="{L}s" repeatCount="indefinite" calcMode="spline" '
-                              f'keySplines="{";".join([".45 0 .55 1"] * (len(times.split(";")) - 1))}"/>')
-    # the front jet: taxis right to the runway's edge, then hands over to the takeoff
-    a(parked(470, tr("0 0;0 0;250 -14;250 -14", "0;.04;.24;1") +
-             f'<animate attributeName="opacity" values="1;1;0;0" keyTimes="0;.24;.25;1" dur="{L}s" repeatCount="indefinite"/>'))
-    # the next in line pulls up to the front
-    a(parked(200, tr("0 0;0 0;270 0;270 0", "0;.38;.6;1")))
-    # a new jet joins the back of the line from the left
-    a(parked(200, tr("-330 0;-330 0;0 0;0 0", "0;.62;.86;1") +
-             f'<animate attributeName="opacity" values="0;0;1;1" keyTimes="0;.62;.63;1" dur="{L}s" repeatCount="indefinite"/>', ' opacity="0"'))
     hg = "#2a2238" if night else "#c4a89a"
     a(f'<path d="M1180 {HZ + 70}Q1300 {HZ + 10} 1420 {HZ + 70}Z" fill="{hg}"/><rect x="1196" y="{HZ + 50}" width="208" height="20" fill="{"#1c1626" if night else "#8a6a62"}"/>')
     # the runway, from the horizon to the viewer: edge lines, centre dashes, edge lights, the threshold
@@ -330,13 +313,32 @@ def skyline(night):
     yc, yd = HZ + 62, HZ + 90
     a(f'<path d="M1196 {HZ + 70}L1404 {HZ + 70}L1404 {HZ + 90}L{redge(yd, 1) - 4:.0f} {yd}L{redge(yc, 1) - 4:.0f} {yc}Z" fill="{tx}"/>')
     a(f'<path d="M1300 {HZ + 80}L{redge(HZ + 76, 1) - 10:.0f} {HZ + 76}" stroke="{tl}" stroke-width="3" fill="none"/>')
+    L = 16   # the shuffle and the takeoff share one loop
     # the takeoff (Frank, 2026-10-05: "make the plane take off from the runway"): seen from behind, it rolls up
     # the far end of the runway (above the podium), lifts off at the horizon and climbs away over downtown,
     # shrinking; hidden at rest and while it waits its turn
-    a(f'<g opacity="0"><animate attributeName="opacity" values="0;0;1;1;0;0" keyTimes="0;.25;.26;.74;.8;1" dur="{L}s" repeatCount="indefinite"/>'
-      f'<animateTransform attributeName="transform" type="translate" values="852 532;852 532;856 470;862 424;900 260;950 112;950 112" keyTimes="0;.26;.4;.5;.66;.8;1" dur="{L}s" repeatCount="indefinite"/>'
-      f'<g><animateTransform attributeName="transform" type="scale" values=".62;.62;.42;.3;.17;.09;.09" keyTimes="0;.26;.4;.5;.66;.8;1" dur="{L}s" repeatCount="indefinite"/>'
+    a(f'<g opacity="0"><animate attributeName="opacity" values="0;0;1;1;0;0" keyTimes="0;.25;.26;.88;.93;1" dur="{L}s" repeatCount="indefinite"/>'
+      f'<animateTransform attributeName="transform" type="translate" values="852 532;852 532;850 466;846 410;846 300;852 180;858 80;858 80" keyTimes="0;.26;.42;.52;.64;.78;.92;1" dur="{L}s" repeatCount="indefinite"/>'
+      f'<g><animateTransform attributeName="transform" type="scale" values=".62;.62;.56;.5;.44;.38;.32;.32" keyTimes="0;.26;.42;.52;.64;.78;.92;1" dur="{L}s" repeatCount="indefinite"/>'
       + jet_away(0, 0, 1, "#f2eef4" if not night else "#4a4460", night) + '</g></g>')
+    # (drawn over the runway, so the front jet rolls out ONTO it -- Frank, 2026-10-05: "it disappears behind the pavement")
+    # the line shuffles on a 16-second loop (Frank, 2026-10-05: "make the planes shuffle, so one moves on the
+    # runway and takes off and one gets in the back of the line off to the left"): the jet at the front
+    # taxis onto the runway and is gone, the one behind pulls up, a new one joins the back from the left --
+    # at the loop's end every jet stands where the one ahead of it began, so it runs on seamlessly
+    jc = "#f2eef4" if not night else "#3a3450"; L = 16
+    def parked(x, anim, base_op=""):
+        return (f'<g{base_op}>{anim}' + jet(x, HZ + 112, .8, jc, night, gear=True, flip=False, ground=True) + '</g>')
+    tr = lambda vals, times: (f'<animateTransform attributeName="transform" type="translate" values="{vals}" keyTimes="{times}" dur="{L}s" repeatCount="indefinite" calcMode="spline" '
+                              f'keySplines="{";".join([".45 0 .55 1"] * (len(times.split(";")) - 1))}"/>')
+    # the front jet: taxis right to the runway's edge, then hands over to the takeoff
+    a(parked(470, tr("0 0;0 0;250 -14;250 -14", "0;.04;.24;1") +
+             f'<animate attributeName="opacity" values="1;1;0;0" keyTimes="0;.24;.25;1" dur="{L}s" repeatCount="indefinite"/>'))
+    # the next in line pulls up to the front
+    a(parked(200, tr("0 0;0 0;270 0;270 0", "0;.38;.6;1")))
+    # a new jet joins the back of the line from the left
+    a(parked(200, tr("-330 0;-330 0;0 0;0 0", "0;.62;.86;1") +
+             f'<animate attributeName="opacity" values="0;0;1;1" keyTimes="0;.62;.63;1" dur="{L}s" repeatCount="indefinite"/>', ' opacity="0"'))
     # the touchdown zone, where the podium stands: a lit pad
     a(f'<ellipse cx="800" cy="740" rx="380" ry="100" fill="{"#4a4450" if not night else "#221e2a"}" opacity=".55"/>')
     if night: a('<ellipse cx="800" cy="720" rx="420" ry="140" fill="url(#glow)" opacity=".5"/>')

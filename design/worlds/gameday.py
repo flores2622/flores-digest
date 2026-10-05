@@ -254,7 +254,7 @@ def skyline(night):
     a(f'<rect width="{W}" height="{SPLIT+10}" fill="url(#sky)"/>')
     # ---- sky ----
     if night:
-        a(stars(40, 0, W, 0, 230, 7))
+        a(stars(32, 0, W, 0, 230, 7))
         a('<circle cx="300" cy="118" r="80" fill="url(#mg)"/><circle cx="300" cy="118" r="30" fill="#f4eed8"/><circle cx="312" cy="110" r="27" fill="#0a1229"/>')
     else:
         a('<circle cx="300" cy="120" r="110" fill="url(#sun)"/><circle cx="300" cy="120" r="34" fill="#fff8d2"/>')
@@ -387,24 +387,32 @@ def skyline(night):
     # podium: on the far side of the field, or outside x 480-1130 nearer in
     pz = "#f2f2f2"
     def toss(x0, y0, x1, y1, lift, dur, beg=0):
-        """a ball thrown from (x0,y0) to (x1,y1) and back, spiralling along its arc"""
-        mx, my = (x0 + x1) / 2, min(y0, y1) - lift
-        return (f'<g transform="translate({x0} {y0})"><animateMotion path="M0 0 Q{mx - x0:.0f} {my - y0:.0f} {x1 - x0:.0f} {y1 - y0:.0f}" '
-                f'keyPoints="0;1;1;0;0" keyTimes="0;.4;.5;.9;1" calcMode="linear" rotate="auto" dur="{dur}s" begin="{beg}s" repeatCount="indefinite"/>'
-                f'{ball(0, 0, 5)}</g>')
+        """a ball thrown from (x0,y0) to (x1,y1) on a high spiral, caught, and thrown back on a flatter one"""
+        dx, dy = x1 - x0, y1 - y0
+        return (f'<g transform="translate({x0} {y0})"><animateMotion path="M0 0 Q{dx / 2:.0f} {min(0, dy) - lift * 2:.0f} {dx} {dy} '
+                f'Q{dx / 2:.0f} {min(0, dy) - lift:.0f} 0 0" keyPoints="0;.5;.5;1;1" keyTimes="0;.32;.5;.82;1" '
+                f'calcMode="linear" rotate="auto" dur="{dur}s" begin="{beg}s" repeatCount="indefinite"/>{ball(0, 0, 5)}</g>')
     # the red half: a pair playing catch, a kicker putting it through the left uprights, two stretching
     a(player(250, 534, .22, RED, "", pose="up", hc=RED, pants=pz) + player(420, 562, .26, RED, "", pose="up", flip=True, hc=RED, pants=pz))
     a(toss(254, 512, 416, 536, 50, 4))
-    a(player(360, 612, .3, RED, "", pose="kick", flip=True, hc=RED, pants=pz))
-    a(f'<g transform="translate(350 606)" opacity="0"><animate attributeName="opacity" values="0;1;1;0;0" keyTimes="0;.02;.42;.46;1" dur="6s" repeatCount="indefinite"/>'
-      f'<animateMotion path="M0 0 Q-120 -230 -232 -136" keyPoints="0;1;1" keyTimes="0;.42;1" calcMode="linear" rotate="auto" dur="6s" repeatCount="indefinite"/>{ball(0, 0, 6)}</g>')
+    # the kick (Frank, 2026-10-05: "the ball is not moving like a kicked fieldgoal"): the kicker runs up to the
+    # ball on its tee, it leaves his foot steep, tumbles end over end, shrinks as it carries toward the far end
+    # line, clears the crossbar between the uprights and drops into the end zone; then it is back on the tee
+    a('<g><animateTransform attributeName="transform" type="translate" values="38 -6;38 -6;0 0;0 0;38 -6" keyTimes="0;.12;.3;.86;1" dur="6s" repeatCount="indefinite"/>'
+      + player(360, 612, .3, RED, "", pose="kick", flip=True, hc=RED, pants=pz) + '</g>')
+    a('<path d="M345 609 h10 l-3 -5 h-4 z" fill="#ff7a1a"/>')
+    a('<g transform="translate(350 600)"><animate attributeName="opacity" values="1;1;0;0;1;1" keyTimes="0;.7;.72;.86;.88;1" dur="6s" repeatCount="indefinite"/>'
+      '<animateMotion path="M0 0 Q-110 -330 -232 -138 Q-252 -100 -262 -46" keyPoints="0;0;1;1;0;0" keyTimes="0;.3;.66;.86;.87;1" calcMode="linear" dur="6s" repeatCount="indefinite"/>'
+      '<g><animateTransform attributeName="transform" type="scale" values="1;1;.55;.55;1;1" keyTimes="0;.3;.62;.86;.87;1" dur="6s" repeatCount="indefinite"/>'
+      '<g transform="rotate(-70)"><animateTransform attributeName="transform" type="rotate" values="-70;-70;-1150;-1150;-70;-70" keyTimes="0;.3;.66;.86;.87;1" dur="6s" repeatCount="indefinite"/>'
+      f'{ball(0, 0, 6)}</g></g></g>')
     a(player(196, 548, .22, RED, "", pose="stand", hc=RED, pants=pz) + player(330, 528, .2, RED, "", pose="up", hc=RED, pants=pz))
     # the navy half: the quarterback hitting a receiver on a slant, a pair playing catch, two stretching
     a(player(1190, 600, .3, NAVY, "", pose="stand", hc=NAVY, pants=pz))
-    a(f'<g><animateTransform attributeName="transform" type="translate" values="0 0;150 18;150 18;0 0" keyTimes="0;.45;.7;1" dur="7s" repeatCount="indefinite"/>'
+    a(f'<g><animateTransform attributeName="transform" type="translate" values="0 0;150 18;196 24;0 0" keyTimes="0;.45;.7;1" dur="7s" repeatCount="indefinite"/>'
       + player(1250, 590, .29, NAVY, "", pose="run", hc=NAVY, pants=pz) + '</g>')
-    a(f'<g transform="translate(1196 580)" opacity="0"><animate attributeName="opacity" values="0;0;1;1;0;0" keyTimes="0;.1;.11;.44;.46;1" dur="7s" repeatCount="indefinite"/>'
-      f'<animateMotion path="M0 0 Q110 -80 204 22" keyPoints="0;0;1;1" keyTimes="0;.11;.44;1" calcMode="linear" rotate="auto" dur="7s" repeatCount="indefinite"/>{ball(0, 0, 5)}</g>')
+    a(f'<g transform="translate(1196 580)" opacity="0"><animate attributeName="opacity" values="0;0;1;1;0;0" keyTimes="0;.1;.11;.7;.72;1" dur="7s" repeatCount="indefinite"/>'
+      f'<animateMotion path="M0 0 Q96 -150 196 2 L242 8" keyPoints="0;0;.94;1;1" keyTimes="0;.11;.44;.7;1" calcMode="linear" rotate="auto" dur="7s" repeatCount="indefinite"/>{ball(0, 0, 5)}</g>')
     a(player(1190, 528, .2, NAVY, "", pose="up", hc=NAVY, pants=pz) + player(1360, 540, .22, NAVY, "", pose="up", flip=True, hc=NAVY, pants=pz))
     a(toss(1194, 508, 1356, 518, 46, 4.6, 1.2))
     a(player(1420, 580, .26, NAVY, "", pose="stand", flip=True, hc=NAVY, pants=pz) + player(1290, 522, .2, NAVY, "", pose="stand", hc=NAVY, pants=pz))
