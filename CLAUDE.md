@@ -2135,11 +2135,12 @@ repaint clears the list).
   by the road (Frank: "a 5 second countdown not 10"), lifts off at zero, climbs out of sight and lands back on its
   pad on one 15 s loop (LIFTOFF / LANDED on the clock), and a small rocket
   climbs the far trail by day; Dallas's cars face the way they drive (the
-  hood had been drawn at the back). Later the same day: Phoenix's taxiing jets are drawn over the runway, not
+  hood had been drawn at the back). Dallas's bridge carries ten cars, five each way, on their own speeds ("add more cars to dallas"). Later the same day: Phoenix's taxiing jets are drawn over the runway, not
   hidden under it, and the departing jet climbs straight out up the runway, staying a size you can see until it is
   high over downtown ("it disappears behind the pavement, and takes off to small"; then "gets lost behind the
   card because its not getting height fast enough": it climbs steeply once off the runway and flies on above
-  the tiles at a good size); Yuma's contrails fade out
+  the tiles at a good size; then "its still off to the right and small, center it and make it bigger": it rolls
+  and climbs on the runway's centre line at full size, its wings showing either side of first place); Yuma's contrails fade out
   behind each jet ("can their trail fade properly?"). The two cities' Service banners are their
   own places, not a generic street ("for dallas and yuma make the
   neighborhood something else specific to the respective cities"): Dallas's

@@ -316,11 +316,12 @@ def skyline(night):
     L = 16   # the shuffle and the takeoff share one loop
     # the takeoff (Frank, 2026-10-05: "make the plane take off from the runway"): seen from behind, it rolls up
     # the far end of the runway (above the podium), lifts off at the horizon and climbs away over downtown,
+    # on the runway's centre line and full size ("its still off to the right and small, center it and make it bigger"),
     # climbing steeply so it is behind the tiles only a moment and flies on above them still a good size
     # (Frank, 2026-10-05: "gets lost behind the card because its not getting height fast enough"); hidden at rest and while it waits its turn
     a(f'<g opacity="0"><animate attributeName="opacity" values="0;0;1;1;0;0" keyTimes="0;.25;.26;.84;.9;1" dur="{L}s" repeatCount="indefinite"/>'
-      f'<animateTransform attributeName="transform" type="translate" values="852 532;852 532;852 470;850 430;846 160;842 90;838 30;838 30" keyTimes="0;.26;.4;.46;.54;.7;.86;1" dur="{L}s" repeatCount="indefinite"/>'
-      f'<g><animateTransform attributeName="transform" type="scale" values=".62;.62;.6;.6;.56;.52;.46;.46" keyTimes="0;.26;.4;.46;.54;.7;.86;1" dur="{L}s" repeatCount="indefinite"/>'
+      f'<animateTransform attributeName="transform" type="translate" values="800 526;800 526;800 478;800 436;800 160;800 92;800 34;800 34" keyTimes="0;.26;.4;.46;.54;.7;.86;1" dur="{L}s" repeatCount="indefinite"/>'
+      f'<g><animateTransform attributeName="transform" type="scale" values="1.05;1.05;1;.96;.88;.8;.72;.72" keyTimes="0;.26;.4;.46;.54;.7;.86;1" dur="{L}s" repeatCount="indefinite"/>'
       + jet_away(0, 0, 1, "#f2eef4" if not night else "#4a4460", night) + '</g></g>')
     # (drawn over the runway, so the front jet rolls out ONTO it -- Frank, 2026-10-05: "it disappears behind the pavement")
     # the line shuffles on a 16-second loop (Frank, 2026-10-05: "make the planes shuffle, so one moves on the
