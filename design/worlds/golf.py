@@ -269,24 +269,27 @@ def skyline(night):
     # sense"): from the tee up by the clubhouse the fairway runs across, then turns left -- toward us -- and
     # comes down to the green the podium stands on; trees fill the inside of the corner, a bunker guards
     # the outside, and the mowing stripes follow each leg
-    leg1 = "M486 574 C520 532 600 496 640 472 L822 490 C870 512 1040 540 1124 574Z"
-    leg2 = "M640 472 C680 458 780 448 860 444 C920 440 970 436 1004 430 L1016 462 C960 466 900 472 862 478 C842 482 830 486 822 490Z"
+    leg1 = "M486 574 C560 540 660 500 700 474 L900 474 C950 510 1050 540 1124 574Z"
+    leg2 = "M700 474 C760 458 860 448 940 442 C970 438 990 434 1004 430 L1016 462 C980 466 940 470 900 474Z"
     for d in (leg1, leg2):
         a(f'<path d="{d}" fill="none" stroke="{p["fringe"]}" stroke-width="16" stroke-linejoin="round"/>')
     a(f'<path d="{leg1}" fill="{p["fair"]}"/><path d="{leg2}" fill="{p["fair"]}"/>')
-    # mowing stripes mown the way a dogleg is (Frank, 2026-10-05: "make the grass lines flow right", then
-    # "the lines still curve wrong"): straight lines down each leg -- on the near leg they run from the green
-    # up to the bend, on the tee leg along it to the tee, narrowing with distance -- meeting at the corner
+    # mowing stripes mown the way a dogleg is (Frank, 2026-10-05: "make the grass lines flow right", "the
+    # lines still curve wrong", then "i dont like the fairway lines, how they cut off and theres a gap"):
+    # each stripe is one continuous band from the green up the near leg, turning the corner on a mitred
+    # joint and running on along the tee leg, narrowing with distance -- one clip for the whole fairway
+    # so: each leg mown straight, as a mower does, changing direction at the bend -- the near leg's stripes
+    # aim at a point far past the bend so they stay wide right up to it (no gap), the tee leg's run along it
     a(f'<defs><clipPath id="fw2"><path d="{leg1}"/></clipPath><clipPath id="fw3"><path d="{leg2}"/></clipPath></defs>')
-    vx, vy = 731, 474
-    a('<g clip-path="url(#fw2)">' + ''.join(f'<path d="M{vx} {vy}L{vx + (k - 6) * 96} 600L{vx + (k - 5.5) * 96} 600Z" fill="{p["fair2"]}"/>' for k in range(0, 13, 2)) + '</g>')
+    vx, vy = 800, 240
+    a('<g clip-path="url(#fw2)">' + ''.join(f'<path d="M{vx} {vy}L{x} 610L{x + 85} 610Z" fill="{p["fair2"]}"/>' for x in range(375, 1240, 170)) + '</g>')
     def l2(f, x):  # a line along the tee leg, f from its top edge (0) to its bottom edge (1)
-        t = (x - 630) / (1020 - 630)
-        top = 474 + (430 - 474) * t; bot = 494 + (462 - 494) * t
+        t = (x - 690) / (1020 - 690)
+        top = 476 + (430 - 476) * t; bot = 476 + (462 - 476) * t
         return top + (bot - top) * f
-    xs = [630 + k * 26 for k in range(16)]
+    xs = [690 + k * 22 for k in range(16)]
     bands = []
-    for f0, f1 in ((0, .2), (.4, .6), (.8, 1.0)):
+    for f0, f1 in ((0, .25), (.5, .75)):
         up = [(x, l2(f0, x)) for x in xs]; dn = [(x, l2(f1, x)) for x in xs[::-1]]
         bands.append('M' + ' L'.join(f'{x:.0f} {y:.1f}' for x, y in up + dn) + 'Z')
     a(f'<g clip-path="url(#fw3)"><path d="{" ".join(bands)}" fill="{p["fair2"]}"/></g>')
@@ -294,8 +297,8 @@ def skyline(night):
     a(f'<rect x="1000" y="424" width="44" height="10" rx="3" fill="{p["green2"]}"/><circle cx="1010" cy="428" r="2" fill="#f3efe2"/><circle cx="1034" cy="428" r="2" fill="#f3efe2"/>')
     a(golfer(1022, 432, .3, "stand", "#2f5a8a", "#e8e2d0", skin=p["skin"]) + bag(1038, 432, .28, "#8a2a2a"))
     # the stand of trees inside the corner, and their shade
-    a(f'<ellipse cx="1030" cy="530" rx="100" ry="10" fill="#000" opacity="{.12 if not n else .2}"/>')
-    for x, b, h in [(960, 524, 42), (1010, 528, 48), (1060, 522, 40), (1104, 530, 36)]:
+    a(f'<ellipse cx="1110" cy="520" rx="90" ry="9" fill="#000" opacity="{.12 if not n else .2}"/>')
+    for x, b, h in [(1050, 516, 40), (1094, 520, 46), (1136, 514, 38), (1172, 520, 34)]:
         a(oak(x, b, h, p["tree"], p["tree2"], p["trunk"]))
     # the pond with its footbridge, left
     a(f'<path d="M30 660 Q60 612 200 618 Q330 622 410 660 Q450 700 380 728 Q250 760 110 742 Q20 726 30 660Z" fill="{p["water"]}"/>')
