@@ -1,4 +1,4 @@
-"""The Dallas world: Big D at dusk. Colour looks, fonts, the Digest picture, page banners, card strips.
+"""The Dallas world: Dallas at dusk. Colour looks, fonts, the Digest picture, page banners, card strips.
 Drawn from the real places -- the observation tower with its lit ball, the tower outlined in green light,
 the pointed glass towers, the flying red horse on its rooftop derrick, the white single-arch bridge over the
 river's grassy floodway, the stacked interchange, the brick warehouses and their murals, the bluebonnets --
@@ -240,7 +240,9 @@ def runner(x, y, s, shirt, flip=False, skin="#c98e6a", ph=0):
 
 def car(x, y, s, col, ang=0, n=False, flip=False):
     g = f'<g transform="translate({x:.0f} {y:.0f}) rotate({ang:.1f}) scale({-s if flip else s} {s})">'
-    b = (f'<path d="M-22 -4L-21 -11L-9 -13L-3 -20L11 -20L18 -13L24 -11L24 -4Z" fill="{col}"/><path d="M-6 -14L-1 -18H9L14 -14Z" fill="{"#ffd47a" if n else "#c8dcf0"}" opacity=".85"/>'
+    # the long hood is the FRONT, at +x where the headlights are (Frank, 2026-10-05: "the cars are moving backwards
+    # on the bridge" -- the hood was drawn at the back)
+    b = (f'<path d="M24 -4L23 -11L11 -13L5 -20L-9 -20L-16 -13L-22 -11L-22 -4Z" fill="{col}"/><path d="M8 -14L3 -18H-7L-12 -14Z" fill="{"#ffd47a" if n else "#c8dcf0"}" opacity=".85"/>'
          f'<circle cx="-12" cy="-4" r="4.5" fill="#1e1e24"/><circle cx="14" cy="-4" r="4.5" fill="#1e1e24"/>')
     if n: b += '<rect x="21" y="-11" width="4" height="3" fill="#fff6d0"/><path d="M25 -10L70 -16L70 -2Z" fill="#fff6d0" opacity=".16"/><rect x="-23" y="-11" width="3" height="3" fill="#ff3a3a"/>'
     return g + b + '</g>'
@@ -384,9 +386,9 @@ def skyline(night):
     a('<g>' + sway(150, 640, .9, 6.5) + liveoak(150, 640, 1.05, p["oak"], p["oak2"], p["trunk"]) + '</g>')
     a('<g>' + sway(1470, 650, .9, 7.5, 1.4) + liveoak(1470, 650, 1.0, p["oak"], p["oak2"], p["trunk"]) + '</g>')
     ink = "#fff"; sb = "#0c2f66" if not n else "#0a2048"
-    a(f'<rect x="232" y="566" width="5" height="44" fill="#4a4a52"/><rect x="371" y="566" width="5" height="44" fill="#4a4a52"/>'
-      f'<rect x="210" y="552" width="190" height="34" rx="4" fill="{sb}" stroke="{ink}" stroke-width="2"/>' + star5(232, 569, 9, "#ffffff") +
-      f'<text x="316" y="575" text-anchor="middle" font-family="Arial, sans-serif" font-weight="bold" font-size="15" fill="{ink}" letter-spacing="1">BIG D COVERAGE</text>')
+    a(f'<rect x="222" y="566" width="5" height="44" fill="#4a4a52"/><rect x="411" y="566" width="5" height="44" fill="#4a4a52"/>'
+      f'<rect x="198" y="552" width="242" height="34" rx="4" fill="{sb}" stroke="{ink}" stroke-width="2"/>' + star5(218, 569, 9, "#ffffff") +
+      f'<text x="328" y="575" text-anchor="middle" font-family="Arial, sans-serif" font-weight="bold" font-size="15" fill="{ink}" letter-spacing="1">LONE STAR COVERAGE</text>')
     a(tx_flag(1288, 470, 96, 650, anim=True))
     a(lamp(450, 534, 46, n) + lamp(1170, 532, 46, n))
     a('</svg>')
@@ -670,7 +672,7 @@ VISTA_LINES = {
     "roleplay": ["Role Play", "the rodeo: hang on through the objection"],
     "rphistory": ["Session History", "the old marquee: every session, replayed"],
     "training": ["Training", "the levee trail: miles before the calls"],
-    "blueprint": ["Apollo's Road Map", "the route across big d, in plain words"],
+    "blueprint": ["Apollo's Road Map", "the route across dallas, in plain words"],
     "athenamap": ["Athena's Road Map", "the service route, in plain words"],
     "service": ["Service Digest", "the neighborhood: keeping the book"],
     "renewals": ["Renewals", "bluebonnet season: what came back"],
@@ -769,7 +771,7 @@ STRIP_FNS = {"sold_on_call": s_sold, "quoted_call_open": s_open, "followup_open"
              "callback_no_contact": s_vm}
 
 # The header's greetings in this world only; {n} is the first name.
-GREETINGS = ["Howdy, {n}.", "Everything's bigger in Texas, {n}. So are today's leads.", "Big D, big day, {n}.",
+GREETINGS = ["Howdy, {n}.", "Everything's bigger in Texas, {n}. So are today's leads.", "Dallas, big day, {n}.",
              "Saddle up, {n}. The phones are open.", "The ball's lit, {n}. Let's light up the board.",
              "Y'all ready, {n}? Let's quote it.", "Lone Star, long list, {n}.", "Hold on through the objection, {n}.",
              "The bluebonnets are up and so are we, {n}.", "Across the bridge and close it, {n}.",

@@ -282,9 +282,12 @@ def skyline(night):
     # the jets: one crossing high under its contrail, one far and small
     ct = "#c8d4f0" if n else "#ffffff"
     # each jet creeps along its own contrail and back, the trail with it
-    a('<g>' + drift(-34, 2.1, 12) + contrail(770, 58, 1640, 4, 2, 9, .35 if n else .8, ct) + contrail(770, 58, 1640, 4, 1, 4, .2 if n else .5, ct)
+    # the fighters streak across, contrails and all (Frank, 2026-10-05: "can the fighter jets move faster?")
+    fly = lambda vals, dur, beg: (f'<animateTransform attributeName="transform" type="translate" values="{vals}" dur="{dur}s" begin="{beg}s" repeatCount="indefinite"/>'
+                                  f'<animate attributeName="opacity" values="0;1;1;0" keyTimes="0;.06;.82;1" dur="{dur}s" begin="{beg}s" repeatCount="indefinite"/>')
+    a('<g>' + fly("1050 -14;-950 16", 5, 0) + contrail(770, 58, 1640, 4, 2, 9, .35 if n else .8, ct) + contrail(770, 58, 1640, 4, 1, 4, .2 if n else .5, ct)
       + jet(720, 60, .9, "#3a4250" if not n else "#151a26", night=n) + '</g>')
-    a('<g>' + drift(-22, 3.3, 9, 2) + contrail(404, 143, 660, 104, 1, 5, .25 if n else .6, ct) + jet(380, 146, .45, "#4a5260" if not n else "#151a26", night=n) + '</g>')
+    a('<g>' + fly("700 -40;-700 40", 4, 2.2) + contrail(404, 143, 660, 104, 1, 5, .25 if n else .6, ct) + jet(380, 146, .45, "#4a5260" if not n else "#151a26", night=n) + '</g>')
     # the jagged ranges on the horizon
     a(jagged(-10, 1610, HZ, 128, 290, p["mtn"], 3, (24, 70)))
     a(jagged(-10, 1610, HZ, 240, 350, p["mtn2"], 8, (30, 80)))
@@ -349,6 +352,16 @@ def skyline(night):
             d.append(f"M{xm + dx:.0f} {dk + dy}V{dk - (dk - ym) * .5 + dy:.0f}")
         return f'<path d="{"".join(d)}" fill="none" stroke="{col}" stroke-width="{w}" stroke-linejoin="round"/>'
     a(side(10, -6, stl, 2.5).replace('stroke="', 'opacity=".45" stroke="', 1))
+    # a freight train crossing the bridge between the truss sides (Frank, 2026-10-05: "can we have a train
+    # passing by on the bridge"); off the picture at rest
+    tcol = [("#8a3e2c", "#6a2e20"), ("#3f6a52", "#2e4f3c"), ("#c9a24a", "#9a7a34"), ("#4a5a7a", "#36435c")] if not n else [("#3a2420", "#2a1a16"), ("#1e2e26", "#16221c"), ("#4a3e22", "#3a2f18"), ("#22283a", "#181c2a")]
+    cars = ''.join(f'<rect x="{66 + i * 58}" y="{dk - 26}" width="54" height="22" rx="2" fill="{tcol[i % 4][0]}"/><rect x="{66 + i * 58}" y="{dk - 26}" width="54" height="4" fill="{tcol[i % 4][1]}"/>'
+                   f'<circle cx="{76 + i * 58}" cy="{dk - 2}" r="3" fill="#222"/><circle cx="{110 + i * 58}" cy="{dk - 2}" r="3" fill="#222"/>' for i in range(7))
+    loco = (f'<path d="M0 {dk - 4}V{dk - 30}H40L60 {dk - 22}V{dk - 4}Z" fill="{"#d8a03a" if not n else "#6a5020"}"/><rect x="6" y="{dk - 38}" width="22" height="10" fill="{"#2a3448" if not n else "#151a26"}"/>'
+            f'<rect x="10" y="{dk - 26}" width="12" height="8" fill="{"#7fb5d6" if not n else "#ffd56b"}"/><circle cx="12" cy="{dk - 2}" r="3.4" fill="#222"/><circle cx="48" cy="{dk - 2}" r="3.4" fill="#222"/>'
+            + (f'<circle cx="2" cy="{dk - 14}" r="4" fill="#fff4c0"/><path d="M0 {dk - 14}L-90 {dk - 26}L-90 {dk - 2}Z" fill="#fff4c0" opacity=".25"/>' if n else ''))
+    a(f'<g transform="translate(1800 0)">{loco}{cars}<animateTransform attributeName="transform" type="translate" values="1800 0;1800 0;80 0;-560 0;-560 0" '
+      f'keyTimes="0;.3;.85;1;1" dur="22s" repeatCount="indefinite"/></g>')
     a(side(0, 0, stl, 4))
     # the short span: a dark Warren deck truss under the road to the far bank
     wn = 5; ww = (x2 - x1) / wn

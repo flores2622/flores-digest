@@ -48,6 +48,11 @@ def scene(night):
               f'<ellipse cx="{x}" cy="{y}" rx="{w//2}" ry="10" fill="#fff" opacity=".35"/><ellipse cx="{x+40}" cy="{y-8}" rx="{w//3}" ry="9" fill="#fff" opacity=".3"/></g>')
         # a contrail from an earlier launch
         a('<path d="M560 330 Q600 200 700 120 T940 20" fill="none" stroke="#fff" stroke-opacity=".55" stroke-width="10" stroke-linecap="round"/><path d="M560 330 Q600 200 700 120 T940 20" fill="none" stroke="#fff" stroke-opacity=".35" stroke-width="22" stroke-linecap="round"/>')
+        # a small rocket far off, climbing along that trail (Frank, 2026-10-05: "if this is from a rocket make a small
+        # one in the distance and give it movement")
+        a('<g opacity="0"><animate attributeName="opacity" values="0;1;1;0;0" keyTimes="0;.05;.62;.7;1" dur="11s" begin="1s" repeatCount="indefinite"/>'
+          '<animateMotion path="M560 330 Q600 200 700 120 T940 20" keyPoints="0;1;1" keyTimes="0;.7;1" calcMode="spline" keySplines=".5 0 .9 1;0 0 1 1" rotate="auto" dur="11s" begin="1s" repeatCount="indefinite"/>'
+          '<path d="M10 0 L-6 -4 L-6 4 Z" fill="#f4f4f4"/><path d="M-6 -2 L-16 0 L-6 2 Z" fill="#ffb347"/></g>')
         # jet / plane
         a('<path d="M1040 70 l-22 6 l-6 -4 l10 -3 z M1030 64 l-6 -10 l4 0 l8 8 z" fill="#f4f4f4">'
           '<animateTransform attributeName="transform" type="translate" values="90 -24;0 0;-90 24" dur="12s" repeatCount="indefinite"/>'
@@ -83,6 +88,10 @@ def scene(night):
         a(f'<rect x="{rx+40}" y="{y}" width="{tx-rx-40}" height="10" fill="{tw2}"/>')
     # lightning mast
     a(f'<rect x="{tx+14}" y="{top-60}" width="6" height="60" fill="{tw2}"/>')
+    # the rocket lifts off when the countdown hits zero, climbs out of sight and comes back down to land on its
+    # pad (Frank, 2026-10-05: "make it take off and land", "in sync with a countdown"): one 20-second loop
+    FLY = '<animateTransform attributeName="transform" type="translate" values="0 0;0 0;0 -1500;0 -1500;0 0;0 0" keyTimes="0;.5;.62;.7;.85;1" calcMode="spline" keySplines="0 0 1 1;.6 0 1 1;0 0 1 1;0 0 .35 1;0 0 1 1" dur="20s" repeatCount="indefinite"/>'
+    a('<g>' + FLY)
     # rocket
     body="#e9edf3" if not night else "#cfd6e2"; stripe="#e2552b"; dark="#2b3140"
     a(f'<rect x="{rx-40}" y="110" width="80" height="{padY-120}" rx="6" fill="{body}"/>')
@@ -93,12 +102,19 @@ def scene(night):
     a(f'<path d="M{rx-40} {padY-80} L{rx-80} {padY-10} L{rx-40} {padY-10} Z M{rx+40} {padY-80} L{rx+80} {padY-10} L{rx+40} {padY-10} Z" fill="{stripe}"/>')
     for ex in [rx-26, rx, rx+26]:
         a(f'<path d="M{ex-10} {padY-12} L{ex+10} {padY-12} L{ex+14} {padY+6} L{ex-14} {padY+6} Z" fill="{dark}"/>')
+    # its exhaust while it flies (by day; at night the ignition flame below rides with it)
+    if not night:
+        a(f'<g opacity="0"><animate attributeName="opacity" values="0;0;1;1;0;0;1;1;0;0" keyTimes="0;.49;.5;.63;.64;.71;.72;.85;.86;1" dur="20s" repeatCount="indefinite"/>'
+          f'<path d="M{rx-34} {padY+4} Q{rx} {padY+200} {rx+34} {padY+4} Z" fill="#ffb347"/><path d="M{rx-18} {padY+4} Q{rx} {padY+120} {rx+18} {padY+4} Z" fill="#fff6c8"/></g>')
+    a('</g>')
     if night:
         # ignition: flame, smoke, the pad lit
         a(f'<ellipse cx="{rx}" cy="{padY+60}" rx="150" ry="70" fill="#d8d2c8" opacity=".55"/><ellipse cx="{rx-120}" cy="{padY+80}" rx="130" ry="50" fill="#cfc8bd" opacity=".45"/><ellipse cx="{rx+140}" cy="{padY+85}" rx="150" ry="55" fill="#cfc8bd" opacity=".45"/>')
         f1=lambda q: f'M{rx-40} {padY} Q{rx} {padY+q} {rx+40} {padY} Z'; f2=lambda q: f'M{rx-22} {padY} Q{rx} {padY+q} {rx+22} {padY} Z'
+        a('<g>' + FLY)
         a(f'<path d="{f1(220)}" fill="url(#fl)">{blink(";".join(f1(q) for q in (220, 250, 205, 240, 220)), .9, attr="d")}</path>'
           f'<path d="{f2(150)}" fill="#fff6c8" opacity=".9">{blink(";".join(f2(q) for q in (150, 135, 170, 145, 150)), .7, attr="d")}{blink(".9;.7;1;.8;.9", .55)}</path>')
+        a('</g>')
         a(f'<circle cx="{rx}" cy="{padY}" r="320" fill="url(#glow)">{blink("1;.8;1;.88;1", 1.3)}</circle>')
         # floodlights on poles
         for px in [60, 640, 1180, 1500]:
@@ -131,7 +147,7 @@ def scene(night):
     pp="#2f3b5a" if night else "#aeb6c6"
     a(f'<ellipse cx="800" cy="{SPLIT+640}" rx="300" ry="80" fill="{pp}" opacity=".55"/>')
     # countdown clock by the road
-    a(f'<rect x="1000" y="{SPLIT+300}" width="120" height="44" rx="4" fill="#111"/><text x="1060" y="{SPLIT+331}" text-anchor="middle" font-family="monospace" font-weight="bold" font-size="26" fill="#ff5a36">T-00:10</text><rect x="1056" y="{SPLIT+344}" width="8" height="40" fill="{wh2}"/>')
+    a(f'<rect x="1000" y="{SPLIT+300}" width="120" height="44" rx="4" fill="#111"/><text x="1060" y="{SPLIT+331}" text-anchor="middle" font-family="monospace" font-weight="bold" font-size="26" fill="#ff5a36">T-00:10<animate attributeName="opacity" values="1;0;0;0;0;0;0;0;0;0;0;0;0" keyTimes="0;0.05;0.10;0.15;0.20;0.25;0.30;0.35;0.40;0.45;0.50;0.55;0.85" calcMode="discrete" dur="20s" repeatCount="indefinite"/></text><text x="1060" y="{SPLIT+331}" text-anchor="middle" font-family="monospace" font-weight="bold" font-size="26" fill="#ff5a36" opacity="0">T-00:09<animate attributeName="opacity" values="0;1;0;0;0;0;0;0;0;0;0;0;0" keyTimes="0;0.05;0.10;0.15;0.20;0.25;0.30;0.35;0.40;0.45;0.50;0.55;0.85" calcMode="discrete" dur="20s" repeatCount="indefinite"/></text><text x="1060" y="{SPLIT+331}" text-anchor="middle" font-family="monospace" font-weight="bold" font-size="26" fill="#ff5a36" opacity="0">T-00:08<animate attributeName="opacity" values="0;0;1;0;0;0;0;0;0;0;0;0;0" keyTimes="0;0.05;0.10;0.15;0.20;0.25;0.30;0.35;0.40;0.45;0.50;0.55;0.85" calcMode="discrete" dur="20s" repeatCount="indefinite"/></text><text x="1060" y="{SPLIT+331}" text-anchor="middle" font-family="monospace" font-weight="bold" font-size="26" fill="#ff5a36" opacity="0">T-00:07<animate attributeName="opacity" values="0;0;0;1;0;0;0;0;0;0;0;0;0" keyTimes="0;0.05;0.10;0.15;0.20;0.25;0.30;0.35;0.40;0.45;0.50;0.55;0.85" calcMode="discrete" dur="20s" repeatCount="indefinite"/></text><text x="1060" y="{SPLIT+331}" text-anchor="middle" font-family="monospace" font-weight="bold" font-size="26" fill="#ff5a36" opacity="0">T-00:06<animate attributeName="opacity" values="0;0;0;0;1;0;0;0;0;0;0;0;0" keyTimes="0;0.05;0.10;0.15;0.20;0.25;0.30;0.35;0.40;0.45;0.50;0.55;0.85" calcMode="discrete" dur="20s" repeatCount="indefinite"/></text><text x="1060" y="{SPLIT+331}" text-anchor="middle" font-family="monospace" font-weight="bold" font-size="26" fill="#ff5a36" opacity="0">T-00:05<animate attributeName="opacity" values="0;0;0;0;0;1;0;0;0;0;0;0;0" keyTimes="0;0.05;0.10;0.15;0.20;0.25;0.30;0.35;0.40;0.45;0.50;0.55;0.85" calcMode="discrete" dur="20s" repeatCount="indefinite"/></text><text x="1060" y="{SPLIT+331}" text-anchor="middle" font-family="monospace" font-weight="bold" font-size="26" fill="#ff5a36" opacity="0">T-00:04<animate attributeName="opacity" values="0;0;0;0;0;0;1;0;0;0;0;0;0" keyTimes="0;0.05;0.10;0.15;0.20;0.25;0.30;0.35;0.40;0.45;0.50;0.55;0.85" calcMode="discrete" dur="20s" repeatCount="indefinite"/></text><text x="1060" y="{SPLIT+331}" text-anchor="middle" font-family="monospace" font-weight="bold" font-size="26" fill="#ff5a36" opacity="0">T-00:03<animate attributeName="opacity" values="0;0;0;0;0;0;0;1;0;0;0;0;0" keyTimes="0;0.05;0.10;0.15;0.20;0.25;0.30;0.35;0.40;0.45;0.50;0.55;0.85" calcMode="discrete" dur="20s" repeatCount="indefinite"/></text><text x="1060" y="{SPLIT+331}" text-anchor="middle" font-family="monospace" font-weight="bold" font-size="26" fill="#ff5a36" opacity="0">T-00:02<animate attributeName="opacity" values="0;0;0;0;0;0;0;0;1;0;0;0;0" keyTimes="0;0.05;0.10;0.15;0.20;0.25;0.30;0.35;0.40;0.45;0.50;0.55;0.85" calcMode="discrete" dur="20s" repeatCount="indefinite"/></text><text x="1060" y="{SPLIT+331}" text-anchor="middle" font-family="monospace" font-weight="bold" font-size="26" fill="#ff5a36" opacity="0">T-00:01<animate attributeName="opacity" values="0;0;0;0;0;0;0;0;0;1;0;0;0" keyTimes="0;0.05;0.10;0.15;0.20;0.25;0.30;0.35;0.40;0.45;0.50;0.55;0.85" calcMode="discrete" dur="20s" repeatCount="indefinite"/></text><text x="1060" y="{SPLIT+331}" text-anchor="middle" font-family="monospace" font-weight="bold" font-size="26" fill="#ff5a36" opacity="0">T-00:00<animate attributeName="opacity" values="0;0;0;0;0;0;0;0;0;0;1;0;0" keyTimes="0;0.05;0.10;0.15;0.20;0.25;0.30;0.35;0.40;0.45;0.50;0.55;0.85" calcMode="discrete" dur="20s" repeatCount="indefinite"/></text><text x="1060" y="{SPLIT+331}" text-anchor="middle" font-family="monospace" font-weight="bold" font-size="22" fill="#ff5a36" opacity="0">LIFTOFF<animate attributeName="opacity" values="0;0;0;0;0;0;0;0;0;0;0;1;0" keyTimes="0;0.05;0.10;0.15;0.20;0.25;0.30;0.35;0.40;0.45;0.50;0.55;0.85" calcMode="discrete" dur="20s" repeatCount="indefinite"/></text><text x="1060" y="{SPLIT+331}" text-anchor="middle" font-family="monospace" font-weight="bold" font-size="22" fill="#ff5a36" opacity="0">LANDED<animate attributeName="opacity" values="0;0;0;0;0;0;0;0;0;0;0;0;1" keyTimes="0;0.05;0.10;0.15;0.20;0.25;0.30;0.35;0.40;0.45;0.50;0.55;0.85" calcMode="discrete" dur="20s" repeatCount="indefinite"/></text><rect x="1056" y="{SPLIT+344}" width="8" height="40" fill="{wh2}"/>')
     # ground scrub
     sc="#15213a" if night else "#55724f"
     r=random.Random(11)

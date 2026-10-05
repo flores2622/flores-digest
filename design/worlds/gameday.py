@@ -3,7 +3,7 @@ No real teams, leagues, logos or stadiums -- insurance names on the scoreboard, 
 import math, random
 
 KEY = "gameday"
-NAME = "Game Day"
+NAME = "Football"
 CATEGORY = "Sports"   # the group it is listed under in Settings
 FONTS = "family=Oswald:wght@500;600;700&family=Barlow:wght@400;500;600;700"
 DISPLAY = "'Oswald', 'Arial Narrow', system-ui, sans-serif"
@@ -254,7 +254,7 @@ def skyline(night):
     a(f'<rect width="{W}" height="{SPLIT+10}" fill="url(#sky)"/>')
     # ---- sky ----
     if night:
-        a(stars(70, 0, W, 0, 230, 7))
+        a(stars(40, 0, W, 0, 230, 7))
         a('<circle cx="300" cy="118" r="80" fill="url(#mg)"/><circle cx="300" cy="118" r="30" fill="#f4eed8"/><circle cx="312" cy="110" r="27" fill="#0a1229"/>')
     else:
         a('<circle cx="300" cy="120" r="110" fill="url(#sun)"/><circle cx="300" cy="120" r="34" fill="#fff8d2"/>')
@@ -337,7 +337,7 @@ def skyline(night):
     a(f'<path d="M740 506 L740 470 Q800 432 860 470 L860 506 Z" fill="{wall}"/><path d="M752 506 L752 474 Q800 444 848 474 L848 506 Z" fill="#05070d"/>')
     if night:
         a('<path d="M752 506 L752 474 Q800 444 848 474 L848 506 Z" fill="#ffd27a" opacity=".25"/>')
-        a(flashes(16, 20, 1580, SPLIT + 8, 466, 9))
+        a(flashes(10, 20, 1580, SPLIT + 8, 466, 9))
         a(flashes(8, 20, 1580, 270, 330, 13))
     # ---- the field ----
     g1, g2 = ("#2c6e30", "#327a36") if night else ("#3d8c3a", "#47993f")
@@ -382,15 +382,32 @@ def skyline(night):
     # runs along that line into the distance and the near upright is the taller
     for k in (-12, 12):
         a(goalpost_persp(k))
-    # the benches on the far sideline, and the team coming out of the tunnel
-    r = random.Random(4)
-    for x0, jc in [(330, RED), (1130, NAVY)]:
-        a(f'<rect x="{x0-10}" y="508" width="240" height="10" rx="3" fill="{"#1b2234" if night else "#8a93a3"}"/>')
-        for i in range(9):
-            px = x0 + 12 + i * 26
-            a(f'<rect x="{px-5}" y="514" width="10" height="16" rx="3" fill="{jc}"/><circle cx="{px}" cy="510" r="5" fill="{jc}"/>')
-    for i, (x, yy) in enumerate([(296, 534), (262, 530), (1330, 534)]):
-        a(player(x, yy, .2, RED if x < 800 else NAVY, "", pose="run", flip=x > 800, hc=RED if x < 800 else NAVY, pants="#f2f2f2"))
+    # warm-ups, each team on its own half (Frank, 2026-10-05: "make these all football players warming up on
+    # their side of the field, footballs being tossed around and kicked into the uprights") -- all clear of the
+    # podium: on the far side of the field, or outside x 480-1130 nearer in
+    pz = "#f2f2f2"
+    def toss(x0, y0, x1, y1, lift, dur, beg=0):
+        """a ball thrown from (x0,y0) to (x1,y1) and back, spiralling along its arc"""
+        mx, my = (x0 + x1) / 2, min(y0, y1) - lift
+        return (f'<g transform="translate({x0} {y0})"><animateMotion path="M0 0 Q{mx - x0:.0f} {my - y0:.0f} {x1 - x0:.0f} {y1 - y0:.0f}" '
+                f'keyPoints="0;1;1;0;0" keyTimes="0;.4;.5;.9;1" calcMode="linear" rotate="auto" dur="{dur}s" begin="{beg}s" repeatCount="indefinite"/>'
+                f'{ball(0, 0, 5)}</g>')
+    # the red half: a pair playing catch, a kicker putting it through the left uprights, two stretching
+    a(player(250, 534, .22, RED, "", pose="up", hc=RED, pants=pz) + player(420, 562, .26, RED, "", pose="up", flip=True, hc=RED, pants=pz))
+    a(toss(254, 512, 416, 536, 50, 4))
+    a(player(360, 612, .3, RED, "", pose="kick", flip=True, hc=RED, pants=pz))
+    a(f'<g transform="translate(350 606)" opacity="0"><animate attributeName="opacity" values="0;1;1;0;0" keyTimes="0;.02;.42;.46;1" dur="6s" repeatCount="indefinite"/>'
+      f'<animateMotion path="M0 0 Q-120 -230 -232 -136" keyPoints="0;1;1" keyTimes="0;.42;1" calcMode="linear" rotate="auto" dur="6s" repeatCount="indefinite"/>{ball(0, 0, 6)}</g>')
+    a(player(196, 548, .22, RED, "", pose="stand", hc=RED, pants=pz) + player(330, 528, .2, RED, "", pose="up", hc=RED, pants=pz))
+    # the navy half: the quarterback hitting a receiver on a slant, a pair playing catch, two stretching
+    a(player(1190, 600, .3, NAVY, "", pose="stand", hc=NAVY, pants=pz))
+    a(f'<g><animateTransform attributeName="transform" type="translate" values="0 0;150 18;150 18;0 0" keyTimes="0;.45;.7;1" dur="7s" repeatCount="indefinite"/>'
+      + player(1250, 590, .29, NAVY, "", pose="run", hc=NAVY, pants=pz) + '</g>')
+    a(f'<g transform="translate(1196 580)" opacity="0"><animate attributeName="opacity" values="0;0;1;1;0;0" keyTimes="0;.1;.11;.44;.46;1" dur="7s" repeatCount="indefinite"/>'
+      f'<animateMotion path="M0 0 Q110 -80 204 22" keyPoints="0;0;1;1" keyTimes="0;.11;.44;1" calcMode="linear" rotate="auto" dur="7s" repeatCount="indefinite"/>{ball(0, 0, 5)}</g>')
+    a(player(1190, 528, .2, NAVY, "", pose="up", hc=NAVY, pants=pz) + player(1360, 540, .22, NAVY, "", pose="up", flip=True, hc=NAVY, pants=pz))
+    a(toss(1194, 508, 1356, 518, 46, 4.6, 1.2))
+    a(player(1420, 580, .26, NAVY, "", pose="stand", flip=True, hc=NAVY, pants=pz) + player(1290, 522, .2, NAVY, "", pose="stand", hc=NAVY, pants=pz))
     # ---- the stage on the 50 ----
     sx, sy = 810, 802
     if night:

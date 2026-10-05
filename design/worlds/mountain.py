@@ -3,7 +3,7 @@ import random, math
 
 KEY = "mountain"
 NAME = "Mountain"
-CATEGORY = "Outdoors"   # the group it is listed under in Settings
+CATEGORY = "Scenic"   # the group it is listed under in Settings
 FONTS = "family=Zilla+Slab:wght@600;700&family=Work+Sans:wght@400;500;600;700"
 DISPLAY = "'Zilla Slab', Georgia, serif"
 DW = 700
