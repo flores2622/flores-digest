@@ -1846,6 +1846,10 @@ repaint clears the list).
   per-look faces and their Google Fonts entries are gone.
 - **The podium's names sit on dark pills** in every world (Frank,
   2026-10-05: "can barely see leaderboard names" on the Game Day field).
+  **First name only under each avatar, initials inside it** (Frank,
+  2026-10-05: "for the producers on the leaderboard, put only their first
+  name, and in the icon put their initials"; `podiumAvatar` / `podiumHtml`;
+  the full name on hover). The table keeps full names.
 - **The Digest's two top cards share one Sedona picture** (Frank,
   2026-10-02: "give the digest some life? Color, background images, etc",
   then "the top of the leaderboard background should be the horizon so just
@@ -2035,10 +2039,10 @@ repaint clears the list).
   fairway narrowing toward it in perspective with mowing stripes down its
   length and a band of first-cut rough, flashed bunkers with shadowed
   lips on the bend and the green's shoulders, a kidney-shaped green in its
-  collar the podium stands on, another hole in the distance drawn as a
-  real dogleg left ("make the dog leg left more realistic": its tee at the
-  right, the fairway running left and bending up to its green, trees inside
-  the corner, a bunker outside the bend), tree shadows), a pond with a footbridge, the 18 DEDUCTIBLE DOGLEG hole sign
+  collar the podium stands on, the hole itself the dogleg left its sign
+  names ("dog leg left still doesnt make sense": the tee up by the
+  clubhouse, the fairway running left from it and turning down to the green,
+  trees inside the corner, a bunker outside the bend), tree shadows), a pond with a footbridge, the 18 DEDUCTIBLE DOGLEG hole sign
   and an ON PAR cart on the path; banners from the tee shot to the
   yardage-book Road Maps and the pro shop; strips from a hole in one to the
   flag alone under the moon; the tour card is the Caddie's notes. **Yuma** (Frank, 2026-10-05: "can

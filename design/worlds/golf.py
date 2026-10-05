@@ -255,28 +255,26 @@ def skyline(night):
     a(f'<path d="M0 {HZ + 90} Q300 {HZ + 60} 600 {HZ + 110} T1200 {HZ + 120} T1600 {HZ + 100} L1600 {H} L0 {H}Z" fill="{p["rough2"]}" opacity=".6"/>')
     for x, y, rx in [(120, 662, 120), (1520, 672, 110), (1440, 528, 60)]:
         a(f'<ellipse cx="{x}" cy="{y}" rx="{rx}" ry="{rx * .16:.0f}" fill="#000" opacity="{.12 if not n else .2}"/>')
-    # another hole in the distance, a real dogleg left (Frank, 2026-10-05: "make the dog leg left more
-    # realistic"): the tee at the right, the fairway running left then bending up to its green, the
-    # corner guarded by a bunker and the trees inside the bend
-    dl = ("M624 488 C520 484 400 482 320 478 C260 474 210 462 178 448 C164 442 152 439 142 439 "
-          "L132 452 C150 457 190 471 236 485 C292 501 400 507 500 509 C560 510 600 509 624 508Z")
-    a(f'<path d="{dl}" fill="none" stroke="{p["fringe"]}" stroke-width="8" stroke-linejoin="round"/><path d="{dl}" fill="{p["fair"]}"/>')
-    a(f'<path d="M622 498 C500 496 360 494 300 490 C240 484 190 466 148 446" fill="none" stroke="{p["fair2"]}" stroke-width="7" opacity=".8"/>')
-    a(f'<rect x="610" y="490" width="30" height="10" rx="2" fill="{p["green2"]}"/><circle cx="618" cy="494" r="1.8" fill="#f3efe2"/><circle cx="632" cy="494" r="1.8" fill="#f3efe2"/>')
-    a(oak(262, 470, 52, p["tree"], p["tree2"], p["trunk"]) + oak(306, 474, 44, p["tree2"], p["tree"], p["trunk"]) + oak(226, 456, 38, p["tree"], p["tree2"], p["trunk"]))
-    a(f'<ellipse cx="214" cy="500" rx="22" ry="5" fill="{p["sand2"]}"/><ellipse cx="214" cy="499" rx="19" ry="4" fill="{p["sand"]}"/>')
-    a(f'<ellipse cx="124" cy="444" rx="36" ry="9" fill="{p["fringe"]}"/><ellipse cx="124" cy="444" rx="31" ry="7" fill="{p["green"]}"/>'
-      f'<ellipse cx="92" cy="449" rx="12" ry="3" fill="{p["sand"]}"/>' + flag(130, 444, 26, p["flag"]))
-    # the hole, as the course has it: the tee box at the top, a fairway that bends down to the green,
-    # organic edges, a band of first-cut rough, diagonal mowing stripes
-    fw = "M786 438 C760 462 690 492 610 522 C540 548 500 562 486 574 L1124 574 C1100 556 1040 530 990 508 C920 478 850 458 826 438Z"
-    a(f'<path d="{fw}" fill="none" stroke="{p["fringe"]}" stroke-width="22" stroke-linejoin="round"/><path d="{fw}" fill="{p["fair"]}"/>')
-    a(f'<defs><clipPath id="fw2"><path d="{fw}"/></clipPath></defs>')
-    # mowing stripes run the length of the hole, converging on the tee
-    vx, vy = 806, 420
+    # the hole itself is the dogleg left the sign names (Frank, 2026-10-05: "dog leg left still doesnt make
+    # sense"): from the tee up by the clubhouse the fairway runs across, then turns left -- toward us -- and
+    # comes down to the green the podium stands on; trees fill the inside of the corner, a bunker guards
+    # the outside, and the mowing stripes follow each leg
+    leg1 = "M486 574 C520 532 600 496 640 472 L822 490 C870 512 1040 540 1124 574Z"
+    leg2 = "M640 472 C680 458 780 448 860 444 C920 440 970 436 1004 430 L1016 462 C960 466 900 472 862 478 C842 482 830 486 822 490Z"
+    for d in (leg1, leg2):
+        a(f'<path d="{d}" fill="none" stroke="{p["fringe"]}" stroke-width="16" stroke-linejoin="round"/>')
+    a(f'<path d="{leg1}" fill="{p["fair"]}"/><path d="{leg2}" fill="{p["fair"]}"/>')
+    a(f'<defs><clipPath id="fw2"><path d="{leg1}"/></clipPath><clipPath id="fw3"><path d="{leg2}"/></clipPath></defs>')
+    vx, vy = 722, 468
     a('<g clip-path="url(#fw2)">' + ''.join(f'<path d="M{vx} {vy}L{vx + (k - 6) * 90} 600L{vx + (k - 5.5) * 90} 600Z" fill="{p["fair2"]}"/>' for k in range(0, 13, 2)) + '</g>')
-    a(f'<rect x="772" y="434" width="64" height="9" rx="3" fill="{p["green2"]}"/><circle cx="786" cy="438" r="2.4" fill="#f3efe2"/><circle cx="822" cy="438" r="2.4" fill="#f3efe2"/>')
-    a(golfer(752, 462, .34, "stand", "#2f5a8a", "#e8e2d0", skin=p["skin"]) + bag(770, 462, .32, "#8a2a2a"))
+    a('<g clip-path="url(#fw3)">' + ''.join(f'<path d="M{x} 420L{x + 22} 420L{x + 16} 490L{x - 6} 490Z" fill="{p["fair2"]}"/>' for x in range(650, 1010, 44)) + '</g>')
+    # the tee box by the clubhouse, a golfer on it
+    a(f'<rect x="1000" y="424" width="44" height="10" rx="3" fill="{p["green2"]}"/><circle cx="1010" cy="428" r="2" fill="#f3efe2"/><circle cx="1034" cy="428" r="2" fill="#f3efe2"/>')
+    a(golfer(1022, 432, .3, "stand", "#2f5a8a", "#e8e2d0", skin=p["skin"]) + bag(1038, 432, .28, "#8a2a2a"))
+    # the stand of trees inside the corner, and their shade
+    a(f'<ellipse cx="1030" cy="530" rx="100" ry="10" fill="#000" opacity="{.12 if not n else .2}"/>')
+    for x, b, h in [(960, 524, 42), (1010, 528, 48), (1060, 522, 40), (1104, 530, 36)]:
+        a(oak(x, b, h, p["tree"], p["tree2"], p["trunk"]))
     # the pond with its footbridge, left
     a(f'<path d="M30 660 Q60 612 200 618 Q330 622 410 660 Q450 700 380 728 Q250 760 110 742 Q20 726 30 660Z" fill="{p["water"]}"/>')
     for x, y, w in [(110, 668, 70), (240, 690, 110), (170, 718, 60), (330, 676, 50)]:
@@ -298,8 +296,7 @@ def skyline(night):
     a(cart(1326, 626, 1.0, "#f2efe4" if not n else "#9a988e", p["roof"], "ON PAR"))
     for lx, lb in [(1186, 560), (1430, 592), (1240, 726)]: a(lamp(lx, lb, 54, n))
     # bunkers: a fairway bunker on the bend, greenside bunkers hugging the green's shoulders
-    a(bunker2([(640, 506), (700, 496), (724, 508), (676, 520), (636, 516)], p, n))
-    a(bunker2([(930, 482), (984, 486), (1006, 498), (958, 504), (924, 494)], p, n))
+    a(bunker2([(560, 474), (614, 462), (636, 474), (600, 488), (556, 486)], p, n))
     a(bunker2([(452, 566), (520, 556), (560, 568), (520, 584), (462, 584)], p, n))
     a(bunker2([(1020, 820), (1100, 812), (1140, 836), (1070, 852), (1010, 846)], p, n))
     # the putting green: kidney-shaped inside its collar, its own cut lines, the podium's stage
