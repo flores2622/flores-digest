@@ -947,7 +947,8 @@ page, i want it to open back up where i was, not back to the digest"): the
 page, the coaching and Sales sub-tabs, the Road Map pick, the producer
 filter and the day or range are kept per browser tab (`saveWhere` after
 every paint and on `pagehide`, sessionStorage `board-where`) and read back by
-`init()`. Commercial and Rotation reopen only once the Worker has let that
+`init()` -- today's live report too, though it is not published yet (Frank, 2026-10-05: "When I am on the live
+report and refresh it takes me back to the last published"). Commercial and Rotation reopen only once the Worker has let that
 login in (`COMMERCIAL_DAYS`, `ROT_READY`); a new tab starts on the Digest.
 **KEEP THEM CURRENT, in the same change** (Frank: "continues updating as we
 make changes"): anything that changes what a number means, a goal, how
@@ -1907,7 +1908,9 @@ repaint clears the list).
   podium, scrub, big foreground saguaros and, at night, a campfire. The
   tiles sit on the rock bodies; the leaderboard's title sits on the sliver
   of sky and rock bases at its top, the podium stands on the road under two
-  spotlight beams with a crown and glow on first place and gold / silver /
+  a pool of light with a crown and glow on first place (the two spotlight beams, drawn on
+  the podium rather than the picture, came out on 2026-10-05: "why is there random moving spotlights in most
+  workds") and gold / silver /
   bronze steps, and the table is on a near-opaque sheet. The page carries a
   faint saguaro-and-sun pattern (`.main`); every Digest tile is tinted by
   its tier (green / amber / red top rule from the number's `tg` / `ty` /
@@ -1915,7 +1918,13 @@ repaint clears the list).
   coaching in the accent; Needs someone / Left on the desk and Speed to
   Dial amber; Call Outcome blue; Task Completion purple; Utilization and
   Household Completion green; Speed to Reply rose; misfiled leads red). No
-  figure, list or hook changed.
+  figure, list or hook changed. **Redrawn 2026-10-05 as a frontier town that moves** (Frank: "need to get
+  more creative with this image, theres not even any movement"): `design/worlds/desert_digest.py` draws it and
+  `desert_splice.py` writes its four urls and the still copies into index.html -- red-rock buttes, the mission
+  bell tower, a water tower, a windmill and the moon above the tiles; Main Street's false fronts (SALOON &
+  SAVINGS, BANK ON IT, SHERIFF · CLAIMS DEPT., TELEGRAPH · TEXT ME BACK ...) down to the mission, the podium on a
+  town stage; the windmill turning, a hawk circling, clouds, batwing doors, a horse's tail, lanterns,
+  tumbleweeds and dust.
 - **Every other page opens on a vista** (Frank, 2026-10-02: "do the rest
   of the board, each with a different twist"): a 170px drawn banner under
   the range controls (`.vista`, placed by `placeVista` from a
@@ -1985,7 +1994,10 @@ repaint clears the list).
   space"). A world is design and font: its own colour looks, its own
   typeface pair and its own pictures (the Digest's skyline, the page vistas,
   the coaching cards' outcome strips); figures, lists and hooks never
-  change, and **the Editions keep their own looks**. Settings has a World
+  change, and **the Editions keep their own looks**. **A change asked for in one world goes to
+  every world where it fits** (Frank, 2026-10-05: "these chagnes we make should be applied to every world wehre
+  possible"): movement, a fix to how something is drawn, a rule about words -- do it in all of them (the
+  desert's inline pictures included) in the same round, and say which worlds it could not apply to and why. Settings has a World
   row above the looks (`WORLDS`, each look in `LOOKS` names its world;
   `TH.theme`, saved in `board-look`, `html[data-theme]`). **The worlds are
   listed by kind** (Frank, 2026-10-05: "categorize the themes in the
@@ -2076,7 +2088,10 @@ repaint clears the list).
   the opposite sideline instead of infinity field"; `YN`),
   TOUCHDOWN / 1ST & 10 / TURNOVER ...), **Retro Arcade** (Orbitron / Exo 2;
   Synthwave, 8-Bit, Pinball -- the neon pixel city and HIGH SCORES, the grid
-  floor between rows of cabinets; electric blue where it was pink -- Frank,
+  floor between rows of cabinets; its horizon sits 70 units below the split so the city's lit shopfronts and
+  the arcade's doors at the head of the lane run on into the leaderboard, and the floor is a hall (Frank,
+  2026-10-05: "these dont merge right and lots of dead space"): a far row of cabinets along the back wall,
+  players at the machines, an air-hockey game and a dance machine with a dancer, all moving; electric blue where it was pink -- Frank,
   2026-10-05: "i dont like all the pink", every pink / magenta hue moved to
   215 deg, the Synthwave accent with it -- and no title above the 40-unit line
   the banner crop hides (PLAYER 1 / PLAYER 2 READY, TUTORIAL, the chat
@@ -2159,14 +2174,27 @@ repaint clears the list).
   back from the left, seamless on a 16 s loop -- and its birds keep clear of
   it; Football's benches became warm-ups on each team's half (catch, a
   kicker putting it through the left uprights, a quarterback hitting a
-  receiver); Ocean's REEL QUOTE and PREMIUM CATCH lower their nets into the
+  receiver -- Frank: "the ball is not moving like a kicked fieldgoal", "or like a thrown ball": the kicker runs up to
+  a tee and the ball tumbles end over end, shrinking as it carries, over the crossbar into the end zone; a pass is a
+  high spiral nose-first, caught in stride and carried on, a toss comes back on a flatter arc); Ocean's REEL QUOTE and PREMIUM CATCH lower their nets into the
   sea and haul them up full (clipped at the waterline); Yuma's fighters
   streak across with their contrails and a freight train crosses the bridge
-  between the truss sides; Space's rocket counts down T-00:10 on the clock
-  by the road, lifts off at zero, climbs out of sight and lands back on its
-  pad on one 20 s loop (LIFTOFF / LANDED on the clock), and a small rocket
+  between the truss sides; Space's rocket counts down from T-00:05 on the clock
+  by the road (Frank: "a 5 second countdown not 10"), lifts off at zero, climbs out of sight and lands back on its
+  pad on one 15 s loop (LIFTOFF / LANDED on the clock), and a small rocket
   climbs the far trail by day; Dallas's cars face the way they drive (the
-  hood had been drawn at the back). **Yuma** (Frank, 2026-10-05: "can
+  hood had been drawn at the back). Dallas's bridge carries ten cars, five each way, on their own speeds ("add more cars to dallas"). Later the same day: Phoenix's taxiing jets are drawn over the runway, not
+  hidden under it, and the departing jet climbs straight out up the runway, staying a size you can see until it is
+  high over downtown ("it disappears behind the pavement, and takes off to small"; then "gets lost behind the
+  card because its not getting height fast enough": it climbs steeply once off the runway and flies on above
+  the tiles at a good size; then "its still off to the right and small, center it and make it bigger": it rolls
+  and climbs on the runway's centre line at full size, its wings showing either side of first place); Yuma's contrails fade out
+  behind each jet ("can their trail fade properly?"). The two cities' Service banners are their
+  own places, not a generic street ("for dallas and yuma make the
+  neighborhood something else specific to the respective cities"): Dallas's
+  vintage trolley on a red-brick, oak-lined avenue of storefronts and lofts
+  under its wire, and Yuma's sternwheeler PAID IN FULL loading at the old
+  river landing. **Yuma** (Frank, 2026-10-05: "can
   you make one off of Yuma, AZ?"; Arvo / Karla; River, Harvest, Dunes): from
   the bluff by the old territorial prison at golden hour, looking down at
   the river crossing -- the prison as it stands (Frank, 2026-10-05: "make
@@ -2201,7 +2229,30 @@ repaint clears the list).
   floodway, the podium on a levee plaza among bluebonnets and live oaks, a
   LONE STAR COVERAGE sign (it was BIG D COVERAGE until Frank: "rename this") and a Texas flag; banners from the stacked interchange
   to the rodeo, the movie palace marquee and hail after a storm; the tour
-  card is the Lone Star guide. Nothing is named. Space got
+  card is the Lone Star guide. Nothing is named.
+  **Six more** (Frank, 2026-10-05: "start working on more sports ... add more fun as well"), each with its
+  own tour card (`TOUR` in the module, copied into `TOUR_SKIN`) and a moving Digest:
+  **Baseball** (Sports; Alfa Slab One / Barlow; Ballpark, Pinstripe, Sunday -- the park from behind home,
+  FULL COUNT COVERAGE on the scoreboard, the podium on the infield, a bullpen pitch and a fungo fly ball),
+  **Basketball** (Sports; Bungee / Barlow; Hardwood, Courtside, Street -- the arena on game night, the
+  NOTHING BUT NET PREMIUM scoreboard and insurance-word banners, a jump shot, the wave, a mascot),
+  **Autumn** (Scenic; Playfair Display / Nunito Sans; Maple, Harvest, Birch -- a New England valley, the
+  covered bridge, the steeple, HARVEST HOME COVERAGE farm stand, geese and falling leaves; its Harvest look's
+  key is `harvesthome`, since Yuma's Harvest is `harvest`), **Tropics** (Scenic; Pacifico / Nunito Sans;
+  Lagoon, Sunset, Palm -- the lagoon, overwater huts, the podium on a deck, NO LAPSE LAGOON), **Carnival**
+  (Fun; Rye / Nunito Sans; Midway, Big Top, Cotton Candy -- the midway, coaster, big top, Ferris wheel and
+  NO LAPSE LOOP carousel, the podium on a bandstand) and **Dinosaurs** (Fun; Fredoka / Nunito; Fern, Lava,
+  Amber -- a prehistoric valley, a sauropod browsing, a volcano, PREHISTORIC PROTECTION falls, an egg
+  that hatches). **Their banners move too** (Frank, 2026-10-05: "add movement to the new worlds' banners too"),
+  each with a still copy for Reduced motion (build.py writes one for any banner or strip that moves, light and
+  dark together): a dunk, a free throw, a home-run trot, bumper cars, the high striker, falling leaves, surfers,
+  a pterosaur leaving the ledge ... Basketball's wave is the bowl's own fans standing and raising their arms
+  as two masks sweep the bowl ("make the wave on basketball more realistic"), and its six banners hang
+  mirror-symmetric about the scoreboard ("center it right"); Autumn's covered bridge sits on stone abutments
+  at road level with a portal at each end and the stream coming out from under it ("doesnt look right");
+  Dinosaurs' volcano erupts on an 11 s loop -- the crater flares, an ash column and lava bombs rise above
+  the tiles, streams run down the cone ("make it erupt").
+  Space got
   a Claims banner too. No real teams, games, brands or landmarks' names.
   **A world's pictures load only for whoever picks it** (2026-10-03): each
   is `site/public/worlds/<key>.css`, added by `loadWorld` with the world's

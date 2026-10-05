@@ -15,7 +15,7 @@ check.py validates it and preview.cjs renders it for a look.
 import hashlib, importlib, json, os, re, sys, urllib.parse
 HERE = os.path.dirname(os.path.abspath(__file__)); ROOT = os.path.abspath(os.path.join(HERE, "..", ".."))
 sys.path.insert(0, HERE)
-ORDER = ["space", "ocean", "mountain", "gameday", "arcade", "phoenix", "golf", "yuma", "dallas"]
+ORDER = ["space", "ocean", "mountain", "gameday", "arcade", "phoenix", "golf", "yuma", "dallas", "baseball", "basketball", "autumn", "tropics", "carnival", "dinosaurs"]
 INDEX = os.path.join(ROOT, "site", "public", "index.html"); OUTDIR = os.path.join(ROOT, "site", "public", "worlds")
 def enc(svg): return urllib.parse.quote(svg, safe="/:=,.;- '()")
 def url(svg): return f'url("data:image/svg+xml;utf8,{enc(svg)}")'
@@ -39,9 +39,14 @@ def world_css(m):
     pat = getattr(m, "PATTERN", None)
     L.append(f'{T} .main {{ background-image: {url(pat) if pat else "none"}; }}')
     if pat: L.append(f'{D} .main {{ background-image: {url(pat.replace(chr(34)+"#000"+chr(34), chr(34)+"#fff"+chr(34)))}; }}')
+    R, RD = f'html[data-motion="reduce"]{T[4:]}', f'html[data-motion="reduce"]{D[4:]}'
     for key, fn in m.VISTA_FNS.items():
-        L.append(f'{T} .vista-{key} {{ background-color: {lt}; background-image: {url(fn(False))}; }}')
-        L.append(f'{D} .vista-{key} {{ background-color: {dt}; background-image: {url(fn(True))}; }}')
+        vl, vd = fn(False), fn(True)
+        L.append(f'{T} .vista-{key} {{ background-color: {lt}; background-image: {url(vl)}; }}')
+        L.append(f'{D} .vista-{key} {{ background-color: {dt}; background-image: {url(vd)}; }}')
+        # a banner that moves gets its still copy too
+        if moves(vl) or moves(vd):   # both, so a light still never wins over the dark picture
+            L.append(f'{R} .vista-{key} {{ background-image: {url(still(vl))}; }} {RD} .vista-{key} {{ background-image: {url(still(vd))}; }}')
     ink = getattr(m, "VMAP_INK", None)  # a world drawn on light paper names dark ink; the rest keep white titles
     if ink:
         L.append(f'{T} .vista.vmap b, {T} .vista.vmap span {{ color: {ink[0]}; }} {D} .vista.vmap b, {D} .vista.vmap span {{ color: {ink[1]}; }}')
@@ -53,6 +58,10 @@ def world_css(m):
     for key, fn in m.STRIP_FNS.items():
         L.append(f'{T} .ccard[data-oc="{key}"] > summary.cchead::before {{ background-image: {url(bare(fn(False)))}; }}')
         L.append(f'{D} .ccard[data-oc="{key}"] > summary.cchead::before {{ background-image: {url(bare(fn(True)))}; }}')
+        sl, sd = bare(fn(False)), bare(fn(True))
+        if moves(sl) or moves(sd):
+            L.append(f'{R} .ccard[data-oc="{key}"] > summary.cchead::before {{ background-image: {url(still(sl))}; }} '
+                     f'{RD} .ccard[data-oc="{key}"] > summary.cchead::before {{ background-image: {url(still(sd))}; }}')
     return "\n".join(L) + "\n"
 def inline_css(mods):
     L = ['/* WORLDS:BEGIN -- written by design/worlds/build.py; edit the world modules there, not here. */',

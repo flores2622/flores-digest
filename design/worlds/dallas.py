@@ -355,9 +355,15 @@ def skyline(night):
     if not n: a(f'<path d="{arch}" fill="none" stroke="#c8c0d0" stroke-width="3" transform="translate(4 2)" opacity=".7"/>')
     if n:
         a(''.join(f'<circle cx="{x}" cy="{DECK - 6}" r="2.5" fill="#ffe7a0"/>' for x in range(60, 1600, 80)))
-    for col, path, dur, beg, fl in (("#c8202e", "M-60 0H1660", 11, 0, False), ("#e8e2d6", "M1660 0H-60", 9, 3.5, True)):
-        a(f'<g opacity="0"><animate attributeName="opacity" values="0;1;1;0" keyTimes="0;.04;.96;1" dur="{dur}s" begin="{beg}s" repeatCount="indefinite"/>'
-          f'<animateMotion path="{path}" dur="{dur}s" begin="{beg}s" repeatCount="indefinite"/>' + car(0, DECK, .75, col, 0, n, fl) + '</g>')
+    # traffic both ways over the bridge (Frank, 2026-10-05: "add more cars to dallas"): each lane's cars on their
+    # own speeds and starts, the far lane a touch higher and smaller, already under way when the page opens
+    traffic = [("#c8202e", 11, 0), ("#2f6aa8", 13, -4.5), ("#e2a33a", 10, -7.5), ("#3a3a44", 12, -2), ("#e8e2d6", 14, -9.5)]
+    for i, (col, dur, beg) in enumerate(traffic):
+        for fl, path, dy, sc in ((False, "M-60 0H1660", 0, .75), (True, "M1660 0H-60", -5, .68)):
+            c = traffic[(i + 2) % 5][0] if fl else col
+            d = dur - 1.5 if fl else dur; b = beg - 3.2 if fl else beg
+            a(f'<g opacity="0"><animate attributeName="opacity" values="0;1;1;0" keyTimes="0;.04;.96;1" dur="{d}s" begin="{b}s" repeatCount="indefinite"/>'
+              f'<animateMotion path="{path}" dur="{d}s" begin="{b}s" repeatCount="indefinite"/>' + car(0, DECK + dy, sc, c, 0, n, fl) + '</g>')
     # the river, sky in it, and at night the lights in it
     a(f'<path d="M0 466Q400 458 800 468T1600 462V510Q1200 516 800 508T0 512Z" fill="url(#riv)"/>')
     rr = random.Random(4)
@@ -588,21 +594,72 @@ def ranch(x, b, w, p, n, brick=None, garage=True):
     if garage: o.append(f'<rect x="{x + w - 104}" y="{b - 38}" width="84" height="38" fill="{p["trim"]}"/>' + '<path d="' + ''.join(f'M{x + w - 104} {b - 38 + k * 9}h84' for k in range(1, 5)) + f'" stroke="#000" stroke-opacity=".12" stroke-width="2"/>')
     return ''.join(o)
 
-def v_service(n):  # a quiet street of brick ranch houses
+def v_service(n):  # the vintage trolley on its rails down a red-brick avenue of live oaks and brick storefronts
     p = P(n); o = [vbase(n, DAY, NT, 40)]
-    o.append(f'<defs><pattern id="bk" width="20" height="8" patternUnits="userSpaceOnUse"><path d="M0 7.5H20M10 0V4M0 4H20M0 4V8" stroke="#000" stroke-opacity=".12" stroke-width="1" fill="none"/></pattern></defs>')
-    o.append(orb(n, 1460, 52, 22))
-    if not n: o.append(cloud(300, 52, 240, "#fff", .7) + cloud(1050, 40, 200, "#fff", .6))
-    o.append(f'<rect x="0" y="150" width="1600" height="90" fill="{p["grass"]}"/>')
-    o.append(liveoak(150, 172, .85, p["oak2"], p["oak2"], p["trunk"]) + liveoak(1480, 172, .85, p["oak2"], p["oak2"], p["trunk"]))
-    o.append(ranch(250, 172, 360, p, n) + ranch(990, 172, 360, p, n, "#c4945e" if not n else "#4a3a2a"))
-    o.append(liveoak(800, 178, 1.15, p["oak"], p["oak2"], p["trunk"]))
-    o.append(f'<path d="M520 172L470 198M1250 172L1220 198" stroke="{p["path"]}" stroke-width="22"/>')
-    o.append(f'<rect x="0" y="196" width="1600" height="10" fill="{p["path"]}"/><rect x="0" y="206" width="1600" height="34" fill="{p["road"]}"/>')
-    o.append(f'<path d="M0 224H1600" stroke="#fff" stroke-opacity=".35" stroke-width="2" stroke-dasharray="40 30"/>')
-    o.append(f'<rect x="700" y="176" width="4" height="22" fill="#3a3a40"/><rect x="692" y="168" width="20" height="12" rx="5" fill="#2f5a8a"/>')
-    o.append(lamp(1110, 198, 70, n) if n else '')
-    o.append(corners(p["road"]))
+    o.append(f'<defs><pattern id="bk" width="20" height="8" patternUnits="userSpaceOnUse"><path d="M0 7.5H20M10 0V4M0 4H20M0 4V8" stroke="#000" stroke-opacity=".14" stroke-width="1" fill="none"/></pattern>'
+             f'<pattern id="pv" width="16" height="6" patternUnits="userSpaceOnUse"><rect width="16" height="6" fill="{"#a24a34" if not n else "#3e2420"}"/><path d="M0 5.5H16M8 0V3M0 3H16M0 3V6" stroke="#000" stroke-opacity=".22" stroke-width="1" fill="none"/></pattern>'
+             + ''.join(f'<pattern id="{k}" width="30" height="32" patternUnits="userSpaceOnUse"><rect x="7" y="4" width="16" height="20" fill="{"#ffd47a" if n else "#3a4660"}" opacity="{op}"/></pattern>' for k, op in (("wa", .85 if n else .9), ("wb", .45 if n else .9))) + '</defs>')
+    o.append(orb(n, 1460, 52, 20))
+    if not n: o.append(cloud(260, 50, 220, "#fff", .7) + cloud(1120, 40, 190, "#fff", .55))
+    # the storefronts and lofts: two- and three-storey brick, cornices, awnings, shop windows
+    bricks = (p["brick"], "#b8784a" if not n else "#4a3424", p["brick2"], "#c4945e" if not n else "#40302a", "#9a4a3a" if not n else "#3e2622")
+    awn = ("#2f6a4a", "#c8442a", "#2f5a8a", "#e2a33a", "#6a3a6a")
+    shop = "#ffe0a0" if n else "#7a9ab0"
+    x = -20; i = 0
+    while x < 1620:
+        w = (150, 130, 170, 140, 120, 160)[i % 6]; fl = (3, 2, 3, 2, 2, 3)[i % 6]; top = 186 - 34 - fl * 32
+        o.append(f'<rect x="{x}" y="{top}" width="{w}" height="{186 - top}" fill="{bricks[i % 5]}"/><rect x="{x}" y="{top}" width="{w}" height="{186 - top}" fill="url(#bk)"/>'
+                 f'<rect x="{x - 3}" y="{top - 7}" width="{w + 6}" height="9" fill="{p["trim"]}" opacity=".85"/>')
+        o.append(f'<rect transform="translate({x + (w - (w - 12) // 30 * 30) // 2} {top + 6})" width="{(w - 12) // 30 * 30}" height="{fl * 32}" fill="url(#{"wa" if i % 2 else "wb"})"/>')
+        o.append(f'<rect x="{x + 10}" y="160" width="{w - 20}" height="26" fill="{shop}" opacity="{.8 if n else .7}"/><path d="M{x + 6} 150h{w - 12}l-8 12h{-(w - 28)}Z" fill="{awn[i % 5]}"/>')
+        if n: o.append(f'<ellipse cx="{x + w / 2:.0f}" cy="180" rx="{w * .55:.0f}" ry="26" fill="url(#glow)"/>')
+        x += w; i += 1
+    # sidewalk, then the red-brick avenue with its rails
+    o.append(f'<rect x="0" y="186" width="1600" height="10" fill="{p["path"]}"/><rect x="0" y="194" width="1600" height="3" fill="{p["conc2"]}"/>')
+    o.append(f'<rect x="0" y="197" width="1600" height="43" fill="url(#pv)"/>')
+    rl = "#9aa0aa" if not n else "#6a6e7a"
+    o.append(f'<path d="M0 219H1600M0 234H1600" stroke="{rl}" stroke-width="2.5"/>')
+    # live oaks along the walk
+    for tx, s in ((330, .8), (1270, .8), (110, .7), (1500, .7)):
+        o.append(liveoak(tx, 192, s, p["oak"], p["oak2"], p["trunk"]))
+    # the overhead wire on its posts: bracket arms out over the street
+    pc = "#3a3a44" if not n else "#5a5e70"; posts = (210, 560, 1040, 1390); wy = 82
+    for px in posts:
+        o.append(f'<rect x="{px - 3}" y="{wy - 14}" width="6" height="{196 - wy + 14}" fill="{pc}"/><path d="M{px} {wy - 8}H{px + 70}" stroke="{pc}" stroke-width="3"/><path d="M{px} {wy + 6}L{px + 40} {wy - 8}" stroke="{pc}" stroke-width="2"/>'
+                 f'<circle cx="{px}" cy="{wy - 16}" r="4" fill="{pc}"/>')
+    wire = ''.join(f'M{a + 70} {wy - 8}Q{(a + b) / 2 + 70:.0f} {wy - 4} {b + 70} {wy - 8}' for a, b in zip((-140,) + posts, posts + (1740,)))
+    o.append(f'<path d="{wire}" stroke="#2a2a30" stroke-width="1.6" fill="none"/>')
+    # the trolley: a vintage double-ended car, cream and green, pole up to the wire
+    cb, cb2, cr = ("#2f6a4a", "#22503a", "#f2e6c8") if not n else ("#1f4434", "#16342a", "#c8bc9c")
+    t = ['<g>', drift(-46, 26)]
+    t.append(f'<rect x="618" y="202" width="48" height="7" fill="#2a2a30"/><rect x="934" y="202" width="48" height="7" fill="#2a2a30"/>'
+             f'<circle cx="632" cy="211" r="8" fill="#1e1e24"/><circle cx="660" cy="211" r="8" fill="#1e1e24"/><circle cx="940" cy="211" r="8" fill="#1e1e24"/><circle cx="968" cy="211" r="8" fill="#1e1e24"/>'
+             f'<path d="M632 211h0M660 211h0M940 211h0M968 211h0" stroke="#8a8e98" stroke-width="5" stroke-linecap="round"/>')
+    t.append(f'<path d="M604 204V140Q604 128 618 126H982Q996 128 996 140V204Z" fill="{cb}"/><rect x="604" y="168" width="392" height="8" fill="{cr}"/>'
+             f'<path d="M612 126Q800 104 988 126Z" fill="{cr}"/><rect x="700" y="108" width="200" height="12" rx="3" fill="{cb2}"/>'
+             f'<rect x="604" y="196" width="392" height="8" fill="{cb2}"/>')
+    for k in range(8):
+        wx = 626 + k * 44
+        t.append(f'<rect x="{wx}" y="136" width="34" height="28" rx="3" fill="{"#ffe39a" if n else "#bcd6ea"}" stroke="{cr}" stroke-width="2"/>')
+    t.append(f'<rect x="710" y="180" width="180" height="12" fill="{cr}" opacity=".9"/>'
+             f'<text x="800" y="190" text-anchor="middle" font-family="Arial, sans-serif" font-weight="bold" font-size="10" fill="{cb2}" letter-spacing="3">ON TRACK</text>'
+             f'<rect x="770" y="128" width="60" height="8" fill="#1e2a24"/><text x="800" y="135" text-anchor="middle" font-family="Arial, sans-serif" font-weight="bold" font-size="7" fill="#ffd47a" letter-spacing="1">ROUTE 1</text>')
+    t.append(f'<circle cx="607" cy="190" r="4" fill="{"#fff6d0" if n else "#f4ecd0"}"/><circle cx="993" cy="190" r="4" fill="#ff5a4a"/>')
+    if n: t.append('<path d="M603 190L520 176V204Z" fill="#fff6d0" opacity=".18"/>')
+    # the pole: from its base on the roof up to the wire, the harp on the wire
+    t.append(f'<path d="M780 110L846 {wy - 6}" stroke="#2a2a30" stroke-width="3" stroke-linecap="round"/><circle cx="780" cy="110" r="4" fill="#2a2a30"/><circle cx="846" cy="{wy - 6}" r="3" fill="#2a2a30"/>')
+    if n:
+        t.append(f'<g opacity="0"><circle cx="846" cy="{wy - 6}" r="14" fill="url(#wglow)"/><path d="M846 {wy - 14}l2 6l7 -2l-5 5l5 5l-7 -2l-2 6l-2 -6l-7 2l5 -5l-5 -5l7 2Z" fill="#e6f0ff"/>'
+                 '<animate attributeName="opacity" values="0;0;1;0;0;.8;0" keyTimes="0;.55;.58;.62;.8;.82;1" dur="4.5s" repeatCount="indefinite"/></g>')
+    t.append('</g>')
+    o.append(''.join(t))
+    # riders waiting on the walk
+    o.append(person(470, 194, .62, "#c8442a", hat="#c8a46a", arm=6) + person(500, 194, .6, "#2f5a8a", hat=None, flip=True) + person(1130, 194, .62, "#e2a33a", hat="#2a2a30", flip=True))
+    if n: o.append(lamp(1180, 194, 64, n) + lamp(420, 194, 64, n))
+    cc = "#1e0e0a" if not n else "#05050a"
+    o.append(f'<defs><linearGradient id="cl" x1="0" x2="1" y1="0" y2="0"><stop offset=".55" stop-color="{cc}" stop-opacity=".5"/><stop offset="1" stop-color="{cc}" stop-opacity="0"/></linearGradient>'
+             f'<linearGradient id="cr" x1="1" x2="0" y1="0" y2="0"><stop offset=".55" stop-color="{cc}" stop-opacity=".5"/><stop offset="1" stop-color="{cc}" stop-opacity="0"/></linearGradient></defs>'
+             '<rect x="0" y="176" width="560" height="64" fill="url(#cl)"/><rect x="1000" y="186" width="600" height="54" fill="url(#cr)"/>')
     return vwrap(''.join(o))
 
 def v_renewals(n):  # a field of bluebonnets in spring
@@ -674,7 +731,7 @@ VISTA_LINES = {
     "training": ["Training", "the levee trail: miles before the calls"],
     "blueprint": ["Apollo's Road Map", "the route across dallas, in plain words"],
     "athenamap": ["Athena's Road Map", "the service route, in plain words"],
-    "service": ["Service Digest", "the neighborhood: keeping the book"],
+    "service": ["Service Digest", "the trolley line: keeping the book on track"],
     "renewals": ["Renewals", "bluebonnet season: what came back"],
     "claims": ["Claims", "after the hail: the crew's out"],
     "commercial": ["Commercial Center", "the glass towers: cerberus's book"],

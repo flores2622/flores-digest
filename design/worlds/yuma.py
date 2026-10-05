@@ -84,7 +84,12 @@ def jet(x, y, s, c, flip=False, night=False):
 
 def contrail(x0, y0, x1, y1, w0, w1, op=.75, c="#fff"):
     dx, dy = x1 - x0, y1 - y0; L = math.hypot(dx, dy); nx, ny = -dy / L, dx / L
-    return (f'<path d="M{x0 + nx * w0:.0f} {y0 + ny * w0:.0f}L{x1 + nx * w1:.0f} {y1 + ny * w1:.0f}L{x1 - nx * w1:.0f} {y1 - ny * w1:.0f}L{x0 - nx * w0:.0f} {y0 - ny * w0:.0f}Z" fill="{c}" opacity="{op}"/>')
+    # the trail fades out behind the jet (Frank, 2026-10-05: "can their trail fade properly?") -- a gradient along
+    # its own length, in its own coordinates, so it travels with the jet
+    gid = f"ct{int(x0)}{int(y0)}{int(x1)}{int(w1 * 10)}"
+    return (f'<defs><linearGradient id="{gid}" gradientUnits="userSpaceOnUse" x1="{x0}" y1="{y0}" x2="{x1}" y2="{y1}">'
+            f'<stop offset="0" stop-color="{c}" stop-opacity="1"/><stop offset=".55" stop-color="{c}" stop-opacity=".45"/><stop offset="1" stop-color="{c}" stop-opacity="0"/></linearGradient></defs>'
+            f'<path d="M{x0 + nx * w0:.0f} {y0 + ny * w0:.0f}L{x1 + nx * w1:.0f} {y1 + ny * w1:.0f}L{x1 - nx * w1:.0f} {y1 - ny * w1:.0f}L{x0 - nx * w0:.0f} {y0 - ny * w0:.0f}Z" fill="url(#{gid})" opacity="{op}"/>')
 
 def jagged(x0, x1, base, lo, hi, c, seed, step=(26, 60)):
     """the jagged desert ranges: sawtooth spires"""
@@ -601,25 +606,69 @@ def v_map(n, athena=False):  # the irrigation map: fields, canals, four stops
     o.append(corners("#2a2014" if not n else "#05080c", .45))
     return vwrap(''.join(o))
 
-def v_service(n):  # the canal keepers at the headgate
-    p = P(n); o = [vbase(n, DAY)]
-    o.append(orb(n, 260, 54, 26))
-    o.append(jagged(-10, 1610, 140, 80, 130, p["mtn"], 25, (30, 70)))
-    o.append(f'<rect x="0" y="136" width="1600" height="104" fill="{p["green2"]}"/>')
-    o.append(rows(0, 140, 1600, 170, 8, [p["green"], p["red"]], 4, "30 6"))
-    for x in (130, 220, 1400, 1490): o.append(palm(x, 172, 90, .7, p))
-    cn = p["canal"]; con = "#d8d2c4" if not n else "#4a4a54"
-    o.append(f'<path d="M0 176 L1600 176 L1600 240 L0 240Z" fill="{con}"/><path d="M0 186 L1600 186 L1600 232 L0 232Z" fill="{cn}"/>')
-    o.append('<path d="' + ''.join(f'M{x} {196 + (x // 30) % 3 * 10}h34' for x in range(40, 1580, 70) if not 600 < x < 1000) + '" stroke="#fff" stroke-opacity=".45" stroke-width="2.5" stroke-linecap="round"/>')
-    gc = "#b8b0a0" if not n else "#3e3e48"
-    o.append(f'<rect x="620" y="120" width="360" height="80" fill="{gc}"/><rect x="610" y="112" width="380" height="12" fill="{p["stone2"]}"/>')
-    for x in (660, 750, 850, 940):
-        o.append(f'<rect x="{x - 28}" y="150" width="56" height="50" fill="{"#7a7466" if not n else "#2a2a32"}"/><rect x="{x - 3}" y="78" width="6" height="40" fill="{p["iron"]}"/>'
-                 f'<circle cx="{x}" cy="78" r="18" fill="none" stroke="#c8442a" stroke-width="5"/><path d="M{x - 18} 78h36M{x} 60v36" stroke="#c8442a" stroke-width="3"/>')
-        o.append(f'<path d="M{x - 26} 200 Q{x} 230 {x + 26} 200Z" fill="#fff" opacity=".55"/>')
-    o.append(f'<path d="M600 112 H1000" stroke="{p["iron"]}" stroke-width="3"/><path d="M600 96 H1000" stroke="{p["iron"]}" stroke-width="3"/>' + ''.join(f'<path d="M{x} 96V112" stroke="{p["iron"]}" stroke-width="3"/>' for x in range(600, 1001, 50)))
-    o.append(person(700, 112, .8, "#e2a33a", p, arm=10) + person(800, 112, .8, "#3a8ac0", p, flip=True, arm=10))
-    o.append(corners(cn))
+def v_service(n):  # a paddle-wheel steamboat loading at the old river landing
+    p = P(n); o = [vbase(n, GOLD)]
+    o.append(orb(n, 1420, 56, 24))
+    o.append(jagged(-10, 1610, 140, 66, 124, p["mtn2"], 31, (34, 80)) + jagged(-10, 1610, 146, 96, 136, p["mtn"], 25, (30, 70)))
+    o.append(f'<rect x="0" y="138" width="1600" height="12" fill="{p["green2"]}"/>')
+    for x in (1340, 1470, 1560): o.append(tamarisk(x, 146, .55, p["tam"], p["tam2"]))
+    rv, rv2 = p["river"], p["river2"]
+    o.append(f'<rect x="0" y="148" width="1600" height="92" fill="{rv}"/><rect x="0" y="196" width="1600" height="44" fill="{rv2}" opacity=".6"/>')
+    rp = ''.join(f'M{x} {y}h{w}' for x, y, w in ((40, 160, 50), (210, 172, 40), (1300, 160, 60), (1460, 176, 44), (1380, 206, 56), (680, 226, 70), (1040, 230, 60), (430, 158, 40)))
+    o.append(f'<g><path d="{rp}" stroke="#fff" stroke-opacity=".4" stroke-width="2.5" stroke-linecap="round"/>{drift(18, 0, 7)}</g>')
+    # the landing: the bank, a wooden wharf on pilings, crates and bales
+    o.append(f'<path d="M0 150H230Q280 170 300 196L300 240H0Z" fill="{p["sand2"]}"/><path d="M0 150H220Q262 166 280 186" fill="none" stroke="{p["sand"]}" stroke-width="5"/>')
+    wd, wd2 = p["wood"], p["wood2"]
+    o.append('<path d="' + ''.join(f'M{x} 178V232' for x in range(250, 600, 42)) + f'" stroke="{wd2}" stroke-width="9"/>')
+    o.append(f'<rect x="230" y="170" width="380" height="10" fill="{wd}"/><path d="M230 170H610" stroke="{wd2}" stroke-width="2"/>'
+             '<path d="' + ''.join(f'M{x} 170v10' for x in range(250, 610, 24)) + f'" stroke="{wd2}" stroke-width="1" opacity=".5"/>')
+    o.append(f'<rect x="300" y="122" width="7" height="50" fill="{wd2}"/><path d="M300 126H332" stroke="{wd2}" stroke-width="4"/><path d="M326 126v8" stroke="{p["iron"]}" stroke-width="1.5"/>'
+             f'<path d="M320 134h12l-2 14h-8Z" fill="{"#ffd98a" if n else "#3a3440"}"/>' + (f'<circle cx="326" cy="141" r="30" fill="url(#glow)"/>' if n else ''))
+    bale = "#e8d6a8" if not n else "#5a5040"
+    for bx, by in ((360, 170), (392, 170), (376, 152)):
+        o.append(f'<rect x="{bx}" y="{by - 18}" width="30" height="18" rx="4" fill="{bale}"/><path d="M{bx + 9} {by - 18}v18M{bx + 21} {by - 18}v18" stroke="{wd2}" stroke-width="1.5"/>')
+    o.append(crates(440, 170, 3, 2, 22, "#c76a22" if not n else "#5a3420", "#d9822b" if not n else "#4a2c1a") + crates(520, 170, 1, 1, 22, "#c76a22" if not n else "#5a3420", "#d9822b"))
+    o.append(person(256, 170, .72, "#3a8ac0", p, hat="#8a5a34", arm=6))
+    # the crew: one carrying a crate down the plank, one with a bale on his shoulder, one handing up
+    o.append(f'<path d="M576 172L700 177" stroke="{wd}" stroke-width="7"/><path d="M576 172L700 177" stroke="{wd2}" stroke-width="1.5" stroke-dasharray="4 8"/>')
+    o.append(person(650, 173, .7, "#c8442a", p, arm=14) + f'<rect x="648" y="108" width="22" height="16" fill="#d9822b" stroke="{wd2}" stroke-width="1.5"/>')
+    o.append(person(500, 170, .72, "#e2a33a", p, flip=True, bend=True))
+    o.append(person(586, 170, .72, "#2f7a8a", p, arm=18) + f'<rect x="582" y="106" width="28" height="16" rx="4" fill="{bale}"/>')
+    # the steamboat: a sternwheeler, two decks, pilot house, twin stacks, the wheel at the stern
+    hb = "#f4ecd8" if not n else "#6a6470"; tr = "#b5323a" if not n else "#5a1e24"; win = "#ffd27a" if n else "#5a6a80"
+    o.append(f'<path d="M640 176L1220 176L1214 196Q930 206 660 196Z" fill="{hb}"/><path d="M640 176H1220" stroke="{tr}" stroke-width="4"/><path d="M652 190Q930 200 1214 190" stroke="{wd2}" stroke-width="2" fill="none" opacity=".5"/>')
+    o.append(f'<rect x="680" y="138" width="500" height="38" fill="{hb}"/><path d="M670 138H1190" stroke="{p["stone2"]}" stroke-width="5"/>'
+             '<path d="' + ''.join(f'M{x} 140V176' for x in range(690, 1180, 30)) + f'" stroke="{p["stone2"]}" stroke-width="2"/>')
+    o.append('<g>' + ''.join(f'<rect x="{x + 7}" y="146" width="14" height="18" fill="{win}" opacity="{.9 if n else .8}"/>' for x in range(720, 1150, 60)) + '</g>')
+    o.append(f'<rect x="740" y="108" width="380" height="30" fill="{hb}"/><path d="M730 108H1130" stroke="{p["stone2"]}" stroke-width="5"/>'
+             f'<path d="M740 128H1120" stroke="{p["stone2"]}" stroke-width="1.5"/>' + '<path d="' + ''.join(f'M{x} 128V138' for x in range(745, 1120, 12)) + f'" stroke="{p["stone2"]}" stroke-width="1"/>')
+    o.append(''.join(f'<rect x="{x}" y="114" width="12" height="12" fill="{win}" opacity=".85"/>' for x in range(780, 1110, 36)))
+    o.append(f'<rect x="900" y="80" width="80" height="28" fill="{hb}"/><path d="M892 80L940 70L988 80Z" fill="{tr}"/><rect x="910" y="86" width="60" height="12" fill="{win}"/>')
+    o.append(f'<rect x="872" y="96" width="136" height="14" rx="2" fill="{tr}"/><text x="940" y="107" text-anchor="middle" font-family="Georgia, serif" font-weight="bold" font-size="10" fill="#fbf0d6" letter-spacing="2">PAID IN FULL</text>')
+    sc = "#2a2522" if not n else "#0e0c10"
+    for sx in (820, 858):
+        o.append(f'<rect x="{sx}" y="46" width="12" height="64" fill="{sc}"/><path d="M{sx - 5} 46h22l-3 -6h-16Z" fill="{sc}"/>')
+        if n: o.append(f'<circle cx="{sx + 6}" cy="42" r="12" fill="url(#glow)"/>')
+    sm = "#e8e2d6" if not n else "#4a4a5a"
+    for k, (sx, d0) in enumerate(((826, 0), (864, 2.2), (826, 4.4))):
+        o.append(f'<circle cx="{sx}" cy="34" r="9" fill="{sm}" opacity="0"><animate attributeName="cy" values="36;8" dur="6.6s" begin="{d0}s" repeatCount="indefinite"/>'
+                 f'<animate attributeName="cx" values="{sx};{sx - 70}" dur="6.6s" begin="{d0}s" repeatCount="indefinite"/><animate attributeName="r" values="7;22" dur="6.6s" begin="{d0}s" repeatCount="indefinite"/>'
+                 f'<animate attributeName="opacity" values=".75;0" dur="6.6s" begin="{d0}s" repeatCount="indefinite"/></circle>')
+    o.append(f'<ellipse cx="790" cy="34" rx="34" ry="12" fill="{sm}" opacity=".55"/><ellipse cx="730" cy="26" rx="42" ry="13" fill="{sm}" opacity=".35"/>')
+    o.append(f'<path d="M700 138V178M760 108V140" stroke="{p["stone2"]}" stroke-width="3"/><path d="M660 176L700 120" stroke="{wd2}" stroke-width="3"/>')
+    # the stern wheel, turning, its lower buckets in the water
+    cx, cy, R = 1262, 168, 42
+    sp = ''.join(f'M{cx} {cy}L{cx + R * math.cos(a * math.pi / 6):.0f} {cy + R * math.sin(a * math.pi / 6):.0f}' for a in range(12))
+    bk = ''.join(f'M{cx + (R - 9) * math.cos(a * math.pi / 6):.0f} {cy + (R - 9) * math.sin(a * math.pi / 6):.0f}L{cx + (R + 3) * math.cos(a * math.pi / 6):.0f} {cy + (R + 3) * math.sin(a * math.pi / 6):.0f}' for a in range(12))
+    o.append(f'<path d="M1210 126H1300V138H1210ZM1214 138L1234 176M1300 138L1290 176" fill="{tr}" stroke="{tr}" stroke-width="5"/>')
+    o.append(f'<g><circle cx="{cx}" cy="{cy}" r="{R}" fill="none" stroke="{tr}" stroke-width="4"/><circle cx="{cx}" cy="{cy}" r="{R - 14}" fill="none" stroke="{tr}" stroke-width="2"/>'
+             f'<path d="{sp}" stroke="{tr}" stroke-width="2.5"/><path d="{bk}" stroke="{wd}" stroke-width="7"/><circle cx="{cx}" cy="{cy}" r="6" fill="{p["iron"]}"/>'
+             f'<animateTransform attributeName="transform" type="rotate" values="0 {cx} {cy};360 {cx} {cy}" dur="9s" repeatCount="indefinite"/></g>')
+    o.append(f'<rect x="1200" y="196" width="120" height="44" fill="{rv2}"/><path d="M1206 198q20 -8 40 0t40 0t32 0" stroke="#fff" stroke-opacity=".7" stroke-width="3" fill="none"/>'
+             f'<ellipse cx="1262" cy="200" rx="70" ry="5" fill="#fff" opacity=".25"/>')
+    o.append(f'<path d="M640 196Q930 208 1220 196" stroke="#fff" stroke-opacity=".35" stroke-width="2" fill="none"/>')
+    if n: o.append(f'<ellipse cx="930" cy="218" rx="260" ry="12" fill="#ffd27a" opacity=".15"/>')
+    o.append(corners(rv2))
     return vwrap(''.join(o))
 
 def v_renewals(n):  # the date grove at harvest
@@ -697,7 +746,7 @@ VISTA_LINES = {
     "training": ["Training", "the flight line: drills in formation"],
     "blueprint": ["Apollo's Road Map", "the canal route, in plain words"],
     "athenamap": ["Athena's Road Map", "the service route, in plain words"],
-    "service": ["Service Digest", "the headgate: keeping the book flowing"],
+    "service": ["Service Digest", "the steamboat landing: keeping the book moving"],
     "renewals": ["Renewals", "the date grove: what came back around"],
     "claims": ["Claims", "after the monsoon: the crew's out"],
     "commercial": ["Commercial Center", "the packing sheds: Cerberus's book"],
