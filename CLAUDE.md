@@ -2124,7 +2124,12 @@ repaint clears the list).
   by the road, lifts off at zero, climbs out of sight and lands back on its
   pad on one 20 s loop (LIFTOFF / LANDED on the clock), and a small rocket
   climbs the far trail by day; Dallas's cars face the way they drive (the
-  hood had been drawn at the back). **Yuma** (Frank, 2026-10-05: "can
+  hood had been drawn at the back). The two cities' Service banners are their
+  own places, not a generic street ("for dallas and yuma make the
+  neighborhood something else specific to the respective cities"): Dallas's
+  vintage trolley on a red-brick, oak-lined avenue of storefronts and lofts
+  under its wire, and Yuma's sternwheeler PAID IN FULL loading at the old
+  river landing. **Yuma** (Frank, 2026-10-05: "can
   you make one off of Yuma, AZ?"; Arvo / Karla; River, Harvest, Dunes): from
   the bluff by the old territorial prison at golden hour, looking down at
   the river crossing -- the prison as it stands (Frank, 2026-10-05: "make
