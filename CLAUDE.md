@@ -828,7 +828,10 @@ with their order and who is next, and every turn logged. **Personal lines**
 is every producer and Amanda, **never Mike**; **Life** is Mike, Lorena and
 Coral; **Mexico policies** is Lorena, Amanda, Crystal, Mike, Coral and
 Sarahi. A turn is `in` (given to whoever is up; the rotation moves on),
-`skip` (they were OUT; it moves on with nobody given), `busy` (Frank,
+`skip` (they were OUT; their turn passes -- and with a client typed, Frank
+2026-10-05, the client goes to the next person in the same click as that
+person's own `in` turn, the two lines `pair`ed so taking either back undoes
+both; with no client it just passes), `busy` (Frank,
 2026-10-02: "when they are busy, it should give it to the next producer,
 but still keep who was busy up next": the client goes to the next person
 who hasn't already covered, the busy person stays up, and the coverer is

@@ -89,7 +89,7 @@
         <div class="rorow">
           <button type="button" class="btn ropri" data-rogive="${key}"${rotBusy || !list.next ? " disabled" : ""}>Give to ${cesc(first(list.next))}</button>
           <button type="button" class="btn" data-robusy="${key}" data-cover="${cesc(cover)}"${rotBusy || !cover ? " disabled" : ""} title="${cesc(first(list.next))} is busy: this client goes to ${cesc(first(cover))}, and ${cesc(first(list.next))} stays up for the next one">${cesc(first(list.next))} is busy → ${cesc(first(cover))}</button>
-          <button type="button" class="btn" data-roskip="${key}"${rotBusy || !list.next ? " disabled" : ""} title="${cesc(first(list.next))} is out: their turn passes to ${cesc(first(afterUp))} and nobody gets a client">${cesc(first(list.next))} is out</button>
+          <button type="button" class="btn" data-roskip="${key}"${rotBusy || !list.next ? " disabled" : ""} title="${cesc(first(afterUp))} gets this client and ${cesc(first(list.next))}'s turn is skipped. With no client name, ${cesc(first(list.next))}'s turn is just skipped.">${cesc(first(list.next))} is out</button>
         </div>
         ${others.length ? `<div class="rorow roout"><span>Client asked for</span><select class="roasked" aria-label="Client asked for"><option value="" selected>Pick who…</option>${others.map(p => `<option value="${cesc(p)}">${cesc(first(p))}</option>`).join("")}</select>
           <button type="button" class="btn" data-roout="${key}"${rotBusy ? " disabled" : ""} title="Give it to them without using the rotation: ${cesc(first(list.next))} stays up">Give out of turn</button></div>` : ""}
@@ -151,7 +151,7 @@
       <td>${cesc(fmtShortDate(e.date))}</td>
       <td class="t"><span class="rotlbl" style="--rh:${ROT_HUE[e.list] || "var(--border-strong)"}">${cesc((ROT.lists[e.list] || {}).label || e.list)}</span></td>
       <td class="t">${badge(e.producer)}${e.kind === "busy" && e.busy ? ` <small class="romute">for ${cesc(first(e.busy))}</small>` : ""}</td>
-      <td class="t">${e.kind === "skip" ? '<span class="romute">nobody — turn passed</span>' : cesc(e.client)}</td>
+      <td class="t">${e.kind === "skip" ? `<span class="romute">${e.pair ? "turn skipped, client went to the next person" : "nobody — turn skipped"}</span>` : cesc(e.client)}</td>
       <td class="t">${cesc(e.how || "")}</td>
       <td class="t"><span class="rokind k-${cesc(e.kind)}">${cesc(KIND[e.kind] || e.kind)}</span></td>
       <td class="t">${cesc(e.notes || "")}</td>
@@ -207,8 +207,12 @@
     });
     v.querySelectorAll("[data-roskip]").forEach(b => b.onclick = async () => {
       const key = b.dataset.roskip, list = ROT.lists[key], f = vals(b);
-      const ok = await post({ op: "log", list: key, kind: "skip", producer: list.next, expect: list.next, notes: f.notes, date: f.date }, key);
-      if (ok) { rotMsg[key] = { ok: `${first(ok.entry.producer)}'s turn passed. ${first(ROT.lists[key].next)} is up next.` }; repaint(); }
+      const ok = await post({ op: "log", list: key, kind: "skip", producer: list.next, expect: list.next, ...f }, key);
+      if (ok) {
+        const out = first(ok.entry.producer), up = first(ROT.lists[key].next);
+        rotMsg[key] = { ok: ok.given ? `${out} is out, so ${f.client} went to ${first(ok.given.producer)}. ${up} is up next.` : `${out}'s turn was skipped. ${up} is up next.` };
+        repaint();
+      }
     });
     v.querySelectorAll("[data-robusy]").forEach(b => b.onclick = async () => {
       const key = b.dataset.robusy, list = ROT.lists[key], f = vals(b), cover = b.dataset.cover;
@@ -225,7 +229,12 @@
     });
     v.querySelectorAll("[data-rodel]").forEach(b => b.onclick = async () => {
       const e = (ROT.entries || []).find(x => x.id === b.dataset.rodel);
-      if (!e || !confirm(`Remove ${e.kind === "skip" ? first(e.producer) + "'s skipped turn" : e.client + " (" + first(e.producer) + ")"} from the rotation?`)) return;
+      const mate = e && e.pair ? (ROT.entries || []).find(x => x.id === e.pair) : null;
+      const skip = e && (e.kind === "skip" ? e : mate && mate.kind === "skip" ? mate : null);
+      const given = e && (e.kind === "skip" ? mate : e);
+      const what = skip && given ? `${first(skip.producer)}'s skipped turn and ${given.client} (${first(given.producer)})`
+        : e && e.kind === "skip" ? first(e.producer) + "'s skipped turn" : e && (e.client + " (" + first(e.producer) + ")");
+      if (!e || !confirm(`Remove ${what} from the rotation?`)) return;
       rotMsg = {};
       await post({ op: "del", id: e.id }, e.list);
     });
