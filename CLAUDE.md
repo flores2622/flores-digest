@@ -2014,14 +2014,24 @@ repaint clears the list).
   bubbles, the map's labels, REPAIR SHOP), LEVEL CLEARED / CONTINUE? / GAME OVER ...)
   and **Phoenix** (Archivo / Inter; Valley Sunset, Copper, Monsoon -- the
   Digest is ONE place (Frank, 2026-10-05, of the canal, light rail and
-  string lights: "none of this makes sense, restart"): a desert garden
-  overlook at sunset looking across the Valley at the camel mountain and
-  downtown, the podium on the garden's flagstone patio behind a low adobe
-  wall lined with luminarias (lit at night), saguaros, palo verdes,
-  ocotillo and agave framing both sides; Session History is a desert drive-in, the big screen
+  string lights: "none of this makes sense, restart"): the airport at dusk
+  (a garden and Papago Park were turned down -- "the mountain and
+  buildings are fine" -- then Frank picked the runway): the camel-shaped
+  mountain and downtown kept, a jet on final over the city, the control
+  tower rising between the tiles, the terminal with two jets at the gates,
+  the runway running to the viewer with the podium on its touchdown zone,
+  edge and approach lights glowing at night, saguaros off its edges; Session History is a desert drive-in, the big screen
   replaying a call to a row of cars under a DRIVE-IN marquee -- Frank,
   2026-10-05: "make this a drive in theatre, not a motel" -- FIREWORKS /
-  NEXT TRAIN / HABOOB ...). Space got
+  NEXT TRAIN / HABOOB ...). **Golf** (Frank, 2026-10-05: "create a golf
+  inspired theme"; Playfair Display / Nunito Sans; Fairway, Clubhouse,
+  Links): one course at golden hour -- cypress and the clubhouse clock tower
+  between the tiles, the FULL COVERAGE COUNTRY CLUB on the leaderboard's
+  horizon, a striped fairway down to the putting green the podium stands
+  on, bunkers, a pond with a footbridge, the 18 DEDUCTIBLE DOGLEG hole sign
+  and an ON PAR cart on the path; banners from the tee shot to the
+  yardage-book Road Maps and the pro shop; strips from a hole in one to the
+  flag alone under the moon; the tour card is the Caddie's notes. Space got
   a Claims banner too. No real teams, games, brands or landmarks' names.
   **A world's pictures load only for whoever picks it** (2026-10-03): each
   is `site/public/worlds/<key>.css`, added by `loadWorld` with the world's
