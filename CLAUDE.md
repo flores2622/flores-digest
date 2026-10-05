@@ -1739,6 +1739,16 @@ repaint clears the list).
   @frank.full.coverage, @francisco.fine.print, @veronica.verified.value,
   @debbie.first.line.of.defense; anyone else @<first>.always.covered. On
   posts, comments, Top accounts and the reply box.
+- **The front office chimes in** (Frank, 2026-10-05: "Francisco is our
+  DM, can you have him and myself chime in with funny motivational content
+  wherever possible"; "Veronica is office manager/HR, have her chime in
+  with the both of us as well"; `edCheers` in editions.js): rule-written
+  lines picked by the day -- Frank's own post after the wrap (big day / a
+  day with sales / no sales), Francisco and Veronica replying on the wrap,
+  Francisco on every sale, the speed post, the top objection and the top
+  quoter, Veronica on the first sale and Apollo's first meme, and a "Front
+  office call-ins" segment on KFLR. They never typed these, so every line
+  carries a small "cheer" tag that says so on hover.
 - **The Feed carries GIFs and memes** (Frank, 2026-10-01: "add GIF's and
   memes to the flores feed"). A reply's **GIF** button opens a picker of
   reaction GIFs drawn in CSS (`ED_GIFS` in editions.js: fire, slow clap,

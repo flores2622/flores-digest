@@ -52,6 +52,7 @@
 .ed .whor small { color: var(--text-muted); font-size: 12px; }
 .ed .whor .ver { color: var(--good); font-size: 12px; margin-left: 4px; }
 .ed .hdl { color: var(--accent); font-weight: 700; }
+.ed .cheer { font: 700 9.5px var(--body); letter-spacing: .06em; text-transform: uppercase; background: var(--chip, #efe6da); color: var(--text-muted); border-radius: 999px; padding: 1px 6px; cursor: help; }
 .ed .pic { border-radius: 14px; background: var(--card2); padding: 16px; display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; }
 .ed .pic b { font: 400 36px var(--display); color: var(--good); }
 .ed .rx { display: flex; gap: 6px; flex-wrap: wrap; }
@@ -463,25 +464,71 @@ function edMemes(X) {
   else if (X.SALES.some(s => /winback/i.test(s.src))) out.push({ k: "rollsafe", top: "CAN'T LOSE A CUSTOMER", bottom: "IF YOU WIN THEM BACK", cap: `${plist([...new Set(X.SALES.filter(s => /winback/i.test(s.src)).map(s => s.w))])} closed a winback ${when}.` });
   return out.slice(0, 3).map((m, i) => ({ id: "m-" + (m.top ? m.top.slice(0, 12).replace(/[^A-Z0-9]/g, "").toLowerCase() || i : m.k === "brain" ? "brain" : m.k), who: "Apollo", when: "Meme desk", meme: m, text: m.cap || "" }));
 }
+/* The front office chimes in (Frank, 2026-10-05: "Francisco is our DM, can
+   you have him and myself chime in with funny motivational content wherever
+   possible"; "Veronica is office manager/HR, have her chime in with the both
+   of us as well"). Written by rule from the day -- never typed by them, so
+   every line carries a small "cheer" tag that says so on hover. Lines are
+   picked by the day, so a day always reads the same. */
+const ED_CHEER_TAG = `<span class="cheer" title="A cheer written by Apollo from the day's numbers, in their voice">cheer</span>`;
+function edCheers(X) {
+  const F = X.F, when = X.isFolio ? "this folio" : "today", tmr = X.isFolio ? "the rest of the folio" : "tomorrow";
+  const h = k => { let x = 7; for (const ch of String(X.dayKey || "folio") + k) x = (x * 31 + ch.charCodeAt(0)) >>> 0; return x; };
+  const pick = (k, arr) => arr[h(k) % arr.length];
+  const top = X.order[0], tn = top ? X.NUM[top] : null;
+  const frank = !F.ps ? pick("f0", [
+      `No sales ${when}. The phones didn't break and the leads didn't move away. ${tmr[0].toUpperCase() + tmr.slice(1)} we eat. 📞`,
+      `Rough one. Every "no" is just a "yes" that hasn't met you yet. Go introduce yourselves. 💪`,
+      `Zero on the board ${when}. Good news: the board resets and I still believe in every one of you. Let's go. 🚀`])
+    : F.ps >= X.goal ? pick("f1", [
+      `${pmoney(F.ps)} ${when}. I'm framing this one. 🖼️`,
+      `${pmoney(F.ps)}?! Somebody check on the printer, it's out of breath. 🖨️💨`,
+      `This is the kind of day that pays for the good coffee. ${pmoney(F.ps)}. Keep it rolling. ☕`])
+    : pick("f2", [
+      `${pmoney(F.ps)} on the board. Good. Now let's make ${tmr} jealous. 😤`,
+      `${plural(F.hhSold || F.pol, "family", "families")} sleeping better tonight because of this floor. That's the job. 🙌`,
+      `${pmoney(F.ps)} ${when}. Not bad. Not done either. 😎`]);
+  const francisco = {
+    sale: w => pick("s" + w, [`${w} said "let's bind it" like it was nothing. 🔥`, `That's a W, ${w}. Somebody ring the bell! 🔔`, `${w} out here protecting households like a superhero with a quote tool. 🦸`, `Another one, ${w}! Save some premium for the rest of the floor 😂`, `${w} didn't come to play, ${w} came to close. 🏆`]),
+    quoter: (w, pq) => pick("q" + w, [`${w}, that's ${pmoney(pq)} in quotes sitting on the table. Go pick it up. 💰`, `Quotes don't close themselves, ${w}. Believe me, I've asked them. 😂`, `${w}, ${pmoney(pq)} quoted is a great warm-up. Now the main event. 🥊`]),
+    obj: o => pick("o", [`"${o}" is just a yes wearing a disguise. Take the mask off. 🎭`, `Next time someone says "${o}", hear "tell me more." 👂`, `"${o}"? Never heard of her. 😏`]),
+    speed: (w, secs) => secs <= 120 ? pick("sp", [`${w} dialed so fast the lead hadn't finished typing their zip code. ⚡`, `${w} with the speed. Leads don't even get to blink. 👀`])
+      : pick("sps", [`Two minutes is the goal, team. New leads are like fresh tortillas: best when they're hot. 🌮`, `A new lead gets cold faster than my coffee. Dial it while it's hot! ☕⏱️`]),
+    wrap: pick("fw", [`Same energy ${tmr}, more dials. Let's ride! 🏇`, `Proud of this floor. Now hydrate and go get 'em ${tmr}. 💧`, `Big things happen to people who pick up the phone. Pick it up. 📞`]),
+  };
+  const veronica = {
+    wrap: pick("vw", [`Reminder from HR: celebrating a sale counts as a team-building activity. Celebrate responsibly. 🎉`, `Great work today. Please take your breaks, drink water, and stop hiding snacks in the supply closet. 🥨`, `Office manager announcement: whoever closes next gets first pick of the good parking spot. 🅿️`, `Proud of you all. Also, please sign your timesheets. Love, HR. 📝`]),
+    sale: w => pick("vs" + w, [`So proud of you, ${w}! Paperwork in today, please 😉📎`, `${w}, this is going in your file. The good file. ⭐`, `HR approves this sale. Highly recommend more of them, ${w}. ✅`]),
+    meme: pick("vm", [`Apollo, please keep the memes office appropriate. These are fine. For now. 😂`, `Who gave Apollo meme privileges? (Don't take them away.)`]),
+    slow: pick("vsl", [`Tough day? Stretch, refill your water, call the next one. You've got this. 💛`, `Friendly HR reminder: a slow day is not a slow you. Back at it ${tmr}. 💛`]),
+  };
+  return { frank, francisco, veronica, top, tn };
+}
 function edPosts(X) {
   const F = X.F, posts = [];
   const top = X.order[0];
   posts.push({ id: "wrap", who: "Apollo", when: `${X.isFolio ? "Folio" : pdow(X.dayKey)} wrap`, pic: true,
     text: `<b>${X.isFolio ? "Folio so far" : "Day closed"}: ${pmoney(F.ps)} in new premium.</b> ${plural(F.pol, "policy", "policies")}, ${F.hhSold} household${F.hhSold === 1 ? "" : "s"}${F.hh ? ` of ${F.hh} quoted, a ${ppct(F.closeHH, 0)} close` : ""}. ${top ? `${top} takes ${X.isFolio ? "the folio" : "the day"} with ${X.NUM[top].pts} points.` : ""}` });
+  const CH = edCheers(X);
+  posts[0].chime = [["Francisco", CH.francisco.wrap], ["Veronica", X.F.ps ? CH.veronica.wrap : CH.veronica.slow]];
+  posts.push({ id: "frank-hype", who: "Frank", when: "Owner", cheer: true, text: edEsc(CH.frank) });
   for (const f of X.order) {
     const n = X.NUM[f]; if (!n.ps) continue;
     const mine = X.SALES.filter(s => s.w === f);
     const call = F.calls.filter(c => pfirst(c.who) === f && (c.flags || []).length)[0];
     posts.push({ id: "s-" + f, who: f, when: "Final · Sale", text: `${plist(mine.map(s => `${s.prod} ${pmoney(s.amt)}`))}${mine.some(s => /winback/i.test(s.src)) ? " 🔁" : mine.some(s => /existing|cross/i.test(s.src)) ? " ➕" : ""}`,
-      apollo: call ? `${call.flags[0]}${call.time ? ` (${call.time})` : ""}. ${call.askfix || ""}`.trim() : `${plural(n.hhSold, "household")} closed, ${n.dials} dials, ${ppct(n.rate)} contact rate.` });
+      apollo: call ? `${call.flags[0]}${call.time ? ` (${call.time})` : ""}. ${call.askfix || ""}`.trim() : `${plural(n.hhSold, "household")} closed, ${n.dials} dials, ${ppct(n.rate)} contact rate.`,
+      chime: [["Francisco", CH.francisco.sale(f)], ...(f === X.order.find(g => X.NUM[g].ps) ? [["Veronica", CH.veronica.sale(f)]] : [])] });
   }
-  if (F.spBest) posts.push({ id: "sp", who: "Apollo", when: "Speed", text: `${pfirst(F.spBest[0])} dialled a new internet lead in <b>${edFmtStd(F.spBest[1].median)}</b>.${F.spTeam != null ? ` Team median ${edFmtStd(F.spTeam)}; the goal is 2 minutes.` : ""}` });
-  if (F.objs[0]) posts.push({ id: "obj", who: "Apollo", when: "Coaching", text: `<span class="lab" style="color:var(--accent)">Flag</span> ${edEsc(F.objs[0][0])} came up ${plural(F.objs[0][1], "time")}, overcome ${F.objs[0][2]}.${/busy|timing/i.test(F.objs[0][0]) ? ' "Is 5 or 6 better, or tomorrow morning?"' : ""}` });
+  if (F.spBest) posts.push({ id: "sp", who: "Apollo", when: "Speed", chime: [["Francisco", CH.francisco.speed(pfirst(F.spBest[0]), F.spBest[1].median)]], text: `${pfirst(F.spBest[0])} dialled a new internet lead in <b>${edFmtStd(F.spBest[1].median)}</b>.${F.spTeam != null ? ` Team median ${edFmtStd(F.spTeam)}; the goal is 2 minutes.` : ""}` });
+  if (F.objs[0]) posts.push({ id: "obj", who: "Apollo", when: "Coaching", chime: [["Francisco", CH.francisco.obj(F.objs[0][0].split(" / ")[0])]], text: `<span class="lab" style="color:var(--accent)">Flag</span> ${edEsc(F.objs[0][0])} came up ${plural(F.objs[0][1], "time")}, overcome ${F.objs[0][2]}.${/busy|timing/i.test(F.objs[0][0]) ? ' "Is 5 or 6 better, or tomorrow morning?"' : ""}` });
   const quoter = X.order.map(f => X.NUM[f]).filter(n => !n.ps && n.pq).sort((a, b) => b.pq - a.pq)[0];
   if (quoter) posts.push({ id: "q-" + pfirst(quoter.n), who: pfirst(quoter.n), when: "Final · Quoted", text: `${pmoney(quoter.pq)} quoted across ${plural(quoter.hh, "household")}${quoter.pq >= Math.max(...Object.values(X.NUM).map(x => x.pq)) ? ", most on the team" : ""}. Nothing closed yet.`,
-    apollo: `${quoter.dials} dials, ${plural(quoter.live, "conversation")}. ${quoter.sent ? `${plural(quoter.sent, "quote")} sent instead of presented.` : "Present on the phone and ask for the sale."}` });
+    apollo: `${quoter.dials} dials, ${plural(quoter.live, "conversation")}. ${quoter.sent ? `${plural(quoter.sent, "quote")} sent instead of presented.` : "Present on the phone and ask for the sale."}`,
+    chime: [["Francisco", CH.francisco.quoter(pfirst(quoter.n), quoter.pq)]] });
   // Apollo's memes land after the wrap, in the middle and at the end.
   const memes = edMemes(X), slots = [1, Math.ceil(posts.length / 2) + 1, posts.length + 2];
+  if (memes[0]) memes[0].chime = [["Veronica", CH.veronica.meme]];
   memes.forEach((m, i) => posts.splice(Math.min(posts.length, slots[i]), 0, m));
   return posts;
 }
@@ -497,11 +544,11 @@ const edHandle = who => { const f = pfirst(String(who || "")); return "@" + (ED_
 function edPostHtml(X, p) {
   const S = edShared.state, rx = S.rx[p.id] || {}, cms = S.cm[p.id] || [];
   const RXS = ["🔥", "👏", "💰", "😬", "🫡"];
-  return `<div class="pc" data-post="${p.id}"><div class="whor">${edAvatar(X, p.who)}<div><b>${p.who === "Apollo" ? 'Apollo <span class="ver">✓ coaching</span>' : edEsc(X.full[p.who] || p.who)}</b><small><span class="hdl">${edEsc(edHandle(p.who))}</span> · ${edEsc(p.when)}</small></div></div><p>${p.text}</p>
+  return `<div class="pc" data-post="${p.id}"><div class="whor">${edAvatar(X, p.who)}<div><b>${p.who === "Apollo" ? 'Apollo <span class="ver">✓ coaching</span>' : edEsc(X.full[p.who] || p.who)}</b><small><span class="hdl">${edEsc(edHandle(p.who))}</span> · ${edEsc(p.when)}${p.cheer ? ` · ${ED_CHEER_TAG}` : ""}</small></div></div><p>${p.text}</p>
    ${p.pic ? `<div class="pic"><div><div class="lab">Premium sold</div><b>${pmoney(X.F.ps)}</b></div><div style="text-align:right"><div class="lab">Households</div><b>${X.F.hh ? `${X.F.hhSold} of ${X.F.hh}` : X.F.hhSold}</b></div><div style="text-align:right"><div class="lab">Closing</div><b>${X.F.closeHH == null ? "—" : ppct(X.F.closeHH, 0)}</b></div></div>` : ""}
    ${p.meme ? edMemeHtml(p.meme) : ""}
    <div class="rx">${RXS.map(e => { const by = rx[e] || []; return `<button type="button" data-rx="${e}" aria-pressed="${by.includes(edMe())}" title="${edEsc(by.join(", "))}">${e} ${by.length || ""}</button>`; }).join("")}</div>
-   <div class="cm">${p.apollo ? `<div class="c">${edAvatar(X, "Apollo", 28)}<div><b>Apollo</b> <small><span class="hdl">${edHandle("Apollo")}</span> · coaching note</small><br>${edEsc(p.apollo)}</div></div>` : ""}${cms.map(c => `<div class="c">${edAvatar(X, pfirst(c.who), 28)}<div><b>${edEsc(c.who)}</b> <small><span class="hdl">${edEsc(edHandle(c.who))}</span> · ${edEsc(c.at)}</small><br>${c.gif ? edGifHtml(c.gif) : ""}${c.text && c.gif ? "<br>" : ""}${c.text ? edCmText(c.text) : ""}</div></div>`).join("")}
+   <div class="cm">${(p.chime || []).map(([w, t]) => `<div class="c">${edAvatar(X, w, 28)}<div><b>${edEsc(w)}</b> <small><span class="hdl">${edEsc(edHandle(w))}</span> · ${ED_CHEER_TAG}</small><br>${edEsc(t)}</div></div>`).join("")}${p.apollo ? `<div class="c">${edAvatar(X, "Apollo", 28)}<div><b>Apollo</b> <small><span class="hdl">${edHandle("Apollo")}</span> · coaching note</small><br>${edEsc(p.apollo)}</div></div>` : ""}${cms.map(c => `<div class="c">${edAvatar(X, pfirst(c.who), 28)}<div><b>${edEsc(c.who)}</b> <small><span class="hdl">${edEsc(edHandle(c.who))}</span> · ${edEsc(c.at)}</small><br>${c.gif ? edGifHtml(c.gif) : ""}${c.text && c.gif ? "<br>" : ""}${c.text ? edCmText(c.text) : ""}</div></div>`).join("")}
    <form data-cm><input class="t" placeholder="Reply as ${edEsc(edHandle(edMe()))}… or paste a GIF link" aria-label="Reply" maxlength="300"><button type="button" class="ebtn q" data-gifpick="${p.id}" aria-expanded="${edGifOpen === p.id}">GIF</button><button class="ebtn">Post</button></form>
    ${edGifOpen === p.id ? `<div class="gifpick">${Object.keys(ED_GIFS).map(k => `<button type="button" data-gif="${k}" title="${edEsc(ED_GIFS[k][0])}">${edGifHtml(k)}</button>`).join("")}</div>` : ""}</div></div>`;
 }
@@ -566,6 +613,8 @@ function edSegs(X) {
       o ? [`Apollo: the ${o[0]} objection came up ${plural(o[1], "time")} and was overcome ${o[2] ? o[2] + " of them" : "zero times"}. That’s the villain of the day.`, /busy|timing/i.test(o[0]) ? 'Apollo: the move: "Is 5 or 6 better, or tomorrow morning?" A choice between two yeses.' : "Apollo: name it, answer it, and ask for the sale again."] : ["Apollo: a quiet night for the villains."]],
     ["🔢", "7:15", "The Countdown", `${X.order.length} to one, with the sting`,
       [...[...X.order].reverse().map((f, i) => `Apollo: number ${X.order.length - i}, ${f}, ${X.NUM[f].pts} points${X.NUM[f].ps ? ` and ${pmoney(X.NUM[f].ps)}` : ""}.`)]],
+    (CH => ["☎️", "9:10", "Front office call-ins", "Frank, Francisco and Veronica on the line",
+      [`Frank (cheer): ${CH.frank}`, `Francisco (cheer): ${CH.francisco.wrap}`, `Veronica (cheer): ${X.F.ps ? CH.veronica.wrap : CH.veronica.slow}`]])(edCheers(X)),
     ["📬", "9:40", "Mailbag", "Your notes to Apollo, answered on air", ["Apollo: to the mailbag. Send a note below and tomorrow’s show answers it."]],
     ["🏃", "11:50", "Two-Minute Drill", carry.length ? carry.map(r => `${r.n} ${r.t}`).join(", ") : "Nothing left on the desk",
       carry.length ? carry.map(r => `Apollo: ${r.n} ${r.t}. ${r.sub}.`) : ["Apollo: the desk is clear. Go sell."]],
