@@ -172,7 +172,12 @@ def cart(x, y, s, body="#f2efe4", roof="#1f5a35", label=None, flip=False):
          f'<rect x="-52" y="-74" width="104" height="7" rx="3" fill="{roof}"/>',
          '<line x1="-40" y1="-68" x2="-34" y2="-30" stroke="#5a5a5a" stroke-width="3"/><line x1="40" y1="-68" x2="40" y2="-30" stroke="#5a5a5a" stroke-width="3"/>',
          f'<path d="M-56 -12 L-52 -32 L-30 -34 L-20 -22 L46 -22 L52 -34 L58 -34 L58 -12Z" fill="{body}" stroke="#9a968a" stroke-width="1.5"/>',
-         '<path d="M-36 -32 L-48 -50" stroke="#3a3a3a" stroke-width="3"/><rect x="0" y="-36" width="34" height="14" rx="3" fill="#3a3a3a"/>',
+         # the front reads as the front (Frank, 2026-10-05: "the clubs look like their on the front bc theres no
+         # steering wheel ... fix what i think is the windshield"): a tinted windshield from the roof down to the
+         # cowl, the steering wheel on its column, the bench seat with its back, the bag behind it
+         '<path d="M-41 -67 L-47 -67 L-55 -33 L-37 -31 Z" fill="#cfe8f5" opacity=".55" stroke="#8aa6b4" stroke-width="1.5"/>',
+         '<path d="M-26 -30 L-14 -46" stroke="#3a3a3a" stroke-width="3"/><ellipse cx="-13" cy="-47" rx="9" ry="2.6" fill="none" stroke="#2a2a2a" stroke-width="2.6" transform="rotate(-24 -13 -47)"/>',
+         '<rect x="0" y="-34" width="34" height="10" rx="3" fill="#3a3a3a"/><rect x="28" y="-54" width="7" height="24" rx="2" fill="#3a3a3a"/>',
          # the bag strapped on the rear deck, leaning back, club heads in their covers (Frank, 2026-10-05:
          # "put the clubs on the back of the golf cart")
          '<rect x="44" y="-26" width="22" height="5" rx="1" fill="#5a5a5a"/>',
