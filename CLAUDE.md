@@ -1951,7 +1951,10 @@ repaint clears the list).
   space"). A world is design and font: its own colour looks, its own
   typeface pair and its own pictures (the Digest's skyline, the page vistas,
   the coaching cards' outcome strips); figures, lists and hooks never
-  change, and **the Editions keep their own looks**. Settings has a World
+  change, and **the Editions keep their own looks**. **A change asked for in one world goes to
+  every world where it fits** (Frank, 2026-10-05: "these chagnes we make should be applied to every world wehre
+  possible"): movement, a fix to how something is drawn, a rule about words -- do it in all of them (the
+  desert's inline pictures included) in the same round, and say which worlds it could not apply to and why. Settings has a World
   row above the looks (`WORLDS`, each look in `LOOKS` names its world;
   `TH.theme`, saved in `board-look`, `html[data-theme]`). **The worlds are
   listed by kind** (Frank, 2026-10-05: "categorize the themes in the
