@@ -154,7 +154,7 @@ def v_service(n):  # the station
     o.append(f'<rect x="{sx-240}" y="{sy-4}" width="480" height="8" fill="#8d98b0"/>')
     for x in [sx-230, sx-120, sx+40, sx+150]: o.append(f'<rect x="{x}" y="{sy-40}" width="80" height="80" fill="{pan}" stroke="#9cc0ff" stroke-width="2"/><line x1="{x}" y1="{sy}" x2="{x+80}" y2="{sy}" stroke="#9cc0ff" stroke-width="1.5"/>')
     o.append(f'<rect x="{sx-60}" y="{sy-18}" width="120" height="36" rx="18" fill="#e4e8f0"/><rect x="{sx-20}" y="{sy+18}" width="40" height="30" rx="8" fill="#cfd6e2"/><circle cx="{sx}" cy="{sy}" r="7" fill="#8ecdf2"/>')
-    o.append(f'<text x="{sx}" y="226" text-anchor="middle" font-family="monospace" font-size="16" fill="#fff" opacity=".85">STATION FLORES · KEEPING THE BOOK</text>')
+    o.append(f'<text x="{sx}" y="226" text-anchor="middle" font-family="monospace" font-size="16" fill="#fff" opacity=".85">POLICY STATION · KEEPING THE BOOK</text>')
     return wrap(V,''.join(o))
 def v_renewals(n):  # the orbit: what came back
     o=[sky(V,n,day=("#101c44","#2a3f80","#5d79b8"))]; o.append(stars(140,1600,0,V,9))
@@ -195,7 +195,7 @@ def s_open(n):   # holding on the pad, the clock running
     o=[sky(S,n,day=("#3b2a5a","#e07a5f","#f6c48a"))]; o.append(stars(40,1600,0,80,22))
     o.append(f'<rect x="0" y="126" width="1600" height="34" fill="{"#5c7a63" if not n else "#101a30"}"/>')
     o.append(rocket(520, 126, 80, n, scale=1.1)); o.append(f'<rect x="560" y="40" width="10" height="86" fill="{"#b43a2a" if not n else "#7a2222"}"/>')
-    o.append('<rect x="120" y="62" width="180" height="40" rx="4" fill="#111"/><text x="210" y="91" text-anchor="middle" font-family="monospace" font-weight="bold" font-size="26" fill="#ffb347">T-00:02:00</text>')
+    o.append('<text x="210" y="91" text-anchor="middle" font-family="monospace" font-weight="bold" font-size="26" fill="#ffb347">T-00:02:00</text>')
     o.append('<text x="330" y="92" font-family="monospace" font-size="20" fill="#fff" opacity=".9">HOLDING · NEXT WINDOW SET</text>')
     return wrap(S,''.join(o))
 def s_lost(n):   # the capsule drifting down, grey dusk
@@ -211,7 +211,7 @@ def s_dead(n):   # scrubbed: red light, no rocket on the pad
     o.append(f'<rect x="0" y="126" width="1600" height="34" fill="{"#6b6f7a" if not n else "#1a1c28"}"/>')
     o.append(f'<rect x="560" y="40" width="10" height="86" fill="{"#8a2a1e" if not n else "#5a1a14"}"/><rect x="480" y="112" width="200" height="14" fill="{"#8e9aa8" if not n else "#38415a"}"/>')
     o.append('<circle cx="565" cy="34" r="8" fill="#ff3b3b"/><circle cx="565" cy="34" r="18" fill="#ff3b3b" opacity=".3"/>')
-    o.append('<rect x="120" y="60" width="150" height="44" rx="4" fill="#111"/><text x="195" y="91" text-anchor="middle" font-family="monospace" font-weight="bold" font-size="28" fill="#ff5a36">SCRUB</text>')
+    o.append('<text x="195" y="91" text-anchor="middle" font-family="monospace" font-weight="bold" font-size="28" fill="#ff5a36">SCRUB</text>')
     o.append('<text x="300" y="92" font-family="monospace" font-size="20" fill="#fff" opacity=".85">NO LAUNCH TODAY</text>')
     return wrap(S,''.join(o))
 def s_reached(n):  # two astronauts talking

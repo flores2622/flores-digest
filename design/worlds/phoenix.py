@@ -359,7 +359,7 @@ def v_sales(n):  # the freeway at rush hour, traffic flowing like premium
     o.append(f'<rect x="596" y="20" width="6" height="66" fill="{deck}"/><rect x="1000" y="20" width="6" height="66" fill="{deck}"/><rect x="590" y="16" width="420" height="6" fill="{deck}"/>')
     o.append('<rect x="640" y="24" width="320" height="54" rx="6" fill="#1f6b3e" stroke="#fff" stroke-width="2"/>'
              '<text x="800" y="48" text-anchor="middle" font-family="Arial, sans-serif" font-weight="bold" font-size="20" fill="#fff">PREMIUM  NEXT EXIT</text>'
-             '<text x="800" y="70" text-anchor="middle" font-family="Arial, sans-serif" font-weight="bold" font-size="14" fill="#fff">FLORES BLVD  1/2 MILE</text>')
+             '<text x="800" y="70" text-anchor="middle" font-family="Arial, sans-serif" font-weight="bold" font-size="14" fill="#fff">PREMIUM PKWY  1/2 MILE</text>')
     o.append(shade())
     return wrap(V, ''.join(o))
 
@@ -388,7 +388,7 @@ def v_messages(n):  # the cell towers on the ridge, signal arcs
 
 def v_coaching(n):  # a rooftop at night overlooking the lit grid
     o = [vsky(n, ("#2a2058", "#a0507a", "#f2906a"), NITE)]
-    o.append(stars(30, 1600, 0, 90, 3) if not n else stars(50, 1600, 0, 100, 3))
+    o.append(stars(30, 1600, 0, 90, 3) if not n else stars(26, 1600, 0, 100, 3))
     r = random.Random(5)
     # the grid falling away below
     g = "#120e22" if n else "#5a3a5a"
@@ -400,7 +400,7 @@ def v_coaching(n):  # a rooftop at night overlooking the lit grid
         o.append(f'<line x1="0" y1="{y}" x2="1600" y2="{y}" stroke="#ffb347" stroke-width="1.4" opacity="{.35 if n else .25}"/>')
     for xb in range(-1600, 3201, 260):
         o.append(f'<line x1="{vx + (xb - vx) * .06:.0f}" y1="110" x2="{xb}" y2="240" stroke="#ffb347" stroke-width="1.4" opacity="{.35 if n else .25}"/>')
-    for _ in range(34):
+    for _ in range(26):
         y = r.randint(112, 200); x = r.randint(0, 1600)
         o.append(f'<circle cx="{x}" cy="{y}" r="{1 + (y - 110) / 40:.1f}" fill="{r.choice(["#ffd27a", "#fff2c0", "#ff8a3d"])}" opacity="{.9 if n else .6}"/>')
     # towers either side
@@ -413,10 +413,29 @@ def v_coaching(n):  # a rooftop at night overlooking the lit grid
     o.append(f'<path d="M420 170L1180 170" stroke="#8a7a9a" stroke-width="3"/>')
     for x in range(430, 1180, 30): o.append(f'<line x1="{x}" y1="140" x2="{x}" y2="170" stroke="#8a7a9a" stroke-width="2"/>')
     o.append('<line x1="420" y1="140" x2="1180" y2="140" stroke="#8a7a9a" stroke-width="3"/>')
+    # the string lights hang between two posts at the deck's corners (Frank, 2026-10-05: "hanging lights that dont hang from anywhere")
+    post = "#5a4a62" if not n else "#3a2c48"
+    o.append(f'<rect x="414" y="88" width="8" height="82" fill="{post}"/><rect x="1178" y="88" width="8" height="82" fill="{post}"/>'
+             f'<rect x="410" y="84" width="16" height="6" rx="2" fill="{post}"/><rect x="1174" y="84" width="16" height="6" rx="2" fill="{post}"/>')
     o.append('<path d="M420 96Q800 140 1180 96" fill="none" stroke="#3a2c40" stroke-width="1.5"/>')
     for k in range(1, 16):
         t = k / 16; x = 420 + 760 * t; y = 96 + 44 * 2 * t * (1 - t) * 1.0
-        o.append((f'<circle cx="{x:.0f}" cy="{y + 4:.0f}" r="8" fill="#ffd27a" opacity=".3"/>' if n else '') + f'<circle cx="{x:.0f}" cy="{y + 4:.0f}" r="3.4" fill="#ffe8a8"/>')
+        o.append((f'<circle cx="{x:.0f}" cy="{y + 4:.0f}" r="8" fill="#ffd27a" opacity=".3"/>' if n and k % 2 else '') + f'<circle cx="{x:.0f}" cy="{y + 4:.0f}" r="3.4" fill="#ffe8a8"/>')
+    # downtown's lit towers on the far horizon, and the deck dressed: potted saguaros and agave,
+    # a fire table glowing, a cooler -- no empty roof
+    far = "#2a2044" if n else "#4f3458"
+    for x, top, w in [(560, 78, 26), (590, 62, 30), (626, 84, 22), (980, 70, 28), (1012, 56, 34), (1050, 80, 24)]:
+        o.append(f'<rect x="{x}" y="{top}" width="{w}" height="{112 - top}" fill="{far}"/>'
+                 + ''.join(f'<rect x="{x + 5}" y="{yy}" width="{w - 10}" height="2" fill="#ffd27a" opacity=".55"/>' for yy in range(top + 8, 108, 12)))
+    pot = "#b5603a" if not n else "#6a3424"; sg = "#4f8a54" if not n else "#244a2e"
+    for x, h in [(470, 70), (1130, 62)]:
+        o.append(f'<path d="M{x - 18} 200h36l-5 26h-26z" fill="{pot}"/><rect x="{x - 5}" y="{200 - h}" width="10" height="{h}" rx="5" fill="{sg}"/>'
+                 f'<path d="M{x - 5} {200 - h * .5}h-12v-{h * .3:.0f}M{x + 5} {200 - h * .62}h11v-{h * .26:.0f}" stroke="{sg}" stroke-width="8" stroke-linecap="round" fill="none"/>')
+    for x in (560, 1040):
+        o.append(f'<path d="M{x - 16} 206h32l-4 20h-24z" fill="{pot}"/>' + ''.join(f'<path d="M{x} 206q{dx * .4:.0f} -10 {dx} -{h}q-{dx * .2:.0f} 12 -{dx * .7 - (3 if dx > 0 else -3):.0f} {h}z" fill="{"#7aa48a" if not n else "#2a4a3a"}"/>' for dx, h in [(-14, 14), (-7, 22), (0, 26), (7, 22), (14, 14)]))
+    o.append(f'<rect x="620" y="206" width="70" height="18" rx="4" fill="{"#6a5a62" if not n else "#3a3040"}"/><ellipse cx="655" cy="206" rx="30" ry="5" fill="#ff8a3d"/>'
+             '<path d="M640 206q6 -14 10 -2q4 -16 9 0q5 -10 8 2" fill="#ffd27a"/>' + ('<ellipse cx="655" cy="200" rx="60" ry="22" fill="#ffb347" opacity=".25"/>' if n else ''))
+    o.append(f'<rect x="950" y="200" width="44" height="26" rx="4" fill="#2f6fb8"/><rect x="950" y="200" width="44" height="7" rx="3" fill="#e9eef4"/>')
     o.append(sitter(720, 200, 1.4, "#e8662a", flip=False) + sitter(880, 200, 1.4, "#2f8a8a", skin="#8a5a3a", flip=True))
     o.append('<rect x="776" y="170" width="48" height="6" fill="#c9b6a8"/><rect x="796" y="176" width="8" height="24" fill="#c9b6a8"/>'
              '<rect x="788" y="160" width="24" height="12" rx="2" fill="#111"/><path d="M794 163l0 6l6 -3z" fill="#7dff9a"/>')
@@ -448,7 +467,7 @@ def v_roleplay(n):  # a spring-training ballpark
     # scoreboard and lights
     o.append('<rect x="680" y="34" width="240" height="70" rx="4" fill="#1d2a3a"/><rect x="796" y="104" width="8" height="16" fill="#1d2a3a"/>'
              '<text x="800" y="58" text-anchor="middle" font-family="monospace" font-size="15" fill="#ffd27a">SPRING TRAINING</text>'
-             '<text x="800" y="90" text-anchor="middle" font-family="monospace" font-weight="bold" font-size="22" fill="#7dff9a">FLORES 3 · AWAY 2</text>')
+             '<text x="800" y="90" text-anchor="middle" font-family="monospace" font-weight="bold" font-size="22" fill="#7dff9a">HOME 3 · AWAY 2</text>')
     for x in (440, 1160):
         o.append(f'<rect x="{x - 3}" y="40" width="6" height="80" fill="#5a6070"/><rect x="{x - 28}" y="26" width="56" height="18" rx="2" fill="#dfe4ea"/>')
         if n: o.append(f'<path d="M{x - 28} 44L{x - 160} 240L{x + 160} 240L{x + 28} 44Z" fill="#fff6d6" opacity=".14"/><circle cx="{x}" cy="34" r="50" fill="url(#gl)"/>')

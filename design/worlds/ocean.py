@@ -88,7 +88,7 @@ def sailboat(x, wy, s, hull, night, mast=120, sails=None, flag="#d8323f", flip=F
     o.append('</g>')
     return ''.join(o)
 
-def trawler(x, wy, s, hull, night, flip=False, net=False, name="FLORES", mesh="mesh"):
+def trawler(x, wy, s, hull, night, flip=False, net=False, name="", mesh="mesh"):
     """A fishing boat facing right (bow at +x); flip faces it left."""
     house = "#f2ede2" if not night else "#9aa0ae"; roof = "#2f3440" if not night else "#151922"
     win = "#ffd56b" if night else "#7fb5d6"; ink = "#2f3440" if not night else "#151922"
@@ -475,7 +475,7 @@ def v_training(n):  # sailing school: small boats and a knot board
     bd = "#c79a5e" if not n else "#5a4634"; rope = "#efe2c0" if not n else "#b9ab88"
     o.append(f'<rect x="1110" y="140" width="10" height="44" fill="{wood2}"/><rect x="1400" y="140" width="10" height="44" fill="{wood2}"/>'
              f'<rect x="1090" y="28" width="340" height="120" rx="8" fill="{bd}" stroke="{wood2}" stroke-width="5"/>'
-             f'<text x="1260" y="52" text-anchor="middle" font-family="Georgia, serif" font-weight="bold" font-size="17" fill="#3a2416">FLORES SAILING SCHOOL</text>')
+             f'<text x="1260" y="52" text-anchor="middle" font-family="Georgia, serif" font-weight="bold" font-size="17" fill="#3a2416">SAFE HARBOR SAILING</text>')
     for i, cx in enumerate([1140, 1220, 1300, 1380]):
         o.append(knot(cx, 100, i, rope))
     # the instructor's launch
@@ -547,7 +547,7 @@ def v_service(n):  # the boatyard: boats on stands, a hull being painted
     shed = "#7a3a2a" if not n else "#2a1612"
     o.append(f'<rect x="80" y="70" width="300" height="140" fill="{shed}"/><path d="M60 72 L230 30 L400 72 Z" fill="{"#4a2a20" if not n else "#1a0e0c"}"/>'
              f'<rect x="170" y="110" width="120" height="100" fill="{"#3a1e16" if not n else "#140a08"}"/>'
-             f'<rect x="130" y="80" width="200" height="24" fill="#f6f1e6"/><text x="230" y="98" text-anchor="middle" font-family="Georgia, serif" font-weight="bold" font-size="16" fill="#3a2416">FLORES BOATYARD</text>')
+             f'<rect x="130" y="80" width="200" height="24" fill="#f6f1e6"/><text x="230" y="98" text-anchor="middle" font-family="Georgia, serif" font-weight="bold" font-size="16" fill="#3a2416">DRY DOCK BOATYARD</text>')
     if n: o.append('<rect x="174" y="114" width="112" height="96" fill="#ffd56b" opacity=".35"/>')
     o.append(boat_on_stands(640, 196, .9, "#f4f1ea" if not n else "#8a8f9e", "#c8283a" if not n else "#5e1c26", n))
     o.append(boat_on_stands(1000, 200, 1.0, "#1f3d66" if not n else "#16243c", "#2f8f5a" if not n else "#1a4a34", n))
@@ -624,7 +624,7 @@ def v_commercial(n):  # the cargo port
     # the freighter
     o.append(f'<path d="M260 150 L1080 150 L1060 196 L300 196 Q270 180 260 150 Z" fill="{"#7a2a20" if not n else "#3a1410"}"/><rect x="262" y="146" width="818" height="8" fill="{"#2f3440" if not n else "#11141c"}"/>'
              f'<rect x="300" y="182" width="760" height="5" fill="#c8283a" opacity=".8"/>'
-             f'<text x="360" y="176" font-family="Arial, sans-serif" font-weight="bold" font-size="14" fill="#f6f1e6">FLORES</text>')
+             f'<text x="360" y="176" font-family="Arial, sans-serif" font-weight="bold" font-size="14" fill="#f6f1e6">FULL COVERAGE</text>')
     o.append(f'<rect x="960" y="92" width="80" height="54" fill="{"#f2ede2" if not n else "#9aa0ae"}"/><rect x="970" y="100" width="60" height="10" fill="{"#7fb5d6" if not n else "#ffd56b"}"/><rect x="1000" y="70" width="14" height="22" fill="#2f3440"/>')
     cols = ["#c8283a", "#2f6fa8", "#f2c14e", "#2f8f5a", "#f07a2a", "#1f3d66"] if not n else ["#6a1c24", "#1c3c66", "#7a6424", "#1a4a34", "#7a3a18", "#16243c"]
     r = random.Random(19)

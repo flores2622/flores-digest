@@ -744,8 +744,7 @@ S = 160
 
 
 def cap(text, c="#fff", size=24):
-    return (f'<rect x="100" y="64" width="{len(text)*size*.62 + 40:.0f}" height="38" rx="5" fill="#000" opacity=".35"/>'
-            f'<text x="120" y="92" font-family="monospace" font-weight="bold" font-size="{size}" fill="{c}">{text}</text>')
+    return ""   # strips carry no words
 
 
 def s_sold(n):  # TOUCHDOWN: the ball through the uprights, confetti

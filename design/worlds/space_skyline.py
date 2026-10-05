@@ -74,7 +74,7 @@ def scene(night):
     a(f'<rect x="{rx-40}" y="110" width="80" height="{padY-120}" rx="6" fill="{body}"/>')
     a(f'<path d="M{rx-40} 120 Q{rx} -10 {rx+40} 120 Z" fill="{body}"/><path d="M{rx-40} 120 Q{rx} 30 {rx+40} 120 Z" fill="{stripe}" opacity=".9"/>')
     a(f'<rect x="{rx-40}" y="250" width="80" height="26" fill="{stripe}"/><rect x="{rx-40}" y="{padY-200}" width="80" height="14" fill="{dark}"/>')
-    a(f'<text x="{rx}" y="{padY-110}" text-anchor="middle" font-family="Arial, sans-serif" font-weight="bold" font-size="34" fill="{dark}" transform="rotate(-90 {rx} {padY-110})" letter-spacing="4">FLORES</text>')
+    a(f'<text x="{rx}" y="{padY-110}" text-anchor="middle" font-family="Arial, sans-serif" font-weight="bold" font-size="34" fill="{dark}" transform="rotate(-90 {rx} {padY-110})" letter-spacing="4">INSURED</text>')
     # fins and engines
     a(f'<path d="M{rx-40} {padY-80} L{rx-80} {padY-10} L{rx-40} {padY-10} Z M{rx+40} {padY-80} L{rx+80} {padY-10} L{rx+40} {padY-10} Z" fill="{stripe}"/>')
     for ex in [rx-26, rx, rx+26]:

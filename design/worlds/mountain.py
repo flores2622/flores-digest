@@ -474,7 +474,7 @@ def v_commercial(n):  # the grand old lodge
         if n: o.append(f'<circle cx="{x + 13}" cy="132" r="26" fill="url(#glow)"/>')
         o.append(f'<rect x="{x}" y="112" width="26" height="36" fill="{p["win"]}" stroke="{p["wood2"]}" stroke-width="3"/>')
     o.append(f'<rect x="770" y="128" width="60" height="62" fill="{p["wood2"]}"/><path d="M760 128 L800 104 L840 128Z" fill="{rf}"/>')
-    o.append(f'<rect x="700" y="72" width="200" height="22" rx="3" fill="{p["wood2"]}"/><text x="800" y="89" text-anchor="middle" font-family="Georgia, serif" font-weight="bold" font-size="16" fill="{p["ink"]}" letter-spacing="3">FLORES LODGE</text>')
+    o.append(f'<rect x="700" y="72" width="200" height="22" rx="3" fill="{p["wood2"]}"/><text x="800" y="89" text-anchor="middle" font-family="Georgia, serif" font-weight="bold" font-size="16" fill="{p["ink"]}" letter-spacing="3">SUMMIT LODGE</text>')
     o.append(f'<line x1="800" y1="6" x2="800" y2="-30" stroke="#ccc" stroke-width="3"/>')
     o.append(f'<rect x="1188" y="60" width="5" height="130" fill="#ccc"/><path d="M1193 62 l50 10 l-50 10z" fill="#8f5be8"/>')
     o.append(f'<rect x="0" y="206" width="440" height="34" fill="{p["pine2"]}" opacity=".6"/><rect x="1160" y="206" width="440" height="34" fill="{p["pine2"]}" opacity=".6"/>')
