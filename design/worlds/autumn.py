@@ -312,7 +312,7 @@ def lightstring(x0, y0, x1, y1, sag, n, k=9, seed=1, twinkle=False):
     for i in range(1, k):
         t = i / k; x = (1 - t) ** 2 * x0 + 2 * (1 - t) * t * mx + t * t * x1; y = (1 - t) ** 2 * y0 + 2 * (1 - t) * t * (my + sag * .9) + t * t * y1
         c = ["#ffd46a", "#ff9e5a", "#fff0b0"][i % 3]
-        if n: o.append(f'<circle cx="{x:.0f}" cy="{y + 4:.0f}" r="9" fill="{c}" opacity=".28"/>')
+        if n: o.append(f'<circle cx="{x:.0f}" cy="{y + 4:.0f}" r="9" fill="{c}" opacity=".28">' + (f'<animate attributeName="opacity" values=".28;.06;.28" dur="{2 + i % 3 * .7:.1f}s" repeatCount="indefinite"/>' if twinkle else '') + '</circle>')
         o.append(f'<circle cx="{x:.0f}" cy="{y + 4:.0f}" r="2.6" fill="{c if n else "#f4ead0"}" stroke="#2a2a2a" stroke-width=".6"/>')
     return ''.join(o)
 
@@ -324,10 +324,10 @@ def roadsign(x, b, text, p, w=150, fs=13, h=30, post_h=40):
             f'<rect x="{x - w / 2}" y="{b - post_h - h}" width="{w}" height="{h}" rx="3" fill="{p["wood"]}" stroke="{p["wood2"]}" stroke-width="2.5"/>'
             f'<text x="{x}" y="{b - post_h - h / 2 + fs * .36:.0f}" text-anchor="middle" font-family="Georgia, serif" font-weight="bold" font-size="{fs}" fill="{p["ink"]}" letter-spacing="1">{text}</text>')
 
-def geese(x, y, s, c, flapdur=1.0):
+def geese(x, y, s, c, flapdur=1.0, k=7):
     """a skein of geese in a V, each wing beating"""
     o = []
-    for i, (dx, dy) in enumerate([(0, 0), (-22, 10), (-44, 20), (-66, 30), (-22, -10), (-44, -20), (-66, -30)][:7]):
+    for i, (dx, dy) in enumerate([(0, 0), (-22, 10), (-44, 20), (-66, 30), (-22, -10), (-44, -20), (-66, -30)][:k]):
         gx, gy = x + dx * s, y + dy * s * .6
         w = lambda k: f"M{gx - 9 * s:.0f} {gy - 4 * s * k:.1f} Q{gx - 4 * s:.0f} {gy - 5 * s * k:.1f} {gx:.0f} {gy:.0f} Q{gx + 4 * s:.0f} {gy - 5 * s * k:.1f} {gx + 9 * s:.0f} {gy - 4 * s * k:.1f}"
         o.append(f'<path d="{w(1)}" fill="none" stroke="{c}" stroke-width="{2 * s:.1f}" stroke-linecap="round">'
@@ -382,9 +382,9 @@ def skyline(night):
     # the far stone wall along the road
     a(stonewall([(430, 478), (700, 472), (1000, 470), (1320, 474), (1610, 480)], 12, p, 5))
     a(stonewall([(-10, 486), (170, 482)], 12, p, 6))
-    # the stream: down from the woods, under the bridge, widening toward us
-    a(f'<path d="M300 {HZ} C292 470 300 490 312 512 L392 512 C372 490 352 470 336 {HZ}Z" fill="url(#wat)"/>')
-    sd = "M296 520 C250 600 120 640 60 720 C30 760 10 800 -10 860 L380 860 C360 800 380 740 430 690 C470 640 430 570 410 520Z"
+    # the stream: down from the woods, under the bridge between its abutments, widening toward us
+    a(f'<path d="M298 {HZ} C290 470 286 490 272 522 L364 522 C350 490 340 470 334 {HZ}Z" fill="url(#wat)"/>')
+    sd = "M262 516 C236 590 120 640 60 720 C30 760 10 800 -10 860 L380 860 C360 800 380 740 430 690 C470 640 420 580 374 516Z"
     a(f'<path d="{sd}" fill="{p["stone2"]}" transform="translate(0 -3) scale(1 1)" opacity=".7"/><path d="{sd}" fill="url(#wat)"/>')
     for x, y, rx in [(110, 690, 18), (380, 640, 14), (420, 760, 20), (40, 800, 16), (330, 580, 10)]:
         a(f'<ellipse cx="{x}" cy="{y}" rx="{rx}" ry="{rx * .55:.0f}" fill="{p["stone"]}"/><ellipse cx="{x - 3}" cy="{y - 3}" rx="{rx * .6:.0f}" ry="{rx * .25:.0f}" fill="#fff" opacity=".15"/>')
@@ -402,20 +402,30 @@ def skyline(night):
     a(f'<g opacity="0">{pickup(0, 504, .42, "#2f5a7a" if not n else "#26405a", p, n, cargo="pumpkins")}'
       '<animateTransform attributeName="transform" type="translate" values="-90 0;1720 -14" dur="12s" repeatCount="indefinite"/>'
       '<animate attributeName="opacity" values="0;1;1;0" keyTimes="0;.04;.96;1" dur="12s" repeatCount="indefinite"/></g>')
-    # the red covered bridge, drawn over the road so the truck passes inside it
-    bx0, bx1, by = 170, 412, 502
-    a(f'<path d="M{bx0 - 10} {by + 4} L{bx0 + 16} {by + 4} L{bx0 + 24} {by + 44} L{bx0 - 22} {by + 44}Z" fill="{p["stone"]}"/>'
-      f'<path d="M{bx1 - 16} {by + 4} L{bx1 + 10} {by + 4} L{bx1 + 22} {by + 44} L{bx1 - 24} {by + 44}Z" fill="{p["stone"]}"/>')
-    a(f'<rect x="{bx0}" y="{by - 46}" width="{bx1 - bx0}" height="52" fill="{p["barn"]}"/>')
-    a(f'<path d="{"".join(f"M{x} {by - 46}v52" for x in range(bx0 + 8, bx1, 12))}" stroke="{p["barn2"]}" stroke-width="2"/>')
-    a(f'<rect x="{bx0 + 20}" y="{by - 34}" width="{bx1 - bx0 - 40}" height="9" fill="{p["barn2"] if not n else "#ffcf6a"}" opacity="{1 if not n else .55}"/>')
-    a(f'<path d="M{bx0 - 14} {by - 44} L{bx0 + 6} {by - 64} L{bx1 - 6} {by - 64} L{bx1 + 14} {by - 44}Z" fill="{p["roof"]}"/><path d="M{bx0 - 14} {by - 44} L{bx1 + 14} {by - 44}" stroke="{p["roof2"]}" stroke-width="3"/>')
-    a(f'<path d="M{bx0 - 2} {by + 6} L{bx0 - 2} {by - 40} L{bx0 + 8} {by - 56} L{bx0 + 18} {by - 40} L{bx0 + 18} {by + 6}Z" fill="{p["barn2"]}"/><path d="M{bx0 + 1} {by + 6} L{bx0 + 1} {by - 30} Q{bx0 + 8} {by - 40} {bx0 + 15} {by - 30} L{bx0 + 15} {by + 6}Z" fill="#1a1210"/>')
-    a(f'<rect x="{bx0 + 66}" y="{by - 60}" width="110" height="14" rx="2" fill="{p["white"]}"/><text x="{bx0 + 121}" y="{by - 49}" text-anchor="middle" font-family="Georgia, serif" font-weight="bold" font-size="10" fill="{p["barn2"] if not n else "#2a1a18"}" letter-spacing="1">COVERED BRIDGE</text>')
-    a(f'<rect x="{bx0 - 4}" y="{by + 4}" width="{bx1 - bx0 + 8}" height="6" fill="{p["wood2"]}"/>')
-    # the near stone wall up to the bridge, and the lane's sign
+    # the red covered bridge on its stone abutments, deck level with the road, drawn over it so the truck passes inside
+    bx0, bx1, by = 206, 428, 500
+    a(f'<rect x="258" y="{by + 2}" width="122" height="24" fill="#0c1620" opacity="{.55 if not n else .7}"/>')   # the shadow under the deck
+    a(f'<path d="M262 {by + 26} L374 {by + 26} L380 {by + 46} L254 {by + 46}Z" fill="{p["barn"]}" opacity=".22"/>'  # its reflection
+      f'<path d="M266 {by + 32}h40M320 {by + 38}h48M276 {by + 43}h30" stroke="{p["water2"] if not n else "#5f80b8"}" stroke-width="2" opacity=".6"/>')
+    for ab in (f"M186 {by + 4} L264 {by + 4} L258 {by + 30} L248 {by + 40} L172 {by + 44}Z", f"M372 {by + 4} L446 {by + 4} L462 {by + 44} L388 {by + 40} L378 {by + 30}Z"):
+        a(f'<path d="{ab}" fill="{p["stone"]}" stroke="{p["stone2"]}" stroke-width="2"/>')
+    a(f'<path d="M184 {by + 14}H262M180 {by + 24}H259M176 {by + 34}H252M374 {by + 14}H450M377 {by + 24}H454M382 {by + 34}H458'
+      f'M214 {by + 4}v10M242 {by + 4}v10M200 {by + 14}v10M230 {by + 14}v10M216 {by + 24}v10M246 {by + 24}v10'
+      f'M400 {by + 4}v10M428 {by + 4}v10M388 {by + 14}v10M418 {by + 14}v10M404 {by + 24}v10M436 {by + 24}v10" stroke="{p["stone2"]}" stroke-width="1.6"/>')
+    for x, y, rx in [(250, by + 46, 9), (238, by + 52, 7), (390, by + 46, 9), (404, by + 52, 7)]:
+        a(f'<ellipse cx="{x}" cy="{y}" rx="{rx}" ry="{rx * .55:.1f}" fill="{p["stone2"]}"/>')
+    a(f'<rect x="{bx0}" y="{by - 48}" width="{bx1 - bx0}" height="52" fill="{p["barn"]}"/>')
+    a(f'<path d="{"".join(f"M{x} {by - 48}v52" for x in range(bx0 + 22, bx1 - 14, 12))}" stroke="{p["barn2"]}" stroke-width="2"/>')
+    a(f'<rect x="{bx0 + 26}" y="{by - 36}" width="{bx1 - bx0 - 52}" height="9" fill="{p["barn2"] if not n else "#ffcf6a"}" opacity="{1 if not n else .55}"/>')
+    a(f'<path d="M{bx0 - 8} {by - 46} L{bx0 + 8} {by - 66} L{bx1 - 8} {by - 66} L{bx1 + 8} {by - 46}Z" fill="{p["roof"]}"/><path d="M{bx0 - 8} {by - 46} L{bx1 + 8} {by - 46}" stroke="{p["roof2"]}" stroke-width="3"/>')
+    for ex in (bx0 + 2, bx1 - 2):   # a portal at each end: the gable face, the dark way in, the deck boards inside
+        a(f'<path d="M{ex - 14} {by + 4} L{ex - 14} {by - 44} L{ex} {by - 62} L{ex + 14} {by - 44} L{ex + 14} {by + 4}Z" fill="{p["barn2"]}"/>'
+          f'<path d="M{ex - 10} {by + 4} L{ex - 10} {by - 30} Q{ex} {by - 42} {ex + 10} {by - 30} L{ex + 10} {by + 4}Z" fill="#1a1210"/>'
+          f'<path d="M{ex - 10} {by + 4} L{ex - 6} {by - 4} L{ex + 6} {by - 4} L{ex + 10} {by + 4}Z" fill="{p["road2"]}" opacity=".55"/>')
+    a(f'<rect x="{bx0 - 14}" y="{by + 3}" width="{bx1 - bx0 + 28}" height="6" fill="{p["wood2"]}"/>')
+    # the near stone wall up to the bridge, and the lane's sign at the roadside before it
     a(stonewall([(-10, 530), (150, 528)], 13, p, 7))
-    a(roadsign(120, 516, "NO LAPSE LANE", p, 104, 10, 22, 30))
+    a(roadsign(124, 516, "NO LAPSE LANE", p, 96, 9.5, 22, 30))
     # the village green: the podium's lawn, a few leaves already down on it
     gp = "M440 600 C430 548 560 528 800 528 C1040 528 1180 546 1172 610 C1166 700 1120 800 1100 880 L480 880 C470 800 446 690 440 600Z"
     a(f'<path d="{gp}" fill="{p["lawn2"]}" stroke="{p["lawn2"]}" stroke-width="18" stroke-linejoin="round"/><path d="{gp}" fill="url(#lawn)"/>')
@@ -552,16 +562,43 @@ def basket(x, y, r, p, fruit=None):
     o.append(f'<rect x="{x - r * 1.04:.1f}" y="{y - r * 1.16:.1f}" width="{r * 2.08:.1f}" height="{r * .16:.1f}" rx="1" fill="#9a6a34"/>')
     return ''.join(o)
 
+# ----------------------------------------------------------------- banner motion (self-closing SMIL; each element rests as drawn)
+SPL = ' calcMode="spline" keySplines=".45 0 .55 1;.45 0 .55 1"'
+def fall(x, y, dx, dy, dur, c, begin=0, s=1.1):
+    """a leaf drifting down on its own loop; rests hidden"""
+    mp = f"M0 0 C{dx * .5 + 24:.0f} {dy * .2:.0f} {dx * .3 - 24:.0f} {dy * .5:.0f} {dx * .7:.0f} {dy * .7:.0f} S{dx + 16:.0f} {dy * .9:.0f} {dx} {dy}"
+    return (f'<g transform="translate({x} {y})" opacity="0"><g>{leaf(0, 0, s, c)}<animateTransform attributeName="transform" type="rotate" values="0;200;360" dur="{dur / 2:.1f}s" repeatCount="indefinite"/></g>'
+            f'<animateMotion path="{mp}" dur="{dur}s" begin="{begin}s" repeatCount="indefinite"/>'
+            f'<animate attributeName="opacity" values="0;1;1;0" keyTimes="0;.1;.8;1" dur="{dur}s" begin="{begin}s" repeatCount="indefinite"/></g>')
+def puffs(x, y, c, dx=-14, dy=-50, k=3, dur=6, r0=4, r1=13, op=.5):
+    """smoke rising and spreading; each puff rests hidden"""
+    return ''.join(f'<circle cx="{x}" cy="{y}" r="{r0}" fill="{c}" opacity="0"><animateTransform attributeName="transform" type="translate" values="0 0;{dx} {dy}" dur="{dur}s" begin="{i * dur / k:.1f}s" repeatCount="indefinite"/>'
+                   f'<animate attributeName="r" values="{r0};{r1}" dur="{dur}s" begin="{i * dur / k:.1f}s" repeatCount="indefinite"/>'
+                   f'<animate attributeName="opacity" values="0;{op};0" dur="{dur}s" begin="{i * dur / k:.1f}s" repeatCount="indefinite"/></circle>' for i in range(k))
+def about(cx, cy, typ, vals, dur, extra=''):
+    """animate a scale or rotate about (cx, cy): translate in, animate, translate back -- all additive, so stripped it is no transform at all"""
+    t = lambda v: f'<animateTransform attributeName="transform" type="translate" values="{v}" dur="{dur}s" repeatCount="indefinite" additive="sum"/>'
+    return t(f"{cx} {cy}") + f'<animateTransform attributeName="transform" type="{typ}" values="{vals}" dur="{dur}s" repeatCount="indefinite" additive="sum"{extra}/>' + t(f"{-cx} {-cy}")
+def flock(x, y, s, c, dx, dur=12):
+    """geese crossing the sky by dx on a loop; rests hidden"""
+    return (f'<g opacity="0">{geese(x, y, s, c, 2, 5)}<animateTransform attributeName="transform" type="translate" values="0 0;{dx} {-abs(dx) * .03:.0f}" dur="{dur}s" repeatCount="indefinite"/>'
+            f'<animate attributeName="opacity" values="0;1;1;0" keyTimes="0;.12;.85;1" dur="{dur}s" repeatCount="indefinite"/></g>')
+def drop(x, y, dy, c, r=4.5, dur=5, begin=0):
+    """an apple letting go of the branch and dropping; rests hidden"""
+    return (f'<circle cx="{x}" cy="{y}" r="{r}" fill="{c}" opacity="0">'
+            f'<animateTransform attributeName="transform" type="translate" values="0 0;0 0;0 {dy};0 {dy}" keyTimes="0;.5;.72;1" dur="{dur}s" begin="{begin}s" repeatCount="indefinite" calcMode="spline" keySplines="0 0 1 1;.55 0 1 1;0 0 1 1"/>'
+            f'<animate attributeName="opacity" values="0;0;1;1;0;0" keyTimes="0;.42;.48;.74;.8;1" dur="{dur}s" begin="{begin}s" repeatCount="indefinite"/></circle>')
+
 def v_sales(n):  # the apple harvest: pickers on ladders, crates going onto the truck
     p = P(n); o = [base(n, p)]
     o.append(skyobj(n, 1150, 58))
     o.append(valley(p, 128, 61))
     o.append(ground(p, 150, "#8e9a44" if not n else p["grass"]))
-    for i, x in enumerate((470, 1140)):
-        o.append(appletree(x, 190, 150, p, 62 + i, n, 16))
+    o.append(f'<g>{appletree(470, 190, 150, p, 62, n, 16)}{sway(470, 190, .8, 6)}</g>' + appletree(1140, 190, 150, p, 63, n, 16))
     o.append(ladder(1112, 196, 1150, 96, p["wood2"] if not n else "#5a4030"))
     o.append(person(1146, 150, .95, "reach", "#2f5a8a", "#3a3a44", "#c8361f", p["skin"], flip=True))
     o.append(basket(1180, 204, 16, p))
+    o.append(drop(1180, 120, 64, p["red"]) + drop(1168, 104, 80, "#e8b63a", 4.5, 7, 2.5))   # MOVES: apples dropping into the bushel
     # the truck, tailgate down, crates stacked high in its bed
     tx, ty = 820, 210
     o.append(f'<ellipse cx="{tx}" cy="{ty + 2}" rx="110" ry="7" fill="#000" opacity=".18"/>')
@@ -573,14 +610,15 @@ def v_sales(n):  # the apple harvest: pickers on ladders, crates going onto the 
         o.append(crate(cx, cy, 30, 21, p))
     o.append(person(720, 212, 1.0, "carry", "#7a3a1e", "#3a3a44", "#2f5a3a", p["skin"]))
     o.append(edge_trees(p))
+    o.append(fall(1450, 50, -90, 150, 9, p["gold"]) + fall(1520, 80, -70, 130, 8, p["red"], 3))
     o.append(corners(p, n))
     return vwrap(''.join(o))
 
-def mailbox(x, y, w, h, c, p, flag=False, letter=False):
+def mailbox(x, y, w, h, c, p, flag=False, letter=False, fanim=''):
     o = [f'<path d="M{x} {y} L{x} {y - h * .6:.1f} Q{x} {y - h} {x + h * .4:.1f} {y - h} L{x + w - h * .4:.1f} {y - h} Q{x + w} {y - h} {x + w} {y - h * .6:.1f} L{x + w} {y}Z" fill="{c}"/>',
          f'<path d="M{x} {y} L{x} {y - h * .6:.1f} Q{x} {y - h} {x + h * .4:.1f} {y - h} L{x + h * .4:.1f} {y}Z" fill="#000" opacity=".22"/>']
     if letter: o.append(f'<path d="M{x - 6} {y - h * .55:.1f} L{x + 10} {y - h * .62:.1f} L{x + 12} {y - h * .3:.1f} L{x - 4} {y - h * .24:.1f}Z" fill="#fbf6ea" stroke="#c8b89a" stroke-width="1"/>')
-    if flag: o.append(f'<rect x="{x + w - 10}" y="{y - h - 14}" width="3" height="20" fill="#c8361f"/><rect x="{x + w - 10}" y="{y - h - 14}" width="12" height="7" fill="#c8361f"/>')
+    if flag: o.append(('<g>' if fanim else '') + f'<rect x="{x + w - 10}" y="{y - h - 14}" width="3" height="20" fill="#c8361f"/><rect x="{x + w - 10}" y="{y - h - 14}" width="12" height="7" fill="#c8361f"/>' + (fanim + '</g>' if fanim else ''))
     else: o.append(f'<rect x="{x + w - 22}" y="{y - h * .55:.1f}" width="20" height="3" fill="#c8361f"/>')
     return ''.join(o)
 
@@ -597,22 +635,27 @@ def v_messages(n):  # the mailbox row at the end of the lane
     for x in (570, 970): o.append(f'<rect x="{x - 5}" y="146" width="10" height="58" fill="{p["wood2"]}"/>')
     cols = ["#3a4a5a", "#c8361f", "#2f5a3a", "#d9d2c0", "#7a4a2a"] if not n else ["#2a323e", "#5a221e", "#1e3424", "#6e6c66", "#3e2a1e"]
     for i, c in enumerate(cols):
-        o.append(mailbox(560 + i * 88, 146, 64, 34, c, p, flag=i in (1, 3), letter=i == 2))
+        px = 560 + i * 88 + 55.5; fa = f'<animateTransform attributeName="transform" type="rotate" values="0 {px} 118;0 {px} 118;90 {px} 118;90 {px} 118;0 {px} 118" keyTimes="0;.35;.5;.85;1" dur="{7 + i}s" repeatCount="indefinite" calcMode="spline" keySplines="0 0 1 1;.45 0 .55 1;0 0 1 1;.45 0 .55 1"/>'
+        o.append(mailbox(560 + i * 88, 146, 64, 34, c, p, flag=i in (1, 3), letter=i == 2, fanim=fa if i in (1, 3) else ''))
     o.append(person(800, 206, 1.05, "mail", "#5a6a3a", "#3a3530", "#7a3a1e", p["skin"], flip=True, hk="hair"))
     o.append(f'<rect x="700" y="182" width="22" height="18" rx="2" fill="#c8a46a" transform="rotate(-8 711 191)"/>')
     for x, y, c, rt in [(640, 222, p["red"], 20), (900, 226, p["gold"], 80), (1060, 218, p["orange"], 140)]: o.append(leaf(x, y, 1.2, c, rt))
+    o.append(flock(1500, 44, .7, "#3a3040" if not n else "#c9c2d8", -620))
     o.append(edge_trees(p))
+    o.append(fall(1460, 60, -100, 150, 9, p["orange"], 1))
     o.append(corners(p, n))
     return vwrap(''.join(o))
 
-def fire(x, y, s, n):
+def fire(x, y, s, n, live=False):
     o = []
-    o.append(f'<circle cx="{x}" cy="{y - 14 * s:.0f}" r="{90 * s:.0f}" fill="url(#glow)" opacity="{1 if n else .7}"/>')
+    o.append(f'<circle cx="{x}" cy="{y - 14 * s:.0f}" r="{90 * s:.0f}" fill="url(#glow)" opacity="{1 if n else .7}">' + (f'<animate attributeName="opacity" values="{1 if n else .7};{.75 if n else .5};{1 if n else .7}" dur="2.6s" repeatCount="indefinite"/>' if live else '') + '</circle>')
     o.append(f'<path d="M{x - 30 * s:.0f} {y} L{x + 26 * s:.0f} {y - 8 * s:.0f} M{x + 30 * s:.0f} {y} L{x - 26 * s:.0f} {y - 8 * s:.0f}" stroke="#5a3a24" stroke-width="{7 * s:.1f}" stroke-linecap="round"/>')
+    if live: o.append('<g>')
     o.append(f'<path d="M{x - 20 * s:.0f} {y - 6 * s:.0f} Q{x - 24 * s:.0f} {y - 30 * s:.0f} {x - 8 * s:.0f} {y - 44 * s:.0f} Q{x - 10 * s:.0f} {y - 28 * s:.0f} {x} {y - 26 * s:.0f} Q{x + 2 * s:.0f} {y - 50 * s:.0f} {x + 12 * s:.0f} {y - 62 * s:.0f} Q{x + 10 * s:.0f} {y - 40 * s:.0f} {x + 20 * s:.0f} {y - 30 * s:.0f} Q{x + 26 * s:.0f} {y - 16 * s:.0f} {x + 20 * s:.0f} {y - 6 * s:.0f}Z" fill="#f08a2a"/>')
     o.append(f'<path d="M{x - 10 * s:.0f} {y - 6 * s:.0f} Q{x - 12 * s:.0f} {y - 22 * s:.0f} {x - 2 * s:.0f} {y - 30 * s:.0f} Q{x} {y - 20 * s:.0f} {x + 5 * s:.0f} {y - 40 * s:.0f} Q{x + 14 * s:.0f} {y - 22 * s:.0f} {x + 10 * s:.0f} {y - 6 * s:.0f}Z" fill="#ffd25a"/>')
+    if live: o.append(about(x, y, "scale", "1 1;1.06 .9;.95 1.1;1.03 .94;1 1", 2.2) + '</g>')
     for k, (dx, dy) in enumerate([(-14, -74), (8, -86), (20, -66), (-4, -98)]):
-        o.append(f'<circle cx="{x + dx * s:.0f}" cy="{y + dy * s:.0f}" r="{1.6 * s:.1f}" fill="#ffd25a" opacity=".85"/>')
+        o.append(f'<circle cx="{x + dx * s:.0f}" cy="{y + dy * s:.0f}" r="{1.6 * s:.1f}" fill="#ffd25a" opacity=".85">' + (f'<animateTransform attributeName="transform" type="translate" values="0 20;{(k % 2 * 2 - 1) * 6} -24" dur="{2 + k * .4:.1f}s" repeatCount="indefinite"/><animate attributeName="opacity" values="0;.9;0" dur="{2 + k * .4:.1f}s" repeatCount="indefinite"/>' if live else '') + '</circle>')
     return ''.join(o)
 
 def v_coaching(n):  # the campfire circle: logs round the fire, everyone talking it over
@@ -623,14 +666,16 @@ def v_coaching(n):  # the campfire circle: logs round the fire, everyone talking
     o.append(ground(p, 140, "#6a6a34" if not n else "#151d14"))
     for x in range(380, 1260, 46): o.append(pine(x, 150, 60 + (x * 7) % 30, p["ever"] if not n else "#0e1814"))
     o.append(f'<ellipse cx="800" cy="204" rx="330" ry="30" fill="#000" opacity=".16"/>')
-    o.append(fire(800, 200, 1.0, n))
+    o.append(fire(800, 200, 1.0, n, live=True))
     # four on the logs, two each side, facing the fire
     for x, flip, coat, hat, hk in [(600, False, "#2f5a8a", "#c8361f", "beanie"), (680, False, "#7a3a1e", "#3a2a1e", "hair"),
                                     (920, True, "#5a6a3a", "#e8a63a", "cap"), (1000, True, "#8a3a5a", "#2a2a2a", "hair")]:
         o.append(person(x, 212, 1.0, "sit", coat, "#3a3a44", hat, p["skin"], flip=flip, hk=hk))
     for x0, x1 in [(560, 720), (880, 1040)]:
         o.append(f'<rect x="{x0}" y="194" width="{x1 - x0}" height="16" rx="8" fill="#6a4426"/><ellipse cx="{x0 + 4}" cy="202" rx="5" ry="8" fill="#a8784a"/>')
-    o.append(f'<path d="M800 120 q-20 -30 6 -56 q24 -26 -4 -58" fill="none" stroke="#e8e0d8" stroke-width="10" stroke-linecap="round" opacity="{.18 if not n else .1}"/>')
+    o.append(f'<path d="M800 120 q-20 -30 6 -56 q24 -26 -4 -58" fill="none" stroke="#e8e0d8" stroke-width="10" stroke-linecap="round" opacity="{.18 if not n else .1}">'
+             f'<animateTransform attributeName="transform" type="translate" values="0 0;8 -4;0 0" dur="7s" repeatCount="indefinite"{SPL}/></path>')
+    o.append(puffs(804, 128, "#e8e0d8", -8, -90, 3, 7.5, 5, 16, .22 if not n else .14))
     o.append(edge_trees(p))
     o.append(corners(p, n))
     return vwrap(''.join(o))
@@ -658,6 +703,7 @@ def v_roleplay(n):  # the hayride: a tractor pulling a wagon of bales and riders
     o.append(f'<path d="M0 206 Q800 186 1600 204 L1600 228 Q800 212 0 230Z" fill="{p["road"]}"/>')
     # the wagon: a flat bed on four wheels, bales along it, riders sitting on the bales
     wx = 650
+    o.append('<g>')
     o.append(f'<rect x="{wx - 150}" y="184" width="300" height="12" fill="{p["wood"]}"/><rect x="{wx - 150}" y="164" width="6" height="22" fill="{p["wood2"]}"/><rect x="{wx + 144}" y="164" width="6" height="22" fill="{p["wood2"]}"/>')
     for k in range(4): o.append(haybale(wx - 112 + k * 74, 184, 70, 24, p))
     for k, (coat, hat, hk) in enumerate([("#c8361f", "#2a2a2a", "hair"), ("#2f5a8a", "#e8a63a", "beanie"), ("#5a6a3a", "#3a2a1e", "cap"), ("#8a3a5a", "#5a3a24", "hair")]):
@@ -665,8 +711,13 @@ def v_roleplay(n):  # the hayride: a tractor pulling a wagon of bales and riders
     for x in (wx - 110, wx + 110): o.append(f'<circle cx="{x}" cy="204" r="13" fill="#1e1e1e"/><circle cx="{x}" cy="204" r="5" fill="{p["wood"]}"/>')
     o.append(f'<line x1="{wx + 150}" y1="192" x2="{wx + 196}" y2="194" stroke="#2a2a2a" stroke-width="4"/>')
     o.append(tractor(wx + 254, 216, 1.15, p, n))
+    for cx, cy, rr, c in [(wx - 110, 204, 11, p["wood"]), (wx + 110, 204, 11, p["wood"]), (887.9, 193, 19, "#e8b63a"), (947.7, 203.4, 10, "#e8b63a")]:   # spokes turning
+        o.append(f'<path d="M{cx - rr} {cy}h{2 * rr}M{cx} {cy - rr}v{2 * rr}" stroke="{c}" stroke-width="2.4"><animateTransform attributeName="transform" type="rotate" values="0 {cx} {cy};180 {cx} {cy}" dur="{rr / 3.5:.1f}s" repeatCount="indefinite"/></path>')
+    o.append(f'<animateTransform attributeName="transform" type="translate" values="0 0;0 -1.4;0 0;0 -.8;0 0" dur="2s" repeatCount="indefinite"/></g>')
+    o.append(puffs(941, 140, "#d8d0c8" if not n else "#6a6a7a", -40, -36, 3, 4.5, 3, 10, .55))
     for x, y in [(450, 214), (1100, 218), (520, 226)]: o.append(pumpkin(x, y, 9, p))
     o.append(edge_trees(p))
+    o.append(fall(1450, 60, -110, 150, 9, p["gold"]) + fall(1340, 80, -80, 130, 8, p["red"], 3.5))
     o.append(corners(p, n))
     return vwrap(''.join(o))
 
@@ -699,9 +750,11 @@ def v_rphistory(n):  # the drive-in at the pumpkin patch: the screen up on its f
     # on the screen: a hillside of maples and a big harvest moon, and the play mark
     o.append('<path d="M630 132 Q720 104 800 124 T970 116 L970 156 L630 156Z" fill="#c8602a" opacity=".85"/><path d="M630 146 Q760 128 970 142 L970 156 L630 156Z" fill="#8a3a1e" opacity=".85"/>')
     o.append('<circle cx="890" cy="90" r="22" fill="#f2b04a" opacity=".9"/><path d="M780 80 L808 98 L780 116Z" fill="#fff" opacity=".9"/>')
+    o.append(f'<g opacity="0">{leaf(660, 70, 1.6, "#c8361f")}<animateMotion path="M0 0 C80 30 160 -10 240 30 S300 50 280 60" dur="8s" repeatCount="indefinite"/><animate attributeName="opacity" values="0;.9;.9;0" keyTimes="0;.1;.85;1" dur="8s" repeatCount="indefinite"/></g>')
+    o.append(f'<rect x="630" y="52" width="340" height="104" fill="#fff" opacity="0"><animate attributeName="opacity" values="0;.14;0;0;.08;0;0" keyTimes="0;.05;.1;.6;.64;.7;1" dur="3.4s" repeatCount="indefinite"/></rect>')
     # string lights from the frame out to two poles
     for x0, x1 in [(370, 614), (986, 1230)]:
-        o.append(lightstring(x0, 70, x1, 52, 12, n, 7, x0))
+        o.append(lightstring(x0, 70, x1, 52, 12, n, 7, x0, twinkle=True))
     for x in (370, 1230): o.append(post(x, 200, 132, p))
     # the patch, pumpkins on the vine
     r = random.Random(102)
@@ -714,6 +767,7 @@ def v_rphistory(n):  # the drive-in at the pumpkin patch: the screen up on its f
     o.append(truck_rear(800, 222, 1.05, "#8a2a22" if not n else "#4a1a16", p, n, [("#2f5a8a", "#c8361f"), ("#5a6a3a", "#2a2a2a")]))
     o.append(truck_rear(930, 218, .95, "#5a6a3a" if not n else "#26301e", p, n, [("#8a3a5a", "#e8a63a")]))
     o.append(edge_trees(p))
+    o.append(fall(1460, 60, -100, 150, 9, p["orange"], 1))
     o.append(corners(p, n))
     return vwrap(''.join(o))
 
@@ -729,13 +783,15 @@ def v_training(n):  # the trail into the woods, a blazed post at the start
     for k, (x, b, h) in enumerate([(700, 128, 50), (960, 130, 54), (640, 140, 70), (1020, 142, 74), (560, 160, 110), (1100, 162, 104),
                                    (470, 190, 150), (1190, 196, 150)]):
         cols = [LC[k % 5], LC[(k + 1) % 5], LC[(k + 2) % 5], LC[(k + 3) % 5], LC[(k + 4) % 5]]
-        o.append(birch(x, b, h, [p["gold"], p["yel"]], 112 + k, p["birch"]) if k % 3 == 1 else maple(x, b, h, cols, 112 + k, p["trunk"], .8))
+        t = birch(x, b, h, [p["gold"], p["yel"]], 112 + k, p["birch"]) if k % 3 == 1 else maple(x, b, h, cols, 112 + k, p["trunk"], .8)
+        o.append(f'<g>{t}{sway(x, b, .9, 6 + k % 3, k * .4)}</g>' if k in (5, 7) else t)
     for x, y, c, rt in [(770, 214, p["red"], 30), (830, 196, p["gold"], 120), (820, 170, p["orange"], 200), (880, 222, p["orange"], 60)]:
         o.append(leaf(x, y, 1.1, c, rt))
     # the trail post with its yellow blaze, and a hiker setting off
     o.append(f'<rect x="604" y="150" width="12" height="62" fill="{p["wood"]}"/><rect x="604" y="160" width="12" height="16" fill="#f2c230"/>')
-    o.append(person(890, 214, .95, "stand", "#c8361f", "#3a3a44", "#2f5a3a", p["skin"], hk="beanie") +
-             '<rect x="878" y="160" width="12" height="22" rx="4" fill="#3a5a3a"/>')
+    o.append('<g>' + person(890, 214, .95, "stand", "#c8361f", "#3a3a44", "#2f5a3a", p["skin"], hk="beanie") +
+             '<rect x="878" y="160" width="12" height="22" rx="4" fill="#3a5a3a"/><animateTransform attributeName="transform" type="translate" values="0 0;0 -2;0 0" dur="2.4s" repeatCount="indefinite"/></g>')
+    o.append(fall(980, 70, -120, 140, 9, p["red"]) + fall(700, 80, 90, 130, 10, p["gold"], 3) + fall(1100, 60, -60, 150, 8, p["orange"], 5.5))
     o.append(edge_trees(p))
     o.append(corners(p, n))
     return vwrap(''.join(o))
@@ -747,7 +803,7 @@ def v_map(n, athena=False):  # the hand-drawn trail map pinned to the table, a r
     route = "#2f7a4a" if athena else "#b8321e"
     o = [defs(), f'<rect width="1600" height="{V}" fill="{wood}"/>']
     for y in range(0, V, 30): o.append(f'<rect x="0" y="{y}" width="1600" height="2" fill="{wood2}"/>')
-    if n: o.append('<circle cx="800" cy="110" r="420" fill="url(#glow)" opacity=".5"/>')
+    if n: o.append('<circle cx="800" cy="110" r="420" fill="url(#glow)" opacity=".5"><animate attributeName="opacity" values=".5;.4;.52;.5" dur="4s" repeatCount="indefinite"/></circle>')
     o.append(f'<path d="M372 34 L1226 26 L1232 188 L376 196Z" fill="#000" opacity=".25" transform="translate(4 5)"/>')
     o.append(f'<path d="M372 34 L1226 26 L1232 188 L376 196Z" fill="{paper}" stroke="{edge}" stroke-width="3"/>')
     # drawn on it: the stream, a covered bridge, the hills, little trees
@@ -761,13 +817,14 @@ def v_map(n, athena=False):  # the hand-drawn trail map pinned to the table, a r
         o.append(f'<path d="M{x} {y} l-7 12 h14Z" fill="{r.choice(["#c8602a", "#d8a03a", "#b8321e", "#5a7a3a"])}" opacity=".75"/><line x1="{x}" y1="{y + 12}" x2="{x}" y2="{y + 16}" stroke="{ink}" stroke-width="1.5" opacity=".7"/>')
     pts = [(470, 150), (690, 96), (900, 146), (1110, 84)]
     d = f'M410 176 C430 166 450 156 {pts[0][0]} {pts[0][1]} S640 96 {pts[1][0]} {pts[1][1]} S850 148 {pts[2][0]} {pts[2][1]} S1060 86 {pts[3][0]} {pts[3][1]} S1180 70 1196 60'
-    o.append(f'<path d="{d}" fill="none" stroke="{route}" stroke-width="4" stroke-dasharray="10 7" stroke-linecap="round"/>')
+    o.append(f'<path d="{d}" fill="none" stroke="{route}" stroke-width="4" stroke-dasharray="10 7" stroke-linecap="round"><animate attributeName="stroke-dashoffset" values="0;-34" dur="2.4s" repeatCount="indefinite"/></path>')
     steps = ["Listen", "Understand", "Handle", "Follow up"] if athena else ["Dial", "Discovery", "Quote", "Close"]
     for i, ((x, y), t) in enumerate(zip(pts, steps)):
         o.append(f'<circle cx="{x}" cy="{y}" r="14" fill="{paper}" stroke="{route}" stroke-width="4"/><text x="{x}" y="{y + 5}" text-anchor="middle" font-family="Georgia, serif" font-weight="bold" font-size="14" fill="{route}">{i + 1}</text>')
         o.append(f'<text x="{x}" y="{y - 22}" text-anchor="middle" font-family="Georgia, serif" font-weight="bold" font-style="italic" font-size="21" fill="{ink}">{t}</text>')
     o.append(f'<path d="M1196 60 l-8 -22 M1196 60 l0 -24 l16 6 l-16 6" fill="none" stroke="{route}" stroke-width="3"/>')
-    o.append(f'<g transform="translate(1160 152)"><circle r="22" fill="none" stroke="{ink}" stroke-width="2" opacity=".7"/><path d="M0 -18 L5 0 L0 18 L-5 0Z" fill="{ink}" opacity=".7"/><path d="M0 -18 L5 0 L-5 0Z" fill="{route}"/>'
+    o.append(f'<g transform="translate(1160 152)"><circle r="22" fill="none" stroke="{ink}" stroke-width="2" opacity=".7"/><g><path d="M0 -18 L5 0 L0 18 L-5 0Z" fill="{ink}" opacity=".7"/><path d="M0 -18 L5 0 L-5 0Z" fill="{route}"/>'
+             f'<animateTransform attributeName="transform" type="rotate" values="-8;10;-4;-8" keyTimes="0;.4;.75;1" dur="5s" repeatCount="indefinite" calcMode="spline" keySplines=".45 0 .55 1;.45 0 .55 1;.45 0 .55 1"/></g>'
              f'<text y="-26" text-anchor="middle" font-family="Georgia, serif" font-weight="bold" font-size="11" fill="{ink}">N</text></g>')
     o.append(f'<text x="700" y="184" font-family="Georgia, serif" font-style="italic" font-size="15" fill="{ink}" opacity=".8">'
              + ('the service loop &#183; back by the bridge' if athena else 'the sales trail &#183; over the covered bridge') + '</text>')
@@ -775,7 +832,7 @@ def v_map(n, athena=False):  # the hand-drawn trail map pinned to the table, a r
     # leaves fallen on the table, and a pencil
     P_ = P(n)
     for x, y, c, rt, sc in [(120, 60, P_["red"], 20, 3), (260, 120, P_["gold"], 140, 2.6), (1380, 70, P_["orange"], 70, 3.2), (1500, 150, P_["red"], 200, 2.4), (300, 30, P_["orange"], 300, 2)]:
-        o.append(leaf(x, y, sc, c, rt))
+        o.append(leaf(x, y, sc, c, rt) if x < 1300 else leaf(x, y, sc, c, rt)[:-2] + f'><animateTransform attributeName="transform" type="rotate" values="0;14;0" dur="{4 + x % 3}s" repeatCount="indefinite" additive="sum"{SPL}/></use>')
     o.append('<g transform="rotate(-12 1330 190)"><rect x="1260" y="186" width="130" height="9" fill="#e8b63a"/><path d="M1390 186 L1406 190.5 L1390 195Z" fill="#e8d0a8"/><rect x="1252" y="186" width="10" height="9" fill="#c87a8a"/></g>')
     return vwrap(''.join(o))
 
@@ -784,7 +841,7 @@ def leafpile(x, y, w, h, p, seed):
     o = [f'<path d="M{x - w / 2} {y} Q{x - w * .3:.0f} {y - h} {x} {y - h} Q{x + w * .3:.0f} {y - h} {x + w / 2} {y}Z" fill="{p["red2"]}"/>']
     for _ in range(int(w / 6)):
         t = r.uniform(-.45, .45); yy = y - h * (1 - (2 * t) ** 2) * r.uniform(.2, .95)
-        o.append(leaf(x + t * w, yy, r.uniform(.8, 1.2), r.choice(LC), r.randint(0, 360)))
+        o.append(leaf(round(x + t * w), round(yy), round(r.uniform(.8, 1.2), 2), r.choice(LC), r.randint(0, 360)))
     return ''.join(o)
 
 def v_service(n):  # raking the leaves in front of the house
@@ -795,7 +852,7 @@ def v_service(n):  # raking the leaves in front of the house
     # the house, porch and all
     hx = 1000
     o.append(f'<rect x="{hx - 120}" y="94" width="240" height="98" fill="{p["white"]}"/><path d="M{hx - 134} 96 L{hx} 40 L{hx + 134} 96Z" fill="{p["roof"]}"/><rect x="{hx + 60}" y="40" width="16" height="36" fill="{p["barn2"]}"/>')
-    for y in range(100, 192, 9): o.append(f'<line x1="{hx - 120}" y1="{y}" x2="{hx + 120}" y2="{y}" stroke="{p["white2"]}" stroke-width="1.2"/>')
+    o.append(f'<path d="{"".join(f"M{hx - 120} {y}h240" for y in range(100, 192, 9))}" stroke="{p["white2"]}" stroke-width="1.2"/>')
     for wx, wy in [(hx - 96, 108), (hx + 62, 108), (hx - 22, 62)]:
         if n: o.append(f'<circle cx="{wx + 17}" cy="{wy + 16}" r="34" fill="url(#glow)"/>')
         o.append(f'<rect x="{wx}" y="{wy}" width="34" height="{30 if wy > 100 else 22}" fill="{p["win"]}" stroke="{p["white2"]}" stroke-width="3"/>')
@@ -806,13 +863,16 @@ def v_service(n):  # raking the leaves in front of the house
     o.append(maple(700, 200, 220, [p["red2"], p["red"], p["orange"], p["red"], p["gold"]], 132, p["trunk"], .9))
     # the rakers and their piles, a barrow and the bags
     o.append(leafpile(620, 216, 120, 30, p, 133) + leafpile(860, 214, 90, 24, p, 134))
-    o.append(person(540, 216, 1.0, "rake", "#2f5a8a", "#3a3a44", "#c8361f", p["skin"], hk="beanie"))
-    o.append(person(950, 214, 1.0, "rake", "#5a6a3a", "#3a3530", "#7a3a1e", p["skin"], flip=True, hk="hair"))
+    rk = lambda x, y, b: f'<animateTransform attributeName="transform" type="rotate" values="0 {x} {y};-4 {x} {y};0 {x} {y}" dur="2.4s" begin="{b}s" repeatCount="indefinite"{SPL}/></g>'
+    o.append('<g>' + person(540, 216, 1.0, "rake", "#2f5a8a", "#3a3a44", "#c8361f", p["skin"], hk="beanie") + rk(540, 216, 0))
+    o.append('<g>' + person(950, 214, 1.0, "rake", "#5a6a3a", "#3a3530", "#7a3a1e", p["skin"], flip=True, hk="hair") + rk(950, 214, 1.2).replace('-4 ', '4 '))
     o.append(f'<path d="M1130 196 L1210 196 L1196 214 L1140 214Z" fill="#3a5a7a"/>{leafpile(1170, 198, 78, 16, p, 135)}<circle cx="1140" cy="218" r="8" fill="#1e1e1e"/><path d="M1206 204 L1234 222" stroke="{p["wood2"]}" stroke-width="4"/>')
     for x in (440, 470): o.append(f'<path d="M{x - 13} 220 L{x - 11} 184 L{x + 11} 184 L{x + 13} 220Z" fill="#c8a46a"/><path d="M{x - 11} 184 l4 -4 l4 4 l4 -4 l4 4 l4 -4 l2 4" fill="none" stroke="#a8844a" stroke-width="1.5"/>')
     r = random.Random(136); LC = leafcols(p)
     for _ in range(14): o.append(leaf(r.randint(480, 1260), r.randint(200, 232), 1, r.choice(LC), r.randint(0, 360)))
     for _ in range(5): o.append(leaf(r.randint(560, 860), r.randint(60, 180), 1.1, r.choice(LC), r.randint(0, 360)))
+    o.append(fall(690, 60, 70, 150, 9, p["red"]) + fall(740, 50, -50, 160, 10, p["gold"], 4))
+    o.append(puffs(hx + 68, 38, "#efe6dc" if not n else "#8a8a9a", -16, -40, 2, 6, 5, 12, .5))
     o.append(edge_trees(p))
     o.append(corners(p, n))
     return vwrap(''.join(o))
@@ -827,10 +887,13 @@ def v_renewals(n):  # the orchard in harvest: the rows coming back to us, bushel
     for rowx in (-1, 1):
         for k in range(6):
             t = k / 5; x = 800 + rowx * (40 + 470 * t ** 1.3); b = 126 + 90 * t ** 1.2; h = 26 + 120 * t ** 1.3
-            o.append(appletree(x, b, h, p, 142 + k + (rowx + 1) * 10, n, 6 + k * 2))
+            t = appletree(x, b, h, p, 142 + k + (rowx + 1) * 10, n, 6 + k * 2)
+            o.append(f'<g>{t}{sway(round(x), round(b), .7, 7)}</g>' if rowx == 1 and k == 5 else t)
     for x, y, rr in [(620, 222, 15), (980, 222, 15), (700, 196, 10), (900, 196, 10), (760, 178, 7), (840, 178, 7)]:
         o.append(basket(x, y, rr, p))
     o.append(ladder(1056, 216, 1090, 130, p["wood2"] if not n else "#5a4030"))
+    o.append(drop(1200, 128, 70, p["red"], 4) + drop(1290, 150, 64, p["red"], 5, 6, 2.6))
+    o.append(flock(1460, 40, .7, "#3a3040" if not n else "#c9c2d8", -560, 11))
     o.append(corners(p, n))
     return vwrap(''.join(o))
 
@@ -852,11 +915,17 @@ def v_claims(n):  # after the windstorm: the big maple down across the road, a c
     for _ in range(12): o.append(leaf(r.randint(600, 1100), r.randint(196, 230), 1.1, r.choice(LC), r.randint(0, 360)))
     # the cut rounds, the crew, the cones and the crew's truck
     for x in (1100, 1124, 1112): o.append(f'<ellipse cx="{x}" cy="{216 - (x == 1112) * 18}" rx="12" ry="12" fill="#c8a06a" stroke="{p["trunk"]}" stroke-width="3"/>')
-    o.append(person(740, 214, 1.0, "saw", "#e8761e", "#3a3a44", "#f2c230", p["skin"], hk="hard"))
+    o.append('<g>' + person(740, 214, 1.0, "saw", "#e8761e", "#3a3a44", "#f2c230", p["skin"], hk="hard") +
+             '<animateTransform attributeName="transform" type="translate" values="0 0;.8 -.4;0 0;-.6 .4;0 0;.8 0;0 0" dur="2s" repeatCount="indefinite"/></g>')
+    for i in range(4):   # MOVES: sawdust spraying off the bar
+        o.append(f'<rect x="792" y="180" width="3" height="3" fill="#e8c890" opacity="0"><animateTransform attributeName="transform" type="translate" values="0 0;{8 + i * 7} {-14 + i * 6}" dur="2s" begin="{i * .5}s" repeatCount="indefinite"/><animate attributeName="opacity" values="0;1;0" dur="2s" begin="{i * .5}s" repeatCount="indefinite"/></rect>')
     o.append(person(520, 214, 1.0, "point", "#e8761e", "#3a3a44", "#f2c230", p["skin"], hk="hard"))
     for x in (470, 1170): o.append(f'<path d="M{x - 10} 222 L{x} 194 L{x + 10} 222Z" fill="#e8761e"/><rect x="{x - 6}" y="206" width="12" height="4" fill="#fff"/>')
     o.append(pickup(1290, 222, 1.1, "#e8e2d0" if not n else "#5a5a5e", p, n, flip=True, driver=False))
-    o.append('<rect x="1270" y="153" width="40" height="7" rx="2" fill="#f2a020"/>' + ('<circle cx="1290" cy="156" r="20" fill="#f2a020" opacity=".3"/>' if n else ''))
+    bl = '<animate attributeName="opacity" values="{0};{1};{0}" dur="2s" repeatCount="indefinite"/>'
+    o.append('<rect x="1270" y="153" width="40" height="7" rx="2" fill="#f2a020">' + bl.format(1, .35) + '</rect>' + ('<circle cx="1290" cy="156" r="20" fill="#f2a020" opacity=".3">' + bl.format(.3, 0) + '</circle>' if n else ''))
+    for i, (c, b) in enumerate([(p["red"], 0), (p["gold"], 3)]):   # MOVES: leaves blown along the road
+        o.append(f'<g opacity="0">{leaf(800, 226 - i * 6, 1.1, c)}<animateMotion path="M0 0 q40 -14 80 0 t80 -4 t90 2" dur="6s" begin="{b}s" repeatCount="indefinite" rotate="auto"/><animate attributeName="opacity" values="0;1;1;0" keyTimes="0;.1;.85;1" dur="6s" begin="{b}s" repeatCount="indefinite"/></g>')
     o.append(edge_trees(p, right=False))
     o.append(corners(p, n))
     return vwrap(''.join(o))
@@ -889,9 +958,11 @@ def v_commercial(n):  # the general store on Main Street
     for x in (sx0 + 186, sx0 + 214): o.append(f'<rect x="{x - 12}" y="164" width="24" height="26" rx="5" fill="#8a5a32"/><rect x="{x - 12}" y="170" width="24" height="3" fill="#4a3a2a"/><rect x="{x - 12}" y="182" width="24" height="3" fill="#4a3a2a"/>')
     for x, rr in [(sx1 - 200, 9), (sx1 - 184, 7), (sx1 - 214, 7)]: o.append(pumpkin(x, 190, rr, p))
     # the street lamp on its post, and a pickup at the kerb
-    o.append(f'<rect x="1286" y="110" width="5" height="84" fill="#2a2a2a"/><rect x="1279" y="98" width="19" height="16" rx="3" fill="#2a2a2a"/><rect x="1283" y="101" width="11" height="10" fill="{"#ffd98a" if n else "#e8e2cc"}"/>' + ('<circle cx="1288" cy="106" r="40" fill="url(#glow)"/>' if n else ''))
+    o.append(f'<rect x="1286" y="110" width="5" height="84" fill="#2a2a2a"/><rect x="1279" y="98" width="19" height="16" rx="3" fill="#2a2a2a"/><rect x="1283" y="101" width="11" height="10" fill="{"#ffd98a" if n else "#e8e2cc"}"/>' + ('<circle cx="1288" cy="106" r="40" fill="url(#glow)"><animate attributeName="opacity" values="1;.7;1;.85;1" dur="3.6s" repeatCount="indefinite"/></circle>' if n else ''))
     o.append(pickup(830, 228, 1.0, "#8a2a22" if not n else "#3e1a16", p, n, cargo="pumpkins"))
-    o.append(maple(160, 196, 230, [p["red2"], p["red"], p["orange"], p["red"], p["gold"]], 162, p["trunk"]) + maple(1460, 196, 230, [p["orange"], p["gold"], p["red"], p["yel"], p["orange"]], 163, p["trunk"]))
+    o.append(maple(160, 196, 230, [p["red2"], p["red"], p["orange"], p["red"], p["gold"]], 162, p["trunk"]) + f'<g>{maple(1460, 196, 230, [p["orange"], p["gold"], p["red"], p["yel"], p["orange"]], 163, p["trunk"])}{sway(1460, 196, .7, 7)}</g>')
+    o.append(fall(1430, 60, -110, 150, 9, p["gold"]) + fall(1500, 70, -90, 140, 8, p["red"], 3.5))
+    o.append(f'<g opacity="0">{leaf(1010, 214, 1.1, p["orange"])}<animateMotion path="M0 0 q-50 -12 -100 0 t-100 4 t-90 0" dur="7s" begin="1s" repeatCount="indefinite" rotate="auto"/><animate attributeName="opacity" values="0;1;1;0" keyTimes="0;.1;.85;1" dur="7s" begin="1s" repeatCount="indefinite"/></g>')
     o.append(corners(p, n))
     return vwrap(''.join(o))
 

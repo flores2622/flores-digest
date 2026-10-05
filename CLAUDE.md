@@ -2195,7 +2195,16 @@ repaint clears the list).
   (Fun; Rye / Nunito Sans; Midway, Big Top, Cotton Candy -- the midway, coaster, big top, Ferris wheel and
   NO LAPSE LOOP carousel, the podium on a bandstand) and **Dinosaurs** (Fun; Fredoka / Nunito; Fern, Lava,
   Amber -- a prehistoric valley, a sauropod browsing, a volcano, PREHISTORIC PROTECTION falls, an egg
-  that hatches). Space got
+  that hatches). **Their banners move too** (Frank, 2026-10-05: "add movement to the new worlds' banners too"),
+  each with a still copy for Reduced motion (build.py writes one for any banner or strip that moves, light and
+  dark together): a dunk, a free throw, a home-run trot, bumper cars, the high striker, falling leaves, surfers,
+  a pterosaur leaving the ledge ... Basketball's wave is the bowl's own fans standing and raising their arms
+  as two masks sweep the bowl ("make the wave on basketball more realistic"), and its six banners hang
+  mirror-symmetric about the scoreboard ("center it right"); Autumn's covered bridge sits on stone abutments
+  at road level with a portal at each end and the stream coming out from under it ("doesnt look right");
+  Dinosaurs' volcano erupts on an 11 s loop -- the crater flares, an ash column and lava bombs rise above
+  the tiles, streams run down the cone ("make it erupt").
+  Space got
   a Claims banner too. No real teams, games, brands or landmarks' names.
   **A world's pictures load only for whoever picks it** (2026-10-03): each
   is `site/public/worlds/<key>.css`, added by `loadWorld` with the world's

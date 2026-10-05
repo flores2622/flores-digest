@@ -96,6 +96,32 @@ def sway(x, b, deg, dur, delay=0):
     return (f'<animateTransform attributeName="transform" type="rotate" values="{-deg} {N(x)} {N(b)};{deg} {N(x)} {N(b)};{-deg} {N(x)} {N(b)}" '
             f'dur="{dur}s" begin="{delay}s" repeatCount="indefinite" calcMode="spline" keySplines=".45 0 .55 1;.45 0 .55 1"/>')
 
+# the banners' movement, kept short: every tag self-closing, the element's own attributes its resting state
+_SP = 'calcMode="spline" keySplines=".45 0 .55 1;.45 0 .55 1"'
+def bob(dx, dy, dur, begin=0):
+    """there and back from where it rests, eased"""
+    return (f'<animateTransform attributeName="transform" type="translate" values="0 0;{N(dx)} {N(dy)};0 0" keyTimes="0;.5;1" '
+            f'dur="{dur}s" begin="{begin}s" {_SP} repeatCount="indefinite"/>')
+
+def tw(attr, vals, dur, begin=0):
+    """an attribute pulsing through its values, back to the first"""
+    v = vals + vals[:1]; t = ";".join(N(i / (len(v) - 1)) for i in range(len(v)))
+    return f'<animate attributeName="{attr}" values="{";".join(map(str, v))}" keyTimes="{t}" dur="{dur}s" begin="{begin}s" repeatCount="indefinite"/>'
+
+def twinkle(pts):
+    """a few night stars that brighten and dim"""
+    return ''.join(f'<circle cx="{x}" cy="{y}" r="1.6" fill="#fff" opacity=".4">{tw("opacity", [.4, 1, .2], 2 + i * .7, i * .4)}</circle>' for i, (x, y) in enumerate(pts))
+
+def drift(el, dx, dur, begin=0, dy=0):
+    """wrap a piece (ripples, a cloud, a bird) in a group that drifts and comes back"""
+    return f'<g>{el}{bob(dx, dy, dur, begin)}</g>'
+
+def flygull(x, y, s, c, dx, dy, dur, begin=0):
+    """a gull flapping as it glides out and back"""
+    f = tw("d", [gull(x, y, s), gull(x, y, s, k=-.3)], .9, begin)
+    return drift(f'<path d="{gull(x, y, s)}" fill="none" stroke="{c}" stroke-width="{N(2 * s)}" stroke-linecap="round">{f}</path>', dx, dur, begin, dy)
+
+
 # ----------------------------------------------------------------- the pieces
 def qpt(p0, c, p1, t):
     return ((1 - t) ** 2 * p0[0] + 2 * (1 - t) * t * c[0] + t * t * p1[0], (1 - t) ** 2 * p0[1] + 2 * (1 - t) * t * c[1] + t * t * p1[1])
@@ -403,7 +429,7 @@ def base(n, sky=DAYSKY, nt=NIGHTSKY, star=40):
 
 def sea_band(p, y, n, c=None, op=.3):
     return (f'<rect x="0" y="{y}" width="1600" height="{V - y}" fill="{c or p["sea"]}"/>'
-            + ripples(20, 0, 1600, y + 6, min(V, y + 60), 3, op=op if not n else .15))
+            + drift(ripples(20, 0, 1600, y + 6, min(V, y + 60), 3, op=op if not n else .15), 14, 7))
 
 def corners(p, n, c=None):
     """dark jungle in the corners the title and line sit on"""
@@ -433,13 +459,13 @@ def v_sales(n):  # surfers riding a big wave
     o.append(f'<path d="M380 240 C440 200 520 120 640 86 C740 58 820 70 860 108 C820 96 780 104 770 128 C820 150 900 176 1100 186 C1200 192 1300 200 1400 240Z" fill="{wv}"/>')
     o.append(f'<path d="M560 230 C600 180 660 120 740 96 C700 130 690 170 720 230Z" fill="{wv2}" opacity=".7"/>')
     o.append(f'<path d="M640 86 C740 58 820 70 860 108 C840 104 820 104 806 110 C780 90 720 84 650 96Z" fill="{fm}"/>')
-    o.append(f'<path d="M820 120 q10 -8 22 -2 M836 132 q12 -6 20 0" stroke="{fm}" stroke-width="4" fill="none" stroke-linecap="round"/>')
+    o.append(f'<path d="M820 120 q10 -8 22 -2 M836 132 q12 -6 20 0" stroke="{fm}" stroke-width="4" fill="none" stroke-linecap="round">{tw("opacity", [1, .3], 2.4)}</path>')
     o.append(f'<path d="M380 240 C450 222 520 214 600 226 C680 210 760 222 820 214 L860 240Z" fill="{fm}" opacity=".9"/>')
     # two surfers on the face
-    o.append(f'<path d="M846 168 L938 156 Q948 160 940 166 L850 176Z" fill="#f2c230"/>' + person(892, 164, 1.0, "surf", "#e2552b", p["skin"], "#1f3f6a"))
-    o.append(f'<path d="M1050 186 L1126 178 Q1134 182 1128 186 L1052 194Z" fill="#fff4e6"/>' + person(1088, 184, .85, "surf", "#2f8f9a", p["skin"], "#7a2a2a", flip=True))
+    o.append(f'<g><path d="M846 168 L938 156 Q948 160 940 166 L850 176Z" fill="#f2c230"/>' + person(892, 164, 1.0, "surf", "#e2552b", p["skin"], "#1f3f6a") + bob(-26, -10, 5) + '</g>')
+    o.append(f'<g><path d="M1050 186 L1126 178 Q1134 182 1128 186 L1052 194Z" fill="#fff4e6"/>' + person(1088, 184, .85, "surf", "#2f8f9a", p["skin"], "#7a2a2a", flip=True) + bob(-24, -6, 6, 1) + '</g>')
     o.append(f'<path d="M940 166 Q990 170 1040 182" stroke="{fm}" stroke-width="3" fill="none" opacity=".7"/>')
-    if not n: o.append(gullp(480, 60, 1.1, "#3a2f4a") + gullp(510, 48, .8, "#3a2f4a"))
+    o.append(flygull(480, 60, 1.1, "#3a2f4a", 120, -10, 9) + flygull(510, 48, .8, "#3a2f4a", 110, 6, 9, .4) if not n else twinkle([(560, 40), (980, 26), (1400, 54), (720, 70)]))
     o.append(edge_palms(p) + corners(p, n))
     return vwrap(''.join(o))
 
@@ -452,18 +478,19 @@ def v_messages(n):  # the beach shack, its radio on the counter, the aerial on t
     # the aerial on the roof, waves going out
     o.append(f'<path d="M{sx + 180} 70 L{sx + 180} 22 M{sx + 170} 34 h20 M{sx + 166} 46 h28" stroke="#4a3a30" stroke-width="3"/>')
     for k, r_ in enumerate((14, 26, 38)):
-        o.append(f'<path d="M{sx + 180 - r_} {28 - r_ * .3:.0f} Q{sx + 180} {28 - r_ * 1.1:.0f} {sx + 180 + r_} {28 - r_ * .3:.0f}" stroke="#fff" stroke-width="3" fill="none" opacity="{.8 - k * .2:.1f}"/>')
+        o.append(f'<path d="M{sx + 180 - r_} {28 - r_ * .3:.0f} Q{sx + 180} {28 - r_ * 1.1:.0f} {sx + 180 + r_} {28 - r_ * .3:.0f}" stroke="#fff" stroke-width="3" fill="none" opacity="{.8 - k * .2:.1f}">{tw("opacity", [.05, .9, .05], 1.8, k * .3)}</path>')
     # the shack on its posts
     o.append(f'<rect x="{sx}" y="96" width="250" height="100" fill="{p["wood"]}"/>')
     o.append(''.join(f'<rect x="{sx + k * 25}" y="96" width="2" height="100" fill="{p["wood2"]}"/>' for k in range(1, 10)))
     o.append(f'<path d="M{sx - 30} 102 L{sx + 30} 62 L{sx + 220} 62 L{sx + 280} 102Z" fill="{p["thatch"]}"/><path d="M{sx - 30} 102 h310 l-8 10 h-294Z" fill="{p["thatch2"]}"/>')
-    if n: o.append(f'<circle cx="{sx + 125}" cy="140" r="90" fill="url(#glow)"/>')
+    if n: o.append(f'<circle cx="{sx + 125}" cy="140" r="90" fill="url(#glow)">{tw("opacity", [1, .6], 3)}</circle>')
     o.append(f'<rect x="{sx + 24}" y="118" width="202" height="44" fill="{"#3a2a1c" if not n else "#ffcf6a"}"/>')
     o.append(f'<rect x="{sx + 14}" y="160" width="222" height="10" fill="{p["wood2"]}"/>')
     # the radio on the counter, a coconut drink beside it
     o.append(f'<rect x="{sx + 100}" y="136" width="56" height="26" rx="4" fill="#d8402a"/><circle cx="{sx + 114}" cy="149" r="8" fill="#3a2a1c"/><rect x="{sx + 128}" y="142" width="22" height="5" fill="#fff4e6"/>'
              f'<path d="M{sx + 146} 136 L{sx + 160} 112" stroke="#4a3a30" stroke-width="2"/><circle cx="{sx + 190}" cy="154" r="8" fill="#6b4724"/><path d="M{sx + 192} 146 l6 -12" stroke="#f2c230" stroke-width="2"/>')
-    o.append(person(sx + 60, 160, .9, "hold", "#2f8f9a", p["skin"]))
+    o.append(f'<g>{person(sx + 60, 160, .9, "hold", "#2f8f9a", p["skin"])}{sway(sx + 60, 160, 3, 2.4)}</g>')
+    o.append(flygull(1100, 60, 1, "#3a2f4a", -140, 8, 10) + flygull(1130, 44, .7, "#3a2f4a", -130, -4, 10, .5) if not n else twinkle([(1000, 30), (1200, 60), (1420, 34), (520, 50)]))
     o.append(f'<rect x="{sx + 20}" y="74" width="210" height="20" rx="3" fill="{p["wood2"]}"/><text x="{sx + 125}" y="89" text-anchor="middle" font-family="Georgia, serif" font-weight="bold" font-size="13" fill="{p["ink"]}" letter-spacing="2">SHORE THING COVERAGE</text>')
     o.append(f'<path d="M{sx + 10} 196 v-26 M{sx + 240} 196 v-26" stroke="{p["wood2"]}" stroke-width="6"/>')
     # a surfboard leaning on the shack
@@ -480,15 +507,20 @@ def v_coaching(n):  # the fire circle on the beach at dusk
     o.append(f'<ellipse cx="{cx}" cy="{cy}" rx="220" ry="40" fill="#ffb84a" opacity="{.18 if not n else .25}"/><circle cx="{cx}" cy="{cy - 30}" r="110" fill="url(#glow)"/>')
     o.append(f'<ellipse cx="{cx}" cy="{cy + 4}" rx="44" ry="10" fill="#5a5048"/>')
     o.append(f'<path d="M{cx - 34} {cy + 2} L{cx + 30} {cy - 8} M{cx - 30} {cy - 8} L{cx + 34} {cy + 2}" stroke="{p["wood2"]}" stroke-width="8" stroke-linecap="round"/>')
-    o.append(f'<path d="M{cx - 26} {cy - 2} Q{cx - 30} {cy - 40} {cx - 4} {cy - 74} Q{cx + 2} {cy - 50} {cx + 12} {cy - 64} Q{cx + 32} {cy - 34} {cx + 24} {cy - 2}Z" fill="{p["flame"]}"/>'
-             f'<path d="M{cx - 12} {cy - 2} Q{cx - 14} {cy - 26} {cx} {cy - 44} Q{cx + 14} {cy - 26} {cx + 12} {cy - 2}Z" fill="{p["flame2"]}"/>')
-    for x, y in [(cx - 6, cy - 92), (cx + 18, cy - 104), (cx - 20, cy - 116)]: o.append(f'<circle cx="{x}" cy="{y}" r="2" fill="#ffd27a"/>')
+    fo = lambda a, b, c: f'M{cx - 26} {cy - 2} Q{cx - 30} {cy - 40} {cx + a} {cy - b} Q{cx + 2} {cy - 50} {cx + 12} {cy - c} Q{cx + 32} {cy - 34} {cx + 24} {cy - 2}Z'
+    fi = lambda a, b: f'M{cx - 12} {cy - 2} Q{cx - 14} {cy - 26} {cx + a} {cy - b} Q{cx + 14} {cy - 26} {cx + 12} {cy - 2}Z'
+    o.append(f'<path d="{fo(-4, 74, 64)}" fill="{p["flame"]}">{tw("d", [fo(-4, 74, 64), fo(4, 84, 56), fo(-8, 68, 70)], 1.3)}</path>'
+             f'<path d="{fi(0, 44)}" fill="{p["flame2"]}">{tw("d", [fi(0, 44), fi(3, 52), fi(-3, 40)], 1.1)}</path>')
+    # embers rising off the fire and going out
+    for k, (x, y) in enumerate([(cx - 6, cy - 92), (cx + 18, cy - 104), (cx - 20, cy - 116)]):
+        o.append(f'<circle cx="{x}" cy="{y}" r="2" fill="#ffd27a"><animateTransform attributeName="transform" type="translate" values="0 30;{(k - 1) * 8} -30" keyTimes="0;1" dur="3s" begin="{k}s" repeatCount="indefinite"/>{tw("opacity", [0, 1, 0], 3, k)}</circle>')
     # logs as seats, the circle round the fire; the coach on his feet, explaining
     for x0, x1 in ((560, 700), (900, 1040)):
         o.append(f'<rect x="{x0}" y="{cy + 2}" width="{x1 - x0}" height="16" rx="8" fill="{p["wood"]}"/><ellipse cx="{x1}" cy="{cy + 10}" rx="6" ry="8" fill="{p["thatch"]}"/>')
     o.append(person(600, cy + 4, 1.0, "sit", "#e2552b", p["skin"]) + person(660, cy + 4, 1.0, "sit", "#f2c230", p["skin"], hair="#5a3a1c"))
     o.append(person(950, cy + 4, 1.0, "sit", "#2f8f9a", p["skin"], flip=True) + person(1010, cy + 4, 1.0, "sit", "#7a5ab0", p["skin"], flip=True, hair="#8a5a2a"))
-    o.append(person(880, cy + 10, 1.25, "point", "#fff4e6", p["skin"], "#2f6a3a", flip=True))
+    o.append(f'<g>{person(880, cy + 10, 1.25, "point", "#fff4e6", p["skin"], "#2f6a3a", flip=True)}{sway(880, cy + 10, 2, 4)}</g>')
+    if n: o.append(twinkle([(560, 30), (1000, 44), (1420, 24), (760, 60)]))
     o.append(edge_palms(p) + corners(p, n))
     return vwrap(''.join(o))
 
@@ -501,21 +533,23 @@ def v_roleplay(n):  # the luau stage: a thatched stage, torches, a performer and
     o.append(f'<rect x="{x0}" y="168" width="{x1 - x0}" height="22" fill="{p["wood2"]}"/><rect x="{x0}" y="164" width="{x1 - x0}" height="8" fill="{p["plank"]}"/>')
     o.append(f'<path d="M{x0 + 10} 166 V70 M{x1 - 10} 166 V70" stroke="{p["wood"]}" stroke-width="10"/>')
     o.append(f'<path d="M{x0 - 40} 74 L{x0 + 60} 34 L{x1 - 60} 34 L{x1 + 40} 74Z" fill="{p["thatch"]}"/><path d="M{x0 - 40} 74 h{x1 - x0 + 80} l-10 12 h-{x1 - x0 + 60}Z" fill="{p["thatch2"]}"/>')
-    o.append(''.join(f'<path d="M{x} 86 v10" stroke="{p["thatch2"]}" stroke-width="4"/>' for x in range(x0 - 26, x1 + 30, 14)))
+    o.append(f'<path d="{"".join(f"M{x} 86v10" for x in range(x0 - 26, x1 + 30, 14))}" stroke="{p["thatch2"]}" stroke-width="4"/>')
     # string of lanterns hung under the eave
     o.append(f'<path d="M{x0 + 10} 92 Q800 116 {x1 - 10} 92" stroke="#3a2a1c" stroke-width="2" fill="none"/>')
     for k in range(9):
         t = (k + 1) / 10; x = x0 + 10 + (x1 - x0 - 20) * t; y = 92 + 24 * 4 * t * (1 - t) * .98
-        if n: o.append(f'<circle cx="{N(x)}" cy="{N(y + 6)}" r="16" fill="url(#glow)"/>')
+        if n: o.append(f'<circle cx="{N(x)}" cy="{N(y + 6)}" r="16" fill="url(#glow)">{tw("opacity", [1, .4], 2 + k % 3 * .6, k * .3)}</circle>')
         o.append(f'<circle cx="{N(x)}" cy="{N(y + 6)}" r="5" fill="{["#ffcf6a", "#ff8a5a", "#7fe0cf"][k % 3]}"/>')
     o.append(f'<rect x="{x0 + 110}" y="46" width="180" height="20" rx="4" fill="{p["wood2"]}"/><text x="800" y="61" text-anchor="middle" font-family="Georgia, serif" font-weight="bold" font-size="13" fill="{p["ink"]}" letter-spacing="2">OPEN MIC LUAU</text>')
     # the performer with a ukulele, a dancer in a grass skirt
     o.append(person(740, 164, 1.0, "hold", "#e2552b", p["skin"], extra='<ellipse cx="12" cy="-34" rx="8" ry="5" fill="#c9893a"/><path d="M14 -36 L30 -44" stroke="#6b4724" stroke-width="3"/>'))
-    o.append(person(860, 164, 1.0, "wave", "#f2c230", p["skin"], "#5aa04a", hair="#2a1a10", extra='<path d="M-10 -26 L-12 -6 M-6 -26 L-6 -6 M-2 -26 L0 -6 M2 -26 L4 -6 M6 -26 L8 -6 M10 -26 L12 -6" stroke="#5aa04a" stroke-width="3"/>'))
-    for i, x in enumerate((560, 1040)): o.append(torch(x, 196, 90, p, n, i, anim=False, s=.8))
+    o.append('<g>' + person(860, 164, 1.0, "wave", "#f2c230", p["skin"], "#5aa04a", hair="#2a1a10", extra='<path d="M-10 -26 L-12 -6 M-6 -26 L-6 -6 M-2 -26 L0 -6 M2 -26 L4 -6 M6 -26 L8 -6 M10 -26 L12 -6" stroke="#5aa04a" stroke-width="3"/>') + sway(860, 164, 6, 2) + '</g>')
+    for i, x in enumerate((560, 1040)): o.append(torch(x, 196, 90, p, n, i, s=.8))
     # the crowd from behind, heads and shoulders
     for k, x in enumerate(range(520, 1100, 44)):
-        o.append(f'<path d="M{x - 18} 240 Q{x - 16} 214 {x} 212 Q{x + 16} 214 {x + 18} 240Z" fill="{["#5a3a5a", "#3a4a6a", "#4a5a3a"][k % 3] if not n else "#14121e"}"/><circle cx="{x}" cy="204" r="10" fill="{"#3a2a20" if not n else "#100c10"}"/>')
+        hd = f'<circle cx="{x}" cy="204" r="10" fill="{"#3a2a20" if not n else "#100c10"}"/>'
+        o.append(f'<path d="M{x - 18} 240 Q{x - 16} 214 {x} 212 Q{x + 16} 214 {x + 18} 240Z" fill="{["#5a3a5a", "#3a4a6a", "#4a5a3a"][k % 3] if not n else "#14121e"}"/>'
+                 + (drift(hd, 0, 1.6, k % 3 * .5, -3) if k % 3 == 1 else hd))
     o.append(edge_palms(p) + corners(p, n))
     return vwrap(''.join(o))
 
@@ -526,20 +560,21 @@ def v_rphistory(n):  # beach movie night: a screen hung between two palms, the c
     o.append(sea_band(p, 132, n, p["sea"], .15))
     o.append(f'<path d="M0 160 Q800 146 1600 160 L1600 240 L0 240Z" fill="{p["sand"]}"/>')
     pa = Palm(560, 220, 590, 30, .08, 16); pb = Palm(1040, 220, 1010, 30, -.08, 16)
-    o.append(pa.trunk(p) + pa.crown(p, 60, 41, res=6) + pb.trunk(p) + pb.crown(p, 60, 42, res=6))
+    o.append(pa.trunk(p) + f'<g>{pa.crown(p, 60, 41, res=6)}{sway(590, 30, 2, 5)}</g>' + pb.trunk(p) + f'<g>{pb.crown(p, 60, 42, res=6)}{sway(1010, 30, 2, 5.6, 1)}</g>')
     a1 = pa.at(.75); b1 = pb.at(.75); a2 = pa.at(.28); b2 = pb.at(.28)
     # ropes from the trunks to the screen's corners
     o.append(f'<path d="M{N(a1[0])} {N(a1[1])} L650 66 M{N(b1[0])} {N(b1[1])} L950 66 M{N(a2[0])} {N(a2[1])} L650 162 M{N(b2[0])} {N(b2[1])} L950 162" stroke="#d8c8a8" stroke-width="2"/>')
     o.append(f'<rect x="646" y="62" width="308" height="104" fill="#f4f0e6"/>')
     scr = "#7fd0e8" if not n else "#5aa8c8"
     o.append(f'<rect x="654" y="70" width="292" height="88" fill="{scr}"/><path d="M654 128 C720 100 780 90 820 104 C800 110 790 120 800 134 C860 130 900 136 946 140 V158 H654Z" fill="#2bb3b5"/>')
-    o.append(f'<path d="M820 104 C800 110 790 120 800 134" stroke="#fff" stroke-width="3" fill="none"/>' + person(760, 132, .5, "surf", "#e2552b", "#d9a27c"))
-    o.append('<path d="M664 80 l12 7 l-12 7z" fill="#fff" opacity=".9"/><rect x="654" y="152" width="292" height="6" fill="#000" opacity=".3"/><rect x="654" y="152" width="170" height="6" fill="#e2552b"/>')
-    o.append('<path d="M800 210 L654 72 L946 72Z" fill="#fff" opacity=".05"/><rect x="784" y="206" width="32" height="16" rx="3" fill="#3a3a44"/><circle cx="800" cy="210" r="4" fill="#fff8d8"/>')
+    o.append(f'<path d="M820 104 C800 110 790 120 800 134" stroke="#fff" stroke-width="3" fill="none"/>' + drift(person(760, 132, .5, "surf", "#e2552b", "#d9a27c"), 30, 4, 0, -10))
+    o.append('<path d="M664 80 l12 7 l-12 7z" fill="#fff" opacity=".9"/><rect x="654" y="152" width="292" height="6" fill="#000" opacity=".3"/><rect x="654" y="152" width="170" height="6" fill="#e2552b"><animate attributeName="width" values="170;292;0;170" keyTimes="0;.45;.46;1" dur="10s" repeatCount="indefinite"/></rect>')
+    o.append(f'<path d="M800 210 L654 72 L946 72Z" fill="#fff" opacity=".05">{tw("opacity", [.05, .09, .04, .07], 1.2)}</path><rect x="784" y="206" width="32" height="16" rx="3" fill="#3a3a44"/><circle cx="800" cy="210" r="4" fill="#fff8d8"/>')
     for x, c in [(600, "#c8402a"), (900, "#2f6f9c"), (1100, "#f2c230")]:
         o.append(f'<path d="M{x - 60} 222 L{x + 60} 222 L{x + 76} 240 L{x - 76} 240Z" fill="{c}" opacity="{.85 if not n else .45}"/>')
     for x in (570, 630, 870, 930, 1080):
         o.append(f'<path d="M{x - 14} 236 Q{x - 12} 214 {x} 212 Q{x + 12} 214 {x + 14} 236Z" fill="{"#3a2a3a" if not n else "#12101a"}"/><circle cx="{x}" cy="204" r="9" fill="{"#2a1e20" if not n else "#0e0a0e"}"/>')
+    o.append(twinkle([(470, 40), (1120, 30), (1460, 70), (1240, 96)]))
     o.append(corners(p, n))
     return vwrap(''.join(o))
 
@@ -549,25 +584,28 @@ def v_training(n):  # snorkelling over the reef: the surface above, the reef and
     o = [defs(f'<linearGradient id="g" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="{wt[0]}"/><stop offset=".5" stop-color="{wt[1]}"/><stop offset="1" stop-color="{wt[2]}"/></linearGradient>')]
     o.append(f'<rect width="1600" height="{V}" fill="url(#g)"/>')
     # sun rays coming down through the water
-    o.append(''.join(f'<path d="M{x} 40 L{x + 40} 40 L{x + 140} 240 L{x + 60} 240Z" fill="#fff" opacity="{.08 if not n else .04}"/>' for x in (420, 640, 900, 1120)))
+    o.append(''.join(f'<path d="M{x} 40 L{x + 40} 40 L{x + 140} 240 L{x + 60} 240Z" fill="#fff" opacity="{.08 if not n else .04}">{tw("opacity", [.08, .02] if not n else [.04, .01], 4 + k, k)}</path>' for k, x in enumerate((420, 640, 900, 1120))))
     # the surface, and the snorkellers lying on it, fins and masks
     o.append(f'<path d="M0 40 Q200 34 400 40 T800 40 T1200 40 T1600 40 L1600 0 L0 0Z" fill="{"#f2b07e" if not n else "#101a3a"}"/>')
     o.append(f'<path d="M0 40 Q200 34 400 40 T800 40 T1200 40 T1600 40" stroke="#fff" stroke-width="3" fill="none" opacity=".6"/>')
     for x, sh in ((640, "#e2552b"), (900, "#f2c230")):
         o.append(f'<g transform="translate({x} 52)"><path d="M-50 -4 L30 -6" stroke="{p["skin"]}" stroke-width="12" stroke-linecap="round"/><path d="M-30 -8 L10 -10 L12 2 L-30 4Z" fill="{sh}"/>'
                  f'<path d="M-50 -4 L-74 -12 L-76 4Z" fill="#2f4f7a"/><circle cx="38" cy="-4" r="9" fill="{p["skin"]}"/><rect x="38" y="-2" width="12" height="9" rx="3" fill="#7fe0f0" stroke="#2a2a2a" stroke-width="2"/>'
-                 f'<path d="M36 -12 L36 -30" stroke="#f2c230" stroke-width="4" stroke-linecap="round"/><path d="M20 -2 L40 14" stroke="{p["skin"]}" stroke-width="5" stroke-linecap="round"/></g>')
-    o.append(''.join(f'<circle cx="{x}" cy="{y}" r="3" fill="none" stroke="#fff" stroke-width="1.5" opacity=".6"/>' for x, y in [(690, 70), (694, 84), (952, 74), (948, 90)]))
+                 f'<path d="M36 -12 L36 -30" stroke="#f2c230" stroke-width="4" stroke-linecap="round"/><path d="M20 -2 L40 14" stroke="{p["skin"]}" stroke-width="5" stroke-linecap="round"/>'
+                 f'<animateTransform attributeName="transform" type="translate" values="{x} 52;{x} 56;{x} 52" keyTimes="0;.5;1" dur="{3 + x % 7 * .3:.1f}s" {_SP} repeatCount="indefinite"/></g>')
+    o.append(''.join(f'<circle cx="{x}" cy="{y}" r="3" fill="none" stroke="#fff" stroke-width="1.5" opacity=".6"><animateTransform attributeName="transform" type="translate" values="0 24;0 -26" keyTimes="0;1" dur="2.6s" begin="{k * .65}s" repeatCount="indefinite"/>{tw("opacity", [0, .7, 0], 2.6, k * .65)}</circle>' for k, (x, y) in enumerate([(690, 70), (694, 84), (952, 74), (948, 90)])))
     # the reef
     o.append(reef(p, n, 172, 7))
     # a sea turtle gliding over it
     tc = "#6a8a3a" if not n else "#2e4a2a"
-    o.append(f'<g transform="translate(1130 120) rotate(-8)"><ellipse rx="36" ry="22" fill="{tc}"/><path d="M-22 -8 L0 -18 L22 -8 L18 10 L-18 10Z" fill="#8aa84a" opacity="{.8 if not n else .4}"/>'
-             f'<ellipse cx="42" cy="-2" rx="11" ry="8" fill="#9aae6a"/><path d="M14 -18 L36 -38 L26 -14Z M14 18 L34 36 L24 14Z M-24 -14 L-40 -26 L-30 -10Z M-24 14 L-40 24 L-30 10Z" fill="#9aae6a"/></g>')
+    o.append(f'<g><g transform="translate(1130 120) rotate(-8)"><ellipse rx="36" ry="22" fill="{tc}"/><path d="M-22 -8 L0 -18 L22 -8 L18 10 L-18 10Z" fill="#8aa84a" opacity="{.8 if not n else .4}"/>'
+             f'<ellipse cx="42" cy="-2" rx="11" ry="8" fill="#9aae6a"/><path d="M14 -18 L36 -38 L26 -14Z M14 18 L34 36 L24 14Z M-24 -14 L-40 -26 L-30 -10Z M-24 14 L-40 24 L-30 10Z" fill="#9aae6a"/></g>{bob(-40, -8, 11)}</g>')
     r = random.Random(3)
     for _ in range(8):
         x = r.randint(480, 1180); y = r.randint(90, 150)
-        o.append(f'<g transform="translate({x} {y})"><path d="M-10 0 Q0 -6 10 0 Q0 6 -10 0Z M-10 0 L-16 -5 L-16 5Z" fill="{r.choice(["#ffb23a", "#ff6a4a", "#f2e04a", "#7fd0ff"])}"/></g>')
+        c = r.choice(["#ffb23a", "#ff6a4a", "#f2e04a", "#7fd0ff"]); dx = r.randint(20, 46)
+        o.append(f'<g transform="translate({x} {y})"><path d="M-10 0 Q0 -6 10 0 Q0 6 -10 0Z M-10 0 L-16 -5 L-16 5Z" fill="{c}"/>'
+                 f'<animateTransform attributeName="transform" type="translate" values="{x} {y};{x + dx} {y - 3};{x} {y}" keyTimes="0;.5;1" dur="{4 + dx % 4}s" {_SP} repeatCount="indefinite"/></g>')
     o.append(f'<path d="M0 190 Q220 180 470 200 L470 240 L0 240Z M1600 196 Q1320 190 1040 206 L1040 240 L1600 240Z" fill="{"#0c3a4e" if not n else "#041624"}"/>')
     return vwrap(''.join(o))
 
@@ -601,7 +639,7 @@ def v_map(n, athena=False):  # the treasure-style island chart, laid out on a da
     route = "#c8402a" if not athena else "#2a7a6a"
     o = [f'<rect width="1600" height="{V}" fill="{tbl}"/>']
     o.append(''.join(f'<rect x="0" y="{y}" width="1600" height="3" fill="{tbl2}"/>' for y in range(10, V, 26)))
-    if n: o.append('<circle cx="800" cy="120" r="420" fill="#ffcf6a" opacity=".1"/>')
+    if n: o.append(f'<circle cx="800" cy="120" r="420" fill="#ffcf6a" opacity=".1">{tw("opacity", [.1, .06, .12, .08], 3)}</circle>')
     # the chart: a torn-edged sheet, sea all over it, one island in the middle
     o.append(f'<path d="M372 34 L520 28 L700 36 L900 30 L1080 36 L1232 30 L1238 120 L1230 214 L1060 210 L880 216 L700 210 L520 216 L366 210 L372 120Z" fill="{paper2}" transform="translate(6 6)" opacity=".5"/>')
     o.append(f'<path d="M372 34 L520 28 L700 36 L900 30 L1080 36 L1232 30 L1238 120 L1230 214 L1060 210 L880 216 L700 210 L520 216 L366 210 L372 120Z" fill="{paper}"/>')
@@ -615,7 +653,10 @@ def v_map(n, athena=False):  # the treasure-style island chart, laid out on a da
         o.append(f'<path d="M{x} {y + 10} q2 -10 0 -16 M{x} {y - 6} q-8 -2 -12 4 M{x} {y - 6} q8 -2 12 4 M{x} {y - 6} q-4 -8 -10 -8 M{x} {y - 6} q4 -8 10 -8" stroke="{ink}" stroke-width="2" fill="none"/>')
     pts = [(560, 150), (720, 124), (900, 156), (1060, 134)]
     d = f'M{pts[0][0]} {pts[0][1]} C600 150 640 128 {pts[1][0]} {pts[1][1]} S840 170 {pts[2][0]} {pts[2][1]} S1010 130 {pts[3][0]} {pts[3][1]}'
-    o.append(f'<path d="{d}" fill="none" stroke="{route}" stroke-width="4" stroke-dasharray="10 8" stroke-linecap="round"/>')
+    o.append(f'<path d="{d}" fill="none" stroke="{route}" stroke-width="4" stroke-dasharray="10 8" stroke-linecap="round"><animate attributeName="stroke-dashoffset" values="0;-36" keyTimes="0;1" dur="2s" repeatCount="indefinite"/></path>')
+    # a little boat sailing the passage
+    o.append(f'<g opacity="0"><path d="M-9 0 L9 0 L6 5 L-6 5Z M0 0 V-14 L8 -3 L0 -3Z" fill="{ink}"/><animateMotion path="{d}" keyPoints="0;1;1" keyTimes="0;.85;1" calcMode="linear" dur="12s" repeatCount="indefinite"/>'
+             '<animate attributeName="opacity" values="0;1;1;0;0" keyTimes="0;.05;.8;.85;1" dur="12s" repeatCount="indefinite"/></g>')
     steps = ["Listen", "Understand", "Handle", "Follow up"] if athena else ["Dial", "Discovery", "Quote", "Close"]
     for i, ((x, y), t) in enumerate(zip(pts, steps)):
         if i == 3:
@@ -625,8 +666,8 @@ def v_map(n, athena=False):  # the treasure-style island chart, laid out on a da
         ty = y - 18
         o.append(f'<text x="{x}" y="{ty}" text-anchor="middle" font-family="Georgia, serif" font-weight="bold" font-style="italic" font-size="22" fill="{ink}" stroke="{paper}" stroke-width="4" paint-order="stroke">{t}</text>')
     # the compass rose and a little ship
-    o.append(f'<g transform="translate(1160 84)"><circle r="24" fill="none" stroke="{ink}" stroke-width="2"/><path d="M0 -30 L6 0 L0 30 L-6 0Z M-30 0 L0 6 L30 0 L0 -6Z" fill="{ink}" opacity=".85"/>'
-             f'<path d="M0 -30 L6 0 L-6 0Z" fill="{route}"/><text y="-34" text-anchor="middle" font-family="Georgia, serif" font-weight="bold" font-size="12" fill="{ink}">N</text></g>')
+    o.append(f'<g transform="translate(1160 84)"><circle r="24" fill="none" stroke="{ink}" stroke-width="2"/><g><path d="M0 -30 L6 0 L0 30 L-6 0Z M-30 0 L0 6 L30 0 L0 -6Z" fill="{ink}" opacity=".85"/>'
+             f'<path d="M0 -30 L6 0 L-6 0Z" fill="{route}"/>{sway(0, 0, 6, 5)}</g><text y="-34" text-anchor="middle" font-family="Georgia, serif" font-weight="bold" font-size="12" fill="{ink}">N</text></g>')
     o.append(f'<g transform="translate(440 84)" fill="none" stroke="{ink}" stroke-width="2"><path d="M-18 6 L18 6 L12 14 L-12 14Z" fill="{paper2}"/><path d="M0 6 V-22 M2 -20 Q16 -8 14 2 L2 2Z"/></g>')
     o.append(f'<text x="800" y="70" text-anchor="middle" font-family="Georgia, serif" font-style="italic" font-size="14" fill="{ink}" opacity=".8">'
              + ('the service passage' if athena else 'the sales passage') + '</text>')
@@ -641,15 +682,16 @@ def v_service(n):  # the boat dock crew: tying up, loading, coiling a line
     o.append(''.join(f'<rect x="{x}" y="{178 - (x - 420) * .026:.0f}" width="8" height="{60:.0f}" fill="{p["wood2"]}"/>' for x in range(450, 1180, 120)))
     o.append(''.join(f'<rect x="{x - 2}" y="{164 - (x - 420) * .026:.0f}" width="12" height="20" rx="3" fill="{p["wood"]}"/>' for x in (560, 860, 1140)))
     # the launch tied alongside
-    o.append(f'<path d="M700 150 L1000 144 L980 168 L720 172Z" fill="{"#f6efe2" if not n else "#7e8296"}"/><path d="M704 154 L996 148" stroke="#2f6f9c" stroke-width="4"/>'
-             f'<rect x="800" y="118" width="80" height="30" fill="#e8e0d0"/><path d="M790 120 h100 l-6 -14 h-88Z" fill="#2f8f9a"/>')
+    o.append(f'<g><path d="M700 150 L1000 144 L980 168 L720 172Z" fill="{"#f6efe2" if not n else "#7e8296"}"/><path d="M704 154 L996 148" stroke="#2f6f9c" stroke-width="4"/>'
+             f'<rect x="800" y="118" width="80" height="30" fill="#e8e0d0"/><path d="M790 120 h100 l-6 -14 h-88Z" fill="#2f8f9a"/>{sway(850, 170, 1.2, 4)}</g>')
     o.append(f'<path d="M708 152 Q680 166 666 {170 - 6}" stroke="#e8d8a8" stroke-width="3" fill="none"/>')
     # the crew
-    o.append(person(640, 186, 1.0, "work", "#2f8f9a", p["skin"], "#2f4f7a"))
+    o.append(f'<g>{person(640, 186, 1.0, "work", "#2f8f9a", p["skin"], "#2f4f7a")}{sway(636, 186, 5, 2.4)}</g>')
     o.append(person(940, 176, 1.0, "hold", "#f2c230", p["skin"], extra='<rect x="4" y="-46" width="22" height="16" fill="#a8753a"/>'))
     o.append(person(1060, 174, 1.0, "point", "#e2552b", p["skin"], flip=True))
     o.append(f'<rect x="1000" y="160" width="26" height="16" fill="#a8753a"/><rect x="1004" y="146" width="20" height="14" fill="#8a5a2a"/>')
     o.append(f'<ellipse cx="610" cy="186" rx="14" ry="5" fill="none" stroke="#e8d8a8" stroke-width="3"/>')
+    o.append(flygull(1000, 64, 1, "#3a2f4a", -150, 10, 11) + flygull(1030, 50, .7, "#3a2f4a", -140, -6, 11, .5) if not n else twinkle([(560, 36), (960, 56), (1440, 30), (1120, 90)]))
     o.append(edge_palms(p) + corners(p, n))
     return vwrap(''.join(o))
 
@@ -658,26 +700,29 @@ def v_renewals(n):  # the reef in bloom
     wt = ("#7fe0d8", "#36aec4", "#1a6e8e") if not n else ("#14506a", "#0c3450", "#06203a")
     o = [defs(f'<linearGradient id="g" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="{wt[0]}"/><stop offset=".5" stop-color="{wt[1]}"/><stop offset="1" stop-color="{wt[2]}"/></linearGradient>')]
     o.append(f'<rect width="1600" height="{V}" fill="url(#g)"/>')
-    o.append(''.join(f'<path d="M{x} 0 L{x + 50} 0 L{x + 170} 240 L{x + 80} 240Z" fill="#fff" opacity="{.1 if not n else .04}"/>' for x in (380, 620, 880, 1120)))
+    o.append(''.join(f'<path d="M{x} 0 L{x + 50} 0 L{x + 170} 240 L{x + 80} 240Z" fill="#fff" opacity="{.1 if not n else .04}">{tw("opacity", [.1, .03] if not n else [.04, .01], 4 + k * .8, k)}</path>' for k, x in enumerate((380, 620, 880, 1120))))
     o.append(reef(p, n, 168, 11, True))
     r = random.Random(5)
-    for _ in range(14):
+    for k in range(14):
         x = r.randint(460, 1200); y = r.randint(60, 140); s = r.choice([.8, 1, 1.3]); c = r.choice(["#ffb23a", "#ff6a4a", "#f2e04a", "#ffffff", "#7fd0ff"] if not n else ["#8a7a4a", "#7a5a4a", "#6a8aa0"])
-        o.append(f'<g transform="translate({x} {y}) scale({s})"><path d="M-10 0 Q0 -7 10 0 Q0 7 -10 0Z M-10 0 L-17 -6 L-17 6Z" fill="{c}"/><circle cx="5" cy="-1" r="1.4" fill="#222"/></g>')
-    o.append(''.join(f'<circle cx="{x}" cy="{y}" r="{rr}" fill="none" stroke="#fff" stroke-width="1.5" opacity=".5"/>' for x, y, rr in [(700, 60, 3), (706, 44, 2), (1010, 70, 3), (1004, 52, 2.4)]))
+        f = f'<g transform="translate({x} {y}) scale({s})"><path d="M-10 0 Q0 -7 10 0 Q0 7 -10 0Z M-10 0 L-17 -6 L-17 6Z" fill="{c}"/><circle cx="5" cy="-1" r="1.4" fill="#222"/></g>'
+        o.append(drift(f, 18 + k * 3, 4 + k % 4, k * .3, k % 3 - 1) if k % 2 else f)
+    o.append(''.join(f'<circle cx="{x}" cy="{y}" r="{rr}" fill="none" stroke="#fff" stroke-width="1.5" opacity=".5"><animateTransform attributeName="transform" type="translate" values="0 26;0 -30" keyTimes="0;1" dur="2.8s" begin="{k * .7}s" repeatCount="indefinite"/>{tw("opacity", [0, .6, 0], 2.8, k * .7)}</circle>' for k, (x, y, rr) in enumerate([(700, 60, 3), (706, 44, 2), (1010, 70, 3), (1004, 52, 2.4)])))
     o.append(f'<path d="M0 190 Q220 180 470 200 L470 240 L0 240Z M1600 196 Q1320 190 1040 206 L1040 240 L1600 240Z" fill="{"#0c3a4e" if not n else "#041624"}"/>')
     return vwrap(''.join(o))
 
 def v_claims(n):  # after the tropical storm: palms bent over, fronds down, the crew clearing
     p = P(n); o = [base(n, sky=("#5a6a84", "#a4aab4", "#e2c8a8"), nt=("#04060f", "#10162a", "#20283e"), star=18)]
-    for x in (300, 760, 1240): o.append(f'<ellipse cx="{x}" cy="50" rx="230" ry="26" fill="{"#7a8498" if not n else "#1a2034"}"/>')
+    for k, x in enumerate((300, 760, 1240)):
+        cl = f'<ellipse cx="{x}" cy="50" rx="230" ry="26" fill="{"#7a8498" if not n else "#1a2034"}"/>'
+        o.append(drift(cl, 50, 12, k * 2) if k else cl)
     if not n: o.append('<circle cx="1120" cy="96" r="34" fill="#fff2c4" opacity=".55"/><path d="M1060 60 L1100 200 M1140 60 L1170 200" stroke="#fff" stroke-width="30" opacity=".06"/>')
     o.append(sea_band(p, 140, n, "#4a7a90" if not n else "#0c2034", .2))
     o.append(f'<path d="M0 168 Q800 156 1600 168 L1600 240 L0 240Z" fill="{p["sand"]}"/>')
-    for x, y, w in [(560, 206, 80), (1000, 214, 70)]: o.append(f'<ellipse cx="{x}" cy="{y}" rx="{w}" ry="6" fill="{"#9ab4c8" if not n else "#2a3a5a"}" opacity=".8"/>')
+    for k, (x, y, w) in enumerate([(560, 206, 80), (1000, 214, 70)]): o.append(f'<ellipse cx="{x}" cy="{y}" rx="{w}" ry="6" fill="{"#9ab4c8" if not n else "#2a3a5a"}" opacity=".8">{tw("opacity", [.8, .5], 3, k)}</ellipse>')
     # the palms, bent hard over by the wind and still leaning
-    o.append(palm(640, 190, 830, 78, p, 70, 16, .35, 51))
-    o.append(palm(1120, 200, 1260, 96, p, 62, 14, .3, 52))
+    o.append(palm(640, 190, 830, 78, p, 70, 16, .35, 51, rustle=4, dur=3))
+    o.append(palm(1120, 200, 1260, 96, p, 62, 14, .3, 52, rustle=4, dur=3.4, delay=.5))
     # fronds down on the sand, a coconut or two
     fd = p["frond2"]
     for x, y, rot in [(720, 206, -6), (900, 212, 8), (1180, 214, -4)]:
@@ -685,7 +730,7 @@ def v_claims(n):  # after the tropical storm: palms bent over, fronds down, the 
                  + ''.join(f'<path d="M{k} {-4 + abs(k) * .04:.0f} l-8 -10 M{k} {-4 + abs(k) * .04:.0f} l-8 8" stroke="{fd}" stroke-width="3"/>' for k in range(-40, 50, 10)) + '</g>')
     o.append('<circle cx="600" cy="212" r="7" fill="#5a3a1c"/><circle cx="614" cy="216" r="6" fill="#6b4724"/>')
     # the crew: one hauling fronds to the barrow, one raking
-    o.append(person(960, 212, 1.0, "work", "#e98a2a", p["skin"], "#3a4a3a"))
+    o.append(f'<g>{person(960, 212, 1.0, "work", "#e98a2a", p["skin"], "#3a4a3a")}{sway(956, 212, 5, 2.6)}</g>')
     o.append(f'<g transform="translate(1040 214)"><path d="M-30 -24 L30 -24 L22 -4 L-22 -4Z" fill="#2f6a8a"/><circle cx="-12" cy="0" r="8" fill="#222"/><path d="M22 -20 L50 -34" stroke="#5a5a5a" stroke-width="4"/>'
              f'<path d="M-24 -24 Q0 -40 26 -24" stroke="{fd}" stroke-width="6" fill="none"/></g>')
     o.append(person(520, 210, 1.0, "hold", "#e98a2a", p["skin"], "#3a4a3a", flip=True))
@@ -701,23 +746,23 @@ def v_commercial(n):  # the resort's open-air lobby: a great thatched roof on po
     o.append(f'<rect x="0" y="190" width="1600" height="50" fill="{p["plank"]}"/>' + ''.join(f'<path d="M{x} 190 L{x - (x - 800) * .3:.0f} 240" stroke="{p["wood2"]}" stroke-width="2" opacity=".5"/>' for x in range(420, 1220, 60)))
     # the roof: a tall hipped thatch spanning the lobby, its beams and posts
     o.append(f'<path d="M340 76 L800 18 L1260 76 L1240 90 L360 90Z" fill="{p["thatch"]}"/><path d="M800 18 L1260 76 L1240 90 L1000 90Z" fill="{p["thatch2"]}" opacity=".8"/>')
-    o.append(''.join(f'<path d="M{x} 86 v8" stroke="{p["thatch2"]}" stroke-width="4"/>' for x in range(370, 1240, 16)))
+    o.append(f'<path d="{"".join(f"M{x} 86v8" for x in range(370, 1240, 16))}" stroke="{p["thatch2"]}" stroke-width="4"/>')
     o.append(f'<rect x="360" y="90" width="880" height="8" fill="{p["wood2"]}"/>')
     for x in (430, 620, 980, 1170): o.append(f'<rect x="{x - 7}" y="96" width="14" height="96" fill="{p["wood"]}"/>')
     # ceiling fans and lanterns hung from the beam
     for x in (700, 900):
-        o.append(f'<path d="M{x} 98 v12" stroke="#2a2a2a" stroke-width="2"/><ellipse cx="{x}" cy="112" rx="34" ry="3" fill="#3a2a1c"/>')
+        o.append(f'<path d="M{x} 98 v12" stroke="#2a2a2a" stroke-width="2"/><ellipse cx="{x}" cy="112" rx="34" ry="3" fill="#3a2a1c">{tw("rx", [34, 8], .8)}</ellipse>')
     for x in (520, 1080):
-        if n: o.append(f'<circle cx="{x}" cy="120" r="34" fill="url(#glow)"/>')
-        o.append(f'<path d="M{x} 98 v12" stroke="#2a2a2a" stroke-width="2"/><rect x="{x - 7}" y="110" width="14" height="18" rx="3" fill="{"#ffcf6a" if n else "#f2c27a"}" stroke="#3a2a1c" stroke-width="2"/>')
+        if n: o.append(f'<circle cx="{x}" cy="120" r="34" fill="url(#glow)">{tw("opacity", [1, .6], 2.4)}</circle>')
+        o.append(f'<g><path d="M{x} 98 v12" stroke="#2a2a2a" stroke-width="2"/><rect x="{x - 7}" y="110" width="14" height="18" rx="3" fill="{"#ffcf6a" if n else "#f2c27a"}" stroke="#3a2a1c" stroke-width="2"/>{sway(x, 98, 4, 3.6, x % 3)}</g>')
     # the reception desk, the sign over it, a clerk and a guest
     o.append(f'<rect x="680" y="156" width="240" height="38" fill="{p["wood"]}"/><rect x="672" y="150" width="256" height="8" fill="{p["wood2"]}"/>')
     o.append(f'<rect x="680" y="50" width="240" height="20" rx="3" fill="{p["wood2"]}"/><text x="800" y="65" text-anchor="middle" font-family="Georgia, serif" font-weight="bold" font-size="13" fill="{p["ink"]}" letter-spacing="2">PARADISE PROTECTED</text>')
-    o.append(person(760, 154, .8, "stand", "#2f8f9a", p["skin"]) + person(980, 192, 1.0, "wave", "#e2552b", p["skin"], flip=True))
+    o.append(person(760, 154, .8, "stand", "#2f8f9a", p["skin"]) + f'<g>{person(980, 192, 1.0, "wave", "#e2552b", p["skin"], flip=True)}{sway(980, 192, 3, 2)}</g>')
     o.append(f'<rect x="1004" y="168" width="26" height="24" rx="4" fill="#4a5a7a"/>')
     # potted palms either side of the desk
     for x in (560, 1120):
-        o.append(f'<path d="M{x - 16} 192 L{x + 16} 192 L{x + 12} 170 L{x - 12} 170Z" fill="#c8643a"/>' + palm(x, 170, x + 4, 120, p, 34, 6, .1, x, res=4))
+        o.append(f'<path d="M{x - 16} 192 L{x + 16} 192 L{x + 12} 170 L{x - 12} 170Z" fill="#c8643a"/>' + palm(x, 170, x + 4, 120, p, 34, 6, .1, x, rustle=4, dur=4, res=4))
     o.append(edge_palms(p) + corners(p, n))
     return vwrap(''.join(o))
 

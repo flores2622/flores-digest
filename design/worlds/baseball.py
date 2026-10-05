@@ -86,6 +86,24 @@ def show(times, vals, dur, attr="opacity", begin=0):
 def sway(x, b, deg, dur, delay=0):
     return (f'<animateTransform attributeName="transform" type="rotate" values="{-deg} {x} {b};{deg} {x} {b};{-deg} {x} {b}" '
             f'dur="{dur}s" begin="{delay}s" repeatCount="indefinite" calcMode="spline" keySplines=".45 0 .55 1;.45 0 .55 1"/>')
+# the banners' movement: an eased loop over evenly spaced values (a transform, or any attribute)
+def _ease(vals):
+    k = len(vals) - 1
+    return (f'values="{";".join(vals)}" keyTimes="{";".join(f"{i / k:g}" for i in range(k + 1))}" '
+            f'calcMode="spline" keySplines="{";".join([".45 0 .55 1"] * k)}" repeatCount="indefinite"')
+def mv(vals, dur, begin=0, typ="translate"):
+    return f'<animateTransform attributeName="transform" type="{typ}" {_ease(vals)} dur="{dur}s" begin="{begin}s"/>'
+def am(attr, vals, dur, begin=0):
+    return f'<animate attributeName="{attr}" {_ease(vals)} dur="{dur}s" begin="{begin}s"/>'
+def bob(body, dy, dur, begin=0, dx=0):
+    return f'<g>{body}{mv(["0 0", f"{dx} {-dy}", "0 0"], dur, begin)}</g>'
+def rock(body, x, y, deg, dur, begin=0):
+    return f'<g>{body}{sway(x, y, deg, dur, begin)}</g>'
+def twinkle(k, x0, x1, y0, y1, seed):
+    """a few stars that brighten and fade, for the night banners"""
+    r = random.Random(seed)
+    return '<g fill="#fff">' + ''.join(f'<circle cx="{r.randint(x0, x1)}" cy="{r.randint(y0, y1)}" r="1.6" opacity=".3">'
+                                       f'{am("opacity", [".3", "1", ".3"], r.choice([2.5, 3.5, 4.5]), r.randint(0, 30) / 10)}</circle>' for _ in range(k)) + '</g>'
 
 # ----------------------------------------------------------------- people
 # a player is drawn from a handful of joints (feet at 0, ~64 tall at scale 1, facing right): legs in the pants
@@ -470,13 +488,14 @@ def v_sales(n):  # the home-run trot: the runner rounds third, the coach's hand 
     o.append(f'<path d="M0 240 L0 212 Q600 176 1600 190 L1600 240Z" fill="{p["dirt"]}"/>')
     o.append(f'<path d="M0 222 Q600 190 1600 200" stroke="{p["chalk"]}" stroke-width="3" fill="none"/>')
     o.append(f'<path d="M848 196 l20 -5 l16 5 l-20 5z" fill="{p["chalk"]}"/>')   # third base
-    o.append(guy(720, 212, 1.3, "trot", jer="#f4f2ec", pants="#f4f2ec", cap="#1f3f7a", helmet=True, skin=p["skin"]))
-    o.append(guy(960, 200, 1.25, "point", jer="#1f3f7a", pants="#d8d8d0", flip=True, skin=p["skin"]))
+    o.append(bob(guy(720, 212, 1.3, "trot", jer="#f4f2ec", pants="#f4f2ec", cap="#1f3f7a", helmet=True, skin=p["skin"]), 5, .8, dx=6))
+    o.append(rock(guy(960, 200, 1.25, "point", jer="#1f3f7a", pants="#d8d8d0", flip=True, skin=p["skin"]), 960, 200, 2.5, 2))
     # the ball's long arc away over the wall and the bleachers
     for i in range(1, 12):
         t = i / 12; x = 480 + 600 * t; y = 112 - 220 * t * (1 - t) * 1.1 - 52 * t
         o.append(f'<circle cx="{x:.0f}" cy="{y:.0f}" r="2.2" fill="#fff" opacity="{.25 + t * .55:.2f}"/>')
-    o.append(baseball(1086, 58, 5) + '<path d="M1070 62 l-14 4 M1072 54 l-12 0" stroke="#fff" stroke-width="2" opacity=".6"/>')
+    o.append(bob(baseball(1086, 58, 5) + '<path d="M1070 62 l-14 4 M1072 54 l-12 0" stroke="#fff" stroke-width="2" opacity=".6"/>', 8, 3, dx=14))
+    o.append(twinkle(6, 900, 1580, 8, 60, 11) if n else bob(cloud(1420, 30, 120, .5), 0, 12, dx=-60))
     o.append(corners())
     return vwrap(''.join(o))
 
@@ -494,12 +513,13 @@ def v_messages(n):  # the press box behind home: lit windows, two voices on the 
         if n: o.append(f'<circle cx="{wx + 48}" cy="104" r="70" fill="url(#glow)" opacity=".6"/>')
         o.append(f'<rect x="{wx}" y="76" width="96" height="56" fill="{p["glass"]}" stroke="{p["steel2"]}" stroke-width="3"/>')
         if i in (1, 3):
-            o.append(f'<circle cx="{wx + 34}" cy="104" r="9" fill="#5a3a2a"/><path d="M{wx + 24} 102a10 10 0 0 1 20 0" stroke="#222" stroke-width="3" fill="none"/>'
-                     f'<path d="M{wx + 22} 132q12 -22 24 0z" fill="#2a3a5a"/><path d="M{wx + 46} 104l14 4" stroke="#222" stroke-width="2"/><circle cx="{wx + 62}" cy="108" r="3" fill="#222"/>')
-            o.append(f'<circle cx="{wx + 70}" cy="104" r="9" fill="#c89a76"/><path d="M{wx + 60} 102a10 10 0 0 1 20 0" stroke="#222" stroke-width="3" fill="none"/><path d="M{wx + 58} 132q12 -22 24 0z" fill="#7a2a2a"/>')
+            o.append(f'<path d="M{wx + 22} 132q12 -22 24 0z" fill="#2a3a5a"/><path d="M{wx + 58} 132q12 -22 24 0z" fill="#7a2a2a"/>')
+            o.append(rock(f'<circle cx="{wx + 34}" cy="104" r="9" fill="#5a3a2a"/><path d="M{wx + 24} 102a10 10 0 0 1 20 0" stroke="#222" stroke-width="3" fill="none"/>'
+                          f'<path d="M{wx + 46} 104l14 4" stroke="#222" stroke-width="2"/><circle cx="{wx + 62}" cy="108" r="3" fill="#222"/>', wx + 34, 114, 5, 1.6, i * .3))
+            o.append(rock(f'<circle cx="{wx + 70}" cy="104" r="9" fill="#c89a76"/><path d="M{wx + 60} 102a10 10 0 0 1 20 0" stroke="#222" stroke-width="3" fill="none"/>', wx + 70, 114, 5, 2.2, 1 + i * .2))
     # the radio mast and the sound waves going out
-    o.append(f'<rect x="{x1 - 40}" y="6" width="4" height="36" fill="{p["steel2"]}"/><circle cx="{x1 - 38}" cy="8" r="4" fill="#ff5a4a"/>')
-    for k in range(3): o.append(f'<path d="M{x1 - 20 + k * 12} {6 - k * 2}q10 10 0 22" stroke="#fff" stroke-width="2" fill="none" opacity="{.8 - k * .2:.1f}"/>')
+    o.append(f'<rect x="{x1 - 40}" y="6" width="4" height="36" fill="{p["steel2"]}"/><circle cx="{x1 - 38}" cy="8" r="4" fill="#ff5a4a">{am("opacity", ["1", ".2", "1"], 2)}</circle>')
+    for k in range(3): o.append(f'<path d="M{x1 - 20 + k * 12} {6 - k * 2}q10 10 0 22" stroke="#fff" stroke-width="2" fill="none" opacity="{.8 - k * .2:.1f}">{am("opacity", [".1", ".9", ".1"], 1.8, k * .3)}</path>')
     o.append(corners())
     return vwrap(''.join(o))
 
@@ -522,10 +542,12 @@ def v_coaching(n):  # the batting cage: a hitter in the tunnel, the coach at the
     o.append(net(420, 70, 1180, 200, 14, p["chalk"], .35))
     o.append(f'<path d="M420 200V70H1180V200M800 70V200" stroke="{p["steel2"]}" stroke-width="5" fill="none"/>')
     o.append(f'<path d="M1060 196 v-56 h40 v56 M1060 140 h-26 v56" stroke="{p["steel2"]}" stroke-width="4" fill="none"/>' + net(1036, 142, 1098, 194, 8, p["chalk"], .5))
-    o.append(guy(560, 198, 1.65, "swing", jer="#1f3f7a", pants="#f4f2ec", cap="#1f3f7a", helmet=True, bat=("lh", -32, -8), skin=p["skin"]))
-    o.append(baseball(900, 128, 4) + '<path d="M870 132 h-30 M872 126 h-22" stroke="#fff" stroke-width="2" opacity=".6"/>')
+    o.append(rock(guy(560, 198, 1.65, "swing", jer="#1f3f7a", pants="#f4f2ec", cap="#1f3f7a", helmet=True, bat=("lh", -32, -8), skin=p["skin"]), 560, 198, 3, 3))
+    o.append(f'<g>{baseball(900, 128, 4)}<path d="M870 132 h-30 M872 126 h-22" stroke="#fff" stroke-width="2" opacity=".6"/>'
+             '<animateMotion path="M-310 -30 L0 0 L150 -8" keyPoints="0;0;.67;1;1" keyTimes="0;.45;.6;.75;1" calcMode="linear" dur="3s" repeatCount="indefinite"/>'
+             '<animate attributeName="opacity" values="0;1;1;0;0" keyTimes="0;.45;.7;.75;1" dur="3s" repeatCount="indefinite"/></g>')
     # the coach, outside the net, pointing at the swing
-    o.append(guy(700, 204, 1.6, "point", jer="#c8402a", pants="#d8d8d0", cap="#c8402a", flip=True, skin=p["skin"]))
+    o.append(rock(guy(700, 204, 1.6, "point", jer="#c8402a", pants="#d8d8d0", cap="#c8402a", flip=True, skin=p["skin"]), 700, 204, 2.5, 2.4))
     o.append(f'<path d="M730 204 l4 -28 h24 l4 28z" fill="#e9e6dc" stroke="#9a968a" stroke-width="2"/>')
     for k in range(4): o.append(baseball(738 + k * 6, 174 - (k % 2) * 3, 3))
     o.append(corners())
@@ -544,9 +566,14 @@ def v_roleplay(n):  # the bullpen: two arms warming up, two catchers, the bench 
     for k, (mx, cx, y) in enumerate([(520, 920, 186), (700, 1110, 214)]):
         o.append(f'<ellipse cx="{mx}" cy="{y}" rx="70" ry="12" fill="{p["dirt"]}"/><ellipse cx="{cx}" cy="{y}" rx="50" ry="10" fill="{p["dirt"]}"/>')
         pose = "windup" if k == 0 else "throw"
-        o.append(guy(mx, y - 2, 1.25 + k * .2, pose, jer="#f4f2ec", pants="#f4f2ec", cap="#1f3f7a", glove="lh", skin=p["skin"]))
+        o.append(rock(guy(mx, y - 2, 1.25 + k * .2, pose, jer="#f4f2ec", pants="#f4f2ec", cap="#1f3f7a", glove="lh", skin=p["skin"]), mx, y - 2, 4, 2.5, k * 1.2))
         o.append(guy(cx, y, 1.2 + k * .2, "crouch", jer="#1f3f7a", pants="#d8d8d0", cap="#2a2a2a", flip=True, mask=True, glove="lh", skin=p["skin"]))
-    o.append(baseball(930, 184, 4) + '<path d="M900 186 h-26" stroke="#fff" stroke-width="2" opacity=".6"/>')
+    o.append(f'<g>{baseball(930, 184, 4)}<path d="M900 186 h-26" stroke="#fff" stroke-width="2" opacity=".6"/>'
+             '<animateMotion path="M-390 -50 Q-200 -50 -28 -34" keyPoints="0;0;1;1" keyTimes="0;.3;.6;1" calcMode="linear" dur="2.5s" repeatCount="indefinite"/>'
+             '<animate attributeName="opacity" values="0;1;1;0" keyTimes="0;.3;.8;1" dur="2.5s" repeatCount="indefinite"/></g>')
+    o.append(f'<g opacity="0">{baseball(1090, 182, 4)}'
+             '<animateMotion path="M-350 -35 Q-170 -30 0 -10" keyPoints="0;0;1;1" keyTimes="0;.3;.6;1" calcMode="linear" dur="2.5s" begin="1.2s" repeatCount="indefinite"/>'
+             '<animate attributeName="opacity" values="0;1;1;0" keyTimes="0;.3;.8;1" dur="2.5s" begin="1.2s" repeatCount="indefinite"/></g>')
     # the bench along the wall
     o.append(f'<rect x="250" y="150" width="200" height="8" fill="{p["wall2"]}"/><rect x="262" y="158" width="6" height="12" fill="{p["wall2"]}"/><rect x="432" y="158" width="6" height="12" fill="{p["wall2"]}"/>')
     o.append(guy(320, 170, 1.0, "sit", jer="#1f3f7a", pants="#f4f2ec", skin=p["skin"]))
@@ -557,7 +584,7 @@ def v_rphistory(n):  # the scoreboard's replay screen: the swing on the big boar
     p = P(n); o = [base(n, sky=("#4f7cba", "#eab27e", "#f6d8ac"))]
     o.append(stands_band(p, n, 176, 240, 5, rows=3))
     for x in (380, 1220):
-        o.append(tower(x, 176, 30, 86, p, n))
+        o.append(tower(x, 176, 30, 86, p, n, glow_anim=True))
     bx0, bx1 = 560, 1040
     o.append(f'<rect x="{bx0 + 60}" y="160" width="16" height="20" fill="{p["steel2"]}"/><rect x="{bx1 - 76}" y="160" width="16" height="20" fill="{p["steel2"]}"/>')
     o.append(f'<rect x="{bx0}" y="34" width="{bx1 - bx0}" height="128" rx="5" fill="{p["board"]}" stroke="{p["board2"]}" stroke-width="6"/>')
@@ -568,8 +595,10 @@ def v_rphistory(n):  # the scoreboard's replay screen: the swing on the big boar
     o.append(f'<rect x="{sx}" y="44" width="300" height="70" fill="#4a7ab0"/><rect x="{sx}" y="114" width="300" height="38" fill="#4c8a3a"/>')
     o.append(f'<path d="M{sx} 114 Q{sx + 150} 96 {sx + 300} 114" fill="#2f5f86"/>')
     o.append(guy(sx + 90, 146, .62, "swing", jer="#f4f2ec", pants="#f4f2ec", helmet=True, bat=("lh", -26, -6)))
-    o.append(f'<path d="M{sx + 104} 110 Q{sx + 190} 40 {sx + 270} 70" stroke="#fff" stroke-width="2" stroke-dasharray="3 5" fill="none"/>' + baseball(sx + 270, 70, 3))
-    o.append(f'<path d="M{sx + 12} 54 l14 8 l-14 8z" fill="#fff"/><rect x="{sx}" y="146" width="300" height="6" fill="#000" opacity=".4"/><rect x="{sx}" y="146" width="190" height="6" fill="#ff5a4a"/>')
+    o.append(f'<path d="M{sx + 104} 110 Q{sx + 190} 40 {sx + 270} 70" stroke="#fff" stroke-width="2" stroke-dasharray="3 5" fill="none"/>'
+             f'<g>{baseball(sx + 270, 70, 3)}<animateMotion path="M-166 40 Q-80 -30 0 0" keyPoints="0;1;1" keyTimes="0;.6;1" calcMode="linear" dur="5s" repeatCount="indefinite"/></g>')
+    o.append(f'<path d="M{sx + 12} 54 l14 8 l-14 8z" fill="#fff">{am("opacity", ["1", ".3", "1"], 1.5)}</path><rect x="{sx}" y="146" width="300" height="6" fill="#000" opacity=".4"/>'
+             f'<rect x="{sx}" y="146" width="190" height="6" fill="#ff5a4a"><animate attributeName="width" values="0;300" dur="5s" repeatCount="indefinite"/></rect>')
     # the line score beside it
     for r_ in range(3):
         o.append(f'<text x="{sx + 318}" y="{68 + r_ * 32}" font-family="Arial, sans-serif" font-weight="bold" font-size="12" fill="{p["ink"]}">{["INN", "HOME", "RISK"][r_]}</text>')
@@ -587,11 +616,15 @@ def v_training(n):  # spring practice: the squad stretching in a line, cones, a 
     o.append(f'<rect x="0" y="134" width="1600" height="10" fill="{p["tree"]}"/>')
     o.append(f'<rect x="0" y="120" width="1600" height="3" fill="{p["steel2"]}"/>' + ''.join(f'<rect x="{x}" y="120" width="3" height="24" fill="{p["steel2"]}"/>' for x in range(0, 1600, 80)))
     o.append(turf(p, 144))
+    if not n:
+        for x, y, w, d in ((900, 40, 140, 11), (1450, 28, 110, 9)): o.append(bob(cloud(x, y, w, .6), 0, d, dx=-50))
     for i in range(6):
-        x = 470 + i * 100; pose = "stretch" if i % 2 == 0 else "stand"
-        o.append(guy(x, 200 - (i % 2) * 4, 1.3, pose, jer=["#1f3f7a", "#c8402a"][i % 2], pants="#f4f2ec", cap=["#1f3f7a", "#c8402a"][i % 2], skin=p["skin"]))
+        x = 470 + i * 100; pose = "stretch" if i % 2 == 0 else "stand"; y = 200 - (i % 2) * 4
+        g = guy(x, y, 1.3, pose, jer=["#1f3f7a", "#c8402a"][i % 2], pants="#f4f2ec", cap=["#1f3f7a", "#c8402a"][i % 2], skin=p["skin"])
+        o.append(rock(g, x, y, 6, 3, i * .25) if i % 2 == 0 else bob(g, 6, 1.5, i * .2))
     for x in range(480, 1100, 90): o.append(f'<path d="M{x} 224 l7 -16 l7 16z" fill="#f28a2a"/>')
-    o.append(guy(1150, 204, 1.4, "point", jer="#2a2a2a", pants="#d8d8d0", cap="#2a2a2a", flip=True, skin=p["skin"]))
+    o.append(rock(guy(1150, 204, 1.4, "point", jer="#2a2a2a", pants="#d8d8d0", cap="#2a2a2a", flip=True, skin=p["skin"]), 1150, 204, 2.5, 2))
+    if n: o.append(twinkle(6, 700, 1580, 8, 70, 12))
     o.append(f'<path d="M1200 210 l4 -24 h22 l4 24z" fill="#e9e6dc" stroke="#9a968a" stroke-width="2"/>')
     o.append(corners())
     return vwrap(''.join(o))
@@ -625,10 +658,13 @@ def v_map(n, athena):  # the scorecard on the dugout bench: one big diamond, the
     for i, (x, y, anc) in enumerate([(b1[0] + 20, b1[1] + 7, "start"), (b2[0] + 20, b2[1] + 8, "start"),
                                       (b3[0] - 20, b3[1] + 7, "end"), (hm[0] + 22, hm[1] + 3, "start")]):
         o.append(f'<text x="{x}" y="{y}" text-anchor="{anc}" font-family="Georgia, serif" font-weight="bold" font-size="20" fill="{ink}">{i + 1} {stops[i]}</text>')
+    o.append(f'<circle cx="{hm[0]}" cy="{hm[1]}" r="7" fill="{route}" stroke="#fff" stroke-width="2" opacity="0">{am("opacity", ["1", "1"], 8)}'
+             f'<animateMotion path="M0 0L160 -64L0 -126L-160 -64Z" dur="8s" repeatCount="indefinite"/></circle>')
     o.append(f'<text x="{x0 + 22}" y="{y0 + 58}" font-family="Georgia, serif" font-weight="bold" font-size="22" fill="{route}" opacity=".8">K</text>')
     o.append(f'<text x="{x1 - 52}" y="{y0 + 58}" font-family="Georgia, serif" font-weight="bold" font-size="20" fill="{route}" opacity=".8">HR</text>')
     o.append('</g>')
-    o.append('<g transform="rotate(-24 1240 150)"><rect x="1170" y="144" width="150" height="11" rx="2" fill="#f2c230"/><path d="M1170 144 l-20 5.5 l20 5.5z" fill="#e8c89a"/><path d="M1157 147.5 l-7 2 l7 2z" fill="#2a2a2a"/><rect x="1312" y="144" width="16" height="11" fill="#e88a9a"/></g>')
+    o.append('<g><g transform="rotate(-24 1240 150)"><rect x="1170" y="144" width="150" height="11" rx="2" fill="#f2c230"/><path d="M1170 144 l-20 5.5 l20 5.5z" fill="#e8c89a"/><path d="M1157 147.5 l-7 2 l7 2z" fill="#2a2a2a"/><rect x="1312" y="144" width="16" height="11" fill="#e88a9a"/></g>'
+             + mv(["0 0", "-6 -4", "4 -2", "0 0"], 4) + '</g>')
     return vwrap(''.join(o))
 
 def v_service(n):  # the grounds crew: the drag behind the cart, a rake on the line, the hose wetting the dirt
@@ -641,15 +677,17 @@ def v_service(n):  # the grounds crew: the drag behind the cart, a rake on the l
     # the utility cart pulling the drag mat, the fresh-dragged dirt behind it in neat arcs
     for k in range(4): o.append(f'<path d="M420 {204 + k * 7} Q560 {192 + k * 7} 700 {200 + k * 7}" stroke="{p["dirt2"]}" stroke-width="2" fill="none"/>')
     o.append(f'<rect x="690" y="196" width="80" height="12" fill="#6a6a62"/><path d="M770 202 L812 194" stroke="#3a3a3a" stroke-width="3"/>')
-    o.append(f'<g transform="translate(870 204)"><rect x="-58" y="-30" width="96" height="22" rx="4" fill="#2f6a4a"/><rect x="-10" y="-56" width="4" height="28" fill="#3a3a3a"/>'
-             f'<rect x="-14" y="-60" width="58" height="6" fill="#2f6a4a"/><rect x="34" y="-56" width="4" height="28" fill="#3a3a3a"/><circle cx="-36" cy="-6" r="10" fill="#222"/><circle cx="20" cy="-6" r="10" fill="#222"/></g>')
-    o.append(guy(872, 180, 1.05, "sit", jer="#e98a2a", pants="#3a4a3a", cap="#f2c230", skin=p["skin"]))
+    o.append(f'<g><rect x="812" y="174" width="96" height="22" rx="4" fill="#2f6a4a"/><rect x="860" y="148" width="4" height="28" fill="#3a3a3a"/>'
+             f'<rect x="856" y="144" width="58" height="6" fill="#2f6a4a"/><rect x="904" y="148" width="4" height="28" fill="#3a3a3a"/>'
+             + guy(872, 180, 1.05, "sit", jer="#e98a2a", pants="#3a4a3a", cap="#f2c230", skin=p["skin"]) + mv(["0 0", "0 -1.5", "0 0", "0 -1", "0 0"], 1.2) + '</g>'
+             '<circle cx="834" cy="198" r="10" fill="#222"/><circle cx="890" cy="198" r="10" fill="#222"/>')
     # the rake on the baseline
-    o.append(guy(1070, 214, 1.5, "rake", jer="#e98a2a", pants="#3a4a3a", cap="#f2c230", skin=p["skin"]))
-    o.append(f'<line x1="1090" y1="160" x2="1150" y2="214" stroke="{p["dirt2"]}" stroke-width="4"/><path d="M1134 214 h34" stroke="#5a5a5a" stroke-width="5"/>')
+    o.append(bob(guy(1070, 214, 1.5, "rake", jer="#e98a2a", pants="#3a4a3a", cap="#f2c230", skin=p["skin"])
+                 + f'<line x1="1090" y1="160" x2="1150" y2="214" stroke="{p["dirt2"]}" stroke-width="4"/><path d="M1134 214 h34" stroke="#5a5a5a" stroke-width="5"/>', 0, 2.4, dx=16))
     # the hose
     o.append(guy(560, 214, 1.5, "point", jer="#e98a2a", pants="#3a4a3a", cap="#f2c230", skin=p["skin"]))
-    o.append('<path d="M592 130 Q640 110 690 160" stroke="#cfe8f5" stroke-width="5" fill="none" opacity=".8"/><path d="M594 134 Q648 122 676 172" stroke="#cfe8f5" stroke-width="3" fill="none" opacity=".6"/>')
+    o.append(f'<path d="M592 130 Q640 110 690 160" stroke="#cfe8f5" stroke-width="5" fill="none" opacity=".8" stroke-dasharray="14 6"><animate attributeName="stroke-dashoffset" values="0;-40" dur="1s" repeatCount="indefinite"/></path>'
+             f'<path d="M594 134 Q648 122 676 172" stroke="#cfe8f5" stroke-width="3" fill="none" opacity=".6" stroke-dasharray="8 6"><animate attributeName="stroke-dashoffset" values="0;-28" dur=".8s" repeatCount="indefinite"/></path>')
     o.append('<path d="M560 200 Q500 230 440 222" stroke="#2f8a3a" stroke-width="4" fill="none"/>')
     o.append(corners())
     return vwrap(''.join(o))
@@ -665,7 +703,7 @@ def bunting(x0, x1, y, k, cols):
     return ''.join(o)
 
 def v_renewals(n):  # opening day: bunting on the rail, the whole roster lined up on the baseline, balloons going up
-    p = P(n); o = [base(n, sky=("#4f8ad0", "#a8cfee", "#f2f2e2"))]
+    p = P(n); o = [base(n, sky=("#4f8ad0", "#a8cfee", "#f2f2e2"), star=24)]
     o.append(moon(1270, 54, 18) if n else sun(1270, 58, 20))
     o.append(stands_band(p, n, 60, 132, 7))
     o.append(bunting(0, 1600, 132, 8, ["#b0262a", "#f6f3ea", "#1f3f7a"]))
@@ -675,11 +713,12 @@ def v_renewals(n):  # opening day: bunting on the rail, the whole roster lined u
     for i in range(9):
         x = 500 + i * 70; y = 214 - i * 70 * 24 / 1600
         o.append(guy(x, y, 1.15, "stand", jer="#f4f2ec" if i % 2 else "#e8e4da", pants="#f4f2ec", cap="#1f3f7a", skin=["#dba67c", "#a8744e", "#f0c8a0", "#7a4e32"][i % 4]))
-    o.append(guy(1180, 194, 1.2, "point", jer="#1f3f7a", pants="#d8d8d0", flip=True, skin=p["skin"]))
-    r = random.Random(3)
-    for _ in range(10):
+    o.append(rock(guy(1180, 194, 1.2, "point", jer="#1f3f7a", pants="#d8d8d0", flip=True, skin=p["skin"]), 1180, 194, 3, 2))
+    r = random.Random(3); bl = ['', '', '']
+    for i in range(10):
         x = r.randint(470, 1140); y = r.randint(30, 110); c = r.choice(["#b0262a", "#f6f3ea", "#2f6ab0", "#f2c230"])
-        o.append(f'<path d="M{x} {y + 13} q-3 12 2 22" stroke="#fff" stroke-width="1" fill="none" opacity=".6"/><ellipse cx="{x}" cy="{y}" rx="9" ry="12" fill="{c}"/>')
+        bl[i % 3] += f'<path d="M{x} {y + 13} q-3 12 2 22" stroke="#fff" stroke-width="1" fill="none" opacity=".6"/><ellipse cx="{x}" cy="{y}" rx="9" ry="12" fill="{c}"/>'
+    for i, b in enumerate(bl): o.append(bob(b, 10 + i * 3, 4 + i, i * .7, dx=4 - i * 4))
     o.append(corners())
     return vwrap(''.join(o))
 
@@ -695,12 +734,13 @@ def v_claims(n):  # the rain delay: the crew running the tarp over the infield, 
     o.append(f'<rect x="460" y="200" width="680" height="3" fill="#fff" opacity=".12"/>')
     o.append(f'<rect x="1110" y="160" width="40" height="72" rx="18" fill="{tp}" stroke="#14283e" stroke-width="3" transform="rotate(-28 1130 196)"/>')
     for i, x in enumerate((620, 800, 980)):
-        o.append(guy(x, 172 - i * 0, 1.0, "run", jer="#e98a2a", pants="#3a4a3a", cap="#f2c230", skin=p["skin"]))
-    o.append(guy(1210, 216, 1.3, "run", jer="#e98a2a", pants="#3a4a3a", cap="#f2c230", skin=p["skin"], flip=True))
+        o.append(bob(guy(x, 172 - i * 0, 1.0, "run", jer="#e98a2a", pants="#3a4a3a", cap="#f2c230", skin=p["skin"]), 3, .5, i * .15))
+    o.append(bob(guy(1210, 216, 1.3, "run", jer="#e98a2a", pants="#3a4a3a", cap="#f2c230", skin=p["skin"], flip=True), 4, .55))
     # the rain and the puddles
     r = random.Random(4)
-    o.append('<g stroke="#dfe8ee" stroke-width="1.6" opacity=".55">' + ''.join(f'<line x1="{x}" y1="{y}" x2="{x - 6}" y2="{y + 18}"/>' for x, y in [(r.randint(0, 1600), r.randint(40, 200)) for _ in range(70)]) + '</g>')
-    for x, y, w in [(320, 186, 60), (1340, 190, 70)]: o.append(f'<ellipse cx="{x}" cy="{y}" rx="{w}" ry="5" fill="#cfe0ea" opacity=".35"/>')
+    o.append('<g stroke="#dfe8ee" stroke-width="1.6" opacity=".55">' + ''.join(f'<line x1="{x}" y1="{y}" x2="{x - 6}" y2="{y + 18}"/>' for x, y in [(r.randint(0, 1600), r.randint(40, 200)) for _ in range(70)])
+             + '<animateTransform attributeName="transform" type="translate" values="0 0;-8 24" dur=".5s" repeatCount="indefinite"/></g>')
+    for x, y, w in [(320, 186, 60), (1340, 190, 70)]: o.append(f'<ellipse cx="{x}" cy="{y}" rx="{w}" ry="5" fill="#cfe0ea" opacity=".35">{am("rx", [str(w), str(w + 8), str(w)], 2.5)}</ellipse>')
     o.append(corners("#0b131a"))
     return vwrap(''.join(o))
 
@@ -712,13 +752,14 @@ def v_commercial(n):  # the luxury boxes: a level of glass suites over the stand
     names = ["SUITE 1", "SUITE 2", "BUSINESS OWNERS BOX", "SUITE 4", "SUITE 5"]
     for i in range(5):
         x = 330 + i * 196; w = 176
-        if n: o.append(f'<circle cx="{x + w / 2:.0f}" cy="104" r="110" fill="url(#glow)" opacity=".45"/>')
+        if n: o.append(f'<circle cx="{x + w / 2:.0f}" cy="104" r="110" fill="url(#glow)" opacity=".45">{am("opacity", [".45", ".3", ".45"], 4 + i % 3, i * .6)}</circle>')
         o.append(f'<rect x="{x}" y="66" width="{w}" height="82" fill="{p["glass"]}" stroke="{p["steel2"]}" stroke-width="4"/>')
         o.append(f'<rect x="{x + w / 2 - 1:.0f}" y="66" width="2" height="82" fill="{p["steel2"]}"/>')
         o.append(f'<rect x="{x}" y="50" width="{w}" height="14" fill="{p["wall"]}"/><text x="{x + w / 2:.0f}" y="61" text-anchor="middle" font-family="Arial, sans-serif" font-weight="bold" font-size="10" fill="{p["ink"]}" letter-spacing="1.5">{names[i]}</text>')
         for j in range(2 + i % 2):
             px = x + 30 + j * 52
-            o.append(f'<circle cx="{px}" cy="100" r="9" fill="{["#c89a76", "#8a5a3a", "#e8c09a"][j % 3]}"/><path d="M{px - 14} 148 q14 -40 28 0z" fill="{["#2a3a5a", "#5a2a2a", "#3a3a3a"][(i + j) % 3]}"/>')
+            hd = f'<circle cx="{px}" cy="100" r="9" fill="{["#c89a76", "#8a5a3a", "#e8c09a"][j % 3]}"/>'
+            o.append((rock(hd, px, 112, 6, 2 + j * .6, (i + j) * .4) if i else hd) + f'<path d="M{px - 14} 148 q14 -40 28 0z" fill="{["#2a3a5a", "#5a2a2a", "#3a3a3a"][(i + j) % 3]}"/>')
         o.append(f'<rect x="{x}" y="140" width="{w}" height="8" fill="{p["steel"]}" opacity=".7"/>')
     o.append(corners())
     return vwrap(''.join(o))

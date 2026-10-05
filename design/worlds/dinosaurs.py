@@ -102,6 +102,30 @@ def show(times, vals, dur, attr="opacity", begin=0):
 def sway(x, b, deg, dur, delay=0):
     return (f'<animateTransform attributeName="transform" type="rotate" values="0 {x} {b};{deg} {x} {b};0 {x} {b};{-deg} {x} {b};0 {x} {b}" '
             f'dur="{dur}s" begin="{delay}s" repeatCount="indefinite" calcMode="spline" keySplines=".45 0 .55 1;.45 0 .55 1;.45 0 .55 1;.45 0 .55 1"/>')
+SP2 = ".45 0 .55 1;.45 0 .55 1"
+def bob(dy, dur, delay=0, dx=0):
+    """a step or a peek: out to (dx, -dy) and back"""
+    return (f'<animateTransform attributeName="transform" type="translate" values="0 0;{dx} {-dy};0 0" keyTimes="0;.5;1" '
+            f'dur="{dur}s" begin="{delay}s" repeatCount="indefinite" calcMode="spline" keySplines="{SP2}"/>')
+def pulse(hi, lo, dur, delay=0, attr="opacity"):
+    return (f'<animate attributeName="{attr}" values="{hi};{lo};{hi}" keyTimes="0;.5;1" dur="{dur}s" begin="{delay}s" '
+            f'repeatCount="indefinite" calcMode="spline" keySplines="{SP2}"/>')
+def rise(x, y, r, c, dx, dy, dur, begin, op=.8):
+    """a puff that shows only mid-loop: rises off (x, y) and fades"""
+    return (f'<g opacity="0">{puff(x, y, r, c, op)}<animateTransform attributeName="transform" type="translate" values="0 0;{dx} {dy}" '
+            f'dur="{dur}s" begin="{begin}s" repeatCount="indefinite"/><animate attributeName="opacity" values="0;1;0" keyTimes="0;.3;1" '
+            f'dur="{dur}s" begin="{begin}s" repeatCount="indefinite"/></g>')
+def fireflies(k, x0, x1, y0, y1, seed):
+    r = random.Random(seed)
+    return ''.join(f'<circle cx="{r.randint(x0, x1)}" cy="{r.randint(y0, y1)}" r="5" fill="url(#ff)" opacity=".9"><animate attributeName="opacity" '
+                   f'values=".9;.1;.9" dur="{3 + r.random() * 3:.1f}s" begin="{r.random() * 3:.1f}s" repeatCount="indefinite"/></circle>' for _ in range(k))
+def twinkle(seed):
+    """a few brighter stars right of the title, blinking in two sets"""
+    r = random.Random(seed); o = []
+    for i in range(2):
+        st = ''.join(f'<circle cx="{r.randint(480, 1580)}" cy="{r.randint(8, 110)}" r="1.8" fill="#fff"/>' for _ in range(3))
+        o.append(f'<g>{st}{pulse(1, .2, 4, i * 2)}</g>')
+    return ''.join(o)
 
 # ----------------------------------------------------------------- plants
 def tube(p0, c1, c2, p3, w0, w1, N=16):
@@ -160,7 +184,7 @@ def araucaria(x, b, top, p):
         o.append(f'<ellipse cx="{x}" cy="{y + 2}" rx="{w * .7:.0f}" ry="10" fill="{p["leaf"]}"/>')
     return ''.join(o)
 
-def volcano(cx, peak, b, half, p, n, glow=True):
+def volcano(cx, peak, b, half, p, n, glow=True, halo=True):
     """a broad cone with a notched crater; at night the lava lights it"""
     w = half; cw = 42
     d = (f'M{cx - w} {b} C{cx - w * .55:.0f} {b - (b - peak) * .35:.0f} {cx - cw * 1.6:.0f} {peak + 30} {cx - cw} {peak} '
@@ -170,7 +194,7 @@ def volcano(cx, peak, b, half, p, n, glow=True):
          f'<path d="M{cx + cw * .2:.0f} {peak + 2} L{cx + cw} {peak - 4} C{cx + cw * 1.6:.0f} {peak + 30} {cx + w * .55:.0f} {b - (b - peak) * .35:.0f} {cx + w} {b} L{cx + w * .2:.0f} {b} C{cx + w * .1:.0f} {b - (b - peak) * .4:.0f} {cx + cw * .6:.0f} {peak + 60} {cx + cw * .2:.0f} {peak + 2}Z" fill="{p["volc2"]}"/>']
     if glow:
         o.append(f'<ellipse cx="{cx}" cy="{peak + 2}" rx="{cw * .9:.0f}" ry="7" fill="{p["lava"]}" opacity="{.95 if n else .7}"/>')
-        if n:
+        if n and halo:
             o.append(f'<circle cx="{cx}" cy="{peak}" r="{cw * 2.6:.0f}" fill="url(#glow)"/>')
             o.append(f'<path d="M{cx - 8} {peak + 6} Q{cx - 18} {peak + 60} {cx - 40} {peak + 120} Q{cx - 52} {peak + 170} {cx - 70} {peak + 230}" fill="none" stroke="{p["lava"]}" stroke-width="6" stroke-linecap="round"/>'
                      f'<path d="M{cx + 12} {peak + 4} Q{cx + 30} {peak + 70} {cx + 60} {peak + 150}" fill="none" stroke="{p["lava"]}" stroke-width="5" stroke-linecap="round" opacity=".85"/>'
@@ -297,10 +321,11 @@ def baby_head(x, y, r, p, c=None):
             + f'<path d="M{x + r * .9:.1f} {y + r * .55:.1f} q{r * .35:.1f} {r * .2:.1f} {r * .65:.1f} -{r * .1:.1f}" fill="none" stroke="{p["pup"]}" stroke-width="{max(1, r * .12):.1f}" stroke-linecap="round"/>'
             + f'<circle cx="{x + r * .7:.1f}" cy="{y + r * .35:.1f}" r="{r * .22:.1f}" fill="{p["blush"]}" opacity=".5"/>')
 
-def hatchling(x, b, s, p, c=None, tilt=0):
+def hatchling(x, b, s, p, c=None, tilt=0, anim=''):
     """a baby peeking out of its bottom shell"""
     bot, cap, crack = shell_paths(0, 0)
-    return (f'<g transform="translate({x} {b}) rotate({tilt}) scale({s})">' + baby_head(0, -28, 13, p, c)
+    hd = baby_head(0, -28, 13, p, c)
+    return (f'<g transform="translate({x} {b}) rotate({tilt}) scale({s})">' + (f'<g>{hd}{anim}</g>' if anim else hd)
             + f'<path d="{bot}" fill="{p["egg"]}"/><circle cx="6" cy="-10" r="2.2" fill="{p["egg2"]}"/></g>')
 
 def nest(x, b, w, p, part):
@@ -338,6 +363,47 @@ SHADE = ('<defs><linearGradient id="vs" x1="0" y1="0" x2="0" y2="1"><stop offset
 def vwrap(body): return wrap(240, body + SHADE)
 
 # ================================================================= the Digest picture
+def eruption(p, n):
+    """the volcano erupting on an 11 s loop: the crater flares, a fountain of lava bombs, an ash column, lava
+    running down the flanks, embers; then back to the gentle smoke. Everything rests hidden (opacity 0)."""
+    K = 'dur="11s" repeatCount="indefinite"'
+    def op(v, t): return f'<animate attributeName="opacity" values="{v}" keyTimes="{t}" {K}/>'
+    def tf(ty, v, t): return f'<animateTransform attributeName="transform" type="{ty}" values="{v}" keyTimes="{t}" {K}/>'
+    o = []
+    # the ash column: dark puffs stacked over the crater that surge up and spread, lit from below at night
+    ash = "#4a4048" if not n else "#2c2630"
+    col = puff(0, -28, 22, ash, 1) + puff(6, -72, 32, ash, 1) + puff(-4, -112, 40, ash, 1)
+    o.append(f'<g transform="translate(1050 124)"><g opacity="0">{op("0;0;.9;.85;0;0", "0;.12;.22;.45;.68;1")}'
+             f'<g>{tf("scale", ".3 .1;.3 .1;1 1;1.5 1.2", "0;.12;.3;1")}{col}</g></g></g>')
+    # the crater flaring
+    kt = "0;.08;.14;.42;.62;1"
+    o.append(f'<circle cx="1050" cy="126" r="{120 if n else 90}" fill="url(#glow)" opacity="{.8 if n else 0}">'
+             f'{op((".8;.8;1;1;.8;.8" if n else "0;0;1;.9;0;0"), kt)}'
+             f'<animate attributeName="r" values="{"120;120;220;200;120;120" if n else "90;90;170;150;90;90"}" keyTimes="{kt}" {K}/></circle>')
+    o.append(f'<ellipse cx="1050" cy="128" rx="38" ry="7" fill="{p["lava2"]}" opacity="0">{op("0;0;1;.5;1;0;0", "0;.08;.14;.2;.26;.5;1")}</ellipse>')
+    # lava streaming down both flanks
+    o.append(f'<g fill="none" stroke="{p["lava"]}" stroke-width="7" stroke-linecap="round"' + ('>' if n else ' stroke-dasharray="100 100">'))
+    for d in ("M1034 132 Q1018 200 992 262 Q974 306 962 360", "M1068 128 Q1088 196 1110 258 Q1126 302 1140 360"):
+        # at night they run all the time and swell with the burst; by day they run only with it
+        o.append(f'<path d="{d}" pathLength="100" stroke-width="5" opacity=".85">{op(".85;.85;1;1;.85;.85", "0;.16;.18;.6;.8;1")}</path>' if n else
+                 f'<path d="{d}" pathLength="100" stroke-dashoffset="100" opacity="0"><animate attributeName="stroke-dashoffset" values="100;100;0;0" keyTimes="0;.16;.5;1" {K}/>'
+                 f'{op("0;0;1;1;0;0", "0;.16;.18;.6;.8;1")}</path>')
+    o.append('</g>')
+    # the fountain: a fan of bombs flung out of the crater, rising then falling back down either side
+    bombs = ''.join(f'<circle cx="{x}" cy="{y}" r="{r}"/>' for x, y, r in [(-60, -80, 7), (-22, -110, 6), (24, -96, 8), (66, -70, 6), (-96, -44, 5), (104, -40, 6)])
+    o.append(f'<g fill="{p["lava2"]}" stroke="{p["lava"]}" stroke-width="3">')
+    for t0, mir in [(.14, ''), (.22, ' scale(-1 1)')]:
+        tm, t1 = t0 + .07, t0 + .2
+        kt = f"0;{t0};{tm:.2f};{t1:.2f};1"
+        o.append(f'<g transform="translate(1050 124){mir}"><g opacity="0">{op("0;0;1;1;0;0", f"0;{t0};{t0 + .01:.2f};{t1 - .03:.2f};{t1:.2f};1")}'
+                 f'<g>{tf("translate", "0 0;0 0;0 -14;0 80;0 80", kt)}<g>{tf("scale", "0;0;1;1.3;1.3", kt)}{bombs}</g></g></g></g>')
+    # embers drifting up
+    for dx, b in [(-50, .15), (40, .22), (70, .32)]:
+        o.append(f'<circle cx="1050" cy="118" r="3" opacity="0" stroke="none">'
+                 f'{tf("translate", f"0 0;0 0;{dx} -100;{dx} -100", f"0;{b};{b + .25:.2f};1")}{op("0;0;1;0;0", f"0;{b};{b + .03:.2f};{b + .25:.2f};1")}</circle>')
+    o.append('</g>')
+    return ''.join(o)
+
 W, H, SPLIT = 1600, 1700, 377
 def skyline(night):
     n = night; p = P(n); o = []; a = o.append
@@ -348,14 +414,14 @@ def skyline(night):
            f'<stop offset="0" stop-color="{p["water2"]}"/><stop offset="1" stop-color="{p["water"]}"/></linearGradient>'))
     a(f'<rect width="{W}" height="{HZ + 40}" fill="url(#sky)"/>')
     if n:
-        a(stars(30, 0, W, 0, 300, 3))
+        a(stars(5, 0, W, 0, 300, 3))
         a(moon(660, 96, 46))
     else:
         a(sun(660, 104, 36))
         a(cloud(820, 60, 200, .45) + cloud(260, 150, 180, .4) + cloud(1340, 40, 170, .4))
     # far ridges in the haze, then the volcano behind everything else
     a(hills([(0, 290), (180, 236), (420, 284), (640, 250), (820, 290), (1200, 250), (1420, 284), (1600, 240)], HZ, p["far"]))
-    a(volcano(1050, 126, HZ, 420, p, n))
+    a(volcano(1050, 126, HZ, 420, p, n, halo=False))  # its glow is the eruption's
     # its smoke: a standing plume, and puffs that rise off the crater and fade
     sc = p["smoke"]
     a(puff(1062, 98, 20, sc, .75) + puff(1088, 66, 26, sc, .65) + puff(1124, 34, 32, sc, .55) + puff(1170, 4, 38, sc, .45))
@@ -363,7 +429,7 @@ def skyline(night):
         a(f'<g opacity="0">{puff(1056, 112, 16, sc, .9)}'
           f'<animateTransform attributeName="transform" type="translate" values="0 0;40 -70;100 -130" dur="9s" begin="{i * 3}s" repeatCount="indefinite"/>'
           f'<animate attributeName="opacity" values="0;.85;0" dur="9s" begin="{i * 3}s" repeatCount="indefinite"/></g>')
-    if n: a(f'<circle cx="1050" cy="150" r="160" fill="url(#glow)" opacity=".8"><animate attributeName="opacity" values=".8;.5;.8" dur="5s" repeatCount="indefinite"/></circle>')
+    a(eruption(p, n))
     a(hills([(0, 380), (260, 350), (520, 390), (800, 362), (1100, 394), (1400, 356), (1600, 380)], HZ, p["far2"]))
     # pterosaurs gliding across the sky, each crossing then coming back round from the far side
     for i, (x, y, s, dur, out, back, k) in enumerate([(300, 112, .9, 12, 1400, -520, .6), (1260, 64, .6, 11, 420, -1400, .3)]):
@@ -447,7 +513,7 @@ def skyline(night):
     # fireflies at night, blinking over the ferns and the bank
     if n:
         r = random.Random(8)
-        for i in range(9):
+        for i in range(3):
             x = r.choice([r.randint(40, 440), r.randint(1180, 1580)]); y = r.randint(540, 720)
             a(f'<circle cx="{x}" cy="{y}" r="7" fill="url(#ff)" opacity=".9"><animate attributeName="opacity" values=".9;.1;.9" dur="{3 + r.random() * 3:.1f}s" begin="{r.random() * 3:.1f}s" repeatCount="indefinite"/></circle>')
     # tufts in the grass, kept off the stage
@@ -463,7 +529,7 @@ def skyline(night):
 # ================================================================= page banners (1600 x 240)
 V = 240
 def base(n, sky=DAYSKY, nt=NIGHTSKY, star=45, extra=''):
-    return defs(skyg(n, day=sky, nt=nt) + extra) + f'<rect width="1600" height="{V}" fill="url(#g)"/>' + (stars(star, 0, 1600, 0, 140, 7) if n else '')
+    return defs(skyg(n, day=sky, nt=nt) + extra) + f'<rect width="1600" height="{V}" fill="url(#g)"/>' + (stars(star, 0, 1600, 0, 140, 7) + twinkle(star) if n else '')
 
 def ground(p, y, c=None):
     return f'<path d="M0 {y} Q400 {y - 10} 800 {y} T1600 {y - 4} L1600 240 L0 240Z" fill="{c or p["ground"]}"/>'
@@ -490,10 +556,10 @@ def v_sales(n):  # the herd on the move along the valley trail
     o.append(ground(p, 172))
     o.append(f'<path d="M380 200 Q800 182 1240 194 L1240 208 Q800 196 380 214Z" fill="{p["trail"]}"/>')
     dust = p["trail"] if not n else "#5a5060"
-    for x in (552, 742, 950, 1160): o.append(puff(x, 200, 9, dust, .6))
-    o.append(sauropod(560, 204, .55, p, head=(196, -230)))
-    o.append(trike(800, 206, .68, p) + trike(1010, 204, .66, p) + trike(1200, 202, .56, p))
-    o.append(thero(1330, 200, .55, p))
+    o.append(f'<g>{"".join(puff(x, 200, 9, dust, .6) for x in (552, 742, 950, 1160))}{pulse(1, .3, 2.4)}</g>')
+    o.append(sauropod(560, 204, .55, p, head=(196, -230), neck_anim=sway(96, -112, 2.5, 6)))
+    o.append(f'<g>{trike(800, 206, .68, p)}{trike(1200, 202, .56, p)}{bob(2.5, 1.2)}</g><g>{trike(1010, 204, .66, p)}{bob(2.5, 1.2, .6)}</g>')
+    o.append(f'<g>{thero(1330, 200, .55, p)}{bob(3, .9, .3)}</g>')
     o.append(corners(p, n))
     return vwrap(''.join(o))
 
@@ -502,16 +568,18 @@ def v_messages(n):  # the volcano sending its smoke signals
     o.append(moon(1260, 56, 20) if n else sun(1260, 60, 22))
     o.append(hills([(0, 160), (400, 132), (800, 150), (1200, 126), (1600, 150)], 200, p["far"]))
     o.append(volcano(800, 104, 196, 300, p, n))
-    if n: o.append('<circle cx="800" cy="106" r="80" fill="url(#glow)"/>')
+    if n: o.append(f'<circle cx="800" cy="106" r="80" fill="url(#glow)">{pulse(1, .55, 5)}</circle>')
     for i, (x, y, r) in enumerate([(812, 72, 18), (836, 34, 22)]):
         o.append(puff(x, y, r, p["smoke"], .9))
-    o.append(f'<ellipse cx="868" cy="12" rx="40" ry="14" fill="none" stroke="{p["smoke"]}" stroke-width="10" opacity=".8"/>')
+    o.append(rise(806, 88, 12, p["smoke"], 20, -60, 6, 0) + rise(806, 88, 12, p["smoke"], 20, -60, 6, 3))
+    o.append(f'<ellipse cx="868" cy="12" rx="40" ry="14" fill="none" stroke="{p["smoke"]}" stroke-width="10" opacity=".8">{pulse(.8, .45, 4)}{pulse(40, 46, 4, 0, "rx")}</ellipse>')
     o.append(f'<path d="M790 82 q10 -6 20 0" stroke="{p["smoke"]}" stroke-width="3" fill="none" opacity=".6"/>')
     o.append(canopy(0, 1600, 190, 12, 22, p["jung"], 5, 26))
     o.append(ground(p, 186))
     o.append(f'<path d="M1020 206 Q1060 180 1110 186 Q1150 192 1160 210Z" fill="{p["rock2"]}"/>')
-    o.append(thero(1084, 196, .8, p, flip=True, pose="sit", wave=True))
-    o.append(ptero(560, 84, .7, p) + ptero(640, 60, .45, p))
+    o.append(f'<g>{thero(1084, 196, .8, p, flip=True, pose="sit", wave=True)}{sway(1084, 196, 2.5, 3)}</g>')
+    fl = '<animateTransform attributeName="transform" type="scale" values="1 1;1 .35;1 1" keyTimes="0;.5;1" dur="1.6s" repeatCount="indefinite"/>'
+    o.append(f'<g>{ptero(560, 84, .7, p, fl)}{ptero(640, 60, .45, p)}{bob(6, 8, 0, 30)}</g>')
     o.append(corners(p, n))
     return vwrap(''.join(o))
 
@@ -526,10 +594,11 @@ def v_coaching(n):  # an elder teaching the young ones at the stone
     o.append(f'<path d="M620 120 q30 -26 60 0 q30 26 56 -6" fill="none" stroke="{p["stone2"]}" stroke-width="5" stroke-linecap="round"/>'
              f'<path d="M726 106 l12 6 l-10 10" fill="none" stroke="{p["stone2"]}" stroke-width="5" stroke-linecap="round"/>'
              f'<circle cx="640" cy="160" r="12" fill="none" stroke="{p["stone2"]}" stroke-width="5"/><path d="M670 160 h50 M670 176 h36" stroke="{p["stone2"]}" stroke-width="5" stroke-linecap="round"/>')
-    o.append(sauropod(520, 206, .52, p, head=(200, -180), c1=(140, -160), c2=(180, -210)))
-    o.append(thero(870, 208, .7, p, flip=True, pose="sit"))
-    o.append(trike(1000, 210, .44, p, flip=True))
-    o.append(sauropod(1110, 210, .32, p, flip=True, head=(150, -230)))
+    o.append(sauropod(520, 206, .52, p, head=(200, -180), c1=(140, -160), c2=(180, -210), neck_anim=sway(96, -112, 2, 6)))
+    o.append(thero(870, 208, .7, p, flip=True, pose="sit", tail_anim=sway(-12, -40, 7, 3)))
+    o.append(trike(1000, 210, .44, p, flip=True, head_anim=sway(46, -50, 5, 4, .5)))
+    o.append(sauropod(1110, 210, .32, p, flip=True, head=(150, -230), neck_anim=sway(96, -112, 3, 5, 1)))
+    if n: o.append(fireflies(5, 820, 1500, 150, 210, 21))
     o.append(corners(p, n))
     return vwrap(''.join(o))
 
@@ -542,8 +611,9 @@ def v_roleplay(n):  # the nest of hatchlings
     o.append(nest(800, 206, 300, p, "back"))
     cols = [p["sau"], p["thr"], p["tri"], p["pte"]]
     for i, (x, b, s, t) in enumerate([(720, 200, 1.4, -10), (790, 196, 1.6, 4), (870, 200, 1.4, 12), (950, 206, 1.1, 18)]):
-        o.append(hatchling(x, b, s, p, cols[i], t))
-    o.append(egg(660, 206, 1.1, p, -18))
+        o.append(hatchling(x, b, s, p, cols[i], t, bob(5, 2.2 + i * .3, i * .5)))
+    o.append(f'<g>{egg(660, 206, 1.1, p, -18)}{sway(660, 206, 4, 2.5)}</g>')
+    if n: o.append(fireflies(5, 560, 1500, 140, 200, 22))
     o.append(nest(800, 206, 300, p, "front"))
     o.append(f'<path d="M1000 214 l10 -8 l8 6 l8 -6 l6 8Z" fill="{p["egg"]}"/>')
     o.append(corners(p, n))
@@ -556,7 +626,7 @@ def v_rphistory(n):  # cave paintings by firelight
     o.append(f'<path d="M0 0 L1600 0 L1600 40 Q1200 70 800 46 Q400 24 0 60Z" fill="{wall2}"/>')
     for x, y, rx in [(300, 120, 140), (1250, 110, 160), (760, 160, 300)]:
         o.append(f'<ellipse cx="{x}" cy="{y}" rx="{rx}" ry="40" fill="{wall2}" opacity=".35"/>')
-    o.append('<circle cx="800" cy="210" r="420" fill="url(#glow)" opacity=".75"/>')
+    o.append(f'<circle cx="800" cy="210" r="420" fill="url(#glow)" opacity=".75">{pulse(.75, .55, 3)}</circle>')
     ochre = "#e8a85a" if not n else "#c88a48"; red = "#c4523a" if not n else "#a8442e"
     # the paintings: a long-neck, the herd, a sun, footprints and a tally
     pp = dict(P(False), sau=ochre, sau2=ochre, saub=ochre, horn=ochre, eye=ochre, pup=ochre, blush=ochre, leaf=ochre)
@@ -570,8 +640,12 @@ def v_rphistory(n):  # cave paintings by firelight
     # the fire and the little theropod sitting by it
     o.append(f'<rect x="0" y="196" width="1600" height="44" fill="{wall2}"/>')
     o.append('<path d="M760 210 l70 -10 M770 200 l60 12" stroke="#4a2a18" stroke-width="8" stroke-linecap="round"/>')
-    o.append('<path d="M780 202 Q770 170 796 140 Q792 168 808 176 Q816 156 812 136 Q842 172 826 204Z" fill="#ff9a3a"/><path d="M792 202 Q786 182 800 166 Q804 184 816 188 Q820 196 814 204Z" fill="#ffe08a"/>')
-    o.append(thero(940, 206, .5, P(n), flip=True, pose="sit"))
+    fk = ('<animateTransform attributeName="transform" type="scale" values="1 1;1.05 .9;.96 1.06;1 1" keyTimes="0;.3;.65;1" dur="1.4s" repeatCount="indefinite"/>')
+    o.append(f'<g transform="translate(804 204)"><g>{fk}<g transform="translate(-804 -204)"><path d="M780 202 Q770 170 796 140 Q792 168 808 176 Q816 156 812 136 Q842 172 826 204Z" fill="#ff9a3a"/><path d="M792 202 Q786 182 800 166 Q804 184 816 188 Q820 196 814 204Z" fill="#ffe08a"/></g></g></g>')
+    for i, (x, dx) in enumerate([(800, -14), (812, 16), (806, 4)]):
+        o.append(f'<circle cx="{x}" cy="150" r="2.5" fill="#ffd27a" opacity="0"><animateTransform attributeName="transform" type="translate" values="0 0;{dx} -90" dur="3s" begin="{i}s" repeatCount="indefinite"/>'
+                 f'<animate attributeName="opacity" values="0;1;0" keyTimes="0;.2;1" dur="3s" begin="{i}s" repeatCount="indefinite"/></circle>')
+    o.append(thero(940, 206, .5, P(n), flip=True, pose="sit", tail_anim=sway(-12, -40, 7, 3.5)))
     return vwrap(''.join(o))
 
 def v_training(n):  # hatchlings learning to fly off the ledge
@@ -586,10 +660,13 @@ def v_training(n):  # hatchlings learning to fly off the ledge
     o.append(f'<path d="M400 128 Q560 106 730 124 L728 116 Q560 98 404 120Z" fill="{p["leaf"]}"/>')
     pt = dict(p)
     for x in (500, 575, 645):
-        o.append(f'<g transform="translate({x} 120) scale(.85)"><ellipse cx="0" cy="-16" rx="12" ry="16" fill="{p["pte2"]}"/>{baby_head(4, -40, 14, p, p["pte"])}<path d="M10 -40 L34 -36 L10 -32Z" fill="{p["horn"]}"/></g>')
+        o.append(f'<g><g transform="translate({x} 120) scale(.85)"><ellipse cx="0" cy="-16" rx="12" ry="16" fill="{p["pte2"]}"/>{baby_head(4, -40, 14, p, p["pte"])}<path d="M10 -40 L34 -36 L10 -32Z" fill="{p["horn"]}"/></g>{bob(4, 1.6, (x - 500) / 120)}</g>')
     o.append(f'<path d="M700 110 Q820 60 960 92 Q1060 116 1130 96" fill="none" stroke="#fff" stroke-width="3" stroke-dasharray="4 10" stroke-linecap="round" opacity=".75"/>')
-    o.append(ptero(960, 92, .7, pt))
-    o.append(ptero(1130, 70, .9, pt))
+    o.append(f'<g>{ptero(960, 92, .7, pt)}{bob(5, 4)}</g>')
+    fl = '<animateTransform attributeName="transform" type="scale" values="1 1;1 .35;1 1" keyTimes="0;.5;1" dur="1.4s" repeatCount="indefinite"/>'
+    o.append(f'<g>{ptero(1130, 70, .9, pt, fl)}{bob(7, 6, 0, 24)}</g>')
+    o.append(f'<g opacity="0">{ptero(724, 104, .5, pt)}<animateMotion path="M0 0 Q110 -60 236 -10" dur="7s" repeatCount="indefinite"/>'
+             f'<animate attributeName="opacity" values="0;1;1;0" keyTimes="0;.1;.8;1" dur="7s" repeatCount="indefinite"/></g>')
     o.append(corners(p, n))
     return vwrap(''.join(o))
 
@@ -611,7 +688,10 @@ def v_map(n, athena=False):  # the stone tablet with the route carved through fo
     pts = [(560, 150), (720, 92), (890, 152), (1060, 92)]
     d = f'M470 170 C500 166 530 160 {pts[0][0]} {pts[0][1]} S660 92 {pts[1][0]} {pts[1][1]} S830 152 {pts[2][0]} {pts[2][1]} S1000 92 {pts[3][0]} {pts[3][1]} S1120 140 1140 180'
     o.append(f'<path d="{d}" fill="none" stroke="{cut}" stroke-width="9" stroke-linecap="round"/>')
-    o.append(f'<path d="{d}" fill="none" stroke="{route}" stroke-width="4" stroke-dasharray="2 12" stroke-linecap="round"/>')
+    o.append(f'<path d="{d}" fill="none" stroke="{route}" stroke-width="4" stroke-dasharray="2 12" stroke-linecap="round"><animate attributeName="stroke-dashoffset" values="0;-28" dur="2s" repeatCount="indefinite"/></path>')
+    for i, (x, y) in enumerate(pts):
+        o.append(f'<circle cx="{x}" cy="{y}" r="15" fill="none" stroke="{route}" stroke-width="3" opacity="0"><animate attributeName="r" values="15;30" dur="4s" begin="{i}s" repeatCount="indefinite"/>'
+                 f'<animate attributeName="opacity" values="0;.9;0;0" keyTimes="0;.1;.5;1" dur="4s" begin="{i}s" repeatCount="indefinite"/></circle>')
     for i in range(6): o.append(footprint(492 + i * 13, 168 - i * 3, .7, cut, 70))
     steps = ["Listen", "Understand", "Handle", "Follow up"] if athena else ["Dial", "Discovery", "Quote", "Close"]
     for i, ((x, y), t) in enumerate(zip(pts, steps)):
@@ -628,12 +708,13 @@ def v_service(n):  # the herd guarding the nest
     o.append(moon(1300, 56, 20) if n else sun(1300, 60, 22))
     o.append(canopy(0, 1600, 132, 14, 28, p["jung"], 10, 28))
     o.append(ground(p, 128))
-    o.append(sauropod(820, 160, .4, p, head=(90, -270), c1=(130, -200), c2=(40, -290)))
-    o.append(trike(640, 214, .56, p, flip=True))
-    o.append(trike(990, 214, .56, p))
+    o.append(sauropod(820, 160, .4, p, head=(90, -270), c1=(130, -200), c2=(40, -290), neck_anim=sway(96, -112, 3, 7)))
+    o.append(trike(640, 214, .56, p, flip=True, head_anim=sway(46, -50, 4, 5)))
+    o.append(trike(990, 214, .56, p, head_anim=sway(46, -50, 4, 5, 2)))
     o.append(nest(810, 212, 170, p, "back"))
-    o.append(egg(776, 210, 1.1, p, -10) + egg(812, 206, 1.2, p) + egg(846, 210, 1.1, p, 12))
+    o.append(egg(776, 210, 1.1, p, -10) + f'<g>{egg(812, 206, 1.2, p)}{sway(812, 206, 5, 3)}</g>' + egg(846, 210, 1.1, p, 12))
     o.append(nest(810, 212, 170, p, "front"))
+    if n: o.append(fireflies(5, 500, 1500, 140, 200, 23))
     o.append(corners(p, n))
     return vwrap(''.join(o))
 
@@ -648,14 +729,15 @@ def v_renewals(n):  # spring hatching: the meadow in flower and eggs opening
         o.append(cycad(x, b, s, p))
         for _ in range(7): o.append(f'<circle cx="{x + r.randint(-60, 60)}" cy="{b - 40 * s - r.randint(10, 60)}" r="{r.randint(5, 9)}" fill="{p["flower"]}"/>')
     for x, b, s, c, t in [(700, 206, 1.3, p["sau"], -8), (820, 200, 1.5, p["tri"], 6), (940, 208, 1.3, p["thr"], 10)]:
-        o.append(hatchling(x, b, s, p, c, t))
-        o.append(sparkle(x - 26, b - 64, 6) + sparkle(x + 28, b - 70, 5))
+        o.append(hatchling(x, b, s, p, c, t, bob(4, 2.4, (x - 700) / 200)))
+        o.append(f'<g>{sparkle(x - 26, b - 64, 6)}{sparkle(x + 28, b - 70, 5)}{pulse(1, .15, 2, (x - 700) / 240)}</g>')
     for _ in range(40):
         x = r.choice([r.randint(420, 680), r.randint(980, 1220)]); y = r.randint(196, 226)
         o.append(f'<circle cx="{x}" cy="{y}" r="3.2" fill="{r.choice(["#f2d14a", "#f2a2c0", "#fff6e8", "#b8a0f0"] if not n else ["#a89a5a", "#8a5a6a", "#a8a4b0"])}"/>')
-    for x, y in [(640, 110), (1000, 90)]:
-        o.append(f'<g transform="translate({x} {y})"><path d="M0 0 h24" stroke="{p["thr2"]}" stroke-width="3" stroke-linecap="round"/>'
-                 f'<ellipse cx="8" cy="-6" rx="10" ry="4" fill="#fff" opacity=".7"/><ellipse cx="8" cy="6" rx="10" ry="4" fill="#fff" opacity=".7"/></g>')
+    for i, (x, y) in enumerate([(640, 110), (1000, 90)]):
+        o.append(f'<g><g transform="translate({x} {y})"><path d="M0 0 h24" stroke="{p["thr2"]}" stroke-width="3" stroke-linecap="round"/>'
+                 f'<ellipse cx="8" cy="-6" rx="10" ry="4" fill="#fff" opacity=".7"/><ellipse cx="8" cy="6" rx="10" ry="4" fill="#fff" opacity=".7">{pulse(4, 1.5, .25, 0, "ry")}</ellipse></g>'
+                 f'<animateTransform attributeName="transform" type="translate" values="0 0;26 -10;44 6;14 12;0 0" keyTimes="0;.25;.5;.75;1" dur="{6 + i}s" repeatCount="indefinite" calcMode="spline" keySplines="{SP2};{SP2}"/></g>')
     o.append(corners(p, n))
     return vwrap(''.join(o))
 
@@ -672,13 +754,14 @@ def v_claims(n):  # after the rockslide: the herd clearing the trail
     # the slide across the trail
     for x, y, r in [(760, 196, 26), (800, 182, 22), (720, 206, 18), (842, 200, 20), (780, 210, 16), (870, 212, 12)]:
         o.append(f'<ellipse cx="{x}" cy="{y}" rx="{r * 1.2:.0f}" ry="{r}" fill="{p["stone"]}"/><ellipse cx="{x + r * .3:.0f}" cy="{y + r * .3:.0f}" rx="{r * .7:.0f}" ry="{r * .5:.0f}" fill="{p["stone2"]}"/>')
-    o.append(puff(760, 150, 18, "#d8cfc0" if not n else "#3a3a44", .5))
+    o.append(f'<g>{puff(760, 150, 18, "#d8cfc0" if not n else "#3a3a44", .5)}{bob(8, 6, 0, 10)}{pulse(1, .4, 6)}</g>')
     # the crew: a trike nosing a boulder off, a long-neck lifting one, a little one carrying a pebble
-    o.append(f'<ellipse cx="955" cy="204" rx="26" ry="20" fill="{p["stone"]}"/>')
-    o.append(trike(1040, 220, .66, p, flip=True, graze=12))
-    o.append(sauropod(1250, 218, .46, p, flip=True, head=(240, -150), c1=(140, -170), c2=(220, -170)))
+    nk = 'keyTimes="0;.3;.5;1" dur="4s" repeatCount="indefinite" calcMode="spline" keySplines=".45 0 .55 1;.45 0 .55 1;.45 0 .55 1"'
+    o.append(f'<ellipse cx="955" cy="204" rx="26" ry="20" fill="{p["stone"]}"><animateTransform attributeName="transform" type="translate" values="0 0;0 0;-7 0;0 0" {nk}/></ellipse>')
+    o.append(trike(1040, 220, .66, p, flip=True, graze=12, head_anim=f'<animateTransform attributeName="transform" type="rotate" values="0 46 -50;-4 46 -50;6 46 -50;0 46 -50" {nk}/>'))
+    o.append(sauropod(1250, 218, .46, p, flip=True, head=(240, -150), c1=(140, -170), c2=(220, -170), tail_anim=sway(-104, -80, 4, 6)))
     o.append(f'<ellipse cx="1150" cy="168" rx="12" ry="9" fill="{p["stone"]}"/>')
-    o.append(thero(900, 220, .62, p) + f'<ellipse cx="928" cy="178" rx="10" ry="8" fill="{p["stone"]}"/>')
+    o.append(f'<g>{thero(900, 220, .62, p)}<ellipse cx="928" cy="178" rx="10" ry="8" fill="{p["stone"]}"/>{bob(3, 1)}</g>')
     o.append(corners(p, n))
     return vwrap(''.join(o))
 
@@ -686,11 +769,12 @@ def v_commercial(n):  # the great sauropod caravan crossing the valley
     p = P(n); o = [base(n, sky=("#6c9ec8", "#f0a86a", "#f8d494"))]
     o.append(moon(300, 54, 20) if n else sun(300, 58, 26))
     o.append(far_volcano(p, n, 1280, 90, 176, 190))
+    o.append(rise(1292, 64, 12, p["smoke"], 24, -50, 7, 0, .7) + rise(1292, 64, 12, p["smoke"], 24, -50, 7, 3.5, .7))
     o.append(hills([(0, 170), (400, 150), (800, 166), (1200, 148), (1600, 168)], 200, p["far2"]))
     o.append(ground(p, 196, p["trail"]))
     o.append(f'<path d="M0 196 Q800 182 1600 196" fill="none" stroke="{p["ground"]}" stroke-width="6"/>')
-    for x, s, hd in [(470, .3, (190, -330)), (660, .4, (200, -350)), (880, .46, (200, -330)), (1080, .3, (180, -300)), (1180, .18, (170, -300))]:
-        o.append(sauropod(x, 208 - s * 10, s, p, head=hd))
+    for i, (x, s, hd) in enumerate([(470, .3, (190, -330)), (660, .4, (200, -350)), (880, .46, (200, -330)), (1080, .3, (180, -300)), (1180, .18, (170, -300))]):
+        o.append(f'<g>{sauropod(x, 208 - s * 10, s, p, head=hd, neck_anim=sway(96, -112, 2, 5 + i % 2, i * .7) if x > 600 else "")}{bob(2, 1.6, i * .4)}</g>')
     o.append(corners(p, n))
     return vwrap(''.join(o))
 
