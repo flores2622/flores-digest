@@ -4,6 +4,7 @@ import random
 
 KEY = "phoenix"
 NAME = "Phoenix"
+CATEGORY = "Cities"   # the group it is listed under in Settings
 FONTS = "family=Archivo:wght@500;700;800&family=Inter:wght@400;500;600;700"
 DISPLAY = "'Archivo', system-ui, sans-serif"
 DW = 800

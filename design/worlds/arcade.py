@@ -3,6 +3,7 @@ import random
 
 KEY = "arcade"
 NAME = "Retro Arcade"
+CATEGORY = "Fun"   # the group it is listed under in Settings
 FONTS = "family=Orbitron:wght@700;800;900&family=Exo+2:wght@400;500;600;700"
 DISPLAY = "'Orbitron', system-ui, sans-serif"
 DW = 800

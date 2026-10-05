@@ -3,6 +3,7 @@ import random, math
 
 KEY = "golf"
 NAME = "Golf"
+CATEGORY = "Sports"   # the group it is listed under in Settings
 FONTS = "family=Playfair+Display:wght@700;800&family=Nunito+Sans:wght@400;500;600;700"
 DISPLAY = "'Playfair Display', Georgia, serif"
 DW = 700

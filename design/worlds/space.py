@@ -1,5 +1,6 @@
 import space_skyline as _sk, space_scenes as _sc
 KEY = "space"; NAME = "Space"
+CATEGORY = "Fun"   # the group it is listed under in Settings
 FONTS = "family=Space+Grotesk:wght@500;700&family=IBM+Plex+Sans:wght@400;500;600;700"
 DISPLAY = "'Space Grotesk', system-ui, sans-serif"; DW = 700; BODY = "'IBM Plex Sans', system-ui, sans-serif"
 SKY_BG = (("#17306e", "#5c7a63"), ("#05070f", "#0d1526"))

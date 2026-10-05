@@ -1945,7 +1945,12 @@ repaint clears the list).
   the coaching cards' outcome strips); figures, lists and hooks never
   change, and **the Editions keep their own looks**. Settings has a World
   row above the looks (`WORLDS`, each look in `LOOKS` names its world;
-  `TH.theme`, saved in `board-look`, `html[data-theme]`). **Space** is the
+  `TH.theme`, saved in `board-look`, `html[data-theme]`). **The worlds are
+  listed by kind** (Frank, 2026-10-05: "categorize the themes in the
+  settings? by cities, sports, etc."): Cities (Phoenix, Yuma), Sports (Game
+  Day, Golf), Outdoors (Desert / Old West, Ocean, Mountain), Fun (Space,
+  Retro Arcade) -- each module's `CATEGORY`, written into `WORLD_GROUP` by
+  build.py, the desert's set inline; a world with none lands under More. **Space** is the
   second world: Space Grotesk at 700 for headings and tile numbers, IBM
   Plex Sans at 500 for text; looks Mission Control (cool grey, launch
   orange), Deep Field (indigo / violet) and Mars (rust), each with its

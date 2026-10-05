@@ -5,6 +5,7 @@ import math, random
 
 KEY = "yuma"
 NAME = "Yuma"
+CATEGORY = "Cities"   # the group it is listed under in Settings
 FONTS = "family=Arvo:wght@400;700&family=Karla:wght@400;500;600;700"
 DISPLAY = "'Arvo', Georgia, serif"
 DW = 700
