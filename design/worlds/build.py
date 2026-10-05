@@ -40,9 +40,12 @@ def world_css(m):
         L.append(f'{T} .vista.vmap b, {T} .vista.vmap span {{ color: {ink[0]}; }} {D} .vista.vmap b, {D} .vista.vmap span {{ color: {ink[1]}; }}')
     else:
         L.append(f'{T} .vista.vmap b, {T} .vista.vmap span {{ color: #fff; text-shadow: 0 1px 3px rgba(0,0,0,.55); }}')
+    # the coaching cards' strips carry no words (Frank, 2026-10-05: "remove text from the theme on the
+    # coaching cards, its distracting") -- the outcome pill already says it
+    bare = lambda svg: re.sub(r"<text\b.*?</text>", "", svg, flags=re.S)
     for key, fn in m.STRIP_FNS.items():
-        L.append(f'{T} .ccard[data-oc="{key}"] > summary.cchead::before {{ background-image: {url(fn(False))}; }}')
-        L.append(f'{D} .ccard[data-oc="{key}"] > summary.cchead::before {{ background-image: {url(fn(True))}; }}')
+        L.append(f'{T} .ccard[data-oc="{key}"] > summary.cchead::before {{ background-image: {url(bare(fn(False)))}; }}')
+        L.append(f'{D} .ccard[data-oc="{key}"] > summary.cchead::before {{ background-image: {url(bare(fn(True)))}; }}')
     return "\n".join(L) + "\n"
 def inline_css(mods):
     L = ['/* WORLDS:BEGIN -- written by design/worlds/build.py; edit the world modules there, not here. */',

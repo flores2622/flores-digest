@@ -1958,7 +1958,19 @@ repaint clears the list).
   planet, Apollo's Dial / Discovery / Quote / Close in launch orange,
   Athena's Listen / Understand / Handle / Follow up in green, titles white; Service the
   station over Earth; Renewals the orbit that comes back around;
-  Commercial the moon base. **Its card strips**: sold = GO FOR LAUNCH
+  Commercial the moon base. **No world says FLORES** (Frank, 2026-10-05:
+  "it should be themed to the world not my last name"): the rocket reads
+  INSURED, the station POLICY STATION, the harbor SAFE HARBOR SAILING /
+  DRY DOCK BOATYARD / FULL COVERAGE, the lodge SUMMIT LODGE, the arcade's
+  sign QUOTE and its castle flag BOSS, Phoenix's boulevard PREMIUM PKWY and
+  scoreboard HOME, the desert's ranch gate RANCHO. **The coaching cards'
+  strips carry no words** (Frank, 2026-10-05: "remove text from the theme on
+  the coaching cards, its distracting"): `build.py` strips every `<text>`
+  from a world's strips, and the desert's inline strips have none; the
+  outcome pill says it. Phoenix's coaching rooftop hangs its string lights
+  from two posts and is dressed (potted saguaros and agave, a fire table, a
+  cooler, downtown lit behind) -- "hanging lights that dont hang from
+  anywhere". **Its card strips**: sold = GO FOR LAUNCH
   (liftoff, confetti); quoted or follow-up open = holding on the pad with
   the clock running; lost = splashdown under a parachute in grey; no quote
   = SCRUB, a red light on an empty pad; reached = two astronauts, comms

@@ -242,7 +242,7 @@ def skyline(night):
         bg = "#14042e" if n else "#3b1a6e"
         return (f'<rect x="{x-8}" y="{y-8}" width="{tw+16}" height="{5*p+16}" fill="{bg}" stroke="{c}" stroke-width="3"/>'
                 + (f'<g filter="url(#nl)">{ptext(s, x, y, p, c)}</g>' if n else ptext(s, x, y, p, c)))
-    a(neon(392, 124, "FLORES", "#3df2ff", 4))
+    a(neon(392, 124, "QUOTE", "#3df2ff", 4))
     a(neon(150, 120, "24/7", "#ffd23f", 4))
     a(neon(1022, 136, "BONUS", "#7ab1ff", 4))
     # ---- the HIGH SCORES marquee on its tower
@@ -506,7 +506,7 @@ def v_commercial(n):  # the boss castle
         o.append('<path d="M772 140 V100 H780 V92 H820 V100 H828 V140Z" fill="#14042e"/>')
         o.append(f'<path d="M774 104h52v4h-52z M774 116h52v4h-52z M774 128h52v4h-52z" fill="#6a5a8a"/>')
         o.append(f'<rect x="806" y="-2" width="4" height="26" fill="{cs}"/><path d="M810 0h56v20h-56z" fill="#3d8eff"/>')
-        o.append(ptext("FLORES", 838, 5, 1.8, "#fff", "middle"))
+        o.append(ptext("BOSS", 838, 5, 1.8, "#fff", "middle"))
         for x in [560, 640, 960, 1030]:
             o.append(f'<path d="M{x} 150 h8 v-10 h8 v-8 h8 v8 h8 v10 h8 v8 h-40z" fill="#ff7a1a"/><path d="M{x+12} 150 h8 v-10 h8 v10 h8 v8 h-24z" fill="#ffd23f"/>')
         o.append(ptext("BOSS", 1130, 34, 3, "#fff", shadow="#14042e"))
@@ -545,7 +545,7 @@ def strip(n, body, day=("#5a2a9a", "#9a3fb0"), night=("#0b0420", "#2a0b52"), gri
     o.append(body)
     return wrap(160, ''.join(o), defs)
 
-def cap(s, col="#fff", sh="#14042e"): return ptext(s, 120, 74, 6, col, shadow=sh)
+def cap(s, col="#fff", sh="#14042e"): return ""   # strips carry no words
 
 def s_sold(n):
     b = [cap("LEVEL CLEARED", "#ffd23f")]
@@ -557,9 +557,7 @@ def s_sold(n):
 def s_open(n):
     b = [cap("CONTINUE?")]
     b.append(f'<rect x="760" y="40" width="80" height="76" fill="#14042e" stroke="#ffd23f" stroke-width="4"/>')
-    b.append(label(800, 52, "9", 10, "#ffd23f"))
     b.append(hero(640, 44, 7))
-    b.append(ptext("8 7 6 ...", 880, 70, 4, "#fff", shadow="#14042e"))
     return strip(n, ''.join(b), day=("#7a3aa0", "#6095e0"))
 
 def s_lost(n):
@@ -568,7 +566,6 @@ def s_lost(n):
     b.append(f'<g transform="translate(-90 -8) rotate(90 792 92)">{hero(760, 52, 8, gp)}</g>')
     b.append('<path d="M640 116h150v6h-150z" fill="#1e1e26" opacity=".5"/>')
     b.append(runs(["..ggg..", ".ggggg.", "ggggggg", "ggrgrgg", "ggggggg", "ggggggg", "ggggggg"], 800, 60, 8, {'g': "#b8b8c4", 'r': "#4a4a56"}))
-    b.append(ptext("0 LIVES", 890, 76, 3, "#d0d0d8", shadow="#2a2a33"))
     return strip(n, ''.join(b), day=("#5a5a66", "#8a8a96"), night=("#0e0e14", "#24242e"), grid="#9a9aa8")
 
 def s_dead(n):
@@ -591,7 +588,6 @@ def s_reached(n):
 def s_live_noq(n):
     b = [cap("PAUSED")]
     b.append('<rect x="760" y="40" width="26" height="76" fill="#fff"/><rect x="812" y="40" width="26" height="76" fill="#fff"/>')
-    b.append(ptext("NO QUOTE YET", 880, 70, 4, "#ffd23f", shadow="#14042e"))
     return strip(n, ''.join(b), day=("#4a3a8a", "#7a5ab0"))
 
 def s_vm(n):
