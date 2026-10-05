@@ -1827,6 +1827,8 @@ repaint clears the list).
   that one the universal"): every look is Fraunces at 700 for headings and
   tile numbers (`--display` / `--dw`) and Manrope at 500 for text; the
   per-look faces and their Google Fonts entries are gone.
+- **The podium's names sit on dark pills** in every world (Frank,
+  2026-10-05: "can barely see leaderboard names" on the Game Day field).
 - **The Digest's two top cards share one Sedona picture** (Frank,
   2026-10-02: "give the digest some life? Color, background images, etc",
   then "the top of the leaderboard background should be the horizon so just
@@ -1962,7 +1964,12 @@ repaint clears the list).
   2 cards that flow into each other" -- and the trailhead sign starts below
   what the top card shows, SUMMIT / TRAIL
   CLOSED / HIBERNATING ...), **Game Day** (Oswald / Barlow; Home, Away, Night
-  Game -- the stadium with FLORES on the scoreboard, the podium on the 50,
+  Game -- the stadium, the podium on the 50, insurance names instead of
+  FLORES (Frank, 2026-10-05: "not everything needs to be flores, it should
+  be insurance focused": the PREMIUM BOWL scoreboard, HOME vs RISK, end zones
+  COVERED and BUNDLED, BUNDLE UP / NO LAPSE ZONE on the wall, a GET COVERED
+  blimp) and goalposts in perspective on their end lines ("angle the field
+  goals", `goalpost_persp`),
   TOUCHDOWN / 1ST & 10 / TURNOVER ...), **Retro Arcade** (Orbitron / Exo 2;
   Synthwave, 8-Bit, Pinball -- the neon pixel city and HIGH SCORES, the grid
   floor between rows of cabinets, LEVEL CLEARED / CONTINUE? / GAME OVER ...)
