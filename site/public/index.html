@@ -10374,7 +10374,9 @@ paintCenterBar();
     if (w.bpPick) Object.assign(bpPick, w.bpPick);
     if (PRODUCER_ROSTER.includes(w.producerFilter)) producerFilter = w.producerFilter;
   }
-  const day = w && w.rangeMode === "day" && days.includes(w.day) ? w.day : days[0];
+  // A refresh stays on the day it was on -- today's live report too, which is not published yet (Frank,
+  // 2026-10-05: "When I am on the live report and refresh it takes me back to the last published").
+  const day = w && w.rangeMode === "day" && (days.includes(w.day) || w.day === isoDate(azTodayDate())) ? w.day : days[0];
   if (w && w.rangeMode && w.rangeMode !== "day") {
     // A range: set it before the first paint so the range is what draws.
     rangeMode = w.rangeMode; customFrom = w.customFrom || ""; customTo = w.customTo || ""; folioPick = w.folioPick || "";

@@ -926,7 +926,8 @@ page, i want it to open back up where i was, not back to the digest"): the
 page, the coaching and Sales sub-tabs, the Road Map pick, the producer
 filter and the day or range are kept per browser tab (`saveWhere` after
 every paint and on `pagehide`, sessionStorage `board-where`) and read back by
-`init()`. Commercial and Rotation reopen only once the Worker has let that
+`init()` -- today's live report too, though it is not published yet (Frank, 2026-10-05: "When I am on the live
+report and refresh it takes me back to the last published"). Commercial and Rotation reopen only once the Worker has let that
 login in (`COMMERCIAL_DAYS`, `ROT_READY`); a new tab starts on the Digest.
 **KEEP THEM CURRENT, in the same change** (Frank: "continues updating as we
 make changes"): anything that changes what a number means, a goal, how
