@@ -772,3 +772,5 @@ def s_bottle(n):  # MESSAGE IN A BOTTLE
 STRIP_FNS = {"sold_on_call": s_sold, "quoted_call_open": s_open, "followup_open": s_open,
              "quoted_call_lost": s_lost, "followup_lost": s_lost, "dead_no_quote": s_dead,
              "live_quote_ok": s_hail, "live_no_quote": s_mooring, "callback_no_contact": s_bottle}
+# The header's greetings in this world only (Frank, 2026-10-05: "world themed ones that appear only in those worlds"); {n} is the first name.
+GREETINGS = ['Ahoy, {n}.', 'Fair winds and full nets, {n}.', 'All hands on deck, {n}.', 'Cast a wide net today, {n}.', "The tide's coming in, {n}.", 'Anchors up, phones up, {n}.', 'Smooth sailing, {n}.', "Let's reel one in, {n}.", 'Full speed ahead, {n}.', 'Calm seas never made a closer, {n}.', 'The fish are biting, {n}.', 'Batten down the bundles, {n}.', 'Hoist the sails, {n}. Quotes away.', 'Plenty of fish in the pipeline, {n}.', "Land ho, {n}. A sale's in sight."]

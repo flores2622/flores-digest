@@ -1652,7 +1652,10 @@ capture of 16 views in a local harness). Five looks a person picks in
 Silver, Canyon Sunset, Mesa Minimal), each with its Desert Night; light /
 dark / device as icons only, remembered per browser (`board-look`). The
 menu lists each Center's pages; the header greets whoever is looking by
-first name (`/api/me`, ~90 random lines) and carries the search (Ctrl K:
+first name (`/api/me`, ~90 random lines -- broad ones in every world, plus
+each world's own, only in that world: Frank, 2026-10-05, "i am in the
+mountain world and got a desert greeting"; `GREETINGS_BY_WORLD`, the
+desert's inline, the rest each module's `GREETINGS`, written by build.py) and carries the search (Ctrl K:
 pages, sections, producers, every lead on the loaded day) and **Take a
 tour** (the board's own system tour, its card styled as the Field note). Every section is a cream card
 with a 2px border. **A feed line never names a stage** ("Mike presented

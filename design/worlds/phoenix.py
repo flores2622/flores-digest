@@ -777,3 +777,5 @@ def s_vm(n):  # a coyote asleep under the moon by the mountain
 STRIP_FNS = {"sold_on_call": s_sold, "quoted_call_open": s_open, "followup_open": s_open, "quoted_call_lost": s_lost,
              "followup_lost": s_lost, "dead_no_quote": s_dead, "live_quote_ok": s_porch, "live_no_quote": s_stop,
              "callback_no_contact": s_vm}
+# The header's greetings in this world only (Frank, 2026-10-05: "world themed ones that appear only in those worlds"); {n} is the first name.
+GREETINGS = ['Rise from the ashes, {n}.', 'Another sunny day in the Valley, {n}.', "It's a dry heat, {n}. The leads aren't.", 'Valley strong, {n}.', 'Monsoon season for premium, {n}.', "Light rail's running, so are the phones, {n}.", 'Up and rising, {n}.', 'Hot day, hot leads, {n}.', 'From the Valley to the summit, {n}.', "Sunset's later than the last close, {n}.", 'Rise and grind, {n}.', 'Haboob of sales incoming, {n}.', "The Valley's waking up, {n}.", 'Fly like a phoenix, {n}.', 'Hydrate and dominate, {n}.']
