@@ -186,104 +186,125 @@ def boulder(x, base, w, c, c2):
     return (f'<path d="M{x - w / 2:.0f} {base}q{w * .05:.0f} {-w * .5:.0f} {w * .4:.0f} {-w * .55:.0f}q{w * .45:.0f} {-w * .05:.0f} {w * .6:.0f} {w * .55:.0f}Z" fill="{c}"/>'
             f'<path d="M{x - w * .1:.0f} {base - w * .5:.0f}q{w * .3:.0f} {w * .02:.0f} {w * .52:.0f} {w * .42:.0f}" stroke="{c2}" stroke-width="{max(2, w / 14):.0f}" fill="none" opacity=".6"/>')
 
-W, H, SPLIT = 1600, 1700, 377
-HZ = SPLIT + 34     # the horizon just under the split: the buttes', the mountain's and the towers' feet run into the leaderboard
 
-def butte(pts, hole, fill, pockets, pk):
-    """A red sandstone butte as the Valley's park buttes are: rounded, eroded, pocked with holes; `hole` a
-    see-through window (cx, cy, rx, ry) or None."""
-    d = smooth(pts)
-    if hole:
-        cx, cy, rx, ry = hole
-        d += f"M{cx - rx} {cy}a{rx} {ry} 0 1 0 {2 * rx} 0a{rx} {ry} 0 1 0 {-2 * rx} 0Z"
-    o = f'<path d="{d}" fill="{fill}" fill-rule="evenodd"/>'
-    o += ''.join(f'<ellipse cx="{x}" cy="{y}" rx="{w}" ry="{h}" fill="{pk}"/>' for x, y, w, h in pockets)
-    return o
+def jet(x, y, s, col, night, gear=True, flip=False, ground=False):
+    """A side-view airliner, nose to the right, gear down; `ground` parks it level."""
+    rot = 0 if ground else 6
+    t = f'translate({x} {y}) scale({-s if flip else s} {s}) rotate({rot})'
+    win = "#ffd98a" if night else "#3a4a6a"
+    o = (f'<g transform="{t}"><path d="M-110 -6Q-118 -12 -112 -16L-60 -18L70 -18Q110 -18 120 -4Q110 8 70 8L-90 8Q-108 6 -110 -6Z" fill="{col}"/>'
+         f'<path d="M-96 -16L-118 -54L-100 -54L-70 -18Z" fill="{col}"/><path d="M-100 -54L-82 -54L-66 -26" fill="#e8662a"/>'
+         f'<path d="M-10 0L-50 34L-34 34L30 2Z" fill="{col}" opacity=".85"/><rect x="-20" y="8" width="30" height="12" rx="6" fill="{col}"/>'
+         f'<path d="M96 -10Q110 -10 116 -4L100 -4Z" fill="#2a2a3a"/>'
+         + ''.join(f'<circle cx="{-70 + k * 13}" cy="-8" r="2.4" fill="{win}"/>' for k in range(12))
+         + '<path d="M-90 0h200" stroke="#e8662a" stroke-width="3"/>')
+    if gear:
+        o += '<path d="M-6 8v14M60 8v14" stroke="#4a4a5a" stroke-width="3"/><circle cx="-6" cy="24" r="4" fill="#2a2a32"/><circle cx="60" cy="24" r="4" fill="#2a2a32"/>'
+    if night and not ground:
+        o += '<circle cx="118" cy="-2" r="16" fill="#fff6d6" opacity=".45"/><circle cx="-112" cy="-14" r="4" fill="#ff4a3a"/><circle cx="-20" cy="36" r="3" fill="#4aff7a"/>'
+    return o + '</g>'
+
+W, H, SPLIT = 1600, 1700, 377
+HZ = SPLIT + 34     # the horizon just under the split: the mountain's and the towers' feet run into the leaderboard
 
 def skyline(night):
-    # Papago Park at sunset (Frank, 2026-10-05: "can we make it specifically something from phoenix?"):
-    # the red buttes either side -- the big one with its hole, the sun (moon) sitting in it -- and,
-    # across the Valley between them, the camel-shaped mountain and downtown. The podium stands on a
-    # smooth red-rock slab at the end of the trail; the little white pyramid on its knoll.
+    # The airport at dusk (Frank, 2026-10-05: of the garden and Papago, "the mountain and buildings are fine",
+    # then picked the runway): the camel-shaped mountain and downtown kept, a jet on final over the city, the
+    # control tower, the terminal and its gates, and the runway running to the viewer -- the podium on its
+    # touchdown zone, the edge and approach lights glowing at night.
     o = []; a = o.append
     r = random.Random(11)
     a(f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 {W} {H}" preserveAspectRatio="xMidYMin slice">')
     if night:
         sky = [(0, "#070a1e"), (.5, "#141a40"), (.85, "#33295a"), (1, "#5a3462")]
-        gnd = [(0, "#2a1c2c"), (.3, "#201622"), (1, "#16101a")]
+        gnd = [(0, "#2a2038"), (.3, "#1f182c"), (1, "#151021")]
     else:
         sky = [(0, "#3b2a6b"), (.35, "#8a3f7a"), (.65, "#e46a5c"), (.86, "#f9a35a"), (1, "#ffd78e")]
-        gnd = [(0, "#c47a52"), (.3, "#d48a5c"), (1, "#dc9a68")]
-    a('<defs>' + lingrad("sky", sky) + lingrad("gnd", gnd) + radgrad("sun", "#fff1b8" if not night else "#fff4d6", .85 if not night else .4)
-      + radgrad("glow", "#ffcf7a", .7) + radgrad("hz", "#ff9a4a", .5) + '</defs>')
+        gnd = [(0, "#c98a64"), (.3, "#d9a476"), (1, "#e4b488")]
+    a('<defs>' + lingrad("sky", sky) + lingrad("gnd", gnd) + radgrad("sun", "#fff1b8" if not night else "#fff4d6", .8 if not night else .35)
+      + radgrad("glow", "#ffcf7a", .75) + radgrad("hz", "#ff9a4a", .5) + '</defs>')
     a(f'<rect width="{W}" height="{HZ + 4}" fill="url(#sky)"/>')
-    # the sun (moon) set where the hole will frame it
     if night:
         a(stars(46, W, 0, 300, 3))
-        a('<circle cx="215" cy="104" r="120" fill="url(#sun)"/><circle cx="215" cy="104" r="30" fill="#f6efd8"/>'
-          '<circle cx="206" cy="96" r="5" fill="#e4dbc0"/><circle cx="224" cy="112" r="7" fill="#e4dbc0"/>')
-        a(f'<ellipse cx="800" cy="{HZ}" rx="900" ry="110" fill="url(#hz)"/>')
+        a('<circle cx="1180" cy="80" r="140" fill="url(#sun)"/><circle cx="1180" cy="80" r="46" fill="#f6efd8"/>'
+          '<circle cx="1166" cy="68" r="8" fill="#e4dbc0"/><circle cx="1194" cy="94" r="11" fill="#e4dbc0"/>')
+        a(f'<ellipse cx="900" cy="{HZ}" rx="900" ry="110" fill="url(#hz)"/>')
     else:
-        a('<circle cx="215" cy="104" r="230" fill="url(#sun)"/><circle cx="215" cy="104" r="36" fill="#ffe7a0"/><circle cx="215" cy="104" r="29" fill="#fff3c4"/>')
-        a(cloud(820, 60, 340, "#ffc29a", .4) + cloud(1180, 120, 260, "#f7b2a6", .35))
-        a(birds([(700, 96), (728, 112), (752, 90), (1010, 70), (1034, 84)], "#3a2440", 1.2))
-    # across the Valley: the camel-shaped mountain and downtown, a far ridge between them
-    a(f'<path d="{smooth([(900, HZ + 4), (980, 330), (1100, 300), (1240, 296), (1300, HZ + 4)])}" fill="{"#171128" if night else "#8a5276"}"/>')
-    a(camel(380, HZ + 4, 560, 300, "#1b1531" if night else "#6a3e6c"))
+        a('<circle cx="600" cy="150" r="220" fill="url(#sun)"/><circle cx="600" cy="150" r="56" fill="#ffe7a0"/><circle cx="600" cy="150" r="46" fill="#fff3c4"/>')
+        a(cloud(1180, 64, 380, "#ffc29a", .42) + cloud(260, 46, 260, "#f7b2a6", .38))
+        a(birds([(760, 88), (790, 106), (818, 82), (1340, 120), (1366, 136)], "#3a2440", 1.2))
+    # the camel-shaped mountain at left, downtown's towers at right of centre, a far ridge behind them
+    a(f'<path d="{smooth([(560, HZ + 4), (760, 340), (1000, 262), (1180, 250), (1380, 270), (1600, 240), (1600, HZ + 4)])}" fill="{"#171128" if night else "#8a5276"}"/>')
+    a(camel(-40, HZ + 4, 860, 330, "#1b1531" if night else "#6a3e6c"))
     tc = "#1d1834" if night else "#4f2f5c"; tc2 = "#251e40" if night else "#5e3a6a"; win = "#ffd27a" if night else "#ffc98a"
-    for x, top, w, cr, c in [(1000, 160, 42, 0, tc2), (1044, 112, 56, 2, tc), (1102, 176, 40, 3, tc2), (1144, 132, 50, 1, tc), (1196, 186, 40, 0, tc2)]:
+    for x, top, w, cr, c in [(930, 150, 46, 0, tc2), (978, 96, 60, 2, tc), (1040, 168, 42, 3, tc2), (1084, 120, 54, 1, tc), (1140, 180, 44, 0, tc2), (1186, 150, 40, 3, tc)]:
         a(tower(x, top, w, HZ + 4, c, win, night, cr))
-    # the buttes: the big one at left with its hole, a second at right
-    rk = "#b44a2c" if not night else "#3a1e26"; rk2 = "#8e3620" if not night else "#2a161e"; pk = "#7a2c1a" if not night else "#1e1016"
-    a(butte([(-60, HZ + 30), (-40, 160), (10, 60), (90, 22), (180, 30), (260, 26), (330, 70), (372, 170), (380, 300), (400, HZ + 30)],
-            (215, 104, 46, 38), rk, [(70, 150, 16, 10), (300, 200, 12, 9), (120, 250, 10, 7), (330, 120, 8, 6)], pk))
-    a(f'<path d="M-40 {HZ + 30}L-30 240Q160 300 380 250L400 {HZ + 30}Z" fill="{rk2}" opacity=".55"/>')
-    a(butte([(1250, HZ + 30), (1270, 200), (1320, 104), (1400, 70), (1480, 86), (1560, 60), (1640, 120), (1660, HZ + 30)],
-            None, rk, [(1380, 140, 20, 14), (1500, 130, 14, 10), (1440, 220, 12, 8), (1580, 200, 16, 10)], pk))
-    a(f'<path d="M1260 {HZ + 30}L1270 260Q1460 300 1660 250L1660 {HZ + 30}Z" fill="{rk2}" opacity=".55"/>')
-    # the Valley floor
+    # the control tower at the airport's edge, rising between the cards
+    tw = "#3a2c50" if night else "#5a3a62"; tg = "#ffd27a" if night else "#9ad4e8"
+    a(f'<rect x="1384" y="150" width="34" height="{HZ - 146}" fill="{tw}"/><path d="M1366 150h70l-8 -14h-54z" fill="{tw}"/>'
+      f'<path d="M1358 136h86l-10 -44h-66z" fill="{tw}"/><path d="M1366 128h70l-7 -30h-56z" fill="{tg}" opacity="{.9 if night else .75}"/>'
+      f'<rect x="1372" y="80" width="58" height="12" fill="{tw}"/><rect x="1398" y="56" width="6" height="24" fill="{tw}"/>'
+      f'<circle cx="1401" cy="54" r="5" fill="#ff4a3a"/>' + ('<circle cx="1401" cy="54" r="18" fill="#ff4a3a" opacity=".3"/>' if night else ''))
+    # a jet on final approach over downtown, gear down, landing lights on
+    a(jet(560, 112, 1.0, "#f2eef4" if not night else "#3a3450", night))
+    # ---- the airfield
     a(f'<rect x="0" y="{HZ}" width="{W}" height="{H - HZ}" fill="url(#gnd)"/>')
-    bc = "#2a2042" if night else "#a8707a"; tree = "#1e2a24" if night else "#7a7a4e"
-    for _ in range(18):
-        x = r.randint(360, 1280); w = r.randint(18, 50); hh = r.randint(4, 10)
+    bc = "#2a2042" if night else "#a8707a"
+    for _ in range(22):
+        x = r.randint(-20, 1600); w = r.randint(18, 54); hh = r.randint(4, 10)
         a(f'<rect x="{x}" y="{HZ - hh + 8}" width="{w}" height="{hh}" fill="{bc}"/>')
-    for _ in range(18):
-        x = r.randint(360, 1280); a(f'<ellipse cx="{x}" cy="{HZ + 9}" rx="{r.randint(6, 14)}" ry="{r.randint(4, 7)}" fill="{tree}"/>')
     if night:
-        for _ in range(32):
-            x = r.randint(380, 1260); y = r.randint(HZ + 4, HZ + 24)
-            a(f'<circle cx="{x}" cy="{y}" r="{r.choice([1, 1.4, 1.8])}" fill="{r.choice(["#ffb347", "#fff2c0", "#ffd27a"])}" opacity=".85"/>')
-    # the park: the little white pyramid on its knoll, small outcrops, creosote
-    a(butte([(1080, 520), (1110, 470), (1180, 452), (1250, 470), (1290, 520)], None, rk2, [], pk))
-    a(f'<path d="M1160 458L1186 422L1212 458Z" fill="{"#f4efe6" if not night else "#8a8494"}"/><path d="M1186 422L1212 458L1196 458Z" fill="#000" opacity=".12"/>')
-    a(butte([(300, 530), (330, 480), (400, 466), (460, 490), (480, 530)], None, rk2, [(380, 496, 10, 7)], pk))
+        for _ in range(30):
+            x = r.randint(0, W); y = r.randint(HZ + 4, HZ + 20)
+            a(f'<circle cx="{x}" cy="{y}" r="{r.choice([1, 1.4])}" fill="{r.choice(["#ffb347", "#fff2c0", "#ffd27a"])}" opacity=".85"/>')
+    # the terminal along the left horizon, its jet bridges and a jet at the gate; a hangar at right
+    tm = "#2a2238" if night else "#d8c8bc"; gl = "#ffd98a" if night else "#7ab8d4"
+    a(f'<rect x="0" y="{HZ + 12}" width="420" height="52" fill="{tm}"/><path d="M-10 {HZ + 12}Q210 {HZ - 10} 430 {HZ + 12}Z" fill="{"#3a3048" if night else "#b8a8a0"}"/>'
+      f'<rect x="10" y="{HZ + 26}" width="400" height="12" fill="{gl}" opacity="{.6 if night else .7}"/>')
+    a(f'<path d="M0 {HZ + 62}L600 {HZ + 62}L560 {HZ + 150}L0 {HZ + 150}Z" fill="{"#8a7a7a" if not night else "#1c1824"}"/>')
+    for x in (60, 330):
+        a(f'<path d="M{x} {HZ + 56}l34 34h14v-10l-34 -34z" fill="{"#3a3048" if night else "#9a8a88"}"/>')
+    a(jet(200, HZ + 112, .8, "#f2eef4" if not night else "#3a3450", night, gear=True, flip=False, ground=True))
+    a(jet(470, HZ + 112, .8, "#f2eef4" if not night else "#3a3450", night, gear=True, flip=False, ground=True))
+    hg = "#2a2238" if night else "#c4a89a"
+    a(f'<path d="M1180 {HZ + 70}Q1300 {HZ + 10} 1420 {HZ + 70}Z" fill="{hg}"/><rect x="1196" y="{HZ + 50}" width="208" height="20" fill="{"#1c1626" if night else "#8a6a62"}"/>')
+    # the runway, from the horizon to the viewer: edge lines, centre dashes, edge lights, the threshold
+    rw = "#3a3440" if not night else "#16131c"; ln = "#f4f0e8" if not night else "#c8c4cc"
+    top, bot = HZ + 6, 900
+    xl0, xr0, xl1, xr1 = 740, 860, 180, 1420
+    a(f'<path d="M{xl0} {top}L{xr0} {top}L{xr1} {bot}L{xl1} {bot}Z" fill="{rw}"/>')
+    a(f'<path d="M{xl0 + 6} {top}L{xl1 + 40} {bot}M{xr0 - 6} {top}L{xr1 - 40} {bot}" stroke="{ln}" stroke-width="3" opacity=".8"/>')
+    for k in range(9):
+        t0 = (k / 9) ** 1.6; t1 = ((k + .45) / 9) ** 1.6
+        y0 = top + (bot - top) * t0; y1 = top + (bot - top) * t1
+        if 520 < y1 and y0 < 820: continue      # keep the stage under the podium clear
+        a(f'<path d="M{799 - 1 - 6 * t0:.0f} {y0:.0f}L{801 + 6 * t0:.0f} {y0:.0f}L{801 + 6 * t1:.0f} {y1:.0f}L{799 - 6 * t1:.0f} {y1:.0f}Z" fill="{ln}"/>')
+    # the touchdown zone, where the podium stands: a lit pad
+    a(f'<ellipse cx="800" cy="740" rx="380" ry="100" fill="{"#4a4450" if not night else "#221e2a"}" opacity=".55"/>')
+    if night: a('<ellipse cx="800" cy="720" rx="420" ry="140" fill="url(#glow)" opacity=".5"/>')
+    for k in range(1, 15):
+        t = (k / 14) ** 1.5; y = top + (bot - top) * t
+        xl = xl0 + (xl1 - xl0) * t - 8; xr = xr0 + (xr1 - xr0) * t + 8; rr = 1.5 + 4 * t
+        for x in (xl, xr):
+            if night: a(f'<circle cx="{x:.0f}" cy="{y:.0f}" r="{rr * 2:.1f}" fill="#ffe8a8" opacity=".3"/>')
+            a(f'<circle cx="{x:.0f}" cy="{y:.0f}" r="{rr:.1f}" fill="{"#fff2c0" if night else "#f6e8c8"}"/>')
+    # a tug and baggage carts on the apron
+    a(f'<rect x="60" y="{HZ + 132}" width="34" height="18" rx="3" fill="#d6b13a"/>'
+      + ''.join(f'<rect x="{102 + k * 36}" y="{HZ + 134}" width="30" height="16" rx="2" fill="{"#6a7a8a" if not night else "#2a3040"}"/>' for k in range(3)))
+    # the approach lights marching in from the viewer, and the windsock
+    for k in range(5 if night else 0):
+        y = 640 + k * 50; sc = 1 + k * .4
+        for x in (300 - k * 30, 1300 + k * 30):
+            if night: a(f'<circle cx="{x}" cy="{y}" r="{10 * sc:.0f}" fill="#ffd27a" opacity=".25"/>' .replace(f'r="{10 * sc:.0f}"', f'r="{6 * sc:.0f}"'))
+            a(f'<rect x="{x - 14 * sc:.0f}" y="{y}" width="{28 * sc:.0f}" height="{4 * sc:.0f}" rx="2" fill="{"#fff2c0" if night else "#7a6a62"}"/>')
+    # the desert off the runway's edges: saguaros and creosote
     sg = "#3f6e46" if not night else "#16241e"; cr = "#7a7a46" if not night else "#20281e"
-    for _ in range(18):
-        x = r.randint(0, W); y = r.randint(HZ + 40, 540)
-        if 470 < x < 1130 and y > 500: continue
-        d = (y - HZ) / 140
-        a(f'<ellipse cx="{x}" cy="{y}" rx="{5 + 6 * d:.0f}" ry="{3 + 3 * d:.0f}" fill="{cr}" opacity=".8"/>')
-    for x, base, h in [(560, HZ + 80, 50), (1010, HZ + 70, 44), (700, HZ + 60, 30)]:
-        a(saguaro(x, base, h, sg, ((.5, -1, .3), (.6, 1, .25))))
-    # the red-rock slab the podium stands on, its layers, and the trail up to it
-    sl = "#c8714a" if not night else "#3a2228"; sl2 = "#a85a38" if not night else "#2c1a20"; tr = "#e8b88a" if not night else "#3a2c34"
-    a(f'<path d="M640 870Q720 840 760 790L840 790Q880 840 960 870Z" fill="{tr}"/>')
-    a(f'<ellipse cx="800" cy="748" rx="430" ry="118" fill="{sl2}"/><ellipse cx="800" cy="734" rx="420" ry="110" fill="{sl}"/>')
-    for k, (rx, ry) in enumerate([(330, 80), (220, 52)]):
-        a(f'<ellipse cx="800" cy="{730 - k * 4}" rx="{rx}" ry="{ry}" fill="none" stroke="{sl2}" stroke-width="3" opacity=".6"/>')
-    if night: a('<ellipse cx="800" cy="700" rx="400" ry="130" fill="url(#glow)" opacity=".5"/>')
-    # the garden framing both sides
-    pvt = "#7aa04a" if not night else "#24361e"; pvc = "#9cbf5a" if not night else "#2a3e22"
-    ag = "#6f9a7a" if not night else "#1e2e28"; bd = "#a8714e" if not night else "#2a2234"; bd2 = "#c98e64" if not night else "#3a2e46"
-    a(saguaro(110, 900, 420, sg, ((.45, -1, .3), (.58, 1, .38))) + saguaro(1490, 900, 380, sg, ((.42, 1, .34), (.56, -1, .3))))
-    a(saguaro(280, 700, 160, sg, ((.5, 1, .3),)) + saguaro(1330, 690, 150, sg, ((.48, -1, .32),)))
-    a(paloverde(400, 640, 1.2, pvt, pvc, "#f2d34a" if not night else None) + paloverde(1210, 640, 1.2, pvt, pvc, "#f2d34a" if not night else None))
-    a(ocotillo(240, 820, 120, "#5a4632" if not night else "#2a2030", "#e2452b" if not night else "#7a2a20")
-      + ocotillo(1370, 820, 110, "#5a4632" if not night else "#2a2030", "#e2452b" if not night else "#7a2a20"))
-    for x, base, sc in [(420, 810, 1.4), (1180, 810, 1.4), (200, 640, 1.0), (1420, 650, 1.0)]:
-        a(agave(x, base, sc, ag))
-    for x, base, w in [(330, 860, 60), (1270, 860, 66), (470, 700, 30), (1130, 700, 32)]:
-        a(boulder(x, base, w, bd, bd2))
+    for _ in range(16):
+        x = r.choice([r.randint(20, 300), r.randint(1300, 1580)]); y = r.randint(HZ + 170, 800)
+        a(f'<ellipse cx="{x}" cy="{y}" rx="{8 + (y - HZ) / 30:.0f}" ry="{4 + (y - HZ) / 70:.0f}" fill="{cr}" opacity=".8"/>')
+    a(saguaro(1430, 780, 230, sg, ((.45, -1, .3), (.58, 1, .36))) + saguaro(1550, 640, 120, sg, ((.5, -1, .3),))
+      + saguaro(110, 800, 250, sg, ((.42, 1, .34), (.56, -1, .3))) + saguaro(1300, 600, 70, sg, ((.5, 1, .3),)))
+    a(f'<rect x="1480" y="{HZ + 110}" width="4" height="70" fill="#6a6070"/><path d="M1484 {HZ + 112}l46 6l-2 14l-44 -6z" fill="#e8662a"/><path d="M1500 {HZ + 114}l8 1l-1 14l-8 -1zM1516 {HZ + 116}l8 1l-1 14l-8 -1z" fill="#fff"/>')
     a('</svg>')
     return ''.join(o)
 
