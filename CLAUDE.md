@@ -1649,14 +1649,17 @@ card goes to the Pipeline list, row lit), with the page button and "▲
 Front" beside. The showing face sets the card's height; which rows are
 turned survives a repaint (`needsFlipped`). **And every card that opens a
 list flips to it** (Frank, 2026-10-02: "any card that drops down data"):
-after a paint, `flipLists` moves each open list (`.rdrill-list` -- the
+after a paint, `flipLists` takes each open list (`.rdrill-list` -- the
 Digest's tiles and leaderboard, the Service Center's stat cards, the
-Renewals rates and Renewal SR Work, the outcome bars) to the back of the
-nearest section or skyline card, the card's own content becomes the front,
-and the card turns over; its Close reads "▲ Front" and `unflipThen` turns
-it back before the repaint clears the list. The Digest's two loose lists
-moved inside the cards they belong to for this. A scene card shows a plain
-sheet on its back.
+Renewals rates and Renewal SR Work, the outcome bars) into a floating card
+(`.flipfloat`) laid over the page at the card that opened it, which turns
+over into it. **Only that card flips, and the back is smaller** (Frank,
+2026-10-05: "make the backside smaller so it doesnt take the whole screen
+... just the card to flip not the whole background"): at most 760px wide
+and about two-thirds of the screen tall, scrolling inside, while the
+section and its picture stay where they are. Its Close reads "▲ Front";
+Escape or a click outside it turns it back too (`unflipThen`, before the
+repaint clears the list).
 - **The Flores Post** (`site/public/post.js`) is the first of the Editions
   (Frank, 2026-10-01: "the flores post should also be one of the
   editions"; it was its own page for a day), written in rules from the day documents -- nothing typed,
