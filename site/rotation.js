@@ -10,7 +10,11 @@
    One R2 file, rotation/state.json: each rotation's order and who is next,
    and every turn ever logged. A turn is one of
      in    the walk-in / call-in went to whoever was next; the rotation moves on
-     skip  whoever was next was OUT; it moves on with nobody given
+     skip  whoever was next was OUT: their turn passes. With a client typed
+           (Frank, 2026-10-05: "yes, do it") the client goes to the next
+           person in the same click, as that person's own `in` turn -- the
+           two lines are paired and come back together. With no client it
+           just passes, for someone known to be out before anyone walks in
      busy  whoever was next was BUSY (Frank, 2026-10-02: "when they are busy,
            it should give it to the next producer, but still keep who was
            busy up next"): the client goes to the next person in line, the
@@ -150,9 +154,10 @@ function apply(state, body, me, a) {
     const client = String(body.client || "").trim().slice(0, 120);
     if (kind !== "skip" && !client) return { error: "who is the client?" };
     const date = /^\d{4}-\d{2}-\d{2}$/.test(String(body.date || "")) ? body.date : new Date(Date.now() - 7 * 3600000).toISOString().slice(0, 10);
+    const how = HOW.includes(body.how) ? body.how : "call in";
     const entry = {
-      id: crypto.randomUUID(), list: body.list, kind, producer, client,
-      how: HOW.includes(body.how) ? body.how : (kind === "skip" ? "" : "call in"),
+      id: crypto.randomUUID(), list: body.list, kind, producer, client: kind === "skip" ? "" : client,
+      how: kind === "skip" ? "" : how,
       date, notes: String(body.notes || "").trim().slice(0, 300),
       logged_by: me.name, created_at: new Date().toISOString(),
     };
@@ -164,6 +169,17 @@ function apply(state, body, me, a) {
       if (passed.length) entry.passed = passed;
     }
     state.entries.push(entry);
+    // Out with a client: the client goes to whoever is up now, on their turn.
+    if (kind === "skip" && client && list.next && list.next !== producer) {
+      const given = { ...entry, id: crypto.randomUUID(), kind: "in", producer: list.next, client, how,
+        pair: entry.id, created_at: new Date(Date.parse(entry.created_at) + 1).toISOString() };
+      delete given.passed;
+      entry.pair = given.id;
+      const passed = advance(list, given.producer);
+      if (passed.length) given.passed = passed;
+      state.entries.push(given);
+      return { entry, given };
+    }
     return { entry };
   }
   if (op === "del") {
@@ -171,7 +187,13 @@ function apply(state, body, me, a) {
     const e = state.entries.find((x) => x.id === id);
     if (!e) return { error: "entry not found", status: 404 };
     if (!a.edit && e.logged_by !== me.name) return { error: "only whoever logged it, or a manager, can remove it", status: 403 };
-    state.entries = state.entries.filter((x) => x.id !== id);
+    // An out and the client it handed on are one action: both go together,
+    // and the undo is worked from the out (the earlier of the two).
+    const pair = e.pair ? state.entries.find((x) => x.id === e.pair) : null;
+    const gone = new Set([e.id].concat(pair ? [pair.id] : []));
+    state.entries = state.entries.filter((x) => !gone.has(x.id));
+    if (pair && pair.kind === "skip") return undo(state, pair, e);
+    if (pair) return undo(state, e, pair);
     // Taking back the newest turn on a rotation gives that person the turn
     // back -- the usual reason is it was logged by mistake.
     const list = state.lists[e.list];
@@ -205,4 +227,18 @@ function apply(state, body, me, a) {
     return { ok: true };
   }
   return { error: "bad op" };
+}
+
+// Take back an out that handed its client on: the out person is up again and
+// anyone either turn passed over is owed their pass again -- if nothing newer
+// has moved the rotation since.
+function undo(state, out, given) {
+  const list = state.lists[out.list];
+  if (!list) return { ok: true };
+  const newer = state.entries.some((x) => x.list === out.list && x.kind !== "out" && x.kind !== "busy" && x.created_at > given.created_at);
+  if (!newer && list.order.includes(out.producer)) {
+    list.next = out.producer;
+    list.owed = (list.owed || []).concat([...(out.passed || []), ...(given.passed || [])].filter((p) => list.order.includes(p)));
+  }
+  return { ok: true };
 }
