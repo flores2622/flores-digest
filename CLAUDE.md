@@ -2015,7 +2015,10 @@ repaint clears the list).
   desert landscaping -- saguaros where the palms stood, palo verdes in bloom,
   ocotillo, agave, boulders, a canal with the light rail along it to its
   platform -- around the stage on a granite circle; two palms by downtown,
-  no boulevard, FIREWORKS / NEXT TRAIN / HABOOB ...). Space got
+  no boulevard; Session History is a desert drive-in, the big screen
+  replaying a call to a row of cars under a DRIVE-IN marquee -- Frank,
+  2026-10-05: "make this a drive in theatre, not a motel" -- FIREWORKS /
+  NEXT TRAIN / HABOOB ...). Space got
   a Claims banner too. No real teams, games, brands or landmarks' names.
   **A world's pictures load only for whoever picks it** (2026-10-03): each
   is `site/public/worlds/<key>.css`, added by `loadWorld` with the world's
