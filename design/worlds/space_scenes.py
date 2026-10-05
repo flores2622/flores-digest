@@ -107,18 +107,46 @@ def v_training(n):  # rover course on the moon
         o.append(f'<rect x="{x}" y="{y-40}" width="4" height="44" fill="#eee"/><path d="M{x+4} {y-40} l30 8 l-30 8 z" fill="#e2552b"/>')
     rx,ry=560,186; o.append(f'<rect x="{rx-50}" y="{ry-30}" width="100" height="26" rx="6" fill="#cfd6e2"/><circle cx="{rx-30}" cy="{ry}" r="14" fill="#2b3140"/><circle cx="{rx+30}" cy="{ry}" r="14" fill="#2b3140"/><rect x="{rx-20}" y="{ry-60}" width="40" height="30" rx="4" fill="#8ecdf2"/><line x1="{rx+40}" y1="{ry-30}" x2="{rx+60}" y2="{ry-70}" stroke="#cfd6e2" stroke-width="3"/>')
     return wrap(V,''.join(o))
-def v_map(n, athena=False):  # the flight plan
-    paper="#e9eef7" if not n else "#111a33"; ink="#17306e" if not n else "#cfe0ff"; route="#e2552b" if not athena else "#2f9e63"
-    o=[f'<rect width="1600" height="{V}" fill="{paper}"/>']
-    for x in range(0,1600,40): o.append(f'<line x1="{x}" y1="0" x2="{x}" y2="{V}" stroke="{ink}" stroke-opacity=".08"/>')
-    for y in range(0,V,40): o.append(f'<line x1="0" y1="{y}" x2="1600" y2="{y}" stroke="{ink}" stroke-opacity=".08"/>')
-    o.append(earth(200, 130, 60, n)); o.append(f'<circle cx="1400" cy="110" r="38" fill="{"#d9dde6" if not n else "#8d98b0"}"/>')
-    o.append(f'<path d="M260 110 C500 -20 700 220 950 120 S1250 40 1362 100" fill="none" stroke="{route}" stroke-width="4" stroke-dasharray="12 8"/>')
-    steps = ["Listen","Understand","Handle","Follow up"] if athena else ["Dial","Discovery","Quote","Close"]
-    for (x,y),t in zip([(380,52),(640,152),(950,120),(1240,62)], steps):
-        o.append(f'<circle cx="{x}" cy="{y}" r="11" fill="{route}" stroke="{paper}" stroke-width="3"/><text x="{x}" y="{y-20}" text-anchor="middle" font-family="Arial, sans-serif" font-weight="bold" font-size="18" fill="{ink}">{t}</text>')
-    o.append(f'<text x="800" y="226" text-anchor="middle" font-family="monospace" font-size="15" fill="{ink}" opacity=".7">FLIGHT PLAN · {"ATHENA" if athena else "APOLLO"}</text>')
-    return wrap(V,''.join(o))
+def v_map(n, athena=False):  # the flight plan, plotted across a galaxy (Frank, 2026-10-05: "make it look like one")
+    route = "#ff7a3d" if not athena else "#3fd68a"
+    deep = ("#070b22", "#141a4a", "#2a1d5c") if not n else ("#03040e", "#0a0d2a", "#1a1040")
+    r = random.Random(77 + athena)
+    o = [f'<defs><radialGradient id="mbg" cx=".55" cy=".45" r=".9"><stop offset="0" stop-color="{deep[2]}"/><stop offset=".55" stop-color="{deep[1]}"/><stop offset="1" stop-color="{deep[0]}"/></radialGradient>'
+         '<filter id="neb" x="-30%" y="-60%" width="160%" height="220%"><feGaussianBlur stdDeviation="28"/></filter>'
+         '<filter id="soft" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="3"/></filter>'
+         '<radialGradient id="core" cx=".5" cy=".5" r=".5"><stop offset="0" stop-color="#fff6dc"/><stop offset=".25" stop-color="#ffd9a0" stop-opacity=".9"/><stop offset=".6" stop-color="#b48cff" stop-opacity=".35"/><stop offset="1" stop-color="#b48cff" stop-opacity="0"/></radialGradient></defs>'
+         f'<rect width="1600" height="{V}" fill="url(#mbg)"/>']
+    # nebula clouds
+    for cx, cy, rx, ry, c, op in [(420, 60, 300, 70, "#7b3fd1", .55), (900, 190, 380, 60, "#1f8fd1", .45), (1250, 70, 260, 80, "#d13f8f", .4), (150, 200, 220, 50, "#3fd1c4", .3)]:
+        o.append(f'<ellipse cx="{cx}" cy="{cy}" rx="{rx}" ry="{ry}" fill="{c}" opacity="{op}" filter="url(#neb)"/>')
+    # the Milky Way band: a dense river of stars on a slant
+    o.append('<g fill="#fff">')
+    for _ in range(190):
+        t = r.random(); x = t * 1600; y = 210 - t * 170 + r.gauss(0, 22)
+        o.append(f'<circle cx="{x:.0f}" cy="{y:.0f}" r="{r.choice([.5, .7, .9, 1.2])}" opacity="{r.choice([.25, .4, .6, .85])}"/>')
+    o.append('</g>' + stars(70, 1600, 0, V, 41 + athena))
+    for _ in range(9):  # bright stars with a glint
+        x, y = r.randint(40, 1560), r.randint(10, V - 10)
+        o.append(f'<circle cx="{x}" cy="{y}" r="2.2" fill="#fff"/><path d="M{x - 8} {y} H{x + 8} M{x} {y - 8} V{y + 8}" stroke="#fff" stroke-opacity=".6" stroke-width="1"/>')
+    # a spiral galaxy far off
+    gx, gy = 1460, 52
+    o.append(f'<g transform="translate({gx} {gy}) rotate(-25)"><ellipse rx="70" ry="22" fill="url(#core)"/>'
+             '<path d="M-60 0 Q-30 -26 0 -6 Q30 14 60 -4 M60 0 Q30 26 0 6 Q-30 -14 -60 4" fill="none" stroke="#d9c8ff" stroke-opacity=".55" stroke-width="5" filter="url(#soft)"/>'
+             '<ellipse rx="12" ry="6" fill="#fff8e6"/></g>')
+    # home (Earth) and the destination (a ringed planet)
+    o.append(earth(140, 92, 46, n))
+    o.append('<g transform="translate(1340 128)"><circle r="40" fill="#e0a25a"/><path d="M-40 -6 A40 40 0 0 1 40 -6 L40 2 A40 40 0 0 0 -40 2 Z" fill="#c97f3a" opacity=".7"/>'
+             '<path d="M-36 12 A40 40 0 0 0 36 12" fill="none" stroke="#f3cf9a" stroke-width="5" opacity=".7"/>'
+             '<ellipse rx="70" ry="14" fill="none" stroke="#f6e2b8" stroke-width="5" opacity=".85" transform="rotate(-12)"/></g>')
+    # the route, glowing, with its four stops
+    path = "M188 104 C420 40 560 170 760 132 S1060 70 1290 118"
+    o.append(f'<path d="{path}" fill="none" stroke="{route}" stroke-width="10" stroke-opacity=".25" filter="url(#soft)"/>'
+             f'<path d="{path}" fill="none" stroke="{route}" stroke-width="3.5" stroke-dasharray="12 8"/>')
+    steps = ["Listen", "Understand", "Handle", "Follow up"] if athena else ["Dial", "Discovery", "Quote", "Close"]
+    for (x, y, dy), t in zip([(360, 82, -18), (620, 140, 34), (900, 112, -18), (1150, 96, -18)], steps):
+        o.append(f'<circle cx="{x}" cy="{y}" r="16" fill="{route}" opacity=".3"/><circle cx="{x}" cy="{y}" r="8" fill="{route}" stroke="#fff" stroke-width="2.5"/>'
+                 f'<text x="{x}" y="{y + dy}" text-anchor="middle" font-family="Arial, sans-serif" font-weight="bold" font-size="17" fill="#fff" stroke="#070b22" stroke-width="4" paint-order="stroke">{t}</text>')
+    return wrap(V, ''.join(o))
 def v_service(n):  # the station
     o=[sky(V,n,day=("#0b1a3a","#17306e","#2a4a8a"))]; o.append(stars(140,1600,0,V,8))
     o.append(earth(800, 420, 300, n))

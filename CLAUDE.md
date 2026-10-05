@@ -829,7 +829,10 @@ with their order and who is next, and every turn logged. **Personal lines**
 is every producer and Amanda, **never Mike**; **Life** is Mike, Lorena and
 Coral; **Mexico policies** is Lorena, Amanda, Crystal, Mike, Coral and
 Sarahi. A turn is `in` (given to whoever is up; the rotation moves on),
-`skip` (they were OUT; it moves on with nobody given), `busy` (Frank,
+`skip` (they were OUT; their turn passes -- and with a client typed, Frank
+2026-10-05, the client goes to the next person in the same click as that
+person's own `in` turn, the two lines `pair`ed so taking either back undoes
+both; with no client it just passes), `busy` (Frank,
 2026-10-02: "when they are busy, it should give it to the next producer,
 but still keep who was busy up next": the client goes to the next person
 who hasn't already covered, the busy person stays up, and the coverer is
@@ -1734,11 +1737,11 @@ repaint clears the list).
   prospect cards and the coaching cards.
 - **Everyone on The Flores Feed has an insurance handle** (Frank,
   2026-10-05: "give everyone a creative, insurance focused username";
-  `ED_HANDLES` in editions.js, by first name): @apollo.coaches,
-  @crystal.clear.coverage, @lorena.locks.the.rate, @mike.drop.deductible,
-  @coral.reef.coverage, @sarahi.safe.harbor, @amanda.underwrites.it,
-  @frank.full.coverage, @francisco.fine.print, @veronica.verified.value,
-  @debbie.first.line.of.defense; anyone else @<first>.always.covered. On
+  `ED_HANDLES` in editions.js, by first name; Frank picked them
+  2026-10-05): @coach.apollo, @mango.multipolicy, @lori.locks.the.rate,
+  @coral.covers.it.all, @amanda.approves, @frank.full.coverage,
+  @vero.vacation.approved, @mikes.got.you.covered, @safe.with.sarahi,
+  @dm.francisco, @debbie.on.the.line; anyone else @<first>.always.covered. On
   posts, comments, Top accounts and the reply box.
 - **The front office chimes in** (Frank, 2026-10-05: "Francisco is our
   DM, can you have him and myself chime in with funny motivational content
@@ -1921,9 +1924,12 @@ repaint clears the list).
   and `placeVista` picks the world's): Sales liftoff over the ocean; Texts &
   Emails the comms array; Coaching mission control with a replay on the big
   screen; Role Play the simulator; Session History the flight recorder;
-  Training a rover course on the moon; both Road Maps a flight plan on
-  graph paper (Apollo's Dial / Discovery / Quote / Close in launch orange,
-  Athena's Listen / Understand / Handle / Follow up in green); Service the
+  Training a rover course on the moon; both Road Maps a flight plan
+  across a galaxy (Frank, 2026-10-05: "if thats supposed to be a galaxy
+  make it look like one, not a white boxed background" -- it was graph
+  paper): nebulae, the Milky Way, a spiral galaxy, from Earth to a ringed
+  planet, Apollo's Dial / Discovery / Quote / Close in launch orange,
+  Athena's Listen / Understand / Handle / Follow up in green, titles white; Service the
   station over Earth; Renewals the orbit that comes back around;
   Commercial the moon base. **Its card strips**: sold = GO FOR LAUNCH
   (liftoff, confetti); quoted or follow-up open = holding on the pad with
@@ -1935,7 +1941,12 @@ repaint clears the list).
   **Then the rest** (Frank, 2026-10-03: "now do the rest of the themes we
   said"): **Ocean** (Merriweather / Source Sans 3; Harbor, Sea Glass, Sunset
   Pier -- the harbor at golden hour with the lighthouse, the podium on the
-  pier, FULL NET / LINE'S STILL OUT / THE ONE THAT GOT AWAY ...), **Mountain**
+  pier, FULL NET / LINE'S STILL OUT / THE ONE THAT GOT AWAY ...; every
+  boat has an insurance name on her hull -- Frank, 2026-10-05: "be more
+  creative with the hull names": PREMIUM CATCH, REEL QUOTE, SEAS THE DEAL,
+  NO LAPSE, BUNDLE UP, SHIP HAPPENS, PAID IN FULL, KNOT INSURED, NET
+  PREMIUM, THE CLOSER, HOOKED LEAD, REEL DEAL, SALE AWAY, CROSS-SELL, and
+  TEXT ME BACK under the signal flags on Texts & Emails), **Mountain**
   (Zilla Slab / Work Sans; Evergreen, Glacier, Aspen -- the peaks, the lake and
   the ranger cabin, the podium on a granite summit slab, SUMMIT / TRAIL
   CLOSED / HIBERNATING ...), **Game Day** (Oswald / Barlow; Home, Away, Night
@@ -1961,7 +1972,7 @@ repaint clears the list).
   kept clear); `check.py <key>` validates it and `preview.cjs <key>` renders
   the Digest and every banner and strip. The desert stays inline and
   hand-made. A map banner's title is white unless the world names dark ink
-  (`VMAP_INK`, Space's graph paper). The menu's layer sits over the page
+  (`VMAP_INK`; none does now that Space's map is a galaxy). The menu's layer sits over the page
   (`.tabs` z-index) -- it is sticky, and the Settings panel inside it had been
   painted under the Digest's cards at its right edge.
 - **The board is a home-screen app** (Frank, 2026-10-03: "coeus icon, build
