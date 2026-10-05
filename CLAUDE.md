@@ -57,6 +57,11 @@ Everything caches under `data/`, so a re-run resumes rather than restarting.
   several households, or none, read the candidates' own policy lists, then
   the household map. Still blank only when AgencyZoom links the policy to
   nobody we can find (Amanda's book, Crystal's 09-25 Foremost pair).
+- **Flood never goes on the Sales sheet** (Frank, 2026-10-05: "flood does not
+  go on the sales sheet, we dont pay for it"): a policy whose AgencyZoom
+  type says flood (Flood, Private Flood) is skipped by `sales_log_auto.
+  on_sheet` and `live.js sheetPolicy`. Sheet only -- Premium Sold and the
+  rest of the board are unchanged. Coral's 09-28 FLD1660232140 was removed.
 - **Apollo judges each call against its lead source** (Frank, 2026-09-24).
   `coaching_cards._ask_card` sends `lead_sources.prompt_block()`; METHODOLOGY.md's
   "Lead source" section says how to use it, and the card's `leadfit` verdict

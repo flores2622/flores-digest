@@ -798,6 +798,10 @@ function termOf(eff, exp) {
    same agent and lead source, else it stays blank -- the nightly match
    reads the customer record instead, so a name here can be the lead's
    spelling of the same person. */
+// Flood is never on the Sales sheet -- nobody is paid for it
+// (sales_log_auto.on_sheet; keep them in step).
+export function sheetPolicy(p) { return !/flood/i.test(String(p.policyTypeName || "")); }
+
 export function salesLogEntries(day, basis, policies, sourceNames, soldRaw) {
   const sl = basis.saleslog || {};
   const ids = sl.ids || {};
@@ -806,7 +810,7 @@ export function salesLogEntries(day, basis, policies, sourceNames, soldRaw) {
   for (const p of policies) {
     if (!String(p.soldDate || "").startsWith(day)) continue;
     const who = ids[String(p.agentId)];
-    if (!who || notSale.has(norm(sourceNames[p.leadSourceId]))) continue;
+    if (!who || notSale.has(norm(sourceNames[p.leadSourceId])) || !sheetPolicy(p)) continue;
     const cands = (soldRaw || []).filter(l => String(l.agentId) === String(p.agentId)
       && String(l.leadSourceId) === String(p.leadSourceId));
     // Duplicate lead records on ONE household are one customer
