@@ -382,7 +382,7 @@ def eruption(p, n):
              f'<animate attributeName="r" values="{"120;120;220;200;120;120" if n else "90;90;170;150;90;90"}" keyTimes="{kt}" {K}/></circle>')
     o.append(f'<ellipse cx="1050" cy="128" rx="38" ry="7" fill="{p["lava2"]}" opacity="0">{op("0;0;1;.5;1;0;0", "0;.08;.14;.2;.26;.5;1")}</ellipse>')
     # lava streaming down both flanks
-    o.append(f'<g fill="none" stroke="{p["lava"]}" stroke-width="7" stroke-linecap="round"{"" if n else " stroke-dasharray=\"100 100\""}>')
+    o.append(f'<g fill="none" stroke="{p["lava"]}" stroke-width="7" stroke-linecap="round"' + ('>' if n else ' stroke-dasharray="100 100">'))
     for d in ("M1034 132 Q1018 200 992 262 Q974 306 962 360", "M1068 128 Q1088 196 1110 258 Q1126 302 1140 360"):
         # at night they run all the time and swell with the burst; by day they run only with it
         o.append(f'<path d="{d}" pathLength="100" stroke-width="5" opacity=".85">{op(".85;.85;1;1;.85;.85", "0;.16;.18;.6;.8;1")}</path>' if n else
@@ -414,7 +414,7 @@ def skyline(night):
            f'<stop offset="0" stop-color="{p["water2"]}"/><stop offset="1" stop-color="{p["water"]}"/></linearGradient>'))
     a(f'<rect width="{W}" height="{HZ + 40}" fill="url(#sky)"/>')
     if n:
-        a(stars(8, 0, W, 0, 300, 3))
+        a(stars(5, 0, W, 0, 300, 3))
         a(moon(660, 96, 46))
     else:
         a(sun(660, 104, 36))
@@ -513,7 +513,7 @@ def skyline(night):
     # fireflies at night, blinking over the ferns and the bank
     if n:
         r = random.Random(8)
-        for i in range(4):
+        for i in range(3):
             x = r.choice([r.randint(40, 440), r.randint(1180, 1580)]); y = r.randint(540, 720)
             a(f'<circle cx="{x}" cy="{y}" r="7" fill="url(#ff)" opacity=".9"><animate attributeName="opacity" values=".9;.1;.9" dur="{3 + r.random() * 3:.1f}s" begin="{r.random() * 3:.1f}s" repeatCount="indefinite"/></circle>')
     # tufts in the grass, kept off the stage

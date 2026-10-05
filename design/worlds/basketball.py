@@ -467,6 +467,29 @@ def vcorners(p, n):
     return (f'<path d="M0 196 L430 196 L470 240 L0 240Z" fill="{c}"/><path d="M1600 202 L1060 202 L1030 240 L1600 240Z" fill="{c}"/>'
             f'<path d="M0 196 L430 196 L470 240 L0 240Z M1600 202 L1060 202 L1030 240 L1600 240Z" fill="#000" opacity=".35"/>')
 
+# ---- banner motion: every helper leaves the element's own attributes as its resting state
+EZ = ".45 0 .55 1"
+def _kt(n): return ";".join(f"{i / (n - 1):.3g}" for i in range(n))
+def mv(body, vals, dur, kt=None, begin=0, typ="translate"):
+    """wrap body in a group that eases through transform values (the first value should be the rest)"""
+    return (f'<g>{body}<animateTransform attributeName="transform" type="{typ}" values="{";".join(vals)}" keyTimes="{kt or _kt(len(vals))}" '
+            f'dur="{dur}s" begin="{begin}s" repeatCount="indefinite" calcMode="spline" keySplines="{";".join([EZ] * (len(vals) - 1))}"/></g>')
+def an(attr, vals, dur, kt=None, begin=0, mode="linear"):
+    return (f'<animate attributeName="{attr}" values="{";".join(vals)}" keyTimes="{kt or _kt(len(vals))}" dur="{dur}s" begin="{begin}s" '
+            f'calcMode="{mode}" repeatCount="indefinite"/>')
+def inject(el, anim):
+    """put an animation inside a single self-closing element"""
+    tag = el[1:].split(' ')[0]
+    return el[:-2] + '>' + anim + f'</{tag}>'
+def swish(svg, cx, y, s, kt, dur, begin=0):
+    """the net in a hoop() drawing, swishing at the keyTimes kt (rest, rest, swished, rest, rest)"""
+    n0 = net(cx, y, s); d0 = n0.split('d="')[1].split('"')[0]; d1 = net(cx, y, s, sw=7 * s).split('d="')[1].split('"')[0]
+    return svg.replace(n0, inject(n0, an("d", [d0, d0, d1, d0, d0], dur, kt, begin)))
+def flyer(body, path, dur, kt, kp, okt, ovals):
+    """an element drawn at the origin, at rest invisible, carried along an absolute path while it shows"""
+    return (f'<g opacity="0">{body}{an("opacity", ovals, dur, okt, mode="discrete")}'
+            f'<animateMotion path="{path}" keyPoints="{kp}" keyTimes="{kt}" calcMode="linear" dur="{dur}s" repeatCount="indefinite"/></g>')
+
 def v_sales(n):  # the slam dunk
     p = P(n); o = [arena(n, 150, board=["SLAM DUNK SAVINGS", "FULL COURT COVERAGE", "NO LAPSE LAYUPS", "NOTHING BUT NET PREMIUM"])]
     o.append(hoop(930, 92, 1.5, n, face=-1, pole_to=200))

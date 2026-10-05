@@ -151,7 +151,7 @@ def horse(x, y, s, body, mane, saddle, flip=False):
             f'<path d="M-20 -28 Q-12 -22 -10 -8" stroke="{mane}" stroke-width="5" fill="none" stroke-linecap="round"/>'
             f'<path d="M-6 -10 Q2 -15 10 -10 L8 -2 L-5 -2Z" fill="{saddle}"/><circle cx="-31" cy="-24" r="1.6" fill="#2a1a10"/></g>')
 
-def carousel(cx, base, s, p, n, anim=False):
+def carousel(cx, base, s, p, n, anim=False, flag=False):
     """the carousel, its platform's front edge on base: cone roof, scalloped crown of bulbs, horses on brass poles"""
     rx, ry = 175 * s, 30 * s
     ey = base - 180 * s               # the crown's lower edge
@@ -192,7 +192,7 @@ def carousel(cx, base, s, p, n, anim=False):
     a(f'<path d="{sc}" fill="{p["teal"]}" stroke="{p["teal2"]}" stroke-width="1"/>')
     # the finial and its pennant
     a(f'<line x1="{cx}" y1="{pk:.0f}" x2="{cx}" y2="{pk - 34 * s:.0f}" stroke="{p["gold2"]}" stroke-width="{3 * s:.1f}"/><circle cx="{cx}" cy="{pk:.0f}" r="{6 * s:.1f}" fill="{p["gold"]}"/>')
-    a(pennant(cx, pk - 34 * s, 30 * s, p["teal"]))
+    a(pennant(cx, pk - 34 * s, 30 * s, p["teal"], flag, 1.8))
     # the sign on the crown
     a(f'<rect x="{cx - 70 * s:.0f}" y="{ey - 22 * s + ry * .8:.0f}" width="{140 * s:.0f}" height="{18 * s:.0f}" rx="{8 * s:.0f}" fill="{p["red2"]}" stroke="{p["cream"]}" stroke-width="{1.5 * s:.1f}"/>'
       f'<text x="{cx}" y="{ey - 9 * s + ry * .8:.0f}" text-anchor="middle" font-family="Georgia, serif" font-weight="bold" font-size="{12 * s:.1f}" fill="{p["ink"]}" letter-spacing="{1.5 * s:.1f}">NO LAPSE LOOP</text>')
@@ -816,7 +816,7 @@ def v_renewals(n):  # the carousel: what comes back around
     p = P(n); o = [base(n)]
     o.append(far_fair(p, n, 1360, 230))
     o.append(ground(p, 198, p["dirt2"]))
-    o.append(carousel(800, 196, .6, p, n))
+    o.append(carousel(800, 196, .6, p, n, anim=True, flag=True))
     o.append(person(1060, 214, 1.15, p["purple"], "#2b3348", p["skin"], p["hair"], "point", flip=True))
     o.append(person(560, 214, 1.2, p["gold"], p["navy"], p["skin2"], "#1c120c", "stand", long_hair=True))
     o.append(corners(p, n))
@@ -828,7 +828,8 @@ def v_claims(n):  # the storm-tossed tent and the crew holding it down
     o = [base(n, sky=sky, nt=sky, star=0)]
     for x, y, w in [(300, 40, 300), (760, 30, 360), (1200, 46, 320), (520, 70, 260), (1000, 66, 300)]:
         o.append(f'<ellipse cx="{x}" cy="{y}" rx="{w / 2:.0f}" ry="26" fill="{"#5a6272" if not n else "#181c26"}"/>')
-    o.append(f'<path d="M1130 46 L1112 92 L1128 92 L1110 138" stroke="#fff6c0" stroke-width="4" fill="none" stroke-linejoin="round"/>')
+    o.append(f'<path d="M1130 46 L1112 92 L1128 92 L1110 138" stroke="#fff6c0" stroke-width="4" fill="none" stroke-linejoin="round">'
+             '<animate attributeName="opacity" values="0;0;1;.2;1;0" keyTimes="0;.7;.72;.75;.78;1" dur="6s" repeatCount="indefinite"/></path>')
     o.append(ground(p, 196, "#6a5a40" if not n else "#2a2218"))
     for x, y, w in [(620, 214, 90), (1010, 222, 70)]: o.append(f'<ellipse cx="{x}" cy="{y}" rx="{w}" ry="5" fill="#9aa8b8" opacity=".6"/>')
     # the tent leaning in the wind, a torn flap snapping
@@ -836,7 +837,8 @@ def v_claims(n):  # the storm-tossed tent and the crew holding it down
     t = "M800 66 C780 100 700 130 660 140 L668 200 L932 200 L940 140 C900 130 820 100 800 66Z"
     o.append(f'<defs><clipPath id="st"><path d="{t}"/></clipPath></defs><path d="{t}" fill="{p["cream"]}"/>')
     o.append('<g clip-path="url(#st)">' + ''.join(f'<path d="M800 66 L{650 + k * 40} 202 L{670 + k * 40} 202Z" fill="{p["red"]}"/>' for k in range(8)) + '</g>')
-    o.append(f'<path d="M932 142 L990 118 L976 148 L1002 154 L940 172Z" fill="{p["red"]}"/>')
+    o.append(f'<path d="M932 142 L990 118 L976 148 L1002 154 L940 172Z" fill="{p["red"]}"><animate attributeName="d" values="M932 142 L990 118 L976 148 L1002 154 L940 172Z;'
+             'M932 142 L982 132 L972 154 L994 168 L940 172Z;M932 142 L990 118 L976 148 L1002 154 L940 172Z" dur="1.1s" repeatCount="indefinite"/></path>')
     o.append(f'<line x1="800" y1="66" x2="800" y2="48" stroke="{p["wood2"]}" stroke-width="3"/><path d="M800 48 L770 40 L800 60Z" fill="{p["gold"]}"/></g>')
     # guy ropes out to the crew, who lean back on them
     o.append(f'<path d="M676 140 L560 186 M930 136 L1060 184 M720 116 L600 176" stroke="{p["cream2"]}" stroke-width="2.4"/>')
@@ -845,7 +847,7 @@ def v_claims(n):  # the storm-tossed tent and the crew holding it down
     o.append(person(556, 212, 1.1, yel, "#2b3348", p["skin"], yel, "pull", flip=True))
     o.append(person(596, 212, 1.1, yel, "#2b3348", p["skin2"], yel, "pull", flip=True))
     o.append(person(1064, 212, 1.15, yel, "#2b3348", p["skin"], yel, "pull"))
-    o.append(f'<path d="{rain}" stroke="#d8e2ee" stroke-width="1.6" opacity=".55"/>')
+    o.append(f'<path d="{rain}" stroke="#d8e2ee" stroke-width="1.6" opacity=".55" stroke-dasharray="16 17.1"><animate attributeName="stroke-dashoffset" values="0;-33.1" dur=".55s" repeatCount="indefinite"/></path>')
     o.append(corners(p, n))
     return vwrap(''.join(o))
 
@@ -858,12 +860,13 @@ def v_commercial(n):  # the main gate and its marquee
         o.append(f'<rect x="{tx - 32}" y="70" width="64" height="146" fill="{p["red"]}"/>')
         for k in range(5): o.append(f'<rect x="{tx - 32}" y="{80 + k * 28}" width="64" height="12" fill="{p["cream"]}"/>')
         o.append(f'<path d="M{tx - 40} 72 L{tx} 44 L{tx + 40} 72Z" fill="{p["navy"] if not n else "#2a356a"}"/><line x1="{tx}" y1="44" x2="{tx}" y2="30" stroke="{p["gold"]}" stroke-width="3"/>')
-        o.append(pennant(tx, 30, 26, p["gold"]))
-        o.append(f'<rect x="{tx - 20}" y="160" width="40" height="30" rx="4" fill="{p["win"] if n else "#f5e2b0"}" stroke="{p["gold"]}" stroke-width="3"/>')
+        o.append(pennant(tx, 30, 26, p["gold"], True, 1.5 + (tx > 800) * .3))
+        o.append(f'<rect x="{tx - 20}" y="160" width="40" height="30" rx="4" fill="{p["win"] if n else "#f5e2b0"}" stroke="{p["gold"]}" stroke-width="3">'
+                 + (f'<animate attributeName="opacity" values="1;.7;1" dur="3s" begin="{(tx > 800) * -1.5}s" repeatCount="indefinite"/>' if n else '') + '</rect>')
     # the arch and its marquee
     o.append(f'<path d="M592 96 Q800 40 1008 96 L1008 128 Q800 74 592 128Z" fill="{p["navy"] if not n else "#1c2550"}" stroke="{p["gold"]}" stroke-width="4"/>')
-    o.append(bulbs("M600 100 Q800 46 1000 100", 15, n, 4.5, wire=None))
-    o.append(bulbs("M600 124 Q800 70 1000 124", 15, n, 4.5, wire=None))
+    o.append(bulbs("M600 100 Q800 46 1000 100", 15, n, 4.5, wire=None, chase=2.1))
+    o.append(bulbs("M1000 124 Q800 70 600 124", 15, n, 4.5, wire=None, chase=2.1))
     o.append(f'<defs><path id="mq" d="M620 117 Q800 64 980 117"/></defs><text font-family="Georgia, serif" font-weight="bold" font-size="14" fill="{p["gold"]}" letter-spacing="1">'
              f'<textPath href="#mq" startOffset="50%" text-anchor="middle">BIG TOP BUSINESS COVERAGE</textPath></text>')
     o.append(f'<rect x="700" y="130" width="200" height="22" rx="4" fill="{p["red2"]}" stroke="{p["gold"]}" stroke-width="2"/>'
