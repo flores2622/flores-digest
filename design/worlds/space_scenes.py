@@ -1,5 +1,5 @@
 """Space world: the page vistas (1600x240) and the coaching cards' outcome strips (1600x160)."""
-import random, urllib.parse
+import random, math, urllib.parse
 def enc(svg): return urllib.parse.quote(svg, safe="/:=,.;- '()")
 def stars(n, w, y0, y1, seed, op=(0.3,0.5,0.8)):
     r=random.Random(seed); o=[]
@@ -48,20 +48,32 @@ def craters(n, y0, y1, seed, night):
         o.append(f'<ellipse cx="{x}" cy="{y}" rx="{rx}" ry="{rx//3}" fill="{c}"/><ellipse cx="{x}" cy="{y-2}" rx="{rx-4}" ry="{rx//3-2}" fill="{c2}" opacity=".5"/>')
     return ''.join(o)
 V=240
+# ---- banner movement: self-closing SMIL only; each element's own attributes are its resting state (the still copy)
+def _an(attr, vals, dur, begin=0, kt=None):
+    k = f' keyTimes="{kt}"' if kt else ''
+    return f'<animate attributeName="{attr}" values="{vals}"{k} dur="{dur}s" begin="{begin}s" repeatCount="indefinite"/>'
+def _tf(typ, vals, dur, begin=0, kt=None):
+    k = f' keyTimes="{kt}"' if kt else ''
+    return f'<animateTransform attributeName="transform" type="{typ}" values="{vals}"{k} dur="{dur}s" begin="{begin}s" repeatCount="indefinite"/>'
+def twinkle(n, y0, y1, seed, x0=460):  # a few stars that breathe, kept off the title at the left
+    r=random.Random(seed)
+    return ''.join(f'<circle cx="{r.randint(x0,1590)}" cy="{r.randint(y0,y1)}" r="1.7" fill="#fff" opacity=".85">{_an("opacity",".85;.15;.85",r.choice([2.5,3,3.5,4]),-r.randint(0,30)/10)}</circle>' for _ in range(n))
 def wrap(h, body): return f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 {h}" preserveAspectRatio="xMidYMid slice">{body}</svg>'
 
 # ------------------------------------------------------------- vistas
 def v_sales(n):  # liftoff over the ocean
     o=[sky(V,n)]; o.append(stars(80 if n else 20,1600,0,120,1))
     sea="#1d4f8f" if not n else "#07122a"; o.append(f'<rect x="0" y="190" width="1600" height="50" fill="{sea}"/>')
-    for x in range(0,1600,90): o.append(f'<path d="M{x} 198 q22 -8 45 0 t45 0" fill="none" stroke="#fff" stroke-opacity=".25" stroke-width="2"/>')
+    o.append('<g>'+''.join(f'<path d="M{x} 198 q22 -8 45 0 t45 0" fill="none" stroke="#fff" stroke-opacity=".25" stroke-width="2"/>' for x in range(0,1690,90))+_tf("translate","0 0;-90 0",6)+'</g>')
     o.append(f'<rect x="0" y="176" width="1600" height="16" fill="{"#5c7a63" if not n else "#101a30"}"/>')
-    o.append(f'<ellipse cx="560" cy="186" rx="260" ry="34" fill="#e9e4dc" opacity=".8"/><ellipse cx="380" cy="196" rx="160" ry="28" fill="#dcd6cc" opacity=".8"/><ellipse cx="760" cy="196" rx="170" ry="26" fill="#dcd6cc" opacity=".8"/>')
-    o.append(rocket(560, 120, 120, n, flame=True, scale=1.6))
+    for cx,cy,rx,ry,c,d in [(560,186,260,34,"e9e4dc",5),(380,196,160,28,"dcd6cc",6),(760,196,170,26,"dcd6cc",7)]:  # the smoke billows
+        o.append(f'<g transform="translate({cx} {cy})"><ellipse rx="{rx}" ry="{ry}" fill="#{c}" opacity=".8">{_an("rx",f"{rx};{rx*1.07:.0f};{rx}",d)}{_an("ry",f"{ry};{ry*1.2:.0f};{ry}",d)}</ellipse></g>')
+    o.append('<g>'+rocket(560, 120, 120, n, flame=True, scale=1.6)+'<path d="M553 126 Q560 200 567 126 Z" fill="#fff" opacity=".7">'+_an("d","M553 126 Q560 200 567 126 Z;M552 126 Q560 222 568 126 Z;M554 126 Q560 186 566 126 Z;M553 126 Q560 200 567 126 Z",2)+'</path>'+_tf("translate","0 0;0 -3;0 0",3)+'</g>')
     if n: o.append('<circle cx="560" cy="150" r="200" fill="url(#gl)"/>')
     o.append(f'<rect x="700" y="60" width="14" height="116" fill="{"#b43a2a" if not n else "#7a2222"}"/>')
     o.append(dish(1300, 150, 50, n)); o.append(dish(1440, 160, 36, n, -20))
     o.append(f'<text x="1120" y="150" font-family="monospace" font-weight="bold" font-size="30" fill="{"#17306e" if not n else "#ff8a5b"}" opacity=".9">LIFTOFF</text>')
+    if n: o.append(twinkle(6,10,110,51))
     return wrap(V,''.join(o))
 def v_messages(n):  # the comms array
     o=[sky(V,n,day=("#5a3a7a","#e07a5f","#f6c48a"))]; o.append(stars(90 if n else 10,1600,0,110,2))
@@ -69,34 +81,36 @@ def v_messages(n):  # the comms array
     for i,(x,r) in enumerate([(200,80),(520,110),(880,95),(1240,120),(1500,70)]):
         o.append(dish(x,170,r,n,-35+i*5))
         cx,cy=x+int(r*.55),170-int(r*.85)
-        for k in range(1,4): o.append(f'<path d="M{cx-14*k} {cy} A{14*k} {14*k} 0 0 1 {cx+14*k} {cy}" fill="none" stroke="#fff" stroke-opacity="{.55-.12*k}" stroke-width="2.5" transform="rotate(-30 {cx} {cy})"/>')
-    o.append('<g transform="translate(1040 50) rotate(-15)"><rect x="-10" y="-7" width="20" height="14" fill="#cfd6e4"/><rect x="-46" y="-4" width="32" height="8" fill="#3f7fe0"/><rect x="14" y="-4" width="32" height="8" fill="#3f7fe0"/></g>')
-    o.append(f'<circle cx="1040" cy="50" r="5" fill="{"#ff5a36"}"/><circle cx="1040" cy="50" r="12" fill="#ff5a36" opacity=".3"/>')
+        for k in range(1,4): o.append(f'<path d="M{cx-14*k} {cy} A{14*k} {14*k} 0 0 1 {cx+14*k} {cy}" fill="none" stroke="#fff" stroke-opacity="{.55-.12*k}" stroke-width="2.5" transform="rotate(-30 {cx} {cy})">'+(_an("stroke-opacity",f"{.55-.12*k:.2f};.75;{.55-.12*k:.2f};.05;{.55-.12*k:.2f}",3,i*.5+k*.25) if x>400 else '')+'</path>')
+    o.append('<g><g transform="translate(1040 50) rotate(-15)"><rect x="-10" y="-7" width="20" height="14" fill="#cfd6e4"/><rect x="-46" y="-4" width="32" height="8" fill="#3f7fe0"/><rect x="14" y="-4" width="32" height="8" fill="#3f7fe0"/></g>'
+             '<circle cx="1040" cy="50" r="5" fill="#ff5a36"/><circle cx="1040" cy="50" r="12" fill="#ff5a36" opacity=".3">'+_an("opacity",".3;0;.6;.3",2)+'</circle>'+_tf("translate","0 0;-40 8;0 0",12)+'</g>')
+    if n: o.append(twinkle(6,8,100,52))
     return wrap(V,''.join(o))
 def v_coaching(n):  # mission control, the debrief
     wall="#1b2236" if n else "#2c3a5a"; o=[f'<rect width="1600" height="{V}" fill="{wall}"/>']
     o.append(f'<rect x="300" y="24" width="1000" height="110" rx="6" fill="#0a1020" stroke="#4a5a80" stroke-width="3"/>')
     o.append(earth(560, 80, 42, True))
-    o.append('<path d="M600 80 Q800 10 1180 60" fill="none" stroke="#5ee07a" stroke-width="3" stroke-dasharray="10 8"/><circle cx="1180" cy="60" r="7" fill="#5ee07a"/><text x="1200" y="66" font-family="monospace" font-size="18" fill="#5ee07a">REPLAY</text>')
+    o.append('<path d="M600 80 Q800 10 1180 60" fill="none" stroke="#5ee07a" stroke-width="3" stroke-dasharray="10 8">'+_an("stroke-dashoffset","0;-36",2)+'</path><circle r="6" fill="#d8ffe0" opacity="0"><animateMotion path="M600 80 Q800 10 1180 60" dur="4s" repeatCount="indefinite"/>'+_an("opacity","0;1;1;0","4",kt="0;.1;.9;1")+'</circle><circle cx="1180" cy="60" r="7" fill="#5ee07a"/><text x="1200" y="66" font-family="monospace" font-size="18" fill="#5ee07a">REPLAY</text>')
     o.append('<text x="330" y="124" font-family="monospace" font-size="16" fill="#8fb0ff">T+00:04:12  ·  CALL 17 OF 31  ·  FLOW: FOLLOW-UP</text>')
     for i,x in enumerate(range(120,1500,170)):
-        o.append(f'<rect x="{x}" y="150" width="130" height="60" rx="4" fill="{"#2f3b5a" if not n else "#232c48"}"/><rect x="{x+10}" y="156" width="110" height="34" rx="3" fill="{["#5ee07a","#ffb347","#8fb0ff"][i%3]}" opacity=".55"/><circle cx="{x+65}" cy="226" r="10" fill="#0a1020"/>')
+        o.append(f'<rect x="{x}" y="150" width="130" height="60" rx="4" fill="{"#2f3b5a" if not n else "#232c48"}"/><rect x="{x+10}" y="156" width="110" height="34" rx="3" fill="{["#5ee07a","#ffb347","#8fb0ff"][i%3]}" opacity=".55">{_an("opacity",".55;.85;.55",3+i%3,i*.4) if x>420 else ""}</rect><circle cx="{x+65}" cy="226" r="10" fill="#0a1020"/>')
     return wrap(V,''.join(o))
 def v_roleplay(n):  # the simulator
     o=[f'<rect width="1600" height="{V}" fill="{"#283149" if not n else "#141a2c"}"/>']
     o.append('<rect x="0" y="200" width="1600" height="40" fill="#1a2238"/>')
     o.append(f'<rect x="420" y="40" width="760" height="170" rx="24" fill="{"#dfe4ee" if not n else "#8e98b0"}"/><rect x="470" y="70" width="660" height="80" rx="12" fill="#0a1020"/>')
-    o.append('<path d="M500 110 Q800 40 1100 110" fill="none" stroke="#5ee07a" stroke-width="3"/><circle cx="800" cy="75" r="8" fill="#ffb347"/>')
+    o.append('<path d="M500 110 Q800 40 1100 110" fill="none" stroke="#5ee07a" stroke-width="3">'+_an("d","M500 110 Q800 40 1100 110;M500 110 Q800 72 1100 110;M500 110 Q800 40 1100 110",4)+'</path><circle cx="800" cy="75" r="8" fill="#ffb347">'+_an("cy","75;91;75",4)+'</circle>')
     o.append('<text x="800" y="140" text-anchor="middle" font-family="monospace" font-size="20" fill="#8fb0ff">SIM · PROSPECT ON THE LINE</text>')
-    for x in [500,560,620,980,1040,1100]: o.append(f'<circle cx="{x}" cy="180" r="9" fill="{"#ff5a36" if x in (620,1100) else "#5ee07a"}"/>')
+    for x in [500,560,620,980,1040,1100]: o.append(f'<circle cx="{x}" cy="180" r="9" fill="{"#ff5a36" if x in (620,1100) else "#5ee07a"}">{_an("opacity","1;.25;1",2,x%7*.3) if x in (620,1100) else ""}</circle>')
     o.append(f'<text x="200" y="130" text-anchor="middle" font-family="Arial, sans-serif" font-weight="bold" font-size="40" fill="#ffb347" opacity=".9">SIM</text><text x="1400" y="130" text-anchor="middle" font-family="Arial, sans-serif" font-weight="bold" font-size="40" fill="#ffb347" opacity=".9">GO</text>')
-    o.append(astronaut(1300, 120, .9, n)); o.append(astronaut(300, 120, .9, n, flip=True))
+    o.append('<g>'+astronaut(1300, 120, .9, n)+_tf("translate","0 0;0 -6;0 0",4)+'</g>'); o.append(astronaut(300, 120, .9, n, flip=True))
     return wrap(V,''.join(o))
 def v_rphistory(n):  # the flight recorder
     o=[f'<rect width="1600" height="{V}" fill="{"#2a2f3c" if not n else "#12151f"}"/>']
     o.append('<rect x="200" y="30" width="1200" height="180" rx="10" fill="#f06a1a"/><rect x="230" y="60" width="1140" height="120" rx="6" fill="#1a1d26"/>')
-    for i,x in enumerate([330,1270]): o.append(f'<circle cx="{x}" cy="120" r="46" fill="#3a3f4c"/><circle cx="{x}" cy="120" r="30" fill="#0f1116"/><circle cx="{x}" cy="120" r="8" fill="#8fb0ff"/>')
+    for i,x in enumerate([330,1270]): o.append(f'<circle cx="{x}" cy="120" r="46" fill="#3a3f4c"/><circle cx="{x}" cy="120" r="30" fill="#0f1116"/><path d="M{x-26} 120 h52 M{x} 94 v52" stroke="#3a3f4c" stroke-width="5">{_tf("rotate",f"0 {x} 120;360 {x} 120",8)}</path><circle cx="{x}" cy="120" r="8" fill="#8fb0ff"/>')
     o.append('<path d="M420 120 ' + ' '.join(f'L{420+i*12} {120+(-1)**i*random.Random(i).randint(4,40)}' for i in range(1,64)) + '" fill="none" stroke="#5ee07a" stroke-width="2"/>')
+    o.append('<rect x="1176" y="70" width="3" height="100" fill="#ffb347" opacity=".9">'+_tf("translate","-640 0;0 0",8)+'</rect><circle cx="1350" cy="45" r="6" fill="#ff3b30">'+_an("opacity","1;.15;1",2)+'</circle>')
     o.append('<text x="800" y="200" text-anchor="middle" font-family="monospace" font-size="16" fill="#fff" opacity=".9">FLIGHT RECORDER · EVERY SESSION, EVERY WORD</text>')
     return wrap(V,''.join(o))
 def v_training(n):  # rover course on the moon
@@ -104,8 +118,11 @@ def v_training(n):  # rover course on the moon
     o.append(earth(1380, 60, 46, n)); o.append(ground(V,130,n,"#9aa3b5" if not n else "#1c2240")); o.append(craters(10,140,230,7,n))
     o.append('<path d="M60 230 Q300 150 520 190 T980 160 T1540 200" fill="none" stroke="#fff" stroke-opacity=".5" stroke-width="3" stroke-dasharray="14 10"/>')
     for x,y in [(300,152),(760,172),(1240,170)]:
-        o.append(f'<rect x="{x}" y="{y-40}" width="4" height="44" fill="#eee"/><path d="M{x+4} {y-40} l30 8 l-30 8 z" fill="#e2552b"/>')
+        o.append(f'<rect x="{x}" y="{y-40}" width="4" height="44" fill="#eee"/><path d="M{x+4} {y-40} l30 8 l-30 8 z" fill="#e2552b">{_an("d",f"M{x+4} {y-40} l30 8 l-30 8 z;M{x+4} {y-40} l27 11 l-27 5 z;M{x+4} {y-40} l30 8 l-30 8 z",2,x%5*.3) if x>420 else ""}</path>')
     rx,ry=560,186; o.append(f'<rect x="{rx-50}" y="{ry-30}" width="100" height="26" rx="6" fill="#cfd6e2"/><circle cx="{rx-30}" cy="{ry}" r="14" fill="#2b3140"/><circle cx="{rx+30}" cy="{ry}" r="14" fill="#2b3140"/><rect x="{rx-20}" y="{ry-60}" width="40" height="30" rx="4" fill="#8ecdf2"/><line x1="{rx+40}" y1="{ry-30}" x2="{rx+60}" y2="{ry-70}" stroke="#cfd6e2" stroke-width="3"/>')
+    o[-1] = '<g>'+o[-1]+_tf("translate","0 0;360 -14",12)+_an("opacity","0;1;1;0",12,kt="0;.06;.92;1")+'</g>'
+    o.insert(-3, o.pop())  # the rover drives behind the flags
+    if n: o.append(twinkle(6,8,100,54))
     return wrap(V,''.join(o))
 def v_map(n, athena=False):  # the flight plan, plotted across a galaxy (Frank, 2026-10-05: "make it look like one")
     route = "#ff7a3d" if not athena else "#3fd68a"
@@ -141,27 +158,34 @@ def v_map(n, athena=False):  # the flight plan, plotted across a galaxy (Frank, 
     # the route, glowing, with its four stops
     path = "M188 104 C420 40 560 170 760 132 S1060 70 1290 118"
     o.append(f'<path d="{path}" fill="none" stroke="{route}" stroke-width="10" stroke-opacity=".25" filter="url(#soft)"/>'
-             f'<path d="{path}" fill="none" stroke="{route}" stroke-width="3.5" stroke-dasharray="12 8"/>')
+             f'<path d="{path}" fill="none" stroke="{route}" stroke-width="3.5" stroke-dasharray="12 8">{_an("stroke-dashoffset","0;-40",3)}</path>'
+             f'<circle r="6" fill="#fff" stroke="{route}" stroke-width="3" opacity="0"><animateMotion path="{path}" dur="10s" repeatCount="indefinite"/>{_an("opacity","0;1;1;0",10,kt="0;.05;.95;1")}</circle>')
     steps = ["Listen", "Understand", "Handle", "Follow up"] if athena else ["Dial", "Discovery", "Quote", "Close"]
     for (x, y, dy), t in zip([(360, 82, -18), (620, 140, 34), (900, 112, -18), (1150, 96, -18)], steps):
-        o.append(f'<circle cx="{x}" cy="{y}" r="16" fill="{route}" opacity=".3"/><circle cx="{x}" cy="{y}" r="8" fill="{route}" stroke="#fff" stroke-width="2.5"/>'
+        o.append(f'<circle cx="{x}" cy="{y}" r="16" fill="{route}" opacity=".3">{_an("r","12;22;12",3,x/400)}</circle><circle cx="{x}" cy="{y}" r="8" fill="{route}" stroke="#fff" stroke-width="2.5"/>'
                  f'<text x="{x}" y="{y + dy}" text-anchor="middle" font-family="Arial, sans-serif" font-weight="bold" font-size="17" fill="#fff" stroke="#070b22" stroke-width="4" paint-order="stroke">{t}</text>')
     return wrap(V, ''.join(o))
 def v_service(n):  # the station
     o=[sky(V,n,day=("#0b1a3a","#17306e","#2a4a8a"))]; o.append(stars(140,1600,0,V,8))
     o.append(earth(800, 420, 300, n))
     sx,sy=800,100; pan="#2a4fb0" if not n else "#1b3a8a"
-    o.append(f'<rect x="{sx-240}" y="{sy-4}" width="480" height="8" fill="#8d98b0"/>')
+    o.append('<g>'); o.append(f'<rect x="{sx-240}" y="{sy-4}" width="480" height="8" fill="#8d98b0"/>')
     for x in [sx-230, sx-120, sx+40, sx+150]: o.append(f'<rect x="{x}" y="{sy-40}" width="80" height="80" fill="{pan}" stroke="#9cc0ff" stroke-width="2"/><line x1="{x}" y1="{sy}" x2="{x+80}" y2="{sy}" stroke="#9cc0ff" stroke-width="1.5"/>')
     o.append(f'<rect x="{sx-60}" y="{sy-18}" width="120" height="36" rx="18" fill="#e4e8f0"/><rect x="{sx-20}" y="{sy+18}" width="40" height="30" rx="8" fill="#cfd6e2"/><circle cx="{sx}" cy="{sy}" r="7" fill="#8ecdf2"/>')
+    o.append(f'<circle cx="{sx+244}" cy="{sy}" r="5" fill="#ff5a36"><animate attributeName="opacity" values="1;.1;1" dur="2s" repeatCount="indefinite"/></circle><circle cx="{sx-244}" cy="{sy}" r="5" fill="#5ee07a">{_an("opacity","1;.1;1",2,1)}</circle>'+_tf("translate","0 0;0 -6;0 0",8)+'</g>')
+    o.append(twinkle(8,10,200,55))
     o.append(f'<text x="{sx}" y="226" text-anchor="middle" font-family="monospace" font-size="16" fill="#fff" opacity=".85">POLICY STATION · KEEPING THE BOOK</text>')
     return wrap(V,''.join(o))
 def v_renewals(n):  # the orbit: what came back
     o=[sky(V,n,day=("#101c44","#2a3f80","#5d79b8"))]; o.append(stars(140,1600,0,V,9))
     o.append(earth(800, 130, 70, n))
     for rx,ry,rot in [(300,90,-15),(420,120,10)]: o.append(f'<ellipse cx="800" cy="130" rx="{rx}" ry="{ry}" fill="none" stroke="#9cc0ff" stroke-opacity=".6" stroke-width="2" stroke-dasharray="10 8" transform="rotate({rot} 800 130)"/>')
-    for x,y in [(520,96),(1110,180),(1180,70)]: o.append(f'<g transform="translate({x} {y})"><rect x="-8" y="-6" width="16" height="12" fill="#cfd6e4"/><rect x="-32" y="-3" width="22" height="6" fill="#3f7fe0"/><rect x="10" y="-3" width="22" height="6" fill="#3f7fe0"/></g>')
-    o.append('<path d="M1200 40 l-20 40 l-16 -30 z" fill="#5ee07a"/><text x="1240" y="60" font-family="monospace" font-size="16" fill="#5ee07a">RETURNED</text>')
+    sat='<rect x="-8" y="-6" width="16" height="12" fill="#cfd6e4"/><rect x="-32" y="-3" width="22" height="6" fill="#3f7fe0"/><rect x="10" y="-3" width="22" height="6" fill="#3f7fe0"/>'
+    for rx,ry,rot,a0,a1,d in [(300,90,-15,-70,165,10),(420,120,10,-5,85,8)]:  # only the arc that is in frame, clear of the caption and the title
+        p=lambda a:(rx*math.cos(math.radians(a)),-ry*math.sin(math.radians(a))); (x0,y0),(x1,y1)=p(a0),p(a1)
+        o.append(f'<g transform="rotate({rot} 800 130)"><g transform="translate({800+x0:.1f} {130+y0:.1f})">{sat}<animateMotion path="M0 0 a{rx} {ry} 0 {int(a1-a0>180)} 0 {x1-x0:.1f} {y1-y0:.1f}" dur="{d}s" repeatCount="indefinite"/>{_an("opacity","0;1;1;0",d,kt="0;.1;.9;1")}</g></g>')
+    for x,y in [(1180,70)]: o.append(f'<g transform="translate({x} {y})"><rect x="-8" y="-6" width="16" height="12" fill="#cfd6e4"/><rect x="-32" y="-3" width="22" height="6" fill="#3f7fe0"/><rect x="10" y="-3" width="22" height="6" fill="#3f7fe0"/></g>')
+    o.append('<g><path d="M1200 40 l-20 40 l-16 -30 z" fill="#5ee07a"/><text x="1240" y="60" font-family="monospace" font-size="16" fill="#5ee07a">RETURNED</text>'+_an("opacity","1;.45;1",3)+'</g>')
     o.append(f'<text x="800" y="226" text-anchor="middle" font-family="monospace" font-size="15" fill="#fff" opacity=".8">EVERY ORBIT COMES BACK AROUND</text>')
     return wrap(V,''.join(o))
 def v_commercial(n):  # the moon base
@@ -169,10 +193,11 @@ def v_commercial(n):  # the moon base
     o.append(earth(260, 60, 44, n)); o.append(ground(V,150,n,"#aab3c4" if not n else "#1c2240")); o.append(craters(8,160,230,12,n))
     dome="#dfe5ee" if not n else "#8d98b0"; win="#ffd27a"
     for x,r in [(700,70),(860,50),(1000,60),(560,40)]:
-        o.append(f'<path d="M{x-r} 160 A{r} {r} 0 0 1 {x+r} 160 Z" fill="{dome}"/><path d="M{x-r*.5} 150 A{r*.5} {r*.5} 0 0 1 {x+r*.5} 150" fill="none" stroke="{win}" stroke-width="4" opacity=".9"/>')
+        o.append(f'<path d="M{x-r} 160 A{r} {r} 0 0 1 {x+r} 160 Z" fill="{dome}"/><path d="M{x-r*.5} 150 A{r*.5} {r*.5} 0 0 1 {x+r*.5} 150" fill="none" stroke="{win}" stroke-width="4" opacity=".9">{_an("opacity",".9;.4;.9",3+r%4,x%9*.3)}</path>')
     o.append('<rect x="600" y="140" width="400" height="12" fill="#8d98b0"/>')
-    o.append(f'<rect x="1300" y="60" width="6" height="100" fill="#8d98b0"/><path d="M1306 60 l70 14 l-70 14 z" fill="#8f5be8"/>')
-    o.append(astronaut(1180, 110, .8, n))
+    o.append(f'<rect x="1300" y="60" width="6" height="100" fill="#8d98b0"/><path d="M1306 60 l70 14 l-70 14 z" fill="#8f5be8">{_an("d","M1306 60 l70 14 l-70 14 z;M1306 60 l64 19 l-64 9 z;M1306 60 l70 14 l-70 14 z",2.5)}</path>')
+    o.append('<g>'+astronaut(1180, 110, .8, n)+_tf("translate","0 0;0 0;0 -14;0 0",3,kt="0;.4;.7;1")+'</g>')
+    if n: o.append(twinkle(6,8,100,56))
     o.append(f'<text x="800" y="210" text-anchor="middle" font-family="monospace" font-size="16" fill="#fff" opacity=".85">MOON BASE · CERBERUS</text>')
     return wrap(V,''.join(o))
 VISTA_FNS = {"sales":v_sales,"messages":v_messages,"coaching":v_coaching,"roleplay":v_roleplay,"rphistory":v_rphistory,"training":v_training,

@@ -266,6 +266,13 @@ def drift(dx, dy, dur, delay=0):
             f'dur="{dur}s" begin="{delay}s" repeatCount="indefinite" calcMode="spline" keySplines=".45 0 .55 1;.45 0 .55 1"/>')
 def pulse(vals, dur, delay=0):
     return f'<animate attributeName="opacity" values="{vals}" dur="{dur}s" begin="{delay}s" repeatCount="indefinite"/>'
+def mv(body, *anims):
+    """a group that carries the given animations (the banners' movement, 2026-10-05)"""
+    return '<g>' + ''.join(anims) + body + '</g>'
+def hop(dy, dur, delay=0):
+    """a quick up-and-back with a long rest, for a bird on a wire or a bump in the road"""
+    return (f'<animateTransform attributeName="transform" type="translate" values="0 0;0 0;0 {dy};0 0;0 0" keyTimes="0;.55;.62;.7;1" '
+            f'dur="{dur}s" begin="{delay}s" repeatCount="indefinite"/>')
 
 # ================================================================= the Digest picture
 W, H, SPLIT = 1600, 1700, 377
@@ -453,10 +460,13 @@ def v_sales(n):  # harvest crews and trucks rolling out of the fields
     o.append(rows(0, 154, 1600, 240, 11, [p["green"], p["red"], p["green2"]], 7, "16 5"))
     o.append(f'<rect x="0" y="176" width="1600" height="16" fill="{p["road"]}"/>')
     for x in (470, 780):
-        o.append(''.join(f'<circle cx="{x - 70 - k * 30}" cy="{180 - k * 6}" r="{12 + k * 5}" fill="{p["sand"]}" opacity="{.6 - k * .14:.2f}"/>' for k in range(4)))
-    o.append(truck(560, 190, .9, "#c8442a", p["wood"], (p["green"], "#8fc45a"), p, night=n))
-    o.append(truck(870, 190, .9, "#2f7a8a", p["wood"], (p["red"], p["green"]), p, night=n))
-    for x, f in ((1010, False), (1060, True), (1130, False)): o.append(person(x, 216, .75, "#e2a33a" if x % 2 else "#4a8ac0", p, bend=True, flip=f))
+        o.append(mv(''.join(f'<circle cx="{x - 70 - k * 30}" cy="{180 - k * 6}" r="{12 + k * 5}" fill="{p["sand"]}" opacity="{.6 - k * .14:.2f}"/>' for k in range(4)),
+                    drift(-16, -5, 2.6, x / 700), pulse("1;.45;1", 2.6, x / 700)))
+    # the trucks rumble on the field road, the crews cut and stand
+    o.append(mv(truck(560, 190, .9, "#c8442a", p["wood"], (p["green"], "#8fc45a"), p, night=n), drift(0, -1.5, 1.3)))
+    o.append(mv(truck(870, 190, .9, "#2f7a8a", p["wood"], (p["red"], p["green"]), p, night=n), drift(0, -1.5, 1.1, .4)))
+    for i, (x, f) in enumerate(((1010, False), (1060, True), (1130, False))):
+        o.append(mv(person(x, 216, .75, "#e2a33a" if x % 2 else "#4a8ac0", p, bend=True, flip=f), sway(x, 216, 4, 3.2 + i * .5, i * .7)))
     o.append(sign(1200, 98, 230, 30, "NO LAPSE LETTUCE CO.", 15, p["wood"], p["ink"], p["wood2"], 46))
     if not n: o.append(bird(300, 60, 1, "#6a4a40") + bird(326, 50, .8, "#6a4a40"))
     o.append(corners(p["soil2"]))
@@ -470,10 +480,13 @@ def v_messages(n):  # the old railroad depot and its telegraph wires
     st = "#e8d6b4" if not n else "#4a4048"; tile = "#b5523a" if not n else "#4a2420"
     o.append(f'<rect x="560" y="110" width="480" height="86" fill="{st}"/>')
     o.append(f'<path d="M540 116 L600 92 L1000 92 L1060 116Z" fill="{tile}"/>')
-    o.append(f'<path d="M700 112 L700 74 Q740 74 750 56 Q800 34 850 56 Q860 74 900 74 L900 112Z" fill="{st}"/><circle cx="800" cy="76" r="12" fill="{p["ink"] if n else "#fff"}" stroke="{p["wood2"]}" stroke-width="3"/><path d="M800 76V68M800 76h6" stroke="{p["wood2"]}" stroke-width="2"/>')
+    o.append(f'<path d="M700 112 L700 74 Q740 74 750 56 Q800 34 850 56 Q860 74 900 74 L900 112Z" fill="{st}"/><circle cx="800" cy="76" r="12" fill="{p["ink"] if n else "#fff"}" stroke="{p["wood2"]}" stroke-width="3"/>'
+             f'<path d="M800 76h6" stroke="{p["wood2"]}" stroke-width="2"/><g><path d="M800 76V67" stroke="{p["wood2"]}" stroke-width="2"/>'
+             '<animateTransform attributeName="transform" type="rotate" values="0 800 76;360 800 76" dur="12s" repeatCount="indefinite"/></g>')
     for x in (590, 660, 730, 850, 920, 990):
         if n: o.append(f'<circle cx="{x + 13}" cy="150" r="30" fill="url(#glow)"/>')
-        o.append(f'<path d="M{x} 182V146A13 13 0 0 1 {x + 26} 146V182Z" fill="{"#ffd27a" if n else "#5a4a40"}"/>')
+        w = f'<path d="M{x} 182V146A13 13 0 0 1 {x + 26} 146V182Z" fill="{"#ffd27a" if n else "#5a4a40"}"/>'
+        o.append(mv(w, pulse("1;.6;1;.85;1", 3 + x % 7 * .4, x % 5 * .5)) if n else w)
     o.append(f'<rect x="770" y="140" width="60" height="56" fill="{p["wood2"]}"/><rect x="700" y="118" width="200" height="18" fill="{p["wood2"]}"/>'
              f'<text x="800" y="132" text-anchor="middle" font-family="Georgia, serif" font-weight="bold" font-size="13" fill="{p["ink"]}" letter-spacing="3">TELEGRAPH</text>')
     o.append(f'<rect x="0" y="196" width="1600" height="10" fill="{p["stone2"]}"/><path d="M0 214H1600M0 224H1600" stroke="{p["steel2"]}" stroke-width="3"/>')
@@ -486,15 +499,19 @@ def v_messages(n):  # the old railroad depot and its telegraph wires
             wires.append(f'M{a + dx} {y}Q{(a + b) / 2:.0f} {y + 26} {b + dx} {y}')
     o.append(f'<path d="{"".join(wires)}" stroke="{"#3a2a2a" if not n else "#8a90a8"}" stroke-width="1.6" fill="none"/>')
     bc = "#3a2a2a" if not n else "#c8cce0"
-    for x, y in ((420, 66), (444, 70), (470, 72), (1120, 72), (1146, 70), (1360, 62), (1390, 60)):
-        o.append(f'<ellipse cx="{x}" cy="{y - 5}" rx="6" ry="5" fill="{bc}"/><circle cx="{x + 5}" cy="{y - 10}" r="3.5" fill="{bc}"/><path d="M{x - 6} {y - 4}l-7 4" stroke="{bc}" stroke-width="3"/>')
+    for i, (x, y) in enumerate(((420, 66), (444, 70), (470, 72), (1120, 72), (1146, 70), (1360, 62), (1390, 60))):
+        b = f'<ellipse cx="{x}" cy="{y - 5}" rx="6" ry="5" fill="{bc}"/><circle cx="{x + 5}" cy="{y - 10}" r="3.5" fill="{bc}"/><path d="M{x - 6} {y - 4}l-7 4" stroke="{bc}" stroke-width="3"/>'
+        o.append(mv(b, hop(-7, 3.4 + i * .6, i * .9)) if x > 1000 else b)   # the birds on the right hop on the wire
+    # a message running down the wire: a pulse of light from pole to pole
+    o.append(f'<circle cx="1296" cy="50" r="4" fill="#ffe7a0" opacity="0"><animate attributeName="opacity" values="0;1;1;0;0" keyTimes="0;.05;.4;.45;1" dur="4s" repeatCount="indefinite"/>'
+             '<animateMotion path="M0 0Q109 26 270 0" dur="4s" keyPoints="0;0;1;1" keyTimes="0;.05;.45;1" calcMode="linear" repeatCount="indefinite"/></circle>')
     o.append(corners(p["soil2"]))
     return vwrap(''.join(o))
 
 def v_coaching(n):  # the old cellblock, retold as a lessons yard: doors open, flowers, string lights
     p = P(n); o = [vbase(n, GOLD)]
     o.append(orb(n, 1360, 54, 24))
-    o.append(tower(1250, 150, 26, p, n, 54, 40))
+    o.append(tower(1250, 150, 26, p, n, 54, 40, move=True))
     o.append(f'<rect x="0" y="190" width="1600" height="50" fill="{p["yard2"]}"/><rect x="0" y="194" width="1600" height="46" fill="{p["yard"]}"/>')
     o.append(f'<rect x="360" y="88" width="880" height="108" fill="{p["adobe"]}"/><rect x="360" y="160" width="880" height="36" fill="{p["stone"]}"/><rect x="350" y="80" width="900" height="12" fill="{p["adobe2"]}"/>')
     o.append('<path d="' + ''.join(f'M{x} {166 + (x // 20) % 2 * 12}h14' for x in range(372, 1230, 30)) + f'" stroke="{p["stone2"]}" stroke-width="4" stroke-linecap="round"/>')
@@ -507,10 +524,12 @@ def v_coaching(n):  # the old cellblock, retold as a lessons yard: doors open, f
     o.append(f'<rect x="690" y="100" width="220" height="30" rx="4" fill="{p["wood"]}" stroke="{p["wood2"]}" stroke-width="3"/>'
              f'<text x="800" y="121" text-anchor="middle" font-family="Georgia, serif" font-weight="bold" font-size="17" fill="{p["ink"]}" letter-spacing="3">LESSONS YARD</text>')
     o.append(f'<rect x="770" y="136" width="60" height="60" fill="{p["wood2"]}"/><path d="M776 142h48v54h-48Z" fill="#ffd98a" opacity=".85"/>')
-    lights = ''.join(f'<circle cx="{x}" cy="{70 + 10 * math.sin((x - 360) / 900 * math.pi * 3) ** 2:.0f}" r="4" fill="{"#ffe7a0" if n else "#f6d27a"}"/>' for x in range(370, 1240, 40))
+    lights = ''.join(mv(''.join(f'<circle cx="{x}" cy="{70 + 10 * math.sin((x - 360) / 900 * math.pi * 3) ** 2:.0f}" r="4" fill="{"#ffe7a0" if n else "#f6d27a"}"/>' for x in range(370 + k * 40, 1240, 120)),
+                        pulse("1;.35;1", 2.4, k * .8)) for k in range(3))
     o.append(f'<path d="M360 70 Q510 90 650 70 Q800 90 950 70 Q1100 90 1240 70" fill="none" stroke="{p["iron"]}" stroke-width="1.5"/>{lights}')
-    for x in (400, 1180, 690, 910):
-        o.append(f'<path d="M{x - 14} 196L{x - 10} 176H{x + 10}L{x + 14} 196Z" fill="#b5523a"/><circle cx="{x - 8}" cy="168" r="10" fill="#d94a8a"/><circle cx="{x + 8}" cy="166" r="9" fill="#e86aa6"/><circle cx="{x}" cy="158" r="8" fill="#3f7a2a"/>')
+    for i, x in enumerate((400, 1180, 690, 910)):
+        fl = f'<circle cx="{x - 8}" cy="168" r="10" fill="#d94a8a"/><circle cx="{x + 8}" cy="166" r="9" fill="#e86aa6"/><circle cx="{x}" cy="158" r="8" fill="#3f7a2a"/>'
+        o.append(f'<path d="M{x - 14} 196L{x - 10} 176H{x + 10}L{x + 14} 196Z" fill="#b5523a"/>' + (mv(fl, sway(x, 176, 5, 3.6 + i * .4, i * .6)) if x > 420 else fl))
     o.append(f'<rect x="560" y="200" width="100" height="8" fill="{p["wood"]}"/><rect x="566" y="208" width="6" height="12" fill="{p["wood2"]}"/><rect x="648" y="208" width="6" height="12" fill="{p["wood2"]}"/>')
     o.append(corners(p["soil2"]))
     return vwrap(''.join(o))
@@ -521,18 +540,20 @@ def v_roleplay(n):  # a rehearsal on a stage by the river
     o.append(jagged(-10, 1610, 120, 60, 110, p["mtn"], 23, (30, 70)))
     o.append(f'<rect x="0" y="116" width="1600" height="14" fill="{p["green2"]}"/>')
     o.append(f'<rect x="0" y="128" width="1600" height="56" fill="{p["river"]}"/>')
-    o.append('<path d="' + ''.join(f'M{x} {y}h40' for x, y in ((120, 146), (300, 160), (1100, 150), (1300, 168), (1450, 140), (500, 172))) + f'" stroke="#fff" stroke-opacity=".4" stroke-width="2.5" stroke-linecap="round"/>')
+    o.append(mv('<path d="' + ''.join(f'M{x} {y}h40' for x, y in ((120, 146), (300, 160), (1100, 150), (1300, 168), (1450, 140), (500, 172))) + f'" stroke="#fff" stroke-opacity=".4" stroke-width="2.5" stroke-linecap="round"/>', drift(16, 0, 6)))
     o.append(f'<rect x="0" y="180" width="1600" height="60" fill="{p["sand"]}"/>')
-    o.append(cottonwood(300, 190, 1.0, p["green"], p["leaf"], p["trunk"]) + cottonwood(1340, 190, 1.0, p["green"], p["leaf"], p["trunk"]) + tamarisk(160, 192, .9, p["tam"], p["tam2"]) + tamarisk(1480, 192, .9, p["tam"], p["tam2"]))
+    o.append(cottonwood(300, 190, 1.0, p["green"], p["leaf"], p["trunk"]) + mv(cottonwood(1340, 190, 1.0, p["green"], p["leaf"], p["trunk"]), sway(1340, 190, 1.2, 7)) + tamarisk(160, 192, .9, p["tam"], p["tam2"]) + tamarisk(1480, 192, .9, p["tam"], p["tam2"]))
     o.append(f'<rect x="560" y="168" width="480" height="28" fill="{p["wood"]}"/><path d="M560 168H1040" stroke="{p["wood2"]}" stroke-width="4"/>')
     o.append('<path d="' + ''.join(f'M{x} 172v24' for x in range(600, 1040, 40)) + f'" stroke="{p["wood2"]}" stroke-width="2" opacity=".6"/>')
     rc = "#b5323a" if not n else "#6a1a22"
     o.append(f'<rect x="560" y="48" width="14" height="122" fill="{p["wood2"]}"/><rect x="1026" y="48" width="14" height="122" fill="{p["wood2"]}"/><rect x="550" y="40" width="500" height="16" fill="{p["wood2"]}"/>')
     o.append(f'<path d="M574 56 Q600 120 590 168 L574 168Z M1026 56 Q1000 120 1010 168 L1026 168Z" fill="{rc}"/><path d="M574 56 Q640 74 700 56 Q760 74 800 56 Q840 74 900 56 Q960 74 1026 56Z" fill="{rc}"/>')
     if n: o.append('<path d="M640 56 L600 170 L760 170Z M960 56 L840 170 L1000 170Z" fill="#fff4c0" opacity=".14"/>')
-    o.append(''.join(f'<circle cx="{x}" cy="170" r="3.5" fill="#ffe7a0"/>' for x in range(600, 1020, 46)))
-    o.append(person(730, 168, .95, "#3a8ac0", p, arm=8) + person(870, 168, .95, "#e2a33a", p, flip=True, hat="#8a5a34", arm=4))
-    o.append('<path d="M760 92 q8 -16 28 -16 h12 q18 0 18 14 q0 12 -18 12 h-24 l-12 8z" fill="#fff" opacity=".9"/>')
+    o.append(mv(''.join(f'<circle cx="{x}" cy="170" r="3.5" fill="#ffe7a0"/>' for x in range(600, 1020, 46)), pulse("1;.55;1", 3)) if n else
+             ''.join(f'<circle cx="{x}" cy="170" r="3.5" fill="#ffe7a0"/>' for x in range(600, 1020, 46)))
+    o.append(mv(person(730, 168, .95, "#3a8ac0", p, arm=8), sway(730, 168, 3, 2.8)) + mv(person(870, 168, .95, "#e2a33a", p, flip=True, hat="#8a5a34", arm=4), sway(870, 168, 3, 3.4, 1.4)))
+    o.append(mv('<path d="M760 92 q8 -16 28 -16 h12 q18 0 18 14 q0 12 -18 12 h-24 l-12 8z" fill="#fff" opacity=".9"/>',
+                '<animate attributeName="opacity" values="1;1;0;0;1" keyTimes="0;.55;.65;.9;1" dur="5s" repeatCount="indefinite"/>'))
     o.append(corners(p["sand2"]))
     return vwrap(''.join(o))
 
@@ -548,15 +569,20 @@ def v_rphistory(n):  # the old main street theatre's marquee, lit
     th = "#c8a46a" if not n else "#4a3a2a"
     o.append(f'<rect x="600" y="40" width="400" height="160" fill="{th}"/><rect x="594" y="32" width="412" height="12" fill="{p["adobe2"]}"/>')
     o.append(f'<path d="M760 30 L840 30 L840 110 L800 124 L760 110Z" fill="#b5323a" stroke="#ffe7a0" stroke-width="3"/>')
-    for i, ch in enumerate("STAR"): o.append(f'<text x="800" y="{52 + i * 17}" text-anchor="middle" font-family="Arial, sans-serif" font-weight="bold" font-size="16" fill="#ffe7a0">{ch}</text>')
+    for i, ch in enumerate("STAR"): o.append(mv(f'<text x="800" y="{52 + i * 17}" text-anchor="middle" font-family="Arial, sans-serif" font-weight="bold" font-size="16" fill="#ffe7a0">{ch}</text>',
+                                                '<animate attributeName="opacity" values="1;.3;1;1" keyTimes="0;.1;.2;1" dur="3.2s" begin="' + f'{i * .3:.1f}' + 's" repeatCount="indefinite"/>'))
     o.append(f'<path d="M570 118 L1030 118 L1010 168 L590 168Z" fill="#2a2030"/>')
     if n: o.append('<ellipse cx="800" cy="150" rx="300" ry="70" fill="url(#glow)"/>')
-    o.append(''.join(f'<circle cx="{x}" cy="122" r="3" fill="#ffe7a0"/><circle cx="{x}" cy="164" r="3" fill="#ffe7a0"/>' for x in range(590, 1020, 22)))
+    o.append(''.join(mv(''.join(f'<circle cx="{x}" cy="122" r="3" fill="#ffe7a0"/><circle cx="{x}" cy="164" r="3" fill="#ffe7a0"/>' for x in range(590 + k * 22, 1020, 66)),
+                        '<animate attributeName="opacity" values="1;.25;.25;1" keyTimes="0;.33;.67;1" dur="1.8s" begin="' + f'{k * .6:.1f}' + 's" repeatCount="indefinite"/>') for k in range(3)))
     o.append(f'<rect x="604" y="128" width="392" height="30" fill="#fbf2d8"/>'
              f'<text x="800" y="150" text-anchor="middle" font-family="Arial, sans-serif" font-weight="bold" font-size="19" fill="#2a2030" letter-spacing="2">NOW SHOWING: YOUR BEST CALLS</text>')
     o.append(f'<rect x="760" y="172" width="80" height="28" fill="#5a1a22"/><rect x="772" y="178" width="56" height="16" fill="#ffd98a" opacity=".8"/>')
     o.append(f'<rect x="0" y="198" width="1600" height="42" fill="{p["stone2"]}"/><rect x="0" y="198" width="1600" height="5" fill="{p["stone"]}"/>')
-    for x in (180, 1180, 1390): o.append(f'<rect x="{x}" y="150" width="5" height="50" fill="{p["iron"]}"/><circle cx="{x + 2}" cy="148" r="7" fill="{"#ffe7a0" if n else "#e8dcb0"}"/>' + (f'<circle cx="{x + 2}" cy="148" r="34" fill="url(#glow)"/>' if n else ''))
+    for x in (180, 1180, 1390): o.append(f'<rect x="{x}" y="150" width="5" height="50" fill="{p["iron"]}"/><circle cx="{x + 2}" cy="148" r="7" fill="{"#ffe7a0" if n else "#e8dcb0"}"/>'
+                                         + (mv(f'<circle cx="{x + 2}" cy="148" r="34" fill="url(#glow)"/>', pulse("1;.6;1", 2.8 + x % 3 * .5)) if n and x > 420 else f'<circle cx="{x + 2}" cy="148" r="34" fill="url(#glow)"/>' if n else ''))
+    # the box-office window's light flickers on and off as tickets go out
+    o.append(mv('<rect x="772" y="178" width="56" height="16" fill="#fff4c0" opacity="0"/>', '<animate attributeName="opacity" values="0;0;.6;0;0" keyTimes="0;.4;.48;.56;1" dur="4.5s" repeatCount="indefinite"/>'))
     return vwrap(''.join(o))
 
 def v_training(n):  # jets in formation over the flight line
@@ -564,16 +590,21 @@ def v_training(n):  # jets in formation over the flight line
     o.append(orb(n, 1420, 50, 22))
     o.append(jagged(-10, 1610, 150, 90, 140, p["mtn"], 24, (30, 70)))
     ct = "#c8d4f0" if n else "#fff"
+    fm = []
     for dx, dy in ((0, 0), (70, -26), (70, 26), (140, 0)):
         x, y = 640 + dx, 82 + dy
-        o.append(contrail(x + 44, y, 1300 + dx, y - 12, 1.5, 7, .3 if n else .75, ct))
-        o.append(jet(x, y, .75, "#3a4250" if not n else "#6a7490", night=n))
+        fm.append(contrail(x + 44, y, 1300 + dx, y - 12, 1.5, 7, .3 if n else .75, ct))
+        fm.append(jet(x, y, .75, "#3a4250" if not n else "#6a7490", night=n))
+    o.append(mv(''.join(fm), drift(-30, -6, 8)))
     o.append(f'<rect x="0" y="146" width="1600" height="94" fill="{p["sand2"]}"/><rect x="0" y="180" width="1600" height="60" fill="{p["stone2"]}"/>')
     hg = "#c8c0b0" if not n else "#3a3a46"
     for x in (120, 420, 1000, 1300):
         o.append(f'<path d="M{x} 182V140Q{x + 120} 104 {x + 240} 140V182Z" fill="{hg}"/><rect x="{x + 40}" y="146" width="160" height="36" fill="{"#7a7a86" if not n else "#ffd27a"}" opacity="{1 if not n else .55}"/>')
     o.append(f'<rect x="800" y="96" width="24" height="86" fill="{hg}"/><path d="M786 96 L838 96 L830 74 L794 74Z" fill="{"#6fa6c4" if not n else "#ffd27a"}"/><rect x="784" y="68" width="56" height="6" fill="{hg}"/>')
-    for x in range(560, 1060, 120): o.append(jet(x, 194, .5, "#7a828e" if not n else "#2a3040", flip=True))
+    o.append(mv('<circle cx="812" cy="62" r="4" fill="#ff4a3a"/><circle cx="812" cy="62" r="10" fill="#ff4a3a" opacity=".3"/>', pulse("1;1;.1;.1;1", 2)))
+    for x in range(560, 1060, 120):
+        j = jet(x, 194, .5, "#7a828e" if not n else "#2a3040", flip=True)
+        o.append(mv(j, drift(70, 0, 10)) if x == 1040 else j)   # the last one taxis out and back
     o.append('<path d="M0 214H1600" stroke="#fff" stroke-opacity=".5" stroke-width="3" stroke-dasharray="40 30"/>')
     return vwrap(''.join(o))
 
@@ -591,16 +622,21 @@ def v_map(n, athena=False):  # the irrigation map: fields, canals, four stops
             if r.random() < .5: o.append(f'<path d="M{x + 8} {y + 14}H{x + w - 8}M{x + 8} {y + 24}H{x + w - 8}M{x + 8} {y + 34}H{x + w - 8}M{x + 8} {y + 44}H{x + w - 8}" stroke="{ink}" stroke-opacity=".18" stroke-width="2"/>')
             x += w
     o.append(f'<path d="M0 26 Q400 6 800 22 T1600 14 L1600 0 L0 0Z" fill="{"#7ac0c8" if not n else "#1c4458"}"/>')
+    o.append(mv('<path d="M560 10h50M820 14h40M1080 8h60M1360 10h44" stroke="#fff" stroke-opacity=".5" stroke-width="2" stroke-linecap="round"/>', drift(40, 0, 7)))
     pts = [(480, 150), (720, 76), (980, 146), (1240, 70)]
     d = f'M300 26 C320 90 400 150 {pts[0][0]} {pts[0][1]} S640 70 {pts[1][0]} {pts[1][1]} S900 150 {pts[2][0]} {pts[2][1]} S1160 66 {pts[3][0]} {pts[3][1]} S1360 120 1420 200'
     o.append(f'<path d="{d}" fill="none" stroke="{paper}" stroke-width="16" stroke-linecap="round"/><path d="{d}" fill="none" stroke="{route}" stroke-width="9" stroke-linecap="round"/>')
-    o.append(f'<path d="{d}" fill="none" stroke="#fff" stroke-opacity=".6" stroke-width="2" stroke-dasharray="6 12"/>')
+    o.append(f'<path d="{d}" fill="none" stroke="#fff" stroke-opacity=".6" stroke-width="2" stroke-dasharray="6 12"><animate attributeName="stroke-dashoffset" values="0;-36" dur="2s" repeatCount="indefinite"/></path>')
+    for i, (x, y) in enumerate(pts):
+        o.append(f'<circle cx="{x}" cy="{y}" r="16" fill="none" stroke="{route}" stroke-width="3" opacity="0">'
+                 f'<animate attributeName="r" values="16;34;34" keyTimes="0;.25;1" dur="6s" begin="{i * 1.5}s" repeatCount="indefinite"/>'
+                 f'<animate attributeName="opacity" values=".8;0;0" keyTimes="0;.25;1" dur="6s" begin="{i * 1.5}s" repeatCount="indefinite"/></circle>')
     steps = ["Listen", "Understand", "Handle", "Follow up"] if athena else ["Dial", "Discovery", "Quote", "Close"]
     for i, ((x, y), t) in enumerate(zip(pts, steps)):
         ty = y - 24 if i % 2 == 0 else y + 42
         o.append(f'<rect x="{x - 14}" y="{y - 14}" width="28" height="28" rx="4" fill="{ink}" stroke="{paper}" stroke-width="4"/><text x="{x}" y="{y + 6}" text-anchor="middle" font-family="Arial, sans-serif" font-weight="bold" font-size="15" fill="{paper}">{i + 1}</text>')
         o.append(f'<text x="{x}" y="{ty}" text-anchor="middle" font-family="Georgia, serif" font-weight="bold" font-size="23" fill="{ink}" stroke="{paper}" stroke-width="6" paint-order="stroke">{t}</text>')
-    o.append(f'<g transform="translate(1500 90)"><circle r="30" fill="{paper}" stroke="{ink}" stroke-width="2"/><path d="M0 -26 L7 0 L0 26 L-7 0Z" fill="{ink}"/><path d="M0 -26 L7 0 L-7 0Z" fill="{route}"/>'
+    o.append(f'<g transform="translate(1500 90)"><circle r="30" fill="{paper}" stroke="{ink}" stroke-width="2"/><g>{sway(0, 0, 7, 5)}<path d="M0 -26 L7 0 L0 26 L-7 0Z" fill="{ink}"/><path d="M0 -26 L7 0 L-7 0Z" fill="{route}"/></g>'
              f'<text y="-34" text-anchor="middle" font-family="Georgia, serif" font-weight="bold" font-size="13" fill="{ink}" stroke="{paper}" stroke-width="4" paint-order="stroke">N</text></g>')
     o.append(f'<rect x="0" y="0" width="1600" height="{V}" fill="none" stroke="{ink}" stroke-width="8" opacity=".35"/>')
     o.append(corners("#2a2014" if not n else "#05080c", .45))
@@ -676,13 +712,15 @@ def v_renewals(n):  # the date grove at harvest
     o.append(orb(n, 1380, 50, 24))
     o.append(f'<rect x="0" y="150" width="1600" height="90" fill="{p["sand2"]}"/>')
     for x in range(-20, 1640, 125): o.append(palm(x, 160, 70, .55, p, dates=False))
-    for x in range(20, 1640, 150):
+    for i, x in enumerate(range(20, 1640, 150)):
         if 640 < x < 960: continue
-        o.append(palm(x, 214, 130, 1.0, p))
+        o.append(mv(palm(x, 214, 130, 1.0, p), sway(x, 214, 1, 5.5 + i % 3, i * .7)) if x > 420 else palm(x, 214, 130, 1.0, p))
     lc = "#c8a46a" if not n else "#5a4a3a"
     o.append(palm(800, 218, 150, 1.15, p))
     o.append(f'<path d="M730 218 L776 92 M760 218 L800 92" stroke="{lc}" stroke-width="5"/>' + '<path d="' + ''.join(f'M{730 + k * 5.5:.0f} {218 - k * 15}h{30}' for k in range(1, 8)) + f'" stroke="{lc}" stroke-width="4"/>')
-    o.append(person(784, 124, .8, "#c8442a", p, arm=14))
+    o.append(mv(person(784, 124, .8, "#c8442a", p, arm=14), sway(784, 124, 4, 3)))
+    bc = "#6a4a40" if not n else "#c8cce0"
+    o.append(mv(bird(1080, 62, 1, bc) + bird(1110, 50, .8, bc) + bird(1136, 68, .7, bc), drift(60, -8, 10)))
     o.append(crates(880, 216, 4, 2, 26, "#d9822b", "#c76a22") + crates(980, 216, 2, 1, 26, "#d9822b", "#b85a1a"))
     o.append(person(600, 216, .85, "#2f7a8a", p, flip=True) + crates(520, 216, 2, 1, 26, "#d9822b", "#c76a22"))
     o.append(corners(p["soil2"]))
@@ -696,17 +734,21 @@ def v_claims(n):  # after the monsoon: a flooded field, the clouds breaking, the
         o.append(sun(1400, 36, 18, rays=False))
     else: o.append(moon(1400, 46, 18))
     cc = "#6a7486" if not n else "#262e46"
-    for x, y, w in ((120, 30, 360), (480, 20, 320), (800, 36, 260)):
-        o.append(f'<ellipse cx="{x}" cy="{y}" rx="{w // 2}" ry="30" fill="{cc}"/><ellipse cx="{x + 50}" cy="{y - 16}" rx="{w // 3}" ry="26" fill="{cc}"/>')
-    o.append('<path d="' + ''.join(f'M{x} {60 + (x % 3) * 6}l-10 34' for x in range(60, 900, 34)) + f'" stroke="{"#9aaabc" if not n else "#3a4660"}" stroke-width="2" opacity=".6"/>')
+    o.append(mv(''.join(f'<ellipse cx="{x}" cy="{y}" rx="{w // 2}" ry="30" fill="{cc}"/><ellipse cx="{x + 50}" cy="{y - 16}" rx="{w // 3}" ry="26" fill="{cc}"/>' for x, y, w in ((120, 30, 360), (480, 20, 320), (800, 36, 260))), drift(36, 0, 12)))
+    rc = "#9aaabc" if not n else "#3a4660"
+    o.append('<path d="' + ''.join(f'M{x} {60 + (x % 3) * 6}l-10 34' for x in range(60, 470, 34)) + f'" stroke="{rc}" stroke-width="2" opacity=".6"/>')
+    for k in range(2):   # two sheets of rain, half a beat apart, each falling and fading
+        o.append(f'<path d="' + ''.join(f'M{x} {60 + (x % 3) * 6}l-10 34' for x in range(468 + k * 34, 900, 68)) + f'" stroke="{"#9aaabc" if not n else "#3a4660"}" stroke-width="2" opacity=".6">'
+                 f'<animateTransform attributeName="transform" type="translate" values="0 0;-8 28" dur="1.6s" begin="{k * .8}s" repeatCount="indefinite"/>'
+                 f'<animate attributeName="opacity" values="0;.6;0" dur="1.6s" begin="{k * .8}s" repeatCount="indefinite"/></path>')
     o.append(jagged(-10, 1610, 150, 100, 140, p["mtn"], 26, (30, 70)))
     o.append(f'<rect x="0" y="146" width="1600" height="94" fill="{p["soil2"]}"/>')
     o.append(rows(0, 150, 1600, 240, 12, [p["green"], p["soil"]], 6, "18 6"))
     wc = "#a8c8d8" if not n else "#2a405a"
     for x, y, w in ((300, 196, 220), (760, 174, 300), (1240, 206, 260), (540, 222, 160), (1000, 214, 180)):
-        o.append(f'<ellipse cx="{x}" cy="{y}" rx="{w // 2}" ry="{w // 14}" fill="{wc}" opacity=".9"/><path d="M{x - w // 4} {y - 2}h{w // 6}" stroke="#fff" stroke-opacity=".6" stroke-width="2"/>')
+        o.append(f'<ellipse cx="{x}" cy="{y}" rx="{w // 2}" ry="{w // 14}" fill="{wc}" opacity=".9"/>' + mv(f'<path d="M{x - w // 4} {y - 2}h{w // 6}" stroke="#fff" stroke-opacity=".6" stroke-width="2"/>', drift(w // 5, 0, 4 + x % 3)))
     o.append(truck(540, 178, .8, "#e8e0d0" if not n else "#5a5a64", "#8a8a90", ("#5a5a64", "#5a5a64"), p, night=n, crates_=False))
-    o.append(person(820, 202, .85, "#f2b230", p, hat="#f2b230", arm=-6) + f'<path d="M840 170 L866 206" stroke="{p["wood"]}" stroke-width="4"/><path d="M860 200l14 10l-6 6l-14 -10z" fill="#8a8a90"/>')
+    o.append(mv(person(820, 202, .85, "#f2b230", p, hat="#f2b230", arm=-6) + f'<path d="M840 170 L866 206" stroke="{p["wood"]}" stroke-width="4"/><path d="M860 200l14 10l-6 6l-14 -10z" fill="#8a8a90"/>', sway(820, 202, 4, 2.6)))
     o.append(person(930, 204, .85, "#f2b230", p, flip=True, hat="#f2b230", arm=10))
     o.append(corners(p["soil2"]))
     return vwrap(''.join(o))
@@ -723,14 +765,16 @@ def v_commercial(n):  # the produce packing sheds and loading docks
     o.append(f'<rect x="290" y="160" width="1020" height="24" fill="{p["stone2"]}"/>')
     for i, x in enumerate(range(330, 1280, 120)):
         o.append(f'<rect x="{x}" y="100" width="84" height="60" fill="{"#ffd98a" if n else "#5a5a64"}" opacity="{.75 if n else 1}"/>')
-        if i % 3 != 1: o.append(f'<rect x="{x}" y="100" width="84" height="{30 + (i * 13) % 26}" fill="{"#b8b0a0" if not n else "#2e2e38"}"/>' + '<path d="' + ''.join(f'M{x} {104 + k * 8}h84' for k in range(3)) + '" stroke="#000" stroke-opacity=".15" stroke-width="2"/>')
-        if n and i % 3 == 1: o.append(f'<circle cx="{x + 42}" cy="140" r="54" fill="url(#glow)"/>')
+        dh = 30 + (i * 13) % 26
+        rl = f'<animate attributeName="height" values="{dh};56;56;{dh};{dh}" keyTimes="0;.2;.5;.7;1" dur="9s" repeatCount="indefinite"/>' if i == 3 else ''
+        if i % 3 != 1: o.append(f'<rect x="{x}" y="100" width="84" height="{dh}" fill="{"#b8b0a0" if not n else "#2e2e38"}">{rl}</rect>' + '<path d="' + ''.join(f'M{x} {104 + k * 8}h84' for k in range(3)) + '" stroke="#000" stroke-opacity=".15" stroke-width="2"/>')
+        if n and i % 3 == 1: o.append(mv(f'<circle cx="{x + 42}" cy="140" r="54" fill="url(#glow)"/>', pulse("1;.65;1", 3 + i * .3)))
     for x in (450, 1050):
         o.append(f'<rect x="{x - 64}" y="128" width="128" height="62" fill="{"#f2efe6" if not n else "#4a4a54"}"/><rect x="{x - 64}" y="186" width="128" height="8" fill="#3a3440"/><circle cx="{x - 40}" cy="198" r="10" fill="#2a2530"/><circle cx="{x + 40}" cy="198" r="10" fill="#2a2530"/>'
                  f'<path d="M{x - 64} 140h128" stroke="#2f7a8a" stroke-width="6"/>')
-    o.append(f'<g transform="translate(780 196)"><rect x="-30" y="-36" width="44" height="28" rx="3" fill="#f2b230"/><path d="M14 -60V-8M20 -60V-8" stroke="#3a3440" stroke-width="4"/><path d="M14 -14h30" stroke="#3a3440" stroke-width="4"/>'
-             f'<circle cx="-18" cy="-6" r="8" fill="#2a2530"/><circle cx="6" cy="-6" r="8" fill="#2a2530"/></g>' + crates(828, 184, 3, 2, 18, p["green"], "#8fc45a"))
-    for x in (100, 1500): o.append(palm(x, 190, 140, 1.0, p))
+    o.append(f'<g>{drift(-90, 0, 9)}<g transform="translate(780 196)"><rect x="-30" y="-36" width="44" height="28" rx="3" fill="#f2b230"/><path d="M14 -60V-8M20 -60V-8" stroke="#3a3440" stroke-width="4"/><path d="M14 -14h30" stroke="#3a3440" stroke-width="4"/>'
+             f'<circle cx="-18" cy="-6" r="8" fill="#2a2530"/><circle cx="6" cy="-6" r="8" fill="#2a2530"/></g></g>' + crates(828, 184, 3, 2, 18, p["green"], "#8fc45a"))
+    o.append(palm(100, 190, 140, 1.0, p) + mv(palm(1500, 190, 140, 1.0, p), sway(1500, 190, 1.2, 6)))
     o.append(corners(p["soil2"]))
     return vwrap(''.join(o))
 

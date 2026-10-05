@@ -475,13 +475,8 @@ def skyline(night):
       f'<animateMotion path="M1068 506 Q1010 494 950 507 Q890 496 830 507 Q770 495 710 507 Q650 497 590 507 L540 508" '
       f'keyPoints="0;1;1" keyTimes="0;.56;1" calcMode="linear" dur="14s" repeatCount="indefinite"/>'
       f'<g>{tw}<animateTransform attributeName="transform" type="rotate" values="0;-720" dur="7.8s" repeatCount="indefinite"/></g></g>')
-    # dust blowing down the far street and across the near corners
-    dc = "#f2d2a2" if not n else "#7a5a62"
-    a(dust(1000, 520, 70, -260, 9, 0, dc, .45))
-    a(dust(760, 528, 60, -220, 9, 4.5, dc, .4))
-    a(dust(1500, 700, 90, -250, 8, 1.5, dc, .4))
-    a(dust(1560, 790, 110, -290, 10, 6, dc, .38))
-    a(dust(380, 820, 90, -320, 9, 3, dc, .38))
+    # (the dust wisps blowing down the street came out: they read as spotlights sweeping the street -- Frank,
+    # 2026-10-05: "there are still random spotlights moving around in the desert world")
     # ---- the near left: hitching rail and the horse in front of the saloon
     hz = 24.5
     r0, r1 = pr(-15.0, 1.0, hz - 1.6), pr(-15.0, 1.0, hz + 2.0)

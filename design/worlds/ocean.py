@@ -214,6 +214,17 @@ def in_podium(el):
     m = re.search(r'd="M(\d+) (\d+)', el)
     return bool(m) and 420 < int(m.group(1)) < 1150 and 525 < int(m.group(2)) < 815
 
+def tw(attr, vals, dur, delay=0):
+    """an attribute pulsing through its values and back to the first (banners)"""
+    v = vals + vals[:1]; t = ";".join(N(i / (len(v) - 1)) for i in range(len(v)))
+    return f'<animate attributeName="{attr}" values="{";".join(map(str, v))}" keyTimes="{t}" dur="{dur}s" begin="{delay}s" repeatCount="indefinite"/>'
+def flow(period, dur):
+    """dashes running along their line, seamless when period is the dash pattern's length"""
+    return f'<animate attributeName="stroke-dashoffset" values="0;{-period}" keyTimes="0;1" dur="{dur}s" repeatCount="indefinite"/>'
+def twinkle(pts):
+    """a few night stars that brighten and dim"""
+    return ''.join(f'<circle cx="{x}" cy="{y}" r="1.6" fill="#fff" opacity=".4">{tw("opacity", [.4, 1, .2], 2 + i * .7, i * .4)}</circle>' for i, (x, y) in enumerate(pts))
+
 # ------------------------------------------------------------------ the Digest picture
 W, H, SPLIT = 1600, 1700, 377
 
@@ -388,13 +399,14 @@ def v_sales(n):  # the fleet coming in with full nets
     if n: o.append(stars(70, 0, 1600, 0, 120, 1) + '<circle cx="1260" cy="66" r="26" fill="#f1eedf"/><circle cx="1260" cy="66" r="80" fill="url(#gl)" opacity=".5"/>')
     else: o.append('<circle cx="1260" cy="118" r="110" fill="url(#gl)"/><circle cx="1260" cy="118" r="34" fill="#fff1c4"/>')
     for i in range(8):
-        w = 30 + i * 14; o.append(f'<rect x="{1260 - w // 2}" y="{156 + i * 9}" width="{w}" height="3" fill="{"#ffe1a0" if not n else "#e6ecfb"}" opacity="{.7 - i * .07:.2f}"/>')
-    o.append(waves(30, 0, 1600, 160, 230, 2, "#fff", .25))
-    for (x, wy, s, hc), nm in zip([(560, 196, .85, "#c8283a"), (800, 210, 1.05, "#1f3d66"), (1030, 190, .8, "#2a8a86")], ["NET PREMIUM", "THE CLOSER", "HOOKED LEAD"]):
-        o.append(f'<path d="M{x + 80 * s:.0f} {wy} L{x + 190 * s:.0f} {wy - 8} M{x + 80 * s:.0f} {wy + 3} L{x + 180 * s:.0f} {wy + 18}" stroke="#fff" stroke-opacity=".5" stroke-width="2.5" fill="none"/>')
-        o.append(trawler(x, wy, s, hc if not n else "#16243c", n, flip=True, net=True, name=nm))
-    for x, y, s in [(470, 60, .9), (520, 40, .7), (700, 70, 1), (760, 50, .7), (930, 80, .8), (980, 58, .6)]:
-        o.append(gull(x, y, s, "#fff" if n else "#3a3346", 2.5))
+        w = 30 + i * 14; o.append(f'<rect x="{1260 - w // 2}" y="{156 + i * 9}" width="{w}" height="3" fill="{"#ffe1a0" if not n else "#e6ecfb"}" opacity="{.7 - i * .07:.2f}">{tw("opacity", [.7 - i * .07, .2], 2.4 + i * .3, i * .2)}</rect>')
+    if n: o.append(twinkle([(520, 30), (880, 64), (1100, 22), (1480, 90)]))
+    o.append('<g>' + waves(30, 0, 1600, 160, 230, 2, "#fff", .25) + drift(16, 0, 6) + '</g>')
+    for i, ((x, wy, s, hc), nm) in enumerate(zip([(560, 196, .85, "#c8283a"), (800, 210, 1.05, "#1f3d66"), (1030, 190, .8, "#2a8a86")], ["NET PREMIUM", "THE CLOSER", "HOOKED LEAD"])):
+        o.append(f'<g><path d="M{x + 80 * s:.0f} {wy} L{x + 190 * s:.0f} {wy - 8} M{x + 80 * s:.0f} {wy + 3} L{x + 180 * s:.0f} {wy + 18}" stroke="#fff" stroke-opacity=".5" stroke-width="2.5" fill="none"/>')
+        o.append(trawler(x, wy, s, hc if not n else "#16243c", n, flip=True, net=True, name=nm, haul=9 if i == 1 else 0) + rock(x, wy, 1.4, 4 + i, i * .7) + '</g>')
+    for i, (x, y, s) in enumerate([(470, 60, .9), (520, 40, .7), (700, 70, 1), (760, 50, .7), (930, 80, .8), (980, 58, .6)]):
+        o.append('<g>' + gull(x, y, s, "#fff" if n else "#3a3346", 2.5) + drift(40 - i * 4, -8 + i * 3, 7 + i % 3, i * .5) + '</g>')
     return wrap(V, ''.join(o))
 
 def v_messages(n):  # signal flags on a mast, and the lighthouse beam
@@ -404,12 +416,15 @@ def v_messages(n):  # signal flags on a mast, and the lighthouse beam
     # lighthouse on its rock, beam sweeping left over the flags
     o.append(f'<path d="M1120 160 Q1160 128 1230 130 Q1300 124 1340 160 Z" fill="{"#5a4a52" if not n else "#151b2c"}"/>')
     lh, (lx, ly) = lighthouse(1230, 136, 52, 46, 28, n)
-    o.append(f'<path d="M{lx} {ly - 3} L560 0 L560 70 L{lx} {ly + 3} Z" fill="url(#bm)"/>')
+    if n: o.append(twinkle([(520, 120), (980, 30), (1440, 70), (1080, 110)]))
+    o.append('<g>' + waves(10, 600, 1600, 200, 232, 41, "#fff", .3) + drift(-18, 0, 5) + '</g>')
+    o.append(f'<g><path d="M{lx} {ly - 3} L560 0 L560 70 L{lx} {ly + 3} Z" fill="url(#bm)">{tw("opacity", [1, .55], 3)}</path>{rock(lx, ly, 3, 6)}</g>')
     o.append(lh)
     # the mast with flags dressed overall
     ink = "#2f3440" if not n else "#cfd8ee"
     hullc = "#1f3d66" if not n else "#16243c"; deck = "#f2ede2" if not n else "#9aa0ae"; win = "#7fb5d6" if not n else "#ffd56b"
     # a proper boat under the flags: hull with a white stripe and her name, a deck house with portholes
+    o.append('<g>')
     o.append(f'<path d="M660 184 L940 184 Q930 206 900 214 L700 214 Q672 206 660 184 Z" fill="{hullc}"/>'
              f'<path d="M662 188 L938 188 L934 194 L666 194 Z" fill="#fff" opacity=".55"/>'
              f'<text x="800" y="208" text-anchor="middle" font-family="Georgia, serif" font-style="italic" font-weight="bold" font-size="12" fill="#fff">TEXT ME BACK</text>'
@@ -425,6 +440,7 @@ def v_messages(n):  # signal flags on a mast, and the lighthouse beam
             if k % 2: o.append(f'<rect x="{fx - 7:.0f}" y="{fy:.0f}" width="14" height="12" fill="{c}" stroke="#2f3440" stroke-width=".8"/>')
             else: o.append(f'<path d="M{fx - 7:.0f} {fy:.0f} L{fx + 7:.0f} {fy:.0f} L{fx:.0f} {fy + 15:.0f} Z" fill="{c}" stroke="#2f3440" stroke-width=".8"/>')
     o.append(f'<rect x="784" y="66" width="32" height="22" fill="#f2c14e" stroke="#2f3440"/><rect x="784" y="66" width="16" height="11" fill="#2f6fa8"/><rect x="800" y="77" width="16" height="11" fill="#2f6fa8"/>')
+    o.append(rock(800, 214, 1.2, 5) + '</g>')
     return wrap(V, ''.join(o))
 
 def v_coaching(n):  # the chart room
@@ -447,20 +463,21 @@ def v_coaching(n):  # the chart room
         ang = k * math.pi / 4
         o.append(f'<line x1="360" y1="74" x2="{360 + 64 * math.cos(ang):.0f}" y2="{74 + 64 * math.sin(ang):.0f}" stroke="{wc}" stroke-width="6" stroke-linecap="round"/>')
     # hanging lamp
-    o.append('<line x1="800" y1="0" x2="800" y2="34" stroke="#3a2a1a" stroke-width="3"/>'
-             '<circle cx="800" cy="62" r="120" fill="url(#gl)"/>'
-             '<path d="M782 34 L818 34 L824 74 L776 74 Z" fill="#fff1c4" stroke="#b08a3a" stroke-width="4"/><rect x="772" y="72" width="56" height="8" rx="2" fill="#b08a3a"/><path d="M786 34 Q800 22 814 34 Z" fill="#b08a3a"/>')
+    o.append('<g><line x1="800" y1="0" x2="800" y2="34" stroke="#3a2a1a" stroke-width="3"/>'
+             f'<circle cx="800" cy="62" r="120" fill="url(#gl)">{tw("opacity", [1, .75], 2.6)}</circle>'
+             '<path d="M782 34 L818 34 L824 74 L776 74 Z" fill="#fff1c4" stroke="#b08a3a" stroke-width="4"/><rect x="772" y="72" width="56" height="8" rx="2" fill="#b08a3a"/><path d="M786 34 Q800 22 814 34 Z" fill="#b08a3a"/>'
+             + rock(800, 0, 3, 5) + '</g>')
     # the chart table
     o.append(f'<rect y="148" width="1600" height="92" fill="{"#3a2416" if not n else "#1a0f0a"}"/><rect y="148" width="1600" height="6" fill="{"#4d321f" if not n else "#24160e"}"/>')
     paper = "#f1e6c8" if not n else "#c9bc98"
     o.append(f'<path d="M520 136 L990 136 L1014 214 L496 214 Z" fill="{paper}"/>'
              f'<path d="M540 160 Q600 150 640 172 Q690 190 700 214 L500 214 Z" fill="#cfd9b0" opacity=".8"/>'
-             f'<path d="M600 196 Q760 140 900 176 T980 160" fill="none" stroke="#c8283a" stroke-width="3" stroke-dasharray="8 6"/>'
+             f'<path d="M600 196 Q760 140 900 176 T980 160" fill="none" stroke="#c8283a" stroke-width="3" stroke-dasharray="8 6">{flow(14, 2.5)}</path>'
              f'<circle cx="930" cy="190" r="16" fill="none" stroke="#2f6fa8" stroke-width="2"/><line x1="914" y1="190" x2="946" y2="190" stroke="#2f6fa8"/><line x1="930" y1="174" x2="930" y2="206" stroke="#2f6fa8"/>')
     for t, x, y in [("12", 760, 200), ("8", 840, 196), ("15", 880, 204), ("6", 700, 182)]:
         o.append(f'<text x="{x}" y="{y}" font-family="Georgia, serif" font-size="12" fill="#5a4a30">{t}</text>')
     # brass dividers and a sextant
-    o.append('<path d="M820 140 L790 200 M820 140 L860 196" stroke="#b08a3a" stroke-width="4" stroke-linecap="round"/><circle cx="820" cy="140" r="5" fill="#b08a3a"/>')
+    o.append('<g><path d="M820 140 L790 200 M820 140 L860 196" stroke="#b08a3a" stroke-width="4" stroke-linecap="round"/><circle cx="820" cy="140" r="5" fill="#b08a3a"/>' + rock(820, 140, 5, 6) + '</g>')
     o.append('<g transform="translate(1110 168)"><path d="M-40 0 A50 50 0 0 1 40 0" fill="none" stroke="#b08a3a" stroke-width="6"/><path d="M0 -50 L-40 0 M0 -50 L40 0 M0 -50 L10 -2" stroke="#b08a3a" stroke-width="4"/><circle cx="0" cy="-50" r="6" fill="#b08a3a"/></g>')
     return wrap(V, ''.join(o))
 
@@ -469,21 +486,22 @@ def v_roleplay(n):  # a sailing drill around the buoys
     if n: o.append(stars(80, 0, 1600, 0, 110, 5) + '<circle cx="1380" cy="52" r="22" fill="#f1eedf"/>')
     else:
         o.append('<circle cx="1380" cy="50" r="26" fill="#fff6d6"/>')
-        for x, y in [(300, 50), (900, 36)]: o.append(f'<ellipse cx="{x}" cy="{y}" rx="90" ry="12" fill="#fff" opacity=".7"/>')
-    o.append(waves(36, 0, 1600, 128, 232, 6, "#fff", .3))
-    o.append(f'<path d="M470 196 C520 100 700 120 800 140 S1120 210 1150 150 S960 90 800 112 S520 230 470 196 Z" fill="none" stroke="#fff" stroke-opacity=".7" stroke-width="3" stroke-dasharray="10 9"/>')
-    for x, y in [(470, 196), (800, 126), (1150, 150)]:
-        o.append(buoy(x, y + 10, "#f07a2a", 1.1, n, n))
-    o.append(sailboat(640, 160, .95, "#f4f1ea" if not n else "#9aa0ae", n, mast=96, sails=("#f2c14e", "#f6f1e6"), flag="#d8323f"))
-    o.append(sailboat(990, 190, 1.05, "#1f3d66" if not n else "#16243c", n, mast=96, sails=("#c8283a", "#f6f1e6"), flag="#2f6fa8", flip=True))
-    o.append(f'<path d="M700 162 l60 -4 M1060 192 l70 -6" stroke="#fff" stroke-opacity=".55" stroke-width="2.5"/>')
+        for i, (x, y) in enumerate([(300, 50), (900, 36)]): o.append(f'<ellipse cx="{x}" cy="{y}" rx="90" ry="12" fill="#fff" opacity=".7">{drift(60 - i * 20, 0, 12)}</ellipse>')
+    o.append('<g>' + waves(36, 0, 1600, 128, 232, 6, "#fff", .3) + drift(16, 0, 6) + '</g>')
+    o.append(f'<path d="M470 196 C520 100 700 120 800 140 S1120 210 1150 150 S960 90 800 112 S520 230 470 196 Z" fill="none" stroke="#fff" stroke-opacity=".7" stroke-width="3" stroke-dasharray="10 9">{flow(-19, 3)}</path>')
+    for i, (x, y) in enumerate([(470, 196), (800, 126), (1150, 150)]):
+        o.append('<g>' + buoy(x, y + 10, "#f07a2a", 1.1, n, n) + drift(0, 3, 2.6 + i * .4, i * .5) + '</g>')
+    o.append('<g><g>' + sailboat(640, 160, .95, "#f4f1ea" if not n else "#9aa0ae", n, mast=96, sails=("#f2c14e", "#f6f1e6"), flag="#d8323f", flutter=1.2)
+             + '<path d="M700 162 l60 -4" stroke="#fff" stroke-opacity=".55" stroke-width="2.5"/>' + rock(640, 160, 2, 4) + '</g>' + drift(-24, -4, 8) + '</g>')
+    o.append('<g><g>' + sailboat(990, 190, 1.05, "#1f3d66" if not n else "#16243c", n, mast=96, sails=("#c8283a", "#f6f1e6"), flag="#2f6fa8", flip=True, flutter=1.4)
+             + '<path d="M1060 192 l70 -6" stroke="#fff" stroke-opacity=".55" stroke-width="2.5"/>' + rock(990, 190, 2, 4.6, .8) + '</g>' + drift(28, 3, 9) + '</g>')
     return wrap(V, ''.join(o))
 
 def v_rphistory(n):  # the ship's log on a desk
     desk = "#5a3a24" if not n else "#20140c"
     o = ['<defs>' + rg("gl", "#ffd27a", .65 if n else .35) + '</defs>', f'<rect width="1600" height="{V}" fill="{desk}"/>']
     for y in range(18, 240, 34): o.append(f'<path d="M0 {y} Q400 {y + 6} 800 {y} T1600 {y}" fill="none" stroke="#000" stroke-opacity=".12" stroke-width="2"/>')
-    o.append('<circle cx="1180" cy="80" r="260" fill="url(#gl)"/>')
+    o.append(f'<circle cx="1180" cy="80" r="260" fill="url(#gl)">{tw("opacity", [1, .8, .92, .78], 2.2)}</circle>')
     pg = "#f4ead0" if not n else "#d6c9a6"; ink = "#3a3048"
     o.append(f'<path d="M560 40 Q680 26 800 46 L800 212 Q680 194 560 206 Z" fill="{pg}"/><path d="M800 46 Q920 26 1040 40 L1040 206 Q920 194 800 212 Z" fill="{pg}"/>'
              f'<path d="M800 46 L800 212" stroke="#b8a77a" stroke-width="3"/><path d="M552 206 Q680 196 800 216 Q920 196 1048 206 L1048 214 Q920 204 800 224 Q680 204 552 214 Z" fill="#7a2a20"/>')
@@ -494,12 +512,12 @@ def v_rphistory(n):  # the ship's log on a desk
             y = (92 if not side else 66) + k * 18; w = r.randint(130, 190)
             pts = ' '.join(f'l{r.randint(6, 12)} {r.choice([-3, -2, 2, 3])}' for _ in range(w // 9))
             o.append(f'<path d="M{x0} {y} {pts}" fill="none" stroke="{ink}" stroke-opacity=".65" stroke-width="1.6"/>')
-    o.append(f'<path d="M640 186 l14 -8 l10 10 l14 -16" fill="none" stroke="#c8283a" stroke-width="2.5"/>')
+    o.append(f'<path d="M640 186 l14 -8 l10 10 l14 -16" fill="none" stroke="#c8283a" stroke-width="2.5" stroke-dasharray="60" stroke-dashoffset="0"><animate attributeName="stroke-dashoffset" values="60;60;0;0" keyTimes="0;.1;.3;1" dur="7s" repeatCount="indefinite"/></path>')
     # inkwell and quill
     o.append('<rect x="1112" y="150" width="44" height="34" rx="6" fill="#1b2230"/><rect x="1118" y="142" width="32" height="10" rx="3" fill="#b08a3a"/>'
-             '<path d="M1136 146 Q1180 70 1236 30 Q1210 84 1144 146 Z" fill="#f6f1e6"/><line x1="1136" y1="148" x2="1220" y2="44" stroke="#b8a77a" stroke-width="2"/>')
+             '<g><path d="M1136 146 Q1180 70 1236 30 Q1210 84 1144 146 Z" fill="#f6f1e6"/><line x1="1136" y1="148" x2="1220" y2="44" stroke="#b8a77a" stroke-width="2"/>' + rock(1138, 146, 2.5, 5) + '</g>')
     # candle / lamp
-    o.append('<rect x="1280" y="120" width="26" height="60" fill="#f1e6c8"/><path d="M1293 100 Q1302 112 1293 120 Q1284 112 1293 100 Z" fill="#ffb347"/><ellipse cx="1293" cy="182" rx="34" ry="8" fill="#b08a3a"/>')
+    o.append('<rect x="1280" y="120" width="26" height="60" fill="#f1e6c8"/><g><path d="M1293 100 Q1302 112 1293 120 Q1284 112 1293 100 Z" fill="#ffb347"/>' + rock(1293, 120, 6, 1.3) + '</g><ellipse cx="1293" cy="182" rx="34" ry="8" fill="#b08a3a"/>')
     # brass compass
     o.append('<circle cx="420" cy="140" r="44" fill="#b08a3a"/><circle cx="420" cy="140" r="34" fill="#f4ead0"/><path d="M420 112 L428 140 L420 168 L412 140 Z" fill="#c8283a"/><path d="M420 140 L428 140 L420 168 L412 140 Z" fill="#2f3440"/>')
     return wrap(V, ''.join(o))
@@ -513,12 +531,13 @@ def knot(cx, cy, kind, c):
 def v_training(n):  # sailing school: small boats and a knot board
     o = [base(n, day=("#3a78b8", "#7fb8e0", "#cfe8f4"), horizon=110, sea_d=("#3d8cb0", "#245e86"))]
     if n: o.append(stars(70, 0, 1600, 0, 100, 9) + '<circle cx="300" cy="46" r="20" fill="#f1eedf"/>')
-    else: o.append('<circle cx="300" cy="44" r="24" fill="#fff6d6"/><ellipse cx="700" cy="40" rx="110" ry="12" fill="#fff" opacity=".7"/>')
-    o.append(waves(24, 0, 1600, 118, 170, 10, "#fff", .3))
+    else: o.append(f'<circle cx="300" cy="44" r="24" fill="#fff6d6"/><ellipse cx="700" cy="40" rx="110" ry="12" fill="#fff" opacity=".7">{drift(70, 0, 12)}</ellipse>')
+    if n: o.append(twinkle([(560, 30), (900, 60), (1240, 20), (1500, 70)]))
+    o.append('<g>' + waves(24, 0, 1600, 118, 170, 10, "#fff", .3) + drift(14, 0, 5) + '</g>')
     sails = ["#c8283a", "#f2c14e", "#2f6fa8", "#2f8f5a"]
     for i, (x, y) in enumerate([(520, 150), (660, 136), (800, 156), (940, 140)]):
-        o.append(sailboat(x, y, .55, "#f4f1ea" if not n else "#9aa0ae", n, mast=110, sails=(sails[i], "#f6f1e6"), flag=sails[i]))
-        o.append(f'<text x="{x + 14}" y="{y - 40}" text-anchor="middle" font-family="Arial, sans-serif" font-weight="bold" font-size="12" fill="#2f3440">{i + 1}</text>')
+        o.append('<g>' + sailboat(x, y, .55, "#f4f1ea" if not n else "#9aa0ae", n, mast=110, sails=(sails[i], "#f6f1e6"), flag=sails[i]))
+        o.append(f'<text x="{x + 14}" y="{y - 40}" text-anchor="middle" font-family="Arial, sans-serif" font-weight="bold" font-size="12" fill="#2f3440">{i + 1}</text>' + rock(x, y, 2.5, 3.4 + i * .5, i * .4) + '</g>')
     # the dock along the bottom
     wood = "#6b4a2e" if not n else "#2a1e18"; wood2 = "#553a24" if not n else "#1c1410"
     o.append(f'<rect y="180" width="1600" height="60" fill="{wood}"/>')
@@ -532,8 +551,8 @@ def v_training(n):  # sailing school: small boats and a knot board
     for i, cx in enumerate([1140, 1220, 1300, 1380]):
         o.append(knot(cx, 100, i, rope))
     # the instructor's launch
-    o.append(person(1000, 168, .55, "#c8283a", n, 1))
-    o.append(f'<path d="M960 168 L1046 168 L1038 182 L968 182 Z" fill="{"#f07a2a" if not n else "#7a3a18"}"/>')
+    o.append('<g>' + person(1000, 168, .55, "#c8283a", n, 1))
+    o.append(f'<path d="M960 168 L1046 168 L1038 182 L968 182 Z" fill="{"#f07a2a" if not n else "#7a3a18"}"/>' + drift(0, 2, 2.4) + '</g>')
     return wrap(V, ''.join(o))
 
 def compass(cx, cy, r, ink, red):
@@ -567,13 +586,16 @@ def v_map(n, athena=False):  # a nautical chart with a dotted route
         x, y = r.randint(520, 1080), r.randint(40, 166)
         o.append(f'<text x="{x}" y="{y}" font-family="Georgia, serif" font-size="11" fill="{ink}" opacity=".5">{r.randint(3, 40)}</text>')
     pts = [(420, 128), (640, 66), (870, 128), (1100, 72)]
-    o.append(f'<path d="M330 150 Q370 130 420 128 C500 126 560 66 640 66 S790 128 870 128 S1020 72 1100 72 Q1150 72 1190 96" fill="none" stroke="{route}" stroke-width="4" stroke-dasharray="3 9" stroke-linecap="round"/>')
+    o.append(f'<path d="M330 150 Q370 130 420 128 C500 126 560 66 640 66 S790 128 870 128 S1020 72 1100 72 Q1150 72 1190 96" fill="none" stroke="{route}" stroke-width="4" stroke-dasharray="3 9" stroke-linecap="round">{flow(12, 1.6)}</path>')
     steps = ["Listen", "Understand", "Handle", "Follow up"] if athena else ["Dial", "Discovery", "Quote", "Close"]
-    for (x, y), t in zip(pts, steps):
+    for i, ((x, y), t) in enumerate(zip(pts, steps)):
         ty = y + 32 if y < 100 else y - 18
+        o.append(f'<circle cx="{x}" cy="{y}" r="10" fill="none" stroke="{route}" stroke-width="3" opacity="0">'
+                 f'<animate attributeName="r" values="10;10;26;26" keyTimes="0;{i * .2:.1f};{i * .2 + .2:.1f};1" dur="6s" repeatCount="indefinite"/>'
+                 f'<animate attributeName="opacity" values="0;0;.9;0;0" keyTimes="0;{i * .2:.1f};{i * .2 + .01:.2f};{i * .2 + .2:.1f};1" dur="6s" repeatCount="indefinite"/></circle>')
         o.append(f'<circle cx="{x}" cy="{y}" r="10" fill="{route}" stroke="{paper}" stroke-width="3"/>'
                  f'<text x="{x}" y="{ty}" text-anchor="middle" font-family="Georgia, serif" font-weight="bold" font-size="20" fill="{route}">{t}</text>')
-    o.append(compass(1290, 96, 30, ink, route))
+    o.append('<g>' + compass(1290, 96, 30, ink, route) + rock(1290, 96, 6, 7) + '</g>')
     o.append(f'<text x="800" y="166" text-anchor="middle" font-family="Georgia, serif" font-style="italic" font-size="13" fill="{ink}" opacity=".7">{"Athena" if athena else "Apollo"}&#8217;s chart of the {"service" if athena else "sales"} route</text>')
     o.append('<path d="M150 210 L190 150 M150 210 L120 152" stroke="#b08a3a" stroke-width="4" stroke-linecap="round"/><circle cx="150" cy="210" r="5" fill="#b08a3a"/>')
     return wrap(V, ''.join(o))
@@ -591,7 +613,10 @@ def boat_on_stands(x, gy, s, hull, bottom, night, painted=1.0):
 def v_service(n):  # the boatyard: boats on stands, a hull being painted
     o = [base(n, day=("#3a78b8", "#8fc0e0", "#e6eef0"), horizon=118, sea_d=("#3d8cb0", "#3d8cb0"))]
     if n: o.append(stars(70, 0, 1600, 0, 100, 13) + '<circle cx="1300" cy="40" r="20" fill="#f1eedf"/>')
-    else: o.append('<circle cx="1300" cy="40" r="24" fill="#fff6d6"/>')
+    else: o.append(f'<circle cx="1300" cy="40" r="24" fill="#fff6d6"/><ellipse cx="820" cy="44" rx="100" ry="11" fill="#fff" opacity=".7">{drift(80, 0, 12)}</ellipse>')
+    if n: o.append(twinkle([(560, 30), (880, 70), (1180, 24), (1480, 80)]))
+    o.append('<g>' + waves(10, 440, 1600, 124, 146, 42, "#fff", .3) + drift(14, 0, 5) + '</g>')
+    o.append('<g>' + sailboat(1460, 140, .28, "#f4f1ea" if not n else "#9aa0ae", n, mast=110, sails=("#f6f1e6", "#f6f1e6")) + drift(-110, 0, 12) + '</g>')
     gr = "#b9a888" if not n else "#1e1c22"; gr2 = "#9c8c6e" if not n else "#17151a"
     o.append(f'<rect y="150" width="1600" height="90" fill="{gr}"/><path d="M0 150 L1600 150 L1600 156 L0 156 Z" fill="{gr2}"/>')
     r = random.Random(14)
@@ -609,7 +634,7 @@ def v_service(n):  # the boatyard: boats on stands, a hull being painted
     o.append(f'<line x1="1150" y1="200" x2="1176" y2="96" stroke="#b08a3a" stroke-width="4"/><line x1="1172" y1="200" x2="1196" y2="96" stroke="#b08a3a" stroke-width="4"/>')
     for k in range(5): o.append(f'<line x1="{1154 + k * 5}" y1="{186 - k * 22}" x2="{1176 + k * 5}" y2="{186 - k * 22}" stroke="#b08a3a" stroke-width="3"/>')
     o.append(person(1176, 150, .8, "#f2c14e", n))
-    o.append(f'<line x1="1166" y1="112" x2="1140" y2="108" stroke="#2f3440" stroke-width="3"/><rect x="1128" y="98" width="12" height="22" rx="3" fill="#2a8a86"/>')
+    o.append(f'<g><line x1="1166" y1="112" x2="1140" y2="108" stroke="#2f3440" stroke-width="3"/><rect x="1128" y="98" width="12" height="22" rx="3" fill="#2a8a86"/>{rock(1166, 112, 14, 2.4)}</g>')
     o.append('<rect x="1206" y="186" width="20" height="18" fill="#9aa0ae"/><path d="M1206 186 Q1216 176 1226 186" fill="none" stroke="#2f3440" stroke-width="2"/>')
     o.append(corner_shade())
     return wrap(V, ''.join(o))
@@ -620,8 +645,11 @@ def v_renewals(n):  # the tide comes back in; boats return to their moorings
     else: o.append('<circle cx="1180" cy="96" r="80" fill="url(#gl)"/><circle cx="1180" cy="96" r="26" fill="#fff1c4"/>')
     sand = "#e3cc9c" if not n else "#2a2a34"; wet = "#c9ae7a" if not n else "#20212a"
     o.append(f'<path d="M0 170 Q300 160 600 190 Q800 210 900 240 L0 240 Z" fill="{sand}"/><path d="M0 176 Q300 166 600 196 Q760 212 860 240 L820 240 Q700 214 560 200 Q300 178 0 190 Z" fill="{wet}"/>')
-    for k in range(3):
-        o.append(f'<path d="M{-20 + k * 30} {170 - k * 8} Q300 {160 - k * 8} {600 + k * 40} {190 - k * 6} Q780 {208 - k * 6} {900 + k * 30} {240}" fill="none" stroke="#fff" stroke-opacity="{.7 - k * .2:.1f}" stroke-width="3"/>')
+    tide = ''.join(f'<path d="M{-20 + k * 30} {170 - k * 8} Q300 {160 - k * 8} {600 + k * 40} {190 - k * 6} Q780 {208 - k * 6} {900 + k * 30} {240}" fill="none" stroke="#fff" stroke-opacity="{.7 - k * .2:.1f}" stroke-width="3"/>' for k in range(3))
+    # the wash moves only clear of the title (x > 420); the left of the lines stays still
+    o.append('<defs><clipPath id="tdl"><rect width="420" height="240"/></clipPath><clipPath id="tdr"><rect x="420" width="1180" height="240"/></clipPath></defs>'
+             f'<g clip-path="url(#tdl)">{tide}</g><g clip-path="url(#tdr)"><g>{tide}' + drift(24, 5, 7) + tw("opacity", [1, .6], 7) + '</g></g>')
+    if n: o.append(twinkle([(620, 40), (900, 20), (1380, 60), (1500, 30)]))
     # tide pole with marks, the water halfway up
     o.append('<rect x="456" y="70" width="10" height="120" fill="#6d4c30"/>')
     for k in range(6): o.append(f'<rect x="466" y="{80 + k * 16}" width="{14 if k % 2 == 0 else 8}" height="3" fill="#f6f1e6"/>')
@@ -629,14 +657,13 @@ def v_renewals(n):  # the tide comes back in; boats return to their moorings
     # moorings and boats
     for x, y in [(700, 140), (880, 150), (1060, 136), (1240, 156)]:
         o.append(f'<circle cx="{x}" cy="{y}" r="7" fill="#f07a2a"/>')
-    o.append(sailboat(760, 148, .6, "#f4f1ea" if not n else "#9aa0ae", n, mast=100, flag="#d8323f", name="REEL DEAL"))
-    o.append(f'<line x1="736" y1="148" x2="700" y2="140" stroke="#2f3440" stroke-width="1.5"/>')
-    o.append(sailboat(940, 162, .65, "#1f3d66" if not n else "#16243c", n, mast=100, flag="#f2c14e", name="SALE AWAY"))
-    o.append(f'<line x1="912" y1="162" x2="880" y2="150" stroke="#2f3440" stroke-width="1.5"/>')
-    o.append(trawler(1140, 176, .6, "#c8283a" if not n else "#5e1c26", n, flip=True, name="CROSS-SELL"))
-    o.append(f'<path d="M1190 178 L1280 168 M1190 180 L1270 194" stroke="#fff" stroke-opacity=".5" stroke-width="2"/>')
-    o.append(sailboat(1350, 186, .7, "#2a8a86" if not n else "#1a4a4c", n, mast=110, sails=("#f6f1e6", "#f6f1e6"), flip=True))
-    for x, y in [(840, 60), (880, 44), (1000, 70)]: o.append(gull(x, y, .8, "#3a3346" if not n else "#cfd8ee", 2.5))
+    o.append(f'<line x1="736" y1="148" x2="700" y2="140" stroke="#2f3440" stroke-width="1.5"/><line x1="912" y1="162" x2="880" y2="150" stroke="#2f3440" stroke-width="1.5"/>')
+    o.append('<g>' + sailboat(760, 148, .6, "#f4f1ea" if not n else "#9aa0ae", n, mast=100, flag="#d8323f", name="REEL DEAL", flutter=1.3) + rock(760, 148, 2, 4) + '</g>')
+    o.append('<g>' + sailboat(940, 162, .65, "#1f3d66" if not n else "#16243c", n, mast=100, flag="#f2c14e", name="SALE AWAY", flutter=1.5) + rock(940, 162, 2, 4.6, .6) + '</g>')
+    o.append('<g>' + trawler(1140, 176, .6, "#c8283a" if not n else "#5e1c26", n, flip=True, name="CROSS-SELL"))
+    o.append(f'<path d="M1190 178 L1280 168 M1190 180 L1270 194" stroke="#fff" stroke-opacity=".5" stroke-width="2"/>' + drift(-30, 0, 10) + '</g>')
+    o.append('<g>' + sailboat(1350, 186, .7, "#2a8a86" if not n else "#1a4a4c", n, mast=110, sails=("#f6f1e6", "#f6f1e6"), flip=True) + rock(1350, 186, 2, 5, 1) + '</g>')
+    for i, (x, y) in enumerate([(840, 60), (880, 44), (1000, 70)]): o.append('<g>' + gull(x, y, .8, "#3a3346" if not n else "#cfd8ee", 2.5) + drift(50, -6 + i * 5, 8 + i, i * .6) + '</g>')
     o.append(corner_shade())
     return wrap(V, ''.join(o))
 
@@ -645,40 +672,46 @@ def v_claims(n):  # after the storm: the rescue boat, the dock being repaired, t
     o = [base(n, day=("#5a6f96", "#a8c4dc", "#e8dcc0"), nt=("#060a16", "#121c34", "#24314e"), horizon=130, sea_d=("#4c7f9a", "#1c4a66"), extra_defs=ex)]
     if n: o.append(stars(50, 700, 1600, 0, 110, 16) + '<circle cx="1180" cy="52" r="24" fill="#f1eedf"/>')
     else: o.append('<circle cx="1180" cy="40" r="28" fill="#fff6d6"/>')
-    o.append('<path d="M1180 40 L900 240 L1000 240 Z M1180 40 L1120 240 L1220 240 Z M1180 40 L1340 240 L1420 240 Z" fill="url(#rays)" opacity=".7"/>')
+    o.append('<path d="M1180 40 L900 240 L1000 240 Z M1180 40 L1120 240 L1220 240 Z M1180 40 L1340 240 L1420 240 Z" fill="url(#rays)" opacity=".7">{tw("opacity", [.7, .3], 6)}</path>')
     cl = "#5a6070" if not n else "#151a28"; cl2 = "#6c7282" if not n else "#1c2234"
     o.append(f'<path d="M0 0 L760 0 Q740 40 680 44 Q660 80 590 70 Q540 100 470 82 Q400 110 330 90 Q240 110 160 90 Q80 100 0 86 Z" fill="{cl}"/>'
              f'<path d="M0 0 L620 0 Q600 30 540 32 Q500 56 430 46 Q360 70 280 54 Q180 70 0 50 Z" fill="{cl2}"/>')
     for x in range(40, 600, 46): o.append(f'<line x1="{x}" y1="{88 if x < 400 else 80}" x2="{x - 14}" y2="{120}" stroke="#9aa8c0" stroke-opacity=".5" stroke-width="2"/>')
     if not n: o.append('<path d="M780 130 A300 160 0 0 1 1380 130" fill="none" stroke="#f2c14e" stroke-opacity=".35" stroke-width="8"/><path d="M790 130 A290 150 0 0 1 1370 130" fill="none" stroke="#2f8f5a" stroke-opacity=".3" stroke-width="8"/><path d="M800 130 A280 140 0 0 1 1360 130" fill="none" stroke="#2f6fa8" stroke-opacity=".3" stroke-width="8"/>')
-    o.append(waves(26, 0, 1600, 138, 230, 17, "#fff", .25))
+    o.append('<g>' + waves(26, 0, 1600, 138, 230, 17, "#fff", .25) + drift(16, 0, 6) + '</g>')
     # rescue boat
-    o.append(f'<g transform="translate(600 186)"><path d="M-90 -24 L80 -24 Q96 -30 104 -40 L92 0 L-80 0 Q-90 -10 -90 -24 Z" fill="#f07a2a"/>'
+    o.append(f'<g><g transform="translate(600 186)"><path d="M-90 -24 L80 -24 Q96 -30 104 -40 L92 0 L-80 0 Q-90 -10 -90 -24 Z" fill="#f07a2a"/>'
              f'<rect x="-88" y="-20" width="176" height="6" fill="#fff"/><text x="0" y="-4" text-anchor="middle" font-family="Arial, sans-serif" font-weight="bold" font-size="13" fill="#fff">RESCUE</text>'
              f'<rect x="-30" y="-58" width="54" height="34" rx="4" fill="#f6f1e6"/><rect x="-22" y="-52" width="16" height="12" fill="{"#7fb5d6" if not n else "#ffd56b"}"/><rect x="0" y="-52" width="16" height="12" fill="{"#7fb5d6" if not n else "#ffd56b"}"/>'
-             f'<rect x="-6" y="-70" width="6" height="12" fill="#2f3440"/><circle cx="-3" cy="-74" r="5" fill="#3b8cff"/>'
-             f'<circle cx="-60" cy="-36" r="10" fill="none" stroke="#f6f1e6" stroke-width="5"/><circle cx="-60" cy="-36" r="10" fill="none" stroke="#c8283a" stroke-width="5" stroke-dasharray="8 8"/></g>')
-    if n: o.append('<circle cx="597" cy="112" r="24" fill="#3b8cff" opacity=".3"/>')
+             f'<rect x="-6" y="-70" width="6" height="12" fill="#2f3440"/><circle cx="-3" cy="-74" r="5" fill="#3b8cff">{tw("opacity", [1, .2], .9)}</circle>'
+             f'<circle cx="-60" cy="-36" r="10" fill="none" stroke="#f6f1e6" stroke-width="5"/><circle cx="-60" cy="-36" r="10" fill="none" stroke="#c8283a" stroke-width="5" stroke-dasharray="8 8"/></g>'
+             + (f'<circle cx="597" cy="112" r="24" fill="#3b8cff" opacity=".3">{tw("opacity", [.3, 0], .9)}</circle>' if n else '') + rock(600, 186, 1.6, 4) + '</g>')
     # the damaged dock under repair
     wood = "#8d6640" if not n else "#3a2e30"; post = "#5c3f26" if not n else "#1e1822"
     for x in [880, 960, 1040, 1120, 1200, 1280]: o.append(f'<rect x="{x}" y="150" width="12" height="60" fill="{post}"/>')
     o.append(f'<rect x="870" y="144" width="170" height="12" fill="{wood}"/><rect x="1130" y="144" width="170" height="12" fill="{wood}"/>'
              f'<rect x="1046" y="140" width="70" height="10" fill="#d9b27a" transform="rotate(-6 1080 145)"/>')
     o.append(person(1110, 144, .7, "#f2c14e", n, 1))
-    o.append('<rect x="1120" y="80" width="5" height="22" fill="#6d4c30" transform="rotate(30 1122 90)"/><rect x="1118" y="76" width="16" height="8" fill="#5a6070" transform="rotate(30 1122 90)"/>')
+    o.append('<g><rect x="1120" y="80" width="5" height="22" fill="#6d4c30" transform="rotate(30 1122 90)"/><rect x="1118" y="76" width="16" height="8" fill="#5a6070" transform="rotate(30 1122 90)"/>'
+             '<animateTransform attributeName="transform" type="rotate" values="0 1125 100;-28 1125 100;0 1125 100;0 1125 100" keyTimes="0;.35;.5;1" dur="1.2s" repeatCount="indefinite"/></g>')
     for x, y, rt in [(760, 200, 10), (820, 214, -14), (1340, 206, 8)]:
         o.append(f'<rect x="{x}" y="{y}" width="48" height="8" fill="{wood}" transform="rotate({rt} {x} {y})"/>')
     return wrap(V, ''.join(o))
 
 def v_commercial(n):  # the cargo port
     o = [base(n, day=("#4a6aa0", "#9cc0e0", "#f0dcc0"), horizon=160, sea_d=("#2f6f96", "#14405e"))]
-    if n: o.append(stars(70, 0, 1600, 0, 120, 18))
-    else: o.append('<ellipse cx="500" cy="40" rx="130" ry="12" fill="#fff" opacity=".6"/>')
+    if n: o.append(stars(70, 0, 1600, 0, 120, 18) + twinkle([(620, 24), (880, 60), (1260, 18)]))
+    else: o.append(f'<ellipse cx="500" cy="40" rx="130" ry="12" fill="#fff" opacity=".6">{drift(90, 0, 12)}</ellipse>')
     # the freighter
     o.append(f'<path d="M260 150 L1080 150 L1060 196 L300 196 Q270 180 260 150 Z" fill="{"#7a2a20" if not n else "#3a1410"}"/><rect x="262" y="146" width="818" height="8" fill="{"#2f3440" if not n else "#11141c"}"/>'
              f'<rect x="300" y="182" width="760" height="5" fill="#c8283a" opacity=".8"/>'
              f'<text x="360" y="176" font-family="Arial, sans-serif" font-weight="bold" font-size="14" fill="#f6f1e6">FULL COVERAGE</text>')
     o.append(f'<rect x="960" y="92" width="80" height="54" fill="{"#f2ede2" if not n else "#9aa0ae"}"/><rect x="970" y="100" width="60" height="10" fill="{"#7fb5d6" if not n else "#ffd56b"}"/><rect x="1000" y="70" width="14" height="22" fill="#2f3440"/>')
+    for i in range(3):  # smoke from the funnel
+        o.append(f'<circle cx="1007" cy="64" r="7" fill="{"#c9c4bc" if not n else "#4a4e5c"}" opacity="0">'
+                 f'<animate attributeName="opacity" values="0;.7;0" keyTimes="0;.2;1" dur="4.5s" begin="{i * 1.5}s" repeatCount="indefinite"/>'
+                 f'<animateTransform attributeName="transform" type="translate" values="0 0;30 -50" keyTimes="0;1" dur="4.5s" begin="{i * 1.5}s" repeatCount="indefinite"/>'
+                 f'<animate attributeName="r" values="6;16" keyTimes="0;1" dur="4.5s" begin="{i * 1.5}s" repeatCount="indefinite"/></circle>')
     cols = ["#c8283a", "#2f6fa8", "#f2c14e", "#2f8f5a", "#f07a2a", "#1f3d66"] if not n else ["#6a1c24", "#1c3c66", "#7a6424", "#1a4a34", "#7a3a18", "#16243c"]
     r = random.Random(19)
     for col, x in enumerate(range(380, 940, 46)):
@@ -691,9 +724,11 @@ def v_commercial(n):  # the cargo port
     for cx in (1160, 1350):
         o.append(f'<rect x="{cx}" y="40" width="10" height="122" fill="{cr}"/><rect x="{cx + 70}" y="40" width="10" height="122" fill="{cr}"/>'
                  f'<rect x="{cx - 170}" y="34" width="290" height="12" fill="{cr}"/><line x1="{cx}" y1="100" x2="{cx + 80}" y2="60" stroke="{cr}" stroke-width="5"/>'
-                 f'<rect x="{cx + 10}" y="46" width="30" height="16" fill="#2f3440"/><line x1="{cx - 100}" y1="46" x2="{cx - 100}" y2="96" stroke="#2f3440" stroke-width="2"/>'
-                 f'<rect x="{cx - 122}" y="96" width="44" height="21" fill="{cols[1] if cx == 1160 else cols[2]}"/>')
-        if n: o.append(f'<circle cx="{cx + 40}" cy="34" r="4" fill="#ff3b3b"/><circle cx="{cx + 40}" cy="34" r="12" fill="#ff3b3b" opacity=".3"/>')
+                 f'<rect x="{cx + 10}" y="46" width="30" height="16" fill="#2f3440"/>')
+        hv = "0;0;-40;-40;0;0"; kt = 'keyTimes="0;.15;.4;.65;.9;1"'; dl = 0 if cx == 1160 else 4
+        o.append(f'<line x1="{cx - 100}" y1="46" x2="{cx - 100}" y2="96" stroke="#2f3440" stroke-width="2"><animate attributeName="y2" values="{";".join(str(96 + int(v)) for v in hv.split(";"))}" {kt} dur="8s" begin="{dl}s" repeatCount="indefinite"/></line>'
+                 f'<rect x="{cx - 122}" y="96" width="44" height="21" fill="{cols[1] if cx == 1160 else cols[2]}"><animate attributeName="y" values="{";".join(str(96 + int(v)) for v in hv.split(";"))}" {kt} dur="8s" begin="{dl}s" repeatCount="indefinite"/></rect>')
+        if n: o.append(f'<circle cx="{cx + 40}" cy="34" r="4" fill="#ff3b3b"/><circle cx="{cx + 40}" cy="34" r="12" fill="#ff3b3b" opacity=".3">{tw("opacity", [.3, 0], 1.6, dl / 4)}</circle>')
     for k, x in enumerate(range(1440, 1600, 46)):
         for row in range(2): o.append(f'<rect x="{x}" y="{160 - 22 * (row + 1)}" width="44" height="21" fill="{cols[(k + row) % 6]}"/>')
     o.append(trawler(200, 212, .5, "#2a8a86" if not n else "#1a4a4c", n, name=""))
