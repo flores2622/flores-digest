@@ -355,9 +355,15 @@ def skyline(night):
     if not n: a(f'<path d="{arch}" fill="none" stroke="#c8c0d0" stroke-width="3" transform="translate(4 2)" opacity=".7"/>')
     if n:
         a(''.join(f'<circle cx="{x}" cy="{DECK - 6}" r="2.5" fill="#ffe7a0"/>' for x in range(60, 1600, 80)))
-    for col, path, dur, beg, fl in (("#c8202e", "M-60 0H1660", 11, 0, False), ("#e8e2d6", "M1660 0H-60", 9, 3.5, True)):
-        a(f'<g opacity="0"><animate attributeName="opacity" values="0;1;1;0" keyTimes="0;.04;.96;1" dur="{dur}s" begin="{beg}s" repeatCount="indefinite"/>'
-          f'<animateMotion path="{path}" dur="{dur}s" begin="{beg}s" repeatCount="indefinite"/>' + car(0, DECK, .75, col, 0, n, fl) + '</g>')
+    # traffic both ways over the bridge (Frank, 2026-10-05: "add more cars to dallas"): each lane's cars on their
+    # own speeds and starts, the far lane a touch higher and smaller, already under way when the page opens
+    traffic = [("#c8202e", 11, 0), ("#2f6aa8", 13, -4.5), ("#e2a33a", 10, -7.5), ("#3a3a44", 12, -2), ("#e8e2d6", 14, -9.5)]
+    for i, (col, dur, beg) in enumerate(traffic):
+        for fl, path, dy, sc in ((False, "M-60 0H1660", 0, .75), (True, "M1660 0H-60", -5, .68)):
+            c = traffic[(i + 2) % 5][0] if fl else col
+            d = dur - 1.5 if fl else dur; b = beg - 3.2 if fl else beg
+            a(f'<g opacity="0"><animate attributeName="opacity" values="0;1;1;0" keyTimes="0;.04;.96;1" dur="{d}s" begin="{b}s" repeatCount="indefinite"/>'
+              f'<animateMotion path="{path}" dur="{d}s" begin="{b}s" repeatCount="indefinite"/>' + car(0, DECK + dy, sc, c, 0, n, fl) + '</g>')
     # the river, sky in it, and at night the lights in it
     a(f'<path d="M0 466Q400 458 800 468T1600 462V510Q1200 516 800 508T0 512Z" fill="url(#riv)"/>')
     rr = random.Random(4)
