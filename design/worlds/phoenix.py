@@ -831,8 +831,8 @@ def v_commercial(n):  # downtown towers and offices
              f'<rect x="1208" y="96" width="24" height="12" fill="#2f6fb8">{anim("y", [96, 52, 52, 96], 9)}</rect>')
     o.append(f'<path d="M1304 30L1240 26M1304 30L1420 26" stroke="{cc}" stroke-width="2"/>')
     if n: o.append('<circle cx="1440" cy="26" r="4" fill="#ff3b3b"/><circle cx="1440" cy="26" r="12" fill="#ff3b3b" opacity=".35">' + anim("opacity", [.35, 0, .35], 2.4) + '</circle>'
-                   + glint([(560, 60), (760, 110), (905, 150), (1110, 90), (1500, 130)], 4, 3, "#ffd27a") + glint([(1000, 20), (1560, 40)]))
-    else: o.append(slide(cloud(1000, 30, 240, "#fff", .45), -60, 0, 12))
+                   + glint([(1100, 50), (1380, 100), (1560, 40)]))
+    else: o.append(slide(birds([(1500, 60), (1530, 72), (1470, 76)], "#3a2242"), -160, -12, 12))
     o.append(f'<rect x="0" y="222" width="1600" height="18" fill="{"#100c1a" if n else "#4a3446"}"/>')
     o.append(f'<text x="800" y="210" text-anchor="middle" font-family="Arial, sans-serif" font-weight="bold" font-size="14" fill="#fff" opacity=".0">.</text>')
     o.append(shade())
