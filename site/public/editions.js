@@ -228,8 +228,18 @@
 .ed .comic .title b { font: 400 54px/1 Bangers, Impact, sans-serif; letter-spacing: .04em; color: #b5532f; }
 .ed .panels { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; }
 .ed .panel { border: 3px solid #2a2320; background: #fffaf3; aspect-ratio: 4 / 3; position: relative; overflow: hidden; display: flex; flex-direction: column; }
-.ed .comic .panel { aspect-ratio: 1 / 1; }
-.ed .panel .foot { border-top: 3px solid #2a2320; background: #fff; padding: 5px 64px 6px 10px; font-weight: 700; font-size: 12.5px; line-height: 1.3; }
+.ed .comic .panel { aspect-ratio: auto; min-height: 330px; overflow: visible; }
+.ed .comic .scene { display: flex; flex-direction: column; justify-content: space-between; gap: 10px; padding: 12px 12px 0; background: linear-gradient(180deg, #f8efe4 calc(100% - 64px), #e8dac9 calc(100% - 64px)); }
+.ed .comic .dlg { display: flex; flex-direction: column; gap: 14px; }
+.ed .comic .sbb { position: relative; max-width: 82%; align-self: flex-start; }
+.ed .comic .sbb.rt { align-self: flex-end; }
+.ed .comic .stage { position: relative; display: flex; justify-content: space-around; align-items: flex-end; min-height: 104px; padding-bottom: 10px; }
+.ed .comic .fig { position: static; flex: 0 1 70px; min-width: 0; } .ed .comic .fig small { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ed .comic .dlg { flex: 1 1 auto; } .ed .comic .fxrow { text-align: center; margin-bottom: -4px; } .ed .comic .fxrow .fx { position: static; display: inline-block; font-size: 26px; white-space: nowrap; }
+.ed .panel .foot { flex-wrap: nowrap; } .ed .panel .foot > span { flex: 1 1 auto; min-width: 0; }
+.ed .comic .stage .tw { position: static; }
+.ed .panel .foot { display: flex; align-items: flex-end; justify-content: space-between; gap: 10px; border-top: 3px solid #2a2320; background: #fff; padding: 6px 8px 6px 10px; font-weight: 700; font-size: 12.5px; line-height: 1.35; }
+.ed .panel .foot .plike { position: static; flex: 0 0 auto; }
 .ed .comic .sbb { z-index: 2; } .ed .sbb.rt::after { left: auto; right: 24px; }
 .ed .panel .cap { background: #fff2b8; border-bottom: 3px solid #2a2320; padding: 6px 10px; font-weight: 700; font-size: 14px; }
 .ed .scene { flex: 1; position: relative; background: linear-gradient(180deg, #f8efe4 60%, #e8dac9 60%); }
@@ -290,7 +300,7 @@
 .ed .podium b { font: 400 16px var(--display); }
 @media (max-width: 1100px) {.ed .feedA, .ed .pod, .ed .mkt .g, .ed .mag { grid-template-columns: 1fr; }
 .ed .roster { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-.ed .gpan, .ed .panels, .ed .drives { grid-template-columns: 1fr; }
+.ed .gpan, .ed .panels, .ed .drives { grid-template-columns: minmax(0, 1fr); }
 .ed .info, .ed .podium { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 .ed .gi .sb { grid-template-columns: 1fr; }
 .ed .cover { min-height: 0; } }
@@ -615,7 +625,7 @@ function edMkt(X) {
    and it ends on the tally with what is left open for tomorrow. */
 function edComic(X) {
   const S = edShared.state, F = X.F, likes = S.likes || {};
-  const fig = (c, n, x) => `<div class="fig" style="left:${x}"><div class="hd" style="background:${c}"></div><div class="bd" style="background:${c}99"></div><small>${edEsc(n)}</small></div>`;
+  const fig = (c, n) => `<div class="fig"><div class="hd" style="background:${c}"></div><div class="bd" style="background:${c}99"></div><small>${edEsc(n)}</small></div>`;
   const clip = (t, n = 110) => { t = String(t || "").replace(/\s+/g, " ").trim(); if (t.length <= n) return t; const c = t.slice(0, n); return c.slice(0, Math.max(c.lastIndexOf(" "), n - 20)).replace(/[,;:\s.]+$/, "") + "…"; };
   const safe = t => t && !/\d{4,}|\d{3}[\s-]\d{2,}/.test(t);  // no account, card or phone numbers in a bubble
   const quoted = t => (String(t || "").match(/(?:^|[\s(])['"“](.{8,}?)['"”](?=[\s.,;:)!?]|$)/) || [])[1] || "";
@@ -626,7 +636,9 @@ function edComic(X) {
   const at = c => c && c.time ? `${c.time}. ` : "Later. ";
   const P = c => ({ n: pfirst(c.who), c: X.C[pfirst(c.who)] || "#b5532f" }), L = c => ({ n: leadOf(c), c: "#c9b8a8" });
   // two people, the first speaker on the left: their line on top, the reply below on the right
-  const sc = (l, r, { fx, fxc } = {}) => `${l.text ? `<div class="sbb" style="left:4%;top:5%;max-width:${r && r.text ? 60 : 78}%">${edEsc(l.text)}</div>` : ""}${r && r.text ? `<div class="sbb rt" style="right:4%;top:${l.text ? 34 : 6}%;max-width:60%">${edEsc(r.text)}</div>` : ""}${fx ? `<div class="fx" style="left:50%;bottom:10%;transform:translateX(-50%) rotate(-8deg);font-size:24px${fxc ? `;color:${fxc}` : ""}">${edEsc(fx)}</div>` : ""}${fig(l.c, l.n, r ? "6%" : "40%")}${r ? fig(r.c, r.n, "calc(94% - 70px)") : ""}`;
+  const fxh = (fx, fxc) => fx ? `<div class="fx"${fxc ? ` style="color:${fxc}"` : ""}>${edEsc(fx)}</div>` : "";
+  const stage = (figs, fx, fxc) => `${fx ? `<div class="fxrow">${fxh(fx, fxc)}</div>` : ""}<div class="stage">${figs.join("")}</div>`;
+  const sc = (l, r, { fx, fxc } = {}) => `<div class="dlg">${l.text ? `<div class="sbb">${edEsc(l.text)}</div>` : ""}${r && r.text ? `<div class="sbb rt">${edEsc(r.text)}</div>` : ""}</div>${stage([fig(l.c, l.n), ...(r ? [fig(r.c, r.n)] : [])], fx, fxc)}`;
   // a spine moment's quote, said by the lead or by the producer
   const spineSaid = (c, byLead) => { const lf = leadOf(c).toLowerCase(); for (const x of [...(c.spine || [])].reverse()) { if (!byLead && x[1] !== "g") continue; const q = quoted(x[3]); if (!q || !safe(q)) continue; const lead = /^(lead|prospect|customer|caller|he |she |they )/i.test(x[2]) || x[2].toLowerCase().startsWith(lf); if (lead === byLead) return q; } return ""; };
   const beats = [];
@@ -641,7 +653,7 @@ function edComic(X) {
   for (const w of [...new Set(X.SALES.map(s => s.w))].filter(w => !soldBy.has(w)).slice(0, 2)) {
     const mine = X.SALES.filter(s => s.w === w), kinds = {};
     for (const s of mine) { const k = `${s.prod}${s.src.trim() ? ` (${s.src.trim()})` : ""}`; kinds[k] = (kinds[k] || 0) + 1; }
-    beats.push({ t: null, pri: 2, cap: `Meanwhile, ${w} writes ${plist(Object.entries(kinds).slice(0, 3).map(([k, n]) => n > 1 ? `${n} ${k}` : k))}.`, html: `<div class="fx" style="right:8%;top:16%;font-size:28px;color:#2f8f5b">+${pmoney(mine.reduce((a, s) => a + s.amt, 0))}</div>${fig(X.C[w] || "#b5532f", w, "30%")}` });
+    beats.push({ t: null, pri: 2, cap: `Meanwhile, ${w} writes ${plist(Object.entries(kinds).slice(0, 3).map(([k, n]) => n > 1 ? `${n} ${k}` : k))}.`, html: `<div class="dlg"></div>${stage([fig(X.C[w] || "#b5532f", w)], `+${pmoney(mine.reduce((a, s) => a + s.amt, 0))}`, "#2f8f5b")}` });
   }
   // the objections: the best handled and the one that got away -- the lead speaks first
   const objs = F.calls.flatMap(c => (c.objs || []).map(o => ({ c, o }))).filter(x => x.o.they && x.o.you && safe(x.o.they) && safe(x.o.you));
@@ -656,16 +668,16 @@ function edComic(X) {
     beats.push({ t: mins(sent), pri: 3, cap: `${at(sent)}${pfirst(sent.who)} ${verb(sent)}. The quote goes by email.`, foot: "Apollo: present it on the call, don't send it.", html: sc({ ...P(sent), text: clip((q => safe(q) && q)(quoted(Array.isArray(sent.sendoff) ? sent.sendoff[1] : "")) || (l ? l.text : "") || "I'll send it over to you.") }, L(sent), { fx: "SENT ✉" }) });
   }
   // the fastest first dial on a new lead
-  if (F.spBest && F.spBest[1].median != null && F.spBest[1].median <= 120) beats.push({ t: null, pri: 4, cap: `A new lead lands. ${pfirst(F.spBest[0])} dials it in ${edFmtStd(F.spBest[1].median)}.`, html: `<div class="fx" style="left:40%;top:18%;font-size:30px">ZOOM!</div>${fig(X.C[pfirst(F.spBest[0])] || "#b5532f", pfirst(F.spBest[0]), "14%")}` });
+  if (F.spBest && F.spBest[1].median != null && F.spBest[1].median <= 120) beats.push({ t: null, pri: 4, cap: `A new lead lands. ${pfirst(F.spBest[0])} dials it in ${edFmtStd(F.spBest[1].median)}.`, html: `<div class="dlg"></div>${stage([fig(X.C[pfirst(F.spBest[0])] || "#b5532f", pfirst(F.spBest[0]))], "ZOOM!")}` });
   // the most important six, then told in the order they happened
   const story = beats.sort((a, b) => a.pri - b.pri).slice(0, 6).map((b, i) => ({ ...b, i })).sort((a, b) => (a.t ?? 1e4 + a.i) - (b.t ?? 1e4 + b.i));
   const timed = F.calls.map(mins).filter(x => x != null), first = F.calls.find(c => mins(c) === Math.min(...timed));
-  const panels = [{ cap: X.isFolio ? "The folio so far." : `${pdow(X.dayKey)}${first ? `, ${first.time}` : ""}. The floor opens.`, html: `<div class="sbb" style="left:6%;top:8%;max-width:60%">${edEsc(first ? `${pfirst(first.who)} is on the phone first. ${plural(F.dials, "dial")} to go.` : `${plural(F.dials, "dial")} ahead.`)}</div>${X.order.slice(0, 5).map((f, i) => fig(X.C[f], f, `${8 + i * 18}%`)).join("")}` }, ...story];
-  if (!F.ps) panels.push({ cap: `${edEsc(edWhen(X))}. Nothing crossed the line.`, cls: "tumble", html: `<div class="tw"></div><div class="fx" style="left:10%;top:14%;font-size:22px">TUMBLEWEED</div>${fig("#c9b8a8", "", "70%")}` });
+  const panels = [{ cap: X.isFolio ? "The folio so far." : `${pdow(X.dayKey)}${first ? `, ${first.time}` : ""}. The floor opens.`, html: `<div class="dlg"><div class="sbb">${edEsc(first ? `${pfirst(first.who)} is on the phone first. ${plural(F.dials, "dial")} to go.` : `${plural(F.dials, "dial")} ahead.`)}</div></div>${stage(X.order.slice(0, 5).map(f => fig(X.C[f], f)))}` }, ...story];
+  if (!F.ps) panels.push({ cap: `${edEsc(edWhen(X))}. Nothing crossed the line.`, cls: "tumble", html: `<div class="dlg"></div>${stage(['<div class="tw"></div>'], "TUMBLEWEED")}` });
   const open = Math.max(0, F.hh - F.hhSold);
   panels.push({ cap: open ? `Final. To be continued: ${plural(open, "quoted household")} still open.` : "Final.", cls: "last", html: `<b>${pmoney(F.ps)}</b><span>${plural(F.pol, "policy", "policies")} · ${F.hhSold} of ${F.hh} households${F.closeHH != null ? ` · ${ppct(F.closeHH, 0)} close` : ""}</span><span style="font-size:13px">${X.order.map(f => `${f} ${X.NUM[f].pts}`).join(" · ")}</span>` });
   return `<div class="comic"><div class="title"><b>COLD CALL COMICS</b><span style="font-weight:700">${edEsc(X.isFolio ? "The folio so far" : plong(X.dayKey))} · drawn by Apollo</span></div>
-  <div class="panels">${panels.map((p, i) => { const by = likes[i] || []; return `<div class="panel ${p.cls || ""}"${p.style ? ` style="${p.style}"` : ""}><div class="cap">${edEsc(p.cap)}</div><div class="scene">${p.html}</div>${p.foot ? `<div class="foot">${edEsc(p.foot)}</div>` : ""}<button type="button" class="plike" data-like="${i}" title="${edEsc(by.length ? by.join(", ") : "No likes yet")}" aria-pressed="${by.includes(edMe())}" title="${edEsc(by.join(", "))}">😂 ${by.length || ""}</button></div>`; }).join("")}</div>
+  <div class="panels">${panels.map((p, i) => { const by = likes[i] || []; return `<div class="panel ${p.cls || ""}"${p.style ? ` style="${p.style}"` : ""}><div class="cap">${edEsc(p.cap)}</div><div class="scene">${p.html}</div><div class="foot"><span>${p.foot ? edEsc(p.foot) : ""}</span><button type="button" class="plike" data-like="${i}" title="${edEsc(by.length ? by.join(", ") : "No likes yet")}" aria-pressed="${by.includes(edMe())}">😂 ${by.length || ""}</button></div></div>`; }).join("")}</div>
   <div style="font-family:var(--body);display:flex;flex-direction:column;gap:12px;border-top:3px solid #2a2320;padding-top:14px"><div class="hrow"><b style="font:400 30px Bangers,Impact,sans-serif;letter-spacing:.04em">THE LAST PANEL</b><span class="lab">every number, no drawings</span></div>${edLbt(X)}</div>
   <p class="note" style="font-family:var(--body)">The day as it happened: its sales, the objection best handled and the one dropped, a quote sent instead of presented, the fastest first dial, in the words said on the calls and in the order they happened.</p></div>`;
 }
