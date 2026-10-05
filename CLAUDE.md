@@ -2009,13 +2009,12 @@ repaint clears the list).
   the banner crop hides (PLAYER 1 / PLAYER 2 READY, TUTORIAL, the chat
   bubbles, the map's labels, REPAIR SHOP), LEVEL CLEARED / CONTINUE? / GAME OVER ...)
   and **Phoenix** (Archivo / Inter; Valley Sunset, Copper, Monsoon -- the
-  camel mountain, the tower ridge and downtown with a hot-air balloon; its
-  horizon below the split, and the Valley floor (Frank, 2026-10-05: "phoenix
-  or hollywood with the palm trees? ... whats with all the dead space") is
-  desert landscaping -- saguaros where the palms stood, palo verdes in bloom,
-  ocotillo, agave, boulders, a canal with the light rail along it to its
-  platform -- around the stage on a granite circle; two palms by downtown,
-  no boulevard; Session History is a desert drive-in, the big screen
+  Digest is ONE place (Frank, 2026-10-05, of the canal, light rail and
+  string lights: "none of this makes sense, restart"): a desert garden
+  overlook at sunset looking across the Valley at the camel mountain and
+  downtown, the podium on the garden's flagstone patio behind a low adobe
+  wall lined with luminarias (lit at night), saguaros, palo verdes,
+  ocotillo and agave framing both sides; Session History is a desert drive-in, the big screen
   replaying a call to a row of cars under a DRIVE-IN marquee -- Frank,
   2026-10-05: "make this a drive in theatre, not a motel" -- FIREWORKS /
   NEXT TRAIN / HABOOB ...). Space got
