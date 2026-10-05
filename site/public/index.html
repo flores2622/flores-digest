@@ -7074,7 +7074,8 @@ function salesPanel(data) {
     <td>${cesc(e.lead_source || "")}</td>
     <td>${cesc(e.policy_number || "")}</td>
     <td>${cesc(e.product || "")}</td>
-    <td class="num">${e.premium != null ? cesc(money(e.premium)) : ""}</td>
+    <td class="num">${e.premium != null ? cesc(money(e.premium)) : ""}${e.az_premium != null && e.premium != null && Number(e.az_premium) !== Number(e.premium)
+      ? ` <span class="chip c-w" title="AgencyZoom shows ${cesc(money(e.az_premium))} now, ${cesc(money(e.premium))} when this sale was added. Kept as sold: a correction or an endorsement -- check which.">AZ ${cesc(money(e.az_premium))}</span>` : ""}</td>
     <td>${cesc(e.term || "")}</td>
     <td><select data-track="docs_signed" data-id="${cesc(e.id)}" data-day="${cesc(e.day)}">${docsSignedOpts(e.docs_signed || "")}</select></td>
     <td><input type="checkbox" data-track="review_sent" data-id="${cesc(e.id)}" data-day="${cesc(e.day)}" ${e.review_sent ? "checked" : ""}></td>

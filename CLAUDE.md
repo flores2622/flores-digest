@@ -40,37 +40,23 @@ Everything caches under `data/`, so a re-run resumes rather than restarting.
   carrier id (Farmers 484668, 484654, 1030958; BW 186, 2448054; Foremost
   102, 262). The nightly sync re-applies it to the last 14 days' auto rows,
   never to a row a person typed or edited.
-- **An auto-added Sales sheet row follows its AgencyZoom policy** (Frank,
-  2026-10-05: "why is there a premium discrepancy"). It was only ever added,
-  so a premium corrected in AgencyZoom afterwards (Crystal's 557150684: $701
-  on the sheet, $670 on the board) or a policy entered after the day's last
+- **An auto-added Sales sheet row keeps the premium it was sold at, and a
+  later AgencyZoom change is FLAGGED, never applied** (Frank, 2026-10-05:
+  "it could be changed due to a mistake, but could also be changed due to an
+  endorsement and we dont pay additional premium after the sale"). Each sync
+  (`sales_log_auto.sync_day`, `live.js syncSalesLog`) stores AgencyZoom's
+  premium now as `az_premium` when it differs (dropped once they agree), and
+  the sheet shows an amber "AZ $x" beside the premium; a person decides.
+  Term and effective date do follow AgencyZoom. The nightly syncs each of the
+  last 14 days, not only today, so a policy entered after its day's last
   sync (Coral's $860 flood, 09-28, entered while AgencyZoom was refusing the
-  Worker) never reached it. Now each sync (`sales_log_auto.sync_day`, and
-  `live.js syncSalesLog`) moves an auto row's premium / term / effective
-  date to AgencyZoom's, and the nightly syncs each of the last 14 days, not
-  only today. A person's own rows are never touched. **The name**: policy
-  records carry no customer, so it comes from the sold lead (same agent and
-  source); several sold leads on ONE household are one customer (Coral's
-  Oscar Garcia, two lead records, home and auto left blank); several
-  households, or none, read the candidates' own policy lists, then the
-  household map. Still blank only when AgencyZoom links the policy to
+  Worker) is added. A person's own rows are never touched. **The name**:
+  policy records carry no customer, so it comes from the sold lead (same
+  agent and source); several sold leads on ONE household are one customer
+  (Coral's Oscar Garcia, two lead records, home and auto left blank);
+  several households, or none, read the candidates' own policy lists, then
+  the household map. Still blank only when AgencyZoom links the policy to
   nobody we can find (Amanda's book, Crystal's 09-25 Foremost pair).
-- **Sales > Commission is Frank's commission schedules, live** (Frank,
-  2026-10-02). `site/commission.js` holds his Commission Sheet (Crystal,
-  Lorena, Mike: $25k 3% Good ... $50k+ 5% Outstanding on the whole premium)
-  and Team Commission Sheet (Sarahi + Coral combined, $50k ... $100k+, split
-  50/50) and the extras (life $100 each whatever the tier; new-household
-  bundle $50 and existing-household cross-sell $25 a line once the tier
-  minimum is met, Auto / Home / Renters / Foremost lines; umbrella $25;
-  Farmers business 3.5% of premium, NOT toward the tier; Kraft Lake $300 at
-  $10k with the tier met). **The premium is the folio's Sales sheet** and
-  "anything on the sales sheet counts" toward the tier (business aside); a
-  Winback is a new household; a household is the row's customer id, else
-  its client name. The Worker works it out at `/api/commission/<folio end>`
-  and sends only what the viewer may see -- **a producer their own, Sarahi
-  and Coral their team, Frank and Amanda everyone** (`COMMISSION_ALL`). The
-  board refreshes it every two minutes on the current folio. If the
-  schedules change, change `commission.js` and the Road Map line together.
 - **Apollo judges each call against its lead source** (Frank, 2026-09-24).
   `coaching_cards._ask_card` sends `lead_sources.prompt_block()`; METHODOLOGY.md's
   "Lead source" section says how to use it, and the card's `leadfit` verdict

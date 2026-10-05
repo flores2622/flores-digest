@@ -846,13 +846,18 @@ export async function syncSalesLog(env, day, basis, policies, sourceNames, soldR
   let added = 0, changed = 0;
   for (const c of cands) {
     if (c.az_policy_id != null && have.has(String(c.az_policy_id))) {
-      // An auto row follows its policy: a premium or term corrected in
-      // AgencyZoom since, and a name found since (sales_log_auto.sync_day).
+      // An auto row keeps the premium it was sold at and FLAGS a later
+      // change (az_premium) -- a mistake or an endorsement, never paid on;
+      // term, effective date and a name found since follow AgencyZoom
+      // (sales_log_auto.sync_day -- keep them in step).
       const e = byPid.get(String(c.az_policy_id));
       if (e && e.source === "auto") {
-        for (const k of ["premium", "term", "effective_date"]) {
+        for (const k of ["term", "effective_date"]) {
           if (c[k] != null && c[k] !== "" && e[k] !== c[k]) { e[k] = c[k]; changed++; }
         }
+        const differs = c.premium != null && e.premium != null && Number(c.premium) !== Number(e.premium);
+        if (differs && e.az_premium !== c.premium) { e.az_premium = c.premium; changed++; }
+        else if (!differs && "az_premium" in e) { delete e.az_premium; changed++; }
         if (!e.client_name && c.client_name && e.notes === "Auto-added from AgencyZoom") {
           e.client_name = c.client_name; e.az_customer_id = c.az_customer_id; changed++;
         }

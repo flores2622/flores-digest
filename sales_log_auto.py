@@ -289,19 +289,30 @@ def sync_day(day, log=print, dry_run=False):
     by_pid = {e["az_policy_id"]: e for e in doc["entries"] if e.get("az_policy_id")}
     for c in candidates:
         if c["az_policy_id"] in existing_policy_ids:
-            # An auto row mirrors its AgencyZoom policy, so a premium or term
-            # corrected there after the row was added follows it (Frank,
-            # 2026-10-05: Crystal's 557150684 sat at $701 on the sheet, $670
-            # in AgencyZoom and on the board). Nobody types these fields on an
-            # auto row -- the sheet only lets a person change docs signed and
-            # review sent.
+            # An auto row keeps the premium it was sold at: a later change in
+            # AgencyZoom can be a mistake corrected, or an endorsement, and
+            # nobody is paid on premium added after the sale (Frank,
+            # 2026-10-05: "need to flag premium changes ... i dont want it to
+            # change it"). So the change is FLAGGED -- az_premium, AgencyZoom's
+            # premium now -- for someone to decide, and the flag goes once the
+            # two agree again. Term and effective date follow AgencyZoom.
             e = by_pid.get(c["az_policy_id"])
             if e and e.get("source") == "auto":
-                for k in ("premium", "term", "effective_date"):
+                for k in ("term", "effective_date"):
                     if c[k] not in (None, "") and e.get(k) != c[k]:
                         log(f"  sales log auto: {day} {e.get('policy_number')} {k} {e.get(k)!r} -> {c[k]!r}")
                         e[k] = c[k]
                         changed += 1
+                az = c["premium"]
+                differs = az is not None and e.get("premium") is not None and float(az) != float(e["premium"])
+                if differs and e.get("az_premium") != az:
+                    log(f"  sales log auto: {day} {e.get('policy_number')} premium {e.get('premium')} on the sheet,"
+                        f" {az} in AgencyZoom now -- flagged, not changed")
+                    e["az_premium"] = az
+                    changed += 1
+                elif not differs and "az_premium" in e:
+                    del e["az_premium"]
+                    changed += 1
             # An auto row the live refresh added with no name: name it now,
             # never a row a person has typed in or edited.
             e = by_pid.get(c["az_policy_id"])
@@ -331,7 +342,7 @@ def sync_day(day, log=print, dry_run=False):
     if named:
         log(f"  sales log auto: named {named} auto row(s) for {day}")
     if changed:
-        log(f"  sales log auto: {changed} field(s) brought in line with AgencyZoom for {day}")
+        log(f"  sales log auto: {changed} change(s) from AgencyZoom for {day}")
 
     log(f"  sales log auto: {added} new sale(s) added for {day}"
         + (" [dry-run, not written]" if dry_run else ""))
