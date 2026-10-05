@@ -2078,7 +2078,18 @@ repaint clears the list).
   slightly down, "the cart is popping a wheelie"), tree shadows), a pond with a footbridge, the 18 DEDUCTIBLE DOGLEG hole sign
   and an ON PAR cart on the path; banners from the tee shot to the
   yardage-book Road Maps and the pro shop; strips from a hole in one to the
-  flag alone under the moon; the tour card is the Caddie's notes. **Yuma** (Frank, 2026-10-05: "can
+  flag alone under the moon; the tour card is the Caddie's notes. **The Digest course moves**
+  (Frank, 2026-10-05: "can we add movements like the people teeing off and a
+  ball going into the fairway, the guy standing to be putting and the ball
+  moving, the guy crouched to crouch and stand ... movement in the water and
+  trees"): SMIL inside the picture (it plays in a background image) -- the
+  tee shot on an 8 s loop (set up, swing, the ball flying down the tee leg
+  into the fairway), the putt on 6 s (the stroke, the ball rolling up short
+  of the cup), the reader crouching and standing on 7 s, ripples drifting on
+  the pond, the trees swaying and the flag waving. **A picture that moves gets
+  a still copy**: build.py strips every `<animate*>` and serves it under
+  `html[data-motion="reduce"]` (Settings > Motion > Reduced), so each
+  element's own attributes are its resting state. **Yuma** (Frank, 2026-10-05: "can
   you make one off of Yuma, AZ?"; Arvo / Karla; River, Harvest, Dunes): from
   the bluff by the old territorial prison at golden hour, looking down at
   the river crossing -- the prison as it stands (Frank, 2026-10-05: "make

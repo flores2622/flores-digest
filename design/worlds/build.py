@@ -24,11 +24,18 @@ def world_css(m):
     (lt, ll), (dt, dl) = m.SKY_BG
     L = [f"/* {m.NAME}: built by design/worlds/build.py from design/worlds/{k}.py -- edit there, not here. */"]
     sky_l, sky_d = m.skyline(False), m.skyline(True)
+    # a picture that moves also gets a still copy for Settings > Motion > Reduced (every <animate*> out)
+    still = lambda svg: re.sub(r"<animate\w*\b[^>]*/>", "", svg)
+    moves = lambda svg: "<animate" in svg
     crop = lambda s: s.replace('viewBox="0 0 1600 1700"', 'viewBox="0 377 1600 1323"', 1)
     L.append(f'{T} .skyline {{ background: {lt} {url(sky_l)} center top / 100% auto no-repeat; }}')
     L.append(f'{D} .skyline {{ background: {dt} {url(sky_d)} center top / 100% auto no-repeat; }}')
     L.append(f'{T} .lbsky {{ background: {ll} {url(crop(sky_l))} center top / 100% auto no-repeat; }}')
     L.append(f'{D} .lbsky {{ background: {dl} {url(crop(sky_d))} center top / 100% auto no-repeat; }}')
+    if moves(sky_l) or moves(sky_d):
+        R, RD = f'html[data-motion="reduce"]{T[4:]}', f'html[data-motion="reduce"]{D[4:]}'
+        L.append(f'{R} .skyline {{ background-image: {url(still(sky_l))}; }} {RD} .skyline {{ background-image: {url(still(sky_d))}; }}')
+        L.append(f'{R} .lbsky {{ background-image: {url(crop(still(sky_l)))}; }} {RD} .lbsky {{ background-image: {url(crop(still(sky_d)))}; }}')
     pat = getattr(m, "PATTERN", None)
     L.append(f'{T} .main {{ background-image: {url(pat) if pat else "none"}; }}')
     if pat: L.append(f'{D} .main {{ background-image: {url(pat.replace(chr(34)+"#000"+chr(34), chr(34)+"#fff"+chr(34)))}; }}')
