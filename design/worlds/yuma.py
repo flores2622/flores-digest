@@ -264,6 +264,28 @@ def skyline(night):
     # the jagged ranges on the horizon
     a(jagged(-10, 1610, HZ, 128, 290, p["mtn"], 3, (24, 70)))
     a(jagged(-10, 1610, HZ, 240, 350, p["mtn2"], 8, (30, 80)))
+    # the town's water tower (Frank, 2026-10-05: "add the yuma water tower", then "make it look like the
+    # yuma water tower"): the modern one -- a wide fluted column, the flared bowl, the round tank with its
+    # railing and antennas, the brown wave band, the round mountain badge and the big dark lettering,
+    # an insurance word where the town's name is
+    tx, tt, tw, th = 1236, 58, 150, 72
+    cr = "#e8ddc6" if not n else "#5a5866"; cr2 = "#cdbfa4" if not n else "#46444f"; brn = "#8a6a4a" if not n else "#3e3430"
+    ink = "#2a2a36" if not n else "#1a1a24"; rail = "#6a6a72" if not n else "#2c2c36"
+    cw = 84; bt = tt + th; bb = bt + 30
+    a(f'<rect x="{tx - cw / 2}" y="{bb - 2}" width="{cw}" height="{HZ + 4 - bb}" fill="{cr}"/>'
+      + ''.join(f'<path d="M{tx - cw / 2 + 6 + k * 8} {bb}V{HZ + 4}" stroke="{cr2}" stroke-width="2.4"/>' for k in range(8))
+      + f'<rect x="{tx + 8}" y="{bb - 2}" width="{cw / 2 - 8}" height="{HZ + 4 - bb}" fill="#000" opacity=".07"/>')
+    a(f'<path d="M{tx - tw / 2} {bt}Q{tx - tw / 2 + 4} {bt + 22} {tx - cw / 2} {bb}H{tx + cw / 2}Q{tx + tw / 2 - 4} {bt + 22} {tx + tw / 2} {bt}Z" fill="{cr2}"/>')
+    a(f'<rect x="{tx - tw / 2}" y="{tt}" width="{tw}" height="{th}" fill="{cr}"/>'
+      f'<path d="M{tx - tw / 2} {tt + th * .62:.0f}Q{tx - 20} {tt + th * .3:.0f} {tx + 20} {tt + th * .55:.0f}T{tx + tw / 2} {tt + th * .5:.0f}V{bt}H{tx - tw / 2}Z" fill="{brn}"/>'
+      f'<rect x="{tx + tw * .18:.0f}" y="{tt}" width="{tw * .32:.0f}" height="{th}" fill="#000" opacity=".06"/>'
+      f'<path d="M{tx - tw / 2 - 2} {tt}H{tx + tw / 2 + 2}" stroke="{cr2}" stroke-width="3"/>'
+      f'<path d="M{tx - tw / 2} {tt - 8}H{tx + tw / 2}M{tx - tw / 2} {tt - 8}V{tt}M{tx + tw / 2} {tt - 8}V{tt}M{tx - 30} {tt - 8}V{tt}M{tx + 30} {tt - 8}V{tt}" stroke="{rail}" stroke-width="1.6"/>'
+      f'<path d="M{tx + 8} {tt - 8}V{tt - 30}M{tx + 22} {tt - 8}V{tt - 20}M{tx - 18} {tt - 8}V{tt - 16}" stroke="{rail}" stroke-width="1.6"/>')
+    bx = tx - 52; by = tt + 24
+    a(f'<circle cx="{bx}" cy="{by}" r="10" fill="#1f2a4a" stroke="#fff" stroke-width="1.5"/><path d="M{bx - 8} {by + 4}l5 -6l3 3l4 -6l4 9z" fill="#fff"/>'
+      f'<text x="{bx + 14}" y="{by + 5}" font-family="Georgia, serif" font-weight="bold" font-size="13" fill="{ink}" letter-spacing=".5">STAY COVERED</text>')
+    if n: a(f'<circle cx="{tx + 8}" cy="{tt - 32}" r="3.5" fill="#ff4a3a"/><circle cx="{tx + 8}" cy="{tt - 32}" r="12" fill="#ff4a3a" opacity=".3"/>')
     # far bank: fields and groves under the mountains' feet
     a(f'<rect x="0" y="{HZ - 6}" width="{W}" height="26" fill="{p["green2"]}"/>')
     a(rows(0, HZ - 2, W, HZ + 18, 5, [p["green"], p["red"], p["soil"]], 3, "40 6"))

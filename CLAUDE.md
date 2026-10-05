@@ -2030,8 +2030,13 @@ repaint clears the list).
   inspired theme"; Playfair Display / Nunito Sans; Fairway, Clubhouse,
   Links): one course at golden hour -- cypress and the clubhouse clock tower
   between the tiles, the FULL COVERAGE COUNTRY CLUB on the leaderboard's
-  horizon, a striped fairway down to the putting green the podium stands
-  on, bunkers, a pond with a footbridge, the 18 DEDUCTIBLE DOGLEG hole sign
+  horizon, the hole drawn like a real one (Frank, 2026-10-05: "make the
+  golf course look more like a real course": the tee box at the top, a
+  fairway narrowing toward it in perspective with mowing stripes down its
+  length and a band of first-cut rough, flashed bunkers with shadowed
+  lips on the bend and the green's shoulders, a kidney-shaped green in its
+  collar the podium stands on, another hole crossing the distance, tree
+  shadows), a pond with a footbridge, the 18 DEDUCTIBLE DOGLEG hole sign
   and an ON PAR cart on the path; banners from the tee shot to the
   yardage-book Road Maps and the pro shop; strips from a hole in one to the
   flag alone under the moon; the tour card is the Caddie's notes. **Yuma** (Frank, 2026-10-05: "can
@@ -2041,7 +2046,10 @@ repaint clears the list).
   the Yuma prison more recognizable": the squat stone guardhouse on the
   round stone water reservoir with its outside stair, the open timber
   lookout and hip roof, the arched sally port with its strap-iron gate, the
-  row of strap-iron cell doors), date palms and jagged ranges
+  row of strap-iron cell doors), date palms, the town's water tower as it
+  stands ("make it look like the yuma water tower": the fluted column,
+  flared bowl and tall tank with its railing, the brown wave band and round
+  mountain badge, STAY COVERED where the town's name is) and jagged ranges
   between the tiles under a blazing sun with jets' contrails; one bridge,
   the arched highway truss, over the teal river (the railroad truss, its
   train, the far bank's palms and the RIVER CROSSING sign came out --
