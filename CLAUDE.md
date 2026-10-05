@@ -1873,7 +1873,13 @@ repaint clears the list).
   coaching in the accent; Needs someone / Left on the desk and Speed to
   Dial amber; Call Outcome blue; Task Completion purple; Utilization and
   Household Completion green; Speed to Reply rose; misfiled leads red). No
-  figure, list or hook changed.
+  figure, list or hook changed. **Redrawn 2026-10-05 as a frontier town that moves** (Frank: "need to get
+  more creative with this image, theres not even any movement"): `design/worlds/desert_digest.py` draws it and
+  `desert_splice.py` writes its four urls and the still copies into index.html -- red-rock buttes, the mission
+  bell tower, a water tower, a windmill and the moon above the tiles; Main Street's false fronts (SALOON &
+  SAVINGS, BANK ON IT, SHERIFF · CLAIMS DEPT., TELEGRAPH · TEXT ME BACK ...) down to the mission, the podium on a
+  town stage; the windmill turning, a hawk circling, clouds, batwing doors, a horse's tail, lanterns,
+  tumbleweeds and dust.
 - **Every other page opens on a vista** (Frank, 2026-10-02: "do the rest
   of the board, each with a different twist"): a 170px drawn banner under
   the range controls (`.vista`, placed by `placeVista` from a
@@ -2117,14 +2123,19 @@ repaint clears the list).
   back from the left, seamless on a 16 s loop -- and its birds keep clear of
   it; Football's benches became warm-ups on each team's half (catch, a
   kicker putting it through the left uprights, a quarterback hitting a
-  receiver); Ocean's REEL QUOTE and PREMIUM CATCH lower their nets into the
+  receiver -- Frank: "the ball is not moving like a kicked fieldgoal", "or like a thrown ball": the kicker runs up to
+  a tee and the ball tumbles end over end, shrinking as it carries, over the crossbar into the end zone; a pass is a
+  high spiral nose-first, caught in stride and carried on, a toss comes back on a flatter arc); Ocean's REEL QUOTE and PREMIUM CATCH lower their nets into the
   sea and haul them up full (clipped at the waterline); Yuma's fighters
   streak across with their contrails and a freight train crosses the bridge
-  between the truss sides; Space's rocket counts down T-00:10 on the clock
-  by the road, lifts off at zero, climbs out of sight and lands back on its
-  pad on one 20 s loop (LIFTOFF / LANDED on the clock), and a small rocket
+  between the truss sides; Space's rocket counts down from T-00:05 on the clock
+  by the road (Frank: "a 5 second countdown not 10"), lifts off at zero, climbs out of sight and lands back on its
+  pad on one 15 s loop (LIFTOFF / LANDED on the clock), and a small rocket
   climbs the far trail by day; Dallas's cars face the way they drive (the
-  hood had been drawn at the back). The two cities' Service banners are their
+  hood had been drawn at the back). Later the same day: Phoenix's taxiing jets are drawn over the runway, not
+  hidden under it, and the departing jet climbs straight out up the runway, staying a size you can see until it is
+  high over downtown ("it disappears behind the pavement, and takes off to small"); Yuma's contrails fade out
+  behind each jet ("can their trail fade properly?"). The two cities' Service banners are their
   own places, not a generic street ("for dallas and yuma make the
   neighborhood something else specific to the respective cities"): Dallas's
   vintage trolley on a red-brick, oak-lined avenue of storefronts and lofts

@@ -84,7 +84,12 @@ def jet(x, y, s, c, flip=False, night=False):
 
 def contrail(x0, y0, x1, y1, w0, w1, op=.75, c="#fff"):
     dx, dy = x1 - x0, y1 - y0; L = math.hypot(dx, dy); nx, ny = -dy / L, dx / L
-    return (f'<path d="M{x0 + nx * w0:.0f} {y0 + ny * w0:.0f}L{x1 + nx * w1:.0f} {y1 + ny * w1:.0f}L{x1 - nx * w1:.0f} {y1 - ny * w1:.0f}L{x0 - nx * w0:.0f} {y0 - ny * w0:.0f}Z" fill="{c}" opacity="{op}"/>')
+    # the trail fades out behind the jet (Frank, 2026-10-05: "can their trail fade properly?") -- a gradient along
+    # its own length, in its own coordinates, so it travels with the jet
+    gid = f"ct{int(x0)}{int(y0)}{int(x1)}{int(w1 * 10)}"
+    return (f'<defs><linearGradient id="{gid}" gradientUnits="userSpaceOnUse" x1="{x0}" y1="{y0}" x2="{x1}" y2="{y1}">'
+            f'<stop offset="0" stop-color="{c}" stop-opacity="1"/><stop offset=".55" stop-color="{c}" stop-opacity=".45"/><stop offset="1" stop-color="{c}" stop-opacity="0"/></linearGradient></defs>'
+            f'<path d="M{x0 + nx * w0:.0f} {y0 + ny * w0:.0f}L{x1 + nx * w1:.0f} {y1 + ny * w1:.0f}L{x1 - nx * w1:.0f} {y1 - ny * w1:.0f}L{x0 - nx * w0:.0f} {y0 - ny * w0:.0f}Z" fill="url(#{gid})" opacity="{op}"/>')
 
 def jagged(x0, x1, base, lo, hi, c, seed, step=(26, 60)):
     """the jagged desert ranges: sawtooth spires"""
