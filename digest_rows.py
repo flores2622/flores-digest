@@ -45,6 +45,29 @@ def customer_name(c):
             or (c.get("businessName") or "").strip())
 
 
+def _utc_of(clock, day):
+    """The UTC stamp back from a "2:05 PM" Arizona clock on the day."""
+    t = dt.datetime.strptime(f"{day} {clock}", "%Y-%m-%d %I:%M %p") + dt.timedelta(hours=7)
+    return t.strftime("%Y-%m-%d %H:%M:%S")
+
+
+def sold_at(lead, day):
+    """When a lead was marked sold, as the Digest's clock ("2:05 PM"), from its
+    enterStageDate (UTC) when that falls on the day in Arizona -- the sold move
+    is the lead's last stage move that day. None otherwise. It places the sale
+    in How the day went's chat (Frank, 2026-10-05: "the sales should be mixed in
+    with the rest of the chats based on the time")."""
+    raw = str(lead.get("enterStageDate") or "")
+    try:
+        t = dt.datetime.strptime(raw[:19], "%Y-%m-%d %H:%M:%S") - dt.timedelta(hours=7)
+    except ValueError:
+        return None
+    # outside 7 AM - 7 PM is AgencyZoom marking it sold overnight, not a sale time
+    if t.date().isoformat() != day or not 7 <= t.hour < 19:
+        return None
+    return t.strftime("%I:%M %p").lstrip("0")
+
+
 def is_existing(source_name):
     """A sold lead whose source says it was an existing customer -- the same
     set Household Completion's cross-sell always read off the policy."""
@@ -149,7 +172,8 @@ def build(day, log=print):
                                       "source": (l.get("leadSourceName") or "").strip(),
                                       # an existing customer (a cross-sell source) or a
                                       # new household -- Household Completion's split.
-                                      "existing": is_existing(l.get("leadSourceName"))})
+                                      "existing": is_existing(l.get("leadSourceName")),
+                                      "at": sold_at(l, day)})
     # A household sold with no lead marked sold: the new customer record
     # behind an otherwise unmatched policy (Frank, 2026-10-01; Crystal's Julio
     # Zepeda on 09-30). digest_config.customer_households has the rule.
@@ -222,8 +246,66 @@ def backfill(start, end=None, force=False, log=print):
     return done
 
 
+def add_sold_times(start, end=None, log=print):
+    """Give each published day's households sold their `at` (sold_at) from that
+    day's saved lead snapshot in R2 (cache/<day>/corpus/az_leads_all.json.gz).
+    Backs each page up under backups/<today>-sold-times/ and changes only the
+    sold_leads rows' `at`; every figure stays as it went out."""
+    import gzip, publish_board
+    cli, bucket = publish_board._client()
+    end = end or dt.date.today().isoformat()
+    today = dt.date.today().isoformat()
+    latest = az = None
+    keys = [o["Key"][5:15] for o in cli.list_objects_v2(Bucket=bucket, Prefix="days/").get("Contents", []) if o["Key"].endswith(".json")]
+    for day in sorted(d for d in keys if start <= d <= end):
+        raw = cli.get_object(Bucket=bucket, Key=f"days/{day}.json")["Body"].read()
+        doc = json.loads(raw)
+        rows = (doc.get("rows") or {}).get("sold_leads") or []
+        if not rows:
+            continue
+        try:
+            leads = json.loads(gzip.decompress(cli.get_object(Bucket=bucket, Key=f"cache/{day}/corpus/az_leads_all.json.gz")["Body"].read()))
+        except Exception:
+            # no snapshot that night: the newest one still dates a lead that has not
+            # moved since it was sold (sold_at only answers for the day itself)
+            if latest is None:
+                snaps = sorted(o["Key"] for o in cli.list_objects_v2(Bucket=bucket, Prefix="cache/").get("Contents", []) if o["Key"].endswith("corpus/az_leads_all.json.gz"))
+                latest = json.loads(gzip.decompress(cli.get_object(Bucket=bucket, Key=snaps[-1])["Body"].read())) if snaps else []
+            leads = latest
+        by_id = {l.get("id"): l for l in (leads if isinstance(leads, list) else leads.get("leads", []))}
+        n = 0
+        for r in rows:
+            l = by_id.get(r.get("lead_id"))
+            at = sold_at(l, day) if l else None
+            if not at and r.get("lead_id") and not r.get("at"):
+                # the lead has moved since: its own "Sold" note carries the time
+                if az is None:
+                    import az_client
+                    az = az_client.AgencyZoom()
+                try:
+                    for note in az.lead_notes(r["lead_id"]):
+                        if str(note.get("type") or "").lower() == "sold":
+                            at = sold_at({"enterStageDate": note.get("createDate")}, day)
+                            if at:
+                                break
+                except Exception as e:
+                    log(f"  {day}: notes for {r['lead_id']} unreadable ({type(e).__name__})")
+            if at and r.get("at") != at:
+                r["at"] = at; n += 1
+            elif not at and r.get("at") and not sold_at({"enterStageDate": _utc_of(r["at"], day)}, day):
+                r.pop("at"); n += 1
+        if not n:
+            log(f"  {day}: nothing to add"); continue
+        cli.put_object(Bucket=bucket, Key=f"backups/{today}-sold-times/days/{day}.json", Body=raw, ContentType="application/json")
+        cli.put_object(Bucket=bucket, Key=f"days/{day}.json", Body=json.dumps(doc, default=str).encode(),
+                       ContentType="application/json", CacheControl="no-store")
+        log(f"  {day}: {n} of {len(rows)} households sold given a time")
+
+
 if __name__ == "__main__":
-    if sys.argv[1:2] == ["--backfill"]:
+    if sys.argv[1:2] == ["--add-sold-times"]:
+        add_sold_times(sys.argv[2], sys.argv[3] if len(sys.argv) > 3 else None)
+    elif sys.argv[1:2] == ["--backfill"]:
         backfill(sys.argv[2], sys.argv[3] if len(sys.argv) > 3 and not sys.argv[3].startswith("--") else None,
                  force="--force" in sys.argv)
     else:
