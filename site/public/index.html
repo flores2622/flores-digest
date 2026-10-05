@@ -1447,6 +1447,61 @@ tr.found td { background: color-mix(in oklab, var(--accent) 18%, transparent) !i
 .tourcard .tbtns .tnext { background: #b5532f; border-color: #b5532f; color: #fff; border-radius: 10px; }
 .tourcard .tbtns .tback { background: #e8dac9; border-color: #e8dac9; color: #2a2320; border-radius: 10px; }
 .tourcard .tbtns .tskip { color: #6e5f53; }
+/* The tour wears the world (Frank, 2026-10-05: "can we make the tour be themed to whatever world is
+   selected"): a kicker naming what the card is, the world's own colours and button words (TOUR_SKIN). */
+.tourcard .tkick { position: absolute; top: 5px; left: 60px; font: 800 9.5px var(--body); letter-spacing: .14em; text-transform: uppercase; color: #b5532f; opacity: .85; }
+.tourcard h4 { padding-top: 10px; }
+html[data-theme="space"] .tourcard { background: radial-gradient(circle at 85% 0%, #2a3a7a 0, transparent 55%), linear-gradient(180deg, #0b1230, #070b20); color: #e6ecff; border: 1px solid #3a4f9a; border-radius: 14px; background-size: auto; box-shadow: 0 0 0 1px #0b1230, 0 18px 50px rgba(0,0,0,.55); }
+html[data-theme="space"] .tourcard::before { display: none; }
+html[data-theme="space"] .tourcard h4 { border-bottom: 1px solid #ff7a3d; font-family: var(--display); color: #fff; }
+html[data-theme="space"] .tourcard p { color: #c9d3f0; }
+html[data-theme="space"] .tourcard .tkick, html[data-theme="arcade"] .tourcard .tkick, html[data-theme="phoenix"] .tourcard .tkick, html[data-theme="mountain"] .tourcard .tkick { left: 16px; }
+html[data-theme="space"] .tourcard .tkick { color: #7fd0ff; font-family: monospace; }
+html[data-theme="space"] .tourcard .tstep { background: #ff7a3d; }
+html[data-theme="space"] .tourcard .tbtns .tnext { background: #ff7a3d; border-color: #ff7a3d; }
+html[data-theme="space"] .tourcard .tbtns .tback { background: #1c2752; border-color: #3a4f9a; color: #e6ecff; }
+html[data-theme="space"] .tourcard .tbtns .tskip { color: #8fa0cc; }
+html[data-theme="ocean"] .tourcard { background: #f4f8fb; background-image: linear-gradient(0deg, transparent 0 27px, #d6e4ef 27px 28px); background-size: 100% 28px; background-position: 0 56px; color: #14324f; border: 3px dashed #2a5a84; border-radius: 12px; }
+html[data-theme="ocean"] .tourcard::before { content: "⚓"; border: 0; width: auto; height: auto; top: -18px; left: auto; right: 58px; font-size: 26px; }
+html[data-theme="ocean"] .tourcard h4 { border-bottom: 2px solid #2a8a86; color: #14324f; }
+html[data-theme="ocean"] .tourcard p { color: #14324f; }
+html[data-theme="ocean"] .tourcard .tkick { color: #2a8a86; left: 16px; }
+html[data-theme="ocean"] .tourcard .tstep { background: #1f3d66; }
+html[data-theme="ocean"] .tourcard .tbtns .tnext { background: #2a8a86; border-color: #2a8a86; }
+html[data-theme="ocean"] .tourcard .tbtns .tback { background: #dbe8f2; border-color: #dbe8f2; color: #14324f; }
+html[data-theme="mountain"] .tourcard { background: #fbf7ee; background-image: none; color: #2b2a22; border: 0; border-radius: 10px; box-shadow: 0 0 0 4px #6b4a2a, 0 18px 44px rgba(0,0,0,.35); }
+html[data-theme="mountain"] .tourcard::before { content: "▲▲"; border: 0; width: auto; height: auto; top: -24px; left: 18px; color: #2f5a3a; font-size: 18px; letter-spacing: -4px; }
+html[data-theme="mountain"] .tourcard h4 { background: #6b4a2a; color: #fbf3e2; border-bottom: 0; border-radius: 8px 8px 0 0; }
+html[data-theme="mountain"] .tourcard .tkick { color: #e8d3a8; z-index: 1; }
+html[data-theme="mountain"] .tourcard .tstep { background: #2f5a3a; }
+html[data-theme="mountain"] .tourcard .tbtns .tnext { background: #2f5a3a; border-color: #2f5a3a; }
+html[data-theme="mountain"] .tourcard .tbtns .tback { background: #e9e0cc; border-color: #e9e0cc; color: #2b2a22; }
+html[data-theme="gameday"] .tourcard { background: repeating-linear-gradient(90deg, #2f7d32 0 46px, #348a37 46px 92px); color: #fff; border: 3px solid #fff; border-radius: 10px; }
+html[data-theme="gameday"] .tourcard::before { content: "🏈"; border: 0; width: auto; height: auto; top: -20px; left: auto; right: 58px; font-size: 26px; }
+html[data-theme="gameday"] .tourcard h4 { border-bottom: 3px solid #fff; color: #fff; text-transform: uppercase; letter-spacing: .04em; }
+html[data-theme="gameday"] .tourcard p { color: #f2f6ee; text-shadow: 0 1px 1px rgba(0,0,0,.35); }
+html[data-theme="gameday"] .tourcard .tkick { color: #ffd23f; left: 16px; }
+html[data-theme="gameday"] .tourcard .tstep { background: #ffd23f; color: #1a2a1a; }
+html[data-theme="gameday"] .tourcard .tbtns .tnext { background: #c8283a; border-color: #c8283a; }
+html[data-theme="gameday"] .tourcard .tbtns .tback { background: #fff; border-color: #fff; color: #1a3a1a; }
+html[data-theme="gameday"] .tourcard .tbtns .tskip { color: #e6f2e2; }
+html[data-theme="arcade"] .tourcard { background: #0d0a2a; background-image: linear-gradient(0deg, rgba(61,242,255,.07) 1px, transparent 1px); background-size: 100% 4px; color: #e9f0ff; border: 0; border-radius: 0;
+  box-shadow: 0 0 0 4px #3df2ff, 0 0 0 8px #0d0a2a, 0 0 0 12px #2f7bff, 0 18px 50px rgba(0,0,0,.5); }
+html[data-theme="arcade"] .tourcard::before { display: none; }
+html[data-theme="arcade"] .tourcard h4 { border-bottom: 4px dotted #ffd23f; color: #ffd23f; font-family: var(--display); }
+html[data-theme="arcade"] .tourcard p { color: #cfe0ff; }
+html[data-theme="arcade"] .tourcard .tkick { color: #3df2ff; font-family: var(--display); }
+html[data-theme="arcade"] .tourcard .tstep { background: #2f7bff; border-radius: 0; }
+html[data-theme="arcade"] .tourcard .tbtns .tnext { background: #ffd23f; border-color: #ffd23f; color: #0d0a2a; border-radius: 0; font-family: var(--display); }
+html[data-theme="arcade"] .tourcard .tbtns .tback { background: #1c1a4a; border-color: #3df2ff; color: #e9f0ff; border-radius: 0; }
+html[data-theme="arcade"] .tourcard .tbtns .tskip { color: #9fb0e0; }
+html[data-theme="phoenix"] .tourcard { background: #fff8ef; background-image: none; color: #2a1a12; border: 0; border-radius: 14px; overflow: hidden; }
+html[data-theme="phoenix"] .tourcard::before { display: none; }
+html[data-theme="phoenix"] .tourcard h4 { background: linear-gradient(100deg, #ff9a3d, #d9522b 45%, #6a3a8a); color: #fff; border-bottom: 0; }
+html[data-theme="phoenix"] .tourcard .tkick { color: #fff3e0; z-index: 1; }
+html[data-theme="phoenix"] .tourcard .tstep { background: #2a1a12; }
+html[data-theme="phoenix"] .tourcard .tbtns .tnext { background: #c2622a; border-color: #c2622a; }
+html[data-theme="phoenix"] .tourcard .tbtns .tback { background: #f4e2cf; border-color: #f4e2cf; color: #2a1a12; }
 .tabs .tourbtn { margin-top: auto; background: var(--side2); color: var(--sideInk); border: 0; border-radius: 12px; padding: 11px 12px; font: 600 14px var(--body); }
 .tabs .tourbtn:hover { color: #fff; border-color: transparent; }
 .tabs .tourbtn + .setbtn { margin-top: 6px; }
@@ -9793,6 +9848,16 @@ const tourSection = title => [...$$("#view .sect")].find(sec => {
   return h && h.textContent.trim().toLowerCase().startsWith(title.toLowerCase());
 });
 let tourIdx = -1, tourReturn = null;
+// what the tour's card is in each world, and its buttons' words
+const TOUR_SKIN = {
+  desert: { k: "Field note", next: "Next", back: "Back", done: "Done", skip: "Skip tour" },
+  space: { k: "Mission briefing", next: "Next burn", back: "Back", done: "Splashdown", skip: "Abort tour" },
+  ocean: { k: "Captain's log", next: "Sail on", back: "Back", done: "Make port", skip: "Drop anchor" },
+  mountain: { k: "Trail guide", next: "Next marker", back: "Back", done: "Summit!", skip: "Leave the trail" },
+  gameday: { k: "The playbook", next: "Next play", back: "Back", done: "Final whistle", skip: "Call timeout" },
+  arcade: { k: "Tutorial", next: "Continue ▸", back: "◂ Back", done: "Game clear!", skip: "Skip cutscene" },
+  phoenix: { k: "Valley guide", next: "Next stop", back: "Back", done: "Last stop", skip: "Hop off" },
+};
 function tourEls() {
   let spot = $("#tourspot"), card = $("#tourcard");
   if (!spot) { spot = document.createElement("div"); spot.id = "tourspot"; spot.className = "tourspot"; document.body.appendChild(spot); }
@@ -9843,11 +9908,12 @@ async function tourShow(i) {
   }
   const { card } = tourEls();
   const last = i === TOUR_STEPS.length - 1;
-  card.innerHTML = `<div class="tstep" title="${i + 1} of ${TOUR_STEPS.length}">${i + 1}</div>
+  const sk = TOUR_SKIN[TH.theme] || TOUR_SKIN.desert;
+  card.innerHTML = `<div class="tkick">${cesc(sk.k)}</div><div class="tstep" title="${i + 1} of ${TOUR_STEPS.length}">${i + 1}</div>
     <h4 id="tourtitle">${cesc(st.title)}</h4><p>${cesc(st.text)}</p>
-    <div class="tbtns">${last ? "" : '<button class="tskip" type="button">Skip tour</button>'}
-      ${i ? '<button class="tback" type="button">Back</button>' : ""}
-      <button class="tnext" type="button">${last ? "Done" : "Next"}</button></div>`;
+    <div class="tbtns">${last ? "" : `<button class="tskip" type="button">${cesc(sk.skip)}</button>`}
+      ${i ? `<button class="tback" type="button">${cesc(sk.back)}</button>` : ""}
+      <button class="tnext" type="button">${cesc(last ? sk.done : sk.next)}</button></div>`;
   card.querySelector(".tnext").onclick = () => last ? tourEnd() : tourShow(i + 1);
   const back = card.querySelector(".tback"); if (back) back.onclick = () => tourShow(i - 1);
   const skip = card.querySelector(".tskip"); if (skip) skip.onclick = tourEnd;

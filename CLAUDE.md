@@ -1662,7 +1662,14 @@ each world's own, only in that world: Frank, 2026-10-05, "i am in the
 mountain world and got a desert greeting"; `GREETINGS_BY_WORLD`, the
 desert's inline, the rest each module's `GREETINGS`, written by build.py) and carries the search (Ctrl K:
 pages, sections, producers, every lead on the loaded day) and **Take a
-tour** (the board's own system tour, its card styled as the Field note). Every section is a cream card
+tour** (the board's own system tour, its card styled as the Field note --
+and in every other world as that world's own, Frank, 2026-10-05: "can we
+make the tour be themed to whatever world is selected": `TOUR_SKIN` names
+the card and its buttons -- Mission briefing / Next burn / Splashdown,
+Captain's log / Sail on / Make port, Trail guide / Next marker / Summit!,
+The playbook / Next play / Final whistle, Tutorial / Continue / Game clear!,
+Valley guide / Next stop / Last stop -- and `html[data-theme] .tourcard`
+dresses it). Every section is a cream card
 with a 2px border. **A feed line never names a stage** ("Mike presented
 $2,500 in premium"): the Digest's **How the day went** is the floor's group chat
 (`digestFeedItems`; Frank, 2026-10-05: "i still want it to be a group chat,
