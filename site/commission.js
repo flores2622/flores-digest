@@ -10,7 +10,8 @@
  *   Team (Sarahi + Coral): the same rates on their COMBINED premium at
  *   $50,000 / 60 / 70 / 80 / 90 / 100,000+, split 50/50.
  *
- *   Additional: life $100 each whatever the tier; multiline bundle to a NEW
+ *   Additional: life $100 each whatever the tier (a policy count -- its
+ *   premium never counts toward the tier, Frank 2026-10-05); multiline bundle to a NEW
  *   household $50 once; cross-sell to an EXISTING household $25 per line
  *   (both once the tier minimum is met; Auto, Home, Renters and Foremost
  *   lines only); umbrella $25 each; Farmers business 3.5% of the premium,
@@ -20,7 +21,7 @@
  * Frank's answers (2026-10-02): the premium is the SALES SHEET's for the
  * folio (it is live -- the Worker adds a sale the refresh it is sold), and
  * "anything on the sales sheet counts" toward the tier (business aside, per
- * his own sheet). A Winback is a new household. Who sees what is the
+ * his own sheet; life aside too, 2026-10-05). A Winback is a new household. Who sees what is the
  * Worker's call (getCommission): each producer their own, Sarahi and Coral
  * their team, Frank and Amanda everyone.
  *
@@ -78,7 +79,10 @@ export function standing(unit, entries) {
   const mine = entries.filter((e) => unit.members.includes(e.producer));
   const tiers = tiersOf(unit.schedule);
   const sched = SCHEDULES[unit.schedule];
-  const tierRows = mine.filter((e) => kindOf(e.product) !== "business");
+  // Life pays by the policy ($100 each), never by premium (Frank,
+  // 2026-10-05: "life is based only off of policy count, not premium"), so
+  // neither it nor business counts toward the tier.
+  const tierRows = mine.filter((e) => !["business", "life"].includes(kindOf(e.product)));
   const premium = tierRows.reduce((s, e) => s + num(e.premium), 0);
   let at = -1;
   tiers.forEach((t, i) => { if (premium >= t.min) at = i; });
