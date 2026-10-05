@@ -1948,7 +1948,11 @@ repaint clears the list).
   PREMIUM, THE CLOSER, HOOKED LEAD, REEL DEAL, SALE AWAY, CROSS-SELL, and
   TEXT ME BACK under the signal flags on Texts & Emails), **Mountain**
   (Zilla Slab / Work Sans; Evergreen, Glacier, Aspen -- the peaks, the lake and
-  the ranger cabin, the podium on a granite summit slab, SUMMIT / TRAIL
+  the ranger cabin, the podium on a granite summit slab; its horizon sits 62
+  units below the split so the peaks' feet, the treeline and the lake's far
+  shore run on into the leaderboard -- Frank, 2026-10-05: "one background on
+  2 cards that flow into each other" -- and the trailhead sign starts below
+  what the top card shows, SUMMIT / TRAIL
   CLOSED / HIBERNATING ...), **Game Day** (Oswald / Barlow; Home, Away, Night
   Game -- the stadium with FLORES on the scoreboard, the podium on the 50,
   TOUCHDOWN / 1ST & 10 / TURNOVER ...), **Retro Arcade** (Orbitron / Exo 2;
