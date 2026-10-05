@@ -1372,6 +1372,16 @@ Crystal (hybrid); credit always goes to whoever COMPLETED the SR or task.
   **Note Standard** counts the missing parts. Past days: `python3
   service_digest.py --add-roles 2026-09-01 2026-09-25` (backs up under
   `backups/<today>-roles/`).
+  **A client calling or walking in to cancel** (Frank's message to the
+  service team, 2026-10-05; `service_playbook.CANCELLATIONS`, in the
+  playbook's prompt block and `as_doc`, the Front Desk's and Team Member's
+  responsibilities, and Athena's Road Map's "A client who wants to cancel"):
+  never ask if they will give us the opportunity to review it ("theyre going
+  to say no every time"); Debbie passes them to the assigned rep, else
+  schedules a call back or appointment; the rep works up an offer if there is
+  one and presents it without asking; else refer them to the cancellation
+  department or cancel it ourselves where that is an option. The audit's
+  reads see it from new notes on (cache by SR + note); nothing scores it yet.
 - **The Service Digest is one card per person, no leaderboard** (Frank,
   2026-09-29, option D: "when I dont have a rep selected i want it to display
   the team totals"). A strip of small cards (Amanda, Crystal, Debbie in the

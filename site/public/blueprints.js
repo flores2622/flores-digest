@@ -312,7 +312,7 @@
         { terms: [
           ["Service Lead: Amanda", "Oversight, delegation, complex service, training, and keeping the department moving. Handles complex or sensitive issues, Spanish-speaking service clients, involved policy changes and coverage questions, and reviews renewals. Watches missed calls, texts and pending tasks, audits notes, and steps in when someone needs help. A licensed rep, so she opens and works claims. **The Service Lead is not the default person for every request**; the goal is to delegate and support, not become the team's backlog."],
           ["Service Team Member: Crystal", "Handles day-to-day service independently: policy questions and changes, billing questions, vehicles and drivers, lienholders, documents and ID cards, renewal questions, and follow-ups. **If you can handle it, handle it.** Check the account, the policy and the notes before passing anything on. Crystal also sells, so she works an opportunity herself. A licensed rep, so she opens and works claims."],
-          ["Front Desk: Debbie", "The first impression of the agency. Answers calls, greets walk-ins, handles basic billing, NOCs and admin tasks, and gets each client to the right person. **The front desk doesn't need to solve every issue**; the goal is to identify the need and route it confidently. Debbie passes sales opportunities to a producer. **Debbie doesn't open claims**: a client calling with a claim goes to Amanda or Crystal."],
+          ["Front Desk: Debbie", "The first impression of the agency. Answers calls, greets walk-ins, handles basic billing, NOCs and admin tasks, and gets each client to the right person. **The front desk doesn't need to solve every issue**; the goal is to identify the need and route it confidently. Debbie passes sales opportunities to a producer. **Debbie doesn't open claims**: a client calling with a claim goes to Amanda or Crystal. A client who wants to cancel goes to their rep, or gets a call back or appointment with them (below)."],
         ] },
       ] },
 
@@ -329,6 +329,17 @@
         ] } },
         "**When in doubt, start with the service team.** We decide where the request needs to go.",
         "**Service first, opportunity second.** Don't force a sales conversation into every call, but don't miss the ones clients hand you. \"I'm adding a new vehicle\": handle the change, then see if the household could be reviewed. \"We're buying a house\": handle the need, and make sure the home gets to a producer.",
+      ] },
+
+    { h: "A client who wants to cancel",
+      body: [
+        "**Never ask if they'll give us the opportunity to review it.** They say no every time. Assume the review and do it.",
+        { steps: [
+          "**Front desk**: pass the client to their assigned rep if the rep is available.",
+          "**Rep not available**: schedule a call back or an appointment with the rep.",
+          "**The rep**: work up an offer if there is one and present it, without asking if they'll let us review it.",
+          "**No offer, or they still want to cancel**: refer them to the cancellation department, or cancel it ourselves where we can.",
+        ] },
       ] },
 
     { h: "The note standard",

@@ -47,7 +47,9 @@ ROLES = {
             "Assist with billing/service questions", "Follow up on outstanding items",
             "Handle vehicle and driver changes", "Assist with lienholder/mortgagee changes",
             "Handle document and ID card requests", "Review renewal questions",
-            "Open and work claims (licensed reps only)", "Maintain accurate account notes",
+            "Open and work claims (licensed reps only)",
+            "Work up an offer for a client who wants to cancel and present it, without asking permission",
+            "Maintain accurate account notes",
             "Complete assigned tasks", "Identify opportunities that should be passed to a producer",
             "Ask for help when an issue is outside their knowledge or authority",
         ],
@@ -63,6 +65,8 @@ ROLES = {
             "Answer incoming calls", "Greet walk-in clients", "Assist with basic billing questions",
             "Identify what the client needs", "Route clients appropriately", "Assign service requests",
             "Take a claim call to a licensed rep (Amanda or Crystal) -- the Front Desk does not open claims",
+            "Pass a client calling or walking in to cancel to their assigned rep, or schedule a call back or "
+            "appointment -- never ask if they will give us the opportunity to review it",
             "Monitor account alerts", "Handle NOCs and designated administrative tasks",
             "Make sure messages and tasks are assigned correctly",
         ],
@@ -105,6 +109,25 @@ REQUEST_TYPES = {
 }
 ROUTINE = {k for k, (_, owner) in REQUEST_TYPES.items() if owner in ("service", "front_desk")}
 from claims import LICENSED_NAMES as LICENSED      # who may open and work a claim
+# A client calling or walking in to cancel (Frank, 2026-10-05, to the service
+# team): "Debbie will no longer be asking if they will give us the opportunity
+# to review it, theyre going to say no every time. She will attempt to pass it
+# to the assigned rep if they are available. If theyre not she will try to
+# schedule a call back or appointment. We will work up an offer if we have one
+# and try to present it, without asking them if they will give us the
+# opportunity to review it. If not we can refer them to the cancellation dept
+# or cancel on our own if its an option."
+CANCELLATIONS = {
+    "rule": ("Never ask a client who wants to cancel if they will give us the opportunity to review it -- "
+             "they say no every time. Assume the review."),
+    "steps": [
+        "Front Desk passes the client to their assigned rep, if the rep is available.",
+        "If the rep isn't available, the Front Desk schedules a call back or an appointment with them.",
+        "The rep works up an offer if there is one and presents it -- without asking if the client will let us review it.",
+        "No offer, or the client still wants to cancel: refer them to the cancellation department, "
+        "or cancel it ourselves where that is an option.",
+    ],
+}
 WHEN_IN_DOUBT = "When in doubt, start with the Service Team. We determine where the request needs to go."
 
 # A note should answer these (Account & Note Standards).
@@ -177,7 +200,10 @@ Good note: "{GOOD_NOTE}"
 Too vague: "{VAGUE_NOTE}"
 A good note lets the next team member pick up where you left off without asking the client to repeat themselves.
 
-Service vs. sales: {SERVICE_VS_SALES}"""
+Service vs. sales: {SERVICE_VS_SALES}
+
+A client who wants to cancel: {CANCELLATIONS["rule"]}
+""" + "\n".join(f"  {i}. {s}" for i, s in enumerate(CANCELLATIONS["steps"], 1))
 
 
 def as_doc():
@@ -186,5 +212,5 @@ def as_doc():
             "request_types": {k: list(v) for k, v in REQUEST_TYPES.items()}, "routine": sorted(ROUTINE),
             "sells": sorted(SELLS), "licensed": sorted(LICENSED),
             "when_in_doubt": WHEN_IN_DOUBT, "note_parts": NOTE_PARTS, "good_note": GOOD_NOTE,
-            "vague_note": VAGUE_NOTE, "service_vs_sales": SERVICE_VS_SALES, "communication": COMMUNICATION,
+            "vague_note": VAGUE_NOTE, "service_vs_sales": SERVICE_VS_SALES, "cancellations": CANCELLATIONS, "communication": COMMUNICATION,
             "priority": PRIORITY, "checklist": CHECKLIST, "expectations": EXPECTATIONS, "closing": CLOSING}
