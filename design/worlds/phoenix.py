@@ -450,9 +450,10 @@ def v_sales(n):  # the freeway at rush hour, traffic flowing like premium
             x = r.randint(0, 30); pat = []
             while x < 400 - 48:
                 c = r.choice(cols); pat.append((x, c)); x += r.randint(48, 90)
-            cars = ''.join(f'<rect x="{x + k * 400}" y="{lane_y}" width="34" height="14" rx="4" fill="{c}"/><rect x="{x + k * 400 + 7}" y="{lane_y + 2}" width="16" height="5" rx="2" fill="#2b3d55" opacity=".7"/>'
-                           for k in range(-1, 5) for x, c in pat)
-            still.append(cars); mov.append(f'<g>{cars}{tfm("translate", ["0 0", f"{sg * 400} 0"], dur, ease=False)}</g>')
+            o.append(f'<defs><g id="ln{lane_y}">' + ''.join(f'<rect x="{x}" y="{lane_y}" width="34" height="14" rx="4" fill="{c}"/>' for x, c in pat)
+                     + '<g fill="#2b3d55" opacity=".7">' + ''.join(f'<rect x="{x + 7}" y="{lane_y + 2}" width="16" height="5" rx="2"/>' for x, c in pat) + '</g></g></defs>')
+            tiles = lambda ks: ''.join(f'<use href="#ln{lane_y}" x="{k * 400}"/>' for k in ks)
+            still.append(tiles(range(-1, 2))); mov.append(f'<g>{tiles(range(-1, 5))}{tfm("translate", ["0 0", f"{sg * 400} 0"], dur, ease=False)}</g>')
         o.append(split(''.join(still), ''.join(mov)))
         for x in range(120, 1500, 160):
             t = (x + 20) / 1640

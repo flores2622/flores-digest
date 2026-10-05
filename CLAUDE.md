@@ -1921,7 +1921,17 @@ repaint clears the list).
   quoted or follow-up lost = a grey dusk with a tumbleweed; no quote = a
   dust devil under a hazy sky; reached = two saguaros talking at noon;
   voicemail = an owl asleep on a cactus under the moon. The badge, flow
-  edge, Quick coaching and everything below are unchanged.
+  edge, Quick coaching and everything below are unchanged. **Every badge sits at the top right, one per call**
+  (Frank, 2026-10-05: "I want the badges on the top right even if there were multiple calls"): a card with
+  several calls stacks a pill per call there, its talk time first and its call back / call in after the dot
+  (the row of chips under the call details is gone), and **no grey type pills** beside them ("remove the grey
+  ones"). **A dial a call back answered is No answer** ("how could it have been quoted and lost on that 15 sec
+  call"): daily.py folds a same-day call back into its dial's row, so both legs carried the row's outcome; the
+  board shows the dial leg as a grey No answer when it is under a minute and the transcript has no outbound
+  section -- every published day reads the same way. **Two separate conversations on one number in a day**
+  (a quote in the morning, the follow-up in the afternoon) are still one row and one outcome -- the day's end
+  state -- since Call Detail is one row per (producer, number); per-call outcomes would need Apollo to judge
+  each leg (not built).
 - **The search is all-time** (Frank, 2026-10-02: "can it just be a
   universal all time search?") **and a lead opens its coaching card, never
   AgencyZoom** ("the link is on the coaching card if they want to go
@@ -2209,7 +2219,13 @@ repaint clears the list).
   mirror-symmetric about the scoreboard ("center it right"); Autumn's covered bridge sits on stone abutments
   at road level with a portal at each end and the stream coming out from under it ("doesnt look right");
   Dinosaurs' volcano erupts on an 11 s loop -- the crater flares, an ash column and lava bombs rise above
-  the tiles, streams run down the cone ("make it erupt").
+  the tiles, streams run down the cone ("make it erupt"). **Every world's banners move now** (Frank, 2026-10-05: "these chagnes we make should be
+  applied to every world wehre possible"): Space, Ocean, Mountain, Football, Retro Arcade, Phoenix, Golf, Yuma
+  and Dallas in their modules, and the Desert's twelve inline banners in index.html (a still copy of each under
+  html[data-motion="reduce"][data-theme="desert"], light and dark together). **The desert Digest's dust wisps
+  came out** ("there are still random spotlights moving around in the desert world") -- five pale patches
+  sliding down Main Street read as sweeping spotlights; the four url rules and their stills were edited in
+  place, since desert_splice.py rewrites every desert reduced-motion line (the banners' stills included).
   Space got
   a Claims banner too. No real teams, games, brands or landmarks' names.
   **A world's pictures load only for whoever picks it** (2026-10-03): each
