@@ -212,6 +212,7 @@ def cabinet(x, base, s, body, mq, n, screen_seed=0, face="r", glow=False):
 
 # ------------------------------------------------------------------ the Digest picture
 W, H, SPLIT = 1600, 1700, 377
+HZ = SPLIT + 70   # the horizon: the city's feet run on into the leaderboard (Frank, 2026-10-05: "these dont merge right")
 
 def skyline(night):
     n = night; o = []; a = o.append
@@ -232,7 +233,7 @@ def skyline(night):
            + ("#7ab1ff" if n else "#e3efff") + '"/></pattern>')
     a(f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 {W} {H}" preserveAspectRatio="xMidYMin slice">')
     a(f'<defs>{sky}{floor}{hz}{sg}{win}{GLOW}</defs><g shape-rendering="crispEdges">')
-    a(f'<rect width="{W}" height="{SPLIT+2}" fill="url(#sky)"/>')
+    a(f'<rect width="{W}" height="{HZ+2}" fill="url(#sky)"/>')
     # ---- sky: stars / clouds, the striped sun, the moon or birds, a ship
     if n:
         a(stars_tw(70, W, 0, 300, 3))
@@ -242,9 +243,9 @@ def skyline(night):
             d = (30 + i * 8) * (1 if i % 2 else -1)   # the pixel clouds drift a little, each its own way
             cl = runs(["...wwww......", ".wwwwwwwww....", "wwwwwwwwwwwww.", "..ppppppppppp"], cx, cy, 10 * s, {'w': "#f7faff", 'p': "#c6deff"}, ' opacity=".85"')
             a(f'<g>{cl}{drift(f"0 0;{d} 0;0 0", 9 + i * 1.5, i * .8)}</g>')
-    a(retro_sun(800, 230, 190, n, "ss", [(-.7, .04), (-.58, .055), (-.45, .07), (-.3, .085), (-.13, .1), (.05, .12), (.25, .14)]))
+    a(retro_sun(800, 262, 190, n, "ss", [(-.7, .04), (-.58, .055), (-.45, .07), (-.3, .085), (-.13, .1), (.05, .12), (.25, .14)]))
     if n:
-        a(f'<circle cx="800" cy="230" r="300" fill="url(#sp)" opacity=".5"/>')
+        a(f'<circle cx="800" cy="262" r="300" fill="url(#sp)" opacity=".5"/>')
         a(runs(["..mmmm.", ".mmm...", "mmm....", "mmm....", "mmm....", ".mmm...", "..mmmm."], 1470, 26, 9, {'m': "#fff4d6"}))
         # the ship hovers to and fro over the city, its beam with it, its lights blinking
         a('<g>' + runs(SHIP[:3], 1120, 40, 6, {'c': "#3df2ff", 'w': "#e9ffff", 'p': "#a46bff", 'y': "#ffd23f"})
@@ -263,12 +264,21 @@ def skyline(night):
               (505, 160, 90, 1, "w2"), (1000, 118, 120, 2, "w3"), (1120, 60, 70, 0, "w2"), (1440, 120, 160, 1, "w1"),
               (1530, 80, 70, 2, "w3")]
     for x, top, w, ci, pat in towers:
-        a(f'<rect x="{x}" y="{top}" width="{w}" height="{SPLIT-top}" fill="{bc[ci]}"/>')
-        a(f'<rect x="{x+6}" y="{top+16}" width="{w-12}" height="{SPLIT-top-16}" fill="url(#{pat})" opacity="{.85 if n else .7}"/>')
+        a(f'<rect x="{x}" y="{top}" width="{w}" height="{HZ-top}" fill="{bc[ci]}"/>')
+        a(f'<rect x="{x+6}" y="{top+16}" width="{w-12}" height="{HZ-top-40}" fill="url(#{pat})" opacity="{.85 if n else .7}"/>')
+        # a lit shopfront at street level
+        a(f'<rect x="{x+8}" y="{HZ-22}" width="{w-16}" height="18" fill="{"#3df2ff" if ci == 1 else "#ffd23f" if ci == 0 else "#7ab1ff"}" opacity="{.75 if n else .5}"/>')
         a(f'<rect x="{x}" y="{top}" width="{w}" height="5" fill="{edge}"/>')
         # stepped pixel crown
         a(f'<rect x="{x+w*.25:.0f}" y="{top-14}" width="{w*.5:.0f}" height="14" fill="{bc[ci]}"/><rect x="{x+w*.45:.0f}" y="{top-34}" width="6" height="20" fill="{bc[ci]}"/>')
         a(f'<rect x="{x+w*.45-2:.0f}" y="{top-40}" width="10" height="8" fill="{"#3d8eff" if n else "#6fabff"}"/>')
+    for x, top, w, ci in [(640, 360, 110, 1), (860, 352, 130, 2), (1300, 330, 140, 0)]:
+        a(f'<rect x="{x}" y="{top}" width="{w}" height="{HZ-top}" fill="{bc[ci]}"/><rect x="{x}" y="{top}" width="{w}" height="4" fill="{edge}"/>'
+          f'<rect x="{x+6}" y="{top+14}" width="{w-12}" height="{HZ-top-40}" fill="url(#w{ci+1})" opacity="{.85 if n else .7}"/>')
+    # the arcade's doors at the head of the lane, light spilling out
+    a(f'<rect x="752" y="{HZ-64}" width="116" height="64" fill="{bc[2]}"/><rect x="746" y="{HZ-70}" width="128" height="8" fill="{edge}"/>'
+      f'<rect x="782" y="{HZ-46}" width="56" height="46" fill="{"#fff2a8" if n else "#fff8d8"}"/>'
+      f'<rect x="782" y="{HZ-46}" width="56" height="46" fill="#ffd23f" opacity=".5">{pulse(".5;.15;.5", 2.4)}</rect>')
     # neon signs on the towers
     def neon(x, y, s, c, p=5, fl=""):
         tw = twidth(s, p)
@@ -281,7 +291,7 @@ def skyline(night):
     a(neon(1022, 136, "BONUS", "#7ab1ff", 4, flicker(["0", ".3", ".34", ".62", ".65"], ["1", ".3", "1", ".2", "1"], 5.5, 1.5)))
     # ---- the HIGH SCORES marquee on its tower
     mx, my, mw, mh = 1150, 48, 380, 92
-    a(f'<rect x="{mx+150}" y="{my+mh}" width="18" height="{SPLIT-my-mh}" fill="{bc[1]}"/><rect x="{mx+212}" y="{my+mh}" width="18" height="{SPLIT-my-mh}" fill="{bc[1]}"/>')
+    a(f'<rect x="{mx+150}" y="{my+mh}" width="18" height="{HZ-my-mh}" fill="{bc[1]}"/><rect x="{mx+212}" y="{my+mh}" width="18" height="{HZ-my-mh}" fill="{bc[1]}"/>')
     a(f'<rect x="{mx}" y="{my}" width="{mw}" height="{mh}" fill="{"#1a0636" if n else "#3b1a6e"}" stroke="{"#4f98ff" if n else "#6fabff"}" stroke-width="6"/>')
     # the marquee's bulbs chase: odd and even ones trade places every half second
     for k in (0, 1):
@@ -290,16 +300,16 @@ def skyline(night):
     hs = ptext("HIGH SCORES", mx + mw / 2, my + 26, 7, "#ffd23f", "middle", shadow="#3d8eff")
     a(f'<g filter="url(#nl)">{hs}</g>' if n else hs)
     # ---- below the horizon: the grid floor
-    a(f'<rect x="0" y="{SPLIT}" width="{W}" height="{H-SPLIT}" fill="url(#fl)"/>')
-    a(f'<rect x="0" y="{SPLIT}" width="{W}" height="260" fill="url(#hz)"/>')
+    a(f'<rect x="0" y="{HZ}" width="{W}" height="{H-HZ}" fill="url(#fl)"/>')
+    a(f'<rect x="0" y="{HZ}" width="{W}" height="240" fill="url(#hz)"/>')
     gc = "#4f98ff" if n else "#7ab1ff"
-    a(floor_grid(SPLIT, H, W, 810, gc, .8 if n else .55, nh=10, nv=14, spread=260, sw=3))
-    if n: a(f'<g filter="url(#nl)" opacity=".7">{floor_grid(SPLIT, 900, W, 810, "#4f98ff", .6, nh=4, nv=8, spread=260, sw=2)}</g>')
-    a(f'<rect x="0" y="{SPLIT-2}" width="{W}" height="5" fill="{"#3df2ff" if n else "#f6faff"}"/>')
+    a(floor_grid(HZ, H, W, 810, gc, .8 if n else .55, nh=10, nv=14, spread=260, sw=3))
+    if n: a(f'<g filter="url(#nl)" opacity=".7">{floor_grid(HZ, 900, W, 810, "#4f98ff", .6, nh=4, nv=8, spread=260, sw=2)}</g>')
+    a(f'<rect x="0" y="{HZ-2}" width="{W}" height="5" fill="{"#3df2ff" if n else "#f6faff"}"/>')
     # the lane to the stage: cyan edges with chevrons
     lc = "#3df2ff" if n else "#ffffff"
-    a(f'<path d="M790 {SPLIT}L700 800M830 {SPLIT}L920 800" stroke="{lc}" stroke-width="4" fill="none"{FL if n else ""}/>')
-    for k, y in enumerate([430, 500, 590, 690]):
+    a(f'<path d="M790 {HZ}L700 800M830 {HZ}L920 800" stroke="{lc}" stroke-width="4" fill="none"{FL if n else ""}/>')
+    for k, y in enumerate([470, 520, 600, 694]):
         s = 4 + k * 2.5
         a(runs(["#.....#", ".#...#.", "..#.#..", "...#..."], 810 - 3.5 * s, y, s, {'#': "#ffd23f" if n else "#4f98ff"}, ' opacity=".85"'))
     # ---- the winner's stage under the podium
@@ -309,18 +319,59 @@ def skyline(night):
     lights = ''.join(f'M{556+i*30} 826h12v12h-12z' for i in range(18))
     a(f'<path d="{lights}" fill="#ffd23f"{FL if n else ""}/>')
     if n:
-        a('<path d="M640 380 L560 790 L700 790 Z M980 380 L920 790 L1060 790 Z" fill="#fff6c8" opacity=".07"/>')
+        a('<path d="M640 420 L560 790 L700 790 Z M980 420 L920 790 L1060 790 Z" fill="#fff6c8" opacity=".07"/>')
     # coins hovering by the podium
-    for cx, cy in [(700, 525), (920, 518), (690, 470), (930, 462)]:
+    for cx, cy in [(700, 525), (920, 518), (690, 480), (930, 474)]:
         a(coin(cx, cy, 4))
     a(sparkles([(720, 500), (900, 492), (590, 520), (1030, 520)], "#fff6c8", 4))
-    # ---- arcade cabinets lined up on each side
+    # ---- the back wall of the hall: a far row of cabinets along the horizon, each blinking on its own
     bodies = ["#3a1a6e", "#5a1f7a", "#2a2a7a"] if n else ["#7b4fd6", "#5a92e0", "#4a7be0"]
     mqs = ["#4f98ff", "#3df2ff", "#ffd23f"]
-    for i, (x, base, s) in enumerate([(430, 540, .5), (300, 610, .7), (130, 710, .95), (-60, 830, 1.25)]):
+    for i, x in enumerate([18, 70, 122, 174, 226, 278, 330]):
+        a(cabinet(x, HZ + 60, .36, bodies[i % 3], mqs[(i + 1) % 3], n, 20 + i, glow=i % 2 == 0))
+    for i, x in enumerate([1240, 1292, 1344, 1396, 1448, 1500, 1552]):
+        a(cabinet(x, HZ + 60, .36, bodies[(i + 2) % 3], mqs[i % 3], n, 30 + i, glow=i % 2 == 1))
+    # ---- arcade cabinets lined up on each side
+    for i, (x, base, s) in enumerate([(430, 560, .5), (300, 620, .7), (130, 712, .95), (-60, 830, 1.25)]):
         a(cabinet(x, base, s, bodies[i % 3], mqs[i % 3], n, i, glow=True))
-    for i, (x, base, s) in enumerate([(1120, 540, .5), (1230, 610, .7), (1360, 710, .95), (1520, 830, 1.25)]):
+    for i, (x, base, s) in enumerate([(1120, 560, .5), (1230, 620, .7), (1360, 712, .95), (1520, 830, 1.25)]):
         a(cabinet(x, base, s, bodies[(i + 1) % 3], mqs[(i + 2) % 3], n, i + 9, glow=True))
+    # players at the cabinets, backs to us, heads bobbing to their games
+    hair = ["#2a1608", "#6a3a14", "#111", "#c58a3a"]
+    shirt = ["#ff8a3d", "#39ff6a", "#3df2ff", "#ffd23f"]
+    BACK = ["..hhhh..", ".hhhhhh.", ".hhhhhh.", "..ssss..", ".bbbbbb.", "bbbbbbbb", "s.bbbb.s", "..kkkk..", "..k..k..", ".kk..kk."]
+    def kid(x, y, p, k, bob=0.0):
+        pal = {'h': hair[k % 4], 's': "#e0a878" if k % 2 else "#8a5a3a", 'b': shirt[k % 4], 'k': "#2a2a5a"}
+        head = runs(BACK[:3], x, y, p, pal)
+        body = runs(BACK[3:], x, y + 3 * p, p, pal)
+        if bob:
+            head = f'<g>{head}{drift(f"0 0;0 {p*.5:.1f};0 0", bob, k * .3)}</g>'
+        return body + head
+    a(kid(318, 556, 6, 1, 1.4))          # at the mid cabinet on the left
+    a(kid(1248, 556, 6, 2, 1.7))         # and on the right
+    a(kid(1378, 620, 9, 3, 1.2))         # at the near right cabinet
+    # ---- air hockey on the left: a puck flying end to end between two players' mallets
+    tc = "#1d5fd6" if n else "#3f86f0"
+    a(f'<path d="M262 664h176l20 26h-216z" fill="{tc}"/><path d="M242 690h216v14h-216z" fill="{"#14042e" if n else "#3b1a6e"}"/>'
+      f'<path d="M256 704h10v52h-10zM434 704h10v52h-10z" fill="{"#14042e" if n else "#3b1a6e"}"/>'
+      f'<path d="M350 664v26" stroke="#ff5a3d" stroke-width="3"/><path d="M268 672h4v12h-4zM428 672h4v12h-4z" fill="#ffd23f"/>')
+    a(f'<ellipse cx="290" cy="677" rx="9" ry="5" fill="#111"><animateTransform attributeName="transform" type="translate" values="0 0;124 4;0 -5;124 -2;0 0" dur="2.4s" repeatCount="indefinite"/></ellipse>')
+    a(f'<g><ellipse cx="276" cy="676" rx="10" ry="6" fill="#ff5a3d"/><ellipse cx="276" cy="674" rx="4" ry="3" fill="#ffd0c0"/><animateTransform attributeName="transform" type="translate" values="0 0;4 0;0 -4;4 0;0 0" dur="2.4s" repeatCount="indefinite"/></g>')
+    a(f'<g><ellipse cx="424" cy="678" rx="10" ry="6" fill="#39ff6a"/><ellipse cx="424" cy="676" rx="4" ry="3" fill="#d8ffe0"/><animateTransform attributeName="transform" type="translate" values="0 0;-4 2;0 0;-4 -2;0 0" dur="2.4s" repeatCount="indefinite"/></g>')
+    a(kid(206, 650, 8, 0) + kid(436, 652, 5.5, 2))
+    # ---- the dance machine on the right: arrow pads lighting in turn, a dancer jumping on them
+    mb = "#2a0b52" if n else "#5a3399"
+    a(f'<rect x="1160" y="606" width="150" height="110" fill="{mb}"/><rect x="1166" y="612" width="138" height="20" fill="#3df2ff"/>'
+      f'<rect x="1176" y="640" width="118" height="60" fill="#0b1a2e"/>{ptext("DANCE", 1235, 616, 2.4, "#14042e", "middle")}')
+    for k, (ax, c) in enumerate([(1186, "#ff8a3d"), (1214, "#3df2ff"), (1242, "#39ff6a"), (1270, "#ffd23f")]):
+        a(f'<rect x="{ax}" y="660" width="14" height="14" fill="{c}" opacity=".3">'
+          + flicker([f"{k*.25:.2f}", f"{k*.25+.12:.2f}"] if k else ["0", ".12"], ["1", ".3"], 2, 0) + '</rect>')
+    a(f'<path d="M1150 772h170l-14 -56h-142z" fill="{"#1a0636" if n else "#4a2a88"}"/>')
+    for k, (px, py) in enumerate([(1190, 724), (1252, 724), (1176, 748), (1264, 748)]):
+        a(f'<path d="M{px} {py}h34v18h-34z" fill="{["#ff8a3d", "#3df2ff", "#39ff6a", "#ffd23f"][k]}" opacity=".45">'
+          + pulse(".45;1;.45", 1, k * .25) + '</path>')
+    dpal = {'h': "#3d1a08", 'v': "#3df2ff", 'w': "#fff", 's': "#e0a878", 'b': "#ff8a3d", 'y': "#ffd23f", 'k': "#14042e"}
+    a(f'<g>{runs(HERO, 1206, 658, 8, dpal)}<animateTransform attributeName="transform" type="translate" values="0 0;0 -16;0 0;10 -12;0 0" dur="1s" repeatCount="indefinite"/></g>')
     # the 1UP sign and a PLAYER 1 sign
     a(f'<rect x="1025" y="496" width="10" height="44" fill="{st2}"/><rect x="980" y="446" width="100" height="56" fill="#14042e" stroke="#39ff6a" stroke-width="4"/>')
     a(f'<g filter="url(#nl)">{ptext("1UP", 1030, 459, 7, "#39ff6a", "middle")}{flicker(["0", ".6"], ["1", ".15"], 1.6)}</g>')
