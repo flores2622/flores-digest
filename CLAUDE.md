@@ -1972,8 +1972,15 @@ repaint clears the list).
   board shows the dial leg as a grey No answer when it is under a minute and the transcript has no outbound
   section -- every published day reads the same way. **Two separate conversations on one number in a day**
   (a quote in the morning, the follow-up in the afternoon) are still one row and one outcome -- the day's end
-  state -- since Call Detail is one row per (producer, number); per-call outcomes would need Apollo to judge
-  each leg (not built).
+  state -- since Call Detail is one row per (producer, number). **So Apollo now judges each call on its own**
+  (Frank, 2026-10-05: "yes build the per-call outcomes ... a call 1 and call 2 on the same card"): when the
+  transcript holds two or more call headers, the read returns `legs` -- one CALL_CATEGORIES key and reason per
+  header, as that call stood when it ended (METHODOLOGY.md's Output format) -- and `coaching_cards._legs` puts
+  `legs` on the card: Call n, direction, talk time, clock time (call_summary's `data/legmeta_<day>.json`, each
+  read leg's direction / length / start, an R2 day file, matched by direction and length) and that call's
+  outcome. The board's top-right pills become "Call 1 · 10:21 AM · 4m 12s · Quoted ..." / "Call 2 · 3:32 PM ·
+  ... · Sold on the call · call back", and Coeus reads them as `each_call`. New reads only (cards are not
+  re-read); a card without `legs` keeps the per-row pills above.
 - **The search is all-time** (Frank, 2026-10-02: "can it just be a
   universal all time search?") **and a lead opens its coaching card, never
   AgencyZoom** ("the link is on the coaching card if they want to go

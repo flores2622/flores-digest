@@ -5190,8 +5190,8 @@ function card(c) {
   // email digest's own Call Detail convention before the move to the board
   // (Frank, 2026-09-15: "it should specify under the clients name if its 2
   // calls, if its a call back... show 1st talk time + 2nd talk time").
-  const durCell = (c.call_times && c.call_times.length > 1)
-    ? c.call_times.map(cesc).join(" + ") : cesc(c.dur || "");
+  const durCell = (c.legs && c.legs.length > 1) ? c.legs.map(l => cesc(l.dur)).join(" + ")
+    : (c.call_times && c.call_times.length > 1) ? c.call_times.map(cesc).join(" + ") : cesc(c.dur || "");
   // One outcome + call-in/call-back badge per real conversation on this
   // card, not one aggregate pair for the whole thing (Frank, 2026-09-16:
   // those "are not on a single call" -- a 2-call card showed one outcome
@@ -5227,7 +5227,20 @@ function card(c) {
   // (Frank, 2026-10-05: "I want the badges on the top right even if there were multiple calls"): one per
   // conversation, its own talk time first, its call back / call in after the dot. No grey pills beside them
   // ("were already saying call back on the red bill, remove the grey ones").
-  const ocPill = !multiCall ? `<span class="ocpill">${outcomeBadgeHtml(c.cat, c.catc, [...typeParts, ...flowParts(c)])}</span>`
+  // Call 1, Call 2 ... (Frank, 2026-10-05: "if we can make a call 1 and call 2 on the same card that would be
+  // ideal"): a card read from 2026-10-05 on carries `legs`, one per recorded conversation, each with its
+  // clock time, talk time and -- Apollo judging each call on its own -- that call's outcome, so a quote
+  // presented in the morning and sold in the afternoon reads as two badges, not one.
+  const LEG_KIND = { inbound: c.callback_kind === "call back" ? "call back" : "call in", outbound: "" };
+  let legPill = "";
+  if (c.legs && c.legs.length > 1) {
+    const pills = c.legs.map((l, i) => outcomeBadgeHtml(
+      [`Call ${l.n}`, l.at, l.dur, l.cat].filter(Boolean).join(" · "), l.oc || "no_answer",
+      [[LEG_KIND[l.dir] || "", l.why || ""], ...(i === c.legs.length - 1 ? typeParts : [])])).join("");
+    legPill = `<span class="ocpill ocmulti">${pills}</span>`;
+  }
+  const ocPill = legPill ? legPill
+    : !multiCall ? `<span class="ocpill">${outcomeBadgeHtml(c.cat, c.catc, [...typeParts, ...flowParts(c)])}</span>`
     : `<span class="ocpill ocmulti">${legs.map((call, i) => outcomeBadgeHtml((call.t ? call.t + " · " : "") + (call.cat || ""), call.catc,
         [[call.kind || "", ""], ...(i === legs.length - 1 ? typeParts : [])])).join("")}</span>`;
   const ck = cardKey(c); CARD_BY_KEY[ck] = c;

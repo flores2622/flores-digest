@@ -233,7 +233,7 @@ function compactCard(c, full) {
   const out = {
     who: c.who, lead: c.lead, lead_id: c.lead_id || null, time: c.time, length: c.dur, calls: c.call_count,
     callback: c.callback_kind || null, call_for: c.flow || null, direction: c.direction || null, call_type: c.calltype || null,
-    outcome: c.cat || null, language: c.lang, lead_source: c.leadsrc || null, lead_group: c.leadgroup || null,
+    outcome: c.cat || null, each_call: c.legs && c.legs.length > 1 ? c.legs.map((l) => ({ call: l.n, at: l.at || null, length: l.dur, direction: l.dir, outcome: l.cat || null })) : undefined, language: c.lang, lead_source: c.leadsrc || null, lead_group: c.leadgroup || null,
     lead_source_fit: v0(c.leadfit), stage_before: c.stage_before || null, stage_after: c.stage_after || null, stage_fit: v0(c.stagefit),
     greeting: v0(c.greeting), assumed_quote: v0(c.askq), assumed_sale: v0(c.asks), ended_the_call_early: v0(c.exit),
     quote_sent_instead_of_presented: c.sendoff || null,
