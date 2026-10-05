@@ -1865,7 +1865,9 @@ repaint clears the list).
   podium, scrub, big foreground saguaros and, at night, a campfire. The
   tiles sit on the rock bodies; the leaderboard's title sits on the sliver
   of sky and rock bases at its top, the podium stands on the road under two
-  spotlight beams with a crown and glow on first place and gold / silver /
+  a pool of light with a crown and glow on first place (the two spotlight beams, drawn on
+  the podium rather than the picture, came out on 2026-10-05: "why is there random moving spotlights in most
+  workds") and gold / silver /
   bronze steps, and the table is on a near-opaque sheet. The page carries a
   faint saguaro-and-sun pattern (`.main`); every Digest tile is tinted by
   its tier (green / amber / red top rule from the number's `tg` / `ty` /
