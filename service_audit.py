@@ -15,6 +15,16 @@ note, answers four things the board needs for each role:
             came up -- a new vehicle, a home purchase -- and the note does not
             say it was passed), or "none"
   escalated the note says it went to the Service Lead or Frank
+  cancel    a client who wanted to cancel, judged by the playbook's
+            CANCELLATIONS (Frank, 2026-10-05): "asked" (we asked if they
+            would give us the opportunity to review it), "offered" (an offer
+            worked up and presented), "routed" (passed to the assigned rep, or
+            a call back or appointment set), "no_offer" (the note says there
+            was no offer to make, then referred or cancelled -- the process
+            allows it), "skipped" (cancelled or referred with no offer, review,
+            call back or appointment noted), or "none" (not a cancellation).
+            "asked" and "skipped" are the flags. Kept only for SRs completed
+            from CANCEL_FROM on; a note read before the rule has none.
 
 COST. The third paid read, beside the renewal and service-outcome notes:
 one call per BATCH SRs, each SR read once and kept by SR id and note text
@@ -33,6 +43,9 @@ CACHE_FILE = ROOT / "data/service_audit_reads.json"
 CACHE_R2_KEY = "cache/service_audit_reads.json"
 BATCH = 20
 OPP = ("passed", "missed", "none")
+CANCEL = ("asked", "offered", "routed", "no_offer", "skipped", "none")
+CANCEL_FLAGS = ("asked", "skipped")
+CANCEL_FROM = "2026-10-05"      # the day Frank sent the service team the rule
 
 SYSTEM = pb.prompt_block() + """
 
@@ -54,9 +67,21 @@ note. For EACH item answer:
              note does not say it was acted on; else "none"
   escalated  true if the note says it went to the Service Lead, a producer or
              Frank for a decision
+  cancel     only when the client called, walked in or wrote wanting to
+             CANCEL a policy (not a carrier cancellation for non-payment, not
+             a mid-term change): "asked" if the note shows we asked whether
+             they would give us the opportunity to review it or let us shop
+             it -- however soft, any permission-asking is "asked"; else
+             "offered" if an offer was worked up and presented; else "routed"
+             if they were passed to their assigned rep or a call back or
+             appointment was set; else "no_offer" if the note says there was
+             no offer to make and they were referred to the cancellation
+             department or cancelled; else "skipped" (cancelled or referred
+             with no offer, review, call back or appointment noted). Anything
+             that is not a client asking to cancel is "none".
 
 Return ONLY a JSON object mapping each id to
-{"type": "...", "missing": [...], "opp": "...", "escalated": false}."""
+{"type": "...", "missing": [...], "opp": "...", "escalated": false, "cancel": "..."}."""
 
 
 def _h(text):
@@ -106,7 +131,8 @@ def _valid(v):
     typ = v.get("type") if v.get("type") in pb.REQUEST_TYPES else "other"
     miss = [m for m in (v.get("missing") or []) if m in pb.NOTE_PARTS]
     opp = v.get("opp") if v.get("opp") in OPP else "none"
-    return {"type": typ, "missing": miss, "opp": opp, "escalated": bool(v.get("escalated"))}
+    cancel = v.get("cancel") if v.get("cancel") in CANCEL else "none"
+    return {"type": typ, "missing": miss, "opp": opp, "escalated": bool(v.get("escalated")), "cancel": cancel}
 
 
 def read(srs, log=print):
@@ -152,6 +178,10 @@ def read(srs, log=print):
         hit = cache.get(sid)
         if hit and hit.get("h") == _h(_item(t)):
             out[sid] = {k: hit[k] for k in ("type", "missing", "opp", "escalated")}
+            # The cancellation rule starts on CANCEL_FROM: an older SR is never
+            # judged by it, and a note read before it has no verdict.
+            if hit.get("cancel") and str(t.get("completeDate") or "")[:10] >= CANCEL_FROM:
+                out[sid]["cancel"] = hit["cancel"]
     return out
 
 

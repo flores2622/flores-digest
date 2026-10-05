@@ -1380,8 +1380,19 @@ Crystal (hybrid); credit always goes to whoever COMPLETED the SR or task.
   to say no every time"); Debbie passes them to the assigned rep, else
   schedules a call back or appointment; the rep works up an offer if there is
   one and presents it without asking; else refer them to the cancellation
-  department or cancel it ourselves where that is an option. The audit's
-  reads see it from new notes on (cache by SR + note); nothing scores it yet.
+  department or cancel it ourselves where that is an option. **Athena flags
+  it** (Frank, 2026-10-05: "yes add the flag for it"): `service_audit`'s
+  `cancel` verdict per SR -- asked / offered / routed / no_offer / skipped /
+  none; **asked** (any permission-asking for the review) and **skipped**
+  (cancelled or referred with no offer, review, call back or appointment
+  noted) are the flags -- kept only for SRs completed from `CANCEL_FROM`
+  (2026-10-05); a note read before the change has none (cache by SR + note,
+  never re-read for it). The Service Center's **Cancellations** card (the
+  grid's twelfth, `cancelOf`) shows handled-without-asking of all, asked and
+  skipped, opening the SRs flagged first (`g-cancelall`,
+  `g-role:<person>:cancel`); each role's checklist has its line, the SR
+  lists say "Cancellation: ..." in the note column, and Coeus reads
+  `cancellations_by_person`.
 - **The Service Digest is one card per person, no leaderboard** (Frank,
   2026-09-29, option D: "when I dont have a rep selected i want it to display
   the team totals"). A strip of small cards (Amanda, Crystal, Debbie in the

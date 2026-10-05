@@ -130,7 +130,7 @@ const TOOLS = [
       name: { type: "string" }, days: { type: "integer", description: "How many published days back to search (default 10, max 20)" },
       before: { type: "string", description: "Start from this day instead of the newest (YYYY-MM-DD)" } } } },
   { name: "service_day",
-    description: "One day's Service Center (Athena): SRs completed by person and pipeline with completion hours, the backlog (open and overdue per person), Late Payment stages, service tasks, call backs, dials, texts and emails, calls answered and SRs created at the front desk, renewal SR outcomes and the pipeline outcome breakdowns, note standard and opportunities, utilization. `sections` adds rows: srs (every completed SR), open (the open SRs), tasks, callbacks, dials, messages, front, renewals (every renewal SR row), claims (every claim opened, completed and open).",
+    description: "One day's Service Center (Athena): SRs completed by person and pipeline with completion hours, the backlog (open and overdue per person), Late Payment stages, service tasks, call backs, dials, texts and emails, calls answered and SRs created at the front desk, renewal SR outcomes and the pipeline outcome breakdowns, note standard and opportunities, cancellations (clients who wanted to cancel: asked = we asked if they'd let us review it, skipped = cancelled with no offer or call back -- the two flags; offered, routed, no_offer follow the process), utilization. `sections` adds rows: srs (every completed SR), open (the open SRs), tasks, callbacks, dials, messages, front, renewals (every renewal SR row), claims (every claim opened, completed and open).",
     input_schema: { type: "object", required: ["day"], properties: {
       day: { type: "string" }, sections: { type: "array", items: { type: "string", enum: SERVICE_SECTIONS } } } } },
   { name: "renewals",
@@ -468,6 +468,15 @@ function compactService(doc, sections) {
     p.completed++; p.by_pipeline[r.pipeline] = (p.by_pipeline[r.pipeline] || 0) + 1; if (r.hours != null) p.hours.push(r.hours);
   }
   for (const p of Object.values(byPerson)) { p.median_hours_to_complete = median(p.hours); delete p.hours; }
+  // Clients who wanted to cancel (service_playbook.CANCELLATIONS, from 2026-10-05):
+  // the note read's verdict per SR; asked / skipped are the flags.
+  const cancellations = {};
+  for (const r of done) {
+    const v = r.audit && r.audit.cancel;
+    if (!v || v === "none") continue;
+    const p = cancellations[r.by || "?"] || (cancellations[r.by || "?"] = {});
+    p[v] = (p[v] || 0) + 1;
+  }
   const tasks = doc.task_rows || [];
   const out = {
     day: doc.date, label: doc.label, built_at: doc.built_at,
@@ -479,6 +488,8 @@ function compactService(doc, sections) {
     callbacks: summarize(doc.callbacks), dials: summarize(doc.dials), texts_and_emails: summarize(doc.messages),
     front_desk: summarize(doc.front), renewal_srs: summarize(doc.renewals), utilization: doc.utilization,
     roles_and_note_standard: summarize(doc.roles || doc.audit), playbook_roles: (doc.playbook || {}).roles,
+    cancellations_by_person: Object.keys(cancellations).length ? cancellations : undefined,
+    cancellation_rule: (doc.playbook || {}).cancellations,
     // Claims (claims.py): licensed reps only; not_licensed (the flags) is the ops team's alone
     // -- claimsForViewer empties it for everyone else.
     claims: doc.claims ? { licensed: doc.claims.licensed, rule_from: doc.claims.rule_from,

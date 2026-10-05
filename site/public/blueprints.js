@@ -340,6 +340,7 @@
           "**The rep**: work up an offer if there is one and present it, without asking if they'll let us review it.",
           "**No offer, or they still want to cancel**: refer them to the cancellation department, or cancel it ourselves where we can.",
         ] },
+        "**Athena checks it.** On every SR completed from October 5 where the client wanted to cancel, Athena reads your note and flags two things: **asked if they'd let us review it** (any version of asking permission), and **cancelled with no offer or call back** (nothing in the note says an offer was made, there was no offer to make, or the client was passed to their rep or given a call back or appointment). The **Cancellations** card on the Service Center shows how many were handled without asking, and opens every one, flagged first. Write the offer, the call back or the \"no offer available\" in your note so Athena can see it.",
       ] },
 
     { h: "The note standard",
@@ -384,6 +385,7 @@
           ["SRs created", "SRs each person opened."],
           ["Note standard", "How many notes left out a part of the note standard, and which part."],
           ["Opportunities", "Sales opportunities in the SRs: worked (quoted, a lead set, or passed to a producer) or not noted."],
+          ["Cancellations", "Clients who wanted to cancel, from October 5: how many were handled without asking for the review, how many asked, and how many were cancelled with no offer or call back."],
           ["Utilization", "Insightful's productive time over tracked time."],
         ] },
         "Under the cards: Texts & Emails, Note Standard, Completion Time, and each pipeline's outcomes. Claims have their own page, the Claims Center.",
