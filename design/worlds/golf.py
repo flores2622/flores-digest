@@ -274,34 +274,22 @@ def skyline(night):
     for d in (leg1, leg2):
         a(f'<path d="{d}" fill="none" stroke="{p["fringe"]}" stroke-width="16" stroke-linejoin="round"/>')
     a(f'<path d="{leg1}" fill="{p["fair"]}"/><path d="{leg2}" fill="{p["fair"]}"/>')
-    # mowing stripes that follow the hole: lanes laid along its centre line from the tee, round the bend
-    # and down to the green, widening toward us (Frank, 2026-10-05: "make the grass lines flow right")
-    a(f'<defs><clipPath id="fw2"><path d="{leg1}"/><path d="{leg2}"/></clipPath></defs>')
-    P0, P1, P2, P3 = (1010, 446), (820, 452), (736, 468), (800, 586)
-    def pt(t):
-        u = 1 - t
-        return (u ** 3 * P0[0] + 3 * u * u * t * P1[0] + 3 * u * t * t * P2[0] + t ** 3 * P3[0],
-                u ** 3 * P0[1] + 3 * u * u * t * P1[1] + 3 * u * t * t * P2[1] + t ** 3 * P3[1])
-    def nrm(t):
-        u = 1 - t
-        dx = 3 * u * u * (P1[0] - P0[0]) + 6 * u * t * (P2[0] - P1[0]) + 3 * t * t * (P3[0] - P2[0])
-        dy = 3 * u * u * (P1[1] - P0[1]) + 6 * u * t * (P2[1] - P1[1]) + 3 * t * t * (P3[1] - P2[1])
-        L = math.hypot(dx, dy) or 1
-        return -dy / L, dx / L
-    hw = lambda t: 16 + 330 * t ** 3.2
-    ts = [k / 28 for k in range(29)]
-    def lane(f):
-        out = []
-        for t in ts:
-            (x, y), (nx, ny) = pt(t), nrm(t)
-            out.append((x + nx * hw(t) * f, y + ny * hw(t) * f))
-        return out
+    # mowing stripes mown the way a dogleg is (Frank, 2026-10-05: "make the grass lines flow right", then
+    # "the lines still curve wrong"): straight lines down each leg -- on the near leg they run from the green
+    # up to the bend, on the tee leg along it to the tee, narrowing with distance -- meeting at the corner
+    a(f'<defs><clipPath id="fw2"><path d="{leg1}"/></clipPath><clipPath id="fw3"><path d="{leg2}"/></clipPath></defs>')
+    vx, vy = 731, 474
+    a('<g clip-path="url(#fw2)">' + ''.join(f'<path d="M{vx} {vy}L{vx + (k - 6) * 96} 600L{vx + (k - 5.5) * 96} 600Z" fill="{p["fair2"]}"/>' for k in range(0, 13, 2)) + '</g>')
+    def l2(f, x):  # a line along the tee leg, f from its top edge (0) to its bottom edge (1)
+        t = (x - 630) / (1020 - 630)
+        top = 474 + (430 - 474) * t; bot = 494 + (462 - 494) * t
+        return top + (bot - top) * f
+    xs = [630 + k * 26 for k in range(16)]
     bands = []
-    fs = [-1.2 + k * .3 for k in range(9)]
-    for k in range(0, len(fs) - 1, 2):
-        A, B = lane(fs[k]), lane(fs[k + 1])
-        bands.append('M' + ' L'.join(f'{x:.0f} {y:.0f}' for x, y in A + B[::-1]) + 'Z')
-    a(f'<g clip-path="url(#fw2)"><path d="{" ".join(bands)}" fill="{p["fair2"]}"/></g>')
+    for f0, f1 in ((0, .2), (.4, .6), (.8, 1.0)):
+        up = [(x, l2(f0, x)) for x in xs]; dn = [(x, l2(f1, x)) for x in xs[::-1]]
+        bands.append('M' + ' L'.join(f'{x:.0f} {y:.1f}' for x, y in up + dn) + 'Z')
+    a(f'<g clip-path="url(#fw3)"><path d="{" ".join(bands)}" fill="{p["fair2"]}"/></g>')
     # the tee box by the clubhouse, a golfer on it
     a(f'<rect x="1000" y="424" width="44" height="10" rx="3" fill="{p["green2"]}"/><circle cx="1010" cy="428" r="2" fill="#f3efe2"/><circle cx="1034" cy="428" r="2" fill="#f3efe2"/>')
     a(golfer(1022, 432, .3, "stand", "#2f5a8a", "#e8e2d0", skin=p["skin"]) + bag(1038, 432, .28, "#8a2a2a"))
@@ -340,15 +328,13 @@ def skyline(night):
           "C700 802 650 776 570 800 C480 822 446 760 440 690Z")
     a(f'<path d="{gp}" fill="{p["fringe"]}" stroke="{p["fringe"]}" stroke-width="30" stroke-linejoin="round"/>')
     a(f'<path d="{gp}" fill="url(#gr)"/>')
-    a(f'<defs><clipPath id="gc"><path d="{gp}"/></clipPath></defs><g clip-path="url(#gc)" opacity="{.10 if not n else .06}">'
-      + ''.join(f'<rect x="{x}" y="560" width="60" height="270" fill="#fff"/>' for x in range(430, 1150, 120)) + '</g>')
     a(f'<ellipse cx="700" cy="620" rx="210" ry="34" fill="#fff" opacity="{.08 if not n else .04}"/>')
     # the pin at the back of the green
     # the pin, nearer the middle of the green (Frank, 2026-10-05: "put the pin in a more central spot"):
     # in the gap between second and first on the podium, and two players on the green with it -- one
     # putting on the left lobe, one crouched reading the line on the right shoulder
     a(flag(718, 594, 84, p["flag"]))
-    a(golfer(458, 742, .6, "putt", "#2f5a8a", "#e8e2d0", skin=p["skin"]) + ball(476, 742, 2.6))
+    a(golfer(580, 600, .56, "putt", "#2f5a8a", "#e8e2d0", skin=p["skin"]) + ball(597, 600, 2.4))
     a(golfer(1112, 640, .56, "crouch", "#c8452a", "#2e3a4c", skin=p["skin"], flip=True) + ball(1088, 642, 2.4))
     # a few tufts in the rough, kept off the stage
     r = random.Random(11); tc = p["rough2"] if not n else "#0e1d15"
