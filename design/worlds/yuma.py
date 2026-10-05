@@ -281,6 +281,11 @@ def skyline(night):
         a(f'<rect x="{x - 10}" y="{dk + 6}" width="20" height="32" fill="{p["stone"]}"/><rect x="{x - 14}" y="{dk + 4}" width="28" height="6" fill="{p["stone2"]}"/>')
     a(truss(540, 1580, dk, 4, 36, 20, p["steel"], 4, 6))
     a(f'<rect x="530" y="{dk}" width="1070" height="9" fill="{p["steel2"]}"/>')
+    # its nameplate, the real one's name made insurance (Frank, 2026-10-05: "in real life the bridge is
+    # called Ocean to Ocean Bridge, make it insurance themed")
+    a(f'<path d="M870 {dk - 51}V{dk - 68}M980 {dk - 52}V{dk - 68}" stroke="{p["steel"]}" stroke-width="3"/>')
+    a(f'<rect x="830" y="{dk - 88}" width="190" height="20" rx="3" fill="{"#2f6a4a" if not n else "#1c3a2a"}" stroke="{p["ink"]}" stroke-width="1.5"/>'
+      f'<text x="925" y="{dk - 74}" text-anchor="middle" font-family="Arial, sans-serif" font-weight="bold" font-size="11" fill="{p["ink"]}" letter-spacing="1">COAST TO COAST COVERAGE</text>')
     if n:
         for x in range(600, 1600, 130): a(f'<circle cx="{x}" cy="{dk - 8}" r="22" fill="url(#glow)"/><circle cx="{x}" cy="{dk - 8}" r="3" fill="#ffe7a0"/>')
         for x in range(600, 1600, 130): a(f'<rect x="{x - 14}" y="{dk + 30}" width="28" height="3" fill="#ffd27a" opacity=".45"/>')

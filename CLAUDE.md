@@ -2045,7 +2045,9 @@ repaint clears the list).
   between the tiles under a blazing sun with jets' contrails; one bridge,
   the arched highway truss, over the teal river (the railroad truss, its
   train, the far bank's palms and the RIVER CROSSING sign came out --
-  Frank, 2026-10-05: "too much going on here"); the
+  Frank, 2026-10-05: "too much going on here"), its nameplate COAST TO
+  COAST COVERAGE (the real one is the Ocean to Ocean Bridge: "make it
+  insurance themed"); the
   podium on a packed-earth yard framed by lettuce rows (FULL COVERAGE FARMS)
   and a date grove (PREMIUM DATES). Nothing is named. Banners: harvest
   trucks, the old depot's wires, the cellblock as a Lessons Yard, a
