@@ -4,6 +4,7 @@ import random
 
 KEY = "ocean"
 NAME = "Ocean"
+CATEGORY = "Outdoors"   # the group it is listed under in Settings
 FONTS = "family=Merriweather:wght@700;900&family=Source+Sans+3:wght@400;500;600;700"
 DISPLAY = "'Merriweather', Georgia, serif"
 DW = 700

@@ -73,6 +73,7 @@ def inline_js(mods, ver):
             f"const WORLD_CSS_VER = {json.dumps(ver)};\n"
             f"WORLDS.push(...{json.dumps(worlds)});\n"
             f"LOOKS.push(...{json.dumps(looks)});\n"
+            f"Object.assign(WORLD_GROUP, {json.dumps({m.KEY: getattr(m, 'CATEGORY', 'More') for m in mods})});\n"
             "/* WORLDS-JS:END */")
 def vistas_js(mods):
     return ("/* WORLDS-VISTAS:BEGIN -- written by design/worlds/build.py */\n"

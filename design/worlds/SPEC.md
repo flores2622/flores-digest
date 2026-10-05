@@ -10,6 +10,7 @@ Pure Python 3, standard library only. It must define:
 
     KEY = "<key>"                       # same as the filename
     NAME = "Ocean"                      # shown in Settings
+    CATEGORY = "Outdoors"               # the Settings group: "Cities", "Sports", "Outdoors" or "Fun"
     FONTS = "family=Merriweather:wght@700;900&family=Source+Sans+3:wght@400;500;600;700"   # Google Fonts css2 query
     DISPLAY = "'Merriweather', Georgia, serif"   # headings, the greeting and the big tile numbers
     DW = 700                            # the display face's weight -- must be a weight in FONTS; never thin

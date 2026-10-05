@@ -984,6 +984,8 @@ html[data-look="mesa"] .tab:hover, html[data-look="mesa"] .tab[aria-selected="tr
 .modes button[aria-pressed="true"] { background: var(--surface-raised); color: var(--text-primary); }
 .looks { display: grid; grid-template-columns: 1fr; gap: 4px; }
 #worlds { grid-template-columns: 1fr 1fr; margin-bottom: 10px; }
+#worlds .wgroup { grid-column: 1 / -1; font-size: 11px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--text-muted); margin: 6px 2px 0; }
+#worlds .wgroup:first-child { margin-top: 0; }
 .setpan { max-height: calc(100vh - 32px); overflow: auto; }
 /* The menu is sticky, which makes it its own layer: lift that layer over the page so the Settings panel
    it holds is not painted under the Digest's positioned cards (it was, at its right edge). */
@@ -1971,6 +1973,10 @@ function hoverable(node, html) {
    typeface pair and its pictures (the Digest's skyline, the page vistas, the
    coaching cards' outcome strips). The Editions keep their own looks. */
 const WORLDS = [["desert", "Desert / Old West", ""]];
+// Settings lists the worlds by kind (Frank, 2026-10-05: "categorize the themes in the settings? by cities,
+// sports, etc."); each world module names its CATEGORY and build.py writes it here; the desert is Outdoors
+const WORLD_GROUP = { desert: "Outdoors" };
+const WORLD_GROUP_ORDER = ["Cities", "Sports", "Outdoors", "Fun", "More"];
 const LOOKS = [["sonoran", "Sonoran", ["#f3e9dc", "#2a2320", "#b5532f"], "desert"], ["saguaro", "Saguaro", ["#f1ece1", "#24382c", "#3e6b4f"], "desert"],
   ["turquoise", "Turquoise & Silver", ["#eeebe5", "#1d2a33", "#1f8a8a"], "desert"], ["canyon", "Canyon Sunset", ["#f6e6d6", "#5a2416", "#d9622b"], "desert"],
   ["mesa", "Mesa Minimal", ["#faf7f2", "#efe6da", "#b5532f"], "desert"]];
@@ -1978,6 +1984,7 @@ const LOOKS = [["sonoran", "Sonoran", ["#f3e9dc", "#2a2320", "#b5532f"], "desert
 const WORLD_CSS_VER = "249c3db2d2";
 WORLDS.push(...[["space", "Space", "family=Space+Grotesk:wght@500;700&family=IBM+Plex+Sans:wght@400;500;600;700"], ["ocean", "Ocean", "family=Merriweather:wght@700;900&family=Source+Sans+3:wght@400;500;600;700"], ["mountain", "Mountain", "family=Zilla+Slab:wght@600;700&family=Work+Sans:wght@400;500;600;700"], ["gameday", "Game Day", "family=Oswald:wght@500;600;700&family=Barlow:wght@400;500;600;700"], ["arcade", "Retro Arcade", "family=Orbitron:wght@700;800;900&family=Exo+2:wght@400;500;600;700"], ["phoenix", "Phoenix", "family=Archivo:wght@500;700;800&family=Inter:wght@400;500;600;700"], ["golf", "Golf", "family=Playfair+Display:wght@700;800&family=Nunito+Sans:wght@400;500;600;700"], ["yuma", "Yuma", "family=Arvo:wght@400;700&family=Karla:wght@400;500;600;700"]]);
 LOOKS.push(...[["mission", "Mission Control", ["#e9edf3", "#0f1a33", "#e2552b"], "space"], ["deepfield", "Deep Field", ["#ecebf5", "#1a1433", "#6d4fd8"], "space"], ["mars", "Mars", ["#f3e6dc", "#3a1a10", "#c2451e"], "space"], ["harbor", "Harbor", ["#edf1f6", "#0d1f3c", "#c8283a"], "ocean"], ["seaglass", "Sea Glass", ["#eee8da", "#17423d", "#1b7464"], "ocean"], ["sunsetpier", "Sunset Pier", ["#f6ece4", "#2c1238", "#ff8a6b"], "ocean"], ["evergreen", "Evergreen", ["#ecebe0", "#1f3a2b", "#b24a24"], "mountain"], ["glacier", "Glacier", ["#e8edf1", "#2e3c48", "#7cc4ea"], "mountain"], ["aspen", "Aspen", ["#f1ebde", "#3b2a1c", "#f2b844"], "mountain"], ["home", "Home", ["#eceff4", "#0b1f44", "#c8102e"], "gameday"], ["away", "Away", ["#eef0ef", "#262b2e", "#0e7a38"], "gameday"], ["nightgame", "Night Game", ["#ecebe6", "#0a0a0a", "#f5c518"], "gameday"], ["synthwave", "Synthwave", ["#140a24", "#2a0f4a", "#4f98ff"], "arcade"], ["eightbit", "8-Bit", ["#0b0f0c", "#050806", "#39ff6a"], "arcade"], ["pinball", "Pinball", ["#170d1f", "#2b1145", "#ff8a3d"], "arcade"], ["valley", "Valley Sunset", ["#f5ece4", "#2e1d4a", "#c2410c"], "phoenix"], ["copper", "Copper", ["#f1ece8", "#232323", "#a5501f"], "phoenix"], ["monsoon", "Monsoon", ["#e8edf2", "#2b3a4e", "#1f5fd6"], "phoenix"], ["fairway", "Fairway", ["#eef2ec", "#174a2a", "#e9c75a"], "golf"], ["clubhouse", "Clubhouse", ["#f1ebdc", "#1d3324", "#b8873a"], "golf"], ["links", "Links", ["#e7ebee", "#34404f", "#9b5a8c"], "golf"], ["river", "River", ["#eee8da", "#0f3638", "#0f6f6c"], "yuma"], ["harvest", "Harvest", ["#ecebdc", "#22402a", "#ac4426"], "yuma"], ["dunes", "Dunes", ["#f3ead6", "#16304e", "#f4c25a"], "yuma"]]);
+Object.assign(WORLD_GROUP, {"space": "Fun", "ocean": "Outdoors", "mountain": "Outdoors", "gameday": "Sports", "arcade": "Fun", "phoenix": "Cities", "golf": "Sports", "yuma": "Cities"});
 /* WORLDS-JS:END */
 /* The world's pictures load only for whoever picks it: worlds/<key>.css, and
    its typeface pair from Google Fonts. Until the pictures land, data-wl is
@@ -2012,8 +2019,12 @@ function applyTheme(save) {
   R.setAttribute("data-theme", TH.theme); R.setAttribute("data-look", TH.look); loadWorld(TH.theme); R.setAttribute("data-mode", dark ? "dark" : "light"); R.style.colorScheme = dark ? "dark" : "light";
   const wd = WORLDS.find(w => w[0] === TH.theme);
   const sub = $("#setSub"); if (sub) sub.textContent = `${wd[1]} · ${lk[1]} · ${TH.mode === "system" ? "Device" : dark ? "Dark" : "Light"}`;
-  const worlds = $("#worlds"); if (worlds) worlds.innerHTML = WORLDS.map(([k, n]) =>
-    `<button type="button" data-world="${k}" aria-pressed="${k === TH.theme}"><span class="sw3">${LOOKS.filter(l => l[3] === k).slice(0, 3).map(l => `<i style="background:${l[2][2]}"></i>`).join("")}</span>${n}</button>`).join("");
+  const worldBtn = ([k, n]) =>
+    `<button type="button" data-world="${k}" aria-pressed="${k === TH.theme}"><span class="sw3">${LOOKS.filter(l => l[3] === k).slice(0, 3).map(l => `<i style="background:${l[2][2]}"></i>`).join("")}</span>${n}</button>`;
+  const worlds = $("#worlds"); if (worlds) worlds.innerHTML = WORLD_GROUP_ORDER.map(g => {
+    const ws = WORLDS.filter(w => (WORLD_GROUP[w[0]] || "More") === g);
+    return ws.length ? `<div class="wgroup">${g}</div>${ws.map(worldBtn).join("")}` : "";
+  }).join("");
   const looks = $("#looks"); if (looks) looks.innerHTML = LOOKS.filter(l => l[3] === TH.theme).map(([k, n, c]) =>
     `<button type="button" data-look="${k}" aria-pressed="${k === TH.look}"><span class="sw3"><i style="background:${c[0]}"></i><i style="background:${c[1]}"></i><i style="background:${c[2]}"></i></span>${n}</button>`).join("");
   if (themeWas && themeWas !== TH.theme) { $$("#view > .vista").forEach(v => v.remove()); if (typeof placeVista === "function") placeVista(); if (typeof paintGreeting === "function") paintGreeting(true); }

@@ -4,6 +4,7 @@ import math, random
 
 KEY = "gameday"
 NAME = "Game Day"
+CATEGORY = "Sports"   # the group it is listed under in Settings
 FONTS = "family=Oswald:wght@500;600;700&family=Barlow:wght@400;500;600;700"
 DISPLAY = "'Oswald', 'Arial Narrow', system-ui, sans-serif"
 DW = 700
