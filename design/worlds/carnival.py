@@ -78,6 +78,8 @@ def sway(x, b, deg, dur, delay=0):
     return (f'<animateTransform attributeName="transform" type="rotate" values="{-deg} {x} {b};{deg} {x} {b};{-deg} {x} {b}" '
             f'dur="{dur}s" begin="{delay}s" repeatCount="indefinite" calcMode="spline" keySplines=".45 0 .55 1;.45 0 .55 1"/>')
 
+def SP(k): return ';'.join(['.45 0 .55 1'] * k)   # keySplines for k segments, eased
+
 def bulbs(d, S, n, w=6, chase=None, glow=True, wire="#2a1c14", ws=1.6):
     """a string of bulbs on a wire: one path draws every bulb (zero-length dashes with round caps); when chase is a
     duration, every third bulb is lit brighter and the lit ones hop along one bulb at a time"""
@@ -549,13 +551,16 @@ def v_sales(n):  # the ring toss: bottles, prizes, a ring in the air
     o.append(f'<rect x="{x0 - 22}" y="56" width="22" height="160" fill="{p["red"]}"/><rect x="{x1}" y="56" width="22" height="160" fill="{p["red"]}"/>')
     o.append(f'<rect x="{x0 - 30}" y="186" width="{x1 - x0 + 60}" height="12" fill="{p["gold"]}"/><rect x="{x0 - 22}" y="198" width="{x1 - x0 + 44}" height="20" fill="{p["red2"]}"/>')
     o.append(awning(x0 - 30, x1 + 30, 46, 22, p["red"], p["cream"], 12))
-    o.append(bulbs(f"M{x0 - 26} 47 H{x1 + 26}", 16, n, 4.5, wire=None))
+    o.append(bulbs(f"M{x0 - 26} 47 H{x1 + 26}", 16, n, 4.5, wire=None, chase=2.4))
     o.append(sign(800, 156 - 100, 0, 0, '', p, bulb=False) if False else '')
     o.append(f'<rect x="640" y="200" width="250" height="16" fill="{p["navy"]}"/><text x="765" y="213" text-anchor="middle" font-family="Georgia, serif" font-weight="bold" font-size="11" fill="{p["gold"]}" letter-spacing="1.5">STEP RIGHT UP TO SAVINGS</text>')
     # the player and the ring on its way
     o.append(person(520, 222, 1.55, p["teal"], p["navy"], p["skin"], p["hair"], "toss"))
     o.append(f'<path d="M574 116 Q660 70 760 112" stroke="#fff" stroke-width="2" stroke-dasharray="3 7" fill="none" opacity=".6"/>')
-    o.append(f'<ellipse cx="760" cy="112" rx="11" ry="4" fill="none" stroke="{p["gold"]}" stroke-width="3.5" transform="rotate(-18 760 112)"/>')
+    o.append(f'<g><ellipse cx="760" cy="112" rx="11" ry="4" fill="none" stroke="{p["gold"]}" stroke-width="3.5" transform="rotate(-18 760 112)"/>'
+             '<animateMotion path="M-186 4 Q-100 -42 0 0 L70 34" keyPoints="0;0;.82;1;1" keyTimes="0;.15;.62;.75;1" calcMode="spline" '
+             f'keySplines="{SP(4)}" dur="3.6s" repeatCount="indefinite"/>'
+             '<animate attributeName="opacity" values="0;1;1;0;0" keyTimes="0;.15;.72;.8;1" dur="3.6s" repeatCount="indefinite"/></g>')
     o.append(corners(p, n))
     return vwrap(''.join(o))
 
@@ -569,7 +574,7 @@ def v_messages(n):  # the ticket booth: a ticket ribbon coming out of the window
     o.append(f'<rect x="{bx - 90}" y="96" width="180" height="116" fill="{p["red"]}"/>')
     for k in range(5): o.append(f'<rect x="{bx - 90 + k * 40}" y="150" width="20" height="62" fill="{p["cream"]}"/>')
     o.append(f'<path d="M{bx - 112} 98 L{bx} 46 L{bx + 112} 98Z" fill="{p["navy"] if not n else "#2a356a"}"/><path d="M{bx} 46 L{bx + 112} 98 L{bx + 40} 98Z" fill="#000" opacity=".2"/>')
-    o.append(bulbs(f"M{bx - 108} 97 L{bx} 49 L{bx + 108} 97", 14, n, 4, wire=None))
+    o.append(bulbs(f"M{bx - 108} 97 L{bx} 49 L{bx + 108} 97", 14, n, 4, wire=None, chase=2.1))
     o.append(f'<circle cx="{bx}" cy="46" r="6" fill="{p["gold"]}"/>')
     o.append(f'<rect x="{bx - 70}" y="104" width="140" height="18" rx="3" fill="{p["navy"]}"/><text x="{bx}" y="118" text-anchor="middle" font-family="Georgia, serif" font-weight="bold" font-size="13" fill="{p["gold"]}" letter-spacing="3">TICKETS</text>')
     o.append(f'<path d="M{bx - 54} 176 V136 Q{bx} 122 {bx + 54} 136 V176Z" fill="{p["win"] if n else "#f5e2b0"}" stroke="{p["gold"]}" stroke-width="4"/>')
@@ -578,7 +583,8 @@ def v_messages(n):  # the ticket booth: a ticket ribbon coming out of the window
     # the ticket ribbon unrolling out of the window and down to the ground
     rib = f"M{bx + 40} 178 C{bx + 120} 176 {bx + 150} 140 {bx + 210} 150 S{bx + 260} 206 {bx + 330} 196"
     o.append(f'<path d="{rib}" fill="none" stroke="{p["gold2"]}" stroke-width="20"/><path d="{rib}" fill="none" stroke="{p["gold"]}" stroke-width="16"/>'
-             f'<path d="{rib}" fill="none" stroke="{p["gold2"]}" stroke-width="16" stroke-dasharray="2 30"/>')
+             f'<path d="{rib}" fill="none" stroke="{p["gold2"]}" stroke-width="16" stroke-dasharray="2 30">'
+             '<animate attributeName="stroke-dashoffset" values="0;-32" dur="1.6s" repeatCount="indefinite"/></path>')
     o.append(f'<text font-family="Georgia, serif" font-weight="bold" font-size="9" fill="{p["red2"]}" letter-spacing="1"><textPath href="#rb" startOffset="8%">ADMIT ONE  &#183;  ADMIT ONE  &#183;  ADMIT ONE</textPath></text>')
     o.insert(1, f'<defs><path id="rb" d="M{bx + 40} 181 C{bx + 120} 179 {bx + 150} 143 {bx + 210} 153 S{bx + 260} 209 {bx + 330} 199"/></defs>')
     # the line: rope stanchions on the left
@@ -602,8 +608,9 @@ def v_coaching(n):  # the fortune-teller's tent: a crystal ball at the door
     o.append(f'<path d="M{cx - 190} 150 L{cx + 190} 150" stroke="{p["gold2"]}" stroke-width="4"/>')
     o.append(awning(cx - 190, cx + 190, 148, 10, p["gold"], pu2, 12))
     # stars and a crescent on the canvas
-    for x, y, s in [(cx - 120, 178, 7), (cx + 128, 176, 7), (cx - 40, 110, 5), (cx + 50, 120, 5)]:
-        o.append(f'<path d="M{x} {y - s} L{x + s * .3:.1f} {y - s * .3:.1f} L{x + s} {y} L{x + s * .3:.1f} {y + s * .3:.1f} L{x} {y + s} L{x - s * .3:.1f} {y + s * .3:.1f} L{x - s} {y} L{x - s * .3:.1f} {y - s * .3:.1f}Z" fill="{p["cream"]}"/>')
+    for i, (x, y, s) in enumerate([(cx - 120, 178, 7), (cx + 128, 176, 7), (cx - 40, 110, 5), (cx + 50, 120, 5)]):
+        o.append(f'<path d="M{x} {y - s} L{x + s * .3:.1f} {y - s * .3:.1f} L{x + s} {y} L{x + s * .3:.1f} {y + s * .3:.1f} L{x} {y + s} L{x - s * .3:.1f} {y + s * .3:.1f} L{x - s} {y} L{x - s * .3:.1f} {y - s * .3:.1f}Z" fill="{p["cream"]}">'
+                 f'<animate attributeName="opacity" values="1;.35;1" dur="2.6s" begin="{-i * .65:.2f}s" repeatCount="indefinite"/></path>')
     o.append(f'<path d="M{cx + 10} 70 a12 12 0 1 0 12 16 a9 9 0 1 1 -12 -16Z" fill="{p["cream"]}"/>')
     # the open door: the fortune teller, her table, the glowing ball
     o.append(f'<path d="M{cx - 60} 212 L{cx - 60} 170 Q{cx} 140 {cx + 60} 170 L{cx + 60} 212Z" fill="{"#2a1838" if not n else "#3a2050"}"/>')
@@ -611,18 +618,21 @@ def v_coaching(n):  # the fortune-teller's tent: a crystal ball at the door
     o.append(person(cx, 214, 1.0, p["teal"], p["teal2"], p["skin2"], p["red"], "hold", long_hair=True,
                     extra=f'<circle cx="-7" cy="-60" r="1.6" fill="{p["gold"]}"/><circle cx="7" cy="-60" r="1.6" fill="{p["gold"]}"/>'))
     o.append(f'<rect x="{cx - 46}" y="190" width="92" height="8" fill="{p["red"]}"/><path d="M{cx - 40} 198 L{cx - 46} 216 L{cx + 46} 216 L{cx + 40} 198Z" fill="{p["red2"]}"/>')
-    o.append(f'<circle cx="{cx}" cy="176" r="30" fill="#7fe0e8" opacity="{.25 if not n else .35}"/><circle cx="{cx}" cy="176" r="15" fill="#bff2f4"/><circle cx="{cx - 5}" cy="171" r="4" fill="#fff" opacity=".85"/>'
+    op = .25 if not n else .35
+    o.append(f'<circle cx="{cx}" cy="176" r="30" fill="#7fe0e8" opacity="{op}"><animate attributeName="r" values="28;33;28" dur="4s" calcMode="spline" keySplines="{SP(2)}" repeatCount="indefinite"/>'
+             f'<animate attributeName="opacity" values="{op};{op + .22:.2f};{op}" dur="4s" calcMode="spline" keySplines="{SP(2)}" repeatCount="indefinite"/></circle>'
+             f'<circle cx="{cx}" cy="176" r="15" fill="#bff2f4"><animate attributeName="fill" values="#bff2f4;#ffffff;#e2c8ff;#bff2f4" keyTimes="0;.35;.7;1" dur="4s" repeatCount="indefinite"/></circle><circle cx="{cx - 5}" cy="171" r="4" fill="#fff" opacity=".85"/>'
              f'<path d="M{cx - 12} 190 L{cx + 12} 190 L{cx + 8} 184 L{cx - 8} 184Z" fill="{p["gold"]}"/>')
     # the easel sign
     o.append(f'<path d="M540 214 L560 120 M600 214 L580 120" stroke="{p["wood2"]}" stroke-width="5"/>')
     o.append(f'<rect x="500" y="110" width="140" height="62" rx="6" fill="{p["navy"]}" stroke="{p["gold"]}" stroke-width="3"/>'
              f'<text x="570" y="134" text-anchor="middle" font-family="Georgia, serif" font-weight="bold" font-size="12" fill="{p["gold"]}" letter-spacing="1">YOUR FUTURE,</text>'
              f'<text x="570" y="154" text-anchor="middle" font-family="Georgia, serif" font-weight="bold" font-size="12" fill="{p["gold"]}" letter-spacing="1">FULLY COVERED</text>')
-    o.append(f'<line x1="{cx}" y1="44" x2="{cx}" y2="30" stroke="{p["gold"]}" stroke-width="3"/>')
+    o.append(f'<line x1="{cx}" y1="44" x2="{cx}" y2="22" stroke="{p["gold"]}" stroke-width="3"/>' + pennant(cx, 22, 24, p["red"], True, 1.8))
     o.append(corners(p, n))
     return vwrap(''.join(o))
 
-def striker(x, base, h, p, n, puck=.45, ring=False):
+def striker(x, base, h, p, n, puck=.45, ring=False, anim=False):
     """the high striker: a lever pad, a graduated column, the puck and the bell at the top"""
     o = []; a = o.append
     top = base - h
@@ -634,11 +644,18 @@ def striker(x, base, h, p, n, puck=.45, ring=False):
         a(f'<rect x="{x - 9}" y="{base - 10 - (k + 1) * seg:.0f}" width="18" height="{seg - 3:.0f}" fill="{segs[k // 3]}"/>')
     a(f'<line x1="{x}" y1="{top + 18}" x2="{x}" y2="{base - 10}" stroke="{p["dark"]}" stroke-width="1.5" opacity=".4"/>')
     py = base - 18 - (h - 34) * puck
-    a(f'<rect x="{x - 15}" y="{py - 6:.0f}" width="30" height="12" rx="4" fill="{p["navy"] if not n else "#d8d8e8"}"/>')
+    T = 'dur="4s" repeatCount="indefinite"'
+    pa = (f'<animate attributeName="y" values="{py - 6:.0f};{py - 6:.0f};{base - 24};{top + 20};{top + 20};{py - 6:.0f}" keyTimes="0;.2;.3;.44;.52;1" '
+          f'calcMode="spline" keySplines="{SP(5)}" {T}/>') if anim else ''
+    a(f'<rect x="{x - 15}" y="{py - 6:.0f}" width="30" height="12" rx="4" fill="{p["navy"] if not n else "#d8d8e8"}">{pa}</rect>')
     a(f'<path d="M{x - 16} {top + 18} Q{x - 16} {top} {x} {top} Q{x + 16} {top} {x + 16} {top + 18}Z" fill="{p["gold"]}"/><circle cx="{x}" cy="{top + 19}" r="3" fill="{p["gold2"]}"/>')
     if ring:
         a(f'<path d="M{x - 26} {top + 2} Q{x - 34} {top + 10} {x - 28} {top + 22} M{x + 26} {top + 2} Q{x + 34} {top + 10} {x + 28} {top + 22} M{x - 38} {top - 6} Q{x - 50} {top + 10} {x - 40} {top + 28} M{x + 38} {top - 6} Q{x + 50} {top + 10} {x + 40} {top + 28}" stroke="#fff" stroke-width="3" fill="none" stroke-linecap="round" opacity=".9"/>')
         if n: a(f'<circle cx="{x}" cy="{top + 10}" r="40" fill="url(#glow)"/>')
+    if anim:   # the bell's ring lines and flash, only for the moment the puck hits
+        a(f'<g opacity="0"><path d="M{x - 26} {top + 2} Q{x - 34} {top + 10} {x - 28} {top + 22} M{x + 26} {top + 2} Q{x + 34} {top + 10} {x + 28} {top + 22} M{x - 38} {top - 6} Q{x - 50} {top + 10} {x - 40} {top + 28} M{x + 38} {top - 6} Q{x + 50} {top + 10} {x + 40} {top + 28}" stroke="#fff" stroke-width="3" fill="none" stroke-linecap="round"/>'
+          f'<circle cx="{x}" cy="{top + 10}" r="22" fill="#fff6b0" opacity=".45"/>'
+          f'<animate attributeName="opacity" values="0;0;1;1;0;0" keyTimes="0;.43;.45;.6;.7;1" {T}/></g>')
     return ''.join(o)
 
 def mallet(hx, hy, ang, p, L_=58):
@@ -653,10 +670,11 @@ def v_roleplay(n):  # the high striker: hammer up, test your pitch
     o.append(f'<rect x="666" y="62" width="268" height="22" rx="5" fill="{p["navy"]}" stroke="{p["gold"]}" stroke-width="3"/>'
              f'<text x="782" y="78" text-anchor="end" font-family="Georgia, serif" font-weight="bold" font-size="13" fill="{p["gold"]}" letter-spacing="2">TEST YOUR</text>'
              f'<text x="818" y="78" font-family="Georgia, serif" font-weight="bold" font-size="13" fill="{p["gold"]}" letter-spacing="2">PITCH</text>')
-    o.append(striker(800, 212, 170, p, n, .38))
+    o.append(striker(800, 212, 170, p, n, .38, anim=True))
     # the swinger, mallet up over his head, and a friend cheering
     o.append(person(880, 214, 1.5, p["red"], p["navy"], p["skin"], p["hair"], "hammer", flip=True))
-    o.append(mallet(884, 100, 26, p, 50))
+    o.append(f'<g>{mallet(884, 100, 26, p, 50)}<animateTransform attributeName="transform" type="rotate" values="0 884 100;10 884 100;-62 884 100;-62 884 100;0 884 100" '
+             f'keyTimes="0;.12;.2;.3;1" calcMode="spline" keySplines="{SP(4)}" dur="4s" repeatCount="indefinite"/></g>')
     o.append(person(660, 214, 1.3, p["gold"], "#2b3348", p["skin2"], "#1c120c", "cheer", long_hair=True))
     o.append(corners(p, n))
     return vwrap(''.join(o))
@@ -677,9 +695,12 @@ def v_rphistory(n):  # the funhouse mirrors: every session played back, stretche
         frame = f'M{mx - 70} 192 L{mx - 70} 90 Q{mx - 70} 66 {mx - 40} 70 Q{mx} 52 {mx + 40} 70 Q{mx + 70} 66 {mx + 70} 90 L{mx + 70} 192Z'
         o.append(f'<path d="{frame}" fill="{p["gold"]}"/>')
         o.append(f'<path d="M{mx - 60} 188 L{mx - 60} 92 Q{mx - 60} 76 {mx - 36} 80 Q{mx} 64 {mx + 36} 80 Q{mx + 60} 76 {mx + 60} 92 L{mx + 60} 188Z" fill="{glass}"/>')
-        o.append(f'<path d="M{mx - 40} 100 L{mx - 20} 90 L{mx - 44} 150Z" fill="#fff" opacity=".35"/>')
+        o.append(f'<path d="M{mx - 40} 100 L{mx - 20} 90 L{mx - 44} 150Z" fill="#fff" opacity=".35"><animate attributeName="opacity" values=".35;.1;.35" dur="5s" begin="{-i * 1.6:.1f}s" repeatCount="indefinite"/></path>')
+        wob = (f'<animateTransform attributeName="transform" type="scale" values="1 1;1.1 .94;.94 1.04;1 1" keyTimes="0;.35;.7;1" calcMode="spline" keySplines="{SP(3)}" '
+               f'dur="{4.2 + i * .7:.1f}s" repeatCount="indefinite"/>')
         # the reflection, stretched by the glass
         ref = person(0, 0, 1, p["teal"], p["navy"], sk, p["hair"], "stand")
+        ref = f'<g>{ref}{wob}</g>'
         if wav:
             o.append(f'<g transform="translate({mx} 184) skewX(-14) scale(.9 1.2)" opacity=".75">{ref}</g>')
         else:
@@ -705,18 +726,21 @@ def v_training(n):  # bumper cars: the no-fault zone
     o.append(''.join(f'<rect x="{x}" y="40" width="{24}" height="28" fill="{p["red"]}"/>' for x in range(0, 1600, 48)))
     o.append(f'<rect x="640" y="42" width="320" height="24" rx="4" fill="{p["navy"]}" stroke="{p["gold"]}" stroke-width="2"/>'
              f'<text x="800" y="60" text-anchor="middle" font-family="Georgia, serif" font-weight="bold" font-size="14" fill="{p["gold"]}" letter-spacing="3">NO-FAULT ZONE</text>')
-    o.append(bulbs("M0 72 H1600", 24, n, 4, wire=None))
+    o.append(bulbs("M0 72 H1600", 24, n, 4, wire=None, chase=2.4))
     fl = "#7c8794" if not n else "#262b36"
     o.append(f'<rect x="0" y="150" width="1600" height="90" fill="{fl}"/>')
     o.append(''.join(f'<path d="M{x} 150 L{x - 60} 240" stroke="#000" stroke-width="1" opacity=".15"/>' for x in range(0, 1700, 80)))
     o.append(f'<rect x="0" y="80" width="1600" height="70" fill="{"#d9b98a" if not n else "#1a1530"}" opacity=".5"/>')
     o.append(''.join(f'<rect x="{x}" y="204" width="{40}" height="12" fill="{p["gold"] if (x // 40) % 2 else p["red"]}"/>' for x in range(0, 1600, 40)))
     o.append(f'<rect x="0" y="216" width="1600" height="24" fill="#1c1c22"/>')
-    for x, y, s, c, fl_, fc in [(560, 196, 1.0, p["teal"], False, None), (720, 184, .86, p["gold"], True, p["skin2"]), (870, 198, 1.04, p["red"], False, None), (1030, 182, .84, p["purple"], True, p["skin2"])]:
-        o.append(bumper(x, y, s, c, p, fl_, fc))
+    T = 'dur="3.6s" repeatCount="indefinite"'
+    for x, y, s, c, fl_, fc, dx in [(560, 196, 1.0, p["teal"], False, None, 22), (720, 184, .86, p["gold"], True, p["skin2"], 16), (870, 198, 1.04, p["red"], False, None, -16), (1030, 182, .84, p["purple"], True, p["skin2"], -22)]:
+        o.append(f'<g>{bumper(x, y, s, c, p, fl_, fc)}<animateTransform attributeName="transform" type="translate" values="0 0;{-dx} 0;0 0;{dx * .25:.0f} 0;0 0" keyTimes="0;.3;.5;.58;1" '
+                 f'calcMode="spline" keySplines="{SP(4)}" {T}/></g>')
     # a spark where two cars meet, on the pole tips too
     for x, y, rr in [(800, 172, 12), (650, 40 + 4, 6)]:
-        o.append(f'<path d="M{x} {y - rr} L{x + rr * .3:.1f} {y - rr * .3:.1f} L{x + rr} {y} L{x + rr * .3:.1f} {y + rr * .3:.1f} L{x} {y + rr} L{x - rr * .3:.1f} {y + rr * .3:.1f} L{x - rr} {y} L{x - rr * .3:.1f} {y - rr * .3:.1f}Z" fill="#fff6b0"/>')
+        o.append(f'<path d="M{x} {y - rr} L{x + rr * .3:.1f} {y - rr * .3:.1f} L{x + rr} {y} L{x + rr * .3:.1f} {y + rr * .3:.1f} L{x} {y + rr} L{x - rr * .3:.1f} {y + rr * .3:.1f} L{x - rr} {y} L{x - rr * .3:.1f} {y - rr * .3:.1f}Z" fill="#fff6b0">'
+                 f'<animate attributeName="opacity" values="0;0;1;.6;0;0" keyTimes="0;.45;.5;.56;.66;1" {T}/></path>')
     o.append(corners(p, n))
     return vwrap(''.join(o))
 
@@ -741,15 +765,15 @@ def v_map(n, athena=False):  # the fairground map pinned to the gate, a route th
     steps = ["Listen", "Understand", "Handle", "Follow up"] if athena else ["Dial", "Discovery", "Quote", "Close"]
     pts = [(530, 160), (720, 112), (920, 150), (1110, 104)]
     d = f"M352 204 C400 196 440 186 {pts[0][0]} {pts[0][1]} S620 120 {pts[1][0]} {pts[1][1]} S840 170 {pts[2][0]} {pts[2][1]} S1060 112 {pts[3][0]} {pts[3][1]} S1220 94 1262 92"
-    o.append(f'<path d="{d}" fill="none" stroke="{route}" stroke-width="5" stroke-dasharray="4 10" stroke-linecap="round"/>')
+    o.append(f'<path d="{d}" fill="none" stroke="{route}" stroke-width="5" stroke-dasharray="4 10" stroke-linecap="round"><animate attributeName="stroke-dashoffset" values="0;-14" dur="1.2s" repeatCount="indefinite"/></path>')
     for i, ((x, y), t) in enumerate(zip(pts, steps)):
         o.append(f'<circle cx="{x}" cy="{y}" r="15" fill="{route}" stroke="{paper}" stroke-width="4"/><text x="{x}" y="{y + 5}" text-anchor="middle" font-family="Arial, sans-serif" font-weight="bold" font-size="14" fill="#fff">{i + 1}</text>')
         o.append(f'<text x="{x}" y="{y - 24}" text-anchor="middle" font-family="Georgia, serif" font-weight="bold" font-size="22" fill="{ink}" stroke="{paper}" stroke-width="5" paint-order="stroke">{t}</text>')
-    o.append(f'<path d="M1262 80 l4 9 10 1 -8 6 3 10 -9 -6 -9 6 3 -10 -8 -6 10 -1Z" fill="{p["gold"]}" stroke="{ink}" stroke-width="1.5"/>')
+    o.append(f'<path d="M1262 80 l4 9 10 1 -8 6 3 10 -9 -6 -9 6 3 -10 -8 -6 10 -1Z" fill="{p["gold"]}" stroke="{ink}" stroke-width="1.5"><animate attributeName="opacity" values="1;.45;1" dur="2.4s" repeatCount="indefinite"/></path>')
     o.append(f'<text x="352" y="58" font-family="Georgia, serif" font-style="italic" font-size="15" fill="{ink}" opacity=".8">'
              + ('the service grounds &#183; you are here' if athena else 'the midway &#183; you are here') + '</text>')
-    o.append(f'<g transform="translate(1230 190)"><circle r="24" fill="none" stroke="{ink}" stroke-width="2"/><path d="M0 -20 L5 0 L0 20 L-5 0Z" fill="{ink}"/>'
-             f'<path d="M0 -20 L5 0 L-5 0Z" fill="{route}"/><text y="-28" text-anchor="middle" font-family="Georgia, serif" font-weight="bold" font-size="11" fill="{ink}">N</text></g>')
+    o.append(f'<g transform="translate(1230 190)"><circle r="24" fill="none" stroke="{ink}" stroke-width="2"/><g><path d="M0 -20 L5 0 L0 20 L-5 0Z" fill="{ink}"/>'
+             f'<path d="M0 -20 L5 0 L-5 0Z" fill="{route}"/>{sway(0, 0, 9, 5)}</g><text y="-28" text-anchor="middle" font-family="Georgia, serif" font-weight="bold" font-size="11" fill="{ink}">N</text></g>')
     o.append(corners(p, n))
     for x, y in [(318, 30), (1282, 26)]: o.append(f'<circle cx="{x}" cy="{y}" r="6" fill="{p["red"]}"/><circle cx="{x - 2}" cy="{y - 2}" r="2" fill="#fff" opacity=".6"/>')
     return vwrap(''.join(o))
@@ -762,20 +786,24 @@ def v_service(n):  # the ride operators at the controls, the swing ride behind t
     if n: o.append(f'<ellipse cx="{tx}" cy="110" rx="240" ry="90" fill="url(#glow)" opacity=".6"/>')
     o.append(f'<rect x="{tx - 12}" y="60" width="24" height="140" fill="{p["wheel"]}"/>')
     o.append(f'<path d="M{tx - 120} 92 L{tx} 52 L{tx + 120} 92Z" fill="{p["red"]}"/><path d="M{tx - 120} 92 Q{tx} 112 {tx + 120} 92 L{tx + 120} 100 Q{tx} 120 {tx - 120} 100Z" fill="{p["gold"]}"/>')
-    o.append(bulbs(f"M{tx - 118} 98 Q{tx} 118 {tx + 118} 98", 15, n, 4, wire=None))
+    o.append(bulbs(f"M{tx - 118} 98 Q{tx} 118 {tx + 118} 98", 15, n, 4, wire=None, chase=2.1))
+    ch = []
     for k, (ex, ey) in enumerate([(tx - 220, 150), (tx - 150, 168), (tx - 60, 176), (tx + 60, 176), (tx + 150, 168), (tx + 220, 150)]):
         sx = tx + (-110 + k * 44)
-        o.append(f'<line x1="{sx}" y1="104" x2="{ex}" y2="{ey - 12}" stroke="{p["steel2"]}" stroke-width="1.5"/>'
-                 f'<path d="M{ex - 9} {ey - 12} L{ex + 9} {ey - 12} L{ex + 7} {ey} L{ex - 7} {ey}Z" fill="{[p["teal"], p["gold"], p["purple"]][k % 3]}"/>')
+        ch.append(f'<line x1="{sx}" y1="104" x2="{ex}" y2="{ey - 12}" stroke="{p["steel2"]}" stroke-width="1.5"/>'
+                  f'<path d="M{ex - 9} {ey - 12} L{ex + 9} {ey - 12} L{ex + 7} {ey} L{ex - 7} {ey}Z" fill="{[p["teal"], p["gold"], p["purple"]][k % 3]}"/>')
+    o.append(f'<g>{"".join(ch)}<animateTransform attributeName="transform" type="scale" values="1 1;1.07 .95;1 1" calcMode="spline" keySplines="{SP(2)}" dur="5s" repeatCount="indefinite" additive="sum"/>'
+             f'<animateTransform attributeName="transform" type="translate" values="0 0;{-tx * .07:.0f} {104 * .05:.1f};0 0" calcMode="spline" keySplines="{SP(2)}" dur="5s" repeatCount="indefinite" additive="sum"/></g>')
     # the control booth: an open-front kiosk with a panel of buttons and a big lever
     o.append(f'<rect x="560" y="96" width="250" height="118" fill="{p["navy"] if not n else "#222a50"}"/>'
              f'<path d="M548 98 L822 98 L810 80 L560 80Z" fill="{p["red"]}"/><rect x="548" y="96" width="274" height="6" fill="{p["gold"]}"/>')
     o.append(f'<rect x="580" y="108" width="210" height="16" rx="3" fill="{p["cream"]}"/><text x="685" y="120" text-anchor="middle" font-family="Georgia, serif" font-weight="bold" font-size="10" fill="{p["red2"]}" letter-spacing="1">KEEP HANDS INSIDE THE POLICY</text>')
     o.append(f'<rect x="572" y="160" width="226" height="16" fill="{p["steel2"]}"/><path d="M572 160 L590 150 L780 150 L798 160Z" fill="#3a3a44"/>')
     for i, c in enumerate(["#e04a3a", "#3ac76a", "#f2c23a", "#3ac76a", "#e04a3a"]):
-        o.append(f'<circle cx="{610 + i * 22}" cy="155" r="4.5" fill="{c}"/>')
+        o.append(f'<circle cx="{610 + i * 22}" cy="155" r="4.5" fill="{c}">' + (f'<animate attributeName="opacity" values="1;.3;1" dur="1.4s" begin="{-i * .5:.1f}s" repeatCount="indefinite"/>' if i % 2 else '') + '</circle>')
         if n: o.append(f'<circle cx="{610 + i * 22}" cy="155" r="10" fill="{c}" opacity=".3"/>')
-    o.append(f'<line x1="740" y1="158" x2="756" y2="128" stroke="#8a8a96" stroke-width="4"/><circle cx="756" cy="128" r="6" fill="#e04a3a"/>')
+    o.append(f'<g><line x1="740" y1="158" x2="756" y2="128" stroke="#8a8a96" stroke-width="4"/><circle cx="756" cy="128" r="6" fill="#e04a3a"/>'
+             f'<animateTransform attributeName="transform" type="rotate" values="0 740 158;0 740 158;-34 740 158;-34 740 158;0 740 158" keyTimes="0;.4;.5;.85;1" calcMode="spline" keySplines="{SP(4)}" dur="5s" repeatCount="indefinite"/></g>')
     cap = f'<path d="M-9 -66 Q0 -76 9 -66 L14 -64 L9 -63Z" fill="{p["red"]}"/>'
     o.append(person(720, 210, 1.15, p["gold"], "#2b3348", p["skin"], p["hair"], "lever", extra=cap))
     o.append(person(640, 210, 1.15, p["teal"], "#2b3348", p["skin2"], "#1c120c", "hold", extra=cap + f'<rect x="18" y="-50" width="10" height="13" fill="{p["cream"]}"/>'))

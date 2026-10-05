@@ -256,20 +256,20 @@ def skyline(night):
     a(f'<rect x="0" y="100" width="{W}" height="300" fill="url(#cr2)" opacity="{.75 if not n else .55}"/>')
     a(f'<rect x="0" y="100" width="{W}" height="300" fill="{p["roof"]}" opacity="{.4 if not n else .5}"/>')
     a(f'<rect x="0" y="94" width="{W}" height="8" fill="{p["steel2"]}"/>')
-    if n:  # phone lights in the upper deck
-        r = random.Random(8)
-        a(''.join(f'<circle cx="{r.randint(0, W)}" cy="{r.randint(108, 170)}" r="1.6" fill="#fff" opacity="{r.choice([.5, .8])}"/>' for _ in range(24)))
+    if n:  # phone lights in the upper deck, a sparse tile of them
+        a('<pattern id="ph" width="230" height="70" patternUnits="userSpaceOnUse"><circle cx="30" cy="8" r="1.6" fill="#fff"/><circle cx="140" cy="40" r="1.6" fill="#fff" opacity=".5"/><circle cx="200" cy="22" r="1.6" fill="#fff" opacity=".8"/></pattern>'
+          f'<rect x="0" y="104" width="{W}" height="70" fill="url(#ph)"/>')
     # the roof trusses: a lattice girder right across, the catwalk under it
     a(f'<rect x="0" y="28" width="{W}" height="5" fill="{p["steel"]}"/><rect x="0" y="58" width="{W}" height="5" fill="{p["steel"]}"/>')
     a(f'<path d="' + ''.join(f'M{x} 33 L{x + 40} 58 M{x + 40} 33 L{x + 80} 58 ' for x in range(0, W, 80)) + f'" stroke="{p["steel2"]}" stroke-width="2.5"/>')
     a(f'<rect x="0" y="70" width="{W}" height="3" fill="{p["steel2"]}"/>' + ''.join(f'<line x1="{x}" y1="63" x2="{x}" y2="70" stroke="{p["steel2"]}" stroke-width="2"/>' for x in range(20, W, 60)))
-    for x in (200, 600, 1000, 1400):  # lamps hung under the girder
+    for x in (180, 300, 1300, 1420):  # lamps hung under the girder
         a(f'<rect x="{x - 2}" y="63" width="4" height="10" fill="{p["steel2"]}"/><path d="M{x - 14} 84 L{x - 8} 73 L{x + 8} 73 L{x + 14} 84Z" fill="{p["steel2"]}"/>'
           f'<ellipse cx="{x}" cy="84" rx="13" ry="3" fill="#fff4cf" opacity="{.95 if n else .8}"/>')
         if n: a(f'<circle cx="{x}" cy="90" r="40" fill="url(#glow)" opacity=".6"/>')
     # the championship banners, hung from the girder on two rods each
     for i, (word, yr) in enumerate(BANNERS):
-        bx = [400, 492, 584, 1036, 1128, 1220][i]; c = p["home"] if i % 2 == 0 else p["away"]
+        bx = [380, 472, 564, 968, 1060, 1152][i]; c = p["home"] if i % 2 == 0 else p["away"]
         a(f'<line x1="{bx + 6}" y1="63" x2="{bx + 6}" y2="82" stroke="{p["steel2"]}" stroke-width="1.6"/><line x1="{bx + 62}" y1="63" x2="{bx + 62}" y2="82" stroke="{p["steel2"]}" stroke-width="1.6"/>')
         a(f'<rect x="{bx - 2}" y="80" width="72" height="5" rx="2" fill="{p["steel"]}"/>')
         a(f'<path d="M{bx} 84 h68 v92 l-34 14 l-34 -14Z" fill="{c}" stroke="#f2c230" stroke-width="2.5"/>')
@@ -305,15 +305,28 @@ def skyline(night):
     a(f'<rect x="0" y="372" width="{W}" height="140" fill="#000" opacity="{.22 if not n else .5}"/>')
     for x in (400, 800, 1200): a(f'<path d="M{x - 10} 372 L{x + 10} 372 L{x + 14} 506 L{x - 14} 506Z" fill="{p["wall"]}"/>' + ''.join(f'<line x1="{x - 12}" y1="{y}" x2="{x + 12}" y2="{y}" stroke="#000" stroke-opacity=".3"/>' for y in range(380, 506, 11)))
     a(f'<rect x="0" y="372" width="{W}" height="8" fill="{p["steel2"]}"/><rect x="0" y="380" width="{W}" height="3" fill="{p["led"]}" opacity=".6"/>')
-    # the crowd doing the wave: a block of raised arms travelling across the bowl
-    wv = ['<defs><pattern id="wv" width="52" height="44" patternUnits="userSpaceOnUse" x="0" y="400">']
-    for k, (x, y) in enumerate([(13, 10), (39, 10), (26, 32), (52, 32), (0, 32)]):
-        sh = p["crowd"][k % len(p["crowd"])]; sk = p["skin"][k % 4]
-        wv.append(f'<path d="M{x - 9} {y + 16}q1-14 9-14t9 14z" fill="{sh}"/><path d="M{x - 6} {y + 4}l-4-13M{x + 6} {y + 4}l4-13" stroke="{sk}" stroke-width="3.2" stroke-linecap="round"/><circle cx="{x}" cy="{y - 3}" r="4.6" fill="{sk}"/>')
-    wv.append('</pattern></defs><rect x="0" y="392" width="156" height="114" fill="url(#wv)"/>')
-    a(f'<g opacity="0">{"".join(wv)}'
-      f'<animate attributeName="opacity" values="0;1;1;0;0" keyTimes="0;.04;.7;.74;1" dur="10s" repeatCount="indefinite"/>'
-      f'<animateTransform attributeName="transform" type="translate" values="-200 0;1700 0;1700 0" keyTimes="0;.74;1" dur="10s" repeatCount="indefinite"/></g>')
+    # the crowd doing the wave: the same fans as the seats (same seed, same grid) drawn standing, arms up, and half up;
+    # two masks sweep across the bowl, so each fan rises in place as the band reaches them and sits back down behind it
+    r = random.Random(3); fans = []
+    for row in range(2):
+        for k in range(4):
+            cx = (k * 26 + 13 + (13 if row else 0)) % 104; cy = row * 22
+            fans.append((cx, cy, r.choice(p["crowd"]), r.choice(p["skin"])))
+    def lay(sid, oy):
+        u = []
+        for cx, cy, sh, sk in fans:
+            for dx in ((0, 104) if cx == 0 else (0,)):
+                for dy in ((0, 44) if cy == 0 else (0,)):
+                    u.append(f'<use href="#{sid}" x="{cx + dx}" y="{cy + dy + oy}" fill="{sh}" color="{sk}"/>')
+        return ''.join(u)
+    wv = ('<defs><g id="wf"><path d="M-9.4 22L-8 3Q0 0 8 3L9.4 22z"/><path d="M-6 5L-9-15M6 5L9-15" stroke="currentColor" stroke-width="3.4" stroke-linecap="round"/><circle cy="-4" r="4.7" fill="currentColor"/></g>'
+          '<g id="wh"><path d="M-9.4 22L-8 7Q0 4 8 7L9.4 22z"/><path d="M-6 9L-9 1M6 9L9 1" stroke="currentColor" stroke-width="3.4" stroke-linecap="round"/><circle cy="1" r="4.6" fill="currentColor"/></g>'
+          f'<pattern id="wvF" width="104" height="44" patternUnits="userSpaceOnUse">{lay("wf", 0)}</pattern>'
+          f'<pattern id="wvH" width="104" height="44" patternUnits="userSpaceOnUse">{lay("wh", 0)}</pattern>')
+    for mid, x0, w0 in (("mF", -320, 120), ("mH", -372, 198)):
+        wv += (f'<mask id="{mid}" maskUnits="userSpaceOnUse" x="0" y="372" width="{W}" height="140"><rect x="{x0}" y="384" width="{w0}" height="128" fill="#fff">'
+               f'<animate attributeName="x" values="{x0};{x0 + 2000};{x0 + 2000}" keyTimes="0;.74;1" dur="10s" repeatCount="indefinite"/></rect></mask>')
+    a(wv + '</defs>' + ''.join(f'<rect x="0" y="384" width="{W}" height="122" fill="url(#{pt})" mask="url(#{m})"/>' for pt, m in (("wvH", "mH"), ("wvF", "mF"))))
     # the floor of the arena, the ad boards along the far side
     a(f'<rect x="0" y="506" width="{W}" height="{H - 506}" fill="{p["floor"]}"/>')
     a(f'<rect x="196" y="500" width="1208" height="28" fill="{p["board"]}"/>')

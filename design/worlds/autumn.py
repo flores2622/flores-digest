@@ -382,9 +382,9 @@ def skyline(night):
     # the far stone wall along the road
     a(stonewall([(430, 478), (700, 472), (1000, 470), (1320, 474), (1610, 480)], 12, p, 5))
     a(stonewall([(-10, 486), (170, 482)], 12, p, 6))
-    # the stream: down from the woods, under the bridge, widening toward us
-    a(f'<path d="M300 {HZ} C292 470 300 490 312 512 L392 512 C372 490 352 470 336 {HZ}Z" fill="url(#wat)"/>')
-    sd = "M296 520 C250 600 120 640 60 720 C30 760 10 800 -10 860 L380 860 C360 800 380 740 430 690 C470 640 430 570 410 520Z"
+    # the stream: down from the woods, under the bridge between its abutments, widening toward us
+    a(f'<path d="M298 {HZ} C290 470 286 490 272 522 L364 522 C350 490 340 470 334 {HZ}Z" fill="url(#wat)"/>')
+    sd = "M262 516 C236 590 120 640 60 720 C30 760 10 800 -10 860 L380 860 C360 800 380 740 430 690 C470 640 420 580 374 516Z"
     a(f'<path d="{sd}" fill="{p["stone2"]}" transform="translate(0 -3) scale(1 1)" opacity=".7"/><path d="{sd}" fill="url(#wat)"/>')
     for x, y, rx in [(110, 690, 18), (380, 640, 14), (420, 760, 20), (40, 800, 16), (330, 580, 10)]:
         a(f'<ellipse cx="{x}" cy="{y}" rx="{rx}" ry="{rx * .55:.0f}" fill="{p["stone"]}"/><ellipse cx="{x - 3}" cy="{y - 3}" rx="{rx * .6:.0f}" ry="{rx * .25:.0f}" fill="#fff" opacity=".15"/>')
@@ -402,20 +402,30 @@ def skyline(night):
     a(f'<g opacity="0">{pickup(0, 504, .42, "#2f5a7a" if not n else "#26405a", p, n, cargo="pumpkins")}'
       '<animateTransform attributeName="transform" type="translate" values="-90 0;1720 -14" dur="12s" repeatCount="indefinite"/>'
       '<animate attributeName="opacity" values="0;1;1;0" keyTimes="0;.04;.96;1" dur="12s" repeatCount="indefinite"/></g>')
-    # the red covered bridge, drawn over the road so the truck passes inside it
-    bx0, bx1, by = 170, 412, 502
-    a(f'<path d="M{bx0 - 10} {by + 4} L{bx0 + 16} {by + 4} L{bx0 + 24} {by + 44} L{bx0 - 22} {by + 44}Z" fill="{p["stone"]}"/>'
-      f'<path d="M{bx1 - 16} {by + 4} L{bx1 + 10} {by + 4} L{bx1 + 22} {by + 44} L{bx1 - 24} {by + 44}Z" fill="{p["stone"]}"/>')
-    a(f'<rect x="{bx0}" y="{by - 46}" width="{bx1 - bx0}" height="52" fill="{p["barn"]}"/>')
-    a(f'<path d="{"".join(f"M{x} {by - 46}v52" for x in range(bx0 + 8, bx1, 12))}" stroke="{p["barn2"]}" stroke-width="2"/>')
-    a(f'<rect x="{bx0 + 20}" y="{by - 34}" width="{bx1 - bx0 - 40}" height="9" fill="{p["barn2"] if not n else "#ffcf6a"}" opacity="{1 if not n else .55}"/>')
-    a(f'<path d="M{bx0 - 14} {by - 44} L{bx0 + 6} {by - 64} L{bx1 - 6} {by - 64} L{bx1 + 14} {by - 44}Z" fill="{p["roof"]}"/><path d="M{bx0 - 14} {by - 44} L{bx1 + 14} {by - 44}" stroke="{p["roof2"]}" stroke-width="3"/>')
-    a(f'<path d="M{bx0 - 2} {by + 6} L{bx0 - 2} {by - 40} L{bx0 + 8} {by - 56} L{bx0 + 18} {by - 40} L{bx0 + 18} {by + 6}Z" fill="{p["barn2"]}"/><path d="M{bx0 + 1} {by + 6} L{bx0 + 1} {by - 30} Q{bx0 + 8} {by - 40} {bx0 + 15} {by - 30} L{bx0 + 15} {by + 6}Z" fill="#1a1210"/>')
-    a(f'<rect x="{bx0 + 66}" y="{by - 60}" width="110" height="14" rx="2" fill="{p["white"]}"/><text x="{bx0 + 121}" y="{by - 49}" text-anchor="middle" font-family="Georgia, serif" font-weight="bold" font-size="10" fill="{p["barn2"] if not n else "#2a1a18"}" letter-spacing="1">COVERED BRIDGE</text>')
-    a(f'<rect x="{bx0 - 4}" y="{by + 4}" width="{bx1 - bx0 + 8}" height="6" fill="{p["wood2"]}"/>')
-    # the near stone wall up to the bridge, and the lane's sign
+    # the red covered bridge on its stone abutments, deck level with the road, drawn over it so the truck passes inside
+    bx0, bx1, by = 206, 428, 500
+    a(f'<rect x="258" y="{by + 2}" width="122" height="24" fill="#0c1620" opacity="{.55 if not n else .7}"/>')   # the shadow under the deck
+    a(f'<path d="M262 {by + 26} L374 {by + 26} L380 {by + 46} L254 {by + 46}Z" fill="{p["barn"]}" opacity=".22"/>'  # its reflection
+      f'<path d="M266 {by + 32}h40M320 {by + 38}h48M276 {by + 43}h30" stroke="{p["water2"] if not n else "#5f80b8"}" stroke-width="2" opacity=".6"/>')
+    for ab in (f"M186 {by + 4} L264 {by + 4} L258 {by + 30} L248 {by + 40} L172 {by + 44}Z", f"M372 {by + 4} L446 {by + 4} L462 {by + 44} L388 {by + 40} L378 {by + 30}Z"):
+        a(f'<path d="{ab}" fill="{p["stone"]}" stroke="{p["stone2"]}" stroke-width="2"/>')
+    a(f'<path d="M184 {by + 14}H262M180 {by + 24}H259M176 {by + 34}H252M374 {by + 14}H450M377 {by + 24}H454M382 {by + 34}H458'
+      f'M214 {by + 4}v10M242 {by + 4}v10M200 {by + 14}v10M230 {by + 14}v10M216 {by + 24}v10M246 {by + 24}v10'
+      f'M400 {by + 4}v10M428 {by + 4}v10M388 {by + 14}v10M418 {by + 14}v10M404 {by + 24}v10M436 {by + 24}v10" stroke="{p["stone2"]}" stroke-width="1.6"/>')
+    for x, y, rx in [(250, by + 46, 9), (238, by + 52, 7), (390, by + 46, 9), (404, by + 52, 7)]:
+        a(f'<ellipse cx="{x}" cy="{y}" rx="{rx}" ry="{rx * .55:.1f}" fill="{p["stone2"]}"/>')
+    a(f'<rect x="{bx0}" y="{by - 48}" width="{bx1 - bx0}" height="52" fill="{p["barn"]}"/>')
+    a(f'<path d="{"".join(f"M{x} {by - 48}v52" for x in range(bx0 + 22, bx1 - 14, 12))}" stroke="{p["barn2"]}" stroke-width="2"/>')
+    a(f'<rect x="{bx0 + 26}" y="{by - 36}" width="{bx1 - bx0 - 52}" height="9" fill="{p["barn2"] if not n else "#ffcf6a"}" opacity="{1 if not n else .55}"/>')
+    a(f'<path d="M{bx0 - 8} {by - 46} L{bx0 + 8} {by - 66} L{bx1 - 8} {by - 66} L{bx1 + 8} {by - 46}Z" fill="{p["roof"]}"/><path d="M{bx0 - 8} {by - 46} L{bx1 + 8} {by - 46}" stroke="{p["roof2"]}" stroke-width="3"/>')
+    for ex in (bx0 + 2, bx1 - 2):   # a portal at each end: the gable face, the dark way in, the deck boards inside
+        a(f'<path d="M{ex - 14} {by + 4} L{ex - 14} {by - 44} L{ex} {by - 62} L{ex + 14} {by - 44} L{ex + 14} {by + 4}Z" fill="{p["barn2"]}"/>'
+          f'<path d="M{ex - 10} {by + 4} L{ex - 10} {by - 30} Q{ex} {by - 42} {ex + 10} {by - 30} L{ex + 10} {by + 4}Z" fill="#1a1210"/>'
+          f'<path d="M{ex - 10} {by + 4} L{ex - 6} {by - 4} L{ex + 6} {by - 4} L{ex + 10} {by + 4}Z" fill="{p["road2"]}" opacity=".55"/>')
+    a(f'<rect x="{bx0 - 14}" y="{by + 3}" width="{bx1 - bx0 + 28}" height="6" fill="{p["wood2"]}"/>')
+    # the near stone wall up to the bridge, and the lane's sign at the roadside before it
     a(stonewall([(-10, 530), (150, 528)], 13, p, 7))
-    a(roadsign(120, 516, "NO LAPSE LANE", p, 104, 10, 22, 30))
+    a(roadsign(124, 516, "NO LAPSE LANE", p, 96, 9.5, 22, 30))
     # the village green: the podium's lawn, a few leaves already down on it
     gp = "M440 600 C430 548 560 528 800 528 C1040 528 1180 546 1172 610 C1166 700 1120 800 1100 880 L480 880 C470 800 446 690 440 600Z"
     a(f'<path d="{gp}" fill="{p["lawn2"]}" stroke="{p["lawn2"]}" stroke-width="18" stroke-linejoin="round"/><path d="{gp}" fill="url(#lawn)"/>')
