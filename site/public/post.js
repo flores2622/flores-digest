@@ -355,7 +355,7 @@ function writeDay(d) {
   E.s2 = ["Follow-up", F.replyMed != null ? `Texts answered in ${fmtMins(F.replyMed)}` : "Texts and tasks",
     `${F.replyMed != null ? `The team answered texts in a median of ${fmtMins(F.replyMed)}. ` : ""}${F.waiting ? `${plural(F.waiting, "text")} ${F.waiting === 1 ? "was" : "were"} still waiting at close. ` : "No text was left waiting. "}${
       F.tasks.total ? `Tasks: ${F.tasks.completed} of ${F.tasks.total} closed${F.tasks.pct >= 100 ? ", the 100% goal met" : `, ${ppct(F.tasks.pct, 0)} against a 100% goal`}.` : ""}`];
-  E.wire = (typeof digestFeedItems === "function" ? digestFeedItems(d, "") : []).filter(it => it.t != null).sort((a, b) => b.t - a.t).slice(0, 8).map(it => [feedClock(it.t), it.text]);
+  E.wire = (typeof digestFeedItems === "function" ? digestFeedItems(d, "") : []).filter(it => it.t != null).sort((a, b) => b.t - a.t).slice(0, 8).map(it => [feedClock(it.t), `${it.me ? firstName(it.who) : "Apollo"}: ${it.text}`]);
   E.carry = (typeof needsNowRows === "function" ? needsNowRows(d, "") : []).filter(r => r.n).map(r => [String(r.n), r.t]);
   E.foot = built ? `Figures final as of ${built} Arizona` : "Figures as published";
   E.take = F.ps ? `The team goes ${F.hhSold}-for-${F.hh || F.hhSold} on households and ${F.closeHH != null && F.closeHH >= 25 ? "covers the 25% line" : "misses the 25% line"}; ${pfirst(topName)} leads with ${pmoney(top.ps)}.${F.sendoffs.length ? ` ${plural(F.sendoffs.length, "quote")} left on the field, sent and never presented.` : ""}`
