@@ -1005,6 +1005,10 @@ def _finish_card(d, producer, group, raw_dials, day, transcript, recording_ids, 
         "techniques": _clean_score(d.get("techniques"), TECH_DIMS),
         "spine": _clean_spine(d.get("spine")),
         **_clean_flags(d.get("flags")),
+        # Where Apollo was unsure, or heard something new (Frank, 2026-10-05).
+        # Frank's alone: split_doubts takes it off the card before the day
+        # is published, into review/<day>.json.
+        "doubts": _clean_doubts(d.get("doubts")),
         # The model that read the card (2026-09-30); None on a card read
         # before it was kept.
         "model": d.get("_model"),
@@ -1034,6 +1038,38 @@ def _answered_opening(score, transcript):
         score["Opening & identification"] = ["n", "An answered call: the pick-up is scored as "
                                                   "the greeting, not here."]
     return score
+
+
+def _clean_doubts(raw):
+    """[[kind, text], ...], kind "unsure" or "new"; at most 5."""
+    out = []
+    for x in raw or []:
+        if isinstance(x, (list, tuple)) and len(x) >= 2:
+            kind, text = str(x[0]).strip().lower(), str(x[1]).strip()
+        elif isinstance(x, dict):
+            kind, text = str(x.get("kind") or "").strip().lower(), str(x.get("text") or "").strip()
+        else:
+            continue
+        if text and kind in ("unsure", "new"):
+            out.append([kind, text[:400]])
+    return out[:5]
+
+
+def card_key(c):
+    """The board's own key for a card (index.html cardKey -- keep in step)."""
+    lid = c.get("lead_id")
+    return f"{c.get('day') or ''}|{lid if lid is not None else 'n:' + (c.get('lead') or '')}|{c.get('who') or ''}"
+
+
+def split_doubts(cards):
+    """Take Apollo's doubts off the cards (they are Frank's alone and the day
+    document is everyone's) and return them as {card_key: doubts}."""
+    out = {}
+    for c in cards or []:
+        d = c.pop("doubts", None)
+        if d:
+            out[card_key(c)] = d
+    return out
 
 
 def _clean_flags(raw):

@@ -1136,6 +1136,24 @@ for it"]`. Wrong: `"askq": false`. Same for "calltype", "asks" and "exit".
            required disclosure skipped. A callback with no date or no detail
            is "No next step", not "Callback set". Do not add a flag for the producer ending the call
            -- that is "exit". Empty array if nothing stands out.
+"doubts"   an array of [kind, text] pairs, for Frank's eyes only (Frank,
+           2026-10-05: "a list ... of questionable or unsure coaching calls
+           ... or maybe even of things it is hearing for the first time").
+           Be honest here; it is how you get checked and taught, and it is
+           never shown to the producer. kind is EXACTLY one of:
+             "unsure"  a verdict on this card you are not confident in --
+                       you could not tell who said a line, the transcript
+                       looks misheard where it matters (a price, a name, a
+                       yes or no), the call could be read two ways, or
+                       nothing in these instructions settles it. Name the
+                       verdict and why.
+             "new"     something you are hearing for the first time that
+                       these instructions don't cover -- an objection none
+                       of the groups fits, a product, discount, carrier
+                       program or term you don't know, a situation with no
+                       rule here. Say what it was, in the call's words.
+           text is one or two plain sentences. Empty array when you are sure
+           of the card and nothing was new -- most cards; never pad it.
 ```
 
 ## Known gaps in this v1 (things NOT yet handled)

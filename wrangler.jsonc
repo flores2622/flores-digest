@@ -57,6 +57,10 @@
     // Who sees what Coeus has cost, per person (site/coeus.js coeusUsage;
     // Frank, 2026-10-02). Same format.
     "COEUS_USAGE_VIEWERS": "frank@floresinsuranceagency.com",
+    // Apollo's Academy > Apollo's doubts: the cards Apollo was unsure of or
+    // heard something new on, and Apollo's own notes on them (Frank,
+    // 2026-10-05: "visible to only me").
+    "CARD_REVIEW_VIEWERS": "frank@floresinsuranceagency.com",
     // Who sees Role Play's voice ratings table (site/worker.js
     // roleplayVoiceRatings; Frank, 2026-09-29). Same format.
     "ROLEPLAY_VOICE_VIEWERS": "frank@floresinsuranceagency.com",

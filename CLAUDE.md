@@ -228,6 +228,24 @@ Everything caches under `data/`, so a re-run resumes rather than restarting.
   and every note on a card is that card's Manager's note if it is read again
   (`manager_notes`). Cards already written are not re-read. The first is
   Frank's on Lorena / Lisette Dasnabedian 10-01.
+- **Apollo's Doubts** (Frank, 2026-10-05: "a list ... of questionable or
+  unsure coaching calls ... or maybe even of things it is hearing for the
+  first time"; "visible to only me"). Apollo's Academy > Apollo's Doubts,
+  shown only to `CARD_REVIEW_VIEWERS` (wrangler.jsonc; `/api/me` `review`).
+  Two sources: **Apollo's own** -- each read returns `doubts` ([kind, text],
+  kind "unsure" or "new"; METHODOLOGY.md's Output format), which
+  `coaching_cards.split_doubts` takes OFF the card before publishing (the day
+  document is everyone's) and `publish_board.save_doubts` writes to R2
+  `review/<day>.json` (nightly, checkpoints and rebuild_cards; new reads from
+  2026-10-05 only) -- and **card checks** on the board (`cardChecks`, every
+  day): no speaker named, transcript cut or opening only, no lead, verdicts
+  that disagree (quoted with no quote, no quote yet assumed, assumed and
+  sent), a follow-up with no scorecard, an objection in "Other", a lead source
+  with no group. Frank marks each Looks right / Needs a fix
+  (`/api/cardreview/<day>`, the same file's `reviews`, keyed by
+  `cardKey` = `coaching_cards.card_key`); a looks-right card leaves the list.
+  The fix itself is a sticky note on the card. Measured 09-29..10-02: 0-5 cards
+  a day flagged by the checks.
 - **A closed card's right half is Quick coaching** (Frank, 2026-09-30:
   "the right half of the card be a quick coaching summary, while leaving
   the left of the card whats currently there"; `quickCoachHtml`), from what
