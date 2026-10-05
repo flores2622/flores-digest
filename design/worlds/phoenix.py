@@ -680,6 +680,8 @@ def v_map(n, athena=False):  # a Valley street-grid map with a light-rail route
     for x, y, w, h in [(120, 40, 160, 70), (1040, 150, 140, 60), (1380, 30, 120, 80), (520, 150, 110, 50)]:
         o.append(f'<rect x="{x}" y="{y}" width="{w}" height="{h}" rx="6" fill="{"#cfe3b8" if not n else "#1c3a2a"}"/>')
     o.append(f'<path d="M0 110Q300 60 700 120T1600 70" fill="none" stroke="{"#7fc4e8" if not n else "#2a5a8a"}" stroke-width="10" opacity=".8"/>')
+    o.append(split('', '<path d="M0 110Q300 60 700 120T1600 70" fill="none" stroke="#fff" stroke-width="2" stroke-dasharray="10 30" opacity=".5">'
+                   + anim("stroke-dashoffset", [0, -160], 6, ease=False) + '</path>'))
     for x in range(0, 1600, 40): o.append(f'<line x1="{x}" y1="0" x2="{x}" y2="{V}" stroke="{ink}" stroke-opacity="{.22 if x % 160 == 0 else .07}" stroke-width="{3 if x % 160 == 0 else 1}"/>')
     for y in range(0, V, 40): o.append(f'<line x1="0" y1="{y}" x2="1600" y2="{y}" stroke="{ink}" stroke-opacity="{.22 if y % 160 == 0 else .07}" stroke-width="{3 if y % 160 == 0 else 1}"/>')
     # the camel mountain marked on the map
@@ -694,6 +696,13 @@ def v_map(n, athena=False):  # a Valley street-grid map with a light-rail route
             o.append(f'<text x="{x}" y="{y + dy}" text-anchor="middle" font-family="Arial, sans-serif" font-weight="bold" font-size="19" fill="{ink}">{t}</text>')
         else:
             o.append(f'<text x="{x + 22}" y="{y + 7}" font-family="Arial, sans-serif" font-weight="bold" font-size="19" fill="{ink}">{t}</text>')
+    # the stops ping in turn and a train runs the line (from the first stop past the title; resting at 1080, 140)
+    for k, (x, y) in enumerate([(380, 140), (760, 60), (960, 116), (1200, 92)]):
+        if x > 420: o.append(f'<circle cx="{x}" cy="{y}" r="12" fill="none" stroke="{route2}" stroke-width="3" opacity="0">{anim("r", [12, 28], 4, k * 1.3 - 1.3, ease=False)}{anim("opacity", [.8, 0], 4, k * 1.3 - 1.3, ease=False)}</circle>')
+    tp = "M-520 -20L-520 -60Q-520 -80 -500 -80L-140 -80Q-120 -80 -120 -60L-120 -20Q-120 0 -100 0L100 0Q120 0 120 -20L120 -80Q120 -100 140 -100L520 -100"
+    o.append(f'<g transform="translate(1080 140)"><g><rect x="-15" y="-6" width="30" height="12" rx="5" fill="{ink}" stroke="{paper}" stroke-width="2"/><rect x="7" y="-3" width="5" height="6" rx="1" fill="#ffd23f"/>'
+             f'<animateMotion path="{tp}" dur="12s" repeatCount="indefinite" rotate="auto"/>'
+             '<animate attributeName="opacity" values="0;1;1;0" keyTimes="0;.05;.95;1" dur="12s" repeatCount="indefinite"/></g></g>')
     o.append(f'<rect x="1340" y="96" width="210" height="38" rx="19" fill="{route}"/><text x="1445" y="121" text-anchor="middle" font-family="Arial, sans-serif" font-weight="bold" font-size="16" fill="#fff">{"ATHENA LINE" if athena else "APOLLO LINE"}</text>')
     o.append(f'<g transform="translate(80 70)"><circle r="26" fill="none" stroke="{ink}" stroke-width="2" opacity=".6"/><path d="M0 -24L6 0L0 24L-6 0Z" fill="{route}"/><text y="-30" text-anchor="middle" font-family="Arial, sans-serif" font-weight="bold" font-size="12" fill="{ink}">N</text></g>')
     o.append(shade())

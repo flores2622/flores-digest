@@ -1,5 +1,5 @@
 """Space world: the page vistas (1600x240) and the coaching cards' outcome strips (1600x160)."""
-import random, urllib.parse
+import random, math, urllib.parse
 def enc(svg): return urllib.parse.quote(svg, safe="/:=,.;- '()")
 def stars(n, w, y0, y1, seed, op=(0.3,0.5,0.8)):
     r=random.Random(seed); o=[]
@@ -121,6 +121,7 @@ def v_training(n):  # rover course on the moon
         o.append(f'<rect x="{x}" y="{y-40}" width="4" height="44" fill="#eee"/><path d="M{x+4} {y-40} l30 8 l-30 8 z" fill="#e2552b">{_an("d",f"M{x+4} {y-40} l30 8 l-30 8 z;M{x+4} {y-40} l27 11 l-27 5 z;M{x+4} {y-40} l30 8 l-30 8 z",2,x%5*.3) if x>420 else ""}</path>')
     rx,ry=560,186; o.append(f'<rect x="{rx-50}" y="{ry-30}" width="100" height="26" rx="6" fill="#cfd6e2"/><circle cx="{rx-30}" cy="{ry}" r="14" fill="#2b3140"/><circle cx="{rx+30}" cy="{ry}" r="14" fill="#2b3140"/><rect x="{rx-20}" y="{ry-60}" width="40" height="30" rx="4" fill="#8ecdf2"/><line x1="{rx+40}" y1="{ry-30}" x2="{rx+60}" y2="{ry-70}" stroke="#cfd6e2" stroke-width="3"/>')
     o[-1] = '<g>'+o[-1]+_tf("translate","0 0;360 -14",12)+_an("opacity","0;1;1;0",12,kt="0;.06;.92;1")+'</g>'
+    o.insert(-3, o.pop())  # the rover drives behind the flags
     if n: o.append(twinkle(6,8,100,54))
     return wrap(V,''.join(o))
 def v_map(n, athena=False):  # the flight plan, plotted across a galaxy (Frank, 2026-10-05: "make it look like one")
@@ -180,8 +181,9 @@ def v_renewals(n):  # the orbit: what came back
     o.append(earth(800, 130, 70, n))
     for rx,ry,rot in [(300,90,-15),(420,120,10)]: o.append(f'<ellipse cx="800" cy="130" rx="{rx}" ry="{ry}" fill="none" stroke="#9cc0ff" stroke-opacity=".6" stroke-width="2" stroke-dasharray="10 8" transform="rotate({rot} 800 130)"/>')
     sat='<rect x="-8" y="-6" width="16" height="12" fill="#cfd6e4"/><rect x="-32" y="-3" width="22" height="6" fill="#3f7fe0"/><rect x="10" y="-3" width="22" height="6" fill="#3f7fe0"/>'
-    for rx,ry,rot,d in [(300,90,-15,10),(420,120,10,12)]:
-        o.append(f'<g transform="rotate({rot} 800 130)"><g transform="translate({800+rx} 130)">{sat}<animateMotion path="M0 0 a{rx} {ry} 0 1 1 -{2*rx} 0 a{rx} {ry} 0 1 1 {2*rx} 0" dur="{d}s" repeatCount="indefinite"/></g></g>')
+    for rx,ry,rot,a0,a1,d in [(300,90,-15,-70,165,10),(420,120,10,-5,85,8)]:  # only the arc that is in frame, clear of the caption and the title
+        p=lambda a:(rx*math.cos(math.radians(a)),-ry*math.sin(math.radians(a))); (x0,y0),(x1,y1)=p(a0),p(a1)
+        o.append(f'<g transform="rotate({rot} 800 130)"><g transform="translate({800+x0:.1f} {130+y0:.1f})">{sat}<animateMotion path="M0 0 a{rx} {ry} 0 {int(a1-a0>180)} 0 {x1-x0:.1f} {y1-y0:.1f}" dur="{d}s" repeatCount="indefinite"/>{_an("opacity","0;1;1;0",d,kt="0;.1;.9;1")}</g></g>')
     for x,y in [(1180,70)]: o.append(f'<g transform="translate({x} {y})"><rect x="-8" y="-6" width="16" height="12" fill="#cfd6e4"/><rect x="-32" y="-3" width="22" height="6" fill="#3f7fe0"/><rect x="10" y="-3" width="22" height="6" fill="#3f7fe0"/></g>')
     o.append('<g><path d="M1200 40 l-20 40 l-16 -30 z" fill="#5ee07a"/><text x="1240" y="60" font-family="monospace" font-size="16" fill="#5ee07a">RETURNED</text>'+_an("opacity","1;.45;1",3)+'</g>')
     o.append(f'<text x="800" y="226" text-anchor="middle" font-family="monospace" font-size="15" fill="#fff" opacity=".8">EVERY ORBIT COMES BACK AROUND</text>')

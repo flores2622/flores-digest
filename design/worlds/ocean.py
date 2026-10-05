@@ -645,10 +645,10 @@ def v_renewals(n):  # the tide comes back in; boats return to their moorings
     else: o.append('<circle cx="1180" cy="96" r="80" fill="url(#gl)"/><circle cx="1180" cy="96" r="26" fill="#fff1c4"/>')
     sand = "#e3cc9c" if not n else "#2a2a34"; wet = "#c9ae7a" if not n else "#20212a"
     o.append(f'<path d="M0 170 Q300 160 600 190 Q800 210 900 240 L0 240 Z" fill="{sand}"/><path d="M0 176 Q300 166 600 196 Q760 212 860 240 L820 240 Q700 214 560 200 Q300 178 0 190 Z" fill="{wet}"/>')
-    o.append('<g>')
-    for k in range(3):
-        o.append(f'<path d="M{-20 + k * 30} {170 - k * 8} Q300 {160 - k * 8} {600 + k * 40} {190 - k * 6} Q780 {208 - k * 6} {900 + k * 30} {240}" fill="none" stroke="#fff" stroke-opacity="{.7 - k * .2:.1f}" stroke-width="3"/>')
-    o.append(drift(24, 5, 7) + tw("opacity", [1, .6], 7) + '</g>')
+    tide = ''.join(f'<path d="M{-20 + k * 30} {170 - k * 8} Q300 {160 - k * 8} {600 + k * 40} {190 - k * 6} Q780 {208 - k * 6} {900 + k * 30} {240}" fill="none" stroke="#fff" stroke-opacity="{.7 - k * .2:.1f}" stroke-width="3"/>' for k in range(3))
+    # the wash moves only clear of the title (x > 420); the left of the lines stays still
+    o.append('<defs><clipPath id="tdl"><rect width="420" height="240"/></clipPath><clipPath id="tdr"><rect x="420" width="1180" height="240"/></clipPath></defs>'
+             f'<g clip-path="url(#tdl)">{tide}</g><g clip-path="url(#tdr)"><g>{tide}' + drift(24, 5, 7) + tw("opacity", [1, .6], 7) + '</g></g>')
     if n: o.append(twinkle([(620, 40), (900, 20), (1380, 60), (1500, 30)]))
     # tide pole with marks, the water halfway up
     o.append('<rect x="456" y="70" width="10" height="120" fill="#6d4c30"/>')
