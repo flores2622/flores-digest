@@ -7,13 +7,13 @@ FONTS = "family=Orbitron:wght@700;800;900&family=Exo+2:wght@400;500;600;700"
 DISPLAY = "'Orbitron', system-ui, sans-serif"
 DW = 800
 BODY = "'Exo 2', system-ui, sans-serif"
-SKY_BG = (("#ffb3d9", "#d9c2ff"), ("#12052a", "#1a0836"))
+SKY_BG = (("#b3d3ff", "#d9c2ff"), ("#12052a", "#1a0836"))
 
 LOOKS = [
     ("synthwave", "Synthwave",
-     "--surface: #f5ecfc; --surface-raised: #fffaff; --card2: #f3e8fb; --chip: #eadcf7; --text-primary: #1f1233; --text-muted: #6a5880; --text-secondary: #4e3d66; --grid: #ecdff5; --border: #e3d2f0; --border-strong: #c9b0e0; --accent: #b8157a; --accent-d: #8a0f5b; --side: #2a0f4a; --side2: #3d1866; --sideInk: #f0dcff; --brand: #fdf0ff; --brand2: #ff5ccf; --rad: 14px;",
-     "--surface: #140a24; --surface-raised: #1d1033; --card2: #251540; --chip: #2f1b52; --text-primary: #f4e9ff; --text-muted: #b49dd0; --text-secondary: #cdb8e6; --grid: #2f1b52; --border: #34205a; --border-strong: #4a2f7a; --accent: #ff4fc3; --accent-d: #ff8ad6; --side: #0c0418; --side2: #1c0a36; --sideInk: #f0dcff; --brand: #fdf0ff; --brand2: #3df2ff;",
-     ["#140a24", "#2a0f4a", "#ff4fc3"]),
+     "--surface: #f5ecfc; --surface-raised: #fafcff; --card2: #f3e8fb; --chip: #eadcf7; --text-primary: #1f1233; --text-muted: #6a5880; --text-secondary: #4e3d66; --grid: #ecdff5; --border: #e3d2f0; --border-strong: #c9b0e0; --accent: #1559b8; --accent-d: #0f428a; --side: #2a0f4a; --side2: #3d1866; --sideInk: #f0dcff; --brand: #f0f6ff; --brand2: #5ca0ff; --rad: 14px;",
+     "--surface: #140a24; --surface-raised: #1d1033; --card2: #251540; --chip: #2f1b52; --text-primary: #f4e9ff; --text-muted: #b49dd0; --text-secondary: #cdb8e6; --grid: #2f1b52; --border: #34205a; --border-strong: #4a2f7a; --accent: #4f98ff; --accent-d: #8abbff; --side: #0c0418; --side2: #1c0a36; --sideInk: #f0dcff; --brand: #f0f6ff; --brand2: #3df2ff;",
+     ["#140a24", "#2a0f4a", "#4f98ff"]),
     ("eightbit", "8-Bit",
      "--surface: #edf4ea; --surface-raised: #fbfffa; --card2: #eef6ec; --chip: #dcebd8; --text-primary: #102014; --text-muted: #4f6652; --text-secondary: #3a503d; --grid: #e0ece0; --border: #d3e3d2; --border-strong: #aac6a9; --accent: #1a7d33; --accent-d: #125a24; --side: #0b0f0c; --side2: #142019; --sideInk: #c8f5cf; --brand: #e9fbe9; --brand2: #39ff6a; --rad: 8px;",
      "--surface: #0b0f0c; --surface-raised: #121a14; --card2: #18221a; --chip: #1f2c22; --text-primary: #d9f7dd; --text-muted: #8fb596; --text-secondary: #a9cfae; --grid: #1f2c22; --border: #23332a; --border-strong: #2f4a37; --accent: #39ff6a; --accent-d: #8cffaa; --side: #050806; --side2: #0d150f; --sideInk: #c8f5cf; --brand: #e9fbe9; --brand2: #39ff6a;",
@@ -90,12 +90,12 @@ BIRD = ["k...k", ".k.k.", "..k.."]
 
 def hero(x, y, p, pal=None, rows=HERO):
     pal = pal or {}
-    d = {'h': "#ff4fc3", 'v': "#3df2ff", 'w': "#ffffff", 's': "#ffcf9e", 'b': "#6a3df0", 'y': "#ffd23f", 'k': "#2a1240"}
+    d = {'h': "#4f98ff", 'v': "#3df2ff", 'w': "#ffffff", 's': "#ffcf9e", 'b': "#6a3df0", 'y': "#ffd23f", 'k': "#2a1240"}
     d.update(pal)
     return runs(rows, x, y, p, d)
 
 def coin(x, y, p): return runs(COIN, x, y, p, {'y': "#ffd23f", 'w': "#fff7c2", 'o': "#e08a00"})
-def heart(x, y, p, c="#ff3d6e"): return runs(HEART, x, y, p, {'r': c, 'w': "#ffd1de"})
+def heart(x, y, p, c="#3d8eff"): return runs(HEART, x, y, p, {'r': c, 'w': "#d1e4ff"})
 def star(x, y, p, c="#ffd23f"): return runs(STAR, x, y, p, {'y': c})
 
 def stars(n, w, y0, y1, seed):
@@ -130,7 +130,7 @@ def floor_grid(y0, y1, w, cx, col, op, nh=7, nv=14, spread=160, sw=2):
     return f'<path d="{"".join(o)}" stroke="{col}" stroke-width="{sw}" opacity="{op}" fill="none"/>'
 
 def retro_sun(cx, cy, r, night, cid="sc", stripes=None):
-    top, bot = ("#ffe76a", "#ff3d9a") if night else ("#fff27a", "#ff6fa8")
+    top, bot = ("#ffe76a", "#3d8eff") if night else ("#fff27a", "#6fabff")
     stripes = stripes or [(.15, .05), (.32, .07), (.5, .09), (.68, .11), (.84, .13)]
     clip = ''.join(f'<rect x="{_n(cx-r)}" y="{_n(cy-r)}" width="{2*r}" height="{_n(r + r*s[0] - r*0)}"/>' for s in stripes[:1])
     # sun body as a gradient circle, stripes cut in the sky colour by drawing gaps with a mask
@@ -140,15 +140,15 @@ def retro_sun(cx, cy, r, night, cid="sc", stripes=None):
     return (f'<defs>{g}{m}</defs>'
             f'<circle cx="{cx}" cy="{cy}" r="{r}" fill="url(#{cid}g)" mask="url(#{cid}m)"/>')
 
-def vbg(n, top_day=("#7b5cff", "#ff7ac0", "#ffc59a"), top_night=("#0a0420", "#2a0b52", "#6a1a7a"), floor_y=172, starsn=40, sun=None):
+def vbg(n, top_day=("#7b5cff", "#7ab1ff", "#ffc59a"), top_night=("#0a0420", "#2a0b52", "#6a1a7a"), floor_y=172, starsn=40, sun=None):
     c = top_night if n else top_day
     o = [f'<rect width="1600" height="240" fill="url(#vg)"/>']
     if n: o.append(stars(starsn, 1600, 0, floor_y - 30, 7))
     if sun: o.append(retro_sun(sun[0], floor_y, sun[1], n, "vs", [(-.55, .06), (-.38, .08), (-.22, .1), (-.08, .12)]))
     fl = "#1a0636" if n else "#9a6ad0"
     o.append(f'<rect x="0" y="{floor_y}" width="1600" height="{240-floor_y}" fill="{fl}"/>')
-    o.append(floor_grid(floor_y, 300, 1600, 800, "#ff4fc3" if n else "#ffe0f4", .7 if n else .7, nh=5, nv=12, spread=170, sw=2))
-    o.append(f'<rect x="0" y="{floor_y-2}" width="1600" height="4" fill="{"#3df2ff" if n else "#ffe1f3"}"/>')
+    o.append(floor_grid(floor_y, 300, 1600, 800, "#4f98ff" if n else "#e0edff", .7 if n else .7, nh=5, nv=12, spread=170, sw=2))
+    o.append(f'<rect x="0" y="{floor_y-2}" width="1600" height="4" fill="{"#3df2ff" if n else "#e1eeff"}"/>')
     defs = grad("vg", [(0, c[0]), (.65, c[1]), (1, c[2])])
     return ''.join(o), defs
 
@@ -176,7 +176,7 @@ def cabinet(x, base, s, body, mq, n, screen_seed=0, face="r"):
          f'<path d="M{_n(x+34*s)} {_n(t+170*s)}h{_n(32*s)}v{_n(36*s)}h{_n(-32*s)}z" fill="{dk}"/>',
          f'<path d="M{_n(x+44*s)} {_n(t+180*s)}h{_n(4*s)}v{_n(12*s)}h{_n(-4*s)}z" fill="#ff5a3d"/>']
     r = random.Random(screen_seed)
-    cols = ["#3df2ff", "#ff4fc3", "#ffd23f", "#39ff6a"]
+    cols = ["#3df2ff", "#4f98ff", "#ffd23f", "#39ff6a"]
     pix = ''.join(f'M{_n(x+(14+r.randint(0,60))*s)} {_n(t+(50+r.randint(0,52))*s)}h{_n(6*s)}v{_n(6*s)}h{_n(-6*s)}z' for _ in range(6))
     o.append(f'<path d="{pix}" fill="{r.choice(cols)}"/>')
     o.append(f'<path d="M{_n(x+22*s)} {_n(t+127*s)}h{_n(5*s)}v{_n(10*s)}h{_n(-5*s)}z M{_n(x+60*s)} {_n(t+128*s)}h{_n(8*s)}v{_n(8*s)}h{_n(-8*s)}z M{_n(x+74*s)} {_n(t+128*s)}h{_n(8*s)}v{_n(8*s)}h{_n(-8*s)}z" fill="#ffd23f"/>')
@@ -190,20 +190,20 @@ W, H, SPLIT = 1600, 1700, 377
 def skyline(night):
     n = night; o = []; a = o.append
     if n:
-        sky = grad("sky", [(0, "#07021a"), (.45, "#1c0645"), (.8, "#4a0f6e"), (1, "#8a1a7a")])
+        sky = grad("sky", [(0, "#07021a"), (.45, "#1c0645"), (.8, "#4a0f6e"), (1, "#1a498a")])
         floor = grad("fl", [(0, "#2a0750"), (.25, "#14042e"), (1, "#0b021c")])
     else:
-        sky = grad("sky", [(0, "#8f7bff"), (.35, "#c68cff"), (.7, "#ff9ccc"), (1, "#ffd0a8")])
-        floor = grad("fl", [(0, "#ffc3e4"), (.3, "#d9b3ff"), (1, "#b79cf0")])
+        sky = grad("sky", [(0, "#8f7bff"), (.35, "#c68cff"), (.7, "#9cc5ff"), (1, "#ffd0a8")])
+        floor = grad("fl", [(0, "#c3dcff"), (.3, "#d9b3ff"), (1, "#b79cf0")])
     hz = ('<radialGradient id="hz" cx=".5" cy="0" r=".6"><stop offset="0" stop-color="'
-          + ("#ff4fc3" if n else "#fff2c8") + '" stop-opacity=".7"/><stop offset="1" stop-color="#ff4fc3" stop-opacity="0"/></radialGradient>')
+          + ("#4f98ff" if n else "#fff2c8") + '" stop-opacity=".7"/><stop offset="1" stop-color="#4f98ff" stop-opacity="0"/></radialGradient>')
     sg = ('<radialGradient id="sp" cx=".5" cy=".5" r=".5"><stop offset="0" stop-color="#fff6c8" stop-opacity=".55"/><stop offset="1" stop-color="#fff6c8" stop-opacity="0"/></radialGradient>')
     win = ('<pattern id="w1" width="18" height="22" patternUnits="userSpaceOnUse"><rect x="5" y="6" width="7" height="9" fill="'
            + ("#ffd23f" if n else "#fff3c8") + '"/></pattern>'
            '<pattern id="w2" width="18" height="22" patternUnits="userSpaceOnUse"><rect x="5" y="6" width="7" height="9" fill="'
            + ("#3df2ff" if n else "#e9f6ff") + '"/></pattern>'
            '<pattern id="w3" width="18" height="22" patternUnits="userSpaceOnUse"><rect x="5" y="6" width="7" height="9" fill="'
-           + ("#ff7ad9" if n else "#ffe3f3") + '"/></pattern>')
+           + ("#7ab1ff" if n else "#e3efff") + '"/></pattern>')
     a(f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 {W} {H}" preserveAspectRatio="xMidYMin slice">')
     a(f'<defs>{sky}{floor}{hz}{sg}{win}{GLOW}</defs><g shape-rendering="crispEdges">')
     a(f'<rect width="{W}" height="{SPLIT+2}" fill="url(#sky)"/>')
@@ -213,7 +213,7 @@ def skyline(night):
         a(sparkles([(140, 110), (980, 40), (1270, 22), (560, 150)], "#fff", 3))
     else:
         for cx, cy, s in [(120, 120, 1.2), (560, 40, 1), (1180, 150, .9), (1500, 210, 1.1)]:
-            a(runs(["...wwww......", ".wwwwwwwww....", "wwwwwwwwwwwww.", "..ppppppppppp"], cx, cy, 10 * s, {'w': "#fff7fb", 'p': "#ffc6e4"}, ' opacity=".85"'))
+            a(runs(["...wwww......", ".wwwwwwwww....", "wwwwwwwwwwwww.", "..ppppppppppp"], cx, cy, 10 * s, {'w': "#f7faff", 'p': "#c6deff"}, ' opacity=".85"'))
     a(retro_sun(800, 230, 190, n, "ss", [(-.7, .04), (-.58, .055), (-.45, .07), (-.3, .085), (-.13, .1), (.05, .12), (.25, .14)]))
     if n:
         a(f'<circle cx="800" cy="230" r="300" fill="url(#sp)" opacity=".5"/>')
@@ -225,7 +225,7 @@ def skyline(night):
             a(runs(BIRD, bx, by, 5, {'k': "#4a2a7a"}))
     # ---- the city: pixel towers rising into 0..170 between the tiles
     bc = ["#250a4a", "#2f0d5c", "#1c0838"] if n else ["#7a4fc0", "#9a62d6", "#6a44b0"]
-    edge = "#ff4fc3" if n else "#ffe1f3"
+    edge = "#4f98ff" if n else "#e1eeff"
     towers = [(10, 150, 120, 0, "w1"), (140, 95, 90, 1, "w2"), (240, 170, 140, 2, "w3"), (380, 105, 140, 0, "w1"),
               (505, 160, 90, 1, "w2"), (1000, 118, 120, 2, "w3"), (1120, 60, 70, 0, "w2"), (1440, 120, 160, 1, "w1"),
               (1530, 80, 70, 2, "w3")]
@@ -235,7 +235,7 @@ def skyline(night):
         a(f'<rect x="{x}" y="{top}" width="{w}" height="5" fill="{edge}"/>')
         # stepped pixel crown
         a(f'<rect x="{x+w*.25:.0f}" y="{top-14}" width="{w*.5:.0f}" height="14" fill="{bc[ci]}"/><rect x="{x+w*.45:.0f}" y="{top-34}" width="6" height="20" fill="{bc[ci]}"/>')
-        a(f'<rect x="{x+w*.45-2:.0f}" y="{top-40}" width="10" height="8" fill="{"#ff3d6e" if n else "#ff6fa8"}"/>')
+        a(f'<rect x="{x+w*.45-2:.0f}" y="{top-40}" width="10" height="8" fill="{"#3d8eff" if n else "#6fabff"}"/>')
     # neon signs on the towers
     def neon(x, y, s, c, p=5):
         tw = twidth(s, p)
@@ -244,28 +244,28 @@ def skyline(night):
                 + (f'<g filter="url(#nl)">{ptext(s, x, y, p, c)}</g>' if n else ptext(s, x, y, p, c)))
     a(neon(392, 124, "FLORES", "#3df2ff", 4))
     a(neon(150, 120, "24/7", "#ffd23f", 4))
-    a(neon(1022, 136, "BONUS", "#ff7ad9", 4))
+    a(neon(1022, 136, "BONUS", "#7ab1ff", 4))
     # ---- the HIGH SCORES marquee on its tower
     mx, my, mw, mh = 1150, 48, 380, 92
     a(f'<rect x="{mx+150}" y="{my+mh}" width="18" height="{SPLIT-my-mh}" fill="{bc[1]}"/><rect x="{mx+212}" y="{my+mh}" width="18" height="{SPLIT-my-mh}" fill="{bc[1]}"/>')
-    a(f'<rect x="{mx}" y="{my}" width="{mw}" height="{mh}" fill="{"#1a0636" if n else "#3b1a6e"}" stroke="{"#ff4fc3" if n else "#ff6fb5"}" stroke-width="6"/>')
+    a(f'<rect x="{mx}" y="{my}" width="{mw}" height="{mh}" fill="{"#1a0636" if n else "#3b1a6e"}" stroke="{"#4f98ff" if n else "#6fabff"}" stroke-width="6"/>')
     bulbs = ''.join(f'M{mx+8+i*24} {my+3}h6v6h-6z M{mx+8+i*24} {my+mh-9}h6v6h-6z' for i in range(16))
     a(f'<path d="{bulbs}" fill="#ffd23f"/>')
-    hs = ptext("HIGH SCORES", mx + mw / 2, my + 26, 7, "#ffd23f", "middle", shadow="#ff3d9a")
+    hs = ptext("HIGH SCORES", mx + mw / 2, my + 26, 7, "#ffd23f", "middle", shadow="#3d8eff")
     a(f'<g filter="url(#nl)">{hs}</g>' if n else hs)
     # ---- below the horizon: the grid floor
     a(f'<rect x="0" y="{SPLIT}" width="{W}" height="{H-SPLIT}" fill="url(#fl)"/>')
     a(f'<rect x="0" y="{SPLIT}" width="{W}" height="260" fill="url(#hz)"/>')
-    gc = "#ff4fc3" if n else "#ff7ac0"
+    gc = "#4f98ff" if n else "#7ab1ff"
     a(floor_grid(SPLIT, H, W, 810, gc, .8 if n else .55, nh=10, nv=14, spread=260, sw=3))
-    if n: a(f'<g filter="url(#nl)" opacity=".7">{floor_grid(SPLIT, 900, W, 810, "#ff4fc3", .6, nh=4, nv=8, spread=260, sw=2)}</g>')
-    a(f'<rect x="0" y="{SPLIT-2}" width="{W}" height="5" fill="{"#3df2ff" if n else "#fff6fb"}"/>')
+    if n: a(f'<g filter="url(#nl)" opacity=".7">{floor_grid(SPLIT, 900, W, 810, "#4f98ff", .6, nh=4, nv=8, spread=260, sw=2)}</g>')
+    a(f'<rect x="0" y="{SPLIT-2}" width="{W}" height="5" fill="{"#3df2ff" if n else "#f6faff"}"/>')
     # the lane to the stage: cyan edges with chevrons
     lc = "#3df2ff" if n else "#ffffff"
     a(f'<path d="M790 {SPLIT}L700 800M830 {SPLIT}L920 800" stroke="{lc}" stroke-width="4" fill="none"{FL if n else ""}/>')
     for k, y in enumerate([430, 500, 590, 690]):
         s = 4 + k * 2.5
-        a(runs(["#.....#", ".#...#.", "..#.#..", "...#..."], 810 - 3.5 * s, y, s, {'#': "#ffd23f" if n else "#ff4fc3"}, ' opacity=".85"'))
+        a(runs(["#.....#", ".#...#.", "..#.#..", "...#..."], 810 - 3.5 * s, y, s, {'#': "#ffd23f" if n else "#4f98ff"}, ' opacity=".85"'))
     # ---- the winner's stage under the podium
     st = "#2a0b52" if n else "#7a4fc0"; st2 = "#1a0636" if n else "#5a3399"
     a(f'<rect x="560" y="790" width="500" height="22" fill="{st}"/><rect x="540" y="812" width="540" height="40" fill="{st2}"/>')
@@ -279,8 +279,8 @@ def skyline(night):
         a(coin(cx, cy, 4))
     a(sparkles([(720, 500), (900, 492), (590, 520), (1030, 520)], "#fff6c8", 4))
     # ---- arcade cabinets lined up on each side
-    bodies = ["#3a1a6e", "#5a1f7a", "#2a2a7a"] if n else ["#7b4fd6", "#e05aa8", "#4a7be0"]
-    mqs = ["#ff4fc3", "#3df2ff", "#ffd23f"]
+    bodies = ["#3a1a6e", "#5a1f7a", "#2a2a7a"] if n else ["#7b4fd6", "#5a92e0", "#4a7be0"]
+    mqs = ["#4f98ff", "#3df2ff", "#ffd23f"]
     for i, (x, base, s) in enumerate([(430, 540, .5), (300, 610, .7), (130, 710, .95), (-60, 830, 1.25)]):
         a(cabinet(x, base, s, bodies[i % 3], mqs[i % 3], n, i))
     for i, (x, base, s) in enumerate([(1120, 540, .5), (1230, 610, .7), (1360, 710, .95), (1520, 830, 1.25)]):
@@ -288,8 +288,8 @@ def skyline(night):
     # the 1UP sign and a PLAYER 1 sign
     a(f'<rect x="1025" y="496" width="10" height="44" fill="{st2}"/><rect x="980" y="446" width="100" height="56" fill="#14042e" stroke="#39ff6a" stroke-width="4"/>')
     a(f'<g filter="url(#nl)">{ptext("1UP", 1030, 459, 7, "#39ff6a", "middle")}</g>')
-    a(f'<rect x="585" y="496" width="10" height="44" fill="{st2}"/><rect x="510" y="452" width="160" height="50" fill="#14042e" stroke="#ff4fc3" stroke-width="4"/>')
-    a(f'<g filter="url(#nl)">{ptext("PLAYER 1", 590, 466, 4, "#ff7ad9", "middle")}</g>')
+    a(f'<rect x="585" y="496" width="10" height="44" fill="{st2}"/><rect x="510" y="452" width="160" height="50" fill="#14042e" stroke="#4f98ff" stroke-width="4"/>')
+    a(f'<g filter="url(#nl)">{ptext("PLAYER 1", 590, 466, 4, "#7ab1ff", "middle")}</g>')
     a('</g></svg>')
     return ''.join(o)
 
@@ -303,14 +303,14 @@ def v_sales(n):  # the jackpot
     def b():
         o = []
         x, y = 690, 30
-        o.append(f'<rect x="{x}" y="{y}" width="220" height="170" fill="#c2187a"/><rect x="{x+10}" y="{y+10}" width="200" height="34" fill="#14042e"/>')
+        o.append(f'<rect x="{x}" y="{y}" width="220" height="170" fill="#185fc2"/><rect x="{x+10}" y="{y+10}" width="200" height="34" fill="#14042e"/>')
         o.append(label(x + 110, y + 17, "JACKPOT", 3.4, "#ffd23f"))
         o.append(f'<rect x="{x+16}" y="{y+56}" width="188" height="64" fill="#fff8e8"/>')
         for i in range(3):
             o.append(f'<rect x="{x+22+i*62}" y="{y+60}" width="56" height="56" fill="#fff"/>')
-            o.append(ptext("7", x + 50 + i * 62, y + 69, 7, "#e0204a", "middle"))
+            o.append(ptext("7", x + 50 + i * 62, y + 69, 7, "#2070e0", "middle"))
         o.append(f'<rect x="{x+60}" y="{y+132}" width="100" height="16" fill="#14042e"/>')
-        o.append(f'<rect x="{x+220}" y="{y+40}" width="10" height="70" fill="#9aa0b8"/><rect x="{x+214}" y="{y+22}" width="22" height="22" fill="#ff3d6e"/>')
+        o.append(f'<rect x="{x+220}" y="{y+40}" width="10" height="70" fill="#9aa0b8"/><rect x="{x+214}" y="{y+22}" width="22" height="22" fill="#3d8eff"/>')
         r = random.Random(4)
         for k in range(16):
             cx = x + 70 + r.randint(-40, 120); cy = 150 + r.randint(0, 60) - (k % 5) * 8
@@ -329,21 +329,21 @@ def v_messages(n):  # chat bubbles and a dial-up modem
             t = (f'M{x+16} {y+40}h12v12h-12z M{x+10} {y+52}h8v8h-8z' if tail == "l" else f'M{x+w-28} {y+40}h12v12h-12z M{x+w-18} {y+52}h8v8h-8z')
             return (f'<path d="M{x+6} {y}h{w-12}v6h6v{28}h-6v6h{-(w-12)}v-6h-6v-28h6z" fill="{c}"/><path d="{t}" fill="{c}"/>'
                     + ptext(txt, x + w / 2, y + 10, 4, "#14042e", "middle"))
-        o.append(bubble(500, 40, 150, "HI THERE", "#ffffff"))
-        o.append(bubble(700, 20, 170, "QUOTE?", "#3df2ff", "r"))
-        o.append(bubble(920, 56, 140, "...", "#ffd23f"))
-        o.append(bubble(1090, 26, 150, "THANKS!", "#ff7ad9", "r"))
+        o.append(bubble(470, 62, 150, "HI THERE", "#ffffff"))
+        o.append(bubble(640, 46, 150, "QUOTE?", "#3df2ff", "r"))
+        o.append(bubble(960, 68, 110, "...", "#ffd23f"))
+        o.append(bubble(1100, 50, 150, "THANKS!", "#7ab1ff", "r"))
         # the modem
         mx, my = 660, 120
         o.append(f'<rect x="{mx}" y="{my}" width="270" height="44" fill="#e9dfc6"/><rect x="{mx}" y="{my+44}" width="270" height="8" fill="#b9ad93"/><rect x="{mx+10}" y="{my+10}" width="120" height="10" fill="#b9ad93"/>')
         o.append(f'<path d="{"".join(f"M{mx+150+i*20} {my+18}h10v8h-10z" for i in range(5))}" fill="#39ff6a"/>')
-        o.append(f'<path d="M{mx+230} {my+18}h10v8h-10z" fill="#ff3d6e"/>')
+        o.append(f'<path d="M{mx+230} {my+18}h10v8h-10z" fill="#3d8eff"/>')
         o.append(f'<path d="M{mx+270} {my+30} q60 10 60 -40 t70 -30" fill="none" stroke="#2a1240" stroke-width="4"/>')
         o.append(ptext("56K", mx + 16, my + 28, 2.5, "#7a6a50"))
         for k in range(3):
             o.append(f'<path d="M{mx+135-k*14} {my-8-k*14} q{14+k*14} -{14+k*14} {28+k*28} 0" fill="none" stroke="#fff" stroke-width="4" opacity="{.8-.2*k}"/>')
         return ''.join(o)
-    return scene(n, b, top_day=("#5a7bff", "#a98cff", "#ffb3d9"))
+    return scene(n, b, top_day=("#5a7bff", "#a98cff", "#b3d3ff"))
 
 def v_coaching(n):  # a PAUSE screen with a replay
     def b():
@@ -356,28 +356,28 @@ def v_coaching(n):  # a PAUSE screen with a replay
         o.append(ptext("REPLAY CALL", x + w / 2 + 40, y + 102, 4, "#3df2ff", "middle"))
         o.append(runs(["#..", "##.", "###", "##.", "#.."], x + w / 2 - 70, y + 100, 4, {'#': "#3df2ff"}))
         o.append(f'<path d="{"".join(f"M{x} {y+k*6}h{w}v2h-{w}z" for k in range(0, 25))}" fill="#000" opacity=".25"/>')
-        o.append(f'<rect x="{x+20}" y="{y+h-14}" width="{w-40}" height="6" fill="#3a2a5a"/><rect x="{x+20}" y="{y+h-14}" width="{(w-40)*.62:.0f}" height="6" fill="#ff4fc3"/>')
+        o.append(f'<rect x="{x+20}" y="{y+h-14}" width="{w-40}" height="6" fill="#3a2a5a"/><rect x="{x+20}" y="{y+h-14}" width="{(w-40)*.62:.0f}" height="6" fill="#4f98ff"/>')
         return ''.join(o)
     return scene(n, b, top_day=("#3a2a7a", "#7a4fc0", "#c08ae0"), top_night=("#05020f", "#140a30", "#2a0b52"))
 
 def v_roleplay(n):  # versus screen
     def b():
-        o = ['<path d="M0 0H820L760 240H0Z" fill="#ff4fc3" opacity=".35"/><path d="M820 0H1600V240H760Z" fill="#3df2ff" opacity=".28"/>']
+        o = ['<path d="M0 0H820L760 240H0Z" fill="#4f98ff" opacity=".35"/><path d="M820 0H1600V240H760Z" fill="#3df2ff" opacity=".28"/>']
         o.append('<path d="M820 0L760 240" stroke="#fff" stroke-width="6"/>')
-        o.append(hero(560, 40, 12))
-        o.append(hero(960, 40, 12, {'h': "#3df2ff", 'b': "#ff7a1a", 'v': "#ff4fc3"}))
+        o.append(hero(560, 52, 11))
+        o.append(hero(960, 52, 11, {'h': "#3df2ff", 'b': "#ff7a1a", 'v': "#4f98ff"}))
         o.append(label(790, 70, "VS", 10, "#ffd23f"))
-        o.append(ptext("PLAYER 1", 608, 22, 3, "#fff", "middle"))
-        o.append(f'<g>{ptext("PLAYER 2 READY", 1010, 22, 3, "#fff", "middle")}</g>')
+        o.append(ptext("PLAYER 1", 400, 112, 5, "#fff", "middle"))
+        o.append(f'<g>{ptext("PLAYER 2", 1240, 100, 5, "#fff", "middle")}{ptext("READY", 1240, 136, 5, "#ffd23f", "middle")}</g>')
         return ''.join(o)
-    return scene(n, b, top_day=("#5a2a9a", "#8a4fd0", "#d07ae0"), top_night=("#08021a", "#1c0645", "#3a0b62"))
+    return scene(n, b, top_day=("#5a2a9a", "#8a4fd0", "#7aa4e0"), top_night=("#08021a", "#1c0645", "#3a0b62"))
 
 def v_rphistory(n):  # a shelf of cartridges and a replay tape
     def b():
         o = []
         sh = "#5a3a2a" if not n else "#3a2418"
         o.append(f'<rect x="420" y="150" width="760" height="14" fill="{sh}"/><rect x="420" y="164" width="760" height="6" fill="#000" opacity=".3"/>')
-        cols = ["#ff4fc3", "#3df2ff", "#ffd23f", "#39ff6a", "#a46bff", "#ff7a1a", "#ff3d6e"]
+        cols = ["#4f98ff", "#3df2ff", "#ffd23f", "#39ff6a", "#a46bff", "#ff7a1a", "#3d8eff"]
         for i in range(9):
             cx = 440 + i * 62; h = 96 + (i * 13) % 20
             o.append(f'<rect x="{cx}" y="{150-h}" width="50" height="{h}" fill="#4a4a5a"/><rect x="{cx+6}" y="{150-h+10}" width="38" height="{h-40}" fill="{cols[i%7]}"/>'
@@ -386,9 +386,9 @@ def v_rphistory(n):  # a shelf of cartridges and a replay tape
         tx = 1010
         o.append(f'<rect x="{tx}" y="64" width="150" height="86" fill="#1a1a24"/><rect x="{tx+14}" y="80" width="122" height="40" fill="#e9dfc6"/>')
         o.append(f'<circle cx="{tx+46}" cy="100" r="13" fill="#1a1a24"/><circle cx="{tx+104}" cy="100" r="13" fill="#1a1a24"/><rect x="{tx+40}" y="128" width="70" height="10" fill="#3a3a48"/>')
-        o.append(ptext("REPLAY", tx + 75, 84, 2.4, "#c2187a", "middle"))
+        o.append(ptext("REPLAY", tx + 75, 84, 2.4, "#185fc2", "middle"))
         return ''.join(o)
-    return scene(n, b, top_day=("#4a2a7a", "#8a5ac0", "#e0a0c8"), top_night=("#06021a", "#170838", "#3a0f5a"))
+    return scene(n, b, top_day=("#4a2a7a", "#8a5ac0", "#a0bbe0"), top_night=("#06021a", "#170838", "#3a0f5a"))
 
 def v_training(n):  # the tutorial level
     def b():
@@ -402,13 +402,13 @@ def v_training(n):  # the tutorial level
         o.append(f'<path d="M560 100 Q640 20 740 44" fill="none" stroke="#fff" stroke-width="3" stroke-dasharray="8 8"/>')
         for x in [960, 1000, 1150, 1190]: o.append(coin(x, 50 if x < 1100 else 90, 3))
         o.append(runs(["..#..", "...#.", "#####", "...#.", "..#.."], 640, 160, 6, {'#': "#ffd23f"}))
-        o.append(f'<rect x="1260" y="40" width="6" height="80" fill="#fff"/><path d="M1266 40h44v14h-44z" fill="#ff4fc3"/>')
-        o.append(label(800, 18, "TUTORIAL", 4, "#fff"))
+        o.append(f'<rect x="1260" y="40" width="6" height="80" fill="#fff"/><path d="M1266 40h44v14h-44z" fill="#4f98ff"/>')
+        o.append(label(250, 96, "TUTORIAL", 5, "#fff", "middle"))
         return ''.join(o)
-    return scene(n, b, top_day=("#4aa8ff", "#9ad0ff", "#ffe0f0"), top_night=("#06021a", "#140a3a", "#2a1a62"))
+    return scene(n, b, top_day=("#4aa8ff", "#9ad0ff", "#e0edff"), top_night=("#06021a", "#140a3a", "#2a1a62"))
 
 def v_map(n, athena=False):  # a level-select world map
-    route = "#2fd07a" if athena else "#ff3d9a"
+    route = "#2fd07a" if athena else "#3d8eff"
     def b():
         o = []
         sea = "#2a6ad0" if not n else "#0f1c4a"
@@ -419,7 +419,7 @@ def v_map(n, athena=False):  # a level-select world map
         o.append(f'<path d="M316 196 V146 H354 V98 H432 V70 H570 V52 H770 V72 H906 V44 H1070 V62 H1190 V100 H1266 V146 H1304 V196 Z" fill="{land}"/>')
         for x, y in [(470, 110), (520, 150), (1010, 150), (1150, 120), (700, 160)]:
             o.append(runs(["..t..", ".ttt.", "ttttt", "..b.."], x, y, 7, {'t': land2, 'b': "#6a3a1a"}))
-        pts = [(400, 160), (640, 92), (940, 140), (1200, 84)]
+        pts = [(400, 170), (640, 118), (940, 160), (1200, 112)]
         steps = ["Listen", "Understand", "Handle", "Follow up"] if athena else ["Dial", "Discovery", "Quote", "Close"]
         path = []
         for (x1, y1), (x2, y2) in zip(pts, pts[1:]):
@@ -434,7 +434,7 @@ def v_map(n, athena=False):  # a level-select world map
             o.append(f'<rect x="{x-tw/2:.0f}" y="{y-54}" width="{tw}" height="28" fill="#fffaf0" stroke="{ink}" stroke-width="3"/>'
                      f'<text x="{x}" y="{y-34}" text-anchor="middle" font-family="Arial, sans-serif" font-weight="bold" font-size="18" fill="{ink}">{t}</text>')
         o.append(hero(330, 134, 3.4) if not athena else hero(330, 134, 3.4, {'h': "#2fd07a", 'b': "#1a7d5a"}))
-        o.append(runs(STAR, 1260, 40, 5, {'y': "#ffd23f"}))
+        o.append(runs(STAR, 1262, 70, 5, {'y': "#ffd23f"}))
         o.append(ptext("WORLD 1 · " + ("ATHENA" if athena else "APOLLO"), 1400, 196, 3, "#fff", "middle") if False else "")
         return ''.join(o)
     cd, cr = corners()
@@ -445,31 +445,31 @@ def v_service(n):  # the repair shop
         o = []
         wall = "#3a2a5a" if not n else "#1a0f30"
         o.append(f'<rect width="1600" height="172" fill="{wall}" opacity=".55"/>')
-        o.append(f'<rect x="660" y="24" width="260" height="40" fill="#14042e" stroke="#3df2ff" stroke-width="4"/>')
-        o.append(label(790, 35, "REPAIR SHOP", 3.6, "#3df2ff"))
+        o.append(f'<rect x="1060" y="56" width="260" height="40" fill="#14042e" stroke="#3df2ff" stroke-width="4"/>')
+        o.append(label(1190, 67, "REPAIR SHOP", 3.6, "#3df2ff"))
         # an open cabinet: side panel swung open, wires inside
         x, base = 700, 200
         o.append(cabinet(x, base, .58, "#5a1f7a", "#ffd23f", n, 3))
         o.append(f'<path d="M{x+58} {base-133}L{x+108} {base-122}V{base-8}L{x+58} {base}Z" fill="#7a3a9a"/>')
-        o.append(f'<path d="M{x+14} {base-60}q20 20 0 40 M{x+24} {base-60}q14 24 18 44" stroke="#ff3d6e" stroke-width="3" fill="none"/><path d="M{x+34} {base-62}q-10 20 6 46" stroke="#39ff6a" stroke-width="3" fill="none"/>')
+        o.append(f'<path d="M{x+14} {base-60}q20 20 0 40 M{x+24} {base-60}q14 24 18 44" stroke="#3d8eff" stroke-width="3" fill="none"/><path d="M{x+34} {base-62}q-10 20 6 46" stroke="#39ff6a" stroke-width="3" fill="none"/>')
         o.append(hero(860, 112, 6, {'h': "#ffd23f", 'b': "#2a6ad0", 'y': "#ff7a1a"}))
         o.append(f'<g transform="rotate(-30 932 140)"><path d="M926 112h10v50h-10z M918 104h26v14h-6v-6h-14v6h-6z" fill="#c9d1dc"/></g>')
-        o.append(f'<rect x="1000" y="168" width="90" height="34" fill="#ff3d6e"/><rect x="1030" y="158" width="30" height="10" fill="#9a1a3a"/><rect x="1000" y="180" width="90" height="4" fill="#9a1a3a"/>')
+        o.append(f'<rect x="1000" y="168" width="90" height="34" fill="#3d8eff"/><rect x="1030" y="158" width="30" height="10" fill="#1a4f9a"/><rect x="1000" y="180" width="90" height="4" fill="#1a4f9a"/>')
         o.append(sparkles([(700, 90), (650, 140)], "#ffd23f", 4))
         return ''.join(o)
-    return scene(n, b, top_day=("#7a4fc0", "#b07ae0", "#ffc0d8"))
+    return scene(n, b, top_day=("#7a4fc0", "#b07ae0", "#c0daff"))
 
 def v_renewals(n):  # extra lives: 1UP hearts coming back
     def b():
         o = []
         o.append(hero(760, 104, 6))
-        for x, y, s in [(560, 120, 6), (640, 60, 5), (900, 50, 5), (980, 110, 6), (720, 30, 4), (1080, 70, 4)]:
+        for x, y, s in [(560, 120, 6), (640, 70, 5), (900, 64, 5), (980, 110, 6), (720, 50, 4), (1080, 80, 4)]:
             o.append(heart(x, y, s))
             o.append(f'<path d="M{x+3.5*s} {y+6*s+6}v18" stroke="#fff" stroke-width="3" stroke-dasharray="4 4" opacity=".7"/>')
-        o.append(label(1160, 40, "+1UP", 5, "#39ff6a"))
-        o.append(ptext("EXTRA LIFE", 470, 50, 3.6, "#fff", "middle", shadow="#c2187a"))
+        o.append(label(1160, 60, "+1UP", 5, "#39ff6a"))
+        o.append(ptext("EXTRA LIFE", 450, 64, 3.6, "#fff", "middle", shadow="#185fc2"))
         return ''.join(o)
-    return scene(n, b, top_day=("#ff8ab8", "#ffb3c8", "#ffe0c0"), sun=(800, 80))
+    return scene(n, b, top_day=("#8abbff", "#b3d3ff", "#ffe0c0"), sun=(800, 80))
 
 def v_claims(n):  # after the storm: a glitched screen being fixed
     def b():
@@ -482,7 +482,7 @@ def v_claims(n):  # after the storm: a glitched screen being fixed
         r = random.Random(9)
         for k in range(8):
             yy = y + 6 + k * 16; off = r.randint(-30, 30)
-            o.append(f'<rect x="{max(x, x+40+off)}" y="{yy}" width="{r.randint(60, 200)}" height="10" fill="{r.choice(["#ff4fc3", "#3df2ff", "#39ff6a", "#ffd23f"])}" opacity=".85"/>')
+            o.append(f'<rect x="{max(x, x+40+off)}" y="{yy}" width="{r.randint(60, 200)}" height="10" fill="{r.choice(["#4f98ff", "#3df2ff", "#39ff6a", "#ffd23f"])}" opacity=".85"/>')
         o.append(f'<rect x="{x+w/2:.0f}" y="{y}" width="{w/2:.0f}" height="{h}" fill="#0b0820"/>')
         o.append(ptext("FIXED", x + w * .75, y + 54, 6, "#39ff6a", "middle"))
         o.append(f'<path d="M{x+w/2} {y}v{h}" stroke="#fff" stroke-width="3" stroke-dasharray="6 6"/>')
@@ -497,24 +497,24 @@ def v_commercial(n):  # the boss castle
     def b():
         o = []
         cs = "#2a1a40" if n else "#3a1f5c"; win = "#ffd23f"
-        o.append('<radialGradient id="lv" cx=".5" cy="1" r=".7"><stop offset="0" stop-color="#ff7a1a" stop-opacity=".7"/><stop offset="1" stop-color="#ff3d6e" stop-opacity="0"/></radialGradient>')
+        o.append('<radialGradient id="lv" cx=".5" cy="1" r=".7"><stop offset="0" stop-color="#ff7a1a" stop-opacity=".7"/><stop offset="1" stop-color="#3d8eff" stop-opacity="0"/></radialGradient>')
         o.append('<rect x="440" y="40" width="720" height="140" fill="url(#lv)"/>')
-        o.append(f'<path d="M520 174 V150 H560 V140 H1040 V150 H1080 V174Z" fill="{"#3a0f2a" if n else "#5a1a3a"}"/>')
+        o.append(f'<path d="M520 174 V150 H560 V140 H1040 V150 H1080 V174Z" fill="{"#0f213a" if n else "#1a355a"}"/>')
         # walls, towers and battlements in pixel steps
         o.append(f'<path d="M600 140 V84 H612 V74 H628 V84 H644 V74 H660 V84 H676 V60 H690 V50 H706 V60 H720 V40 H736 V30 H752 V40 H768 V30 H784 V40 H800 V24 H816 V40 H832 V30 H848 V40 H864 V30 H880 V40 H896 V60 H910 V50 H926 V60 H940 V84 H956 V74 H972 V84 H988 V74 H1000 V84 V140Z" fill="{cs}"/>')
         o.append(f'<path d="M624 96h14v22h-14z M960 96h14v22h-14z M702 74h14v22h-14z M884 74h14v22h-14z M760 54h14v18h-14z M826 54h14v18h-14z" fill="{win}"/>')
         o.append('<path d="M772 140 V100 H780 V92 H820 V100 H828 V140Z" fill="#14042e"/>')
         o.append(f'<path d="M774 104h52v4h-52z M774 116h52v4h-52z M774 128h52v4h-52z" fill="#6a5a8a"/>')
-        o.append(f'<rect x="806" y="-2" width="4" height="26" fill="{cs}"/><path d="M810 0h56v20h-56z" fill="#ff3d6e"/>')
+        o.append(f'<rect x="806" y="-2" width="4" height="26" fill="{cs}"/><path d="M810 0h56v20h-56z" fill="#3d8eff"/>')
         o.append(ptext("FLORES", 838, 5, 1.8, "#fff", "middle"))
         for x in [560, 640, 960, 1030]:
             o.append(f'<path d="M{x} 150 h8 v-10 h8 v-8 h8 v8 h8 v10 h8 v8 h-40z" fill="#ff7a1a"/><path d="M{x+12} 150 h8 v-10 h8 v10 h8 v8 h-24z" fill="#ffd23f"/>')
         o.append(ptext("BOSS", 1130, 34, 3, "#fff", shadow="#14042e"))
-        o.append('<rect x="1130" y="56" width="280" height="18" fill="#14042e" stroke="#fff" stroke-width="3"/><rect x="1136" y="61" width="190" height="8" fill="#ff3d6e"/>')
+        o.append('<rect x="1130" y="56" width="280" height="18" fill="#14042e" stroke="#fff" stroke-width="3"/><rect x="1136" y="61" width="190" height="8" fill="#3d8eff"/>')
         o.append(runs(SQUID, 1220, 100, 8, {'p': "#a46bff", 'w': "#fff"}))
         o.append(runs(SQUID, 380, 90, 6, {'p': "#39d07a", 'w': "#fff"}))
         return ''.join(o)
-    return scene(n, b, top_day=("#4a2a7a", "#c04f8a", "#ffa070"), top_night=("#05020f", "#1c0630", "#5a0f3a"), starsn=30)
+    return scene(n, b, top_day=("#4a2a7a", "#4f7ec0", "#ffa070"), top_night=("#05020f", "#1c0630", "#0f2e5a"), starsn=30)
 
 VISTA_FNS = {"sales": v_sales, "messages": v_messages, "coaching": v_coaching, "roleplay": v_roleplay, "rphistory": v_rphistory,
              "training": v_training, "blueprint": lambda n: v_map(n, False), "athenamap": lambda n: v_map(n, True),
@@ -535,7 +535,7 @@ VISTA_LINES = {
 }
 
 # ------------------------------------------------------------------ coaching-card strips (1600 x 160)
-def strip(n, body, day=("#5a2a9a", "#9a3fb0"), night=("#0b0420", "#2a0b52"), grid="#ff4fc3"):
+def strip(n, body, day=("#5a2a9a", "#9a3fb0"), night=("#0b0420", "#2a0b52"), grid="#4f98ff"):
     c = night if n else day
     defs = grad("sg", [(0, c[0]), (1, c[1])])
     o = [f'<rect width="1600" height="160" fill="url(#sg)"/>']
@@ -552,7 +552,7 @@ def s_sold(n):
     b.append(runs(TROPHY, 770, 40, 7, {'y': "#ffd23f", 'w': "#fff7c2", 'b': "#7a3a1a"}))
     for x, y in [(640, 60), (700, 40), (900, 44), (960, 66), (1060, 50)]: b.append(star(x, y, 4))
     b.append(sparkles([(740, 40), (870, 100), (600, 100), (1020, 100)], "#fff", 3))
-    return strip(n, ''.join(b), day=("#3a6ae0", "#c04fd0"))
+    return strip(n, ''.join(b), day=("#3a6ae0", "#4f85d0"))
 
 def s_open(n):
     b = [cap("CONTINUE?")]
@@ -560,7 +560,7 @@ def s_open(n):
     b.append(label(800, 52, "9", 10, "#ffd23f"))
     b.append(hero(640, 44, 7))
     b.append(ptext("8 7 6 ...", 880, 70, 4, "#fff", shadow="#14042e"))
-    return strip(n, ''.join(b), day=("#7a3aa0", "#e0608a"))
+    return strip(n, ''.join(b), day=("#7a3aa0", "#6095e0"))
 
 def s_lost(n):
     gp = {'h': "#e4e4ec", 'v': "#2a2a33", 'w': "#2a2a33", 's': "#d8d2ca", 'b': "#3a3a46", 'y': "#c8c8d0", 'k': "#1e1e26"}
@@ -578,12 +578,12 @@ def s_dead(n):
     b.append(f'<g filter="url(#nl)"><rect x="788" y="46" width="34" height="50" fill="none" stroke="{on}" stroke-width="4"><animate attributeName="opacity" values="1;.15;1" dur="1.2s" repeatCount="indefinite"/></rect></g>')
     b.append(ptext("25C", 805, 102, 2.5, "#c8b8e0", "middle"))
     b.append(coin(900, 56, 5))
-    return strip(n, ''.join(b), day=("#6a2a5a", "#a04a6a"), night=("#120418", "#2a0b32"))
+    return strip(n, ''.join(b), day=("#2a456a", "#4a6ea0"), night=("#120418", "#2a0b32"))
 
 def s_reached(n):
     b = [cap("PLAYER 2 JOINED", "#3df2ff")]
     b.append(hero(710, 42, 7))
-    b.append(hero(840, 42, 7, {'h': "#3df2ff", 'b': "#ff7a1a", 'v': "#ff4fc3"}))
+    b.append(hero(840, 42, 7, {'h': "#3df2ff", 'b': "#ff7a1a", 'v': "#4f98ff"}))
     b.append(sparkles([(814, 60)], "#ffd23f", 5))
     
     return strip(n, ''.join(b), day=("#2a5ad0", "#7a4fd0"))

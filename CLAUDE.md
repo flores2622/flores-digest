@@ -1984,7 +1984,11 @@ repaint clears the list).
   goals", `goalpost_persp`),
   TOUCHDOWN / 1ST & 10 / TURNOVER ...), **Retro Arcade** (Orbitron / Exo 2;
   Synthwave, 8-Bit, Pinball -- the neon pixel city and HIGH SCORES, the grid
-  floor between rows of cabinets, LEVEL CLEARED / CONTINUE? / GAME OVER ...)
+  floor between rows of cabinets; electric blue where it was pink -- Frank,
+  2026-10-05: "i dont like all the pink", every pink / magenta hue moved to
+  215 deg, the Synthwave accent with it -- and no title above the 40-unit line
+  the banner crop hides (PLAYER 1 / PLAYER 2 READY, TUTORIAL, the chat
+  bubbles, the map's labels, REPAIR SHOP), LEVEL CLEARED / CONTINUE? / GAME OVER ...)
   and **Phoenix** (Archivo / Inter; Valley Sunset, Copper, Monsoon -- the
   camel mountain, the tower ridge, downtown and the light rail down a palm
   boulevard to a plaza stage, FIREWORKS / NEXT TRAIN / HABOOB ...). Space got
