@@ -1,5 +1,5 @@
 """Game Day world: American football. The Digest's stadium, the page banners and the coaching-card strips.
-No real teams, leagues, logos or stadiums -- just FLORES on the jerseys, the scoreboard and the end zone."""
+No real teams, leagues, logos or stadiums -- insurance names on the scoreboard, the end zones and the banners."""
 import random
 
 KEY = "gameday"
@@ -140,6 +140,24 @@ def goalpost(x, base, h, sc=1.0, c="#f2c21b"):
             f'<rect x="{x-hw-t*.5:.0f}" y="{base-h-14*sc:.0f}" width="{1.1*t:.0f}" height="{14*sc:.0f}" fill="{RED}"/><rect x="{x+hw-t*.6:.0f}" y="{base-h-14*sc:.0f}" width="{1.1*t:.0f}" height="{14*sc:.0f}" fill="{RED}"/>')
 
 
+def goalpost_persp(k, base=612, h0=170, c="#f2c21b"):
+    """A goalpost on end line k, seen from the 50: post at `base`, crossbar along the end line."""
+    sc = lambda y: (y - VPY) / (base - VPY)
+    y1, y2 = base - 44, base + 44                     # the two uprights, back and front along the end line
+    p = lambda y, up: (fx(k, y), y - up * h0 * sc(y))
+    bx, by = p(base, 0); cx, cy = p(base, .45)
+    (ax, ay), (ex, ey) = p(y1, .45), p(y2, .45)
+    (atx, aty), (etx, ety) = p(y1, 1), p(y2, 1)
+    w = lambda y: 7 * sc(y)
+    return (f'<g stroke="{c}" stroke-linecap="round" fill="none">'
+            f'<line x1="{bx:.0f}" y1="{by:.0f}" x2="{cx:.0f}" y2="{cy:.0f}" stroke-width="{2 * w(base):.1f}"/>'
+            f'<line x1="{ax:.0f}" y1="{ay:.0f}" x2="{ex:.0f}" y2="{ey:.0f}" stroke-width="{1.6 * w(base):.1f}"/>'
+            f'<line x1="{ax:.0f}" y1="{ay:.0f}" x2="{atx:.0f}" y2="{aty:.0f}" stroke-width="{1.3 * w(y1):.1f}"/>'
+            f'<line x1="{ex:.0f}" y1="{ey:.0f}" x2="{etx:.0f}" y2="{ety:.0f}" stroke-width="{1.3 * w(y2):.1f}"/></g>'
+            f'<line x1="{atx:.0f}" y1="{aty:.0f}" x2="{atx:.0f}" y2="{aty - 14 * sc(y1):.0f}" stroke="{RED}" stroke-width="{w(y1):.1f}"/>'
+            f'<line x1="{etx:.0f}" y1="{ety:.0f}" x2="{etx:.0f}" y2="{ety - 14 * sc(y2):.0f}" stroke="{RED}" stroke-width="{w(y2):.1f}"/>')
+
+
 def crowd_def(pid, night, sc=1.0, seat=None):
     """A two-row tile of fans (8 people), so a stand is one rect."""
     if night:
@@ -246,9 +264,9 @@ def skyline(night):
     if night:
         a('<rect x="560" y="0" width="480" height="200" fill="url(#lg)" opacity=".5"/>')
     a(f'<rect x="590" y="16" width="420" height="140" rx="6" fill="{fr}"/><rect x="600" y="26" width="400" height="120" rx="3" fill="{sb}"/>')
-    a(f'<rect x="600" y="26" width="400" height="40" fill="{RED}"/><text x="800" y="58" text-anchor="middle" font-family="Arial, sans-serif" font-weight="bold" font-size="32" letter-spacing="10" fill="#fff">FLORES</text>')
+    a(f'<rect x="600" y="26" width="400" height="40" fill="{RED}"/><text x="800" y="58" text-anchor="middle" font-family="Arial, sans-serif" font-weight="bold" font-size="32" letter-spacing="6" fill="#fff">PREMIUM BOWL</text>')
     a('<text x="680" y="88" text-anchor="middle" font-family="Arial, sans-serif" font-weight="bold" font-size="14" letter-spacing="3" fill="#c9d1dc">HOME</text>'
-      '<text x="920" y="88" text-anchor="middle" font-family="Arial, sans-serif" font-weight="bold" font-size="14" letter-spacing="3" fill="#c9d1dc">GUEST</text>'
+      '<text x="920" y="88" text-anchor="middle" font-family="Arial, sans-serif" font-weight="bold" font-size="14" letter-spacing="3" fill="#c9d1dc">RISK</text>'
       f'<text x="680" y="134" text-anchor="middle" font-family="monospace" font-weight="bold" font-size="44" fill="{GOLD}">28</text>'
       f'<text x="920" y="134" text-anchor="middle" font-family="monospace" font-weight="bold" font-size="44" fill="{GOLD}">14</text>'
       '<rect x="752" y="78" width="96" height="30" rx="3" fill="#000"/><text x="800" y="100" text-anchor="middle" font-family="monospace" font-weight="bold" font-size="22" fill="#ff5040">0:42</text>'
@@ -257,8 +275,8 @@ def skyline(night):
     bc = "#c5ccd8" if night else "#f3f5f8"
     a(f'<g transform="translate(1210 78)"><path d="M86 0 l38 -22 l0 44 z M70 -6 l40 -6 l0 12 z" fill="{NAVY}"/><ellipse rx="100" ry="34" fill="{bc}"/>'
       f'<path d="M-100 0 A100 34 0 0 0 100 0 L90 8 A96 24 0 0 1 -90 8 Z" fill="{RED}"/><rect x="-22" y="30" width="44" height="12" rx="5" fill="{NAVY}"/>'
-      + (f'<rect x="-60" y="-12" width="120" height="18" rx="3" fill="#0a0f1a"/><text x="0" y="2" text-anchor="middle" font-family="Arial, sans-serif" font-weight="bold" font-size="14" letter-spacing="4" fill="{GOLD}">GO FLORES</text>'
-         if night else f'<text x="0" y="4" text-anchor="middle" font-family="Arial, sans-serif" font-weight="bold" font-size="16" letter-spacing="4" fill="{NAVY}">GO FLORES</text>')
+      + (f'<rect x="-60" y="-12" width="120" height="18" rx="3" fill="#0a0f1a"/><text x="0" y="2" text-anchor="middle" font-family="Arial, sans-serif" font-weight="bold" font-size="14" letter-spacing="4" fill="{GOLD}">GET COVERED</text>'
+         if night else f'<text x="0" y="4" text-anchor="middle" font-family="Arial, sans-serif" font-weight="bold" font-size="16" letter-spacing="4" fill="{NAVY}">GET COVERED</text>')
       + '</g>')
     # ---- the lower bowl, horizon down ----
     a(f'<rect x="0" y="{SPLIT}" width="{W}" height="{YF-SPLIT}" fill="url(#cr)"/>')
@@ -269,8 +287,8 @@ def skyline(night):
     # field wall, FLORES banners, the tunnel
     wall = "#0d1730" if night else NAVY
     a(f'<rect x="0" y="474" width="{W}" height="32" fill="{wall}"/><rect x="0" y="474" width="{W}" height="4" fill="{RED}"/>')
-    for x in [240, 1360]:
-        a(f'<text x="{x}" y="500" text-anchor="middle" font-family="Arial, sans-serif" font-weight="bold" font-size="20" letter-spacing="8" fill="#fff" opacity=".9">FLORES</text>')
+    for x, t in [(240, "BUNDLE UP"), (1360, "NO LAPSE ZONE")]:
+        a(f'<text x="{x}" y="500" text-anchor="middle" font-family="Arial, sans-serif" font-weight="bold" font-size="20" letter-spacing="6" fill="#fff" opacity=".9">{t}</text>')
     a(f'<path d="M740 506 L740 470 Q800 432 860 470 L860 506 Z" fill="{wall}"/><path d="M752 506 L752 474 Q800 444 848 474 L848 506 Z" fill="#05070d"/>')
     if night:
         a('<path d="M752 506 L752 474 Q800 444 848 474 L848 506 Z" fill="#ffd27a" opacity=".25"/>')
@@ -287,8 +305,8 @@ def skyline(night):
     ez1, ez2 = (RED, NAVY)
     for s, c in [(-1, ez1), (1, ez2)]:
         a(f'<path d="M{fx(10*s, YF):.0f} {YF} L{fx(12*s, YF):.0f} {YF} L{fx(12*s, yb):.0f} {yb} L{fx(10*s, yb):.0f} {yb} Z" fill="{c}" opacity="{.8 if night else .92}"/>')
-    a(f'<text transform="translate({fx(-11, 700):.0f} 700) rotate(-90)" text-anchor="middle" font-family="Arial, sans-serif" font-weight="bold" font-size="40" letter-spacing="10" fill="#fff" opacity=".9">FLORES</text>')
-    a(f'<text transform="translate({fx(11, 700):.0f} 700) rotate(90)" text-anchor="middle" font-family="Arial, sans-serif" font-weight="bold" font-size="40" letter-spacing="10" fill="#fff" opacity=".9">FLORES</text>')
+    a(f'<text transform="translate({fx(-11, 700):.0f} 700) rotate(-90)" text-anchor="middle" font-family="Arial, sans-serif" font-weight="bold" font-size="38" letter-spacing="8" fill="#fff" opacity=".9">COVERED</text>')
+    a(f'<text transform="translate({fx(11, 700):.0f} 700) rotate(90)" text-anchor="middle" font-family="Arial, sans-serif" font-weight="bold" font-size="38" letter-spacing="8" fill="#fff" opacity=".9">BUNDLED</text>')
     # yard lines, sidelines
     lc = "#f2f6ee"
     a(f'<rect x="0" y="{YF-6}" width="{W}" height="6" fill="{lc}"/>')
@@ -305,9 +323,10 @@ def skyline(night):
             x = fx(k + .5, row)
             a(f'<rect x="{x-1.5:.0f}" y="{row-5}" width="3" height="10" fill="{lc}" opacity=".7"/>')
     # goalposts at both ends
+    # (Frank, 2026-10-05: "angle the field goals") -- each one stands on its end line, so its crossbar
+    # runs along that line into the distance and the near upright is the taller
     for k in (-12, 12):
-        x = fx(k, 610)
-        a(f'<g transform="translate({x:.0f} 0) scale(.55 1)">{goalpost(0, 610, 170, 1)}</g>')
+        a(goalpost_persp(k))
     # the benches on the far sideline, and the team coming out of the tunnel
     r = random.Random(4)
     for x0, jc in [(330, RED), (1130, NAVY)]:
@@ -377,7 +396,7 @@ def v_sales(n):  # the touchdown celebration in the end zone
     o.append(f'<rect x="0" y="92" width="1600" height="16" fill="{NAVY}"/><rect x="0" y="92" width="1600" height="3" fill="{RED}"/>')
     o.append(grass(108, V, n, False))
     o.append(f'<path d="M0 132 L1600 132 L1600 240 L0 240 Z" fill="{RED}" opacity="{.75 if n else .9}"/><rect x="0" y="128" width="1600" height="5" fill="#f2f6ee"/>')
-    o.append('<text x="800" y="230" text-anchor="middle" font-family="Arial, sans-serif" font-weight="bold" font-size="64" letter-spacing="26" fill="#fff" opacity=".2">FLORES</text>')
+    o.append('<text x="800" y="230" text-anchor="middle" font-family="Arial, sans-serif" font-weight="bold" font-size="64" letter-spacing="22" fill="#fff" opacity=".2">PREMIUM</text>')
     o.append(goalpost(1180, 180, 150, .75))
     o.append(player(760, 196, .95, NAVY, "21", "up", hc=NAVY, trim=GOLD))
     o.append(ball(806, 54, 13, -40))
@@ -508,7 +527,7 @@ def v_rphistory(n):  # the highlight reel on the big screen
     o.append('<rect x="500" y="40" width="600" height="102" fill="#2f7a36"/><line x1="760" y1="40" x2="760" y2="142" stroke="#fff" stroke-width="3" opacity=".6"/>')
     o.append(f'<g transform="rotate(-62 860 128)">{player(860, 128, .62, RED, "21", "up", hc=RED)}</g>')
     o.append(ball(690, 72, 11, -30) + '<path d="M600 92 q40 -40 80 -22" fill="none" stroke="#fff" stroke-width="2.5" stroke-dasharray="6 6"/>')
-    o.append(f'<rect x="482" y="158" width="636" height="24" fill="{RED}"/><text x="800" y="176" text-anchor="middle" font-family="Arial, sans-serif" font-weight="bold" font-size="17" letter-spacing="6" fill="#fff">FLORES HIGHLIGHTS · PLAY OF THE DAY</text>')
+    o.append(f'<rect x="482" y="158" width="636" height="24" fill="{RED}"/><text x="800" y="176" text-anchor="middle" font-family="Arial, sans-serif" font-weight="bold" font-size="17" letter-spacing="6" fill="#fff">CLOSER HIGHLIGHTS · PLAY OF THE DAY</text>')
     o.append('<circle cx="1080" cy="56" r="7" fill="#ff3b3b"/><text x="1072" y="62" text-anchor="end" font-family="monospace" font-weight="bold" font-size="16" fill="#fff">REC</text>')
     if n:
         o.append(vignette(V, .4))
