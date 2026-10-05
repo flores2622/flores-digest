@@ -1736,9 +1736,8 @@ repaint clears the list).
   `ED_HANDLES` in editions.js, by first name; Frank picked them
   2026-10-05): @coach.apollo, @mango.multipolicy, @lori.locks.the.rate,
   @coral.covers.it.all, @amanda.approves, @frank.full.coverage,
-  @vero.vacation.approved -- and, until Frank picks theirs,
-  @mike.drop.deductible, @sarahi.safe.harbor, @francisco.fine.print,
-  @debbie.first.line.of.defense; anyone else @<first>.always.covered. On
+  @vero.vacation.approved, @mikes.got.you.covered, @safe.with.sarahi,
+  @dm.francisco, @debbie.on.the.line; anyone else @<first>.always.covered. On
   posts, comments, Top accounts and the reply box.
 - **The front office chimes in** (Frank, 2026-10-05: "Francisco is our
   DM, can you have him and myself chime in with funny motivational content
