@@ -474,38 +474,52 @@ def v_roleplay(n):  # a spring-training ballpark
     o.append(shade())
     return wrap(V, ''.join(o))
 
-def v_rphistory(n):  # an old neon motel sign, flickering
+def v_rphistory(n):  # a desert drive-in, the screen replaying a call (Frank, 2026-10-05: "a drive in theatre, not a motel")
     o = [vsky(n, ("#3a2a6b", "#c4507a", "#f6a46a"), ("#07071a", "#14123a", "#2a1a4a"),
               '<filter id="nf" x="-20%" y="-50%" width="140%" height="200%"><feGaussianBlur stdDeviation="4"/></filter>')]
-    if n: o.append(stars(60, 1600, 0, 140, 5))
-    o.append(camel(980, 170, 520, 80, "#1b1531" if n else "#7b4a7c"))
-    # the motel: a long low row of doors
-    mb = "#2a2240" if n else "#e8c8a8"; mr = "#1c1630" if n else "#3a7a8a"
-    o.append(f'<rect x="760" y="150" width="760" height="70" fill="{mb}"/><rect x="740" y="140" width="800" height="12" fill="{mr}"/>')
-    for k in range(10):
-        x = 790 + k * 72
-        o.append(f'<rect x="{x}" y="170" width="26" height="50" fill="{["#e8662a", "#2f8a8a", "#d6b13a"][k % 3]}"/><rect x="{x + 34}" y="170" width="24" height="20" fill="{"#ffd27a" if (n and k % 3 != 1) else "#5a7a9a"}"/>')
-    o.append(f'<rect x="0" y="220" width="1600" height="20" fill="{"#100c1a" if n else "#5a4656"}"/>')
-    o.append(palm(1560, 222, 150, "#120c1e" if n else "#6a4a3a", "#0f1a14" if n else "#3f7a3a"))
-    # the sign: a pole, a starburst, the REPLAY board and an arrow
-    pole = "#3a3048" if n else "#c94a3a"
-    o.append(f'<rect x="496" y="40" width="14" height="190" fill="{pole}"/>')
+    if n: o.append(stars(50, 1600, 0, 130, 5))
+    o.append(camel(860, 186, 640, 90, "#1b1531" if n else "#7b4a7c"))
+    # the lot
+    o.append(f'<rect x="0" y="184" width="1600" height="56" fill="{"#100c1a" if n else "#8a5a5a"}"/>')
+    o.append(saguaro(1440, 188, 70, "#0f1a14" if n else "#3f6a3a") + saguaro(300, 188, 46, "#0f1a14" if n else "#3f6a3a"))
+    o.append(palm(1560, 200, 150, "#120c1e" if n else "#6a4a3a", "#0f1a14" if n else "#3f7a3a"))
+    # the screen on its lattice frame
+    fr = "#2a2238" if n else "#5a4a5e"
+    for x in (790, 1150):
+        o.append(f'<rect x="{x - 5}" y="140" width="10" height="48" fill="{fr}"/>')
+    o.append(f'<path d="M790 150L1150 186M1150 150L790 186M970 150L970 188" stroke="{fr}" stroke-width="3"/>')
+    o.append(f'<rect x="760" y="40" width="420" height="112" fill="{fr}"/>')
+    scr = "#e8f0ff" if n else "#f6ece4"
+    o.append(f'<rect x="768" y="46" width="404" height="100" fill="{scr}"/>')
+    # on screen: two people on a call, a speech bubble each, and the replay bar
+    ink = "#3a3050"
+    o.append(f'<circle cx="880" cy="86" r="14" fill="{ink}"/><path d="M856 126q24 -30 48 0z" fill="{ink}"/>'
+             f'<circle cx="1060" cy="86" r="14" fill="{ink}"/><path d="M1036 126q24 -30 48 0z" fill="{ink}"/>'
+             '<path d="M906 62h52a6 6 0 0 1 6 6v14a6 6 0 0 1 -6 6h-36l-10 8v-8h-6a6 6 0 0 1 -6 -6v-14a6 6 0 0 1 6 -6z" fill="#e8662a"/>'
+             '<path d="M984 70h52a6 6 0 0 1 6 6v14a6 6 0 0 1 -6 6h-6v8l-10 -8h-36a6 6 0 0 1 -6 -6v-14a6 6 0 0 1 6 -6z" fill="#2f8a8a"/>'
+             '<rect x="790" y="134" width="360" height="4" rx="2" fill="#b8b0c8"/><rect x="790" y="134" width="230" height="4" rx="2" fill="#e8662a"/>'
+             '<circle cx="1020" cy="136" r="6" fill="#e8662a"/>')
+    # the projection booth and its beam
+    o.append(f'<path d="M560 176L768 46L768 146Z" fill="#fff6d6" opacity="{.22 if n else .1}"/>')
+    o.append(f'<rect x="500" y="160" width="80" height="30" fill="{"#2a2240" if n else "#e8c8a8"}"/><rect x="494" y="154" width="92" height="8" fill="{"#1c1630" if n else "#3a7a8a"}"/>'
+             f'<rect x="556" y="170" width="12" height="9" fill="{"#fff2c0" if n else "#5a7a9a"}"/>')
+    # cars facing the screen, speaker posts between them, tail lights at night
+    cols = ["#e8662a", "#2f8a8a", "#d6b13a", "#c43a4a", "#6a8ab8", "#e9eef4", "#2f6fb8", "#8a5a9a"]
+    for k, x in enumerate(range(640, 1400, 96)):
+        c = cols[k % len(cols)] if not n else "#1a1628"
+        o.append(f'<path d="M{x} 198v-12q0 -6 6 -6h8l8 -10h32l8 10h8q6 0 6 6v12z" fill="{c}"/>'
+                 f'<rect x="{x + 24}" y="173" width="28" height="7" rx="2" fill="{"#3a4a5a" if not n else "#2a3048"}"/>')
+        o.append(f'<rect x="{x + 3}" y="186" width="7" height="4" fill="#ff3a3a" opacity="{.95 if n else .7}"/><rect x="{x + 66}" y="186" width="7" height="4" fill="#ff3a3a" opacity="{.95 if n else .7}"/>')
+        o.append(f'<rect x="{x + 84}" y="180" width="3" height="18" fill="#6a6070"/><rect x="{x + 81}" y="176" width="9" height="6" rx="1" fill="#6a6070"/>')
+    # the marquee on its pole
     pink = "#ff4fa8"; teal = "#3ff0e0"; yel = "#ffd23f"
-    on = .95 if n else .9
     board = "#14122a" if n else "#21607a"
-    o.append(f'<path d="M330 50L660 34L680 120L340 132Z" fill="{board}" stroke="{yel}" stroke-width="4"/>')
-    if n: o.append(f'<text x="505" y="108" text-anchor="middle" font-family="Georgia, serif" font-style="italic" font-weight="bold" font-size="60" fill="{pink}" filter="url(#nf)" opacity=".9">REPLAY</text>')
-    o.append(f'<text x="505" y="108" text-anchor="middle" font-family="Georgia, serif" font-style="italic" font-weight="bold" font-size="60" fill="{pink if n else "#ffd6e8"}" stroke="{pink}" stroke-width="{0 if n else 1}" opacity="{on}">REP<tspan opacity="{.35 if n else 1}">L</tspan>AY</text>')
-    o.append(f'<rect x="420" y="146" width="170" height="34" rx="4" fill="{board}" stroke="{teal}" stroke-width="3"/>')
-    if n: o.append(f'<text x="505" y="171" text-anchor="middle" font-family="Arial, sans-serif" font-weight="bold" font-size="22" fill="{teal}" filter="url(#nf)">VACANCY</text>')
-    o.append(f'<text x="505" y="171" text-anchor="middle" font-family="Arial, sans-serif" font-weight="bold" font-size="22" fill="{teal if n else "#d8fffb"}">VACANCY</text>')
-    o.append(f'<text x="398" y="171" text-anchor="end" font-family="Arial, sans-serif" font-weight="bold" font-size="18" fill="#7a5a6a" opacity=".7">NO</text>')
-    # the starburst on top
-    o.append(f'<g transform="translate(503 30)">' + ''.join(f'<path d="M0 -26L5 -4L0 0L-5 -4Z" fill="{yel}" transform="rotate({k * 45})"/>' for k in range(8)) + '</g>')
-    if n: o.append('<circle cx="503" cy="30" r="40" fill="url(#gl)"/>')
-    # the arrow pointing at the rooms, a chase of bulbs
-    o.append(f'<path d="M640 140L700 140L700 126L740 150L700 174L700 160L640 160Z" fill="{board}" stroke="{pink}" stroke-width="3"/>')
-    for k in range(3): o.append(f'<circle cx="{654 + k * 20}" cy="150" r="3.5" fill="{yel}" opacity="{1 if k % 2 == 0 else .35}"/>')
+    o.append(f'<rect x="403" y="100" width="12" height="90" fill="{"#3a3048" if n else "#c94a3a"}"/>')
+    o.append(f'<rect x="320" y="44" width="178" height="62" rx="6" fill="{board}" stroke="{yel}" stroke-width="4"/>')
+    for k in range(9): o.append(f'<circle cx="{334 + k * 19}" cy="51" r="2.6" fill="{yel}" opacity="{1 if k % 2 == 0 else .4}"/>')
+    if n: o.append(f'<text x="409" y="84" text-anchor="middle" font-family="Georgia, serif" font-style="italic" font-weight="bold" font-size="30" fill="{pink}" filter="url(#nf)">DRIVE-IN</text>')
+    o.append(f'<text x="409" y="84" text-anchor="middle" font-family="Georgia, serif" font-style="italic" font-weight="bold" font-size="30" fill="{pink if n else "#ffd6e8"}" stroke="{pink}" stroke-width="{0 if n else 1}">DRIVE-IN</text>')
+    o.append(f'<text x="409" y="100" text-anchor="middle" font-family="Arial, sans-serif" font-weight="bold" font-size="11" fill="{teal if n else "#d8fffb"}">NOW SHOWING · REPLAYS</text>')
     o.append(shade())
     return wrap(V, ''.join(o))
 
@@ -681,7 +695,7 @@ VISTA_LINES = {
     "messages": ["Texts & Emails", "the tower ridge: every signal answered"],
     "coaching": ["Coaching", "up on the roof: every call, replayed"],
     "roleplay": ["Role Play", "spring training: reps before it counts"],
-    "rphistory": ["Session History", "the replay motel: every session kept"],
+    "rphistory": ["Session History", "the drive-in: every session on the big screen"],
     "training": ["Training", "one switchback at a time"],
     "blueprint": ["Apollo's Road Map", "the apollo line, in plain words"],
     "athenamap": ["Athena's Road Map", "the athena line, in plain words"],
