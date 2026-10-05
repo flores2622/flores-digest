@@ -1284,7 +1284,10 @@ html[data-mode="dark"] .lbsky .podium2::before { background: linear-gradient(100
 .lbsky .pod-1 .pod-step { background: linear-gradient(180deg, #ffd95a, #e0a81e) !important; }
 .lbsky .pod-2 .pod-step { background: linear-gradient(180deg, #e6e9ee, #aab1bb) !important; }
 .lbsky .pod-3 .pod-step { background: linear-gradient(180deg, #e0a070, #a8623a) !important; }
-.lbsky .pod-name, .lbsky .pod-pts { color: #fff; text-shadow: 0 1px 2px rgba(0,0,0,.6); } .lbsky .pod-side { opacity: 1; }
+.lbsky .pod-name, .lbsky .pod-pts { color: #fff; text-shadow: 0 1px 2px rgba(0,0,0,.6); }
+/* names stay readable over any world's picture (Frank, 2026-10-05: "can barely see leaderboard names" on the Game Day field) */
+.lbsky .pod-name { font-size: 13px; font-weight: 700; background: rgba(12, 14, 22, .66); padding: 3px 9px; border-radius: 999px; max-width: 150px; }
+.lbsky .pod-pts { background: rgba(12, 14, 22, .5); padding: 1px 7px; border-radius: 999px; } .lbsky .pod-side { opacity: 1; }
 .lbsky .scroll { background: color-mix(in oklab, var(--surface-raised) 93%, transparent); border-radius: 12px; }
 .lbsky .scroll table { background: transparent; }
 .lbsky .ddrill, .lbsky .drill { background: color-mix(in oklab, var(--surface-raised) 93%, transparent); border-radius: 12px; }
