@@ -1673,8 +1673,10 @@ Renewals rates and Renewal SR Work, the outcome bars) into a floating card
 (`.flipfloat`) laid over the page at the card that opened it, which turns
 over into it. **Only that card flips, and the back is smaller** (Frank,
 2026-10-05: "make the backside smaller so it doesnt take the whole screen
-... just the card to flip not the whole background"): at most 760px wide
-and about two-thirds of the screen tall, scrolling inside, while the
+... just the card to flip not the whole background"): at most 560px wide
+and 420px / under half the screen tall ("it can be abit smaller still,
+do the same with every flippable card", 2026-10-05 -- the Left on the
+desk / Needs someone now backs list at most 180px too), scrolling inside, while the
 section and its picture stay where they are. Its Close reads "▲ Front";
 Escape or a click outside it turns it back too (`unflipThen`, before the
 repaint clears the list).
