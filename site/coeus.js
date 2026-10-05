@@ -28,20 +28,21 @@
  * dozens of them, far too much to put in front of the model whole.
  *
  * WHO SEES WHAT follows the board: anyone signed in sees the Sales and
- * Service Centers; the Commercial Center only COMMERCIAL_VIEWERS; Role Play
+ * Service Centers; the Commercial Center only staff.json's `commercial`; Role Play
  * sessions by rpScope (a producer their own, the history viewers everyone's);
  * the Manager / Coaching guide only the history viewers, like the tab.
  */
 import METHODOLOGY_MD from "../coaching/METHODOLOGY.md";
 import TRAINING_MD from "../coaching/TRAINING.md";
 import "./public/blueprints.js";
+import { PRODUCER_NAMES, hasBoard } from "./staff.js";
 import { claimsForViewer } from "./claims_view.js";   // sets BLUEPRINTS on the global (window in the browser)
 
 const MODEL = "claude-sonnet-5";
 const MAX_ROUNDS = 6;        // tool rounds before the answer is forced
 const MAX_TURNS = 24;        // conversation turns kept
 const MAX_RANGE_DAYS = 45;
-const PRODUCERS = ["Crystal Mango", "Lorena Gonzalez", "Mike Olvera", "Coral Barwick", "Sarahi Chin"];
+const PRODUCERS = PRODUCER_NAMES;   // staff.json
 
 /* ---- standing knowledge ------------------------------------------------- */
 
@@ -734,7 +735,7 @@ async function streamRound(env, body, emit) {
    use?" -- option 1, track it on the board) ------------------------------
    Every answer's tokens are added to coeus-usage/<day>.json under the
    person who asked, with an estimated cost at the model's list prices.
-   GET /api/coeus/usage?from=&to= (COEUS_USAGE_VIEWERS) adds it up per
+   GET /api/coeus/usage?from=&to= (staff.json's `coeus_usage`) adds it up per
    person and per day. One key still pays for everyone; this is who used it. */
 // claude-sonnet-5 list prices per million tokens (platform.claude.com/pricing,
 // 2026-10-02): input $2, output $10, cache write 1.25x input, cache read 0.1x.
@@ -755,7 +756,7 @@ async function recordUsage(env, me, usage, rounds) {
 }
 function usageAllowed(request, env, deps) {
   const who = String((deps.identityOf(request, env) || {}).email || "").toLowerCase();
-  return !!who && String(env.COEUS_USAGE_VIEWERS || "").toLowerCase().split(",").map((x) => x.trim()).filter(Boolean).includes(who);
+  return hasBoard(who, "coeus_usage");
 }
 async function usageReport(env, from, to) {
   const today = azToday();

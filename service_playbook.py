@@ -12,6 +12,8 @@ measures of their own role. Change the playbook here, and only here.
     Service Team Member   Crystal Mango (hybrid: service and sales)
     Front Desk            Debbie Aguilera
 """
+import staff
+
 
 PURPOSE = ("The Service Team is responsible for making sure our clients receive timely, "
            "knowledgeable, and professional service while keeping the agency organized and "
@@ -68,13 +70,13 @@ ROLES = {
                         "the need and confidently get the client to the right person."),
     },
 }
-ROLE_OF = {"Amanda Torricellas": "lead", "Crystal Mango": "member", "Debbie Aguilera": "front_desk"}
+ROLE_OF = {p["name"]: p["service"]["playbook"] for p in staff.service_team()}   # staff.json
 # Who sells (Frank, 2026-09-28: "Crystal is a hybrid position and also sells so
 # she can do the opportunity herself, amanda as well. Debbie is the only one
 # that would identify and pass to any producer"). The playbook's "identify
 # opportunities that should be passed to a producer" is Debbie's; Crystal and
 # Amanda work the opportunity themselves -- a quote, a lead, or passing it on.
-SELLS = {"Amanda Torricellas", "Crystal Mango"}
+SELLS = {p["name"] for p in staff.tagged("sells_service")}
 
 # Who handles what -- the playbook's table, as the request types an SR is
 # read into (service_audit.py). Owner: "service" (Front Desk or any Service

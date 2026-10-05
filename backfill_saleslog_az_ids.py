@@ -57,6 +57,7 @@ import pathlib
 import re
 
 import digest_config as cfg
+import staff
 
 ROOT = pathlib.Path(__file__).resolve().parent
 
@@ -230,7 +231,7 @@ def run(apply=False, days=None, log=print):
     customers = json.loads((ROOT / "data/az_customers_all.json").read_text())
     customers_by_id = {c["id"]: c for c in customers if c.get("id") is not None}
     name_to_agent_id = {name: v["az_id"] for name, v in cfg.PRODUCERS.items()}
-    name_to_agent_id["Amanda Torricellas"] = cfg.OTHER_EXT["Amanda Torricellas"]["az_id"]
+    name_to_agent_id.update({p["name"]: p["az_id"] for p in staff.tagged("sales_sheet")})
 
     digit_index = [(_digits(str(p.get("policyNumber") or "")), p) for p in policies]
     digit_index = [(d, p) for d, p in digit_index if len(d) >= 6]

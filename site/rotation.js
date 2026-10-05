@@ -26,32 +26,28 @@
    logging at once cannot both hand the same turn out: the second is told
    the rotation moved (409) and sees the new next-up.
 
-   Who sees it (ROTATION_VIEWERS, wrangler.jsonc): Debbie, Crystal and the
+   Who sees it (staff.json's `rotation`): Debbie, Crystal and the
    ops team (Frank, Francisco, Veronica, Amanda) -- "This rotation should
    only be visible to debiie, crystal, and the ops team". Anyone else gets
    a 403 and the board keeps the page out of the menu. Everyone who sees it
-   logs turns; ROTATION_EDITORS change an order or who is next. Always the
+   logs turns; `rotation_edit` changes an order or who is next. Always the
    verified Access email, never a request parameter. */
+
+import { ROTATION, hasBoard } from "./staff.js";
 
 const KEY = "rotation/state.json";
 
-export const ROTATION_PEOPLE = ["Lorena Gonzalez", "Sarahi Chin", "Amanda Torricellas", "Coral Barwick",
-  "Crystal Mango", "Mike Olvera"];
+export const ROTATION_PEOPLE = ROTATION.people;   // staff.json
 
 // Frank, 2026-10-02. Personal lines keeps the sheet's own order
 // (Sep 19 - Oct 19 tab, column A); life and Mexico keep theirs with the
 // new names added at the end.
-const DEFAULT_LISTS = {
-  personal: { label: "Personal lines", order: ["Lorena Gonzalez", "Sarahi Chin", "Amanda Torricellas", "Coral Barwick", "Crystal Mango"] },
-  life: { label: "Life", order: ["Mike Olvera", "Lorena Gonzalez", "Coral Barwick"] },
-  mexico: { label: "Mexico policies", order: ["Lorena Gonzalez", "Amanda Torricellas", "Crystal Mango", "Mike Olvera", "Coral Barwick", "Sarahi Chin"] },
-};
+const DEFAULT_LISTS = ROTATION.lists;   // staff.json
 const HOW = ["call in", "walk in", "transfer", "other"];
 
-const emails = (s) => String(s || "").toLowerCase().split(",").map((x) => x.trim()).filter(Boolean);
 function access(me, env) {
-  const see = emails(env.ROTATION_VIEWERS).includes(me.email);
-  return { see, edit: see && emails(env.ROTATION_EDITORS).includes(me.email) };
+  const see = hasBoard(me.email, "rotation");
+  return { see, edit: see && hasBoard(me.email, "rotation_edit") };
 }
 const json = (body, status = 200) => new Response(JSON.stringify(body), {
   status, headers: { "content-type": "application/json; charset=utf-8", "cache-control": "no-store" } });

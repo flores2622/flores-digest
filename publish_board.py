@@ -263,7 +263,7 @@ def build(day, log=print, live=False):
 def save_doubts(day, doubts, log=print):
     """Apollo's doubts for the day's cards, kept apart from the day document
     in review/<day>.json -- the Worker serves that file to
-    CARD_REVIEW_VIEWERS alone (Frank, 2026-10-05: "visible to only me").
+    staff.json's `card_review` alone (Frank, 2026-10-05: "visible to only me").
     Frank's own review marks in the same file are kept. Never raises."""
     try:
         cli, bucket = _client()

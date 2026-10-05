@@ -62,6 +62,7 @@ import { leadsIndex } from "./lead_index.js";
 import { rotationGet, rotationPost } from "./rotation.js";
 import { scrubGet, scrubPost } from "./scrub.js";
 import { claimsForViewer } from "./claims_view.js";
+import { PRODUCER_EMAILS, STAFF_FIRST_NAMES, SALES_SHEET_NAMES, SALES_TEAMS, hasBoard, boardEmails } from "./staff.js";
 
 export default {
   // Live figures between checkpoints (site/live.js): the cron in
@@ -154,7 +155,7 @@ export default {
           commercialAllowed: (req, e) => requireCommercial(req, e) === null,
         });
       }
-      // What Coeus has cost, per person (Frank, 2026-10-02); COEUS_USAGE_VIEWERS.
+      // What Coeus has cost, per person (Frank, 2026-10-02); staff.json's `coeus_usage`.
       if (parts[1] === "coeus" && parts[2] === "usage" && parts.length === 3 && request.method === "GET") {
         return coeusUsage(request, env, { identityOf }, url);
       }
@@ -164,14 +165,14 @@ export default {
       }
 
       // The new-business rotation (Frank, 2026-10-02): site/rotation.js,
-      // ROTATION_VIEWERS only.
+      // staff.json's `rotation` only.
       if (parts[1] === "rotation" && parts.length === 2) {
         if (request.method === "GET") return rotationGet(request, env, identityOf);
         if (request.method === "POST") return rotationPost(request, env, identityOf);
       }
 
       // The lead scrub tracker (Frank, 2026-10-02): site/scrub.js,
-      // SCRUB_VIEWERS / SCRUB_EDITORS only.
+      // staff.json's `scrub` / `scrub_edit` only.
       if (parts[1] === "scrub" && parts.length <= 3) {
         const id = /^[a-z0-9-]{1,40}$/.test(parts[2] || "") ? parts[2] : "";
         if (parts[2] && !id) return new Response("Not found", { status: 404 });
@@ -571,7 +572,7 @@ async function folioEntries(env, end) {
  * Amanda get every producer, a producer only their own (Sarahi and Coral
  * their team's), anyone else none. Decided here, so nobody's browser is
  * ever sent another person's figures. */
-const COMMISSION_ALL = new Set(["frank@floresinsuranceagency.com", "amanda@floresinsuranceagency.com"]);
+const COMMISSION_ALL = new Set(boardEmails("commission_all"));   // staff.json
 async function getCommission(request, env, end) {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(end) || !FOLIO_CLOSE_DATES.includes(end)) {
     return json({ error: "bad folio end date" }, 400);
@@ -826,16 +827,14 @@ async function requireAccess(request, env) {
 }
 
 /* The Commercial Center is Frank's alone (2026-09-24). Only the emails in
-   COMMERCIAL_VIEWERS (wrangler.jsonc, comma-separated) get /api/commercial;
+   staff.json's `commercial` get /api/commercial;
    everyone else behind Access gets a 403, and the board keeps the section's
    left-bar entry hidden for them. Unset means nobody -- closed, never open.
    Must run AFTER requireAccess(): the email is the verified token's, never a
    header a client could set. */
 function requireCommercial(request, env) {
   const who = String((ACCESS_IDENTITY.get(request) || {}).email || "").toLowerCase();
-  const allowed = String(env.COMMERCIAL_VIEWERS || "").toLowerCase()
-    .split(",").map((x) => x.trim()).filter(Boolean);
-  if (!who || !allowed.includes(who)) return json({ error: "not permitted" }, 403);
+  if (!hasBoard(who, "commercial")) return json({ error: "not permitted" }, 403);
   return null;
 }
 
@@ -1368,13 +1367,11 @@ async function roleplayVoiceFeedback(request, env) {
   return json({ ok: true });
 }
 
-/** GET /api/roleplay/voices -> {ratings: [...]}, for ROLEPLAY_VOICE_VIEWERS
- * only (wrangler.jsonc): the board adds them up per voice. */
+/** GET /api/roleplay/voices -> {ratings: [...]}, for staff.json's `roleplay_voices`
+ * only: the board adds them up per voice. */
 async function roleplayVoiceRatings(request, env) {
   const who = String((ACCESS_IDENTITY.get(request) || {}).email || "").toLowerCase();
-  const allowed = String(env.ROLEPLAY_VOICE_VIEWERS || "").toLowerCase()
-    .split(",").map((x) => x.trim()).filter(Boolean);
-  if (!who || !allowed.includes(who)) return json({ error: "not permitted" }, 403);
+  if (!hasBoard(who, "roleplay_voices")) return json({ error: "not permitted" }, 403);
   const obj = await env.BOARD.get("roleplay-voices/ratings.json");
   return json(obj ? await obj.json() : { ratings: [] });
 }
@@ -1562,7 +1559,7 @@ async function roleplayGrade(request, env) {
  */
 async function roleplayHistory(request, env, producer, beta) {
   // A producer sees only their own sessions (Frank, 2026-09-29); beta and
-  // other producers' lists are for ROLEPLAY_HISTORY_VIEWERS.
+  // other producers' lists are for staff.json's `roleplay_history`.
   const scope = rpScope(request, env);
   if (!scope.all && (beta || !producer || producer !== scope.producer)) return json({ sessions: [] });
   // beta=1 lists every beta session, whoever ran it; never mixed with the
@@ -1590,7 +1587,7 @@ async function roleplayHistory(request, env, producer, beta) {
 /* ---- Role Play session history (Frank, 2026-09-29: "a full history of role
    play sessions ... producers see their own") ----------------------------
 
-   Who sees what: an email in ROLEPLAY_HISTORY_VIEWERS (wrangler.jsonc) sees
+   Who sees what: an email in staff.json's `roleplay_history` sees
    every producer's sessions and the beta ones; a producer's own email
    (RP_PRODUCER_EMAILS -- the addresses the staff digest goes to,
    digest_config.RECIPIENTS_STAFF) sees only their own; anyone else, none.
@@ -1602,32 +1599,22 @@ async function roleplayHistory(request, env, producer, beta) {
    also compares the index with what is actually in R2 and adds any session
    it lacks (up to 40 a call), so a session saved before the index existed,
    or a lost write, heals itself. A session opens in full from its own file. */
-const RP_PRODUCER_EMAILS = {
-  "crystal@floresinsuranceagency.com": "Crystal Mango",
-  "lorena@floresinsuranceagency.com": "Lorena Gonzalez",
-  "mike@floresinsuranceagency.com": "Mike Olvera",
-  "coral@floresinsuranceagency.com": "Coral Barwick",
-  "sarahi@floresinsuranceagency.com": "Sarahi Chin",
-};
+const RP_PRODUCER_EMAILS = PRODUCER_EMAILS;   // staff.json's producers
 const RP_INDEX_KEY = "roleplay-index.json";
 
 
 /** GET /api/me -> {email, name}: who Access says is looking, with the first
  * name the board greets them by (Frank, 2026-10-01). Producers from
  * RP_PRODUCER_EMAILS; everyone else the mailbox name, capitalised. */
-const FIRST_NAMES = {
-  "frank@floresinsuranceagency.com": "Frank", "francisco@floresinsuranceagency.com": "Francisco",
-  "veronica@floresinsuranceagency.com": "Veronica", "amanda@floresinsuranceagency.com": "Amanda",
-  "debbie@floresinsuranceagency.com": "Debbie",
-};
+const FIRST_NAMES = STAFF_FIRST_NAMES;   // staff.json
 /* Who may log a sale for whom (Frank, 2026-10-01: "Amanda Crystal and myself
  * are the only ones that can log sales for everyone, since coral and sarahi
  * are on a team they can log sales for each other as well"). Everyone else
  * who is a producer logs their own; anyone else logs nothing. The same
  * identity decides Role Play: a producer practices as themselves. */
-const SALES_LOG_ALL = new Set(["frank@floresinsuranceagency.com", "amanda@floresinsuranceagency.com", "crystal@floresinsuranceagency.com"]);
-const SALES_LOG_TEAMS = [["coral@floresinsuranceagency.com", "sarahi@floresinsuranceagency.com"]];
-const SALES_LOGGERS = [...Object.values(RP_PRODUCER_EMAILS), "Amanda Torricellas"];
+const SALES_LOG_ALL = new Set(boardEmails("sales_log_all"));   // staff.json
+const SALES_LOG_TEAMS = SALES_TEAMS;
+const SALES_LOGGERS = [...Object.values(RP_PRODUCER_EMAILS), ...SALES_SHEET_NAMES];
 function identityOf(request, env) {
   const email = String((ACCESS_IDENTITY.get(request) || {}).email || "").toLowerCase();
   const producer = RP_PRODUCER_EMAILS[email] || "";
@@ -1746,11 +1733,9 @@ const CARD_NOTES_KEY = "card-notes/notes.json";
  * time"). The nightly and the checkpoints write each card's own doubts to
  * review/<day>.json ({doubts: {card key: [[kind, text]]}}); Frank's marks go
  * in the same file ({reviews: {card key: {verdict, by, at}}}). Both are
- * CARD_REVIEW_VIEWERS' alone. */
+ * staff.json's `card_review` people's alone. */
 function mayReview(email, env) {
-  const allowed = String((env && env.CARD_REVIEW_VIEWERS) || "").toLowerCase()
-    .split(",").map((x) => x.trim()).filter(Boolean);
-  return !!email && allowed.includes(email);
+  return hasBoard(email, "card_review");
 }
 async function cardReviewRead(env, day) {
   const obj = await env.BOARD.get(`review/${day}.json`);
@@ -1819,9 +1804,7 @@ async function cardNotesPost(request, env) {
 
 function rpScope(request, env) {
   const who = String((ACCESS_IDENTITY.get(request) || {}).email || "").toLowerCase();
-  const all = String(env.ROLEPLAY_HISTORY_VIEWERS || "").toLowerCase()
-    .split(",").map((x) => x.trim()).filter(Boolean);
-  return { all: !!who && all.includes(who), producer: RP_PRODUCER_EMAILS[who] || "" };
+  return { all: hasBoard(who, "roleplay_history"), producer: RP_PRODUCER_EMAILS[who] || "" };
 }
 
 function rpMaySee(scope, key) {

@@ -33,6 +33,8 @@ import json
 import pathlib
 import re
 
+import staff
+
 AZ = dt.timezone(dt.timedelta(hours=-7))
 ROOT = pathlib.Path(__file__).resolve().parent
 WINDOW_SECONDS = 3600          # one task per person per rolling hour
@@ -132,11 +134,7 @@ def build_index_live():
 # csr id -> first name. The service-ticket list endpoint returns
 # csrFirstname as null on every row, so this is the only way to name who a
 # live SR is assigned to (Frank, 2026-09-02).
-CSR_NAMES = {
-    83597: "Debbie", 174445: "Crystal", 82587: "Lorena", 185441: "Sarahi",
-    105006: "Amanda", 185440: "Coral", 82588: "Mike", 82589: "Frank",
-    82590: "Adrian", 82372: "Francisco",
-}
+CSR_NAMES = {p["az_id"]: staff.first(p) for p in staff.tagged("task_assignee")}
 
 
 def route(hit):

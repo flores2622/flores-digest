@@ -26,6 +26,8 @@ any range up:
 """
 import datetime as dt
 
+import staff
+
 CLAIM_WORKFLOWS = {"Claim"}
 CLAIM_WORKFLOW_ID = 23672
 
@@ -33,8 +35,7 @@ CLAIM_WORKFLOW_ID = 23672
 # 2026-10-02: "yes, the ops team and crystal") -- of the service team that is
 # Amanda and Crystal; Debbie is not licensed. By AgencyZoom employee id (the
 # SR's `csr`) and by name (its `createdBy`).
-LICENSED = {82589: "Frank Flores", 82372: "Francisco Flores", 82592: "Veronica Flores",
-            105006: "Amanda Torricellas", 174445: "Crystal Mango"}
+LICENSED = {p["az_id"]: p["name"] for p in staff.tagged("licensed")}   # staff.json
 
 # The type of claim is the SR's own AgencyZoom category (Frank, 2026-10-02:
 # "type of claim"; /v1/api/service-categories). Matched by id, so a rename in

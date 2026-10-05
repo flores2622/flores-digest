@@ -7,6 +7,7 @@ import collections
 import datetime as dt
 import re
 import lead_sources
+import staff
 
 # --- time -------------------------------------------------------------------
 AZ_TZ = dt.timezone(dt.timedelta(hours=-7))   # Arizona: UTC-7, never DST
@@ -23,35 +24,23 @@ AZ_TZ = dt.timezone(dt.timedelta(hours=-7))   # Arizona: UTC-7, never DST
 SEND_OPS_AZ = "18:30"      # = 01:30 UTC next day
 SEND_STAFF_AZ = "18:30"    # same run, same moment
 
-RECIPIENTS_OPS = ["frank@floresinsuranceagency.com",
-                  "francisco@floresinsuranceagency.com",
-                  "veronica@floresinsuranceagency.com",
-                  "amanda@floresinsuranceagency.com"]
+# Who gets which email is each person's `digest` in staff.json.
+RECIPIENTS_OPS = staff.digest_recipients("ops")
 # Coral and Sarahi added to the staff list by Frank, 2026-08-14. They receive
 # the digest even though they are excluded from every figure in it.
-RECIPIENTS_STAFF = ["crystal@floresinsuranceagency.com",
-                    "lorena@floresinsuranceagency.com",
-                    "mike@floresinsuranceagency.com",
-                    "debbie@floresinsuranceagency.com",
-                    "coral@floresinsuranceagency.com",
-                    "sarahi@floresinsuranceagency.com"]
-SENDER = "salesdigest@floresinsuranceagency.com"
+RECIPIENTS_STAFF = staff.digest_recipients("staff")
+SENDER = staff.AGENCY["sender"]
 
 # --- roster (HANDOFF_4 s5) --------------------------------------------------
-# Producers whose numbers are counted. Team straight-sums scale x3, not x5.
-PRODUCERS = {
-    "Crystal Mango":   {"ext": "106", "rc_id": "193226052", "az_id": 174445},
-    "Lorena Gonzalez": {"ext": "104", "rc_id": "173445052", "az_id": 82587},
-    "Mike Olvera":     {"ext": "105", "rc_id": "173446052", "az_id": 82588},
-    # Frank, 2026-08-24: "lets get Sarahi and Coral added on as regular
-    # producers effective today." This lands the s6 decision four days ahead of
-    # the 2026-08-28 review date, which is therefore closed, not pending.
-    # Both have full Insightful records now -- Coral from the start, Sarahi from
-    # 2026-08-25, when her licence was assigned. Both count in every figure,
-    # including the team weighted utilization.
-    "Coral Barwick":   {"ext": "108", "rc_id": "774861052", "az_id": 185440},
-    "Sarahi Chin":     {"ext": "109", "rc_id": "774862052", "az_id": 185441},
-}
+# Producers whose numbers are counted: everyone `producer` in staff.json,
+# name -> {ext, rc_id, az_id}, in that file's order.
+# Frank, 2026-08-24: "lets get Sarahi and Coral added on as regular
+# producers effective today." This lands the s6 decision four days ahead of
+# the 2026-08-28 review date, which is therefore closed, not pending.
+# Both have full Insightful records now -- Coral from the start, Sarahi from
+# 2026-08-25, when her licence was assigned. Both count in every figure,
+# including the team weighted utilization.
+PRODUCERS = {p["name"]: staff.phone_ids(p) for p in staff.producers()}
 TEAM_SCALE = len(PRODUCERS)  # 5 as of 2026-08-24 (was 3)
 
 # Shown as placeholders only, excluded from every calculation.
@@ -396,13 +385,9 @@ def placeholder_sales(day, policies, source_map):
     return real_sales(day, policies, source_map,
                       {v["az_id"]: k for k, v in PLACEHOLDERS.items()})
 
-# Non-producer extensions.
-OTHER_EXT = {
-    "Veronica Flores":    {"ext": "101", "rc_id": "173440052"},
-    "Amanda Torricellas": {"ext": "102", "rc_id": "173443052", "az_id": 105006},
-    "Debbie Aguilera":    {"ext": "103", "rc_id": "173444052", "az_id": 83597},
-    "Frank Flores":       {"ext": "33",  "rc_id": "173442052", "az_id": 82589},
-}
+# Non-producer extensions: everyone else in staff.json with a phone extension.
+OTHER_EXT = {p["name"]: staff.phone_ids(p) for p in staff.active()
+             if not p.get("producer") and p.get("ext")}
 # Debbie is a recipient and appears in Utilization; she is not a producer.
 # AgencyZoom agrees: isProducer False. francisco@ has no phone extension --
 # confirmed correct as a recipient.
@@ -425,7 +410,7 @@ UTIL_PANEL_ORDER = ["Crystal Mango", "Lorena Gonzalez", "Mike Olvera",
 # who joins before their licence does.
 NO_INSIGHTFUL_LICENCE = set()
 # Francisco holds an active licence but produces no attendance rows.
-LICENSED_NOT_TRACKED = {"Francisco Flores"}
+LICENSED_NOT_TRACKED = {p["name"] for p in staff.tagged("insightful_not_tracked")}
 
 # --- exclusion rules (HANDOFF_4 s5) -----------------------------------------
 # Leads assigned to these people are TEST/TRAINING leads. Excluded from every
@@ -478,8 +463,8 @@ def is_test_lead(lead):
 # period, add them here deliberately and remove them the day CLAUDE.md
 # records their own producer cutover -- do not let it linger past that date
 # again.
-TRAINING_LEAD_OWNERS = {82589,   # Frank Flores
-                        105006}  # Amanda Torricellas
+# staff.json's `training_lead_owner` tag: Frank Flores and Amanda Torricellas.
+TRAINING_LEAD_OWNERS = {p["az_id"] for p in staff.tagged("training_lead_owner")}
 
 # Service, renewal and change work is excluded ENTIRELY -- from the numbers and
 # from the report. A task qualifies if it hangs off a CUSTOMER record rather

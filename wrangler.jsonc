@@ -49,35 +49,10 @@
   // every future deploy carries them regardless of dashboard state.
   "vars": {
     "ACCESS_TEAM_DOMAIN": "floresinsuranceagency",
-    "ACCESS_AUD": "46509102362d6d3f7a980163995a9ecda620eaace3733aa53beab032a2538437",
-    // Who may open the Commercial Center (site/worker.js requireCommercial).
-    // Commercial is Frank's alone (2026-09-24). Comma-separated emails, as
-    // Cloudflare Access reports them; empty means nobody.
-    "COMMERCIAL_VIEWERS": "frank@floresinsuranceagency.com",
-    // Who sees what Coeus has cost, per person (site/coeus.js coeusUsage;
-    // Frank, 2026-10-02). Same format.
-    "COEUS_USAGE_VIEWERS": "frank@floresinsuranceagency.com",
-    // Apollo's Academy > Apollo's doubts: the cards Apollo was unsure of or
-    // heard something new on, and Apollo's own notes on them (Frank,
-    // 2026-10-05: "visible to only me").
-    "CARD_REVIEW_VIEWERS": "frank@floresinsuranceagency.com",
-    // Who sees Role Play's voice ratings table (site/worker.js
-    // roleplayVoiceRatings; Frank, 2026-09-29). Same format.
-    "ROLEPLAY_VOICE_VIEWERS": "frank@floresinsuranceagency.com",
-    // Who sees the new-business rotation (site/rotation.js; Frank,
-    // 2026-10-02: "only be visible to debiie, crystal, and the ops team")
-    // and logs its turns; ROTATION_EDITORS also change an order or who is
-    // next. Same format.
-    "ROTATION_VIEWERS": "debbie@floresinsuranceagency.com,crystal@floresinsuranceagency.com,frank@floresinsuranceagency.com,francisco@floresinsuranceagency.com,veronica@floresinsuranceagency.com,amanda@floresinsuranceagency.com",
-    "ROTATION_EDITORS": "debbie@floresinsuranceagency.com,frank@floresinsuranceagency.com,francisco@floresinsuranceagency.com,veronica@floresinsuranceagency.com,amanda@floresinsuranceagency.com",
-    // Who sees the lead scrub tracker and marks leads off (site/scrub.js;
-    // Frank, 2026-10-02: "ops team"); SCRUB_EDITORS also import, rename and
-    // delete lists. Same format.
-    "SCRUB_VIEWERS": "frank@floresinsuranceagency.com,francisco@floresinsuranceagency.com,veronica@floresinsuranceagency.com,amanda@floresinsuranceagency.com",
-    "SCRUB_EDITORS": "frank@floresinsuranceagency.com,francisco@floresinsuranceagency.com,veronica@floresinsuranceagency.com,amanda@floresinsuranceagency.com",
-    // Who sees EVERY producer's Role Play session history and the beta
-    // sessions (site/worker.js rpScope; Frank, 2026-09-29). A producer always
-    // sees their own. Same format.
-    "ROLEPLAY_HISTORY_VIEWERS": "frank@floresinsuranceagency.com,francisco@floresinsuranceagency.com,veronica@floresinsuranceagency.com,amanda@floresinsuranceagency.com"
+    "ACCESS_AUD": "46509102362d6d3f7a980163995a9ecda620eaace3733aa53beab032a2538437"
+    // Who may open each guarded part of the board (Commercial, Coeus usage,
+    // Apollo's doubts, voice ratings, Rotation, Lead Scrub, Role Play
+    // history) is each person's `board` list in staff.json, read through
+    // site/staff.js -- no longer the *_VIEWERS / *_EDITORS vars here.
   }
 }

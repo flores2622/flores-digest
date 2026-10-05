@@ -22,7 +22,7 @@
    etag-guarded and retried, like the rotation: two people ticking leads on
    the same list at once both land.
 
-   Who sees it is SCRUB_VIEWERS (wrangler.jsonc); SCRUB_EDITORS also import,
+   Who sees it is staff.json's `scrub`; `scrub_edit` also import,
    rename and delete lists and remove leads. Every change records who made
    it and when, from the verified Access email. */
 
@@ -45,14 +45,15 @@ export const FIELDS = [
 ];
 // Filled in for a lead to be done (plus both boxes).
 export const DONE_FIELDS = ["apex", "az", "lead"];
+import { hasBoard } from "./staff.js";
+
 const COLS = ["name", "phone", "email", "az_id", "assigned", "source", "stage"];
 const MAX_ROWS = 5000, MAX_EXTRA = 30, MAX_VAL = 200;
 
 const azToday = () => new Date(Date.now() - 7 * 3600000).toISOString().slice(0, 10);
-const emails = (s) => String(s || "").toLowerCase().split(",").map((x) => x.trim()).filter(Boolean);
 function access(me, env) {
-  const edit = emails(env.SCRUB_EDITORS).includes(me.email);
-  return { see: edit || emails(env.SCRUB_VIEWERS).includes(me.email), edit };
+  const edit = hasBoard(me.email, "scrub_edit");
+  return { see: edit || hasBoard(me.email, "scrub"), edit };
 }
 const json = (body, status = 200) => new Response(JSON.stringify(body), {
   status, headers: { "content-type": "application/json; charset=utf-8", "cache-control": "no-store" } });

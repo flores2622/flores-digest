@@ -32,18 +32,15 @@
  * way the sheet spells it: "Cross-Sell", "FFR-Cross Sell", "Existing client
  * purchased a new", "Home no Auto" ...). */
 
+import { COMMISSION_UNITS } from "./staff.js";
+
 const TIER_NAMES = ["Good", "Better", "Best", "Great", "Excellent", "Outstanding"];
 const RATES = [0.03, 0.033, 0.0429, 0.0438, 0.0444, 0.05];
 export const SCHEDULES = {
   individual: { mins: [25000, 30000, 35000, 40000, 45000, 50000], split: 1 },
   team: { mins: [50000, 60000, 70000, 80000, 90000, 100000], split: 0.5 },
 };
-export const UNITS = [
-  { key: "crystal", label: "Crystal", members: ["Crystal Mango"], schedule: "individual" },
-  { key: "lorena", label: "Lorena", members: ["Lorena Gonzalez"], schedule: "individual" },
-  { key: "mike", label: "Mike", members: ["Mike Olvera"], schedule: "individual" },
-  { key: "team", label: "Sarahi & Coral", members: ["Sarahi Chin", "Coral Barwick"], schedule: "team" },
-];
+export const UNITS = COMMISSION_UNITS;   // staff.json
 export const PAY = { life: 100, bundle: 50, xsell: 25, umbrella: 25, business: 0.035, kraftMin: 10000, kraft: 300 };
 
 export function tiersOf(schedule) {

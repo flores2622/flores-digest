@@ -1880,7 +1880,7 @@ const CENTERS = {
   // Apollo's Academy (Frank, 2026-10-02: the Coaching and Learning Centers
   // in one): the coaching page's three views come first, then practice.
   academy: [["coaching", "Coaching"], ["roleplay", "Role Play"], ["rphistory", "Session History"], ["training", "Training"], ["blueprint", "Apollo's Road Map"],
-    // Frank's alone (Frank, 2026-10-05; the Worker's CARD_REVIEW_VIEWERS, /api/me `review`).
+    // Frank's alone (Frank, 2026-10-05; staff.json's `card_review`, /api/me `review`).
     ["review", "Apollo's Doubts", "review"]],
   service: [["service", "Service Digest"], ["renewals", "Renewals"], ["athenamap", "Athena's Road Map"]],
   claims: [["claims", "Claims"]],
@@ -4950,7 +4950,7 @@ document.addEventListener("click", async ev => {
    first time?") -----------------------------------------------------------
    Two sources, side by side: what Apollo itself wrote down as unsure or new
    when it read the call (from 2026-10-05; review/<day>.json, served to
-   CARD_REVIEW_VIEWERS alone), and checks on the card that work on every
+   staff.json's `card_review` alone), and checks on the card that work on every
    day -- a read whose speakers are unknown or cut short, verdicts that
    disagree, an objection or lead source Apollo has no group for. Frank
    marks each "Looks right" or "Needs a fix" (a sticky note on the card is
@@ -6376,8 +6376,8 @@ function wireVoiceFeedback() {
   };
 }
 
-/* Voice ratings, per voice (Frank only: ROLEPLAY_VOICE_VIEWERS in
-   wrangler.jsonc). null = not asked yet, false = not permitted. */
+/* Voice ratings, per voice (Frank only: staff.json's
+   `roleplay_voices`). null = not asked yet, false = not permitted. */
 let RP_VOICE_RATINGS = null;
 function rpVoiceRatingsHtml() {
   if (RP_VOICE_RATINGS === null) {
@@ -8225,9 +8225,9 @@ async function paintTab() {
   } else if (view === "commercial") {
     await paintCommercial();
   } else if (view === "rotation") {
-    await rotationPaint();   // rotation.js; only reachable for ROTATION_VIEWERS
+    await rotationPaint();   // rotation.js; only reachable for staff.json's `rotation`
   } else if (view === "scrub") {
-    await scrubPaint();      // scrub.js; only reachable for SCRUB_VIEWERS
+    await scrubPaint();      // scrub.js; only reachable for staff.json's `scrub`
   }
 }
 

@@ -37,9 +37,12 @@ policy records themselves carry no household.
 import re
 
 import claims
+import staff
 
-FRANK_ID = 82589                     # AgencyZoom user id; also the CSR id on SRs
-FRANK_NAME = "Frank Flores"          # as an SR's modifiedBy prints it
+# staff.json's `commercial_owner`: AgencyZoom user id (also the CSR id on
+# SRs) and the name as an SR's modifiedBy prints it.
+FRANK_ID = staff.one("commercial_owner")["az_id"]
+FRANK_NAME = staff.one("commercial_owner")["name"]
 RENEWAL_WORKFLOWS = {"Commercial Renewals"}
 SERVICE_WORKFLOWS = {"Service Pipeline"}
 

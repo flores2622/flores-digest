@@ -237,7 +237,7 @@ Everything caches under `data/`, so a re-run resumes rather than restarting.
 - **Apollo's Doubts** (Frank, 2026-10-05: "a list ... of questionable or
   unsure coaching calls ... or maybe even of things it is hearing for the
   first time"; "visible to only me"). Apollo's Academy > Apollo's Doubts,
-  shown only to `CARD_REVIEW_VIEWERS` (wrangler.jsonc; `/api/me` `review`).
+  shown only to staff.json's `card_review` (`/api/me` `review`).
   Two sources: **Apollo's own** -- each read returns `doubts` ([kind, text],
   kind "unsure" or "new"; METHODOLOGY.md's Output format), which
   `coaching_cards.split_doubts` takes OFF the card before publishing (the day
@@ -311,7 +311,7 @@ Everything caches under `data/`, so a re-run resumes rather than restarting.
   grades in English whatever the call's language. **Producers rate the voice
   after each graded session** (stars, again yes / no, a comment), saved on
   the session and in `roleplay-voices/ratings.json`; the ratings table on
-  the Role Play tab is Frank's alone (`ROLEPLAY_VOICE_VIEWERS`). **Every
+  the Role Play tab is Frank's alone (`roleplay_voices` (staff.json)). **Every
   prospect has an AI-drawn headshot that glows green while they speak**
   (Frank, 2026-09-29: "remove the talking face, its too slow and cuts me
   off. lets just do headshots of AI generated faces with glow when they are
@@ -353,7 +353,7 @@ Everything caches under `data/`, so a re-run resumes rather than restarting.
   checklist met, the checklist items missed most, the objections drilled),
   and every session, which opens in place to Apollo's grade and the whole
   conversation. **Who sees what is the Worker's call, from the Access email**
-  (`rpScope`): `ROLEPLAY_HISTORY_VIEWERS` (wrangler.jsonc -- Frank and the
+  (`rpScope`): staff.json's `roleplay_history` (Frank and the
   ops recipients) see everyone and the beta sessions; a producer
   (`RP_PRODUCER_EMAILS`, their staff-digest address) sees only their own --
   on the Role Play tab's Past sessions list too; anyone else sees none. The
@@ -486,6 +486,27 @@ Everything caches under `data/`, so a re-run resumes rather than restarting.
   written on every call including voicemails.
 
 ## Identity and attribution
+
+**`staff.json` is the one staff list** (Frank, 2026-10-05: "start with the
+staff list" -- the first step to running Pantheon for another agency). Every
+person's AgencyZoom id, RingCentral extension and id, email, which nightly
+email they get, whether they are a producer, their Service Center role, their
+pipeline tags (licensed, hybrid, training-lead owner, commercial owner ...)
+and their `board` keys -- who may open Commercial, Rotation, Lead Scrub,
+Apollo's doubts, voice ratings, Coeus usage, every Role Play history,
+everyone's commission, and log sales for everyone -- live there and nowhere
+else. `staff.py` reads it for Python and says what every tag and key means;
+digest_config, missed_call_tasks / _audit, service_digest, service_playbook,
+claims, commercial, lead_sources, insightful_client, sanity_gate and
+sales_log_auto build their old constants from it, names and shapes
+unchanged. The Worker reads it through `site/staff.js` from
+`site/staff_data.js`, which `python3 staff.py --write-js` writes -- never by
+hand; `python3 staff.py --check` fails when it is stale. The `*_VIEWERS` /
+`*_EDITORS` vars are gone from wrangler.jsonc. Checked identical, every
+constant, before and after the move. Display orders and badge colours
+(`UTIL_PANEL_ORDER`, `util_panel.PANEL_ORDER`, `panels.DOT_HEX`,
+`coaching_cards.ROSTER_ORDER`, index.html's roster copies) still name people
+where they are; they are next.
 
 - **Producers**: Crystal Mango, Lorena Gonzalez, Mike Olvera, Coral Barwick,
   Sarahi Chin. Coral and Sarahi are full producers as of 2026-08-24 — the
@@ -848,10 +869,10 @@ does not move). A turn carries who
 was up when it was logged, so two people logging at once can't hand out the
 same turn (409). Taking back the newest turn on a rotation gives that person
 the turn back. **Only Debbie, Crystal and the ops team see it**
-(`ROTATION_VIEWERS`, wrangler.jsonc -- "only be visible to debiie, crystal,
+(staff.json's `rotation` -- "only be visible to debiie, crystal,
 and the ops team"); anyone else gets a 403 and the page never enters the
 menu or the search (`site/public/rotation.js` adds it only when the Worker
-answers). Everyone who sees it logs turns; `ROTATION_EDITORS` (Debbie and
+answers). Everyone who sees it logs turns; `rotation_edit` (staff.json) (Debbie and
 the ops team) change an order or who is next; a line is removed by whoever
 logged it or an editor. The board shows the folio's log and each person's
 count, any past folio from the picker. The sheet's Sep 19 - Oct 19 tab was
@@ -883,8 +904,8 @@ the "*Security Classification" column and the Total row, and by default
 makes one lead per person (the first list, Farmers' "Quotes with Risk
 Segment - 2 or 3 Star", Oct 2025: 167 quotes, 125 people); every unmatched
 column is kept on the lead as detail and filterable. **Only the ops team
-sees it** (Frank, 2026-10-02: "ops team"): `SCRUB_VIEWERS` and
-`SCRUB_EDITORS` are both Frank, Francisco, Veronica and Amanda; anyone else
+sees it** (Frank, 2026-10-02: "ops team"): `scrub` (staff.json) and
+`scrub_edit` (staff.json) are both Frank, Francisco, Veronica and Amanda; anyone else
 gets a 403 and the page never enters the menu or the search.
 
 ## Apollo's Road Map (ARM) and the tour
@@ -907,7 +928,7 @@ what everything means, how the model coaches, where everything is ... in
 regular language, not AI prompt language"; "Apollos road map should be the
 name of the full tab, with a dropdown that has options for manager/coaching,
 and one for the 3 producer levels"): **Manager / Coaching** (the ARM, shown
-only to `ROLEPLAY_HISTORY_VIEWERS`, via the Worker's `/api/me`) and **New /
+only to `roleplay_history` (staff.json), via the Worker's `/api/me`) and **New /
 Mid-Level / Experienced Producer** for everyone, plus the **Out of Office
 Checklist** (Frank, 2026-10-02: a producer's hand-over before time off, each
 box with its how-to steps; ticks are kept per browser; **a sale closed while
@@ -1452,7 +1473,7 @@ Crystal (hybrid); credit always goes to whoever COMPLETED the SR or task.
   (Frank, 2026-10-02: "remove any not licensed description, and only the
   ops team should see the not licensed card"): the red person card, the Not
   Licensed tile, its list and the chip in the Opened by column show only
-  when `/api/me`'s `all` is true (`claimsOps`, = `ROLEPLAY_HISTORY_VIEWERS`),
+  when `/api/me`'s `all` is true (`claimsOps`, = `roleplay_history` (staff.json)),
   and the Worker takes the flags out of every service day for anyone else
   (`site/claims_view.js claimsForViewer`: no `flags`, no row `problems` /
   `licensed`), Coeus's `service_day` tool too. No page text, guide, tour
@@ -1489,7 +1510,7 @@ resolutions, Unable to Contact retained, and the section is visible to Frank onl
 builds `commercial/<day>.json` from `daily.py` after the service board (board
 only, never raises) -- rows of every commercial SR completed that day, plus
 the open queue at the end of the day from that day's live SR file. The
-Worker's `/api/commercial` answers only the emails in `COMMERCIAL_VIEWERS`
+Worker's `/api/commercial` answers only the emails in `commercial` (staff.json)
 (wrangler.jsonc); the left-bar entry stays hidden for everyone else. Most
 commercial policy chains stop being updated in AgencyZoom, so a renewal SR
 closed on anything but the six resolutions usually reads "Policy record not
@@ -2215,7 +2236,7 @@ chat panel's header and the home-screen app alike. A face drawn from
 Frank's dog Apollo was on the button for a day (2026-10-04) and is on the
 back burner; `design/apollo_icon.py` keeps that draft, unused. **Everything underneath keeps the Coeus name** so nothing
 saved is lost: `site/coeus.js`, `/api/coeus`, the R2 keys
-`coeus-chats/` and `coeus-usage/`, `COEUS_USAGE_VIEWERS`, the `coeus*`
+`coeus-chats/` and `coeus-usage/`, the `coeus_usage` board key, the `coeus*`
 ids and classes. The section below still calls it Coeus for that reason.
 
 ## Coeus -- the board's assistant (2026-10-01)
@@ -2232,7 +2253,7 @@ reads); "Ask Coeus" is
 also in the search. `POST /api/coeus` (`site/coeus.js`) streams its answer
 over `text/event-stream` with status lines while it reads.
 - **What it knows is the board's own words**: `blueprints.js` (every guide,
-  the Manager / Coaching one only for `ROLEPLAY_HISTORY_VIEWERS`, like the
+  the Manager / Coaching one only for `roleplay_history` (staff.json), like the
   tab), METHODOLOGY.md from "Core judgment" to "Output format", and
   TRAINING.md, in one prompt-cached system block shared by every viewer
   (~26k tokens for a manager, ~21k for staff; a tenth after the first read
@@ -2245,7 +2266,7 @@ over `text/event-stream` with status lines while it reads.
   a range added up like `mergeDayDocs` (up to 45 days), the coaching cards
   (compact, or one lead's in full with its transcript), a lead search over
   recent days, the Service Center page, the Renewals report, the Commercial
-  Center (COMMERCIAL_VIEWERS only) and the Role Play index (by `rpScope`).
+  Center (`commercial` (staff.json) only) and the Role Play index (by `rpScope`).
   No AgencyZoom, RingCentral or Insightful request is ever made. Each tool
   hands back a compact reading (`compactSales`, `compactCard`, ...); a
   document is far too big to send whole.
@@ -2275,7 +2296,7 @@ over `text/event-stream` with status lines while it reads.
   `coeus-usage/<day>.json` under the asker (`recordUsage`), with an
   estimated cost at the model's list prices (`PRICE`; update it if the
   model or prices change). `GET /api/coeus/usage?from=&to=` adds it up per
-  person and per day for `COEUS_USAGE_VIEWERS` (wrangler.jsonc, Frank);
+  person and per day for staff.json's `coeus_usage` (Frank);
   the drawer's **Usage** button shows it (hidden on a 403), and the
   `coeus_usage` tool lets those viewers ask Coeus itself. The figure is an
   estimate, not the bill.
