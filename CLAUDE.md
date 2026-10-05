@@ -1883,7 +1883,7 @@ repaint clears the list).
   both Road Maps: a paper road map with a winding route (Apollo's red with
   Dial / Discovery / Quote / Close, Athena's green with Listen / Understand
   / Handle / Follow up), a 66 shield and a compass; Service: the ranch
-  (windmill, water tank, FLORES gate); Renewals: the desert in bloom
+  (windmill, water tank, RANCHO SEGURO gate); Renewals: the desert in bloom
   (poppies, ocotillo, saguaro flowers, butterflies); Commercial: a saloon
   (Frank, 2026-10-02: "a saloon, not a city skyline" -- the false front and
   SALOON sign, batwing doors, a lantern, barrels, a horse at the hitching
@@ -1963,7 +1963,7 @@ repaint clears the list).
   INSURED, the station POLICY STATION, the harbor SAFE HARBOR SAILING /
   DRY DOCK BOATYARD / FULL COVERAGE, the lodge SUMMIT LODGE, the arcade's
   sign QUOTE and its castle flag BOSS, Phoenix's boulevard PREMIUM PKWY and
-  scoreboard HOME, the desert's ranch gate RANCHO. **The coaching cards'
+  scoreboard HOME, the desert's ranch gate RANCHO SEGURO ("seguro" is insurance; Frank, 2026-10-05: "make it Rancho *Something Insurance themed*"). **The coaching cards'
   strips carry no words** (Frank, 2026-10-05: "remove text from the theme on
   the coaching cards, its distracting"): `build.py` strips every `<text>`
   from a world's strips, and the desert's inline strips have none; the
