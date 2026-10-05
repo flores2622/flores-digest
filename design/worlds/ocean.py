@@ -67,7 +67,7 @@ def waves(n, x0, x1, y0, y1, seed, c="#fff", op=.28, avoid=None):
         o.append(f'<path d="M{x} {y} q{w//2} -5 {w} 0 t{w} 0" fill="none" stroke="{c}" stroke-opacity="{op}" stroke-width="2" stroke-linecap="round"/>')
     return ''.join(o)
 
-def sailboat(x, wy, s, hull, night, mast=120, sails=None, flag="#d8323f", flip=False, name=""):
+def sailboat(x, wy, s, hull, night, mast=120, sails=None, flag="#d8323f", flip=False, name="", flutter=0):
     """Hull centred on x with its waterline at wy; local units, scaled by s."""
     cab = "#e9e4d8" if not night else "#8a8f9e"; ink = "#2f3440" if not night else "#11141c"
     o = [f'<g transform="translate({N(x)} {N(wy)}) scale({-s if flip else s} {s})">']
@@ -76,7 +76,11 @@ def sailboat(x, wy, s, hull, night, mast=120, sails=None, flag="#d8323f", flip=F
     else:
         o.append(f'<path d="M0 -27 L40 -29 L40 -24 L0 -23 Z" fill="{"#2f5f8a" if not night else "#1c2a44"}"/>')
     o.append(f'<line x1="0" y1="-16" x2="0" y2="{-mast}" stroke="{ink}" stroke-width="2.5"/>')
-    o.append(f'<path d="M0 {-mast} L18 {-mast+5} L0 {-mast+10} Z" fill="{flag}"/>')
+    if flutter:  # the pennant lifts and falls in the breeze
+        d0 = f"M0 {N(-mast)} L18 {N(-mast+5)} L0 {N(-mast+10)} Z"; d1 = f"M0 {N(-mast)} L16 {N(-mast+7.5)} L0 {N(-mast+10)} Z"
+        o.append(f'<path d="{d0}" fill="{flag}"><animate attributeName="d" values="{d0};{d1};{d0}" dur="{flutter}s" repeatCount="indefinite"/></path>')
+    else:
+        o.append(f'<path d="M0 {-mast} L18 {-mast+5} L0 {-mast+10} Z" fill="{flag}"/>')
     o.append(f'<path d="M-48 -16 L52 -16 Q45 0 30 0 L-38 0 Q-46 -6 -48 -16 Z" fill="{hull}"/>'
              f'<rect x="-46" y="-13" width="95" height="2.5" fill="#fff" opacity=".6"/>'
              f'<rect x="-18" y="-26" width="32" height="10" rx="3" fill="{cab}"/>')
@@ -178,6 +182,23 @@ def buoy(x, y, c, s=1, night=False, light=False):
     o.append('</g>')
     return ''.join(o)
 
+# ------------------------------------------------------------------ movement
+# (Frank, 2026-10-05: "add movement to the other worlds too"). SMIL only -- it plays inside a background picture;
+# build.py's still copy for Reduced motion deletes every <animate*/>, so each element's own attributes are its rest.
+def rock(x, y, deg, dur, delay=0):
+    """a gentle rock about (x, y): a moored boat or a buoy on the swell"""
+    return (f'<animateTransform attributeName="transform" type="rotate" values="{-deg} {x} {y};{deg} {x} {y};{-deg} {x} {y}" '
+            f'dur="{dur}s" begin="{delay}s" repeatCount="indefinite" calcMode="spline" keySplines=".45 0 .55 1;.45 0 .55 1"/>')
+def drift(dx, dy, dur, delay=0):
+    """drift out and back by (dx, dy): gulls gliding, ripples moving"""
+    return (f'<animateTransform attributeName="transform" type="translate" values="0 0;{dx} {dy};0 0" '
+            f'dur="{dur}s" begin="{delay}s" repeatCount="indefinite" calcMode="spline" keySplines=".45 0 .55 1;.45 0 .55 1"/>')
+def in_podium(el):
+    """True when a wave path starts inside the podium zone, which stays still"""
+    import re
+    m = re.search(r'd="M(\d+) (\d+)', el)
+    return bool(m) and 420 < int(m.group(1)) < 1150 and 525 < int(m.group(2)) < 815
+
 # ------------------------------------------------------------------ the Digest picture
 W, H, SPLIT = 1600, 1700, 377
 
@@ -211,8 +232,8 @@ def skyline(night):
         for x, y, w in [(330, 140, 320), (820, 70, 240), (1290, 160, 300), (560, 165, 220)]:
             a(f'<ellipse cx="{x}" cy="{y}" rx="{w // 2}" ry="11" fill="#ffd0b0" opacity=".55"/><ellipse cx="{x + 50}" cy="{y - 9}" rx="{w // 3}" ry="9" fill="#ffe1c8" opacity=".5"/>')
     gc = "#fff" if night else "#3a3346"
-    for x, y, s in [(560, 70, 1.1), (610, 48, .9), (660, 82, .8), (930, 40, 1), (975, 60, .75), (1200, 150, .8)]:
-        a(gull(x, y, s, gc if not night else "#cfd8ee", 3))
+    for i, (x, y, s) in enumerate([(560, 70, 1.1), (610, 48, .9), (660, 82, .8), (930, 40, 1), (975, 60, .75), (1200, 150, .8)]):
+        a(f'<g>{gull(x, y, s, gc if not night else "#cfd8ee", 3)}{drift(26 + i * 5, -6 + (i % 3) * 5, 8 + i * 1.3, -i * 1.7)}</g>')
     # ---------- far shore with the town
     shore = "#7a6478" if not night else "#0b1326"
     a(f'<path d="M0 {SPLIT} L1600 {SPLIT} L1600 404 L0 404 Z" fill="url(#sea)"/>')
@@ -224,7 +245,10 @@ def skyline(night):
         c = r.choice(["#efe0cf", "#e7c3a6", "#cfe0e6", "#f2d48c"]) if not night else "#141d36"
         a(f'<rect x="{x}" y="{402 - h}" width="{w}" height="{h}" fill="{c}"/><path d="M{x - 2} {402 - h} L{x + w / 2:.0f} {394 - h} L{x + w + 2} {402 - h} Z" fill="{"#a5574a" if not night else "#0c1224"}"/>')
         if night and r.random() < .75:
-            wx = x + w // 2 - 3; a(f'<rect x="{wx}" y="{404 - h + 6}" width="6" height="5" fill="#ffd56b"/>'); lights.append(wx + 3)
+            wx = x + w // 2 - 3; lights.append(wx + 3)
+            tw = (f'<animate attributeName="opacity" values="1;1;.25;1" keyTimes="0;.8;.88;1" dur="{5 + len(lights) % 5}s" begin="{-(len(lights) * 1.3) % 7:.1f}s" repeatCount="indefinite"/>'
+                  if len(lights) % 3 == 0 else '')
+            a(f'<rect x="{wx}" y="{404 - h + 6}" width="6" height="5" fill="#ffd56b">{tw}</rect>' if tw else f'<rect x="{wx}" y="{404 - h + 6}" width="6" height="5" fill="#ffd56b"/>')
         x += w + r.randint(2, 14)
     a(f'<rect x="760" y="356" width="12" height="40" fill="{"#efe0cf" if not night else "#141d36"}"/><path d="M756 356 L766 336 L776 356 Z" fill="{"#a5574a" if not night else "#0c1224"}"/>')
     # ---------- the water
@@ -234,16 +258,28 @@ def skyline(night):
     r = random.Random(9)
     for i in range(26):
         y = 412 + i * 13; w = 18 + i * 5 + r.randint(-6, 8)
-        a(f'<rect x="{1080 - w / 2 + r.randint(-12, 12):.0f}" y="{y}" width="{w}" height="3" rx="1.5" fill="{"#ffe1a0" if not night else "#e6ecfb"}" opacity="{max(.15, .8 - i * .025):.2f}"/>')
-    a(waves(70, 0, 1600, 420, 840, 3, "#fff", .22 if not night else .14,
-            avoid=lambda x, y: (520 < x < 1110 and y > 750) or (x > 1220 and y < 760) or (1040 < x < 1300 and 600 < y < 830)))
+        op = max(.15, .8 - i * .025)
+        sh = (f'<animate attributeName="opacity" values="{op:.2f};{op * .35:.2f};{op:.2f}" dur="{3 + (i * 7) % 5 * .6:.1f}s" begin="{-i * .7:.1f}s" repeatCount="indefinite"/>'
+              if y < 530 else '')
+        rx = f'{1080 - w / 2 + r.randint(-12, 12):.0f}'; fc_ = "#ffe1a0" if not night else "#e6ecfb"
+        a(f'<rect x="{rx}" y="{y}" width="{w}" height="3" rx="1.5" fill="{fc_}" opacity="{op:.2f}">{sh}</rect>' if sh else
+          f'<rect x="{rx}" y="{y}" width="{w}" height="3" rx="1.5" fill="{fc_}" opacity="{op:.2f}"/>')
+    wv = waves(70, 0, 1600, 420, 840, 3, "#fff", .22 if not night else .14,
+               avoid=lambda x, y: (520 < x < 1110 and y > 750) or (x > 1220 and y < 760) or (1040 < x < 1300 and 600 < y < 830))
+    wv = [e + '/>' for e in wv.split('/>') if e]
+    a(''.join(e for e in wv if in_podium(e)))
+    rest = [e for e in wv if not in_podium(e)]
+    for k in range(2):  # the ripples drift with the swell, two sets out of step
+        a(f'<g>{"".join(rest[k::2])}{drift(14 if k else -12, 2, 7 + k * 2.5, -k * 3)}</g>')
     # ---------- moored sailboats, masts rising into the sky
     hulls = ["#f4f1ea", "#1f3d66", "#2a8a86", "#c8283a", "#f4f1ea", "#26405f"] if not night else ["#9aa0ae", "#16243c", "#1a4a4c", "#5e1c26", "#9aa0ae", "#16243c"]
     names = ["SEAS THE DEAL", "NO LAPSE", "BUNDLE UP", "SHIP HAPPENS", "PAID IN FULL", "KNOT INSURED"]
     for (bx, wy, s, top, sails), hc, fl, nm in zip([(110, 500, 1.2, 104, None), (250, 468, 1.0, 92, None), (420, 524, 1.3, 70, None),
                                                (565, 480, .9, 120, None), (760, 528, 1.0, 64, None), (905, 512, .9, 108, None)],
                                               hulls, ["#d8323f", "#f2c14e", "#d8323f", "#2f6fa8", "#f2c14e", "#d8323f"], names):
-        a(sailboat(bx, wy, s, hc, night, mast=(wy - 16 * s - top) / s + 16, flag=fl, name=nm))
+        k = names.index(nm)
+        a(f'<g>{sailboat(bx, wy, s, hc, night, mast=(wy - 16 * s - top) / s + 16, flag=fl, name=nm, flutter=round(1.6 + k * .23, 2))}'
+          f'{rock(bx, wy, 1.1 + (k % 3) * .3, 4.5 + k * .7, -k * 1.1)}</g>')
         a(f'<ellipse cx="{bx}" cy="{wy + 4}" rx="{60 * s:.0f}" ry="4" fill="#000" opacity=".12"/>')
     # ---------- the rocky point and the lighthouse (right)
     rk = "#6b5a5a" if not night else "#151b2c"; rk2 = "#55474b" if not night else "#0d1220"; rk3 = "#8a7470" if not night else "#1d2538"
@@ -257,8 +293,9 @@ def skyline(night):
       f'<rect x="1388" y="430" width="10" height="24" fill="{rk2}"/>')
     lh, (lx, ly) = lighthouse(1480, 470, 128, 104, 60, night)
     if night:
-        a(f'<path d="M{lx} {ly - 6} L380 0 L380 200 L{lx} {ly + 6} Z" fill="url(#beam)"/>'
-          f'<path d="M{lx} {ly - 4} L1600 {ly - 40} L1600 {ly + 40} L{lx} {ly + 4} Z" fill="url(#beam2)"/>')
+        a(f'<g><path d="M{lx} {ly - 6} L380 0 L380 200 L{lx} {ly + 6} Z" fill="url(#beam)"/>'
+          f'<path d="M{lx} {ly - 4} L1600 {ly - 40} L1600 {ly + 40} L{lx} {ly + 4} Z" fill="url(#beam2)"/>'
+          f'<animateTransform attributeName="transform" type="rotate" values="0 {lx} {ly};6 {lx} {ly};-3 {lx} {ly};0 {lx} {ly}" dur="10s" repeatCount="indefinite" calcMode="spline" keySplines=".45 0 .55 1;.45 0 .55 1;.45 0 .55 1"/></g>')
     a(lh)
     if night:
         a(f'<circle cx="{lx}" cy="{ly}" r="70" fill="url(#lampg)"/>')
@@ -266,12 +303,12 @@ def skyline(night):
     for x0, y0, fl, sc in [(250, 690, False, 1.55), (1130, 502, True, 1.05)]:
         d = -1 if fl else 1; st = x0 - d * 64 * sc; L = 80 if fl else 150
         a(f'<ellipse cx="{st:.0f}" cy="{y0 - 2}" rx="{18 * sc:.0f}" ry="5" fill="#fff" opacity=".5"/><path d="M{st:.0f} {y0 - 2} q{-d * L // 2} -2 {-d * L} -10 M{st:.0f} {y0 + 2} q{-d * L // 2} 6 {-d * (L - 10)} 18" stroke="#fff" stroke-opacity=".45" stroke-width="3" fill="none" stroke-linecap="round"/>')
-    a(trawler(250, 690, 1.55, "#1f3d66" if not night else "#16243c", night, net=True, name="PREMIUM CATCH"))
-    a(trawler(1130, 502, 1.05, "#c8283a" if not night else "#5e1c26", night, flip=True, net=True, name="REEL QUOTE"))
+    a(f'<g>{trawler(250, 690, 1.55, "#1f3d66" if not night else "#16243c", night, net=True, name="PREMIUM CATCH")}{rock(250, 690, 1.3, 5.5, -2)}</g>')
+    a(f'<g>{trawler(1130, 502, 1.05, "#c8283a" if not night else "#5e1c26", night, flip=True, net=True, name="REEL QUOTE")}{rock(1130, 502, 1.2, 6.3, -4.2)}</g>')
     for x, y, s in [(170, 520, .9), (220, 550, .7), (100, 570, .8), (1240, 440, .7), (1280, 425, .6)]:
         a(gull(x, y, s, "#fff" if not night else "#cfd8ee", 3))
     # channel buoys
-    a(buoy(80, 760, "#c8283a", 1, night, night) + buoy(452, 640, "#2f8f5a", 1, night, night))
+    a(f'<g>{buoy(80, 760, "#c8283a", 1, night, night)}{rock(80, 760, 5, 3.4)}</g><g>{buoy(452, 640, "#2f8f5a", 1, night, night)}{rock(452, 640, 5, 4.1, -1.5)}</g>')
     # ---------- the boardwalk from the point to the pier
     wood = "#b98a58" if not night else "#3e3440"; wood2 = "#8d6640" if not night else "#2a2230"; post = "#6d4c30" if not night else "#1e1822"
     A0, A1, B0, B1 = (1262, 676), (1176, 772), (1296, 694), (1206, 800)

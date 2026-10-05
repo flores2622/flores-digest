@@ -179,7 +179,7 @@ def strap_door(x, y, w, h, iron, dark="#1a1612"):
     return (f'<path d="M{x} {y + h}V{y + r}A{r} {r} 0 0 1 {x + w} {y + r}V{y + h}Z" fill="{dark}"/>'
             f'<path d="{"".join(d)}" stroke="{iron}" stroke-width="3.2"/><path d="M{x} {y + h}V{y + r}A{r} {r} 0 0 1 {x + w} {y + r}V{y + h}" fill="none" stroke="{iron}" stroke-width="4"/>')
 
-def tower(x, base, top, p, n, w0=84, w1=60):
+def tower(x, base, top, p, n, w0=84, w1=60, move=False):
     """The old prison's guard tower as it stands (Frank, 2026-10-05: "make the Yuma prison more
     recognizable"): a squat square stone guardhouse on the round stone water reservoir, an outside
     stair up its side, the open timber lookout deck with its railing, a low hip roof and the flag."""
@@ -216,14 +216,19 @@ def tower(x, base, top, p, n, w0=84, w1=60):
         x0 = x - dw / 2 + (dw / 3) * k; x1 = x0 + dw / 3
         o.append(f'<path d="M{x0:.0f} {ry:.0f}L{x1:.0f} {dk - 6:.0f}M{x1:.0f} {ry:.0f}L{x0:.0f} {dk - 6:.0f}" stroke="{wood}" stroke-width="1.6"/>')
     if n:
-        o.append(f'<circle cx="{x}" cy="{(rf + dk) / 2:.0f}" r="{w0 * .9:.0f}" fill="url(#glow)"/><rect x="{x - 4}" y="{ry - 12:.0f}" width="8" height="10" fill="#ffd98a"/>')
+        fk = pulse("1;.7;.95;.6;1", 3.3) if move else ''
+        o.append(f'<circle cx="{x}" cy="{(rf + dk) / 2:.0f}" r="{w0 * .9:.0f}" fill="url(#glow)">{fk}</circle><rect x="{x - 4}" y="{ry - 12:.0f}" width="8" height="10" fill="#ffd98a">{fk}</rect>')
     # the low hip roof, eaves wide over the deck, and the flag
     ew = dw * 1.22; ph = (rf - top) * .7
     o.append(f'<path d="M{x - ew / 2:.0f} {rf + 4:.0f}L{x - ew * .18:.0f} {rf - ph:.0f}L{x + ew * .18:.0f} {rf - ph:.0f}L{x + ew / 2:.0f} {rf + 4:.0f}Z" fill="{wood}"/>'
              f'<path d="M{x + ew * .04:.0f} {rf - ph:.0f}L{x + ew * .18:.0f} {rf - ph:.0f}L{x + ew / 2:.0f} {rf + 4:.0f}L{x + ew * .2:.0f} {rf + 4:.0f}Z" fill="{wood2}" opacity=".6"/>'
              f'<rect x="{x - ew / 2:.0f}" y="{rf + 2:.0f}" width="{ew:.0f}" height="4" fill="{wood2}"/>')
     fy = rf - ph; fl = max(10, (rf - top) * .55)
-    o.append(f'<path d="M{x} {fy:.0f}V{fy - fl:.0f}" stroke="{iron}" stroke-width="2.5"/><path d="M{x} {fy - fl:.0f}l{fl * .7:.0f} {fl * .18:.0f}l-{fl * .7:.0f} {fl * .18:.0f}Z" fill="#c8442a"/>')
+    f0 = f'M{x} {fy - fl:.0f}l{fl * .7:.0f} {fl * .18:.0f}l-{fl * .7:.0f} {fl * .18:.0f}Z'
+    f1 = f'M{x} {fy - fl:.0f}l{fl * .64:.0f} {fl * .1:.0f}l-{fl * .64:.0f} {fl * .26:.0f}Z'
+    f2 = f'M{x} {fy - fl:.0f}l{fl * .68:.0f} {fl * .24:.0f}l-{fl * .68:.0f} {fl * .12:.0f}Z'
+    fa = f'<animate attributeName="d" values="{f0};{f1};{f0};{f2};{f0}" dur="2.2s" repeatCount="indefinite"/>' if move else ''
+    o.append(f'<path d="M{x} {fy:.0f}V{fy - fl:.0f}" stroke="{iron}" stroke-width="2.5"/><path d="{f0}" fill="#c8442a">{fa}</path>')
     return ''.join(o)
 
 def sally_port(x, base, w, h, p, n):
@@ -240,6 +245,23 @@ def sally_port(x, base, w, h, p, n):
              f'<path d="M{ax0:.0f} {base}V{top + r:.0f}A{r:.0f} {r:.0f} 0 0 1 {ax1:.0f} {top + r:.0f}V{base}" fill="none" stroke="{p["stone"]}" stroke-width="5"/>')
     return ''.join(o)
 
+# ---- movement (Frank, 2026-10-05: "add movement to the other worlds too"). SMIL, which plays inside a
+# background picture; build.py also writes a still copy (every <animate*> taken out) for reduced motion, so
+# each element's own attributes are its resting state. Only the Digest picture moves.
+def show(times, vals, dur, attr="opacity", begin=0):
+    """an <animate> that steps an attribute through vals at keyTimes, looping"""
+    return (f'<animate attributeName="{attr}" values="{";".join(vals)}" keyTimes="{";".join(times)}" '
+            f'dur="{dur}s" begin="{begin}s" calcMode="discrete" repeatCount="indefinite"/>')
+def sway(x, b, deg, dur, delay=0):
+    return (f'<animateTransform attributeName="transform" type="rotate" values="{-deg} {x} {b};{deg} {x} {b};{-deg} {x} {b}" '
+            f'dur="{dur}s" begin="{delay}s" repeatCount="indefinite" calcMode="spline" keySplines=".45 0 .55 1;.45 0 .55 1"/>')
+def drift(dx, dy, dur, delay=0):
+    """a slow there-and-back translate, eased"""
+    return (f'<animateTransform attributeName="transform" type="translate" values="0 0;{dx} {dy};0 0" '
+            f'dur="{dur}s" begin="{delay}s" repeatCount="indefinite" calcMode="spline" keySplines=".45 0 .55 1;.45 0 .55 1"/>')
+def pulse(vals, dur, delay=0):
+    return f'<animate attributeName="opacity" values="{vals}" dur="{dur}s" begin="{delay}s" repeatCount="indefinite"/>'
+
 # ================================================================= the Digest picture
 W, H, SPLIT = 1600, 1700, 377
 HZ = 408
@@ -255,13 +277,14 @@ def skyline(night):
         a(stars(80, 0, W, 0, 330, 5))
         a(moon(1060, 92, 40))
     else:
-        a(sun(1060, 96, 62))
+        a(sun(1060, 96, 62).replace('opacity=".16"/>', 'opacity=".16">' + pulse(".16;.28;.16", 7) + '</path>', 1))
         a(bird(880, 140, 1.1, "#5a4a4a") + bird(905, 128, .8, "#5a4a4a") + bird(1250, 150, .9, "#7a5a50"))
     # the jets: one crossing high under its contrail, one far and small
     ct = "#c8d4f0" if n else "#ffffff"
-    a(contrail(770, 58, 1640, 4, 2, 9, .35 if n else .8, ct) + contrail(770, 58, 1640, 4, 1, 4, .2 if n else .5, ct))
-    a(jet(720, 60, .9, "#3a4250" if not n else "#151a26", night=n))
-    a(contrail(404, 143, 660, 104, 1, 5, .25 if n else .6, ct) + jet(380, 146, .45, "#4a5260" if not n else "#151a26", night=n))
+    # each jet creeps along its own contrail and back, the trail with it
+    a('<g>' + drift(-34, 2.1, 12) + contrail(770, 58, 1640, 4, 2, 9, .35 if n else .8, ct) + contrail(770, 58, 1640, 4, 1, 4, .2 if n else .5, ct)
+      + jet(720, 60, .9, "#3a4250" if not n else "#151a26", night=n) + '</g>')
+    a('<g>' + drift(-22, 3.3, 9, 2) + contrail(404, 143, 660, 104, 1, 5, .25 if n else .6, ct) + jet(380, 146, .45, "#4a5260" if not n else "#151a26", night=n) + '</g>')
     # the jagged ranges on the horizon
     a(jagged(-10, 1610, HZ, 128, 290, p["mtn"], 3, (24, 70)))
     a(jagged(-10, 1610, HZ, 240, 350, p["mtn2"], 8, (30, 80)))
@@ -286,16 +309,20 @@ def skyline(night):
     bx = tx - 48; by = tt + 24
     a(f'<circle cx="{bx}" cy="{by}" r="10" fill="#1f2a4a" stroke="#fff" stroke-width="1.5"/><path d="M{bx - 8} {by + 4}l5 -6l3 3l4 -6l4 9z" fill="#fff"/>'
       f'<text x="{tx + 14}" y="{by + 5}" text-anchor="middle" textLength="92" lengthAdjust="spacingAndGlyphs" font-family="Georgia, serif" font-weight="bold" font-size="13" fill="{ink}">STAY COVERED</text>')
-    if n: a(f'<circle cx="{tx + 8}" cy="{tt - 32}" r="3.5" fill="#ff4a3a"/><circle cx="{tx + 8}" cy="{tt - 32}" r="12" fill="#ff4a3a" opacity=".3"/>')
+    if n: a(f'<g>{show(("0", ".5"), ("1", ".15"), 3)}<circle cx="{tx + 8}" cy="{tt - 32}" r="3.5" fill="#ff4a3a"/><circle cx="{tx + 8}" cy="{tt - 32}" r="12" fill="#ff4a3a" opacity=".3"/></g>')
     # far bank: fields and groves under the mountains' feet
     a(f'<rect x="0" y="{HZ - 6}" width="{W}" height="26" fill="{p["green2"]}"/>')
     a(rows(0, HZ - 2, W, HZ + 18, 5, [p["green"], p["red"], p["soil"]], 3, "40 6"))
     # the river
     a(f'<rect x="0" y="{HZ + 14}" width="{W}" height="{540 - HZ}" fill="url(#riv)"/>')
-    if n: a('<path d="M1040 424 L1080 424 L1120 536 L1000 536Z" fill="#f6f0dc" opacity=".16"/>')
-    else: a('<path d="M1030 424 L1090 424 L1140 536 L980 536Z" fill="#fff6d0" opacity=".25"/>')
+    if n: a('<path d="M1040 424 L1080 424 L1120 536 L1000 536Z" fill="#f6f0dc" opacity=".16">' + pulse(".16;.09;.16", 6) + '</path>')
+    else: a('<path d="M1030 424 L1090 424 L1140 536 L980 536Z" fill="#fff6d0" opacity=".25">' + pulse(".25;.15;.25", 6) + '</path>')
     r = random.Random(4)
-    a('<path d="' + ''.join(f'M{r.randint(560, 1560)} {r.randint(426, 532)}h{r.randint(20, 70)}' for _ in range(18)) + f'" stroke="#fff" stroke-opacity="{.22 if n else .5}" stroke-width="2.5" stroke-linecap="round"/>')
+    rp = [f'M{r.randint(560, 1560)} {r.randint(426, 532)}h{r.randint(20, 70)}' for _ in range(18)]
+    so = .22 if n else .5   # the ripples drift downstream in two sets, out of step, and glint
+    for k, (ds, dt, dl) in enumerate(((16, 7, 0), (-12, 9, 1.5))):
+        a(f'<path d="{"".join(rp[k::2])}" stroke="#fff" stroke-opacity="{so}" stroke-width="2.5" stroke-linecap="round">'
+          + drift(ds, 0, dt, dl) + f'<animate attributeName="stroke-opacity" values="{so};{so * .45:.2f};{so}" dur="{dt * .6:.1f}s" begin="{dl}s" repeatCount="indefinite"/></path>')
     # one bridge only (Frank, 2026-10-05, of the river: "too much going on here") -- the railroad truss,
     # its train, the far bank's palm clumps and the sign are gone
     # the bridge as it stands (Frank, 2026-10-05: "make the yuma river bridge look like the real one"):
@@ -338,7 +365,8 @@ def skyline(night):
     a(f'<rect x="{pc - 96:.0f}" y="{pt + 14:.0f}" width="192" height="20" rx="3" fill="{"#2f6a4a" if not n else "#1c3a2a"}" stroke="{p["ink"]}" stroke-width="1.5"/>'
       f'<text x="{pc:.0f}" y="{pt + 28:.0f}" text-anchor="middle" font-family="Arial, sans-serif" font-weight="bold" font-size="11" fill="{p["ink"]}" letter-spacing="1">COAST TO COAST COVERAGE</text>')
     if n:
-        for x in range(600, 1600, 130): a(f'<circle cx="{x}" cy="{dk - 8}" r="22" fill="url(#glow)"/><circle cx="{x}" cy="{dk - 8}" r="3" fill="#ffe7a0"/>')
+        for i, x in enumerate(range(600, 1600, 130)):   # the bridge lamps twinkle, each on its own beat
+            a(f'<g>{pulse("1;.55;1", 3 + (i * 7) % 5 * .6, i * .45)}<circle cx="{x}" cy="{dk - 8}" r="22" fill="url(#glow)"/><circle cx="{x}" cy="{dk - 8}" r="3" fill="#ffe7a0"/></g>')
         for x in range(600, 1600, 130): a(f'<rect x="{x - 14}" y="{dk + 30}" width="28" height="3" fill="#ffd27a" opacity=".45"/>')
     # the near bank: sand, tamarisk and a cottonwood at the right
     a(f'<path d="M0 536 Q800 544 1600 532 L1600 {H} L0 {H}Z" fill="{p["sand"]}"/>')
@@ -356,8 +384,8 @@ def skyline(night):
     if n:
         for x in (60, 120, 180, 240): a(f'<path d="M{x + 4} 450h26v20h-26Z" fill="#ffcf6a" opacity=".55"/>')
     a(sally_port(316, 476, 84, 96, p, n))
-    a(tower(450, 476, 66, p, n))
-    a(palm(30, 600, 440, 1.25, p, lean=14))
+    a(tower(450, 476, 66, p, n, move=True))
+    a('<g>' + sway(30, 600, .7, 7) + palm(30, 600, 440, 1.25, p, lean=14) + '</g>')
     # the lane down from the bridge to the yard
     a(f'<path d="M548 506 Q506 540 548 572 Q590 604 580 640" fill="none" stroke="{p["yard2"]}" stroke-width="34" stroke-linecap="round"/>'
       f'<path d="M548 506 Q506 540 548 572 Q590 604 580 640" fill="none" stroke="{p["road"]}" stroke-width="26" stroke-linecap="round"/>')
@@ -380,8 +408,8 @@ def skyline(night):
             x = 1230 + i * 100 + (j % 2) * 50
             if x < 1590: a(palm(x, yb, 70 + j * 16, .62 + j * .1, p))
     a(sign(1290, 588, 170, 28, "PREMIUM DATES", 14, p["wood"], p["ink"], p["wood2"], 26))
-    a(palm(1490, 660, 520, 1.3, p, lean=-26))
-    a(palm(1585, 700, 500, 1.15, p, lean=10))
+    a('<g>' + sway(1490, 660, .6, 8, 1) + palm(1490, 660, 520, 1.3, p, lean=-26) + '</g>')
+    a('<g>' + sway(1585, 700, .7, 6.5, 2.5) + palm(1585, 700, 500, 1.15, p, lean=10) + '</g>')
     a('</svg>')
     return ''.join(o)
 

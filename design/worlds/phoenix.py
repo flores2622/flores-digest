@@ -220,6 +220,16 @@ def jet_away(x, y, s, col, night):
     return o
 
 W, H, SPLIT = 1600, 1700, 377
+
+# ---- movement (Frank, 2026-10-05: "add movement to the other worlds too"). SMIL, which plays inside a
+# background picture; build.py also writes a still copy (every <animate*> taken out) for Settings > Motion >
+# Reduced, so each element's own attributes are its resting state. Nothing on the runway's podium stretch moves.
+def blink(vals, times, dur, begin=0):
+    return (f'<animate attributeName="opacity" values="{vals}" keyTimes="{times}" dur="{dur}s" begin="{begin}s" '
+            f'repeatCount="indefinite"/>')
+def drift(dx, dy, dur, begin=0):
+    return (f'<animateTransform attributeName="transform" type="translate" values="0 0;{dx} {dy};0 0" dur="{dur}s" '
+            f'begin="{begin}s" repeatCount="indefinite" calcMode="spline" keySplines=".45 0 .55 1;.45 0 .55 1"/>')
 HZ = SPLIT + 34     # the horizon just under the split: the mountain's and the towers' feet run into the leaderboard
 
 def skyline(night):
@@ -246,8 +256,9 @@ def skyline(night):
         a(f'<ellipse cx="900" cy="{HZ}" rx="900" ry="110" fill="url(#hz)"/>')
     else:
         a('<circle cx="600" cy="150" r="220" fill="url(#sun)"/><circle cx="600" cy="150" r="56" fill="#ffe7a0"/><circle cx="600" cy="150" r="46" fill="#fff3c4"/>')
-        a(cloud(1180, 64, 380, "#ffc29a", .42) + cloud(260, 46, 260, "#f7b2a6", .38))
-        a(birds([(760, 88), (790, 106), (818, 82), (1340, 120), (1366, 136)], "#3a2440", 1.2))
+        a(f'<g>{drift(-26, 0, 12)}{cloud(1180, 64, 380, "#ffc29a", .42)}</g><g>{drift(22, 0, 11, 2)}{cloud(260, 46, 260, "#f7b2a6", .38)}</g>')
+        a(f'<g>{drift(-14, -6, 7)}{birds([(760, 88), (790, 106), (818, 82)], "#3a2440", 1.2)}</g>'
+          f'<g>{drift(12, -4, 6, 1.5)}{birds([(1340, 120), (1366, 136)], "#3a2440", 1.2)}</g>')
     # the camel-shaped mountain at left, downtown's towers at right of centre, a far ridge behind them
     a(f'<path d="{smooth([(560, HZ + 4), (760, 340), (1000, 262), (1180, 250), (1380, 270), (1600, 240), (1600, HZ + 4)])}" fill="{"#171128" if night else "#8a5276"}"/>')
     a(camel(-40, HZ + 4, 860, 330, "#1b1531" if night else "#6a3e6c"))
@@ -259,11 +270,16 @@ def skyline(night):
     a(f'<rect x="1384" y="150" width="34" height="{HZ - 146}" fill="{tw}"/><path d="M1366 150h70l-8 -14h-54z" fill="{tw}"/>'
       f'<path d="M1358 136h86l-10 -44h-66z" fill="{tw}"/><path d="M1366 128h70l-7 -30h-56z" fill="{tg}" opacity="{.9 if night else .75}"/>'
       f'<rect x="1372" y="80" width="58" height="12" fill="{tw}"/><rect x="1398" y="56" width="6" height="24" fill="{tw}"/>'
-      f'<circle cx="1401" cy="54" r="5" fill="#ff4a3a"/>' + ('<circle cx="1401" cy="54" r="18" fill="#ff4a3a" opacity=".3"/>' if night else ''))
+      f'<circle cx="1401" cy="54" r="5" fill="#ff4a3a">{blink("1;1;.15;.15;1", "0;.45;.5;.95;1", 2)}</circle>'
+      + (f'<circle cx="1401" cy="54" r="18" fill="#ff4a3a" opacity=".3">{blink(".3;.3;0;0;.3", "0;.45;.5;.95;1", 2)}</circle>' if night else ''))
     # a jet just off the runway, seen from behind, climbing away toward downtown (Frank, 2026-10-05:
     # "make the jet take off facing away from the screen"), a faint wake trailing back toward us
     a(f'<path d="M760 168L800 120L840 168Z" fill="#fff" opacity="{.08 if night else .14}"/>')
-    a(jet_away(800, 116, .9, "#f2eef4" if not night else "#4a4460", night))
+    a('<g transform="translate(800 116)"><g>'
+      '<animateTransform attributeName="transform" type="translate" values="0 0;26 -46" keyTimes="0;1" dur="10s" repeatCount="indefinite"/>'
+      '<animate attributeName="opacity" values="0;1;1;0;0" keyTimes="0;.08;.78;.94;1" dur="10s" repeatCount="indefinite"/><g>'
+      '<animateTransform attributeName="transform" type="scale" values="1.1;.42" keyTimes="0;1" dur="10s" repeatCount="indefinite"/>'
+      + jet_away(0, 0, .9, "#f2eef4" if not night else "#4a4460", night) + '</g></g></g>')
     # ---- the airfield
     a(f'<rect x="0" y="{HZ}" width="{W}" height="{H - HZ}" fill="url(#gnd)"/>')
     bc = "#2a2042" if night else "#a8707a"
@@ -313,17 +329,24 @@ def skyline(night):
     for k in range(1, 15):
         t = (k / 14) ** 1.5; y = top + (bot - top) * t
         xl = xl0 + (xl1 - xl0) * t - 8; xr = xr0 + (xr1 - xr0) * t + 8; rr = 1.5 + 4 * t
-        for x in (xl, xr):
-            if night: a(f'<circle cx="{x:.0f}" cy="{y:.0f}" r="{rr * 2:.1f}" fill="#ffe8a8" opacity=".3"/>')
+        for i, x in enumerate((xl, xr)):
+            twk = (f'>{blink(".3;.08;.3", "0;.5;1", 2.6 + (k % 4) * .5, (k * .37 + i * .9) % 3)}</circle>'
+                  if (y < 540 or y > 800) else '/>')
+            if night: a(f'<circle cx="{x:.0f}" cy="{y:.0f}" r="{rr * 2:.1f}" fill="#ffe8a8" opacity=".3"{twk}')
             a(f'<circle cx="{x:.0f}" cy="{y:.0f}" r="{rr:.1f}" fill="{"#fff2c0" if night else "#f6e8c8"}"/>')
     # a tug and baggage carts on the apron
-    a(f'<rect x="60" y="{HZ + 132}" width="34" height="18" rx="3" fill="#d6b13a"/>'
-      + ''.join(f'<rect x="{102 + k * 36}" y="{HZ + 134}" width="30" height="16" rx="2" fill="{"#6a7a8a" if not night else "#2a3040"}"/>' for k in range(3)))
+    a(f'<g>{drift(-34, 0, 12, 1)}<rect x="60" y="{HZ + 132}" width="34" height="18" rx="3" fill="#d6b13a"/>'
+      + ''.join(f'<rect x="{102 + k * 36}" y="{HZ + 134}" width="30" height="16" rx="2" fill="{"#6a7a8a" if not night else "#2a3040"}"/>' for k in range(3))
+      + '</g>')
     # the approach lights marching in from the viewer, and the windsock
     for k in range(5 if night else 0):
         y = 640 + k * 50; sc = 1 + k * .4
         for x in (300 - k * 30, 1300 + k * 30):
-            if night: a(f'<circle cx="{x}" cy="{y}" r="{10 * sc:.0f}" fill="#ffd27a" opacity=".25"/>' .replace(f'r="{10 * sc:.0f}"', f'r="{6 * sc:.0f}"'))
+            if night:
+                b = (4 - k) * .2      # the nearest bar flashes first, the run moving in toward the runway
+                a(f'<circle cx="{x}" cy="{y}" r="{6 * sc:.0f}" fill="#ffd27a" opacity=".25"/>'
+                  f'<circle cx="{x}" cy="{y + 2 * sc:.0f}" r="{12 * sc:.0f}" fill="#fff6d6" opacity="0">'
+                  f'{blink("0;.85;0;0", "0;.04;.12;1", 3, b)}</circle>')
             a(f'<rect x="{x - 14 * sc:.0f}" y="{y}" width="{28 * sc:.0f}" height="{4 * sc:.0f}" rx="2" fill="{"#fff2c0" if night else "#7a6a62"}"/>')
     # the desert off the runway's edges: saguaros and creosote
     sg = "#3f6e46" if not night else "#16241e"; cr = "#7a7a46" if not night else "#20281e"
@@ -332,7 +355,8 @@ def skyline(night):
         a(f'<ellipse cx="{x}" cy="{y}" rx="{8 + (y - HZ) / 30:.0f}" ry="{4 + (y - HZ) / 70:.0f}" fill="{cr}" opacity=".8"/>')
     a(saguaro(1430, 780, 230, sg, ((.45, -1, .3), (.58, 1, .36))) + saguaro(1550, 640, 120, sg, ((.5, -1, .3),))
       + saguaro(110, 800, 250, sg, ((.42, 1, .34), (.56, -1, .3))) + saguaro(1300, 600, 70, sg, ((.5, 1, .3),)))
-    a(f'<rect x="1480" y="{HZ + 110}" width="4" height="70" fill="#6a6070"/><path d="M1484 {HZ + 112}l46 6l-2 14l-44 -6z" fill="#e8662a"/><path d="M1500 {HZ + 114}l8 1l-1 14l-8 -1zM1516 {HZ + 116}l8 1l-1 14l-8 -1z" fill="#fff"/>')
+    a(f'<rect x="1480" y="{HZ + 110}" width="4" height="70" fill="#6a6070"/><g><animateTransform attributeName="transform" type="rotate" values="0 1484 {HZ + 119};7 1484 {HZ + 119};-3 1484 {HZ + 119};4 1484 {HZ + 119};0 1484 {HZ + 119}" dur="3.4s" repeatCount="indefinite"/>'
+      f'<path d="M1484 {HZ + 112}l46 6l-2 14l-44 -6z" fill="#e8662a"/><path d="M1500 {HZ + 114}l8 1l-1 14l-8 -1zM1516 {HZ + 116}l8 1l-1 14l-8 -1z" fill="#fff"/></g>')
     a('</svg>')
     return ''.join(o)
 
