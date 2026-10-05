@@ -826,9 +826,9 @@ def v_commercial(n):  # the glass office towers at noon
         o.append('<g>' + drift(-70, 12) + cloud(1300, 22, 200, "#fff", .55) + '</g>')
     # the window washers' gondola working down and back up the tower
     sp = 'calcMode="spline" keySplines=".45 0 .55 1;.45 0 .55 1" dur="12s" repeatCount="indefinite"'
-    o.append(f'<path d="M1206 50h12M1272 50h12" stroke="#2a2a32" stroke-width="4"/>'
-             + ''.join(f'<line x1="{cx}" y1="50" x2="{cx}" y2="110" stroke="#2a2a30" stroke-width="1.2"><animate attributeName="y2" values="110;170;110" {sp}/></line>' for cx in (1212, 1278))
-             + f'<g><rect x="1204" y="110" width="82" height="10" fill="#e2a33a"/><path d="M1204 110V100H1286V110" fill="none" stroke="#2a2a30" stroke-width="2"/>'
+    o.append(f'<path d="M1206 50h12M1272 50h12" stroke="{"#2a2a32" if not n else "#9a9eb0"}" stroke-width="4"/>'
+             + ''.join(f'<line x1="{cx}" y1="50" x2="{cx}" y2="110" stroke="{"#2a2a30" if not n else "#9a9eb0"}" stroke-width="1.2"><animate attributeName="y2" values="110;170;110" {sp}/></line>' for cx in (1212, 1278))
+             + f'<g><rect x="1204" y="110" width="82" height="10" fill="#e2a33a"/><path d="M1204 110V100H1286V110" fill="none" stroke="{"#2a2a30" if not n else "#9a9eb0"}" stroke-width="2"/>'
              + person(1230, 110, .4, "#2f6aa8", hat=None) + person(1260, 110, .4, "#c8442a", hat=None, arm=30)
              + f'<animateTransform attributeName="transform" type="translate" values="0 0;0 60;0 0" {sp}/></g>')
     o.append(f'<rect x="0" y="200" width="1600" height="40" fill="{"#c8c2b6" if not n else "#1a1a22"}"/>')

@@ -718,7 +718,8 @@ def ranch(x, y, w, wall, roof, night, door="#2f8a8a"):
 
 def v_service(n):  # a neighbourhood street: ranch houses, palms, a pool
     o = [vsky(n, ("#3f86d6", "#8cc4ec", "#f6e2b8"), NITE)]
-    o.append(stars(40, 1600, 0, 90, 7) if n else cloud(500, 40, 260, "#fff", .7) + cloud(1300, 54, 220, "#fff", .6))
+    o.append(stars(40, 1600, 0, 90, 7) + glint([(700, 24), (1050, 60), (1450, 30)]) if n
+             else cloud(500, 40, 260, "#fff", .7) + slide(cloud(1300, 54, 220, "#fff", .6), -90, 0, 12))
     if n: o.append('<circle cx="1260" cy="50" r="22" fill="#f6efd8"/>')
     o.append(camel(820, 140, 640, 90, "#1b1531" if n else "#a888a8"))
     o.append(f'<rect x="0" y="140" width="1600" height="100" fill="{"#1a2a1e" if n else "#9cc47a"}"/>')
@@ -729,16 +730,20 @@ def v_service(n):  # a neighbourhood street: ranch houses, palms, a pool
         if n: wall = "#3a3048"; roof = "#231c30"
         o.append(ranch(x, 176, w, wall, roof, n))
     # the pool behind the low wall
-    o.append(f'<rect x="730" y="150" width="190" height="34" rx="14" fill="{"#1f6a9a" if n else "#5fc4e8"}"/><path d="M750 166q15 -6 30 0t30 0t30 0t30 0" fill="none" stroke="#fff" stroke-opacity=".6" stroke-width="2"/>')
+    o.append(f'<rect x="730" y="150" width="190" height="34" rx="14" fill="{"#1f6a9a" if n else "#5fc4e8"}"/><path d="M750 166q15 -6 30 0t30 0t30 0t30 0" fill="none" stroke="#fff" stroke-opacity=".6" stroke-width="2">{tfm("translate", ["0 0", "14 2", "0 0"], 3.4)}</path>')
     if n: o.append('<ellipse cx="825" cy="167" rx="110" ry="30" fill="#5fc4e8" opacity=".25"/>')
     o.append(f'<path d="M760 150l0 -16l12 0M784 150l0 -16" stroke="#ccc" stroke-width="2" fill="none"/><rect x="866" y="140" width="38" height="8" rx="3" fill="#e8662a"/>')
-    for x, h in [(380, 150), (700, 170), (930, 140), (1260, 160), (1580, 140)]:
-        o.append(palm(x, 186, h, pt, pf))
+    for k, (x, h) in enumerate([(380, 150), (700, 170), (930, 140), (1260, 160), (1580, 140)]):
+        o.append(rock(palm(x, 186, h, pt, pf), x, 186, 1.4, 5 + k % 3, k * .5) if x > 420 else palm(x, 186, h, pt, pf))
     o.append(f'<rect x="0" y="186" width="1600" height="12" fill="{"#3a3048" if n else "#e2d6c8"}"/><rect x="0" y="198" width="1600" height="42" fill="{"#17121f" if n else "#5a4f58"}"/>')
     o.append('<line x1="0" y1="220" x2="1600" y2="220" stroke="#f4e2c8" stroke-width="2" stroke-dasharray="26 20" opacity=".5"/>')
+    # a car drives down the street, right to left, gone before the title
+    car = (f'<path d="M1100 216v-12q0 -6 6 -6h10l10 -10h30l10 10h12q6 0 6 6v12z" fill="#c43a4a"/><rect x="1128" y="191" width="34" height="8" rx="2" fill="{"#ffd98a" if n else "#2b3d55"}"/>'
+           '<circle cx="1118" cy="217" r="6" fill="#222"/><circle cx="1166" cy="217" r="6" fill="#222"/>' + ('<circle cx="1100" cy="208" r="9" fill="#fff6c8" opacity=".6"/>' if n else ''))
+    o.append(split('', f'<g>{car}{tfm("translate", ["560 0", "-760 0"], 9, ease=False)}</g>'))
     o.append('<rect x="620" y="160" width="4" height="26" fill="#555"/><rect x="608" y="150" width="28" height="14" rx="6" fill="#2f6fb8"/>')
     if n:
-        for x in (300, 820, 1340): o.append(f'<rect x="{x}" y="120" width="4" height="66" fill="#3a3048"/><circle cx="{x + 2}" cy="120" r="30" fill="url(#gl)"/>')
+        for x in (300, 820, 1340): o.append(f'<rect x="{x}" y="120" width="4" height="66" fill="#3a3048"/><circle cx="{x + 2}" cy="120" r="30" fill="url(#gl)">' + (anim("opacity", [1, .7, 1], 4, x / 500) if x > 420 else '') + '</circle>')
     o.append(shade())
     return wrap(V, ''.join(o))
 
