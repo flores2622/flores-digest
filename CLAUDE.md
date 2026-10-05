@@ -1947,13 +1947,11 @@ the button, the drawer, the search entry, the tour step, the guides and
 its own instructions say Apollo, and it introduces itself as the SAME
 Apollo that reads every sales call and writes the coaching cards -- one
 Apollo, not two -- so "what Apollo saw on a call" is its own read. **Its
-face is Apollo the dog** (Frank, 2026-10-04: "this is my boy apollo, he's
-the one i named it after. can you make an icon based on him?"): Frank's
-blue-grey brindle Cane Corso -- broad square head, high-set hanging ears,
-amber eyes, white bib, his gold chain -- drawn flat by
-`design/apollo_icon.py` and inlined on the round button and the chat
-panel's header; his eyes blink while he reads (`apolloblink`). The
-home-screen app icon is still the constellation owl (the Pantheon icon). **Everything underneath keeps the Coeus name** so nothing
+icon is the constellation owl** (Frank, 2026-10-05: "put the owl back on
+the chat button", "the owl will be the icon") -- on the round button, the
+chat panel's header and the home-screen app alike. A face drawn from
+Frank's dog Apollo was on the button for a day (2026-10-04) and is on the
+back burner; `design/apollo_icon.py` keeps that draft, unused. **Everything underneath keeps the Coeus name** so nothing
 saved is lost: `site/coeus.js`, `/api/coeus`, the R2 keys
 `coeus-chats/` and `coeus-usage/`, `COEUS_USAGE_VIEWERS`, the `coeus*`
 ids and classes. The section below still calls it Coeus for that reason.
