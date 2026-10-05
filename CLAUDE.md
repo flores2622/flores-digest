@@ -1997,8 +1997,13 @@ repaint clears the list).
   the banner crop hides (PLAYER 1 / PLAYER 2 READY, TUTORIAL, the chat
   bubbles, the map's labels, REPAIR SHOP), LEVEL CLEARED / CONTINUE? / GAME OVER ...)
   and **Phoenix** (Archivo / Inter; Valley Sunset, Copper, Monsoon -- the
-  camel mountain, the tower ridge, downtown and the light rail down a palm
-  boulevard to a plaza stage, FIREWORKS / NEXT TRAIN / HABOOB ...). Space got
+  camel mountain, the tower ridge and downtown with a hot-air balloon; its
+  horizon below the split, and the Valley floor (Frank, 2026-10-05: "phoenix
+  or hollywood with the palm trees? ... whats with all the dead space") is
+  desert landscaping -- saguaros where the palms stood, palo verdes in bloom,
+  ocotillo, agave, boulders, a canal with the light rail along it to its
+  platform -- around the stage on a granite circle; two palms by downtown,
+  no boulevard, FIREWORKS / NEXT TRAIN / HABOOB ...). Space got
   a Claims banner too. No real teams, games, brands or landmarks' names.
   **A world's pictures load only for whoever picks it** (2026-10-03): each
   is `site/public/worlds/<key>.css`, added by `loadWorld` with the world's
