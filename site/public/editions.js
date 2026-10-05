@@ -51,6 +51,7 @@
 .ed .whor b { display: block; font-size: 15px; }
 .ed .whor small { color: var(--text-muted); font-size: 12px; }
 .ed .whor .ver { color: var(--good); font-size: 12px; margin-left: 4px; }
+.ed .hdl { color: var(--accent); font-weight: 700; }
 .ed .pic { border-radius: 14px; background: var(--card2); padding: 16px; display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; }
 .ed .pic b { font: 400 36px var(--display); color: var(--good); }
 .ed .rx { display: flex; gap: 6px; flex-wrap: wrap; }
@@ -484,15 +485,24 @@ function edPosts(X) {
   memes.forEach((m, i) => posts.splice(Math.min(posts.length, slots[i]), 0, m));
   return posts;
 }
+// Everyone's handle on The Flores Feed (Frank, 2026-10-05: "give everyone a
+// creative, insurance focused username"), by first name; anyone else gets one
+// made from their name.
+const ED_HANDLES = {
+  Apollo: "apollo.coaches", Crystal: "crystal.clear.coverage", Lorena: "lorena.locks.the.rate", Mike: "mike.drop.deductible",
+  Coral: "coral.reef.coverage", Sarahi: "sarahi.safe.harbor", Amanda: "amanda.underwrites.it", Frank: "frank.full.coverage",
+  Francisco: "francisco.fine.print", Veronica: "veronica.verified.value", Debbie: "debbie.first.line.of.defense",
+};
+const edHandle = who => { const f = pfirst(String(who || "")); return "@" + (ED_HANDLES[f] || `${f.toLowerCase().replace(/[^a-z]/g, "") || "agent"}.always.covered`); };
 function edPostHtml(X, p) {
   const S = edShared.state, rx = S.rx[p.id] || {}, cms = S.cm[p.id] || [];
   const RXS = ["🔥", "👏", "💰", "😬", "🫡"];
-  return `<div class="pc" data-post="${p.id}"><div class="whor">${edAvatar(X, p.who)}<div><b>${p.who === "Apollo" ? 'Apollo <span class="ver">✓ coaching</span>' : edEsc(X.full[p.who] || p.who)}</b><small>${edEsc(p.when)}</small></div></div><p>${p.text}</p>
+  return `<div class="pc" data-post="${p.id}"><div class="whor">${edAvatar(X, p.who)}<div><b>${p.who === "Apollo" ? 'Apollo <span class="ver">✓ coaching</span>' : edEsc(X.full[p.who] || p.who)}</b><small><span class="hdl">${edEsc(edHandle(p.who))}</span> · ${edEsc(p.when)}</small></div></div><p>${p.text}</p>
    ${p.pic ? `<div class="pic"><div><div class="lab">Premium sold</div><b>${pmoney(X.F.ps)}</b></div><div style="text-align:right"><div class="lab">Households</div><b>${X.F.hh ? `${X.F.hhSold} of ${X.F.hh}` : X.F.hhSold}</b></div><div style="text-align:right"><div class="lab">Closing</div><b>${X.F.closeHH == null ? "—" : ppct(X.F.closeHH, 0)}</b></div></div>` : ""}
    ${p.meme ? edMemeHtml(p.meme) : ""}
    <div class="rx">${RXS.map(e => { const by = rx[e] || []; return `<button type="button" data-rx="${e}" aria-pressed="${by.includes(edMe())}" title="${edEsc(by.join(", "))}">${e} ${by.length || ""}</button>`; }).join("")}</div>
-   <div class="cm">${p.apollo ? `<div class="c">${edAvatar(X, "Apollo", 28)}<div><b>Apollo</b><small>coaching note</small><br>${edEsc(p.apollo)}</div></div>` : ""}${cms.map(c => `<div class="c">${edAvatar(X, pfirst(c.who), 28)}<div><b>${edEsc(c.who)}</b><small>${edEsc(c.at)}</small><br>${c.gif ? edGifHtml(c.gif) : ""}${c.text && c.gif ? "<br>" : ""}${c.text ? edCmText(c.text) : ""}</div></div>`).join("")}
-   <form data-cm><input class="t" placeholder="Reply as ${edEsc(edMe())}… or paste a GIF link" aria-label="Reply" maxlength="300"><button type="button" class="ebtn q" data-gifpick="${p.id}" aria-expanded="${edGifOpen === p.id}">GIF</button><button class="ebtn">Post</button></form>
+   <div class="cm">${p.apollo ? `<div class="c">${edAvatar(X, "Apollo", 28)}<div><b>Apollo</b> <small><span class="hdl">${edHandle("Apollo")}</span> · coaching note</small><br>${edEsc(p.apollo)}</div></div>` : ""}${cms.map(c => `<div class="c">${edAvatar(X, pfirst(c.who), 28)}<div><b>${edEsc(c.who)}</b> <small><span class="hdl">${edEsc(edHandle(c.who))}</span> · ${edEsc(c.at)}</small><br>${c.gif ? edGifHtml(c.gif) : ""}${c.text && c.gif ? "<br>" : ""}${c.text ? edCmText(c.text) : ""}</div></div>`).join("")}
+   <form data-cm><input class="t" placeholder="Reply as ${edEsc(edHandle(edMe()))}… or paste a GIF link" aria-label="Reply" maxlength="300"><button type="button" class="ebtn q" data-gifpick="${p.id}" aria-expanded="${edGifOpen === p.id}">GIF</button><button class="ebtn">Post</button></form>
    ${edGifOpen === p.id ? `<div class="gifpick">${Object.keys(ED_GIFS).map(k => `<button type="button" data-gif="${k}" title="${edEsc(ED_GIFS[k][0])}">${edGifHtml(k)}</button>`).join("")}</div>` : ""}</div></div>`;
 }
 function edFeed(X) {
@@ -503,12 +513,12 @@ function edFeed(X) {
    <div class="pc"><div class="stories">${["Apollo", ...X.order].map(w => `<button type="button" data-story="${w}"><i class="${edMine.seen[X.dayKey + w] ? "seen" : ""}" style="color:${X.C[w] || "var(--text-primary)"};border-color:${edMine.seen[X.dayKey + w] ? "var(--border-strong)" : (X.C[w] || "var(--text-primary)")}">${X.INI[w] || "A"}</i>${w}</button>`).join("")}</div><p class="note">Tap a story for a clip from their ${X.isFolio ? "folio" : "day"}.</p></div>
    ${edPosts(X).map(p => edPostHtml(X, p)).join("")}</div>
    <div class="col">
-    <div class="pc"><h3>Top accounts · ${edEsc(edWhen(X))}</h3>${X.order.map((f, i) => `<div class="trend"><span style="display:flex;align-items:center;gap:10px">${edAvatar(X, f, 32)}${i + 1} · ${edEsc(X.full[f])}</span><b>${X.NUM[f].pts} pts · ${X.NUM[f].pol} pol</b></div>`).join("")}</div>
+    <div class="pc"><h3>Top accounts · ${edEsc(edWhen(X))}</h3>${X.order.map((f, i) => `<div class="trend"><span style="display:flex;align-items:center;gap:10px">${edAvatar(X, f, 32)}<span>${i + 1} · ${edEsc(X.full[f])}<br><small class="hdl">${edEsc(edHandle(f))}</small></span></span><b>${X.NUM[f].pts} pts · ${X.NUM[f].pol} pol</b></div>`).join("")}</div>
     <div class="pc"><h3>Poll · who takes ${edEsc(edNextDay(X))}?</h3><div class="poll">${X.order.map(f => { const n = (votes[f] || []).length, pct = tot ? Math.round(100 * n / tot) : 0; return `<button type="button" data-vote="${f}" aria-pressed="${!!mine && mine[0] === f}" title="${edEsc((votes[f] || []).length ? (votes[f] || []).join(", ") : "No votes yet")}"><i style="width:${pct}%"></i><span><span>${edEsc(X.full[f])}</span><span>${tot ? pct + "%" : ""}</span></span></button>`; }).join("")}</div><p class="note">${plural(tot, "vote")} · one each · everyone sees the tally</p></div>
     <div class="pc"><h3>Folio · day ${done} of ${bizAll}</h3><div class="prog"><i style="width:${pace ? Math.min(100, X.FTOT / pace * 100) : 0}%"></i></div><div class="hrow"><span class="note">${pmoney(X.FTOT)} so far</span><span class="note">pace ${pmoney(pace)}</span></div><p style="font-size:14px">${zero ? `${plural(zero, "zero day")} so far. ` : ""}${Math.max(0, F.hh - F.hhSold) ? `${plural(Math.max(0, F.hh - F.hhSold), "quoted household")} still open.` : ""}</p></div>
     <div class="pc"><h3>Trending</h3>${F.objs.slice(0, 2).map(o => `<div class="trend"><span>#${edEsc(o[0].replace(/[^A-Za-z]/g, ""))}</span><b>${o[1]}</b></div>`).join("")}${X.SALES.some(s => /winback/i.test(s.src)) ? `<div class="trend"><span>#Winback</span><b>${X.SALES.filter(s => /winback/i.test(s.src)).length}</b></div>` : ""}<div class="trend"><span>#SentTheQuote</span><b>${X.T.sent} of ${X.T.quoteUp}</b></div><div class="trend" style="border:0"><span>#Misfiled</span><b>${F.misfiled}</b></div></div>
    </div></div>
-   <div class="pc" style="margin-top:14px"><div class="whor">${edAvatar(X, "Apollo")}<div><b>Apollo <span class="ver">✓</span></b><small>Trending accounts · every stat, final</small></div></div>${edLbt(X)}</div>`;
+   <div class="pc" style="margin-top:14px"><div class="whor">${edAvatar(X, "Apollo")}<div><b>Apollo <span class="ver">✓</span></b><small><span class="hdl">${edHandle("Apollo")}</span> · Trending accounts · every stat, final</small></div></div>${edLbt(X)}</div>`;
 }
 
 /* ===== GRIDIRON ===== */

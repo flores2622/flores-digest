@@ -1731,6 +1731,14 @@ repaint clears the list).
   sections (Apollo's clay, Athena's sage). The editions' stylesheet is
   scoped under `.ed` -- its `.pcard` / `.anal` had been restyling Role Play's
   prospect cards and the coaching cards.
+- **Everyone on The Flores Feed has an insurance handle** (Frank,
+  2026-10-05: "give everyone a creative, insurance focused username";
+  `ED_HANDLES` in editions.js, by first name): @apollo.coaches,
+  @crystal.clear.coverage, @lorena.locks.the.rate, @mike.drop.deductible,
+  @coral.reef.coverage, @sarahi.safe.harbor, @amanda.underwrites.it,
+  @frank.full.coverage, @francisco.fine.print, @veronica.verified.value,
+  @debbie.first.line.of.defense; anyone else @<first>.always.covered. On
+  posts, comments, Top accounts and the reply box.
 - **The Feed carries GIFs and memes** (Frank, 2026-10-01: "add GIF's and
   memes to the flores feed"). A reply's **GIF** button opens a picker of
   reaction GIFs drawn in CSS (`ED_GIFS` in editions.js: fire, slow clap,
