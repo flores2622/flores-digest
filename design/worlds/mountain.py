@@ -142,6 +142,18 @@ SHADE = ('<defs><linearGradient id="vs" x1="0" y1="0" x2="0" y2="1"><stop offset
 def vwrap(body): return wrap(240, body + SHADE)
 def wrap(h, body): return f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 {h}" preserveAspectRatio="xMidYMid slice">{body}</svg>'
 
+# ---- movement (Frank, 2026-10-05: "add movement to the other worlds too"). SMIL, which plays inside a background
+# picture; build.py also writes a still copy (every <animate*> taken out) for Settings > Motion > Reduced, so each
+# element's own attributes are its resting state.
+def sway(x, b, deg, dur, delay=0):
+    return (f'<animateTransform attributeName="transform" type="rotate" values="{-deg} {x} {b};{deg} {x} {b};{-deg} {x} {b}" '
+            f'dur="{dur}s" begin="{delay}s" repeatCount="indefinite" calcMode="spline" keySplines=".45 0 .55 1;.45 0 .55 1"/>')
+def drift(dx, dy, dur, delay=0):
+    return (f'<animateTransform attributeName="transform" type="translate" values="0 0;{dx} {dy};0 0" dur="{dur}s" begin="{delay}s" '
+            f'repeatCount="indefinite" calcMode="spline" keySplines=".45 0 .55 1;.45 0 .55 1"/>')
+def pulse(vals, dur, delay=0, attr="opacity"):
+    return f'<animate attributeName="{attr}" values="{vals}" dur="{dur}s" begin="{delay}s" repeatCount="indefinite"/>'
+
 # ================================================================= the Digest picture
 W, H, SPLIT = 1600, 1700, 377
 def skyline(night):
@@ -154,8 +166,12 @@ def skyline(night):
            '<radialGradient id="mg" cx=".5" cy=".5" r=".5"><stop offset="0" stop-color="#fff" stop-opacity=".25"/><stop offset="1" stop-color="#fff" stop-opacity="0"/></radialGradient>'))
     a(f'<rect width="{W}" height="{HZ + 30}" fill="url(#sky)"/>')
     if n:
-        a('<g filter="url(#bl)" opacity=".8">' + aurora(-50, 1100, 70, 40, 70) + aurora(300, 1650, 120, 30, 50) + '</g>')
+        a('<g filter="url(#bl)" opacity=".8">' + aurora(-50, 1100, 70, 40, 70) + aurora(300, 1650, 120, 30, 50) + pulse(".8;.5;.9;.8", 11) + '</g>')
         a(stars(90, 0, W, 0, 300, 3))
+        tw = random.Random(31)   # a few brighter stars twinkle, each on its own clock
+        for i in range(10):
+            x, y = tw.randint(20, W - 20), tw.randint(10, 290)
+            a(f'<circle cx="{x}" cy="{y}" r="1.6" fill="#fff" opacity=".85">{pulse(".85;.2;.85", 3 + (i % 5) * .9, i * .37)}</circle>')
         for pts in [[(420, 40), (460, 60), (505, 52), (540, 80), (590, 70)], [(1040, 30), (1080, 54), (1120, 44), (1150, 72)]]:
             a('<polyline points="' + ' '.join(f'{x},{y}' for x, y in pts) + '" fill="none" stroke="#fff" stroke-opacity=".28" stroke-width="1"/>')
             for x, y in pts: a(f'<circle cx="{x}" cy="{y}" r="2.3" fill="#fff" opacity=".9"/>')
@@ -163,8 +179,12 @@ def skyline(night):
     else:
         a(sun(1300, 92, 36))
         for x, y, w in [(520, 120, 240), (1080, 70, 200), (180, 150, 180)]:
-            a(f'<ellipse cx="{x}" cy="{y}" rx="{w // 2}" ry="11" fill="#fff" opacity=".5"/><ellipse cx="{x + 30}" cy="{y - 9}" rx="{w // 3}" ry="10" fill="#fff" opacity=".45"/>')
-        a(eagle(640, 62, 1.15, "#4a3424")); a(bird(720, 96, 1, "#4a5a6a")); a(bird(748, 84, .8, "#4a5a6a"))
+            i = (x // 100) % 3
+            a(f'<g><ellipse cx="{x}" cy="{y}" rx="{w // 2}" ry="11" fill="#fff" opacity=".5"/><ellipse cx="{x + 30}" cy="{y - 9}" rx="{w // 3}" ry="10" fill="#fff" opacity=".45"/>'
+              f'{drift(40 + i * 12, 0, 10 + i, i * 1.3)}</g>')
+        # the eagle circles on a wide, slow loop over the peaks (it rests where it was drawn)
+        a('<g>' + eagle(640, 62, 1.15, "#4a3424") +
+          '<animateMotion path="M0 0 C60 -14 120 10 90 30 C60 48 -60 44 -90 26 C-118 8 -60 -14 0 0Z" dur="12s" repeatCount="indefinite"/></g>'); a(bird(720, 96, 1, "#4a5a6a")); a(bird(748, 84, .8, "#4a5a6a"))
     # far range
     a(ridge([(0, 250), (120, 196), (230, 236), (420, 168), (560, 222), (700, 186), (860, 230), (1100, 150), (1300, 224), (1450, 178), (1600, 230)], HZ, p["far"]))
     # the main peaks
@@ -176,8 +196,8 @@ def skyline(night):
     # treeline at the horizon
     a(forest(-10, 1610, HZ + 4, 26, 58, p["pine2"], 2, 22))
     # tall pines rising into the sky band, at both edges
-    for x, b, h in [(130, 455, 300), (40, 475, 410), (1440, 450, 300), (1540, 485, 430)]:
-        a(pine(x, b, h, p["pine"], p["wood2"]))
+    for i, (x, b, h) in enumerate([(130, 455, 300), (40, 475, 410), (1440, 450, 300), (1540, 485, 430)]):
+        a(f'<g>{pine(x, b, h, p["pine"], p["wood2"])}{sway(x, b, 1.1, 5 + i * .7, i * .5)}</g>')
     # ---------------- below the horizon
     a(f'<rect x="0" y="{HZ}" width="{W}" height="{H - HZ}" fill="{p["meadow"]}"/>')
     # the lake, far right, against the treeline
@@ -186,11 +206,15 @@ def skyline(night):
     # reflections of the peaks in the lake
     a(f'<path d="M1000 {HZ} L1230 {HZ + 70} L1460 {HZ}Z" fill="{p["main"]}" opacity=".35"/>')
     for i, (x, y, w) in enumerate([(1000, 457, 120), (1180, 474, 160), (1380, 466, 110), (1300, 502, 140), (1500, 494, 70), (1120, 500, 60)]):
-        a(f'<rect x="{x}" y="{y}" width="{w}" height="3" rx="1.5" fill="#fff" opacity="{.45 if not n else .22}"/>')
+        op = .45 if not n else .22
+        a(f'<rect x="{x}" y="{y}" width="{w}" height="3" rx="1.5" fill="#fff" opacity="{op}">'
+          f'<animateTransform attributeName="transform" type="translate" values="0 0;{12 + i * 3} 0;0 0" dur="{5 + i * .8:.1f}s" repeatCount="indefinite"/>'
+          f'<animate attributeName="opacity" values="{op};{op * .4:.2f};{op}" dur="{3.5 + i * .7:.1f}s" repeatCount="indefinite"/></rect>')
     if n: a(f'<path d="M1270 {HZ + 4} L1310 {HZ + 4} L1330 {HZ + 110} L1250 {HZ + 110}Z" fill="#f4efdc" opacity=".16"/>')
     # a red canoe on the lake
-    a(f'<path d="M1200 {HZ + 52} Q1250 {HZ + 66} 1300 {HZ + 52} Q1250 {HZ + 58} 1200 {HZ + 52}Z" fill="#c2452a"/><path d="M1200 {HZ + 52} Q1250 {HZ + 70} 1300 {HZ + 52}" fill="none" stroke="#7a2a18" stroke-width="2"/>'
-      f'<line x1="1236" y1="{HZ + 36}" x2="1262" y2="{HZ + 66}" stroke="{p["wood2"]}" stroke-width="3"/>')
+    a(f'<g><path d="M1200 {HZ + 52} Q1250 {HZ + 66} 1300 {HZ + 52} Q1250 {HZ + 58} 1200 {HZ + 52}Z" fill="#c2452a"/><path d="M1200 {HZ + 52} Q1250 {HZ + 70} 1300 {HZ + 52}" fill="none" stroke="#7a2a18" stroke-width="2"/>'
+      f'<line x1="1236" y1="{HZ + 36}" x2="1262" y2="{HZ + 66}" stroke="{p["wood2"]}" stroke-width="3"/>'
+      f'<animateTransform attributeName="transform" type="rotate" values="-1.2 1250 {HZ + 56};1.2 1250 {HZ + 56};-1.2 1250 {HZ + 56}" dur="4.6s" repeatCount="indefinite" calcMode="spline" keySplines=".45 0 .55 1;.45 0 .55 1"/></g>')
     # rolling meadow tones
     a(f'<path d="M0 {SPLIT + 150} Q400 {SPLIT + 110} 820 {SPLIT + 170} T1600 {SPLIT + 190} L1600 {H} L0 {H}Z" fill="{p["meadow2"]}"/>')
     r = random.Random(11); sc = "#5d8a4a" if not n else "#12212f"
@@ -206,7 +230,8 @@ def skyline(night):
     # ranger cabin, left
     cx, cb = 210, 640
     a(f'<rect x="{cx + 60}" y="{cb - 150}" width="26" height="70" fill="{"#8a8378" if not n else "#3a3a44"}"/>')
-    a(smoke(cx + 74, cb - 168, 5, .55 if not n else .25, "#eef1f3" if not n else "#9aa4b8"))
+    a('<g>' + smoke(cx + 74, cb - 168, 5, .55 if not n else .25, "#eef1f3" if not n else "#9aa4b8") +
+      drift(10, -8, 6.5) + '<animate attributeName="opacity" values="1;.6;1" dur="4.2s" repeatCount="indefinite"/></g>')
     a(f'<rect x="{cx - 110}" y="{cb - 92}" width="220" height="92" fill="{p["log"]}"/>')
     for y in range(cb - 84, cb, 14): a(f'<line x1="{cx - 110}" y1="{y}" x2="{cx + 110}" y2="{y}" stroke="{p["wood2"]}" stroke-width="2" opacity=".6"/>')
     a(f'<path d="M{cx - 136} {cb - 86} L{cx} {cb - 170} L{cx + 136} {cb - 86} L{cx + 120} {cb - 78} L{cx} {cb - 150} L{cx - 120} {cb - 78}Z" fill="{"#4a3424" if not n else "#241912"}"/>')
@@ -214,7 +239,8 @@ def skyline(night):
     a(f'<rect x="{cx - 18}" y="{cb - 56}" width="36" height="56" fill="{p["wood2"]}"/><circle cx="{cx + 10}" cy="{cb - 28}" r="2.5" fill="#d8b46a"/>')
     for wx in (cx - 82, cx + 42):
         if n: a(f'<circle cx="{wx + 20}" cy="{cb - 44}" r="44" fill="url(#glow)"/>')
-        a(f'<rect x="{wx}" y="{cb - 62}" width="40" height="34" fill="{p["win"]}" stroke="{p["wood2"]}" stroke-width="4"/><line x1="{wx + 20}" y1="{cb - 62}" x2="{wx + 20}" y2="{cb - 28}" stroke="{p["wood2"]}" stroke-width="3"/>')
+        fl = pulse("1;.82;1;.9;1", 3.4 + (wx % 7) * .3, (wx % 5) * .4) if n else ''
+        a(f'<rect x="{wx}" y="{cb - 62}" width="40" height="34" fill="{p["win"]}" stroke="{p["wood2"]}" stroke-width="4">{fl}</rect><line x1="{wx + 20}" y1="{cb - 62}" x2="{wx + 20}" y2="{cb - 28}" stroke="{p["wood2"]}" stroke-width="3"/>')
     a(f'<rect x="{cx - 52}" y="{cb - 128}" width="104" height="22" rx="3" fill="{p["wood2"]}"/><text x="{cx}" y="{cb - 112}" text-anchor="middle" font-family="Georgia, serif" font-weight="bold" font-size="14" fill="{p["ink"]}" letter-spacing="1">RANGER</text>')
     if n: a(f'<circle cx="{cx + 34}" cy="{cb - 66}" r="5" fill="#ffd27a"/><circle cx="{cx + 34}" cy="{cb - 66}" r="20" fill="url(#glow)"/>')
     # woodpile
@@ -223,7 +249,9 @@ def skyline(night):
     # campfire with log seats
     fx, fy = 335, 744
     a(f'<ellipse cx="{fx}" cy="{fy}" rx="44" ry="12" fill="{p["rock2"]}"/>')
-    a(fire(fx, fy, 1.15, n))
+    # the flames flicker, scaled about the fire's base
+    a(f'<g transform="translate({fx} {fy})"><g><animateTransform attributeName="transform" type="scale" values="1 1;1.03 .93;.98 1.05;1 1" '
+      f'dur="1.6s" repeatCount="indefinite"/><g transform="translate({-fx} {-fy})">' + fire(fx, fy, 1.15, n) + '</g></g></g>')
     if n: a(f'<circle cx="{fx}" cy="{fy - 10}" r="190" fill="url(#glow)" opacity=".7"/>')
     a(f'<rect x="{fx - 112}" y="{fy - 4}" width="52" height="16" rx="8" fill="{p["log"]}"/><rect x="{fx + 64}" y="{fy - 2}" width="52" height="16" rx="8" fill="{p["log"]}"/>')
     # the trail: winding from the treeline down to the summit clearing

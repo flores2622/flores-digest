@@ -1947,7 +1947,7 @@ repaint clears the list).
   row above the looks (`WORLDS`, each look in `LOOKS` names its world;
   `TH.theme`, saved in `board-look`, `html[data-theme]`). **The worlds are
   listed by kind** (Frank, 2026-10-05: "categorize the themes in the
-  settings? by cities, sports, etc."): Cities (Phoenix, Yuma), Sports (Game
+  settings? by cities, sports, etc."): Cities (Phoenix, Yuma, Dallas), Sports (Game
   Day, Golf), Outdoors (Desert / Old West, Ocean, Mountain), Fun (Space,
   Retro Arcade) -- each module's `CATEGORY`, written into `WORLD_GROUP` by
   build.py, the desert's set inline; a world with none lands under More. Each
@@ -2089,7 +2089,25 @@ repaint clears the list).
   the pond, the trees swaying and the flag waving. **A picture that moves gets
   a still copy**: build.py strips every `<animate*>` and serves it under
   `html[data-motion="reduce"]` (Settings > Motion > Reduced), so each
-  element's own attributes are its resting state. **Yuma** (Frank, 2026-10-05: "can
+  element's own attributes are its resting state. **Every world's Digest moves now**
+  (Frank, 2026-10-05: "add movement to the other worlds too", then "make the
+  birds and the clouds move in the golf world"), the same way: Space (the
+  flame flickering, a satellite and a shooting star, beacons, the dish
+  sweeping, a plane and the clouds by day), Ocean (gulls, boats and buoys
+  rocking, pennants, ripples, the lighthouse beams), Mountain (pines swaying,
+  ripples, the canoe, chimney smoke, the campfire, the eagle and clouds,
+  the aurora), Game Day (the clock counting down, the blimp, pennants, the
+  wave, flashbulbs, a punt, the light towers), Retro Arcade (neon flicker,
+  marquee bulbs, cabinet screens, the ship hovering, clouds and birds),
+  Phoenix (the jet climbing away, the tower beacon, the approach lights
+  chasing, the windsock, the tug), Yuma (the jets along their contrails,
+  ripples, palms, the flag, the beacons and lamps at night), Dallas (the
+  ball's lights, the green outline, the flag, the oaks, river glints, cars
+  over the bridge, birds), Golf (and its birds flapping and clouds
+  drifting) and the hand-made Desert (birds gliding, stars twinkling, the
+  campfire flickering -- its still copy written inline beside it). Nothing in
+  the podium zone moves. Every module draws its motion with self-closing SMIL
+  only, so the still copy is the drawing as it was. **Yuma** (Frank, 2026-10-05: "can
   you make one off of Yuma, AZ?"; Arvo / Karla; River, Harvest, Dunes): from
   the bluff by the old territorial prison at golden hour, looking down at
   the river crossing -- the prison as it stands (Frank, 2026-10-05: "make
@@ -2116,7 +2134,15 @@ repaint clears the list).
   Road Maps, the headgate, the date harvest, a flooded field after the
   monsoon, the packing sheds; strips from a full harvest truck under
   fireworks to the prison tower asleep under the moon; the tour card is the
-  River guide. Space got
+  River guide. **Dallas** (Frank, 2026-10-05: "start working on a dallas
+  theme"; Montserrat / Nunito Sans; Skyline, Lone Star, Bluebonnet): the levee
+  at dusk looking across the river at downtown -- the ball tower, the red
+  flying horse on its derrick, the pointed glass towers and the one outlined
+  in green rising between the tiles, the white arch bridge over the
+  floodway, the podium on a levee plaza among bluebonnets and live oaks, a
+  BIG D COVERAGE sign and a Texas flag; banners from the stacked interchange
+  to the rodeo, the movie palace marquee and hail after a storm; the tour
+  card is the Big D guide. Nothing is named. Space got
   a Claims banner too. No real teams, games, brands or landmarks' names.
   **A world's pictures load only for whoever picks it** (2026-10-03): each
   is `site/public/worlds/<key>.css`, added by `loadWorld` with the world's

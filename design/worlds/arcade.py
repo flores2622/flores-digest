@@ -109,6 +109,29 @@ def stars(n, w, y0, y1, seed):
 def sparkles(pts, c="#fff", s=4):
     return '<path d="' + ''.join(f'M{x-s/2} {y-s*2}h{s}v{s*1.5}h{s*1.5}v{s}h-{s*1.5}v{s*1.5}h-{s}v-{s*1.5}h-{s*1.5}v-{s}h{s*1.5}z' for x, y in pts) + f'" fill="{c}"/>'
 
+# ---- movement (Frank, 2026-10-05: "add movement to the other worlds too"). SMIL, which plays inside a
+# background picture; build.py also writes a still copy (every <animate*> taken out) for Settings > Motion >
+# Reduced, so each element's own attributes are its resting state.
+def pulse(vals, dur, delay=0, attr="opacity"):
+    """a smooth looping <animate> through vals"""
+    return f'<animate attributeName="{attr}" values="{vals}" dur="{dur}s" begin="{delay}s" repeatCount="indefinite"/>'
+def flicker(times, vals, dur, delay=0):
+    """a stepped looping opacity <animate> (a neon tube catching, a bulb blinking)"""
+    return (f'<animate attributeName="opacity" values="{";".join(vals)}" keyTimes="{";".join(times)}" '
+            f'dur="{dur}s" begin="{delay}s" calcMode="discrete" repeatCount="indefinite"/>')
+def drift(vals, dur, delay=0):
+    return (f'<animateTransform attributeName="transform" type="translate" values="{vals}" dur="{dur}s" begin="{delay}s" '
+            f'repeatCount="indefinite" calcMode="spline" keySplines=".45 0 .55 1;.45 0 .55 1"/>')
+
+def stars_tw(n, w, y0, y1, seed, groups=3):
+    """stars() exactly as drawn, split into groups that twinkle out of step"""
+    r = random.Random(seed); g = [[] for _ in range(groups)]
+    for k in range(n):
+        s = r.choice([2, 3, 3, 4])
+        g[k % groups].append(f'M{r.randint(0, w)} {r.randint(y0, y1)}h{s}v{s}h-{s}z')
+    return ''.join(f'<path d="{"".join(d)}" fill="#fff" opacity=".8">{pulse(".8;.25;.8", 3.2 + i * 1.3, i * .9)}</path>'
+                   for i, d in enumerate(g))
+
 FL = ' filter="url(#nl)"'
 GLOW = ('<filter id="nl" x="-30%" y="-30%" width="160%" height="160%"><feGaussianBlur stdDeviation="4" result="b"/>'
         '<feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>')
@@ -164,7 +187,7 @@ def corners():
 def label(x, y, s, p, col, anchor="middle", glow=True):
     return f'<g{FL if glow else ""}>{ptext(s, x, y, p, col, anchor)}</g>'
 
-def cabinet(x, base, s, body, mq, n, screen_seed=0, face="r"):
+def cabinet(x, base, s, body, mq, n, screen_seed=0, face="r", glow=False):
     """A front-facing arcade cabinet, base at `base`, scale s (unit width 100)."""
     w = 100 * s; h = 230 * s; t = base - h
     dk = "#1b0a2e" if n else "#3b2160"
@@ -179,10 +202,12 @@ def cabinet(x, base, s, body, mq, n, screen_seed=0, face="r"):
     r = random.Random(screen_seed)
     cols = ["#3df2ff", "#4f98ff", "#ffd23f", "#39ff6a"]
     pix = ''.join(f'M{_n(x+(14+r.randint(0,60))*s)} {_n(t+(50+r.randint(0,52))*s)}h{_n(6*s)}v{_n(6*s)}h{_n(-6*s)}z' for _ in range(6))
-    o.append(f'<path d="{pix}" fill="{r.choice(cols)}"/>')
+    dur = 3 + (screen_seed % 4) * .9   # the attract-mode pixels blink, each cabinet out of step
+    o.append(f'<path d="{pix}" fill="{r.choice(cols)}">' + (flicker(["0", ".45", ".55", ".8"], ["1", ".3", "1", ".6"], dur, screen_seed * .37) if glow else "") + '</path>')
     o.append(f'<path d="M{_n(x+22*s)} {_n(t+127*s)}h{_n(5*s)}v{_n(10*s)}h{_n(-5*s)}z M{_n(x+60*s)} {_n(t+128*s)}h{_n(8*s)}v{_n(8*s)}h{_n(-8*s)}z M{_n(x+74*s)} {_n(t+128*s)}h{_n(8*s)}v{_n(8*s)}h{_n(-8*s)}z" fill="#ffd23f"/>')
     if n:
-        o.append(f'<path d="M{_n(x+10*s)} {_n(t+44*s)}h{_n(w-20*s)}v{_n(70*s)}h{_n(-w+20*s)}z" fill="{r.choice(cols)}" opacity=".18"/>')
+        o.append(f'<path d="M{_n(x+10*s)} {_n(t+44*s)}h{_n(w-20*s)}v{_n(70*s)}h{_n(-w+20*s)}z" fill="{r.choice(cols)}" opacity=".18">'
+                 + (pulse(".18;.34;.18", dur + 1.4, screen_seed * .5) if glow else "") + '</path>')
     return ''.join(o)
 
 # ------------------------------------------------------------------ the Digest picture
@@ -210,20 +235,27 @@ def skyline(night):
     a(f'<rect width="{W}" height="{SPLIT+2}" fill="url(#sky)"/>')
     # ---- sky: stars / clouds, the striped sun, the moon or birds, a ship
     if n:
-        a(stars(70, W, 0, 300, 3))
-        a(sparkles([(140, 110), (980, 40), (1270, 22), (560, 150)], "#fff", 3))
+        a(stars_tw(70, W, 0, 300, 3))
+        a(sparkles([(140, 110), (980, 40), (1270, 22), (560, 150)], "#fff", 3).replace('"/>', f'">{pulse("1;.2;1", 2.6, .4)}</path>'))
     else:
-        for cx, cy, s in [(120, 120, 1.2), (560, 40, 1), (1180, 150, .9), (1500, 210, 1.1)]:
-            a(runs(["...wwww......", ".wwwwwwwww....", "wwwwwwwwwwwww.", "..ppppppppppp"], cx, cy, 10 * s, {'w': "#f7faff", 'p': "#c6deff"}, ' opacity=".85"'))
+        for i, (cx, cy, s) in enumerate([(120, 120, 1.2), (560, 40, 1), (1180, 150, .9), (1500, 210, 1.1)]):
+            d = (30 + i * 8) * (1 if i % 2 else -1)   # the pixel clouds drift a little, each its own way
+            cl = runs(["...wwww......", ".wwwwwwwww....", "wwwwwwwwwwwww.", "..ppppppppppp"], cx, cy, 10 * s, {'w': "#f7faff", 'p': "#c6deff"}, ' opacity=".85"')
+            a(f'<g>{cl}{drift(f"0 0;{d} 0;0 0", 9 + i * 1.5, i * .8)}</g>')
     a(retro_sun(800, 230, 190, n, "ss", [(-.7, .04), (-.58, .055), (-.45, .07), (-.3, .085), (-.13, .1), (.05, .12), (.25, .14)]))
     if n:
         a(f'<circle cx="800" cy="230" r="300" fill="url(#sp)" opacity=".5"/>')
         a(runs(["..mmmm.", ".mmm...", "mmm....", "mmm....", "mmm....", ".mmm...", "..mmmm."], 1470, 26, 9, {'m': "#fff4d6"}))
-        a(runs(SHIP, 1120, 40, 6, {'c': "#3df2ff", 'w': "#e9ffff", 'p': "#a46bff", 'y': "#ffd23f"}))
-        a('<path d="M1150 70 L1120 160 L1210 160 Z" fill="#3df2ff" opacity=".12"/>')
+        # the ship hovers to and fro over the city, its beam with it, its lights blinking
+        a('<g>' + runs(SHIP[:3], 1120, 40, 6, {'c': "#3df2ff", 'w': "#e9ffff", 'p': "#a46bff", 'y': "#ffd23f"})
+          + runs(SHIP, 1120, 40, 6, {'y': "#ffd23f"}).replace('"/>', f'">{flicker(["0", ".5"], ["1", ".2"], 1.2)}</path>')
+          + runs(SHIP[3:], 1120, 58, 6, {'p': "#a46bff"})
+          + '<path d="M1150 70 L1120 160 L1210 160 Z" fill="#3df2ff" opacity=".12">' + pulse(".12;.04;.12", 3.4) + '</path>'
+          + drift("0 0;-56 -6;0 0", 10) + '</g>')
     else:
-        for bx, by in [(1040, 70), (1080, 92), (1010, 100), (300, 40), (330, 60)]:
-            a(runs(BIRD, bx, by, 5, {'k': "#4a2a7a"}))
+        for i, (bx, by) in enumerate([(1040, 70), (1080, 92), (1010, 100), (300, 40), (330, 60)]):
+            dx = 46 if i < 3 else -40   # the two flocks glide back and forth
+            a(f'<g>{runs(BIRD, bx, by, 5, {"k": "#4a2a7a"})}{drift(f"0 0;{dx} {-6 + i * 3} ;0 0", 8 if i < 3 else 7, i * .3)}</g>')
     # ---- the city: pixel towers rising into 0..170 between the tiles
     bc = ["#250a4a", "#2f0d5c", "#1c0838"] if n else ["#7a4fc0", "#9a62d6", "#6a44b0"]
     edge = "#4f98ff" if n else "#e1eeff"
@@ -238,20 +270,23 @@ def skyline(night):
         a(f'<rect x="{x+w*.25:.0f}" y="{top-14}" width="{w*.5:.0f}" height="14" fill="{bc[ci]}"/><rect x="{x+w*.45:.0f}" y="{top-34}" width="6" height="20" fill="{bc[ci]}"/>')
         a(f'<rect x="{x+w*.45-2:.0f}" y="{top-40}" width="10" height="8" fill="{"#3d8eff" if n else "#6fabff"}"/>')
     # neon signs on the towers
-    def neon(x, y, s, c, p=5):
+    def neon(x, y, s, c, p=5, fl=""):
         tw = twidth(s, p)
         bg = "#14042e" if n else "#3b1a6e"
         return (f'<rect x="{x-8}" y="{y-8}" width="{tw+16}" height="{5*p+16}" fill="{bg}" stroke="{c}" stroke-width="3"/>'
-                + (f'<g filter="url(#nl)">{ptext(s, x, y, p, c)}</g>' if n else ptext(s, x, y, p, c)))
-    a(neon(392, 124, "QUOTE", "#3df2ff", 4))
+                + (f'<g filter="url(#nl)">{ptext(s, x, y, p, c)}{fl}</g>' if n else f'<g>{ptext(s, x, y, p, c)}{fl}</g>'))
+    # QUOTE's tube catches now and then; BONUS stutters on its own clock
+    a(neon(392, 124, "QUOTE", "#3df2ff", 4, flicker(["0", ".82", ".85", ".88", ".91", "1"], ["1", ".25", "1", ".4", "1", "1"], 7)))
     a(neon(150, 120, "24/7", "#ffd23f", 4))
-    a(neon(1022, 136, "BONUS", "#7ab1ff", 4))
+    a(neon(1022, 136, "BONUS", "#7ab1ff", 4, flicker(["0", ".3", ".34", ".62", ".65"], ["1", ".3", "1", ".2", "1"], 5.5, 1.5)))
     # ---- the HIGH SCORES marquee on its tower
     mx, my, mw, mh = 1150, 48, 380, 92
     a(f'<rect x="{mx+150}" y="{my+mh}" width="18" height="{SPLIT-my-mh}" fill="{bc[1]}"/><rect x="{mx+212}" y="{my+mh}" width="18" height="{SPLIT-my-mh}" fill="{bc[1]}"/>')
     a(f'<rect x="{mx}" y="{my}" width="{mw}" height="{mh}" fill="{"#1a0636" if n else "#3b1a6e"}" stroke="{"#4f98ff" if n else "#6fabff"}" stroke-width="6"/>')
-    bulbs = ''.join(f'M{mx+8+i*24} {my+3}h6v6h-6z M{mx+8+i*24} {my+mh-9}h6v6h-6z' for i in range(16))
-    a(f'<path d="{bulbs}" fill="#ffd23f"/>')
+    # the marquee's bulbs chase: odd and even ones trade places every half second
+    for k in (0, 1):
+        bulbs = ''.join(f'M{mx+8+i*24} {my+3}h6v6h-6z M{mx+8+i*24} {my+mh-9}h6v6h-6z' for i in range(k, 16, 2))
+        a(f'<path d="{bulbs}" fill="#ffd23f">' + flicker(["0", ".5"], ["1", ".25"] if k == 0 else [".25", "1"], 1) + '</path>')
     hs = ptext("HIGH SCORES", mx + mw / 2, my + 26, 7, "#ffd23f", "middle", shadow="#3d8eff")
     a(f'<g filter="url(#nl)">{hs}</g>' if n else hs)
     # ---- below the horizon: the grid floor
@@ -283,12 +318,12 @@ def skyline(night):
     bodies = ["#3a1a6e", "#5a1f7a", "#2a2a7a"] if n else ["#7b4fd6", "#5a92e0", "#4a7be0"]
     mqs = ["#4f98ff", "#3df2ff", "#ffd23f"]
     for i, (x, base, s) in enumerate([(430, 540, .5), (300, 610, .7), (130, 710, .95), (-60, 830, 1.25)]):
-        a(cabinet(x, base, s, bodies[i % 3], mqs[i % 3], n, i))
+        a(cabinet(x, base, s, bodies[i % 3], mqs[i % 3], n, i, glow=True))
     for i, (x, base, s) in enumerate([(1120, 540, .5), (1230, 610, .7), (1360, 710, .95), (1520, 830, 1.25)]):
-        a(cabinet(x, base, s, bodies[(i + 1) % 3], mqs[(i + 2) % 3], n, i + 9))
+        a(cabinet(x, base, s, bodies[(i + 1) % 3], mqs[(i + 2) % 3], n, i + 9, glow=True))
     # the 1UP sign and a PLAYER 1 sign
     a(f'<rect x="1025" y="496" width="10" height="44" fill="{st2}"/><rect x="980" y="446" width="100" height="56" fill="#14042e" stroke="#39ff6a" stroke-width="4"/>')
-    a(f'<g filter="url(#nl)">{ptext("1UP", 1030, 459, 7, "#39ff6a", "middle")}</g>')
+    a(f'<g filter="url(#nl)">{ptext("1UP", 1030, 459, 7, "#39ff6a", "middle")}{flicker(["0", ".6"], ["1", ".15"], 1.6)}</g>')
     a(f'<rect x="585" y="496" width="10" height="44" fill="{st2}"/><rect x="510" y="452" width="160" height="50" fill="#14042e" stroke="#4f98ff" stroke-width="4"/>')
     a(f'<g filter="url(#nl)">{ptext("PLAYER 1", 590, 466, 4, "#7ab1ff", "middle")}</g>')
     a('</g></svg>')

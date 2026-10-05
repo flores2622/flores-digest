@@ -207,6 +207,26 @@ def shade(h=240):
             f'<rect x="0" y="{h-90}" width="1600" height="90" fill="url(#sh)"/>')
 
 
+# ---- movement (Frank, 2026-10-05: "add movement to the other worlds too"). SMIL, which plays inside a
+# background picture; build.py also writes a still copy (every <animate*> taken out) for Settings > Motion >
+# Reduced, so each element's own attributes are its resting state, and anything that only shows mid-loop
+# rests at opacity 0. Nothing moves over the podium (x 480-1130, units 540-800).
+def show(times, vals, dur, attr="opacity", begin=0):
+    """an <animate> that steps an attribute through vals at keyTimes, looping"""
+    return (f'<animate attributeName="{attr}" values="{";".join(vals)}" keyTimes="{";".join(times)}" '
+            f'dur="{dur}s" begin="{begin}s" calcMode="discrete" repeatCount="indefinite"/>')
+
+
+def pop(x, y, s, dur, at):
+    """a flashbulb in the stands: hidden, a quick flash at `at` of the loop, hidden again"""
+    return (f'<g opacity="0"><circle cx="{x}" cy="{y}" r="{s*3}" fill="url(#fp)"/><path d="M{x-s*2} {y} L{x+s*2} {y} M{x} {y-s*2} L{x} {y+s*2}" stroke="#fff" stroke-width="1.6"/>'
+            f'<circle cx="{x}" cy="{y}" r="{s*.6:.1f}" fill="#fff"/>'
+            f'<animate attributeName="opacity" values="0;0;1;0;0" keyTimes="0;{at:.2f};{at+.02:.2f};{at+.07:.2f};1" dur="{dur}s" repeatCount="indefinite"/></g>')
+
+
+OP0 = ' opacity="0"'
+
+
 # ------------------------------------------------------------------ the Digest: the stadium
 SPLIT = 377
 VPY, YF, DF = -600, 512, 52     # field perspective: vanishing point y, far sideline y, 5-yard spacing at the far sideline
@@ -228,6 +248,8 @@ def skyline(night):
         a(grad("sky", [(0, "#2a78d0"), (.6, "#6fb4ea"), (1, "#d8eefa")]))
         a(glowdef("sun", "#fff3b0", .8))
     a(crowd_def("cr", night) + crowd_def("cu", night, .72, "#3c4660" if not night else "#0a1022"))
+    a(glowdef("fp", "#ffffff", .9) + glowdef("lp", "#fff6cf", .6))
+    a('<linearGradient id="wv" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#fff" stop-opacity="0"/><stop offset=".5" stop-color="#fff" stop-opacity="1"/><stop offset="1" stop-color="#fff" stop-opacity="0"/></linearGradient>')
     a('</defs>')
     a(f'<rect width="{W}" height="{SPLIT+10}" fill="url(#sky)"/>')
     # ---- sky ----
@@ -251,7 +273,9 @@ def skyline(night):
     # pennants on the roof
     for x in [150, 380, 1240, 1380]:
         yb = 238 - 30 * (1 - ((x - 800) / 800) ** 2)
-        a(f'<line x1="{x}" y1="{yb:.0f}" x2="{x}" y2="{yb-48:.0f}" stroke="{roof2}" stroke-width="3"/><path d="M{x} {yb-48:.0f} l34 9 l-34 9 z" fill="{RED if x % 3 else GOLD}"/>')
+        d0 = f"M{x} {yb-48:.0f} l34 9 l-34 9 z"; d1 = f"M{x} {yb-48:.0f} l31 13 l-31 5 z"
+        a(f'<line x1="{x}" y1="{yb:.0f}" x2="{x}" y2="{yb-48:.0f}" stroke="{roof2}" stroke-width="3"/><path d="{d0}" fill="{RED if x % 3 else GOLD}">'
+          f'<animate attributeName="d" values="{d0};{d1};{d0}" dur="{3 + (x % 7) * .25:.2f}s" begin="{(x % 5) * .3:.1f}s" repeatCount="indefinite"/></path>')
     # ---- light towers ----
     for tx, tw in [(470, 120), (1490, 120)]:
         pc = "#2d3546" if night else "#7c8695"
@@ -259,6 +283,8 @@ def skyline(night):
         for yy in range(110, 240, 34):
             a(f'<path d="M{tx-9} {yy} L{tx+9} {yy+26} M{tx+9} {yy} L{tx-9} {yy+26}" stroke="{pc}" stroke-width="2"/>')
         a(light_bank(tx, 22, tw, night))
+        if night:   # the lamps breathe: a soft extra glow swelling and fading
+            a(f'<circle cx="{tx}" cy="70" r="120" fill="url(#lp)" opacity="0"><animate attributeName="opacity" values="0;.8;0" dur="{5 if tx < 800 else 6.5}s" repeatCount="indefinite"/></circle>')
     # ---- scoreboard ----
     sb = "#0a0f1a"; fr = "#2b3446" if night else "#4b5566"
     a(f'<rect x="690" y="140" width="16" height="100" fill="{fr}"/><rect x="894" y="140" width="16" height="100" fill="{fr}"/>')
@@ -270,21 +296,39 @@ def skyline(night):
       '<text x="920" y="88" text-anchor="middle" font-family="Arial, sans-serif" font-weight="bold" font-size="14" letter-spacing="3" fill="#c9d1dc">RISK</text>'
       f'<text x="680" y="134" text-anchor="middle" font-family="monospace" font-weight="bold" font-size="44" fill="{GOLD}">28</text>'
       f'<text x="920" y="134" text-anchor="middle" font-family="monospace" font-weight="bold" font-size="44" fill="{GOLD}">14</text>'
-      '<rect x="752" y="78" width="96" height="30" rx="3" fill="#000"/><text x="800" y="100" text-anchor="middle" font-family="monospace" font-weight="bold" font-size="22" fill="#ff5040">0:42</text>'
+      '<rect x="752" y="78" width="96" height="30" rx="3" fill="#000"/>'
+      # the game clock runs down 0:42 -> 0:39 and starts over
+      + ''.join(f'<text x="800" y="100" text-anchor="middle" font-family="monospace" font-weight="bold" font-size="22" fill="#ff5040"{OP0 if i else ""}>0:{42 - i}'
+                + show(["0", ".25", ".5", ".75"], [("1" if j == i else "0") for j in range(4)], 4) + '</text>' for i in range(4)) +
       '<text x="800" y="132" text-anchor="middle" font-family="monospace" font-weight="bold" font-size="16" fill="#8fd0ff">4TH QTR</text>')
     # ---- blimp ----
     bc = "#c5ccd8" if night else "#f3f5f8"
+    a('<g><animateTransform attributeName="transform" type="translate" values="0 0;-40 4;0 0" dur="12s" repeatCount="indefinite" calcMode="spline" keySplines=".45 0 .55 1;.45 0 .55 1"/>')
     a(f'<g transform="translate(1210 78)"><path d="M86 0 l38 -22 l0 44 z M70 -6 l40 -6 l0 12 z" fill="{NAVY}"/><ellipse rx="100" ry="34" fill="{bc}"/>'
       f'<path d="M-100 0 A100 34 0 0 0 100 0 L90 8 A96 24 0 0 1 -90 8 Z" fill="{RED}"/><rect x="-22" y="30" width="44" height="12" rx="5" fill="{NAVY}"/>'
       + (f'<rect x="-60" y="-12" width="120" height="18" rx="3" fill="#0a0f1a"/><text x="0" y="2" text-anchor="middle" font-family="Arial, sans-serif" font-weight="bold" font-size="14" letter-spacing="4" fill="{GOLD}">GET COVERED</text>'
          if night else f'<text x="0" y="4" text-anchor="middle" font-family="Arial, sans-serif" font-weight="bold" font-size="16" letter-spacing="4" fill="{NAVY}">GET COVERED</text>')
-      + '</g>')
+      + '</g></g>')
     # ---- the lower bowl, horizon down ----
     a(f'<rect x="0" y="{SPLIT}" width="{W}" height="{YF-SPLIT}" fill="url(#cr)"/>')
     ai = "#2e3850" if night else "#8d97aa"
     for k in range(-14, 15, 3):
         x0 = 800 + k * 62; x1 = 800 + k * 70
         a(f'<path d="M{x0-4} {SPLIT} L{x0+4} {SPLIT} L{x1+6} 476 L{x1-6} 476 Z" fill="{ai}"/>')
+    # the crowd doing the wave: a light band rising through both decks, sweeping left to right
+    wop = ".22" if not night else ".13"
+    for y0, y1, beg in [(258, SPLIT, 0), (SPLIT, 474, .35)]:
+        a(f'<rect x="-160" y="{y0}" width="140" height="{y1-y0}" fill="url(#wv)" opacity="0">'
+          f'<animate attributeName="opacity" values="0;{wop};{wop};0;0" keyTimes="0;.05;.6;.66;1" dur="10s" begin="{beg}s" repeatCount="indefinite"/>'
+          f'<animateTransform attributeName="transform" type="translate" values="0 0;1900 0;1900 0" keyTimes="0;.66;1" dur="10s" begin="{beg}s" repeatCount="indefinite"/></rect>')
+    # flashbulbs popping in the stands, on their own clocks
+    for x, y, sz, dur, at in [(140, 300, 4, 5, .2), (420, 420, 5, 7, .5), (1180, 300, 4, 6, .35), (1450, 440, 5, 8, .7), (300, 450, 3, 9, .1), (1320, 400, 4, 4.5, .6), (60, 410, 4, 11, .45), (1560, 320, 3, 6.5, .8)]:
+        a(pop(x, y, sz, dur, at))
+    # a punt spiralling high across the sky, under the blimp, then gone
+    spin = ";".join(["1 1", "1 .55"] * 12 + ["1 1"])
+    a('<g opacity="0"><animate attributeName="opacity" values="0;0;1;1;0;0" keyTimes="0;.1;.11;.44;.45;1" dur="9s" repeatCount="indefinite"/>'
+      '<animateMotion path="M1040 250 Q1300 110 1580 230" keyPoints="0;0;1;1" keyTimes="0;.1;.45;1" calcMode="linear" rotate="auto" dur="9s" repeatCount="indefinite"/>'
+      f'<g><animateTransform attributeName="transform" type="scale" values="{spin}" dur="9s" repeatCount="indefinite"/>{ball(0, 0, 13)}</g></g>')
     # field wall, FLORES banners, the tunnel
     wall = "#0d1730" if night else NAVY
     a(f'<rect x="0" y="474" width="{W}" height="32" fill="{wall}"/><rect x="0" y="474" width="{W}" height="4" fill="{RED}"/>')

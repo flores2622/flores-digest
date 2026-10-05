@@ -261,8 +261,15 @@ def skyline(night):
         a(moon(640, 92, 32)); a('<ellipse cx="640" cy="96" rx="280" ry="140" fill="url(#mg)"/>')
     else:
         a(sun(640, 100, 34))
-        for x, y, w in [(470, 132, 220), (980, 70, 190), (1420, 150, 160)]: a(cloud(x, y, w))
-        a(bird(820, 84, 1.2, "#4a4a5a") + bird(852, 70, .9, "#4a4a5a") + bird(1060, 120, 1, "#4a4a5a"))
+        # the clouds drift slowly and the birds glide across, flapping (Frank, 2026-10-05: "make the birds and
+        # the clouds move in the golf world")
+        for i, (x, y, w) in enumerate([(470, 132, 220), (980, 70, 190), (1420, 150, 160)]):
+            a(f'<g>{cloud(x, y, w)}<animateTransform attributeName="transform" type="translate" values="0 0;{70 + i * 20} 0;0 0" dur="{38 + i * 9}s" repeatCount="indefinite"/></g>')
+        for i, (x, y, sc) in enumerate([(820, 84, 1.2), (852, 70, .9), (1060, 120, 1)]):
+            wing = lambda k: (f"M{x - 10 * sc} {y - 3 * sc * k} Q{x - 5 * sc} {y - 7 * sc * k} {x} {y} Q{x + 5 * sc} {y - 7 * sc * k} {x + 10 * sc} {y - 3 * sc * k}")
+            flap = f'<animate attributeName="d" values="{wing(1)};{wing(-.3)};{wing(1)}" dur=".8s" begin="{i * .25:.2f}s" repeatCount="indefinite"/>'
+            a(f'<g>{bird(x, y, sc, "#4a4a5a").replace("/>", ">" + flap + "</path>", 1)}'
+              f'<animateTransform attributeName="transform" type="translate" values="0 0;{-60 - i * 15} -10;{-120 - i * 30} 4;{-60 - i * 15} 8;0 0" dur="{16 + i * 3}s" repeatCount="indefinite"/></g>')
     # far and near hills
     a(hills([(0, 262), (200, 196), (430, 250), (640, 220), (830, 252), (1000, 150), (1180, 232), (1390, 196), (1600, 244)], HZ, p["far"]))
     a(hills([(0, 340), (260, 300), (520, 344), (760, 316), (1000, 346), (1300, 312), (1600, 340)], HZ, p["near"]))

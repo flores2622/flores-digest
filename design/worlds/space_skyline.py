@@ -6,6 +6,11 @@ def stars(a, n, y0, y1, seed):
     r=random.Random(seed)
     for _ in range(n):
         a(f'<circle cx="{r.randint(0,W)}" cy="{r.randint(y0,y1)}" r="{r.choice([0.6,0.8,1,1.3,1.7])}" fill="#fff" opacity="{r.choice([0.25,0.4,0.6,0.85])}"/>')
+# ---- movement (Frank, 2026-10-05: "add movement to the other worlds too"). SMIL only, self-closing, so
+# build.py's still copy (every <animate*> out) leaves each element at its own attributes. The podium zone and
+# the countdown clock / floodlights that sit in it stay still.
+def blink(vals, dur, begin=0, attr="opacity"):
+    return f'<animate attributeName="{attr}" values="{vals}" dur="{dur}s" begin="{begin}s" repeatCount="indefinite"/>'
 def scene(night):
     o=[]; a=o.append
     a(f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 {W} {H}" preserveAspectRatio="xMidYMin slice">')
@@ -25,19 +30,28 @@ def scene(night):
         # a few constellations
         for pts in [[(1180,60),(1220,88),(1270,80),(1300,120),(1340,110)],[(140,40),(190,70),(240,60),(260,110)],[(820,40),(860,30),(900,52),(940,44)]]:
             a('<polyline points="'+' '.join(f'{x},{y}' for x,y in pts)+'" fill="none" stroke="#fff" stroke-opacity=".25" stroke-width="1"/>')
-            for x,y in pts: a(f'<circle cx="{x}" cy="{y}" r="2.2" fill="#fff" opacity=".9"/>')
+            for x,y in pts: a(f'<circle cx="{x}" cy="{y}" r="2.2" fill="#fff" opacity=".9">{blink(".9;.35;.9", 3 + (x * 7 + y) % 50 / 10, (x + y) % 30 / 10)}</circle>')
         a('<circle cx="1420" cy="130" r="40" fill="#f2ecd8"/><circle cx="1432" cy="120" r="36" fill="#070b19"/>')
         # satellite blinking
-        a('<g transform="translate(600 150) rotate(-20)"><rect x="-6" y="-4" width="12" height="8" fill="#cfd6e4"/><rect x="-30" y="-2" width="20" height="4" fill="#4f7fe0"/><rect x="10" y="-2" width="20" height="4" fill="#4f7fe0"/></g>')
+        a('<g><animateTransform attributeName="transform" type="translate" values="-120 30;0 0;120 -30" dur="12s" repeatCount="indefinite"/>'
+          '<animate attributeName="opacity" values="0;1;1;0" keyTimes="0;.15;.85;1" dur="12s" repeatCount="indefinite"/>'
+          '<g transform="translate(600 150) rotate(-20)"><rect x="-6" y="-4" width="12" height="8" fill="#cfd6e4"/><rect x="-30" y="-2" width="20" height="4" fill="#4f7fe0"/><rect x="10" y="-2" width="20" height="4" fill="#4f7fe0"/>'
+          '<circle cx="0" cy="0" r="2" fill="#ff5050" opacity="0"><animate attributeName="opacity" values="0;0;1;0" keyTimes="0;.8;.9;1" dur="1.6s" repeatCount="indefinite"/></circle></g></g>')
+        a('<line x1="0" y1="0" x2="-70" y2="-22" stroke="#fff" stroke-width="2" stroke-linecap="round" opacity="0" transform="translate(1040 60)">'
+          '<animate attributeName="opacity" values="0;0;.9;0;0" keyTimes="0;.7;.73;.8;1" dur="9s" begin="2s" repeatCount="indefinite"/>'
+          '<animateMotion path="M0 0 L200 64" keyPoints="0;0;1;1" keyTimes="0;.7;.8;1" calcMode="linear" dur="9s" begin="2s" repeatCount="indefinite"/></line>')
     else:
         stars(a, 30, 0, 120, 5)
         a('<circle cx="1420" cy="120" r="34" fill="#fff" opacity=".55"/>')
         for x,y,w in [(200,150,260),(700,90,200),(1150,200,320)]:
-            a(f'<ellipse cx="{x}" cy="{y}" rx="{w//2}" ry="10" fill="#fff" opacity=".35"/><ellipse cx="{x+40}" cy="{y-8}" rx="{w//3}" ry="9" fill="#fff" opacity=".3"/>')
+            a(f'<g><animateTransform attributeName="transform" type="translate" values="0 0;{w // 10} 0;0 0" dur="{8 + w // 60}s" repeatCount="indefinite" calcMode="spline" keySplines=".45 0 .55 1;.45 0 .55 1"/>'
+              f'<ellipse cx="{x}" cy="{y}" rx="{w//2}" ry="10" fill="#fff" opacity=".35"/><ellipse cx="{x+40}" cy="{y-8}" rx="{w//3}" ry="9" fill="#fff" opacity=".3"/></g>')
         # a contrail from an earlier launch
         a('<path d="M560 330 Q600 200 700 120 T940 20" fill="none" stroke="#fff" stroke-opacity=".55" stroke-width="10" stroke-linecap="round"/><path d="M560 330 Q600 200 700 120 T940 20" fill="none" stroke="#fff" stroke-opacity=".35" stroke-width="22" stroke-linecap="round"/>')
         # jet / plane
-        a('<path d="M1040 70 l-22 6 l-6 -4 l10 -3 z M1030 64 l-6 -10 l4 0 l8 8 z" fill="#f4f4f4"/>')
+        a('<path d="M1040 70 l-22 6 l-6 -4 l10 -3 z M1030 64 l-6 -10 l4 0 l8 8 z" fill="#f4f4f4">'
+          '<animateTransform attributeName="transform" type="translate" values="90 -24;0 0;-90 24" dur="12s" repeatCount="indefinite"/>'
+          '<animate attributeName="opacity" values="0;1;1;0" keyTimes="0;.12;.88;1" dur="12s" repeatCount="indefinite"/></path>')
     # ---- ground from the horizon down ----
     g1="#0d1526" if night else "#5c7a63"; g2="#121b30" if night else "#6f8c6a"; sea="#0a1226" if night else "#2f6fa8"
     a(f'<rect x="0" y="{SPLIT}" width="{W}" height="{H-SPLIT}" fill="{g1}"/>')
@@ -82,15 +96,24 @@ def scene(night):
     if night:
         # ignition: flame, smoke, the pad lit
         a(f'<ellipse cx="{rx}" cy="{padY+60}" rx="150" ry="70" fill="#d8d2c8" opacity=".55"/><ellipse cx="{rx-120}" cy="{padY+80}" rx="130" ry="50" fill="#cfc8bd" opacity=".45"/><ellipse cx="{rx+140}" cy="{padY+85}" rx="150" ry="55" fill="#cfc8bd" opacity=".45"/>')
-        a(f'<path d="M{rx-40} {padY} Q{rx} {padY+220} {rx+40} {padY} Z" fill="url(#fl)"/><path d="M{rx-22} {padY} Q{rx} {padY+150} {rx+22} {padY} Z" fill="#fff6c8" opacity=".9"/>')
-        a(f'<circle cx="{rx}" cy="{padY}" r="320" fill="url(#glow)"/>')
+        f1=lambda q: f'M{rx-40} {padY} Q{rx} {padY+q} {rx+40} {padY} Z'; f2=lambda q: f'M{rx-22} {padY} Q{rx} {padY+q} {rx+22} {padY} Z'
+        a(f'<path d="{f1(220)}" fill="url(#fl)">{blink(";".join(f1(q) for q in (220, 250, 205, 240, 220)), .9, attr="d")}</path>'
+          f'<path d="{f2(150)}" fill="#fff6c8" opacity=".9">{blink(";".join(f2(q) for q in (150, 135, 170, 145, 150)), .7, attr="d")}{blink(".9;.7;1;.8;.9", .55)}</path>')
+        a(f'<circle cx="{rx}" cy="{padY}" r="320" fill="url(#glow)">{blink("1;.8;1;.88;1", 1.3)}</circle>')
         # floodlights on poles
         for px in [60, 640, 1180, 1500]:
-            a(f'<rect x="{px-3}" y="{SPLIT+20}" width="6" height="140" fill="#3a4560"/><rect x="{px-16}" y="{SPLIT+14}" width="32" height="10" rx="3" fill="#aab4c8"/><path d="M{px-16} {SPLIT+24} L{px-120} {SPLIT+330} L{px+120} {SPLIT+330} L{px+16} {SPLIT+24} Z" fill="url(#beam)"/>')
+            a(f'<rect x="{px-3}" y="{SPLIT+20}" width="6" height="140" fill="#3a4560"/><rect x="{px-16}" y="{SPLIT+14}" width="32" height="10" rx="3" fill="#aab4c8"/><path d="M{px-16} {SPLIT+24} L{px-120} {SPLIT+330} L{px+120} {SPLIT+330} L{px+16} {SPLIT+24} Z" fill="url(#beam)">'
+              + (blink("1;.65;1", 4.2 if px < 800 else 5.4, 0 if px < 800 else 1.7) if px in (60, 1500) else '') + '</path>')
         # beacons
         for bx,by in [(tx+17, top-62),(1360, SPLIT-60)]:
-            a(f'<circle cx="{bx}" cy="{by}" r="4" fill="#ff3b3b"/><circle cx="{bx}" cy="{by}" r="10" fill="#ff3b3b" opacity=".3"/>')
+            d=2 if bx < 800 else 2.6
+            a(f'<g>{blink("1;1;.15;.15;1", d, 0 if bx < 800 else .9)}<circle cx="{bx}" cy="{by}" r="4" fill="#ff3b3b"/><circle cx="{bx}" cy="{by}" r="10" fill="#ff3b3b" opacity=".3"/></g>')
     else:
+        for i,(vx,vy) in enumerate([(rx-44, 215), (rx-44, padY-210)]):
+            a(f'<ellipse cx="{vx}" cy="{vy}" rx="14" ry="8" fill="#fff" opacity="0">'
+              f'<animate attributeName="opacity" values="0;.75;0" keyTimes="0;.25;1" dur="{4 + i * 1.5}s" begin="{i * 1.3}s" repeatCount="indefinite"/>'
+              f'<animateTransform attributeName="transform" type="translate" values="0 0;-46 -14" dur="{4 + i * 1.5}s" begin="{i * 1.3}s" repeatCount="indefinite"/>'
+              f'<animate attributeName="rx" values="10;30" dur="{4 + i * 1.5}s" begin="{i * 1.3}s" repeatCount="indefinite"/></ellipse>')
         for px in [60, 640, 1180, 1500]:
             a(f'<rect x="{px-3}" y="{SPLIT+20}" width="6" height="140" fill="#7b869a"/><rect x="{px-16}" y="{SPLIT+14}" width="32" height="10" rx="3" fill="#aab4c8"/>')
     # ---- right: fuel spheres, water tower, the big hangar, a tracking dish ----
@@ -103,7 +126,7 @@ def scene(night):
     a(f'<rect x="1420" y="{SPLIT-170}" width="180" height="300" fill="{hb}"/><rect x="1440" y="{SPLIT-130}" width="60" height="220" fill="{hb2}"/><rect x="1520" y="{SPLIT-110}" width="64" height="64" rx="32" fill="#e2552b"/><path d="M1532 {SPLIT-62} Q1552 {SPLIT-130} 1572 {SPLIT-62}" fill="none" stroke="#fff" stroke-width="5"/><rect x="1420" y="{SPLIT+100}" width="180" height="30" fill="{hb2}"/>')
     # tracking dish on the left flank
     dc="#c9d1dc" if not night else "#7f8aa3"
-    a(f'<rect x="86" y="{SPLIT+330}" width="12" height="90" fill="{wh2}"/><g transform="rotate(-30 92 {SPLIT+330})"><path d="M22 {SPLIT+330} A70 70 0 0 1 162 {SPLIT+330} Z" fill="{dc}"/><path d="M22 {SPLIT+330} A70 70 0 0 1 162 {SPLIT+330}" fill="none" stroke="{wh2}" stroke-width="3"/><line x1="92" y1="{SPLIT+330}" x2="92" y2="{SPLIT+262}" stroke="{wh2}" stroke-width="3"/><circle cx="92" cy="{SPLIT+260}" r="6" fill="{wh2}"/></g>')
+    a(f'<rect x="86" y="{SPLIT+330}" width="12" height="90" fill="{wh2}"/><g transform="rotate(-30 92 {SPLIT+330})"><animateTransform attributeName="transform" type="rotate" values="-30 92 {SPLIT+330};-12 92 {SPLIT+330};-30 92 {SPLIT+330}" dur="11s" repeatCount="indefinite" calcMode="spline" keySplines=".45 0 .55 1;.45 0 .55 1"/><path d="M22 {SPLIT+330} A70 70 0 0 1 162 {SPLIT+330} Z" fill="{dc}"/><path d="M22 {SPLIT+330} A70 70 0 0 1 162 {SPLIT+330}" fill="none" stroke="{wh2}" stroke-width="3"/><line x1="92" y1="{SPLIT+330}" x2="92" y2="{SPLIT+262}" stroke="{wh2}" stroke-width="3"/><circle cx="92" cy="{SPLIT+260}" r="6" fill="{wh2}"/></g>')
     # ---- the mission patch / podium pad at the end of the crawlerway ----
     pp="#2f3b5a" if night else "#aeb6c6"
     a(f'<ellipse cx="800" cy="{SPLIT+640}" rx="300" ry="80" fill="{pp}" opacity=".55"/>')
