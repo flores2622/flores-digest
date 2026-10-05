@@ -1005,6 +1005,7 @@ h2 { font-size: 22px; font-weight: var(--dw); text-transform: none; letter-spaci
 .sd { margin: -6px 0 14px; }
 .digestgrid { gap: 20px; }
 .tile { border: var(--bw) solid var(--border-strong); border-radius: calc(var(--rad) - 4px); box-shadow: var(--shadow); padding: 14px 16px; }
+.salesfilt { cursor: pointer; transition: opacity .15s, box-shadow .15s; } .salesfilt.dim { opacity: .45; } .tile.salesfilt.sel { box-shadow: 0 0 0 3px var(--accent); } div.salesfilt.sel:not(.tile) { font-weight: 800; } .salesfilt:hover { opacity: 1; }
 .tile .k { font-size: 12px; letter-spacing: .04em; font-weight: 700; }
 .tile .v { font-size: 34px; font-weight: var(--dw); letter-spacing: 0; line-height: 1.05; margin-top: 6px; }
 .tiles-6 { padding: 14px; margin: -14px; }
@@ -6822,6 +6823,10 @@ const TRASH_ICON = `<svg viewBox="0 0 24 24" width="15" height="15" fill="none" 
 // Review Sent state -- this is a tally of what's been SELF-REPORTED this
 // folio, the same "not the official Premium Sold figure" scope as the log
 // itself, not a reconciled/official count.
+// Clicking a producer's card, legend row or pie slice filters the folio log
+// below to them (Frank, 2026-10-05: "clicking the producers name or color on
+// the chart should filter the list to them"); again, or Team, shows everyone.
+let salesLogFilter = "";
 function salesTotalsHtml(entries) {
   if (!entries.length) return "";
   const byProd = {};
@@ -6839,8 +6844,9 @@ function salesTotalsHtml(entries) {
   // one "The Insurance Icons" card here (salesGroupName above); every other
   // rollup on the board keeps them separate.
   const names = Object.keys(byProd).sort((a, b) => byProd[b].premium - byProd[a].premium);
+  const on = name => salesLogFilter === name ? " sel" : salesLogFilter ? " dim" : "";
   const cards = names.map(name => `
-    <div class="tile"><div class="k">${pbadge(DOT[name] || "#8a877f", salesShortLabel(name))}</div>
+    <div class="tile salesfilt${on(name)}" data-salesfilt="${cesc(name)}" role="button" tabindex="0" title="Show only ${cesc(salesShortLabel(name))}'s sales"><div class="k">${pbadge(DOT[name] || "#8a877f", salesShortLabel(name))}</div>
       <div class="v">${money(byProd[name].premium)}</div>
       <div class="n">${byProd[name].count} sale${byProd[name].count === 1 ? "" : "s"}</div></div>`).join("");
   const teamCount = entries.length;
@@ -6856,7 +6862,7 @@ function salesTotalsHtml(entries) {
     const from = acc; acc += pct;
     return `${DOT[name] || "#8a877f"} ${from.toFixed(2)}% ${acc.toFixed(2)}%`;
   }).join(", ");
-  const legend = names.map(name => `<div style="display:flex;align-items:center;gap:6px">
+  const legend = names.map(name => `<div class="salesfilt${on(name)}" data-salesfilt="${cesc(name)}" role="button" tabindex="0" title="Show only ${cesc(salesShortLabel(name))}'s sales" style="display:flex;align-items:center;gap:6px">
       <i style="width:10px;height:10px;border-radius:2px;background:${DOT[name] || "#8a877f"};flex:none"></i>
       <span style="flex:1">${cesc(salesShortLabel(name))}</span>
       <span style="color:var(--text-muted);font-variant-numeric:tabular-nums">${teamPremium ? Math.round(byProd[name].premium / teamPremium * 100) : 0}%</span>
@@ -6867,15 +6873,15 @@ function salesTotalsHtml(entries) {
     <div style="display:flex;gap:24px;flex-wrap:wrap;align-items:flex-start">
       <div style="flex:0 1 460px">
         <div class="tiles" style="grid-template-columns:repeat(3, 1fr)">${cards}</div>
-        <div class="tile" style="margin-top:10px;max-width:148px;border-color:var(--border-strong);background:var(--surface)">
+        <div class="tile salesfilt${salesLogFilter ? "" : " sel"}" data-salesfilt="" role="button" tabindex="0" title="Show everyone's sales" style="margin-top:10px;max-width:148px;border-color:var(--border-strong);background:var(--surface)">
           <div class="k">Team</div>
           <div class="v">${money(teamPremium)}</div>
           <div class="n">${teamCount} sale${teamCount === 1 ? "" : "s"}</div>
         </div>
       </div>
       <div style="flex:1 1 260px;display:flex;flex-direction:column;align-items:center;gap:16px;padding-top:4px">
-        <div style="width:210px;height:210px;border-radius:50%;background:conic-gradient(${slices});flex:none"
-             title="Premium sold by producer, this folio"></div>
+        <div id="salesPie" data-names="${cesc(JSON.stringify(names.map(n => [n, teamPremium ? byProd[n].premium / teamPremium : 0])))}" style="width:210px;height:210px;border-radius:50%;background:conic-gradient(${slices});flex:none;cursor:pointer"
+             title="Premium sold by producer, this folio. Click a slice to show only their sales"></div>
         <div style="display:flex;flex-direction:column;gap:6px;width:100%;max-width:220px;font-size:12px">${legend}</div>
       </div>
     </div>
@@ -6941,7 +6947,9 @@ function salesPanel(data) {
       ? `${name} <span class="ctype" title="Auto-added from AgencyZoom">auto</span>`
       : name;
   };
-  const rows = entries.map(e => `<tr>
+  if (salesLogFilter && !entries.some(e => salesGroupName(e.producer) === salesLogFilter)) salesLogFilter = "";
+  const shown = salesLogFilter ? entries.filter(e => salesGroupName(e.producer) === salesLogFilter) : entries;
+  const rows = shown.map(e => `<tr>
     <td class="name"><span class="who">${pbadge(DOT[e.producer] || "#8a877f", e.producer)}</span></td>
     <td>${cesc(fmtMDY(e.date_sold))}</td>
     <td>${cesc(fmtMDY(e.effective_date))}</td>
@@ -6983,7 +6991,7 @@ function salesPanel(data) {
     <div class="controls" style="margin:4px 0 2px">
       ${folioOpts ? `<select id="salesFolioSel" aria-label="Folio period">${folioOpts}</select>` : ""}
     </div>
-    <p class="sd">Newest logged first, across every day in ${isCurrent ? "the current folio." : `the folio ending ${fmtMDY(viewingEnd)}.`}</p>
+    <p class="sd">Newest logged first, across every day in ${isCurrent ? "the current folio." : `the folio ending ${fmtMDY(viewingEnd)}.`}${salesLogFilter ? ` Showing <b>${cesc(salesShortLabel(salesLogFilter))}</b> only (${shown.length} of ${entries.length}) · <a href="#" data-salesfilt="">show everyone</a>` : ""}</p>
     ${entries.length ? `<div class="scroll"><table>
       <thead><tr><th>Producer</th><th>Date Sold</th><th>Effective Date</th><th>Client</th><th>Lead Source</th><th>Policy #</th><th>Product</th>
         <th class="num">Premium</th><th>Term</th><th>Docs Signed</th><th>Review Sent</th><th></th></tr></thead>
@@ -6993,6 +7001,20 @@ function salesPanel(data) {
 }
 
 function wireSalesPanel(data) {
+  const setFilt = v => { salesLogFilter = salesLogFilter === v ? "" : v; repaintSales(); };
+  document.querySelectorAll("[data-salesfilt]").forEach(el => {
+    el.onclick = ev => { ev.preventDefault(); setFilt(el.dataset.salesfilt); };
+    el.onkeydown = ev => { if (ev.key === "Enter" || ev.key === " ") { ev.preventDefault(); setFilt(el.dataset.salesfilt); } };
+  });
+  const pie = $("#salesPie");
+  if (pie) pie.onclick = ev => {
+    // which slice: the angle clockwise from 12 o'clock, as conic-gradient draws them
+    const r = pie.getBoundingClientRect(), x = ev.clientX - r.left - r.width / 2, y = ev.clientY - r.top - r.height / 2;
+    if (Math.hypot(x, y) > r.width / 2) return;
+    const turn = ((Math.atan2(x, -y) / (2 * Math.PI)) + 1) % 1;
+    let acc = 0;
+    for (const [name, share] of JSON.parse(pie.dataset.names || "[]")) { acc += share; if (turn <= acc + 1e-9) { setFilt(name); return; } }
+  };
   const repaintAll = async () => {
     salesLastData = await loadSalesLog(salesDay, salesFolioPick);
     repaintSales();
