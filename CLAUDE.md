@@ -1652,8 +1652,14 @@ first name (`/api/me`, ~90 random lines) and carries the search (Ctrl K:
 pages, sections, producers, every lead on the loaded day) and **Take a
 tour** (the board's own system tour, its card styled as the Field note). Every section is a cream card
 with a 2px border. **A feed line never names a stage** ("Mike presented
-$2,500 in premium"): the Digest's day reads as Apollo's group chat
-(`digestFeedItems`) beside **Needs someone now** / **Left on the desk**
+$2,500 in premium"): the Digest's **How the day went** is one card per
+producer (Frank, 2026-10-05: "too many chats from apollo, make it more
+producer focused, with coaching notes from apollo"; `digestFeedHtml`):
+their numbers, up to four moments (a sale closed on a call, policies sold,
+the biggest quote, a quote sent instead of presented, texts waiting) and
+Apollo's coaching note off their own cards (`producerDayCoach`: the red
+flag category seen most, the first dropped objection's fix -- else
+`askfix` -- as the line to say, and a `good` title to keep doing), beside **Needs someone now** / **Left on the desk**
 (`needsNowRows`); the Service Digest's is **Off the desk · done today**.
 **Each Left on the desk / Needs someone now row is a card that FLIPS**
 (Frank, 2026-10-02: "left on the desk card should drop down what was
