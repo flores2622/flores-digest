@@ -536,9 +536,9 @@ function edPosts(X) {
 // creative, insurance focused username"), by first name; anyone else gets one
 // made from their name.
 const ED_HANDLES = {
-  Apollo: "apollo.coaches", Crystal: "crystal.clear.coverage", Lorena: "lorena.locks.the.rate", Mike: "mike.drop.deductible",
-  Coral: "coral.reef.coverage", Sarahi: "sarahi.safe.harbor", Amanda: "amanda.underwrites.it", Frank: "frank.full.coverage",
-  Francisco: "francisco.fine.print", Veronica: "veronica.verified.value", Debbie: "debbie.first.line.of.defense",
+  Apollo: "coach.apollo", Crystal: "mango.multipolicy", Lorena: "lori.locks.the.rate", Mike: "mike.drop.deductible",
+  Coral: "coral.covers.it.all", Sarahi: "sarahi.safe.harbor", Amanda: "amanda.approves", Frank: "frank.full.coverage",
+  Francisco: "francisco.fine.print", Veronica: "vero.vacation.approved", Debbie: "debbie.first.line.of.defense",
 };
 const edHandle = who => { const f = pfirst(String(who || "")); return "@" + (ED_HANDLES[f] || `${f.toLowerCase().replace(/[^a-z]/g, "") || "agent"}.always.covered`); };
 function edPostHtml(X, p) {
