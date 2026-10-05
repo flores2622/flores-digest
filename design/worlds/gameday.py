@@ -341,8 +341,11 @@ def skyline(night):
         a(flashes(8, 20, 1580, 270, 330, 13))
     # ---- the field ----
     g1, g2 = ("#2c6e30", "#327a36") if night else ("#3d8c3a", "#47993f")
-    a(f'<rect x="0" y="506" width="{W}" height="{H-506}" fill="{g1}"/>')
-    yb = H
+    # the field ends on the NEAR sideline (Frank, 2026-10-05: "make it proportionate and end on the opposite
+    # sideline instead of infinity field"): 53 yards deep in this perspective, then the apron beyond it
+    YN = 756
+    a(f'<rect x="0" y="506" width="{W}" height="{YN-506}" fill="{g1}"/>')
+    yb = YN
     for k in range(-16, 16):
         if k % 2:
             a(f'<path d="M{fx(k, YF):.0f} {YF} L{fx(k+1, YF):.0f} {YF} L{fx(k+1, yb):.0f} {yb} L{fx(k, yb):.0f} {yb} Z" fill="{g2}"/>')
@@ -359,6 +362,9 @@ def skyline(night):
     # yard lines, sidelines
     lc = "#f2f6ee"
     a(f'<rect x="0" y="{YF-6}" width="{W}" height="6" fill="{lc}"/>')
+    ap, ap2 = ("#1d3a24", "#16301d") if night else ("#2f6a30", "#285d2a")
+    a(f'<rect x="0" y="{YN}" width="{W}" height="{H-YN}" fill="{ap}"/><rect x="0" y="{YN+22}" width="{W}" height="{H-YN-22}" fill="{ap2}"/>'
+      f'<rect x="0" y="{YN-2}" width="{W}" height="9" fill="{lc}"/>')
     for k in range(-12, 13):
         w0 = 2.4 if k else 4.5
         a(f'<path d="M{fx(k, YF)-w0/2:.1f} {YF} L{fx(k, YF)+w0/2:.1f} {YF} L{fx(k, yb)+w0:.1f} {yb} L{fx(k, yb)-w0:.1f} {yb} Z" fill="{lc}" opacity="{.95 if abs(k) in (0, 10, 12) else .8}"/>')
@@ -367,7 +373,7 @@ def skyline(night):
         n = 50 - 5 * abs(k)
         a(f'<text x="{fx(k, 566):.0f}" y="566" text-anchor="middle" font-family="Arial, sans-serif" font-weight="bold" font-size="34" fill="{lc}" opacity=".9">{n}</text>')
     # hash marks, every 5 yards between the lines
-    for row in (628, 690):
+    for row in (612, 676):
         for k in range(-10, 10):
             x = fx(k + .5, row)
             a(f'<rect x="{x-1.5:.0f}" y="{row-5}" width="3" height="10" fill="{lc}" opacity=".7"/>')
