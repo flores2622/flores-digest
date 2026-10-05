@@ -1937,7 +1937,12 @@ repaint clears the list).
   **Then the rest** (Frank, 2026-10-03: "now do the rest of the themes we
   said"): **Ocean** (Merriweather / Source Sans 3; Harbor, Sea Glass, Sunset
   Pier -- the harbor at golden hour with the lighthouse, the podium on the
-  pier, FULL NET / LINE'S STILL OUT / THE ONE THAT GOT AWAY ...), **Mountain**
+  pier, FULL NET / LINE'S STILL OUT / THE ONE THAT GOT AWAY ...; every
+  boat has an insurance name on her hull -- Frank, 2026-10-05: "be more
+  creative with the hull names": PREMIUM CATCH, REEL QUOTE, SEAS THE DEAL,
+  NO LAPSE, BUNDLE UP, SHIP HAPPENS, PAID IN FULL, KNOT INSURED, NET
+  PREMIUM, THE CLOSER, HOOKED LEAD, REEL DEAL, SALE AWAY, CROSS-SELL, and
+  TEXT ME BACK under the signal flags on Texts & Emails), **Mountain**
   (Zilla Slab / Work Sans; Evergreen, Glacier, Aspen -- the peaks, the lake and
   the ranger cabin, the podium on a granite summit slab, SUMMIT / TRAIL
   CLOSED / HIBERNATING ...), **Game Day** (Oswald / Barlow; Home, Away, Night

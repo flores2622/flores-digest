@@ -66,7 +66,7 @@ def waves(n, x0, x1, y0, y1, seed, c="#fff", op=.28, avoid=None):
         o.append(f'<path d="M{x} {y} q{w//2} -5 {w} 0 t{w} 0" fill="none" stroke="{c}" stroke-opacity="{op}" stroke-width="2" stroke-linecap="round"/>')
     return ''.join(o)
 
-def sailboat(x, wy, s, hull, night, mast=120, sails=None, flag="#d8323f", flip=False):
+def sailboat(x, wy, s, hull, night, mast=120, sails=None, flag="#d8323f", flip=False, name=""):
     """Hull centred on x with its waterline at wy; local units, scaled by s."""
     cab = "#e9e4d8" if not night else "#8a8f9e"; ink = "#2f3440" if not night else "#11141c"
     o = [f'<g transform="translate({N(x)} {N(wy)}) scale({-s if flip else s} {s})">']
@@ -80,7 +80,12 @@ def sailboat(x, wy, s, hull, night, mast=120, sails=None, flag="#d8323f", flip=F
              f'<rect x="-46" y="-13" width="95" height="2.5" fill="#fff" opacity=".6"/>'
              f'<rect x="-18" y="-26" width="32" height="10" rx="3" fill="{cab}"/>')
     win = "#ffd56b" if night else "#5f8fb0"
-    o.append(f'<rect x="-12" y="-23" width="6" height="4" fill="{win}"/><rect x="2" y="-23" width="6" height="4" fill="{win}"/></g>')
+    o.append(f'<rect x="-12" y="-23" width="6" height="4" fill="{win}"/><rect x="2" y="-23" width="6" height="4" fill="{win}"/>')
+    if name:  # the boat's name across the hull (Frank, 2026-10-05: "be more creative with the hull names")
+        tr = ' transform="scale(-1 1)"' if flip else ''
+        ink2 = "#26405f" if hull in ("#f4f1ea", "#9aa0ae") else "#fff"
+        o.append(f'<text x="{-2 if flip else 2}" y="-4.5" font-family="Georgia, serif" font-style="italic" font-weight="bold" font-size="7.5" fill="{ink2}" text-anchor="middle"{tr}>{name}</text>')
+    o.append('</g>')
     return ''.join(o)
 
 def trawler(x, wy, s, hull, night, flip=False, net=False, name="FLORES", mesh="mesh"):
@@ -233,10 +238,11 @@ def skyline(night):
             avoid=lambda x, y: (520 < x < 1110 and y > 750) or (x > 1220 and y < 760) or (1040 < x < 1300 and 600 < y < 830)))
     # ---------- moored sailboats, masts rising into the sky
     hulls = ["#f4f1ea", "#1f3d66", "#2a8a86", "#c8283a", "#f4f1ea", "#26405f"] if not night else ["#9aa0ae", "#16243c", "#1a4a4c", "#5e1c26", "#9aa0ae", "#16243c"]
-    for (bx, wy, s, top, sails), hc, fl in zip([(110, 500, 1.2, 104, None), (250, 468, 1.0, 92, None), (420, 524, 1.3, 70, None),
+    names = ["SEAS THE DEAL", "NO LAPSE", "BUNDLE UP", "SHIP HAPPENS", "PAID IN FULL", "KNOT INSURED"]
+    for (bx, wy, s, top, sails), hc, fl, nm in zip([(110, 500, 1.2, 104, None), (250, 468, 1.0, 92, None), (420, 524, 1.3, 70, None),
                                                (565, 480, .9, 120, None), (760, 528, 1.0, 64, None), (905, 512, .9, 108, None)],
-                                              hulls, ["#d8323f", "#f2c14e", "#d8323f", "#2f6fa8", "#f2c14e", "#d8323f"]):
-        a(sailboat(bx, wy, s, hc, night, mast=(wy - 16 * s - top) / s + 16, flag=fl))
+                                              hulls, ["#d8323f", "#f2c14e", "#d8323f", "#2f6fa8", "#f2c14e", "#d8323f"], names):
+        a(sailboat(bx, wy, s, hc, night, mast=(wy - 16 * s - top) / s + 16, flag=fl, name=nm))
         a(f'<ellipse cx="{bx}" cy="{wy + 4}" rx="{60 * s:.0f}" ry="4" fill="#000" opacity=".12"/>')
     # ---------- the rocky point and the lighthouse (right)
     rk = "#6b5a5a" if not night else "#151b2c"; rk2 = "#55474b" if not night else "#0d1220"; rk3 = "#8a7470" if not night else "#1d2538"
@@ -259,8 +265,8 @@ def skyline(night):
     for x0, y0, fl, sc in [(250, 690, False, 1.55), (1130, 502, True, 1.05)]:
         d = -1 if fl else 1; st = x0 - d * 64 * sc; L = 80 if fl else 150
         a(f'<ellipse cx="{st:.0f}" cy="{y0 - 2}" rx="{18 * sc:.0f}" ry="5" fill="#fff" opacity=".5"/><path d="M{st:.0f} {y0 - 2} q{-d * L // 2} -2 {-d * L} -10 M{st:.0f} {y0 + 2} q{-d * L // 2} 6 {-d * (L - 10)} 18" stroke="#fff" stroke-opacity=".45" stroke-width="3" fill="none" stroke-linecap="round"/>')
-    a(trawler(250, 690, 1.55, "#1f3d66" if not night else "#16243c", night, net=True))
-    a(trawler(1130, 502, 1.05, "#c8283a" if not night else "#5e1c26", night, flip=True, net=True))
+    a(trawler(250, 690, 1.55, "#1f3d66" if not night else "#16243c", night, net=True, name="PREMIUM CATCH"))
+    a(trawler(1130, 502, 1.05, "#c8283a" if not night else "#5e1c26", night, flip=True, net=True, name="REEL QUOTE"))
     for x, y, s in [(170, 520, .9), (220, 550, .7), (100, 570, .8), (1240, 440, .7), (1280, 425, .6)]:
         a(gull(x, y, s, "#fff" if not night else "#cfd8ee", 3))
     # channel buoys
@@ -331,9 +337,9 @@ def v_sales(n):  # the fleet coming in with full nets
     for i in range(8):
         w = 30 + i * 14; o.append(f'<rect x="{1260 - w // 2}" y="{156 + i * 9}" width="{w}" height="3" fill="{"#ffe1a0" if not n else "#e6ecfb"}" opacity="{.7 - i * .07:.2f}"/>')
     o.append(waves(30, 0, 1600, 160, 230, 2, "#fff", .25))
-    for x, wy, s, hc in [(560, 196, .85, "#c8283a"), (800, 210, 1.05, "#1f3d66"), (1030, 190, .8, "#2a8a86")]:
+    for (x, wy, s, hc), nm in zip([(560, 196, .85, "#c8283a"), (800, 210, 1.05, "#1f3d66"), (1030, 190, .8, "#2a8a86")], ["NET PREMIUM", "THE CLOSER", "HOOKED LEAD"]):
         o.append(f'<path d="M{x + 80 * s:.0f} {wy} L{x + 190 * s:.0f} {wy - 8} M{x + 80 * s:.0f} {wy + 3} L{x + 180 * s:.0f} {wy + 18}" stroke="#fff" stroke-opacity=".5" stroke-width="2.5" fill="none"/>')
-        o.append(trawler(x, wy, s, hc if not n else "#16243c", n, flip=True, net=True))
+        o.append(trawler(x, wy, s, hc if not n else "#16243c", n, flip=True, net=True, name=nm))
     for x, y, s in [(470, 60, .9), (520, 40, .7), (700, 70, 1), (760, 50, .7), (930, 80, .8), (980, 58, .6)]:
         o.append(gull(x, y, s, "#fff" if n else "#3a3346", 2.5))
     return wrap(V, ''.join(o))
@@ -349,16 +355,22 @@ def v_messages(n):  # signal flags on a mast, and the lighthouse beam
     o.append(lh)
     # the mast with flags dressed overall
     ink = "#2f3440" if not n else "#cfd8ee"
-    o.append(f'<rect x="740" y="186" width="120" height="16" rx="4" fill="{"#1f3d66" if not n else "#16243c"}"/><path d="M700 186 L900 186 L880 206 L716 206 Z" fill="{"#1f3d66" if not n else "#16243c"}"/>')
-    o.append(f'<line x1="800" y1="186" x2="800" y2="28" stroke="{ink}" stroke-width="4"/><line x1="760" y1="60" x2="840" y2="60" stroke="{ink}" stroke-width="3"/>')
+    hullc = "#1f3d66" if not n else "#16243c"; deck = "#f2ede2" if not n else "#9aa0ae"; win = "#7fb5d6" if not n else "#ffd56b"
+    # a proper boat under the flags: hull with a white stripe and her name, a deck house with portholes
+    o.append(f'<path d="M660 184 L940 184 Q930 206 900 214 L700 214 Q672 206 660 184 Z" fill="{hullc}"/>'
+             f'<path d="M662 188 L938 188 L934 194 L666 194 Z" fill="#fff" opacity=".55"/>'
+             f'<text x="800" y="208" text-anchor="middle" font-family="Georgia, serif" font-style="italic" font-weight="bold" font-size="12" fill="#fff">TEXT ME BACK</text>'
+             f'<rect x="750" y="160" width="100" height="24" rx="4" fill="{deck}"/><rect x="744" y="156" width="112" height="6" rx="3" fill="{"#2f3440" if not n else "#151922"}"/>'
+             + ''.join(f'<circle cx="{x}" cy="172" r="4.5" fill="{win}" stroke="#2f3440" stroke-width="1"/>' for x in (770, 790, 810, 830)))
+    o.append(f'<line x1="800" y1="156" x2="800" y2="28" stroke="{ink}" stroke-width="4"/><line x1="760" y1="60" x2="840" y2="60" stroke="{ink}" stroke-width="3"/>')
     cols = ["#d8323f", "#f2c14e", "#2f6fa8", "#ffffff", "#2f8f5a", "#d8323f", "#f2c14e", "#2f6fa8"]
     for side in (-1, 1):
-        x1, y1, x2, y2 = 800, 30, 800 + side * 300, 186
+        x1, y1, x2, y2 = 800, 30, 800 + side * 150, 184
         o.append(f'<line x1="{x1}" y1="{y1}" x2="{x2}" y2="{y2}" stroke="{ink}" stroke-width="1.5"/>')
         for k in range(1, 9):
             t = k / 9.2; fx = x1 + (x2 - x1) * t; fy = y1 + (y2 - y1) * t; c = cols[(k + (side > 0)) % len(cols)]
-            if k % 2: o.append(f'<rect x="{fx - 9:.0f}" y="{fy:.0f}" width="18" height="16" fill="{c}" stroke="#2f3440" stroke-width=".8"/>')
-            else: o.append(f'<path d="M{fx - 9:.0f} {fy:.0f} L{fx + 9:.0f} {fy:.0f} L{fx:.0f} {fy + 20:.0f} Z" fill="{c}" stroke="#2f3440" stroke-width=".8"/>')
+            if k % 2: o.append(f'<rect x="{fx - 7:.0f}" y="{fy:.0f}" width="14" height="12" fill="{c}" stroke="#2f3440" stroke-width=".8"/>')
+            else: o.append(f'<path d="M{fx - 7:.0f} {fy:.0f} L{fx + 7:.0f} {fy:.0f} L{fx:.0f} {fy + 15:.0f} Z" fill="{c}" stroke="#2f3440" stroke-width=".8"/>')
     o.append(f'<rect x="784" y="66" width="32" height="22" fill="#f2c14e" stroke="#2f3440"/><rect x="784" y="66" width="16" height="11" fill="#2f6fa8"/><rect x="800" y="77" width="16" height="11" fill="#2f6fa8"/>')
     return wrap(V, ''.join(o))
 
@@ -564,11 +576,11 @@ def v_renewals(n):  # the tide comes back in; boats return to their moorings
     # moorings and boats
     for x, y in [(700, 140), (880, 150), (1060, 136), (1240, 156)]:
         o.append(f'<circle cx="{x}" cy="{y}" r="7" fill="#f07a2a"/>')
-    o.append(sailboat(760, 148, .6, "#f4f1ea" if not n else "#9aa0ae", n, mast=100, flag="#d8323f"))
+    o.append(sailboat(760, 148, .6, "#f4f1ea" if not n else "#9aa0ae", n, mast=100, flag="#d8323f", name="REEL DEAL"))
     o.append(f'<line x1="736" y1="148" x2="700" y2="140" stroke="#2f3440" stroke-width="1.5"/>')
-    o.append(sailboat(940, 162, .65, "#1f3d66" if not n else "#16243c", n, mast=100, flag="#f2c14e"))
+    o.append(sailboat(940, 162, .65, "#1f3d66" if not n else "#16243c", n, mast=100, flag="#f2c14e", name="SALE AWAY"))
     o.append(f'<line x1="912" y1="162" x2="880" y2="150" stroke="#2f3440" stroke-width="1.5"/>')
-    o.append(trawler(1140, 176, .6, "#c8283a" if not n else "#5e1c26", n, flip=True))
+    o.append(trawler(1140, 176, .6, "#c8283a" if not n else "#5e1c26", n, flip=True, name="CROSS-SELL"))
     o.append(f'<path d="M1190 178 L1280 168 M1190 180 L1270 194" stroke="#fff" stroke-opacity=".5" stroke-width="2"/>')
     o.append(sailboat(1350, 186, .7, "#2a8a86" if not n else "#1a4a4c", n, mast=110, sails=("#f6f1e6", "#f6f1e6"), flip=True))
     for x, y in [(840, 60), (880, 44), (1000, 70)]: o.append(gull(x, y, .8, "#3a3346" if not n else "#cfd8ee", 2.5))
