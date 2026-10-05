@@ -105,6 +105,19 @@ def flag(x, y, h, c="#d8402a", cup=True, wave=0):
     o.append(f'<path d="M{x} {y - h} Q{x + h * .22:.0f} {y - h * (.95 - wave):.0f} {x + h * .42:.0f} {y - h * .9:.0f} L{x} {y - h * .74:.0f}Z" fill="{c}"/>')
     return ''.join(o)
 
+# ---- movement (Frank, 2026-10-05: "can we add movements like the people teeing off and a ball going into the
+# fairway, the guy standing to be putting and the ball moving, the guy crouched to crouch and stand like hes
+# reviewing the line, movement in the water and trees"). SMIL, which plays inside a background picture; build.py
+# also writes a still copy (every <animate*> taken out) for Settings > Motion > Reduced, so each element's own
+# attributes are its resting state.
+def show(times, vals, dur, attr="opacity"):
+    """an <animate> that steps an attribute through vals at keyTimes, looping"""
+    return (f'<animate attributeName="{attr}" values="{";".join(vals)}" keyTimes="{";".join(times)}" '
+            f'dur="{dur}s" calcMode="discrete" repeatCount="indefinite"/>')
+def sway(x, b, deg, dur, delay=0):
+    return (f'<animateTransform attributeName="transform" type="rotate" values="{-deg} {x} {b};{deg} {x} {b};{-deg} {x} {b}" '
+            f'dur="{dur}s" begin="{delay}s" repeatCount="indefinite" calcMode="spline" keySplines=".45 0 .55 1;.45 0 .55 1"/>')
+
 def bunker(cx, cy, rx, ry, p, rot=0):
     return (f'<g transform="rotate({rot} {cx} {cy})"><ellipse cx="{cx}" cy="{cy + ry * .12:.0f}" rx="{rx + 4}" ry="{ry + 3}" fill="{p["sand2"]}"/>'
             f'<ellipse cx="{cx}" cy="{cy}" rx="{rx}" ry="{ry}" fill="{p["sand"]}"/>'
@@ -259,9 +272,9 @@ def skyline(night):
     # the clubhouse on the rise, right; its clock tower rises between the tiles
     a(clubhouse(1235, 506, p, n))
     # tall cypress framing both edges
-    for x, b, h in [(40, 660, 560), (118, 620, 470), (1488, 640, 520), (1566, 680, 600)]:
-        a(cypress(x, b, h, p["cyp"], p["trunk"]))
-    a(oak(1410, 520, 120, p["tree"], p["tree2"], p["trunk"]))
+    for i, (x, b, h) in enumerate([(40, 660, 560), (118, 620, 470), (1488, 640, 520), (1566, 680, 600)]):
+        a(f'<g>{cypress(x, b, h, p["cyp"], p["trunk"])}{sway(x, b, .8, 6 + i, i * .7)}</g>')
+    a(f'<g>{oak(1410, 520, 120, p["tree"], p["tree2"], p["trunk"])}{sway(1410, 520, 1.2, 5.5)}</g>')
     # rough tones, and the shadows the big trees throw across the grass
     a(f'<path d="M0 {HZ + 90} Q300 {HZ + 60} 600 {HZ + 110} T1200 {HZ + 120} T1600 {HZ + 100} L1600 {H} L0 {H}Z" fill="{p["rough2"]}" opacity=".6"/>')
     for x, y, rx in [(120, 662, 120), (1520, 672, 110), (1440, 528, 60)]:
@@ -296,15 +309,25 @@ def skyline(night):
     a(f'<g clip-path="url(#fw3)"><path d="{" ".join(bands)}" fill="{p["fair2"]}"/></g>')
     # the tee box by the clubhouse, a golfer on it
     a(f'<rect x="1000" y="424" width="44" height="10" rx="3" fill="{p["green2"]}"/><circle cx="1010" cy="428" r="2" fill="#f3efe2"/><circle cx="1034" cy="428" r="2" fill="#f3efe2"/>')
-    a(golfer(1022, 432, .3, "stand", "#2f5a8a", "#e8e2d0", skin=p["skin"]) + bag(1038, 432, .28, "#8a2a2a"))
+    # the tee shot on an 8-second loop: set up over the ball, swing, the ball flies down the tee leg into the
+    # fairway at the bend and rolls out, then the next player sets up
+    a(bag(1038, 432, .28, "#8a2a2a"))
+    a(f'<g>{golfer(1018, 432, .3, "address", "#2f5a8a", "#e8e2d0", skin=p["skin"])}{show(["0", ".14", ".7"], ["1", "0", "1"], 8)}</g>')
+    a(f'<g opacity="0">{golfer(1018, 432, .3, "swing", "#2f5a8a", "#e8e2d0", skin=p["skin"])}{show(["0", ".14", ".7"], ["0", "1", "0"], 8)}</g>')
+    a('<g transform="translate(1026 432)"><circle r="2.4" fill="#fff" opacity="0">'
+      '<animate attributeName="opacity" values="0;0;1;1;0;0" keyTimes="0;.13;.14;.66;.7;1" dur="8s" repeatCount="indefinite"/>'
+      '<animateMotion path="M0 0 Q-120 -90 -250 34 L-268 42" keyPoints="0;0;.88;1;1" keyTimes="0;.14;.42;.55;1" calcMode="linear" dur="8s" repeatCount="indefinite"/>'
+      '</circle></g>')
     # the stand of trees inside the corner, and their shade
     a(f'<ellipse cx="1110" cy="520" rx="90" ry="9" fill="#000" opacity="{.12 if not n else .2}"/>')
-    for x, b, h in [(1050, 516, 40), (1094, 520, 46), (1136, 514, 38), (1172, 520, 34)]:
-        a(oak(x, b, h, p["tree"], p["tree2"], p["trunk"]))
+    for i, (x, b, h) in enumerate([(1050, 516, 40), (1094, 520, 46), (1136, 514, 38), (1172, 520, 34)]):
+        a(f'<g>{oak(x, b, h, p["tree"], p["tree2"], p["trunk"])}{sway(x, b, 1.6, 4.5 + i * .6, i * .4)}</g>')
     # the pond with its footbridge, left
     a(f'<path d="M30 660 Q60 612 200 618 Q330 622 410 660 Q450 700 380 728 Q250 760 110 742 Q20 726 30 660Z" fill="{p["water"]}"/>')
-    for x, y, w in [(110, 668, 70), (240, 690, 110), (170, 718, 60), (330, 676, 50)]:
-        a(f'<rect x="{x}" y="{y}" width="{w}" height="3" rx="1.5" fill="{p["water2"]}" opacity=".8"/>')
+    for i, (x, y, w) in enumerate([(110, 668, 70), (240, 690, 110), (170, 718, 60), (330, 676, 50)]):
+        a(f'<rect x="{x}" y="{y}" width="{w}" height="3" rx="1.5" fill="{p["water2"]}" opacity=".8">'
+          f'<animateTransform attributeName="transform" type="translate" values="0 0;{14 + i * 3} 0;0 0" dur="{5 + i}s" repeatCount="indefinite"/>'
+          f'<animate attributeName="opacity" values=".8;.35;.8" dur="{3.5 + i * .7}s" repeatCount="indefinite"/></rect>')
     if n: a('<ellipse cx="230" cy="680" rx="40" ry="10" fill="#f4efdc" opacity=".18"/>')
     for x in (52, 76, 400, 418): a(f'<path d="M{x} 668 q-4 -26 2 -40 M{x + 6} 668 q2 -22 8 -32" stroke="{p["tree2"]}" stroke-width="3" fill="none"/>')
     bw, bw2 = p["wood"], p["wood2"]
@@ -337,9 +360,25 @@ def skyline(night):
     # the pin, nearer the middle of the green (Frank, 2026-10-05: "put the pin in a more central spot"):
     # in the gap between second and first on the podium, and two players on the green with it -- one
     # putting on the left lobe, one crouched reading the line on the right shoulder
-    a(flag(718, 594, 84, p["flag"]))
-    a(golfer(580, 600, .56, "putt", "#2f5a8a", "#e8e2d0", skin=p["skin"]) + ball(597, 600, 2.4))
-    a(golfer(1112, 640, .56, "crouch", "#c8452a", "#2e3a4c", skin=p["skin"], flip=True) + ball(1088, 642, 2.4))
+    fx, fy, fh = 718, 594, 84
+    a(flag(fx, fy, fh, p["flag"]).rsplit('<path', 1)[0])
+    d0 = f"M{fx} {fy - fh} Q{fx + fh * .22:.0f} {fy - fh * .95:.0f} {fx + fh * .42:.0f} {fy - fh * .9:.0f} L{fx} {fy - fh * .74:.0f}Z"
+    d1 = f"M{fx} {fy - fh} Q{fx + fh * .2:.0f} {fy - fh * .86:.0f} {fx + fh * .4:.0f} {fy - fh * .93:.0f} L{fx} {fy - fh * .74:.0f}Z"
+    a(f'<path d="{d0}" fill="{p["flag"]}"><animate attributeName="d" values="{d0};{d1};{d0}" dur="1.8s" repeatCount="indefinite"/></path>')
+    # the putter on a 6-second loop: the stroke, the ball rolling up toward the cup and stopping short
+    hx, hy = 580 + 14 * .56, 600 - 28 * .56
+    a(golfer(580, 600, .56, "putt", "#2f5a8a", "#e8e2d0", skin=p["skin"], club="none"))
+    a(f'<g><line x1="{hx:.1f}" y1="{hy:.1f}" x2="{580 + 16 * .56:.1f}" y2="{600 - .56:.1f}" stroke="#c9ccd2" stroke-width="1.6"/>'
+      f'<rect x="{580 + 12 * .56:.1f}" y="{600 - 3 * .56:.1f}" width="{10 * .56:.1f}" height="2" rx="1" fill="#c9ccd2"/>'
+      f'<animateTransform attributeName="transform" type="rotate" values="0 {hx:.1f} {hy:.1f};-16 {hx:.1f} {hy:.1f};8 {hx:.1f} {hy:.1f};0 {hx:.1f} {hy:.1f};0 {hx:.1f} {hy:.1f}" '
+      f'keyTimes="0;.12;.2;.3;1" dur="6s" repeatCount="indefinite"/></g>')
+    a('<g transform="translate(597 600)"><circle r="2.4" fill="#fff">'
+      '<animateMotion path="M0 0 C40 -1 80 -4 112 -5" keyPoints="0;0;1;1" keyTimes="0;.18;.62;1" keySplines="0 0 1 1;.1 .7 .3 1;0 0 1 1" calcMode="spline" dur="6s" repeatCount="indefinite"/>'
+      '<animate attributeName="opacity" values="1;1;0;1" keyTimes="0;.88;.95;1" dur="6s" repeatCount="indefinite"/></circle></g>')
+    # the one reading the line: crouched behind the ball, then up on their feet for a look, then down again
+    a(f'<g>{golfer(1112, 640, .56, "crouch", "#c8452a", "#2e3a4c", skin=p["skin"], flip=True)}{show(["0", ".45", ".75"], ["1", "0", "1"], 7)}</g>')
+    a(f'<g opacity="0">{golfer(1112, 640, .56, "stand", "#c8452a", "#2e3a4c", skin=p["skin"], flip=True)}{show(["0", ".45", ".75"], ["0", "1", "0"], 7)}</g>')
+    a(ball(1088, 642, 2.4))
     # a few tufts in the rough, kept off the stage
     r = random.Random(11); tc = p["rough2"] if not n else "#0e1d15"
     for _ in range(30):
