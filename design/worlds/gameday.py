@@ -834,3 +834,5 @@ def s_empty(n):  # EMPTY STADIUM: one light on, the moon, the mascot asleep
 STRIP_FNS = {"sold_on_call": s_sold, "quoted_call_open": s_open, "followup_open": s_open, "quoted_call_lost": s_lost,
              "followup_lost": s_lost, "dead_no_quote": s_dead, "live_quote_ok": s_huddle, "live_no_quote": s_timeout,
              "callback_no_contact": s_empty}
+# The header's greetings in this world only (Frank, 2026-10-05: "world themed ones that appear only in those worlds"); {n} is the first name.
+GREETINGS = ['Game day, {n}.', 'Kickoff time, {n}.', 'First and ten, {n}.', 'Huddle up, {n}.', 'Put on your helmet, {n}.', "Let's run the play, {n}.", "The crowd's on its feet, {n}.", 'Go for it on fourth down, {n}.', "Scoreboard's waiting, {n}.", 'Two-minute drill, {n}.', 'Eyes on the end zone, {n}.', 'Coach says assume the sale, {n}.', 'Big game energy, {n}.', 'Call the audible, {n}. Bundle it.', 'Win the day, {n}.']

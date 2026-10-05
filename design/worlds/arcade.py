@@ -604,3 +604,5 @@ def s_vm(n):
 STRIP_FNS = {"sold_on_call": s_sold, "quoted_call_open": s_open, "followup_open": s_open, "quoted_call_lost": s_lost,
              "followup_lost": s_lost, "dead_no_quote": s_dead, "live_quote_ok": s_reached, "live_no_quote": s_live_noq,
              "callback_no_contact": s_vm}
+# The header's greetings in this world only (Frank, 2026-10-05: "world themed ones that appear only in those worlds"); {n} is the first name.
+GREETINGS = ['Player one ready, {n}.', 'Insert coin, {n}.', 'Press start, {n}.', 'New high score incoming, {n}.', 'Level up, {n}.', 'Combo multiplier: bundles, {n}.', 'Extra life unlocked, {n}.', 'The boss level is a renewal, {n}.', 'Ready, player {n}?', 'Power-up: assume the sale, {n}.', 'Game on, {n}.', 'No continues needed today, {n}.', '1UP, {n}.', 'Speedrun the speed to dial, {n}.', 'Loading closes... {n}.']

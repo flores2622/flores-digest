@@ -598,3 +598,5 @@ def s_vm(n):  # HIBERNATING: a bear asleep in its den, moon
 STRIP_FNS = {"sold_on_call": s_sold, "quoted_call_open": s_open, "followup_open": s_open, "quoted_call_lost": s_lost,
              "followup_lost": s_lost, "dead_no_quote": s_dead, "live_quote_ok": s_reached, "live_no_quote": s_live_noq,
              "callback_no_contact": s_vm}
+# The header's greetings in this world only (Frank, 2026-10-05: "world themed ones that appear only in those worlds"); {n} is the first name.
+GREETINGS = ['Summit day, {n}.', "Lace up, {n}. Trail's open.", 'One switchback at a time, {n}.', "The view's better from the top of the board, {n}.", 'Fresh air, fresh leads, {n}.', 'Base camp is ready, {n}.', 'Climb on, {n}.', 'Pack light, quote heavy, {n}.', 'The peak is just past the next call, {n}.', "Trail's clear, {n}. Let's hike.", 'Every summit starts with one step, {n}.', 'Altitude, attitude, {n}.', 'Pine trees and premiums, {n}.', 'Keep climbing, {n}.', "Rope up, {n}. Let's go."]

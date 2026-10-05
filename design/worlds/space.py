@@ -23,3 +23,5 @@ def v_claims(n):  # after the storm: a repair crew on the station's damaged arra
 VISTA_FNS = dict(_sc.VISTA_FNS, claims=v_claims)
 VISTA_LINES = dict(_sc.VISTA_LINES, claims=["Claims", "the repair crew: after the storm"])
 STRIP_FNS = _sc.STRIP_FNS
+# The header's greetings in this world only (Frank, 2026-10-05: "world themed ones that appear only in those worlds"); {n} is the first name.
+GREETINGS = ['T-minus one dial, {n}.', 'Houston, we have leads, {n}.', 'All systems go, {n}.', "Launch window's open, {n}.", 'Countdown to the first close, {n}.', 'One small dial for {n}, one giant leap for the board.', "Orbit's stable. Let's add premium, {n}.", 'Mission control is standing by, {n}.', "Ignition, {n}. Let's go.", 'Shoot for the moon, {n}. Close a star.', 'Zero gravity, full coverage, {n}.', 'Every quote is a launch, {n}.', 'Comms are open, {n}.', 'Clear skies for liftoff, {n}.', "Fuel's full, {n}. Dial."]

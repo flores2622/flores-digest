@@ -74,6 +74,7 @@ def inline_js(mods, ver):
 def vistas_js(mods):
     return ("/* WORLDS-VISTAS:BEGIN -- written by design/worlds/build.py */\n"
             f"Object.assign(VISTAS_BY_WORLD, {json.dumps({m.KEY: m.VISTA_LINES for m in mods})});\n"
+            f"Object.assign(GREETINGS_BY_WORLD, {json.dumps({m.KEY: getattr(m, 'GREETINGS', []) for m in mods})});\n"
             "/* WORLDS-VISTAS:END */")
 def splice(h, begin, end, new):
     i, j = h.index(begin), h.index(end) + len(end)
