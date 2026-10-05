@@ -1071,25 +1071,6 @@ tbody tr:hover { background: color-mix(in oklab, var(--accent) 8%, transparent);
 /* group-chat feeds and the to-do card (Frank, 2026-10-01: "the group chat
    option, to replace the current live feed format"; "at the desk sounds like
    its being worked on, rename it to something that sounds like its off the desk") */
-.pdays { display: flex; flex-direction: column; gap: 12px; max-height: 760px; overflow: auto; padding: 2px; }
-.pday { border: 1.5px solid var(--border); border-left: 5px solid var(--pc); border-radius: 12px; background: var(--card2); padding: 10px 12px; display: flex; flex-direction: column; gap: 8px; }
-.pdh { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; }
-.pdh .pbadge { font-size: 13px; }
-.pds { font-size: 12.5px; color: var(--text-muted); } .pds b { color: var(--text-primary); }
-.pdmoms { display: flex; flex-direction: column; gap: 4px; }
-.pdm { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; border: 0; border-radius: 8px; background: var(--surface-raised); padding: 5px 9px; font: inherit; font-size: 13px; text-align: left; cursor: pointer; color: var(--text-primary); border-left: 3px solid var(--border-strong); }
-.pdm.good { border-left-color: var(--good, #2f8f5b); } .pdm.warn { border-left-color: var(--warn, #d08a1e); }
-.pdm:hover { background: color-mix(in oklab, var(--accent) 8%, var(--surface-raised)); }
-.pdm small { color: var(--text-muted); white-space: nowrap; font-size: 11.5px; }
-.pdnone { margin: 0; font-size: 12.5px; color: var(--text-muted); }
-.pdcoach { background: color-mix(in oklab, var(--accent) 7%, var(--surface-raised)); border-radius: 10px; padding: 8px 10px; font-size: 13px; }
-.pdcoach .who { font: 800 10.5px var(--body); letter-spacing: .1em; text-transform: uppercase; color: var(--accent); margin-bottom: 4px; }
-.pdcoach .apo { margin-right: 5px; }
-.pdcoach p { margin: 3px 0; }
-.pdcoach .say { display: block; width: 100%; text-align: left; border: 0; border-left: 3px solid var(--accent); background: var(--surface-raised); border-radius: 6px; padding: 6px 9px; margin: 5px 0; font: italic 500 13px var(--body); color: var(--text-primary); cursor: pointer; }
-.pdcoach .say small { display: block; font: 700 10.5px var(--body); color: var(--text-muted); font-style: normal; margin-bottom: 2px; }
-.pdcoach .lnk { border: 0; background: none; padding: 0; font: inherit; color: var(--accent); text-decoration: underline; cursor: pointer; }
-.pdcoach.quiet p { color: var(--text-muted); }
 .chatbox { display: flex; flex-direction: column; gap: 8px; max-height: 560px; overflow: auto; padding: 4px 2px; }
 .chatbox .hr { align-self: center; font-size: 10px; font-weight: 800; letter-spacing: .1em; text-transform: uppercase; background: var(--chip); padding: 3px 10px; border-radius: 999px; color: var(--text-muted); margin: 4px 0; }
 .chatbox .bub { max-width: 86%; padding: 8px 12px; border-radius: 14px; background: var(--card2); border: 1.5px solid var(--border); font: inherit; font-size: 13.5px; line-height: 1.45; color: var(--text-primary); align-self: flex-start; border-bottom-left-radius: 4px; text-align: left; }
@@ -2212,92 +2193,61 @@ function chatFeedHtml(items, host, pin) {
   }
   return `<div class="chatbox">${pin ? `<div class="pinned">📌 ${cesc(pin)}</div>` : ""}${parts.join("") || '<div class="empty">Nothing yet.</div>'}</div>`;
 }
+/* The floor's group chat (Frank, 2026-10-05: "i still want it to be a group
+   chat, just more from the producers and less 'client texted in' 'client
+   called in' from apollo, just coaching notes"): the producers speak --
+   their calls, quotes presented, quotes sent and sales -- and Apollo only
+   answers with a coaching note: praise on a close, the line to say next
+   time on a dropped objection or a quote not assumed. At most two notes a
+   producer, the sales and the dropped objections first. Texts left out. */
 function digestFeedItems(d, who) {
   const items = [], mine = p => !who || p === who;
+  const clip = (t, n) => { t = String(t || "").replace(/\s+/g, " ").trim(); return t.length > n ? t.slice(0, n - 1).replace(/[\s,;:.]+$/, "") + "…" : t; };
+  const notes = {};
   (d.calls || []).forEach((c, i) => {
     if (!mine(c.who)) return;
     const sold = /sold/i.test(c.catc || "") || /^sold/i.test(c.cat || "");
-    const dir = c.direction === "call in" ? "took a call from" : c.direction === "call back" ? "got a call back from" : "reached";
-    const nflags = (c.flags || []).length;
-    items.push({ t: feedMins(c.time), who: c.who, me: sold, call: i, kind: sold ? "Sale" : "Call",
-      text: sold ? `${firstName(c.who)} closed ${c.lead} on the call · ${c.dur || ""}`
-        : `${firstName(c.who)} ${dir} ${c.lead} · ${c.dur || ""} · ${c.cat || ""}${nflags ? ` · ${nflags} flag${nflags > 1 ? "s" : ""}` : ""}` });
+    const dir = c.direction === "call in" ? "Took a call from" : c.direction === "call back" ? "Got a call back from" : "Talked with";
+    const t = feedMins(c.time);
+    items.push({ t, who: c.who, me: true, call: i, kind: sold ? "Sale" : "Call",
+      text: sold ? `Closed ${c.lead} on the call! ${c.dur || ""}`.trim() : `${dir} ${c.lead} · ${c.dur || ""}${c.cat ? ` · ${String(c.cat).toLowerCase()}` : ""}` });
+    // Apollo's coaching note on this call, if there is one worth saying
+    const obj = (c.objs || []).find(o => o.fix && +o.score <= 4);
+    const good = (c.good || [])[0];
+    let note = null;
+    if (sold && good && good[0]) note = { rank: 0, text: `Nice close, ${firstName(c.who)}. ${good[0].replace(/\.$/, "")}: ${clip(good[1], 140)}` };
+    else if (obj) note = { rank: 1, text: `${firstName(c.who)}, on ${c.lead}'s “${clip(obj.they || obj.cat, 60)}”, next time: “${clip(obj.fix, 180)}”` };
+    else if (c.askfix && (Array.isArray(c.askq) ? c.askq[0] === false : c.askq === false)) note = { rank: 2, text: `${firstName(c.who)}, assume the quote with ${c.lead}: “${clip(c.askfix, 180)}”` };
+    if (note) (notes[c.who] = notes[c.who] || []).push({ ...note, t: t == null ? null : t + 0.5, call: i });
   });
+  for (const [w, ns] of Object.entries(notes))
+    ns.sort((a, b) => a.rank - b.rank).slice(0, 2).forEach(n => items.push({ t: n.t, who: w, me: false, call: n.call, kind: "Coaching", text: n.text }));
   const M = d.messages || {};
-  for (const r of M.replies || []) {
-    if (!mine(r.who) || r.ack || r.optout) continue;
-    const w = r.answered_by ? `answered${r.minutes != null ? ` in ${fmtMins(r.minutes)}` : ""}` : "still waiting";
-    items.push({ t: feedMins(r.at), who: r.who, me: false, goview: "messages", kind: "Text", text: `${r.lead} texted ${firstName(r.who)}: “${String(r.said || "").slice(0, 90)}” · ${w}` });
-  }
   for (const q of M.quotes || []) {
     if (!mine(q.who)) continue;
-    items.push({ t: feedMins(q.at), who: q.who, me: true, goview: "messages", kind: "Quote sent", text: `${firstName(q.who)} sent the quote to ${q.lead} by ${q.channel}${q.opened ? " · opened" : ""}` });
+    items.push({ t: feedMins(q.at), who: q.who, me: true, goview: "messages", kind: "Quote sent", text: `Sent the quote to ${q.lead} by ${q.channel}${q.opened ? " · they opened it" : ""}` });
   }
   const R = d.rows || {};
   for (const r of R.quoted || []) {
     if (!mine(r.who)) continue;
     const prem = +String(r.premium || "").replace(/[^0-9.]/g, "");
     items.push({ t: null, group: "Quotes today", who: r.who, me: true, kind: "Quoted", ddrill: "quoted",
-      text: prem ? `${firstName(r.who)} presented ${money0(prem)} in premium to ${r.lead}` : `${firstName(r.who)} presented a quote to ${r.lead}` });
+      text: prem ? `Presented ${money0(prem)} in premium to ${r.lead}` : `Presented a quote to ${r.lead}` });
   }
   for (const r of R.sold || []) {
     if (!mine(r.who)) continue;
-    items.push({ t: null, group: "Sales today", who: r.who, me: true, kind: "Sale", ddrill: "sold", text: `${firstName(r.who)} sold ${r.product} · ${money0(r.premium)}${r.source ? ` · ${r.source}` : ""}` });
+    items.push({ t: null, group: "Sales today", who: r.who, me: true, kind: "Sale", ddrill: "sold", text: `Sold ${r.product} · ${money0(r.premium)}${r.source ? ` · ${String(r.source).trim()}` : ""} 🎉` });
   }
   return items;
 }
-/* How the day went, one card per producer (Frank, 2026-10-05: "has too
-   many chats from apollo, make it more producer focused, with coaching
-   notes from apollo"): their numbers, the moments that mattered (sales,
-   the biggest quote, a quote sent instead of presented, texts waiting), and
-   one coaching note from Apollo off their own cards -- what to fix with the
-   line to say, and what to keep doing. Every line opens its card or list. */
-function producerDayCoach(calls) {
-  const red = new Set(["No next step", "Quote not presented", "Discovery missed", "Approach skipped", "Objection dropped", "Call cut short", "Stage / pipeline mistake", "Compliance"]);
-  const groups = {};
-  calls.forEach(({ c }) => (c.flag_groups || []).forEach((g, k) => { if (red.has(g)) (groups[g] = groups[g] || []).push([c, (c.flags || [])[k]]); }));
-  const top = Object.entries(groups).sort((x, y) => y[1].length - x[1].length)[0];
-  let fix = null;
-  for (const { c, i } of calls) { const o = (c.objs || []).find(o => o.fix && +o.score <= 4); if (o) { fix = { i, lead: c.lead, say: o.fix, why: o.group || o.cat }; break; } }
-  if (!fix) for (const { c, i } of calls) if (c.askfix) { fix = { i, lead: c.lead, say: c.askfix, why: "Assume the quote" }; break; }
-  let win = null;
-  for (const { c, i } of calls) { const g = (c.good || [])[0]; if (g && g[0]) { win = { i, lead: c.lead, t: g[0] }; if (/sold/.test(c.catc || "")) break; } }
-  return { top: top ? [top[0], top[1].length] : null, fix, win };
-}
 function digestFeedHtml(d, who) {
-  const live = curLive && rangeMode === "day", R = d.rows || {}, M = d.messages || {};
-  const prods = (d.producers || []).filter(p => !who || p.name === who);
-  const clip = (t, n) => { t = String(t || "").replace(/\s+/g, " ").trim(); return t.length > n ? t.slice(0, n - 1).replace(/[\s,;:.]+$/, "") + "…" : t; };
-  const order = prods.map(p => {
-    const calls = (d.calls || []).map((c, i) => ({ c, i })).filter(x => x.c.who === p.name);
-    const hhSold = new Set((R.sold_leads || []).filter(r => r.who === p.name).map(r => r.household || r.lead)).size;
-    return { p, calls, hhSold };
-  }).sort((a, b) => (b.p.ps || 0) - (a.p.ps || 0) || b.hhSold - a.hhSold || (b.p.pq || 0) - (a.p.pq || 0));
-  const cards = order.map(({ p, calls, hhSold }) => {
-    const first = firstName(p.name), mom = [];
-    calls.filter(x => /sold/.test(x.c.catc || "")).forEach(x => mom.push(`<button type="button" class="pdm good" data-feedcall="${x.i}"><b>Closed ${cesc(x.c.lead)} on the call</b><small>${cesc(x.c.time || "")}${x.c.dur ? ` · ${cesc(x.c.dur)}` : ""}</small></button>`));
-    const sold = (R.sold || []).filter(r => r.who === p.name);
-    if (sold.length) mom.push(`<button type="button" class="pdm good" data-ddrill="sold"><b>Sold ${cesc(plist(sold.slice(0, 3).map(r => `${r.product} ${money0(r.premium)}`)))}${sold.length > 3 ? ` +${sold.length - 3} more` : ""}</b><small>${sold.length} ${sold.length === 1 ? "policy" : "policies"}</small></button>`);
-    const quoted = (R.quoted || []).filter(r => r.who === p.name).map(r => ({ ...r, prem: +String(r.premium || "").replace(/[^0-9.]/g, "") || 0 })).sort((a, b) => b.prem - a.prem);
-    if (quoted.length) mom.push(`<button type="button" class="pdm" data-ddrill="quoted"><b>${quoted[0].prem ? `Biggest quote: ${money0(quoted[0].prem)} to ${cesc(quoted[0].lead)}` : `Quoted ${cesc(quoted[0].lead)}`}</b><small>${quoted.length} household${quoted.length === 1 ? "" : "s"} quoted</small></button>`);
-    const sent = calls.filter(x => !/sold/.test(x.c.catc || "") && (Array.isArray(x.c.sendoff) ? x.c.sendoff[0] : x.c.sendoff) === "producer");
-    if (sent.length) mom.push(`<button type="button" class="pdm warn" data-feedcall="${sent[0].i}"><b>Sent the quote to ${cesc(sent[0].c.lead)} instead of presenting it</b><small>${sent.length > 1 ? `${sent.length} quotes sent today` : "quote sent"}</small></button>`);
-    const waiting = (M.replies || []).filter(r => r.who === p.name && !r.answered_by && !r.ack && !r.optout);
-    if (waiting.length) mom.push(`<button type="button" class="pdm warn" data-goview="messages"><b>${waiting.length} text${waiting.length === 1 ? "" : "s"} waiting on a reply</b><small>oldest from ${cesc(waiting[0].lead || "")}</small></button>`);
-    const co = producerDayCoach(calls);
-    const note = co.fix || co.top || co.win ? `<div class="pdcoach"><div class="who"><span class="apo" aria-hidden="true">✦</span>Apollo's coaching note</div>
-      ${co.top ? `<p><b>Work on:</b> ${cesc(co.top[0].toLowerCase())}${co.top[1] > 1 ? ` (${co.top[1]} calls)` : ""}.</p>` : ""}
-      ${co.fix ? `<button type="button" class="say" data-feedcall="${co.fix.i}"><small>Next time${co.fix.why ? ` · ${cesc(co.fix.why)}` : ""} · ${cesc(co.fix.lead || "")}</small>“${cesc(clip(co.fix.say, 220))}”</button>` : ""}
-      ${co.win ? `<p class="keep"><b>Keep doing:</b> ${cesc(co.win.t.replace(/\.$/, ""))} <button type="button" class="lnk" data-feedcall="${co.win.i}">${cesc(co.win.lead || "the call")}</button></p>` : ""}</div>`
-      : `<div class="pdcoach quiet"><div class="who"><span class="apo" aria-hidden="true">✦</span>Apollo's coaching note</div><p>${calls.length ? "Nothing to flag on today's coached calls." : "No coached calls today."}</p></div>`;
-    return `<div class="pday" style="--pc:${DOT[p.name] || TEAM_DOT}">
-      <div class="pdh">${pbadge(DOT[p.name] || TEAM_DOT, first)}<span class="pds">${p.dials || 0} dials · ${p.live || 0} live · ${p.hh || 0} HH quoted${p.pq ? ` (${money0(p.pq)})` : ""} · <b>${hhSold} HH sold${p.ps ? ` · ${money0(p.ps)}` : ""}</b></span></div>
-      ${mom.length ? `<div class="pdmoms">${mom.slice(0, 4).join("")}</div>` : `<p class="pdnone">${p.dials ? "No sale or quote yet." : "No dials yet."}</p>`}
-      ${note}</div>`;
-  }).join("");
+  const items = digestFeedItems(d, who);
+  const T = (who ? (d.producers || []).find(p => p.name === who) : d.totals) || {};
+  const pin = `${T.pol || 0} ${T.pol === 1 ? "policy" : "policies"} · ${money0(T.ps)} sold · ${T.hh || 0} HH quoted · ${T.dials || 0} dials · ${T.live || 0} live`;
+  const live = curLive && rangeMode === "day";
   return `<div class="sect svcsec" style="--sc:var(--accent)"><h2>${live ? "Today, so far" : "How the day went"}</h2>
-    <p class="sd">Each producer's day, with a coaching note from Apollo off their own calls. A line opens the call or the list behind it.</p>
-    <div class="pdays">${cards || '<div class="empty">Nothing yet.</div>'}</div></div>`;
+    <p class="sd">The floor's group chat: the producers' calls, quotes and sales as they happened, and Apollo's coaching notes on them. A line opens the card or the list it came from.</p>
+    ${chatFeedHtml(items, "Apollo", pin)}</div>`;
 }
 /* What is waiting on a person right now (live), or what the day left behind. */
 function needsNowRows(d, who) {
@@ -9784,8 +9734,8 @@ const TOUR_STEPS = [
     text: "Seven categories, 5 points for first down to 1 for fifth. Click a producer's number to see the calls or accounts it counts." },
   { view: "digest", find: () => tourSection("Speed to Dial") || tourSection("Household Completion"), title: "Speed, tasks and households",
     text: "How fast new internet leads were called and texts were answered, how many of today's tasks got done, and how many policies each household bought." },
-  { view: "digest", find: () => $("#view .pdays"), title: "How the day went",
-    text: "One card per producer: their numbers, the moments that mattered (a sale, the biggest quote, a quote sent instead of presented, texts waiting) and Apollo's coaching note from their own calls: what to work on, the line to say next time, and what to keep doing. A line opens the call or the list. Beside it, what needs someone right now." },
+  { view: "digest", find: () => $("#view .chatbox"), title: "How the day went",
+    text: "The floor's group chat: each producer's calls, quotes and sales as they happened, with Apollo answering only with coaching notes (a nice close, or the line to say next time). A line opens its coaching card or list. Beside it, what needs someone right now." },
   { view: "editions", find: () => $("#view .edtabs") || $("#view .press"), title: "The editions",
     text: "A published day or a folio, seven ways: The Flores Post (the newspaper, with Primetime), The Flores Feed, Fourth and Goal, KFLR The Close, FLRS 500, Cold Call Comics and CLOSER. React, vote, comment: everyone sees the same tally." },
   { view: "sales", title: "The Sales sheet",
