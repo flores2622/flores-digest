@@ -755,6 +755,7 @@ def v_claims(n):  # after the storm: a fallen branch on the fairway, the crew cl
 def v_commercial(n):  # the clubhouse pro shop
     p = P(n); o = [base(n)]
     o.append(moon(1300, 54, 20) if n else sun(1300, 58, 22))
+    o.append(drifting(n, [(900, 22, 140, 40, 12)]))
     o.append(treeline(0, 1600, 170, 16, 30, p["treeline"], 13, 30))
     o.append(ground(p, 196, p["path"]))
     wall = p["wall"]; x0, x1 = 540, 1080
@@ -776,7 +777,7 @@ def v_commercial(n):  # the clubhouse pro shop
     o.append('<g>' + golfer(1200, 216, .95, "stand", "#2f7ad0", "#e8e2d0", skin=p["skin"]) + bag(1220, 216, .7, "#1f5a35")
              + '<animateTransform attributeName="transform" type="translate" values="0 0;-380 -16;-380 -16" keyTimes="0;.8;1" dur="12s" repeatCount="indefinite"/>'
              '<animate attributeName="opacity" values="0;1;1;0;0" keyTimes="0;.06;.74;.8;1" dur="12s" repeatCount="indefinite"/></g>')
-    o.append(drifting(n, [(900, 22, 140, 40, 12)]) + flyers(n, [(1180, 40, 1, -90, 11)]) + twinkle(n, seed=39))
+    o.append(flyers(n, [(1180, 40, 1, -90, 11)]) + twinkle(n, seed=39))
     return vwrap(''.join(o))
 
 VISTA_FNS = {"sales": v_sales, "messages": v_messages, "coaching": v_coaching, "roleplay": v_roleplay, "rphistory": v_rphistory,

@@ -414,7 +414,7 @@ def corners(c, op=.55):
     return f'<rect x="0" y="186" width="450" height="54" fill="{c}" opacity="{op}"/><rect x="1050" y="196" width="550" height="44" fill="{c}" opacity="{op}"/>'
 
 def v_sales(n):  # the stacked interchange, traffic flowing on every level
-    p = P(n); o = [vbase(n)]
+    p = P(n); o = [vbase(n, star=22)]
     o.append(orb(n, 1430, 60, 24))
     o.append(mini_skyline(1180, 150, .55, "#5a5a8a" if not n else "#1a2040", n, p))
     o.append(f'<rect x="0" y="196" width="1600" height="44" fill="{"#4a4250" if not n else "#14141c"}"/>')
@@ -448,6 +448,8 @@ def v_sales(n):  # the stacked interchange, traffic flowing on every level
             t = .06 + k * .16 + r.uniform(-.03, .03); x, y, ang = quad(p0, p1, p2, t)
             if -20 < x < 1620:
                 ci = f'c{(k + di) % 6}{"f" if dr < 0 else ""}'; used.add(ci)
+                if x < 400:
+                    o.append(f'<use href="#{ci}" transform="translate({x:.0f} {y:.0f}) rotate({ang:.1f})"><animate attributeName="opacity" values="0" dur="1s" repeatCount="indefinite"/></use>'); continue
                 j = min(range(301), key=lambda i: math.hypot(sm[i][0] - x, sm[i][1] - y)); bg = -cl[j] / L * dur
                 o.append(f'<g transform="translate({x:.0f} {y:.0f}) rotate({ang:.1f})"><use href="#{ci}"/>{RI}'
                          f'<animateMotion path="{md}" rotate="{rot}" dur="{dur}s" begin="{bg:.2f}s" repeatCount="indefinite"/>'
@@ -744,7 +746,7 @@ def v_service(n):  # the vintage trolley on its rails down a red-brick avenue of
     return vwrap(''.join(o))
 
 def v_renewals(n):  # a field of bluebonnets in spring
-    p = P(n); o = [vbase(n, ("#5a9ad8", "#b0d4ee", "#eef4e8"), NT, 50)]
+    p = P(n); o = [vbase(n, ("#5a9ad8", "#b0d4ee", "#eef4e8"), NT, 28)]
     o.append(orb(n, 260, 54, 22))
     if not n: o.append('<g>' + drift(60, 12) + cloud(700, 50, 260, "#fff", .75) + '</g><g>' + drift(-40, 10, 2) + cloud(1200, 70, 200, "#fff", .6) + '</g>')
     o.append(f'<path d="M0 132Q400 104 800 126T1600 114V240H0Z" fill="{p["far"]}"/>')
@@ -766,8 +768,8 @@ def v_renewals(n):  # a field of bluebonnets in spring
             o.append(f'<g transform="translate({bx} {by})"><g>{wing(1)}{wing(-1)}<animateTransform attributeName="transform" type="scale" values="1 1;.25 1;1 1" dur=".35s" repeatCount="indefinite"/></g>'
                      f'<path d="M0 -4V5" stroke="#2a2420" stroke-width="2"/><animateMotion path="{mp}" dur="{8 + i * 2}s" repeatCount="indefinite"/></g>')
         else:
-            o.append(''.join(f'<circle cx="{bx + k * 70}" cy="{by + k * 9 - 20}" r="2.6" fill="#e8ff8a" opacity="0"><animate attributeName="opacity" values="0;.95;0" dur="{2.4 + k * .5:.1f}s" begin="{(i + k) * .7:.1f}s" repeatCount="indefinite"/>'
-                         f'<animateMotion path="{mp}" dur="{10 + k}s" repeatCount="indefinite"/></circle>' for k in range(3)))
+            o.append('<g>' + ''.join(f'<circle cx="{bx + k * 70}" cy="{by + k * 9 - 20}" r="2.6" fill="#e8ff8a" opacity="0"><animate attributeName="opacity" values="0;.95;0" dur="{2.4 + k * .5:.1f}s" begin="{(i + k) * .7:.1f}s" repeatCount="indefinite"/></circle>' for k in range(3))
+                     + f'<animateMotion path="{mp}" dur="{10 + i * 2}s" repeatCount="indefinite"/></g>')
     o.append(corners(p["grass2"], .6))
     return vwrap(''.join(o))
 

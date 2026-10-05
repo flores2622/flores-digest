@@ -664,11 +664,11 @@ def v_training(n):  # a hiker on the switchbacks up the camel mountain
     # the hiker climbs a few steps up the switchback and back (the stride a small bob)
     hk = (f'<rect x="{hx - 12}" y="{hy - 46}" width="10" height="20" rx="3" fill="#e8662a"/>' + person(hx, hy, .95, "#2f8a8a", pants="#5a4a3a")
           + f'<line x1="{hx + 12}" y1="{hy - 30}" x2="{hx + 20}" y2="{hy + 2}" stroke="#555" stroke-width="2"/><path d="M{hx - 8} {hy - 60}h16l-2 -5h-12z" fill="#d6b13a"/>')
-    o.append(f'<g>{hk}{tfm("translate", ["0 0", "9 -3", "18 -2", "27 -5", "18 -2", "9 -3", "0 0"], 8)}</g>')
+    o.append(f'<g>{hk}{tfm("translate", ["0 0", "9 -3", "18 -2", "27 -5", "18 -2", "9 -3", "0 0"], 9)}</g>')
     # the summit flag waving, a hawk circling the mountain
-    o.append(f'<rect x="866" y="2" width="3" height="22" fill="{"#c9b8c8" if n else "#5a3a3a"}"/><path d="M869 3h20l-6 5l6 5h-20z" fill="#e8662a">{tfm("skewY", ["0", "8", "0", "-6", "0"], 2.6)}</path>')
-    o.append('<g>' + birds([(0, 0)], "#3a2242" if not n else "#c9b8d8", 1.3)
-             + '<animateMotion path="M1060 60a110 34 0 1 0 220 0a110 34 0 1 0 -220 0" dur="10s" repeatCount="indefinite"/></g>')
+    o.append(f'<rect x="866" y="2" width="3" height="22" fill="{"#c9b8c8" if n else "#5a3a3a"}"/><g transform="translate(869 3)"><path d="M0 0h20l-6 5l6 5h-20z" fill="#e8662a">{tfm("skewY", ["0", "8", "0", "-6", "0"], 2.6)}</path></g>')
+    o.append('<g>' + birds([(1060, 60)], "#3a2242" if not n else "#c9b8d8", 1.3)
+             + '<animateMotion path="M0 0a110 34 0 1 0 220 0a110 34 0 1 0 -220 0" dur="10s" repeatCount="indefinite"/></g>')
     o.append(shade())
     return wrap(V, ''.join(o))
 
