@@ -171,6 +171,12 @@ export default {
         if (request.method === "POST") return scrubPost(request, env, identityOf, id);
       }
 
+      // Apollo's doubts, Frank's alone (Frank, 2026-10-05).
+      if (parts[1] === "cardreview" && parts.length === 3) {
+        if (request.method === "GET") return cardReviewGet(request, env, parts[2]);
+        if (request.method === "POST") return cardReviewPost(request, env, parts[2]);
+      }
+
       // Managers' sticky notes on coaching cards (Frank, 2026-10-02).
       if (parts[1] === "cardnotes" && parts.length === 2) {
         if (request.method === "GET") return cardNotesGet(request, env);
@@ -1628,7 +1634,7 @@ function identityOf(request, env) {
   const scope = env ? rpScope(request, env) : { all: false, producer };
   // `all` and `producer` at the top level too: the Road Map's initMe reads
   // them the way the old /api/me (rpScope) answered.
-  return { email, name, producer, canLogFor, all: scope.all, roleplay: { producer: scope.producer, all: scope.all } };
+  return { email, name, producer, canLogFor, all: scope.all, review: mayReview(email, env), roleplay: { producer: scope.producer, all: scope.all } };
 }
 function whoAmI(request, env) {
   return json(identityOf(request, env));
@@ -1691,6 +1697,47 @@ async function editionsPost(request, env, key) {
  * the checkpoints into every new coaching read (coaching_cards.lessons_block)
  * and, on its own card, into that card's next read (manager_notes). */
 const CARD_NOTES_KEY = "card-notes/notes.json";
+
+/* Apollo's doubts (Frank, 2026-10-05: "can apollo send me a list everyday,
+ * or make it visible to only me in Pantheon, of questionable or unsure
+ * coaching calls ... or maybe even of things it is hearing for the first
+ * time"). The nightly and the checkpoints write each card's own doubts to
+ * review/<day>.json ({doubts: {card key: [[kind, text]]}}); Frank's marks go
+ * in the same file ({reviews: {card key: {verdict, by, at}}}). Both are
+ * CARD_REVIEW_VIEWERS' alone. */
+function mayReview(email, env) {
+  const allowed = String((env && env.CARD_REVIEW_VIEWERS) || "").toLowerCase()
+    .split(",").map((x) => x.trim()).filter(Boolean);
+  return !!email && allowed.includes(email);
+}
+async function cardReviewRead(env, day) {
+  const obj = await env.BOARD.get(`review/${day}.json`);
+  if (!obj) return { doubts: {}, reviews: {} };
+  try { const x = await obj.json(); return { doubts: x.doubts || {}, reviews: x.reviews || {} }; }
+  catch (_) { return { doubts: {}, reviews: {} }; }
+}
+async function cardReviewGet(request, env, day) {
+  if (!mayReview(identityOf(request, env).email, env)) return json({ error: "not permitted" }, 403);
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(day)) return json({ error: "bad day" }, 400);
+  return json(await cardReviewRead(env, day));
+}
+async function cardReviewPost(request, env, day) {
+  const me = identityOf(request, env);
+  if (!mayReview(me.email, env)) return json({ error: "not permitted" }, 403);
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(day)) return json({ error: "bad day" }, 400);
+  let body;
+  try { body = await request.json(); } catch (_) { return json({ error: "bad request body" }, 400); }
+  const key = String(body.key || "").slice(0, 300);
+  if (!key.startsWith(day + "|")) return json({ error: "bad card" }, 400);
+  const obj = await env.BOARD.get(`review/${day}.json`);
+  let cur = {};
+  if (obj) { try { cur = await obj.json(); } catch (_) {} }
+  cur.reviews = cur.reviews || {};
+  if (body.verdict === "ok" || body.verdict === "fix") cur.reviews[key] = { verdict: body.verdict, by: me.name || "Frank", at: new Date().toISOString() };
+  else delete cur.reviews[key];
+  await env.BOARD.put(`review/${day}.json`, JSON.stringify(cur), { httpMetadata: { contentType: "application/json" } });
+  return json({ doubts: cur.doubts || {}, reviews: cur.reviews });
+}
 async function cardNotesRead(env) {
   const obj = await env.BOARD.get(CARD_NOTES_KEY);
   if (!obj) return [];

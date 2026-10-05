@@ -248,6 +248,7 @@ def build(day, log=print, live=False):
         import coaching_cards
         generated = coaching_cards.build(day, log=log)
         if generated:
+            save_doubts(day, coaching_cards.split_doubts(generated), log=log)
             doc["calls"] = generated
             doc["scan"] = coaching_cards.scan(generated)
             objc = coaching_cards.objcats(generated)
@@ -257,6 +258,27 @@ def build(day, log=print, live=False):
         log(f"  coaching cards: generation failed ({type(e).__name__}: {e}) "
             f"-- publishing {day} without them")
     return doc
+
+
+def save_doubts(day, doubts, log=print):
+    """Apollo's doubts for the day's cards, kept apart from the day document
+    in review/<day>.json -- the Worker serves that file to
+    CARD_REVIEW_VIEWERS alone (Frank, 2026-10-05: "visible to only me").
+    Frank's own review marks in the same file are kept. Never raises."""
+    try:
+        cli, bucket = _client()
+        key = f"review/{day}.json"
+        try:
+            cur = json.loads(cli.get_object(Bucket=bucket, Key=key)["Body"].read())
+        except Exception:
+            cur = {}
+        cur["doubts"] = doubts or {}
+        cli.put_object(Bucket=bucket, Key=key, Body=json.dumps(cur).encode(),
+                       ContentType="application/json", CacheControl="no-store")
+        if doubts:
+            log(f"  review: Apollo unsure or hearing something new on {len(doubts)} card(s)")
+    except Exception as e:
+        log(f"  review: doubts not saved ({type(e).__name__}: {e})")
 
 
 def _policy_streaks(day, producers, cli, bucket, log=print, lookback=90):

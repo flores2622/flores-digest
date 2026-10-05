@@ -254,6 +254,7 @@ def rebuild(day, publish=False, reuse=False, repair=False, log=print, batch=True
     # Re-read the page just before writing, so anything another job added
     # to it meanwhile (texts and emails) is kept.
     doc = json.loads(cli.get_object(Bucket=bucket, Key=f"days/{day}.json")["Body"].read())
+    publish_board.save_doubts(day, coaching_cards.split_doubts(cards), log=log)
     doc["calls"] = cards
     doc["scan"] = coaching_cards.scan(cards)
     objc = coaching_cards.objcats(cards)

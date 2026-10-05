@@ -704,6 +704,14 @@ td.num.msgbad { color: var(--bad); font-weight: 600; }
 .chbody { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 16px; align-items: start; }
 .chbody.one { grid-template-columns: minmax(0, 1fr); }
 @media (max-width: 900px) { .chbody { grid-template-columns: minmax(0, 1fr); } }
+.rvitem { padding-top: 14px; }
+.rvhead { display: flex; flex-wrap: wrap; gap: 8px; align-items: baseline; margin-bottom: 6px; }
+.rvwhy { margin: 0 0 8px; padding-left: 18px; font-size: 13.5px; line-height: 1.5; }
+.rvwhy li { margin: 3px 0; }
+.chip.rvuns { background: #f4c96b; color: #3b2a00; }
+.chip.rvnew { background: #8fb8e8; color: #0d2a4a; }
+.rvbtns { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-bottom: 10px; }
+.linkbtn { border: 0; background: none; padding: 0; color: var(--accent); text-decoration: underline; cursor: pointer; font: inherit; }
 .snotes:empty { display: none; }
 .snotes { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
 .sticky { background: #fff1a8; color: #3b3000; border-radius: 3px 3px 12px 3px; padding: 8px 11px 7px; max-width: 520px;
@@ -1701,7 +1709,9 @@ const CENTERS = {
   salescenter: [["digest", "Digest"], ["editions", "Editions"], ["sales", "Sales"], ["messages", "Texts & Emails"]],
   // Apollo's Academy (Frank, 2026-10-02: the Coaching and Learning Centers
   // in one): the coaching page's three views come first, then practice.
-  academy: [["coaching", "Coaching"], ["roleplay", "Role Play"], ["rphistory", "Session History"], ["training", "Training"], ["blueprint", "Apollo's Road Map"]],
+  academy: [["coaching", "Coaching"], ["roleplay", "Role Play"], ["rphistory", "Session History"], ["training", "Training"], ["blueprint", "Apollo's Road Map"],
+    // Frank's alone (Frank, 2026-10-05; the Worker's CARD_REVIEW_VIEWERS, /api/me `review`).
+    ["review", "Apollo's Doubts", "review"]],
   service: [["service", "Service Digest"], ["renewals", "Renewals"], ["athenamap", "Athena's Road Map"]],
   claims: [["claims", "Claims"]],
   commercial: [["commercial", "Commercial"]],
@@ -1731,7 +1741,8 @@ function paintCenterBar() {
    coaching page's three views standing in for it. */
 function centerItems(c) {
   const out = [];
-  for (const [v, label] of CENTERS[c] || []) {
+  for (const [v, label, gate] of CENTERS[c] || []) {
+    if (gate && !(ME && ME[gate])) continue;
     if (v === "coaching") for (const [st, l] of COACH_TABS) out.push({ v, st, label: l });
     else out.push({ v, label });
   }
@@ -1927,6 +1938,7 @@ async function loadMe() {
   // viewers (rpScope.all) still pick who, and the Beta tester.
   const rp = ME.roleplay || {};
   if (rp.producer && !rp.all) { rpProducer = rp.producer; rpFetchHistory().catch(() => {}); }
+  if (ME.review) { try { paintCenterBar(); } catch (_) {} }   // Apollo's Doubts joins the menu
 }
 const rpLocked = () => !!((ME.roleplay || {}).producer) && !(ME.roleplay || {}).all;
 function businessDaysUntil(fromIso, toIso) {
@@ -4596,6 +4608,81 @@ document.addEventListener("click", async ev => {
     CARD_NOTES = j.notes || [];
     repaintStickies();
   } catch (e) { b.disabled = false; alert("Could not save the sticky note: " + e.message); }
+});
+
+/* ---- Apollo's Doubts (Frank, 2026-10-05: "can apollo send me a list
+   everyday, or make it visible to only me in Pantheon, of questionable or
+   unsure coaching calls? ... or maybe even of things it is hearing for the
+   first time?") -----------------------------------------------------------
+   Two sources, side by side: what Apollo itself wrote down as unsure or new
+   when it read the call (from 2026-10-05; review/<day>.json, served to
+   CARD_REVIEW_VIEWERS alone), and checks on the card that work on every
+   day -- a read whose speakers are unknown or cut short, verdicts that
+   disagree, an objection or lead source Apollo has no group for. Frank
+   marks each "Looks right" or "Needs a fix" (a sticky note on the card is
+   how Apollo learns the fix). */
+let REVIEW = {}, reviewShowAll = false;
+function cardChecks(c) {
+  const t = c.transcript || "", out = [];
+  if (t && !/\(producer\)/.test(t)) out.push(["unsure", "Couldn't tell who was speaking: the producer never named themselves on the recording, so every \u201cwho said it\u201d on the card is a judgment call."]);
+  if (/TRANSCRIPT CUT HERE/.test(t)) out.push(["unsure", "A long call: Apollo read only the first part of it."]);
+  if (/ONLY THE OPENING WAS RECORDED/.test(t)) out.push(["unsure", "Only the opening of the call was recorded."]);
+  if (c.lead_id == null) out.push(["unsure", "Not matched to a lead, so Apollo had no lead source or history for it."]);
+  const so = (c.sendoff || [])[0], aq = (c.askq || [])[0], catc = c.catc || "";
+  if (/^quoted/.test(catc) && so == null) out.push(["unsure", "The outcome says it was quoted, but Apollo says no quote came up on the call."]);
+  if ((catc === "dead_no_quote" || catc === "live_no_quote") && aq === true) out.push(["unsure", "No quote by the outcome, but Apollo credits the quote as assumed."]);
+  if (so === "producer" && aq === true) out.push(["unsure", "Apollo says the quote was both assumed and offered to be sent."]);
+  if ((c.flow || [])[0] === "follow-up" && !(c.fuscore && Object.keys(c.fuscore).length)) out.push(["unsure", "A follow-up with no follow-up scorecard: the read came back incomplete."]);
+  if (c.leadsrc && !c.leadgroup) out.push(["new", `A lead source Apollo has no guide for: ${c.leadsrc}.`]);
+  (c.objs || []).forEach(o => { if (o.group === "Other") out.push(["new", `An objection none of Apollo's groups fits: \u201c${o.cat}\u201d.`]); });
+  return out;
+}
+async function loadReview(days) {
+  await Promise.all(days.filter(dy => !REVIEW[dy]).map(async dy => {
+    try { const r = await fetch(`/api/cardreview/${dy}`, { cache: "no-store" }); REVIEW[dy] = r.ok ? await r.json() : { doubts: {}, reviews: {} }; }
+    catch (_) { REVIEW[dy] = { doubts: {}, reviews: {} }; }
+  }));
+}
+function reviewItems(d, who) {
+  const cards = (d.calls || []).filter(c => !who || c.who === who);
+  return cards.map(c => {
+    const k = cardKey(c), rv = REVIEW[c.day] || {};
+    const own = ((rv.doubts || {})[k] || []).map(([kind, text]) => [kind, text, "Apollo"]);
+    const checks = cardChecks(c).map(([kind, text]) => [kind, text, "card check"]);
+    return { c, k, why: [...own, ...checks], mark: (rv.reviews || {})[k] };
+  }).filter(x => x.why.length);
+}
+function reviewPanel(d, who) {
+  const items = reviewItems(d, who);
+  const open = items.filter(x => !x.mark || x.mark.verdict === "fix");
+  const shown = reviewShowAll ? items : open;
+  const kindChip = k => k === "new" ? `<span class="chip rvnew">Heard for the first time</span>` : `<span class="chip rvuns">Unsure</span>`;
+  const rows = shown.map(x => `<div class="sect rvitem" data-rvk="${escAttr(x.k)}" data-rvday="${escAttr(x.c.day)}">
+    <div class="rvhead"><b>${cesc(x.c.lead || "(no name)")}</b> <span class="sd">${cesc(x.c.who || "")} · ${cesc(fmtShortDate(x.c.day))}${x.c.time ? " " + cesc(x.c.time) : ""} · ${cesc(x.c.cat || "")}</span>
+      ${x.mark ? `<span class="chip ${x.mark.verdict === "ok" ? "c-g" : "c-r"}">${x.mark.verdict === "ok" ? "Looks right" : "Needs a fix"}</span>` : ""}</div>
+    <ul class="rvwhy">${x.why.map(([kind, text, src]) => `<li>${kindChip(kind)} ${cesc(text)} <span class="sd">(${src})</span></li>`).join("")}</ul>
+    <div class="rvbtns"><button type="button" class="btn" data-rv="ok">Looks right</button> <button type="button" class="btn ghost" data-rv="fix">Needs a fix</button>${x.mark ? ` <button type="button" class="btn ghost" data-rv="clear">Clear mark</button>` : ""}
+      <span class="sd">Needs a fix? Open the card and leave a sticky note: Apollo learns from it.</span></div>
+    ${card(x.c)}
+  </div>`).join("");
+  const done = items.length - open.length;
+  return `<div class="sect"><h2>Apollo's Doubts</h2>
+    <p class="sd" style="margin:0 0 8px">The coaching cards Apollo wasn't sure of, or where it heard something for the first time, ${d.days && d.days.length > 1 ? "in this range" : "on this day"}. Only you see this page. Apollo's own notes start with the calls it reads from Oct 5; the card checks cover every day.</p>
+    <div class="sd">${open.length} to look at${done ? ` · ${done} marked looks right · <button type="button" class="linkbtn" data-rv="toggle">${reviewShowAll ? "hide them" : "show them"}</button>` : ""}</div></div>
+    ${rows || `<div class="empty">Nothing Apollo was unsure of ${d.days && d.days.length > 1 ? "in this range" : "on this day"}.</div>`}`;
+}
+document.addEventListener("click", async ev => {
+  const b = ev.target.closest("[data-rv]"); if (!b) return;
+  if (b.dataset.rv === "toggle") { reviewShowAll = !reviewShowAll; paint(); return; }
+  const it = b.closest(".rvitem"); if (!it) return;
+  const day = it.dataset.rvday, key = it.dataset.rvk, verdict = b.dataset.rv === "clear" ? "" : b.dataset.rv;
+  b.disabled = true;
+  try {
+    const r = await fetch(`/api/cardreview/${day}`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ key, verdict }) });
+    if (!r.ok) throw new Error((await r.json()).error || r.status);
+    REVIEW[day] = await r.json();
+    paint();
+  } catch (e) { b.disabled = false; alert("Could not save: " + e.message); }
 });
 
 function quickCoachHtml(c) {
@@ -7666,6 +7753,17 @@ async function paintTab() {
         wireObjectionChart();
       });
     }
+  } else if (view === "review") {
+    if (!(ME && ME.review)) { v.innerHTML = `<div class="empty">This page is Frank's.</div>`; return; }
+    const err = await ensureCurForRange();
+    $("#topsub").textContent = "the calls Apollo wasn't sure of";
+    const controls = rangeControlHtml() + producerControlHtml();
+    if (err || !cur) { v.innerHTML = controls + `<div class="empty">${err || "Loading…"}</div>`; wireRangeControl(); wireProducerControl(); return; }
+    const days = [...new Set((cur.calls || []).map(c => c.day).filter(Boolean))].slice(-31);
+    await loadReview(days);
+    if (view !== "review") return;
+    v.innerHTML = controls + rangeHeaderHtml() + reviewPanel(cur, producerFilter);
+    wireRangeControl(); wireProducerControl();
   } else if (view === "roleplay") {
     $("#topsub").textContent = "practice objection handling and closing";
     v.innerHTML = roleplayPanel();
