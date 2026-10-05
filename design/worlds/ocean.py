@@ -4,7 +4,7 @@ import random
 
 KEY = "ocean"
 NAME = "Ocean"
-CATEGORY = "Outdoors"   # the group it is listed under in Settings
+CATEGORY = "Scenic"   # the group it is listed under in Settings
 FONTS = "family=Merriweather:wght@700;900&family=Source+Sans+3:wght@400;500;600;700"
 DISPLAY = "'Merriweather', Georgia, serif"
 DW = 700
@@ -93,7 +93,7 @@ def sailboat(x, wy, s, hull, night, mast=120, sails=None, flag="#d8323f", flip=F
     o.append('</g>')
     return ''.join(o)
 
-def trawler(x, wy, s, hull, night, flip=False, net=False, name="", mesh="mesh"):
+def trawler(x, wy, s, hull, night, flip=False, net=False, name="", mesh="mesh", haul=0):
     """A fishing boat facing right (bow at +x); flip faces it left."""
     house = "#f2ede2" if not night else "#9aa0ae"; roof = "#2f3440" if not night else "#151922"
     win = "#ffd56b" if night else "#7fb5d6"; ink = "#2f3440" if not night else "#151922"
@@ -103,12 +103,27 @@ def trawler(x, wy, s, hull, night, flip=False, net=False, name="", mesh="mesh"):
              f'<line x1="-30" y1="-98" x2="40" y2="-60" stroke="{ink}" stroke-width="1.5"/>'
              f'<path d="M-30 -104 L-14 -100 L-30 -96 Z" fill="#d8323f"/>')
     if net:
-        o.append(f'<line x1="-98" y1="-70" x2="-98" y2="-62" stroke="{ink}" stroke-width="2"/>'
-                 f'<path d="M-100 -62 Q-128 -40 -116 -18 Q-100 -4 -82 -20 Q-74 -44 -94 -62 Z" fill="{"#c9b98a" if not night else "#6c6450"}"/>'
-                 + fish(-108, -36, .55, "#8fb3c7" if not night else "#5d7a8c", 70)
-                 + fish(-92, -30, .5, "#e3a25a" if not night else "#8a6a44", -110)
-                 + fish(-100, -22, .5, "#8fb3c7" if not night else "#5d7a8c", 15)
-                 + f'<path d="M-100 -62 Q-128 -40 -116 -18 Q-100 -4 -82 -20 Q-74 -44 -94 -62 Z" fill="url(#{mesh})" stroke="{"#8a7a50" if not night else "#4a4436"}" stroke-width="2"/>')
+        body = (f'<path d="M-100 -62 Q-128 -40 -116 -18 Q-100 -4 -82 -20 Q-74 -44 -94 -62 Z" fill="{"#c9b98a" if not night else "#6c6450"}"/>'
+                + fish(-108, -36, .55, "#8fb3c7" if not night else "#5d7a8c", 70)
+                + fish(-92, -30, .5, "#e3a25a" if not night else "#8a6a44", -110)
+                + fish(-100, -22, .5, "#8fb3c7" if not night else "#5d7a8c", 15)
+                + f'<path d="M-100 -62 Q-128 -40 -116 -18 Q-100 -4 -82 -20 Q-74 -44 -94 -62 Z" fill="url(#{mesh})" stroke="{"#8a7a50" if not night else "#4a4436"}" stroke-width="2"/>')
+        if haul:
+            # the net lowered into the sea and hauled back up, dripping (Frank, 2026-10-05: "i want this fish net
+            # coming in and out of the water"): the line pays out, the net sinks below the waterline (clipped
+            # there) and comes up full; at rest it hangs where it was drawn
+            cid = f"nc{mesh}{int(x)}"
+            o.append(f'<defs><clipPath id="{cid}"><rect x="-150" y="-140" width="110" height="138"/></clipPath></defs>'
+                     f'<line x1="-98" y1="-70" x2="-98" y2="-62" stroke="{ink}" stroke-width="2">'
+                     f'<animate attributeName="y2" values="-62;-62;-6;-6;-62;-62" keyTimes="0;.15;.4;.6;.85;1" dur="{haul}s" repeatCount="indefinite"/></line>'
+                     f'<g clip-path="url(#{cid})"><g>{body}'
+                     f'<animateTransform attributeName="transform" type="translate" values="0 0;0 0;0 70;0 70;0 0;0 0" keyTimes="0;.15;.4;.6;.85;1" dur="{haul}s" repeatCount="indefinite" '
+                     f'calcMode="spline" keySplines=".45 0 .55 1;.45 0 .55 1;0 0 1 1;.45 0 .55 1;0 0 1 1"/></g></g>'
+                     f'<g opacity="0"><animate attributeName="opacity" values="0;0;1;0;0" keyTimes="0;.4;.42;.7;1" dur="{haul}s" repeatCount="indefinite"/>'
+                     f'<ellipse cx="-100" cy="-1" rx="22" ry="4" fill="none" stroke="#fff" stroke-width="2" opacity=".8"/>'
+                     f'<path d="M-112 -2v-8M-100 -2v-12M-88 -2v-7" stroke="#cfe8f5" stroke-width="2" stroke-linecap="round"/></g>')
+        else:
+            o.append(f'<line x1="-98" y1="-70" x2="-98" y2="-62" stroke="{ink}" stroke-width="2"/>' + body)
     o.append(f'<path d="M-72 -22 L60 -22 Q74 -28 82 -36 L72 0 L-62 0 Q-71 -9 -72 -22 Z" fill="{hull}"/>'
              f'<path d="M-72 -22 L60 -22 Q74 -28 82 -36 L80 -30 Q72 -22 60 -17 L-71 -17 Z" fill="#fff" opacity=".55"/>'
              f'<rect x="-8" y="-54" width="40" height="32" rx="2" fill="{house}"/><rect x="-12" y="-59" width="48" height="6" rx="2" fill="{roof}"/>'
@@ -303,8 +318,8 @@ def skyline(night):
     for x0, y0, fl, sc in [(250, 690, False, 1.55), (1130, 502, True, 1.05)]:
         d = -1 if fl else 1; st = x0 - d * 64 * sc; L = 80 if fl else 150
         a(f'<ellipse cx="{st:.0f}" cy="{y0 - 2}" rx="{18 * sc:.0f}" ry="5" fill="#fff" opacity=".5"/><path d="M{st:.0f} {y0 - 2} q{-d * L // 2} -2 {-d * L} -10 M{st:.0f} {y0 + 2} q{-d * L // 2} 6 {-d * (L - 10)} 18" stroke="#fff" stroke-opacity=".45" stroke-width="3" fill="none" stroke-linecap="round"/>')
-    a(f'<g>{trawler(250, 690, 1.55, "#1f3d66" if not night else "#16243c", night, net=True, name="PREMIUM CATCH")}{rock(250, 690, 1.3, 5.5, -2)}</g>')
-    a(f'<g>{trawler(1130, 502, 1.05, "#c8283a" if not night else "#5e1c26", night, flip=True, net=True, name="REEL QUOTE")}{rock(1130, 502, 1.2, 6.3, -4.2)}</g>')
+    a(f'<g>{trawler(250, 690, 1.55, "#1f3d66" if not night else "#16243c", night, net=True, name="PREMIUM CATCH", haul=9)}{rock(250, 690, 1.3, 5.5, -2)}</g>')
+    a(f'<g>{trawler(1130, 502, 1.05, "#c8283a" if not night else "#5e1c26", night, flip=True, net=True, name="REEL QUOTE", haul=7.5)}{rock(1130, 502, 1.2, 6.3, -4.2)}</g>')
     for x, y, s in [(170, 520, .9), (220, 550, .7), (100, 570, .8), (1240, 440, .7), (1280, 425, .6)]:
         a(gull(x, y, s, "#fff" if not night else "#cfd8ee", 3))
     # channel buoys

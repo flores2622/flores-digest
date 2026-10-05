@@ -1947,8 +1947,9 @@ repaint clears the list).
   row above the looks (`WORLDS`, each look in `LOOKS` names its world;
   `TH.theme`, saved in `board-look`, `html[data-theme]`). **The worlds are
   listed by kind** (Frank, 2026-10-05: "categorize the themes in the
-  settings? by cities, sports, etc."): Cities (Phoenix, Yuma, Dallas), Sports (Game
-  Day, Golf), Outdoors (Desert / Old West, Ocean, Mountain), Fun (Space,
+  settings? by cities, sports, etc."): Cities (Phoenix, Yuma, Dallas), Sports (Football
+  -- Game Day until Frank, 2026-10-05: "rename the gameday to football" -- and Golf),
+  Scenic ("rename outdoors to scenic": Desert / Old West, Ocean, Mountain), Fun (Space,
   Retro Arcade) -- each module's `CATEGORY`, written into `WORLD_GROUP` by
   build.py, the desert's set inline; a world with none lands under More. Each
   group folds ("make them dropdowns or expandable, i want to consolidate";
@@ -2109,7 +2110,21 @@ repaint clears the list).
   drifting) and the hand-made Desert (birds gliding, stars twinkling, the
   campfire flickering -- its still copy written inline beside it). Nothing in
   the podium zone moves. Every module draws its motion with self-closing SMIL
-  only, so the still copy is the drawing as it was. **Yuma** (Frank, 2026-10-05: "can
+  only, so the still copy is the drawing as it was. Then, at Frank's asks the same day: Phoenix's jet
+  takes off FROM THE RUNWAY (rolling up its far end above the podium, lifting
+  off and climbing out over downtown) while the parked line shuffles -- the
+  front jet taxis onto the runway, the next pulls up, a new one joins the
+  back from the left, seamless on a 16 s loop -- and its birds keep clear of
+  it; Football's benches became warm-ups on each team's half (catch, a
+  kicker putting it through the left uprights, a quarterback hitting a
+  receiver); Ocean's REEL QUOTE and PREMIUM CATCH lower their nets into the
+  sea and haul them up full (clipped at the waterline); Yuma's fighters
+  streak across with their contrails and a freight train crosses the bridge
+  between the truss sides; Space's rocket counts down T-00:10 on the clock
+  by the road, lifts off at zero, climbs out of sight and lands back on its
+  pad on one 20 s loop (LIFTOFF / LANDED on the clock), and a small rocket
+  climbs the far trail by day; Dallas's cars face the way they drive (the
+  hood had been drawn at the back). **Yuma** (Frank, 2026-10-05: "can
   you make one off of Yuma, AZ?"; Arvo / Karla; River, Harvest, Dunes): from
   the bluff by the old territorial prison at golden hour, looking down at
   the river crossing -- the prison as it stands (Frank, 2026-10-05: "make
@@ -2142,9 +2157,9 @@ repaint clears the list).
   flying horse on its derrick, the pointed glass towers and the one outlined
   in green rising between the tiles, the white arch bridge over the
   floodway, the podium on a levee plaza among bluebonnets and live oaks, a
-  BIG D COVERAGE sign and a Texas flag; banners from the stacked interchange
+  LONE STAR COVERAGE sign (it was BIG D COVERAGE until Frank: "rename this") and a Texas flag; banners from the stacked interchange
   to the rodeo, the movie palace marquee and hail after a storm; the tour
-  card is the Big D guide. Nothing is named. Space got
+  card is the Lone Star guide. Nothing is named. Space got
   a Claims banner too. No real teams, games, brands or landmarks' names.
   **A world's pictures load only for whoever picks it** (2026-10-03): each
   is `site/public/worlds/<key>.css`, added by `loadWorld` with the world's
