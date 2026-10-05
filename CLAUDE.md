@@ -2017,8 +2017,11 @@ repaint clears the list).
   string lights: "none of this makes sense, restart"): the airport at dusk
   (a garden and Papago Park were turned down -- "the mountain and
   buildings are fine" -- then Frank picked the runway): the camel-shaped
-  mountain and downtown kept, a jet on final over the city, the control
-  tower rising between the tiles, the terminal with two jets at the gates,
+  mountain and downtown kept, a jet just off the runway, seen from behind
+  climbing away toward downtown ("make the jet take off facing away from
+  the screen"), the control tower rising between the tiles, the terminal
+  with two jets at the gates, its apron and the hangar joined to the runway
+  by taxiways ("the random patches of asphalt dont connect"),
   the runway running to the viewer with the podium on its touchdown zone,
   edge and approach lights glowing at night, saguaros off its edges; Session History is a desert drive-in, the big screen
   replaying a call to a row of cars under a DRIVE-IN marquee -- Frank,
@@ -2031,7 +2034,20 @@ repaint clears the list).
   on, bunkers, a pond with a footbridge, the 18 DEDUCTIBLE DOGLEG hole sign
   and an ON PAR cart on the path; banners from the tee shot to the
   yardage-book Road Maps and the pro shop; strips from a hole in one to the
-  flag alone under the moon; the tour card is the Caddie's notes. Space got
+  flag alone under the moon; the tour card is the Caddie's notes. **Yuma** (Frank, 2026-10-05: "can
+  you make one off of Yuma, AZ?"; Arvo / Karla; River, Harvest, Dunes): from
+  the bluff by the old territorial prison at golden hour, looking down at
+  the river crossing -- the guard tower, date palms and jagged ranges
+  between the tiles under a blazing sun with jets' contrails; the railroad
+  truss and the highway bridge (RIVER CROSSING) over the teal river; the
+  podium on a packed-earth yard framed by lettuce rows (FULL COVERAGE FARMS)
+  and a date grove (PREMIUM DATES). Nothing is named. Banners: harvest
+  trucks, the old depot's wires, the cellblock as a Lessons Yard, a
+  riverbank stage, the main-street marquee, jets in formation, canal-route
+  Road Maps, the headgate, the date harvest, a flooded field after the
+  monsoon, the packing sheds; strips from a full harvest truck under
+  fireworks to the prison tower asleep under the moon; the tour card is the
+  River guide. Space got
   a Claims banner too. No real teams, games, brands or landmarks' names.
   **A world's pictures load only for whoever picks it** (2026-10-03): each
   is `site/public/worlds/<key>.css`, added by `loadWorld` with the world's
