@@ -997,6 +997,23 @@ html[data-look="mesa"] .tab:hover, html[data-look="mesa"] .tab[aria-selected="tr
 .top .sub:empty { display: none; }
 .main { padding: 14px 24px 60px; width: 100%; }   /* margin:auto turns off the column's stretch; without this the page was as wide as its content */
 #view > .controls { display: inline-flex; vertical-align: middle; margin: 0 10px 18px 0; }
+.daycal { position: relative; display: inline-block; }
+.daybtn { display: inline-flex; align-items: center; gap: 10px; border: 1px solid var(--border-strong); border-radius: 10px; background: var(--surface-raised); color: var(--text-primary); font: 600 13px var(--body); padding: 8px 12px; cursor: pointer; }
+.daybtn:hover, .daybtn[aria-expanded="true"] { border-color: var(--accent); }
+.calpop { position: absolute; top: calc(100% + 6px); left: 0; z-index: 60; width: 272px; background: var(--surface-raised); border: var(--bw, 1.5px) solid var(--border-strong); border-radius: 14px; box-shadow: 0 16px 40px rgba(20, 12, 4, .25); padding: 12px; }
+.calhead { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; font: 700 14px var(--body); }
+.calnav { border: 1px solid var(--border-strong); background: var(--surface); border-radius: 8px; width: 30px; height: 28px; font-size: 18px; line-height: 1; cursor: pointer; color: var(--text-primary); padding: 0; }
+.calnav:disabled { opacity: .3; cursor: default; }
+.calgrid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 3px; text-align: center; }
+.calgrid i { font: 700 10.5px var(--body); color: var(--text-muted); font-style: normal; padding: 2px 0 4px; }
+.calgrid .cd { height: 32px; display: flex; align-items: center; justify-content: center; border-radius: 8px; font: 700 13px var(--body); border: 1px solid transparent; background: none; padding: 0; color: var(--text-primary); }
+.calgrid button.cd { cursor: pointer; background: color-mix(in oklab, var(--accent) 10%, transparent); }
+.calgrid button.cd:hover { border-color: var(--accent); }
+.calgrid .cd.off { color: var(--text-muted); opacity: .45; font-weight: 500; }
+.calgrid .cd.today { box-shadow: inset 0 0 0 2px var(--accent); }
+.calgrid .cd.sel { background: var(--accent); color: #fff; }
+.calfoot { display: flex; gap: 6px; justify-content: flex-end; margin-top: 10px; }
+.calfoot .ghost { font-size: 12px; padding: 5px 9px; }
 select, button.ghost, .btn, input[type="date"] { border-radius: 10px; border-color: var(--border-strong); background: var(--surface-raised); font-family: var(--body); font-weight: 600; padding: 8px 10px; }
 .subtab { border-radius: 999px; background: var(--chip); border-color: transparent; }
 .subtab.sel { background: var(--accent); border-color: var(--accent); color: #fff; }
@@ -7488,7 +7505,7 @@ function $$(s) { return Array.from(document.querySelectorAll(s)); }
 // the last Arizona business day the nightly run actually built -- it read
 // as broken ("No report for <date>") whenever a viewer's clock or timezone
 // put "today" a day ahead of the last real reporting day. "Day" already
-// covers this correctly: its dropdown lists only days DAYS actually has a
+// covers this correctly: its calendar offers only days DAYS actually has a
 // report for, so it can't select a day that doesn't exist yet.
 const RANGE_LABELS = { day: "Day",
   week: "This Week", mtd: "Month to Date", ytd: "Year to Date",
@@ -7506,11 +7523,13 @@ function rangeControlHtml() {
     // live checkpoint instead of a dead end for exactly that case -- once
     // today is finalized it shows up in DAYS on its own and this stops
     // adding a duplicate entry.
-    const dayOptions = DAYS.includes(today) ? DAYS : [today, ...DAYS];
-    extra = `<select id="daypick" aria-label="Reporting day">${dayOptions.map(d =>
-      `<option value="${d}"${cur && d === cur.date ? " selected" : ""}>${
-        d === today && !DAYS.includes(today) ? "Today (live)" :
-        new Date(d + "T12:00:00").toLocaleDateString(undefined, { weekday: "short", month: "short", day: "numeric" })}</option>`).join("")}</select>`;
+    // A calendar, not a dropdown (Frank, 2026-10-05: "the day dropdown is
+    // getting long, make it a calendar instead"): only days with a report,
+    // and today while it is live, can be picked.
+    const d0 = cur ? cur.date : (DAYS[0] || today);
+    const label = d0 === today && !DAYS.includes(today) ? "Today (live)"
+      : new Date(d0 + "T12:00:00").toLocaleDateString(undefined, { weekday: "short", month: "short", day: "numeric" });
+    extra = `<div class="daycal"><button type="button" id="daypick" class="daybtn" aria-label="Reporting day" aria-haspopup="dialog" aria-expanded="false">${cesc(label)}<svg viewBox="0 0 16 16" width="15" height="15" aria-hidden="true"><rect x="2" y="3" width="12" height="11" rx="2" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M2 6.5h12M5.5 1.5v3M10.5 1.5v3" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg></button><div class="calpop" id="calpop" role="dialog" aria-label="Pick a day" hidden></div></div>`;
   } else if (rangeMode === "folio") {
     // Frank, 2026-09-15: "I want on the shortcuts for folio to date to
     // reveal a dropdown, like the day shortcut does, and list the current
@@ -7544,13 +7563,45 @@ function rangeControlHtml() {
   }
   return `<div class="controls"><select id="rangesel" aria-label="Digest range">${opts}</select>${extra}</div>`;
 }
+// A click anywhere else closes the day calendar.
+document.addEventListener("click", () => { const p = document.getElementById("calpop"); if (p && !p.hidden) { p.hidden = true; const b = document.getElementById("daypick"); if (b) b.setAttribute("aria-expanded", "false"); } });
 function wireRangeControl() {
   const sel = $("#rangesel");
   if (sel) sel.onchange = () => { rangeMode = sel.value; paint(); };
   const fp = $("#foliopick");
   if (fp) fp.onchange = () => { folioPick = fp.value; paint(); };
-  const dp = $("#daypick");
-  if (dp) dp.onchange = () => loadDay(dp.value);
+  const dp = $("#daypick"), pop = $("#calpop");
+  if (dp && pop) {
+    const today = isoDate(azTodayDate());
+    const avail = new Set(DAYS.includes(today) ? DAYS : [today, ...DAYS]);
+    const picked = cur ? cur.date : (DAYS[0] || today);
+    const months = [...avail].map(d => d.slice(0, 7)).sort();
+    let ym = picked.slice(0, 7);
+    const draw = () => {
+      const [y, m] = ym.split("-").map(Number), first = new Date(y, m - 1, 1), n = new Date(y, m, 0).getDate();
+      const cells = [];
+      for (let i = 0; i < first.getDay(); i++) cells.push(`<span></span>`);
+      for (let d = 1; d <= n; d++) {
+        const iso = `${ym}-${String(d).padStart(2, "0")}`;
+        const cls = `${iso === picked ? " sel" : ""}${iso === today ? " today" : ""}`;
+        cells.push(avail.has(iso) ? `<button type="button" class="cd${cls}" data-calday="${iso}"${iso === today && !DAYS.includes(today) ? ' title="Today (live)"' : ""}>${d}</button>` : `<span class="cd off${cls}">${d}</span>`);
+      }
+      const prev = months.some(x => x < ym), next = months.some(x => x > ym);
+      pop.innerHTML = `<div class="calhead"><button type="button" class="calnav" data-calnav="-1" ${prev ? "" : "disabled"} aria-label="Previous month">‹</button><b>${first.toLocaleDateString(undefined, { month: "long", year: "numeric" })}</b><button type="button" class="calnav" data-calnav="1" ${next ? "" : "disabled"} aria-label="Next month">›</button></div>
+        <div class="calgrid">${["S", "M", "T", "W", "T", "F", "S"].map(w => `<i>${w}</i>`).join("")}${cells.join("")}</div>
+        <div class="calfoot">${avail.has(today) ? `<button type="button" class="ghost" data-calday="${today}">Today</button>` : ""}<button type="button" class="ghost" data-calday="${DAYS[0] || today}">Latest report</button></div>`;
+    };
+    const close = () => { pop.hidden = true; dp.setAttribute("aria-expanded", "false"); };
+    dp.onclick = e => { e.stopPropagation(); if (!pop.hidden) return close(); ym = picked.slice(0, 7); draw(); pop.hidden = false; dp.setAttribute("aria-expanded", "true"); };
+    pop.onclick = e => {
+      e.stopPropagation();
+      const nav = e.target.closest("[data-calnav]");
+      if (nav) { const [y, m] = ym.split("-").map(Number), t = new Date(y, m - 1 + Number(nav.dataset.calnav), 1); ym = `${t.getFullYear()}-${String(t.getMonth() + 1).padStart(2, "0")}`; draw(); return; }
+      const day = e.target.closest("[data-calday]");
+      if (day) { close(); if (day.dataset.calday !== picked) loadDay(day.dataset.calday); }
+    };
+    pop.onkeydown = e => { if (e.key === "Escape") { close(); dp.focus(); } };
+  }
   const ap = $("#rapply");
   if (ap) ap.onclick = () => {
     customFrom = $("#rfrom").value; customTo = $("#rto").value;
@@ -9663,7 +9714,7 @@ const TOUR_STEPS = [
   { find: () => $("#coeusfab"), title: "Ask Apollo",
     text: "The owl is Apollo, the board's assistant: the same Apollo that reads every sales call. Ask it how a day or a week went, what a producer should work on, what it saw on a call, how to answer an objection, or what any number means. It reads the same reports the board draws. Ctrl / opens it from anywhere." },
   { view: "digest", find: () => $("#view .controls"), title: "Pick a day and a person",
-    text: "Choose a single day, a week, month to date, a folio or your own dates, and everyone or one producer. The same choice follows you from page to page." },
+    text: "Choose a single day (the calendar lights up the days with a report), a week, month to date, a folio or your own dates, and everyone or one producer. The same choice follows you from page to page." },
   { view: "digest", find: () => $("#view .tiles"), title: "The day at a glance",
     text: "Dials, contacts, quotes, sales and closing ratio. Green is on goal, yellow is close, red is off track. A number with a pulsing green glow is live; the rest update every hour on the :55. Click any number to see the accounts behind it." },
   { view: "digest", find: () => tourSection("Team Leaderboard"), title: "The leaderboard",
