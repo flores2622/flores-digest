@@ -2037,7 +2037,11 @@ repaint clears the list).
   flag alone under the moon; the tour card is the Caddie's notes. **Yuma** (Frank, 2026-10-05: "can
   you make one off of Yuma, AZ?"; Arvo / Karla; River, Harvest, Dunes): from
   the bluff by the old territorial prison at golden hour, looking down at
-  the river crossing -- the guard tower, date palms and jagged ranges
+  the river crossing -- the prison as it stands (Frank, 2026-10-05: "make
+  the Yuma prison more recognizable": the squat stone guardhouse on the
+  round stone water reservoir with its outside stair, the open timber
+  lookout and hip roof, the arched sally port with its strap-iron gate, the
+  row of strap-iron cell doors), date palms and jagged ranges
   between the tiles under a blazing sun with jets' contrails; the railroad
   truss and the highway bridge (RIVER CROSSING) over the teal river; the
   podium on a packed-earth yard framed by lettuce rows (FULL COVERAGE FARMS)
