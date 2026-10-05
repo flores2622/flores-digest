@@ -184,7 +184,7 @@ def araucaria(x, b, top, p):
         o.append(f'<ellipse cx="{x}" cy="{y + 2}" rx="{w * .7:.0f}" ry="10" fill="{p["leaf"]}"/>')
     return ''.join(o)
 
-def volcano(cx, peak, b, half, p, n, glow=True):
+def volcano(cx, peak, b, half, p, n, glow=True, halo=True):
     """a broad cone with a notched crater; at night the lava lights it"""
     w = half; cw = 42
     d = (f'M{cx - w} {b} C{cx - w * .55:.0f} {b - (b - peak) * .35:.0f} {cx - cw * 1.6:.0f} {peak + 30} {cx - cw} {peak} '
@@ -194,7 +194,7 @@ def volcano(cx, peak, b, half, p, n, glow=True):
          f'<path d="M{cx + cw * .2:.0f} {peak + 2} L{cx + cw} {peak - 4} C{cx + cw * 1.6:.0f} {peak + 30} {cx + w * .55:.0f} {b - (b - peak) * .35:.0f} {cx + w} {b} L{cx + w * .2:.0f} {b} C{cx + w * .1:.0f} {b - (b - peak) * .4:.0f} {cx + cw * .6:.0f} {peak + 60} {cx + cw * .2:.0f} {peak + 2}Z" fill="{p["volc2"]}"/>']
     if glow:
         o.append(f'<ellipse cx="{cx}" cy="{peak + 2}" rx="{cw * .9:.0f}" ry="7" fill="{p["lava"]}" opacity="{.95 if n else .7}"/>')
-        if n:
+        if n and halo:
             o.append(f'<circle cx="{cx}" cy="{peak}" r="{cw * 2.6:.0f}" fill="url(#glow)"/>')
             o.append(f'<path d="M{cx - 8} {peak + 6} Q{cx - 18} {peak + 60} {cx - 40} {peak + 120} Q{cx - 52} {peak + 170} {cx - 70} {peak + 230}" fill="none" stroke="{p["lava"]}" stroke-width="6" stroke-linecap="round"/>'
                      f'<path d="M{cx + 12} {peak + 4} Q{cx + 30} {peak + 70} {cx + 60} {peak + 150}" fill="none" stroke="{p["lava"]}" stroke-width="5" stroke-linecap="round" opacity=".85"/>'
@@ -372,30 +372,36 @@ def eruption(p, n):
     o = []
     # the ash column: dark puffs stacked over the crater that surge up and spread, lit from below at night
     ash = "#4a4048" if not n else "#2c2630"
-    col = puff(0, -24, 20, ash, .95) + puff(8, -62, 30, ash, .9) + puff(-6, -100, 40, ash, .85) + puff(30, -112, 34, ash, .8)
-    o.append(f'<g transform="translate(1050 124)"><g opacity="0">{op("0;0;.95;.9;0;0", "0;.12;.22;.45;.68;1")}'
-             f'<g>{tf("scale", ".3 .1;.3 .1;1 1;1.5 1.15;1.6 1.2", "0;.12;.3;.6;1")}{col}</g></g></g>')
+    col = puff(0, -28, 22, ash, 1) + puff(6, -72, 32, ash, 1) + puff(-4, -112, 40, ash, 1)
+    o.append(f'<g transform="translate(1050 124)"><g opacity="0">{op("0;0;.9;.85;0;0", "0;.12;.22;.45;.68;1")}'
+             f'<g>{tf("scale", ".3 .1;.3 .1;1 1;1.5 1.2", "0;.12;.3;1")}{col}</g></g></g>')
     # the crater flaring
+    kt = "0;.08;.14;.42;.62;1"
     o.append(f'<circle cx="1050" cy="126" r="{120 if n else 90}" fill="url(#glow)" opacity="{.8 if n else 0}">'
-             f'{op((".8;.8;1;1;.8;.8" if n else "0;0;1;.9;0;0"), "0;.08;.14;.42;.62;1")}'
-             f'<animate attributeName="r" values="{"120;120;220;200;120;120" if n else "90;90;170;150;90;90"}" keyTimes="0;.08;.14;.42;.62;1" {K}/></circle>')
-    o.append(f'<ellipse cx="1050" cy="128" rx="38" ry="7" fill="{p["lava2"]}" opacity="0">{op("0;0;1;.5;1;.6;0;0", "0;.08;.14;.2;.26;.36;.5;1")}</ellipse>')
+             f'{op((".8;.8;1;1;.8;.8" if n else "0;0;1;.9;0;0"), kt)}'
+             f'<animate attributeName="r" values="{"120;120;220;200;120;120" if n else "90;90;170;150;90;90"}" keyTimes="{kt}" {K}/></circle>')
+    o.append(f'<ellipse cx="1050" cy="128" rx="38" ry="7" fill="{p["lava2"]}" opacity="0">{op("0;0;1;.5;1;0;0", "0;.08;.14;.2;.26;.5;1")}</ellipse>')
     # lava streaming down both flanks
+    o.append(f'<g fill="none" stroke="{p["lava"]}" stroke-width="7" stroke-linecap="round"{"" if n else " stroke-dasharray=\"100 100\""}>')
     for d in ("M1034 132 Q1018 200 992 262 Q974 306 962 360", "M1068 128 Q1088 196 1110 258 Q1126 302 1140 360"):
-        o.append(f'<path d="{d}" pathLength="100" fill="none" stroke="{p["lava"]}" stroke-width="7" stroke-linecap="round" stroke-dasharray="100 100" stroke-dashoffset="100" opacity="0">'
-                 f'<animate attributeName="stroke-dashoffset" values="100;100;0;0" keyTimes="0;.16;.5;1" {K}/>{op("0;0;1;1;0;0", "0;.16;.18;.6;.8;1")}</path>')
+        # at night they run all the time and swell with the burst; by day they run only with it
+        o.append(f'<path d="{d}" pathLength="100" stroke-width="5" opacity=".85">{op(".85;.85;1;1;.85;.85", "0;.16;.18;.6;.8;1")}</path>' if n else
+                 f'<path d="{d}" pathLength="100" stroke-dashoffset="100" opacity="0"><animate attributeName="stroke-dashoffset" values="100;100;0;0" keyTimes="0;.16;.5;1" {K}/>'
+                 f'{op("0;0;1;1;0;0", "0;.16;.18;.6;.8;1")}</path>')
+    o.append('</g>')
     # the fountain: a fan of bombs flung out of the crater, rising then falling back down either side
-    bombs = ''.join(f'<circle cx="{x}" cy="{y}" r="{r}" fill="{p["lava2"]}" stroke="{p["lava"]}" stroke-width="3"/>'
-                    for x, y, r in [(-60, -80, 7), (-22, -110, 6), (24, -96, 8), (66, -70, 6), (-96, -44, 5), (104, -40, 6), (4, -60, 5)])
-    for i, (t0, mir) in enumerate([(.14, ''), (.22, ' scale(-1 1)')]):
+    bombs = ''.join(f'<circle cx="{x}" cy="{y}" r="{r}"/>' for x, y, r in [(-60, -80, 7), (-22, -110, 6), (24, -96, 8), (66, -70, 6), (-96, -44, 5), (104, -40, 6)])
+    o.append(f'<g fill="{p["lava2"]}" stroke="{p["lava"]}" stroke-width="3">')
+    for t0, mir in [(.14, ''), (.22, ' scale(-1 1)')]:
         tm, t1 = t0 + .07, t0 + .2
         kt = f"0;{t0};{tm:.2f};{t1:.2f};1"
         o.append(f'<g transform="translate(1050 124){mir}"><g opacity="0">{op("0;0;1;1;0;0", f"0;{t0};{t0 + .01:.2f};{t1 - .03:.2f};{t1:.2f};1")}'
                  f'<g>{tf("translate", "0 0;0 0;0 -14;0 80;0 80", kt)}<g>{tf("scale", "0;0;1;1.3;1.3", kt)}{bombs}</g></g></g></g>')
     # embers drifting up
-    for i, (dx, b) in enumerate([(-50, .15), (40, .2), (-20, .28), (70, .34)]):
-        o.append(f'<circle cx="1050" cy="118" r="2.6" fill="{p["lava2"]}" opacity="0">'
+    for dx, b in [(-50, .15), (40, .22), (70, .32)]:
+        o.append(f'<circle cx="1050" cy="118" r="3" opacity="0" stroke="none">'
                  f'{tf("translate", f"0 0;0 0;{dx} -100;{dx} -100", f"0;{b};{b + .25:.2f};1")}{op("0;0;1;0;0", f"0;{b};{b + .03:.2f};{b + .25:.2f};1")}</circle>')
+    o.append('</g>')
     return ''.join(o)
 
 W, H, SPLIT = 1600, 1700, 377
@@ -408,14 +414,14 @@ def skyline(night):
            f'<stop offset="0" stop-color="{p["water2"]}"/><stop offset="1" stop-color="{p["water"]}"/></linearGradient>'))
     a(f'<rect width="{W}" height="{HZ + 40}" fill="url(#sky)"/>')
     if n:
-        a(stars(30, 0, W, 0, 300, 3))
+        a(stars(8, 0, W, 0, 300, 3))
         a(moon(660, 96, 46))
     else:
         a(sun(660, 104, 36))
         a(cloud(820, 60, 200, .45) + cloud(260, 150, 180, .4) + cloud(1340, 40, 170, .4))
     # far ridges in the haze, then the volcano behind everything else
     a(hills([(0, 290), (180, 236), (420, 284), (640, 250), (820, 290), (1200, 250), (1420, 284), (1600, 240)], HZ, p["far"]))
-    a(volcano(1050, 126, HZ, 420, p, n))
+    a(volcano(1050, 126, HZ, 420, p, n, halo=False))  # its glow is the eruption's
     # its smoke: a standing plume, and puffs that rise off the crater and fade
     sc = p["smoke"]
     a(puff(1062, 98, 20, sc, .75) + puff(1088, 66, 26, sc, .65) + puff(1124, 34, 32, sc, .55) + puff(1170, 4, 38, sc, .45))
@@ -507,7 +513,7 @@ def skyline(night):
     # fireflies at night, blinking over the ferns and the bank
     if n:
         r = random.Random(8)
-        for i in range(9):
+        for i in range(4):
             x = r.choice([r.randint(40, 440), r.randint(1180, 1580)]); y = r.randint(540, 720)
             a(f'<circle cx="{x}" cy="{y}" r="7" fill="url(#ff)" opacity=".9"><animate attributeName="opacity" values=".9;.1;.9" dur="{3 + r.random() * 3:.1f}s" begin="{r.random() * 3:.1f}s" repeatCount="indefinite"/></circle>')
     # tufts in the grass, kept off the stage

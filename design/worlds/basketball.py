@@ -303,8 +303,6 @@ def skyline(night):
     # ------------------------------------------------ the lower bowl behind the court (the leaderboard's top)
     a(f'<rect x="0" y="372" width="{W}" height="140" fill="url(#cr)"/>')
     a(f'<rect x="0" y="372" width="{W}" height="140" fill="#000" opacity="{.22 if not n else .5}"/>')
-    for x in (400, 800, 1200): a(f'<path d="M{x - 10} 372 L{x + 10} 372 L{x + 14} 506 L{x - 14} 506Z" fill="{p["wall"]}"/>' + ''.join(f'<line x1="{x - 12}" y1="{y}" x2="{x + 12}" y2="{y}" stroke="#000" stroke-opacity=".3"/>' for y in range(380, 506, 11)))
-    a(f'<rect x="0" y="372" width="{W}" height="8" fill="{p["steel2"]}"/><rect x="0" y="380" width="{W}" height="3" fill="{p["led"]}" opacity=".6"/>')
     # the crowd doing the wave: the same fans as the seats (same seed, same grid) drawn standing, arms up, and half up;
     # two masks sweep across the bowl, so each fan rises in place as the band reaches them and sits back down behind it
     r = random.Random(3); fans = []
@@ -319,7 +317,7 @@ def skyline(night):
                 for dy in ((0, 44) if cy == 0 else (0,)):
                     u.append(f'<use href="#{sid}" x="{cx + dx}" y="{cy + dy + oy}" fill="{sh}" color="{sk}"/>')
         return ''.join(u)
-    wv = ('<defs><g id="wf"><path d="M-9.4 22L-8 3Q0 0 8 3L9.4 22z"/><path d="M-6 5L-9-15M6 5L9-15" stroke="currentColor" stroke-width="3.4" stroke-linecap="round"/><circle cy="-4" r="4.7" fill="currentColor"/></g>'
+    wv = ('<defs><g id="wf"><path d="M-9.4 22L-8 3Q0 0 8 3L9.4 22z"/><path d="M-6 5L-9-15M6 5L9-15" stroke="currentColor" stroke-width="2.8" stroke-linecap="round"/><circle cy="-4" r="4.7" fill="currentColor"/></g>'
           '<g id="wh"><path d="M-9.4 22L-8 7Q0 4 8 7L9.4 22z"/><path d="M-6 9L-9 1M6 9L9 1" stroke="currentColor" stroke-width="3.4" stroke-linecap="round"/><circle cy="1" r="4.6" fill="currentColor"/></g>'
           f'<pattern id="wvF" width="104" height="44" patternUnits="userSpaceOnUse">{lay("wf", 0)}</pattern>'
           f'<pattern id="wvH" width="104" height="44" patternUnits="userSpaceOnUse">{lay("wh", 0)}</pattern>')
@@ -327,6 +325,8 @@ def skyline(night):
         wv += (f'<mask id="{mid}" maskUnits="userSpaceOnUse" x="0" y="372" width="{W}" height="140"><rect x="{x0}" y="384" width="{w0}" height="128" fill="#fff">'
                f'<animate attributeName="x" values="{x0};{x0 + 2000};{x0 + 2000}" keyTimes="0;.74;1" dur="10s" repeatCount="indefinite"/></rect></mask>')
     a(wv + '</defs>' + ''.join(f'<rect x="0" y="384" width="{W}" height="122" fill="url(#{pt})" mask="url(#{m})"/>' for pt, m in (("wvH", "mH"), ("wvF", "mF"))))
+    for x in (400, 800, 1200): a(f'<path d="M{x - 10} 372 L{x + 10} 372 L{x + 14} 506 L{x - 14} 506Z" fill="{p["wall"]}"/>' + ''.join(f'<line x1="{x - 12}" y1="{y}" x2="{x + 12}" y2="{y}" stroke="#000" stroke-opacity=".3"/>' for y in range(380, 506, 11)))
+    a(f'<rect x="0" y="372" width="{W}" height="8" fill="{p["steel2"]}"/><rect x="0" y="380" width="{W}" height="3" fill="{p["led"]}" opacity=".6"/>')
     # the floor of the arena, the ad boards along the far side
     a(f'<rect x="0" y="506" width="{W}" height="{H - 506}" fill="{p["floor"]}"/>')
     a(f'<rect x="196" y="500" width="1208" height="28" fill="{p["board"]}"/>')

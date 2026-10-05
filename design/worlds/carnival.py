@@ -734,8 +734,8 @@ def v_training(n):  # bumper cars: the no-fault zone
     o.append(''.join(f'<rect x="{x}" y="204" width="{40}" height="12" fill="{p["gold"] if (x // 40) % 2 else p["red"]}"/>' for x in range(0, 1600, 40)))
     o.append(f'<rect x="0" y="216" width="1600" height="24" fill="#1c1c22"/>')
     T = 'dur="3.6s" repeatCount="indefinite"'
-    for x, y, s, c, fl_, fc, dx in [(560, 196, 1.0, p["teal"], False, None, 22), (720, 184, .86, p["gold"], True, p["skin2"], 16), (870, 198, 1.04, p["red"], False, None, -16), (1030, 182, .84, p["purple"], True, p["skin2"], -22)]:
-        o.append(f'<g>{bumper(x, y, s, c, p, fl_, fc)}<animateTransform attributeName="transform" type="translate" values="0 0;{-dx} 0;0 0;{dx * .25:.0f} 0;0 0" keyTimes="0;.3;.5;.58;1" '
+    for x, y, s, c, fl_, fc, dx in [(560, 196, 1.0, p["teal"], False, None, 24), (720, 184, .86, p["gold"], True, p["skin2"], 34), (870, 198, 1.04, p["red"], False, None, -34), (1030, 182, .84, p["purple"], True, p["skin2"], -24)]:
+        o.append(f'<g>{bumper(x, y, s, c, p, fl_, fc)}<animateTransform attributeName="transform" type="translate" values="0 0;{-dx * .3:.0f} 0;{dx} 0;{dx * .6:.0f} 0;0 0" keyTimes="0;.3;.5;.58;1" '
                  f'calcMode="spline" keySplines="{SP(4)}" {T}/></g>')
     # a spark where two cars meet, on the pole tips too
     for x, y, rr in [(800, 172, 12), (650, 40 + 4, 6)]:
@@ -792,8 +792,8 @@ def v_service(n):  # the ride operators at the controls, the swing ride behind t
         sx = tx + (-110 + k * 44)
         ch.append(f'<line x1="{sx}" y1="104" x2="{ex}" y2="{ey - 12}" stroke="{p["steel2"]}" stroke-width="1.5"/>'
                   f'<path d="M{ex - 9} {ey - 12} L{ex + 9} {ey - 12} L{ex + 7} {ey} L{ex - 7} {ey}Z" fill="{[p["teal"], p["gold"], p["purple"]][k % 3]}"/>')
-    o.append(f'<g>{"".join(ch)}<animateTransform attributeName="transform" type="scale" values="1 1;1.07 .95;1 1" calcMode="spline" keySplines="{SP(2)}" dur="5s" repeatCount="indefinite" additive="sum"/>'
-             f'<animateTransform attributeName="transform" type="translate" values="0 0;{-tx * .07:.0f} {104 * .05:.1f};0 0" calcMode="spline" keySplines="{SP(2)}" dur="5s" repeatCount="indefinite" additive="sum"/></g>')
+    o.append(f'<g transform="translate({tx} 104)"><g><g transform="translate({-tx} -104)">{"".join(ch)}</g>'
+             f'<animateTransform attributeName="transform" type="scale" values="1 1;1.08 .94;1 1" calcMode="spline" keySplines="{SP(2)}" dur="5s" repeatCount="indefinite"/></g></g>')
     # the control booth: an open-front kiosk with a panel of buttons and a big lever
     o.append(f'<rect x="560" y="96" width="250" height="118" fill="{p["navy"] if not n else "#222a50"}"/>'
              f'<path d="M548 98 L822 98 L810 80 L560 80Z" fill="{p["red"]}"/><rect x="548" y="96" width="274" height="6" fill="{p["gold"]}"/>')
