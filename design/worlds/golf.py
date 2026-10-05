@@ -317,7 +317,7 @@ def skyline(night):
     a(f'<path d="{path}" fill="none" stroke="{p["path2"]}" stroke-width="34" stroke-linecap="round"/><path d="{path}" fill="none" stroke="{p["path"]}" stroke-width="28" stroke-linecap="round"/>')
     # the cart on the path, turned to follow it down toward the green (Frank, 2026-10-05: "angle the cart
     # on the cart path properly")
-    a(f'<g transform="rotate(12 1256 664)">' + cart(1256, 664, .9, "#f2efe4" if not n else "#9a988e", p["roof"], "ON PAR") + '</g>')
+    a(f'<g transform="rotate(-10 1256 664)">' + cart(1256, 664, .9, "#f2efe4" if not n else "#9a988e", p["roof"], "ON PAR") + '</g>')
     for lx, lb in [(1186, 560), (1430, 592), (1150, 744)]: a(lamp(lx, lb, 54, n))
     # bunkers: a fairway bunker on the bend, greenside bunkers hugging the green's shoulders
     a(bunker2([(560, 474), (614, 462), (636, 474), (600, 488), (556, 486)], p, n))

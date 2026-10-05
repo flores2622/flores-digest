@@ -2052,7 +2052,8 @@ repaint clears the list).
   windshield, a steering wheel and a seat back so its front reads as the
   front -- "the clubs look like their on the front bc theres no steering
   wheel" -- and set on the path's straight stretch, turned to follow it down
-  toward the green, "angle the cart on the cart path properly"), tree shadows), a pond with a footbridge, the 18 DEDUCTIBLE DOGLEG hole sign
+  toward the green, "angle the cart on the cart path properly" -- nose
+  slightly down, "the cart is popping a wheelie"), tree shadows), a pond with a footbridge, the 18 DEDUCTIBLE DOGLEG hole sign
   and an ON PAR cart on the path; banners from the tee shot to the
   yardage-book Road Maps and the pro shop; strips from a hole in one to the
   flag alone under the moon; the tour card is the Caddie's notes. **Yuma** (Frank, 2026-10-05: "can
