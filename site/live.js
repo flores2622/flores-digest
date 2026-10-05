@@ -580,7 +580,7 @@ export async function soldLeadsToday(env, day, basis, fetchFn = fetch, kept = nu
     // lead or a life sale is not a household sold (Frank, 2026-09-30).
     if (notSale.has(norm(l.leadSourceName)) || isTestLead(l, basis) || isLifeLead(l, basis, recent)) continue;
     (per[who] || (per[who] = [])).push({ lead_id: l.id, household: l.convertedHouseholdId ?? null, lead: name,
-      existing: existing.has(norm(l.leadSourceName)),
+      existing: existing.has(norm(l.leadSourceName)), at: soldAt(l, day),
       // for computeFast's second look with today's policies; removed there
       _l: { assignedTo: l.assignedTo, leadSourceId: l.leadSourceId, soldDate: l.soldDate, leadSourceName: l.leadSourceName } });
   }
@@ -596,6 +596,18 @@ export function isTestLead(l, basis) {
   if ((t.ids || []).includes(l.id)) return true;
   const name = `${String(l.firstname || "").trim()} ${String(l.lastname || "").trim()}`.trim();
   return !!name && !!t.rx && rxOf(t.rx).test(name);
+}
+
+/* digest_rows.sold_at (keep in step): when the lead was marked sold, "2:05 PM"
+   in Arizona, from its enterStageDate (UTC) if that is on the day between 7 AM
+   and 7 PM; else null. */
+function soldAt(l, day) {
+  const m = /^(\d{4}-\d{2}-\d{2})[ T](\d{2}):(\d{2})/.exec(String(l.enterStageDate || ""));
+  if (!m) return null;
+  const t = new Date(Date.UTC(+m[1].slice(0, 4), +m[1].slice(5, 7) - 1, +m[1].slice(8, 10), +m[2], +m[3]) - 7 * 3600000);
+  const h = t.getUTCHours(), mm = String(t.getUTCMinutes()).padStart(2, "0");
+  if (t.toISOString().slice(0, 10) !== day || h < 7 || h >= 19) return null;   // overnight marks are not sale times
+  return `${h % 12 || 12}:${mm} ${h < 12 ? "AM" : "PM"}`;
 }
 
 /* What is kept of a lead: what the sold count and the quotes pass read. */

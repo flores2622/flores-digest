@@ -1,6 +1,6 @@
 """Game Day world: American football. The Digest's stadium, the page banners and the coaching-card strips.
 No real teams, leagues, logos or stadiums -- insurance names on the scoreboard, the end zones and the banners."""
-import random
+import math, random
 
 KEY = "gameday"
 NAME = "Game Day"
@@ -305,8 +305,12 @@ def skyline(night):
     ez1, ez2 = (RED, NAVY)
     for s, c in [(-1, ez1), (1, ez2)]:
         a(f'<path d="M{fx(10*s, YF):.0f} {YF} L{fx(12*s, YF):.0f} {YF} L{fx(12*s, yb):.0f} {yb} L{fx(10*s, yb):.0f} {yb} Z" fill="{c}" opacity="{.8 if night else .92}"/>')
-    a(f'<text transform="translate({fx(-11, 700):.0f} 700) rotate(-90)" text-anchor="middle" font-family="Arial, sans-serif" font-weight="bold" font-size="38" letter-spacing="8" fill="#fff" opacity=".9">COVERED</text>')
-    a(f'<text transform="translate({fx(11, 700):.0f} 700) rotate(90)" text-anchor="middle" font-family="Arial, sans-serif" font-weight="bold" font-size="38" letter-spacing="8" fill="#fff" opacity=".9">BUNDLED</text>')
+    # end zone words run along each slanted end zone, in the band the leaderboard shows
+    # (Frank, 2026-10-05: "the endzone letters are not angled and cant even read them")
+    lean = math.degrees(math.atan2(1, 11 * DF / (YF - VPY)))
+    for k, word, ang in [(-11, "COVERED", -lean), (11, "BUNDLED", lean)]:
+        a(f'<text transform="translate({fx(k, 612):.0f} 612) rotate({ang:.1f})" dy="13" text-anchor="middle" font-family="Arial Black, Arial, sans-serif" font-weight="900" '
+          f'font-size="38" letter-spacing="5" fill="#fff" stroke="#0a1020" stroke-opacity=".35" stroke-width="3" paint-order="stroke" opacity=".95">{word}</text>')
     # yard lines, sidelines
     lc = "#f2f6ee"
     a(f'<rect x="0" y="{YF-6}" width="{W}" height="6" fill="{lc}"/>')
@@ -721,7 +725,7 @@ VISTA_FNS = {"sales": v_sales, "messages": v_messages, "coaching": v_coaching, "
              "service": v_service, "renewals": v_renewals, "claims": v_claims, "commercial": v_commercial}
 VISTA_LINES = {
     "sales": ["Sales", "touchdown: premium in the end zone"],
-    "messages": ["Texts & Emails", "the press box: every call heard"],
+    "messages": ["Texts & Emails", "the press box: every text and email answered"],
     "coaching": ["Coaching", "the film room: every call, rewound"],
     "roleplay": ["Role Play", "the practice field"],
     "rphistory": ["Session History", "the highlight reel"],

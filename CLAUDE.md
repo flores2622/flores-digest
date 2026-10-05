@@ -1670,7 +1670,17 @@ just more from the producers and less 'client texted in' ... from apollo,
 just coaching notes"): the producers speak -- their calls, quotes presented
 and sent, sales -- and Apollo answers only with coaching notes (praise on
 a close; the dropped objection's fix, else `askfix` on a quote not
-assumed), at most two per producer; texts are not in it. It sits beside **Needs someone now** / **Left on the desk**
+assumed), at most two per producer; texts are not in it. **Sales sit at
+their time** (Frank, 2026-10-05: "the sales should be mixed in with the rest
+of the chats based on the time"): policy records carry no time, so each
+household sold carries `at` (`digest_rows.sold_at` / `live.js soldAt`, keep
+in step: the lead's enterStageDate in Arizona, only 7 AM - 7 PM -- an
+overnight mark is AgencyZoom's, not a sale), a policy takes the sold lead of
+its producer and source (else that producer's only one), a lead with no `at`
+its last call that day, and an untimed sale stays under "Sales today".
+Published days got theirs by `python3 digest_rows.py --add-sold-times
+2026-09-01` (the day's lead snapshot, else the lead's own "Sold" note; backups
+under `backups/<today>-sold-times/`, only `at` added). It sits beside **Needs someone now** / **Left on the desk**
 (`needsNowRows`); the Service Digest's is **Off the desk · done today**.
 **Each Left on the desk / Needs someone now row is a card that FLIPS**
 (Frank, 2026-10-02: "left on the desk card should drop down what was
@@ -1967,8 +1977,10 @@ repaint clears the list).
   Game -- the stadium, the podium on the 50, insurance names instead of
   FLORES (Frank, 2026-10-05: "not everything needs to be flores, it should
   be insurance focused": the PREMIUM BOWL scoreboard, HOME vs RISK, end zones
-  COVERED and BUNDLED, BUNDLE UP / NO LAPSE ZONE on the wall, a GET COVERED
-  blimp) and goalposts in perspective on their end lines ("angle the field
+  COVERED and BUNDLED, written along each slanted end zone where the
+  leaderboard shows them -- "the endzone letters are not angled and cant even
+  read them" -- BUNDLE UP / NO LAPSE ZONE on the wall, a GET COVERED blimp,
+  Texts & Emails' "the press box: every text and email answered") and goalposts in perspective on their end lines ("angle the field
   goals", `goalpost_persp`),
   TOUCHDOWN / 1ST & 10 / TURNOVER ...), **Retro Arcade** (Orbitron / Exo 2;
   Synthwave, 8-Bit, Pinball -- the neon pixel city and HIGH SCORES, the grid
