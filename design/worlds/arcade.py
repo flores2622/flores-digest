@@ -164,10 +164,10 @@ def retro_sun(cx, cy, r, night, cid="sc", stripes=None):
     return (f'<defs>{g}{m}</defs>'
             f'<circle cx="{cx}" cy="{cy}" r="{r}" fill="url(#{cid}g)" mask="url(#{cid}m)"/>')
 
-def vbg(n, top_day=("#7b5cff", "#7ab1ff", "#ffc59a"), top_night=("#0a0420", "#2a0b52", "#6a1a7a"), floor_y=172, starsn=40, sun=None):
+def vbg(n, top_day=("#7b5cff", "#7ab1ff", "#ffc59a"), top_night=("#0a0420", "#2a0b52", "#6a1a7a"), floor_y=172, starsn=40, sun=None, tw=False):
     c = top_night if n else top_day
     o = [f'<rect width="1600" height="240" fill="url(#vg)"/>']
-    if n: o.append(stars(starsn, 1600, 0, floor_y - 30, 7))
+    if n: o.append((stars_tw if tw else stars)(starsn, 1600, 0, floor_y - 30, 7))
     if sun: o.append(retro_sun(sun[0], floor_y, sun[1], n, "vs", [(-.55, .06), (-.38, .08), (-.22, .1), (-.08, .12)]))
     fl = "#1a0636" if n else "#9a6ad0"
     o.append(f'<rect x="0" y="{floor_y}" width="1600" height="{240-floor_y}" fill="{fl}"/>')
@@ -382,30 +382,55 @@ def skyline(night):
 
 # ------------------------------------------------------------------ the page banners (1600 x 240)
 def scene(n, body_fn, **kw):
+    kw.setdefault("tw", True)   # the banners' night stars twinkle
     bg, defs = vbg(n, **kw)
     cd, cr = corners()
     return wrap(240, bg + body_fn() + cr, defs + cd)
+
+# banner movement (Frank, 2026-10-05: "add movement to the new worlds' banners too"): self-closing SMIL only,
+# so each element's own attributes are its resting state and build.py's still copy is the drawing as it was.
+SPL = 'calcMode="spline" keySplines=".45 0 .55 1;.45 0 .55 1"'
+def _rep(dur, delay): return f'dur="{dur}s" begin="{-delay}s" repeatCount="indefinite"'
+def bob(dx, dy, dur, delay=0):
+    return f'<animateTransform attributeName="transform" type="translate" values="0 0;{dx} {dy};0 0" keyTimes="0;.5;1" {SPL} {_rep(dur, delay)}/>'
+def rock(a, cx, cy, dur, delay=0):
+    return f'<animateTransform attributeName="transform" type="rotate" values="0 {cx} {cy};{a} {cx} {cy};0 {cx} {cy}" keyTimes="0;.5;1" {SPL} {_rep(dur, delay)}/>'
+def turn(cx, cy, dur):
+    return f'<animateTransform attributeName="transform" type="rotate" values="0 {cx} {cy};360 {cx} {cy}" keyTimes="0;1" {_rep(dur, 0)}/>'
+def blink(vals, dur, delay=0, attr="opacity"):
+    v = vals.split(";"); kt = ";".join(_n(i / (len(v) - 1)) for i in range(len(v)))
+    return f'<animate attributeName="{attr}" values="{vals}" keyTimes="{kt}" {_rep(dur, delay)}/>'
+def steps(attr, vals, times, dur, delay=0):
+    return f'<animate attributeName="{attr}" values="{vals}" keyTimes="{times}" calcMode="discrete" {_rep(dur, delay)}/>'
+def G(body, *anims): return '<g>' + ''.join(anims) + body + '</g>'
 
 def v_sales(n):  # the jackpot
     def b():
         o = []
         x, y = 690, 30
         o.append(f'<rect x="{x}" y="{y}" width="220" height="170" fill="#185fc2"/><rect x="{x+10}" y="{y+10}" width="200" height="34" fill="#14042e"/>')
-        o.append(label(x + 110, y + 17, "JACKPOT", 3.4, "#ffd23f"))
+        o.append(G(label(x + 110, y + 17, "JACKPOT", 3.4, "#ffd23f"), steps("opacity", "1;.25;1;.25;1", "0;.82;.86;.9;.94", 6)))
         o.append(f'<rect x="{x+16}" y="{y+56}" width="188" height="64" fill="#fff8e8"/>')
         for i in range(3):
             o.append(f'<rect x="{x+22+i*62}" y="{y+60}" width="56" height="56" fill="#fff"/>')
             o.append(ptext("7", x + 50 + i * 62, y + 69, 7, "#2070e0", "middle"))
+            # the reel spinning: a blur of symbols over the 7 from the pull until it stops, left reel first
+            o.append(f'<path d="{"".join(f"M{x+28+i*62} {y+64+k*10}h44v5h-44z" for k in range(5))}" fill="#7ab1ff" opacity="0">'
+                     + steps("opacity", "0;1;0", f"0;.1;{.5+i*.1:.1f}", 6) + '</path>'
+                     + f'<rect x="{x+22+i*62}" y="{y+60}" width="56" height="56" fill="#fff" opacity="0">'
+                     + steps("opacity", "0;.75;0", f"0;.1;{.5+i*.1:.1f}", 6) + '</rect>')
         o.append(f'<rect x="{x+60}" y="{y+132}" width="100" height="16" fill="#14042e"/>')
-        o.append(f'<rect x="{x+220}" y="{y+40}" width="10" height="70" fill="#9aa0b8"/><rect x="{x+214}" y="{y+22}" width="22" height="22" fill="#3d8eff"/>')
+        lv = f'<animateTransform attributeName="transform" type="translate" values="0 0;0 0;0 44;0 0;0 0" keyTimes="0;.02;.08;.16;1" {_rep(6, 0)}/>'
+        o.append(G(f'<rect x="{x+220}" y="{y+40}" width="10" height="70" fill="#9aa0b8"/><rect x="{x+214}" y="{y+22}" width="22" height="22" fill="#3d8eff"/>', lv))
         r = random.Random(4)
         for k in range(16):
             cx = x + 70 + r.randint(-40, 120); cy = 150 + r.randint(0, 60) - (k % 5) * 8
             if k < 6: cx, cy = x + 90 + k * 8 - 20, 168 + (k % 3) * 12
-            o.append(coin(cx, cy, 3))
+            o.append(G(coin(cx, cy, 3), bob(0, -12, 1.6, k * .27)) if k in (0, 2, 4) else coin(cx, cy, 3))
         for cx, cy in [(560, 160), (600, 176), (1000, 170), (1040, 150), (1080, 178), (480, 120), (1130, 90)]:
             o.append(coin(cx, cy, 3))
-        o.append(sparkles([(640, 60), (960, 50), (1040, 100), (560, 90)], "#fff6c8", 4))
+        o.append(G(sparkles([(640, 60), (1040, 100)], "#fff6c8", 4), blink("1;.1;1", 2.2)))
+        o.append(G(sparkles([(960, 50), (560, 90)], "#fff6c8", 4), blink("1;.1;1", 2.2, 1.1)))
         return ''.join(o)
     return scene(n, b, sun=(1300, 90))
 
@@ -416,19 +441,23 @@ def v_messages(n):  # chat bubbles and a dial-up modem
             t = (f'M{x+16} {y+40}h12v12h-12z M{x+10} {y+52}h8v8h-8z' if tail == "l" else f'M{x+w-28} {y+40}h12v12h-12z M{x+w-18} {y+52}h8v8h-8z')
             return (f'<path d="M{x+6} {y}h{w-12}v6h6v{28}h-6v6h{-(w-12)}v-6h-6v-28h6z" fill="{c}"/><path d="{t}" fill="{c}"/>'
                     + ptext(txt, x + w / 2, y + 10, 4, "#14042e", "middle"))
-        o.append(bubble(470, 62, 150, "HI THERE", "#ffffff"))
-        o.append(bubble(640, 46, 150, "QUOTE?", "#3df2ff", "r"))
-        o.append(bubble(960, 68, 110, "...", "#ffd23f"))
-        o.append(bubble(1100, 50, 150, "THANKS!", "#7ab1ff", "r"))
+        o.append(G(bubble(470, 62, 150, "HI THERE", "#ffffff"), bob(0, -5, 4.4)))
+        o.append(G(bubble(640, 46, 150, "QUOTE?", "#3df2ff", "r"), bob(0, -5, 4.4, 1.5)))
+        # someone is typing: the three dots light in turn
+        o.append(G(bubble(960, 68, 110, "", "#ffd23f") + ''.join(
+            f'<rect x="{995+k*16}" y="80" width="8" height="8" fill="#14042e">{blink("1;.2;1;1", 1.5, -k * .25)}</rect>' for k in range(3)), bob(0, -5, 4.4, 3)))
+        o.append(G(bubble(1100, 50, 150, "THANKS!", "#7ab1ff", "r"), bob(0, -5, 4.4, 2.2)))
         # the modem
         mx, my = 660, 120
         o.append(f'<rect x="{mx}" y="{my}" width="270" height="44" fill="#e9dfc6"/><rect x="{mx}" y="{my+44}" width="270" height="8" fill="#b9ad93"/><rect x="{mx+10}" y="{my+10}" width="120" height="10" fill="#b9ad93"/>')
-        o.append(f'<path d="{"".join(f"M{mx+150+i*20} {my+18}h10v8h-10z" for i in range(5))}" fill="#39ff6a"/>')
+        o.append(''.join(f'<path d="M{mx+150+i*20} {my+18}h10v8h-10z" fill="#39ff6a">'
+                         + steps("opacity", "1;.25;1;.4;1", "0;.2;.45;.6;.85", 1.3 + i * .37, i * .5) + '</path>' for i in range(5)))
         o.append(f'<path d="M{mx+230} {my+18}h10v8h-10z" fill="#3d8eff"/>')
         o.append(f'<path d="M{mx+270} {my+30} q60 10 60 -40 t70 -30" fill="none" stroke="#2a1240" stroke-width="4"/>')
         o.append(ptext("56K", mx + 16, my + 28, 2.5, "#7a6a50"))
         for k in range(3):
-            o.append(f'<path d="M{mx+135-k*14} {my-8-k*14} q{14+k*14} -{14+k*14} {28+k*28} 0" fill="none" stroke="#fff" stroke-width="4" opacity="{.8-.2*k}"/>')
+            o.append(f'<path d="M{mx+135-k*14} {my-8-k*14} q{14+k*14} -{14+k*14} {28+k*28} 0" fill="none" stroke="#fff" stroke-width="4" opacity="{.8-.2*k:.1f}">'
+                     + blink(f"{.8-.2*k:.1f};.1;{.8-.2*k:.1f}", 1.8, -k * .3) + '</path>')
         return ''.join(o)
     return scene(n, b, top_day=("#5a7bff", "#a98cff", "#b3d3ff"))
 
@@ -438,12 +467,13 @@ def v_coaching(n):  # a PAUSE screen with a replay
         x, y, w, h = 560, 22, 480, 150
         o.append(f'<rect x="{x-14}" y="{y-12}" width="{w+28}" height="{h+24}" fill="{"#2a1a3e" if n else "#4a3a5e"}"/><rect x="{x}" y="{y}" width="{w}" height="{h}" fill="#0b0820"/>')
         o.append(hero(x + 60, y + 52, 6, {'b': "#6a3df0"}) + f'<rect x="{x}" y="{y}" width="{w}" height="{h}" fill="#0b0820" opacity=".45"/>')
-        o.append(label(x + w / 2, y + 20, "PAUSE", 8, "#ffd23f"))
+        o.append(G(label(x + w / 2, y + 20, "PAUSE", 8, "#ffd23f"), steps("opacity", "1;.15", "0;.6", 1.8)))
         o.append(ptext("CONTINUE", x + w / 2 + 40, y + 78, 4, "#fff", "middle"))
         o.append(ptext("REPLAY CALL", x + w / 2 + 40, y + 102, 4, "#3df2ff", "middle"))
-        o.append(runs(["#..", "##.", "###", "##.", "#.."], x + w / 2 - 70, y + 100, 4, {'#': "#3df2ff"}))
+        o.append(G(runs(["#..", "##.", "###", "##.", "#.."], x + w / 2 - 70, y + 100, 4, {'#': "#3df2ff"}), bob(6, 0, 1.2)))
         o.append(f'<path d="{"".join(f"M{x} {y+k*6}h{w}v2h-{w}z" for k in range(0, 25))}" fill="#000" opacity=".25"/>')
-        o.append(f'<rect x="{x+20}" y="{y+h-14}" width="{w-40}" height="6" fill="#3a2a5a"/><rect x="{x+20}" y="{y+h-14}" width="{(w-40)*.62:.0f}" height="6" fill="#4f98ff"/>')
+        o.append(f'<rect x="{x+20}" y="{y+h-14}" width="{w-40}" height="6" fill="#3a2a5a"/><rect x="{x+20}" y="{y+h-14}" width="{(w-40)*.62:.0f}" height="6" fill="#4f98ff">'
+                 f'<animate attributeName="width" values="0;{w-40};{w-40}" keyTimes="0;.9;1" {_rep(10, 6.2)}/></rect>')
         return ''.join(o)
     return scene(n, b, top_day=("#3a2a7a", "#7a4fc0", "#c08ae0"), top_night=("#05020f", "#140a30", "#2a0b52"))
 
@@ -451,11 +481,11 @@ def v_roleplay(n):  # versus screen
     def b():
         o = ['<path d="M0 0H820L760 240H0Z" fill="#4f98ff" opacity=".35"/><path d="M820 0H1600V240H760Z" fill="#3df2ff" opacity=".28"/>']
         o.append('<path d="M820 0L760 240" stroke="#fff" stroke-width="6"/>')
-        o.append(hero(560, 52, 11))
-        o.append(hero(960, 52, 11, {'h': "#3df2ff", 'b': "#ff7a1a", 'v': "#4f98ff"}))
-        o.append(label(790, 70, "VS", 10, "#ffd23f"))
+        o.append(G(hero(560, 52, 11), bob(0, -6, 1.4)))
+        o.append(G(hero(960, 52, 11, {'h': "#3df2ff", 'b': "#ff7a1a", 'v': "#4f98ff"}), bob(0, -6, 1.4, .7)))
+        o.append(G(label(790, 70, "VS", 10, "#ffd23f"), blink("1;.55;1", 2.4)))
         o.append(ptext("PLAYER 1", 400, 112, 5, "#fff", "middle"))
-        o.append(f'<g>{ptext("PLAYER 2", 1240, 100, 5, "#fff", "middle")}{ptext("READY", 1240, 136, 5, "#ffd23f", "middle")}</g>')
+        o.append(f'<g>{ptext("PLAYER 2", 1240, 100, 5, "#fff", "middle")}{G(ptext("READY", 1240, 136, 5, "#ffd23f", "middle"), steps("opacity", "1;0", "0;.55", 1.6))}</g>')
         return ''.join(o)
     return scene(n, b, top_day=("#5a2a9a", "#8a4fd0", "#7aa4e0"), top_night=("#08021a", "#1c0645", "#3a0b62"))
 
@@ -467,13 +497,17 @@ def v_rphistory(n):  # a shelf of cartridges and a replay tape
         cols = ["#4f98ff", "#3df2ff", "#ffd23f", "#39ff6a", "#a46bff", "#ff7a1a", "#3d8eff"]
         for i in range(9):
             cx = 440 + i * 62; h = 96 + (i * 13) % 20
-            o.append(f'<rect x="{cx}" y="{150-h}" width="50" height="{h}" fill="#4a4a5a"/><rect x="{cx+6}" y="{150-h+10}" width="38" height="{h-40}" fill="{cols[i%7]}"/>'
-                     f'<rect x="{cx+10}" y="{150-26}" width="30" height="6" fill="#2a2a38"/>')
-            o.append(ptext(str(i + 1), cx + 25, 150 - h + 20, 4, "#14042e", "middle"))
+            c = (f'<rect x="{cx}" y="{150-h}" width="50" height="{h}" fill="#4a4a5a"/><rect x="{cx+6}" y="{150-h+10}" width="38" height="{h-40}" fill="{cols[i%7]}"/>'
+                 f'<rect x="{cx+10}" y="{150-26}" width="30" height="6" fill="#2a2a38"/>' + ptext(str(i + 1), cx + 25, 150 - h + 20, 4, "#14042e", "middle"))
+            # one cartridge at a time is pulled to be replayed
+            o.append(c if i not in (4, 7) else G(c, f'<animateTransform attributeName="transform" type="translate" values="0 0;0 0;0 -22;0 -22;0 0;0 0" '
+                     f'keyTimes="0;.1;.2;.4;.5;1" {_rep(9, 0 if i == 4 else 4.5)}/>'))
         tx = 1010
         o.append(f'<rect x="{tx}" y="64" width="150" height="86" fill="#1a1a24"/><rect x="{tx+14}" y="80" width="122" height="40" fill="#e9dfc6"/>')
         o.append(f'<circle cx="{tx+46}" cy="100" r="13" fill="#1a1a24"/><circle cx="{tx+104}" cy="100" r="13" fill="#1a1a24"/><rect x="{tx+40}" y="128" width="70" height="10" fill="#3a3a48"/>')
-        o.append(ptext("REPLAY", tx + 75, 84, 2.4, "#185fc2", "middle"))
+        for rx in (tx + 46, tx + 104):   # the reels' hubs turning
+            o.append(G(f'<path d="M{rx-2} 90h4v20h-4z M{rx-10} 98h20v4h-20z" fill="#e9dfc6"/>', turn(rx, 100, 2.4)))
+        o.append(G(ptext("REPLAY", tx + 75, 84, 2.4, "#185fc2", "middle"), steps("opacity", "1;.2", "0;.6", 1.6)))
         return ''.join(o)
     return scene(n, b, top_day=("#4a2a7a", "#8a5ac0", "#a0bbe0"), top_night=("#06021a", "#170838", "#3a0f5a"))
 

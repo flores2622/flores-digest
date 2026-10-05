@@ -214,6 +214,17 @@ def in_podium(el):
     m = re.search(r'd="M(\d+) (\d+)', el)
     return bool(m) and 420 < int(m.group(1)) < 1150 and 525 < int(m.group(2)) < 815
 
+def tw(attr, vals, dur, delay=0):
+    """an attribute pulsing through its values and back to the first (banners)"""
+    v = vals + vals[:1]; t = ";".join(N(i / (len(v) - 1)) for i in range(len(v)))
+    return f'<animate attributeName="{attr}" values="{";".join(map(str, v))}" keyTimes="{t}" dur="{dur}s" begin="{delay}s" repeatCount="indefinite"/>'
+def flow(period, dur):
+    """dashes running along their line, seamless when period is the dash pattern's length"""
+    return f'<animate attributeName="stroke-dashoffset" values="0;{-period}" keyTimes="0;1" dur="{dur}s" repeatCount="indefinite"/>'
+def twinkle(pts):
+    """a few night stars that brighten and dim"""
+    return ''.join(f'<circle cx="{x}" cy="{y}" r="1.6" fill="#fff" opacity=".4">{tw("opacity", [.4, 1, .2], 2 + i * .7, i * .4)}</circle>' for i, (x, y) in enumerate(pts))
+
 # ------------------------------------------------------------------ the Digest picture
 W, H, SPLIT = 1600, 1700, 377
 

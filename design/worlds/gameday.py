@@ -227,6 +227,35 @@ def pop(x, y, s, dur, at):
 OP0 = ' opacity="0"'
 
 
+# banner movement: each wraps something in its own <g> so its resting transform is untouched
+EZ = ".45 0 .55 1"
+
+
+def ease(attr, vals, dur, begin=0, kind=None):
+    """a smooth back-and-forth: vals run through with eased steps, looping"""
+    k = len(vals) - 1; t = ";".join(f"{i / k:.3g}" for i in range(k + 1))
+    head = f'<animateTransform attributeName="transform" type="{kind}"' if kind else f'<animate attributeName="{attr}"'
+    return (f'{head} values="{";".join(vals)}" keyTimes="{t}" dur="{dur}s" begin="{begin}s" '
+            f'calcMode="spline" keySplines="{";".join([EZ] * k)}" repeatCount="indefinite"/>')
+
+
+def bob(body, dx, dy, dur, begin=0):
+    return f'<g>{body}' + ease(None, ["0 0", f"{dx} {dy}", "0 0"], dur, begin, "translate") + '</g>'
+
+
+def sway(body, cx, cy, a, dur, begin=0):
+    return f'<g>{body}' + ease(None, [f"{-a} {cx} {cy}", f"{a} {cx} {cy}", f"{-a} {cx} {cy}"], dur, begin, "rotate") + '</g>'
+
+
+def blink(body, lo, dur, begin=0):
+    return f'<g>{body}' + ease("opacity", ["1", str(lo), "1"], dur, begin) + '</g>'
+
+
+def march(d, dur):
+    """marching dashes along a dashed path: stroke-dashoffset 0 -> -d"""
+    return f'<animate attributeName="stroke-dashoffset" values="0;{-d}" dur="{dur}s" repeatCount="indefinite"/>'
+
+
 # ------------------------------------------------------------------ the Digest: the stadium
 SPLIT = 377
 VPY, YF, DF = -600, 512, 52     # field perspective: vanishing point y, far sideline y, 5-yard spacing at the far sideline
@@ -472,18 +501,18 @@ def v_sales(n):  # the touchdown celebration in the end zone
     o.append(stands(34, 92, n))
     o.append(f'<rect x="0" y="30" width="1600" height="6" fill="{"#1a2236" if n else "#c9d0da"}"/>')
     if n:
-        o.append(flashes(9, 40, 1560, 40, 86, 2))
+        o.append(blink(flashes(9, 40, 1560, 40, 86, 2), .3, 2.2))
     o.append(f'<rect x="0" y="92" width="1600" height="16" fill="{NAVY}"/><rect x="0" y="92" width="1600" height="3" fill="{RED}"/>')
     o.append(grass(108, V, n, False))
     o.append(f'<path d="M0 132 L1600 132 L1600 240 L0 240 Z" fill="{RED}" opacity="{.75 if n else .9}"/><rect x="0" y="128" width="1600" height="5" fill="#f2f6ee"/>')
     o.append('<text x="800" y="230" text-anchor="middle" font-family="Arial, sans-serif" font-weight="bold" font-size="64" letter-spacing="22" fill="#fff" opacity=".2">PREMIUM</text>')
     o.append(goalpost(1180, 180, 150, .75))
     o.append(player(760, 196, .95, NAVY, "21", "up", hc=NAVY, trim=GOLD))
-    o.append(ball(806, 54, 13, -40))
-    o.append(player(660, 200, .85, NAVY, "8", "up", flip=True, hc=NAVY, trim=GOLD))
+    o.append(bob(ball(806, 54, 13, -40), 0, -34, 1.6))
+    o.append(bob(player(660, 200, .85, NAVY, "8", "up", flip=True, hc=NAVY, trim=GOLD), 0, -12, 1.6, .5))
     o.append(player(870, 204, .85, NAVY, "55", "run", hc=NAVY, trim=GOLD))
     o.append(ref(1010, 204, .8, signal="TD").replace('transform="rotate(8 -25 -86)"', 'transform="rotate(172 -25 -86)"').replace('transform="rotate(-8 25 -86)"', 'transform="rotate(188 25 -86)"'))
-    o.append(confetti(46, 420, 1250, 6, 200, 3))
+    o.append(bob(confetti(46, 420, 1250, 6, 200, 3), 8, 12, 4))
     if n:
         o.append(vignette(V, .4))
     o.append(shade())
@@ -507,13 +536,15 @@ def v_messages(n):  # the press box: headsets, monitors, the field through the g
     for i, x in enumerate([520, 800, 1080]):
         o.append(f'<rect x="{x-150}" y="104" width="86" height="54" rx="4" fill="#0a0f1a"/><rect x="{x-145}" y="109" width="76" height="44" fill="{"#1f6fb0" if i != 1 else "#2e8a4a"}"/>')
         o.append(f'<circle cx="{x-107}" cy="131" r="40" fill="url(#sg)"/>' if n else '')
-        o.append(f'<polyline points="{x-140},146 {x-124},130 {x-110},138 {x-90},118 {x-75},126" fill="none" stroke="#fff" stroke-width="2.5"/>')
-        o.append(f'<path d="M{x-46} 240 L{x-40} 176 Q{x} 154 {x+40} 176 L{x+46} 240 Z" fill="{[RED, NAVY, "#3c4660"][i]}"/>'
-                 f'<circle cx="{x}" cy="150" r="24" fill="{["#3a2a20", "#7b5e4a", "#5e3b26"][i]}"/>'
-                 f'<path d="M{x-26} 150 A26 26 0 0 1 {x+26} 150" fill="none" stroke="#111" stroke-width="6"/>'
-                 f'<rect x="{x-32}" y="140" width="12" height="22" rx="5" fill="#111"/><rect x="{x+20}" y="140" width="12" height="22" rx="5" fill="#111"/>'
-                 f'<path d="M{x+28} 160 q14 10 2 22" fill="none" stroke="#111" stroke-width="3"/><circle cx="{x+30}" cy="182" r="4" fill="#111"/>')
-    o.append(f'<rect x="1220" y="112" width="150" height="40" rx="4" fill="#0a0f1a"/><text x="1295" y="140" text-anchor="middle" font-family="monospace" font-weight="bold" font-size="22" fill="#ff5040">ON AIR</text>')
+        o.append(f'<polyline points="{x-140},146 {x-124},130 {x-110},138 {x-90},118 {x-75},126" fill="none" stroke="#fff" stroke-width="2.5" stroke-dasharray="100">'
+                 f'<animate attributeName="stroke-dashoffset" values="100;0;0" keyTimes="0;.6;1" dur="4s" begin="{i * 1.3:.1f}s" repeatCount="indefinite"/></polyline>')
+        o.append(f'<path d="M{x-46} 240 L{x-40} 176 Q{x} 154 {x+40} 176 L{x+46} 240 Z" fill="{[RED, NAVY, "#3c4660"][i]}"/>')
+        hd = (f'<circle cx="{x}" cy="150" r="24" fill="{["#3a2a20", "#7b5e4a", "#5e3b26"][i]}"/>'
+              f'<path d="M{x-26} 150 A26 26 0 0 1 {x+26} 150" fill="none" stroke="#111" stroke-width="6"/>'
+              f'<rect x="{x-32}" y="140" width="12" height="22" rx="5" fill="#111"/><rect x="{x+20}" y="140" width="12" height="22" rx="5" fill="#111"/>'
+              f'<path d="M{x+28} 160 q14 10 2 22" fill="none" stroke="#111" stroke-width="3"/><circle cx="{x+30}" cy="182" r="4" fill="#111"/>')
+        o.append(sway(hd, x, 172, 4, 3.2, i * .9) if i else hd)
+    o.append(f'<rect x="1220" y="112" width="150" height="40" rx="4" fill="#0a0f1a"/>' + blink('<text x="1295" y="140" text-anchor="middle" font-family="monospace" font-weight="bold" font-size="22" fill="#ff5040">ON AIR</text>', .25, 1.8))
     o.append(shade())
     return wrap(V, ''.join(o))
 
@@ -543,9 +574,12 @@ def v_coaching(n):  # the film room: the replay on the screen, rows of chairs
     o.append('<rect x="440" y="28" width="720" height="156" rx="4" fill="#d9dee8"/><rect x="452" y="38" width="696" height="136" fill="#2f7a36"/>')
     for x in range(520, 1148, 90):
         o.append(f'<line x1="{x}" y1="38" x2="{x}" y2="174" stroke="#fff" stroke-width="2" opacity=".35"/>')
-    o.append(xo(470, 38, 660, 136, "#fff"))
-    o.append('<rect x="460" y="44" width="92" height="22" rx="3" fill="#000" opacity=".6"/><text x="506" y="61" text-anchor="middle" font-family="monospace" font-weight="bold" font-size="15" fill="#ff5040">REPLAY</text>')
-    o.append('<path d="M780 240 L830 240 L1160 174 L440 174 Z" fill="url(#pb)" opacity=".7"/>')
+    o.append(xo(470, 38, 660, 136, "#fff").replace('stroke-dasharray="7 6"/>', f'stroke-dasharray="7 6">{march(26, 1.4)}</path>'))
+    o.append(f'<circle r="7" fill="{GOLD}" stroke="#fff" stroke-width="2"{OP0}><animateMotion path="M569 125 L569 72 L681 54" keyPoints="0;0;1;1" keyTimes="0;.15;.7;1" calcMode="linear" dur="4s" repeatCount="indefinite"/>'
+             '<animate attributeName="opacity" values="0;1;1;0" keyTimes="0;.15;.85;1" dur="4s" repeatCount="indefinite"/></circle>')
+    o.append('<rect x="460" y="44" width="92" height="22" rx="3" fill="#000" opacity=".6"/>' + blink('<text x="506" y="61" text-anchor="middle" font-family="monospace" font-weight="bold" font-size="15" fill="#ff5040">REPLAY</text>', .2, 2))
+    o.append(f'<rect x="452" y="170" width="418" height="4" fill="{RED}">' + ease("width", ["0", "696", "696"], 4) + '</rect>')
+    o.append('<path d="M780 240 L830 240 L1160 174 L440 174 Z" fill="url(#pb)" opacity=".7">' + ease("opacity", [".7", ".45", ".8", ".7"], 2.6) + '</path>')
     # rows of chairs, backs to us
     cc = "#060910" if n else "#0d1220"
     for row, (y, s) in enumerate([(176, 1), (206, 1.25)]):
@@ -566,7 +600,7 @@ def dummy(x, y, h, c, pad="#e9ecf1", tilt=0):
 def v_roleplay(n):  # the practice field: tackling dummies
     o = [sky(V, n, day=("#3c86d6", "#8cc6ee", "#e6f3fb"))]
     if n:
-        o.append(stars(40, 0, 1600, 0, 90, 4))
+        o.append(blink(stars(40, 0, 1600, 0, 90, 4), .45, 3.5))
     tree = "#0d1a14" if n else "#2f6b3e"
     for x in range(-40, 1640, 70):
         o.append(f'<circle cx="{x}" cy="{118 - (x*37 % 30)}" r="{40 + x % 20}" fill="{tree}"/>')
@@ -578,9 +612,9 @@ def v_roleplay(n):  # the practice field: tackling dummies
         o.append(tower(140, 22, 124, n) + tower(1460, 22, 124, n))
     for i, (x, c) in enumerate([(520, RED), (640, NAVY), (980, RED), (1100, NAVY)]):
         o.append(dummy(x, 196 + (i % 2) * 6, 104, c))
-    o.append(dummy(860, 200, 104, RED, tilt=18))
-    o.append(player(790, 206, .9, WHITE, "52", "run", hc=NAVY, trim=NAVY, pants="#d9dee8", sock=NAVY))
-    o.append(f'<path d="M880 120 l14 -10 M888 134 l18 -4 M884 148 l16 6" stroke="#fff" stroke-width="3" stroke-linecap="round" opacity=".8"/>')
+    o.append(sway(dummy(860, 200, 104, RED, tilt=18), 860, 200, 7, 2.2, -.55))
+    o.append(bob(player(790, 206, .9, WHITE, "52", "run", hc=NAVY, trim=NAVY, pants="#d9dee8", sock=NAVY), -26, 0, 2.2))
+    o.append('<path d="M880 120 l14 -10 M888 134 l18 -4 M884 148 l16 6" stroke="#fff" stroke-width="3" stroke-linecap="round" opacity=".8">' + ease("opacity", [".8", "0", ".8"], 2.2) + '</path>')
     if n:
         o.append(vignette(V, .4))
     o.append(shade())
@@ -592,10 +626,10 @@ def v_rphistory(n):  # the highlight reel on the big screen
     if n:
         o.append(stars(40, 0, 1600, 0, 120, 5))
     else:
-        o.append(cloud(260, 60, 220, .8) + cloud(1340, 70, 260, .7))
+        o.append(cloud(260, 60, 220, .8) + bob(cloud(1340, 70, 260, .7), -50, 0, 12))
     o.append(stands(150, V, n, "cr", .9))
     if n:
-        o.append(flashes(8, 30, 1560, 160, 230, 6))
+        o.append(blink(flashes(8, 30, 1560, 160, 230, 6), .3, 2.6))
     fr = "#2b3446" if n else "#4b5566"
     o.append(f'<rect x="770" y="170" width="18" height="70" fill="{fr}"/><rect x="812" y="170" width="18" height="70" fill="{fr}"/>')
     if n:
@@ -606,9 +640,9 @@ def v_rphistory(n):  # the highlight reel on the big screen
         o.append(f'<rect x="{x}" y="28" width="16" height="8" rx="2" fill="#3a4560"/><rect x="{x}" y="146" width="16" height="8" rx="2" fill="#3a4560"/>')
     o.append('<rect x="500" y="40" width="600" height="102" fill="#2f7a36"/><line x1="760" y1="40" x2="760" y2="142" stroke="#fff" stroke-width="3" opacity=".6"/>')
     o.append(f'<g transform="rotate(-62 860 128)">{player(860, 128, .62, RED, "21", "up", hc=RED)}</g>')
-    o.append(ball(690, 72, 11, -30) + '<path d="M600 92 q40 -40 80 -22" fill="none" stroke="#fff" stroke-width="2.5" stroke-dasharray="6 6"/>')
+    o.append(f'<g>{ball(690, 72, 11, -30)}<animateMotion path="M-90 20 Q-50 -20 -10 -2 L0 0" keyPoints="0;1;1" keyTimes="0;.55;1" calcMode="linear" dur="3s" repeatCount="indefinite"/></g>' + '<path d="M600 92 q40 -40 80 -22" fill="none" stroke="#fff" stroke-width="2.5" stroke-dasharray="6 6"/>')
     o.append(f'<rect x="482" y="158" width="636" height="24" fill="{RED}"/><text x="800" y="176" text-anchor="middle" font-family="Arial, sans-serif" font-weight="bold" font-size="17" letter-spacing="6" fill="#fff">CLOSER HIGHLIGHTS · PLAY OF THE DAY</text>')
-    o.append('<circle cx="1080" cy="56" r="7" fill="#ff3b3b"/><text x="1072" y="62" text-anchor="end" font-family="monospace" font-weight="bold" font-size="16" fill="#fff">REC</text>')
+    o.append('<circle cx="1080" cy="56" r="7" fill="#ff3b3b">' + show(["0", ".5"], ["1", "0"], 1.4) + '</circle><text x="1072" y="62" text-anchor="end" font-family="monospace" font-weight="bold" font-size="16" fill="#fff">REC</text>')
     if n:
         o.append(vignette(V, .4))
     o.append(shade())
@@ -622,9 +656,9 @@ def cone(x, y, s=1):
 def v_training(n):  # agility ladder and cone drills
     o = [sky(V, n, day=("#3c86d6", "#8cc6ee", "#f1e6c8"))]
     if n:
-        o.append(stars(40, 0, 1600, 0, 80, 7) + tower(160, 20, 110, n) + tower(1450, 20, 110, n))
+        o.append(blink(stars(40, 0, 1600, 0, 80, 7), .45, 3.5) + tower(160, 20, 110, n) + tower(1450, 20, 110, n))
     else:
-        o.append(cloud(1240, 54, 240, .8))
+        o.append(bob(cloud(1240, 54, 240, .8), -60, 0, 12))
     o.append(f'<path d="M0 104 Q400 84 800 100 T1600 96 L1600 112 L0 112 Z" fill="{"#0d1a14" if n else "#5d8f5a"}"/>')
     o.append(grass(108, V, n, False))
     # the ladder in perspective, running away from us
@@ -633,10 +667,10 @@ def v_training(n):  # agility ladder and cone drills
     for i in range(10):
         t = i / 9; y = 236 - 116 * t ** .8
         o.append(f'<line x1="{560 + 140*t ** .8:.0f}" y1="{y:.0f}" x2="{760 - 20*t ** .8:.0f}" y2="{y:.0f}" stroke="{lc}" stroke-width="{4 - 2*t:.1f}"/>')
-    o.append(player(690, 190, .78, RED, "4", "run", hc=RED))
+    o.append(f'<g>{player(690, 190, .78, RED, "4", "run", hc=RED)}' + ease(None, ["0 0", "-6 -14", "0 0", "-6 -14", "0 0"], 1.6, 0, "translate") + '</g>')
     for i, x in enumerate(range(900, 1260, 72)):
         o.append(cone(x, 200 - (i % 2) * 34, .9))
-    o.append('<path d="M890 196 Q930 150 970 172 T1050 150 T1130 170 T1210 150" fill="none" stroke="#fff" stroke-width="2.5" stroke-dasharray="8 7" opacity=".85"/>')
+    o.append('<path d="M890 196 Q930 150 970 172 T1050 150 T1130 170 T1210 150" fill="none" stroke="#fff" stroke-width="2.5" stroke-dasharray="8 7" opacity=".85">' + march(15, 1.2) + '</path>')
     for x in (430, 470):
         o.append(cone(x, 150, .6))
     if n:
@@ -652,7 +686,7 @@ def v_map(n, athena):  # the chalkboard playbook
     o = [f'<defs>{glowdef("lp", "#ffe9b0", .5)}</defs><rect width="1600" height="{V}" fill="{wall}"/>',
          f'<rect x="110" y="14" width="1380" height="212" rx="6" fill="{wood}"/><rect x="124" y="26" width="1352" height="188" fill="{"#1c2b22" if n else "#2c4434"}"/>']
     if n:
-        o.append('<circle cx="800" cy="40" r="520" fill="url(#lp)" opacity=".5"/>')
+        o.append('<circle cx="800" cy="40" r="520" fill="url(#lp)" opacity=".5">' + ease("opacity", [".5", ".35", ".5"], 5) + '</circle>')
     chalk = "#e9efe6"
     # smudges and faint old plays
     o.append(f'<ellipse cx="400" cy="90" rx="160" ry="40" fill="#fff" opacity=".05"/><ellipse cx="1160" cy="160" rx="200" ry="40" fill="#fff" opacity=".05"/>')
@@ -662,10 +696,10 @@ def v_map(n, athena):  # the chalkboard playbook
         o.append(f'<circle cx="{x}" cy="{y}" r="11" fill="none" stroke="{chalk}" stroke-width="3" opacity=".45"/>')
     pts = [(400, 128), (660, 70), (940, 140), (1210, 76)]
     o.append(f'<path d="M250 190 Q300 160 {pts[0][0]} {pts[0][1]} Q470 40 {pts[1][0]} {pts[1][1]} Q760 120 {pts[2][0]} {pts[2][1]} Q1080 190 {pts[3][0]} {pts[3][1]} L1330 44" '
-             f'fill="none" stroke="{chalk}" stroke-width="4" stroke-dasharray="3 12" stroke-linecap="round"/>')
+             f'fill="none" stroke="{chalk}" stroke-width="4" stroke-dasharray="3 12" stroke-linecap="round">{march(15, 1.2)}</path>')
     o.append(f'<path d="M1330 44 l-20 2 m20 -2 l-8 18" stroke="{chalk}" stroke-width="4" stroke-linecap="round"/>')
     for i, ((x, y), lab) in enumerate(zip(pts, stops)):
-        o.append(f'<circle cx="{x}" cy="{y}" r="17" fill="{ink}"/><text x="{x}" y="{y+7}" text-anchor="middle" font-family="Arial, sans-serif" font-weight="bold" font-size="18" fill="#fff">{i+1}</text>')
+        o.append(f'<circle cx="{x}" cy="{y}" r="17" fill="{ink}">' + ease("r", ["17", "17", "22", "17", "17"], 4, i) + f'</circle><text x="{x}" y="{y+7}" text-anchor="middle" font-family="Arial, sans-serif" font-weight="bold" font-size="18" fill="#fff">{i+1}</text>')
         ty = y + 42 if y < 120 else y - 28
         o.append(f'<text x="{x}" y="{ty}" text-anchor="middle" font-family="Georgia, serif" font-style="italic" font-weight="bold" font-size="26" fill="{ink}">{lab}</text>')
     o.append(f'<rect x="124" y="214" width="1352" height="12" fill="{wood}"/>')
@@ -689,11 +723,12 @@ def v_service(n):  # the equipment room: jerseys on hooks, helmets on the shelf
     for x in range(0, 1600, 200):
         o.append(f'<rect x="{x}" y="0" width="190" height="240" fill="{ply}" opacity=".35"/>')
     if n:
-        o.append('<line x1="800" y1="0" x2="800" y2="20" stroke="#555" stroke-width="2"/><path d="M780 20 h40 l12 16 h-64 z" fill="#2a2a2a"/><circle cx="800" cy="90" r="420" fill="url(#lp)" opacity=".7"/>')
+        o.append(sway('<line x1="800" y1="0" x2="800" y2="20" stroke="#555" stroke-width="2"/><path d="M780 20 h40 l12 16 h-64 z" fill="#2a2a2a"/><circle cx="800" cy="90" r="420" fill="url(#lp)" opacity=".7"/>', 800, 0, 3, 5))
     # hooks and jerseys
     o.append(f'<rect x="200" y="20" width="1200" height="8" rx="3" fill="{"#555c6a" if n else "#6c7584"}"/>')
     for i, x in enumerate(range(260, 1400, 120)):
-        o.append(jersey(x, 34, [RED, NAVY][i % 2], [7, 12, 21, 33, 44, 52, 80, 88, 3, 99][i % 10], GOLD if i % 2 else "#fff", .9))
+        j = jersey(x, 34, [RED, NAVY][i % 2], [7, 12, 21, 33, 44, 52, 80, 88, 3, 99][i % 10], GOLD if i % 2 else "#fff", .9)
+        o.append(sway(j, x, 28, 3, 4 + i % 3, i * .4) if x > 420 else j)
     # FLORES nameplates
     o.append(f'<rect x="680" y="140" width="240" height="0" fill="none"/>')
     # shelf with helmets
@@ -718,9 +753,9 @@ def fan(x, y, s, shirt, skin, cap=None, flip=False):
 def v_renewals(n):  # the season ticket office, a line out the window
     o = [sky(V, n, day=("#3c86d6", "#8cc6ee", "#f4e6c4"))]
     if n:
-        o.append(stars(40, 0, 1600, 0, 90, 8))
+        o.append(blink(stars(40, 0, 1600, 0, 90, 8), .45, 3.5))
     else:
-        o.append(cloud(1300, 50, 240, .85) + cloud(220, 40, 180, .7))
+        o.append(bob(cloud(1300, 50, 240, .85), -60, 0, 12) + cloud(220, 40, 180, .7))
     o.append(f'<rect x="0" y="196" width="1600" height="44" fill="{"#1f2430" if n else "#9a948a"}"/>')
     bw = "#2a3348" if n else "#e8e2d4"
     o.append(f'<rect x="300" y="50" width="420" height="150" fill="{bw}"/><rect x="290" y="40" width="440" height="14" fill="{NAVY}"/>')
@@ -732,8 +767,8 @@ def v_renewals(n):  # the season ticket office, a line out the window
     # the line
     r = random.Random(11)
     for i, x in enumerate(range(640, 1340, 66)):
-        o.append(fan(x, 214 - (i % 2) * 2, .82 - i * .012, r.choice([RED, NAVY, WHITE, GOLD]), SKIN[i % 5], r.choice([None, RED, NAVY]), flip=True))
-    o.append('<path d="M1230 70 h120 v46 h-120 z" fill="#fff" opacity=".9"/><text x="1290" y="100" text-anchor="middle" font-family="Arial, sans-serif" font-weight="bold" font-size="18" fill="#c8102e">SOLD OUT</text>')
+        o.append(bob(fan(x, 214 - (i % 2) * 2, .82 - i * .012, r.choice([RED, NAVY, WHITE, GOLD]), SKIN[i % 5], r.choice([None, RED, NAVY]), flip=True), 0, -4, 2.4 + i % 3 * .4, i * .3))
+    o.append('<path d="M1230 70 h120 v46 h-120 z" fill="#fff" opacity=".9"/>' + blink('<text x="1290" y="100" text-anchor="middle" font-family="Arial, sans-serif" font-weight="bold" font-size="18" fill="#c8102e">SOLD OUT</text>', .2, 2))
     if n:
         o.append(vignette(V, .4))
     o.append(shade())

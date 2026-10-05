@@ -391,6 +391,32 @@ def shade(h=240):  # darken the two text corners a touch
     return (f'<defs><linearGradient id="sh" x1="0" y1="0" x2="0" y2="1"><stop offset=".55" stop-color="#000" stop-opacity="0"/><stop offset="1" stop-color="#000" stop-opacity=".35"/></linearGradient></defs>'
             f'<rect width="1600" height="{h}" fill="url(#sh)"/>')
 
+# ---- banner movement (Frank, 2026-10-05: "add movement to the new worlds' banners too"), the Digest's rules:
+# SMIL only, self-closing, each element's own attributes its resting state (build.py's still copy). The title
+# sits at the left, so what moves there is masked off: `split` draws a thing still under the left fade (ml)
+# and moving under the right one (mr), identical at rest.
+def _kt(n): return ";".join(f"{i / (n - 1):.3g}" for i in range(n))
+def _ease(n, ease): return f' calcMode="spline" keySplines="{";".join([".45 0 .55 1"] * (n - 1))}"' if ease else ''
+def anim(attr, vals, dur, begin=0, ease=True):
+    return (f'<animate attributeName="{attr}" values="{";".join(map(str, vals))}" keyTimes="{_kt(len(vals))}" dur="{dur}s" '
+            f'begin="{begin}s" repeatCount="indefinite"{_ease(len(vals), ease)}/>')
+def tfm(typ, vals, dur, begin=0, ease=True):
+    return (f'<animateTransform attributeName="transform" type="{typ}" values="{";".join(vals)}" keyTimes="{_kt(len(vals))}" '
+            f'dur="{dur}s" begin="{begin}s" repeatCount="indefinite"{_ease(len(vals), ease)}/>')
+def slide(body, dx, dy, dur, begin=0):  # a gentle there-and-back
+    return f'<g>{body}{tfm("translate", ["0 0", f"{dx} {dy}", "0 0"], dur, begin)}</g>'
+def rock(body, x, y, deg, dur, begin=0):  # sway about (x, y)
+    return f'<g>{body}{tfm("rotate", [f"0 {x} {y}", f"{deg} {x} {y}", f"0 {x} {y}", f"{-deg} {x} {y}", f"0 {x} {y}"], dur, begin)}</g>'
+def glint(pts, dur=3, r=1.6, col="#fff"):  # twinkling stars / lights, right of the title
+    return ''.join(f'<circle cx="{x}" cy="{y}" r="{r}" fill="{col}" opacity=".3">{anim("opacity", [.3, 1, .3], dur, k * .7 % dur)}</circle>' for k, (x, y) in enumerate(pts))
+def beacon(x, y, dur=2.4, begin=0, col="#ff3b3b"):  # a light pulsing, invisible at rest
+    return f'<circle cx="{x}" cy="{y}" r="8" fill="{col}" opacity="0">{anim("opacity", [0, .7, 0], dur, begin)}</circle>'
+MASKS = ''.join(f'<linearGradient id="{i}g" gradientUnits="userSpaceOnUse" x1="400" y1="0" x2="500" y2="0"><stop offset="0" stop-color="{a}"/>'
+                f'<stop offset="1" stop-color="{b}"/></linearGradient><mask id="{i}" maskUnits="userSpaceOnUse" x="0" y="0" width="1600" height="240">'
+                f'<rect width="1600" height="240" fill="url(#{i}g)"/></mask>' for i, a, b in (("ml", "#fff", "#000"), ("mr", "#000", "#fff")))
+def split(still, moving):
+    return f'<defs>{MASKS}</defs><g mask="url(#ml)">{still}</g><g mask="url(#mr)">{moving}</g>'
+
 def v_sales(n):  # the freeway at rush hour, traffic flowing like premium
     o = [vsky(n, DUSK, NITE)]
     o.append(stars(40, 1600, 0, 90, 1) if n else '<circle cx="1180" cy="120" r="110" fill="url(#sn)"/><circle cx="1180" cy="120" r="34" fill="#fff3c4"/>')
