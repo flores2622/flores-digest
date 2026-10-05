@@ -2040,7 +2040,10 @@ repaint clears the list).
   the opposite sideline instead of infinity field"; `YN`),
   TOUCHDOWN / 1ST & 10 / TURNOVER ...), **Retro Arcade** (Orbitron / Exo 2;
   Synthwave, 8-Bit, Pinball -- the neon pixel city and HIGH SCORES, the grid
-  floor between rows of cabinets; electric blue where it was pink -- Frank,
+  floor between rows of cabinets; its horizon sits 70 units below the split so the city's lit shopfronts and
+  the arcade's doors at the head of the lane run on into the leaderboard, and the floor is a hall (Frank,
+  2026-10-05: "these dont merge right and lots of dead space"): a far row of cabinets along the back wall,
+  players at the machines, an air-hockey game and a dance machine with a dancer, all moving; electric blue where it was pink -- Frank,
   2026-10-05: "i dont like all the pink", every pink / magenta hue moved to
   215 deg, the Synthwave accent with it -- and no title above the 40-unit line
   the banner crop hides (PLAYER 1 / PLAYER 2 READY, TUTORIAL, the chat
@@ -2134,7 +2137,9 @@ repaint clears the list).
   climbs the far trail by day; Dallas's cars face the way they drive (the
   hood had been drawn at the back). Later the same day: Phoenix's taxiing jets are drawn over the runway, not
   hidden under it, and the departing jet climbs straight out up the runway, staying a size you can see until it is
-  high over downtown ("it disappears behind the pavement, and takes off to small"); Yuma's contrails fade out
+  high over downtown ("it disappears behind the pavement, and takes off to small"; then "gets lost behind the
+  card because its not getting height fast enough": it climbs steeply once off the runway and flies on above
+  the tiles at a good size); Yuma's contrails fade out
   behind each jet ("can their trail fade properly?"). The two cities' Service banners are their
   own places, not a generic street ("for dallas and yuma make the
   neighborhood something else specific to the respective cities"): Dallas's

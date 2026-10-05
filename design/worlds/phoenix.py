@@ -316,10 +316,11 @@ def skyline(night):
     L = 16   # the shuffle and the takeoff share one loop
     # the takeoff (Frank, 2026-10-05: "make the plane take off from the runway"): seen from behind, it rolls up
     # the far end of the runway (above the podium), lifts off at the horizon and climbs away over downtown,
-    # shrinking; hidden at rest and while it waits its turn
-    a(f'<g opacity="0"><animate attributeName="opacity" values="0;0;1;1;0;0" keyTimes="0;.25;.26;.88;.93;1" dur="{L}s" repeatCount="indefinite"/>'
-      f'<animateTransform attributeName="transform" type="translate" values="852 532;852 532;850 466;846 410;846 300;852 180;858 80;858 80" keyTimes="0;.26;.42;.52;.64;.78;.92;1" dur="{L}s" repeatCount="indefinite"/>'
-      f'<g><animateTransform attributeName="transform" type="scale" values=".62;.62;.56;.5;.44;.38;.32;.32" keyTimes="0;.26;.42;.52;.64;.78;.92;1" dur="{L}s" repeatCount="indefinite"/>'
+    # climbing steeply so it is behind the tiles only a moment and flies on above them still a good size
+    # (Frank, 2026-10-05: "gets lost behind the card because its not getting height fast enough"); hidden at rest and while it waits its turn
+    a(f'<g opacity="0"><animate attributeName="opacity" values="0;0;1;1;0;0" keyTimes="0;.25;.26;.84;.9;1" dur="{L}s" repeatCount="indefinite"/>'
+      f'<animateTransform attributeName="transform" type="translate" values="852 532;852 532;852 470;850 430;846 160;842 90;838 30;838 30" keyTimes="0;.26;.4;.46;.54;.7;.86;1" dur="{L}s" repeatCount="indefinite"/>'
+      f'<g><animateTransform attributeName="transform" type="scale" values=".62;.62;.6;.6;.56;.52;.46;.46" keyTimes="0;.26;.4;.46;.54;.7;.86;1" dur="{L}s" repeatCount="indefinite"/>'
       + jet_away(0, 0, 1, "#f2eef4" if not night else "#4a4460", night) + '</g></g>')
     # (drawn over the runway, so the front jet rolls out ONTO it -- Frank, 2026-10-05: "it disappears behind the pavement")
     # the line shuffles on a 16-second loop (Frank, 2026-10-05: "make the planes shuffle, so one moves on the
