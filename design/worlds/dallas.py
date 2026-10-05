@@ -421,7 +421,19 @@ def v_sales(n):  # the stacked interchange, traffic flowing on every level
     cc, cc2 = p["conc"], p["conc2"]
     decks = [((-60, 172), (800, 172), (1660, 172), 1), ((-80, 186), (560, 30), (1300, 172), -1), ((260, 214), (980, -20), (1700, 104), 1), ((-60, 212), (800, 212), (1660, 212), -1)]
     cols = ["#c8442a", "#2f6aa8", "#e8e2d6", "#3a3a44", "#e2a33a", "#4a8a5a"]; r = random.Random(3)
+    # each car rests where it was drawn; moving, its transform is replaced and it rides its deck (begin = where it rests),
+    # faded out over the title's left 420px
+    used = set(); RI = '<animateTransform attributeName="transform" type="translate" values="0 0" dur="1s" repeatCount="indefinite"/>'
     for di, (p0, p1, p2, dr) in enumerate(decks):
+        a_, b_ = (p0, p2) if dr > 0 else (p2, p0)
+        md = f'M{a_[0]} {a_[1]}Q{p1[0]} {p1[1]} {b_[0]} {b_[1]}'
+        sm = [quad(a_, p1, b_, i / 300)[:2] for i in range(301)]; cl = [0.0]
+        for (xa, ya), (xb, yb) in zip(sm, sm[1:]): cl.append(cl[-1] + math.hypot(xb - xa, yb - ya))
+        L = cl[-1]; dur = round(min(12, L / 150), 1)
+        fr = lambda x: next(cl[i] / L for i in range(301) if (sm[i][0] >= x if dr > 0 else sm[i][0] <= x))
+        if dr > 0: f0 = max(.02, fr(400)); f1 = f0 + .03; ov, okt = "0;0;1;1;0", f"0;{f0:.3f};{f1:.3f};.97;1"
+        else: f0 = fr(440); f1 = fr(400); ov, okt = "0;1;1;0;0", f"0;.03;{f0:.3f};{f1:.3f};1"
+        rot = "auto" if dr > 0 else "auto-reverse"
         if di < 3:
             col = []
             for k in range(1, 12):
@@ -434,22 +446,37 @@ def v_sales(n):  # the stacked interchange, traffic flowing on every level
             o.append(f'<path d="{d}" fill="none" stroke="{"#ff4a3a" if dr > 0 else "#fff3c4"}" stroke-width="2.5" stroke-dasharray="40 26" opacity=".7" transform="translate(0 -9)"/>')
         for k in range(6):
             t = .06 + k * .16 + r.uniform(-.03, .03); x, y, ang = quad(p0, p1, p2, t)
-            if -20 < x < 1620: o.append(car(x, y - 5, .62, cols[(k + di) % 6], ang, n, dr < 0))
+            if -20 < x < 1620:
+                ci = f'c{(k + di) % 6}{"f" if dr < 0 else ""}'; used.add(ci)
+                j = min(range(301), key=lambda i: math.hypot(sm[i][0] - x, sm[i][1] - y)); bg = -cl[j] / L * dur
+                o.append(f'<g transform="translate({x:.0f} {y:.0f}) rotate({ang:.1f})"><use href="#{ci}"/>{RI}'
+                         f'<animateMotion path="{md}" rotate="{rot}" dur="{dur}s" begin="{bg:.2f}s" repeatCount="indefinite"/>'
+                         f'<animate attributeName="opacity" values="{ov}" keyTimes="{okt}" dur="{dur}s" begin="{bg:.2f}s" repeatCount="indefinite"/></g>')
+    o.insert(1, '<defs>' + ''.join(f'<g id="{ci}">{car(0, -5, .62, cols[int(ci[1])], 0, n, ci.endswith("f"))}</g>' for ci in sorted(used)) + '</defs>')
     o.append(corners("#1a1620" if not n else "#05050a"))
     return vwrap(''.join(o))
 
 def v_messages(n):  # the ball tower's lights talking to the night, the radio mast beside it
     p = P(n); o = [vbase(n, DUSK, NT, 60)]
     o.append(orb(n, 300, 64, 22))
-    arcs = ''.join(f'M{800 - rr} {92 - rr * .5:.0f}A{rr} {rr} 0 0 0 {800 - rr} {92 + rr * .5:.0f}M{800 + rr} {92 - rr * .5:.0f}A{rr} {rr} 0 0 1 {800 + rr} {92 + rr * .5:.0f}' for rr in (70, 96, 122))
-    o.append(f'<path d="{arcs}" fill="none" stroke="{"#fff3c4" if n else "#fff"}" stroke-width="3" opacity=".55" stroke-linecap="round"/>')
-    o.append(reunion(800, 240, 92, 44, n, p, 1.0 if n else .7))
+    for i, rr in enumerate((70, 96, 122)):
+        arc = f'M{800 - rr} {92 - rr * .5:.0f}A{rr} {rr} 0 0 0 {800 - rr} {92 + rr * .5:.0f}M{800 + rr} {92 - rr * .5:.0f}A{rr} {rr} 0 0 1 {800 + rr} {92 + rr * .5:.0f}'
+        o.append(f'<path d="{arc}" fill="none" stroke="{"#fff3c4" if n else "#fff"}" stroke-width="3" opacity=".55" stroke-linecap="round">'
+                 f'<animate attributeName="opacity" values=".55;.12;.85;.55" keyTimes="0;.3;.6;1" dur="2.4s" begin="{i * .4:.1f}s" repeatCount="indefinite"/></path>')
+    o.append(reunion(800, 240, 92, 44, n, p, 1.0 if n else .7, anim=True))
     mx = 1120; mc = "#3a3a4a" if not n else "#5a5e74"
     o.append(derrick(mx, 214, 40, 40, mc, 2) + f'<path d="M{mx} 40V22" stroke="{mc}" stroke-width="2"/>')
     o.append(f'<path d="M{mx} 70L980 214M{mx} 70L1260 214M{mx} 130L1030 214M{mx} 130L1210 214" stroke="{mc}" stroke-width="1" opacity=".6"/>')
-    for y in (22, 80, 140):
-        o.append(f'<circle cx="{mx}" cy="{y}" r="3.5" fill="#ff3a3a"/>' + (f'<circle cx="{mx}" cy="{y}" r="16" fill="url(#rglow)"/>' if n else ''))
-    o.append(f'<path d="M{mx - 50} 30A60 60 0 0 1 {mx + 50} 30M{mx - 32} 40A40 40 0 0 1 {mx + 32} 40" fill="none" stroke="{"#fff3c4" if n else "#fff"}" stroke-width="2.5" opacity=".5"/>')
+    bk = '<animate attributeName="opacity" values="1;1;.15;1" keyTimes="0;.55;.7;1" dur="2s" repeatCount="indefinite"/>'
+    o.append('<g>' + ''.join(f'<circle cx="{mx}" cy="{y}" r="3.5" fill="#ff3a3a"/>' + (f'<circle cx="{mx}" cy="{y}" r="16" fill="url(#rglow)"/>' if n else '') for y in (22, 80, 140)) + bk + '</g>')
+    for i, d in enumerate((f'M{mx - 32} 40A40 40 0 0 1 {mx + 32} 40', f'M{mx - 50} 30A60 60 0 0 1 {mx + 50} 30')):
+        o.append(f'<path d="{d}" fill="none" stroke="{"#fff3c4" if n else "#fff"}" stroke-width="2.5" opacity=".5">'
+                 f'<animate attributeName="opacity" values=".5;.1;.8;.5" keyTimes="0;.3;.6;1" dur="2s" begin="{i * .35:.2f}s" repeatCount="indefinite"/></path>')
+    # a plane's lights crossing high over the right
+    o.append(f'<g opacity="0"><circle cx="0" cy="0" r="2.4" fill="#fff"/><circle cx="-7" cy="1" r="1.8" fill="#ff4a3a">'
+             '<animate attributeName="opacity" values="1;.1;1" dur=".9s" repeatCount="indefinite"/></circle>'
+             '<animateTransform attributeName="transform" type="translate" values="1660 30;900 18" dur="12s" repeatCount="indefinite"/>'
+             '<animate attributeName="opacity" values="0;1;1;0" keyTimes="0;.08;.9;1" dur="12s" repeatCount="indefinite"/></g>')
     sil = "#3a2f52" if not n else "#0e1226"
     for x, w, h in ((0, 120, 50), (110, 90, 80), (200, 120, 40), (330, 80, 66), (420, 120, 36), (1300, 100, 60), (1400, 80, 90), (1480, 130, 50)):
         o.append(f'<rect x="{x}" y="{214 - h}" width="{w}" height="{h + 30}" fill="{sil}"/>')
@@ -486,8 +513,19 @@ def v_coaching(n):  # the brick warehouse mural wall at night under string light
         for k in range(1, 12):
             t = k / 12; xx, yy, _ = quad((x0, y0), ((x0 + x1) / 2, (y0 + y1) / 2 + sag * 2), (x1, y1), t); bulbs.append(f'M{xx:.0f} {yy + 5:.0f}h0')
     o.append(f'<path d="M800 58V48" stroke="{pc}" stroke-width="2"/><path d="{"".join(d)}" fill="none" stroke="{pc}" stroke-width="1.6"/>')
-    if n: o.append(f'<path d="{"".join(bulbs)}" stroke="#ffc35a" stroke-width="18" stroke-linecap="round" opacity=".18"/>')
-    o.append(f'<path d="{"".join(bulbs)}" stroke="{"#ffe7a0" if n else "#f6d27a"}" stroke-width="7" stroke-linecap="round"/>')
+    if n: o.append(f'<path d="{"".join(bulbs)}" stroke="#ffc35a" stroke-width="18" stroke-linecap="round" opacity=".18">'
+                   '<animate attributeName="opacity" values=".18;.1;.22;.18" keyTimes="0;.4;.7;1" dur="5s" repeatCount="indefinite"/></path>')
+    # the bulbs twinkle in two alternating sets, the title's end steady
+    for h in (0, 1):
+        bs = [b for i, b in enumerate(bulbs) if i % 2 == h and float(b[1:].split()[0]) > 420]
+        o.append(f'<path d="{"".join(bs)}" stroke="{"#ffe7a0" if n else "#f6d27a"}" stroke-width="7" stroke-linecap="round">'
+                 f'<animate attributeName="opacity" values="1;.45;1" dur="3s" begin="{h * 1.5}s" repeatCount="indefinite" calcMode="spline" keySplines=".45 0 .55 1;.45 0 .55 1"/></path>')
+    o.append(f'<path d="{"".join(b for b in bulbs if float(b[1:].split()[0]) <= 420)}" stroke="{"#ffe7a0" if n else "#f6d27a"}" stroke-width="7" stroke-linecap="round"/>')
+    # two birds over the roofline
+    for i in range(2):
+        o.append(f'<g opacity="0">{bird(0, 0, 1.1 - i * .2, "#2a1e2a" if not n else "#8a8aa8")}'
+                 f'<animateTransform attributeName="transform" type="translate" values="{1660 + i * 50} {22 + i * 10};{560 + i * 50} {16 + i * 8}" dur="11s" begin="{i * .6}s" repeatCount="indefinite"/>'
+                 f'<animate attributeName="opacity" values="0;1;1;0" keyTimes="0;.06;.88;1" dur="11s" begin="{i * .6}s" repeatCount="indefinite"/></g>')
     o.append(corners("#140e10"))
     return vwrap(''.join(o))
 
@@ -508,11 +546,19 @@ def v_roleplay(n):  # the rodeo arena under its lights
     for x in (180, 1420):
         o.append(f'<rect x="{x - 4}" y="34" width="8" height="90" fill="#2a2a32"/><rect x="{x - 30}" y="26" width="60" height="16" rx="2" fill="#2a2a32"/>'
                  + ''.join(f'<circle cx="{x - 20 + k * 13}" cy="34" r="4.5" fill="{"#fff6d0" if n else "#d8d4c4"}"/>' for k in range(4)))
-        if n: o.append(f'<path d="M{x - 30} 40L{x - 200 if x < 800 else x - 520} 230L{x + 520 if x < 800 else x + 200} 230L{x + 30} 40Z" fill="#fff6d0" opacity=".08"/>')
+        if n: o.append(f'<path d="M{x - 30} 40L{x - 200 if x < 800 else x - 520} 230L{x + 520 if x < 800 else x + 200} 230L{x + 30} 40Z" fill="#fff6d0" opacity=".08">'
+                       '<animate attributeName="opacity" values=".08;.05;.1;.08" keyTimes="0;.35;.7;1" dur="6s" repeatCount="indefinite"/></path>')
+    # camera flashes in the stands
+    for i, (fx, fy) in enumerate(((560, 84), (930, 98), (1240, 80), (700, 108), (1500, 92))):
+        o.append(f'<circle cx="{fx}" cy="{fy}" r="7" fill="#fff" opacity="0"><animate attributeName="opacity" values="0;0;1;0;0" keyTimes="0;.5;.53;.6;1" dur="{3 + i * .7:.1f}s" begin="{i * .9:.1f}s" repeatCount="indefinite"/></circle>')
     o.append(f'<rect x="0" y="118" width="1600" height="122" fill="{p["dirt"]}"/><path d="M0 170Q800 160 1600 172V240H0Z" fill="{p["dirt2"]}" opacity=".5"/>')
     o.append(fence(-10, 1610, 104, 150, "#f2efe6" if not n else "#6a6a78", 80, 2))
-    o.append(''.join(f'<circle cx="{x}" cy="{y}" r="{rr}" fill="{p["dirt"]}" opacity=".75"/>' for x, y, rr in ((720, 196, 16), (700, 184, 12), (870, 200, 14), (900, 190, 10))))
-    o.append(bronco(760, 178, 1.9, n))
+    o.append(''.join(f'<circle cx="{x}" cy="{y}" r="{rr}" fill="{p["dirt"]}" opacity=".75"><animate attributeName="r" values="{rr};{rr * 1.5:.0f};{rr}" dur="1.4s" begin="{i * .35:.2f}s" repeatCount="indefinite"/>'
+                     f'<animate attributeName="opacity" values=".75;.35;.75" dur="1.4s" begin="{i * .35:.2f}s" repeatCount="indefinite"/></circle>' for i, (x, y, rr) in enumerate(((720, 196, 16), (700, 184, 12), (870, 200, 14), (900, 190, 10)))))
+    # the bronco bucks: rocking about its hind hooves, kicking up off the dirt
+    o.append('<g><animateTransform attributeName="transform" type="rotate" values="0 690 200;-9 690 200;5 690 200;0 690 200" keyTimes="0;.35;.7;1" dur="1.4s" repeatCount="indefinite" calcMode="spline" keySplines=".45 0 .55 1;.45 0 .55 1;.45 0 .55 1"/>'
+             '<g><animateTransform attributeName="transform" type="translate" values="0 0;0 -12;0 0" dur=".7s" repeatCount="indefinite" calcMode="spline" keySplines=".3 0 .6 1;.4 0 .7 1"/>'
+             + bronco(760, 178, 1.9, n) + '</g></g>')
     o.append(person(1000, 204, .9, "#e2a33a", hat="#2a2a30", flip=True, arm=10))
     o.append(corners("#2a1c12"))
     return vwrap(''.join(o))
@@ -525,15 +571,24 @@ def v_rphistory(n):  # the old movie palace and its marquee
     o.append(f'<rect x="460" y="36" width="680" height="204" fill="{fac}"/><rect x="452" y="30" width="696" height="12" fill="{fac2}"/>')
     for x in range(500, 1120, 104):
         o.append(f'<path d="M{x} 132V74A22 22 0 0 1 {x + 44} 74V132Z" fill="{"#ffd98a" if n else "#5a6a86"}" opacity="{.7 if n else .8}"/>')
-    o.append(f'<path d="M770 32H830V128L800 140L770 128Z" fill="#b5323a" stroke="#ffe7a0" stroke-width="3"/>')
+    o.append(f'<path d="M770 32H830V128L800 140L770 128Z" fill="#b5323a" stroke="#ffe7a0" stroke-width="3">'
+             '<animate attributeName="stroke" values="#ffe7a0;#fff8e0;#c89a4a;#ffe7a0" keyTimes="0;.2;.6;1" dur="2.6s" repeatCount="indefinite"/></path>')
     for i, ch in enumerate("REPLAY"): o.append(f'<text x="800" y="{50 + i * 15}" text-anchor="middle" font-family="Arial, sans-serif" font-weight="bold" font-size="14" fill="#ffe7a0">{ch}</text>')
-    if n: o.append('<ellipse cx="800" cy="160" rx="320" ry="70" fill="url(#glow)"/>')
+    if n: o.append('<ellipse cx="800" cy="160" rx="320" ry="70" fill="url(#glow)"><animate attributeName="opacity" values="1;.75;1" dur="4s" repeatCount="indefinite"/></ellipse>')
     o.append('<path d="M520 136H1080L1060 184H540Z" fill="#2a2030"/>')
-    o.append(''.join(f'<circle cx="{x}" cy="140" r="3" fill="#ffe7a0"/><circle cx="{x}" cy="180" r="3" fill="#ffe7a0"/>' for x in range(540, 1062, 20)))
+    # the marquee's bulbs chase round in three sets
+    for h in range(3):
+        o.append('<g fill="#ffe7a0">' + ''.join(f'<circle cx="{x}" cy="140" r="3"/><circle cx="{x}" cy="180" r="3"/>' for x in range(540 + h * 20, 1062, 60))
+                 + f'<animate attributeName="opacity" values="1;.3;.3;1" keyTimes="0;.33;.67;1" calcMode="discrete" dur=".9s" begin="{-h * .3:.1f}s" repeatCount="indefinite"/></g>')
     o.append('<rect x="556" y="146" width="488" height="28" fill="#fbf2d8"/>'
              '<text x="800" y="166" text-anchor="middle" font-family="Arial, sans-serif" font-weight="bold" font-size="17" fill="#2a2030" letter-spacing="2">NOW SHOWING: YOUR BEST CALLS</text>')
     o.append(f'<rect x="740" y="190" width="120" height="50" fill="#3a1a22"/><rect x="752" y="198" width="44" height="42" fill="#ffd98a" opacity=".7"/><rect x="804" y="198" width="44" height="42" fill="#ffd98a" opacity=".7"/>')
     o.append(f'<rect x="0" y="214" width="1600" height="26" fill="{"#5a5258" if not n else "#18161c"}"/>')
+    # a couple strolls up to the doors
+    o.append('<g opacity="0"><animateTransform attributeName="transform" type="translate" values="0 0;-300 0" dur="10s" repeatCount="indefinite"/>'
+             '<animate attributeName="opacity" values="0;1;1;0" keyTimes="0;.1;.85;1" dur="10s" repeatCount="indefinite"/>'
+             '<g><animateTransform attributeName="transform" type="translate" values="0 0;0 -2;0 0" dur=".5s" repeatCount="indefinite"/>'
+             + person(1180, 222, .7, "#c8442a", hat="#c8a46a", flip=True, arm=4) + person(1206, 222, .66, "#2f5a8a", hat=None, flip=True) + '</g></g>')
     o.append(lamp(1000, 214, 60, n) + lamp(600, 214, 60, n))
     o.append(corners("#140e10"))
     return vwrap(''.join(o))
@@ -552,7 +607,22 @@ def v_training(n):  # a sunrise run on the levee trail along the floodway
     if not n: o.append('<path d="M290 164h80M310 170h40" stroke="#ffe0a0" stroke-width="3" opacity=".8" stroke-linecap="round"/>')
     o.append(f'<path d="M0 182Q800 176 1600 184V240H0Z" fill="{p["grass2"]}"/>')
     o.append(f'<path d="M-20 214Q800 190 1620 212" fill="none" stroke="{p["path"]}" stroke-width="14"/>')
-    o.append(runner(740, 202, .9, "#e2552b") + runner(820, 200, .9, "#2f6aa8", ph=1) + runner(1010, 199, .75, "#5a9a4a"))
+    # ripples drifting on the river
+    o.append(f'<path d="M560 166h26M760 162h18M980 168h30M1240 164h22M1420 167h16" stroke="{"#fff" if not n else "#8a9ad8"}" stroke-width="2" stroke-linecap="round" opacity=".5">'
+             '<animateTransform attributeName="transform" type="translate" values="0 0;24 0;0 0" dur="7s" repeatCount="indefinite" calcMode="spline" keySplines=".45 0 .55 1;.45 0 .55 1"/>'
+             '<animate attributeName="opacity" values=".5;.15;.5" dur="3.5s" repeatCount="indefinite"/></path>')
+    # the runners stride along the trail, legs swapping
+    def strider(x, y, s_, c, ph):
+        sw = lambda v: f'<animate attributeName="opacity" values="{v}" keyTimes="0;.5;1" calcMode="discrete" dur=".5s" repeatCount="indefinite"/>'
+        return (f'<g>{runner(x, y, s_, c, ph=ph)}{sw("1;0;1")}</g><g opacity="0">{runner(x, y, s_, c, ph=1 - ph)}{sw("0;1;0")}</g>')
+    for grp, (dx0, dx1, dur) in (((740, 202, .9, "#e2552b", 0), (820, 200, .9, "#2f6aa8", 1)), (-220, 300, 11)), (((1010, 199, .75, "#5a9a4a", 0),), (-200, 240, 12))):
+        o.append(f'<g><animateTransform attributeName="transform" type="translate" values="{dx0} 0;{dx1} 0" dur="{dur}s" repeatCount="indefinite"/>'
+                 f'<animate attributeName="opacity" values="0;1;1;0" keyTimes="0;.1;.88;1" dur="{dur}s" repeatCount="indefinite"/>'
+                 '<g><animateTransform attributeName="transform" type="translate" values="0 0;0 -3;0 0" dur=".5s" repeatCount="indefinite"/>' + ''.join(strider(*r_) for r_ in grp) + '</g></g>')
+    for i in range(2):
+        o.append(f'<g opacity="0">{bird(0, 0, 1 - i * .2, "#4a3a5a" if not n else "#9a9ab8")}'
+                 f'<animateTransform attributeName="transform" type="translate" values="{560 + i * 40} {40 + i * 12};{1500 + i * 40} {26 + i * 10}" dur="12s" begin="{i * .8}s" repeatCount="indefinite"/>'
+                 f'<animate attributeName="opacity" values="0;1;1;0" keyTimes="0;.08;.9;1" dur="12s" begin="{i * .8}s" repeatCount="indefinite"/></g>')
     o.append(bluebonnets(40, 380, 222, 238, 30, 3, p, n, .8) + bluebonnets(1200, 1580, 222, 238, 30, 4, p, n, .8))
     o.append(corners(p["grass2"], .6))
     return vwrap(''.join(o))
@@ -577,7 +647,17 @@ def v_map(n, athena=False):  # the city street map: grid, river and floodway, hi
         ty = y - 26 if i % 2 == 0 else y + 44
         o.append(f'<circle cx="{x}" cy="{y}" r="16" fill="{route}" stroke="{paper}" stroke-width="4"/><text x="{x}" y="{y + 6}" text-anchor="middle" font-family="Arial, sans-serif" font-weight="bold" font-size="16" fill="#fff">{i + 1}</text>')
         o.append(f'<text x="{x}" y="{ty}" text-anchor="middle" font-family="Arial, sans-serif" font-weight="bold" font-size="23" fill="{ink}" stroke="{paper}" stroke-width="6" paint-order="stroke">{t}</text>')
-    o.append(f'<g transform="translate(1510 92)"><circle r="32" fill="{paper}" stroke="{ink}" stroke-width="2"/>' + star5(0, 0, 26, route) +
+    # a marker drives the route from the first stop, each stop pinging as it passes
+    for (x, y), tk in zip(pts[1:], (.25, .52, .78)):
+        o.append(f'<circle cx="{x}" cy="{y}" r="16" fill="none" stroke="{route}" stroke-width="3" opacity="0">'
+                 f'<animate attributeName="r" values="16;16;36;36" keyTimes="0;{tk};{tk + .12:.2f};1" dur="10s" repeatCount="indefinite"/>'
+                 f'<animate attributeName="opacity" values="0;0;.8;0;0" keyTimes="0;{tk};{tk + .01:.2f};{tk + .12:.2f};1" dur="10s" repeatCount="indefinite"/></circle>')
+    md = f'M{pts[0][0]} {pts[0][1]}C470 160 600 92 {pts[1][0]} {pts[1][1]}S880 168 {pts[2][0]} {pts[2][1]}S1150 96 {pts[3][0]} {pts[3][1]}S1380 140 1440 60'
+    o.append(f'<g opacity="0"><circle r="11" fill="{paper}" stroke="{ink}" stroke-width="3"/><circle r="5" fill="{ink}"/>'
+             f'<animateMotion path="{md}" dur="10s" repeatCount="indefinite"/>'
+             '<animate attributeName="opacity" values="0;1;1;0" keyTimes="0;.04;.94;1" dur="10s" repeatCount="indefinite"/></g>')
+    o.append(f'<g transform="translate(1510 92)"><circle r="32" fill="{paper}" stroke="{ink}" stroke-width="2"/>'
+             f'<g>{star5(0, 0, 26, route)}<animateTransform attributeName="transform" type="rotate" values="-10;10;-10" dur="6s" repeatCount="indefinite" calcMode="spline" keySplines=".45 0 .55 1;.45 0 .55 1"/></g>' +
              f'<text y="-38" text-anchor="middle" font-family="Arial, sans-serif" font-weight="bold" font-size="13" fill="{ink}" stroke="{paper}" stroke-width="4" paint-order="stroke">N</text></g>')
     o.append(corners("#1a1622" if not n else "#05070c", .5))
     return vwrap(''.join(o))
@@ -665,15 +745,28 @@ def v_service(n):  # the vintage trolley on its rails down a red-brick avenue of
 def v_renewals(n):  # a field of bluebonnets in spring
     p = P(n); o = [vbase(n, ("#5a9ad8", "#b0d4ee", "#eef4e8"), NT, 50)]
     o.append(orb(n, 260, 54, 22))
-    if not n: o.append(cloud(700, 50, 260, "#fff", .75) + cloud(1200, 70, 200, "#fff", .6))
+    if not n: o.append('<g>' + drift(60, 12) + cloud(700, 50, 260, "#fff", .75) + '</g><g>' + drift(-40, 10, 2) + cloud(1200, 70, 200, "#fff", .6) + '</g>')
     o.append(f'<path d="M0 132Q400 104 800 126T1600 114V240H0Z" fill="{p["far"]}"/>')
     o.append(f'<path d="M0 150Q500 126 900 146T1600 138V240H0Z" fill="{p["grass"]}"/>')
     o.append(f'<path d="M0 150Q500 126 900 146T1600 138V240H0Z" fill="{p["bb"]}" opacity=".5"/>')
     o.append(fence(980, 1600, 128, 156, p["wood"], 70, 2))
-    o.append(liveoak(1180, 150, .95, p["oak"], p["oak2"], p["trunk"]))
+    o.append('<g>' + sway(1180, 150, .8, 7) + liveoak(1180, 150, .95, p["oak"], p["oak2"], p["trunk"]) + '</g>')
+    # the field leans in the breeze: a skew about the ground line, nothing at rest
+    o.append('<g transform="translate(0 236)"><g><animateTransform attributeName="transform" type="skewX" values="0;-1.4;0;.9;0" dur="6s" repeatCount="indefinite" '
+             'calcMode="spline" keySplines=".45 0 .55 1;.45 0 .55 1;.45 0 .55 1;.45 0 .55 1"/><g transform="translate(0 -236)">')
     o.append(bluebonnets(0, 1600, 156, 236, 455, 21, p, n, 1.35))
     r = random.Random(8)
     o.append('<path d="' + ''.join(f'M{r.randint(0, 1600)} {r.randint(170, 236)}v-7' for _ in range(40)) + f'" stroke="{"#e2552b" if not n else "#7a3a2a"}" stroke-width="5" stroke-linecap="round"/>')
+    o.append('</g></g></g>')
+    # butterflies by day, fireflies by night
+    for i, (bx, by, mp) in enumerate(((760, 150, "M0 0C40 -30 90 10 130 -20S200 -10 160 20S40 30 0 0"), (1020, 176, "M0 0C-30 -24 -90 -6 -110 -30S-40 -50 0 0"))):
+        if not n:
+            wing = lambda sx: f'<path d="M0 0C{-8 * sx} -10 {-14 * sx} -2 {-10 * sx} 5Z" fill="{("#f2a43a", "#f6e05a")[i]}"/>'
+            o.append(f'<g transform="translate({bx} {by})"><g>{wing(1)}{wing(-1)}<animateTransform attributeName="transform" type="scale" values="1 1;.25 1;1 1" dur=".35s" repeatCount="indefinite"/></g>'
+                     f'<path d="M0 -4V5" stroke="#2a2420" stroke-width="2"/><animateMotion path="{mp}" dur="{8 + i * 2}s" repeatCount="indefinite"/></g>')
+        else:
+            o.append(''.join(f'<circle cx="{bx + k * 70}" cy="{by + k * 9 - 20}" r="2.6" fill="#e8ff8a" opacity="0"><animate attributeName="opacity" values="0;.95;0" dur="{2.4 + k * .5:.1f}s" begin="{(i + k) * .7:.1f}s" repeatCount="indefinite"/>'
+                         f'<animateMotion path="{mp}" dur="{10 + k}s" repeatCount="indefinite"/></circle>' for k in range(3)))
     o.append(corners(p["grass2"], .6))
     return vwrap(''.join(o))
 

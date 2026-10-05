@@ -401,6 +401,7 @@ def blink(vals, dur, delay=0, attr="opacity"):
     v = vals.split(";"); kt = ";".join(_n(i / (len(v) - 1)) for i in range(len(v)))
     return f'<animate attributeName="{attr}" values="{vals}" keyTimes="{kt}" {_rep(dur, delay)}/>'
 def steps(attr, vals, times, dur, delay=0):
+    if times.split(";")[-1] != "1": vals += ";" + vals.split(";")[-1]; times += ";1"   # keyTimes always end at 1
     return f'<animate attributeName="{attr}" values="{vals}" keyTimes="{times}" calcMode="discrete" {_rep(dur, delay)}/>'
 def G(body, *anims): return '<g>' + ''.join(anims) + body + '</g>'
 
@@ -519,11 +520,12 @@ def v_training(n):  # the tutorial level
             o.append(f'<rect x="{x}" y="{y}" width="{w}" height="14" fill="{pc}"/><rect x="{x}" y="{y+14}" width="{w}" height="24" fill="{pd}"/>'
                      f'<path d="{"".join(f"M{x+6+k*20} {y+20}h8v6h-8z" for k in range(w//20))}" fill="#5a3418"/>')
         o.append(hero(520, 108, 4.2, rows=HERO))
-        o.append(hero(740, 52, 4.2, rows=HERO_JUMP))
+        o.append(G(hero(740, 52, 4.2, rows=HERO_JUMP), bob(0, -10, 1.8)))
         o.append(f'<path d="M560 100 Q640 20 740 44" fill="none" stroke="#fff" stroke-width="3" stroke-dasharray="8 8"/>')
-        for x in [960, 1000, 1150, 1190]: o.append(coin(x, 50 if x < 1100 else 90, 3))
-        o.append(runs(["..#..", "...#.", "#####", "...#.", "..#.."], 640, 160, 6, {'#': "#ffd23f"}))
-        o.append(f'<rect x="1260" y="40" width="6" height="80" fill="#fff"/><path d="M1266 40h44v14h-44z" fill="#4f98ff"/>')
+        for k, x in enumerate([960, 1000, 1150, 1190]): o.append(G(coin(x, 50 if x < 1100 else 90, 3), bob(0, -6, 1.6, k * .4)))
+        o.append(G(runs(["..#..", "...#.", "#####", "...#.", "..#.."], 640, 160, 6, {'#': "#ffd23f"}), steps("opacity", "1;.2", "0;.6", 1.4)))
+        o.append(f'<rect x="1260" y="40" width="6" height="80" fill="#fff"/><path d="M1266 40L1310 40L1310 54L1266 54Z" fill="#4f98ff">'
+                 f'<animate attributeName="d" values="M1266 40L1310 40L1310 54L1266 54Z;M1266 40L1308 46L1308 60L1266 54Z;M1266 40L1310 40L1310 54L1266 54Z" keyTimes="0;.5;1" {SPL} {_rep(1.6, 0)}/></path>')
         o.append(label(250, 96, "TUTORIAL", 5, "#fff", "middle"))
         return ''.join(o)
     return scene(n, b, top_day=("#4aa8ff", "#9ad0ff", "#e0edff"), top_night=("#06021a", "#140a3a", "#2a1a62"))
@@ -534,28 +536,31 @@ def v_map(n, athena=False):  # a level-select world map
         o = []
         sea = "#2a6ad0" if not n else "#0f1c4a"
         o.append(f'<rect width="1600" height="240" fill="{sea}"/>')
-        o.append(f'<path d="{"".join(f"M{x} {y}h18v4h-18z" for x, y in [(80,40),(260,90),(1460,60),(1300,30),(150,150),(1500,150)])}" fill="#fff" opacity=".35"/>')
+        o.append(f'<path d="{"".join(f"M{x} {y}h18v4h-18z" for x, y in [(80,40),(260,90),(1460,60),(1300,30),(150,150),(1500,150)])}" fill="#fff" opacity=".35">'
+                 + bob(12, 0, 6) + '</path>')
         land = "#5fc56a" if not n else "#1f5a3a"; land2 = "#3f9a4a" if not n else "#163f2a"; sand = "#f2d48a" if not n else "#6a5a3a"
         o.append(f'<path d="M300 200 V140 H340 V90 H420 V60 H560 V40 H760 V60 H900 V30 H1080 V50 H1200 V90 H1280 V140 H1320 V200 Z" fill="{sand}"/>')
         o.append(f'<path d="M316 196 V146 H354 V98 H432 V70 H570 V52 H770 V72 H906 V44 H1070 V62 H1190 V100 H1266 V146 H1304 V196 Z" fill="{land}"/>')
         for x, y in [(470, 110), (520, 150), (1010, 150), (1150, 120), (700, 160)]:
             o.append(runs(["..t..", ".ttt.", "ttttt", "..b.."], x, y, 7, {'t': land2, 'b': "#6a3a1a"}))
         pts = [(400, 170), (640, 118), (940, 160), (1200, 112)]
-        steps = ["Listen", "Understand", "Handle", "Follow up"] if athena else ["Dial", "Discovery", "Quote", "Close"]
+        names = ["Listen", "Understand", "Handle", "Follow up"] if athena else ["Dial", "Discovery", "Quote", "Close"]
         path = []
         for (x1, y1), (x2, y2) in zip(pts, pts[1:]):
             for k in range(1, 12):
                 t = k / 12; path.append(f'M{x1+(x2-x1)*t-4:.0f} {y1+(y2-y1)*t-4:.0f}h8v8h-8z')
         o.append(f'<path d="{"".join(path)}" fill="#fff"/>')
         ink = "#14042e"
-        for i, ((x, y), t) in enumerate(zip(pts, steps)):
-            o.append(f'<rect x="{x-16}" y="{y-16}" width="32" height="32" fill="{route}" stroke="#fff" stroke-width="4"/>')
+        for i, ((x, y), t) in enumerate(zip(pts, names)):
+            o.append(f'<rect x="{x-16}" y="{y-16}" width="32" height="32" fill="{route}" stroke="#fff" stroke-width="4"/>'
+                     f'<rect x="{x-16}" y="{y-16}" width="32" height="32" fill="#fff" opacity="0">'
+                     + steps("opacity", "0;.55;0", f"0;{i*.25:.2f};{i*.25+.12:.2f}", 4, 0) + '</rect>')
             o.append(ptext(str(i + 1), x, y - 7, 3, "#fff", "middle"))
             tw = len(t) * 11 + 18
             o.append(f'<rect x="{x-tw/2:.0f}" y="{y-54}" width="{tw}" height="28" fill="#fffaf0" stroke="{ink}" stroke-width="3"/>'
                      f'<text x="{x}" y="{y-34}" text-anchor="middle" font-family="Arial, sans-serif" font-weight="bold" font-size="18" fill="{ink}">{t}</text>')
         o.append(hero(330, 134, 3.4) if not athena else hero(330, 134, 3.4, {'h': "#2fd07a", 'b': "#1a7d5a"}))
-        o.append(runs(STAR, 1262, 70, 5, {'y': "#ffd23f"}))
+        o.append(G(runs(STAR, 1262, 70, 5, {'y': "#ffd23f"}), bob(0, -6, 2)))
         o.append(ptext("WORLD 1 · " + ("ATHENA" if athena else "APOLLO"), 1400, 196, 3, "#fff", "middle") if False else "")
         return ''.join(o)
     cd, cr = corners()
@@ -567,27 +572,27 @@ def v_service(n):  # the repair shop
         wall = "#3a2a5a" if not n else "#1a0f30"
         o.append(f'<rect width="1600" height="172" fill="{wall}" opacity=".55"/>')
         o.append(f'<rect x="1060" y="56" width="260" height="40" fill="#14042e" stroke="#3df2ff" stroke-width="4"/>')
-        o.append(label(1190, 67, "REPAIR SHOP", 3.6, "#3df2ff"))
+        o.append(G(label(1190, 67, "REPAIR SHOP", 3.6, "#3df2ff"), steps("opacity", "1;.3;1;.4;1", "0;.7;.73;.78;.81", 5)))
         # an open cabinet: side panel swung open, wires inside
         x, base = 700, 200
         o.append(cabinet(x, base, .58, "#5a1f7a", "#ffd23f", n, 3))
+        o.append(f'<rect x="706" y="92" width="46" height="41" fill="#3df2ff" opacity="0">' + steps("opacity", "0;.35;0;.2;0", "0;.3;.38;.6;.66", 2.6) + '</rect>')   # its screen sputtering back
         o.append(f'<path d="M{x+58} {base-133}L{x+108} {base-122}V{base-8}L{x+58} {base}Z" fill="#7a3a9a"/>')
         o.append(f'<path d="M{x+14} {base-60}q20 20 0 40 M{x+24} {base-60}q14 24 18 44" stroke="#3d8eff" stroke-width="3" fill="none"/><path d="M{x+34} {base-62}q-10 20 6 46" stroke="#39ff6a" stroke-width="3" fill="none"/>')
         o.append(hero(860, 112, 6, {'h': "#ffd23f", 'b': "#2a6ad0", 'y': "#ff7a1a"}))
-        o.append(f'<g transform="rotate(-30 932 140)"><path d="M926 112h10v50h-10z M918 104h26v14h-6v-6h-14v6h-6z" fill="#c9d1dc"/></g>')
+        o.append(G(f'<g transform="rotate(-30 932 140)"><path d="M926 112h10v50h-10z M918 104h26v14h-6v-6h-14v6h-6z" fill="#c9d1dc"/></g>', rock(-22, 920, 156, 1.6)))
         o.append(f'<rect x="1000" y="168" width="90" height="34" fill="#3d8eff"/><rect x="1030" y="158" width="30" height="10" fill="#1a4f9a"/><rect x="1000" y="180" width="90" height="4" fill="#1a4f9a"/>')
-        o.append(sparkles([(700, 90), (650, 140)], "#ffd23f", 4))
+        o.append(G(sparkles([(700, 90), (650, 140)], "#ffd23f", 4), blink("1;0;1", 1.6)))
         return ''.join(o)
     return scene(n, b, top_day=("#7a4fc0", "#b07ae0", "#c0daff"))
 
 def v_renewals(n):  # extra lives: 1UP hearts coming back
     def b():
         o = []
-        o.append(hero(760, 104, 6))
-        for x, y, s in [(560, 120, 6), (640, 70, 5), (900, 64, 5), (980, 110, 6), (720, 50, 4), (1080, 80, 4)]:
-            o.append(heart(x, y, s))
-            o.append(f'<path d="M{x+3.5*s} {y+6*s+6}v18" stroke="#fff" stroke-width="3" stroke-dasharray="4 4" opacity=".7"/>')
-        o.append(label(1160, 60, "+1UP", 5, "#39ff6a"))
+        o.append(G(hero(760, 104, 6), f'<animateTransform attributeName="transform" type="translate" values="0 0;0 0;0 -14;0 0" keyTimes="0;.6;.8;1" {SPL.replace(".45 0 .55 1;", ".45 0 .55 1;.2 0 .4 1;")} {_rep(2.4, 0)}/>'))
+        for k, (x, y, s) in enumerate([(560, 120, 6), (640, 70, 5), (900, 64, 5), (980, 110, 6), (720, 50, 4), (1080, 80, 4)]):
+            o.append(G(heart(x, y, s) + f'<path d="M{x+3.5*s} {y+6*s+6}v18" stroke="#fff" stroke-width="3" stroke-dasharray="4 4" opacity=".7"/>', bob(0, -8, 3 + k % 3 * .6, k * .7)))
+        o.append(G(label(1160, 60, "+1UP", 5, "#39ff6a"), steps("opacity", "1;.2;1;.2;1", "0;.6;.67;.74;.81", 3)))
         o.append(ptext("EXTRA LIFE", 450, 64, 3.6, "#fff", "middle", shadow="#185fc2"))
         return ''.join(o)
     return scene(n, b, top_day=("#8abbff", "#b3d3ff", "#ffe0c0"), sun=(800, 80))
@@ -597,19 +602,24 @@ def v_claims(n):  # after the storm: a glitched screen being fixed
         o = []
         cl = "#4a3a6a" if not n else "#2a1a40"
         o.append(runs(["....cccc....", "..cccccccc..", ".cccccccccccc", "cccccccccccccc", ".cccccccccccc."], 300, 30, 12, {'c': cl}))
-        o.append(f'<path d="{"".join(f"M{x} {y}h4v12h-4z" for x, y in [(330,100),(370,120),(410,96),(450,114),(490,104)])}" fill="#9ad0ff" opacity=".6"/>')
+        o.append(f'<path d="{"".join(f"M{x} {y}h4v12h-4z" for x, y in [(330,100),(370,120),(410,96),(450,114),(490,104)])}" fill="#9ad0ff" opacity=".6">'
+                 f'<animateTransform attributeName="transform" type="translate" values="0 -10;0 22" keyTimes="0;1" {_rep(1.1, 0)}/>{blink("0;.6;.6;0", 1.1)}</path>')
         x, y, w, h = 640, 30, 300, 140
         o.append(f'<rect x="{x-12}" y="{y-12}" width="{w+24}" height="{h+24}" fill="#2a1a3e"/><rect x="{x}" y="{y}" width="{w}" height="{h}" fill="#0b0820"/>')
         r = random.Random(9)
+        bars = []
         for k in range(8):
             yy = y + 6 + k * 16; off = r.randint(-30, 30)
-            o.append(f'<rect x="{max(x, x+40+off)}" y="{yy}" width="{r.randint(60, 200)}" height="10" fill="{r.choice(["#4f98ff", "#3df2ff", "#39ff6a", "#ffd23f"])}" opacity=".85"/>')
+            bars.append(f'<rect x="{max(x, x+40+off)}" y="{yy}" width="{r.randint(60, 200)}" height="10" fill="{r.choice(["#4f98ff", "#3df2ff", "#39ff6a", "#ffd23f"])}" opacity=".85"/>')
+        for k in range(2):   # the broken half glitches, rows out of step (the fixed half covers anything that jumps right)
+            o.append(G(''.join(bars[k::2]), f'<animateTransform attributeName="transform" type="translate" values="0 0;{10-k*18} 0;{-6+k*10} 0;0 0;0 0" '
+                       f'keyTimes="0;.1;.16;.22;1" calcMode="discrete" {_rep(2.6 + k, k * .9)}/>'))
         o.append(f'<rect x="{x+w/2:.0f}" y="{y}" width="{w/2:.0f}" height="{h}" fill="#0b0820"/>')
-        o.append(ptext("FIXED", x + w * .75, y + 54, 6, "#39ff6a", "middle"))
+        o.append(G(ptext("FIXED", x + w * .75, y + 54, 6, "#39ff6a", "middle"), steps("opacity", "1;.2", "0;.65", 1.8)))
         o.append(f'<path d="M{x+w/2} {y}v{h}" stroke="#fff" stroke-width="3" stroke-dasharray="6 6"/>')
         o.append(hero(990, 96, 6, {'h': "#ffd23f", 'b': "#2a6ad0", 'y': "#ff7a1a"}))
-        o.append(f'<g transform="rotate(35 960 110)"><path d="M954 82h10v50h-10z M946 74h26v14h-6v-6h-14v6h-6z" fill="#c9d1dc"/></g>')
-        o.append(sparkles([(950, 80), (930, 60), (970, 52)], "#ffd23f", 3))
+        o.append(G(f'<g transform="rotate(35 960 110)"><path d="M954 82h10v50h-10z M946 74h26v14h-6v-6h-14v6h-6z" fill="#c9d1dc"/></g>', rock(18, 980, 140, 1.6)))
+        o.append(G(sparkles([(950, 80), (930, 60), (970, 52)], "#ffd23f", 3), blink("1;0;1", 1.6, .8)))
         o.append(sparkles([(1250, 50), (1320, 90)], "#fff", 3))
         return ''.join(o)
     return scene(n, b, top_day=("#6a7ab0", "#a99cd0", "#ffd0c0"), top_night=("#05020f", "#140a30", "#2a1050"))
@@ -619,11 +629,12 @@ def v_commercial(n):  # the boss castle
         o = []
         cs = "#2a1a40" if n else "#3a1f5c"; win = "#ffd23f"
         o.append('<radialGradient id="lv" cx=".5" cy="1" r=".7"><stop offset="0" stop-color="#ff7a1a" stop-opacity=".7"/><stop offset="1" stop-color="#3d8eff" stop-opacity="0"/></radialGradient>')
-        o.append('<rect x="440" y="40" width="720" height="140" fill="url(#lv)"/>')
+        o.append(f'<rect x="440" y="40" width="720" height="140" fill="url(#lv)">{blink("1;.55;1", 3.4)}</rect>')
         o.append(f'<path d="M520 174 V150 H560 V140 H1040 V150 H1080 V174Z" fill="{"#0f213a" if n else "#1a355a"}"/>')
         # walls, towers and battlements in pixel steps
         o.append(f'<path d="M600 140 V84 H612 V74 H628 V84 H644 V74 H660 V84 H676 V60 H690 V50 H706 V60 H720 V40 H736 V30 H752 V40 H768 V30 H784 V40 H800 V24 H816 V40 H832 V30 H848 V40 H864 V30 H880 V40 H896 V60 H910 V50 H926 V60 H940 V84 H956 V74 H972 V84 H988 V74 H1000 V84 V140Z" fill="{cs}"/>')
-        o.append(f'<path d="M624 96h14v22h-14z M960 96h14v22h-14z M702 74h14v22h-14z M884 74h14v22h-14z M760 54h14v18h-14z M826 54h14v18h-14z" fill="{win}"/>')
+        o.append(f'<path d="M624 96h14v22h-14z M960 96h14v22h-14z M702 74h14v22h-14z" fill="{win}">' + steps("opacity", "1;.55;1;.7", "0;.3;.45;.8", 2.3) + '</path>'
+                 f'<path d="M884 74h14v22h-14z M760 54h14v18h-14z M826 54h14v18h-14z" fill="{win}">' + steps("opacity", "1;.6;1;.5", "0;.2;.55;.7", 1.9, .6) + '</path>')
         o.append('<path d="M772 140 V100 H780 V92 H820 V100 H828 V140Z" fill="#14042e"/>')
         o.append(f'<path d="M774 104h52v4h-52z M774 116h52v4h-52z M774 128h52v4h-52z" fill="#6a5a8a"/>')
         o.append(f'<rect x="806" y="-2" width="4" height="26" fill="{cs}"/><path d="M810 0h56v20h-56z" fill="#3d8eff"/>')
@@ -631,9 +642,13 @@ def v_commercial(n):  # the boss castle
         for x in [560, 640, 960, 1030]:
             o.append(f'<path d="M{x} 150 h8 v-10 h8 v-8 h8 v8 h8 v10 h8 v8 h-40z" fill="#ff7a1a"/><path d="M{x+12} 150 h8 v-10 h8 v10 h8 v8 h-24z" fill="#ffd23f"/>')
         o.append(ptext("BOSS", 1130, 34, 3, "#fff", shadow="#14042e"))
-        o.append('<rect x="1130" y="56" width="280" height="18" fill="#14042e" stroke="#fff" stroke-width="3"/><rect x="1136" y="61" width="190" height="8" fill="#3d8eff"/>')
-        o.append(runs(SQUID, 1220, 100, 8, {'p': "#a46bff", 'w': "#fff"}))
-        o.append(runs(SQUID, 380, 90, 6, {'p': "#39d07a", 'w': "#fff"}))
+        o.append('<rect x="1130" y="56" width="280" height="18" fill="#14042e" stroke="#fff" stroke-width="3"/><rect x="1136" y="61" width="190" height="8" fill="#3d8eff">'
+                 f'<animate attributeName="width" values="190;190;70;70;190" keyTimes="0;.2;.6;.75;1" {_rep(8, 0)}/></rect>')
+        # the invaders march: a step at a time, side to side and back
+        mv = lambda d, dl: (f'<animateTransform attributeName="transform" type="translate" values="0 0;{d} 0;{2*d} 0;{d} 0;{d} 0" keyTimes="0;.25;.5;.75;1" '
+                            f'calcMode="discrete" {_rep(2.4, dl)}/>')
+        o.append(G(runs(SQUID, 1220, 100, 8, {'p': "#a46bff", 'w': "#fff"}), mv(16, 0)))
+        o.append(G(runs(SQUID, 380, 90, 6, {'p': "#39d07a", 'w': "#fff"}), mv(10, 1.2)))
         return ''.join(o)
     return scene(n, b, top_day=("#4a2a7a", "#4f7ec0", "#ffa070"), top_night=("#05020f", "#1c0630", "#0f2e5a"), starsn=30)
 

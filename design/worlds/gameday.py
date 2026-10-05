@@ -642,7 +642,7 @@ def v_rphistory(n):  # the highlight reel on the big screen
     o.append(f'<g transform="rotate(-62 860 128)">{player(860, 128, .62, RED, "21", "up", hc=RED)}</g>')
     o.append(f'<g>{ball(690, 72, 11, -30)}<animateMotion path="M-90 20 Q-50 -20 -10 -2 L0 0" keyPoints="0;1;1" keyTimes="0;.55;1" calcMode="linear" dur="3s" repeatCount="indefinite"/></g>' + '<path d="M600 92 q40 -40 80 -22" fill="none" stroke="#fff" stroke-width="2.5" stroke-dasharray="6 6"/>')
     o.append(f'<rect x="482" y="158" width="636" height="24" fill="{RED}"/><text x="800" y="176" text-anchor="middle" font-family="Arial, sans-serif" font-weight="bold" font-size="17" letter-spacing="6" fill="#fff">CLOSER HIGHLIGHTS · PLAY OF THE DAY</text>')
-    o.append('<circle cx="1080" cy="56" r="7" fill="#ff3b3b">' + show(["0", ".5"], ["1", "0"], 1.4) + '</circle><text x="1072" y="62" text-anchor="end" font-family="monospace" font-weight="bold" font-size="16" fill="#fff">REC</text>')
+    o.append('<circle cx="1080" cy="56" r="7" fill="#ff3b3b">' + show(["0", ".5", "1"], ["1", "0", "1"], 1.4) + '</circle><text x="1072" y="62" text-anchor="end" font-family="monospace" font-weight="bold" font-size="16" fill="#fff">REC</text>')
     if n:
         o.append(vignette(V, .4))
     o.append(shade())
@@ -780,21 +780,23 @@ def v_claims(n):  # the rain delay: the grounds crew pulls the tarp, the sky cle
          f'<linearGradient id="cl" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#3a4150" stop-opacity=".9"/><stop offset=".55" stop-color="#3a4150" stop-opacity=".5"/><stop offset="1" stop-color="#3a4150" stop-opacity="0"/></linearGradient></defs>',
          f'<rect width="1600" height="{V}" fill="url(#g)"/>']
     if n:
-        o.append(stars(30, 1000, 1600, 0, 90, 9) + tower(1460, 20, 110, n))
+        o.append(blink(stars(30, 1000, 1600, 0, 90, 9), .4, 3.5) + tower(1460, 20, 110, n))
     else:
-        o.append('<circle cx="1380" cy="40" r="30" fill="#fff6c8"/>' + f'<path d="M1080 150 A240 200 0 0 1 1560 150" fill="none" stroke="#ffd27a" stroke-width="8" opacity=".5"/><path d="M1094 150 A226 186 0 0 1 1546 150" fill="none" stroke="#7fd0ff" stroke-width="8" opacity=".45"/>')
-    o.append('<rect x="0" y="0" width="1200" height="90" fill="url(#cl)"/>' + cloud(240, 36, 380, .9, "#4a5263") + cloud(640, 40, 340, .8, "#565e70"))
+        o.append('<circle cx="1380" cy="40" r="30" fill="#fff6c8"/>' + blink(f'<path d="M1080 150 A240 200 0 0 1 1560 150" fill="none" stroke="#ffd27a" stroke-width="8" opacity=".5"/><path d="M1094 150 A226 186 0 0 1 1546 150" fill="none" stroke="#7fd0ff" stroke-width="8" opacity=".45"/>', .4, 6))
+    o.append('<rect x="0" y="0" width="1200" height="90" fill="url(#cl)"/>' + cloud(240, 36, 380, .9, "#4a5263") + bob(cloud(640, 40, 340, .8, "#565e70"), 50, 0, 10))
+    rain = ['', '']
     for i in range(46):
         x = (i * 97) % 1000; y = (i * 53) % 150
-        o.append(f'<line x1="{x}" y1="{y+30}" x2="{x-10}" y2="{y+58}" stroke="#cfe0f0" stroke-width="2" opacity=".55"/>')
+        rain[x > 440] += f'<line x1="{x}" y1="{y+30}" x2="{x-10}" y2="{y+58}" stroke="#cfe0f0" stroke-width="2" opacity=".55"/>'
+    o.append(rain[0] + f'<g>{rain[1]}<animateTransform attributeName="transform" type="translate" values="5 -14;-5 14" dur=".6s" repeatCount="indefinite"/></g>')
     o.append(grass(120, V, n))
     o.append(f'<rect x="0" y="120" width="1600" height="{V-120}" fill="#1a2a3a" opacity=".18"/>')
     # the tarp being pulled across, the roll at the left
     o.append('<path d="M500 140 L1020 132 L1060 206 L470 212 Z" fill="#2f63b0"/><path d="M500 140 L1020 132 L1024 140 L502 148 Z" fill="#fff" opacity=".25"/>')
     o.append('<rect x="440" y="134" width="70" height="82" rx="30" fill="#24508f"/><ellipse cx="475" cy="175" rx="12" ry="38" fill="#1b3f75"/>')
     for i, x in enumerate([1090, 1160, 1230]):
-        o.append(f'<line x1="{1024 + i*12}" y1="{136 + i*30}" x2="{x}" y2="{150 + i*16}" stroke="#ddd" stroke-width="2.5"/>')
-        o.append(fan(x + 10, 206 + i * 6, .82, "#ffd21a", SKIN[i], "#2c3448"))
+        o.append(f'<line x1="{1024 + i*12}" y1="{136 + i*30}" x2="{x}" y2="{150 + i*16}" stroke="#ddd" stroke-width="2.5">' + ease("x2", [str(x), str(x + 10), str(x)], 2.4, i * .2) + '</line>')
+        o.append(bob(f'<g transform="rotate(8 {x + 10} {206 + i * 6})">{fan(x + 10, 206 + i * 6, .82, "#ffd21a", SKIN[i], "#2c3448")}</g>', 10, 0, 2.4, i * .2))
     o.append('<ellipse cx="760" cy="224" rx="90" ry="6" fill="#bcd4ea" opacity=".35"/><ellipse cx="300" cy="200" rx="60" ry="5" fill="#bcd4ea" opacity=".3"/>')
     o.append(shade())
     return wrap(V, ''.join(o))
@@ -808,8 +810,15 @@ def v_commercial(n):  # the owner's suite overlooking the field
     if n:
         o.append(stars(24, 120, 1480, 18, 50, 12) + tower(300, 24, 80, n, 70) + tower(1300, 24, 80, n, 70))
     o.append('<rect x="120" y="58" width="1360" height="40" fill="url(#cr)"/>')
+    if n:
+        o.append(''.join(pop(x, y, 3, 5, at) for x, y, at in [(620, 70, .1), (900, 84, .35), (1180, 66, .6), (1380, 80, .85)]).replace('#fp', '#fg'))
+    else:
+        o.append(f'<path d="M520 18 h70 l-60 150 h-70 Z" fill="#fff"{OP0}><animateTransform attributeName="transform" type="translate" values="0 0;900 0" dur="9s" repeatCount="indefinite"/>'
+                 '<animate attributeName="opacity" values="0;.18;.18;0;0" keyTimes="0;.1;.5;.6;1" dur="9s" repeatCount="indefinite"/></path>')
     o.append(grass(98, 168, n))
     o.append('<path d="M120 98 L1480 98" stroke="#f2f6ee" stroke-width="3"/>')
+    o.append(bob(player(880, 150, .3, RED, "", "run", hc=RED), 130, 0, 7) + bob(player(980, 156, .3, NAVY, "", "run", flip=True, hc=NAVY), 120, 0, 7, .3)
+             + bob(ball(940, 124, 5, -30), 120, 0, 7, .15))
     for x in range(200, 1480, 120):
         o.append(f'<line x1="{x}" y1="98" x2="{x + (x-800)*.25:.0f}" y2="168" stroke="#f2f6ee" stroke-width="2" opacity=".8"/>')
     for x in range(120, 1481, 340):

@@ -16,9 +16,9 @@ def v_claims(n):  # after the storm: a repair crew on the station's damaged arra
              '<rect x="-190" y="-38" width="76" height="76" fill="#2a4fb0" stroke="#9cc0ff" stroke-width="2"/><rect x="-100" y="-38" width="76" height="76" fill="#2a4fb0" stroke="#9cc0ff" stroke-width="2"/>'
              '<path d="M30 -38 h76 v40 l-20 10 l-14 26 h-42 z" fill="#2a4fb0" stroke="#9cc0ff" stroke-width="2"/><path d="M60 -6 l10 8 l-6 10 l12 6" fill="none" stroke="#ffb347" stroke-width="3"/>'
              '<rect x="120" y="-38" width="76" height="76" fill="#2a4fb0" stroke="#9cc0ff" stroke-width="2" opacity=".5" stroke-dasharray="6 4"/></g>')
-    for x,y,r in [(980,60,6),(1040,150,4),(1120,90,5),(1180,170,3)]: o.append(f'<rect x="{x}" y="{y}" width="{r*2}" height="{r}" fill="#9aa3b5" transform="rotate({x%40} {x} {y})"/>')
-    o.append(_sc.astronaut(900, 90, .55, n))
-    o.append('<path d="M870 80 Q800 40 760 100" fill="none" stroke="#d9dde6" stroke-width="2"/><circle cx="822" cy="102" r="7" fill="#fff6c8"/><circle cx="822" cy="102" r="16" fill="#fff6c8" opacity=".35"/>')
+    for x,y,r in [(980,60,6),(1040,150,4),(1120,90,5),(1180,170,3)]: o.append(f'<g><rect x="{x}" y="{y}" width="{r*2}" height="{r}" fill="#9aa3b5" transform="rotate({x%40} {x} {y})"/>{_sc._tf("translate",f"0 0;{x%3*8+12} {r*2-6};0 0",6+r)}</g>')
+    o.append('<g>'+_sc.astronaut(900, 90, .55, n)+_sc._tf("translate","0 0;0 -5;0 0",5)+'</g>')
+    o.append('<path d="M870 80 Q800 40 760 100" fill="none" stroke="#d9dde6" stroke-width="2"/><circle cx="822" cy="102" r="7" fill="#fff6c8">'+_sc._an("opacity","1;.4;1;.7;1",2)+'</circle><circle cx="822" cy="102" r="16" fill="#fff6c8" opacity=".35">'+_sc._an("r","14;20;12;18;14",2)+'</circle>')
     o.append('<text x="800" y="226" text-anchor="middle" font-family="monospace" font-size="15" fill="#fff" opacity=".85">REPAIR CREW · AFTER THE DEBRIS STORM</text>')
     return _sc.wrap(240, ''.join(o))
 VISTA_FNS = dict(_sc.VISTA_FNS, claims=v_claims)

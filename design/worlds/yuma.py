@@ -622,16 +622,21 @@ def v_map(n, athena=False):  # the irrigation map: fields, canals, four stops
             if r.random() < .5: o.append(f'<path d="M{x + 8} {y + 14}H{x + w - 8}M{x + 8} {y + 24}H{x + w - 8}M{x + 8} {y + 34}H{x + w - 8}M{x + 8} {y + 44}H{x + w - 8}" stroke="{ink}" stroke-opacity=".18" stroke-width="2"/>')
             x += w
     o.append(f'<path d="M0 26 Q400 6 800 22 T1600 14 L1600 0 L0 0Z" fill="{"#7ac0c8" if not n else "#1c4458"}"/>')
+    o.append(mv('<path d="M560 10h50M820 14h40M1080 8h60M1360 10h44" stroke="#fff" stroke-opacity=".5" stroke-width="2" stroke-linecap="round"/>', drift(40, 0, 7)))
     pts = [(480, 150), (720, 76), (980, 146), (1240, 70)]
     d = f'M300 26 C320 90 400 150 {pts[0][0]} {pts[0][1]} S640 70 {pts[1][0]} {pts[1][1]} S900 150 {pts[2][0]} {pts[2][1]} S1160 66 {pts[3][0]} {pts[3][1]} S1360 120 1420 200'
     o.append(f'<path d="{d}" fill="none" stroke="{paper}" stroke-width="16" stroke-linecap="round"/><path d="{d}" fill="none" stroke="{route}" stroke-width="9" stroke-linecap="round"/>')
-    o.append(f'<path d="{d}" fill="none" stroke="#fff" stroke-opacity=".6" stroke-width="2" stroke-dasharray="6 12"/>')
+    o.append(f'<path d="{d}" fill="none" stroke="#fff" stroke-opacity=".6" stroke-width="2" stroke-dasharray="6 12"><animate attributeName="stroke-dashoffset" values="0;-36" dur="2s" repeatCount="indefinite"/></path>')
+    for i, (x, y) in enumerate(pts):
+        o.append(f'<circle cx="{x}" cy="{y}" r="16" fill="none" stroke="{route}" stroke-width="3" opacity="0">'
+                 f'<animate attributeName="r" values="16;34;34" keyTimes="0;.25;1" dur="6s" begin="{i * 1.5}s" repeatCount="indefinite"/>'
+                 f'<animate attributeName="opacity" values=".8;0;0" keyTimes="0;.25;1" dur="6s" begin="{i * 1.5}s" repeatCount="indefinite"/></circle>')
     steps = ["Listen", "Understand", "Handle", "Follow up"] if athena else ["Dial", "Discovery", "Quote", "Close"]
     for i, ((x, y), t) in enumerate(zip(pts, steps)):
         ty = y - 24 if i % 2 == 0 else y + 42
         o.append(f'<rect x="{x - 14}" y="{y - 14}" width="28" height="28" rx="4" fill="{ink}" stroke="{paper}" stroke-width="4"/><text x="{x}" y="{y + 6}" text-anchor="middle" font-family="Arial, sans-serif" font-weight="bold" font-size="15" fill="{paper}">{i + 1}</text>')
         o.append(f'<text x="{x}" y="{ty}" text-anchor="middle" font-family="Georgia, serif" font-weight="bold" font-size="23" fill="{ink}" stroke="{paper}" stroke-width="6" paint-order="stroke">{t}</text>')
-    o.append(f'<g transform="translate(1500 90)"><circle r="30" fill="{paper}" stroke="{ink}" stroke-width="2"/><path d="M0 -26 L7 0 L0 26 L-7 0Z" fill="{ink}"/><path d="M0 -26 L7 0 L-7 0Z" fill="{route}"/>'
+    o.append(f'<g transform="translate(1500 90)"><circle r="30" fill="{paper}" stroke="{ink}" stroke-width="2"/><g>{sway(0, 0, 7, 5)}<path d="M0 -26 L7 0 L0 26 L-7 0Z" fill="{ink}"/><path d="M0 -26 L7 0 L-7 0Z" fill="{route}"/></g>'
              f'<text y="-34" text-anchor="middle" font-family="Georgia, serif" font-weight="bold" font-size="13" fill="{ink}" stroke="{paper}" stroke-width="4" paint-order="stroke">N</text></g>')
     o.append(f'<rect x="0" y="0" width="1600" height="{V}" fill="none" stroke="{ink}" stroke-width="8" opacity=".35"/>')
     o.append(corners("#2a2014" if not n else "#05080c", .45))
@@ -707,13 +712,15 @@ def v_renewals(n):  # the date grove at harvest
     o.append(orb(n, 1380, 50, 24))
     o.append(f'<rect x="0" y="150" width="1600" height="90" fill="{p["sand2"]}"/>')
     for x in range(-20, 1640, 125): o.append(palm(x, 160, 70, .55, p, dates=False))
-    for x in range(20, 1640, 150):
+    for i, x in enumerate(range(20, 1640, 150)):
         if 640 < x < 960: continue
-        o.append(palm(x, 214, 130, 1.0, p))
+        o.append(mv(palm(x, 214, 130, 1.0, p), sway(x, 214, 1, 5.5 + i % 3, i * .7)) if x > 420 else palm(x, 214, 130, 1.0, p))
     lc = "#c8a46a" if not n else "#5a4a3a"
     o.append(palm(800, 218, 150, 1.15, p))
     o.append(f'<path d="M730 218 L776 92 M760 218 L800 92" stroke="{lc}" stroke-width="5"/>' + '<path d="' + ''.join(f'M{730 + k * 5.5:.0f} {218 - k * 15}h{30}' for k in range(1, 8)) + f'" stroke="{lc}" stroke-width="4"/>')
-    o.append(person(784, 124, .8, "#c8442a", p, arm=14))
+    o.append(mv(person(784, 124, .8, "#c8442a", p, arm=14), sway(784, 124, 4, 3)))
+    bc = "#6a4a40" if not n else "#c8cce0"
+    o.append(mv(bird(1080, 62, 1, bc) + bird(1110, 50, .8, bc) + bird(1136, 68, .7, bc), drift(60, -8, 10)))
     o.append(crates(880, 216, 4, 2, 26, "#d9822b", "#c76a22") + crates(980, 216, 2, 1, 26, "#d9822b", "#b85a1a"))
     o.append(person(600, 216, .85, "#2f7a8a", p, flip=True) + crates(520, 216, 2, 1, 26, "#d9822b", "#c76a22"))
     o.append(corners(p["soil2"]))
@@ -727,17 +734,21 @@ def v_claims(n):  # after the monsoon: a flooded field, the clouds breaking, the
         o.append(sun(1400, 36, 18, rays=False))
     else: o.append(moon(1400, 46, 18))
     cc = "#6a7486" if not n else "#262e46"
-    for x, y, w in ((120, 30, 360), (480, 20, 320), (800, 36, 260)):
-        o.append(f'<ellipse cx="{x}" cy="{y}" rx="{w // 2}" ry="30" fill="{cc}"/><ellipse cx="{x + 50}" cy="{y - 16}" rx="{w // 3}" ry="26" fill="{cc}"/>')
-    o.append('<path d="' + ''.join(f'M{x} {60 + (x % 3) * 6}l-10 34' for x in range(60, 900, 34)) + f'" stroke="{"#9aaabc" if not n else "#3a4660"}" stroke-width="2" opacity=".6"/>')
+    o.append(mv(''.join(f'<ellipse cx="{x}" cy="{y}" rx="{w // 2}" ry="30" fill="{cc}"/><ellipse cx="{x + 50}" cy="{y - 16}" rx="{w // 3}" ry="26" fill="{cc}"/>' for x, y, w in ((120, 30, 360), (480, 20, 320), (800, 36, 260))), drift(36, 0, 12)))
+    rc = "#9aaabc" if not n else "#3a4660"
+    o.append('<path d="' + ''.join(f'M{x} {60 + (x % 3) * 6}l-10 34' for x in range(60, 470, 34)) + f'" stroke="{rc}" stroke-width="2" opacity=".6"/>')
+    for k in range(2):   # two sheets of rain, half a beat apart, each falling and fading
+        o.append(f'<path d="' + ''.join(f'M{x} {60 + (x % 3) * 6}l-10 34' for x in range(468 + k * 34, 900, 68)) + f'" stroke="{"#9aaabc" if not n else "#3a4660"}" stroke-width="2" opacity=".6">'
+                 f'<animateTransform attributeName="transform" type="translate" values="0 0;-8 28" dur="1.6s" begin="{k * .8}s" repeatCount="indefinite"/>'
+                 f'<animate attributeName="opacity" values="0;.6;0" dur="1.6s" begin="{k * .8}s" repeatCount="indefinite"/></path>')
     o.append(jagged(-10, 1610, 150, 100, 140, p["mtn"], 26, (30, 70)))
     o.append(f'<rect x="0" y="146" width="1600" height="94" fill="{p["soil2"]}"/>')
     o.append(rows(0, 150, 1600, 240, 12, [p["green"], p["soil"]], 6, "18 6"))
     wc = "#a8c8d8" if not n else "#2a405a"
     for x, y, w in ((300, 196, 220), (760, 174, 300), (1240, 206, 260), (540, 222, 160), (1000, 214, 180)):
-        o.append(f'<ellipse cx="{x}" cy="{y}" rx="{w // 2}" ry="{w // 14}" fill="{wc}" opacity=".9"/><path d="M{x - w // 4} {y - 2}h{w // 6}" stroke="#fff" stroke-opacity=".6" stroke-width="2"/>')
+        o.append(f'<ellipse cx="{x}" cy="{y}" rx="{w // 2}" ry="{w // 14}" fill="{wc}" opacity=".9"/>' + mv(f'<path d="M{x - w // 4} {y - 2}h{w // 6}" stroke="#fff" stroke-opacity=".6" stroke-width="2"/>', drift(w // 5, 0, 4 + x % 3)))
     o.append(truck(540, 178, .8, "#e8e0d0" if not n else "#5a5a64", "#8a8a90", ("#5a5a64", "#5a5a64"), p, night=n, crates_=False))
-    o.append(person(820, 202, .85, "#f2b230", p, hat="#f2b230", arm=-6) + f'<path d="M840 170 L866 206" stroke="{p["wood"]}" stroke-width="4"/><path d="M860 200l14 10l-6 6l-14 -10z" fill="#8a8a90"/>')
+    o.append(mv(person(820, 202, .85, "#f2b230", p, hat="#f2b230", arm=-6) + f'<path d="M840 170 L866 206" stroke="{p["wood"]}" stroke-width="4"/><path d="M860 200l14 10l-6 6l-14 -10z" fill="#8a8a90"/>', sway(820, 202, 4, 2.6)))
     o.append(person(930, 204, .85, "#f2b230", p, flip=True, hat="#f2b230", arm=10))
     o.append(corners(p["soil2"]))
     return vwrap(''.join(o))
@@ -754,14 +765,16 @@ def v_commercial(n):  # the produce packing sheds and loading docks
     o.append(f'<rect x="290" y="160" width="1020" height="24" fill="{p["stone2"]}"/>')
     for i, x in enumerate(range(330, 1280, 120)):
         o.append(f'<rect x="{x}" y="100" width="84" height="60" fill="{"#ffd98a" if n else "#5a5a64"}" opacity="{.75 if n else 1}"/>')
-        if i % 3 != 1: o.append(f'<rect x="{x}" y="100" width="84" height="{30 + (i * 13) % 26}" fill="{"#b8b0a0" if not n else "#2e2e38"}"/>' + '<path d="' + ''.join(f'M{x} {104 + k * 8}h84' for k in range(3)) + '" stroke="#000" stroke-opacity=".15" stroke-width="2"/>')
-        if n and i % 3 == 1: o.append(f'<circle cx="{x + 42}" cy="140" r="54" fill="url(#glow)"/>')
+        dh = 30 + (i * 13) % 26
+        rl = f'<animate attributeName="height" values="{dh};56;56;{dh};{dh}" keyTimes="0;.2;.5;.7;1" dur="9s" repeatCount="indefinite"/>' if i == 3 else ''
+        if i % 3 != 1: o.append(f'<rect x="{x}" y="100" width="84" height="{dh}" fill="{"#b8b0a0" if not n else "#2e2e38"}">{rl}</rect>' + '<path d="' + ''.join(f'M{x} {104 + k * 8}h84' for k in range(3)) + '" stroke="#000" stroke-opacity=".15" stroke-width="2"/>')
+        if n and i % 3 == 1: o.append(mv(f'<circle cx="{x + 42}" cy="140" r="54" fill="url(#glow)"/>', pulse("1;.65;1", 3 + i * .3)))
     for x in (450, 1050):
         o.append(f'<rect x="{x - 64}" y="128" width="128" height="62" fill="{"#f2efe6" if not n else "#4a4a54"}"/><rect x="{x - 64}" y="186" width="128" height="8" fill="#3a3440"/><circle cx="{x - 40}" cy="198" r="10" fill="#2a2530"/><circle cx="{x + 40}" cy="198" r="10" fill="#2a2530"/>'
                  f'<path d="M{x - 64} 140h128" stroke="#2f7a8a" stroke-width="6"/>')
-    o.append(f'<g transform="translate(780 196)"><rect x="-30" y="-36" width="44" height="28" rx="3" fill="#f2b230"/><path d="M14 -60V-8M20 -60V-8" stroke="#3a3440" stroke-width="4"/><path d="M14 -14h30" stroke="#3a3440" stroke-width="4"/>'
-             f'<circle cx="-18" cy="-6" r="8" fill="#2a2530"/><circle cx="6" cy="-6" r="8" fill="#2a2530"/></g>' + crates(828, 184, 3, 2, 18, p["green"], "#8fc45a"))
-    for x in (100, 1500): o.append(palm(x, 190, 140, 1.0, p))
+    o.append(f'<g>{drift(-90, 0, 9)}<g transform="translate(780 196)"><rect x="-30" y="-36" width="44" height="28" rx="3" fill="#f2b230"/><path d="M14 -60V-8M20 -60V-8" stroke="#3a3440" stroke-width="4"/><path d="M14 -14h30" stroke="#3a3440" stroke-width="4"/>'
+             f'<circle cx="-18" cy="-6" r="8" fill="#2a2530"/><circle cx="6" cy="-6" r="8" fill="#2a2530"/></g></g>' + crates(828, 184, 3, 2, 18, p["green"], "#8fc45a"))
+    o.append(palm(100, 190, 140, 1.0, p) + mv(palm(1500, 190, 140, 1.0, p), sway(1500, 190, 1.2, 6)))
     o.append(corners(p["soil2"]))
     return vwrap(''.join(o))
 
