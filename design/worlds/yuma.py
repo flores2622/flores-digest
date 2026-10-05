@@ -179,20 +179,64 @@ def strap_door(x, y, w, h, iron, dark="#1a1612"):
             f'<path d="{"".join(d)}" stroke="{iron}" stroke-width="3.2"/><path d="M{x} {y + h}V{y + r}A{r} {r} 0 0 1 {x + w} {y + r}V{y + h}" fill="none" stroke="{iron}" stroke-width="4"/>')
 
 def tower(x, base, top, p, n, w0=84, w1=60):
-    """the guard tower: a tapered stone shaft, a timber lookout, a pyramid roof"""
-    lk = top + 52; o = []
-    o.append(f'<path d="M{x - w0 / 2} {base}L{x - w1 / 2} {lk + 10}L{x + w1 / 2} {lk + 10}L{x + w0 / 2} {base}Z" fill="{p["stone"]}"/>')
-    o.append(f'<path d="M{x + 6} {base}L{x + 4} {lk + 10}L{x + w1 / 2} {lk + 10}L{x + w0 / 2} {base}Z" fill="{p["stone2"]}" opacity=".7"/>')
+    """The old prison's guard tower as it stands (Frank, 2026-10-05: "make the Yuma prison more
+    recognizable"): a squat square stone guardhouse on the round stone water reservoir, an outside
+    stair up its side, the open timber lookout deck with its railing, a low hip roof and the flag."""
+    Hh = base - top; o = []
+    rf, dk, st = top + Hh * .17, top + Hh * .32, top + Hh * .77
+    rw = w0 * 1.75; sw = w0; dw = w0 * 1.25
+    stone, stone2, wood, wood2, iron = p["stone"], p["stone2"], p["wood"], p["wood2"], p["iron"]
     r = random.Random(int(x))
-    o.append('<path d="' + ''.join(f'M{x - w0 / 2 + 8 + r.randint(0, int(w0) - 22)} {r.randint(lk + 20, base - 10)}h{r.randint(8, 14)}' for _ in range(14)) + f'" stroke="{p["stone2"]}" stroke-width="4" stroke-linecap="round"/>')
-    o.append(f'<rect x="{x - w1 / 2 - 14}" y="{lk + 4}" width="{w1 + 28}" height="8" fill="{p["wood2"]}"/>')
-    o.append(f'<rect x="{x - w1 / 2 - 8}" y="{lk - 40}" width="{w1 + 16}" height="44" fill="{p["adobe"]}"/>')
-    if n: o.append(f'<circle cx="{x}" cy="{lk - 18}" r="70" fill="url(#glow)"/>')
-    for i in range(3):
-        wx = x - w1 / 2 - 2 + i * (w1 + 4) / 3
-        o.append(f'<rect x="{wx:.0f}" y="{lk - 32}" width="{(w1 + 4) / 3 - 6:.0f}" height="22" fill="{"#ffd27a" if n else "#3a3238"}"/>')
-    o.append(f'<path d="M{x - w1 / 2 - 18} {lk - 40}L{x} {top}L{x + w1 / 2 + 18} {lk - 40}Z" fill="{p["wood"]}"/><path d="M{x} {top}L{x + w1 / 2 + 18} {lk - 40}L{x + 6} {lk - 40}Z" fill="{p["wood2"]}" opacity=".6"/>')
-    o.append(f'<path d="M{x} {top}V{top - 22}" stroke="{p["iron"]}" stroke-width="3"/><path d="M{x} {top - 22}l20 5l-20 5Z" fill="#c8442a"/>')
+    # the reservoir: a low round stone drum with its banding
+    o.append(f'<path d="M{x - rw / 2:.0f} {base}V{st + 10:.0f}Q{x:.0f} {st - 14:.0f} {x + rw / 2:.0f} {st + 10:.0f}V{base}Z" fill="{stone}"/>')
+    o.append(f'<path d="M{x + rw * .1:.0f} {base}V{st + 2:.0f}Q{x + rw * .35:.0f} {st + 2:.0f} {x + rw / 2:.0f} {st + 10:.0f}V{base}Z" fill="{stone2}" opacity=".55"/>')
+    for k in range(1, 4):
+        yy = st + 10 + (base - st - 10) * k / 4
+        o.append(f'<path d="M{x - rw / 2:.0f} {yy:.0f}Q{x:.0f} {yy + 8:.0f} {x + rw / 2:.0f} {yy:.0f}" fill="none" stroke="{stone2}" stroke-width="2" opacity=".7"/>')
+        o.append('<path d="' + ''.join(f'M{x - rw / 2 + 8 + r.randint(0, int(rw) - 24)} {yy - (base - st) / 8:.0f}h{r.randint(8, 14)}' for _ in range(5)) + f'" stroke="{stone2}" stroke-width="3" stroke-linecap="round"/>')
+    o.append(f'<path d="M{x - rw / 2:.0f} {st + 10:.0f}Q{x:.0f} {st - 14:.0f} {x + rw / 2:.0f} {st + 10:.0f}" fill="none" stroke="{p["adobe2"]}" stroke-width="4"/>')
+    # the guardhouse: square stone, a dark door, block joints
+    o.append(f'<rect x="{x - sw / 2:.0f}" y="{dk:.0f}" width="{sw:.0f}" height="{st - dk + 4:.0f}" fill="{stone}"/>')
+    o.append(f'<rect x="{x + sw * .12:.0f}" y="{dk:.0f}" width="{sw * .38:.0f}" height="{st - dk + 4:.0f}" fill="{stone2}" opacity=".5"/>')
+    o.append('<path d="' + ''.join(f'M{x - sw / 2 + 6 + r.randint(0, int(sw) - 20)} {r.randint(int(dk) + 6, int(st) - 4)}h{r.randint(8, 14)}' for _ in range(8)) + f'" stroke="{stone2}" stroke-width="3" stroke-linecap="round"/>')
+    dh = (st - dk) * .45
+    o.append(f'<path d="M{x - sw * .14:.0f} {st + 4:.0f}V{st - dh:.0f}h{sw * .28:.0f}V{st + 4:.0f}Z" fill="{"#ffcf6a" if n else "#2a1e18"}"/>')
+    # the outside stair from the reservoir's rim up to the deck
+    o.append(f'<path d="M{x + rw / 2 - 4:.0f} {st + 8:.0f}L{x + sw / 2 + 2:.0f} {dk + 4:.0f}" stroke="{wood2}" stroke-width="{max(3, w0 * .07):.0f}"/>'
+             f'<path d="M{x + rw / 2 - 2:.0f} {st - 6:.0f}L{x + sw / 2 + 4:.0f} {dk - 10:.0f}" stroke="{wood}" stroke-width="2"/>')
+    # the open lookout: floor, corner posts, x-braced railing, the sky through it, a lantern
+    o.append(f'<rect x="{x - dw / 2:.0f}" y="{dk - 6:.0f}" width="{dw:.0f}" height="7" fill="{wood2}"/>')
+    for k in range(4):
+        px = x - dw / 2 + 2 + (dw - 7) * k / 3
+        o.append(f'<rect x="{px:.0f}" y="{rf:.0f}" width="5" height="{dk - rf:.0f}" fill="{wood}"/>')
+    ry = dk - (dk - rf) * .38
+    o.append(f'<path d="M{x - dw / 2:.0f} {ry:.0f}H{x + dw / 2:.0f}" stroke="{wood}" stroke-width="3"/>')
+    for k in range(3):
+        x0 = x - dw / 2 + (dw / 3) * k; x1 = x0 + dw / 3
+        o.append(f'<path d="M{x0:.0f} {ry:.0f}L{x1:.0f} {dk - 6:.0f}M{x1:.0f} {ry:.0f}L{x0:.0f} {dk - 6:.0f}" stroke="{wood}" stroke-width="1.6"/>')
+    if n:
+        o.append(f'<circle cx="{x}" cy="{(rf + dk) / 2:.0f}" r="{w0 * .9:.0f}" fill="url(#glow)"/><rect x="{x - 4}" y="{ry - 12:.0f}" width="8" height="10" fill="#ffd98a"/>')
+    # the low hip roof, eaves wide over the deck, and the flag
+    ew = dw * 1.22; ph = (rf - top) * .7
+    o.append(f'<path d="M{x - ew / 2:.0f} {rf + 4:.0f}L{x - ew * .18:.0f} {rf - ph:.0f}L{x + ew * .18:.0f} {rf - ph:.0f}L{x + ew / 2:.0f} {rf + 4:.0f}Z" fill="{wood}"/>'
+             f'<path d="M{x + ew * .04:.0f} {rf - ph:.0f}L{x + ew * .18:.0f} {rf - ph:.0f}L{x + ew / 2:.0f} {rf + 4:.0f}L{x + ew * .2:.0f} {rf + 4:.0f}Z" fill="{wood2}" opacity=".6"/>'
+             f'<rect x="{x - ew / 2:.0f}" y="{rf + 2:.0f}" width="{ew:.0f}" height="4" fill="{wood2}"/>')
+    fy = rf - ph; fl = max(10, (rf - top) * .55)
+    o.append(f'<path d="M{x} {fy:.0f}V{fy - fl:.0f}" stroke="{iron}" stroke-width="2.5"/><path d="M{x} {fy - fl:.0f}l{fl * .7:.0f} {fl * .18:.0f}l-{fl * .7:.0f} {fl * .18:.0f}Z" fill="#c8442a"/>')
+    return ''.join(o)
+
+def sally_port(x, base, w, h, p, n):
+    """the prison's main gate: an arched opening through the thick wall under a stepped parapet,
+    the heavy strap-iron gate across it"""
+    r = w * .34
+    o = [f'<path d="M{x - w / 2:.0f} {base}V{base - h:.0f}h{w * .2:.0f}v-8h{w * .6:.0f}v8h{w * .2:.0f}V{base}Z" fill="{p["adobe"]}"/>',
+         f'<path d="M{x + w * .1:.0f} {base}V{base - h:.0f}h{w * .3:.0f}V{base}Z" fill="{p["stone2"]}" opacity=".35"/>']
+    ax0, ax1, top = x - r, x + r, base - h * .78
+    o.append(f'<path d="M{ax0:.0f} {base}V{top + r:.0f}A{r:.0f} {r:.0f} 0 0 1 {ax1:.0f} {top + r:.0f}V{base}Z" fill="{"#3a2a1e" if not n else "#ffcf6a"}" opacity="{1 if not n else .55}"/>')
+    bars = ''.join(f'M{ax0 + 2 * r * i / 5:.0f} {top + (r * .45 if i in (1, 4) else (r * .1 if i in (2, 3) else r)):.0f}V{base}' for i in range(1, 5))
+    rails = ''.join(f'M{ax0:.0f} {top + r + (base - top - r) * j / 3:.0f}H{ax1:.0f}' for j in range(3))
+    o.append(f'<path d="{bars}{rails}" stroke="{p["iron"]}" stroke-width="3"/>'
+             f'<path d="M{ax0:.0f} {base}V{top + r:.0f}A{r:.0f} {r:.0f} 0 0 1 {ax1:.0f} {top + r:.0f}V{base}" fill="none" stroke="{p["stone"]}" stroke-width="5"/>')
     return ''.join(o)
 
 # ================================================================= the Digest picture
@@ -267,7 +311,8 @@ def skyline(night):
     for x in (60, 120, 180, 240): a(strap_door(x, 428, 34, 44, p["iron"], "#5a3a28" if n else "#2a1e18"))
     if n:
         for x in (60, 120, 180, 240): a(f'<path d="M{x + 4} 450h26v20h-26Z" fill="#ffcf6a" opacity=".55"/>')
-    a(tower(440, 476, 66, p, n))
+    a(sally_port(316, 476, 84, 96, p, n))
+    a(tower(450, 476, 66, p, n))
     a(palm(30, 600, 440, 1.25, p, lean=14))
     # the lane down from the bridge to the yard
     a(f'<path d="M548 506 Q506 540 548 572 Q590 604 580 640" fill="none" stroke="{p["yard2"]}" stroke-width="34" stroke-linecap="round"/>'
