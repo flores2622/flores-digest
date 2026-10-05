@@ -7671,6 +7671,13 @@ function flipLists() {
     const card = document.createElement("div"); card.className = "sect flipcard";
     card.style.setProperty("--fo", `${Math.max(0, Math.min(w, tr.left - vr.left - left + tr.width / 2))}px 30px`);
     list.remove(); card.appendChild(list); float.appendChild(card); view.appendChild(float);
+    // a wide list opens wider, as far as its table needs (up to 900px)
+    const need = Math.max(0, ...[...list.querySelectorAll("table")].map(t => { t.style.whiteSpace = "nowrap"; const x = t.scrollWidth; t.style.whiteSpace = ""; return x; })) + 44;
+    if (need > w) {
+      const w2 = Math.min(900, need, vr.width - 16), l2 = Math.max(8, Math.min(tr.left - vr.left, vr.width - w2 - 8));
+      float.style.width = w2 + "px"; float.style.left = l2 + "px";
+      card.style.setProperty("--fo", `${Math.max(0, Math.min(w2, tr.left - vr.left - l2 + tr.width / 2))}px 30px`);
+    }
     list.querySelectorAll("[data-ddrill-close], [data-sdrill-close], [data-drill-close]").forEach(a => { a.textContent = "▲ Front"; a.classList.add("flipfront"); });
     if (tile && tile.classList.contains("tile")) { tile.classList.remove("fliptile"); void tile.offsetWidth; tile.classList.add("fliptile"); }
     requestAnimationFrame(() => { const r = card.getBoundingClientRect(); if (r.bottom > innerHeight || r.top < 0) card.scrollIntoView({ block: "nearest", behavior: "smooth" }); });
