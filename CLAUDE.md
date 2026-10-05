@@ -2014,10 +2014,12 @@ repaint clears the list).
   bubbles, the map's labels, REPAIR SHOP), LEVEL CLEARED / CONTINUE? / GAME OVER ...)
   and **Phoenix** (Archivo / Inter; Valley Sunset, Copper, Monsoon -- the
   Digest is ONE place (Frank, 2026-10-05, of the canal, light rail and
-  string lights: "none of this makes sense, restart"): a desert garden
-  overlook at sunset looking across the Valley at the camel mountain and
-  downtown, the podium on the garden's flagstone patio behind a low adobe
-  wall lined with luminarias (lit at night), saguaros, palo verdes,
+  string lights: "none of this makes sense, restart"): Papago Park at sunset
+  (then "can we make it specifically something from phoenix?"): the red
+  sandstone buttes either side, the big one with its hole framing the sun
+  (the moon at night), the camel-shaped mountain and downtown across the
+  Valley between them, the podium on a smooth red-rock slab at the end of
+  the trail, the little white pyramid on its knoll, saguaros, palo verdes,
   ocotillo and agave framing both sides; Session History is a desert drive-in, the big screen
   replaying a call to a row of cars under a DRIVE-IN marquee -- Frank,
   2026-10-05: "make this a drive in theatre, not a motel" -- FIREWORKS /
