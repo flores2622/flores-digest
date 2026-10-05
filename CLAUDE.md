@@ -1950,7 +1950,22 @@ repaint clears the list).
   settings? by cities, sports, etc."): Cities (Phoenix, Yuma), Sports (Game
   Day, Golf), Outdoors (Desert / Old West, Ocean, Mountain), Fun (Space,
   Retro Arcade) -- each module's `CATEGORY`, written into `WORLD_GROUP` by
-  build.py, the desert's set inline; a world with none lands under More. **Space** is the
+  build.py, the desert's set inline; a world with none lands under More. Each
+  group folds ("make them dropdowns or expandable, i want to consolidate";
+  the current world's group opens itself). **Preferences** (Frank, 2026-10-05,
+  settings 1-4) is one more fold under the looks: the page a NEW tab opens on
+  (a refresh still reopens where you were), **Open on just me** for a
+  producer (`ME.producer` becomes the producer filter), **Text size**
+  (Compact .9 / Comfortable / Large 1.12 / Larger 1.25 -- the type is px, so
+  `.main` is zoomed; `flipLists` and `ppPlace` divide their screen positions
+  by `pageZoom()`), **Motion** (Match my device / Full / Reduced -- reduced
+  turns off every animation and transition and the confetti) and **Sale
+  alerts** (a toast at the top right and a two-note chime when a producer's
+  live policy count rises between refreshes; the tab's first live read only
+  sets the starting point, `sale-seen-<day>`). They are kept per login by the
+  Worker's `/api/prefs` (R2 `prefs/<email>.json`, known keys only, checked),
+  with the world, look and mode, and in this browser (`board-prefs`) so they
+  apply at once. **Space** is the
   second world: Space Grotesk at 700 for headings and tile numbers, IBM
   Plex Sans at 500 for text; looks Mission Control (cool grey, launch
   orange), Deep Field (indigo / violet) and Mars (rust), each with its

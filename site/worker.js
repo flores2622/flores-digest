@@ -137,6 +137,14 @@ export default {
         return whoAmI(request, env);
       }
 
+      // Each person's own Settings, kept per login (Frank, 2026-10-05: settings 1-4 -- start page and "just
+      // me", reduce motion, text size, sale alerts -- plus the world and look, so they follow a person from
+      // computer to phone).
+      if (parts[1] === "prefs" && parts.length === 2) {
+        if (request.method === "GET") return prefsGet(request, env);
+        if (request.method === "POST") return prefsPost(request, env);
+      }
+
       // Coeus, the board's assistant (Frank, 2026-10-01): site/coeus.js.
       // Who may see what is decided there from the same identity helpers
       // the rest of this Worker uses.
@@ -1638,6 +1646,40 @@ function identityOf(request, env) {
 }
 function whoAmI(request, env) {
   return json(identityOf(request, env));
+}
+
+/* A person's Settings: one small file per login, prefs/<email>.json. Only the
+ * known keys are kept, each checked, so nothing else can be stored there. */
+const PREF_CHECK = {
+  start: (v) => typeof v === "string" && /^[a-z]{0,20}$/.test(v),
+  me: (v) => typeof v === "boolean",
+  motion: (v) => ["auto", "reduce", "full"].includes(v),
+  size: (v) => ["compact", "comfortable", "large", "larger"].includes(v),
+  alerts: (v) => typeof v === "boolean",
+  sound: (v) => typeof v === "boolean",
+  theme: (v) => typeof v === "string" && /^[a-z]{1,20}$/.test(v),
+  look: (v) => typeof v === "string" && /^[a-z0-9-]{1,30}$/.test(v),
+  mode: (v) => ["light", "dark", "system"].includes(v),
+};
+function prefsKey(request) {
+  const email = identityOf(request).email;
+  return /^[^@\s/]+@[^@\s/]+$/.test(email) ? `prefs/${email}.json` : "";
+}
+async function prefsGet(request, env) {
+  const key = prefsKey(request);
+  if (!key) return json({ prefs: {} });
+  const obj = await env.BOARD.get(key);
+  return json({ prefs: obj ? await obj.json() : {} });
+}
+async function prefsPost(request, env) {
+  const key = prefsKey(request);
+  if (!key) return json({ error: "not signed in" }, 401);
+  let body;
+  try { body = await request.json(); } catch (_) { return json({ error: "bad request body" }, 400); }
+  const prefs = {};
+  for (const [k, ok] of Object.entries(PREF_CHECK)) if (body && k in body && ok(body[k])) prefs[k] = body[k];
+  await env.BOARD.put(key, JSON.stringify(prefs), { httpMetadata: { contentType: "application/json" } });
+  return json({ prefs });
 }
 
 /* The editions' shared state (Frank, 2026-10-01): reactions, comments, poll
