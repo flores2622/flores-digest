@@ -2028,7 +2028,9 @@ repaint clears the list).
   leaderboard shows them -- "the endzone letters are not angled and cant even
   read them" -- BUNDLE UP / NO LAPSE ZONE on the wall, a GET COVERED blimp,
   Texts & Emails' "the press box: every text and email answered") and goalposts in perspective on their end lines ("angle the field
-  goals", `goalpost_persp`),
+  goals", `goalpost_persp`), and the field ending on the NEAR sideline, 53 yards in
+  perspective, with the apron beyond it ("make it proportionate and end on
+  the opposite sideline instead of infinity field"; `YN`),
   TOUCHDOWN / 1ST & 10 / TURNOVER ...), **Retro Arcade** (Orbitron / Exo 2;
   Synthwave, 8-Bit, Pinball -- the neon pixel city and HIGH SCORES, the grid
   floor between rows of cabinets; electric blue where it was pink -- Frank,
