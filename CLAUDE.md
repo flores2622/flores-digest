@@ -741,6 +741,16 @@ and anything without the glow is the checkpoint's (Frank, 2026-09-24).
   headers (`server` says whose firewall), the first of the body, and the
   address Cloudflare sent it from -- in `worker-private/az_log/<day>.json`
   (`flushAzLog`, once per run). Read that before guessing why it refused.
+  **One request at a time, and a 429 pauses too** (2026-10-05): the
+  even-minute parts read policies, leads and the producers' tasks in
+  parallel, a burst of ten-odd requests in one second; AgencyZoom's
+  firewall answered 429 "Too Many API Calls" every few minutes from 9 AM
+  (99 that day), the Worker came back every two minutes, and from ~3 PM it
+  got 403 -- sales, households sold and quotes stopped glowing -- while the
+  same saved token still answered 200 from the nightly's machine on both
+  hosts. `azGet` now queues every request `AZ_GAP_MS` (400 ms) apart and a
+  429 pauses AgencyZoom for `AZ_BUSY_MINUTES` (5, or its Retry-After); a
+  403 still pauses 30.
 - **Contact rate, live contacts and Avg Talk Time are live too** (Frank,
   2026-09-28: "avg talk time, contact rate, and texts and emails should all
   be live as well"), and they are PROVISIONAL: the Worker cannot hear a
