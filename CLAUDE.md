@@ -1980,7 +1980,11 @@ repaint clears the list).
   read leg's direction / length / start, an R2 day file, matched by direction and length) and that call's
   outcome. The board's top-right pills become "Call 1 · 10:21 AM · 4m 12s · Quoted ..." / "Call 2 · 3:32 PM ·
   ... · Sold on the call · call back", and Coeus reads them as `each_call`. New reads only (cards are not
-  re-read); a card without `legs` keeps the per-row pills above.
+  re-read) -- **except the multi-call cards before it, which Frank asked for** (2026-10-05: "are you able to
+  re-read only multiple call cards?" ... "yes set it up and run it"): `python3 legs_backfill.py --backfill
+  2026-09-01` asks one short question per card with two or more call headers (8 in 09-01..10-02) and adds ONLY
+  `legs`, clock times from R2's saved transcripts and RC log (backups under `backups/<today>-legs-backfill/`).
+  A card without `legs` keeps the per-row pills above.
 - **The search is all-time** (Frank, 2026-10-02: "can it just be a
   universal all time search?") **and a lead opens its coaching card, never
   AgencyZoom** ("the link is on the coaching card if they want to go
