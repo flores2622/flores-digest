@@ -615,7 +615,8 @@ def v_training(n):  # a sunrise run on the levee trail along the floodway
     def strider(x, y, s_, c, ph):
         sw = lambda v: f'<animate attributeName="opacity" values="{v}" keyTimes="0;.5;1" calcMode="discrete" dur=".5s" repeatCount="indefinite"/>'
         return (f'<g>{runner(x, y, s_, c, ph=ph)}{sw("1;0;1")}</g><g opacity="0">{runner(x, y, s_, c, ph=1 - ph)}{sw("0;1;0")}</g>')
-    for grp, (dx0, dx1, dur) in (((740, 202, .9, "#e2552b", 0), (820, 200, .9, "#2f6aa8", 1)), (-220, 300, 11)), (((1010, 199, .75, "#5a9a4a", 0),), (-200, 240, 12))):
+    runs = ((((740, 202, .9, "#e2552b", 0), (820, 200, .9, "#2f6aa8", 1)), (-220, 300, 11)), (((1010, 199, .75, "#5a9a4a", 0),), (-200, 240, 12)))
+    for grp, (dx0, dx1, dur) in runs:
         o.append(f'<g><animateTransform attributeName="transform" type="translate" values="{dx0} 0;{dx1} 0" dur="{dur}s" repeatCount="indefinite"/>'
                  f'<animate attributeName="opacity" values="0;1;1;0" keyTimes="0;.1;.88;1" dur="{dur}s" repeatCount="indefinite"/>'
                  '<g><animateTransform attributeName="transform" type="translate" values="0 0;0 -3;0 0" dur=".5s" repeatCount="indefinite"/>' + ''.join(strider(*r_) for r_ in grp) + '</g></g>')
@@ -773,23 +774,32 @@ def v_renewals(n):  # a field of bluebonnets in spring
 def v_claims(n):  # after the hailstorm: dented cars in the lot, hail on the ground, the crew
     p = P(n); o = [vbase(n, ("#4a5068", "#8a94aa", "#e8dcc0"), ("#05070f", "#121828", "#2a2c40"), 20)]
     cc = "#3a4058" if not n else "#1a2034"
-    for x, y, w in ((140, 30, 420), (480, 18, 400), (780, 36, 300)):
-        o.append(f'<ellipse cx="{x}" cy="{y}" rx="{w // 2}" ry="34" fill="{cc}"/><ellipse cx="{x + 60}" cy="{y - 14}" rx="{w // 3}" ry="30" fill="{cc}"/>')
+    for i, (x, y, w) in enumerate(((140, 30, 420), (480, 18, 400), (780, 36, 300))):
+        o.append(('<g>' + drift(26 + i * 10, 9 + i * 2) if i else '') + f'<ellipse cx="{x}" cy="{y}" rx="{w // 2}" ry="34" fill="{cc}"/><ellipse cx="{x + 60}" cy="{y - 14}" rx="{w // 3}" ry="30" fill="{cc}"/>' + ('</g>' if i else ''))
     o.append('<path d="' + ''.join(f'M{x} {64 + (x % 3) * 8}l-8 30' for x in range(40, 760, 30)) + f'" stroke="{"#c8d0e0" if not n else "#4a5470"}" stroke-width="2" opacity=".6"/>')
-    if not n: o.append(sun(1420, 50, 20) + '<path d="M1120 40L1600 0V140Z" fill="#fff8dc" opacity=".15"/>')
+    if not n: o.append(sun(1420, 50, 20) + '<path d="M1120 40L1600 0V140Z" fill="#fff8dc" opacity=".15"><animate attributeName="opacity" values=".15;.05;.2;.15" keyTimes="0;.4;.75;1" dur="6s" repeatCount="indefinite"/></path>')
     else: o.append(moon(1420, 56, 18))
     o.append(mini_skyline(1240, 140, .4, "#6a6e86" if not n else "#151a2e", n, p, lit=n))
     o.append(f'<rect x="0" y="136" width="1600" height="104" fill="{"#6a6a72" if not n else "#1e1e26"}"/>')
     o.append('<path d="' + ''.join(f'M{x} 150l-30 70' for x in range(200, 1500, 150)) + '" stroke="#fff" stroke-opacity=".4" stroke-width="3"/>')
     o.append(''.join(f'<ellipse cx="{x}" cy="{y}" rx="{w}" ry="6" fill="{"#9aa8c0" if not n else "#2a3450"}" opacity=".8"/>' for x, y, w in ((380, 214, 70), (1000, 222, 60), (760, 208, 40))))
+    # rings spreading on the puddles
+    o.append(''.join(f'<ellipse cx="{x}" cy="{y}" rx="4" ry="1.5" fill="none" stroke="#fff" stroke-width="1.5" opacity="0"><animate attributeName="rx" values="4;{w * .8:.0f}" dur="2.5s" begin="{b}s" repeatCount="indefinite"/>'
+                     f'<animate attributeName="ry" values="1.5;5" dur="2.5s" begin="{b}s" repeatCount="indefinite"/><animate attributeName="opacity" values=".8;0" dur="2.5s" begin="{b}s" repeatCount="indefinite"/></ellipse>'
+                     for x, y, w, b in ((1000, 222, 60, 0), (760, 208, 40, 1.2), (1020, 223, 60, 1.6))))
     for x, c in ((470, "#c8442a"), (700, "#2f6aa8"), (930, "#e8e2d6")):
         o.append(car(x, 196, 2.4, c, 0, n))
         o.append('<path d="' + ''.join(f'M{x + dx} {yy}h0' for dx, yy in ((-30, 158), (-6, 156), (16, 160), (40, 166), (-40, 170), (24, 152))) + '" stroke="#000" stroke-opacity=".28" stroke-width="5" stroke-linecap="round"/>')
     o.append(f'<path d="M694 152L702 162L696 168L706 176" stroke="#fff" stroke-width="1.5" fill="none" opacity=".8"/>')
+    # meltwater dripping off the roofs
+    o.append(''.join(f'<circle cx="{x}" cy="{y}" r="2.2" fill="{"#dfe8f6" if not n else "#8a96b4"}" opacity="0"><animateTransform attributeName="transform" type="translate" values="0 0;0 0;0 {196 - y}" keyTimes="0;.6;1" dur="{d}s" repeatCount="indefinite" calcMode="spline" keySplines="0 0 1 1;.5 0 1 1"/>'
+                     f'<animate attributeName="opacity" values="0;.9;.9;0" keyTimes="0;.15;.95;1" dur="{d}s" repeatCount="indefinite"/></circle>' for x, y, d in ((436, 178, 2.6), (742, 176, 3.2), (962, 180, 2.9))))
     r = random.Random(6)
     o.append('<path d="' + ''.join(f'M{r.randint(60, 1500)} {r.randint(150, 236)}h0' for _ in range(90)) + f'" stroke="{"#f4f6fa" if not n else "#aab4cc"}" stroke-width="4" stroke-linecap="round"/>')
     o.append(person(1110, 214, .95, "#f2b230", hat="#f4f0e4", flip=True, arm=12) + f'<rect x="1088" y="168" width="14" height="18" fill="#f4f0e4" stroke="#5a4a3a" stroke-width="1.5"/>')
-    o.append(person(1190, 216, .95, "#f2b230", hat="#2a2a30", arm=4))
+    # the crew lead points at the damage, then drops his arm
+    sw = lambda v: f'<animate attributeName="opacity" values="{v}" keyTimes="0;.5;1" calcMode="discrete" dur="4s" repeatCount="indefinite"/>'
+    o.append(f'<g>{person(1190, 216, .95, "#f2b230", hat="#2a2a30", arm=4)}{sw("1;0;1")}</g><g opacity="0">{person(1190, 216, .95, "#f2b230", hat="#2a2a30", arm=34)}{sw("0;1;0")}</g>')
     o.append(corners("#18181e"))
     return vwrap(''.join(o))
 
@@ -803,10 +813,22 @@ def v_commercial(n):  # the glass office towers at noon
     for x0, x1, t in ((120, 260, 70), (300, 420, 40), (1180, 1310, 50), (1340, 1480, 86)):
         o.append(f'<rect x="{x0}" y="{t}" width="{x1 - x0}" height="{240 - t}" fill="{G2}"/><rect x="{x0}" y="{t}" width="{x1 - x0}" height="{240 - t}" fill="url(#wn)"/>')
     o.append(f'<path d="M500 240V70L580 30V240Z" fill="{G3}"/><path d="M580 30L660 90V240H580Z" fill="{G}"/><path d="M500 240V70L580 30V240Z" fill="url(#wn)"/><path d="M580 30L660 90V240H580Z" fill="url(#wn)"/>')
-    o.append(argon_tower(720, 860, 34, 240, p, n, G, 20, n) + f'<rect x="720" y="34" width="140" height="206" fill="url(#wn)"/>')
+    o.append(argon_tower(720, 860, 34, 240, p, n, G, 20, n, anim=True) + f'<rect x="720" y="34" width="140" height="206" fill="url(#wn)"/>')
     o.append(spire_tower(930, 1080, 70, 26, 240, G, G2) + f'<rect x="930" y="70" width="150" height="170" fill="url(#wn)"/>')
+    o.append(f'<circle cx="1005" cy="4" r="3" fill="#ff3a3a">' + ('<animate attributeName="opacity" values="1;1;.1;1" keyTimes="0;.5;.65;1" dur="2s" repeatCount="indefinite"/>') + '</circle>')
     if not n:
-        o.append('<path d="M500 140L580 100V130L500 170Z M720 120L790 80V110L720 150Z M930 150L1005 110V140L930 180Z" fill="#fff" opacity=".28"/>')
+        # the sun's glare slides down the glass
+        o.append('<path d="M500 140L580 100V130L500 170Z M720 120L790 80V110L720 150Z M930 150L1005 110V140L930 180Z" fill="#fff" opacity=".28">'
+                 '<animateTransform attributeName="transform" type="translate" values="0 0;0 26;0 0" dur="10s" repeatCount="indefinite" calcMode="spline" keySplines=".45 0 .55 1;.45 0 .55 1"/>'
+                 '<animate attributeName="opacity" values=".28;.12;.28" dur="10s" repeatCount="indefinite"/></path>')
+        o.append('<g>' + drift(-70, 12) + cloud(1300, 22, 200, "#fff", .55) + '</g>')
+    # the window washers' gondola working down and back up the tower
+    sp = 'calcMode="spline" keySplines=".45 0 .55 1;.45 0 .55 1" dur="12s" repeatCount="indefinite"'
+    o.append(f'<path d="M1206 50h12M1272 50h12" stroke="#2a2a32" stroke-width="4"/>'
+             + ''.join(f'<line x1="{cx}" y1="50" x2="{cx}" y2="110" stroke="#2a2a30" stroke-width="1.2"><animate attributeName="y2" values="110;170;110" {sp}/></line>' for cx in (1212, 1278))
+             + f'<g><rect x="1204" y="110" width="82" height="10" fill="#e2a33a"/><path d="M1204 110V100H1286V110" fill="none" stroke="#2a2a30" stroke-width="2"/>'
+             + person(1230, 110, .4, "#2f6aa8", hat=None) + person(1260, 110, .4, "#c8442a", hat=None, arm=30)
+             + f'<animateTransform attributeName="transform" type="translate" values="0 0;0 60;0 0" {sp}/></g>')
     o.append(f'<rect x="0" y="200" width="1600" height="40" fill="{"#c8c2b6" if not n else "#1a1a22"}"/>')
     for x in (440, 700, 900, 1120): o.append(f'<rect x="{x - 26}" y="192" width="52" height="12" fill="{p["conc2"]}"/><circle cx="{x}" cy="180" r="18" fill="{p["oak"]}"/>')
     o.append(corners("#10141e"))

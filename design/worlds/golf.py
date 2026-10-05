@@ -512,11 +512,12 @@ def v_messages(n):  # the starter's shack and the scoreboard
     for i, d in enumerate([f"M{bx + 380} 70 q14 -14 30 0", f"M{bx + 372} 58 q22 -24 46 0"]):
         o.append(f'<path d="{d}" fill="none" stroke="#fff" stroke-width="3" opacity=".7"><animate attributeName="opacity" values=".15;.9;.15;.15" keyTimes="0;{.2 + i * .25};{.5 + i * .25};1" dur="2.4s" repeatCount="indefinite"/></path>')
     # a cart rolls along the path below the board
-    o.append(f'<g>{cart(880, 228, .62, label="ON PAR")}<animateTransform attributeName="transform" type="translate" values="180 0;-200 0" dur="12s" repeatCount="indefinite"/>'
-             '<animate attributeName="opacity" values="0;1;1;0" keyTimes="0;.12;.88;1" dur="12s" repeatCount="indefinite"/></g>')
+    rolling = (f'<g>{cart(880, 228, .62, label="ON PAR")}<animateTransform attributeName="transform" type="translate" values="180 0;-200 0" dur="12s" repeatCount="indefinite"/>'
+               '<animate attributeName="opacity" values="0;1;1;0" keyTimes="0;.12;.88;1" dur="12s" repeatCount="indefinite"/></g>')
     o.append(flyers(n, [(1260, 60, 1, -110, 12), (1290, 48, .8, -110, 12)]) + twinkle(n, seed=32))
     o.append(edge_trees(p))
     o.append(corners(p, n))
+    o.append(rolling)
     return vwrap(''.join(o))
 
 def v_coaching(n):  # the practice range, a pro coaching a player
@@ -682,7 +683,7 @@ def v_service(n):  # the greenskeepers keeping the course
     o.append(bunker(900, 196, 90, 20, p))
     o.append(golfer(930, 200, 1.0, "stand", "#e9c75a", "#3a4a3a", cap="#e9c75a", skin=p["skin"]).replace('<line x1="12" y1="-34" x2="18" y2="0" stroke="#c9ccd2" stroke-width="2.4"/>', ''))
     o.append(f'<g><line x1="942" y1="166" x2="880" y2="204" stroke="{p["wood"]}" stroke-width="4"/><path d="M866 200 L894 208" stroke="#7a7a7a" stroke-width="5"/>'
-             f'<animateTransform attributeName="transform" type="translate" values="0 0;-14 2;0 0" dur="2.4s" {SP2} repeatCount="indefinite"/></g>')
+             f'<animateTransform attributeName="transform" type="rotate" values="-5 942 166;6 942 166;-5 942 166" dur="2.4s" {SP2} repeatCount="indefinite"/></g>')
     for k in range(4): o.append(f'<path d="M840 {196 + k * 4} q30 -4 60 0" stroke="{p["sand2"]}" stroke-width="1.5" fill="none"/>')
     # changing the cup on the green
     o.append(f'<ellipse cx="1110" cy="174" rx="120" ry="20" fill="{p["green"]}"/>' + wflag(1080, 172, 40, p["flag"]))

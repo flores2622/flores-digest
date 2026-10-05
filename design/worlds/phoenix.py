@@ -579,7 +579,7 @@ def v_roleplay(n):  # a spring-training ballpark
     for x, y in [(800, 160), (622, 190), (978, 190)]: o.append(f'<rect x="{x - 5}" y="{y - 5}" width="10" height="10" fill="#fff" transform="rotate(45 {x} {y})"/>')
     o.append(person(800, 196, 1.1, "#fff", pants="#ddd") + person(700, 186, .9, "#fff", pants="#ddd", skin="#8a5a3a") + person(905, 182, .9, "#fff", pants="#ddd", arm=40))
     # playing catch over the mound
-    o.append('<circle cx="893" cy="146" r="3.4" fill="#fff" stroke="#c43a4a" stroke-width=".8">'
+    o.append('<circle cx="893" cy="146" r="4.2" fill="#fff" stroke="#c43a4a" stroke-width=".8">'
              '<animateMotion path="M0 0Q-92 -70 -184 4Q-92 -50 0 0" dur="3.4s" repeatCount="indefinite"/></circle>')
     # scoreboard and lights
     o.append('<rect x="680" y="34" width="240" height="70" rx="4" fill="#1d2a3a"/><rect x="796" y="104" width="8" height="16" fill="#1d2a3a"/>'
@@ -599,7 +599,7 @@ def v_rphistory(n):  # a desert drive-in, the screen replaying a call (Frank, 20
     # the lot
     o.append(f'<rect x="0" y="184" width="1600" height="56" fill="{"#100c1a" if n else "#8a5a5a"}"/>')
     o.append(saguaro(1440, 188, 70, "#0f1a14" if n else "#3f6a3a") + saguaro(300, 188, 46, "#0f1a14" if n else "#3f6a3a"))
-    o.append(palm(1560, 200, 150, "#120c1e" if n else "#6a4a3a", "#0f1a14" if n else "#3f7a3a"))
+    o.append(rock(palm(1560, 200, 150, "#120c1e" if n else "#6a4a3a", "#0f1a14" if n else "#3f7a3a"), 1560, 200, 1.4, 6))
     # the screen on its lattice frame
     fr = "#2a2238" if n else "#5a4a5e"
     for x in (790, 1150):
@@ -612,12 +612,16 @@ def v_rphistory(n):  # a desert drive-in, the screen replaying a call (Frank, 20
     ink = "#3a3050"
     o.append(f'<circle cx="880" cy="86" r="14" fill="{ink}"/><path d="M856 126q24 -30 48 0z" fill="{ink}"/>'
              f'<circle cx="1060" cy="86" r="14" fill="{ink}"/><path d="M1036 126q24 -30 48 0z" fill="{ink}"/>'
-             '<path d="M906 62h52a6 6 0 0 1 6 6v14a6 6 0 0 1 -6 6h-36l-10 8v-8h-6a6 6 0 0 1 -6 -6v-14a6 6 0 0 1 6 -6z" fill="#e8662a"/>'
-             '<path d="M984 70h52a6 6 0 0 1 6 6v14a6 6 0 0 1 -6 6h-6v8l-10 -8h-36a6 6 0 0 1 -6 -6v-14a6 6 0 0 1 6 -6z" fill="#2f8a8a"/>'
-             '<rect x="790" y="134" width="360" height="4" rx="2" fill="#b8b0c8"/><rect x="790" y="134" width="230" height="4" rx="2" fill="#e8662a"/>'
-             '<circle cx="1020" cy="136" r="6" fill="#e8662a"/>')
+             # the two speak in turn while the replay bar runs
+             '<path d="M906 62h52a6 6 0 0 1 6 6v14a6 6 0 0 1 -6 6h-36l-10 8v-8h-6a6 6 0 0 1 -6 -6v-14a6 6 0 0 1 6 -6z" fill="#e8662a">'
+             + anim("opacity", [1, 1, .15, .15, 1], 4, ease=False) + '</path>'
+             '<path d="M984 70h52a6 6 0 0 1 6 6v14a6 6 0 0 1 -6 6h-6v8l-10 -8h-36a6 6 0 0 1 -6 -6v-14a6 6 0 0 1 6 -6z" fill="#2f8a8a">'
+             + anim("opacity", [.15, .15, 1, 1, .15], 4, ease=False) + '</path>'
+             '<rect x="790" y="134" width="360" height="4" rx="2" fill="#b8b0c8"/><rect x="790" y="134" width="230" height="4" rx="2" fill="#e8662a">'
+             + anim("width", [10, 360], 12, ease=False) + '</rect><circle cx="1020" cy="136" r="6" fill="#e8662a">' + anim("cx", [800, 1150], 12, ease=False) + '</circle>')
     # the projection booth and its beam
-    o.append(f'<path d="M560 176L768 46L768 146Z" fill="#fff6d6" opacity="{.22 if n else .1}"/>')
+    bo = .22 if n else .1
+    o.append(f'<path d="M560 176L768 46L768 146Z" fill="#fff6d6" opacity="{bo}">{anim("opacity", [bo, bo * 1.5, bo * .7, bo * 1.3, bo], 2.6, ease=False)}</path>')
     o.append(f'<rect x="500" y="160" width="80" height="30" fill="{"#2a2240" if n else "#e8c8a8"}"/><rect x="494" y="154" width="92" height="8" fill="{"#1c1630" if n else "#3a7a8a"}"/>'
              f'<rect x="556" y="170" width="12" height="9" fill="{"#fff2c0" if n else "#5a7a9a"}"/>')
     # cars facing the screen, speaker posts between them, tail lights at night
@@ -642,7 +646,8 @@ def v_rphistory(n):  # a desert drive-in, the screen replaying a call (Frank, 20
 
 def v_training(n):  # a hiker on the switchbacks up the camel mountain
     o = [vsky(n, ("#f08a5a", "#ffc48a", "#ffe8c4"), NITE)]
-    o.append(stars(50, 1600, 0, 120, 6) if n else '<circle cx="1260" cy="70" r="90" fill="url(#sn)"/><circle cx="1260" cy="70" r="30" fill="#fff3c4"/>')
+    o.append(stars(50, 1600, 0, 120, 6) + glint([(1000, 30), (1420, 90), (1530, 24)]) if n
+             else f'<circle cx="1260" cy="70" r="90" fill="url(#sn)">{anim("r", [90, 100, 90], 6)}</circle><circle cx="1260" cy="70" r="30" fill="#fff3c4"/>')
     if n: o.append('<circle cx="1260" cy="60" r="24" fill="#f6efd8"/>')
     o.append(camel(240, 250, 1100, 240, "#2a2040" if n else "#b5707a"))
     o.append(camel(240, 250, 1100, 240, "#000", ' opacity=".08" transform="translate(30 0)"'))
@@ -656,10 +661,14 @@ def v_training(n):  # a hiker on the switchbacks up the camel mountain
         o.append(f'<ellipse cx="{x}" cy="{y}" rx="{r.randint(6, 14)}" ry="{r.randint(3, 7)}" fill="{"#1a1430" if n else "#7a4a5a"}" opacity=".7"/>')
     # a trail sign at the bottom and the hiker mid-way
     hx, hy = 604, 165
-    o.append(f'<rect x="{hx - 12}" y="{hy - 46}" width="10" height="20" rx="3" fill="#e8662a"/>')
-    o.append(person(hx, hy, .95, "#2f8a8a", pants="#5a4a3a"))
-    o.append(f'<line x1="{hx + 12}" y1="{hy - 30}" x2="{hx + 20}" y2="{hy + 2}" stroke="#555" stroke-width="2"/><path d="M{hx - 8} {hy - 60}h16l-2 -5h-12z" fill="#d6b13a"/>')
-    o.append('<rect x="858" y="12" width="3" height="20" fill="#eee"/>' if False else '')
+    # the hiker climbs a few steps up the switchback and back (the stride a small bob)
+    hk = (f'<rect x="{hx - 12}" y="{hy - 46}" width="10" height="20" rx="3" fill="#e8662a"/>' + person(hx, hy, .95, "#2f8a8a", pants="#5a4a3a")
+          + f'<line x1="{hx + 12}" y1="{hy - 30}" x2="{hx + 20}" y2="{hy + 2}" stroke="#555" stroke-width="2"/><path d="M{hx - 8} {hy - 60}h16l-2 -5h-12z" fill="#d6b13a"/>')
+    o.append(f'<g>{hk}{tfm("translate", ["0 0", "9 -3", "18 -2", "27 -5", "18 -2", "9 -3", "0 0"], 8)}</g>')
+    # the summit flag waving, a hawk circling the mountain
+    o.append(f'<rect x="866" y="2" width="3" height="22" fill="{"#c9b8c8" if n else "#5a3a3a"}"/><path d="M869 3h20l-6 5l6 5h-20z" fill="#e8662a">{tfm("skewY", ["0", "8", "0", "-6", "0"], 2.6)}</path>')
+    o.append('<g>' + birds([(0, 0)], "#3a2242" if not n else "#c9b8d8", 1.3)
+             + '<animateMotion path="M1060 60a110 34 0 1 0 220 0a110 34 0 1 0 -220 0" dur="10s" repeatCount="indefinite"/></g>')
     o.append(shade())
     return wrap(V, ''.join(o))
 

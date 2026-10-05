@@ -484,7 +484,7 @@ def v_roleplay(n):  # versus screen
         o.append('<path d="M820 0L760 240" stroke="#fff" stroke-width="6"/>')
         o.append(G(hero(560, 52, 11), bob(0, -6, 1.4)))
         o.append(G(hero(960, 52, 11, {'h': "#3df2ff", 'b': "#ff7a1a", 'v': "#4f98ff"}), bob(0, -6, 1.4, .7)))
-        o.append(G(label(790, 70, "VS", 10, "#ffd23f"), blink("1;.55;1", 2.4)))
+        o.append(G(label(790, 70, "VS", 10, "#ffd23f"), blink("1;.7;1", 2.4)))
         o.append(ptext("PLAYER 1", 400, 112, 5, "#fff", "middle"))
         o.append(f'<g>{ptext("PLAYER 2", 1240, 100, 5, "#fff", "middle")}{G(ptext("READY", 1240, 136, 5, "#ffd23f", "middle"), steps("opacity", "1;0", "0;.55", 1.6))}</g>')
         return ''.join(o)
@@ -603,7 +603,7 @@ def v_claims(n):  # after the storm: a glitched screen being fixed
         cl = "#4a3a6a" if not n else "#2a1a40"
         o.append(runs(["....cccc....", "..cccccccc..", ".cccccccccccc", "cccccccccccccc", ".cccccccccccc."], 300, 30, 12, {'c': cl}))
         o.append(f'<path d="{"".join(f"M{x} {y}h4v12h-4z" for x, y in [(330,100),(370,120),(410,96),(450,114),(490,104)])}" fill="#9ad0ff" opacity=".6">'
-                 f'<animateTransform attributeName="transform" type="translate" values="0 -10;0 22" keyTimes="0;1" {_rep(1.1, 0)}/>{blink("0;.6;.6;0", 1.1)}</path>')
+                 f'<animateTransform attributeName="transform" type="translate" values="0 -10;0 22" keyTimes="0;1" {_rep(1.6, 0)}/>{blink("0;.6;.6;0", 1.6)}</path>')
         x, y, w, h = 640, 30, 300, 140
         o.append(f'<rect x="{x-12}" y="{y-12}" width="{w+24}" height="{h+24}" fill="#2a1a3e"/><rect x="{x}" y="{y}" width="{w}" height="{h}" fill="#0b0820"/>')
         r = random.Random(9)
