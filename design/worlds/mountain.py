@@ -145,10 +145,13 @@ def wrap(h, body): return f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0
 W, H, SPLIT = 1600, 1700, 377
 def skyline(night):
     n = night; p = P(n); o = []; a = o.append
+    # the horizon sits below the split, so the peaks' feet, the treeline and the lake's far shore
+    # run on into the leaderboard's top (Frank, 2026-10-05: "one background on 2 cards that flow into each other")
+    HZ = SPLIT + 62
     a(f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 {W} {H}" preserveAspectRatio="xMidYMin slice">')
     a(defs(skyg(1, n, day=("#3d7ec4", "#93c4e8", "#f6e3c2"), nt=("#040817", "#0d1a3a", "#25365e"), id="sky") + AUR +
            '<radialGradient id="mg" cx=".5" cy=".5" r=".5"><stop offset="0" stop-color="#fff" stop-opacity=".25"/><stop offset="1" stop-color="#fff" stop-opacity="0"/></radialGradient>'))
-    a(f'<rect width="{W}" height="{SPLIT + 30}" fill="url(#sky)"/>')
+    a(f'<rect width="{W}" height="{HZ + 30}" fill="url(#sky)"/>')
     if n:
         a('<g filter="url(#bl)" opacity=".8">' + aurora(-50, 1100, 70, 40, 70) + aurora(300, 1650, 120, 30, 50) + '</g>')
         a(stars(90, 0, W, 0, 300, 3))
@@ -162,31 +165,31 @@ def skyline(night):
             a(f'<ellipse cx="{x}" cy="{y}" rx="{w // 2}" ry="11" fill="#fff" opacity=".5"/><ellipse cx="{x + 30}" cy="{y - 9}" rx="{w // 3}" ry="10" fill="#fff" opacity=".45"/>')
         a(eagle(640, 62, 1.15, "#4a3424")); a(bird(720, 96, 1, "#4a5a6a")); a(bird(748, 84, .8, "#4a5a6a"))
     # far range
-    a(ridge([(0, 250), (120, 196), (230, 236), (420, 168), (560, 222), (700, 186), (860, 230), (1100, 150), (1300, 224), (1450, 178), (1600, 230)], SPLIT, p["far"]))
+    a(ridge([(0, 250), (120, 196), (230, 236), (420, 168), (560, 222), (700, 186), (860, 230), (1100, 150), (1300, 224), (1450, 178), (1600, 230)], HZ, p["far"]))
     # the main peaks
-    a(peak(900, 34, 560, 1260, SPLIT, p, .3, 4))
-    a(peak(600, 98, 330, 860, SPLIT, p, .3, 5))
-    a(peak(1230, 86, 1000, 1500, SPLIT, p, .3, 6))
-    a(peak(310, 140, 70, 560, SPLIT, p, .28, 7))
+    a(peak(900, 34, 560, 1260, HZ, p, .3, 4))
+    a(peak(600, 98, 330, 860, HZ, p, .3, 5))
+    a(peak(1230, 86, 1000, 1500, HZ, p, .3, 6))
+    a(peak(310, 140, 70, 560, HZ, p, .28, 7))
     if n: a('<ellipse cx="1290" cy="90" rx="260" ry="120" fill="url(#mg)"/>')
     # treeline at the horizon
-    a(forest(-10, 1610, SPLIT + 4, 26, 58, p["pine2"], 2, 22))
+    a(forest(-10, 1610, HZ + 4, 26, 58, p["pine2"], 2, 22))
     # tall pines rising into the sky band, at both edges
     for x, b, h in [(130, 455, 300), (40, 475, 410), (1440, 450, 300), (1540, 485, 430)]:
         a(pine(x, b, h, p["pine"], p["wood2"]))
     # ---------------- below the horizon
-    a(f'<rect x="0" y="{SPLIT}" width="{W}" height="{H - SPLIT}" fill="{p["meadow"]}"/>')
+    a(f'<rect x="0" y="{HZ}" width="{W}" height="{H - HZ}" fill="{p["meadow"]}"/>')
     # the lake, far right, against the treeline
-    a(f'<path d="M860 {SPLIT} L1600 {SPLIT} L1600 {SPLIT + 120} Q1300 {SPLIT + 132} 1080 {SPLIT + 84} Q940 {SPLIT + 54} 860 {SPLIT} Z" fill="{p["lake"]}"/>')
-    a(f'<path d="M1080 {SPLIT + 84} Q1300 {SPLIT + 132} 1600 {SPLIT + 120} L1600 {SPLIT + 132} Q1300 {SPLIT + 146} 1070 {SPLIT + 92}Z" fill="{"#d9cba6" if not n else "#3a4252"}"/>')
+    a(f'<path d="M860 {HZ} L1600 {HZ} L1600 {HZ + 120} Q1300 {HZ + 132} 1080 {HZ + 84} Q940 {HZ + 54} 860 {HZ} Z" fill="{p["lake"]}"/>')
+    a(f'<path d="M1080 {HZ + 84} Q1300 {HZ + 132} 1600 {HZ + 120} L1600 {HZ + 132} Q1300 {HZ + 146} 1070 {HZ + 92}Z" fill="{"#d9cba6" if not n else "#3a4252"}"/>')
     # reflections of the peaks in the lake
-    a(f'<path d="M1000 {SPLIT} L1230 {SPLIT + 70} L1460 {SPLIT}Z" fill="{p["main"]}" opacity=".35"/>')
-    for i, (x, y, w) in enumerate([(1000, 395, 120), (1180, 412, 160), (1380, 404, 110), (1300, 440, 140), (1500, 432, 70), (1120, 438, 60)]):
+    a(f'<path d="M1000 {HZ} L1230 {HZ + 70} L1460 {HZ}Z" fill="{p["main"]}" opacity=".35"/>')
+    for i, (x, y, w) in enumerate([(1000, 457, 120), (1180, 474, 160), (1380, 466, 110), (1300, 502, 140), (1500, 494, 70), (1120, 500, 60)]):
         a(f'<rect x="{x}" y="{y}" width="{w}" height="3" rx="1.5" fill="#fff" opacity="{.45 if not n else .22}"/>')
-    if n: a(f'<path d="M1270 {SPLIT + 4} L1310 {SPLIT + 4} L1330 {SPLIT + 110} L1250 {SPLIT + 110}Z" fill="#f4efdc" opacity=".16"/>')
+    if n: a(f'<path d="M1270 {HZ + 4} L1310 {HZ + 4} L1330 {HZ + 110} L1250 {HZ + 110}Z" fill="#f4efdc" opacity=".16"/>')
     # a red canoe on the lake
-    a(f'<path d="M1200 {SPLIT + 52} Q1250 {SPLIT + 66} 1300 {SPLIT + 52} Q1250 {SPLIT + 58} 1200 {SPLIT + 52}Z" fill="#c2452a"/><path d="M1200 {SPLIT + 52} Q1250 {SPLIT + 70} 1300 {SPLIT + 52}" fill="none" stroke="#7a2a18" stroke-width="2"/>'
-      f'<line x1="1236" y1="{SPLIT + 36}" x2="1262" y2="{SPLIT + 66}" stroke="{p["wood2"]}" stroke-width="3"/>')
+    a(f'<path d="M1200 {HZ + 52} Q1250 {HZ + 66} 1300 {HZ + 52} Q1250 {HZ + 58} 1200 {HZ + 52}Z" fill="#c2452a"/><path d="M1200 {HZ + 52} Q1250 {HZ + 70} 1300 {HZ + 52}" fill="none" stroke="#7a2a18" stroke-width="2"/>'
+      f'<line x1="1236" y1="{HZ + 36}" x2="1262" y2="{HZ + 66}" stroke="{p["wood2"]}" stroke-width="3"/>')
     # rolling meadow tones
     a(f'<path d="M0 {SPLIT + 150} Q400 {SPLIT + 110} 820 {SPLIT + 170} T1600 {SPLIT + 190} L1600 {H} L0 {H}Z" fill="{p["meadow2"]}"/>')
     r = random.Random(11); sc = "#5d8a4a" if not n else "#12212f"
@@ -225,7 +228,7 @@ def skyline(night):
     # the trail: winding from the treeline down to the summit clearing
     L, R = [], []
     for i in range(41):
-        t = i / 40; y = SPLIT + 10 + t * (775 - SPLIT - 10)
+        t = i / 40; y = HZ + 10 + t * (775 - HZ - 10)
         x = 800 + 120 * math.sin(t * math.pi * 2.1) * (1 - t * .7)
         hw = 5 + 42 * t ** 1.3
         L.append((x - hw, y)); R.append((x + hw, y))
@@ -234,7 +237,7 @@ def skyline(night):
         for i in range(6, 40, 6):
             x, y = R[i]; a(f'<circle cx="{x + 8:.0f}" cy="{y:.0f}" r="3" fill="#ffd27a"/><circle cx="{x + 8:.0f}" cy="{y:.0f}" r="12" fill="#ffd27a" opacity=".25"/>')
     # trailhead sign by the trail
-    a(sign(690, 420, 170, 58, "TRAILHEAD", p, 20, 50, "SUMMIT 0.3 MI"))
+    a(sign(690, 452, 170, 58, "TRAILHEAD", p, 20, 30, "SUMMIT 0.3 MI"))
     # boulders
     for x, y, r in [(1010, 500, 30), (1046, 510, 20), (1240, 560, 36), (1282, 574, 22)]:
         a(f'<ellipse cx="{x}" cy="{y}" rx="{r}" ry="{r * .66:.0f}" fill="{p["rock2"]}"/><ellipse cx="{x - r * .2:.0f}" cy="{y - r * .18:.0f}" rx="{r * .7:.0f}" ry="{r * .42:.0f}" fill="{p["rock"]}"/>')
