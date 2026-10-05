@@ -204,6 +204,20 @@ def jet(x, y, s, col, night, gear=True, flip=False, ground=False):
         o += '<circle cx="118" cy="-2" r="16" fill="#fff6d6" opacity=".45"/><circle cx="-112" cy="-14" r="4" fill="#ff4a3a"/><circle cx="-20" cy="36" r="3" fill="#4aff7a"/>'
     return o + '</g>'
 
+def jet_away(x, y, s, col, night):
+    """An airliner seen from behind, climbing away: wings spread, the fin up, engines glowing."""
+    eng = "#2a2a3a"
+    o = (f'<g transform="translate({x} {y}) scale({s}) rotate(-5)">'
+         f'<path d="M-96 10L-12 -2L12 -2L96 10L96 14L12 6L-12 6L-96 14Z" fill="{col}"/>'
+         f'<path d="M-34 -14L0 -18L34 -14L34 -10L0 -13L-34 -10Z" fill="{col}"/>'
+         f'<path d="M-4 -10L0 -50L4 -10Z" fill="{col}"/><path d="M-1.5 -44L0 -50L1.5 -44Z" fill="#e8662a"/>'
+         f'<circle r="13" fill="{col}"/><circle r="9" fill="#000" opacity=".08"/>'
+         + ''.join(f'<circle cx="{ex}" cy="15" r="8" fill="{eng}"/><circle cx="{ex}" cy="15" r="4.5" fill="#ff9a3d"/><circle cx="{ex}" cy="15" r="13" fill="#ffb347" opacity=".35"/>' for ex in (-42, 42))
+         + '<circle cx="-96" cy="12" r="3" fill="#ff3a3a"/><circle cx="96" cy="12" r="3" fill="#3aff6a"/><circle cx="0" cy="-50" r="2.5" fill="#fff"/>'
+         + ('<circle cx="-96" cy="12" r="9" fill="#ff3a3a" opacity=".35"/><circle cx="96" cy="12" r="9" fill="#3aff6a" opacity=".35"/>' if night else '')
+         + '</g>')
+    return o
+
 W, H, SPLIT = 1600, 1700, 377
 HZ = SPLIT + 34     # the horizon just under the split: the mountain's and the towers' feet run into the leaderboard
 
@@ -245,8 +259,10 @@ def skyline(night):
       f'<path d="M1358 136h86l-10 -44h-66z" fill="{tw}"/><path d="M1366 128h70l-7 -30h-56z" fill="{tg}" opacity="{.9 if night else .75}"/>'
       f'<rect x="1372" y="80" width="58" height="12" fill="{tw}"/><rect x="1398" y="56" width="6" height="24" fill="{tw}"/>'
       f'<circle cx="1401" cy="54" r="5" fill="#ff4a3a"/>' + ('<circle cx="1401" cy="54" r="18" fill="#ff4a3a" opacity=".3"/>' if night else ''))
-    # a jet on final approach over downtown, gear down, landing lights on
-    a(jet(560, 112, 1.0, "#f2eef4" if not night else "#3a3450", night))
+    # a jet just off the runway, seen from behind, climbing away toward downtown (Frank, 2026-10-05:
+    # "make the jet take off facing away from the screen"), a faint wake trailing back toward us
+    a(f'<path d="M760 168L800 120L840 168Z" fill="#fff" opacity="{.08 if night else .14}"/>')
+    a(jet_away(800, 116, .9, "#f2eef4" if not night else "#4a4460", night))
     # ---- the airfield
     a(f'<rect x="0" y="{HZ}" width="{W}" height="{H - HZ}" fill="url(#gnd)"/>')
     bc = "#2a2042" if night else "#a8707a"
@@ -279,6 +295,17 @@ def skyline(night):
         y0 = top + (bot - top) * t0; y1 = top + (bot - top) * t1
         if 520 < y1 and y0 < 820: continue      # keep the stage under the podium clear
         a(f'<path d="M{799 - 1 - 6 * t0:.0f} {y0:.0f}L{801 + 6 * t0:.0f} {y0:.0f}L{801 + 6 * t1:.0f} {y1:.0f}L{799 - 6 * t1:.0f} {y1:.0f}Z" fill="{ln}"/>')
+    # taxiways: the terminal's apron and the hangar each run onto the runway, yellow centre lines
+    tx = "#8a7a7a" if not night else "#1c1824"; tl = "#e8c040" if not night else "#8a7420"
+    def redge(y, side):
+        t = (y - top) / (bot - top)
+        return (xl0 + (xl1 - xl0) * t) if side < 0 else (xr0 + (xr1 - xr0) * t)
+    ya, yb = HZ + 96, HZ + 132
+    a(f'<path d="M540 {HZ + 62}L{redge(ya, -1) + 4:.0f} {ya}L{redge(yb, -1) + 4:.0f} {yb}L560 {HZ + 150}Z" fill="{tx}"/>')
+    a(f'<path d="M560 {HZ + 106}L{redge(HZ + 114, -1) + 10:.0f} {HZ + 114}" stroke="{tl}" stroke-width="3" fill="none"/>')
+    yc, yd = HZ + 62, HZ + 90
+    a(f'<path d="M1196 {HZ + 70}L1404 {HZ + 70}L1404 {HZ + 90}L{redge(yd, 1) - 4:.0f} {yd}L{redge(yc, 1) - 4:.0f} {yc}Z" fill="{tx}"/>')
+    a(f'<path d="M1300 {HZ + 80}L{redge(HZ + 76, 1) - 10:.0f} {HZ + 76}" stroke="{tl}" stroke-width="3" fill="none"/>')
     # the touchdown zone, where the podium stands: a lit pad
     a(f'<ellipse cx="800" cy="740" rx="380" ry="100" fill="{"#4a4450" if not night else "#221e2a"}" opacity=".55"/>')
     if night: a('<ellipse cx="800" cy="720" rx="420" ry="140" fill="url(#glow)" opacity=".5"/>')

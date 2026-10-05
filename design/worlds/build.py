@@ -15,7 +15,7 @@ check.py validates it and preview.cjs renders it for a look.
 import hashlib, importlib, json, os, re, sys, urllib.parse
 HERE = os.path.dirname(os.path.abspath(__file__)); ROOT = os.path.abspath(os.path.join(HERE, "..", ".."))
 sys.path.insert(0, HERE)
-ORDER = ["space", "ocean", "mountain", "gameday", "arcade", "phoenix", "golf"]
+ORDER = ["space", "ocean", "mountain", "gameday", "arcade", "phoenix", "golf", "yuma"]
 INDEX = os.path.join(ROOT, "site", "public", "index.html"); OUTDIR = os.path.join(ROOT, "site", "public", "worlds")
 def enc(svg): return urllib.parse.quote(svg, safe="/:=,.;- '()")
 def url(svg): return f'url("data:image/svg+xml;utf8,{enc(svg)}")'
