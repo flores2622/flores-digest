@@ -143,6 +143,17 @@ def product_name(p):
     return f"{carrier}-{raw}"
 
 
+# Flood (Flood, Private Flood) is never on the Sales sheet: nobody is paid
+# for it (Frank, 2026-10-05: "flood does not go on the sales sheet, we dont
+# pay for it" -- Coral's FLD1660232140, 09-28). site/live.js sheetPolicy
+# mirrors this -- keep them in step. The board's Premium Sold is unchanged.
+NOT_ON_SHEET = re.compile(r"flood", re.I)
+
+
+def on_sheet(p):
+    return not NOT_ON_SHEET.search(str(p.get("policyTypeName") or ""))
+
+
 def _customer_name(cust):
     return f"{(cust.get('firstname') or '').strip()} {(cust.get('lastname') or '').strip()}".strip()
 
@@ -172,7 +183,7 @@ def build_entries(day, policies, leads, customers, source_map, ids, household_of
         if not str(p.get("soldDate") or "").startswith(day):
             continue
         who = ids.get(p.get("agentId"))
-        if not who or not cfg.is_real_sale(p, source_map):
+        if not who or not cfg.is_real_sale(p, source_map) or not on_sheet(p):
             continue
 
         client_name, az_customer_id = "", ""
