@@ -479,39 +479,50 @@ def an(attr, vals, dur, kt=None, begin=0, mode="linear"):
             f'calcMode="{mode}" repeatCount="indefinite"/>')
 def inject(el, anim):
     """put an animation inside a single self-closing element"""
+    if not el.endswith('/>'):
+        k = el.rindex('</'); return el[:k] + anim + el[k:]
     tag = el[1:].split(' ')[0]
     return el[:-2] + '>' + anim + f'</{tag}>'
 def swish(svg, cx, y, s, kt, dur, begin=0):
     """the net in a hoop() drawing, swishing at the keyTimes kt (rest, rest, swished, rest, rest)"""
     n0 = net(cx, y, s); d0 = n0.split('d="')[1].split('"')[0]; d1 = net(cx, y, s, sw=7 * s).split('d="')[1].split('"')[0]
     return svg.replace(n0, inject(n0, an("d", [d0, d0, d1, d0, d0], dur, kt, begin)))
+def step(times, vals, dur, attr="opacity", begin=0):
+    """show(), with the last value held to a closing keyTime of 1"""
+    return show(times + ["1"], vals + [vals[-1]], dur, attr, begin)
 def flyer(body, path, dur, kt, kp, okt, ovals):
     """an element drawn at the origin, at rest invisible, carried along an absolute path while it shows"""
-    return (f'<g opacity="0">{body}{an("opacity", ovals, dur, okt, mode="discrete")}'
+    return (f'<g opacity="0">{body}{an("opacity", ovals + [ovals[-1]], dur, okt + ";1", mode="discrete")}'
             f'<animateMotion path="{path}" keyPoints="{kp}" keyTimes="{kt}" calcMode="linear" dur="{dur}s" repeatCount="indefinite"/></g>')
 
 def v_sales(n):  # the slam dunk
     p = P(n); o = [arena(n, 150, board=["SLAM DUNK SAVINGS", "FULL COURT COVERAGE", "NO LAPSE LAYUPS", "NOTHING BUT NET PREMIUM"])]
-    o.append(hoop(930, 92, 1.5, n, face=-1, pole_to=200))
+    o.append(swish(hoop(930, 92, 1.5, n, face=-1, pole_to=200), 903, 92, 1.5, "0;.44;.5;.64;1", 4))
     o.append(f'<ellipse cx="880" cy="200" rx="40" ry="6" fill="#000" opacity=".25"/>')
-    o.append(player(868, 174, 1.15, "dunk", p["home"], skin=p["skin"][1], num="1"))
+    o.append(mv(player(868, 174, 1.15, "dunk", p["home"], skin=p["skin"][1], num="1"), ["0 0", "0 -12", "0 4", "0 0", "0 0"], 4, "0;.34;.48;.62;1"))
     o.append(f'<path d="M780 178 Q800 150 830 130" stroke="#fff" stroke-width="2" stroke-dasharray="3 7" fill="none" opacity=".5"/>')
-    o.append(player(760, 196, 1.15, "contest", p["away"], skin=p["skin"][2], flip=False))
-    for x, y in [(984, 70), (1004, 98), (980, 120)]: o.append(f'<path d="M{x} {y} l18 -6 M{x} {y} l16 6" stroke="#ffd24a" stroke-width="3" stroke-linecap="round"/>')
+    o.append(mv(player(760, 196, 1.15, "contest", p["away"], skin=p["skin"][2], flip=False), ["0 0", "0 0", "0 -9", "0 0", "0 0"], 4, "0;.2;.4;.58;1"))
+    o.append('<g>' + ''.join(f'<path d="M{x} {y} l18 -6 M{x} {y} l16 6" stroke="#ffd24a" stroke-width="3" stroke-linecap="round"/>' for x, y in [(984, 70), (1004, 98), (980, 120)])
+             + an("opacity", ["1", ".15", ".15", "1", "1"], 4, "0;.1;.46;.5;1") + '</g>')
     o[1:] = [big(''.join(o[1:]))]; o.append(vcorners(p, n))
     return vwrap(''.join(o))
 
 def v_messages(n):  # the scorer's table
     p = P(n); o = [arena(n, 150)]
     o.append(f'<rect x="460" y="130" width="680" height="16" fill="#2a2a34"/>')
-    o.append(person(600, 150, 1.0, "#1d2a4a", skin=p["skin"][0]) + person(800, 150, 1.0, "#3a3a44", skin=p["skin"][2]) + person(1000, 150, 1.0, "#1d2a4a", skin=p["skin"][1]))
-    for x in (600, 800, 1000):  # headsets, laptops
-        o.append(f'<path d="M{x - 8} {150 - 70} Q{x} {150 - 80} {x + 8} {150 - 70}" stroke="#111" stroke-width="2.4" fill="none"/><path d="M{x + 8} {150 - 68} q8 6 4 12" stroke="#111" stroke-width="1.6" fill="none"/>')
-        o.append(f'<path d="M{x - 30} 130 L{x - 24} 112 L{x + 2} 112 L{x - 4} 130Z" fill="#9aa4b4"/><path d="M{x - 26} 128 L{x - 22} 115 L{x - 2} 115 L{x - 6} 128Z" fill="{"#7ac0ff" if n else "#cfe6f6"}"/>')
+    for k, (x, sh) in enumerate([(600, "#1d2a4a"), (800, "#3a3a44"), (1000, "#1d2a4a")]):  # the scorers in headsets, nodding over the laptops
+        o.append(mv(person(x, 150, 1.0, sh, skin=p["skin"][[0, 2, 1][k]]) + f'<path d="M{x - 8} {150 - 70} Q{x} {150 - 80} {x + 8} {150 - 70}" stroke="#111" stroke-width="2.4" fill="none"/><path d="M{x + 8} {150 - 68} q8 6 4 12" stroke="#111" stroke-width="1.6" fill="none"/>',
+                    ["0 0", "0 2", "0 0"], 2.6, begin=k * .7))
+        o.append(f'<path d="M{x - 30} 130 L{x - 24} 112 L{x + 2} 112 L{x - 4} 130Z" fill="#9aa4b4"/>' + inject(f'<path d="M{x - 26} 128 L{x - 22} 115 L{x - 2} 115 L{x - 6} 128Z" fill="{"#7ac0ff" if n else "#cfe6f6"}"/>', an("opacity", ["1", ".55", "1"], 3, begin=k)))
     o.append(f'<rect x="440" y="140" width="720" height="58" rx="3" fill="#101116"/>')
     o.append(f'<rect x="452" y="148" width="696" height="42" fill="{"#7a2e10" if n else "#c8501e"}"/>' + T(800, 177, "EVERY TEXT ANSWERED · NO LAPSE LAYUPS", 20, "#fff", ls=2))
-    o.append(f'<rect x="784" y="88" width="32" height="20" rx="3" fill="#000"/>' + T(800, 103, "24", 14, "#ff4a2a", fam="monospace"))
-    o.append(f'<path d="M760 98 L774 90 L774 106Z" fill="#ffd24a"/><path d="M840 98 L826 90 L826 106Z" fill="#555"/>')
+    clk = [inject(T(800, 103, "24", 14, "#ff4a2a", fam="monospace"), step(["0", ".2"], ["1", "0"], 5))]
+    for i in range(1, 5):
+        tm = ["0", f"{i / 5:.1f}"] + ([f"{(i + 1) / 5:.1f}"] if i < 4 else [])
+        clk.append(inject(T(800, 103, str(24 - i), 14, "#ff4a2a", fam="monospace", extra=' opacity="0"'), step(tm, ["0", "1", "0"][:len(tm)], 5)))
+    o.append(f'<rect x="784" y="88" width="32" height="20" rx="3" fill="#000"/>' + ''.join(clk))
+    o.append(inject('<path d="M760 98 L774 90 L774 106Z" fill="#ffd24a"/>', step(["0", ".5"], ["#ffd24a", "#555"], 8, "fill"))
+             + inject('<path d="M840 98 L826 90 L826 106Z" fill="#555"/>', step(["0", ".5"], ["#555", "#ffd24a"], 8, "fill")))
     o[1:] = [big(''.join(o[1:]))]; o.append(vcorners(p, n))
     return vwrap(''.join(o))
 
@@ -530,23 +541,26 @@ def whiteboard(x, y, w, h, n, routes=True):
 def v_coaching(n):  # the huddle: the coach down on a knee with the whiteboard, the players leaning in
     p = P(n); o = [arena(n, 150, board=["FULL COURT COVERAGE", "NO LAPSE LAYUPS", "SLAM DUNK SAVINGS", "NOTHING BUT NET PREMIUM"])]
     o.append(f'<rect x="560" y="176" width="480" height="10" fill="#3a3a44"/>')
-    o.append(player(610, 210, 1.1, "stand", p["home"], skin=p["skin"][0]) + player(680, 204, 1.1, "stand", p["home"], skin=p["skin"][3]))
-    o.append(player(920, 204, 1.1, "stand", p["home"], skin=p["skin"][1], flip=True) + player(990, 210, 1.1, "stand", p["home"], skin=p["skin"][2], flip=True))
+    lean = lambda x, y, d: [f"0 {x} {y}", f"{d} {x} {y}", f"0 {x} {y}"]
+    o.append(player(610, 210, 1.1, "stand", p["home"], skin=p["skin"][0]) + mv(player(680, 204, 1.1, "stand", p["home"], skin=p["skin"][3]), lean(680, 204, 3), 5, typ="rotate"))
+    o.append(mv(player(920, 204, 1.1, "stand", p["home"], skin=p["skin"][1], flip=True), lean(920, 204, -3), 5, begin=1.2, typ="rotate") + player(990, 210, 1.1, "stand", p["home"], skin=p["skin"][2], flip=True))
     o.append(person(790, 214, 1.15, "#2a2e3a", skin=p["skin"][1], pose="kneel"))
-    o.append(whiteboard(800, 120, 120, 76, n))
-    o.append(f'<line x1="806" y1="186" x2="820" y2="166" stroke="#222" stroke-width="3"/>')
+    o.append(whiteboard(800, 120, 120, 76, n).replace('stroke-dasharray="4 4"/>', 'stroke-dasharray="4 4">' + an("stroke-dashoffset", ["0", "-24"], 3) + '</path>'))
+    o.append(mv('<line x1="806" y1="186" x2="820" y2="166" stroke="#222" stroke-width="3"/>', ["0 0", "6 -4", "10 2", "0 0"], 3))
     o[1:] = [big(''.join(o[1:]))]; o.append(vcorners(p, n))
     return vwrap(''.join(o))
 
 def v_roleplay(n):  # free-throw practice: the lane, the line, a rack of balls
     p = P(n); o = [arena(n, 150, board=["NOTHING BUT NET PREMIUM", "NO LAPSE LAYUPS", "FULL COURT COVERAGE", "SLAM DUNK SAVINGS"], dim=False)]
     o.append(f'<path d="M640 216 L1120 196 L1120 172 L700 180Z" fill="{p["paint"]}"/><path d="M640 216 L700 180" stroke="#fff" stroke-width="3"/><path d="M640 216 L1120 196 M700 180 L1120 172" stroke="#fff" stroke-width="3"/>')
-    o.append(hoop(1120, 92, 1.4, n, face=-1, pole_to=190))
-    o.append(player(660, 202, 1.2, "set", p["home"], skin=p["skin"][3], ball=True, num="7"))
+    o.append(swish(hoop(1120, 92, 1.4, n, face=-1, pole_to=190), 1094.8, 92, 1.4, "0;.6;.65;.76;1", 5))
+    o.append(mv(player(660, 202, 1.2, "set", p["home"], skin=p["skin"][3], num="7") + inject(bball(671, 148, 6.2, n).split('<path')[0], step(["0", ".22", ".9"], ["1", "0", "1"], 5))
+                + inject('<path' + bball(671, 148, 6.2, n).split('<path')[1], step(["0", ".22", ".9"], ["1", "0", "1"], 5)), ["0 0", "0 0", "0 4", "0 -5", "0 0", "0 0"], 5, "0;.06;.15;.22;.32;1"))
     o.append(f'<path d="M680 140 Q860 20 1088 86" stroke="#fff" stroke-width="2" stroke-dasharray="3 8" fill="none" opacity=".45"/>')
     o.append(f'<rect x="470" y="170" width="90" height="6" fill="#5a5a64"/><rect x="474" y="176" width="4" height="26" fill="#5a5a64"/><rect x="552" y="176" width="4" height="26" fill="#5a5a64"/><rect x="470" y="196" width="90" height="5" fill="#5a5a64"/>')
     for k in range(4): o.append(bball(484 + k * 21, 160, 9, n))
     for k in range(3): o.append(bball(494 + k * 21, 186, 9, n))
+    o.append(flyer(bball(0, 0, 6.2, n), "M671 140 Q880 -14 1095 84 L1095 128 L1080 194", 5, "0;.22;.72;1", "0;0;1;1", "0;.22;.74", ["0", "1", "0"]))
     o[1:] = [big(''.join(o[1:]))]; o.append(vcorners(p, n))
     return vwrap(''.join(o))
 
@@ -564,9 +578,13 @@ def v_rphistory(n):  # the centre-hung scoreboard showing the replay
     o.append(f'<rect x="528" y="164" width="544" height="30" fill="#c99a62" opacity=".9"/>')
     o.append(hoop(1000, 128, .9, n, face=-1, pole_to=None))
     o.append(player(660, 178, .85, "jump", "#d8541a", skin="#a8714c"))
-    o.append('<path d="M668 100 Q820 60 980 126" stroke="#fff" stroke-width="2" stroke-dasharray="3 6" fill="none"/>' + bball(820, 82, 6))
-    o.append('<path d="M548 110 l16 9 l-16 9z" fill="#fff"/><rect x="528" y="188" width="544" height="6" fill="#000" opacity=".5"/><rect x="528" y="188" width="330" height="6" fill="#ff4a2a"/>')
-    o.append(f'<path d="M480 210 L520 200 L1080 200 L1120 210 L1120 220 L480 220Z" fill="#101116"/>' + ''.join(f'<circle cx="{490 + i * 20}" cy="215" r="2.6" fill="{p["led"]}"/>' for i in range(32)))
+    o.append('<path d="M668 100 Q820 60 980 126" stroke="#fff" stroke-width="2" stroke-dasharray="3 6" fill="none"/>'
+             + f'<g>{bball(820, 82, 6)}<animateMotion path="M-152 18Q0-22 160 44" keyPoints="0;1;1" keyTimes="0;.9;1" calcMode="linear" dur="8s" repeatCount="indefinite"/></g>')
+    o.append(inject('<path d="M548 110 l16 9 l-16 9z" fill="#fff"/>', an("opacity", ["1", ".3", "1"], 2)) + '<rect x="528" y="188" width="544" height="6" fill="#000" opacity=".5"/>'
+             + inject('<rect x="528" y="188" width="330" height="6" fill="#ff4a2a"/>', an("width", ["0", "544", "544"], 8, "0;.9;1")))
+    o.append(f'<path d="M480 210 L520 200 L1080 200 L1120 210 L1120 220 L480 220Z" fill="#101116"/>' + ''.join(f'<circle cx="{490 + i * 20}" cy="215" r="2.6" fill="{p["led"]}"/>' for i in range(32))
+             + inject('<path d="M490 215 H1110" stroke="#fff" stroke-width="5" stroke-linecap="round" stroke-dasharray="0 100" opacity=".8"/>',
+                      an("stroke-dashoffset", ["0", "-20", "-40", "-60", "-80"], 2, mode="discrete")))
     o.append(f'<rect x="0" y="196" width="1600" height="44" fill="#000" opacity=".35"/>')
     return vwrap(''.join(o))
 
@@ -578,9 +596,12 @@ def v_training(n):  # a dribbling drill through cones, the coach with the whistl
     for k, (x, y) in enumerate([(540, 190), (640, 182), (740, 194), (840, 184), (940, 196), (1040, 186)]):
         o.append(cone(x, y, 1.1))
     o.append(f'<path d="M500 200 Q590 168 640 196 Q690 214 740 180 Q790 160 840 200 Q890 220 940 182 Q990 160 1060 196" stroke="#fff" stroke-width="2" stroke-dasharray="4 7" fill="none" opacity=".55"/>')
-    o.append(player(790, 206, 1.15, "dribble", p["home"], skin=p["skin"][1], ball=True, num="11"))
+    bounce = (f'<g>{bball(813, 183, 6, n)}<animateTransform attributeName="transform" type="translate" values="0 0;0 17;0 0;0 17;0 0;0 17;0 0" keyTimes="{_kt(7)}" dur="2.4s" '
+              'repeatCount="indefinite" calcMode="spline" keySplines=".5 0 1 1;0 0 .5 1;.5 0 1 1;0 0 .5 1;.5 0 1 1;0 0 .5 1"/></g>')
+    o.append(mv(player(790, 206, 1.15, "dribble", p["home"], skin=p["skin"][1], num="11") + bounce, ["0 0", "-22 0", "0 0", "22 0", "0 0"], 4.8))
     o.append(person(1160, 196, 1.1, "#2a2e3a", skin=p["skin"][0], pose="point", flip=True))
     o.append(f'<path d="M1142 128 l-10 4" stroke="#c0c4cc" stroke-width="3"/>')
+    o.append('<path d="M1126 120 q-5 6 0 12 M1118 116 q-8 10 0 20" stroke="#fff" stroke-width="2" fill="none" opacity="0">' + an("opacity", ["0", ".9", "0", "0"], 4.8, "0;.08;.2;1") + '</path>')
     o[1:] = [big(''.join(o[1:]))]; o.append(vcorners(p, n))
     return vwrap(''.join(o))
 
@@ -598,7 +619,7 @@ def v_map(n, athena=False):  # the chalk playbook: the half court, Xs and Os, th
     o.append(f'<path d="M380 82 A60 40 0 0 1 380 162" {cl}/><circle cx="1312" cy="122" r="9" {cl}/><path d="M1326 104 V140" {cl}/>')
     pts = [(520, 160), (760, 82), (1000, 168), (1250, 104)]
     d = f'M410 190 Q460 172 {pts[0][0]} {pts[0][1]} Q640 70 {pts[1][0]} {pts[1][1]} Q900 70 {pts[2][0]} {pts[2][1]} Q1130 196 {pts[3][0]} {pts[3][1]} Q1286 112 1306 120'
-    o.append(f'<path d="{d}" fill="none" stroke="{route}" stroke-width="5" stroke-dasharray="10 8" stroke-linecap="round"/>')
+    o.append(f'<path d="{d}" fill="none" stroke="{route}" stroke-width="5" stroke-dasharray="10 8" stroke-linecap="round">' + an("stroke-dashoffset", ["0", "-36"], 3) + '</path>')
     o.append(f'<path d="M1296 110 L1310 121 L1294 128" fill="none" stroke="{route}" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/>')
     for x, y in [(640, 190), (880, 120), (1100, 70), (470, 92)]:
         o.append(f'<path d="M{x - 9} {y - 9} l18 18 M{x + 9} {y - 9} l-18 18" stroke="{chalk}" stroke-width="3.5" opacity=".7" stroke-linecap="round"/>')
@@ -607,6 +628,9 @@ def v_map(n, athena=False):  # the chalk playbook: the half court, Xs and Os, th
         o.append(f'<circle cx="{x}" cy="{y}" r="16" fill="{board}" stroke="{route}" stroke-width="4"/>' + T(x, y + 6, str(i + 1), 16, route, fam="Arial, sans-serif"))
         ty = y - 26 if y > 100 else y + 44
         o.append(T(x, ty, t, 22, "#fff", fam="Arial, sans-serif", ls=1, extra=f' stroke="{board}" stroke-width="5" paint-order="stroke"'))
+    o.append(flyer(bball(0, 0, 8, n), d, 9, "0;.1;.9;1", "0;0;1;1", "0;.1;.92", ["0", "1", "0"]))
+    for (x, y), f in zip(pts, (.17, .4, .64, .88)):
+        o.append(f'<circle cx="{x}" cy="{y}" r="24" fill="none" stroke="{route}" stroke-width="3" opacity="0">' + an("opacity", ["0", "0", ".9", "0", "0"], 9, f"0;{f - .02:.2f};{f:.2f};{f + .08:.2f};1") + '</circle>')
     o.append(T(400, 56, "play 2 · the service set" if athena else "play 1 · the sales set", 15, chalk, anchor="start", w="normal", fam="Georgia, serif", extra=' font-style="italic" opacity=".7"'))
     o.append(f'<rect x="0" y="226" width="1600" height="14" fill="#5a3a22"/><rect x="300" y="222" width="70" height="6" rx="2" fill="#f4f4f0"/><rect x="380" y="222" width="40" height="6" rx="2" fill="#ff9a3a"/>')
     return vwrap(''.join(o))
@@ -616,7 +640,7 @@ def v_service(n):  # the floor crew, dust mops across the hardwood at the break
     o.append(f'<path d="M560 192 L1100 192" stroke="#fff" stroke-width="3" opacity=".8"/>')
     for k, x in enumerate((600, 760, 920)):
         o.append(f'<path d="M{x + 30} 206 L{x + 160} 206" stroke="#fff" stroke-width="6" opacity="{.18 if not n else .1}"/>')
-        o.append(person(x, 206, 1.15, "#2a5aa8" if k != 1 else "#3a3a44", skin=p["skin"][k], pose="mop"))
+        o.append(mv(person(x, 206, 1.15, "#2a5aa8" if k != 1 else "#3a3a44", skin=p["skin"][k], pose="mop"), ["0 0", "44 0", "0 0"], 5, begin=k * .9))
     o.append(f'<rect x="1140" y="176" width="40" height="30" rx="4" fill="#ffd24a"/><rect x="1136" y="172" width="48" height="6" fill="#d8a82a"/><path d="M1150 172 L1162 120" stroke="#8a6a3a" stroke-width="3"/>'
              '<circle cx="1146" cy="208" r="4" fill="#222"/><circle cx="1174" cy="208" r="4" fill="#222"/>')
     o.append(f'<path d="M1240 206 L1252 168 L1264 168 L1276 206Z M1246 186 h24" fill="#ffd24a" stroke="#222" stroke-width="2"/>')
@@ -626,9 +650,9 @@ def v_service(n):  # the floor crew, dust mops across the hardwood at the break
 def v_renewals(n):  # the tip-off: the ball tossed up between two centres at the centre circle
     p = P(n); o = [arena(n, 150, board=["NO LAPSE LAYUPS", "NOTHING BUT NET PREMIUM", "FULL COURT COVERAGE", "SLAM DUNK SAVINGS"])]
     o.append(f'<ellipse cx="800" cy="206" rx="170" ry="26" fill="{p["paint"]}" stroke="#fff" stroke-width="3"/><path d="M800 166 V240" stroke="#fff" stroke-width="3"/>')
-    o.append(player(752, 204, 1.2, "tip", p["home"], skin=p["skin"][1], num="5"))
-    o.append(player(848, 204, 1.2, "tip", p["away"], skin=p["skin"][2], flip=True, num="9"))
-    o.append(bball(800, 64, 9, n) + '<path d="M800 82 V100" stroke="#fff" stroke-width="2" stroke-dasharray="2 4" opacity=".6"/>')
+    o.append(mv(player(752, 204, 1.2, "tip", p["home"], skin=p["skin"][1], num="5"), ["0 0", "0 0", "0 -12", "0 0", "0 0"], 4, "0;.25;.45;.65;1"))
+    o.append(mv(player(848, 204, 1.2, "tip", p["away"], skin=p["skin"][2], flip=True, num="9"), ["0 0", "0 0", "0 -10", "0 0", "0 0"], 4, "0;.28;.48;.68;1"))
+    o.append(mv(bball(800, 64, 9, n), ["0 0", "0 -14", "0 0"], 4) + '<path d="M800 82 V100" stroke="#fff" stroke-width="2" stroke-dasharray="2 4" opacity=".6">' + an("opacity", [".6", "0", ".6"], 4) + '</path>')
     o.append(person(950, 214, 1.1, "#f4f4f4", skin=p["skin"][0], pose="toss"))
     o.append(ref_shirt(941, 156, 18, 28))
     for x in (620, 660, 940 + 60, 1040): o.append(player(x, 220, 1.0, "ready", p["home"] if x < 800 else p["away"], skin=p["skin"][x % 4], flip=x > 800))
@@ -641,16 +665,17 @@ def v_claims(n):  # the shattered backboard, the crew on the lift with the new g
     r = random.Random(6)
     for _ in range(16):
         x = r.randint(760, 900); y = r.randint(196, 214)
-        o.append(f'<path d="M{x} {y} l{r.randint(4, 9)} -{r.randint(2, 5)} l{r.randint(-3, 3)} {r.randint(3, 6)}Z" fill="{p["glass"]}" opacity=".85"/>')
+        sh = f'<path d="M{x} {y} l{r.randint(4, 9)} -{r.randint(2, 5)} l{r.randint(-3, 3)} {r.randint(3, 6)}Z" fill="{p["glass"]}" opacity=".85"/>'
+        o.append(inject(sh, an("opacity", [".85", ".25", ".85"], 3, begin=_ * .4)) if _ < 5 else sh)
     # the scissor lift beside the basket, a worker on it holding the new board
     o.append(f'<rect x="1060" y="196" width="90" height="12" fill="#ffb02a"/><circle cx="1072" cy="210" r="5" fill="#222"/><circle cx="1138" cy="210" r="5" fill="#222"/>')
     o.append(f'<path d="M1066 196 L1144 150 M1144 196 L1066 150 M1066 150 L1144 104 M1144 150 L1066 104" stroke="#d8901a" stroke-width="4"/><rect x="1054" y="98" width="102" height="8" fill="#ffb02a"/>'
              f'<path d="M1054 98 V80 H1156 V98" fill="none" stroke="#d8901a" stroke-width="3"/>')
     o.append(person(1100, 98, .9, "#ff8a1a", skin=p["skin"][1], hat="#ffd24a"))
-    o.append(f'<rect x="1114" y="40" width="10" height="56" fill="{p["glass"]}" opacity=".85" stroke="#fff" stroke-width="1.5"/>')
-    o.append(person(700, 210, 1.1, "#ff8a1a", skin=p["skin"][2], hat="#ffd24a", pose="mop"))
+    o.append(mv(f'<rect x="1114" y="40" width="10" height="56" fill="{p["glass"]}" opacity=".85" stroke="#fff" stroke-width="1.5"/>', ["0 0", "0 -7", "0 0"], 5))
+    o.append(mv(person(700, 210, 1.1, "#ff8a1a", skin=p["skin"][2], hat="#ffd24a", pose="mop"), ["0 0", "36 0", "0 0"], 4))
     o.append(cone(600, 212, 1.1) + cone(1210, 210, 1.1))
-    o.append(f'<path d="M600 196 L1210 194" stroke="#ffd24a" stroke-width="4" stroke-dasharray="14 10"/>')
+    o.append(f'<path d="M600 196 L1210 194" stroke="#ffd24a" stroke-width="4" stroke-dasharray="14 10">' + an("stroke-dashoffset", ["0", "-48"], 4) + '</path>')
     o[1:] = [big(''.join(o[1:]))]; o.append(vcorners(p, n))
     return vwrap(''.join(o))
 
@@ -659,13 +684,15 @@ def v_commercial(n):  # the courtside suites: a row of glass boxes over the cour
     o.append(f'<rect x="0" y="40" width="1600" height="118" fill="{p["wall"]}"/>')
     for k in range(5):
         x = 330 + k * 196
-        if n: o.append(f'<circle cx="{x + 90}" cy="96" r="110" fill="url(#glow)" opacity=".6"/>')
+        if n: o.append(f'<circle cx="{x + 90}" cy="96" r="110" fill="url(#glow)" opacity=".6">' + an("opacity", [".6", ".9", ".6"], 4, begin=k * .8) + '</circle>')
         o.append(f'<rect x="{x}" y="56" width="180" height="84" fill="{"#f6e4b8" if not n else "#ffd58a"}" opacity="{.85 if not n else .9}"/>')
         o.append(f'<path d="M{x} 56 h180 v84 h-180Z M{x + 60} 56 v84 M{x + 120} 56 v84" fill="none" stroke="#2a2e3a" stroke-width="4"/>')
         for j in range(3):
-            o.append(person(x + 30 + j * 60, 140, .8, ["#2a2e3a", "#7a2e22", "#2a5aa8"][(k + j) % 3], skin=p["skin"][(k + j) % 4]))
+            g = person(x + 30 + j * 60, 140, .8, ["#2a2e3a", "#7a2e22", "#2a5aa8"][(k + j) % 3], skin=p["skin"][(k + j) % 4])
+            o.append(mv(g, ["0 0", "0 -4", "0 0"], 2.4, begin=k * .5 + j * .3) if k and j == (k % 3) else g)
         o.append(f'<rect x="{x - 6}" y="138" width="192" height="8" fill="#1a1c24"/>' + T(x + 90, 154, ["SUITE 1 · BUNDLED", "SUITE 2 · FLEET", "SUITE 3 · LIABILITY", "SUITE 4 · BOP", "SUITE 5 · WORK COMP"][k], 10, "#ffd24a", ls=1.5))
-    o.append(f'<rect x="0" y="146" width="1600" height="16" fill="{p["board"]}"/>')
+    o.append(f'<rect x="0" y="146" width="1600" height="16" fill="{p["board"]}"/>'
+             + f'<path d="M520 154 H1600" stroke="{p["led"]}" stroke-width="4" stroke-dasharray="2 7" opacity=".7">' + an("stroke-dashoffset", ["0", "-27"], 3) + '</path>')
     o.append(f'<rect x="0" y="34" width="1600" height="8" fill="{p["steel2"]}"/>')
     o.append(vcorners(p, n))
     return vwrap(''.join(o))

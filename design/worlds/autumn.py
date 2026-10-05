@@ -925,7 +925,7 @@ def v_claims(n):  # after the windstorm: the big maple down across the road, a c
     bl = '<animate attributeName="opacity" values="{0};{1};{0}" dur="2s" repeatCount="indefinite"/>'
     o.append('<rect x="1270" y="153" width="40" height="7" rx="2" fill="#f2a020">' + bl.format(1, .35) + '</rect>' + ('<circle cx="1290" cy="156" r="20" fill="#f2a020" opacity=".3">' + bl.format(.3, 0) + '</circle>' if n else ''))
     for i, (c, b) in enumerate([(p["red"], 0), (p["gold"], 3)]):   # MOVES: leaves blown along the road
-        o.append(f'<g opacity="0">{leaf(1060, 228 - i * 6, 1.1, c)}<animateMotion path="M0 0 q40 -14 80 0 t80 -4 t90 2" dur="6s" begin="{b}s" repeatCount="indefinite" rotate="auto"/><animate attributeName="opacity" values="0;1;1;0" keyTimes="0;.1;.85;1" dur="6s" begin="{b}s" repeatCount="indefinite"/></g>')
+        o.append(f'<g opacity="0">{leaf(800, 226 - i * 6, 1.1, c)}<animateMotion path="M0 0 q40 -14 80 0 t80 -4 t90 2" dur="6s" begin="{b}s" repeatCount="indefinite" rotate="auto"/><animate attributeName="opacity" values="0;1;1;0" keyTimes="0;.1;.85;1" dur="6s" begin="{b}s" repeatCount="indefinite"/></g>')
     o.append(edge_trees(p, right=False))
     o.append(corners(p, n))
     return vwrap(''.join(o))
@@ -962,7 +962,7 @@ def v_commercial(n):  # the general store on Main Street
     o.append(pickup(830, 228, 1.0, "#8a2a22" if not n else "#3e1a16", p, n, cargo="pumpkins"))
     o.append(maple(160, 196, 230, [p["red2"], p["red"], p["orange"], p["red"], p["gold"]], 162, p["trunk"]) + f'<g>{maple(1460, 196, 230, [p["orange"], p["gold"], p["red"], p["yel"], p["orange"]], 163, p["trunk"])}{sway(1460, 196, .7, 7)}</g>')
     o.append(fall(1430, 60, -110, 150, 9, p["gold"]) + fall(1500, 70, -90, 140, 8, p["red"], 3.5))
-    o.append(f'<g opacity="0">{leaf(1120, 212, 1.1, p["orange"])}<animateMotion path="M0 0 q-50 -12 -100 0 t-100 4 t-90 0" dur="7s" begin="1s" repeatCount="indefinite" rotate="auto"/><animate attributeName="opacity" values="0;1;1;0" keyTimes="0;.1;.85;1" dur="7s" begin="1s" repeatCount="indefinite"/></g>')
+    o.append(f'<g opacity="0">{leaf(1010, 214, 1.1, p["orange"])}<animateMotion path="M0 0 q-50 -12 -100 0 t-100 4 t-90 0" dur="7s" begin="1s" repeatCount="indefinite" rotate="auto"/><animate attributeName="opacity" values="0;1;1;0" keyTimes="0;.1;.85;1" dur="7s" begin="1s" repeatCount="indefinite"/></g>')
     o.append(corners(p, n))
     return vwrap(''.join(o))
 
