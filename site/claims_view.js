@@ -1,7 +1,7 @@
 /* Claims a viewer may see (Frank, 2026-10-02: "only the ops team should see
  * the not licensed card"). A claim opened by, or assigned to, someone not
  * licensed is flagged by claims.py; those flags reach only the ops team
- * (ROLEPLAY_HISTORY_VIEWERS, rpScope.all). Everyone else gets the same
+ * (staff.json's `roleplay_history`, rpScope.all). Everyone else gets the same
  * claims with the flags taken off: no `flags` list, no `problems` or
  * `licensed` on a row. Used by the Service Center route and by Coeus. */
 export function claimsForViewer(doc, ops) {

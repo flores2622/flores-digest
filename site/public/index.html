@@ -1972,7 +1972,7 @@ const CENTERS = {
   // Apollo's Academy (Frank, 2026-10-02: the Coaching and Learning Centers
   // in one): the coaching page's three views come first, then practice.
   academy: [["coaching", "Coaching"], ["roleplay", "Role Play"], ["rphistory", "Session History"], ["training", "Training"], ["blueprint", "Apollo's Road Map"],
-    // Frank's alone (Frank, 2026-10-05; the Worker's CARD_REVIEW_VIEWERS, /api/me `review`).
+    // Frank's alone (Frank, 2026-10-05; staff.json's `card_review`, /api/me `review`).
     ["review", "Apollo's Doubts", "review"]],
   service: [["service", "Service Digest"], ["renewals", "Renewals"], ["athenamap", "Athena's Road Map"]],
   claims: [["claims", "Claims"]],
@@ -5042,7 +5042,7 @@ document.addEventListener("click", async ev => {
    first time?") -----------------------------------------------------------
    Two sources, side by side: what Apollo itself wrote down as unsure or new
    when it read the call (from 2026-10-05; review/<day>.json, served to
-   CARD_REVIEW_VIEWERS alone), and checks on the card that work on every
+   staff.json's `card_review` alone), and checks on the card that work on every
    day -- a read whose speakers are unknown or cut short, verdicts that
    disagree, an objection or lead source Apollo has no group for. Frank
    marks each "Looks right" or "Needs a fix" (a sticky note on the card is
@@ -6468,8 +6468,8 @@ function wireVoiceFeedback() {
   };
 }
 
-/* Voice ratings, per voice (Frank only: ROLEPLAY_VOICE_VIEWERS in
-   wrangler.jsonc). null = not asked yet, false = not permitted. */
+/* Voice ratings, per voice (Frank only: staff.json's
+   `roleplay_voices`). null = not asked yet, false = not permitted. */
 let RP_VOICE_RATINGS = null;
 function rpVoiceRatingsHtml() {
   if (RP_VOICE_RATINGS === null) {
@@ -8317,9 +8317,9 @@ async function paintTab() {
   } else if (view === "commercial") {
     await paintCommercial();
   } else if (view === "rotation") {
-    await rotationPaint();   // rotation.js; only reachable for ROTATION_VIEWERS
+    await rotationPaint();   // rotation.js; only reachable for staff.json's `rotation`
   } else if (view === "scrub") {
-    await scrubPaint();      // scrub.js; only reachable for SCRUB_VIEWERS
+    await scrubPaint();      // scrub.js; only reachable for staff.json's `scrub`
   }
 }
 
@@ -8959,6 +8959,11 @@ function svcDrillFor(m, keys) {
       : m.completed.filter(r => r.audit && r.audit.opp !== "none");
     return svcDrillList(`Team · ${kind === "notesall" ? "notes" : "opportunities"} · ${rs.length}`, kind === "notesall" ? "Missing parts first." : "", svcSrTable(withAudit(rs, typeLabel), m, true));
   }
+  if (kind === "cancelall") {
+    const PB = m.playbook || {}, typeLabel = Object.fromEntries(Object.entries(PB.request_types || {}).map(([x, [l]]) => [x, l]));
+    const rs = cancelOf(m.completed.filter(r => r.audit)).rs.sort((x, y) => CANCEL_FLAG.has(y.audit.cancel) - CANCEL_FLAG.has(x.audit.cancel));
+    return svcDrillList(`Team · cancellations · ${rs.length}`, "Clients who wanted to cancel, flagged first: asked if they'd let us review it, or cancelled with no offer or call back.", svcSrTable(withAudit(rs, typeLabel), m, true));
+  }
   if (kind === "tasks") return svcDrillList(`Service Tasks · ${n(m.taskRows)}due`, "Every service task due in this period, not done first.", svcTaskTable(m.taskRows));
   if (kind === "srs") return svcDrillList(`SRs Completed · ${m.completed.length}`, "Every service SR completed in this period, newest first.", svcSrTable(m.completed, m, true));
   if (kind === "cbwho") { const rs = m.callbacks.filter(r => a === "others" ? r.by === "other" : r.by === a);
@@ -8998,6 +9003,8 @@ function svcDrillFor(m, keys) {
     if (key === "complex") return sr(`${first} · complex, sensitive or escalated`, mine.filter(r => r.audit && (!routine.has(r.audit.type) || r.audit.escalated)));
     if (key === "opp") return sr(`${first} · opportunities`, mine.filter(r => r.audit && r.audit.opp !== "none"),
       (PB.sells || ["Amanda Torricellas", "Crystal Mango"]).includes(n) ? "Opportunities that came up: worked (quoted, a lead set, or passed), or not noted." : "Passed to a producer, or came up and not passed.");
+    if (key === "cancel") return sr(`${first} · cancellations`, cancelOf(mine.filter(r => r.audit)).rs.sort((x, y) => CANCEL_FLAG.has(y.audit.cancel) - CANCEL_FLAG.has(x.audit.cancel)),
+      "Clients who wanted to cancel, flagged first: asked if they'd let us review it, or cancelled with no offer or call back.");
     if (key === "billing") return sr(`${first} · billing`, mine.filter(r => r.pipeline === "late_payments" || (r.audit && r.audit.type === "basic_billing")));
     if (key === "noc") return sr(`${first} · NOC / admin`, mine.filter(r => r.audit && r.audit.type === "noc"));
     if (key === "srs") return sr(`${first} · SRs completed`, mine);
@@ -9097,6 +9104,7 @@ function svcStats(m, n) {
   return { srs, k, b, dials, cbs, cbDone, need, ans, aud, meets, U, texts: msum("texts"), emails: msum("emails"),
     autos: msum("auto_texts") + msum("auto_emails"), customers: msum("customers"),
     opp: { worked: aud.filter(r => r.audit.opp === "passed").length, missed: aud.filter(r => r.audit.opp === "missed").length, sells: !n || sells.has(n) },
+    cancel: cancelOf(aud),
     calls: m.front.calls.filter(r => !n || r.who === n), created: m.front.created.filter(r => !n || r.by === n) };
 }
 function serviceStatsHtml(m) {
@@ -9140,6 +9148,8 @@ function serviceStatsHtml(m) {
     tile(g(`role:${n}:created`, "front:created"), "SRs created", m.front.days ? S.created.length : "—", "created and assigned"),
     tile(g(`role:${n}:notes`, "notesall"), "Note standard", S.aud.length ? pct(S.meets.length, S.aud.length) : "—", `${S.meets.length} of ${S.aud.length} notes answer Who / What / Why / Outcome / Next step`),
     tile(g(`role:${n}:opp`, "oppall"), "Opportunities", S.opp.worked, `${S.opp.sells ? "worked (quoted, lead set or passed)" : "passed to a producer"} &middot; <b${S.opp.missed ? ' style="color:var(--warn, #b45309)"' : ""}>${S.opp.missed}</b> not ${S.opp.sells ? "noted" : "passed"}`),
+    tile(g(`role:${n}:cancel`, "cancelall"), "Cancellations", S.cancel.rs.length ? `${S.cancel.ok}<span style="font-size:15px;color:var(--text-muted)"> / ${S.cancel.rs.length}</span>` : "—",
+      S.cancel.rs.length ? `handled without asking &middot; <b${S.cancel.asked ? ' style="color:var(--bad)"' : ""}>${S.cancel.asked}</b> asked for the review &middot; <b${S.cancel.skipped ? ' style="color:var(--warn, #b45309)"' : ""}>${S.cancel.skipped}</b> no offer or call back` : "clients who wanted to cancel, from Oct 5"),
     tile("", "Utilization", S.U.t ? pct(S.U.p, S.U.t) : "—", u.hybrid ? "whole day, shared with sales" : "productive / tracked time"),
   ].join("");
   let role = "";
@@ -9183,10 +9193,24 @@ function svcCreatedTable(rs, m) {
     <td>${cesc(r.assigned || "—")}</td></tr>`).join("");
   return `<div class="scroll"><table class="rtable"><thead><tr><th>Created</th><th>Customer</th><th>SR</th><th>Assigned to</th></tr></thead><tbody>${rows}</tbody></table></div>`;
 }
+// A client who wants to cancel (Frank, 2026-10-05; service_playbook.CANCELLATIONS):
+// never ask if they'll let us review it. Each note's verdict is the audit's
+// `cancel`, read on SRs completed from 2026-10-05 on; "asked" and "skipped"
+// (no offer, review, call back or appointment) are the flags.
+const CANCEL_LABEL = { asked: "Asked if they'd let us review it", offered: "Offer presented", routed: "Passed to their rep / call back set",
+  no_offer: "No offer to make, referred or cancelled", skipped: "Cancelled with no offer or call back" };
+const CANCEL_FLAG = new Set(["asked", "skipped"]);
+function cancelOf(aud) {
+  const rs = aud.filter(r => r.audit.cancel && r.audit.cancel !== "none");
+  const flagged = rs.filter(r => CANCEL_FLAG.has(r.audit.cancel));
+  return { rs, flagged, ok: rs.length - flagged.length, asked: rs.filter(r => r.audit.cancel === "asked").length,
+    skipped: rs.filter(r => r.audit.cancel === "skipped").length };
+}
 // SR rows with what the playbook read found, in the note column.
 const withAudit = (rs, typeLabel) => rs.map(r => { const a = r.audit; if (!a) return r;
   const bits = [typeLabel[a.type] || a.type, a.missing.length ? "Missing: " + a.missing.map(k => PART_LABEL[k] || k).join(", ") : "Meets the note standard",
-    a.opp === "passed" ? "Opportunity acted on" : a.opp === "missed" ? "Opportunity not noted as worked" : "", a.escalated ? "Escalated" : ""].filter(Boolean);
+    a.opp === "passed" ? "Opportunity acted on" : a.opp === "missed" ? "Opportunity not noted as worked" : "", a.escalated ? "Escalated" : "",
+    a.cancel && a.cancel !== "none" ? "Cancellation: " + (CANCEL_LABEL[a.cancel] || a.cancel) : ""].filter(Boolean);
   return Object.assign({}, r, { note: `[${bits.join(" · ")}] ${r.note || ""}` }); });
 function roleMeasures(m, n) {
   const PB = m.playbook, role = PB.role_of[n], team = m.team.map(t => t.name);
@@ -9205,6 +9229,8 @@ function roleMeasures(m, n) {
   const sellsSet = new Set((m.playbook || {}).sells || ["Amanda Torricellas", "Crystal Mango"]);
   const oppAny = sellsSet.has(n) ? oppOf("Work the opportunities that come up", "worked (quoted, lead set or passed)", "not noted")
     : oppOf("Identify opportunities for a producer", "passed", "not passed");
+  const cx0 = cancelOf(aud);
+  const cancelLine = (label) => L(label, cx0.rs.length ? `<b>${cx0.ok}</b> of ${cx0.rs.length} without asking &middot; <b${cx0.asked ? ' style="color:var(--bad)"' : ""}>${cx0.asked}</b> asked for the review &middot; <b${cx0.skipped ? ' style="color:var(--warn, #b45309)"' : ""}>${cx0.skipped}</b> no offer or call back` : "—", "cancel");
   const notes = L("Maintain accurate notes", aud.length ? `<b>${pct(meets.length, aud.length)}</b> meet the note standard (${meets.length} of ${aud.length})` : "—", "notes");
   if (role === "lead") {
     const openAll = team.reduce((a, x) => a + ((m.backlog[x] || {}).open || 0), 0), overAll = team.reduce((a, x) => a + ((m.backlog[x] || {}).overdue || 0), 0);
@@ -9216,6 +9242,7 @@ function roleMeasures(m, n) {
       L("Not the default person for every request", aud.length ? `<b>${pct(rout.length, aud.length)}</b> of her SRs were routine work the team handles (${rout.length} of ${aud.length})` : "—", "routine"),
       L("Complex or sensitive service, escalations", `<b>${cx.length}</b> SR${cx.length === 1 ? "" : "s"}`, "complex"),
       L("Monitor missed calls and texts", `<b${m.callbacks.some(r => r.minutes == null) ? ' style="color:var(--bad)"' : ""}>${m.callbacks.filter(r => r.minutes == null).length}</b> missed calls not returned &middot; <b>${m.msg.replies.filter(r => !r.ack && !r.optout && r.minutes == null).length}</b> customer texts waiting (team)`, "watch"),
+      cancelLine("Present an offer to a client who wants to cancel"),
       L("Audit service notes", teamAud.length ? `team <b>${pct(teamMeets.length, teamAud.length)}</b> meet the note standard` : "—", "team_notes"),
       oppAny,
       notes,
@@ -9232,6 +9259,7 @@ function roleMeasures(m, n) {
       L("Assist with basic billing", `<b>${billing.length}</b> billing / late payment SRs completed`, "billing"),
       L("Handle NOCs and administrative tasks", `<b>${noc.length}</b> NOC / admin SRs &middot; tasks <b>${k.completed}/${k.due}</b>`, "noc"),
       L("Missed calls returned", `<b>${cb.length}</b>${cb.length ? ` &middot; median ${med(cb.map(r => r.minutes))}` : ""}`, "cb"),
+      cancelLine("Pass a client who wants to cancel to their rep, or set a call back"),
       oppAny,
       notes,
     ];
@@ -9244,6 +9272,7 @@ function roleMeasures(m, n) {
     L("Handle routine policy service", `<b>${mine.length}</b> SRs completed${mine.length ? ` &middot; median ${fmtDur(svcMedian(mine.map(r => r.hours)))}` : ""}`, "srs"),
     L("Complete assigned tasks", `<b>${k.completed}/${k.due}</b> service tasks`, "tasks"),
     L("Follow up on outstanding items", `<b>${b.open ?? 0}</b> open SRs &middot; <b${b.overdue ? ' style="color:var(--bad)"' : ""}>${b.overdue ?? 0}</b> overdue`, "open"),
+    cancelLine("Present an offer to a client who wants to cancel"),
     L("Return calls and texts", `call backs <b>${cb.length}</b>${cb.length ? ` (median ${med(cb.map(r => r.minutes))})` : ""} &middot; replies <b>${ans.length}</b>${ans.length ? ` (median ${med(ans.map(r => r.minutes))})` : ""}${need.length - ans.length ? ` &middot; <b style="color:var(--bad)">${need.length - ans.length} waiting</b>` : ""}`, "reply"),
     oppLine,
     notes,

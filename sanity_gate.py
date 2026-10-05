@@ -18,6 +18,8 @@ number.
 """
 import datetime as dt
 
+import staff
+
 AZ = dt.timezone(dt.timedelta(hours=-7))
 
 MIN_SAMPLE_DIALS = 15      # below this a contact-rate swing is just noise
@@ -25,7 +27,7 @@ RATE_SWING_POINTS = 5      # HANDOFF_12 #6's own figure
 ZERO_DIAL_CUTOFF_HOUR = 11  # AZ local -- don't flag a slow start at 9:05am
 # Crystal works service in the mornings (Frank, 2026-09-29: "remove this
 # entirely for Crystal"), so no dials by 11 is not a warning for her.
-ZERO_DIAL_EXEMPT = {"Crystal Mango"}
+ZERO_DIAL_EXEMPT = {p["name"] for p in staff.tagged("zero_dial_exempt")}   # staff.json
 MIN_LIVE_SECONDS = 5        # live_contact.MIN_CONTACT_SECONDS, duplicated
                             # here rather than imported so this module has
                             # zero dependency on the pipeline it is checking

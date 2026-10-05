@@ -28,20 +28,21 @@
  * dozens of them, far too much to put in front of the model whole.
  *
  * WHO SEES WHAT follows the board: anyone signed in sees the Sales and
- * Service Centers; the Commercial Center only COMMERCIAL_VIEWERS; Role Play
+ * Service Centers; the Commercial Center only staff.json's `commercial`; Role Play
  * sessions by rpScope (a producer their own, the history viewers everyone's);
  * the Manager / Coaching guide only the history viewers, like the tab.
  */
 import METHODOLOGY_MD from "../coaching/METHODOLOGY.md";
 import TRAINING_MD from "../coaching/TRAINING.md";
 import "./public/blueprints.js";
+import { PRODUCER_NAMES, hasBoard } from "./staff.js";
 import { claimsForViewer } from "./claims_view.js";   // sets BLUEPRINTS on the global (window in the browser)
 
 const MODEL = "claude-sonnet-5";
 const MAX_ROUNDS = 6;        // tool rounds before the answer is forced
 const MAX_TURNS = 24;        // conversation turns kept
 const MAX_RANGE_DAYS = 45;
-const PRODUCERS = ["Crystal Mango", "Lorena Gonzalez", "Mike Olvera", "Coral Barwick", "Sarahi Chin"];
+const PRODUCERS = PRODUCER_NAMES;   // staff.json
 
 /* ---- standing knowledge ------------------------------------------------- */
 
@@ -129,7 +130,7 @@ const TOOLS = [
       name: { type: "string" }, days: { type: "integer", description: "How many published days back to search (default 10, max 20)" },
       before: { type: "string", description: "Start from this day instead of the newest (YYYY-MM-DD)" } } } },
   { name: "service_day",
-    description: "One day's Service Center (Athena): SRs completed by person and pipeline with completion hours, the backlog (open and overdue per person), Late Payment stages, service tasks, call backs, dials, texts and emails, calls answered and SRs created at the front desk, renewal SR outcomes and the pipeline outcome breakdowns, note standard and opportunities, utilization. `sections` adds rows: srs (every completed SR), open (the open SRs), tasks, callbacks, dials, messages, front, renewals (every renewal SR row), claims (every claim opened, completed and open).",
+    description: "One day's Service Center (Athena): SRs completed by person and pipeline with completion hours, the backlog (open and overdue per person), Late Payment stages, service tasks, call backs, dials, texts and emails, calls answered and SRs created at the front desk, renewal SR outcomes and the pipeline outcome breakdowns, note standard and opportunities, cancellations (clients who wanted to cancel: asked = we asked if they'd let us review it, skipped = cancelled with no offer or call back -- the two flags; offered, routed, no_offer follow the process), utilization. `sections` adds rows: srs (every completed SR), open (the open SRs), tasks, callbacks, dials, messages, front, renewals (every renewal SR row), claims (every claim opened, completed and open).",
     input_schema: { type: "object", required: ["day"], properties: {
       day: { type: "string" }, sections: { type: "array", items: { type: "string", enum: SERVICE_SECTIONS } } } } },
   { name: "renewals",
@@ -467,6 +468,15 @@ function compactService(doc, sections) {
     p.completed++; p.by_pipeline[r.pipeline] = (p.by_pipeline[r.pipeline] || 0) + 1; if (r.hours != null) p.hours.push(r.hours);
   }
   for (const p of Object.values(byPerson)) { p.median_hours_to_complete = median(p.hours); delete p.hours; }
+  // Clients who wanted to cancel (service_playbook.CANCELLATIONS, from 2026-10-05):
+  // the note read's verdict per SR; asked / skipped are the flags.
+  const cancellations = {};
+  for (const r of done) {
+    const v = r.audit && r.audit.cancel;
+    if (!v || v === "none") continue;
+    const p = cancellations[r.by || "?"] || (cancellations[r.by || "?"] = {});
+    p[v] = (p[v] || 0) + 1;
+  }
   const tasks = doc.task_rows || [];
   const out = {
     day: doc.date, label: doc.label, built_at: doc.built_at,
@@ -478,6 +488,8 @@ function compactService(doc, sections) {
     callbacks: summarize(doc.callbacks), dials: summarize(doc.dials), texts_and_emails: summarize(doc.messages),
     front_desk: summarize(doc.front), renewal_srs: summarize(doc.renewals), utilization: doc.utilization,
     roles_and_note_standard: summarize(doc.roles || doc.audit), playbook_roles: (doc.playbook || {}).roles,
+    cancellations_by_person: Object.keys(cancellations).length ? cancellations : undefined,
+    cancellation_rule: (doc.playbook || {}).cancellations,
     // Claims (claims.py): licensed reps only; not_licensed (the flags) is the ops team's alone
     // -- claimsForViewer empties it for everyone else.
     claims: doc.claims ? { licensed: doc.claims.licensed, rule_from: doc.claims.rule_from,
@@ -734,7 +746,7 @@ async function streamRound(env, body, emit) {
    use?" -- option 1, track it on the board) ------------------------------
    Every answer's tokens are added to coeus-usage/<day>.json under the
    person who asked, with an estimated cost at the model's list prices.
-   GET /api/coeus/usage?from=&to= (COEUS_USAGE_VIEWERS) adds it up per
+   GET /api/coeus/usage?from=&to= (staff.json's `coeus_usage`) adds it up per
    person and per day. One key still pays for everyone; this is who used it. */
 // claude-sonnet-5 list prices per million tokens (platform.claude.com/pricing,
 // 2026-10-02): input $2, output $10, cache write 1.25x input, cache read 0.1x.
@@ -755,7 +767,7 @@ async function recordUsage(env, me, usage, rounds) {
 }
 function usageAllowed(request, env, deps) {
   const who = String((deps.identityOf(request, env) || {}).email || "").toLowerCase();
-  return !!who && String(env.COEUS_USAGE_VIEWERS || "").toLowerCase().split(",").map((x) => x.trim()).filter(Boolean).includes(who);
+  return hasBoard(who, "coeus_usage");
 }
 async function usageReport(env, from, to) {
   const today = azToday();

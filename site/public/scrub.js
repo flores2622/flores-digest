@@ -1,7 +1,7 @@
 /* The lead scrub tracker (Frank, 2026-10-02: "an interactive way to track a
    list of leads we are scrubbing, making sure they are updated in both apex
    and agency zoom"). Sales Center > Lead Scrub, shown only to the people
-   /api/scrub answers (site/scrub.js, SCRUB_VIEWERS).
+   /api/scrub answers (site/scrub.js, staff.json's `scrub`).
 
    A manager imports the report (Excel or CSV, as it comes) as a scrub
    list; the columns are matched by their headers and can be changed before

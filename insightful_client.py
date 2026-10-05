@@ -37,6 +37,7 @@ import time
 import requests
 
 from secrets_load import load
+import staff
 
 BASE = "https://app.insightful.io/api/v1"
 UA = "FloresDigest/1.0 (+frank@floresinsuranceagency.com)"
@@ -60,7 +61,7 @@ AZ_TZ = dt.timezone(dt.timedelta(hours=-7))  # Arizona: UTC-7, never DST
 # published team number, which for 2026-08-07 was 1620m/1851m = 87.52% over
 # Crystal+Mike+Debbie+Lorena. That match was how the METHOD was verified, not a
 # constraint on scope. Reverting is one line: put Coral back in this set.
-TEAM_UTIL_EXCLUDE = {"Amanda Torricellas"}
+TEAM_UTIL_EXCLUDE = {p["name"] for p in staff.tagged("team_util_exclude")}   # staff.json
 
 
 class Insightful:

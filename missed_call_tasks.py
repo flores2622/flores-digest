@@ -34,18 +34,16 @@ import pathlib
 import re
 
 import missed_call_audit as audit
+import staff
 
 ROOT = pathlib.Path(__file__).resolve().parent
 AZ = dt.timezone(dt.timedelta(hours=-7))
 log = audit.log
 
-# From GET /v1/api/employees, 2026-09-01. Only the people in the routing.
-EMPLOYEE = {
-    "Debbie": 83597, "Crystal": 174445, "Lorena": 82587, "Sarahi": 185441,
-    "Amanda": 105006, "Coral": 185440, "Mike": 82588, "Frank": 82589,
-    "Adrian": 82590, "Francisco": 82372,
-}
-FALLBACK = EMPLOYEE["Debbie"]
+# First name -> AgencyZoom employee id (GET /v1/api/employees, 2026-09-01):
+# the people in the routing, staff.json's `task_assignee` tag.
+EMPLOYEE = {staff.first(p): p["az_id"] for p in staff.tagged("task_assignee")}
+FALLBACK = staff.one("missed_call_fallback")["az_id"]
 
 # NO SERVICE REQUEST IS OPENED. Frank, 2026-09-02: "make it a plain task for
 # amanda and let her figure out what to do with it."

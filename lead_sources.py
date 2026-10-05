@@ -19,6 +19,8 @@ a session's lead source. Every lead source is still coached.
 """
 import re
 
+import staff
+
 ANY = "any product"
 
 # key -> definition. Order here is the order a breakdown should list them in.
@@ -254,19 +256,12 @@ CROSS_SELL_PRODUCT = {
 # Current and past team; a new hire's name as a source lands in "unclassified"
 # until it is added here. Former staff per Frank, 2026-09-24: Adrian
 # Alcantara, Anastasia Perez, Michelle Garcia, Veronica Rodriguez, Maria Medina.
-STAFF = {
-    "frank flores", "francisco flores", "veronica flores", "amanda torricellas",
-    "debbie aguilera", "crystal mango", "lorena gonzalez", "mike olvera",
-    "coral barwick", "sarahi chin",
-    "adrian alcantara", "anastasia perez", "michelle garcia",
-    "veronica rodriguez", "maria medina",
-    # in AgencyZoom's Team category, no leads yet
-    "eleuterio gutierrez", "tori pletsch",
-}
+# Everyone in staff.json, past staff and AgencyZoom's Team category included.
+STAFF = {p["name"].lower() for p in staff.PEOPLE}
 
 # Francisco's name as a source is a referral, not a personal network (Frank,
 # 2026-09-24).
-STAFF_REFERRAL = {"francisco flores"}
+STAFF_REFERRAL = {p["name"].lower() for p in staff.tagged("referral_source")}
 
 # Role Play backstory for one source where its group's own is not right: a
 # Francisco lead is a referral or a warm transfer (Frank, 2026-09-24). Home

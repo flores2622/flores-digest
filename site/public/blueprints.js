@@ -312,7 +312,7 @@
         { terms: [
           ["Service Lead: Amanda", "Oversight, delegation, complex service, training, and keeping the department moving. Handles complex or sensitive issues, Spanish-speaking service clients, involved policy changes and coverage questions, and reviews renewals. Watches missed calls, texts and pending tasks, audits notes, and steps in when someone needs help. A licensed rep, so she opens and works claims. **The Service Lead is not the default person for every request**; the goal is to delegate and support, not become the team's backlog."],
           ["Service Team Member: Crystal", "Handles day-to-day service independently: policy questions and changes, billing questions, vehicles and drivers, lienholders, documents and ID cards, renewal questions, and follow-ups. **If you can handle it, handle it.** Check the account, the policy and the notes before passing anything on. Crystal also sells, so she works an opportunity herself. A licensed rep, so she opens and works claims."],
-          ["Front Desk: Debbie", "The first impression of the agency. Answers calls, greets walk-ins, handles basic billing, NOCs and admin tasks, and gets each client to the right person. **The front desk doesn't need to solve every issue**; the goal is to identify the need and route it confidently. Debbie passes sales opportunities to a producer. **Debbie doesn't open claims**: a client calling with a claim goes to Amanda or Crystal."],
+          ["Front Desk: Debbie", "The first impression of the agency. Answers calls, greets walk-ins, handles basic billing, NOCs and admin tasks, and gets each client to the right person. **The front desk doesn't need to solve every issue**; the goal is to identify the need and route it confidently. Debbie passes sales opportunities to a producer. **Debbie doesn't open claims**: a client calling with a claim goes to Amanda or Crystal. A client who wants to cancel goes to their rep, or gets a call back or appointment with them (below)."],
         ] },
       ] },
 
@@ -329,6 +329,18 @@
         ] } },
         "**When in doubt, start with the service team.** We decide where the request needs to go.",
         "**Service first, opportunity second.** Don't force a sales conversation into every call, but don't miss the ones clients hand you. \"I'm adding a new vehicle\": handle the change, then see if the household could be reviewed. \"We're buying a house\": handle the need, and make sure the home gets to a producer.",
+      ] },
+
+    { h: "A client who wants to cancel",
+      body: [
+        "**Never ask if they'll give us the opportunity to review it.** They say no every time. Assume the review and do it.",
+        { steps: [
+          "**Front desk**: pass the client to their assigned rep if the rep is available.",
+          "**Rep not available**: schedule a call back or an appointment with the rep.",
+          "**The rep**: work up an offer if there is one and present it, without asking if they'll let us review it.",
+          "**No offer, or they still want to cancel**: refer them to the cancellation department, or cancel it ourselves where we can.",
+        ] },
+        "**Athena checks it.** On every SR completed from October 5 where the client wanted to cancel, Athena reads your note and flags two things: **asked if they'd let us review it** (any version of asking permission), and **cancelled with no offer or call back** (nothing in the note says an offer was made, there was no offer to make, or the client was passed to their rep or given a call back or appointment). The **Cancellations** card on the Service Center shows how many were handled without asking, and opens every one, flagged first. Write the offer, the call back or the \"no offer available\" in your note so Athena can see it.",
       ] },
 
     { h: "The note standard",
@@ -373,6 +385,7 @@
           ["SRs created", "SRs each person opened."],
           ["Note standard", "How many notes left out a part of the note standard, and which part."],
           ["Opportunities", "Sales opportunities in the SRs: worked (quoted, a lead set, or passed to a producer) or not noted."],
+          ["Cancellations", "Clients who wanted to cancel, from October 5: how many were handled without asking for the review, how many asked, and how many were cancelled with no offer or call back."],
           ["Utilization", "Insightful's productive time over tracked time."],
         ] },
         "Under the cards: Texts & Emails, Note Standard, Completion Time, and each pipeline's outcomes. Claims have their own page, the Claims Center.",

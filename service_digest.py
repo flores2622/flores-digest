@@ -31,17 +31,18 @@ import datetime as dt
 import json
 import pathlib
 
+import staff
+
 ROOT = pathlib.Path(__file__).resolve().parent
 AZ = dt.timezone(dt.timedelta(hours=-7))
 PREFIX = "service"
 
-# name -> AgencyZoom user id (the same id is the CSR id on tickets).
-SERVICE_TEAM = {
-    "Debbie Aguilera": {"az_id": 83597, "role": "CSR"},
-    "Amanda Torricellas": {"az_id": 105006, "role": "Ops Mngr"},
-    "Crystal Mango": {"az_id": 174445, "role": "Hybrid"},
-}
-HYBRID_UTIL = {"Crystal Mango"}      # whole-day utilization, shared with sales
+# name -> AgencyZoom user id (the same id is the CSR id on tickets): everyone
+# with a `service` entry in staff.json, in its order.
+SERVICE_TEAM = {p["name"]: {"az_id": p["az_id"], "role": p["service"]["role"]}
+                for p in staff.service_team()}
+# whole-day utilization, shared with sales
+HYBRID_UTIL = {p["name"] for p in staff.tagged("hybrid_util")}
 
 # AgencyZoom service pipelines, as the agency uses them (Frank, 2026-09-23).
 # Commercial Renewals is not one of them: commercial is Frank's alone and lives
@@ -430,7 +431,7 @@ def callback_figures(day, recs=None, commercial_only=frozenset()):
 # Crystal also sells, so only her dials to service numbers are service work
 # (Frank, 2026-09-29: "dials (for Crystal the Service dials only)"); her
 # new-business dials are the Sales Center's.
-SERVICE_ONLY_DIALS = {"Crystal Mango"}
+SERVICE_ONLY_DIALS = {p["name"] for p in staff.tagged("service_only_dials")}
 DIAL_SERVICE_BUCKETS = {"customer", "open SR"}
 
 

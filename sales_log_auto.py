@@ -68,16 +68,18 @@ import re
 import uuid
 
 import digest_config as cfg
+import staff
 
 ROOT = pathlib.Path(__file__).resolve().parent
 
 
 def _ids():
     """az_id -> canonical display name, for exactly the people this sheet
-    should auto-log: the 5 tracked producers plus Amanda -- deliberately
-    narrower than "every AgencyZoom agent" (no CSRs, no Frank, no Debbie)."""
+    should auto-log: the 5 tracked producers plus Amanda (staff.json's
+    `sales_sheet` tag) -- deliberately narrower than "every AgencyZoom agent"
+    (no CSRs, no Frank, no Debbie)."""
     out = {v["az_id"]: k for k, v in cfg.PRODUCERS.items()}
-    out[cfg.OTHER_EXT["Amanda Torricellas"]["az_id"]] = "Amanda Torricellas"
+    out.update({p["az_id"]: p["name"] for p in staff.tagged("sales_sheet")})
     return out
 
 
