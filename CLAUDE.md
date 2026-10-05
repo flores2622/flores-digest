@@ -2042,7 +2042,11 @@ repaint clears the list).
   collar the podium stands on, the hole itself the dogleg left its sign
   names ("dog leg left still doesnt make sense": the tee up by the
   clubhouse, the fairway running left from it and turning down to the green,
-  trees inside the corner, a bunker outside the bend), tree shadows), a pond with a footbridge, the 18 DEDUCTIBLE DOGLEG hole sign
+  trees inside the corner, a bunker outside the bend; the mowing stripes
+  laid along the hole's centre line from the tee round the bend to the green,
+  "make the grass lines flow right"; the pin between second and first on
+  the podium, "a more central spot", a player putting and one reading the
+  line on the green; the bag strapped on the cart's rear deck), tree shadows), a pond with a footbridge, the 18 DEDUCTIBLE DOGLEG hole sign
   and an ON PAR cart on the path; banners from the tee shot to the
   yardage-book Road Maps and the pro shop; strips from a hole in one to the
   flag alone under the moon; the tour card is the Caddie's notes. **Yuma** (Frank, 2026-10-05: "can
