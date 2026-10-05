@@ -463,6 +463,8 @@ def v_sales(n):  # the tee shot: the ball flying down the fairway
     p = P(n); o = [base(n)]
     o.append(moon(1250, 62, 22) if n else sun(1250, 66, 24))
     o.append(twinkle(n, seed=31))
+    o.append(drifting(n, [(820, 46, 150, 40, 12), (1400, 30, 120, -36, 11)]))
+    o.append(flyers(n, [(760, 70, 1.1, 90, 11), (792, 58, .8, 90, 11)]))
     o.append(hills([(0, 150), (300, 118), (600, 140), (900, 110), (1200, 134), (1600, 120)], 190, p["far"]))
     o.append(treeline(0, 1600, 172, 12, 22, p["treeline"], 4, 26))
     o.append(ground(p, 168))
@@ -481,8 +483,6 @@ def v_sales(n):  # the tee shot: the ball flying down the fairway
     o.append(f'<g>{ball(bx, by, 6)}<line x1="{bx - 20}" y1="{by + 3}" x2="{bx - 8}" y2="{by + 1}" stroke="#fff" stroke-width="2" opacity=".6"/>'
              f'<animateMotion path="{rel}" keyPoints="0;0;1;1" keyTimes="0;.1;.6;1" calcMode="linear" dur="6s" repeatCount="indefinite"/>'
              '<animate attributeName="opacity" values="1;1;0;0;1" keyTimes="0;.68;.74;.96;1" dur="6s" repeatCount="indefinite"/></g>')
-    o.append(drifting(n, [(820, 46, 150, 40, 12), (1460, 84, 120, -36, 11)]))
-    o.append(flyers(n, [(760, 70, 1.1, 90, 11), (792, 58, .8, 90, 11)]))
     o.append(edge_trees(p))
     o.append(corners(p, n))
     return vwrap(''.join(o))
@@ -491,6 +491,7 @@ def v_messages(n):  # the starter's shack and the scoreboard
     p = P(n); o = [base(n)]
     o.append(moon(300, 60, 20) if n else sun(300, 66, 22))
     o.append(twinkle(n, seed=32))
+    o.append(flyers(n, [(1410, 40, 1, -100, 12), (1440, 30, .8, -100, 12)]))
     o.append(treeline(0, 1600, 160, 16, 30, p["treeline"], 5, 30))
     o.append(ground(p, 156))
     # the starter's shack
@@ -516,7 +517,6 @@ def v_messages(n):  # the starter's shack and the scoreboard
     # a cart rolls along the path below the board
     rolling = (f'<g>{cart(880, 228, .62, label="ON PAR")}<animateTransform attributeName="transform" type="translate" values="180 0;-200 0" dur="12s" repeatCount="indefinite"/>'
                '<animate attributeName="opacity" values="0;1;1;0" keyTimes="0;.12;.88;1" dur="12s" repeatCount="indefinite"/></g>')
-    o.append(flyers(n, [(1260, 60, 1, -110, 12), (1290, 48, .8, -110, 12)]))
     o.append(edge_trees(p))
     o.append(corners(p, n))
     o.append(rolling)
@@ -526,6 +526,7 @@ def v_coaching(n):  # the practice range, a pro coaching a player
     p = P(n); o = [base(n, sky=("#5a90c8", "#b8d8ec", "#f2eed6"))]
     o.append(moon(1280, 60, 20) if n else sun(1280, 62, 22))
     o.append(twinkle(n, seed=33))
+    o.append(drifting(n, [(980, 40, 160, 40, 12)]))
     o.append(treeline(0, 1600, 140, 14, 26, p["treeline"], 6, 28))
     o.append(ground(p, 136, p["fair"]))
     for i, (x, y) in enumerate([(820, 130), (1000, 126), (1160, 134), (700, 128)]):
@@ -541,7 +542,6 @@ def v_coaching(n):  # the practice range, a pro coaching a player
     # the shots go out off the mat and drop into the range
     for i, (path, b) in enumerate([("M0 0 Q150 -170 310 -44", 0), ("M0 0 Q120 -140 240 -36", 2)]):
         o.append(fly(626, 184, 3, path, 4, "0;0;1;1", "0;.05;.7;1", "0;1;1;0;0", "0;.06;.72;.8;1", b))
-    o.append(drifting(n, [(980, 40, 160, 40, 12)]))
     o.append(f'<path d="M680 72 q-8 -24 30 -26 h70 q24 0 24 18 q0 18 -24 18 h-60 l-20 12z" fill="#fff" opacity=".92"/>'
              '<path d="M712 64 l10 -10 l10 10 l10 -10 l10 10" stroke="#1f5a35" stroke-width="3" fill="none"/>')
     o.append(edge_trees(p))
@@ -552,6 +552,7 @@ def v_roleplay(n):  # the putting practice green
     p = P(n); o = [base(n, sky=("#5a90c8", "#c6dfe8", "#f6eccc"))]
     o.append(moon(1240, 58, 20) if n else sun(1240, 62, 22))
     o.append(twinkle(n, seed=34))
+    o.append(flyers(n, [(1060, 70, 1, -100, 11), (1090, 60, .8, -100, 11)]))
     o.append(treeline(0, 1600, 130, 14, 26, p["treeline"], 8, 28))
     o.append(ground(p, 126))
     o.append(f'<ellipse cx="800" cy="180" rx="440" ry="56" fill="{p["fringe"]}"/><ellipse cx="800" cy="180" rx="424" ry="48" fill="{p["green"]}"/>')
@@ -562,7 +563,6 @@ def v_roleplay(n):  # the putting practice green
     o.append(f'<path d="M846 205 Q900 196 960 200" stroke="#fff" stroke-width="2" stroke-dasharray="4 6" fill="none" opacity=".7"/>')
     # the putt rolls out along its line and dies by the end of it, then the next
     o.append(fly(844, 205, 3.5, "M0 0 Q56 -9 116 -5", 6, "0;0;1;1", "0;.15;.6;1", "1;1;0;1", "0;.86;.94;1"))
-    o.append(flyers(n, [(1060, 70, 1, -100, 11), (1090, 60, .8, -100, 11)]))
     o.append(golfer(690, 204, 1.25, "stand", "#c8452a", "#2e3a4c", skin=p["skin"]))
     o.append(edge_trees(p))
     o.append(corners(p, n))
@@ -603,6 +603,7 @@ def v_training(n):  # the driving range with distance markers
     p = P(n); o = [base(n)]
     o.append(moon(300, 56, 20) if n else sun(300, 60, 22))
     o.append(twinkle(n, seed=35))
+    o.append(flyers(n, [(1200, 66, 1, -100, 12)]))
     o.append(hills([(0, 120), (400, 100), (800, 116), (1200, 96), (1600, 112)], 140, p["far"]))
     o.append(treeline(0, 1600, 126, 10, 20, p["treeline"], 9, 24))
     o.append(f'<path d="M0 122 L1600 122 L1600 240 L0 240Z" fill="{p["fair"]}"/>')
@@ -625,7 +626,6 @@ def v_training(n):  # the driving range with distance markers
              '<rect x="-8" y="-30" width="12" height="18" fill="none" stroke="#6a6a6a" stroke-width="1.5"/><rect x="-30" y="-3" width="40" height="4" fill="#7a7a7a"/>'
              '<circle cx="-8" cy="1" r="3.4" fill="#222"/><circle cx="8" cy="1" r="3.4" fill="#222"/></g>'
              f'<animateTransform attributeName="transform" type="translate" values="0 0;-180 0;0 0" dur="12s" {SP2} repeatCount="indefinite"/></g>')
-    o.append(flyers(n, [(1200, 66, 1, -100, 12)]))
     o.append(edge_trees(p))
     o.append(corners(p, n))
     return vwrap(''.join(o))
@@ -674,6 +674,7 @@ def v_service(n):  # the greenskeepers keeping the course
     p = P(n); o = [base(n, sky=("#5a90c8", "#bcd9ea", "#f2ead2"))]
     o.append(moon(1300, 56, 20) if n else sun(1300, 60, 22))
     o.append(twinkle(n, seed=36))
+    o.append(drifting(n, [(900, 44, 150, 40, 12)]))
     o.append(treeline(0, 1600, 136, 14, 28, p["treeline"], 10, 28))
     o.append(ground(p, 132, p["fair"]))
     for i in range(6): o.append(f'<path d="M{440 + i * 60} 240 L{700 + i * 34} 136 L{730 + i * 34} 136 L{500 + i * 60} 240Z" fill="{p["fair2"]}"/>' if i % 2 == 0 else '')
@@ -693,7 +694,6 @@ def v_service(n):  # the greenskeepers keeping the course
     for k in range(4): o.append(f'<path d="M840 {196 + k * 4} q30 -4 60 0" stroke="{p["sand2"]}" stroke-width="1.5" fill="none"/>')
     # changing the cup on the green
     o.append(f'<ellipse cx="1110" cy="174" rx="120" ry="20" fill="{p["green"]}"/>' + wflag(1080, 172, 40, p["flag"]))
-    o.append(drifting(n, [(900, 44, 150, 40, 12)]))
     o.append(golfer(1150, 182, .9, "crouch", "#e9c75a", "#3a4a3a", cap="#e9c75a", skin=p["skin"]))
     o.append(edge_trees(p))
     o.append(corners(p, n))
@@ -703,6 +703,7 @@ def v_renewals(n):  # the course in spring bloom
     p = P(n); o = [base(n, sky=("#6aa6d8", "#c2e0f0", "#f6f0d6"))]
     o.append(moon(1260, 56, 20) if n else sun(1260, 60, 22))
     o.append(twinkle(n, seed=37))
+    o.append(flyers(n, [(1240, 70, 1, -100, 11)]))
     o.append(hills([(0, 130), (400, 104), (800, 124), (1200, 100), (1600, 124)], 160, p["far"]))
     o.append(treeline(0, 1600, 150, 12, 22, p["treeline"], 11, 26))
     o.append(ground(p, 146, p["fair"]))
@@ -722,7 +723,6 @@ def v_renewals(n):  # the course in spring bloom
         o.append(f'<circle cx="{r.randint(460, 1180)}" cy="{r.randint(60, 150)}" r="3" fill="{bl[0]}" opacity=".8">'
                  f'<animateTransform attributeName="transform" type="translate" values="0 0;24 30;6 60;30 90" dur="{7 + i % 4}s" begin="{-i * .9:.1f}s" repeatCount="indefinite"/>'
                  f'<animate attributeName="opacity" values="0;.85;.85;0" keyTimes="0;.15;.75;1" dur="{7 + i % 4}s" begin="{-i * .9:.1f}s" repeatCount="indefinite"/></circle>')
-    o.append(flyers(n, [(1240, 70, 1, -100, 11)]))
     o.append(edge_trees(p))
     o.append(corners(p, n))
     return vwrap(''.join(o))
@@ -763,7 +763,8 @@ def v_commercial(n):  # the clubhouse pro shop
     p = P(n); o = [base(n)]
     o.append(moon(1300, 54, 20) if n else sun(1300, 58, 22))
     o.append(twinkle(n, seed=39))
-    o.append(drifting(n, [(900, 22, 140, 40, 12)]))
+    o.append(drifting(n, [(1190, 22, 140, 40, 12)]))
+    o.append(flyers(n, [(1420, 30, 1, -80, 11)]))
     o.append(treeline(0, 1600, 170, 16, 30, p["treeline"], 13, 30))
     o.append(ground(p, 196, p["path"]))
     wall = p["wall"]; x0, x1 = 540, 1080
@@ -785,7 +786,6 @@ def v_commercial(n):  # the clubhouse pro shop
     o.append('<g>' + golfer(1200, 216, .95, "stand", "#2f7ad0", "#e8e2d0", skin=p["skin"]) + bag(1220, 216, .7, "#1f5a35")
              + '<animateTransform attributeName="transform" type="translate" values="0 0;-380 -16;-380 -16" keyTimes="0;.8;1" dur="12s" repeatCount="indefinite"/>'
              '<animate attributeName="opacity" values="0;1;1;0;0" keyTimes="0;.06;.74;.8;1" dur="12s" repeatCount="indefinite"/></g>')
-    o.append(flyers(n, [(1180, 40, 1, -90, 11)]))
     return vwrap(''.join(o))
 
 VISTA_FNS = {"sales": v_sales, "messages": v_messages, "coaching": v_coaching, "roleplay": v_roleplay, "rphistory": v_rphistory,

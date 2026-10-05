@@ -749,7 +749,8 @@ def v_service(n):  # a neighbourhood street: ranch houses, palms, a pool
 
 def v_renewals(n):  # orange blossoms in a citrus grove
     o = [vsky(n, ("#7ec0ec", "#c4e2f2", "#fff2d4"), NITE)]
-    o.append(stars(50, 1600, 0, 100, 8) + '<circle cx="1180" cy="54" r="26" fill="#f6efd8"/>' if n else '<circle cx="1180" cy="60" r="80" fill="url(#sn)"/><circle cx="1180" cy="60" r="28" fill="#fff3c4"/>')
+    o.append(stars(50, 1600, 0, 100, 8) + glint([(800, 30), (1420, 50)]) + '<circle cx="1180" cy="54" r="26" fill="#f6efd8"/>' if n
+             else f'<circle cx="1180" cy="60" r="80" fill="url(#sn)">{anim("r", [80, 92, 80], 6)}</circle><circle cx="1180" cy="60" r="28" fill="#fff3c4"/>')
     o.append(camel(100, 120, 560, 70, "#1b1531" if n else "#b49ab8"))
     o.append(f'<rect x="0" y="118" width="1600" height="122" fill="{"#2a2018" if n else "#c49a6a"}"/>')
     r = random.Random(9)
@@ -757,7 +758,7 @@ def v_renewals(n):  # orange blossoms in a citrus grove
     rows = [(128, 40, .7), (186, 60, 1.15)]
     for y, off, s in rows:
         o.append(f'<path d="M0 {y + 12 * s:.0f}L1600 {y + 12 * s:.0f}" stroke="{"#3a2a1e" if n else "#a87a4a"}" stroke-width="{3 * s:.0f}"/>')
-        step = int(150 * s)
+        step = int(150 * s); fr = ['', '', '']  # the row's oranges, blossoms and their hearts, one group each (the trees never overlap)
         for x in range(-off, 1700, step):
             rx = 58 * s; ry = 40 * s
             o.append(f'<rect x="{x - 4 * s:.0f}" y="{y - 4 * s:.0f}" width="{8 * s:.0f}" height="{16 * s:.0f}" fill="#5a3a2a"/>')
@@ -765,11 +766,15 @@ def v_renewals(n):  # orange blossoms in a citrus grove
             for _ in range(int(3 * s) + 2):
                 fx = x + r.uniform(-rx * .8, rx * .8); fy = y - ry * .7 + r.uniform(-ry * .7, ry * .6)
                 if r.random() < .5:
-                    o.append(f'<circle cx="{fx:.0f}" cy="{fy:.0f}" r="{5 * s:.1f}" fill="#ff9a1f"/>')
+                    fr[0] += f'<circle cx="{fx:.0f}" cy="{fy:.0f}" r="{5 * s:.1f}"/>'
                 else:
-                    o.append(f'<circle cx="{fx:.0f}" cy="{fy:.0f}" r="{3.4 * s:.1f}" fill="#fffaf0"/><circle cx="{fx:.0f}" cy="{fy:.0f}" r="{1.2 * s:.1f}" fill="#ffd23f"/>')
-    for x, y in [(560, 60), (620, 84), (940, 50)]:
-        o.append(f'<g transform="translate({x} {y})"><ellipse rx="7" ry="5" fill="#ffd23f"/><path d="M-2 -5v10M2 -5v10" stroke="#222" stroke-width="2"/><ellipse cx="-2" cy="-7" rx="5" ry="3" fill="#fff" opacity=".8"/><ellipse cx="3" cy="-7" rx="5" ry="3" fill="#fff" opacity=".8"/></g>')
+                    fr[1] += f'<circle cx="{fx:.0f}" cy="{fy:.0f}" r="{3.4 * s:.1f}"/>'; fr[2] += f'<circle cx="{fx:.0f}" cy="{fy:.0f}" r="{1.2 * s:.1f}"/>'
+        o.append(''.join(f'<g fill="{c}">{g}</g>' for c, g in zip(("#ff9a1f", "#fffaf0", "#ffd23f"), fr)))
+    # petals drifting down from the front row
+    for k, (x, y) in enumerate([(820, 150), (1130, 140), (1420, 156)]):
+        o.append(f'<ellipse cx="{x}" cy="{y}" rx="4" ry="2.6" fill="#fffaf0" opacity="0">{tfm("translate", ["0 0", f"{18 - k * 12} 40"], 6, k * 2, ease=False)}{anim("opacity", [0, 1, 1, 0], 6, k * 2, ease=False)}</ellipse>')
+    for k, (x, y) in enumerate([(560, 60), (620, 84), (940, 50)]):  # the bees loop about
+        o.append(f'<g><animateMotion path="M0 0c{12 + k * 8} -14 {24 + k * 10} 10 0 {8 + k * 2}c-{14 + k * 6} -6 -{20 + k * 6} -16 0 -{8 + k * 2}" dur="{4 + k}s" repeatCount="indefinite"/><g transform="translate({x} {y})"><ellipse rx="7" ry="5" fill="#ffd23f"/><path d="M-2 -5v10M2 -5v10" stroke="#222" stroke-width="2"/><ellipse cx="-2" cy="-7" rx="5" ry="3" fill="#fff" opacity=".8"/><ellipse cx="3" cy="-7" rx="5" ry="3" fill="#fff" opacity=".8"/></g></g>')
     o.append(f'<path d="M500 70q30 -20 60 -10t60 14" fill="none" stroke="{"#fff" if n else "#5a3a2a"}" stroke-width="1.6" stroke-dasharray="4 6" opacity=".6"/>')
     o.append(shade())
     return wrap(V, ''.join(o))
@@ -781,14 +786,16 @@ def v_claims(n):  # after the storm
     else: o.append('<path d="M120 200A360 360 0 0 1 760 120" fill="none" stroke="#ff8a8a" stroke-width="7" opacity=".4"/><path d="M128 210A360 360 0 0 1 768 130" fill="none" stroke="#ffd23f" stroke-width="7" opacity=".4"/><path d="M136 220A360 360 0 0 1 776 140" fill="none" stroke="#7ad07a" stroke-width="7" opacity=".4"/><path d="M144 230A360 360 0 0 1 784 150" fill="none" stroke="#6aa8ff" stroke-width="7" opacity=".4"/>')
     # the storm moving off to the right, still raining there
     sc = "#1e2232" if n else "#4a5266"
-    o.append(f'<g fill="{sc}"><ellipse cx="1340" cy="40" rx="320" ry="60"/><ellipse cx="1200" cy="54" rx="160" ry="44"/><ellipse cx="1480" cy="70" rx="200" ry="50"/></g>')
-    for x in range(1080, 1600, 26): o.append(f'<line x1="{x}" y1="90" x2="{x - 18}" y2="170" stroke="{"#8a9ab8" if n else "#b8c8dc"}" stroke-width="2" opacity=".55"/>')
-    o.append('<path d="M1300 80l-16 30h12l-10 26l26 -36h-12l12 -20z" fill="#ffe680"/>')
+    rain = ''.join(f'<line x1="{x}" y1="90" x2="{x - 18}" y2="170"/>' for x in range(1080, 1600, 26))
+    o.append(slide(f'<g fill="{sc}"><ellipse cx="1340" cy="40" rx="320" ry="60"/><ellipse cx="1200" cy="54" rx="160" ry="44"/><ellipse cx="1480" cy="70" rx="200" ry="50"/></g>'
+                   f'<g stroke="{"#8a9ab8" if n else "#b8c8dc"}" stroke-width="2" opacity=".55" stroke-dasharray="14 6">{rain}{anim("stroke-dashoffset", [0, -100], 2, ease=False)}</g>', 30, 0, 12))
+    o.append('<path d="M1300 80l-16 30h12l-10 26l26 -36h-12l12 -20z" fill="#ffe680">'
+             '<animate attributeName="opacity" values="1;1;.1;1;.1;.1;1" keyTimes="0;.5;.53;.56;.59;.97;1" dur="6s" repeatCount="indefinite"/></path>')
     o.append(camel(100, 150, 520, 80, "#1b1531" if n else "#8a6a8a"))
     o.append(f'<rect x="0" y="148" width="1600" height="92" fill="{"#1e1a28" if n else "#b89878"}"/>')
     # the flooded wash across the road
     o.append(f'<path d="M0 190L1600 190L1600 240L0 240Z" fill="{"#17121f" if n else "#5a4f58"}"/>')
-    o.append(f'<path d="M1020 186Q1150 174 1300 186L1340 214Q1150 236 980 214Z" fill="{"#4a3a2a" if n else "#a07a50"}"/><path d="M1050 196q30 -6 60 0t60 0t60 0t60 0" fill="none" stroke="#fff" stroke-opacity=".35" stroke-width="2"/>')
+    o.append(f'<path d="M1020 186Q1150 174 1300 186L1340 214Q1150 236 980 214Z" fill="{"#4a3a2a" if n else "#a07a50"}"/><path d="M1050 196q30 -6 60 0t60 0t60 0t60 0" fill="none" stroke="#fff" stroke-opacity=".35" stroke-width="2">{tfm("translate", ["0 0", "18 3", "0 0"], 3.6)}</path>')
     o.append('<rect x="1370" y="140" width="4" height="56" fill="#888"/><rect x="1336" y="112" width="40" height="40" fill="#ffd23f" transform="rotate(45 1356 132)"/><text x="1356" y="136" text-anchor="middle" font-family="Arial, sans-serif" font-weight="bold" font-size="10" fill="#111">FLOOD</text>')
     # the crew clearing a fallen palm
     pt = "#3a2a2a" if n else "#7a5040"; pf = "#1f3a24" if n else "#3f6a3a"
@@ -800,7 +807,8 @@ def v_claims(n):  # after the storm
     # the crew truck with its light bar
     tk = "#e9edf2" if not n else "#9aa3b5"
     o.append('<g transform="translate(260 0)">' + f'<path d="M180 200L180 160L240 160L260 178L300 178L300 200Z" fill="{tk}"/><rect x="196" y="166" width="34" height="14" fill="#2b3d55"/><circle cx="208" cy="202" r="10" fill="#222"/><circle cx="280" cy="202" r="10" fill="#222"/>'
-             '<rect x="194" y="152" width="40" height="8" rx="3" fill="#ff8a1f"/>' + ('<circle cx="214" cy="156" r="30" fill="#ff8a1f" opacity=".3"/>' if n else '') + '</g>')
+             '<rect x="194" y="152" width="40" height="8" rx="3" fill="#ff8a1f"/>' + beacon(204, 156, 2) + beacon(224, 156, 2, 1, "#ffb347")
+             + ('<circle cx="214" cy="156" r="30" fill="#ff8a1f" opacity=".3"/>' if n else '') + '</g>')
     for x in (620, 1010): o.append(f'<path d="M{x} 210l10 -26l10 26z" fill="#ff6a1f"/><rect x="{x + 3}" y="196" width="14" height="4" fill="#fff"/>')
     o.append(shade())
     return wrap(V, ''.join(o))
@@ -819,9 +827,12 @@ def v_commercial(n):  # downtown towers and offices
         x += w + 6
     # a construction crane on a new tower
     cc = "#e8a23a"
-    o.append(f'<rect x="1300" y="30" width="8" height="210" fill="{cc}"/><rect x="1180" y="26" width="260" height="8" fill="{cc}"/><line x1="1220" y1="34" x2="1220" y2="96" stroke="#333" stroke-width="2"/><rect x="1208" y="96" width="24" height="12" fill="#2f6fb8"/>')
+    o.append(f'<rect x="1300" y="30" width="8" height="210" fill="{cc}"/><rect x="1180" y="26" width="260" height="8" fill="{cc}"/><line x1="1220" y1="34" x2="1220" y2="96" stroke="#333" stroke-width="2">{anim("y2", [96, 52, 52, 96], 9)}</line>'
+             f'<rect x="1208" y="96" width="24" height="12" fill="#2f6fb8">{anim("y", [96, 52, 52, 96], 9)}</rect>')
     o.append(f'<path d="M1304 30L1240 26M1304 30L1420 26" stroke="{cc}" stroke-width="2"/>')
-    if n: o.append('<circle cx="1440" cy="26" r="4" fill="#ff3b3b"/><circle cx="1440" cy="26" r="12" fill="#ff3b3b" opacity=".35"/>')
+    if n: o.append('<circle cx="1440" cy="26" r="4" fill="#ff3b3b"/><circle cx="1440" cy="26" r="12" fill="#ff3b3b" opacity=".35">' + anim("opacity", [.35, 0, .35], 2.4) + '</circle>'
+                   + glint([(560, 60), (760, 110), (905, 150), (1110, 90), (1500, 130)], 4, 3, "#ffd27a") + glint([(1000, 20), (1560, 40)]))
+    else: o.append(slide(cloud(1000, 30, 240, "#fff", .45), -60, 0, 12))
     o.append(f'<rect x="0" y="222" width="1600" height="18" fill="{"#100c1a" if n else "#4a3446"}"/>')
     o.append(f'<text x="800" y="210" text-anchor="middle" font-family="Arial, sans-serif" font-weight="bold" font-size="14" fill="#fff" opacity=".0">.</text>')
     o.append(shade())
