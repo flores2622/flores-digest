@@ -36,6 +36,7 @@ policy records themselves carry no household.
 """
 import re
 
+import agencyzoom
 import claims
 import staff
 
@@ -43,8 +44,9 @@ import staff
 # SRs) and the name as an SR's modifiedBy prints it.
 FRANK_ID = staff.one("commercial_owner")["az_id"]
 FRANK_NAME = staff.one("commercial_owner")["name"]
-RENEWAL_WORKFLOWS = {"Commercial Renewals"}
-SERVICE_WORKFLOWS = {"Service Pipeline"}
+# The workflow names are agencyzoom.json's.
+RENEWAL_WORKFLOWS = set(agencyzoom.COMMERCIAL_RENEWAL_WORKFLOWS)
+SERVICE_WORKFLOWS = agencyzoom.service_workflows("changes")
 
 # policyTypeName values that are commercial lines, as seen in the household
 # map and the policy corpus on 2026-09-24 (Builders Risk and Excess Liability

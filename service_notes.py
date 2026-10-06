@@ -20,6 +20,8 @@ note is read again. Never delete the cache casually.
 """
 import json
 
+import agencyzoom
+
 import renewal_notes as rn
 
 import pathlib
@@ -93,11 +95,8 @@ RATE = {"late_payments": "saved", "missing_docs": "cleared"}
 # With no note, a resolution that already says the outcome. Unable to Contact
 # only from 2026-09-24: before it, AgencyZoom's clean-up had moved Shot Clock
 # Expired and Unable to Complete onto it (service_retention.RESOLUTION_VALID_FROM).
-TRUSTED_RESOLUTIONS = {
-    "late_payments": {38304: "unable_to_contact"},
-    "changes": {32570: "policy_cancelled", 38304: "unable_to_contact"},
-    "missing_docs": {38304: "unable_to_contact"},
-}
+# The ids are agencyzoom.json's `resolutions.trusted_by_pipeline`.
+TRUSTED_RESOLUTIONS = {p: dict(m) for p, m in agencyzoom.TRUSTED_RESOLUTIONS.items()}
 PIPELINE_NAMES = {"late_payments": "Late Payments", "changes": "Service Pipeline (changes and "
                   "basic service)", "missing_docs": "Contingencies (anything pending on a policy)"}
 

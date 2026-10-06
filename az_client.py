@@ -11,13 +11,14 @@ import time
 import requests
 
 from secrets_load import load
+import agencyzoom
 
 BASE = "https://app.agencyzoom.com"
 UA = "FloresDigest/1.0 (+frank@floresinsuranceagency.com)"
 
 # Vendor integration error -- a lead vendor dumps leads into a pipeline
 # literally named "Pipeline". Ignore every move into it (HANDOFF_4 s5).
-JUNK_WORKFLOW_ID = 23073
+JUNK_WORKFLOW_ID = agencyzoom.JUNK_WORKFLOW_ID   # agencyzoom.json's workflows.junk
 
 
 class _Limiter:

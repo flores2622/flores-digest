@@ -1,0 +1,74 @@
+{
+  "_about": "This AgencyZoom account's own numbers and names, in one place: the ids AgencyZoom gives workflows, service categories, resolutions and carriers, which differ for every agency. agencyzoom.py reads it (and says what each key means); `python3 agencyzoom.py --discover` reads the account's current lists from AgencyZoom and prints what this file is missing or has extra, and `--check` validates it. What the pipeline DOES with each of these (outcomes, the Sales sheet's product names, which pipelines are renewals) stays in code; only the account's numbers and workflow names live here.",
+  "workflows": {
+    "junk": {"id": 23073, "name": "Pipeline"},
+    "claim": {"id": 23672, "names": ["Claim"]},
+    "commercial_renewals": {"names": ["Commercial Renewals"]},
+    "service": {
+      "renewals_ff": ["Personal Renewals"],
+      "renewals_bw": ["Other 30 day Renewals"],
+      "changes": ["Service Pipeline"],
+      "late_payments": ["Late Payments"],
+      "missing_docs": ["Contingencies", "Missing Documents"],
+      "reinstatement": ["Reinstatement"],
+      "claims": ["Claim"]
+    }
+  },
+  "claim_categories": {
+    "40942": "Auto",
+    "40944": "Home",
+    "40946": "Life",
+    "25618": "Specialty",
+    "40943": "Commercial",
+    "40945": "Work Comp"
+  },
+  "commercial_claim_categories": [40943, 40945],
+  "resolutions": {
+    "labels": {
+      "32574": "Renewed: Accepted as is",
+      "32575": "Renewed: Endorsed",
+      "38307": "Rewrite Accepted",
+      "38308": "Cancelled: Rewrite Declined",
+      "32570": "Cancelled, no endorse/rewrite available",
+      "38304": "Unable to Contact/No Show",
+      "101591": "No action: Review if needed",
+      "101627": "Client Cancelled",
+      "101637": "Mid-term Cancellation",
+      "101638": "Cancelled: Sold/Moved",
+      "32571": "Completed",
+      "38303": "Unable to Complete",
+      "38305": "Cancelled by Carrier",
+      "38306": "Cancelled by Client",
+      "40108": "Shot Clock Expired"
+    },
+    "outcome_by_id": {
+      "32574": "renewed_as_is",
+      "101591": "no_action_review",
+      "32575": "renewed_endorsed",
+      "38307": "rewrite_accepted",
+      "38308": "cancelled_rewrite_declined",
+      "32570": "cancelled_no_option",
+      "101627": "client_cancelled",
+      "38304": "unable_to_contact",
+      "101637": "cancelled_before_sr",
+      "101638": "sold_moved"
+    },
+    "valid_from": {"38304": "2026-09-24"},
+    "trusted_by_pipeline": {
+      "late_payments": {"38304": "unable_to_contact"},
+      "changes": {"32570": "policy_cancelled", "38304": "unable_to_contact"},
+      "missing_docs": {"38304": "unable_to_contact"}
+    }
+  },
+  "carriers": {
+    "484668": "Farmers",
+    "484654": "Farmers",
+    "1030958": "Farmers",
+    "186": "BW",
+    "2448054": "BW",
+    "102": "Foremost",
+    "262": "Foremost"
+  },
+  "renewal_ff_carriers": [484668, 102, 262, 484654],
+  "test_lead_ids": [49675255]
+}

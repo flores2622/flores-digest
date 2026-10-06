@@ -6,6 +6,7 @@ ones that must not be re-asked. Section references below point back at it.
 import collections
 import datetime as dt
 import re
+import agencyzoom
 import lead_sources
 import staff
 
@@ -428,7 +429,7 @@ TEST_LEAD_RE = re.compile(
 #             Real-looking record created 2025-05-01 and assigned to Mike, and
 #             "Flores" is the agency's own surname, so TEST_LEAD_RE must not be
 #             widened to catch it.
-TEST_LEAD_IDS = {49675255}
+TEST_LEAD_IDS = set(agencyzoom.TEST_LEAD_IDS)   # agencyzoom.json's test_lead_ids
 
 
 def is_test_lead(lead):
@@ -476,8 +477,8 @@ SERVICE_BODY_RE = re.compile(
 # "Pipeline". The agency does not use it. Ignore every move INTO it; a move OUT
 # of it says nothing about where the lead really was. Without this, a lead
 # sitting in "1 Pipeline | Quotes Presented" reads as lost from "New".
-JUNK_WORKFLOW_ID = 23073
-JUNK_WORKFLOW_NAME = "Pipeline"
+JUNK_WORKFLOW_ID = agencyzoom.JUNK_WORKFLOW_ID       # agencyzoom.json's workflows.junk
+JUNK_WORKFLOW_NAME = agencyzoom.JUNK_WORKFLOW_NAME
 
 # --- thresholds (HANDOFF_4 s7) ----------------------------------------------
 # (green_at, yellow_at) -- read as: >= green is green, >= yellow is yellow,

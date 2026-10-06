@@ -61,6 +61,7 @@ RISK (a renewal still ahead):
 """
 import collections
 import datetime as dt
+import agencyzoom
 import staff
 import json
 import pathlib
@@ -80,7 +81,7 @@ PAST_DAYS = 365
 SOON_DAYS = 21
 # Carrier ids whose renewals the Personal Renewals workflow carries (read off
 # 3,300 renewal SRs, 2026-09-25): Farmers 484668, 102, 262, 484654.
-FF_CARRIERS = {484668, 102, 262, 484654}
+FF_CARRIERS = set(agencyzoom.FF_CARRIERS)   # agencyzoom.json's renewal_ff_carriers
 _LIFE = re.compile(r"\bterm\b|\blife\b|annuit", re.I)
 CANCEL_SR = {"cancelled_nonpay", "client_cancelled", "policy_cancelled"}
 DISCUSSED = {"renewed_as_is", "renewed_endorsed", "rewrite_accepted"}
