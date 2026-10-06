@@ -62,7 +62,7 @@ import { leadsIndex } from "./lead_index.js";
 import { rotationGet, rotationPost } from "./rotation.js";
 import { scrubGet, scrubPost } from "./scrub.js";
 import { claimsForViewer } from "./claims_view.js";
-import { PRODUCER_EMAILS, STAFF_FIRST_NAMES, SALES_SHEET_NAMES, SALES_TEAMS, hasBoard, boardEmails, TZ, localDay } from "./staff.js";
+import { PRODUCER_EMAILS, STAFF_FIRST_NAMES, SALES_SHEET_NAMES, SALES_TEAMS, AGENCY, hasBoard, boardEmails, TZ, localDay } from "./staff.js";
 
 export default {
   // Live figures between checkpoints (site/live.js): the cron in
@@ -1157,10 +1157,10 @@ function prospectInstruction(profile) {
  * never what they object to. */
 function languageInstruction(language) {
   if (language === "es") {
-    return "\n\nLanguage: you speak Spanish -- everyday Mexican Spanish, the way a customer in Arizona talks on the phone -- and you are more comfortable in it than in English. Reply only in Spanish, and EVERY word in Spanish: no English words or fillers at all -- not \"okay\", \"yeah\", \"so\", \"insurance\", \"quote\", \"email\" or \"full coverage\". Say seguro, cotización, póliza, cobertura completa, deducible, pago mensual, correo, and write numbers and prices as words or digits, never with English. Only a company's name stays as it is (Progressive, Geico, Farmers). The example objections above are written in English only to describe them -- say them in your own Spanish. If the producer speaks English, ask whether they speak Spanish (\"¿habla español?\") and keep answering in Spanish.";
+    return "\n\nLanguage: you speak Spanish -- everyday Mexican Spanish, the way a customer in ${AGENCY.place} talks on the phone -- and you are more comfortable in it than in English. Reply only in Spanish, and EVERY word in Spanish: no English words or fillers at all -- not \"okay\", \"yeah\", \"so\", \"insurance\", \"quote\", \"email\" or \"full coverage\". Say seguro, cotización, póliza, cobertura completa, deducible, pago mensual, correo, and write numbers and prices as words or digits, never with English. Only a company's name stays as it is (Progressive, Geico, Farmers). The example objections above are written in English only to describe them -- say them in your own Spanish. If the producer speaks English, ask whether they speak Spanish (\"¿habla español?\") and keep answering in Spanish.";
   }
   if (language === "mix") {
-    return "\n\nLanguage: you are bilingual and talk the way many Arizona families do, switching between English and Spanish naturally, sometimes mid-sentence (\"sí, I already have Progressive, pero está muy caro\"). Mix both in most replies, whichever language the producer uses.";
+    return "\n\nLanguage: you are bilingual and talk the way many ${AGENCY.place} families do, switching between English and Spanish naturally, sometimes mid-sentence (\"sí, I already have Progressive, pero está muy caro\"). Mix both in most replies, whichever language the producer uses.";
   }
   return "";
 }
@@ -1202,7 +1202,7 @@ async function roleplayFace(env, key) {
   const [, sex, band, look, n] = m;
   const who = sex === "f" ? "woman" : "man";
   const prompt = `Realistic head-and-shoulders portrait photo of an ordinary ${RP_FACE_AGE[band]} ${RP_FACE_LOOK[look]} ${who} `
-    + `from Arizona, ${RP_FACE_DRESS[+n]}, relaxed natural expression, looking at the camera, soft daylight, `
+    + `from ${AGENCY.place}, ${RP_FACE_DRESS[+n]}, relaxed natural expression, looking at the camera, soft daylight, `
     + `plain softly blurred background, sharp focus on the face, natural skin texture. No text, no watermark.`;
   let img;
   try {

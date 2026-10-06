@@ -1,4 +1,8 @@
 /* The Flores Post (Frank, 2026-10-01) --------------------------------------
+   The dateline's agency line is staff.json's agency (name · place), through
+   the page's STAFF. */
+const AGENCY_LINE = (() => { const a = (window.STAFF || {}).agency || {}; return [a.name, a.place].filter(Boolean).join(" · "); })();
+/*
    The published day, and the folio, as a newspaper: its own page under the
    Sales Center, no links back to the Digest ("tabs on the left is enough").
    Written here, in rules, from the same day documents the Digest draws --
@@ -507,7 +511,7 @@ function postPaperHtml(E, F, opts) {
   <header class="mast">
     <div class="mrow lab"><span>${cesc(E.edition)}</span></div>
     <h1>The Flores Post</h1>
-    <div class="mrow lab rule"><span>${cesc(E.dateline)}</span><span>Flores Insurance Agency · Arizona</span><span>Apollo · Athena · Cerberus</span></div>
+    <div class="mrow lab rule"><span>${cesc(E.dateline)}</span><span>${cesc(AGENCY_LINE)}</span><span>Apollo · Athena · Cerberus</span></div>
   </header>
   ${eds ? editionsNav(eds) : ""}
   ${extra || ""}

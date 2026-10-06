@@ -17,11 +17,12 @@ import requests
 
 import digest_config as cfg
 from secrets_load import load
+import staff
 
 API = "https://api.resend.com/emails"
 # Seconds to wait before the 2nd and 3rd attempt (2026-09-30).
 RETRY_WAITS = (5, 15)
-UA = "FloresDigest/1.0 (+frank@floresinsuranceagency.com)"
+UA = staff.UA   # staff.json's agency
 
 
 def send(subject, html, to, attachments=(), sender=None, binary=False):
@@ -93,7 +94,7 @@ def send(subject, html, to, attachments=(), sender=None, binary=False):
 
 if __name__ == "__main__":
     path, subject = sys.argv[1], sys.argv[2]
-    to = sys.argv[3:] or ["frank@floresinsuranceagency.com"]
+    to = sys.argv[3:] or [staff.CONTACT]
     body = open(path).read()
     res = send(subject, body, to)
     print(f"sent {len(body.encode()):,} bytes to {', '.join(to)} -> {res}")
