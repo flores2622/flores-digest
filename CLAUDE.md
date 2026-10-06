@@ -1905,6 +1905,8 @@ repaint clears the list).
   that one the universal"): every look is Fraunces at 700 for headings and
   tile numbers (`--display` / `--dw`) and Manrope at 500 for text; the
   per-look faces and their Google Fonts entries are gone.
+  **The Digest's seven tile numbers scale with the screen** (`.tiles-6 .tile .v`, clamp 21-34px;
+  2026-10-06): at 34px "$53,812" ran out of its tile on a 1440px screen in every world.
 - **The podium's names sit on dark pills** in every world (Frank,
   2026-10-05: "can barely see leaderboard names" on the Game Day field).
   **First name only under each avatar, initials inside it** (Frank,
@@ -1997,7 +1999,9 @@ repaint clears the list).
   `legs` on the card: Call n, direction, talk time, clock time (call_summary's `data/legmeta_<day>.json`, each
   read leg's direction / length / start, an R2 day file, matched by direction and length) and that call's
   outcome. The board's top-right pills become "Call 1 · 10:21 AM · 4m 12s · Quoted ..." / "Call 2 · 3:32 PM ·
-  ... · Sold on the call · call back", and Coeus reads them as `each_call`. New reads only (cards are not
+  ... · Sold on the call · call back" -- **numbered by the clock** when every call has its time (a card can
+  join two rows: Mike / Maria Ortiz 09-02's 10:19 AM call-in was read after the afternoon's dials; `cLegs`,
+  coeus.js `legsByClock`) -- and Coeus reads them as `each_call`. New reads only (cards are not
   re-read) -- **except the multi-call cards before it, which Frank asked for** (2026-10-05: "are you able to
   re-read only multiple call cards?" ... "yes set it up and run it"): `python3 legs_backfill.py --backfill
   2026-09-01` asks one short question per card with two or more call headers (8 in 09-01..10-02) and adds ONLY
@@ -2043,7 +2047,13 @@ repaint clears the list).
   row above the looks (`WORLDS`, each look in `LOOKS` names its world;
   `TH.theme`, saved in `board-look`, `html[data-theme]`). **The worlds are
   listed by kind** (Frank, 2026-10-05: "categorize the themes in the
-  settings? by cities, sports, etc."): Cities (Phoenix, Yuma, Dallas), Sports (Football
+  settings? by cities, sports, etc."): **Plain** first (Frank, 2026-10-06: "plain themes as well, like the
+  arizona before we changed the background ... a more basic look if someone doesnt want all the extra
+  design"): Arizona Classic (the desert's five looks and type, `design/worlds/classic.py`), Simple (Inter;
+  Paper, Graphite, Ink) and Colors (DM Sans; Ocean Blue, Forest, Plum, Sunrise) -- a world with `PLAIN =
+  True` has looks and type only: build.py writes `plain_css` inline (no Digest picture, the tiles' card and
+  the leaderboard on plain `--surface-raised`, no banners, no card strips, no page pattern) and an empty
+  worlds/<key>.css for the loading gate; then Cities (Phoenix, Yuma, Dallas), Sports (Football
   -- Game Day until Frank, 2026-10-05: "rename the gameday to football" -- and Golf),
   Scenic ("rename outdoors to scenic": Desert / Old West, Ocean, Mountain), Fun (Space,
   Retro Arcade) -- each module's `CATEGORY`, written into `WORLD_GROUP` by
