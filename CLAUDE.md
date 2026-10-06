@@ -503,10 +503,19 @@ unchanged. The Worker reads it through `site/staff.js` from
 `site/staff_data.js`, which `python3 staff.py --write-js` writes -- never by
 hand; `python3 staff.py --check` fails when it is stale. The `*_VIEWERS` /
 `*_EDITORS` vars are gone from wrangler.jsonc. Checked identical, every
-constant, before and after the move. Display orders and badge colours
-(`UTIL_PANEL_ORDER`, `util_panel.PANEL_ORDER`, `panels.DOT_HEX`,
-`coaching_cards.ROSTER_ORDER`, index.html's roster copies) still name people
-where they are; they are next.
+constant, before and after the move. **The board page and the email read it
+too** (Frank, 2026-10-06): each person's `color` (badge), `email_dot` (the
+email's swatch class), `handle` (The Flores Feed), the `english_only` tag
+(Role Play), `sales_teams` (The Insurance Icons) and `orders` (coaching,
+the email's and the board's utilization panels) -- `render_report.DOT`,
+`build_attachments`, `panels.SHORT` / `DOT_HEX`, `util_panel.PANEL_ORDER` /
+`DOT_CLASS`, `coaching_cards.ROSTER_ORDER`, `UTIL_PANEL_ORDER` and every
+roster in index.html, editions.js and scrub.js come from it. The page loads
+`site/public/staff.js`, a copy `--write-js` also writes with **no emails,
+extensions or ids** (`staff.PUBLIC_KEYS`), as `window.STAFF`; a person's
+special handling there is a tag (`staffHas` / `staffTagged`), never their
+name. Checked identical again, page and email. Still naming people: the
+front office's cheers on the editions (content) and the comments.
 
 - **Producers**: Crystal Mango, Lorena Gonzalez, Mike Olvera, Coral Barwick,
   Sarahi Chin. Coral and Sarahi are full producers as of 2026-08-24 — the

@@ -1,91 +1,382 @@
 {
-  "_about": "The agency's people, in one place. Every id, email, extension, role and board permission the code uses comes from here: Python through staff.py, the Worker through site/staff_data.js, which `python3 staff.py --write-js` writes from this file (never edit it by hand). Change a person here, run that, and run `python3 staff.py --check`. tags: what a person is in the pipeline; board: what they may open on the board. The meaning of every tag and board key is in staff.py.",
+  "_about": "The agency's people, in one place. Every id, email, extension, role and board permission the code uses comes from here: Python through staff.py, the Worker through site/staff_data.js, which `python3 staff.py --write-js` writes from this file (never edit it by hand), and the board page through site/public/staff.js, a copy with no emails, phone or AgencyZoom ids that the same command writes. Change a person here, run that, and run `python3 staff.py --check`. tags: what a person is in the pipeline; board: what they may open on the board. The meaning of every tag and board key is in staff.py.",
   "agency": {
     "name": "Flores Insurance Agency",
     "sender": "salesdigest@floresinsuranceagency.com"
   },
   "people": [
-    {"name": "Crystal Mango", "email": "crystal@floresinsuranceagency.com",
-     "ext": "106", "rc_id": "193226052", "az_id": 174445,
-     "producer": true, "digest": "staff",
-     "service": {"role": "Hybrid", "playbook": "member", "order": 3},
-     "tags": ["licensed", "sells_service", "hybrid_util", "service_only_dials",
-              "zero_dial_exempt", "task_assignee"],
-     "board": ["rotation", "sales_log_all"]},
-    {"name": "Lorena Gonzalez", "email": "lorena@floresinsuranceagency.com",
-     "ext": "104", "rc_id": "173445052", "az_id": 82587,
-     "producer": true, "digest": "staff",
-     "tags": ["task_assignee"], "board": []},
-    {"name": "Mike Olvera", "email": "mike@floresinsuranceagency.com",
-     "ext": "105", "rc_id": "173446052", "az_id": 82588,
-     "producer": true, "digest": "staff",
-     "tags": ["task_assignee"], "board": []},
-    {"name": "Coral Barwick", "email": "coral@floresinsuranceagency.com",
-     "ext": "108", "rc_id": "774861052", "az_id": 185440,
-     "producer": true, "digest": "staff", "sales_team": "coral-sarahi",
-     "tags": ["task_assignee"], "board": []},
-    {"name": "Sarahi Chin", "email": "sarahi@floresinsuranceagency.com",
-     "ext": "109", "rc_id": "774862052", "az_id": 185441,
-     "producer": true, "digest": "staff", "sales_team": "coral-sarahi",
-     "tags": ["task_assignee"], "board": []},
-    {"name": "Debbie Aguilera", "email": "debbie@floresinsuranceagency.com",
-     "ext": "103", "rc_id": "173444052", "az_id": 83597,
-     "digest": "staff",
-     "service": {"role": "CSR", "playbook": "front_desk", "order": 1},
-     "tags": ["task_assignee", "missed_call_fallback"],
-     "board": ["rotation", "rotation_edit"]},
-    {"name": "Frank Flores", "email": "frank@floresinsuranceagency.com",
-     "ext": "33", "rc_id": "173442052", "az_id": 82589,
-     "digest": "ops",
-     "tags": ["licensed", "training_lead_owner", "commercial_owner", "task_assignee"],
-     "board": ["commercial", "coeus_usage", "card_review", "roleplay_voices",
-               "rotation", "rotation_edit", "scrub", "scrub_edit",
-               "roleplay_history", "commission_all", "sales_log_all"]},
-    {"name": "Francisco Flores", "email": "francisco@floresinsuranceagency.com",
-     "az_id": 82372,
-     "digest": "ops",
-     "tags": ["licensed", "insightful_not_tracked", "referral_source", "task_assignee"],
-     "board": ["rotation", "rotation_edit", "scrub", "scrub_edit", "roleplay_history"]},
-    {"name": "Veronica Flores", "email": "veronica@floresinsuranceagency.com",
-     "ext": "101", "rc_id": "173440052", "az_id": 82592,
-     "digest": "ops",
-     "tags": ["licensed"],
-     "board": ["rotation", "rotation_edit", "scrub", "scrub_edit", "roleplay_history"]},
-    {"name": "Amanda Torricellas", "email": "amanda@floresinsuranceagency.com",
-     "ext": "102", "rc_id": "173443052", "az_id": 105006,
-     "digest": "ops",
-     "service": {"role": "Ops Mngr", "playbook": "lead", "order": 2},
-     "tags": ["licensed", "sells_service", "training_lead_owner", "team_util_exclude",
-              "sales_sheet", "task_assignee"],
-     "board": ["rotation", "rotation_edit", "scrub", "scrub_edit",
-               "roleplay_history", "commission_all", "sales_log_all"]},
-    {"name": "Adrian Alcantara", "status": "former", "az_id": 82590,
-     "tags": ["task_assignee"], "board": []},
-    {"name": "Anastasia Perez", "status": "former", "tags": [], "board": []},
-    {"name": "Michelle Garcia", "status": "former", "tags": [], "board": []},
-    {"name": "Veronica Rodriguez", "status": "former", "tags": [], "board": []},
-    {"name": "Maria Medina", "status": "former", "tags": [], "board": []},
-    {"name": "Eleuterio Gutierrez", "status": "no_leads", "tags": [], "board": []},
-    {"name": "Tori Pletsch", "status": "no_leads", "tags": [], "board": []}
+    {
+      "name": "Crystal Mango",
+      "email": "crystal@floresinsuranceagency.com",
+      "ext": "106",
+      "rc_id": "193226052",
+      "az_id": 174445,
+      "producer": true,
+      "digest": "staff",
+      "service": {
+        "role": "Hybrid",
+        "playbook": "member",
+        "order": 3
+      },
+      "tags": [
+        "licensed",
+        "sells_service",
+        "hybrid_util",
+        "service_only_dials",
+        "zero_dial_exempt",
+        "task_assignee",
+        "english_only"
+      ],
+      "board": [
+        "rotation",
+        "sales_log_all"
+      ],
+      "color": "#ff4b4b",
+      "email_dot": "cA",
+      "handle": "mango.multipolicy"
+    },
+    {
+      "name": "Lorena Gonzalez",
+      "email": "lorena@floresinsuranceagency.com",
+      "ext": "104",
+      "rc_id": "173445052",
+      "az_id": 82587,
+      "producer": true,
+      "digest": "staff",
+      "tags": [
+        "task_assignee"
+      ],
+      "board": [],
+      "color": "#cd81ff",
+      "email_dot": "cB",
+      "handle": "lori.locks.the.rate"
+    },
+    {
+      "name": "Mike Olvera",
+      "email": "mike@floresinsuranceagency.com",
+      "ext": "105",
+      "rc_id": "173446052",
+      "az_id": 82588,
+      "producer": true,
+      "digest": "staff",
+      "tags": [
+        "task_assignee"
+      ],
+      "board": [],
+      "color": "#5656fe",
+      "email_dot": "cC",
+      "handle": "mikes.got.you.covered"
+    },
+    {
+      "name": "Coral Barwick",
+      "email": "coral@floresinsuranceagency.com",
+      "ext": "108",
+      "rc_id": "774861052",
+      "az_id": 185440,
+      "producer": true,
+      "digest": "staff",
+      "sales_team": "coral-sarahi",
+      "tags": [
+        "task_assignee"
+      ],
+      "board": [],
+      "color": "#00ffcf",
+      "email_dot": "cJ",
+      "handle": "coral.covers.it.all"
+    },
+    {
+      "name": "Sarahi Chin",
+      "email": "sarahi@floresinsuranceagency.com",
+      "ext": "109",
+      "rc_id": "774862052",
+      "az_id": 185441,
+      "producer": true,
+      "digest": "staff",
+      "sales_team": "coral-sarahi",
+      "tags": [
+        "task_assignee"
+      ],
+      "board": [],
+      "color": "#ffb48c",
+      "email_dot": "cK",
+      "handle": "safe.with.sarahi"
+    },
+    {
+      "name": "Debbie Aguilera",
+      "email": "debbie@floresinsuranceagency.com",
+      "ext": "103",
+      "rc_id": "173444052",
+      "az_id": 83597,
+      "digest": "staff",
+      "service": {
+        "role": "CSR",
+        "playbook": "front_desk",
+        "order": 1
+      },
+      "tags": [
+        "task_assignee",
+        "missed_call_fallback"
+      ],
+      "board": [
+        "rotation",
+        "rotation_edit"
+      ],
+      "color": "#0b0b0b",
+      "email_dot": "cE",
+      "handle": "debbie.on.the.line"
+    },
+    {
+      "name": "Frank Flores",
+      "email": "frank@floresinsuranceagency.com",
+      "ext": "33",
+      "rc_id": "173442052",
+      "az_id": 82589,
+      "digest": "ops",
+      "tags": [
+        "licensed",
+        "training_lead_owner",
+        "commercial_owner",
+        "task_assignee"
+      ],
+      "board": [
+        "commercial",
+        "coeus_usage",
+        "card_review",
+        "roleplay_voices",
+        "rotation",
+        "rotation_edit",
+        "scrub",
+        "scrub_edit",
+        "roleplay_history",
+        "commission_all",
+        "sales_log_all"
+      ],
+      "handle": "frank.full.coverage"
+    },
+    {
+      "name": "Francisco Flores",
+      "email": "francisco@floresinsuranceagency.com",
+      "az_id": 82372,
+      "digest": "ops",
+      "tags": [
+        "licensed",
+        "insightful_not_tracked",
+        "referral_source",
+        "task_assignee"
+      ],
+      "board": [
+        "rotation",
+        "rotation_edit",
+        "scrub",
+        "scrub_edit",
+        "roleplay_history"
+      ],
+      "handle": "dm.francisco"
+    },
+    {
+      "name": "Veronica Flores",
+      "email": "veronica@floresinsuranceagency.com",
+      "ext": "101",
+      "rc_id": "173440052",
+      "az_id": 82592,
+      "digest": "ops",
+      "tags": [
+        "licensed"
+      ],
+      "board": [
+        "rotation",
+        "rotation_edit",
+        "scrub",
+        "scrub_edit",
+        "roleplay_history"
+      ],
+      "handle": "vero.vacation.approved"
+    },
+    {
+      "name": "Amanda Torricellas",
+      "email": "amanda@floresinsuranceagency.com",
+      "ext": "102",
+      "rc_id": "173443052",
+      "az_id": 105006,
+      "digest": "ops",
+      "service": {
+        "role": "Ops Mngr",
+        "playbook": "lead",
+        "order": 2
+      },
+      "tags": [
+        "licensed",
+        "sells_service",
+        "training_lead_owner",
+        "team_util_exclude",
+        "sales_sheet",
+        "task_assignee"
+      ],
+      "board": [
+        "rotation",
+        "rotation_edit",
+        "scrub",
+        "scrub_edit",
+        "roleplay_history",
+        "commission_all",
+        "sales_log_all"
+      ],
+      "color": "#baffff",
+      "email_dot": "cL",
+      "handle": "amanda.approves"
+    },
+    {
+      "name": "Adrian Alcantara",
+      "status": "former",
+      "az_id": 82590,
+      "tags": [
+        "task_assignee"
+      ],
+      "board": []
+    },
+    {
+      "name": "Anastasia Perez",
+      "status": "former",
+      "tags": [],
+      "board": []
+    },
+    {
+      "name": "Michelle Garcia",
+      "status": "former",
+      "tags": [],
+      "board": []
+    },
+    {
+      "name": "Veronica Rodriguez",
+      "status": "former",
+      "tags": [],
+      "board": []
+    },
+    {
+      "name": "Maria Medina",
+      "status": "former",
+      "tags": [],
+      "board": []
+    },
+    {
+      "name": "Eleuterio Gutierrez",
+      "status": "no_leads",
+      "tags": [],
+      "board": []
+    },
+    {
+      "name": "Tori Pletsch",
+      "status": "no_leads",
+      "tags": [],
+      "board": []
+    }
   ],
   "rotation": {
-    "people": ["Lorena Gonzalez", "Sarahi Chin", "Amanda Torricellas", "Coral Barwick",
-               "Crystal Mango", "Mike Olvera"],
+    "people": [
+      "Lorena Gonzalez",
+      "Sarahi Chin",
+      "Amanda Torricellas",
+      "Coral Barwick",
+      "Crystal Mango",
+      "Mike Olvera"
+    ],
     "lists": {
-      "personal": {"label": "Personal lines",
-                   "order": ["Lorena Gonzalez", "Sarahi Chin", "Amanda Torricellas",
-                             "Coral Barwick", "Crystal Mango"]},
-      "life": {"label": "Life",
-               "order": ["Mike Olvera", "Lorena Gonzalez", "Coral Barwick"]},
-      "mexico": {"label": "Mexico policies",
-                 "order": ["Lorena Gonzalez", "Amanda Torricellas", "Crystal Mango",
-                           "Mike Olvera", "Coral Barwick", "Sarahi Chin"]}
+      "personal": {
+        "label": "Personal lines",
+        "order": [
+          "Lorena Gonzalez",
+          "Sarahi Chin",
+          "Amanda Torricellas",
+          "Coral Barwick",
+          "Crystal Mango"
+        ]
+      },
+      "life": {
+        "label": "Life",
+        "order": [
+          "Mike Olvera",
+          "Lorena Gonzalez",
+          "Coral Barwick"
+        ]
+      },
+      "mexico": {
+        "label": "Mexico policies",
+        "order": [
+          "Lorena Gonzalez",
+          "Amanda Torricellas",
+          "Crystal Mango",
+          "Mike Olvera",
+          "Coral Barwick",
+          "Sarahi Chin"
+        ]
+      }
     }
   },
   "commission_units": [
-    {"key": "crystal", "label": "Crystal", "members": ["Crystal Mango"], "schedule": "individual"},
-    {"key": "lorena", "label": "Lorena", "members": ["Lorena Gonzalez"], "schedule": "individual"},
-    {"key": "mike", "label": "Mike", "members": ["Mike Olvera"], "schedule": "individual"},
-    {"key": "team", "label": "Sarahi & Coral", "members": ["Sarahi Chin", "Coral Barwick"], "schedule": "team"}
-  ]
+    {
+      "key": "crystal",
+      "label": "Crystal",
+      "members": [
+        "Crystal Mango"
+      ],
+      "schedule": "individual"
+    },
+    {
+      "key": "lorena",
+      "label": "Lorena",
+      "members": [
+        "Lorena Gonzalez"
+      ],
+      "schedule": "individual"
+    },
+    {
+      "key": "mike",
+      "label": "Mike",
+      "members": [
+        "Mike Olvera"
+      ],
+      "schedule": "individual"
+    },
+    {
+      "key": "team",
+      "label": "Sarahi & Coral",
+      "members": [
+        "Sarahi Chin",
+        "Coral Barwick"
+      ],
+      "schedule": "team"
+    }
+  ],
+  "sales_teams": {
+    "coral-sarahi": {
+      "label": "The Insurance Icons",
+      "color": "#ffd700"
+    }
+  },
+  "orders": {
+    "coaching": [
+      "Lorena Gonzalez",
+      "Crystal Mango",
+      "Mike Olvera",
+      "Coral Barwick",
+      "Sarahi Chin"
+    ],
+    "email_util_panel": [
+      "Crystal Mango",
+      "Mike Olvera",
+      "Debbie Aguilera",
+      "Lorena Gonzalez",
+      "Coral Barwick",
+      "Sarahi Chin"
+    ],
+    "util_panel": [
+      "Crystal Mango",
+      "Lorena Gonzalez",
+      "Mike Olvera",
+      "Debbie Aguilera",
+      "Amanda Torricellas",
+      "Coral Barwick",
+      "Sarahi Chin"
+    ]
+  }
 }

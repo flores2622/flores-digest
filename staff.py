@@ -21,6 +21,11 @@ A person's `tags` (what they are in the pipeline):
     sales_sheet            a non-producer whose sales go on the Sales sheet
     task_assignee          a missed-call task may be assigned to them
     missed_call_fallback   gets a missed-call task nobody else fits
+    english_only           Role Play never gives them a Spanish or mixed prospect
+A person's `color` is their badge on the board, `email_dot` the nightly
+email's swatch class, `handle` their name on The Flores Feed. `sales_teams`
+names a sales team on the Sales tab; `orders` keeps the display orders (the
+coaching page, the email's and the board's utilization panels).
 A person's `board` keys (what they may open, the Worker's checks):
     commercial, coeus_usage, card_review, roleplay_voices, rotation,
     rotation_edit, scrub, scrub_edit, roleplay_history, commission_all,
@@ -28,8 +33,9 @@ A person's `board` keys (what they may open, the Worker's checks):
 `digest` is which nightly email they get (ops / staff); `producer` means
 their numbers are counted; `service` puts them on the Service Center.
 
-    python3 staff.py --write-js   rewrite site/staff_data.js from staff.json
-    python3 staff.py --check      fail if site/staff_data.js is out of date
+    python3 staff.py --write-js   rewrite site/staff_data.js (the Worker's) and
+                                  site/public/staff.js (the board page's) from staff.json
+    python3 staff.py --check      fail if either is out of date
 """
 import json
 import pathlib
@@ -38,6 +44,11 @@ import sys
 ROOT = pathlib.Path(__file__).resolve().parent
 JSON_PATH = ROOT / "staff.json"
 JS_PATH = ROOT / "site" / "staff_data.js"
+PUBLIC_PATH = ROOT / "site" / "public" / "staff.js"
+# What the board page may know: never an email, a phone extension or an
+# AgencyZoom / RingCentral id (site/public is served to every signed-in viewer).
+PUBLIC_KEYS = ("name", "status", "producer", "digest", "service", "tags", "board",
+               "sales_team", "color", "handle")
 
 DATA = json.loads(JSON_PATH.read_text())
 PEOPLE = DATA["people"]
@@ -83,6 +94,16 @@ def one(tag):
     return hit[0]
 
 
+def order(key):
+    return list(DATA["orders"][key])
+
+
+def email_dot(names):
+    """name -> the nightly email's swatch class, for these names."""
+    by = {p["name"]: p for p in PEOPLE}
+    return {n: by[n]["email_dot"] for n in names if by.get(n, {}).get("email_dot")}
+
+
 def phone_ids(p):
     out = {k: p[k] for k in ("ext", "rc_id", "az_id") if k in p}
     return out
@@ -95,17 +116,33 @@ def _js():
             f"export default {body};\n")
 
 
+def _public_js():
+    view = {"people": [{k: p[k] for k in PUBLIC_KEYS if k in p} for p in PEOPLE],
+            "sales_teams": DATA.get("sales_teams", {}), "orders": DATA.get("orders", {})}
+    body = json.dumps(view, indent=1, ensure_ascii=False)
+    return ("// WRITTEN BY `python3 staff.py --write-js` FROM staff.json -- do not edit.\n"
+            "// The board page's copy of the staff list: names, roles, tags, colours and\n"
+            "// orders only -- no emails, extensions or ids. A plain script, loaded before\n"
+            "// the page's own (window.STAFF).\n"
+            f"window.STAFF = {body};\n")
+
+
+OUTPUTS = ((JS_PATH, _js), (PUBLIC_PATH, _public_js))
+
+
 def main(argv):
     if "--write-js" in argv:
-        JS_PATH.write_text(_js())
-        print(f"wrote {JS_PATH.relative_to(ROOT)}")
+        for path, make in OUTPUTS:
+            path.write_text(make())
+            print(f"wrote {path.relative_to(ROOT)}")
         return 0
     if "--check" in argv:
-        if not JS_PATH.exists() or JS_PATH.read_text() != _js():
-            print("site/staff_data.js is out of date: run python3 staff.py --write-js")
-            return 1
-        print("site/staff_data.js matches staff.json")
-        return 0
+        stale = [path for path, make in OUTPUTS if not path.exists() or path.read_text() != make()]
+        for path in stale:
+            print(f"{path.relative_to(ROOT)} is out of date: run python3 staff.py --write-js")
+        if not stale:
+            print("site/staff_data.js and site/public/staff.js match staff.json")
+        return 1 if stale else 0
     print(__doc__)
     return 0
 

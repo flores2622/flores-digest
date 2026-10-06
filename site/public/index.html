@@ -1863,17 +1863,25 @@ html[data-theme="phoenix"] .tourcard .tbtns .tback { background: #f4e2cf; border
 </aside>
 
 <script src="blueprints.js"></script>
+<script src="staff.js"></script>
 <script>
+/* The staff list (staff.json, through staff.js -- `python3 staff.py
+   --write-js`): who is a producer, their colours, tags and the display
+   orders. Nothing on this page names a person any other way. */
+const STAFF = window.STAFF || { people: [], sales_teams: {}, orders: {} };
+const STAFF_ACTIVE = STAFF.people.filter(p => (p.status || "active") === "active");
+const staffBy = Object.fromEntries(STAFF.people.map(p => [p.name, p]));
+const staffHas = (name, tag) => !!(staffBy[name] && (staffBy[name].tags || []).includes(tag));
+const staffTagged = tag => STAFF_ACTIVE.filter(p => (p.tags || []).includes(tag)).map(p => p.name);
+const staffOrder = key => (STAFF.orders || {})[key] || [];
 /* The digest email's own producer colours (render_report.DOT), so a producer
-   is the same colour on the board as in their inbox. Not chosen here. */
-const DOT = {"Crystal Mango":"#ff4b4b", "Lorena Gonzalez":"#cd81ff",
-             "Mike Olvera":"#5656fe",   "Debbie Aguilera":"#0b0b0b",
-             "Coral Barwick":"#00ffcf",  "Sarahi Chin":"#ffb48c",
-             "Amanda Torricellas":"#baffff",
-             // Coral + Sarahi's combined Sales-section identity (see
-             // SALES_TEAM_GROUPS) -- never looked up outside that map's own
-             // group name, since no individual is ever actually named this.
-             "The Insurance Icons":"#ffd700"};
+   is the same colour on the board as in their inbox -- each person's `color`,
+   plus a sales team's own (Coral + Sarahi's combined Sales-section identity,
+   see SALES_TEAM_GROUPS -- never looked up outside that map's own group
+   name, since no individual is ever actually named this). */
+const DOT = Object.assign(
+  Object.fromEntries(STAFF.people.filter(p => p.color).map(p => [p.name, p.color])),
+  Object.fromEntries(Object.values(STAFF.sales_teams || {}).map(t => [t.label, t.color])));
 const TEAM_DOT = "#0b0b0b";
 
 /* Producer identity badge -- a colour-filled pill with the name inside,
@@ -2051,7 +2059,7 @@ function openItem(v, st) {
 // One producer filter shared by the Digest and Coaching tabs. "" = whole
 // agency. This is the roster CLAUDE.md treats as producers (not Debbie or
 // Amanda, who show up in DOT/coaching data but are not tracked as such).
-const PRODUCER_ROSTER = ["Crystal Mango", "Lorena Gonzalez", "Mike Olvera", "Coral Barwick", "Sarahi Chin"];
+const PRODUCER_ROSTER = STAFF_ACTIVE.filter(p => p.producer).map(p => p.name);
 let producerFilter = "";
 // Range selector shared by Digest and Coaching. "day" shows a picked day's
 // own document; every other value merges every day in that range into one
@@ -2107,7 +2115,7 @@ let matchAttempts = 0;
 // this doesn't pull her into the leaderboard/coaching tracking CLAUDE.md
 // deliberately keeps her out of. Her colour already exists in DOT (mirrors
 // the email's own palette), so pbadge/prodSelStyle need no changes.
-const SALES_LOGGER_ROSTER = [...PRODUCER_ROSTER, "Amanda Torricellas"];
+const SALES_LOGGER_ROSTER = [...PRODUCER_ROSTER, ...staffTagged("sales_sheet")];
 // Sales-section-only team grouping (Frank, 2026-09-22): "I have made Coral
 // and Sarahi a team ... they are now 'The Insurance Icons' and are aiming
 // for a collective goal." Combined ONLY in the Sales tab's aggregate views
@@ -2115,7 +2123,8 @@ const SALES_LOGGER_ROSTER = [...PRODUCER_ROSTER, "Amanda Torricellas"];
 // row still names who actually logged it, and every other screen (Coaching,
 // Digest, leaderboard) keeps Coral and Sarahi separate, since
 // nothing outside salesTotalsHtml/computeSalesBreakdown reads this map.
-const SALES_TEAM_GROUPS = { "Coral Barwick": "The Insurance Icons", "Sarahi Chin": "The Insurance Icons" };
+const SALES_TEAM_GROUPS = Object.fromEntries(STAFF_ACTIVE.filter(p => p.sales_team && (STAFF.sales_teams || {})[p.sales_team])
+  .map(p => [p.name, STAFF.sales_teams[p.sales_team].label]));
 const salesGroupName = name => (name && SALES_TEAM_GROUPS[name]) || name;
 const SALES_TEAM_NAMES = new Set(Object.values(SALES_TEAM_GROUPS));
 // First-name-only reads fine for an individual ("Crystal Mango" -> "Crystal")
@@ -2890,7 +2899,7 @@ function digestDay(d, who) {
   // mechanism that would surface a stray excluded call for anyone else.
   const dialsNote = [
     t.total_dials ? `${t.total_dials} dial${t.total_dials === 1 ? "" : "s"}` : "",
-    (focus && focus.name === "Crystal Mango" && t.raw_dials && t.total_dials
+    (focus && staffHas(focus.name, "service_only_dials") && t.raw_dials && t.total_dials
      && t.raw_dials > t.total_dials) ? `${t.raw_dials} incl. service` : "",
   ].filter(Boolean).join(" · ");
   // 5 small tiles in one line, matching the original layout (Frank,
@@ -3095,7 +3104,7 @@ function householdCompletionHtml(d, who) {
 function dialsSub(row) {
   const parts = [
     row.total_dials ? `${row.total_dials} dials` : "",
-    (row.name === "Crystal Mango" && row.raw_dials && row.total_dials
+    (staffHas(row.name, "service_only_dials") && row.raw_dials && row.total_dials
      && row.raw_dials > row.total_dials) ? `${row.raw_dials} incl. service` : "",
   ].filter(Boolean).join(", ");
   return parts ? ` <span style="opacity:.72">(${parts})</span>` : "";
@@ -3282,7 +3291,7 @@ function assumeStatsHtml(d) {
    Apollo's own read from 2026-09-28, sendoff.py's one-question read before
    that. "busy" and "asked" are listed apart: sending to a prospect who said
    they had no time is the Busy objection's to score, not this. */
-const SENDOFF_ORDER = ["Lorena Gonzalez", "Crystal Mango", "Mike Olvera", "Coral Barwick", "Sarahi Chin"];
+const SENDOFF_ORDER = staffOrder("coaching");
 function sendOffHtml(d) {
   const all = (d.calls || []).filter(c => c.sendoff && c.sendoff[0]);
   if (!all.length) return "";
@@ -5614,7 +5623,7 @@ function coachingPanel(d, who) {
   // `who` is the shared producerFilter (top-of-page dropdown), not a
   // tab-local control -- Digest and Coaching stay in sync on whoever is
   // selected.
-  const order = ["Lorena Gonzalez", "Crystal Mango", "Mike Olvera", "Coral Barwick", "Sarahi Chin"];
+  const order = staffOrder("coaching");
   const sel = who && order.includes(who) ? who : "";
   const nav = "";
 
@@ -5828,7 +5837,7 @@ const RP_HISPANIC_LAST = new Set(["Garcia", "Martinez", "Lopez", "Hernandez", "R
 // spanish english or both").
 // Producers who don't speak Spanish only ever get English prospects
 // (Frank, 2026-09-29: "crystal CANNOT have any spanish. she doesnt speak it").
-const RP_ENGLISH_ONLY = new Set(["Crystal Mango"]);
+const RP_ENGLISH_ONLY = new Set(staffTagged("english_only"));
 const rpEnglishOnly = () => RP_ENGLISH_ONLY.has(rpProducer);
 function rpMakeProspect(groupKey) {
   const sex = Math.random() < 0.5 ? "f" : "m";
@@ -8437,7 +8446,7 @@ function mergeServiceDocs(docs) {
     msg: { days: 0, people: {}, replies: [], sent: [] },
     front: { days: 0, calls: [], created: [] }, playbook: null, callTx: {},
     claims: { days: 0, opened: [], completed: [], flags: [], open: ((last.claims || {}).open) || null,
-      licensed: ((last.claims || {}).licensed) || ["Amanda Torricellas", "Crystal Mango"], ruleFrom: ((last.claims || {}).rule_from) || "2026-10-02",
+      licensed: ((last.claims || {}).licensed) || SERVICE_LICENSED, ruleFrom: ((last.claims || {}).rule_from) || "2026-10-02",
       types: ((last.claims || {}).types) || ["Auto", "Home", "Life", "Specialty", "Not set"] },
     openRows: (last.srs || {}).open_rows || null,
     backlog: (last.srs || {}).backlog || {}, lateStages: (last.srs || {}).late_payment_stages || [],
@@ -8795,7 +8804,7 @@ function claimsCenterHtml(m) {
   // The people: the licensed reps who did anything with a claim, plus anyone
   // who opened or holds one without being licensed.
   const touched = new Set([...C.opened.map(r => r.opened_by), ...C.completed.map(r => r.completed_by), ...(C.open || []).map(r => r.assigned)].filter(Boolean));
-  const people = C.licensed.filter(x => touched.has(x) || ["Amanda Torricellas", "Crystal Mango"].includes(x));
+  const people = C.licensed.filter(x => touched.has(x) || SERVICE_LICENSED.includes(x));
   if (claimsOps() && [...touched].some(x => !lic.has(x))) people.push("others");
   if (n && !people.includes(n)) claimPerson = "";
   const strip = people.map(x => { const P = claimsOf(m, x), h = hrsOf(P.completed), on = x === n;
@@ -8884,7 +8893,12 @@ async function paintClaimsTab() {
   };
   paint();
 }
-const SERVICE_TITLES = { "Amanda Torricellas": "Ops Mngr" };
+// The service team in the playbook's order, and what the board falls back to on
+// a page built before the day carried the playbook (staff.json's `service`).
+const SERVICE_STAFF = STAFF_ACTIVE.filter(p => p.service).sort((a, b) => a.service.order - b.service.order);
+const SERVICE_TITLES = Object.fromEntries(SERVICE_STAFF.map(p => [p.name, p.service.role]));
+const SERVICE_LICENSED = SERVICE_STAFF.filter(p => (p.tags || []).includes("licensed")).map(p => p.name);
+const SERVICE_SELLS = staffTagged("sells_service");
 /* Every Service Center card opens the list of what it counts (Frank,
    2026-09-25), like the Renewals cards: SRs, service tasks, call backs, open
    SRs. Names open the customer (or lead) in AgencyZoom. A range built before
@@ -9074,7 +9088,7 @@ function svcDrillFor(m, keys) {
     if (key === "routine") return sr(`${first} · routine requests`, mine.filter(r => r.audit && routine.has(r.audit.type)), "Requests the playbook gives to the Service Team or Front Desk.");
     if (key === "complex") return sr(`${first} · complex, sensitive or escalated`, mine.filter(r => r.audit && (!routine.has(r.audit.type) || r.audit.escalated)));
     if (key === "opp") return sr(`${first} · opportunities`, mine.filter(r => r.audit && r.audit.opp !== "none"),
-      (PB.sells || ["Amanda Torricellas", "Crystal Mango"]).includes(n) ? "Opportunities that came up: worked (quoted, a lead set, or passed), or not noted." : "Passed to a producer, or came up and not passed.");
+      (PB.sells || SERVICE_SELLS).includes(n) ? "Opportunities that came up: worked (quoted, a lead set, or passed), or not noted." : "Passed to a producer, or came up and not passed.");
     if (key === "cancel") return sr(`${first} · cancellations`, cancelOf(mine.filter(r => r.audit)).rs.sort((x, y) => CANCEL_FLAG.has(y.audit.cancel) - CANCEL_FLAG.has(x.audit.cancel)),
       "Clients who wanted to cancel, flagged first: asked if they'd let us review it, or cancelled with no offer or call back.");
     if (key === "billing") return sr(`${first} · billing`, mine.filter(r => r.pipeline === "late_payments" || (r.audit && r.audit.type === "basic_billing")));
@@ -9172,7 +9186,7 @@ function svcStats(m, n) {
   const msum = key => ppl.reduce((a, x) => a + ((m.msg.people[x] || {})[key] || 0), 0);
   const aud = srs.filter(r => r.audit), meets = aud.filter(r => !r.audit.missing.length);
   const U = ppl.reduce((a, x) => { const u = m.util[x] || {}; return { p: a.p + (u.p || 0), t: a.t + (u.t || 0) }; }, { p: 0, t: 0 });
-  const sells = new Set(((m.playbook || {}).sells) || ["Amanda Torricellas", "Crystal Mango"]);
+  const sells = new Set(((m.playbook || {}).sells) || SERVICE_SELLS);
   return { srs, k, b, dials, cbs, cbDone, need, ans, aud, meets, U, texts: msum("texts"), emails: msum("emails"),
     autos: msum("auto_texts") + msum("auto_emails"), customers: msum("customers"),
     opp: { worked: aud.filter(r => r.audit.opp === "passed").length, missed: aud.filter(r => r.audit.opp === "missed").length, sells: !n || sells.has(n) },
@@ -9209,8 +9223,8 @@ function serviceStatsHtml(m) {
     tile(g(`role:${n}:srs`, "srs"), "SRs completed", S.srs.length, S.srs.length ? `median ${fmtDur(svcMedian(S.srs.map(r => r.hours)))} created to completed` : "none completed"),
     tile(g(`role:${n}:tasks`, "tasks"), "Tasks done", `${S.k.completed}<span style="font-size:15px;color:var(--text-muted)"> / ${S.k.due}</span>`, `${pct(S.k.completed, S.k.due)} of service tasks due`),
     tile(g(`role:${n}:open`, "openall"), "Open SRs", S.b.open ?? 0, `<b${S.b.overdue ? ' style="color:var(--bad)"' : ""}>${S.b.overdue ?? 0}</b> overdue &middot; as of ${fmtShortDate(m.days[m.days.length - 1])}`),
-    tile(`g-dials:${n || "team"}`, n && n === "Crystal Mango" ? "Service dials" : "Dials", m.dialDays ? S.dials.length : "—",
-      m.dialDays ? `numbers &middot; ${S.dials.reduce((a, r) => a + r.attempts, 0)} dials &middot; ${connected} connected${n === "Crystal Mango" ? " &middot; service only" : ""}` : "counted from 2026-09-29"),
+    tile(`g-dials:${n || "team"}`, n && staffHas(n, "service_only_dials") ? "Service dials" : "Dials", m.dialDays ? S.dials.length : "—",
+      m.dialDays ? `numbers &middot; ${S.dials.reduce((a, r) => a + r.attempts, 0)} dials &middot; ${connected} connected${staffHas(n, "service_only_dials") ? " &middot; service only" : ""}` : "counted from 2026-09-29"),
     tile(g(`cbwho:${n}`, "callbacks"), "Call backs", `<span class="${replyTier(cbMed)}">${fmtMins(cbMed)}</span>`,
       n ? `median to return &middot; ${S.cbDone.length} returned` : `median to return &middot; ${S.cbDone.length} of ${S.cbs.length} missed calls returned same day`),
     tile(g(`msg:who:${n}`, "msg:answered"), "Speed to reply", `<span class="${replyTier(rMed)}">${fmtMins(rMed)}</span>`,
@@ -9298,7 +9312,7 @@ function roleMeasures(m, n) {
   const oppOf = (label, doneWord, missWord) => { const ps = aud.filter(r => r.audit.opp === "passed"), ms = aud.filter(r => r.audit.opp === "missed");
     return L(label, `<b>${ps.length}</b> ${doneWord} &middot; <b${ms.length ? ' style="color:var(--warn, #b45309)"' : ""}>${ms.length}</b> ${missWord}`, "opp"); };
   // Pages built before 2026-09-28's change don't carry `sells`.
-  const sellsSet = new Set((m.playbook || {}).sells || ["Amanda Torricellas", "Crystal Mango"]);
+  const sellsSet = new Set((m.playbook || {}).sells || SERVICE_SELLS);
   const oppAny = sellsSet.has(n) ? oppOf("Work the opportunities that come up", "worked (quoted, lead set or passed)", "not noted")
     : oppOf("Identify opportunities for a producer", "passed", "not passed");
   const cx0 = cancelOf(aud);

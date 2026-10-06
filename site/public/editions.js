@@ -534,12 +534,9 @@ function edPosts(X) {
 }
 // Everyone's handle on The Flores Feed (Frank, 2026-10-05: "give everyone a
 // creative, insurance focused username"), by first name; anyone else gets one
-// made from their name.
-const ED_HANDLES = {
-  Apollo: "coach.apollo", Crystal: "mango.multipolicy", Lorena: "lori.locks.the.rate", Mike: "mikes.got.you.covered",
-  Coral: "coral.covers.it.all", Sarahi: "safe.with.sarahi", Amanda: "amanda.approves", Frank: "frank.full.coverage",
-  Francisco: "dm.francisco", Veronica: "vero.vacation.approved", Debbie: "debbie.on.the.line",
-};
+// made from their name. A person's own is their `handle` in staff.json.
+const ED_HANDLES = Object.assign({ Apollo: "coach.apollo" },
+  Object.fromEntries(((window.STAFF || {}).people || []).filter(p => p.handle).map(p => [p.name.split(" ")[0], p.handle])));
 const edHandle = who => { const f = pfirst(String(who || "")); return "@" + (ED_HANDLES[f] || `${f.toLowerCase().replace(/[^a-z]/g, "") || "agent"}.always.covered`); };
 function edPostHtml(X, p) {
   const S = edShared.state, rx = S.rx[p.id] || {}, cms = S.cm[p.id] || [];

@@ -396,9 +396,7 @@ OTHER_EXT = {p["name"]: staff.phone_ids(p) for p in staff.active()
 # Everyone the panel renders, EVERY DAY. The layout depends on this: when the
 # panel only rendered people Insightful had published, it swung ~700px and
 # forced the two columns apart (s9).
-UTIL_PANEL_ORDER = ["Crystal Mango", "Lorena Gonzalez", "Mike Olvera",
-                    "Debbie Aguilera", "Amanda Torricellas",
-                    "Coral Barwick", "Sarahi Chin"]
+UTIL_PANEL_ORDER = staff.order("util_panel")   # staff.json
 
 # Producers with no Insightful record AT ALL -- a different fact from
 # "licensed but no rows today", which util_panel words differently.
