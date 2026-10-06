@@ -9,6 +9,14 @@
  *   $25,000 no commission. The rate applies to the whole premium.
  *   Team (Sarahi + Coral): the same rates on their COMBINED premium at
  *   $50,000 / 60 / 70 / 80 / 90 / 100,000+, split 50/50.
+ *   Flat (Crystal; her own "Crystal Comm Schedule" sheet, Frank 2026-10-06:
+ *   "crystals comm schedule and goal is different than the others"): a set
+ *   dollar amount per tier of monthly Personal Lines premium, not a rate --
+ *   $15,000 $600, $20,000 $800, $25,000 $1,000, $30,000 $1,250, $35,000
+ *   $1,500, $40,000+ $1,750; below $15,000 nothing (Frank: the table, not
+ *   the sheet's stale "less than $30,000" note). Her extras are the same as
+ *   everyone's (Frank: "bonus's and life is the same as the rest" -- the
+ *   sheet's $75 life, $50 umbrella and 35% business are not used).
  *
  *   Additional: life $100 each whatever the tier (a policy count -- its
  *   premium never counts toward the tier, Frank 2026-10-05); multiline bundle to a NEW
@@ -35,7 +43,8 @@
 import { COMMISSION_UNITS, COMMISSION, AGENCY } from "./staff.js";
 import LEAD_SOURCES from "./lead_sources_data.js";
 
-// The numbers are staff.json's `commission` (Frank's two sheets).
+// The numbers are staff.json's `commission` (Frank's two sheets, and Crystal's own: a schedule with `pay`
+// pays that amount at each tier instead of the rate on the premium).
 const TIER_NAMES = COMMISSION.tier_names;
 const RATES = COMMISSION.rates;
 export const SCHEDULES = COMMISSION.schedules;
@@ -45,7 +54,7 @@ const CARRIER_RX = new RegExp((AGENCY.carrier || "farmers").replace(/[.*+?^${}()
 
 export function tiersOf(schedule) {
   const s = SCHEDULES[schedule];
-  return s.mins.map((min, i) => ({ name: TIER_NAMES[i], min, rate: RATES[i] }));
+  return s.mins.map((min, i) => (s.pay ? { name: TIER_NAMES[i], min, pay: s.pay[i] } : { name: TIER_NAMES[i], min, rate: RATES[i] }));
 }
 
 export function kindOf(product) {
@@ -88,7 +97,7 @@ export function standing(unit, entries) {
   const tier = at >= 0 ? tiers[at] : null;
   const next = tiers[at + 1] || null;
   const met = at >= 0;
-  const base = tier ? premium * tier.rate : 0;
+  const base = !tier ? 0 : tier.pay != null ? tier.pay : premium * tier.rate;
 
   // Each line's rows carry their own pay, so a team member's share of the
   // extras is the sum of their own rows.

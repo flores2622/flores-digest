@@ -343,7 +343,7 @@ export default {
       "members": [
         "Crystal Mango"
       ],
-      "schedule": "individual"
+      "schedule": "flat"
     },
     {
       "key": "lorena",
@@ -404,7 +404,7 @@ export default {
     ]
   },
   "commission": {
-    "_about": "Frank's Commission Sheet and Team Commission Sheet (2026-10-01), in numbers: the tiers (name, monthly premium minimum per schedule, rate on the whole premium), the team schedule's split, and the additional pay (life per policy, a new household bundle, a cross-sell line, an umbrella, business as a share of premium, the Kraft Lake bonus at its premium minimum). site/commission.js reads it through staff.js; commission_units says who is on which schedule.",
+    "_about": "Frank's Commission Sheet and Team Commission Sheet (2026-10-01), in numbers: the tiers (name, monthly premium minimum per schedule, rate on the whole premium), the team schedule's split, and the additional pay (life per policy, a new household bundle, a cross-sell line, an umbrella, business as a share of premium, the Kraft Lake bonus at its premium minimum). site/commission.js reads it through staff.js; commission_units says who is on which schedule. A schedule with `pay` (Crystal's \"Crystal Comm Schedule\", 2026-10-06) pays that set amount at each tier instead of the rate; her extras are everyone's.",
     "tier_names": [
       "Good",
       "Better",
@@ -443,6 +443,25 @@ export default {
           100000
         ],
         "split": 0.5
+      },
+      "flat": {
+        "mins": [
+          15000,
+          20000,
+          25000,
+          30000,
+          35000,
+          40000
+        ],
+        "pay": [
+          600,
+          800,
+          1000,
+          1250,
+          1500,
+          1750
+        ],
+        "split": 1
       }
     },
     "pay": {
