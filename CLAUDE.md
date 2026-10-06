@@ -556,8 +556,9 @@ random instants and every day of 2026, Python and JS alike (`sold_at`,
 `_utc_of`, the call-log windows, Insightful's day bounds, the day fraction,
 `soldAt`, the page's today / minutes / weekday). What a different zone
 would still need: the Worker's cron lines in wrangler.jsonc are UTC
-(8:00-5:59 on the agency's clock, written out by hand), the nightly
-routine's `CRON_TZ`, and the words "Arizona" in the guides.
+(`python3 staff.py --crons` writes them for the zone and `--check` compares,
+2026-10-06), the nightly routine's `CRON_TZ`, and the words "Arizona" in
+the guides.
 
 ## This AgencyZoom account's numbers
 
@@ -729,6 +730,34 @@ reads it through `staff.js`'s `COMMISSION`, and the business line's
 carrier word comes from `agency.carrier`. Schedules, pay and both tier
 tables checked equal. Still in code: what makes a product life / umbrella /
 Kraft Lake / business (`kindOf`'s words) and the eligible lines.
+
+## The words on the calls, the drip subjects and the Worker's cron
+
+**The last of this agency's words in code moved out** (2026-10-06, the
+ninth piece). **How a transcript spells a staff name** is each person's
+`heard_as` in staff.json (Crystal: Cristal; Sarahi: Sarai, Zarahi):
+`staff.name_forms(first)` builds the alternation `deepgram_stt.
+producer_speaker` uses to find who introduced themselves (it was
+`NAME_FORMS`), and `staff.heard_names()` is `coaching_cards.STAFF_NAMES`
+(who a pick-up line names; it gains Zarahi, which Deepgram's table had and
+the cards' did not). **How Whisper hears the carrier** is the carrier
+layer's `heard_as_regex` (coaching/carrier/farmers/carrier.json: farmers?,
+fármios, partners insurance, farmer), `coaching_text.CARRIER_HEARD`, in
+`transcribe.SELF_ID` with every active first name from staff.json --
+fuzzed identical to the old pattern on 3,960 phrases; Deepgram's `AGENCY`
+alternation takes `agency.carrier` itself. **AgencyZoom's drip email
+subjects** are `agencyzoom.json`'s `email_template_subjects`
+(`messages.TEMPLATE_SUBJECTS`, the same 70), and **the Service Center's
+pipeline labels** its `workflows.service_labels` ("Farmers & Foremost
+Renewals", "Bristol West Renewals" ... -- `service_digest.PIPELINES` reads
+them through `agencyzoom.service_label`, defaults as before). **The
+Worker's cron lines are checked against the zone**: `python3 staff.py
+--crons` prints wrangler.jsonc's `triggers.crons` for `agency.timezone`
+(every minute 8:00 AM-5:59 PM weekdays, `staff.WORKER_CRON_HOURS`, in
+UTC), and `staff.py --check` fails when the file disagrees; a zone with
+daylight saving gets no lines, only the warning that one UTC set cannot
+follow it. Still this agency's, in words: `live_contact`'s "from arizona
+insurance reports" drip phrase, the guides, the editions' names.
 
 ## Phone numbers
 

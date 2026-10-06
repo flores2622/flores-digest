@@ -31,6 +31,9 @@ import wave
 import numpy as np
 import requests
 
+import coaching_text
+import staff
+
 MODEL = "models/sherpa-onnx-whisper-base"
 
 # "deepgram" (the default, deepgram_stt.py: whole call, bilingual, speakers
@@ -192,10 +195,12 @@ def is_only_tags(t):
 # the producer identifying themselves -- "Crystal with Farmers", "habla Mike de
 # la Seguranza Farmers" -- with dead air on the other window is a message being
 # left, not a contact (Maria Rodriguez, 2026-08-18).
+# The carrier's name as Whisper hears it is the carrier layer's
+# heard_as_regex (coaching_text.CARRIER_HEARD); the staff names staff.json's.
 SELF_ID = re.compile(
     r"\b(this is |habla |soy |le habla )?\w+ (with|de la|from) "
-    r"(farmers?|f[aá]rmios|seguran[czs]a|partners? insurance|farmer)"
-    r"|\b(crystal|lorena|mike|frank|coral|sarahi|debbie) with farmer",
+    rf"({coaching_text.CARRIER_HEARD}|seguran[czs]a)"
+    rf"|\b({'|'.join(re.escape(p['name'].split()[0].lower()) for p in staff.active())}) with ({coaching_text.CARRIER_HEARD})",
     re.I)
 
 # Two people alternating. Whisper marks speaker changes with ">>" when it hears

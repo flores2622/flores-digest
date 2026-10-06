@@ -48,9 +48,20 @@ def carrier_dir():
     return ROOT / "coaching" / "carrier" / (staff.CARRIER or "generic").lower()
 
 
+def carrier():
+    """The carrier layer's carrier.json (name, possessive, misheard_as,
+    quoting_system, website, heard_as_regex)."""
+    return json.loads((carrier_dir() / "carrier.json").read_text())
+
+
+# How a transcript hears the carrier's name, as a regex alternation
+# (transcribe.SELF_ID); Deepgram, which hears it right, uses the name.
+CARRIER_HEARD = carrier().get("heard_as_regex") or re.escape((staff.CARRIER or "").lower())
+
+
 def fills():
     cdir = carrier_dir()
-    c = json.loads((cdir / "carrier.json").read_text())
+    c = carrier()
     name = c.get("name") or staff.CARRIER
     qs = c.get("quoting_system") or "the quoting system"
     front = [p for p in staff.service_team() if (p.get("service") or {}).get("playbook") == "front_desk"]

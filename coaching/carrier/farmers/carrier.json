@@ -4,5 +4,7 @@
   "possessive": "Farmers'",
   "misheard_as": "Farmer's",
   "quoting_system": "ALTA",
-  "website": "Farmers.com"
+  "website": "Farmers.com",
+  "heard_as_regex": "farmers?|f[aá]rmios|partners? insurance|farmer",
+  "_heard_as_regex": "how Whisper hears the carrier's name on a call (transcribe.SELF_ID): a regex alternation; Deepgram, which hears it right, uses the name itself"
 }

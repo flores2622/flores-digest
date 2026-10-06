@@ -18,6 +18,8 @@ sheet's product names -- stays in those modules.
     workflows.service               each Service Center pipeline key -> the
                                     AgencyZoom workflow name(s) it covers
                                     (service_digest.PIPELINES)
+    workflows.service_labels        what the board calls each pipeline key
+    email_template_subjects         AgencyZoom's drip email subjects (messages)
     claim_categories                service category id -> the type of claim
     commercial_claim_categories     the categories that are Cerberus's
     resolutions.labels              resolution id -> its name (the fallback
@@ -65,11 +67,18 @@ CLAIM_WORKFLOW_ID = int(WORKFLOWS["claim"]["id"])
 CLAIM_WORKFLOWS = set(WORKFLOWS["claim"]["names"])
 COMMERCIAL_RENEWAL_WORKFLOWS = set(WORKFLOWS["commercial_renewals"]["names"])
 SERVICE_WORKFLOWS = {k: set(v) for k, v in WORKFLOWS["service"].items()}
+SERVICE_LABELS = dict(WORKFLOWS.get("service_labels") or {})
+EMAIL_TEMPLATE_SUBJECTS = list(DATA.get("email_template_subjects") or [])
 
 
 def service_workflows(key):
     """The AgencyZoom workflow names a Service Center pipeline key covers."""
     return set(SERVICE_WORKFLOWS[key])
+
+
+def service_label(key, default):
+    """What the Service Center calls a pipeline key (workflows.service_labels)."""
+    return SERVICE_LABELS.get(key) or default
 
 
 CLAIM_TYPES = _ints(DATA["claim_categories"])
@@ -107,6 +116,9 @@ def check(log=print):
     for k in SERVICE_WORKFLOWS:
         if k not in pipes:
             bad.append(f"workflows.service: {k!r} is not a Service Center pipeline ({sorted(pipes)})")
+    for k in SERVICE_LABELS:
+        if k not in pipes:
+            bad.append(f"workflows.service_labels: {k!r} is not a Service Center pipeline")
     for p, m in TRUSTED_RESOLUTIONS.items():
         if p not in pipes:
             bad.append(f"resolutions.trusted_by_pipeline: {p!r} is not a pipeline")

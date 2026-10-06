@@ -490,10 +490,7 @@ FRONT_DESK = re.compile(
     r"thank(s| you) for calling|gracias por (llamar|su llamada)|"
     rf"({staff.GREETING_WORDS})( insurance)?,? (this is \w+,? )?how (can|may) i help", re.I)   # staff.json
 # Staff first names as a transcript spells them -> who that is.
-STAFF_NAMES = {"crystal": "crystal", "cristal": "crystal", "lorena": "lorena",
-               "mike": "mike", "coral": "coral", "sarahi": "sarahi", "sarai": "sarahi",
-               "debbie": "debbie", "amanda": "amanda", "frank": "frank",
-               "francisco": "francisco", "veronica": "veronica"}
+STAFF_NAMES = staff.heard_names()   # staff.json: first names and their `heard_as` spellings
 # The tag call_summary.build puts on an inbound leg whose recording stopped at
 # the park: only the front desk's side of the call exists.
 OPENING_ONLY = "ONLY THE OPENING WAS RECORDED"
