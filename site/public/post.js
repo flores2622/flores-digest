@@ -10,7 +10,7 @@ const AGENCY_LINE = (() => { const a = (window.STAFF || {}).agency || {}; return
    the published day's document, a folio edition merges the folio's days
    (ensureCurForRange keeps them in curRangeDocs) and reads the last
    folio's for the pace to beat. Sales come first, always. A slow edition
-   -- no sales on a day, a week under $20,000, a folio under last folio's
+   -- no sales on a day, a week under the goal (goals.json's week_premium_goal), a folio under last folio's
    pace -- says so and carries "What to try / What to look for". Primetime,
    the sports section, is a permanent part of the paper and is the only
    place the paper carries the standings table. */
@@ -185,9 +185,18 @@ function postFacts(d) {
 }
 
 /* ---- the pieces every edition shares -------------------------------------- */
-const POST_GOALS = [["dials", "Dials", "50 or more a day"], ["talk", "Avg talk time", "7 min or more"], ["rate", "Contact rate", "13% or more"],
-  ["hh", "Households quoted", "5 or more a day"], ["pq", "Premium quoted per HH", "$900 or more"], ["tasks", "Task completion", "100%"],
-  ["util", "Utilization", "85% or more"], ["roleplay", "Role play", "80 or more"], ["closing_hh", "Closing ratio", "25% or more"]];
+/* The goal board's lines, from goals.json's thresholds (window.GOALS, written
+   by `python3 goals.py --write-js`): each metric's green number in words. */
+const POST_GOALS = (() => {
+  const T = (window.GOALS || {}).thresholds || {}, g = m => (T[m] || {}).green;
+  const n = v => (v == null ? "?" : Number(v).toLocaleString("en-US"));
+  return [["dials", "Dials", `${n(g("call_volume"))} or more a day`], ["talk", "Avg talk time", `${n(g("avg_talk_min"))} min or more`],
+    ["rate", "Contact rate", `${n(g("contact_rate_pct"))}% or more`], ["hh", "Households quoted", `${n(g("households_quoted"))} or more a day`],
+    ["pq", "Premium quoted per HH", `$${n(g("premium_quoted_per_hh"))} or more`], ["tasks", "Task completion", `${n(g("task_completion_pct"))}%`],
+    ["util", "Utilization", `${n(g("utilization_pct"))}% or more`], ["roleplay", "Role play", `${n(g("roleplay_score"))} or more`],
+    ["closing_hh", "Closing ratio", `${n(g("closing_ratio_pct"))}% or more`]];
+})();
+const WEEK_GOAL = (window.GOALS || {}).week_premium_goal || 20000;   // goals.json: a week under it is slow
 function goalBoardHtml(F, title) {
   const rows = POST_GOALS.filter(([k]) => F.prods.some(p => (F.tiers[p.name] || {})[k] != null));
   const hit = rows.map(([k]) => F.prods.filter(p => (F.tiers[p.name] || {})[k] === "green").map(p => pfirst(p.name)));
@@ -495,7 +504,7 @@ function writeWeek(docsUpto, rows, ctx, ed) {
   const wkTot = weekRows.reduce((a, r) => a + r.ps, 0), fTot = rows.reduce((a, r) => a + r.ps, 0);
   const all = rows.length + ctx.ahead.length, pace = rows.length ? fTot / rows.length * all : 0;
   const best = weekRows.reduce((a, r) => !a || r.ps > a.ps ? r : a, null);
-  const slowW = wkTot < 20000;
+  const slowW = wkTot < WEEK_GOAL;
   const zeroDays = weekRows.filter(r => !r.ps);
   const nWord = ["", "One more day", "Two more days"][ed.left] || `${ed.left} more days`;
   const closeDay = ctx.end;
@@ -573,14 +582,14 @@ async function postPanel(err) {
     const E = {
       edition: `Week ${ed.week} edition · published Fri ${pmd(ed.date)}`, dateline: `Folio ${pmd(start)} – ${pmd(end)}, ${end.slice(0, 4)} · week of ${pmd(ed.from)} – ${pmd(ed.date)}`,
       kicker: ed.final ? "The last Friday of the folio" : `Week ${ed.week} in review`, by: `By Apollo · Week ${ed.week} edition`, goalTitle: "The goal board · this week",
-      hl: ed.final ? `${W.nWord} left: the folio stands at ${pmoney(W.fTot)}` : W.slowW ? `A slow week: ${pmoney(W.wkTot)} in, under the $20,000 line` : `Week ${ed.week} adds ${pmoney(W.wkTot)}; the folio stands at ${pmoney(W.fTot)}`,
+      hl: ed.final ? `${W.nWord} left: the folio stands at ${pmoney(W.fTot)}` : W.slowW ? `A slow week: ${pmoney(W.wkTot)} in, under the ${pmoney(WEEK_GOAL)} line` : `Week ${ed.week} adds ${pmoney(W.wkTot)}; the folio stands at ${pmoney(W.fTot)}`,
       deck: `${rows.length} of ${W.all} business days done. At this pace the folio finishes near ${pmoney(W.pace)}${last ? `; last folio closed at ${pmoney(last.ps)}` : ""}.`,
       body: [`The team sold ${pmoney(W.wkTot)} in new premium from ${pmd(ed.from)} to ${pmd(ed.date)}, across ${plural(W.weekRows.length, "business day")}.${W.best ? ` The best day was ${pdow(W.best.date)} ${pmd(W.best.date)}, at ${pmoney(W.best.ps)}: ${W.best.note}.` : ""}`,
         W.weekRows.filter(r => r.ps && r !== W.best).length ? W.weekRows.filter(r => r !== W.best).map(r => `${pmd(r.date)}: ${r.note}.`).join(" ") : "",
         `The folio has ${pmoney(W.fTot)} after ${plural(rows.length, "day")}. ${ed.final ? `${W.nWord} before it closes on ${pdow(W.closeDay)} ${pmd(W.closeDay)}: follow up every open quote, call back every lead that asked, and put the rest of the day's dials on the phone.` : `${plural(ahead.length, "business day")} remain before it closes on ${pmd(end)}.`}`].filter(Boolean),
       pull: W.best ? [`${W.best.note}.`, `${pdow(W.best.date)}, ${pmd(W.best.date)}, the best day of the week`] : ["No sales this week.", "Apollo"],
       nums: [["This week", pmoney(W.wkTot)], ["Folio to date", pmoney(W.fTot)], ["Best day", W.best ? pmoney(W.best.ps) : "—"], ["Days done", `${rows.length} of ${W.all}`], ["Pace to close", pmoney(W.pace)], ["Last folio", last ? pmoney(last.ps) : "—"]],
-      tips: W.slowW ? [`A slow week: ${pmoney(W.wkTot)}, under the $20,000 line.${ed.final ? " <em>Here is how to finish the folio.</em>" : ""}`, [
+      tips: W.slowW ? [`A slow week: ${pmoney(W.wkTot)}, under the ${pmoney(WEEK_GOAL)} line.${ed.final ? " <em>Here is how to finish the folio.</em>" : ""}`, [
         "<b>Call back every household quoted this week.</b> Present the quote on the phone and ask for the sale; a quote sent by email rarely closes on its own.",
         "<b>Work 1-1 QNC before new leads.</b> Quotes that never closed in the last 30 days are the quickest premium on the board.",
         W.zeroDays.length ? `<b>Find out what happened on ${plist(W.zeroDays.map(r => `${pdow3(r.date)} ${pmd(r.date)}`))}.</b> A day with no sales usually means no quotes presented: check that day’s coaching cards.` : "<b>Protect the first hour.</b> Start the day with call backs and follow-ups, then new dials.",
@@ -592,7 +601,7 @@ async function postPanel(err) {
       wireT: "This week's moments", wire: [...W.weekRows].sort((a, b) => b.ps - a.ps).slice(0, 6).map(r => [pmd(r.date), r.note]),
       carryT: "Into next week", carry: [[String(Math.max(0, F.hh - W.weekRows.reduce((a, r) => a + r.hhSold, 0))), "households quoted this week, not yet closed"]].filter(x => +x[0]),
       foot: `Frozen as it went out on ${pmd(ed.date)}`,
-      take: `Week ${ed.week}: ${pmoney(W.wkTot)}${W.slowW ? ", under the $20,000 line" : ""}. ${pfirst(F.order[0] || "Nobody")} tops the week's standings.`,
+      take: `Week ${ed.week}: ${pmoney(W.wkTot)}${W.slowW ? ", under the ${pmoney(WEEK_GOAL)} line" : ""}. ${pfirst(F.order[0] || "Nobody")} tops the week's standings.`,
     };
     const count = ed.final ? `<section class="count"><div class="big">${ed.left}</div><div class="l1">${W.nWord}. The folio closes ${pdow(W.closeDay)}, ${pmd(W.closeDay)}.</div><div class="l2">${last ? `${pmoney(Math.max(0, last.ps - W.fTot))} to beat last folio's ${pmoney(last.ps)}. ` : ""}Every household still quoted is a sale that counts this folio if it closes by ${pmd(W.closeDay)}. Make the calls.</div></section>` : "";
     const inWeek = r => r.date >= ed.from && r.date <= ed.upto;

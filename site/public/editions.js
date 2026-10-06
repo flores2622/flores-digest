@@ -459,7 +459,7 @@ function edMemes(X) {
   else if (obj) out.push({ k: "cmm", t: [`"${up(obj[0])}" IS NOT A NO`], cap: `${plural(obj[1], "call")} heard it ${when}; ${obj[2]} turned it around.` });
   // 3. the phones
   if (F.spBest && F.spTeam != null) out.push({ k: "brain", t: ["Calling the new lead tomorrow", "Calling within the hour", `Team median: ${edFmtStd(F.spTeam)}`, `${pfirst(F.spBest[0])}: ${edFmtStd(F.spBest[1].median)}`], cap: "Speed to dial. The goal is 2 minutes." });
-  else if (F.rate < 13 && F.dials) out.push({ k: "harold", top: "VOICEMAIL IS NOT A CONVERSATION", bottom: `${ppct(F.rate, 0)} CONTACT RATE`, cap: `${plural(F.dials, "dial")} reached ${plural(F.live, "person", "people")}. The goal is 13%.` });
+  else if (F.rate < ((((window.GOALS || {}).thresholds || {}).contact_rate_pct || {}).green ?? 13) && F.dials) out.push({ k: "harold", top: "VOICEMAIL IS NOT A CONVERSATION", bottom: `${ppct(F.rate, 0)} CONTACT RATE`, cap: `${plural(F.dials, "dial")} reached ${plural(F.live, "person", "people")}. The goal is 13%.` });
   else if (F.misfiled) out.push({ k: "exit", t: ["1 PIPELINE", "\"PIPELINE\"", `${F.misfiled} OPEN LEAD${F.misfiled === 1 ? "" : "S"}`], cap: "Open leads an integration misfiled in \"Pipeline\". Someone move them to 1 Pipeline." });
   else if (X.SALES.some(s => /winback/i.test(s.src))) out.push({ k: "rollsafe", top: "CAN'T LOSE A CUSTOMER", bottom: "IF YOU WIN THEM BACK", cap: `${plist([...new Set(X.SALES.filter(s => /winback/i.test(s.src)).map(s => s.w))])} closed a winback ${when}.` });
   return out.slice(0, 3).map((m, i) => ({ id: "m-" + (m.top ? m.top.slice(0, 12).replace(/[^A-Z0-9]/g, "").toLowerCase() || i : m.k === "brain" ? "brain" : m.k), who: "Apollo", when: "Meme desk", meme: m, text: m.cap || "" }));

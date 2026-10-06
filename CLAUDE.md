@@ -681,6 +681,32 @@ imports, Coeus) still reads the rendered files, unchanged. A new carrier
 means a new `coaching/carrier/<name>/` folder with its own discount list;
 the guides in blueprints.js still say "Farmers" in plain words.
 
+## The agency's goals and thresholds
+
+**`goals.json` holds every goal number** (2026-10-06, the seventh blocker to
+running Pantheon for another agency): the colour thresholds (one green /
+yellow pair per metric, `lower_better` for Speed to Dial), the two
+straight-count metrics that scale by the number of producers for the team
+row, the life goal (policies a week per producer), the reply-speed goal
+(15 minutes green, over an hour red), the week's premium goal The Flores
+Post judges a slow week by ($20,000) and the Coach AI bar ranges.
+`goals.py` reads it; `digest_config.THRESHOLDS`, `TEAM_SCALED_METRICS`,
+`LIFE_WEEKLY_GOAL` and `COACH_BAR_RANGES` are built from it, names and
+shapes unchanged -- `tier()` and `life_week_tier` checked identical on 31
+values per metric and every weekday case. **The board page reads
+`site/public/goals.js`** (`window.GOALS`), written by `python3 goals.py
+--write-js` -- never by hand; `--check` fails when stale: index.html's
+`THRESHOLDS`, `LIFE_WEEKLY_GOAL` and `REPLY_GOAL` mirrors are gone, and
+`TEAM_SCALE` is the producer count from staff.json; The Flores Post's goal
+board writes its lines from the thresholds and its slow-week line from the
+week goal; the Feed's Hide the Pain Harold meme fires under the contact-rate
+green. Checked equal to the old literals (the page's eleven metrics, the
+goal board's nine lines, the week goal, the team scale). **The rules stay
+in code**: how a tier is judged (task completion green only at 100, the
+inclusive >=), the pace rules, the page's `tierColor` / `lifeTier` /
+`replyTier`. Still in words: the guides' "50 dials, 7 minutes, 13%" lines
+in blueprints.js -- change them with goals.json.
+
 ## Phone numbers
 
 `az_corpus.e164` keys on the **last ten digits**. AgencyZoom stores every number

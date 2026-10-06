@@ -7,6 +7,7 @@ import collections
 import datetime as dt
 import re
 import agencyzoom
+import goals
 import lead_sources
 import staff
 
@@ -197,7 +198,7 @@ def is_life_lead(lead, recent=None):
 # Friday without one (still time); red on Friday without one. The team's goal
 # is one each (x TEAM_SCALE). site/public/index.html lifeTier mirrors this --
 # keep them in step.
-LIFE_WEEKLY_GOAL = 1
+LIFE_WEEKLY_GOAL = goals.LIFE_WEEKLY_GOAL   # goals.json
 
 
 def week_start(day):
@@ -483,46 +484,22 @@ JUNK_WORKFLOW_NAME = agencyzoom.JUNK_WORKFLOW_NAME
 # --- thresholds (HANDOFF_4 s7) ----------------------------------------------
 # (green_at, yellow_at) -- read as: >= green is green, >= yellow is yellow,
 # else red. Metrics where lower is better carry "lower_better": True.
-THRESHOLDS = {
-    "call_volume":       {"green": 50,   "yellow": 40},
-    "avg_talk_min":      {"green": 7,    "yellow": 3},
-    "contact_rate_pct":  {"green": 13,   "yellow": 10},
-    "households_quoted": {"green": 5,    "yellow": 2},
-    "premium_quoted_per_hh":  {"green": 900, "yellow": 501},
-    "premium_sold_per_policy": {"green": 900, "yellow": 501},
-    # Team Policies count (Frank, 2026-09-15: "policy count for team needs
-    # tiering, 4+ green, 1-3 yellow, and 0 red"). Team-only -- a per-producer
-    # Policies column stays coloured on the sale streak instead
-    # (publish_board.apply_policy_streak), which this does not touch or
-    # replace. tier()'s general >=green/>=yellow/else-red formula already
-    # gives exactly 4+/1-3/0 with these two numbers, no special case needed.
-    "policy_count": {"green": 4, "yellow": 1},
-    "task_completion_pct": {"green": 100, "yellow": 90},
-    "speed_to_dial_min": {"green": 2, "yellow": 5, "lower_better": True},
-    "utilization_pct":   {"green": 85,   "yellow": 80},
-    # Coach AI's Role Play score (0-100ish, not the 0-800 call-score scale --
-    # team ran 79.8 against a stated 80 on 2026-08-31). Frank, 2026-09-10:
-    # "no role play score recorded on the day should be a red 0, anything
-    # above 80 is green, anything 79 and under is yellow". >=80 green rather
-    # than a literal >80 -- every other threshold in this table uses the
-    # same inclusive >= convention (tier()'s general case), and a fractional
-    # team average landing on exactly 80.0 is the only case it would change.
-    # A day with no Role Play figure at all reads as None, which tier()
-    # already colours red on its own -- the "shown as 0" half of the rule is
-    # the leaderboard's existing c.get("roleplay", 0) default, unchanged here.
-    "roleplay_score":    {"green": 80,   "yellow": 0},
-    # Closing Ratio (Frank, 2026-09-23, after industry research on cross-sell
-    # close rates -- see digestDay's own comment for the citations): applies
-    # to BOTH halves of the Closing Ratio card, households% and premium%
-    # alike -- Frank gave one scheme for "close ratio", not two.
-    "closing_ratio_pct": {"green": 25, "yellow": 15},
-    # Household Completion is coloured on the board by what was sold, not a
-    # threshold (Frank, 2026-09-29): householdCompletionHtml.
-}
+# The numbers are goals.json's `thresholds` (goals.py); the comments below
+# on each metric's rule are kept there as the file's `_about` cannot hold
+# them. Metrics: call_volume, avg_talk_min, contact_rate_pct,
+# households_quoted, premium_quoted_per_hh, premium_sold_per_policy,
+# policy_count (Frank, 2026-09-15: team-only, 4+ green, 1-3 yellow, 0 red;
+# a per-producer Policies column colours on the sale streak instead),
+# task_completion_pct, speed_to_dial_min (lower is better),
+# utilization_pct, roleplay_score (Frank, 2026-09-10: 80+ green, under
+# yellow, none red -- >= 80 like every other threshold), closing_ratio_pct
+# (Frank, 2026-09-23: one scheme for both halves of the Closing Ratio).
+# Household Completion is coloured by what was sold, not a threshold.
+THRESHOLDS = goals.THRESHOLDS
 
 # Straight-sum metrics scale x3 for the team row. Rate, percentage and per-unit
 # metrics apply the per-producer threshold UNSCALED.
-TEAM_SCALED_METRICS = {"call_volume", "households_quoted"}
+TEAM_SCALED_METRICS = goals.TEAM_SCALED_METRICS   # goals.json
 
 TIER_LABELS = {                       # wording set by Frank 2026-08-13
     "green":  "On or exceeding goal",
@@ -752,11 +729,7 @@ COACH_TITLE_IS_NEXT_DAY = True
 # while sitting under a third of a perfect call. Anchoring to 800 instead is
 # honest but makes every bar a sliver, which is the floor problem noted above.
 # Left as-is deliberately; revisit only with Frank.
-COACH_BAR_RANGES = {
-    "Avg Call Score": (38, 251),
-    "Avg Sentiment": (11, 43),
-    "Role Play": (58, 87),
-}
+COACH_BAR_RANGES = goals.COACH_BAR_RANGES   # goals.json
 
 # --- Call Detail row colours (HANDOFF_4 s7) ---------------------------------
 # Recovered from the approved design, then amended by Frank.
