@@ -759,6 +759,17 @@ daylight saving gets no lines, only the warning that one UTC set cannot
 follow it. Still this agency's, in words: `live_contact`'s "from arizona
 insurance reports" drip phrase, the guides, the editions' names.
 
+## Running Pantheon for another agency: NEW_AGENCY.md and agency_check.py
+
+**`NEW_AGENCY.md` is the guide** (2026-10-06): the six steps -- staff.json,
+agencyzoom.json (with `--discover`), lead_sources.json (with
+`--discover`), goals.json, the coaching carrier layer, deployment -- and
+what is still Flores's in words. **`python3 agency_check.py` runs every
+setup file's `--check`** (staff, agencyzoom, lead_sources, goals,
+coaching_text; `--fix` rewrites the generated files first) and must say
+"every setup file checks out" before a deploy. Run it after touching any
+of those files here too: the Workers build does not.
+
 ## Phone numbers
 
 `az_corpus.e164` keys on the **last ten digits**. AgencyZoom stores every number
