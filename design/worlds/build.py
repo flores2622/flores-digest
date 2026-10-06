@@ -15,11 +15,29 @@ check.py validates it and preview.cjs renders it for a look.
 import hashlib, importlib, json, os, re, sys, urllib.parse
 HERE = os.path.dirname(os.path.abspath(__file__)); ROOT = os.path.abspath(os.path.join(HERE, "..", ".."))
 sys.path.insert(0, HERE)
-ORDER = ["space", "ocean", "mountain", "gameday", "arcade", "phoenix", "golf", "yuma", "dallas", "baseball", "basketball", "autumn", "tropics", "carnival", "dinosaurs"]
+ORDER = ["classic", "simple", "colors", "space", "ocean", "mountain", "gameday", "arcade", "phoenix", "golf", "yuma", "dallas", "baseball", "basketball", "autumn", "tropics", "carnival", "dinosaurs"]
 INDEX = os.path.join(ROOT, "site", "public", "index.html"); OUTDIR = os.path.join(ROOT, "site", "public", "worlds")
 def enc(svg): return urllib.parse.quote(svg, safe="/:=,.;- '()")
 def url(svg): return f'url("data:image/svg+xml;utf8,{enc(svg)}")'
+# A plain world (PLAIN = True; Frank, 2026-10-06: "a more basic look if someone doesnt want all the extra
+# design") has looks and type only: no Digest picture, no page banners, no card strips. Its rules are inline
+# (plain_css) so nothing flashes; its worlds/<key>.css is only the file the board waits on.
+def plain_css(m):
+    T = f'html[data-theme="{m.KEY}"]'
+    return "\n".join([
+        f'{T} .skyline, {T} .lbsky {{ background: var(--surface-raised) !important; }}',
+        f'{T} .skyline:not(.lbsky) {{ padding-top: 64px; }}',
+        f'{T} .skyline .sky-k, {T} .lbsky > h2 {{ color: var(--text-primary); text-shadow: none; }}',
+        f'{T} .lbsky > h2 {{ border-bottom-color: var(--border); }}',
+        f'{T} .lbsky > .sd, {T} .lbsky > p {{ color: var(--text-muted); text-shadow: none; }}',
+        f'{T} .lbsky .podium2::before {{ display: none; }}',
+        f'{T} .skyline .tile {{ background: var(--surface-raised); backdrop-filter: none; }}',
+        f'{T} .main {{ background-image: none !important; }}',
+        f'{T} .vista {{ display: none !important; }}',
+        f'{T} .ccard > summary.cchead::before {{ background-image: none !important; }}'])
 def world_css(m):
+    if getattr(m, "PLAIN", False):
+        return f"/* {m.NAME}: a plain world, built by design/worlds/build.py -- its rules are inline in index.html. */\n"
     k = m.KEY; T = f'html[data-theme="{k}"]'; D = f'html[data-theme="{k}"][data-mode="dark"]'
     (lt, ll), (dt, dl) = m.SKY_BG
     L = [f"/* {m.NAME}: built by design/worlds/build.py from design/worlds/{k}.py -- edit there, not here. */"]
@@ -73,9 +91,13 @@ def inline_css(mods):
          'html[data-theme]:not([data-theme="desert"]):not([data-wl]) .vista, html[data-theme]:not([data-theme="desert"]):not([data-wl]) .main,',
          'html[data-theme]:not([data-theme="desert"]):not([data-wl]) .ccard > summary.cchead::before { background-image: none !important; }']
     for m in mods:
-        k = m.KEY; (lt, ll), (dt, dl) = m.SKY_BG
+        k = m.KEY
         L.append(f'html[data-theme="{k}"] {{ --display: {m.DISPLAY}; --dw: {m.DW}; --body: {m.BODY}; }}')
-        L.append(f'html[data-theme="{k}"] .skyline {{ background-color: {lt}; }} html[data-theme="{k}"][data-mode="dark"] .skyline {{ background-color: {dt}; }} '
+        if getattr(m, "PLAIN", False):
+            L.append(plain_css(m))
+        else:
+            (lt, ll), (dt, dl) = m.SKY_BG
+            L.append(f'html[data-theme="{k}"] .skyline {{ background-color: {lt}; }} html[data-theme="{k}"][data-mode="dark"] .skyline {{ background-color: {dt}; }} '
                  f'html[data-theme="{k}"] .lbsky {{ background-color: {ll}; }} html[data-theme="{k}"][data-mode="dark"] .lbsky {{ background-color: {dl}; }}')
         for lk, name, light, dark, sw in m.LOOKS:
             L.append(f'html[data-look="{lk}"] {{ {light.strip().rstrip(";")}; }}')
