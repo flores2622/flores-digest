@@ -40,6 +40,7 @@ with this module's --dry-run.
 """
 import argparse
 import datetime as dt
+import staff
 import json
 import pathlib
 import re
@@ -50,7 +51,7 @@ import digest_config
 import secrets_load
 
 ROOT = pathlib.Path(__file__).resolve().parent
-AZ = dt.timezone(dt.timedelta(hours=-7))
+AZ = staff.TZ
 
 # Object layout in the bucket. site/worker.js maps /api/days/<day> onto
 # days/<day>.json and lists this prefix for the date picker, so a change here

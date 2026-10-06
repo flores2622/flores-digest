@@ -25,12 +25,13 @@ ROOT = pathlib.Path(__file__).resolve().parent
 sys.path.insert(0, str(ROOT))
 os.chdir(ROOT)
 import day_calls
+import staff
 
 # The day was hardcoded to 2026-08-25 from the day this was written, so it
 # silently reconciled a stale file whenever anyone ran it against a newer build
 # (HANDOFF_11 s7). Takes the day as an argument now, defaulting to today in
 # Arizona, which is what the nightly build reports.
-TODAY_AZ = (dt.datetime.now(dt.timezone.utc) - dt.timedelta(hours=7)).date().isoformat()
+TODAY_AZ = staff.today()
 DAY = sys.argv[1] if len(sys.argv) > 1 else TODAY_AZ
 print(f"reconciling {DAY}")
 if DAY != TODAY_AZ:

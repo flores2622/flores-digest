@@ -16,12 +16,12 @@
    (live_basis.contact.provisional_seconds, measured in live_board.py). The
    next checkpoint reads the recordings and settles every one of them. */
 
-const AZ_OFFSET = "-07:00";
+import { localTextMs } from "./staff.js";
 export const last10 = s => { const d = String(s || "").replace(/\D/g, ""); return d.length >= 10 ? d.slice(-10) : null; };
 // az_corpus.e164: "+1" and the last ten digits -- the match key, not a real E.164 number.
 export const e164 = s => { const t = last10(s); return t ? "+1" + t : null; };
 export const rxOf = v => (Array.isArray(v) ? new RegExp(v[0], v[1] || "") : new RegExp(v, "i"));
-const azMs = s => Date.parse(String(s).trim().replace(" ", "T").slice(0, 19) + AZ_OFFSET);   // note times are Arizona-local
+const azMs = s => localTextMs(s);   // note times are on the agency's clock
 
 const ENTITIES = { amp: "&", lt: "<", gt: ">", quot: '"', apos: "'", "#39": "'", nbsp: " " };
 function unescapeHtml(s) {

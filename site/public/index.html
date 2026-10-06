@@ -1874,6 +1874,19 @@ const staffBy = Object.fromEntries(STAFF.people.map(p => [p.name, p]));
 const staffHas = (name, tag) => !!(staffBy[name] && (staffBy[name].tags || []).includes(tag));
 const staffTagged = tag => STAFF_ACTIVE.filter(p => (p.tags || []).includes(tag)).map(p => p.name);
 const staffOrder = key => (STAFF.orders || {})[key] || [];
+/* The agency's clock (staff.json agency.timezone, through staff.js): every
+   "today", clock time and business-hour figure on the page is worked out in
+   it, never by subtracting 7 hours -- so a zone with daylight saving reads
+   right on both sides of the change. The Worker's staff.js has the same two. */
+const TZ = (STAFF.agency || {}).timezone || "America/Phoenix";
+const TZ_PARTS = new Intl.DateTimeFormat("en-US", { timeZone: TZ, hourCycle: "h23", year: "numeric", month: "2-digit",
+  day: "2-digit", hour: "2-digit", minute: "2-digit", second: "2-digit", weekday: "short" });
+const TZ_DOW = { Sun: 0, Mon: 1, Tue: 2, Wed: 3, Thu: 4, Fri: 5, Sat: 6 };
+function tzParts(ms = Date.now()) {   // the wall clock at an instant: {y, m, d, h, min, s, dow}
+  const o = {}; for (const p of TZ_PARTS.formatToParts(new Date(ms))) o[p.type] = p.value;
+  return { y: +o.year, m: +o.month, d: +o.day, h: +o.hour % 24, min: +o.minute, s: +o.second, dow: TZ_DOW[o.weekday] };
+}
+const tzDay = (ms = Date.now()) => { const p = tzParts(ms); return `${p.y}-${String(p.m).padStart(2, "0")}-${String(p.d).padStart(2, "0")}`; };
 /* The digest email's own producer colours (render_report.DOT), so a producer
    is the same colour on the board as in their inbox -- each person's `color`,
    plus a sales team's own (Coral + Sarahi's combined Sales-section identity,
@@ -2383,7 +2396,7 @@ function businessDaysUntil(fromIso, toIso) {
 }
 function greetingText() {
   const n = ME.name || "team";
-  const az = new Date(Date.now() - 7 * 3600000), h = az.getUTCHours(), dow = az.getUTCDay();
+  const p = tzParts(), h = p.h, dow = p.dow;
   const any = [`Welcome back, ${n}.`, `Back at it, ${n}.`, `Let's sell something, ${n}.`, `Ready when you are, ${n}.`, `What's the move, ${n}?`,
     `The phones missed you, ${n}.`, `Quotes don't present themselves, ${n}.`,
     `Somebody out there needs a bundle, ${n}.`, `Good to see you, ${n}.`, `Let's find some households, ${n}.`, `Assume the sale, ${n}.`,
@@ -2588,13 +2601,13 @@ function feedMins(t) {
   if (m) { let h = +m[1] % 12; if (/pm/i.test(m[3])) h += 12; return h * 60 + +m[2]; }
   m = /^(?:(\d{2})-(\d{2}) )?(\d{1,2}):(\d{2})$/.exec(s);
   if (m) { const mins = +m[3] * 60 + +m[4]; return m[1] ? mins - 1440 : mins; }   // "09-29 19:02" = the evening before
-  if (/T/.test(s)) { const d = new Date(s); if (!isNaN(d)) { const az = new Date(d.getTime() - 7 * 3600000); return az.getUTCHours() * 60 + az.getUTCMinutes(); } }
+  if (/T/.test(s)) { const d = new Date(s); if (!isNaN(d)) { const p = tzParts(d.getTime()); return p.h * 60 + p.min; } }
   return null;
 }
 const feedClock = mins => { if (mins == null) return ""; const m = ((mins % 1440) + 1440) % 1440, h = Math.floor(m / 60), mm = m % 60; return `${h % 12 || 12}:${String(mm).padStart(2, "0")} ${h < 12 ? "AM" : "PM"}`; };
 const feedHour = mins => { if (mins == null) return ""; if (mins < 0) return "Last night"; const h = Math.floor(mins / 60); return `${h % 12 || 12} ${h < 12 ? "AM" : "PM"}`; };
 const firstName = n => String(n || "").split(" ")[0];
-const nowAzMins = () => { const az = new Date(Date.now() - 7 * 3600000); return az.getUTCHours() * 60 + az.getUTCMinutes(); };
+const nowAzMins = () => { const p = tzParts(); return p.h * 60 + p.min; };
 const money0 = n => "$" + Math.round(+n || 0).toLocaleString("en-US");
 function chatFeedHtml(items, host, pin) {
   const sorted = [...items].sort((a, b) => (a.t ?? 9e9) - (b.t ?? 9e9));
@@ -3624,7 +3637,7 @@ function digDrillFor(d, who, keys) {
   }
   if (kind === "speed") {
     const rs = mine(R.speed).filter(r => a === "team" || r.who === a).sort((x, y) => y.secs - x.secs);
-    const clock = iso => iso ? new Date(iso).toLocaleTimeString([], { hour: "numeric", minute: "2-digit", timeZone: "America/Phoenix" }) : "";
+    const clock = iso => iso ? new Date(iso).toLocaleTimeString([], { hour: "numeric", minute: "2-digit", timeZone: TZ }) : "";
     const tr = rs.map(r => `<tr>${digDay(d, r)}<td>${digWho(r)}</td><td>${digLead(r)}</td><td>${cesc(r.source)}</td>
       <td class="num">${clock(r.arrived)}</td><td class="num">${clock(r.dialled)}</td><td class="num">${hhmm(r.secs)}</td></tr>`);
     return digDrillList(`Speed to dial · ${a === "team" ? "Team" : cesc(a.split(" ")[0])} · ${rs.length} lead${rs.length === 1 ? "" : "s"}`, "Slowest first.",
@@ -3952,12 +3965,11 @@ let curCheckpoint = null;   // today's checkpoint as published, before any live 
 let curLiveData = null;     // the last /api/live answer
 let livePollTimer = null;
 const LIVE_POLL_MS = 120000;
-const azTodayIso = () => new Date(Date.now() - 7 * 3600 * 1000).toISOString().slice(0, 10);
+const azTodayIso = () => tzDay();
 
 function businessFraction(hours) {
   const [s, e] = (hours || ["08:35", "17:15"]).map(t => t.split(":").map(Number));
-  const az = new Date(Date.now() - 7 * 3600 * 1000);
-  const mins = az.getUTCHours() * 60 + az.getUTCMinutes();
+  const p = tzParts(), mins = p.h * 60 + p.min;
   const a = s[0] * 60 + s[1], b = e[0] * 60 + e[1];
   return Math.max(0, Math.min(1, (mins - a) / (b - a)));
 }
@@ -4246,7 +4258,7 @@ function liveRerank(d, before, fields) {
   lb.categories.forEach((c, i) => { c.points = res.perCat[i]; });
 }
 
-const fmtClock = iso => iso ? new Date(iso).toLocaleTimeString([], { hour: "numeric", minute: "2-digit", timeZone: "America/Phoenix" }) : "";
+const fmtClock = iso => iso ? new Date(iso).toLocaleTimeString([], { hour: "numeric", minute: "2-digit", timeZone: TZ }) : "";
 // Just the two times (Frank, 2026-09-24): which figures are live is shown
 // by the green glow on them (liveOn), not spelled out here. Checkpoint
 // warnings (flags) still show -- they are about the data, not about what
@@ -4359,20 +4371,15 @@ function rangeHeaderHtml() {
   return curRangeLabel ? `<div class="sect"><h2>${curRangeLabel}</h2><p class="sd">${curRangeSub}</p></div>` : "";
 }
 
-/* ---- date helpers: Arizona is always UTC-7, never DST --------------------- */
+/* ---- date helpers: the agency's clock, never the viewer's device ---------- */
 function azTodayDate() {
-  // Deliberately ignores the viewer's own device timezone. The old formula
-  // (now.getTime() + now.getTimezoneOffset()*60000 - 7*3600000) only came out
-  // right when the viewer's device was set to UTC+0 -- getTime() is already
-  // an absolute instant, so adding the device's own offset just mis-shifts
-  // it by that amount for everyone else. For a device actually set to
-  // Arizona (offset +420, no DST) the two terms cancel exactly, so it
-  // returned the raw instant unshifted -- correct only until the true UTC
-  // calendar day rolls over while Arizona's hasn't (any time from 5pm to
-  // midnight AZ), at which point it silently returned TOMORROW's date.
-  // Arizona is always UTC-7, never DST -- shift the absolute instant
-  // directly and nothing about the viewer's own clock matters.
-  return new Date(Date.now() - 7 * 3600000);
+  // A Date whose UTC fields READ as the agency's wall clock right now, so
+  // callers keep using getUTC* / toISOString() for "today". Deliberately
+  // ignores the viewer's own device timezone: an older formula that mixed
+  // in getTimezoneOffset() returned TOMORROW's date from 5pm to midnight
+  // for a device set to Arizona.
+  const p = tzParts();
+  return new Date(Date.UTC(p.y, p.m - 1, p.d, p.h, p.min, p.s));
 }
 function isoDate(d) { return d.toISOString().slice(0, 10); }
 function addDays(iso, n) { const d = new Date(iso + "T12:00:00Z"); d.setUTCDate(d.getUTCDate() + n); return isoDate(d); }
@@ -5047,7 +5054,7 @@ async function loadCardNotes(force) {
   cardNotesLoading = false;
   repaintStickies();
 }
-const snDate = iso => { const d = new Date(iso); return isNaN(d) ? "" : d.toLocaleDateString("en-US", { month: "short", day: "numeric", timeZone: "America/Phoenix" }); };
+const snDate = iso => { const d = new Date(iso); return isNaN(d) ? "" : d.toLocaleDateString("en-US", { month: "short", day: "numeric", timeZone: TZ }); };
 function stickyFrontHtml(c) {
   return notesFor(c).map(n => `<div class="sticky"><div class="stx">${cesc(n.text)}</div>
     <div class="sby">— ${cesc(n.by || "Manager")} · ${cesc(snDate(n.at))}${n.teach ? ` · <span title="Apollo learns from this note">Apollo learns this</span>` : ""}</div></div>`).join("");
@@ -6600,7 +6607,7 @@ const rphEsc = t => String(t == null ? "" : t).replace(/[&<>"]/g, c => ({ "&": "
 function rphRange() {
   if (rphState.preset === "custom") return { from: rphState.from, to: rphState.to };
   if (rphState.preset === "all") return { from: "", to: "" };
-  const d = new Date(Date.now() - 7 * 3600e3);            // Arizona today
+  const d = azTodayDate();                                   // the agency's today
   const to = d.toISOString().slice(0, 10);
   d.setUTCDate(d.getUTCDate() - (parseInt(rphState.preset, 10) - 1));
   return { from: d.toISOString().slice(0, 10), to };
@@ -10544,10 +10551,10 @@ async function coeusDeleteChat(id) {
 }
 function coeusWhen(iso) {
   const d = new Date(iso), now = new Date(); if (isNaN(d)) return "";
-  const az = x => new Date(x.getTime() - 7 * 3600000).toISOString().slice(0, 10);
-  const t = d.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", timeZone: "America/Phoenix" });
+  const az = x => tzDay(x.getTime());
+  const t = d.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", timeZone: TZ });
   if (az(d) === az(now)) return `Today · ${t}`;
-  return d.toLocaleDateString("en-US", { month: "short", day: "numeric", timeZone: "America/Phoenix" }) + ` · ${t}`;
+  return d.toLocaleDateString("en-US", { month: "short", day: "numeric", timeZone: TZ }) + ` · ${t}`;
 }
 /* What Coeus has cost, per person (Frank, 2026-10-02): the Worker says who
    may see it (a 403 hides the button). One key pays for everyone; this is

@@ -41,6 +41,7 @@ counted, never waiting. Rows, never medians.
 """
 import collections
 import datetime as dt
+import staff
 import json
 import pathlib
 import re
@@ -474,7 +475,7 @@ def update_archive(log=log, force=False):
         rc = RingCentral()
         last = max((t["at"] for t in arc["texts"]), default=None)
         since = (dt.datetime.fromisoformat(last.replace("Z", "+00:00")) - dt.timedelta(days=1)) if last \
-            else dt.datetime.fromisoformat(ARCHIVE_SEED_FROM + "T00:00:00-07:00")
+            else staff.day_start(ARCHIVE_SEED_FROM)
         names = {eid: v["name"] for eid, v in rc.roster().items()}
         got = {t["id"]: t for t in arc["texts"]}
         n0 = len(got)

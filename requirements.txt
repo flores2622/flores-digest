@@ -4,3 +4,4 @@ pdfplumber
 sherpa-onnx
 numpy
 boto3
+tzdata

@@ -45,12 +45,12 @@ export const FIELDS = [
 ];
 // Filled in for a lead to be done (plus both boxes).
 export const DONE_FIELDS = ["apex", "az", "lead"];
-import { hasBoard } from "./staff.js";
+import { hasBoard, localDay } from "./staff.js";
 
 const COLS = ["name", "phone", "email", "az_id", "assigned", "source", "stage"];
 const MAX_ROWS = 5000, MAX_EXTRA = 30, MAX_VAL = 200;
 
-const azToday = () => new Date(Date.now() - 7 * 3600000).toISOString().slice(0, 10);
+const azToday = () => localDay();
 function access(me, env) {
   const edit = hasBoard(me.email, "scrub_edit");
   return { see: edit || hasBoard(me.email, "scrub"), edit };

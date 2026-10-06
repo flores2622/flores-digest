@@ -35,7 +35,7 @@
 import METHODOLOGY_MD from "../coaching/METHODOLOGY.md";
 import TRAINING_MD from "../coaching/TRAINING.md";
 import "./public/blueprints.js";
-import { PRODUCER_NAMES, hasBoard } from "./staff.js";
+import { PRODUCER_NAMES, hasBoard, localDay, localParts } from "./staff.js";
 import { claimsForViewer } from "./claims_view.js";   // sets BLUEPRINTS on the global (window in the browser)
 
 const MODEL = "claude-sonnet-5";
@@ -149,8 +149,8 @@ const TOOLS = [
 ];
 
 const ISO = /^\d{4}-\d{2}-\d{2}$/;
-const azToday = () => new Date(Date.now() - 7 * 3600e3).toISOString().slice(0, 10);
-const azDayOf = (iso) => new Date(new Date(iso).getTime() - 7 * 3600e3).toISOString().slice(0, 10);
+const azToday = () => localDay();
+const azDayOf = (iso) => localDay(new Date(iso).getTime());
 
 async function r2json(env, key) {
   const obj = await env.BOARD.get(key);
@@ -669,9 +669,9 @@ function contextBlock(me, scope, commercial, c) {
   const role = scope.producer ? `a producer (${scope.producer}); they see every producer's figures on the board, their own Role Play sessions, no Commercial Center`
     : scope.all ? "a manager (Frank or the ops team): sees everything on the board, every Role Play session" + (commercial ? ", and the Commercial Center" : "")
     : "staff (not a producer): sees the board, no Role Play sessions, no Commercial Center";
-  const az = new Date(Date.now() - 7 * 3600e3);
-  const dow = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"][az.getUTCDay()];
-  const time = az.toISOString().slice(11, 16);
+  const now = localParts();
+  const dow = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"][now.dow];
+  const time = `${String(now.h).padStart(2, "0")}:${String(now.min).padStart(2, "0")}`;
   const looking = [c.page ? `the ${c.page} page` : "", c.sub ? `(${c.sub})` : "", c.range ? `for ${c.range}` : (c.day ? `for ${c.day}` : ""), c.producer ? `filtered to ${c.producer}` : ""].filter(Boolean).join(" ");
   return `# Right now
 - Today is ${dow} ${az.toISOString().slice(0, 10)}, ${time} Arizona time.

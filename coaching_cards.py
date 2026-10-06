@@ -74,7 +74,7 @@ import pipelines
 import staff
 
 ROOT = pathlib.Path(__file__).resolve().parent
-AZ = dt.timezone(dt.timedelta(hours=-7))
+AZ = staff.TZ
 
 METHODOLOGY = (ROOT / "coaching/METHODOLOGY.md").read_text()
 
@@ -868,7 +868,7 @@ def _corpus_day():
     p = ROOT / "data/az_leads_all.json"
     if not p.exists():
         return ""
-    return dt.datetime.fromtimestamp(p.stat().st_mtime, dt.timezone(dt.timedelta(hours=-7))).date().isoformat()
+    return dt.datetime.fromtimestamp(p.stat().st_mtime, staff.TZ).date().isoformat()
 
 
 def _group_stage(group, day=None):

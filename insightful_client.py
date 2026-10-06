@@ -42,7 +42,7 @@ import staff
 BASE = "https://app.insightful.io/api/v1"
 UA = "FloresDigest/1.0 (+frank@floresinsuranceagency.com)"
 
-AZ_TZ = dt.timezone(dt.timedelta(hours=-7))  # Arizona: UTC-7, never DST
+AZ_TZ = staff.TZ   # the agency's clock (staff.json)
 
 # Utilization scope = "all users except Amanda" (HANDOFF_4 s12).
 #
@@ -118,7 +118,7 @@ class Insightful:
         """
         start, end = self.az_day_bounds_ms(day)
         return self.get(f"analytics/{kind}", start=start, end=end,
-                        timezone="America/Phoenix", **extra)
+                        timezone=staff.TZ_NAME, **extra)
 
 
 # ---- shape discovery ------------------------------------------------------

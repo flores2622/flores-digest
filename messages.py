@@ -50,6 +50,7 @@ sent. Leads only: a text to a customer (service) is Athena's, not here.
 """
 import collections
 import datetime as dt
+import staff
 import json
 import pathlib
 import re
@@ -59,7 +60,7 @@ import live_contact as lc
 from az_corpus import e164
 
 ROOT = pathlib.Path(__file__).resolve().parent
-AZ = dt.timezone(dt.timedelta(hours=-7))
+AZ = staff.TZ
 OFFICE_OPEN = (8, 30)
 OFFICE_CLOSE = (17, 30)     # "the office closes at 5:30" (CLAUDE.md)
 

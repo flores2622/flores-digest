@@ -171,5 +171,5 @@ if __name__ == "__main__":
     print("auth ok")
     ros = rc.roster()
     print(f"roster: {len(ros)} extensions")
-    recs = rc.call_log("2026-08-07T00:00:00-07:00", "2026-08-08T00:00:00-07:00")
+    recs = rc.call_log(*__import__("staff").day_bounds_iso("2026-08-07"))
     print(f"2026-08-07 call log: {len(recs)} records (handoff expects 273)")

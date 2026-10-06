@@ -26,6 +26,7 @@ against 1 completed since June.
 import argparse
 import collections
 import datetime as dt
+import staff
 import json
 import pathlib
 import re
@@ -34,7 +35,7 @@ import claims
 import commercial
 
 ROOT = pathlib.Path(__file__).resolve().parent
-AZ = dt.timezone(dt.timedelta(hours=-7))
+AZ = staff.TZ
 PREFIX = "commercial"
 
 

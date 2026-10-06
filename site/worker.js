@@ -62,7 +62,7 @@ import { leadsIndex } from "./lead_index.js";
 import { rotationGet, rotationPost } from "./rotation.js";
 import { scrubGet, scrubPost } from "./scrub.js";
 import { claimsForViewer } from "./claims_view.js";
-import { PRODUCER_EMAILS, STAFF_FIRST_NAMES, SALES_SHEET_NAMES, SALES_TEAMS, hasBoard, boardEmails } from "./staff.js";
+import { PRODUCER_EMAILS, STAFF_FIRST_NAMES, SALES_SHEET_NAMES, SALES_TEAMS, hasBoard, boardEmails, TZ, localDay } from "./staff.js";
 
 export default {
   // Live figures between checkpoints (site/live.js): the cron in
@@ -1694,7 +1694,7 @@ async function editionsPost(request, env, key) {
   const toggle = (arr) => { const i = arr.indexOf(who); if (i >= 0) arr.splice(i, 1); else arr.push(who); return arr; };
   const text = String(body.text || "").trim().slice(0, 300);
   const id = String(body.id || "").slice(0, 40);
-  const at = new Date().toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", timeZone: "America/Phoenix" });
+  const at = new Date().toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", timeZone: TZ });
   switch (body.op) {
     case "rx": { const e = String(body.emoji || "").slice(0, 4); if (!id || !e) return json({ error: "bad reaction" }, 400); const r = s.rx[id] = s.rx[id] || {}; r[e] = toggle(r[e] || []); break; }
     case "cm": {   // a typed reply, a built-in reaction GIF (`gif`), or both
@@ -1892,8 +1892,8 @@ async function roleplaySessions(request, env, url) {
   const to = url.searchParams.get("to") || "";
   const beta = url.searchParams.get("beta") === "1";
   const who = url.searchParams.get("producer") || "";
-  // Days are Arizona days, like the rest of the board (UTC-7, no DST).
-  const azDay = (iso) => new Date(new Date(iso).getTime() - 7 * 3600e3).toISOString().slice(0, 10);
+  // Days are the agency's days, like the rest of the board (staff.js TZ).
+  const azDay = (iso) => localDay(new Date(iso).getTime());
   const sessions = Object.values(idx)
     .filter((x) => rpMaySee(scope, x.key))
     .filter((x) => (beta ? x.beta : !x.beta))

@@ -7,6 +7,13 @@ claims, commercial, lead_sources, insightful_client and sanity_gate build
 their old constants from the helpers here, so their names and shapes are
 unchanged; the Worker reads the same file through site/staff_data.js.
 
+The agency's clock is `agency.timezone` (an IANA name; Arizona's is
+America/Phoenix, UTC-7 all year). `TZ` is that zone and every helper below
+works in it -- nothing in the pipeline adds or subtracts "7 hours" any more,
+so an agency in a zone with daylight saving gets the right day and clock
+on both sides of the change. The Worker and the board page do the same
+through site/staff.js's localDay / localParts.
+
 A person's `tags` (what they are in the pipeline):
     licensed               may open and work a claim (claims.LICENSED)
     sells_service          a service team member who sells (service_playbook.SELLS)
@@ -37,9 +44,11 @@ their numbers are counted; `service` puts them on the Service Center.
                                   site/public/staff.js (the board page's) from staff.json
     python3 staff.py --check      fail if either is out of date
 """
+import datetime as dt
 import json
 import pathlib
 import sys
+from zoneinfo import ZoneInfo
 
 ROOT = pathlib.Path(__file__).resolve().parent
 JSON_PATH = ROOT / "staff.json"
@@ -53,6 +62,71 @@ PUBLIC_KEYS = ("name", "status", "producer", "digest", "service", "tags", "board
 DATA = json.loads(JSON_PATH.read_text())
 PEOPLE = DATA["people"]
 AGENCY = DATA["agency"]
+
+# --- the agency's clock -----------------------------------------------------
+TZ_NAME = AGENCY.get("timezone") or "America/Phoenix"
+TZ = ZoneInfo(TZ_NAME)
+UTC = dt.timezone.utc
+
+
+def now():
+    """Right now, on the agency's clock (an aware datetime)."""
+    return dt.datetime.now(TZ)
+
+
+def today():
+    """Today's date on the agency's clock, 'YYYY-MM-DD'."""
+    return now().date().isoformat()
+
+
+def day_start(day):
+    """Local midnight starting `day` ('YYYY-MM-DD'), aware."""
+    return dt.datetime.combine(dt.date.fromisoformat(day), dt.time(), tzinfo=TZ)
+
+
+def day_start_iso(day):
+    """Local midnight starting `day` as an ISO stamp with its offset
+    ('2026-10-06T00:00:00-07:00') -- what RingCentral's call log takes."""
+    return day_start(day).isoformat()
+
+
+def day_bounds_iso(day):
+    """(start, end) ISO stamps: local midnight starting `day` and the next."""
+    nxt = (dt.date.fromisoformat(day) + dt.timedelta(days=1)).isoformat()
+    return day_start_iso(day), day_start_iso(nxt)
+
+
+def local(t):
+    """An aware datetime on the agency's clock. A naive `t` is taken as UTC
+    (AgencyZoom's and RingCentral's stamps are)."""
+    if t.tzinfo is None:
+        t = t.replace(tzinfo=UTC)
+    return t.astimezone(TZ)
+
+
+def local_date(t):
+    """The agency's calendar date of an instant, 'YYYY-MM-DD' (naive = UTC)."""
+    return local(t).date().isoformat()
+
+
+def utc_text_local_date(stamp):
+    """A 'YYYY-MM-DD HH:MM:SS' / ISO stamp in UTC (AgencyZoom's) as the
+    agency's date, '' when it does not parse."""
+    s = str(stamp or "")[:19].replace("T", " ")
+    try:
+        return local_date(dt.datetime.fromisoformat(s))
+    except ValueError:
+        return ""
+
+
+def utc_naive_to_local_naive(t):
+    """A naive UTC datetime as a naive local one (the same instant)."""
+    return local(t).replace(tzinfo=None)
+
+
+def local_naive_to_utc_naive(t):
+    """A naive local datetime as a naive UTC one (the same instant)."""
+    return t.replace(tzinfo=TZ).astimezone(UTC).replace(tzinfo=None)
 
 
 def active():
@@ -117,7 +191,8 @@ def _js():
 
 
 def _public_js():
-    view = {"people": [{k: p[k] for k in PUBLIC_KEYS if k in p} for p in PEOPLE],
+    view = {"agency": {"timezone": TZ_NAME},
+            "people": [{k: p[k] for k in PUBLIC_KEYS if k in p} for p in PEOPLE],
             "sales_teams": DATA.get("sales_teams", {}), "orders": DATA.get("orders", {})}
     body = json.dumps(view, indent=1, ensure_ascii=False)
     return ("// WRITTEN BY `python3 staff.py --write-js` FROM staff.json -- do not edit.\n"

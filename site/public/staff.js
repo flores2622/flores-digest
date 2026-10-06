@@ -3,6 +3,9 @@
 // orders only -- no emails, extensions or ids. A plain script, loaded before
 // the page's own (window.STAFF).
 window.STAFF = {
+ "agency": {
+  "timezone": "America/Phoenix"
+ },
  "people": [
   {
    "name": "Crystal Mango",

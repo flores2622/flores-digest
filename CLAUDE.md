@@ -532,6 +532,33 @@ front office's cheers on the editions (content) and the comments.
 - **Duplicate lead records are pervasive.** Read notes across ALL records on a
   number; prefer the one sold today when picking which represents the call.
 
+## The agency's clock
+
+**One time zone, `staff.json`'s `agency.timezone`** (Frank, 2026-10-06:
+"start on the time zone next" -- the second blocker to running Pantheon for
+another agency). It is an IANA name (Flores: `America/Phoenix`, UTC-7 all
+year). **Nothing adds or subtracts 7 hours any more**: Python goes through
+`staff.TZ` (a `zoneinfo` zone; `tzdata` is in requirements.txt for a
+container without system zone files) and its helpers -- `now()`, `today()`,
+`day_start(day)` / `day_start_iso` / `day_bounds_iso` (RingCentral's call-log
+windows), `local(t)` / `local_date(t)` (a naive stamp is UTC, as AgencyZoom's
+and RingCentral's are), `utc_text_local_date`, `utc_naive_to_local_naive`,
+`local_naive_to_utc_naive` -- and every module's `AZ` is `staff.TZ`
+(`digest_config.AZ_TZ` too; `insightful_client` sends `staff.TZ_NAME`). The
+Worker and the board page go through `site/staff.js`'s `TZ`, `localParts`,
+`localDay`, `localStr`, `localClock`, `localTextMs` (a note's local stamp),
+`dayStartMs` / `dayStartIso` and `tzOffsetStr`, all from `Intl.DateTimeFormat`
+in that zone; index.html's `tzParts` / `tzDay` are the same, and
+`azTodayDate()` keeps its contract (a Date whose UTC fields read as the
+agency's wall clock). The names `AZ`, `azToday`, `azDay...` stayed so nothing
+downstream changed. **Checked identical to the old arithmetic** on 5,000
+random instants and every day of 2026, Python and JS alike (`sold_at`,
+`_utc_of`, the call-log windows, Insightful's day bounds, the day fraction,
+`soldAt`, the page's today / minutes / weekday). What a different zone
+would still need: the Worker's cron lines in wrangler.jsonc are UTC
+(8:00-5:59 on the agency's clock, written out by hand), the nightly
+routine's `CRON_TZ`, and the words "Arizona" in the guides.
+
 ## Phone numbers
 
 `az_corpus.e164` keys on the **last ten digits**. AgencyZoom stores every number

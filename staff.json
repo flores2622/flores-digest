@@ -2,6 +2,7 @@
   "_about": "The agency's people, in one place. Every id, email, extension, role and board permission the code uses comes from here: Python through staff.py, the Worker through site/staff_data.js, which `python3 staff.py --write-js` writes from this file (never edit it by hand), and the board page through site/public/staff.js, a copy with no emails, phone or AgencyZoom ids that the same command writes. Change a person here, run that, and run `python3 staff.py --check`. tags: what a person is in the pipeline; board: what they may open on the board. The meaning of every tag and board key is in staff.py.",
   "agency": {
     "name": "Flores Insurance Agency",
+    "timezone": "America/Phoenix",
     "sender": "salesdigest@floresinsuranceagency.com"
   },
   "people": [

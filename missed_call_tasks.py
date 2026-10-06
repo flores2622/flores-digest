@@ -37,7 +37,7 @@ import missed_call_audit as audit
 import staff
 
 ROOT = pathlib.Path(__file__).resolve().parent
-AZ = dt.timezone(dt.timedelta(hours=-7))
+AZ = staff.TZ
 log = audit.log
 
 # First name -> AgencyZoom employee id (GET /v1/api/employees, 2026-09-01):

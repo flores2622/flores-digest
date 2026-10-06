@@ -18,6 +18,7 @@ CSR, or it matches no AgencyZoom record at all.
 """
 import collections
 import datetime as dt
+import staff
 import json
 import pathlib
 
@@ -306,8 +307,7 @@ def fetch_notes(lead_ids, az=None, day=None, log=print):
     """
     NOTE_CACHE.mkdir(parents=True, exist_ok=True)
     az = az or AgencyZoom()
-    fresh_after = (dt.datetime.fromisoformat(f"{day}T00:00:00-07:00")
-                   + dt.timedelta(days=1)).timestamp() if day else None
+    fresh_after = (staff.day_start(day) + dt.timedelta(days=1)).timestamp() if day else None
     got, failed = {}, 0
     for lid in sorted(set(lead_ids)):
         f = NOTE_CACHE / f"{lid}.json"

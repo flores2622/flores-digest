@@ -32,10 +32,10 @@ not tracked (Frank, 2026-08-26).
 """
 import collections
 import datetime as dt
+import staff
 
 from digest_config import PRODUCERS
 
-AZ_OFFSET = dt.timedelta(hours=7)      # Arizona does not observe DST
 RING_GROUP_ACTIONS = ("Park Location", "FindMe")
 # A producer answering on their own desk phone. Before #99 attribute() never
 # read the legs of a call to a producer's own DID -- it credited the DID owner
@@ -71,7 +71,7 @@ def az_day(rec):
         t = dt.datetime.fromisoformat(ts.replace("Z", "+00:00"))
     except ValueError:
         return None
-    return (t - AZ_OFFSET).date().isoformat()
+    return staff.local_date(t)
 
 
 def last10(s):

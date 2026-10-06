@@ -15,6 +15,7 @@ import argparse
 import base64
 import collections
 import datetime as dt
+import staff
 import json
 import os
 import pathlib
@@ -23,7 +24,7 @@ import statistics
 import subprocess
 import sys
 
-AZ = dt.timezone(dt.timedelta(hours=-7))
+AZ = staff.TZ
 ROOT = pathlib.Path(__file__).resolve().parent
 MODEL_URL = ("https://github.com/k2-fsa/sherpa-onnx/releases/download/"
              "asr-models/sherpa-onnx-whisper-base.tar.bz2")
@@ -87,7 +88,7 @@ def pull_sources(day):
     f = ROOT / f"data/rc_raw_{day}.json"
     if not f.exists():
         log("RingCentral call log...")
-        recs = RingCentral().call_log(f"{day}T00:00:00-07:00", f"{nxt}T00:00:00-07:00")
+        recs = RingCentral().call_log(staff.day_start_iso(day), staff.day_start_iso(nxt))
         f.write_text(json.dumps(recs))
     elif refresh_today:
         # hourly.py already has exactly this re-pull ("unlike
@@ -119,7 +120,7 @@ def pull_sources(day):
         for i in range(span + 1):
             d0 = (start + dt.timedelta(days=i)).isoformat()
             d1 = (start + dt.timedelta(days=i + 1)).isoformat()
-            for r in rc_api.call_log(f"{d0}T00:00:00-07:00", f"{d1}T00:00:00-07:00"):
+            for r in rc_api.call_log(staff.day_start_iso(d0), staff.day_start_iso(d1)):
                 if r.get("id") not in seen:
                     seen.add(r.get("id"))
                     recs.append(r)
@@ -1091,7 +1092,7 @@ def speed_rows(day, leads, dials):
             continue
         c = dt.datetime.fromisoformat(str(l["createDate"]).replace(" ", "T")).replace(
             tzinfo=dt.timezone.utc)
-        if (c - dt.timedelta(hours=7)).date().isoformat() != day:   # Arizona is UTC-7, no DST
+        if staff.local_date(c) != day:
             continue
         hit = first.get(e164(l.get("phone")))
         if not hit:
