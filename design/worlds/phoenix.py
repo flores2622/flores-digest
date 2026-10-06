@@ -206,13 +206,19 @@ def jet(x, y, s, col, night, gear=True, flip=False, ground=False):
     return o + '</g>'
 
 def jet_away(x, y, s, col, night):
-    """An airliner seen from behind, climbing away: wings spread, the fin up, engines glowing."""
+    """An airliner seen from behind, climbing away: wings spread, the fin up, engines glowing. Its belly and the
+    wings' undersides are in shadow and the day jet has a fine dark edge, so it reads against the sun's glare
+    too (Frank, 2026-10-06: it vanished white-on-white when it came out over the tiles)."""
     eng = "#2a2a3a"
+    under = "#8d8299" if not night else "#2c2840"     # the shadowed undersides
+    edge = ' stroke="#4a3f58" stroke-width="1.4" stroke-linejoin="round"' if not night else ''
     o = (f'<g transform="translate({x} {y}) scale({s}) rotate(-5)">'
-         f'<path d="M-96 10L-12 -2L12 -2L96 10L96 14L12 6L-12 6L-96 14Z" fill="{col}"/>'
-         f'<path d="M-34 -14L0 -18L34 -14L34 -10L0 -13L-34 -10Z" fill="{col}"/>'
-         f'<path d="M-4 -10L0 -50L4 -10Z" fill="{col}"/><path d="M-1.5 -44L0 -50L1.5 -44Z" fill="#e8662a"/>'
-         f'<circle r="13" fill="{col}"/><circle r="9" fill="#000" opacity=".08"/>'
+         f'<path d="M-96 10L-12 -2L12 -2L96 10L96 14L12 6L-12 6L-96 14Z" fill="{col}"{edge}/>'
+         f'<path d="M-96 12L-12 4L12 4L96 12L96 14L12 6L-12 6L-96 14Z" fill="{under}"/>'
+         f'<path d="M-34 -14L0 -18L34 -14L34 -10L0 -13L-34 -10Z" fill="{col}"{edge}/>'
+         f'<path d="M-34 -12L0 -15L34 -12L34 -10L0 -13L-34 -10Z" fill="{under}"/>'
+         f'<path d="M-4 -10L0 -50L4 -10Z" fill="{col}"{edge}/><path d="M-1.5 -44L0 -50L1.5 -44Z" fill="#e8662a"/>'
+         f'<circle r="13" fill="{col}"{edge}/><path d="M-13 0A13 13 0 0 0 13 0Z" fill="{under}"/>'
          + ''.join(f'<circle cx="{ex}" cy="15" r="8" fill="{eng}"/><circle cx="{ex}" cy="15" r="4.5" fill="#ff9a3d"/><circle cx="{ex}" cy="15" r="13" fill="#ffb347" opacity=".35"/>' for ex in (-42, 42))
          + '<circle cx="-96" cy="12" r="3" fill="#ff3a3a"/><circle cx="96" cy="12" r="3" fill="#3aff6a"/><circle cx="0" cy="-50" r="2.5" fill="#fff"/>'
          + ('<circle cx="-96" cy="12" r="9" fill="#ff3a3a" opacity=".35"/><circle cx="96" cy="12" r="9" fill="#3aff6a" opacity=".35"/>' if night else '')
@@ -316,12 +322,17 @@ def skyline(night):
     L = 16   # the shuffle and the takeoff share one loop
     # the takeoff (Frank, 2026-10-05: "make the plane take off from the runway"): seen from behind, it rolls up
     # the far end of the runway (above the podium), lifts off at the horizon and climbs away over downtown,
-    # on the runway's centre line and full size ("its still off to the right and small, center it and make it bigger"),
-    # climbing steeply so it is behind the tiles only a moment and flies on above them still a good size
-    # (Frank, 2026-10-05: "gets lost behind the card because its not getting height fast enough"); hidden at rest and while it waits its turn
-    a(f'<g opacity="0"><animate attributeName="opacity" values="0;0;1;1;0;0" keyTimes="0;.25;.26;.84;.9;1" dur="{L}s" repeatCount="indefinite"/>'
-      f'<animateTransform attributeName="transform" type="translate" values="800 526;800 526;800 478;800 436;800 160;800 92;800 34;800 34" keyTimes="0;.26;.4;.46;.54;.7;.86;1" dur="{L}s" repeatCount="indefinite"/>'
-      f'<g><animateTransform attributeName="transform" type="scale" values="1.05;1.05;1;.96;.88;.8;.72;.72" keyTimes="0;.26;.4;.46;.54;.7;.86;1" dur="{L}s" repeatCount="indefinite"/>'
+    # on the runway's centre line and full size ("its still off to the right and small, center it and make it bigger").
+    # ONE CONTINUOUS CLIMB (Frank, 2026-10-06: "the plane in phx gets lost when taking off then randomly appears"):
+    # it used to cross the band behind the tiles in a rush and then all but stop the moment it cleared them, so
+    # it popped up over the tiles out of nowhere -- into the sun's glare, white on white. Now it gathers speed
+    # down the runway, lifts off, and keeps one steady climb through the leaderboard's top edge, behind the tiles
+    # (they are translucent, so its ghost slides up behind them) and out over the tiles' top edge, only then
+    # easing off and shrinking as it flies away, and it fades out while it is still in the sky, not at the card's
+    # edge. Piecewise linear on purpose -- an eased segment would stop it dead at each keyframe.
+    a(f'<g opacity="0"><animate attributeName="opacity" values="0;0;1;1;0;0" keyTimes="0;.25;.26;.8;.87;1" dur="{L}s" repeatCount="indefinite"/>'
+      f'<animateTransform attributeName="transform" type="translate" values="800 526;800 526;800 512;800 484;800 446;800 377;800 170;800 100;800 62;800 40;800 40" keyTimes="0;.26;.32;.38;.42;.455;.57;.65;.74;.87;1" dur="{L}s" repeatCount="indefinite"/>'
+      f'<g><animateTransform attributeName="transform" type="scale" values="1.05;1.05;1.04;1.02;.98;.95;.86;.8;.76;.72;.72" keyTimes="0;.26;.32;.38;.42;.455;.57;.65;.74;.87;1" dur="{L}s" repeatCount="indefinite"/>'
       + jet_away(0, 0, 1, "#f2eef4" if not night else "#4a4460", night) + '</g></g>')
     # (drawn over the runway, so the front jet rolls out ONTO it -- Frank, 2026-10-05: "it disappears behind the pavement")
     # the line shuffles on a 16-second loop (Frank, 2026-10-05: "make the planes shuffle, so one moves on the
