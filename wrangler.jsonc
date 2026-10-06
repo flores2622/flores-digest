@@ -33,6 +33,20 @@
     // Worker, so it has no binding to use).
     { "binding": "BOARD", "bucket_name": "flores-board" }
   ],
+  // Pantheon's own CRM (Frank, 2026-10-06; site/crm.js, schema in
+  // site/crm/migrations/). TO TURN IT ON: in the repo,
+  //     wrangler d1 create pantheon-crm
+  // paste the database_id it prints below, uncomment the block, deploy, then
+  //     wrangler d1 migrations apply pantheon-crm --remote
+  // and load the history with crm_import.py (see CRM.md). Until the binding
+  // exists every /api/crm call answers 503 and the rest of the board is
+  // unchanged -- the block stays commented so a deploy never fails on an id
+  // that does not exist yet.
+  // "d1_databases": [
+  //   { "binding": "CRM", "database_name": "pantheon-crm",
+  //     "database_id": "<paste from wrangler d1 create>",
+  //     "migrations_dir": "site/crm/migrations" }
+  // ],
   // Lets site/worker.js `import` coaching/METHODOLOGY.md and
   // coaching/ROLEPLAY.md as plain strings at build time (Workers has no
   // filesystem at request time). Added 2026-09-10 so Apollo's brain is one

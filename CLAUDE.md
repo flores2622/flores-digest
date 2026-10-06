@@ -2504,6 +2504,39 @@ over `text/event-stream` with status lines while it reads.
   -- another reason to keep the guides current in the same change. A new
   figure Coeus should read needs its compact reading added in `coeus.js`.
 
+## Pantheon's own CRM (2026-10-06)
+
+**Frank is replacing AgencyZoom with a CRM built into Pantheon** (Frank,
+2026-10-06: "i basically want to build my own, built into Pantheon").
+`CRM.md` is the roadmap: eight phases, tasks first, AgencyZoom kept as the
+record for everything not yet moved, nothing switched until the two agree
+on a published day. The rules:
+- **The CRM speaks AgencyZoom's shapes.** `site/crm.js` (Cloudflare D1,
+  binding `CRM`, schema `site/crm/migrations/`) answers `/api/crm/...` with
+  the field names and codes the pipeline already reads -- `assignedTo`,
+  `leadSourceId`, `status` 2 = sold, `soldDate`, `convertedHouseholdId`,
+  `workflowStageId`, a policy's `agentId` + `soldDate`, an SR's status
+  0 / 1 / 2 and `resolutionId`, notes newest first with a MOVE_STAGE note
+  per move -- so a module moves over by swapping its client, never by
+  changing what a number means. Imported rows keep AgencyZoom's ids
+  (`crm_import.py`, from the nightly's saved `data/` files, INSERT OR IGNORE
+  so it can be run again); people are staff.json's `az_id`. Dates are on the
+  agency's clock (`staff.js localStr`).
+- **Every write is an event** (`events`: who, before, after); nothing is
+  deleted, status codes say what a record is. An SR completes only on one
+  of Frank's resolutions; a lead's `sold` sets status 2 and a soldDate and
+  makes its household; `move` writes the structured move and the note.
+- **Who may use it**: every active person in staff.json with an email
+  (`staff.js isStaff`). No binding -> 503 and nothing else changes; the D1
+  block in wrangler.jsonc stays commented until the database exists
+  (`CRM.md` "Turning it on").
+- `node --test site/crm.test.mjs` is its test; run it after touching
+  `site/crm.js` or the schema. A new field is added to the schema (a new
+  migration file), to `OBJECTS` in `site/crm.js` and to the test together.
+- Nothing in the CRM reads AgencyZoom, RingCentral or Insightful. Until a
+  phase cuts a workflow over, the nightly and the live refresh keep reading
+  AgencyZoom as before.
+
 ## Never
 
 - Commit anything under `secrets/`, `data/` or `out/` (all gitignored).
