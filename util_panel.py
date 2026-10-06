@@ -51,9 +51,9 @@ import re
 from digest_config import AZ_TZ, tier as tier_for  # noqa: F401
 import digest_config as cfg
 import insightful_util as iu
+import staff
 
-PANEL_ORDER = ["Crystal Mango", "Mike Olvera", "Debbie Aguilera",
-               "Lorena Gonzalez", "Coral Barwick", "Sarahi Chin"]
+PANEL_ORDER = staff.order("email_util_panel")   # staff.json
 
 TIER_CLASS = {"green": "tier-text-good",
               "yellow": "tier-text-warning",
@@ -156,9 +156,7 @@ def _blank(card):
 # already existed in the CSS and were already in use in Call Detail. Driving the
 # class from here instead of the template means a roster change cannot leave a
 # stale colour behind again.
-DOT_CLASS = {"Crystal Mango": "cA", "Lorena Gonzalez": "cB",
-             "Mike Olvera": "cC", "Debbie Aguilera": "cE",
-             "Coral Barwick": "cJ", "Sarahi Chin": "cK"}
+DOT_CLASS = staff.email_dot(PANEL_ORDER)   # each person's `email_dot` in staff.json
 DOT_RE = re.compile(r'(<span class="dot )c[A-Z]("></span>)')
 
 

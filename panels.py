@@ -9,11 +9,10 @@ import re
 
 import digest_config as cfg
 import live_contact as lc
+import staff
 from render_report import DOT, TEAM_DOT, TIER, hhmm, money
 
-SHORT = {"Crystal Mango": "Crystal", "Lorena Gonzalez": "Lorena",
-         "Mike Olvera": "Mike", "Coral Barwick": "Coral",
-         "Sarahi Chin": "Sarahi"}
+SHORT = {p["name"]: staff.first(p) for p in staff.producers()}   # staff.json
 # Historical name -- it was three producers until 2026-08-24, when Coral and
 # Sarahi were added and it became five. Derived from the roster now so adding or
 # removing a producer is a digest_config change only. Every panel below iterates
@@ -416,9 +415,8 @@ def recontact_cards(rc, attachment):
 # here -- but note Amanda #baffff, Coral #00ffcf and Sarahi #ffb48c sit below the
 # 3:1 mark-vs-background floor (1.11, 1.15 and 1.73 against a white card), so as
 # a large filled funnel bar they read faint. Keep them paired with the name.
-DOT_HEX = {"Crystal Mango": "#ff4b4b", "Lorena Gonzalez": "#cd81ff",
-           "Mike Olvera": "#5656fe", "Coral Barwick": "#00ffcf",
-           "Sarahi Chin": "#ffb48c", "Amanda Torricellas": "#baffff"}
+# Each person's `color` in staff.json: the producers and Amanda (the Sales sheet's).
+DOT_HEX = {p["name"]: p["color"] for p in staff.producers() + staff.tagged("sales_sheet") if p.get("color")}
 
 
 def _fmt_phone(e164):

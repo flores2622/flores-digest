@@ -71,6 +71,7 @@ import digest_config as cfg
 import panels
 import lead_history
 import pipelines
+import staff
 
 ROOT = pathlib.Path(__file__).resolve().parent
 AZ = dt.timezone(dt.timedelta(hours=-7))
@@ -1231,8 +1232,7 @@ def _group_recordings(producer, group, audiorefs):
     return ids
 
 
-ROSTER_ORDER = ["Lorena Gonzalez", "Crystal Mango", "Mike Olvera",
-               "Coral Barwick", "Sarahi Chin"]
+ROSTER_ORDER = staff.order("coaching")   # staff.json
 
 
 def build(day, log=print):

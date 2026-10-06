@@ -105,6 +105,7 @@ def prune_css(html, log=None):
 
 
 import digest_config as cfg
+import staff
 from util_panel import assert_div_balance
 
 # Identity colours, taken from the row-2 key of Frank's Sales.xlsx so the report
@@ -118,9 +119,8 @@ from util_panel import assert_div_balance
 # Deliberately NOT reused: cD, which the Call Outcome bars already use (og cD),
 # and cF green / cH amber, which carry good/warning tier meaning elsewhere. A
 # producer dot must not double as a status colour.
-DOT = {"Crystal Mango": "cA", "Lorena Gonzalez": "cB", "Mike Olvera": "cC",
-       "Debbie Aguilera": "cE", "Coral Barwick": "cJ", "Sarahi Chin": "cK",
-       "Amanda Torricellas": "cL"}
+# Each person's swatch is their `email_dot` in staff.json.
+DOT = staff.email_dot([p["name"] for p in staff.active()])
 TEAM_DOT = "cE"
 TIER = {"green": "tier-text-good", "yellow": "tier-text-warning",
         "red": "tier-text-critical", "none": ""}

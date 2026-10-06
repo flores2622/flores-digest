@@ -266,7 +266,8 @@
     for (const f of LIST.fields) {
       if (f.type !== "choice" && f.type !== "rep") continue;
       const vals = new Set(f.options || []);
-      if (f.type === "rep") for (const n of ["Frank", "Francisco", "Veronica", "Amanda", LIST.me]) if (n) vals.add(n);
+      // The ops team who work the scrub (staff.json's scrub_edit), and whoever is looking.
+      if (f.type === "rep") for (const n of [...((window.STAFF || {}).people || []).filter(p => (p.status || "active") === "active" && (p.board || []).includes("scrub_edit")).map(p => p.name.split(" ")[0]), LIST.me]) if (n) vals.add(n);
       for (const l of LIST.list.leads) { const v = (l.s || {})[f.key]; if (filled(v)) vals.add(v); }
       out.push(`<datalist id="scdl-${f.key}">${[...vals].map(v => `<option value="${cesc(v)}">`).join("")}</datalist>`);
     }

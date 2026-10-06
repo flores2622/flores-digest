@@ -1,7 +1,7 @@
 // WRITTEN BY `python3 staff.py --write-js` FROM staff.json -- do not edit.
 // The agency's people: see staff.py for what each tag and board key means.
 export default {
-  "_about": "The agency's people, in one place. Every id, email, extension, role and board permission the code uses comes from here: Python through staff.py, the Worker through site/staff_data.js, which `python3 staff.py --write-js` writes from this file (never edit it by hand). Change a person here, run that, and run `python3 staff.py --check`. tags: what a person is in the pipeline; board: what they may open on the board. The meaning of every tag and board key is in staff.py.",
+  "_about": "The agency's people, in one place. Every id, email, extension, role and board permission the code uses comes from here: Python through staff.py, the Worker through site/staff_data.js, which `python3 staff.py --write-js` writes from this file (never edit it by hand), and the board page through site/public/staff.js, a copy with no emails, phone or AgencyZoom ids that the same command writes. Change a person here, run that, and run `python3 staff.py --check`. tags: what a person is in the pipeline; board: what they may open on the board. The meaning of every tag and board key is in staff.py.",
   "agency": {
     "name": "Flores Insurance Agency",
     "sender": "salesdigest@floresinsuranceagency.com"
@@ -26,12 +26,16 @@ export default {
         "hybrid_util",
         "service_only_dials",
         "zero_dial_exempt",
-        "task_assignee"
+        "task_assignee",
+        "english_only"
       ],
       "board": [
         "rotation",
         "sales_log_all"
-      ]
+      ],
+      "color": "#ff4b4b",
+      "email_dot": "cA",
+      "handle": "mango.multipolicy"
     },
     {
       "name": "Lorena Gonzalez",
@@ -44,7 +48,10 @@ export default {
       "tags": [
         "task_assignee"
       ],
-      "board": []
+      "board": [],
+      "color": "#cd81ff",
+      "email_dot": "cB",
+      "handle": "lori.locks.the.rate"
     },
     {
       "name": "Mike Olvera",
@@ -57,7 +64,10 @@ export default {
       "tags": [
         "task_assignee"
       ],
-      "board": []
+      "board": [],
+      "color": "#5656fe",
+      "email_dot": "cC",
+      "handle": "mikes.got.you.covered"
     },
     {
       "name": "Coral Barwick",
@@ -71,7 +81,10 @@ export default {
       "tags": [
         "task_assignee"
       ],
-      "board": []
+      "board": [],
+      "color": "#00ffcf",
+      "email_dot": "cJ",
+      "handle": "coral.covers.it.all"
     },
     {
       "name": "Sarahi Chin",
@@ -85,7 +98,10 @@ export default {
       "tags": [
         "task_assignee"
       ],
-      "board": []
+      "board": [],
+      "color": "#ffb48c",
+      "email_dot": "cK",
+      "handle": "safe.with.sarahi"
     },
     {
       "name": "Debbie Aguilera",
@@ -106,7 +122,10 @@ export default {
       "board": [
         "rotation",
         "rotation_edit"
-      ]
+      ],
+      "color": "#0b0b0b",
+      "email_dot": "cE",
+      "handle": "debbie.on.the.line"
     },
     {
       "name": "Frank Flores",
@@ -133,7 +152,8 @@ export default {
         "roleplay_history",
         "commission_all",
         "sales_log_all"
-      ]
+      ],
+      "handle": "frank.full.coverage"
     },
     {
       "name": "Francisco Flores",
@@ -152,7 +172,8 @@ export default {
         "scrub",
         "scrub_edit",
         "roleplay_history"
-      ]
+      ],
+      "handle": "dm.francisco"
     },
     {
       "name": "Veronica Flores",
@@ -170,7 +191,8 @@ export default {
         "scrub",
         "scrub_edit",
         "roleplay_history"
-      ]
+      ],
+      "handle": "vero.vacation.approved"
     },
     {
       "name": "Amanda Torricellas",
@@ -200,7 +222,10 @@ export default {
         "roleplay_history",
         "commission_all",
         "sales_log_all"
-      ]
+      ],
+      "color": "#baffff",
+      "email_dot": "cL",
+      "handle": "amanda.approves"
     },
     {
       "name": "Adrian Alcantara",
@@ -323,5 +348,37 @@ export default {
       ],
       "schedule": "team"
     }
-  ]
+  ],
+  "sales_teams": {
+    "coral-sarahi": {
+      "label": "The Insurance Icons",
+      "color": "#ffd700"
+    }
+  },
+  "orders": {
+    "coaching": [
+      "Lorena Gonzalez",
+      "Crystal Mango",
+      "Mike Olvera",
+      "Coral Barwick",
+      "Sarahi Chin"
+    ],
+    "email_util_panel": [
+      "Crystal Mango",
+      "Mike Olvera",
+      "Debbie Aguilera",
+      "Lorena Gonzalez",
+      "Coral Barwick",
+      "Sarahi Chin"
+    ],
+    "util_panel": [
+      "Crystal Mango",
+      "Lorena Gonzalez",
+      "Mike Olvera",
+      "Debbie Aguilera",
+      "Amanda Torricellas",
+      "Coral Barwick",
+      "Sarahi Chin"
+    ]
+  }
 };

@@ -4,17 +4,15 @@ import json
 import pathlib
 
 import notes_patch
+import staff
 
 ROOT = pathlib.Path(__file__).resolve().parent
 # Coral and Sarahi were added 2026-09-15, the day PR #78 took them out of
 # TRAINING_LEAD_OWNERS and their leads first reached these tables. Classes
 # match render_report.DOT exactly (cJ #00ffcf, cK #ffb48c) so the attachment
 # and the emailed report use one identity colour per producer.
-DOT = {"Crystal Mango": "cA", "Lorena Gonzalez": "cB", "Mike Olvera": "cC",
-       "Coral Barwick": "cJ", "Sarahi Chin": "cK"}
-SHORT = {"Crystal Mango": "Crystal", "Lorena Gonzalez": "Lorena",
-         "Mike Olvera": "Mike", "Coral Barwick": "Coral",
-         "Sarahi Chin": "Sarahi"}
+DOT = staff.email_dot([p["name"] for p in staff.producers()])   # staff.json
+SHORT = {p["name"]: staff.first(p) for p in staff.producers()}
 NUM = ' class="num"'
 WEEKDAY = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday",
            "Saturday", "Sunday"]
