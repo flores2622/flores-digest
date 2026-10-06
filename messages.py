@@ -54,6 +54,7 @@ import staff
 import json
 import pathlib
 import re
+import agencyzoom
 
 import digest_config as cfg
 import live_contact as lc
@@ -86,33 +87,7 @@ _EMAIL_QUOTE = re.compile(r"\s(On|El) [^<>]{5,80}(wrote|escribió):.*$", re.S)
 
 # AgencyZoom automation email subjects, lower-case, with the lead's first
 # name taken off the front (sent to 5+ leads with no attachment, 2026-09-27).
-TEMPLATE_SUBJECTS = {
-    "do you still need insurance?", "i'm getting worried", "can we try again?",
-    "we lowered rates!", "i'll check back in a few months", "your insurance quote options",
-    "there's a reason…", "can we try again again?", "just checking in 😊",
-    "would you like to get started?", "thanks for connecting with us", "got a quick min to talk?",
-    "in love or just paying a bill?", "updated quote?", "we miss you (pig time 🐷)",
-    "¿te gustaría empezar?", "thank you for your time today", "don't forget",
-    "tienes un minuto para hablar?", "what's holding you back?", "¿podemos intentarlo de nuevo?",
-    "about your home policy!", "te extrañamos", "cotización actualizada?", "i work for you...",
-    "we've missed you", "no te olvides", "bajaron nuestras tarifas!", "me estoy preocupando",
-    "¿qué te esta deteniendo?", "shop small for your insurance", "auto insurance quote",
-    "about your auto insurance!", "it's been a week", "we’ll be in touch soon",
-    "save on your current home insurance!", "nuestras tarifas bajaron!",
-    "estoy empezando a preocuparme", "do you have 5 min?", "una oficina local para tu seguro",
-    "hay una razón", "call, text or email?", "are you ready to discuss the next steps?",
-    "podemos intentarlo de nuevo?", "gracias por su tiempo hoy flores insurance agency",
-    "gracias por su tiempo hoy ~ flores insurance agency", "thanks for connecting on facebook",
-    "can we try again again again? 😂", "thanks for connecting on farmers.com",
-    "save 20% off your current home insurance!", "look-over-your-shoulder syndrome",
-    "yo le ayudare con el arizona insurance reports!", "llamada, texto o correo electronico?",
-    "thanks for connecting on google", "life insurance awareness???", "porque usted lo pidio",
-    "volveré a comunicarme con usted en unos meses", "¿aún necesitas un seguro?",
-    "acerca de el seguro de su casa!", "enamorado o simplemente pagando una cuenta??",
-    "estas listo para revisar los siguientes pasos?", "save on your current auto insurance!",
-    "acerca de el seguro de sus autos!", "what happens in 6 months?",
-    "💭 are you still interested in hearing from us? 💭", "síndrome de mirar por encima del hombro",
-}
+TEMPLATE_SUBJECTS = set(agencyzoom.EMAIL_TEMPLATE_SUBJECTS)   # agencyzoom.json
 LEARN_TEMPLATE_LEADS = 5
 # A call the lead made that answers their text only if it was a conversation.
 CONVERSATION_SECONDS = 30

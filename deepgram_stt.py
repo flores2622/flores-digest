@@ -200,8 +200,8 @@ def head_tail(path, duration=None, offset=0, seconds=30, log=None):
 # How each producer's name comes back, for finding who introduced
 # themselves. Only the producer's OWN name: a customer says "Hi, Crystal"
 # on a call back, and Mike dials customers named Miguel.
-NAME_FORMS = {"sarahi": r"sarahi|sarai|zarahi", "crystal": r"crystal|cristal"}
-AGENCY = r"(farmers|la aseguranza|la seguranza|insurance)"
+# staff.json's `heard_as` (staff.name_forms); the carrier is staff.json's.
+AGENCY = rf"({re.escape(staff.CARRIER.lower())}|la aseguranza|la seguranza|insurance)"
 
 
 # The agency's own greeting on a call-in. A caller never says it, so on a
@@ -223,7 +223,7 @@ def producer_speaker(utts, producer, answered=False):
     first = (producer or "").split()[0].lower() if producer else ""
     if not first:
         return None
-    name = NAME_FORMS.get(first, re.escape(first))
+    name = staff.name_forms(first)
     intro = re.compile(
         rf"\b(this is|it'?s|my name is|soy|le habla|te habla|habla|"
         rf"me llamo|mi nombre es)\s+(me\s+|yo\s+)?({name})\b"

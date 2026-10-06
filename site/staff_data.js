@@ -24,6 +24,9 @@ export default {
   "people": [
     {
       "name": "Crystal Mango",
+      "heard_as": [
+        "cristal"
+      ],
       "email": "crystal@floresinsuranceagency.com",
       "ext": "106",
       "rc_id": "193226052",
@@ -103,6 +106,10 @@ export default {
     },
     {
       "name": "Sarahi Chin",
+      "heard_as": [
+        "sarai",
+        "zarahi"
+      ],
       "email": "sarahi@floresinsuranceagency.com",
       "ext": "109",
       "rc_id": "774862052",
