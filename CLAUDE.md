@@ -770,6 +770,40 @@ coaching_text; `--fix` rewrites the generated files first) and must say
 "every setup file checks out" before a deploy. Run it after touching any
 of those files here too: the Workers build does not.
 
+## The demo agency, and the PANTHEON_AGENCY switch
+
+**`agencies/copperline/` is Copperline Insurance Group** (Frank, 2026-10-06:
+"start on the demo agency"): a fictional agency in Austin, Texas
+(America/Chicago -- a zone WITH daylight saving), writing for the fictional
+Northstar Mutual (Harbor General and Pinecrest beside it), with fictional
+people (Elena Vargas, Maya Delgado, Jordan Pike, Theo Brandt, Priya Nair;
+Rosa Camacho at the front desk; Nate Harlan the owner; Luis Ortega the
+DM). Its five setup files and carrier layer have the same shape as Flores's.
+**`PANTHEON_AGENCY=<key>` picks an agency** (`agency_files.py`): every reader
+(staff, agencyzoom, lead_sources, goals, coaching_text) takes its file from
+`agencies/<key>/` instead of the root, and the generated files (the Worker's
+and page's copies, the rendered coaching documents) are written FOR that
+agency -- one deploy is one agency. Unset, nothing changes. **Running
+everything as Copperline found what still said Flores**, now fixed so the
+same code serves both: the guides in blueprints.js name the carrier through
+`{{carrier}}` / `{{carrier_site}}` (`bpFilled` / `bpValues`, filled by the
+page from STAFF and by Coeus from AGENCY; the lead-source example names
+became plain words); the editions are named from `agency.short_name`
+(`ED_SHORT`, the ticker `ED_SYM` from its consonants -- Flores -> FLRS --
+and the call sign `ED_CALL` -- KFLR; Copperline is CPPR 500 / KCPP The
+Close), The Flores Post's title and footer too; Coeus's clock lines say the
+zone; METHODOLOGY's template no longer says "flores-board"; the missed-call
+audit's stamp says `agency.place`; and `lead_sources.GROUPS`' lines about
+Francisco and farmers.com are filled from staff.json and the carrier layer
+(`{referral_first}`, `{carrier_site_lc}`), with each agency's own wording
+of who a group's leads are in lead_sources.json's `group_who` (Flores's
+exact lines live there now -- checked identical). As Copperline: every
+check passes, every module imports, the coaching documents render with no
+Farmers or Flores word, the page loads with its own title, editions and
+guides, and `staff.py --crons` says one UTC cron set cannot follow its
+zone. After running anything as another agency, run `python3
+agency_check.py --fix` with it unset to put Flores's generated files back.
+
 ## Phone numbers
 
 `az_corpus.e164` keys on the **last ten digits**. AgencyZoom stores every number

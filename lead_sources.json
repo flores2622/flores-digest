@@ -70,5 +70,13 @@
     "surequote",
     "mav ai",
     "mav"
-  ]
+  ],
+  "group_who": {
+    "referral": "A customer's referral, or a source named after Francisco Flores: a referral or a warm transfer he handed to the producer.",
+    "inbound": "Someone who came to us on their own: called, walked in, or found us on Google or farmers.com (a form Farmers passes on) and asked an agent to contact them. Not purchased.",
+    "cold": "Dug out of the system, or a one-off list: Cold lead, FIG QNT (Farmers Quotes Not Taken), Crane Benefit Fair (a booth at a local school fair), Old MVP Leads (the old CRM).",
+    "one_off": "Hometown Quotes, X, Other lead. Little volume and no set meaning.",
+    "commercial": "Commercial lead generators and lists (Leo, Work Comp, District / Agent Promoter Comm Leads, RCFBH Group Life)."
+  },
+  "_group_who": "this agency's own wording of who a group's leads are, naming its sources, shown to Apollo and on the board over lead_sources.py's plain line"
 }

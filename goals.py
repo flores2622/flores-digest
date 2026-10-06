@@ -18,8 +18,10 @@ import json
 import pathlib
 import sys
 
+import agency_files
+
 ROOT = pathlib.Path(__file__).resolve().parent
-JSON_PATH = ROOT / "goals.json"
+JSON_PATH = agency_files.path("goals.json")   # PANTHEON_AGENCY picks the agency
 JS_PATH = ROOT / "site" / "public" / "goals.js"
 DATA = json.loads(JSON_PATH.read_text())
 

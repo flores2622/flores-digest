@@ -1,0 +1,9 @@
+{
+  "_about": "The demo agency's carrier layer: Northstar Mutual, a fictional carrier.",
+  "name": "Northstar",
+  "possessive": "Northstar's",
+  "misheard_as": "North Star",
+  "quoting_system": "Compass",
+  "website": "Northstar.com",
+  "heard_as_regex": "north ?star|norse star"
+}

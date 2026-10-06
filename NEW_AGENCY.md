@@ -8,7 +8,12 @@ else; the rules (what a sale is, how a call is coached, how a tier is
 judged) are the same for every agency. To run Pantheon for a new agency,
 fill in these files, run one check, and deploy.
 
-`python3 agency_check.py --fix` rewrites every generated file and checks all
+Put the agency's files in `agencies/<key>/` (the four JSON files and a
+`carrier/` folder) and set `PANTHEON_AGENCY=<key>` for every command below;
+`agencies/copperline/` is a complete fictional example to copy. Flores's own
+files stay at the repository root, read when the variable is unset.
+
+`PANTHEON_AGENCY=<key> python3 agency_check.py --fix` rewrites every generated file and checks all
 of them. Run it after every change below; it must say "every setup file
 checks out" before anything is deployed.
 
@@ -76,7 +81,8 @@ one_off, commercial, not_a_sale. Every agency needs at least one
 sold carry). `cross_sell_product` says what each cross-sell source sells;
 `source_backstory` gives a source its own Role Play backstory where the
 group's is wrong; `speed_sources` are the internet sources Speed to Dial
-times. A staff member's name as a source needs no entry.
+times; `group_who` is the agency's own wording of who a group's leads are,
+naming its sources, for Apollo and the board. A staff member's name as a source needs no entry.
 
 ## 4. The goals -- `goals.json`
 
