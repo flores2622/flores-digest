@@ -322,7 +322,7 @@ export default {
       "members": [
         "Crystal Mango"
       ],
-      "schedule": "individual"
+      "schedule": "flat"
     },
     {
       "key": "lorena",

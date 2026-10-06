@@ -495,7 +495,13 @@ pipeline tags (licensed, hybrid, training-lead owner, commercial owner ...)
 and their `board` keys -- who may open Commercial, Rotation, Lead Scrub,
 Apollo's doubts, voice ratings, Coeus usage, every Role Play history,
 everyone's commission, and log sales for everyone -- live there and nowhere
-else. `staff.py` reads it for Python and says what every tag and key means;
+else. **Crystal's commission schedule is her own** (Frank, 2026-10-06: "crystals comm
+schedule and goal is different than the others" -- his "Crystal Comm Schedule" sheet): `commission.js`'s
+`flat` schedule, a set amount per tier of the folio's Personal Lines premium ($15,000 $600, $20,000 $800,
+$25,000 $1,000, $30,000 $1,250, $35,000 $1,500, $40,000+ $1,750; nothing under $15,000 -- Frank: the table,
+not the sheet's stale "less than $30,000" note), her `commission_units` entry's `schedule`; the extras are
+the same as everyone's (Frank: "bonus's and life is the same as the rest", so the sheet's $75 life, $50
+umbrella and 35% business are not used). The board says "$800 flat at Better" where the others say a rate. `staff.py` reads it for Python and says what every tag and key means;
 digest_config, missed_call_tasks / _audit, service_digest, service_playbook,
 claims, commercial, lead_sources, insightful_client, sanity_gate and
 sales_log_auto build their old constants from it, names and shapes

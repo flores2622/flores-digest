@@ -7818,6 +7818,8 @@ let commDoc = null, commTimer = null;
 const commMoney = x => "$" + Math.round(x || 0).toLocaleString();
 const commMoney2 = x => "$" + (x || 0).toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 2 });
 const commPct = r => (Math.round(r * 10000) / 100) + "%";
+// a tier pays a rate on the premium, or a flat amount (Crystal's schedule, 2026-10-06)
+const commTier = t => t.pay != null ? commMoney(t.pay) + " flat" : commPct(t.rate);
 const commK = x => x >= 1000 ? "$" + (Math.round(x / 100) / 10).toString().replace(/\.0$/, "") + "k" : "$" + x;
 async function loadCommission(end) {
   try {
@@ -7840,7 +7842,7 @@ function commLadderHtml(u) {
   const pos = Math.min(100, (i + frac) * step);
   const segs = [`<div class="cl-seg${u.tier ? " on" : ""}"><b>Start</b><span>$0</span></div>`]
     .concat(tiers.map(t => `<div class="cl-seg${u.premium >= t.min ? " on" : ""}${u.tier && u.tier.name === t.name ? " now" : ""}">
-      <b>${t.name}</b><span>${commK(t.min)} · ${commPct(t.rate)}</span></div>`)).join("");
+      <b>${t.name}</b><span>${commK(t.min)} · ${t.pay != null ? commMoney(t.pay) : commPct(t.rate)}</span></div>`)).join("");
   return `<div class="cladder" role="img" aria-label="${commMoney(u.premium)}; the first tier starts at ${commMoney(tiers[0].min)}">
     <div class="cl-track"><div class="cl-fill${u.tier ? "" : " below"}" style="width:${pos.toFixed(2)}%"></div>
     <div class="cl-you" style="left:${Math.max(4, Math.min(96, pos)).toFixed(2)}%"><span>${commMoney(u.premium)}</span></div></div>
@@ -7856,11 +7858,12 @@ function commRowsHtml(rows, withPay) {
 function commUnitHtml(u, isCurrent) {
   const team = u.schedule === "team";
   const t = u.tier, n = u.next;
-  const chip = t ? `<span class="chip c-g">${t.name} · ${commPct(t.rate)}</span>`
+  const flat = u.schedule === "flat";
+  const chip = t ? `<span class="chip c-g">${t.name} · ${commTier(t)}</span>`
     : `<span class="chip c-n">Below the first tier</span>`;
   const nextLine = n
-    ? `<div class="v">${commMoney(n.gap)}</div><div class="n">to <b>${n.name}</b> (${commPct(n.rate)}) &middot; at ${commMoney(n.min)} the tier pays ${commMoney(n.min * n.rate)}${team ? ", split 50/50" : ""}</div>`
-    : `<div class="v">Top tier</div><div class="n">${commPct(t.rate)} on every dollar</div>`;
+    ? `<div class="v">${commMoney(n.gap)}</div><div class="n">to <b>${n.name}</b>${flat ? "" : ` (${commPct(n.rate)})`} &middot; at ${commMoney(n.min)} the tier pays ${commMoney(flat ? n.pay : n.min * n.rate)}${team ? ", split 50/50" : ""}</div>`
+    : `<div class="v">Top tier</div><div class="n">${flat ? `${commMoney(t.pay)} for the folio` : `${commPct(t.rate)} on every dollar`}</div>`;
   const pending = u.lines.filter(l => l.pending);
   const extras = u.lines.filter(l => l.count).map(l => `<details class="commx">
       <summary><span class="commx-l">${cesc(l.label)}</span><span class="commx-c">${l.count}</span>
@@ -7878,7 +7881,7 @@ function commUnitHtml(u, isCurrent) {
       <div class="commfig"><div class="k">${team ? "Team premium toward the tier" : "Premium toward the tier"}</div>
         <div class="v">${commMoney(u.premium)}</div><div class="n">${u.sales} sale${u.sales === 1 ? "" : "s"} on the Sales sheet${isCurrent ? " so far" : ""}</div></div>
       <div class="commfig commhero"><div class="k">Estimated commission</div>
-        <div class="v">${commMoney(u.total)}</div><div class="n">${t ? `${commMoney(u.base)} at ${commPct(t.rate)}` : "No tier commission yet"}${u.extras ? ` + ${commMoney2(u.extras)} extras` : ""}</div></div>
+        <div class="v">${commMoney(u.total)}</div><div class="n">${t ? (flat ? `${commMoney(u.base)} flat at ${t.name}` : `${commMoney(u.base)} at ${commPct(t.rate)}`) : "No tier commission yet"}${u.extras ? ` + ${commMoney2(u.extras)} extras` : ""}</div></div>
       <div class="commfig"><div class="k">${n ? "Next tier" : "Tier"}</div>${nextLine}</div>
     </div>
     ${commLadderHtml(u)}
