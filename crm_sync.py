@@ -3,6 +3,13 @@
     python3 crm_sync.py                 sync what the saved data/ files hold
     python3 crm_sync.py --full          resend everything (ignore the state)
     python3 crm_sync.py --dry-run       build and count, send nothing
+    python3 crm_sync.py --from-r2 2026-10-06 [--dry-run]
+                                        a load by hand from any machine with
+                                        the R2 keys: restore that day's
+                                        AgencyZoom snapshot (corpus, household
+                                        map, tasks, SRs, lead sources) from R2
+                                        first, fetch the pipelines and SR
+                                        categories once if missing, then sync
     python3 crm_sync.py --sqlite out/x.db --state out/state.json
                                         the same run against a local SQLite
                                         (tests; no network, no R2)
@@ -205,6 +212,36 @@ def run(days=None, log=print, full=False, dry_run=False):
         return 0
 
 
+def restore_from_r2(day, log=print):
+    """A hand run's inputs, into data/: the day's corpus snapshot, the household
+    map, its task and SR files and the Worker's lead source names from R2; the
+    pipelines and SR categories from AgencyZoom only when no file holds them
+    (two requests; the same ones daily.py makes once per cold container)."""
+    import r2_cache
+    data = ROOT / "data"
+    data.mkdir(exist_ok=True)
+    if not r2_cache.load_corpus(day, log=log):
+        raise RuntimeError(f"no corpus snapshot in R2 for {day} (cache/{day}/corpus/)")
+    cli, bucket = _r2()
+    for key, name in ((f"cache/az_household_policies.json", "az_household_policies.json"),
+                      (f"cache/{day}/az_tasks_{day}.json", f"az_tasks_{day}.json"),
+                      (f"cache/{day}/az_service_tickets_{day}.json", f"az_service_tickets_{day}.json"),
+                      (f"cache/{day}/az_service_tickets_done_{day}.json", f"az_service_tickets_done_{day}.json"),
+                      ("worker-private/lead_sources.json", "az_lead_sources.json")):
+        try:
+            (data / name).write_bytes(cli.get_object(Bucket=bucket, Key=key)["Body"].read())
+        except Exception as e:
+            log(f"  {name}: not in R2 ({type(e).__name__}) -- skipped")
+    if not (data / "az_pipelines.json").exists() or not (data / "az_service_categories.json").exists():
+        from az_client import AgencyZoom
+        az = AgencyZoom()
+        if not (data / "az_pipelines.json").exists():
+            (data / "az_pipelines.json").write_text(json.dumps(az.pipelines_and_stages()))
+        if not (data / "az_service_categories.json").exists():
+            (data / "az_service_categories.json").write_text(json.dumps(az.service_categories()))
+    log(f"  restored {day}'s AgencyZoom snapshot from R2 into data/")
+
+
 def run_local(sqlite_path, state_path, days=None, log=print, full=False):
     rows = crm_import.build(crm_import.Rows(), days=days)
     state = load_state(state_path)
@@ -221,5 +258,14 @@ if __name__ == "__main__":
             secrets_load.load()
         except SystemExit:
             pass
-        n = run(full="--full" in a, dry_run="--dry-run" in a)
+        days = None
+        if "--from-r2" in a:
+            day = a[a.index("--from-r2") + 1]
+            restore_from_r2(day)
+            days = {day}
+        if not token():
+            print("CF_API_TOKEN (or CLOUDFLARE_API_TOKEN) is not set in this environment; "
+                  "names seen that look related: " + ", ".join(sorted(k for k in os.environ if any(
+                      w in k.upper() for w in ("TOKEN", "CLOUDFLARE", "CF_", "D1", "CRM")))))
+        n = run(days=days, full="--full" in a, dry_run="--dry-run" in a)
     print(f"crm sync: {n:,} rows")
