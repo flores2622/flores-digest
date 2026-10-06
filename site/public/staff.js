@@ -121,7 +121,8 @@ window.STAFF = {
     "scrub_edit",
     "roleplay_history",
     "commission_all",
-    "sales_log_all"
+    "sales_log_all",
+    "crm"
    ],
    "handle": "frank.full.coverage"
   },
