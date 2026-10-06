@@ -119,6 +119,7 @@ window.STAFF = {
     "rotation_edit",
     "scrub",
     "scrub_edit",
+    "hygiene",
     "roleplay_history",
     "commission_all",
     "sales_log_all",
@@ -140,6 +141,7 @@ window.STAFF = {
     "rotation_edit",
     "scrub",
     "scrub_edit",
+    "hygiene",
     "roleplay_history"
    ],
    "handle": "dm.francisco"
@@ -155,6 +157,7 @@ window.STAFF = {
     "rotation_edit",
     "scrub",
     "scrub_edit",
+    "hygiene",
     "roleplay_history"
    ],
    "handle": "vero.vacation.approved"
@@ -180,6 +183,7 @@ window.STAFF = {
     "rotation_edit",
     "scrub",
     "scrub_edit",
+    "hygiene",
     "roleplay_history",
     "commission_all",
     "sales_log_all"

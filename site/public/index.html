@@ -1877,6 +1877,9 @@ html[data-theme="phoenix"] .tourcard .tbtns .tback { background: #f4e2cf; border
     <div class="subnav" data-for="service"></div>
     <button class="tab" role="tab" aria-selected="false" data-v="claims">Claims Center</button>
     <div class="subnav" data-for="claims"></div>
+    <div class="navgrp" id="navops" hidden>Operations</div>
+    <button class="tab" role="tab" aria-selected="false" data-v="operations" hidden>Operations Center</button>
+    <div class="subnav" data-for="operations"></div>
     <div class="navgrp" id="navcom" hidden>Cerberus · Commercial</div>
     <button class="tab" role="tab" aria-selected="false" data-v="commercial" hidden>Commercial Center</button>
     <div class="subnav" data-for="commercial"></div>
@@ -2094,9 +2097,24 @@ const CENTERS = {
     ["review", "Apollo's Doubts", "review"]],
   service: [["service", "Service Digest"], ["renewals", "Renewals"], ["athenamap", "Athena's Road Map"]],
   claims: [["claims", "Claims"]],
+  // The Operations Center (Frank, 2026-10-06: "a new category for operatonis
+  // only"): empty here; CRM Hygiene (hygiene.js) and the Lead Scrub
+  // (scrub.js) join it through opsShow when their Worker routes let this
+  // login in, and the Center stays out of the menu for everyone else.
+  operations: [],
   commercial: [["commercial", "Commercial"]],
 };
-const centerPick = Object.fromEntries(Object.entries(CENTERS).map(([c, pages]) => [c, pages[0][0]]));
+const OPS_ORDER = ["hygiene", "scrub"];
+function opsShow(v, label, sub) {
+  if (!CENTERS.operations.some(([k]) => k === v)) CENTERS.operations.push([v, label]);
+  CENTERS.operations.sort((a, b) => OPS_ORDER.indexOf(a[0]) - OPS_ORDER.indexOf(b[0]));
+  if (!CENTERS.operations.some(([k]) => k === centerPick.operations)) centerPick.operations = CENTERS.operations[0][0];
+  if (!SEARCH_PAGES.some(([, , k]) => k === v)) SEARCH_PAGES.push([label, "Operations · " + sub, v]);
+  const t = $('.tab[data-v="operations"]'); if (t) t.hidden = false;
+  const g = $("#navops"); if (g) g.hidden = false;
+  paintCenterBar();
+}
+const centerPick = Object.fromEntries(Object.entries(CENTERS).map(([c, pages]) => [c, (pages[0] || [])[0]]));
 const centerOf = v => Object.keys(CENTERS).find(c => CENTERS[c].some(([k]) => k === v)) || v;
 function paintCenterBar() {
   paintSideNav();
@@ -2369,9 +2387,9 @@ async function loadServerPrefs() {
 
 /* The Preferences section of Settings: one fold, four rows. */
 function prefPages() {
-  // every page in the menu everyone can open (Commercial, Rotation, Lead Scrub and Apollo's Doubts are
+  // every page in the menu everyone can open (Commercial, Rotation, the Operations Center's pages and Apollo's Doubts are
   // some logins' only, so they are not offered as a start page)
-  return Object.values(CENTERS).flat().filter(([k, , gate]) => !gate && !["commercial", "review"].includes(k));
+  return Object.values(CENTERS).flat().filter(([k, , gate]) => !gate && !["commercial", "review", "rotation", "scrub", "hygiene"].includes(k));
 }
 function paintPrefs() {
   const box = $("#prefrows"); if (!box) return;
@@ -8478,6 +8496,8 @@ async function paintTab() {
     await rotationPaint();   // rotation.js; only reachable for staff.json's `rotation`
   } else if (view === "scrub") {
     await scrubPaint();      // scrub.js; only reachable for staff.json's `scrub`
+  } else if (view === "hygiene") {
+    await hygienePaint();    // hygiene.js; only reachable for staff.json's `hygiene`
   } else if (view === "tasks") {
     await tasksPaint();      // tasks.js; Pantheon's own CRM, only reachable for staff.json's `crm`
   }
@@ -10319,7 +10339,7 @@ const TOUR_STEPS = [
   { title: "Welcome to Pantheon",
     text: "This is the agency's board. It shows how the day is going, coaches every recorded sales call, and gives you places to practise. This tour takes about two minutes." },
   { find: () => $("nav.tabs"), title: "The left bar",
-    text: "Three desks: Apollo for sales, Athena for service, Cerberus for commercial. Each Center opens like a dropdown to its pages: click its arrow to open or close it. Settings at the bottom picks your world (the desert, space, the ocean, the mountains, game day, a retro arcade or Phoenix) and your look within it, each with a dark side." },
+    text: "Three desks: Apollo for sales, Athena for service, Cerberus for commercial -- and, for the ops team, an Operations Center (the CRM Hygiene log and the Lead Scrub). Each Center opens like a dropdown to its pages: click its arrow to open or close it. Settings at the bottom picks your world (the desert, space, the ocean, the mountains, game day, a retro arcade or Phoenix) and your look within it, each with a dark side." },
   { find: () => $(".top .search"), title: "Search",
     text: "Ctrl K from anywhere: pages, the sections on the page you are on, producers, and every lead. Every lead on every published day: a lead opens its newest coaching card, on whatever day it was, and with no card, its row on the Digest." },
   { find: () => $("#coeusfab"), title: "Ask Apollo",
@@ -10547,7 +10567,7 @@ paintCenterBar();
   paintGreeting(true);
   initMe();           // Apollo's Road Map (ARM) for managers only
   // Where this tab was before a refresh. A page only some logins see
-  // (Commercial, Rotation) is reopened only once the Worker has let them in.
+  // (Commercial, Rotation, the Operations Center) is reopened only once the Worker has let them in.
   const w = readWhere();
   // A new tab (nothing to reopen) opens where the person chose, and a producer who asked for it opens on
   // themselves (Settings > Preferences).
@@ -10560,6 +10580,7 @@ paintCenterBar();
     if (w.view === "commercial") { await commercialReady; ok = COMMERCIAL_DAYS !== null; }
     if (w.view === "rotation") ok = await (window.ROT_READY || Promise.resolve(false));
     if (w.view === "scrub") ok = await (window.SCRUB_READY || Promise.resolve(false));
+    if (w.view === "hygiene") ok = await (window.HYG_READY || Promise.resolve(false));
     if (w.view === "tasks") ok = await (window.CRM_READY || Promise.resolve(false));
     if (ok) setViewQuiet(w.view);
   }
@@ -10833,6 +10854,7 @@ async function coeusSend(text) {
 <script src="editions.js"></script>
 <script src="rotation.js"></script>
 <script src="scrub.js"></script>
+<script src="hygiene.js"></script>
 <script src="tasks.js"></script>
 </body>
 </html>
