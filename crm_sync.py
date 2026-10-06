@@ -6,10 +6,11 @@
     python3 crm_sync.py --from-r2 2026-10-06 [--dry-run]
                                         a load by hand from any machine with
                                         the R2 keys: restore that day's
-                                        AgencyZoom snapshot (corpus, household
-                                        map, tasks, SRs, lead sources) from R2
-                                        first, fetch the pipelines and SR
-                                        categories once if missing, then sync
+                                        AgencyZoom corpus, the household map,
+                                        the lead sources and the last 30 days'
+                                        task and SR files from R2, fetch the
+                                        pipelines and SR categories once if
+                                        missing, then sync
     python3 crm_sync.py --sqlite out/x.db --state out/state.json
                                         the same run against a local SQLite
                                         (tests; no network, no R2)
@@ -212,26 +213,48 @@ def run(days=None, log=print, full=False, dry_run=False):
         return 0
 
 
+RESTORE_DAYS = 30   # how far back a hand run pulls task and SR files
+
+
 def restore_from_r2(day, log=print):
     """A hand run's inputs, into data/: the day's corpus snapshot, the household
-    map, its task and SR files and the Worker's lead source names from R2; the
-    pipelines and SR categories from AgencyZoom only when no file holds them
-    (two requests; the same ones daily.py makes once per cold container)."""
+    map and the Worker's lead source names, plus the task and SR files of the
+    last RESTORE_DAYS days (a day's completed-SR file is written by the
+    nightly, so today's exists only after 5:55 PM; tasks are one file per
+    day, merged by id). The pipelines and SR categories come from AgencyZoom
+    only when no file holds them (two requests, the same ones daily.py makes
+    once per cold container). Returns the set of days whose files are here."""
+    import datetime as dt
     import r2_cache
     data = ROOT / "data"
     data.mkdir(exist_ok=True)
     if not r2_cache.load_corpus(day, log=log):
         raise RuntimeError(f"no corpus snapshot in R2 for {day} (cache/{day}/corpus/)")
     cli, bucket = _r2()
-    for key, name in ((f"cache/az_household_policies.json", "az_household_policies.json"),
-                      (f"cache/{day}/az_tasks_{day}.json", f"az_tasks_{day}.json"),
-                      (f"cache/{day}/az_service_tickets_{day}.json", f"az_service_tickets_{day}.json"),
-                      (f"cache/{day}/az_service_tickets_done_{day}.json", f"az_service_tickets_done_{day}.json"),
-                      ("worker-private/lead_sources.json", "az_lead_sources.json")):
+
+    def pull(key, name):
         try:
             (data / name).write_bytes(cli.get_object(Bucket=bucket, Key=key)["Body"].read())
-        except Exception as e:
-            log(f"  {name}: not in R2 ({type(e).__name__}) -- skipped")
+            return True
+        except Exception:
+            return False
+    if not pull("cache/az_household_policies.json", "az_household_policies.json"):
+        log("  az_household_policies.json: not in R2 -- policies load without their household")
+    pull("worker-private/lead_sources.json", "az_lead_sources.json")
+    d0 = dt.date.fromisoformat(day)
+    days, got = set(), {"tasks": 0, "live": 0, "done": 0}
+    for back in range(RESTORE_DAYS):
+        d = (d0 - dt.timedelta(days=back)).isoformat()
+        hit = False
+        for kind, name in (("tasks", f"az_tasks_{d}.json"), ("live", f"az_service_tickets_{d}.json"), ("done", f"az_service_tickets_done_{d}.json")):
+            if pull(f"cache/{d}/{name}", name):
+                got[kind] += 1
+                hit = True
+        if hit:
+            days.add(d)
+    log(f"  restored from R2: {day}'s corpus, {got['tasks']} days of tasks, {got['live']} live-SR and {got['done']} completed-SR files")
+    if not got["done"]:
+        log("  no completed-SR file in the window -- the completed SRs load once the nightly writes one")
     if not (data / "az_pipelines.json").exists() or not (data / "az_service_categories.json").exists():
         from az_client import AgencyZoom
         az = AgencyZoom()
@@ -239,7 +262,7 @@ def restore_from_r2(day, log=print):
             (data / "az_pipelines.json").write_text(json.dumps(az.pipelines_and_stages()))
         if not (data / "az_service_categories.json").exists():
             (data / "az_service_categories.json").write_text(json.dumps(az.service_categories()))
-    log(f"  restored {day}'s AgencyZoom snapshot from R2 into data/")
+    return days or {day}
 
 
 def run_local(sqlite_path, state_path, days=None, log=print, full=False):
@@ -260,9 +283,7 @@ if __name__ == "__main__":
             pass
         days = None
         if "--from-r2" in a:
-            day = a[a.index("--from-r2") + 1]
-            restore_from_r2(day)
-            days = {day}
+            days = restore_from_r2(a[a.index("--from-r2") + 1])
         if not token():
             print("CF_API_TOKEN (or CLOUDFLARE_API_TOKEN) is not set in this environment; "
                   "names seen that look related: " + ", ".join(sorted(k for k in os.environ if any(
