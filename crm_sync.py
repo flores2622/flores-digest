@@ -97,9 +97,12 @@ class Local:
         import sqlite3
         p = pathlib.Path(path)
         p.parent.mkdir(parents=True, exist_ok=True)
+        fresh = not p.exists() or p.stat().st_size == 0
         self.c = sqlite3.connect(p)
-        for f in sorted((ROOT / "site" / "crm" / "migrations").glob("*.sql")):
-            self.c.executescript(f.read_text())
+        if fresh:   # the migrations once, like `wrangler d1 migrations apply`
+            for f in sorted((ROOT / "site" / "crm" / "migrations").glob("*.sql")):
+                self.c.executescript(f.read_text())
+        self.c.execute("PRAGMA foreign_keys = ON")   # D1 enforces them; so does this copy
 
     def execute(self, sql):
         self.c.executescript(sql)
@@ -182,14 +185,30 @@ def sync(db, rows, state, log=print, full=False, dry_run=False, save=lambda s: N
     log("  crm sync: " + ", ".join(f"{t} {n:,}" for t, n in sorted(by_table.items())) + (" (dry run)" if dry_run else ""))
     if dry_run:
         return len(todo)
-    sent = 0
+    sent, bad = 0, []
     for batch in batches(todo):
-        db.execute("\n".join(it[3] for it in batch))
-        for t, k, fp, _ in batch:
+        try:
+            db.execute("\n".join(it[3] for it in batch))
+            ok = batch
+        except Exception as e:
+            # One bad row must not stop the load: find it, log it, leave it out
+            # of the state so the next run tries it again, and keep the rest.
+            ok = []
+            for it in batch:
+                try:
+                    db.execute(it[3])
+                    ok.append(it)
+                except Exception as e1:
+                    bad.append((it[0], it[1], str(e1)[:160]))
+        for t, k, fp, _ in ok:
             state.setdefault(t, {})[k] = fp
-        sent += len(batch)
+        sent += len(ok)
         save(state)
-    log(f"  crm sync: {sent:,} rows sent")
+    log(f"  crm sync: {sent:,} rows sent" + (f", {len(bad):,} refused" if bad else ""))
+    for t, k, err in bad[:10]:
+        log(f"    refused {t} {k}: {err}")
+    if len(bad) > 10:
+        log(f"    ... and {len(bad) - 10:,} more")
     return sent
 
 

@@ -220,8 +220,23 @@ def build(rows, days=None):
         sid = intval(r.get("leadSourceId"))
         if sid and sid not in sources and r.get("leadSourceName"):
             sources[sid] = r["leadSourceName"]
+    for r in leads + policies:          # an id with no name anywhere still needs its row (foreign keys)
+        sid = intval(r.get("leadSourceId"))
+        if sid and sid not in sources:
+            sources[sid] = f"Source {sid}"
     for sid, name in sorted(sources.items()):
         rows.insert("lead_sources", {"id": sid, "name": name})
+
+    # tasks: every saved day's file, merged by id (the newest file wins); read
+    # early so the household stubs below know what they point at
+    tasks_seen_by_id = {}
+    for f in sorted(glob.glob(str(DATA / "az_tasks_*.json"))):
+        if days is not None and not any(d in f for d in days):
+            continue
+        for t in as_list(json.loads(pathlib.Path(f).read_text())):
+            if intval(t.get("id")):
+                tasks_seen_by_id[int(t["id"])] = t
+    tasks_seen = list(tasks_seen_by_id.values())
 
     # lookups: workflows and stages, with AgencyZoom's own ids wherever a file
     # carries them -- the pipelines response (sales) and the SRs (service) --
@@ -278,11 +293,17 @@ def build(rows, days=None):
             stage_rows[sid] = (wid, sname or "", 0)
             stage_wf[sid] = wid
     next_wf = SYNTHETIC_WORKFLOW_FROM
+    sr_names = {intval(t.get("workflowId")): t.get("workflowName") for t in srs.values() if intval(t.get("workflowId")) and t.get("workflowName")}
+    wf_done = set()
     for name in sorted(wf_kind):
         if name not in wf_ids:
             wf_ids[name] = next_wf
             next_wf += 1
-        rows.insert("workflows", {"id": wf_ids[name], "name": name, "kind": wf_kind[name]})
+        wid = wf_ids[name]
+        if wid in wf_done:        # one row per id: a renamed workflow (Missing Documents ->
+            continue              # Contingencies, 61459) is known by both names
+        wf_done.add(wid)
+        rows.insert("workflows", {"id": wid, "name": sr_names.get(wid, name), "kind": wf_kind[name]})
     ords = {}
     for sid, (wid, sname, ord_) in sorted(stage_rows.items(), key=lambda kv: (str(kv[1][0]), kv[1][2], kv[0])):
         if wid is None:                           # from the fallback map: its pipeline's name
@@ -311,8 +332,13 @@ def build(rows, days=None):
             cat_names[cid] = t.get("categoryName") or f"Category {cid}"
     for cid, name in sorted(cat_names.items()):
         rows.insert("service_categories", {"id": cid, "name": name})
-    for rid, name in sorted(agencyzoom.DATA["resolutions"]["labels"].items(), key=lambda kv: int(kv[0])):
-        rows.insert("resolutions", {"id": int(rid), "name": name})
+    res_names = {int(k): v for k, v in agencyzoom.DATA["resolutions"]["labels"].items()}
+    for t in srs.values():               # a resolution id the SRs carry that the file does not name
+        rid = intval(t.get("resolutionId"))
+        if rid and rid not in res_names:
+            res_names[rid] = f"Resolution {rid}"
+    for rid, name in sorted(res_names.items()):
+        rows.insert("resolutions", {"id": rid, "name": name})
     for cid, short in sorted(agencyzoom.DATA.get("carriers", {}).items(), key=lambda kv: int(kv[0])):
         rows.insert("carriers", {"id": int(cid), "name": short, "short": short})
     seen_carriers = {int(c) for c in agencyzoom.DATA.get("carriers", {})}
@@ -322,11 +348,16 @@ def build(rows, days=None):
             seen_carriers.add(cid)
             rows.insert("carriers", {"id": cid, "name": p.get("carrierName") or f"Carrier {cid}", "short": None})
 
-    # households (customers)
+    # households (customers), then a stub for every household id a lead, policy,
+    # task or SR points at that the customer corpus does not carry -- the
+    # database's foreign keys need the row, and a later sync fills it in when
+    # the customer record appears (an az_id row follows AgencyZoom).
+    known_hh = set()
     for c in as_list(customers):
         cid = intval(c.get("id"))
         if not cid:
             continue
+        known_hh.add(cid)
         rows.insert("households", {
             "id": cid, "az_id": cid,
             "firstname": c.get("firstname") or "", "lastname": c.get("lastname") or "",
@@ -342,6 +373,25 @@ def build(rows, days=None):
             "modify_date": local_dt(c.get("modifyDate")), "status": 0 if c.get("status") == 0 else 1,
         })
 
+    referenced = set()
+    for l in leads:
+        referenced.add(intval(l.get("convertedHouseholdId")))
+    for hid, entry in (hh_map or {}).items():
+        plist = entry.get("policies") if isinstance(entry, dict) and "policies" in entry else entry
+        if plist:
+            referenced.add(intval(hid))
+    for t in srs.values():
+        if (t.get("customerType") or "customer").lower() != "lead":
+            referenced.add(intval(t.get("householdId") or t.get("customerId")))
+    for t in tasks_seen:
+        if t.get("customerType") == "customer":
+            referenced.add(intval(t.get("customerId")))
+    for hid in sorted(h for h in referenced if h and h not in known_hh):
+        rows.insert("households", {"id": hid, "az_id": hid, "firstname": "", "lastname": "", "customer_type": "customer",
+                                   "create_date": "1970-01-01 00:00:00", "status": 1})
+        known_hh.add(hid)
+
+    lead_ids = {intval(l.get("id")) for l in leads}
     # leads
     for l in leads:
         lid = intval(l.get("id"))
@@ -388,7 +438,7 @@ def build(rows, days=None):
         rows.insert("policies", {
             "id": pid, "az_id": pid,
             "household_id": pol_household.get(pid) or intval(p.get("householdId") or p.get("customerId")),
-            "lead_id": intval(p.get("leadId")),
+            "lead_id": intval(p.get("leadId")) if intval(p.get("leadId")) in lead_ids else None,
             "agent_id": person(p.get("agentId")), "lead_source_id": intval(p.get("leadSourceId")),
             "carrier_id": intval(p.get("carrierId")), "carrier_name": p.get("carrierName") or None,
             "policy_type_name": p.get("policyTypeName") or None, "policy_number": p.get("policyNumber") or None,
@@ -401,16 +451,7 @@ def build(rows, days=None):
         })
 
     # tasks: every saved day, merged by id (the newest file wins)
-    def wanted(path):
-        return days is None or any(d in path for d in days)
-
-    tasks = {}
-    for f in sorted(glob.glob(str(DATA / "az_tasks_*.json"))):
-        if not wanted(f):
-            continue
-        for t in as_list(json.loads(pathlib.Path(f).read_text())):
-            if intval(t.get("id")):
-                tasks[int(t["id"])] = t
+    tasks = tasks_seen_by_id
     for tid, t in sorted(tasks.items()):
         ctype = t.get("customerType") or None
         cid = intval(t.get("customerId"))
@@ -424,7 +465,7 @@ def build(rows, days=None):
         rows.insert("tasks", {
             "id": tid, "az_id": tid, "title": title, "comments": t.get("comments") or None,
             "type": kind, "assignee_id": assignee,
-            "lead_id": cid if ctype == "lead" else intval(t.get("leadId")),
+            "lead_id": (cid if ctype == "lead" else intval(t.get("leadId"))) if (cid if ctype == "lead" else intval(t.get("leadId"))) in lead_ids else None,
             "household_id": cid if ctype == "customer" else None,
             "sr_id": cid if ctype == "serviceTicket" else None,
             "customer_type": ctype, "due_date": due,
@@ -445,7 +486,7 @@ def build(rows, days=None):
         modified_by = person(t.get("modifiedBy"))
         rows.insert("service_requests", {
             "id": sid, "az_id": sid,
-            "household_id": cid if ctype != "lead" else None, "lead_id": cid if ctype == "lead" else None,
+            "household_id": cid if ctype != "lead" else None, "lead_id": cid if ctype == "lead" and cid in lead_ids else None,
             "customer_type": ctype, "workflow_id": wf_id,
             "workflow_stage_id": intval(t.get("workflowStageId")) or service_stage(wf_name, t.get("workflowStageName")),
             "enter_stage_date": local_dt(t.get("enterStageTS") or t.get("enterStageDate")),
@@ -468,7 +509,6 @@ def build(rows, days=None):
         import live_contact
     except Exception:
         pipelines = live_contact = None
-    lead_ids = {intval(l.get("id")) for l in leads}
     n_files = 0
     for f in sorted(glob.glob(str(DATA / "notes" / "*.json"))):
         lid = intval(pathlib.Path(f).stem)
