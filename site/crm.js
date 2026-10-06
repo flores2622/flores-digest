@@ -1,7 +1,11 @@
 /* Pantheon's own CRM (Frank, 2026-10-06: "i basically want to build my own,
    built into Pantheon"). The data layer: Cloudflare D1 (binding CRM, schema
    in site/crm/migrations/) behind /api/crm/..., the same Access gate as the
-   rest of the Worker, open to every active person in staff.json.
+   rest of the Worker.
+
+   Who may call it: staff.json's `crm` board key -- Frank alone until further
+   notice (2026-10-06). Everyone else gets 403 and the Tasks page never
+   enters their menu (site/public/tasks.js probes /api/crm/lookups).
 
    THE API IS AGENCYZOOM-SHAPED ON PURPOSE. Each record comes back with the
    field names the nightly and the live refresh already read (id, firstname,
@@ -42,7 +46,7 @@
    binding every call answers 503 "CRM is not configured", like Coeus with no
    key, so a deploy before the database exists breaks nothing else. */
 
-import { isStaff, personByEmail, personById, PEOPLE, localStr } from "./staff.js";
+import { hasBoard, personByEmail, personById, PEOPLE, localStr } from "./staff.js";
 
 const json = (body, status = 200) => new Response(JSON.stringify(body), {
   status, headers: { "content-type": "application/json; charset=utf-8", "cache-control": "no-store" } });
@@ -59,6 +63,13 @@ const PERSON = ["firstname", "lastname", "businessName", "email", "address", "ci
 const COMMON = {
   firstname: ["firstname", "text"], lastname: ["lastname", "text"], businessName: ["business_name", "text"],
   email: ["email", "text"], address: ["address", "text"], city: ["city", "text"], state: ["state", "text"], zip: ["zip", "text"],
+};
+
+// The name and phone of whoever a task or SR hangs off: its lead, else its
+// household. `t` is the main table in every list / getOne query.
+const CUSTOMER_JOIN = {
+  select: "coalesce(nullif(trim(l.firstname || ' ' || l.lastname), ''), l.business_name, nullif(trim(h.firstname || ' ' || h.lastname), ''), h.business_name) AS customer_name, coalesce(l.phone, h.phone) AS customer_phone",
+  sql: "LEFT JOIN leads l ON l.id = t.lead_id LEFT JOIN households h ON h.id = t.household_id",
 };
 
 export const OBJECTS = {
@@ -151,6 +162,7 @@ export const OBJECTS = {
       srId: "sr_id = ?", dueFrom: "due_date >= ?", dueTo: "due_date < ?", completedFrom: "complete_date >= ?",
       completedTo: "complete_date < ?" },
     order: "due_date ASC, id ASC",
+    joins: CUSTOMER_JOIN,
   },
   srs: {
     table: "service_requests", key: "serviceTickets", label: "SR",
@@ -174,6 +186,7 @@ export const OBJECTS = {
       createdFrom: "create_date >= ?", createdTo: "create_date < ?", completedFrom: "complete_date >= ?",
       completedTo: "complete_date < ?" },
     order: "create_date DESC, id DESC",
+    joins: CUSTOMER_JOIN,
   },
 };
 const NOTE_PARENT = { leads: "lead_id", households: "household_id", srs: "sr_id" };
@@ -266,6 +279,8 @@ function rowToApi(spec, row, lk) {
     // AgencyZoom's own shape for what a task hangs off.
     out.customerId = out.leadId || out.householdId || out.srId || null;
     out.customerType = out.customerType || (out.leadId ? "lead" : out.householdId ? "customer" : out.srId ? "serviceTicket" : null);
+    out.customerName = row.customer_name || null;
+    out.customerPhone = row.customer_phone || null;
   } else if (spec.table === "service_requests") {
     out.workflowName = lk.workflows.get(out.workflowId) || null;
     out.workflowStageName = lk.stages.get(out.workflowStageId) || null;
@@ -275,6 +290,7 @@ function rowToApi(spec, row, lk) {
     if (!out.resolutionDesc && out.resolutionId) out.resolutionDesc = lk.resolutions.get(out.resolutionId) || null;
     out.customerId = out.householdId || out.leadId || null;
     out.customerName = row.customer_name || null;
+    out.customerPhone = row.customer_phone || null;
   }
   return out;
 }
@@ -351,30 +367,33 @@ async function list(db, spec, url, lk) {
     // through the end of that day (the next midnight, exclusive). A full
     // datetime is used as given. A date column compares days as typed.
     if (type === "datetime" && sql.includes("<") && DATE.test(v.trim())) val = nextDay(v.trim()) + " 00:00:00";
-    where.push(sql); args.push(val);
+    where.push("t." + sql); args.push(val);   // every filter starts with its column; t is the main table
   }
   const q = (url.searchParams.get("q") || "").trim();
   if (q && ["leads", "households"].includes(spec.table)) {
     const pk = phoneKey(q);
-    if (pk) { where.push("(phone_key = ? OR secondary_phone_key = ?)"); args.push(pk, pk); }
+    if (pk) { where.push("(t.phone_key = ? OR t.secondary_phone_key = ?)"); args.push(pk, pk); }
     else {
       const like = `%${q.toLowerCase()}%`;
-      where.push("(lower(firstname || ' ' || lastname) LIKE ? OR lower(coalesce(business_name, '')) LIKE ? OR lower(coalesce(email, '')) LIKE ?)");
+      where.push("(lower(t.firstname || ' ' || t.lastname) LIKE ? OR lower(coalesce(t.business_name, '')) LIKE ? OR lower(coalesce(t.email, '')) LIKE ?)");
       args.push(like, like, like);
     }
   }
   const limit = Math.min(MAX_LIMIT, Math.max(1, Number(url.searchParams.get("limit")) || 100));
   const page = Math.max(0, Number(url.searchParams.get("page")) || 0);
   const w = where.length ? " WHERE " + where.join(" AND ") : "";
+  const order = spec.order.split(",").map((x) => "t." + x.trim()).join(", ");
   const [total, rows] = await db.batch([
-    db.prepare(`SELECT count(*) AS n FROM ${spec.table}${w}`).bind(...args),
-    db.prepare(`SELECT * FROM ${spec.table}${w} ORDER BY ${spec.order} LIMIT ? OFFSET ?`).bind(...args, limit, page * limit),
+    db.prepare(`SELECT count(*) AS n FROM ${spec.table} t${w}`).bind(...args),
+    db.prepare(`SELECT ${selectOf(spec)} FROM ${spec.table} t ${joinOf(spec)}${w} ORDER BY ${order} LIMIT ? OFFSET ?`).bind(...args, limit, page * limit),
   ]);
   const totalCount = ((total.results || [])[0] || {}).n || 0;
   return json({ [spec.key]: (rows.results || []).map((r) => rowToApi(spec, r, lk)), totalCount, page, limit });
 }
+const selectOf = (spec) => "t.*" + (spec.joins ? ", " + spec.joins.select : "");
+const joinOf = (spec) => (spec.joins ? spec.joins.sql + " " : "");
 async function getOne(db, spec, id, lk) {
-  const row = await db.prepare(`SELECT * FROM ${spec.table} WHERE id = ?`).bind(id).first();
+  const row = await db.prepare(`SELECT ${selectOf(spec)} FROM ${spec.table} t ${joinOf(spec)}WHERE t.id = ?`).bind(id).first();
   if (!row) return json({ error: `${spec.label} ${id} not found` }, 404);
   return json(rowToApi(spec, row, lk));
 }
@@ -622,7 +641,9 @@ async function readBody(request) {
 export async function crm(request, env, identityOf, parts, url) {
   const me0 = identityOf(request, env);
   const person = personByEmail(me0.email);
-  if (!isStaff(me0.email) || !person) return json({ error: "not permitted" }, 403);
+  // staff.json's `crm`: Frank alone until further notice (Frank, 2026-10-06:
+  // "all of this is available to only me until further notice").
+  if (!person || !hasBoard(me0.email, "crm")) return json({ error: "not permitted" }, 403);
   const db = env.CRM;
   if (!db) return json({ error: "CRM is not configured", detail: "add the D1 binding CRM in wrangler.jsonc and apply site/crm/migrations" }, 503);
   const me = { email: me0.email, id: person.az_id || null, name: person.name };

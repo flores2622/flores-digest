@@ -55,9 +55,11 @@ test("values: phone keys and field types", () => {
   for (const spec of Object.values(OBJECTS)) for (const k of [...spec.create, ...spec.edit, ...spec.required]) assert.ok(spec.fields[k], `${spec.table}.${k}`);
 });
 
-test("gate: outsiders 403, no binding 503", async () => {
+test("gate: outsiders and staff without the crm key 403, no binding 503", async () => {
   const { env } = fresh();
   assert.equal((await call(env, "GET", "/api/crm/lookups", null, "nobody@example.com")).status, 403);
+  assert.equal((await call(env, "GET", "/api/crm/lookups", null, CRYSTAL.email)).status, 403);   // Frank alone, until further notice
+  assert.equal((await call(env, "GET", "/api/crm/lookups", null, FRANK.email)).status, 200);
   assert.equal((await call({}, "GET", "/api/crm/lookups")).status, 503);
 });
 
@@ -72,7 +74,7 @@ test("lookups carry staff.json's people as employees", async () => {
 test("a lead's life: create, note, quote, move, sold, policy -- AgencyZoom-shaped", async () => {
   const { env, raw } = fresh();
   let r = await call(env, "POST", "/api/crm/leads", { firstname: "Maria", lastname: "Ortiz", phone: "(602) 555-0101",
-    assignedTo: CRYSTAL.az_id, leadSourceId: 1, workflowStageId: 101 }, CRYSTAL.email);
+    assignedTo: CRYSTAL.az_id, leadSourceId: 1, workflowStageId: 101 });
   assert.equal(r.status, 200, JSON.stringify(r.body));
   const lead = r.body;
   assert.equal(lead.status, 0);
@@ -93,24 +95,24 @@ test("a lead's life: create, note, quote, move, sold, policy -- AgencyZoom-shape
   assert.equal(r.body.key, "+16025550101");
 
   // a CALL note, then the list reads newest first
-  r = await call(env, "POST", `/api/crm/leads/${lead.id}/notes`, { type: "CALL", body: "Reached, quoting auto", attr: { outbound: true } }, CRYSTAL.email);
+  r = await call(env, "POST", `/api/crm/leads/${lead.id}/notes`, { type: "CALL", body: "Reached, quoting auto", attr: { outbound: true } });
   assert.equal(r.status, 201);
-  assert.equal(r.body.createdByName, CRYSTAL.name);
+  assert.equal(r.body.createdByName, FRANK.name);
   assert.equal((await call(env, "POST", `/api/crm/leads/${lead.id}/notes`, { type: "BOGUS", body: "x" })).status, 400);
 
   // the move writes the MOVE_STAGE note the pipeline reads
-  r = await call(env, "POST", `/api/crm/leads/${lead.id}/move`, { to: "1 Pipeline | Contacted, In Progress" }, CRYSTAL.email);
+  r = await call(env, "POST", `/api/crm/leads/${lead.id}/move`, { to: "1 Pipeline | Contacted, In Progress" });
   assert.equal(r.status, 200, JSON.stringify(r.body));
   assert.equal(r.body.workflowStageId, 102);
   assert.equal((await call(env, "POST", `/api/crm/leads/${lead.id}/move`, { to: "1 Pipeline | Contacted, In Progress" })).status, 409);
   assert.equal((await call(env, "POST", `/api/crm/leads/${lead.id}/move`, { to: "Nowhere" })).status, 400);
   r = await call(env, "GET", `/api/crm/leads/${lead.id}/notes`);
   assert.equal(r.body[0].type, "MOVE_STAGE");
-  assert.equal(r.body[0].body, `Lead Maria Ortiz moved from 1 Pipeline | New to 1 Pipeline | Contacted, In Progress by ${CRYSTAL.name}`);
+  assert.equal(r.body[0].body, `Lead Maria Ortiz moved from 1 Pipeline | New to 1 Pipeline | Contacted, In Progress by ${FRANK.name}`);
   assert.equal(r.body[1].type, "CALL");
 
   // a quote stamps the lead's quoteDate once
-  r = await call(env, "POST", `/api/crm/leads/${lead.id}/quotes`, { policyTypeName: "Auto", premium: 1234.5, carrierId: 484668 }, CRYSTAL.email);
+  r = await call(env, "POST", `/api/crm/leads/${lead.id}/quotes`, { policyTypeName: "Auto", premium: 1234.5, carrierId: 484668 });
   assert.equal(r.status, 200, JSON.stringify(r.body));
   assert.equal(r.body.leadId, lead.id);
   r = await call(env, "GET", `/api/crm/leads/${lead.id}`);
@@ -121,7 +123,7 @@ test("a lead's life: create, note, quote, move, sold, policy -- AgencyZoom-shape
   assert.equal((await call(env, "GET", `/api/crm/leads/${lead.id}/quotes`)).body.quotes.length, 2);
 
   // sold: status 2, a soldDate, a household made from the lead
-  r = await call(env, "POST", `/api/crm/leads/${lead.id}/sold`, {}, CRYSTAL.email);
+  r = await call(env, "POST", `/api/crm/leads/${lead.id}/sold`, {});
   assert.equal(r.status, 200, JSON.stringify(r.body));
   assert.equal(r.body.status, 2);
   assert.ok(r.body.soldDate);
@@ -133,7 +135,7 @@ test("a lead's life: create, note, quote, move, sold, policy -- AgencyZoom-shape
 
   // the policy, by agentId + soldDate, as is_real_sale reads it
   r = await call(env, "POST", "/api/crm/policies", { householdId: hh.id, leadId: lead.id, agentId: CRYSTAL.az_id, leadSourceId: 1,
-    carrierId: 484668, policyTypeName: "Auto", policyNumber: "A1", premium: 1234.5, term: 6, effectiveDate: "2026-10-07", soldDate: "2026-10-06" }, CRYSTAL.email);
+    carrierId: 484668, policyTypeName: "Auto", policyNumber: "A1", premium: 1234.5, term: 6, effectiveDate: "2026-10-07", soldDate: "2026-10-06" });
   assert.equal(r.status, 200, JSON.stringify(r.body));
   assert.equal(r.body.carrierName, "Farmers Insurance");
   assert.equal(r.body.agentName, CRYSTAL.name);
@@ -161,10 +163,12 @@ test("tasks: due today per assignee, complete leaves a TASK note", async () => {
   assert.equal(r.body.customerType, "lead");
   assert.equal(r.body.customerId, lead.id);
   assert.equal(r.body.assignees[0].name, CRYSTAL.name);
+  assert.equal(r.body.customerName, "Lopez");
+  assert.equal(r.body.customerPhone, "6025550102");
   r = await call(env, "GET", `/api/crm/tasks?assigneeId=${CRYSTAL.az_id}&dueFrom=2026-10-06&dueTo=2026-10-06&status=0`);
   assert.equal(r.body.tasks.length, 1);   // a bare "to" day runs through the end of that day
   assert.equal((await call(env, "GET", `/api/crm/tasks?dueTo=2026-10-05`)).body.tasks.length, 0);
-  r = await call(env, "POST", `/api/crm/tasks/${r.body.tasks[0].id}/complete`, { comment: "spoke" }, CRYSTAL.email);
+  r = await call(env, "POST", `/api/crm/tasks/${r.body.tasks[0].id}/complete`, { comment: "spoke" });
   assert.equal(r.body.status, 1);
   assert.ok(r.body.completeDate);
   assert.equal((await call(env, "GET", `/api/crm/tasks?assigneeId=${CRYSTAL.az_id}&status=0`)).body.tasks.length, 0);
@@ -183,14 +187,15 @@ test("SRs: live 1 -> completed 2 on a known resolution, with the closing note", 
   assert.equal(r.body.workflowName, "Service Pipeline");
   assert.equal(r.body.csrFirstname, "Crystal");
   assert.equal(r.body.customerType, "customer");
+  assert.equal(r.body.customerName, "Dana Sanchez");
   assert.equal((await call(env, "POST", "/api/crm/srs", { householdId: hh.id, workflowId: 20, workflowStageId: 101, subject: "x" })).status, 400);
   const id = r.body.id;
   assert.equal((await call(env, "POST", `/api/crm/srs/${id}/complete`, { resolutionId: 1 })).status, 400);
-  r = await call(env, "POST", `/api/crm/srs/${id}/complete`, { resolutionId: 32571, note: "Added the 2024 Tacoma, premium up $40" }, CRYSTAL.email);
+  r = await call(env, "POST", `/api/crm/srs/${id}/complete`, { resolutionId: 32571, note: "Added the 2024 Tacoma, premium up $40" });
   assert.equal(r.status, 200, JSON.stringify(r.body));
   assert.equal(r.body.status, 2);
   assert.equal(r.body.resolutionDesc, "Completed");
-  assert.equal(r.body.completedBy, CRYSTAL.az_id);
+  assert.equal(r.body.completedBy, FRANK.az_id);
   assert.equal((await call(env, "GET", `/api/crm/srs?status=1`)).body.serviceTickets.length, 0);
   assert.equal((await call(env, "GET", `/api/crm/srs?status=2&completedFrom=2000-01-01`)).body.serviceTickets.length, 1);
   const notes = (await call(env, "GET", `/api/crm/srs/${id}/notes`)).body;

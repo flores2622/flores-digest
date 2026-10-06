@@ -2526,10 +2526,27 @@ on a published day. The rules:
   deleted, status codes say what a record is. An SR completes only on one
   of Frank's resolutions; a lead's `sold` sets status 2 and a soldDate and
   makes its household; `move` writes the structured move and the note.
-- **Who may use it**: every active person in staff.json with an email
-  (`staff.js isStaff`). No binding -> 503 and nothing else changes; the D1
-  block in wrangler.jsonc stays commented until the database exists
-  (`CRM.md` "Turning it on").
+- **Who may use it: Frank alone, until further notice** (Frank,
+  2026-10-06: "all of this is available to only me until further notice"):
+  staff.json's `crm` board key, checked by `site/crm.js` on every call;
+  anyone else gets 403 and the Tasks page never enters their menu or the
+  search (`site/public/tasks.js` probes `/api/crm/lookups`, like Rotation).
+  To open it to someone, add `crm` to their `board` and run
+  `python3 staff.py --write-js`. The D1 database `pantheon-crm` exists in the
+  account (created 2026-10-06, WNAM, schema applied) and wrangler.jsonc
+  carries its binding; a schema change is a new file under
+  `site/crm/migrations/`, applied with `wrangler d1 migrations apply
+  pantheon-crm --remote`.
+- **Sales Center > Tasks is the CRM's first page** (Frank, 2026-10-06:
+  "start on the tasks page next"; `site/public/tasks.js`, painted by
+  `tasksPaint`): Due today / Overdue / Next 7 days / Done today / All open,
+  for everyone or one person, Done with what happened (a TASK note on the
+  lead), Reschedule, New task hung on a lead or household found by name or
+  number, and a lead's name opening its coaching card (the CRM keeps
+  AgencyZoom's lead ids, so `openLeadCard` finds it). Tasks made here live
+  only in Pantheon until phase 2 of `CRM.md` moves `missed_call_tasks`' write
+  and `az_tasks.audit` / `live.js taskCompletion` over -- the nightly and the
+  board still read AgencyZoom's tasks.
 - `node --test site/crm.test.mjs` is its test; run it after touching
   `site/crm.js` or the schema. A new field is added to the schema (a new
   migration file), to `OBJECTS` in `site/crm.js` and to the test together.

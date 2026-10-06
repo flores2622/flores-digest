@@ -29,10 +29,10 @@ meaning what it means.
 | Leads (~11,600), stages, quotes, lead sources | `leads`, `stages`, `quotes`, `lead_sources` -- built, API live |
 | Customers / households, policies | `households`, `policies` -- built, API live |
 | Notes: calls, texts, emails, tasks, stage moves, TRAQ summaries | `notes` (same types), `stage_moves` -- built, API live |
-| Tasks per producer | `tasks` -- built, API live |
+| Tasks per producer | `tasks` -- built, API live, **Sales Center > Tasks page built** |
 | Service requests, workflows, categories, resolutions | `service_requests`, `workflows`, `service_categories`, `resolutions` -- built, API live |
 | Who changed what (AgencyZoom has no audit trail) | `events` -- every write, who, before and after |
-| The screens the producers and service team type into all day | **not built** -- phase 2 on |
+| The screens the producers and service team type into all day | Tasks built; leads, households, SRs and policies **not built** -- phases 3 on |
 | Texting and email through the RingCentral lines, drips and automations | **not built** -- phase 4 |
 | Lead intake from vendors (Mav AI, SmartFinancial, SureQuote, Facebook) and TRAQ's notes | **not built** -- phase 5; needs each vendor's delivery method |
 | The AgencyZoom mobile app, email open tracking | not planned |
@@ -47,11 +47,14 @@ for the rest. Nothing is switched until the two agree on a published day.
    saved corpus and `python3 verify_finalize.py` on a past day reads the same
    six headline figures from Pantheon's copy as from AgencyZoom's files.
 2. **Tasks and missed-call tasks** (the one thing the pipeline WRITES to
-   AgencyZoom): a Tasks page in the Sales Center (due today per producer,
-   complete with a comment), `missed_call_tasks.create` writing to
-   `/api/crm/tasks` instead, `az_tasks.audit` and `live.js taskCompletion`
-   reading from it. Cutover test: Task Completion identical both ways on a
-   day run in parallel.
+   AgencyZoom). **The Tasks page is built** (2026-10-06, `site/public/
+   tasks.js`: due today / overdue / next 7 days / done today / all open, per
+   person, Done with a comment, Reschedule, New task on a lead or household,
+   the lead's coaching card a click away). Still to do: `missed_call_tasks.
+   create` writing to `/api/crm/tasks` instead of AgencyZoom, `az_tasks.
+   audit` and `live.js taskCompletion` reading from it, and the first load
+   of the task history. Cutover test: Task Completion identical both ways on
+   a day run in parallel.
 3. **Notes, calls and the lead screen**: the lead page (the coaching card's
    lead opens it), typed notes, the call log written by the nightly's own
    RingCentral pass as CALL notes, stage moves from the page.
@@ -105,18 +108,26 @@ Deepgram, RingCentral and Insightful bills do not change.
   files for `wrangler d1 execute`.
 - `wrangler.jsonc` -- the D1 binding, commented, with the turn-on steps.
 
+## Who sees it
+
+Frank alone, until further notice (2026-10-06): staff.json's `crm` board
+key. Add it to a person's `board` (and run `python3 staff.py --write-js`) to
+let them in; the Tasks page then appears in their Sales Center menu.
+
 ## Turning it on
 
-1. `wrangler d1 create pantheon-crm`; paste the id into wrangler.jsonc's
-   `d1_databases` block and uncomment it; deploy (Workers Builds does it on
-   merge).
-2. `wrangler d1 migrations apply pantheon-crm --remote`.
-3. On the nightly's machine, where `data/` holds the corpus:
+1. Done 2026-10-06: the D1 database `pantheon-crm` was created in the
+   account (WNAM, id in wrangler.jsonc) and `0001_init.sql` applied; the
+   binding deploys with the next merge (Workers Builds). A later schema
+   change is a new file in `site/crm/migrations/`, applied with
+   `wrangler d1 migrations apply pantheon-crm --remote`.
+2. On the nightly's machine, where `data/` holds the corpus:
    `python3 crm_import.py --sqlite out/crm_import.db` to see the counts,
    then `python3 crm_import.py --sql out/crm_import` and apply each file
    with `wrangler d1 execute pantheon-crm --remote --file=...`.
-4. `GET /api/crm/lookups` from the board (signed in) answers with the lead
-   sources, pipelines, stages, resolutions, carriers and staff.
+3. `GET /api/crm/lookups` from the board (signed in) answers with the lead
+   sources, pipelines, stages, resolutions, carriers and staff, and Sales
+   Center > Tasks shows the imported tasks.
 
 ## Decisions still Frank's
 
