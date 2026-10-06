@@ -126,7 +126,11 @@ def backfill(start, end=None, force=False, log=print, batch=True, dry=False):
             said = None
             for attempt in range(2):      # once more if the count came back wrong
                 try:
-                    said = _verdicts(read(c, model, rules), n_heads)
+                    raw = read(c, model, rules)
+                    said = _verdicts(raw, n_heads)
+                    if not said and not dry:
+                        log(f"  {day} {c.get('who')} / {c.get('lead')}: answer {attempt + 1} not one verdict per call: "
+                            + json.dumps(raw, default=str)[:600])
                 except Exception as e:
                     log(f"  {day} {c.get('who')} / {c.get('lead')}: {type(e).__name__}: {str(e)[:120]}")
                 if said or dry:
@@ -168,7 +172,23 @@ def backfill(start, end=None, force=False, log=print, batch=True, dry=False):
 if __name__ == "__main__":
     if sys.argv[1:2] == ["--backfill"]:
         args = [a for a in sys.argv[2:] if not a.startswith("--")]
-        backfill(args[0], args[1] if len(args) > 1 else None, force="--force" in sys.argv,
-                 batch="--live" not in sys.argv)
+        lines = []
+        def _log(m):
+            print(m, flush=True)
+            lines.append(m)
+        try:
+            backfill(args[0], args[1] if len(args) > 1 else None, force="--force" in sys.argv,
+                     batch="--live" not in sys.argv, log=_log)
+        except Exception as e:
+            _log(f"FAILED: {type(e).__name__}: {e}")
+            raise
+        finally:
+            # the run's own log, beside its backups, so it can be read after an unattended run
+            import publish_board
+            cli, bucket = publish_board._client()
+            cli.put_object(Bucket=bucket, ContentType="text/plain",
+                           Key=f"backups/{dt.date.today().isoformat()}-legs-backfill/run-"
+                               f"{dt.datetime.utcnow().strftime('%H%M%S')}.log",
+                           Body="\n".join(lines).encode())
     else:
         print(_rules())
