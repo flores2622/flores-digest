@@ -2428,7 +2428,15 @@ repaint clears the list).
   high over downtown ("it disappears behind the pavement, and takes off to small"; then "gets lost behind the
   card because its not getting height fast enough": it climbs steeply once off the runway and flies on above
   the tiles at a good size; then "its still off to the right and small, center it and make it bigger": it rolls
-  and climbs on the runway's centre line at full size, its wings showing either side of first place); Yuma's contrails fade out
+  and climbs on the runway's centre line at full size, its wings showing either side of first place; then, 2026-10-06,
+  "gets lost when taking off then randomly appears": the climb is ONE steady motion -- it gathers speed down the
+  runway, lifts off and keeps the same climb through the leaderboard's top edge, behind the tiles (translucent, so
+  its ghost slides up behind them) and out over their top edge, only then easing off and shrinking, fading out
+  while still in the sky; it used to rush the hidden band and all but stop the moment it cleared the tiles, popping
+  up into the sun's glare white on white, so the day jet now has a shaded belly and a fine dark edge. The
+  keyframes are piecewise linear on purpose -- an eased segment stops it dead at each one. Checked in Chromium
+  that the two picture copies, the top card's and the leaderboard's, keep their animations in step, re-created
+  or scrolled away and back, so no timing fix was needed); Yuma's contrails fade out
   behind each jet ("can their trail fade properly?"). The two cities' Service banners are their
   own places, not a generic street ("for dallas and yuma make the
   neighborhood something else specific to the respective cities"): Dallas's
