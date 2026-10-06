@@ -3584,15 +3584,15 @@ function digDrillFor(d, who, keys) {
     const hhTag = r => r.existing === true ? `<span class="chip c-g">existing customer</span>` : r.existing === false ? "new household" : "—";
     const ls = mine(R.sold_leads), ps = mine(R.sold);
     const lr = ls.map(r => `<tr>${digDay(d, r)}<td>${digWho(r)}</td><td>${digLead(r)}</td><td>${cesc(r.source)}</td><td>${hhTag(r)}</td></tr>`);
-    const tr = ps.map(r => `<tr>${digDay(d, r)}<td>${digWho(r)}</td><td>${cesc(r.product)}</td><td>${cesc(r.policy)}</td>
-      <td class="num">${money(r.premium)}</td><td>${cesc(r.source)}</td></tr>`);
+    const tr = ps.map(r => (c => `<tr>${digDay(d, r)}<td>${digWho(r)}</td><td>${c ? digLead(c) : "—"}</td><td>${cesc(r.product)}</td><td>${cesc(r.policy)}</td>
+      <td class="num">${money(r.premium)}</td><td>${cesc(r.source)}</td></tr>`)(policyCustomer(r, ls)));
     return digDrillList(`Household completion${whoTag} · ${ls.length} marked sold · ${ps.length} polic${ps.length === 1 ? "y" : "ies"}`,
       "Existing customer is read off the lead's own source (a cross-sell source such as Home no Auto).",
       `<h3 class="rh3">Leads marked sold · ${ls.length}</h3>`
       + digTable(d, `<th>Producer</th><th>Lead</th><th>Source</th><th>Household</th>`, lr)
       + `<h3 class="rh3" style="margin-top:10px">Policies · ${ps.length}</h3>`
       + note("sales", "pol")
-      + digTable(d, `<th>Producer</th><th>Product</th><th>Policy</th><th class="num">Premium</th><th>Lead source</th>`, tr));
+      + digTable(d, `<th>Producer</th><th>Customer</th><th>Product</th><th>Policy</th><th class="num">Premium</th><th>Lead source</th>`, tr));
   }
   if (kind === "tasks") {
     if (!R.tasks || (!R.tasks.length && ((who ? ((d.producers || []).find(p => p.name === who) || {}).tasks : (d.totals || {}).tasks) || {}).total)) return digDrillList(`Tasks${whoTag}`, "", DIG_NO_ROWS);
@@ -3649,18 +3649,34 @@ function liveListNote(d, part, now, then) {
   const more = typeof now === "number" && typeof then === "number" && now > then ? now - then : 0;
   return `<p class="sd livelistnote" style="margin:4px 0 6px">Live figure; this list is as of the last checkpoint ${fmtClock(d.as_of) || ""}${more ? ` — ${more} more since` : ""}.</p>`;
 }
+/* The customer on a policy sold (Frank, 2026-10-05: "i dont need the lead and the policy info, just the
+   policy info with the customer name"). Policy records carry no customer, so it is the lead marked sold that
+   day by the same producer on the same lead source (the Sales sheet's own naming rule), else that producer's
+   only sold household that day; several households on one source stay blank rather than guess. */
+function policyCustomer(r, leads) {
+  const norm = x => String(x || "").trim().toLowerCase();
+  const hh = x => x.household || x.lead_id || x.customer_id || norm(x.lead);
+  const one = xs => new Set(xs.map(hh)).size === 1 ? xs[0] : null;
+  const ls = leads.filter(x => x.who === r.who && (x.day || "") === (r.day || ""));
+  const same = ls.filter(x => norm(x.source) === norm(r.source));
+  return same.length ? one(same) : one(ls);
+}
 function digDrillSold(d, mine, polNote = "", rows = null) {
   const R = rows || d.rows || {};
   const ps = mine(R.sold), ls = mine(R.sold_leads);
-  const tr = ps.map(r => `<tr>${digDay(d, r)}<td>${digWho(r)}</td><td>${cesc(r.product)}</td><td>${cesc(r.policy)}</td>
-    <td class="num">${money(r.premium)}</td><td>${cesc(r.source)}</td><td class="num">${r.effective ? fmtShortDate(r.effective) : ""}</td></tr>`);
-  const lr = ls.map(r => `<tr>${digDay(d, r)}<td>${digWho(r)}</td><td>${digLead(r)}</td><td>${cesc(r.source)}</td></tr>`);
-  return `<h3 class="rh3" style="margin-top:10px">Policies · ${ps.length}</h3>
-    ${polNote || ""}
-    ${digTable(d, `<th>Producer</th><th>Product</th><th>Policy</th><th class="num">Premium</th><th>Lead source</th><th class="num">Effective</th>`, tr)}
-    <h3 class="rh3" style="margin-top:10px">Leads marked sold · ${ls.length}</h3>
-    <p class="sd" style="margin:0 0 6px">AgencyZoom's policy records carry no customer, so the leads marked sold that day are listed beside them.</p>
-    ${digTable(d, `<th>Producer</th><th>Lead</th><th>Source</th>`, lr)}`;
+  const hh = x => x.household || x.lead_id || x.customer_id || String(x.lead || "").toLowerCase();
+  const used = new Set();
+  const tr = ps.map(r => {
+    const c = policyCustomer(r, ls);
+    if (c) used.add(hh(c));
+    return `<tr>${digDay(d, r)}<td>${digWho(r)}</td><td>${c ? digLead(c) : "—"}</td><td>${cesc(r.product)}</td><td>${cesc(r.policy)}</td>
+    <td class="num">${money(r.premium)}</td><td>${cesc(r.source)}</td><td class="num">${r.effective ? fmtShortDate(r.effective) : ""}</td></tr>`;
+  });
+  // a household marked sold whose policy is dated another day still shows, in one line
+  const rest = ls.filter((x, i) => !used.has(hh(x)) && ls.findIndex(y => hh(y) === hh(x)) === i);
+  return `${polNote || ""}
+    ${digTable(d, `<th>Producer</th><th>Customer</th><th>Product</th><th>Policy</th><th class="num">Premium</th><th>Lead source</th><th class="num">Effective</th>`, tr)}
+    ${rest.length ? `<p class="sd" style="margin:6px 0 0">Also marked sold, policy dated another day: ${rest.map(x => `${digLead(x)} (${cesc((x.who || "").split(" ")[0])})`).join(", ")}</p>` : ""}`;
 }
 
 /* Speed to Reply (Frank, 2026-09-27): how fast a lead's text or email got an

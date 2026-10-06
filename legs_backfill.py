@@ -44,8 +44,8 @@ def _heads(transcript):
 def read(card, model, rules=None):
     heads = _heads(card.get("transcript"))
     msg = (f"Producer: {card.get('who')}\nLead: {card.get('lead') or '(unknown)'}\n"
-           f"This transcript holds {len(heads)} calls -- return `legs`, one outcome per call, in the order of "
-           f"their headers.\nThe outcome the card gave the day as a whole: {card.get('catc') or '?'}\n"
+           f"This transcript holds {len(heads)} calls -- return `legs` with EXACTLY {len(heads)} entries, one per "
+           f"header in order, even for a call of only a few words (judge it on what little was said).\nThe outcome the card gave the day as a whole: {card.get('catc') or '?'}\n"
            f"Coach's summary of the day: {card.get('summary') or ''}\n\n"
            f"Machine transcript:\n{str(card.get('transcript') or '')[:40000]}")
     body = {"model": model, "system": rules or _rules(), "max_tokens": 800,
@@ -73,15 +73,23 @@ def _legmeta(day, log):
 
 
 def _meta_for(card, legmeta):
-    """The one saved row of this producer's whose read legs match the card's headers, by direction and
-    length."""
-    heads = _heads(card.get("transcript"))
-    for k, meta in legmeta.items():
-        if k.split("|")[0] != card.get("who") or len(meta) != len(heads):
-            continue
-        if all(m[0] == h[0] and abs((m[1] or 0) - h[1]) <= 1 for m, h in zip(meta, heads)):
-            return k, meta
-    return None, []
+    """Each header's own saved leg -- direction, length and start -- matched one call at a time across ALL of
+    this producer's rows, since a card can join two rows (Mike / Maria Ortiz 09-02: three dials on one row, a
+    call-in on another). A header with no match gets None, so its time stays blank."""
+    pool = [m for k, meta in legmeta.items() if k.split("|")[0] == card.get("who") for m in meta]
+    out = []
+    for direction, secs in _heads(card.get("transcript")):
+        hit = next((m for m in pool if m and m[0] == direction and abs((m[1] or 0) - secs) <= 1), None)
+        if hit:
+            pool[pool.index(hit)] = None
+        out.append(hit or [direction, secs, None])
+    return out
+
+
+def _verdicts(said, n):
+    """Apollo's per-call verdicts, only when there is one for every header."""
+    return said if isinstance(said, list) and len(said) == n and all(
+        isinstance(v, (list, tuple)) and v and v[0] in cc.cfg.CALL_CATEGORIES for v in said) else None
 
 
 def backfill(start, end=None, force=False, log=print, batch=True, dry=False):
@@ -105,26 +113,36 @@ def backfill(start, end=None, force=False, log=print, batch=True, dry=False):
             doc = json.loads(cli.get_object(Bucket=bucket, Key=key)["Body"].read())
         except Exception:
             continue
+        # a card whose legs carry no verdict (an earlier run that got the count wrong) is read again
         todo = [c for c in doc.get("calls") or []
-                if len(_heads(c.get("transcript"))) > 1 and (force or not c.get("legs"))]
+                if len(_heads(c.get("transcript"))) > 1
+                and (force or not any(l.get("oc") for l in c.get("legs") or []))]
         if not todo:
             continue
         legmeta = {} if dry else _legmeta(day, log)
         got = {}
         for c in todo:
-            try:
-                said = read(c, model, rules)
-            except Exception as e:
-                log(f"  {day} {c.get('who')} / {c.get('lead')}: {type(e).__name__}: {str(e)[:120]}")
-                continue
+            n_heads = len(_heads(c.get("transcript")))
+            said = None
+            for attempt in range(2):      # once more if the count came back wrong
+                try:
+                    raw = read(c, model, rules)
+                    said = _verdicts(raw, n_heads)
+                    if not said and not dry:
+                        log(f"  {day} {c.get('who')} / {c.get('lead')}: answer {attempt + 1} not one verdict per call: "
+                            + json.dumps(raw, default=str)[:600])
+                except Exception as e:
+                    log(f"  {day} {c.get('who')} / {c.get('lead')}: {type(e).__name__}: {str(e)[:120]}")
+                if said or dry:
+                    break
             if dry:
                 continue
-            ck, meta = _meta_for(c, legmeta)
-            p, n = ck.split("|", 1) if ck else (c.get("who"), "")
-            # _legs matches legmeta by producer + number; the card's own row is the one found above.
-            legs = cc._legs({"legs": said}, p, [{"number": n}], c.get("transcript"), {ck: meta} if ck else {})
-            if not legs:
+            if not said:
+                log(f"  {day} {c.get('who')} / {c.get('lead')}: no verdict for each of its {n_heads} calls -- left as it was")
                 continue
+            # _legs matches legmeta by producer + number: hand it this card's own legs, in header order
+            legs = cc._legs({"legs": said}, c.get("who"), [{"number": "card"}], c.get("transcript"),
+                            {CS._ck(c.get("who"), "card"): _meta_for(c, legmeta)})
             got[(c.get("who"), c.get("lead_id"), c.get("time"))] = legs
             log(f"  {day} {c.get('who')} / {c.get('lead')}: "
                 + " | ".join(f"Call {l['n']} {l['at'] or '?'} {l['dur']} {l.get('cat') or '(no verdict)'}" for l in legs))
@@ -154,7 +172,23 @@ def backfill(start, end=None, force=False, log=print, batch=True, dry=False):
 if __name__ == "__main__":
     if sys.argv[1:2] == ["--backfill"]:
         args = [a for a in sys.argv[2:] if not a.startswith("--")]
-        backfill(args[0], args[1] if len(args) > 1 else None, force="--force" in sys.argv,
-                 batch="--live" not in sys.argv)
+        lines = []
+        def _log(m):
+            print(m, flush=True)
+            lines.append(m)
+        try:
+            backfill(args[0], args[1] if len(args) > 1 else None, force="--force" in sys.argv,
+                     batch="--live" not in sys.argv, log=_log)
+        except Exception as e:
+            _log(f"FAILED: {type(e).__name__}: {e}")
+            raise
+        finally:
+            # the run's own log, beside its backups, so it can be read after an unattended run
+            import publish_board
+            cli, bucket = publish_board._client()
+            cli.put_object(Bucket=bucket, ContentType="text/plain",
+                           Key=f"backups/{dt.date.today().isoformat()}-legs-backfill/run-"
+                               f"{dt.datetime.utcnow().strftime('%H%M%S')}.log",
+                           Body="\n".join(lines).encode())
     else:
         print(_rules())

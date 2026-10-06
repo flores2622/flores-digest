@@ -263,16 +263,42 @@ async function azPausedUntil(env) {
   return azPauseSeen.until;
 }
 export function _resetAzPauseForTests() { azPauseSeen = { at: 0, until: 0 }; }
+/* ONE AgencyZoom request at a time, AZ_GAP_MS apart (2026-10-05). The
+   even-minute parts read policies, leads and five producers' tasks in
+   parallel -- a burst of ten-odd requests in the same second -- and
+   AgencyZoom's firewall answered with 429 "Too Many API Calls" every few
+   minutes all morning (99 that day); the Worker kept coming back every two
+   minutes, and from about 3 PM AgencyZoom refused it outright (403) while
+   the same saved login still answered 200 from anywhere else. So requests
+   queue here, and a 429 pauses AgencyZoom too (AZ_BUSY_MINUTES, or its
+   Retry-After), instead of being retried into a ban. */
+export const AZ_GAP_MS = 400;
+export const AZ_BUSY_MINUTES = 5;
+let azQueue = Promise.resolve(), azLast = 0;
+function azTurn() {
+  const turn = azQueue.then(async () => {
+    const wait = azLast + AZ_GAP_MS - Date.now();
+    if (wait > 0) await pause(wait);
+    azLast = Date.now();
+  });
+  azQueue = turn.catch(() => {});
+  return turn;
+}
 async function azGet(env, path, fetchFn, init = {}) {
   const until = await azPausedUntil(env);
   if (Date.now() < until) throw new Error(`AgencyZoom paused until ${azClock(until)} after a refused request`);
   const tok = await azToken(env, fetchFn);
+  await azTurn();
+  if (Date.now() < azPauseSeen.until) throw new Error(`AgencyZoom paused until ${azClock(azPauseSeen.until)} after a refused request`);
   countAz(path);
   const r = await fetchFn(`${AZ}${path}`, { ...init, headers: { ...(init.headers || {}), authorization: `Bearer ${tok}`, "content-type": "application/json" } });
   if (r.status === 403 || r.status === 429) await noteRefusal(path, r, fetchFn);
   if (r.status === 401) await azForget(env);          // the saved login stopped working: log in afresh next time
-  if (r.status === 403 && env.BOARD) {
-    const x = { until: Date.now() + AZ_PAUSE_MINUTES * 60000, status: 403, path, at: new Date().toISOString() };
+  if ((r.status === 403 || r.status === 429) && env.BOARD) {
+    const after = Number((r.headers && r.headers.get && r.headers.get("retry-after")) || 0);
+    const mins = r.status === 403 ? AZ_PAUSE_MINUTES
+      : Math.max(AZ_BUSY_MINUTES, Number.isFinite(after) && after > 0 ? Math.ceil(after / 60) : 0);
+    const x = { until: Date.now() + mins * 60000, status: r.status, path, at: new Date().toISOString() };
     await env.BOARD.put(AZ_PAUSE_KEY, JSON.stringify(x));
     azPauseSeen = { at: Date.now(), until: x.until };
   }

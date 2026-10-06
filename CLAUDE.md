@@ -771,6 +771,16 @@ and anything without the glow is the checkpoint's (Frank, 2026-09-24).
   headers (`server` says whose firewall), the first of the body, and the
   address Cloudflare sent it from -- in `worker-private/az_log/<day>.json`
   (`flushAzLog`, once per run). Read that before guessing why it refused.
+  **One request at a time, and a 429 pauses too** (2026-10-05): the
+  even-minute parts read policies, leads and the producers' tasks in
+  parallel, a burst of ten-odd requests in one second; AgencyZoom's
+  firewall answered 429 "Too Many API Calls" every few minutes from 9 AM
+  (99 that day), the Worker came back every two minutes, and from ~3 PM it
+  got 403 -- sales, households sold and quotes stopped glowing -- while the
+  same saved token still answered 200 from the nightly's machine on both
+  hosts. `azGet` now queues every request `AZ_GAP_MS` (400 ms) apart and a
+  429 pauses AgencyZoom for `AZ_BUSY_MINUTES` (5, or its Retry-After); a
+  403 still pauses 30.
 - **Contact rate, live contacts and Avg Talk Time are live too** (Frank,
   2026-09-28: "avg talk time, contact rate, and texts and emails should all
   be live as well"), and they are PROVISIONAL: the Worker cannot hear a
@@ -837,7 +847,11 @@ conversation but sits OUTSIDE the contact rate, so the Live contacts list
 says "N in the contact rate · M call-ins". daily.py keeps the premium quoted
 per lead (`quoted_premium`) and `speed_rows` -- the same first-dial rule as
 `speed_to_dial`, so the list matches the tile. Policy records carry no
-customer, so Sold lists the leads marked sold beside the policies. Past days:
+customer, so Sold is ONE table of the policies with a Customer column (Frank, 2026-10-06: "i dont need
+the lead and the policy info, just the policy info with the customer name"; `policyCustomer`): the lead
+marked sold that day by the same producer on the same source, else that producer's only sold household,
+blank when several households share it; a household marked sold whose policy is dated another day is one
+line under it. Household Completion's policies carry the same column. Past days:
 `python3 digest_rows.py --backfill 2026-09-01` from R2's saved inputs (no
 quoted premium, and no quoted list before 2026-09-24's `quoted_leads`).
 **Everything on the Digest opens its accounts** (Frank, 2026-09-29:
@@ -1630,6 +1644,10 @@ note is read again -- never delete that cache casually). Changing
 the prompt means deleting `data/callsum_<day>.json`, which re-reads everything.
 Do not do that casually, and never in a loop while iterating on wording.
 
+**A read waits up to five minutes** (`call_summary.TIMEOUT`, Frank,
+2026-10-05; it was 90 s, and two of that day's nine coaching cards timed
+out and had no card until a re-run).
+
 **Every read's instructions are prompt-cached** (Frank, 2026-09-29):
 `call_summary._post`, which every Claude API read goes through, marks the
 system prompt for caching, so a coaching card's ~20,800-token METHODOLOGY is
@@ -1993,6 +2011,9 @@ repaint clears the list).
   re-read only multiple call cards?" ... "yes set it up and run it"): `python3 legs_backfill.py --backfill
   2026-09-01` asks one short question per card with two or more call headers (8 in 09-01..10-02) and adds ONLY
   `legs`, clock times from R2's saved transcripts and RC log (backups under `backups/<today>-legs-backfill/`).
+  Each call's time is matched one call at a time across every row the card joins, and a read that does not
+  give one outcome per call is asked once more, then left alone -- never written as empty badges (Mike / Maria
+  Ortiz 09-02: three dials on one row and a call-in on another, a 1m27s "hello" call among them).
   A card without `legs` keeps the per-row pills above.
 - **The search is all-time** (Frank, 2026-10-02: "can it just be a
   universal all time search?") **and a lead opens its coaching card, never
