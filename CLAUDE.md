@@ -956,7 +956,8 @@ and the ops team"); anyone else gets a 403 and the page never enters the
 menu or the search (`site/public/rotation.js` adds it only when the Worker
 answers). Everyone who sees it logs turns; `rotation_edit` (staff.json) (Debbie and
 the ops team) change an order or who is next; a line is removed by whoever
-logged it or an editor. The board shows the folio's log, any past folio from the picker, and
+logged it or an editor. The board shows the folio's log, any past folio that holds a turn from the picker (Frank, 2026-10-06:
+"you added all the past folios but no data, remove them" -- empty folios are not listed), and
 each person's count folded under **Count by person** (Frank, 2026-10-06: "make this expandable or a
 dropdown it draws too much attention"; `rotTallyOpen` keeps it open across repaints this visit). The sheet's Sep 19 - Oct 19 tab was
 carried in on 2026-10-02 (logged by "Debbie (Rotation Sheet)"; Crystal's

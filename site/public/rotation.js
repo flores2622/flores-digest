@@ -145,7 +145,10 @@
   function logHtml() {
     const { start, end } = folioOf();
     const cur = folioEndFor(today());
-    const ends = FOLIO_CLOSE_DATES.filter(e => !cur || e <= cur).sort((a, b) => b.localeCompare(a));
+    // the picker lists the current folio and only the past folios that hold a logged turn (Frank, 2026-10-06:
+    // "you added all the past folios but no data, remove them")
+    const has = e => { const s = folioStartFor(e) || "0000-00-00"; return (ROT.entries || []).some(x => x.date >= s && x.date <= e); };
+    const ends = FOLIO_CLOSE_DATES.filter(e => (!cur || e <= cur) && (e === cur || e === rotFolio || has(e))).sort((a, b) => b.localeCompare(a));
     const opts = ends.map(e => {
       const s = folioStartFor(e);
       return `<option value="${e === cur ? "" : e}"${(rotFolio || cur) === e ? " selected" : ""}>${s ? fmtShortDate(s) + " – " : ""}${fmtShortDate(e)}${e === cur ? " (this folio)" : ""}</option>`;
