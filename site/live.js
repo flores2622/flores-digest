@@ -801,26 +801,20 @@ export function speedToDial(day, basis, leads, recs) {
 /* ---- the Sales sheet --------------------------------------------------- */
 
 /* sales_log_auto.product_name, line for line (keep in step): the sheet's
-   product name for a policy, by carrier id (basis.saleslog.carrier). */
-export function productName(p, carriers) {
+   product name for a policy -- the first of agencyzoom.json's product_names
+   rules that fits (carrier and a regex on the type name), else its default,
+   both handed over in basis.saleslog (carrier, product_rules, product_default). */
+export function productName(p, carriers, rules, dflt) {
   const raw = String(p.policyTypeName || "").trim();
   const carrier = (carriers || {})[String(p.carrierId)];
   if (!carrier || !raw) return raw;
-  const auto = /auto/i.test(raw);
-  if (carrier === "BW") return auto ? "BW-Auto" : `BW-${raw}`;
-  if (auto) return `${carrier}-Auto`;
-  if (carrier === "Foremost") {
-    if (/mobile|manufactured/i.test(raw)) return "Foremost-MH";
-    if (/landlord|dp\d|dwelling/i.test(raw)) return "Foremost-Landlord";
-    if (/atv|motorcycle|trailer|boat|watercraft|motor home|\brv\b|golf cart|toy/i.test(raw)) return "Foremost-Toys";
-    if (/vacant/i.test(raw)) return "Foremost-Vacant";
-    if (/home|ho-?\d/i.test(raw)) return "Foremost-Home";
+  const fill = (t) => t.replace("{carrier}", carrier).replace("{raw}", raw);
+  for (const r of rules || []) {
+    if (r.carrier && r.carrier !== carrier) continue;
+    if (r.match && !new RegExp(r.match, "i").test(raw)) continue;
+    return fill(r.name);
   }
-  if (carrier === "Farmers") {
-    if (/homeowner|^home$|ho-?\d/i.test(raw)) return "Farmers-Home";
-    if (/term|life/i.test(raw)) return "Farmers-Life";
-  }
-  return `${carrier}-${raw}`;
+  return fill(dflt || "{carrier}-{raw}");
 }
 function termOf(eff, exp) {
   const e = String(eff || "").slice(0, 10), x = String(exp || "").slice(0, 10);
@@ -861,7 +855,7 @@ export function salesLogEntries(day, basis, policies, sourceNames, soldRaw) {
       az_customer_id: one && one.household != null ? String(one.household) : "",
       lead_source: String(sourceNames[p.leadSourceId] || "").trim(),
       policy_number: String(p.policyNumber || ""),
-      product: productName(p, sl.carrier),
+      product: productName(p, sl.carrier, sl.product_rules, sl.product_default),
       premium: p.premium != null ? Number(p.premium) : null,
       term: termOf(p.effectiveDate, p.expiryDate),
       date_sold: String(p.soldDate || "").slice(0, 10),

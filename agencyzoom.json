@@ -1,17 +1,44 @@
 {
   "_about": "This AgencyZoom account's own numbers and names, in one place: the ids AgencyZoom gives workflows, service categories, resolutions and carriers, which differ for every agency. agencyzoom.py reads it (and says what each key means); `python3 agencyzoom.py --discover` reads the account's current lists from AgencyZoom and prints what this file is missing or has extra, and `--check` validates it. What the pipeline DOES with each of these (outcomes, the Sales sheet's product names, which pipelines are renewals) stays in code; only the account's numbers and workflow names live here.",
   "workflows": {
-    "junk": {"id": 23073, "name": "Pipeline"},
-    "claim": {"id": 23672, "names": ["Claim"]},
-    "commercial_renewals": {"names": ["Commercial Renewals"]},
+    "junk": {
+      "id": 23073,
+      "name": "Pipeline"
+    },
+    "claim": {
+      "id": 23672,
+      "names": [
+        "Claim"
+      ]
+    },
+    "commercial_renewals": {
+      "names": [
+        "Commercial Renewals"
+      ]
+    },
     "service": {
-      "renewals_ff": ["Personal Renewals"],
-      "renewals_bw": ["Other 30 day Renewals"],
-      "changes": ["Service Pipeline"],
-      "late_payments": ["Late Payments"],
-      "missing_docs": ["Contingencies", "Missing Documents"],
-      "reinstatement": ["Reinstatement"],
-      "claims": ["Claim"]
+      "renewals_ff": [
+        "Personal Renewals"
+      ],
+      "renewals_bw": [
+        "Other 30 day Renewals"
+      ],
+      "changes": [
+        "Service Pipeline"
+      ],
+      "late_payments": [
+        "Late Payments"
+      ],
+      "missing_docs": [
+        "Contingencies",
+        "Missing Documents"
+      ],
+      "reinstatement": [
+        "Reinstatement"
+      ],
+      "claims": [
+        "Claim"
+      ]
     }
   },
   "claim_categories": {
@@ -22,7 +49,10 @@
     "40943": "Commercial",
     "40945": "Work Comp"
   },
-  "commercial_claim_categories": [40943, 40945],
+  "commercial_claim_categories": [
+    40943,
+    40945
+  ],
   "resolutions": {
     "labels": {
       "32574": "Renewed: Accepted as is",
@@ -53,11 +83,20 @@
       "101637": "cancelled_before_sr",
       "101638": "sold_moved"
     },
-    "valid_from": {"38304": "2026-09-24"},
+    "valid_from": {
+      "38304": "2026-09-24"
+    },
     "trusted_by_pipeline": {
-      "late_payments": {"38304": "unable_to_contact"},
-      "changes": {"32570": "policy_cancelled", "38304": "unable_to_contact"},
-      "missing_docs": {"38304": "unable_to_contact"}
+      "late_payments": {
+        "38304": "unable_to_contact"
+      },
+      "changes": {
+        "32570": "policy_cancelled",
+        "38304": "unable_to_contact"
+      },
+      "missing_docs": {
+        "38304": "unable_to_contact"
+      }
     }
   },
   "carriers": {
@@ -69,6 +108,67 @@
     "102": "Foremost",
     "262": "Foremost"
   },
-  "renewal_ff_carriers": [484668, 102, 262, 484654],
-  "test_lead_ids": [49675255]
+  "product_names": {
+    "_about": "The Sales sheet's product names, the way the team types them (Frank, 2026-09-25: 'we only have 2 auto products. Farmers and BW'): the first rule whose carrier (the short name in `carriers`; none = any) and `match` (a case-insensitive regex searched in AgencyZoom's policy type name; none = always) fit names the row -- {carrier} and {raw} are filled in -- else `default`. sales_log_auto.product_name and the Worker's productName walk this same list.",
+    "rules": [
+      {
+        "carrier": "BW",
+        "match": "auto",
+        "name": "BW-Auto"
+      },
+      {
+        "carrier": "BW",
+        "name": "BW-{raw}"
+      },
+      {
+        "match": "auto",
+        "name": "{carrier}-Auto"
+      },
+      {
+        "carrier": "Foremost",
+        "match": "mobile|manufactured",
+        "name": "Foremost-MH"
+      },
+      {
+        "carrier": "Foremost",
+        "match": "landlord|dp\\d|dwelling",
+        "name": "Foremost-Landlord"
+      },
+      {
+        "carrier": "Foremost",
+        "match": "atv|motorcycle|trailer|boat|watercraft|motor home|\\brv\\b|golf cart|toy",
+        "name": "Foremost-Toys"
+      },
+      {
+        "carrier": "Foremost",
+        "match": "vacant",
+        "name": "Foremost-Vacant"
+      },
+      {
+        "carrier": "Foremost",
+        "match": "home|ho-?\\d",
+        "name": "Foremost-Home"
+      },
+      {
+        "carrier": "Farmers",
+        "match": "homeowner|^home$|ho-?\\d",
+        "name": "Farmers-Home"
+      },
+      {
+        "carrier": "Farmers",
+        "match": "term|life",
+        "name": "Farmers-Life"
+      }
+    ],
+    "default": "{carrier}-{raw}"
+  },
+  "renewal_ff_carriers": [
+    484668,
+    102,
+    262,
+    484654
+  ],
+  "test_lead_ids": [
+    49675255
+  ]
 }

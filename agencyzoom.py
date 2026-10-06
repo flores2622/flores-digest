@@ -32,6 +32,9 @@ sheet's product names -- stays in those modules.
                                     Contingencies SRs (service_notes)
     carriers                        carrier id -> the short name the Sales
                                     sheet uses (Farmers / BW / Foremost)
+    product_names                   the sheet's product name for a policy:
+                                    ordered rules on carrier + policy type
+                                    (sales_log_auto.product_name, live.js)
     renewal_ff_carriers             the carriers the Personal Renewals
                                     workflow carries (renewal_report)
     test_lead_ids                   lead records that are tests, by id
@@ -76,6 +79,8 @@ RESOLUTION_KEY_BY_ID = _ints(DATA["resolutions"]["outcome_by_id"])
 RESOLUTION_VALID_FROM = _ints(DATA["resolutions"]["valid_from"])
 TRUSTED_RESOLUTIONS = {k: _ints(v) for k, v in DATA["resolutions"]["trusted_by_pipeline"].items()}
 CARRIERS = _ints(DATA["carriers"])
+PRODUCT_RULES = [dict(r) for r in DATA["product_names"]["rules"]]
+PRODUCT_DEFAULT = DATA["product_names"]["default"]
 FF_CARRIERS = {int(x) for x in DATA["renewal_ff_carriers"]}
 TEST_LEAD_IDS = {int(x) for x in DATA["test_lead_ids"]}
 
@@ -111,6 +116,16 @@ def check(log=print):
     for c in FF_CARRIERS:
         if c not in CARRIERS:
             bad.append(f"renewal_ff_carriers: {c} is not in carriers")
+    import re
+    for i, r in enumerate(PRODUCT_RULES):
+        if "name" not in r:
+            bad.append(f"product_names.rules[{i}]: no name")
+        if r.get("carrier") and r["carrier"] not in CARRIERS.values():
+            bad.append(f"product_names.rules[{i}]: carrier {r['carrier']!r} is not a short name in carriers")
+        try:
+            re.compile(r.get("match") or "")
+        except re.error as e:
+            bad.append(f"product_names.rules[{i}]: bad match regex ({e})")
     for b in bad:
         log(f"  agencyzoom.json: {b}")
     return bad

@@ -32,17 +32,16 @@
  * way the sheet spells it: "Cross-Sell", "FFR-Cross Sell", "Existing client
  * purchased a new", "Home no Auto" ...). */
 
-import { COMMISSION_UNITS } from "./staff.js";
+import { COMMISSION_UNITS, COMMISSION, AGENCY } from "./staff.js";
 import LEAD_SOURCES from "./lead_sources_data.js";
 
-const TIER_NAMES = ["Good", "Better", "Best", "Great", "Excellent", "Outstanding"];
-const RATES = [0.03, 0.033, 0.0429, 0.0438, 0.0444, 0.05];
-export const SCHEDULES = {
-  individual: { mins: [25000, 30000, 35000, 40000, 45000, 50000], split: 1 },
-  team: { mins: [50000, 60000, 70000, 80000, 90000, 100000], split: 0.5 },
-};
+// The numbers are staff.json's `commission` (Frank's two sheets).
+const TIER_NAMES = COMMISSION.tier_names;
+const RATES = COMMISSION.rates;
+export const SCHEDULES = COMMISSION.schedules;
 export const UNITS = COMMISSION_UNITS;   // staff.json
-export const PAY = { life: 100, bundle: 50, xsell: 25, umbrella: 25, business: 0.035, kraftMin: 10000, kraft: 300 };
+export const PAY = COMMISSION.pay;
+const CARRIER_RX = new RegExp((AGENCY.carrier || "farmers").replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), "i");
 
 export function tiersOf(schedule) {
   const s = SCHEDULES[schedule];
@@ -126,8 +125,8 @@ export function standing(unit, entries) {
     !met && bundles.length > 0, `$${PAY.bundle} per new household with 2+ lines, ${tierWord}`, bundles.length);
   add("xsell", "Cross-sells to existing households", xsells.map((e) => ({ e, pay: met ? PAY.xsell : 0 })),
     !met && xsells.length > 0, `$${PAY.xsell} per new line, ${tierWord}`);
-  add("business", "Farmers business policies",
-    of("business").map((e) => ({ e, pay: /farmers/i.test(e.product || "") ? num(e.premium) * PAY.business : 0 })),
+  add("business", `${AGENCY.carrier || "Farmers"} business policies`,
+    of("business").map((e) => ({ e, pay: CARRIER_RX.test(e.product || "") ? num(e.premium) * PAY.business : 0 })),
     false, "3.5% of the premium; does not count toward the tier");
   const kraft = of("kraft"), kraftPrem = kraft.reduce((s, e) => s + num(e.premium), 0);
   const kraftOn = kraftPrem >= PAY.kraftMin;

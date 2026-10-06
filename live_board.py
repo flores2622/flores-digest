@@ -132,6 +132,8 @@ def basis(day):
         "saleslog": {
             "ids": {str(k): v for k, v in sales_log_auto._ids().items()},
             "carrier": {str(k): v for k, v in sales_log_auto.CARRIER.items()},
+            "product_rules": sales_log_auto.PRODUCT_RULES,
+            "product_default": sales_log_auto.PRODUCT_DEFAULT,
         },
         "quotes": _quote_basis(M),
         "business_hours": [f"{cfg.BUSINESS_START_HOUR:02d}:{cfg.BUSINESS_START_MIN:02d}",
