@@ -4,6 +4,10 @@
 // the page's own (window.STAFF).
 window.STAFF = {
  "agency": {
+  "name": "Flores Insurance Agency",
+  "short_name": "Flores",
+  "carrier": "Farmers",
+  "place": "Arizona",
   "timezone": "America/Phoenix"
  },
  "people": [

@@ -40,7 +40,7 @@ from secrets_load import load
 import staff
 
 BASE = "https://app.insightful.io/api/v1"
-UA = "FloresDigest/1.0 (+frank@floresinsuranceagency.com)"
+UA = staff.UA   # staff.json's agency
 
 AZ_TZ = staff.TZ   # the agency's clock (staff.json)
 

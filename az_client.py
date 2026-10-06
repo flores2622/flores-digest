@@ -11,10 +11,11 @@ import time
 import requests
 
 from secrets_load import load
+import staff
 import agencyzoom
 
 BASE = "https://app.agencyzoom.com"
-UA = "FloresDigest/1.0 (+frank@floresinsuranceagency.com)"
+UA = staff.UA   # staff.json's agency
 
 # Vendor integration error -- a lead vendor dumps leads into a pipeline
 # literally named "Pipeline". Ignore every move into it (HANDOFF_4 s5).

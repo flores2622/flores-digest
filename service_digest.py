@@ -54,20 +54,21 @@ HYBRID_UTIL = {p["name"] for p in staff.tagged("hybrid_util")}
 #   (key, board label, AgencyZoom workflowName(s), kind)
 # The workflow names are agencyzoom.json's `workflows.service`, by key.
 _WF = agencyzoom.service_workflows
+_LBL = agencyzoom.service_label   # the board's label, agencyzoom.json's workflows.service_labels
 PIPELINES = (
-    ("renewals_ff", "Farmers & Foremost Renewals", _WF("renewals_ff"), "renewal"),
-    ("renewals_bw", "Bristol West Renewals", _WF("renewals_bw"), "renewal"),
-    ("changes", "Changes & Service", _WF("changes"), "service"),   # changes, endorsements, basic service
-    ("late_payments", "Late Payments", _WF("late_payments"), "late"),       # the one pipeline tracked by stage
+    ("renewals_ff", _LBL("renewals_ff", "Farmers & Foremost Renewals"), _WF("renewals_ff"), "renewal"),
+    ("renewals_bw", _LBL("renewals_bw", "Bristol West Renewals"), _WF("renewals_bw"), "renewal"),
+    ("changes", _LBL("changes", "Changes & Service"), _WF("changes"), "service"),   # changes, endorsements, basic service
+    ("late_payments", _LBL("late_payments", "Late Payments"), _WF("late_payments"), "late"),       # the one pipeline tracked by stage
     # Contingencies: any contingency pending on a policy. AgencyZoom's
     # "Missing Documents" workflow, renamed by Frank 2026-09-24 -- the list
     # endpoint returns the new name on every SR, old ones included. The key
     # stays missing_docs so earlier days' rows still add up with new ones.
-    ("missing_docs", "Contingencies", _WF("missing_docs"), "docs"),
-    ("reinstatement", "Reinstatement", _WF("reinstatement"), "other"),
+    ("missing_docs", _LBL("missing_docs", "Contingencies"), _WF("missing_docs"), "docs"),
+    ("reinstatement", _LBL("reinstatement", "Reinstatement"), _WF("reinstatement"), "other"),
     # Claims (Frank, 2026-10-02): opened and worked only by a licensed
     # service rep -- claims.py is the definition, and the day's `claims`.
-    ("claims", "Claims", _WF("claims"), "claim"),
+    ("claims", _LBL("claims", "Claims"), _WF("claims"), "claim"),
 )
 RENEWALS = {w for _, _, ws, kind in PIPELINES if kind == "renewal" for w in ws}
 CHANGES = _WF("changes")

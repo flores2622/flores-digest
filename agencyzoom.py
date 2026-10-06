@@ -18,6 +18,8 @@ sheet's product names -- stays in those modules.
     workflows.service               each Service Center pipeline key -> the
                                     AgencyZoom workflow name(s) it covers
                                     (service_digest.PIPELINES)
+    workflows.service_labels        what the board calls each pipeline key
+    email_template_subjects         AgencyZoom's drip email subjects (messages)
     claim_categories                service category id -> the type of claim
     commercial_claim_categories     the categories that are Cerberus's
     resolutions.labels              resolution id -> its name (the fallback
@@ -32,6 +34,9 @@ sheet's product names -- stays in those modules.
                                     Contingencies SRs (service_notes)
     carriers                        carrier id -> the short name the Sales
                                     sheet uses (Farmers / BW / Foremost)
+    product_names                   the sheet's product name for a policy:
+                                    ordered rules on carrier + policy type
+                                    (sales_log_auto.product_name, live.js)
     renewal_ff_carriers             the carriers the Personal Renewals
                                     workflow carries (renewal_report)
     test_lead_ids                   lead records that are tests, by id
@@ -62,11 +67,18 @@ CLAIM_WORKFLOW_ID = int(WORKFLOWS["claim"]["id"])
 CLAIM_WORKFLOWS = set(WORKFLOWS["claim"]["names"])
 COMMERCIAL_RENEWAL_WORKFLOWS = set(WORKFLOWS["commercial_renewals"]["names"])
 SERVICE_WORKFLOWS = {k: set(v) for k, v in WORKFLOWS["service"].items()}
+SERVICE_LABELS = dict(WORKFLOWS.get("service_labels") or {})
+EMAIL_TEMPLATE_SUBJECTS = list(DATA.get("email_template_subjects") or [])
 
 
 def service_workflows(key):
     """The AgencyZoom workflow names a Service Center pipeline key covers."""
     return set(SERVICE_WORKFLOWS[key])
+
+
+def service_label(key, default):
+    """What the Service Center calls a pipeline key (workflows.service_labels)."""
+    return SERVICE_LABELS.get(key) or default
 
 
 CLAIM_TYPES = _ints(DATA["claim_categories"])
@@ -76,6 +88,8 @@ RESOLUTION_KEY_BY_ID = _ints(DATA["resolutions"]["outcome_by_id"])
 RESOLUTION_VALID_FROM = _ints(DATA["resolutions"]["valid_from"])
 TRUSTED_RESOLUTIONS = {k: _ints(v) for k, v in DATA["resolutions"]["trusted_by_pipeline"].items()}
 CARRIERS = _ints(DATA["carriers"])
+PRODUCT_RULES = [dict(r) for r in DATA["product_names"]["rules"]]
+PRODUCT_DEFAULT = DATA["product_names"]["default"]
 FF_CARRIERS = {int(x) for x in DATA["renewal_ff_carriers"]}
 TEST_LEAD_IDS = {int(x) for x in DATA["test_lead_ids"]}
 
@@ -102,6 +116,9 @@ def check(log=print):
     for k in SERVICE_WORKFLOWS:
         if k not in pipes:
             bad.append(f"workflows.service: {k!r} is not a Service Center pipeline ({sorted(pipes)})")
+    for k in SERVICE_LABELS:
+        if k not in pipes:
+            bad.append(f"workflows.service_labels: {k!r} is not a Service Center pipeline")
     for p, m in TRUSTED_RESOLUTIONS.items():
         if p not in pipes:
             bad.append(f"resolutions.trusted_by_pipeline: {p!r} is not a pipeline")
@@ -111,6 +128,16 @@ def check(log=print):
     for c in FF_CARRIERS:
         if c not in CARRIERS:
             bad.append(f"renewal_ff_carriers: {c} is not in carriers")
+    import re
+    for i, r in enumerate(PRODUCT_RULES):
+        if "name" not in r:
+            bad.append(f"product_names.rules[{i}]: no name")
+        if r.get("carrier") and r["carrier"] not in CARRIERS.values():
+            bad.append(f"product_names.rules[{i}]: carrier {r['carrier']!r} is not a short name in carriers")
+        try:
+            re.compile(r.get("match") or "")
+        except re.error as e:
+            bad.append(f"product_names.rules[{i}]: bad match regex ({e})")
     for b in bad:
         log(f"  agencyzoom.json: {b}")
     return bad

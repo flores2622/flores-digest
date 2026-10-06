@@ -11,8 +11,9 @@ import time
 import requests
 
 from secrets_load import load
+import staff
 
-UA = "FloresDigest/1.0 (+frank@floresinsuranceagency.com)"
+UA = staff.UA   # staff.json's agency
 
 
 class _Limiter:

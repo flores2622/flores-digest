@@ -496,8 +496,8 @@ and their `board` keys -- who may open Commercial, Rotation, Lead Scrub,
 Apollo's doubts, voice ratings, Coeus usage, every Role Play history,
 everyone's commission, and log sales for everyone -- live there and nowhere
 else. **Crystal's commission schedule is her own** (Frank, 2026-10-06: "crystals comm
-schedule and goal is different than the others" -- his "Crystal Comm Schedule" sheet): `commission.js`'s
-`flat` schedule, a set amount per tier of the folio's Personal Lines premium ($15,000 $600, $20,000 $800,
+schedule and goal is different than the others" -- his "Crystal Comm Schedule" sheet): staff.json's
+`commission.schedules.flat` (a schedule with `pay`; `commission.js` pays it instead of the rate), a set amount per tier of the folio's Personal Lines premium ($15,000 $600, $20,000 $800,
 $25,000 $1,000, $30,000 $1,250, $35,000 $1,500, $40,000+ $1,750; nothing under $15,000 -- Frank: the table,
 not the sheet's stale "less than $30,000" note), her `commission_units` entry's `schedule`; the extras are
 the same as everyone's (Frank: "bonus's and life is the same as the rest", so the sheet's $75 life, $50
@@ -562,8 +562,9 @@ random instants and every day of 2026, Python and JS alike (`sold_at`,
 `_utc_of`, the call-log windows, Insightful's day bounds, the day fraction,
 `soldAt`, the page's today / minutes / weekday). What a different zone
 would still need: the Worker's cron lines in wrangler.jsonc are UTC
-(8:00-5:59 on the agency's clock, written out by hand), the nightly
-routine's `CRON_TZ`, and the words "Arizona" in the guides.
+(`python3 staff.py --crons` writes them for the zone and `--check` compares,
+2026-10-06), the nightly routine's `CRON_TZ`, and the words "Arizona" in
+the guides.
 
 ## This AgencyZoom account's numbers
 
@@ -627,6 +628,153 @@ request). Still naming this agency's sources: the GROUPS' `who` lines and
 the guides in blueprints.js (words for a person, not matching), and the
 Worker's `live_basis` still carries not-a-sale / existing-household from
 Python as before.
+
+## The agency's own name, carrier and place
+
+**staff.json's `agency` names the agency** (2026-10-06, the fifth blocker to
+running Pantheon for another agency): `name` (the nightly email's header --
+build_day swaps the template's sample line -- the tab's title, The Flores
+Post's dateline, Apollo's chat instructions), `short_name` (the menu's
+brand, and the front desk's greeting: "thank you for calling Flores"),
+`carrier` (the greeting's other word -- "Farmers" -- and what Apollo is
+told the agency is), `carriers_spoken` (the carrier names said on calls:
+Deepgram's keyterms, with the agency's name and every active person's
+first name), `place` ("Arizona": how Role Play prospects talk and look),
+`sender` (the email's From) and `contact` (the address in every API
+client's User-Agent -- `staff.UA` -- and send_digest's default recipient).
+`staff.GREETING_WORDS` is the greeting regexes' alternation
+(`deepgram_stt.ANSWER_GREETING`, `coaching_cards.FRONT_DESK` -- patterns
+checked identical). The page gets `name`, `short_name`, `carrier`, `place`
+and `timezone` through `site/public/staff.js` (`PUBLIC_AGENCY_KEYS`; never
+the addresses) and the Worker everything through `site/staff.js`'s
+`AGENCY`. Checked identical: every User-Agent, both regexes, the keyterms
+as a set (Amanda's name moved to staff.json's order), Apollo's prompt line,
+the Role Play language and face lines, the dateline, title and brand.
+**Still this agency's, on purpose**: the editions' names (The Flores Post,
+The Flores Feed, KFLR, FLRS 500 -- Frank named them) and the Feed's
+handles, `messages.TEMPLATE_SUBJECTS` (AgencyZoom's own template
+subjects, data), the `Flores_ANTHROPIC_API_KEY` env name, wrangler.jsonc's
+Worker name, bucket and `ACCESS_TEAM_DOMAIN` (deployment, set per
+agency), and the guides' plain words.
+
+## The coaching documents are rendered: method, carrier layer, agency layer
+
+**`coaching/METHODOLOGY.md` and `coaching/TRAINING.md` are WRITTEN by
+`python3 coaching_text.py --write`** (2026-10-06, the sixth blocker to
+running Pantheon for another agency) from `coaching/src/METHODOLOGY.md` and
+`coaching/src/TRAINING.md` -- the method, with `{{placeholders}}` where a
+carrier or the agency is named -- filled by two layers: **the carrier
+layer**, `coaching/carrier/<carrier>/` (staff.json's `agency.carrier`,
+lower-cased; Farmers today): `carrier.json` (the name, its possessive, how
+transcripts mishear it -- "Farmer's" -- the quoting system ALTA and the
+website Farmers.com) and the occupation-discount text, METHODOLOGY's list
+of groups (`occupations_methodology.md`) and the Training deck's opening
+(`occupations_training.md`); and **the agency layer**, staff.json: the
+agency's name and short name, `also_known_as` ("Frank Flores Agency" --
+the greeting rule's list of names not to say), `misheard_as` ("Florence"),
+the front desk (the service person whose playbook role is `front_desk`:
+Debbie) and the referral staff member (`referral_source`: Francisco).
+Everything else in the templates -- the rules, Frank's rulings and dates,
+the example calls with Mike, Lorena and Coral -- is the method and stays as
+written. **Edit the templates or a layer, never the rendered files**;
+`python3 coaching_text.py --check` fails when they are stale, `--fills`
+prints every value. Rendered and compared: TRAINING byte-identical,
+METHODOLOGY identical but for one line wrap (Francisco's name no longer
+breaks across lines) -- no word changed, so Apollo reads the same method;
+the one-off scripts' section anchors (sendoff, assume_reread,
+legs_backfill) all still match. ROLEPLAY.md names no carrier or agency and
+is not rendered. Every reader (coaching_cards, call_summary, the Worker's
+imports, Coeus) still reads the rendered files, unchanged. A new carrier
+means a new `coaching/carrier/<name>/` folder with its own discount list;
+the guides in blueprints.js still say "Farmers" in plain words.
+
+## The agency's goals and thresholds
+
+**`goals.json` holds every goal number** (2026-10-06, the seventh blocker to
+running Pantheon for another agency): the colour thresholds (one green /
+yellow pair per metric, `lower_better` for Speed to Dial), the two
+straight-count metrics that scale by the number of producers for the team
+row, the life goal (policies a week per producer), the reply-speed goal
+(15 minutes green, over an hour red), the week's premium goal The Flores
+Post judges a slow week by ($20,000) and the Coach AI bar ranges.
+`goals.py` reads it; `digest_config.THRESHOLDS`, `TEAM_SCALED_METRICS`,
+`LIFE_WEEKLY_GOAL` and `COACH_BAR_RANGES` are built from it, names and
+shapes unchanged -- `tier()` and `life_week_tier` checked identical on 31
+values per metric and every weekday case. **The board page reads
+`site/public/goals.js`** (`window.GOALS`), written by `python3 goals.py
+--write-js` -- never by hand; `--check` fails when stale: index.html's
+`THRESHOLDS`, `LIFE_WEEKLY_GOAL` and `REPLY_GOAL` mirrors are gone, and
+`TEAM_SCALE` is the producer count from staff.json; The Flores Post's goal
+board writes its lines from the thresholds and its slow-week line from the
+week goal; the Feed's Hide the Pain Harold meme fires under the contact-rate
+green. Checked equal to the old literals (the page's eleven metrics, the
+goal board's nine lines, the week goal, the team scale). **The rules stay
+in code**: how a tier is judged (task completion green only at 100, the
+inclusive >=), the pace rules, the page's `tierColor` / `lifeTier` /
+`replyTier`. Still in words: the guides' "50 dials, 7 minutes, 13%" lines
+in blueprints.js -- change them with goals.json.
+
+## The Sales sheet's product names and the commission schedule
+
+**The sheet's product names are rules in `agencyzoom.json`'s
+`product_names`** (2026-10-06, the eighth blocker to running Pantheon for
+another agency): an ordered list, each rule a carrier (the short name in
+`carriers`, or any) and a case-insensitive regex on AgencyZoom's policy
+type name, giving the name with `{carrier}` / `{raw}` filled in, then a
+default -- the same ten rules `sales_log_auto.product_name` and
+`live.js productName` used to carry as code (BW-Auto for any BW auto,
+Foremost-MH / Landlord / Toys / Vacant / Home, Farmers-Home / Life,
+`{carrier}-Auto` for any other auto, else `{carrier}-{raw}`). Both walk
+the list, the Worker's copy riding in `live_basis.saleslog.product_rules`
+/ `product_default`; `agencyzoom.py --check` compiles every regex. Checked
+identical on 315 type-name x carrier cases, old against new on each side
+and Python against JS. **Frank's commission schedule is staff.json's
+`commission`**: the tier names, rates and each schedule's monthly minimums
+and split, and the additional pay (life, bundle, cross-sell, umbrella,
+business share, the Kraft Lake bonus and its minimum); `site/commission.js`
+reads it through `staff.js`'s `COMMISSION`, and the business line's
+carrier word comes from `agency.carrier`. Schedules, pay and both tier
+tables checked equal. Still in code: what makes a product life / umbrella /
+Kraft Lake / business (`kindOf`'s words) and the eligible lines.
+
+## The words on the calls, the drip subjects and the Worker's cron
+
+**The last of this agency's words in code moved out** (2026-10-06, the
+ninth piece). **How a transcript spells a staff name** is each person's
+`heard_as` in staff.json (Crystal: Cristal; Sarahi: Sarai, Zarahi):
+`staff.name_forms(first)` builds the alternation `deepgram_stt.
+producer_speaker` uses to find who introduced themselves (it was
+`NAME_FORMS`), and `staff.heard_names()` is `coaching_cards.STAFF_NAMES`
+(who a pick-up line names; it gains Zarahi, which Deepgram's table had and
+the cards' did not). **How Whisper hears the carrier** is the carrier
+layer's `heard_as_regex` (coaching/carrier/farmers/carrier.json: farmers?,
+fármios, partners insurance, farmer), `coaching_text.CARRIER_HEARD`, in
+`transcribe.SELF_ID` with every active first name from staff.json --
+fuzzed identical to the old pattern on 3,960 phrases; Deepgram's `AGENCY`
+alternation takes `agency.carrier` itself. **AgencyZoom's drip email
+subjects** are `agencyzoom.json`'s `email_template_subjects`
+(`messages.TEMPLATE_SUBJECTS`, the same 70), and **the Service Center's
+pipeline labels** its `workflows.service_labels` ("Farmers & Foremost
+Renewals", "Bristol West Renewals" ... -- `service_digest.PIPELINES` reads
+them through `agencyzoom.service_label`, defaults as before). **The
+Worker's cron lines are checked against the zone**: `python3 staff.py
+--crons` prints wrangler.jsonc's `triggers.crons` for `agency.timezone`
+(every minute 8:00 AM-5:59 PM weekdays, `staff.WORKER_CRON_HOURS`, in
+UTC), and `staff.py --check` fails when the file disagrees; a zone with
+daylight saving gets no lines, only the warning that one UTC set cannot
+follow it. Still this agency's, in words: `live_contact`'s "from arizona
+insurance reports" drip phrase, the guides, the editions' names.
+
+## Running Pantheon for another agency: NEW_AGENCY.md and agency_check.py
+
+**`NEW_AGENCY.md` is the guide** (2026-10-06): the six steps -- staff.json,
+agencyzoom.json (with `--discover`), lead_sources.json (with
+`--discover`), goals.json, the coaching carrier layer, deployment -- and
+what is still Flores's in words. **`python3 agency_check.py` runs every
+setup file's `--check`** (staff, agencyzoom, lead_sources, goals,
+coaching_text; `--fix` rewrites the generated files first) and must say
+"every setup file checks out" before a deploy. Run it after touching any
+of those files here too: the Workers build does not.
 
 ## Phone numbers
 

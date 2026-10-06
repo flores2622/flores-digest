@@ -13,6 +13,7 @@ import statistics
 import sys
 
 import panels
+import staff
 import render_report as rr
 import util_panel
 from util_panel import assert_div_balance
@@ -32,6 +33,7 @@ def build(day, template=TEMPLATE):
     M = json.loads(pathlib.Path(f"data/metrics_{day}.json").read_text())
     src = pathlib.Path(template).read_text()
     h = src
+    h = h.replace("Flores Insurance Agency", staff.AGENCY_NAME)   # the template's sample header
     h = h.replace("Wednesday, August 12, 2026", long_label)
     h = h.replace("Aug 12, 2026", label).replace("August 12, 2026",
                                                  d.strftime("%B %-d, %Y"))

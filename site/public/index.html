@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>Pantheon — Flores Insurance Agency</title>
+<title>Pantheon</title>
 <!-- The board as a phone app (Frank, 2026-10-03: "coeus icon, build the app"): Safari > Share >
      Add to Home Screen opens it full screen under the owl (Apollo's, the assistant's). The name below is what the icon is
      labelled; the manifest carries it for Android. Icons are drawn by design/app_icon.py. -->
@@ -1866,7 +1866,7 @@ html[data-theme="phoenix"] .tourcard .tbtns .tback { background: #f4e2cf; border
 <body>
 <div class="shell">
   <nav class="tabs" role="tablist" aria-label="Main menu">
-    <div class="brand">Flores<br><span>Insurance</span></div>
+    <div class="brand" id="brand">Flores<br><span>Insurance</span></div>
     <div class="navgrp">Apollo · Sales</div>
     <button class="tab" role="tab" aria-selected="true"  data-v="salescenter">Sales Center</button>
     <div class="subnav" data-for="salescenter"></div>
@@ -1924,6 +1924,7 @@ html[data-theme="phoenix"] .tourcard .tbtns .tback { background: #f4e2cf; border
 
 <script src="blueprints.js"></script>
 <script src="staff.js"></script>
+<script src="goals.js"></script>
 <script>
 /* The staff list (staff.json, through staff.js -- `python3 staff.py
    --write-js`): who is a producer, their colours, tags and the display
@@ -1934,6 +1935,13 @@ const staffBy = Object.fromEntries(STAFF.people.map(p => [p.name, p]));
 const staffHas = (name, tag) => !!(staffBy[name] && (staffBy[name].tags || []).includes(tag));
 const staffTagged = tag => STAFF_ACTIVE.filter(p => (p.tags || []).includes(tag)).map(p => p.name);
 const staffOrder = key => (STAFF.orders || {})[key] || [];
+/* The agency's goals and thresholds (goals.json, through goals.js -- `python3
+   goals.py --write-js`): the numbers behind every tier colour on this page. */
+const GOALS = window.GOALS || { thresholds: {}, reply_goal_minutes: { green: 15, red: 60 }, life_weekly_goal: 1, week_premium_goal: 20000 };
+/* The agency itself (staff.json agency): the tab's title and the menu's brand. */
+const AGENCY = STAFF.agency || {};
+if (AGENCY.name) document.title = `Pantheon — ${AGENCY.name}`;
+if (AGENCY.short_name) { const b = document.getElementById("brand"); if (b) b.innerHTML = `${AGENCY.short_name}<br><span>Insurance</span>`; }
 /* The agency's clock (staff.json agency.timezone, through staff.js): every
    "today", clock time and business-hour figure on the page is worked out in
    it, never by subtracting 7 hours -- so a zone with daylight saving reads
@@ -3065,7 +3073,7 @@ function digestDay(d, who) {
    without it. A range: one a week for every week in it -- green at the
    goal, yellow with some, red with none. A day built before the goal has
    no week count and uses its own. */
-const LIFE_WEEKLY_GOAL = 1;
+const LIFE_WEEKLY_GOAL = GOALS.life_weekly_goal;   // goals.json
 function lifeGoal(d, team) {
   const per = LIFE_WEEKLY_GOAL * (team ? TEAM_SCALE : 1);
   const days = d.days || [];
@@ -3759,7 +3767,7 @@ function digDrillSold(d, mine, polNote = "", rows = null) {
    messages.py's rows, so a range takes its medians over every reply. The
    waiting list itself is on the Texts & Emails page. */
 // Frank's targets (2026-09-27): 15 minutes or less green, over an hour red.
-const REPLY_GOAL = { green: 15, red: 60 };
+const REPLY_GOAL = GOALS.reply_goal_minutes;   // goals.json
 const replyTier = m => m == null ? "" : m <= REPLY_GOAL.green ? "tg" : m > REPLY_GOAL.red ? "tr" : "ty";
 function speedReplyPanel(d, who) {
   const M = d.messages;
@@ -4544,20 +4552,8 @@ function median(arr) {
 // policy_count/premium_sold_per_policy same as the team always does
 // (Frank, 2026-09-15: "when filtered to a range of days, it should follow
 // the per policy tiering").
-const THRESHOLDS = {
-  call_volume: { green: 50, yellow: 40 },
-  avg_talk_min: { green: 7, yellow: 3 },
-  contact_rate_pct: { green: 13, yellow: 10 },
-  households_quoted: { green: 5, yellow: 2 },
-  premium_quoted_per_hh: { green: 900, yellow: 501 },
-  premium_sold_per_policy: { green: 900, yellow: 501 },
-  policy_count: { green: 4, yellow: 1 },
-  task_completion_pct: { green: 100, yellow: 90 },
-  utilization_pct: { green: 85, yellow: 80 },
-  roleplay_score: { green: 80, yellow: 0 },
-  closing_ratio_pct: { green: 25, yellow: 15 },   // digest_config.THRESHOLDS, for live recolouring
-};
-const TEAM_SCALE = 5; // digest_config.TEAM_SCALE == len(PRODUCERS)
+const THRESHOLDS = GOALS.thresholds;   // goals.json, the same numbers digest_config reads
+const TEAM_SCALE = STAFF_ACTIVE.filter(p => p.producer).length; // digest_config.TEAM_SCALE == len(PRODUCERS), from staff.json
 function tierColor(metric, value) {
   const t = THRESHOLDS[metric];
   if (value == null) return "red";

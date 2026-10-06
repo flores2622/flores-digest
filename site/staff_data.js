@@ -4,12 +4,29 @@ export default {
   "_about": "The agency's people, in one place. Every id, email, extension, role and board permission the code uses comes from here: Python through staff.py, the Worker through site/staff_data.js, which `python3 staff.py --write-js` writes from this file (never edit it by hand), and the board page through site/public/staff.js, a copy with no emails, phone or AgencyZoom ids that the same command writes. Change a person here, run that, and run `python3 staff.py --check`. tags: what a person is in the pipeline; board: what they may open on the board. The meaning of every tag and board key is in staff.py.",
   "agency": {
     "name": "Flores Insurance Agency",
+    "short_name": "Flores",
+    "carrier": "Farmers",
+    "carriers_spoken": [
+      "Farmers",
+      "Farmers Insurance",
+      "Bristol West",
+      "Foremost"
+    ],
+    "also_known_as": [
+      "Frank Flores Agency"
+    ],
+    "misheard_as": "Florence",
+    "place": "Arizona",
     "timezone": "America/Phoenix",
-    "sender": "salesdigest@floresinsuranceagency.com"
+    "sender": "salesdigest@floresinsuranceagency.com",
+    "contact": "frank@floresinsuranceagency.com"
   },
   "people": [
     {
       "name": "Crystal Mango",
+      "heard_as": [
+        "cristal"
+      ],
       "email": "crystal@floresinsuranceagency.com",
       "ext": "106",
       "rc_id": "193226052",
@@ -89,6 +106,10 @@ export default {
     },
     {
       "name": "Sarahi Chin",
+      "heard_as": [
+        "sarai",
+        "zarahi"
+      ],
       "email": "sarahi@floresinsuranceagency.com",
       "ext": "109",
       "rc_id": "774862052",
@@ -381,5 +402,76 @@ export default {
       "Coral Barwick",
       "Sarahi Chin"
     ]
+  },
+  "commission": {
+    "_about": "Frank's Commission Sheet and Team Commission Sheet (2026-10-01), in numbers: the tiers (name, monthly premium minimum per schedule, rate on the whole premium), the team schedule's split, and the additional pay (life per policy, a new household bundle, a cross-sell line, an umbrella, business as a share of premium, the Kraft Lake bonus at its premium minimum). site/commission.js reads it through staff.js; commission_units says who is on which schedule. A schedule with `pay` (Crystal's \"Crystal Comm Schedule\", 2026-10-06) pays that set amount at each tier instead of the rate; her extras are everyone's.",
+    "tier_names": [
+      "Good",
+      "Better",
+      "Best",
+      "Great",
+      "Excellent",
+      "Outstanding"
+    ],
+    "rates": [
+      0.03,
+      0.033,
+      0.0429,
+      0.0438,
+      0.0444,
+      0.05
+    ],
+    "schedules": {
+      "individual": {
+        "mins": [
+          25000,
+          30000,
+          35000,
+          40000,
+          45000,
+          50000
+        ],
+        "split": 1
+      },
+      "team": {
+        "mins": [
+          50000,
+          60000,
+          70000,
+          80000,
+          90000,
+          100000
+        ],
+        "split": 0.5
+      },
+      "flat": {
+        "mins": [
+          15000,
+          20000,
+          25000,
+          30000,
+          35000,
+          40000
+        ],
+        "pay": [
+          600,
+          800,
+          1000,
+          1250,
+          1500,
+          1750
+        ],
+        "split": 1
+      }
+    },
+    "pay": {
+      "life": 100,
+      "bundle": 50,
+      "xsell": 25,
+      "umbrella": 25,
+      "business": 0.035,
+      "kraftMin": 10000,
+      "kraft": 300
+    }
   }
 };
