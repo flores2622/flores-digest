@@ -61,6 +61,7 @@ import { coeusChat, coeusChats, coeusUsage } from "./coeus.js";
 import { leadsIndex } from "./lead_index.js";
 import { rotationGet, rotationPost } from "./rotation.js";
 import { scrubGet, scrubPost } from "./scrub.js";
+import { hygieneGet, hygienePost } from "./hygiene.js";
 import { claimsForViewer } from "./claims_view.js";
 import { PRODUCER_EMAILS, STAFF_FIRST_NAMES, SALES_SHEET_NAMES, SALES_TEAMS, AGENCY, hasBoard, boardEmails, TZ, localDay } from "./staff.js";
 
@@ -169,6 +170,13 @@ export default {
       if (parts[1] === "rotation" && parts.length === 2) {
         if (request.method === "GET") return rotationGet(request, env, identityOf);
         if (request.method === "POST") return rotationPost(request, env, identityOf);
+      }
+
+      // The CRM Hygiene & Audit Log (Frank, 2026-10-06): site/hygiene.js,
+      // staff.json's `hygiene` only -- the Operations Center's first page.
+      if (parts[1] === "hygiene" && parts.length === 2) {
+        if (request.method === "GET") return hygieneGet(request, env, identityOf);
+        if (request.method === "POST") return hygienePost(request, env, identityOf);
       }
 
       // The lead scrub tracker (Frank, 2026-10-02): site/scrub.js,

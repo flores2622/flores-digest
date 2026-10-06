@@ -492,7 +492,7 @@ staff list" -- the first step to running Pantheon for another agency). Every
 person's AgencyZoom id, RingCentral extension and id, email, which nightly
 email they get, whether they are a producer, their Service Center role, their
 pipeline tags (licensed, hybrid, training-lead owner, commercial owner ...)
-and their `board` keys -- who may open Commercial, Rotation, Lead Scrub,
+and their `board` keys -- who may open Commercial, Rotation, Lead Scrub, CRM Hygiene,
 Apollo's doubts, voice ratings, Coeus usage, every Role Play history,
 everyone's commission, and log sales for everyone -- live there and nowhere
 else. **Crystal's commission schedule is her own** (Frank, 2026-10-06: "crystals comm
@@ -1151,10 +1151,46 @@ carried in on 2026-10-02 (logged by "Debbie (Rotation Sheet)"; Crystal's
 blank slot as a skip); earlier folios stay in the sheet. Producers have no
 tour step for it, since they can't open it.
 
+## The Operations Center
+
+**Operations Center is the ops team's own Center** (Frank, 2026-10-06: "a
+new category for operatonis only"): a left-bar group of its own between
+Athena's and Cerberus's, hidden until the Worker lets the login in (like
+Commercial), holding **CRM Hygiene** and **Lead Scrub** (moved from the
+Sales Center the same day: "move the lead scrubber there as well"). Each
+page's own module adds it through `opsShow` (index.html) when its Worker
+route answers, so `CENTERS.operations` is empty for everyone else and the
+Center never enters the menu, the search or the start-page list.
+
+**CRM Hygiene is Amanda's "CRM Hygeine" Google Doc as a log** (Frank,
+2026-10-06: "look at file named CRM Hygiene, build that into pantheon") --
+"CSR Redirection & Process Tracking": accounts handled incorrectly, assigned
+improperly or left without notes, tasks or follow-ups, reviewed in the
+one-on-ones. `site/hygiene.js` (Worker, `/api/hygiene`) keeps one R2 file,
+`hygiene/log.json`, etag-guarded like the rotation. **Its columns are the
+doc's** -- Client Name, Policy Number, Note / Description of Issue, Date --
+plus the rep the entry is about (the service team first in the
+suggestions, anything typed accepted), which line of the doc's
+**Redirection Standard Checklist** it missed (`STANDARDS`: Check before
+passing / Ownership / Calendar accuracy / Other, the doc's words, shown
+beside the log), who logged it and when, every edit's earlier version, and
+a **Reviewed in a one-on-one** tick with who and when. The doc's six rows
+are the log's first entries (`SEED`, logged as "Amanda (CRM Hygiene doc)",
+rep blank -- the doc names none), written the first time anyone posts.
+**Only the ops team sees it**: staff.json's `hygiene` (Frank, Francisco,
+Veronica, Amanda); everyone who sees it logs, edits, reviews and removes.
+The page (`site/public/hygiene.js`) shows entries, this month, how many
+wait for a one-on-one and the standard missed most, a count per rep that
+filters, the log newest first with search / rep / standard / reviewed
+filters and a CSV, and the checklist card. Athena's Road Map carries the
+standard's three lines for the service team; the log itself is never
+described there.
+
 ## The lead scrub
 
-**Sales Center > Lead Scrub tracks a lead list being cleaned up in both Apex
-and AgencyZoom** (Frank, 2026-10-02). `site/scrub.js` (Worker, `/api/scrub`
+**Operations Center > Lead Scrub tracks a lead list being cleaned up in both
+Apex and AgencyZoom** (Frank, 2026-10-02; under the Sales Center until
+2026-10-06). `site/scrub.js` (Worker, `/api/scrub`
 and `/api/scrub/<id>`) keeps one R2 file per list, `scrub/lists/<id>.json`,
 its progress in the object's customMetadata so the picker reads no list.
 **Its columns are Frank's scrub sheet** (his screenshot, 2026-10-02):

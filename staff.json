@@ -169,6 +169,7 @@
         "rotation_edit",
         "scrub",
         "scrub_edit",
+        "hygiene",
         "roleplay_history",
         "commission_all",
         "sales_log_all"
@@ -191,6 +192,7 @@
         "rotation_edit",
         "scrub",
         "scrub_edit",
+        "hygiene",
         "roleplay_history"
       ],
       "handle": "dm.francisco"
@@ -210,6 +212,7 @@
         "rotation_edit",
         "scrub",
         "scrub_edit",
+        "hygiene",
         "roleplay_history"
       ],
       "handle": "vero.vacation.approved"
@@ -239,6 +242,7 @@
         "rotation_edit",
         "scrub",
         "scrub_edit",
+        "hygiene",
         "roleplay_history",
         "commission_all",
         "sales_log_all"
