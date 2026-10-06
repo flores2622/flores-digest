@@ -1635,6 +1635,10 @@ note is read again -- never delete that cache casually). Changing
 the prompt means deleting `data/callsum_<day>.json`, which re-reads everything.
 Do not do that casually, and never in a loop while iterating on wording.
 
+**A read waits up to five minutes** (`call_summary.TIMEOUT`, Frank,
+2026-10-05; it was 90 s, and two of that day's nine coaching cards timed
+out and had no card until a re-run).
+
 **Every read's instructions are prompt-cached** (Frank, 2026-09-29):
 `call_summary._post`, which every Claude API read goes through, marks the
 system prompt for caching, so a coaching card's ~20,800-token METHODOLOGY is
