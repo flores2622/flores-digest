@@ -73,7 +73,7 @@ speaker turn on its own line:
   and never quote a "Speaker N" line as the producer's greeting or the
   producer's words unless what it says makes that plain.
 - Names are often misheard -- the producer's, the lead's, the agency's
-  ("Farmer's", "Flores" as "Florence"). Never mark anyone down for a name
+  ("{{carrier_misheard}}", "{{agency_short}}" as "{{agency_misheard}}"). Never mark anyone down for a name
   the transcript got wrong.
 - "[TRANSCRIPT CUT HERE]" means the call went on past what you were given.
   Do not score what you cannot see: the close and the next step may be in
@@ -414,7 +414,7 @@ still gets an "m" there, same as on a sales call.
 
 ## The reports: verify, don't just take their word (Frank, 2026-10-02)
 
-The producer quotes in Farmers' quoting system (ALTA), and before the call
+The producer quotes in {{carrier_pos}} quoting system ({{quoting_system}}), and before the call
 gets far it has already pulled reports on the prospect: **drivers, vehicles,
 limits, coverages, dates (effective / expiration), prior carrier, policy
 status, the term (6 or 12 months)** and a bit more. The Prior Insurance
@@ -434,7 +434,7 @@ nobody pinned down, taken into the price comparison anyway, when the Prior
 Insurance screen would have settled it.
 
 How to score it:
-- You cannot see ALTA. Judge whether the producer USED the reports, from
+- You cannot see {{quoting_system}}. Judge whether the producer USED the reports, from
   what is said on the call ("I see here you're the only driver", "I'm
   showing you're with Allstate on a six-month policy"). Never state what a
   report said unless the call or a **Manager's note** says it.
@@ -461,36 +461,7 @@ How to score it:
 
 ## Occupation discounts: ask what they do (Frank, 2026-10-02)
 
-Farmers gives an occupational (affinity) discount to these groups -- Frank's
-list as written (2026-10-02), each group with what it covers:
-
-- **Agents/Employees**: Agent & Employees of Agents; District Managers and
-  Employees of District Managers; Employees
-- **All Affinity Groups**: Affinity Guidelines -- All Affinity Groups
-  (State Specific)
-- **Architects**: Architects
-- **Association Partnership**: Association Partnership (FPP)
-- **Aviation**: Aviation Professional
-- **Certified Financial Planners**: Certified Financial Planners (CFP's)
-- **Certified Public Accountant**: Certified Public Accountant
-- **Dentists**: Dentists
-- **Educators**: College Professors/Instructors; Elementary or Secondary
-  Educators (Grades K-12)
-- **Employer Partnership**: Employer Partnership (FPP)
-- **Engineers**: Engineers
-- **FIG Federal Credit Union**: FIG Federal Credit Union Members
-- **Firefighters**: Firefighters
-- **Lawyers and Judges**: Lawyers/Judges
-- **Librarians**: Librarians
-- **Military**: Active Military; Military Veterans; Retired Military
-  (*Not available in CA)
-- **Physicians and Surgeons**: Physicians / Surgeons
-- **Police Officers**: Police Officers / Law Enforcement Officers
-- **Registered Nurses**: Registered Nurses
-- **Retirees**: Retirees of an Eligible Business and Professional Group --
-  a retired teacher, nurse, engineer, firefighter... still qualifies
-- **Scientists**: Scientists
-- **Veterinarians**: Veterinarians
+{{occupations_methodology}}
 
 **Ask it open, then dig.** "What do you do for a living?" -- and when the
 answer is "I'm retired", "What did you retire from?", because a retiree of
@@ -519,7 +490,7 @@ How to score it:
 ## Manager's note and the managers' sticky notes
 
 A card's history can carry a **Manager's note**: something Frank or a
-manager saw that the call cannot show (an ALTA screen, a policy record), or
+manager saw that the call cannot show ({{quoting_system_a}} screen, a policy record), or
 a sticky note a manager pinned to this lead's card. It is fact about this
 call. Use it for every verdict it bears on, and quote it in the lines it
 changes; never contradict it.
@@ -565,7 +536,7 @@ Judge the move, not the script:
   on Discovery.
 - **Referral**: naming the person who referred them early is the approach.
   If the referrer never comes up, say so. A source named after
-  Francisco Flores is a referral or a warm transfer from him.
+  {{referral_staff}} is a referral or a warm transfer from him.
 - **Personal network** (a source named after any other staff member): that
   person's own network (Frank, 2026-09-24). Each works their own, never
   each other's, so if the producer on the call is not the person the
@@ -575,9 +546,9 @@ Judge the move, not the script:
 - **Social media** (Instagram, LinkedIn): a light first touch, not a quote
   request. The strong move is referring back to what brought them in and
   getting to a real conversation and discovery.
-- **Call-in / walk-in**, which includes **Found us** (Google, Farmers.com):
+- **Call-in / walk-in**, which includes **Found us** (Google, {{carrier_site}}):
   they came to us ready. Answer what they came for, then round out the
-  household; a Google or farmers.com request gets called fast.
+  household; a Google or {{carrier_site_lc}} request gets called fast.
 - **Center of influence**: the agency deals with the loan officer or
   realtor, not the client. If the other person on the call is that referral
   partner, it is not a prospect sales call: score the prospect-facing
@@ -698,7 +669,7 @@ a call there is usually paperwork, which `calltype` covers.
 **The follow-up structure** (Frank's):
 1. **Reconnect and assume the sale up front.** Name, agency, the last
    conversation -- and an assumptive close in the same breath, so a ready
-   customer can finish in minutes: "Hi Ana, it's Mike with Farmers, I'm
+   customer can finish in minutes: "Hi Ana, it's Mike with {{carrier}}, I'm
    calling to get your auto policy started on the $812 quote I sent
    Tuesday -- do you have your card handy?" If they are ready, close right
    there. If not, whatever holds them back surfaces in the first thirty
@@ -738,7 +709,7 @@ reason to warm up -- thank them for calling back and go straight into step
 **The greeting on a call the producer ANSWERED** (Frank, 2026-09-25). A
 call back, and most call-ins that reach a producer, come in on the
 producer's own direct line -- not the front desk. The front desk's script
-("Thank you for calling Farmers Insurance, how can I help you?") is wrong
+("Thank you for calling {{carrier}} Insurance, how can I help you?") is wrong
 there. When the "Today's call" line says the producer answered an inbound
 call, return `greeting`, in three parts. **It is scored on the PRODUCER's
 own words only** (Frank, 2026-09-30):
@@ -746,9 +717,9 @@ own words only** (Frank, 2026-09-30):
    verbatim, and who actually said it -- "producer", "caller" or "front
    desk". Check who is speaking: a greeting that names the producer ("Hi
    Crystal") is the caller's, and so is the caller explaining why they
-   called. The front desk's pick-up (Debbie, or anyone else on staff
-   answering the main line: "Thank you for calling Farmers", "This is
-   Debbie") is "front desk", never the producer's, however well it went. A
+   called. The front desk's pick-up ({{front_desk}}, or anyone else on staff
+   answering the main line: "Thank you for calling {{carrier}}", "This is
+   {{front_desk}}") is "front desk", never the producer's, however well it went. A
    "Speaker N" line is the producer's only when what it says makes that
    plain. When `by` is not "producer", when the call tag says "ONLY THE
    OPENING WAS RECORDED", or when the call opens mid-conversation ("I'm
@@ -763,7 +734,7 @@ own words only** (Frank, 2026-09-30):
    2026-09-30: "people hang up when they hear an agency or insurance or
    realize we want to sell them something"): a quick first name and an
    offer to help, or a warm hello by the caller's name -- nothing else.
-   Naming Farmers, "Frank Flores Agency", "Flores Insurance Agency", the
+   Naming {{carrier}}, {{agency_names}}, the
    word insurance, or giving a full introduction on the pick-up is "m",
    however friendly. If the caller asks how the producer knew it was them,
    caller ID or their saved contact ("we have you saved -- we want to take
