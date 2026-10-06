@@ -622,6 +622,34 @@ the guides in blueprints.js (words for a person, not matching), and the
 Worker's `live_basis` still carries not-a-sale / existing-household from
 Python as before.
 
+## The agency's own name, carrier and place
+
+**staff.json's `agency` names the agency** (2026-10-06, the fifth blocker to
+running Pantheon for another agency): `name` (the nightly email's header --
+build_day swaps the template's sample line -- the tab's title, The Flores
+Post's dateline, Apollo's chat instructions), `short_name` (the menu's
+brand, and the front desk's greeting: "thank you for calling Flores"),
+`carrier` (the greeting's other word -- "Farmers" -- and what Apollo is
+told the agency is), `carriers_spoken` (the carrier names said on calls:
+Deepgram's keyterms, with the agency's name and every active person's
+first name), `place` ("Arizona": how Role Play prospects talk and look),
+`sender` (the email's From) and `contact` (the address in every API
+client's User-Agent -- `staff.UA` -- and send_digest's default recipient).
+`staff.GREETING_WORDS` is the greeting regexes' alternation
+(`deepgram_stt.ANSWER_GREETING`, `coaching_cards.FRONT_DESK` -- patterns
+checked identical). The page gets `name`, `short_name`, `carrier`, `place`
+and `timezone` through `site/public/staff.js` (`PUBLIC_AGENCY_KEYS`; never
+the addresses) and the Worker everything through `site/staff.js`'s
+`AGENCY`. Checked identical: every User-Agent, both regexes, the keyterms
+as a set (Amanda's name moved to staff.json's order), Apollo's prompt line,
+the Role Play language and face lines, the dateline, title and brand.
+**Still this agency's, on purpose**: the editions' names (The Flores Post,
+The Flores Feed, KFLR, FLRS 500 -- Frank named them) and the Feed's
+handles, `messages.TEMPLATE_SUBJECTS` (AgencyZoom's own template
+subjects, data), the `Flores_ANTHROPIC_API_KEY` env name, wrangler.jsonc's
+Worker name, bucket and `ACCESS_TEAM_DOMAIN` (deployment, set per
+agency), and the guides' plain words.
+
 ## Phone numbers
 
 `az_corpus.e164` keys on the **last ten digits**. AgencyZoom stores every number

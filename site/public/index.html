@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>Pantheon — Flores Insurance Agency</title>
+<title>Pantheon</title>
 <!-- The board as a phone app (Frank, 2026-10-03: "coeus icon, build the app"): Safari > Share >
      Add to Home Screen opens it full screen under the owl (Apollo's, the assistant's). The name below is what the icon is
      labelled; the manifest carries it for Android. Icons are drawn by design/app_icon.py. -->
@@ -1866,7 +1866,7 @@ html[data-theme="phoenix"] .tourcard .tbtns .tback { background: #f4e2cf; border
 <body>
 <div class="shell">
   <nav class="tabs" role="tablist" aria-label="Main menu">
-    <div class="brand">Flores<br><span>Insurance</span></div>
+    <div class="brand" id="brand">Flores<br><span>Insurance</span></div>
     <div class="navgrp">Apollo · Sales</div>
     <button class="tab" role="tab" aria-selected="true"  data-v="salescenter">Sales Center</button>
     <div class="subnav" data-for="salescenter"></div>
@@ -1934,6 +1934,10 @@ const staffBy = Object.fromEntries(STAFF.people.map(p => [p.name, p]));
 const staffHas = (name, tag) => !!(staffBy[name] && (staffBy[name].tags || []).includes(tag));
 const staffTagged = tag => STAFF_ACTIVE.filter(p => (p.tags || []).includes(tag)).map(p => p.name);
 const staffOrder = key => (STAFF.orders || {})[key] || [];
+/* The agency itself (staff.json agency): the tab's title and the menu's brand. */
+const AGENCY = STAFF.agency || {};
+if (AGENCY.name) document.title = `Pantheon — ${AGENCY.name}`;
+if (AGENCY.short_name) { const b = document.getElementById("brand"); if (b) b.innerHTML = `${AGENCY.short_name}<br><span>Insurance</span>`; }
 /* The agency's clock (staff.json agency.timezone, through staff.js): every
    "today", clock time and business-hour figure on the page is worked out in
    it, never by subtracting 7 hours -- so a zone with daylight saving reads

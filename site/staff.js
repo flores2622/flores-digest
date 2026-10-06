@@ -37,6 +37,8 @@ export function hasBoard(email, key) {
 }
 
 export const ROTATION = STAFF.rotation;
+/** The agency itself (staff.json `agency`): name, short_name, carrier, place, sender, contact. */
+export const AGENCY = STAFF.agency || {};
 export const COMMISSION_UNITS = STAFF.commission_units;
 
 /* ---- the agency's clock (staff.json agency.timezone) -----------------------

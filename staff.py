@@ -7,6 +7,16 @@ claims, commercial, lead_sources, insightful_client and sanity_gate build
 their old constants from the helpers here, so their names and shapes are
 unchanged; the Worker reads the same file through site/staff_data.js.
 
+The agency itself is `agency`: `name` (the email's header, the page title,
+The Flores Post's dateline, Apollo's own instructions), `short_name` (the
+menu's brand and the front desk's greeting -- "thank you for calling
+Flores"), `carrier` (the greeting's other word and what Apollo is told the
+agency is), `carriers_spoken` (the carrier names said on calls, Deepgram's
+keyterms), `place` (how Role Play prospects talk -- "the way a customer in
+Arizona talks"), `sender` (the nightly email's From) and `contact` (the
+address in every API client's User-Agent and send_digest's default
+recipient). `UA` and `GREETING_WORDS` below are built from them.
+
 The agency's clock is `agency.timezone` (an IANA name; Arizona's is
 America/Phoenix, UTC-7 all year). `TZ` is that zone and every helper below
 works in it -- nothing in the pipeline adds or subtracts "7 hours" any more,
@@ -47,6 +57,7 @@ their numbers are counted; `service` puts them on the Service Center.
 import datetime as dt
 import json
 import pathlib
+import re
 import sys
 from zoneinfo import ZoneInfo
 
@@ -58,10 +69,25 @@ PUBLIC_PATH = ROOT / "site" / "public" / "staff.js"
 # AgencyZoom / RingCentral id (site/public is served to every signed-in viewer).
 PUBLIC_KEYS = ("name", "status", "producer", "digest", "service", "tags", "board",
                "sales_team", "color", "handle")
+# ...and of the agency: its names and place, never its addresses.
+PUBLIC_AGENCY_KEYS = ("name", "short_name", "carrier", "place", "timezone")
 
 DATA = json.loads(JSON_PATH.read_text())
 PEOPLE = DATA["people"]
 AGENCY = DATA["agency"]
+
+# --- the agency itself -------------------------------------------------------
+AGENCY_NAME = AGENCY["name"]
+SHORT_NAME = AGENCY.get("short_name") or AGENCY_NAME.split()[0]
+CARRIER = AGENCY.get("carrier") or ""
+CARRIERS_SPOKEN = list(AGENCY.get("carriers_spoken") or ([CARRIER] if CARRIER else []))
+PLACE = AGENCY.get("place") or ""
+CONTACT = AGENCY.get("contact") or AGENCY.get("sender") or ""
+# Every API client's User-Agent (AgencyZoom, RingCentral, Insightful, Resend).
+UA = f"{SHORT_NAME}Digest/1.0 (+{CONTACT})"
+# The words the front desk greets with -- "thank you for calling Farmers" /
+# "Flores Insurance, how can I help" -- as a regex alternation, lower-cased.
+GREETING_WORDS = "|".join(re.escape(w.lower()) for w in (CARRIER, SHORT_NAME) if w)
 
 # --- the agency's clock -----------------------------------------------------
 TZ_NAME = AGENCY.get("timezone") or "America/Phoenix"
@@ -191,7 +217,7 @@ def _js():
 
 
 def _public_js():
-    view = {"agency": {"timezone": TZ_NAME},
+    view = {"agency": {k: AGENCY[k] for k in PUBLIC_AGENCY_KEYS if k in AGENCY},
             "people": [{k: p[k] for k in PUBLIC_KEYS if k in p} for p in PEOPLE],
             "sales_teams": DATA.get("sales_teams", {}), "orders": DATA.get("orders", {})}
     body = json.dumps(view, indent=1, ensure_ascii=False)

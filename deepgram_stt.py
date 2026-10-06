@@ -27,6 +27,7 @@ import os
 import pathlib
 import re
 import time
+import staff
 
 import requests
 
@@ -41,9 +42,9 @@ PARAMS = {"model": "nova-3", "language": "multi", "diarize": "true",
 # Words the agency says on every call that a general model mishears. Sent as
 # Nova-3 keyterms; if Deepgram refuses them for this language setting the
 # request is simply retried without.
-KEYTERMS = ["Farmers", "Farmers Insurance", "Bristol West", "Foremost",
-            "Flores Insurance", "Crystal", "Lorena", "Mike", "Coral",
-            "Sarahi", "Debbie", "Amanda", "Frank", "Francisco", "Veronica"]
+# staff.json: the carriers said on calls, the agency's own name, and every
+# active staff member's first name.
+KEYTERMS = staff.CARRIERS_SPOKEN + [f"{staff.SHORT_NAME} Insurance"] + [staff.first(p) for p in staff.active()]
 
 
 def _key():
@@ -209,8 +210,8 @@ AGENCY = r"(farmers|la aseguranza|la seguranza|insurance)"
 # Insurance" and rarely her name. Never used for the producers' calls: a
 # transferred call-in's recording starts with the front desk's greeting.
 ANSWER_GREETING = re.compile(
-    r"thank you for calling (farmers|flores)|gracias por (llamar|su llamada)|"
-    r"(farmers|flores) insurance,? (this is|how can i help)", re.I)
+    rf"thank you for calling ({staff.GREETING_WORDS})|gracias por (llamar|su llamada)|"
+    rf"({staff.GREETING_WORDS}) insurance,? (this is|how can i help)", re.I)   # staff.json's carrier and short_name
 
 
 def producer_speaker(utts, producer, answered=False):
