@@ -121,6 +121,8 @@
     </div>`;
   }
 
+  let rotTallyOpen = false;   // the Count by person fold, kept across repaints this visit
+
   function tallyHtml(entries) {
     const rows = ROT_KEYS.map(key => {
       const list = ROT.lists[key];
@@ -134,7 +136,10 @@
       }).join("");
       return `<div class="rotrow"><span class="rotlbl" style="--rh:${ROT_HUE[key]}">${cesc(list.label)}</span>${cells}</div>`;
     }).join("");
-    return `<div class="rotally">${rows}</div>`;
+    // folded by default (Frank, 2026-10-06: "make this expandable or a dropdown it draws too much
+    // attention"); the fold stays open across repaints once opened this visit
+    const total = entries.filter(e => e.kind !== "skip").length;
+    return `<details class="rotally"${rotTallyOpen ? " open" : ""}><summary>Count by person<span class="rotsum">${total} turn${total === 1 ? "" : "s"} this folio</span></summary><div class="rotrows">${rows}</div></details>`;
   }
 
   function logHtml() {
@@ -161,7 +166,7 @@
     return `<div class="sect" style="--sc:var(--s3)">
       <h2>This folio's rotation</h2>
       <div class="controls"><select id="rotFolio" aria-label="Folio">${opts}</select></div>
-      <p class="sd">How many each person got, and every walk-in and call-in logged, newest first. Taking back the newest line on a rotation gives that person their turn back.</p>
+      <p class="sd">Every walk-in and call-in logged, newest first. Taking back the newest line on a rotation gives that person their turn back.</p>
       ${tallyHtml(entries)}
       ${entries.length ? `<div class="scroll"><table class="rotab"><thead><tr><th>Date</th><th class="t">Rotation</th><th class="t">Who</th><th class="t">Client</th><th class="t">How</th><th class="t">Turn</th><th class="t">Note</th><th class="t">Logged by</th><th></th></tr></thead><tbody>${rows}</tbody></table></div>`
         : '<div class="empty">Nothing logged in this folio yet.</div>'}
@@ -193,6 +198,8 @@
 
   function wire() {
     const v = $("#view");
+    const tally = v.querySelector(".rotally");
+    if (tally) tally.addEventListener("toggle", () => { rotTallyOpen = tally.open; });
     const card = el => el.closest(".rocard");
     const vals = el => {
       const c = card(el);
@@ -325,7 +332,12 @@
 .roelist li { display: flex; align-items: center; gap: 10px; padding: 6px 8px; border: 1px solid var(--border); border-radius: 10px; }
 .roelist .rotools { margin-left: auto; display: flex; gap: 2px; }
 .ronext { font-size: 12px; color: var(--text-muted); display: flex; align-items: center; gap: 4px; }
-.rotally { display: flex; flex-direction: column; gap: 8px; margin: 6px 0 14px; }
+.rotally { margin: 6px 0 14px; border: 1px solid var(--border); border-radius: 10px; background: var(--card2); }
+.rotally > summary { cursor: pointer; list-style: none; padding: 8px 12px; font-size: 13px; font-weight: 700; color: var(--text-secondary); display: flex; align-items: center; gap: 10px; }
+.rotally > summary::-webkit-details-marker { display: none; }
+.rotally > summary::before { content: "▸"; font-size: 11px; transition: transform .15s; } .rotally[open] > summary::before { transform: rotate(90deg); }
+.rotally .rotsum { margin-left: auto; font-weight: 500; color: var(--text-muted); }
+.rotrows { display: flex; flex-direction: column; gap: 8px; padding: 2px 12px 12px; }
 .rotrow { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
 .rotlbl { display: inline-block; font-size: 12px; font-weight: 700; padding: 2px 8px; border-radius: 6px; background: color-mix(in oklab, var(--rh) 22%, transparent); border-left: 4px solid var(--rh); white-space: nowrap; }
 .rotrow > .rotlbl { min-width: 120px; }
