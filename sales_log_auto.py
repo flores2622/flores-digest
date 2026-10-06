@@ -67,6 +67,7 @@ import pathlib
 import re
 import uuid
 
+import agencyzoom
 import digest_config as cfg
 import staff
 
@@ -110,8 +111,8 @@ def _term(effective, expiry):
 #   BW       186, 2448054 (every G01- policy number)
 #   Foremost 102, 262
 # Anything else keeps AgencyZoom's own name.
-CARRIER = {484668: "Farmers", 484654: "Farmers", 1030958: "Farmers",
-           186: "BW", 2448054: "BW", 102: "Foremost", 262: "Foremost"}
+# The ids are agencyzoom.json's `carriers`.
+CARRIER = dict(agencyzoom.CARRIERS)
 _AUTO_TYPES = re.compile(r"auto", re.I)
 _TOY_TYPES = re.compile(r"atv|motorcycle|trailer|boat|watercraft|motor home|\brv\b|golf cart|toy", re.I)
 

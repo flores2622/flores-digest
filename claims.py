@@ -26,10 +26,12 @@ any range up:
 """
 import datetime as dt
 
+import agencyzoom
 import staff
 
-CLAIM_WORKFLOWS = {"Claim"}
-CLAIM_WORKFLOW_ID = 23672
+# The Claim workflow, by id and name: agencyzoom.json.
+CLAIM_WORKFLOWS = set(agencyzoom.CLAIM_WORKFLOWS)
+CLAIM_WORKFLOW_ID = agencyzoom.CLAIM_WORKFLOW_ID
 
 # Who may open and work a claim: the ops team and Crystal (Frank,
 # 2026-10-02: "yes, the ops team and crystal") -- of the service team that is
@@ -42,13 +44,13 @@ LICENSED = {p["az_id"]: p["name"] for p in staff.tagged("licensed")}   # staff.j
 # AgencyZoom breaks nothing: Frank renamed them "Claim: Auto" etc. on
 # 2026-10-02, and "Claim Services" (25618) became "Claim: Specialty". Any other
 # category (General ...) is "Not set", for the rep to pick the right one.
-CLAIM_TYPES = {40942: "Auto", 40944: "Home", 40946: "Life", 25618: "Specialty",
-               40943: "Commercial", 40945: "Work Comp"}
+# The ids are agencyzoom.json's claim_categories, in its order.
+CLAIM_TYPES = dict(agencyzoom.CLAIM_TYPES)
 NOT_SET = "Not set"
 # Commercial and Work Comp claims are Cerberus's (Frank, 2026-10-02:
 # "commercial"): commercial.is_commercial_sr counts them, so they leave the
 # Service Center and show on the Commercial Center instead -- same rules.
-COMMERCIAL_CATEGORIES = {40943, 40945}
+COMMERCIAL_CATEGORIES = set(agencyzoom.COMMERCIAL_CATEGORIES)   # agencyzoom.json
 SERVICE_TYPES = [t for c, t in CLAIM_TYPES.items() if c not in COMMERCIAL_CATEGORIES] + [NOT_SET]
 COMMERCIAL_TYPES = [CLAIM_TYPES[c] for c in sorted(COMMERCIAL_CATEGORIES)]
 LICENSED_NAMES = set(LICENSED.values())

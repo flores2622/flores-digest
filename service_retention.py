@@ -37,6 +37,7 @@ HOUSEHOLDS. Policy records carry no customer or household. The only link is
 """
 import collections
 import datetime as dt
+import agencyzoom
 import staff
 import json
 import pathlib
@@ -69,29 +70,10 @@ RESOLUTIONS_FROM = "2026-09-24"
 # (found 2026-09-24), re-read every build by load_resolution_labels() so a
 # rename in AgencyZoom is picked up. This is that endpoint's list on
 # 2026-09-24, kept as the fallback when the read fails.
-RESOLUTION_LABELS = {
-    32574: "Renewed: Accepted as is",
-    32575: "Renewed: Endorsed",
-    38307: "Rewrite Accepted",
-    38308: "Cancelled: Rewrite Declined",
-    32570: "Cancelled, no endorse/rewrite available",
-    38304: "Unable to Contact/No Show",         # renamed 2026-09-24
-    101591: "No action: Review if needed",      # added 2026-09-24
-    101627: "Client Cancelled",                 # added 2026-09-24
-    101637: "Mid-term Cancellation",            # added 2026-09-24
-    # Not renewal outcomes. A renewal SR closed on one of these from
-    # RESOLUTIONS_FROM falls back to the policy record and is listed on the
-    # Service tab as not a renewal resolution. Completed is kept in AgencyZoom for
-    # changes, NOC and missing documents -- never renewals (Frank, 2026-09-24).
-    # The other four were DELETED in AgencyZoom on 2026-09-24 and no longer
-    # come back from the endpoint; keep them here, since past SRs still carry
-    # those ids.
-    32571: "Completed",
-    38303: "Unable to Complete",
-    38305: "Cancelled by Carrier",
-    38306: "Cancelled by Client",
-    40108: "Shot Clock Expired",
-}
+# The list is agencyzoom.json's `resolutions.labels` (this account's on
+# 2026-09-24, deleted ones kept because past SRs still carry those ids).
+# A dict, updated in place by load_resolution_labels().
+RESOLUTION_LABELS = dict(agencyzoom.RESOLUTION_LABELS)
 _SNAPSHOT = dict(RESOLUTION_LABELS)
 
 # Deleting a resolution in AgencyZoom MOVES every SR that carried it onto
@@ -101,7 +83,7 @@ _SNAPSHOT = dict(RESOLUTION_LABELS)
 # exactly once before. So on SRs completed before the date here, that id
 # says nothing about the renewal and is read as if it were not a renewal
 # resolution: the rep's note, then the policy record.
-RESOLUTION_VALID_FROM = {38304: "2026-09-24"}
+RESOLUTION_VALID_FROM = dict(agencyzoom.RESOLUTION_VALID_FROM)   # agencyzoom.json
 
 
 def resolution_label(sr):
@@ -297,12 +279,8 @@ OUTCOMES = (
 )
 # Matched by resolution ID, never by name, so a rename in AgencyZoom cannot
 # drop an outcome.
-RESOLUTION_KEY_BY_ID = {
-    32574: "renewed_as_is", 101591: "no_action_review", 32575: "renewed_endorsed",
-    38307: "rewrite_accepted", 38308: "cancelled_rewrite_declined",
-    32570: "cancelled_no_option", 101627: "client_cancelled", 38304: "unable_to_contact",
-    101637: "cancelled_before_sr", 101638: "sold_moved",
-}
+# The ids are agencyzoom.json's `resolutions.outcome_by_id`; the keys are OUTCOMES above.
+RESOLUTION_KEY_BY_ID = dict(agencyzoom.RESOLUTION_KEY_BY_ID)
 RESOLUTION_KEYS = list(RESOLUTION_KEY_BY_ID.values())
 _KIND = {key: kind for key, _, kind in OUTCOMES}
 _ID_BY_KEY = {k: i for i, k in RESOLUTION_KEY_BY_ID.items()}

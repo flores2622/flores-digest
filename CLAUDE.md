@@ -559,6 +559,38 @@ would still need: the Worker's cron lines in wrangler.jsonc are UTC
 (8:00-5:59 on the agency's clock, written out by hand), the nightly
 routine's `CRON_TZ`, and the words "Arizona" in the guides.
 
+## This AgencyZoom account's numbers
+
+**`agencyzoom.json` holds every id and workflow name AgencyZoom hands this
+account** (Frank, 2026-10-06: "start on the agencyzoom ids next" -- the
+third blocker to running Pantheon for another agency): the junk "Pipeline"
+workflow (23073), the Claim workflow (23672), Cerberus's Commercial Renewals,
+each Service Center pipeline key's workflow name(s), the claim categories
+and which are commercial, the resolutions (their names as the fallback when
+`/v1/api/service-resolutions` fails, deleted ones kept because past SRs
+carry them; id -> renewal outcome key; Unable to Contact's `valid_from`;
+the resolutions `service_notes` trusts per pipeline), the carrier ids the
+Sales sheet names (Farmers / BW / Foremost), the Personal Renewals carriers
+and the test lead ids. `agencyzoom.py` reads it and says what each key
+means; claims, commercial, service_digest (`PIPELINES`' name sets),
+service_retention, service_notes, sales_log_auto, renewal_report,
+digest_config and az_client build their old constants from it, names and
+shapes unchanged -- checked identical, every constant and dict order,
+before and after. The one change: the fallback label list now carries
+101638 "Cancelled: Sold/Moved" (added 2026-09-27, it had no fallback name).
+**What the pipeline DOES with each id stays in code**: the outcome keys
+(`service_retention.OUTCOMES`), which pipelines are renewals, the product
+names. `python3 agencyzoom.py --check` validates the file against the
+code's keys; `python3 agencyzoom.py --discover` reads the account's
+current workflows, categories, resolutions and (from the saved policy
+corpus) carriers and prints NEW / GONE / renamed against the file -- the
+first step for a new agency, read-only, four requests; **never run it from
+the Worker's address or in a loop** (AgencyZoom's 403 / 429 history). The
+Worker gets the carriers and test ids from the checkpoint's `live_basis`
+already, so it reads nothing new. Still in code: the Service Center's
+board labels and kinds (`PIPELINES`), `RESOLUTIONS_FROM`, the staff ids
+(staff.json) and the lead sources (`lead_sources.py`, next).
+
 ## Phone numbers
 
 `az_corpus.e164` keys on the **last ten digits**. AgencyZoom stores every number
