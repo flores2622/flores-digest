@@ -109,7 +109,7 @@ def is_life(policy):
 
 
 # A lead marked sold on a life source is a life sale, not a household sold.
-LIFE_LEAD_SOURCES = {"life cross sell"}
+LIFE_LEAD_SOURCES = set(lead_sources.LIFE_SOURCES)   # the cross-sell sources selling life (lead_sources.json)
 
 # ...and so is a lead whose sale WAS a life policy on any source (Frank,
 # 2026-09-30: "still shows coral with 1 HH" -- Alondra Angulo, Home no Auto,

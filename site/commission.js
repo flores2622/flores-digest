@@ -33,6 +33,7 @@
  * purchased a new", "Home no Auto" ...). */
 
 import { COMMISSION_UNITS } from "./staff.js";
+import LEAD_SOURCES from "./lead_sources_data.js";
 
 const TIER_NAMES = ["Good", "Better", "Best", "Great", "Excellent", "Outstanding"];
 const RATES = [0.03, 0.033, 0.0429, 0.0438, 0.0444, 0.05];
@@ -60,8 +61,10 @@ const ELIGIBLE = /auto|home|renter|condo|foremost/i;
 function isExisting(source) {
   const s = String(source || "").toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
   return /cross sell/.test(s) || s.startsWith("existing client") || s.startsWith("existing customer purchased")
-    || ["home no auto", "auto no home", "umbrella", "life cross sell"].includes(s);
+    || EXISTING_SOURCES.includes(s);
 }
+// lead_sources.json's cross-sell sources (the existing-household groups), in this function's own spelling.
+const EXISTING_SOURCES = LEAD_SOURCES.existing_household.map((n) => n.replace(/[^a-z0-9]+/g, " ").trim());
 function householdKey(e) {
   if (e.az_customer_id) return "c:" + String(e.az_customer_id).trim();
   const n = String(e.client_name || "").toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
