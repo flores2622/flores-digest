@@ -20,6 +20,7 @@ longest -- on 2026-09-01 it printed 1m58s against a true 20m47s. See REVIEW
 email will disagree on this panel, and the board is the one that is right.
 """
 import datetime as dt
+import staff
 import json
 import pathlib
 import statistics
@@ -28,7 +29,7 @@ import sys
 import digest_config as cfg
 
 ROOT = pathlib.Path(__file__).resolve().parent
-AZ = dt.timezone(dt.timedelta(hours=-7))
+AZ = staff.TZ
 
 # Seven scored categories. Avg Call Score and Avg Sentiment are NOT here: TRAQ
 # scores a voicemail as a call, so both track answer rate rather than call

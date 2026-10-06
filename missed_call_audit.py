@@ -35,7 +35,7 @@ import re
 
 import staff
 
-AZ = dt.timezone(dt.timedelta(hours=-7))
+AZ = staff.TZ
 ROOT = pathlib.Path(__file__).resolve().parent
 WINDOW_SECONDS = 3600          # one task per person per rolling hour
 MISSED = ("Missed", "Voicemail")
@@ -63,7 +63,7 @@ def parse(s):
 
 
 def az(t):
-    return t - dt.timedelta(hours=7) if t else None
+    return staff.utc_naive_to_local_naive(t) if t else None
 
 
 # ---- routing ---------------------------------------------------------------
@@ -177,8 +177,8 @@ def collect(day, refresh=True):
         from rc_client import RingCentral
         nxt = (dt.date.fromisoformat(day) + dt.timedelta(days=1)).isoformat()
         log("re-pulling today's call log...")
-        recs = RingCentral().call_log(f"{day}T00:00:00-07:00",
-                                      f"{nxt}T00:00:00-07:00")
+        recs = RingCentral().call_log(staff.day_start_iso(day),
+                                      staff.day_start_iso(nxt))
         # daily.py/hourly.py both mkdir data/ before anything writes into it,
         # but an --intraday run can be the FIRST thing to touch data/ in a
         # genuinely fresh container (no daily.py/hourly.py in this run at

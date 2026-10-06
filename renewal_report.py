@@ -61,12 +61,13 @@ RISK (a renewal still ahead):
 """
 import collections
 import datetime as dt
+import staff
 import json
 import pathlib
 import re
 
 ROOT = pathlib.Path(__file__).resolve().parent
-AZ = dt.timezone(dt.timedelta(hours=-7))
+AZ = staff.TZ
 PREFIX = "renewals"
 UPCOMING_DAYS = 45
 # A year back (Frank, 2026-09-27): the board shows three retention rates --

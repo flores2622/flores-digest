@@ -10,7 +10,7 @@ import lead_sources
 import staff
 
 # --- time -------------------------------------------------------------------
-AZ_TZ = dt.timezone(dt.timedelta(hours=-7))   # Arizona: UTC-7, never DST
+AZ_TZ = staff.TZ   # the agency's clock: staff.json's agency.timezone (Arizona: America/Phoenix)
 
 # Send times, settled 2026-08-14. The ops slot moved 6:00 -> 6:30 PM because the
 # Insightful API carries the live Arizona day, and at 6:00 PM a counted producer
@@ -121,12 +121,8 @@ LIFE_LEAD_DAYS = 3
 
 
 def _az_day_of_utc(stamp):
-    """AgencyZoom's UTC 'YYYY-MM-DD HH:MM:SS' as its Arizona date (UTC-7)."""
-    s = str(stamp or "")[:19].replace("T", " ")
-    try:
-        return (dt.datetime.fromisoformat(s) - dt.timedelta(hours=7)).date().isoformat()
-    except ValueError:
-        return ""
+    """AgencyZoom's UTC 'YYYY-MM-DD HH:MM:SS' as the agency's date."""
+    return staff.utc_text_local_date(stamp)
 
 
 def customer_households(day, policies, leads, customers, source_map, ids, days=LIFE_LEAD_DAYS):
@@ -584,8 +580,7 @@ def day_fraction_elapsed(now=None):
     """Fraction of the business day elapsed, clamped to [0, 1]. `now`
     defaults to the current Arizona time; pass it explicitly only for
     testing -- production callers always want "right now"."""
-    az = dt.timezone(dt.timedelta(hours=-7))
-    now = now or dt.datetime.now(az)
+    now = now or staff.now()
     start = now.replace(hour=BUSINESS_START_HOUR, minute=BUSINESS_START_MIN,
                          second=0, microsecond=0)
     end = now.replace(hour=BUSINESS_END_HOUR, minute=BUSINESS_END_MIN,

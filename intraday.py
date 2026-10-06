@@ -73,6 +73,7 @@ mistaken for the finalized board document.
 """
 import argparse
 import datetime as dt
+import staff
 import json
 import sys
 
@@ -81,7 +82,7 @@ import publish_board
 import r2_cache
 import sanity_gate
 
-AZ = dt.timezone(dt.timedelta(hours=-7))
+AZ = staff.TZ
 log = daily.log
 
 

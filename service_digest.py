@@ -34,7 +34,7 @@ import pathlib
 import staff
 
 ROOT = pathlib.Path(__file__).resolve().parent
-AZ = dt.timezone(dt.timedelta(hours=-7))
+AZ = staff.TZ
 PREFIX = "service"
 
 # name -> AgencyZoom user id (the same id is the CSR id on tickets): everyone
@@ -967,8 +967,8 @@ def backfill_missing_days(day, log=log):
                 if body is None and name.startswith("rc_raw"):
                     from rc_client import RingCentral
                     nxt = (dt.date.fromisoformat(d) + dt.timedelta(days=1)).isoformat()
-                    body = json.dumps(RingCentral().call_log(f"{d}T00:00:00-07:00",
-                                                             f"{nxt}T00:00:00-07:00")).encode()
+                    body = json.dumps(RingCentral().call_log(staff.day_start_iso(d),
+                                                             staff.day_start_iso(nxt))).encode()
                     recreated.append("call log")
                 if body is not None:
                     keep(name, body, name.startswith("rc_raw") and "call log" in recreated)

@@ -34,13 +34,12 @@
    for CACHE_SECONDS, so every viewer shares one refresh. */
 
 import { contactItems, messageEvents, contactDeltas, messageDeltas, last10, e164, noteText, rxOf } from "./live_notes.js";
+import { TZ, localDay, localParts, localStr, localClock, dayStartMs, dayStartIso } from "./staff.js";
 
 export const CACHE_SECONDS = 120;
 export const QUOTES_STALE_SECONDS = 180;
-const AZ_OFFSET = "-07:00";
-
 export function azToday(now = new Date()) {
-  return new Date(now.getTime() - 7 * 3600 * 1000).toISOString().slice(0, 10);
+  return localDay(now.getTime());   // the agency's date (staff.js TZ)
 }
 function nextDay(day) {
   const d = new Date(`${day}T12:00:00Z`);
@@ -79,7 +78,7 @@ export async function rcCallLog(env, day, fetchFn = fetch) {
   const recs = [];
   for (let page = 1; page < 20; page++) {
     const q = new URLSearchParams({
-      dateFrom: `${day}T00:00:00${AZ_OFFSET}`, dateTo: `${nextDay(day)}T00:00:00${AZ_OFFSET}`,
+      dateFrom: dayStartIso(day), dateTo: dayStartIso(nextDay(day)),
       view: "Detailed", perPage: "1000", page: String(page),
     });
     const r = await fetchFn(`${base}/restapi/v1.0/account/~/call-log?${q}`,
@@ -150,7 +149,7 @@ const AZ = "https://api.agencyzoom.com";
 const AZ_LOG_PREFIX = "worker-private/az_log/";
 const AZ_LOG_REFUSALS = 50;                        // per day, the first ones
 let azCalls = {}, azRefusals = [];
-const hourAZ = () => new Date(Date.now() - 7 * 3600 * 1000).toISOString().slice(11, 13);
+const hourAZ = () => String(localParts().h).padStart(2, "0");
 function countAz(path) {
   const ep = path.split("?")[0].replace(/\/\d+/g, "/N");
   const h = hourAZ();
@@ -204,7 +203,7 @@ const AZ_PAUSE_KEY = "worker-private/az_pause.json";
 export const AZ_PAUSE_MINUTES = 30;
 let azJwt = null, azJwtExp = 0, azLogin = null;
 export function _resetAzForTests() { azJwt = null; azJwtExp = 0; azLogin = null; }
-const azClock = ms => new Date(ms).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", timeZone: "America/Phoenix" });
+const azClock = ms => localClock(ms);
 
 async function azToken(env, fetchFn) {
   if (azJwt && Date.now() < azJwtExp) return azJwt;
@@ -378,7 +377,7 @@ export function isLifeLead(l, basis, recent) {
    record created today (Arizona) with asCustomerDate today, assigned to
    them, that no sold lead points at, is their household sold. `leads` is
    the day's kept active list, `customers` the newest customer records. */
-const azDayOfUtc = s => { const ms = utcMs(s); return Number.isFinite(ms) ? new Date(ms - 7 * 3600000).toISOString().slice(0, 10) : ""; };
+const azDayOfUtc = s => { const ms = utcMs(s); return Number.isFinite(ms) ? localDay(ms) : ""; };
 export function customerHouseholds(day, basis, policies, sourceNames, leads, customers) {
   const byAz = Object.fromEntries(Object.entries(basis.producers || {}).map(([n, v]) => [String(v.az_id), n]));
   const notSale = new Set(basis.not_a_sale || []);
@@ -463,8 +462,8 @@ async function insGet(env, path, params, fetchFn) {
   return Array.isArray(j) ? j : (j || {}).data || [];
 }
 export async function insightfulUtil(env, day, basis, fetchFn = fetch) {
-  const start = Date.parse(`${day}T00:00:00${AZ_OFFSET}`), end = start + 86400000;
-  const win = { start: String(start), end: String(end), timezone: "America/Phoenix" };
+  const start = dayStartMs(day), end = dayStartMs(nextDay(day));
+  const win = { start: String(start), end: String(end), timezone: TZ };
   const roster = {};
   for (const e of await insGet(env, "employee", null, fetchFn)) if (!e.deactivated) roster[e.name] = e.id;
   const attendance = {};
@@ -566,7 +565,7 @@ const ACTIVE_OVERLAP_MS = 2 * 60000;
 const utcMs = s => Date.parse(String(s || "").replace(" ", "T").slice(0, 19) + "Z");
 const utcStr = ms => new Date(ms).toISOString().slice(0, 19).replace("T", " ");
 export async function soldLeadsToday(env, day, basis, fetchFn = fetch, kept = null) {
-  const since = `${day} 07:00:00`;   // midnight Arizona (UTC-7), in UTC
+  const since = utcStr(dayStartMs(day));   // the day's local midnight, in UTC
   const byAz = Object.fromEntries(Object.entries(basis.producers || {}).map(([n, v]) => [String(v.az_id), n]));
   const prev = kept && kept.day === day && Array.isArray(kept.leads) && kept.newest ? kept : null;
   const stopAt = prev ? utcStr(Math.max(utcMs(since), utcMs(prev.newest) - ACTIVE_OVERLAP_MS)) : since;
@@ -630,9 +629,9 @@ export function isTestLead(l, basis) {
 function soldAt(l, day) {
   const m = /^(\d{4}-\d{2}-\d{2})[ T](\d{2}):(\d{2})/.exec(String(l.enterStageDate || ""));
   if (!m) return null;
-  const t = new Date(Date.UTC(+m[1].slice(0, 4), +m[1].slice(5, 7) - 1, +m[1].slice(8, 10), +m[2], +m[3]) - 7 * 3600000);
-  const h = t.getUTCHours(), mm = String(t.getUTCMinutes()).padStart(2, "0");
-  if (t.toISOString().slice(0, 10) !== day || h < 7 || h >= 19) return null;   // overnight marks are not sale times
+  const ms = Date.UTC(+m[1].slice(0, 4), +m[1].slice(5, 7) - 1, +m[1].slice(8, 10), +m[2], +m[3]);
+  const p = localParts(ms), h = p.h, mm = String(p.min).padStart(2, "0");
+  if (localDay(ms) !== day || h < 7 || h >= 19) return null;   // overnight marks are not sale times
   return `${h % 12 || 12}:${mm} ${h < 12 ? "AM" : "PM"}`;
 }
 
@@ -777,7 +776,7 @@ export function speedToDial(day, basis, leads, recs) {
     if (!SPEED_SOURCES.some(k => src.includes(k))) continue;
     if (!l.createDate) continue;
     const c = utcMs(l.createDate);
-    if (!Number.isFinite(c) || new Date(c - 7 * 3600 * 1000).toISOString().slice(0, 10) !== day) continue;   // Arizona is UTC-7
+    if (!Number.isFinite(c) || localDay(c) !== day) continue;
     const k = e164(l.phone), hit = k ? first.get(k) : null;
     if (!hit) continue;
     const d = Date.parse(hit[1]);
@@ -1127,7 +1126,7 @@ function dialTouches(basis, recs) {
   for (const r of recs) {
     const who = byExt[ownerExt(r)], n = last10((r.to || {}).phoneNumber);
     if (r.direction !== "Outbound" || !who || !n || !r.startTime) continue;
-    const at = new Date(Date.parse(r.startTime) - 7 * 3600 * 1000).toISOString().slice(0, 19).replace("T", " ");
+    const at = localStr(Date.parse(r.startTime));
     out.push({ n, by: who, at, dur: r.duration || 0 });
   }
   return out;

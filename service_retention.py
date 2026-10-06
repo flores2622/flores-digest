@@ -37,6 +37,7 @@ HOUSEHOLDS. Policy records carry no customer or household. The only link is
 """
 import collections
 import datetime as dt
+import staff
 import json
 import pathlib
 import re
@@ -559,7 +560,7 @@ def renewal_srs(day, done_tickets, policies, customers, az=None, log=print, refr
     # SRs are worked before the renewal date, so on the day one closes the
     # record almost always says "still ahead". Today it says what happened.
     import datetime as _dt
-    today = _dt.datetime.now(_dt.timezone(_dt.timedelta(hours=-7))).date().isoformat()
+    today = staff.today()
     as_of = max(day, today)
     for t in srs:
         tx = texts.get(str(t.get("id")))
@@ -612,6 +613,6 @@ if __name__ == "__main__":
         from service_digest import completed_tickets
         import datetime as _dt
         since = sys.argv[sys.argv.index("--since") + 1] if "--since" in sys.argv else RESOLUTIONS_FROM
-        today = _dt.datetime.now(_dt.timezone(_dt.timedelta(hours=-7))).date().isoformat()
+        today = staff.today()
         load_resolution_labels()
         list_resolutions(completed_tickets(today), since)

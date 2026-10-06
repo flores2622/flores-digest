@@ -33,7 +33,7 @@
    logs turns; `rotation_edit` changes an order or who is next. Always the
    verified Access email, never a request parameter. */
 
-import { ROTATION, hasBoard } from "./staff.js";
+import { ROTATION, hasBoard, localDay } from "./staff.js";
 
 const KEY = "rotation/state.json";
 
@@ -149,7 +149,7 @@ function apply(state, body, me, a) {
     if (kind === "out" && !list.order.includes(producer)) return { error: "that person is not on this rotation" };
     const client = String(body.client || "").trim().slice(0, 120);
     if (kind !== "skip" && !client) return { error: "who is the client?" };
-    const date = /^\d{4}-\d{2}-\d{2}$/.test(String(body.date || "")) ? body.date : new Date(Date.now() - 7 * 3600000).toISOString().slice(0, 10);
+    const date = /^\d{4}-\d{2}-\d{2}$/.test(String(body.date || "")) ? body.date : localDay();
     const how = HOW.includes(body.how) ? body.how : "call in";
     const entry = {
       id: crypto.randomUUID(), list: body.list, kind, producer, client: kind === "skip" ? "" : client,

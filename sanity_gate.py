@@ -20,7 +20,7 @@ import datetime as dt
 
 import staff
 
-AZ = dt.timezone(dt.timedelta(hours=-7))
+AZ = staff.TZ
 
 MIN_SAMPLE_DIALS = 15      # below this a contact-rate swing is just noise
 RATE_SWING_POINTS = 5      # HANDOFF_12 #6's own figure

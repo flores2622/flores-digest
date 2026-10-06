@@ -42,13 +42,14 @@ inbound itself.
 """
 import argparse
 import datetime as dt
+import staff
 import json
 import pathlib
 
 import daily
 import r2_cache
 
-AZ = dt.timezone(dt.timedelta(hours=-7))
+AZ = staff.TZ
 ROOT = pathlib.Path(__file__).resolve().parent
 log = daily.log
 
@@ -68,8 +69,8 @@ def refresh_call_log(day, dry=False):
     if dry:
         log(f"  [dry-run] would re-pull the call log (have {before} records)")
         return before, before
-    recs = RingCentral().call_log(f"{day}T00:00:00-07:00",
-                                  f"{nxt}T00:00:00-07:00")
+    recs = RingCentral().call_log(staff.day_start_iso(day),
+                                  staff.day_start_iso(nxt))
     f.write_text(json.dumps(recs))
     return before, len(recs)
 

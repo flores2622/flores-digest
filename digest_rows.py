@@ -26,6 +26,7 @@ and the policy list; never fails the day. `python3 digest_rows.py --backfill
 2026-09-01` adds rows to past days' pages from their saved inputs in R2.
 """
 import datetime as dt
+import staff
 import json
 import pathlib
 import sys
@@ -46,8 +47,8 @@ def customer_name(c):
 
 
 def _utc_of(clock, day):
-    """The UTC stamp back from a "2:05 PM" Arizona clock on the day."""
-    t = dt.datetime.strptime(f"{day} {clock}", "%Y-%m-%d %I:%M %p") + dt.timedelta(hours=7)
+    """The UTC stamp back from a "2:05 PM" clock (the agency's) on the day."""
+    t = staff.local_naive_to_utc_naive(dt.datetime.strptime(f"{day} {clock}", "%Y-%m-%d %I:%M %p"))
     return t.strftime("%Y-%m-%d %H:%M:%S")
 
 
@@ -59,7 +60,7 @@ def sold_at(lead, day):
     with the rest of the chats based on the time")."""
     raw = str(lead.get("enterStageDate") or "")
     try:
-        t = dt.datetime.strptime(raw[:19], "%Y-%m-%d %H:%M:%S") - dt.timedelta(hours=7)
+        t = staff.utc_naive_to_local_naive(dt.datetime.strptime(raw[:19], "%Y-%m-%d %H:%M:%S"))
     except ValueError:
         return None
     # outside 7 AM - 7 PM is AgencyZoom marking it sold overnight, not a sale time

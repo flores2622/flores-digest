@@ -419,6 +419,5 @@ if __name__ == "__main__":
     if "--fix-products" in sys.argv:
         fix_products(dry_run="--dry-run" in sys.argv)
         sys.exit(0)
-    d = sys.argv[1] if len(sys.argv) > 1 else dt.datetime.now(
-        dt.timezone(dt.timedelta(hours=-7))).date().isoformat()
+    d = sys.argv[1] if len(sys.argv) > 1 else staff.today()
     sync_day(d, dry_run="--dry-run" in sys.argv)
