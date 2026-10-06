@@ -50,11 +50,14 @@ for the rest. Nothing is switched until the two agree on a published day.
    AgencyZoom). **The Tasks page is built** (2026-10-06, `site/public/
    tasks.js`: due today / overdue / next 7 days / done today / all open, per
    person, Done with a comment, Reschedule, New task on a lead or household,
-   the lead's coaching card a click away). Still to do: `missed_call_tasks.
-   create` writing to `/api/crm/tasks` instead of AgencyZoom, `az_tasks.
-   audit` and `live.js taskCompletion` reading from it, and the first load
-   of the task history. Cutover test: Task Completion identical both ways on
-   a day run in parallel.
+   the lead's coaching card a click away). **The mirror is built**
+   (`crm_sync.py`, same day): every checkpoint and the nightly copy what
+   they saved from AgencyZoom into the database, so the Tasks page shows the
+   real book from the first run with `CF_API_TOKEN` set. Still to do:
+   `missed_call_tasks.create` writing to `/api/crm/tasks` instead of
+   AgencyZoom, and `az_tasks.audit` / `live.js taskCompletion` reading from
+   it. Cutover test: Task Completion identical both ways on a day run in
+   parallel.
 3. **Notes, calls and the lead screen**: the lead page (the coaching card's
    lead opens it), typed notes, the call log written by the nightly's own
    RingCentral pass as CALL notes, stage moves from the page.
@@ -106,7 +109,12 @@ Deepgram, RingCentral and Insightful bills do not change.
   tasks, SRs, notes; stage moves from the MOVE_STAGE notes), AgencyZoom's
   ids kept. `--sqlite` builds a local copy to check; `--sql` writes the
   files for `wrangler d1 execute`.
-- `wrangler.jsonc` -- the D1 binding, commented, with the turn-on steps.
+- `wrangler.jsonc` -- the D1 binding (the database was created and the
+  schema applied the same day).
+- `crm_sync.py` -- the AgencyZoom mirror, run by every checkpoint and the
+  nightly; only what changed, fingerprints in R2, upserts that never touch a
+  row Pantheon made. Migrations 0002 (one stage move per note) and 0003
+  (lead source names repeat) came out of the first real build.
 
 ## Who sees it
 
@@ -121,13 +129,18 @@ let them in; the Tasks page then appears in their Sales Center menu.
    binding deploys with the next merge (Workers Builds). A later schema
    change is a new file in `site/crm/migrations/`, applied with
    `wrangler d1 migrations apply pantheon-crm --remote`.
-2. On the nightly's machine, where `data/` holds the corpus:
-   `python3 crm_import.py --sqlite out/crm_import.db` to see the counts,
-   then `python3 crm_import.py --sql out/crm_import` and apply each file
-   with `wrangler d1 execute pantheon-crm --remote --file=...`.
+2. **The load is the nightly's own job now** (`crm_sync.py`, step 1 of
+   phase 2, built 2026-10-06): every checkpoint and the nightly mirror the
+   files they just saved into the database through Cloudflare's D1 API,
+   sending only what changed. It needs one variable in the cloud
+   environment beside the R2 keys: `CF_API_TOKEN`, a Cloudflare API token
+   with D1 edit. The first run with it loads everything (37,248 rows on the
+   2026-10-06 snapshot, a few minutes); every run after sends the day's
+   changes. `python3 crm_import.py --sql out/crm_import` still writes the
+   files for `wrangler d1 execute` if a load by hand is ever wanted.
 3. `GET /api/crm/lookups` from the board (signed in) answers with the lead
    sources, pipelines, stages, resolutions, carriers and staff, and Sales
-   Center > Tasks shows the imported tasks.
+   Center > Tasks shows the mirrored tasks.
 
 ## Decisions still Frank's
 

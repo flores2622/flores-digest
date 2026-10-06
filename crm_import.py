@@ -13,9 +13,16 @@ Reads only what the pipeline already keeps under data/ (nothing is fetched):
     data/az_household_policies.json   household id -> its policies (which
                                       policy belongs to which household;
                                       policy records carry no customer)
+    data/az_pipelines.json            /v1/api/pipelines-and-stages as it came
+                                      (daily.py saves it beside az_stages.json):
+                                      the real workflow and stage ids
     data/az_stages.json               workflowStageId -> "Pipeline | Stage"
-    data/az_lead_sources.json         [{id, name}] if saved; else the names
-                                      the leads and policies carry
+                                      (the fallback when the above is missing)
+    data/az_service_categories.json   /v1/api/service-categories (daily.py
+                                      saves it): the SR categories' names
+    data/az_lead_sources.json         {names: {id: name}} or [{id, name}] if
+                                      saved; else the names the leads and
+                                      policies carry
     data/az_tasks_<day>.json          every day's tasks, merged by id
     data/az_service_tickets_<day>.json, _done_<day>.json   SRs, merged by id
                                       (the newest day's copy of an SR wins)
@@ -35,6 +42,7 @@ throughout: a second run adds what is new and changes nothing already there.
 import datetime as dt
 import glob
 import json
+import os
 import pathlib
 import re
 import sys
@@ -44,7 +52,11 @@ sys.path.insert(0, str(ROOT))
 import agencyzoom   # noqa: E402
 import staff        # noqa: E402
 
-DATA = ROOT / "data"
+# A name AgencyZoom hands back instead of an id (an SR's createdBy / modifiedBy,
+# a task's completedBy) -> the person's staff.json az_id.
+NAME_TO_ID = {p["name"].strip().lower(): p.get("az_id") for p in staff.PEOPLE if p.get("az_id")}
+
+DATA = pathlib.Path(os.environ.get("CRM_DATA") or ROOT / "data")
 SCHEMA = ROOT / "site" / "crm" / "migrations" / "0001_init.sql"
 SYNTHETIC_WORKFLOW_FROM = 900001   # a sales pipeline AgencyZoom never gave us an id for
 SYNTHETIC_STAGE_FROM = 800001      # a service stage known only by name
@@ -116,6 +128,21 @@ def intval(v):
         return None
 
 
+def person(v):
+    """A staff id from an AgencyZoom id or a name ("Debbie Aguilera")."""
+    if isinstance(v, dict):
+        v = v.get("id") or f"{v.get('firstname', '')} {v.get('lastname', '')}"
+    i = intval(v)
+    if i is not None:
+        return i
+    return NAME_TO_ID.get(str(v or "").strip().lower())
+
+
+# AgencyZoom's policy status codes, as renewal_report reads them: 1 the current
+# term, 3 the next term already issued, 4 a past term, 0 cancelled.
+POLICY_STATUS = {0: "cancelled", 1: "active", 3: "pending", 4: "expired"}
+
+
 def load(name, default=None):
     p = DATA / name
     if not p.exists():
@@ -131,18 +158,49 @@ def as_list(x):
 
 
 # ---- the rows -----------------------------------------------------------------
+# Tables AgencyZoom owns while it is still the record: a sync UPDATES an
+# imported row (az_id set) when AgencyZoom's copy changed, and never touches a
+# row Pantheon made itself (az_id NULL). Lookups are upserted by name; notes
+# and stage moves never change once written.
+AZ_OWNED = {"leads", "households", "policies", "tasks", "service_requests"}
+LOOKUPS = {"lead_sources", "workflows", "stages", "service_categories", "resolutions", "carriers"}
+
+
+def statement(table, row, mode="ignore"):
+    """One INSERT for `row`. mode "ignore": INSERT OR IGNORE (the first load);
+    "upsert": AgencyZoom's version replaces an imported row's fields."""
+    keys = list(row)
+    head = f"INSERT INTO {table} ({', '.join(keys)}) VALUES ({', '.join(q(row[k]) for k in keys)})"
+    if mode == "upsert" and table in AZ_OWNED:
+        sets = ", ".join(f"{k} = excluded.{k}" for k in keys if k not in ("id", "az_id"))
+        return f"{head} ON CONFLICT(id) DO UPDATE SET {sets} WHERE {table}.az_id IS NOT NULL;"
+    if mode == "upsert" and table in LOOKUPS:
+        sets = ", ".join(f"{k} = excluded.{k}" for k in keys if k != "id")
+        return f"{head} ON CONFLICT(id) DO UPDATE SET {sets};" if sets else f"INSERT OR IGNORE{head[6:]};"
+    return f"INSERT OR IGNORE{head[6:]};"
+
+
 class Rows:
     def __init__(self):
-        self.stmts = []
+        self.rows = []          # (table, row)
         self.counts = {}
 
     def insert(self, table, row):
-        keys = list(row)
-        self.stmts.append(f"INSERT OR IGNORE INTO {table} ({', '.join(keys)}) VALUES ({', '.join(q(row[k]) for k in keys)});")
+        self.rows.append((table, row))
         self.counts[table] = self.counts.get(table, 0) + 1
 
+    def statements(self, mode="ignore"):
+        return [statement(t, r, mode) for t, r in self.rows]
 
-def build(rows):
+    @property
+    def stmts(self):
+        return self.statements("ignore")
+
+
+def build(rows, days=None):
+    """Every row the saved files give. `days` (a set of YYYY-MM-DD) limits the
+    per-day task and SR files read -- the nightly sync passes the days it is
+    responsible for; the first load reads them all."""
     stages_file = load("az_stages.json", {}) or {}
     leads = load("az_leads_all.json", []) or []
     customers = load("az_customers_all.json", []) or []
@@ -152,9 +210,12 @@ def build(rows):
 
     # lookups: lead sources
     sources = {}
-    for s in sources_file or []:
-        if intval(s.get("id")):
-            sources[int(s["id"])] = s.get("name") or f"Source {s['id']}"
+    if isinstance(sources_file, dict) and isinstance(sources_file.get("names"), dict):
+        sources.update({int(k): v for k, v in sources_file["names"].items() if intval(k)})
+    else:
+        for src in sources_file or []:
+            if intval(src.get("id")):
+                sources[int(src["id"])] = src.get("name") or f"Source {src['id']}"
     for r in leads + policies:
         sid = intval(r.get("leadSourceId"))
         if sid and sid not in sources and r.get("leadSourceName"):
@@ -162,51 +223,94 @@ def build(rows):
     for sid, name in sorted(sources.items()):
         rows.insert("lead_sources", {"id": sid, "name": name})
 
-    # lookups: workflows and stages. Sales pipelines from the stage map
-    # ("Pipeline | Stage" per stage id); service workflows from
-    # agencyzoom.json's names (ids where it knows them).
-    wf_ids = {agencyzoom.JUNK_WORKFLOW_NAME: agencyzoom.JUNK_WORKFLOW_ID}
+    # lookups: workflows and stages, with AgencyZoom's own ids wherever a file
+    # carries them -- the pipelines response (sales) and the SRs (service) --
+    # and a synthetic id only for a workflow known by name alone.
+    pipelines_raw = load("az_pipelines.json", None)
+    wf_ids, wf_kind, stage_rows = {}, {}, {}      # name -> id; name -> kind; stage id -> (wf id, name, ord)
+    stage_wf = {}                                  # stage id -> workflow id
+    if pipelines_raw:
+        for w in as_list(pipelines_raw):
+            wid, wname = intval(w.get("id")), w.get("name")
+            if not wid or not wname:
+                continue
+            wf_ids[wname] = wid
+            wf_kind[wname] = "sales"
+            for k, st in enumerate(w.get("stages") or []):
+                sid = intval(st.get("id"))
+                if sid:
+                    stage_rows[sid] = (wid, st.get("name") or "", intval(st.get("seq")) or k + 1)
+                    stage_wf[sid] = wid
+    for sid, where in stages_file.items():       # the fallback map: names only
+        pipe, _, stage = str(where).partition(" | ")
+        wf_kind.setdefault(pipe, "sales")
+        if intval(sid) and intval(sid) not in stage_rows:
+            stage_rows[int(sid)] = (None, stage or where, 0)   # workflow id filled in below
+            stage_wf[int(sid)] = pipe
+    service_names = set()
+    for names in agencyzoom.WORKFLOWS.get("service", {}).values():
+        service_names.update(names)
+    service_names.update((agencyzoom.WORKFLOWS.get("commercial_renewals") or {}).get("names", []))
     claim = agencyzoom.WORKFLOWS.get("claim") or {}
+    service_names.update(claim.get("names", []))
+    for n in service_names:
+        wf_kind[n] = "service"
+    wf_ids.setdefault(agencyzoom.JUNK_WORKFLOW_NAME, agencyzoom.JUNK_WORKFLOW_ID)
     for n in claim.get("names", []):
         if claim.get("id"):
-            wf_ids[n] = int(claim["id"])
+            wf_ids.setdefault(n, int(claim["id"]))
+
+    # SRs: every saved day's live and completed files, merged by id (newest file wins)
+    srs = {}
+    for f in sorted(glob.glob(str(DATA / "az_service_tickets_*.json"))):
+        if days is not None and not any(d in f for d in days):
+            continue
+        for t in as_list(json.loads(pathlib.Path(f).read_text())):
+            if intval(t.get("id")):
+                srs[int(t["id"])] = t
+    for t in srs.values():
+        wname, wid = t.get("workflowName"), intval(t.get("workflowId"))
+        if wname and wid:
+            wf_ids.setdefault(wname, wid)
+            wf_kind.setdefault(wname, "service")
+        sid, sname = intval(t.get("workflowStageId")), t.get("workflowStageName")
+        if sid and wid and sid not in stage_rows:
+            stage_rows[sid] = (wid, sname or "", 0)
+            stage_wf[sid] = wid
     next_wf = SYNTHETIC_WORKFLOW_FROM
-    kinds = {}
-    for sid, where in stages_file.items():
-        pipe = str(where).split(" | ")[0]
-        kinds.setdefault(pipe, "sales")
-    for names in agencyzoom.WORKFLOWS.get("service", {}).values():
-        for n in names:
-            kinds[n] = "service"
-    for n in (agencyzoom.WORKFLOWS.get("commercial_renewals") or {}).get("names", []):
-        kinds[n] = "service"
-    for n in claim.get("names", []):
-        kinds[n] = "service"
-    for name in sorted(kinds):
+    for name in sorted(wf_kind):
         if name not in wf_ids:
             wf_ids[name] = next_wf
             next_wf += 1
-        rows.insert("workflows", {"id": wf_ids[name], "name": name, "kind": kinds[name]})
+        rows.insert("workflows", {"id": wf_ids[name], "name": name, "kind": wf_kind[name]})
     ords = {}
-    for sid, where in stages_file.items():
-        pipe, _, stage = str(where).partition(" | ")
-        ords[pipe] = ords.get(pipe, 0) + 1
-        rows.insert("stages", {"id": int(sid), "workflow_id": wf_ids[pipe], "name": stage or where, "ord": ords[pipe]})
-    stage_by_name = {}          # (workflow name, stage name) -> id, for SRs
-    next_stage = [SYNTHETIC_STAGE_FROM]
+    for sid, (wid, sname, ord_) in sorted(stage_rows.items(), key=lambda kv: (str(kv[1][0]), kv[1][2], kv[0])):
+        if wid is None:                           # from the fallback map: its pipeline's name
+            wid = wf_ids.get(stage_wf.get(sid))
+            stage_wf[sid] = wid
+        if not wid:
+            continue
+        ords[wid] = ords.get(wid, 0) + 1
+        rows.insert("stages", {"id": sid, "workflow_id": wid, "name": sname, "ord": ord_ or ords[wid]})
 
     def service_stage(wf_name, stage_name):
-        if not wf_name or not stage_name or wf_name not in wf_ids:
-            return None
-        k = (wf_name, stage_name)
-        if k not in stage_by_name:
-            stage_by_name[k] = next_stage[0]
-            next_stage[0] += 1
-            rows.insert("stages", {"id": stage_by_name[k], "workflow_id": wf_ids[wf_name], "name": stage_name, "ord": len([x for x in stage_by_name if x[0] == wf_name])})
-        return stage_by_name[k]
+        """A service SR's stage id when its file carried none: by workflow and name."""
+        wid = wf_ids.get(wf_name)
+        for sid, (w, n, _) in stage_rows.items():
+            if w == wid and n == stage_name:
+                return sid
+        return None
 
-    for cid, name in sorted(agencyzoom.DATA.get("claim_categories", {}).items()):
-        rows.insert("service_categories", {"id": int(cid), "name": f"Claim: {name}"})
+    cat_names = {int(k): f"Claim: {v}" for k, v in agencyzoom.DATA.get("claim_categories", {}).items()}
+    for cat in as_list(load("az_service_categories.json", []) or []):   # the account's own names
+        if isinstance(cat, dict) and intval(cat.get("id")) and intval(cat.get("id")) not in cat_names:
+            cat_names[int(cat["id"])] = cat.get("name") or cat.get("categoryName") or f"Category {cat['id']}"
+    for t in srs.values():
+        cid = intval(t.get("categoryId"))
+        if cid and cid not in cat_names:
+            cat_names[cid] = t.get("categoryName") or f"Category {cid}"
+    for cid, name in sorted(cat_names.items()):
+        rows.insert("service_categories", {"id": cid, "name": name})
     for rid, name in sorted(agencyzoom.DATA["resolutions"]["labels"].items(), key=lambda kv: int(kv[0])):
         rows.insert("resolutions", {"id": int(rid), "name": name})
     for cid, short in sorted(agencyzoom.DATA.get("carriers", {}).items(), key=lambda kv: int(kv[0])):
@@ -229,10 +333,10 @@ def build(rows):
             "business_name": c.get("businessName") or None,
             "phone": c.get("phone") or None, "phone_key": e164(c.get("phone")),
             "secondary_phone": c.get("secondaryPhone") or None, "secondary_phone_key": e164(c.get("secondaryPhone")),
-            "email": c.get("email") or None, "address": c.get("address") or None, "city": c.get("city") or None,
+            "email": c.get("email") or None, "address": c.get("streetAddress") or c.get("address") or None, "city": c.get("city") or None,
             "state": c.get("state") or None, "zip": c.get("zip") or c.get("zipCode") or None,
-            "assigned_to": intval(c.get("assignedTo") or c.get("agentId")),
-            "customer_type": c.get("customerType") or "customer",
+            "assigned_to": person(c.get("agentId") or c.get("assignedTo")),
+            "customer_type": (c.get("customerType") or "Personal").lower(),
             "as_customer_date": local_dt(c.get("asCustomerDate")),
             "create_date": local_dt(c.get("createDate")) or local_dt(c.get("asCustomerDate")) or "1970-01-01 00:00:00",
             "modify_date": local_dt(c.get("modifyDate")), "status": 0 if c.get("status") == 0 else 1,
@@ -244,8 +348,9 @@ def build(rows):
         if not lid:
             continue
         sid = intval(l.get("workflowStageId"))
-        where = stages_file.get(str(sid)) if sid else None
-        pipe = where.split(" | ")[0] if where else None
+        wid = stage_wf.get(sid) if sid else None
+        if isinstance(wid, str):
+            wid = wf_ids.get(wid)
         status = intval(l.get("status")) or 0
         rows.insert("leads", {
             "id": lid, "az_id": lid,
@@ -256,21 +361,23 @@ def build(rows):
             "email": l.get("email") or None, "address": l.get("address") or None, "city": l.get("city") or None,
             "state": l.get("state") or None, "zip": l.get("zip") or l.get("zipCode") or None,
             "language": l.get("language") or None,
-            "assigned_to": intval(l.get("assignedTo")), "lead_source_id": intval(l.get("leadSourceId")),
-            "workflow_id": wf_ids.get(pipe) if pipe else None, "workflow_stage_id": sid if where else None,
+            "assigned_to": person(l.get("assignedTo")), "lead_source_id": intval(l.get("leadSourceId")),
+            "workflow_id": wid, "workflow_stage_id": sid if sid in stage_rows else None,
             "enter_stage_date": local_dt(l.get("enterStageDate")),
             "status": status, "exit": "Sold" if status == 2 else None,
             "create_date": local_dt(l.get("createDate")) or "1970-01-01 00:00:00",
             "last_activity_date": local_dt(l.get("lastActivityDate")),
             "quote_date": local_dt(l.get("quoteDate")), "sold_date": local_dt(l.get("soldDate")),
             "converted_household_id": intval(l.get("convertedHouseholdId")),
-            "created_by": intval(l.get("createdBy")),
+            "created_by": person(l.get("createdBy")),
         })
 
     # policies, with the household the map ties them to
+    # (data/az_household_policies.json: household id -> {"fetched": t, "policies": [...]})
     pol_household = {}
-    for hid, plist in (hh_map or {}).items():
-        for p in as_list(plist) if not isinstance(plist, list) else plist:
+    for hid, entry in (hh_map or {}).items():
+        plist = entry.get("policies") if isinstance(entry, dict) and "policies" in entry else entry
+        for p in (plist if isinstance(plist, list) else as_list(plist)):
             pid = intval(p.get("id") if isinstance(p, dict) else p)
             if pid:
                 pol_household[pid] = intval(hid)
@@ -282,7 +389,7 @@ def build(rows):
             "id": pid, "az_id": pid,
             "household_id": pol_household.get(pid) or intval(p.get("householdId") or p.get("customerId")),
             "lead_id": intval(p.get("leadId")),
-            "agent_id": intval(p.get("agentId")), "lead_source_id": intval(p.get("leadSourceId")),
+            "agent_id": person(p.get("agentId")), "lead_source_id": intval(p.get("leadSourceId")),
             "carrier_id": intval(p.get("carrierId")), "carrier_name": p.get("carrierName") or None,
             "policy_type_name": p.get("policyTypeName") or None, "policy_number": p.get("policyNumber") or None,
             "premium": num(p.get("premium")), "term_months": intval(p.get("term") or p.get("termMonths")),
@@ -290,68 +397,69 @@ def build(rows):
             "sold_date": local_day(p.get("soldDate")),
             "status": _policy_status(p), "cancel_date": local_day(p.get("cancelDate") or p.get("cancellationDate")),
             "create_date": local_dt(p.get("createDate")) or local_dt(p.get("soldDate")) or "1970-01-01 00:00:00",
-            "modify_date": local_dt(p.get("modifyDate")), "created_by": intval(p.get("createdBy")),
+            "modify_date": local_dt(p.get("modifyDate")), "created_by": person(p.get("createdBy")),
         })
 
     # tasks: every saved day, merged by id (the newest file wins)
+    def wanted(path):
+        return days is None or any(d in path for d in days)
+
     tasks = {}
     for f in sorted(glob.glob(str(DATA / "az_tasks_*.json"))):
+        if not wanted(f):
+            continue
         for t in as_list(json.loads(pathlib.Path(f).read_text())):
             if intval(t.get("id")):
                 tasks[int(t["id"])] = t
     for tid, t in sorted(tasks.items()):
         ctype = t.get("customerType") or None
         cid = intval(t.get("customerId"))
-        assignee = intval(t.get("assigneeId")) or intval(((t.get("assignees") or [{}])[0] or {}).get("id"))
+        assignee = person(t.get("assigneeId")) or person((t.get("assignees") or [None])[0])
+        due = local_dt(t.get("taskDateTime")) if t.get("timeSpecific") and t.get("taskDateTime") else (
+            f"{str(t.get('dueDate'))[:10]} 00:00:00" if t.get("dueDate") else None)
+        title = t.get("title") or ""
+        kind = (t.get("type") or "").lower()
+        if kind not in ("call", "email", "text", "todo"):
+            kind = "call" if re.search(r"\bcall|llam", title, re.I) else "email" if re.search(r"\bemail", title, re.I) else "text" if re.search(r"\btext", title, re.I) else "todo"
         rows.insert("tasks", {
-            "id": tid, "az_id": tid, "title": t.get("title") or "", "comments": t.get("comments") or None,
-            "type": (t.get("type") or "call").lower() if (t.get("type") or "call").lower() in ("call", "email", "text", "todo") else "todo",
-            "assignee_id": assignee,
+            "id": tid, "az_id": tid, "title": title, "comments": t.get("comments") or None,
+            "type": kind, "assignee_id": assignee,
             "lead_id": cid if ctype == "lead" else intval(t.get("leadId")),
             "household_id": cid if ctype == "customer" else None,
             "sr_id": cid if ctype == "serviceTicket" else None,
-            "customer_type": ctype, "due_date": local_dt(t.get("dueDate")),
-            "status": 1 if intval(t.get("status")) else 0, "complete_date": local_dt(t.get("completeDate")),
-            "completed_by": intval(t.get("completedBy")), "agency_todo": 1 if t.get("agencyTodo") else 0,
-            "created_by": intval(t.get("createdBy")),
-            "create_date": local_dt(t.get("createDate")) or local_dt(t.get("dueDate")) or "1970-01-01 00:00:00",
+            "customer_type": ctype, "due_date": due,
+            "status": intval(t.get("status")) or 0, "complete_date": local_dt(t.get("completeDate")),
+            "completed_by": person(t.get("completedBy")), "agency_todo": 1 if t.get("agencyTodo") else 0,
+            "created_by": person(t.get("createdBy")),
+            "create_date": local_dt(t.get("createDate")) or due or "1970-01-01 00:00:00",
         })
 
-    # SRs: live and completed files of every day, merged by id
-    srs = {}
-    for f in sorted(glob.glob(str(DATA / "az_service_tickets_*.json"))):
-        for t in as_list(json.loads(pathlib.Path(f).read_text())):
-            if intval(t.get("id")):
-                srs[int(t["id"])] = t
+    # SRs (merged above): AgencyZoom's own workflow and stage ids; createdBy and
+    # modifiedBy come back as names, so they go through person().
     for sid, t in sorted(srs.items()):
         wf_name = t.get("workflowName")
         wf_id = intval(t.get("workflowId")) or wf_ids.get(wf_name)
-        if wf_name and wf_name not in wf_ids and wf_id:
-            wf_ids[wf_name] = wf_id
-            rows.insert("workflows", {"id": wf_id, "name": wf_name, "kind": "service"})
-        if wf_name and wf_name not in wf_ids:
-            wf_ids[wf_name] = next_wf
-            wf_id = next_wf
-            next_wf += 1
-            rows.insert("workflows", {"id": wf_id, "name": wf_name, "kind": "service"})
-        ctype = t.get("customerType") or None
+        ctype = (t.get("customerType") or "customer").lower()
         cid = intval(t.get("householdId") or t.get("customerId"))
+        status = intval(t.get("status"))
+        modified_by = person(t.get("modifiedBy"))
         rows.insert("service_requests", {
             "id": sid, "az_id": sid,
             "household_id": cid if ctype != "lead" else None, "lead_id": cid if ctype == "lead" else None,
             "customer_type": ctype, "workflow_id": wf_id,
-            "workflow_stage_id": service_stage(wf_name, t.get("workflowStageName")),
+            "workflow_stage_id": intval(t.get("workflowStageId")) or service_stage(wf_name, t.get("workflowStageName")),
             "enter_stage_date": local_dt(t.get("enterStageTS") or t.get("enterStageDate")),
             "category_id": intval(t.get("categoryId")),
-            "subject": t.get("subject") or t.get("title") or "", "description": t.get("serviceDesc") or t.get("description") or None,
-            "csr": intval(t.get("csr")), "created_by": intval(t.get("createdBy")),
+            "subject": t.get("subject") or t.get("name") or t.get("title") or "", "description": t.get("serviceDesc") or t.get("description") or None,
+            "csr": person(t.get("csr")), "created_by": person(t.get("createdBy")),
             "create_date": local_dt(t.get("createDate")) or "1970-01-01 00:00:00",
             "due_date": local_dt(t.get("dueDate")), "expiry_date": local_day(t.get("expiryDate")),
             "effective_date": local_day(t.get("effectiveDate")), "policy_id": intval(t.get("policyId")),
-            "status": intval(t.get("status")) if intval(t.get("status")) is not None else 1,
-            "complete_date": local_dt(t.get("completeDate")), "completed_by": intval(t.get("completedBy")),
+            "status": status if status is not None else 1,
+            "complete_date": local_dt(t.get("completeDate")) if status == 2 else None,
+            "completed_by": (person(t.get("completedBy")) or modified_by) if status == 2 else None,
             "resolution_id": intval(t.get("resolutionId")), "resolution_desc": t.get("resolutionDesc") or None,
-            "modify_date": local_dt(t.get("modifyDate")), "modified_by": intval(t.get("modifiedBy")),
+            "modify_date": local_dt(t.get("modifyDate")), "modified_by": modified_by,
         })
 
     # notes and stage moves (notes are on the agency's clock already)
@@ -374,7 +482,7 @@ def build(rows):
             attr = n.get("attr") if isinstance(n.get("attr"), dict) else {}
             body = n.get("body") if n.get("body") is not None else (n.get("text") or "")
             ntype = str(n.get("type") or "NOTE").upper()
-            created_by = intval(n.get("createdBy"))
+            created_by = person(n.get("createdBy"))
             if created_by is None and n.get("createdBy"):
                 attr = dict(attr, createdByName=str(n["createdBy"]))
             origin = "automation" if attr.get("triggerRuleId") else ("traq" if str(body).lstrip().lower().startswith("traq") else "import")
@@ -397,7 +505,10 @@ def build(rows):
 
 
 def _policy_status(p):
-    s = str(p.get("status") or p.get("policyStatus") or "").lower()
+    v = p.get("status")
+    if intval(v) is not None:
+        return POLICY_STATUS.get(intval(v), "active")
+    s = str(v or p.get("policyStatus") or "").lower()
     if "cancel" in s:
         return "cancelled"
     if "expire" in s or "lapse" in s:
@@ -410,10 +521,10 @@ def _policy_status(p):
 def write_sql(rows, prefix):
     out = pathlib.Path(prefix)
     out.parent.mkdir(parents=True, exist_ok=True)
-    files = []
-    for i in range(0, len(rows.stmts), STATEMENTS_PER_FILE):
+    files, stmts = [], rows.stmts
+    for i in range(0, len(stmts), STATEMENTS_PER_FILE):
         p = out.parent / f"{out.name}_{i // STATEMENTS_PER_FILE:03d}.sql"
-        p.write_text("\n".join(rows.stmts[i:i + STATEMENTS_PER_FILE]) + "\n")
+        p.write_text("\n".join(stmts[i:i + STATEMENTS_PER_FILE]) + "\n")
         files.append(p)
     return files
 
@@ -442,7 +553,7 @@ if __name__ == "__main__":
     log("  rows built: " + ", ".join(f"{t} {n:,}" for t, n in sorted(rows.counts.items())))
     if args[0] == "--sql":
         files = write_sql(rows, args[1])
-        print(f"{len(rows.stmts):,} statements in {len(files)} file(s): {files[0]} .. {files[-1] if files else ''}")
+        print(f"{len(rows.rows):,} statements in {len(files)} file(s): {files[0]} .. {files[-1] if files else ''}")
         print("apply in order:  for f in <files>; do wrangler d1 execute pantheon-crm --remote --file=$f; done")
     else:
         counts = write_sqlite(rows, args[1])

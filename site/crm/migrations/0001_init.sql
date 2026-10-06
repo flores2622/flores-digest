@@ -10,11 +10,13 @@
 -- (assigned_to, agent_id, csr, created_by ...), so staff.json stays the one
 -- staff list.
 --
--- Status codes, as AgencyZoom's (CLAUDE.md):
---   leads.status            0 open, 2 sold, 3 dead (AgencyZoom has no code for
---                           dead -- a deaded lead leaves the open list; we keep it)
+-- Status codes, as AgencyZoom's (CLAUDE.md; counted on the 2026-10-06 snapshot):
+--   leads.status            0 open, 2 sold; 3 and 5 are AgencyZoom's closed
+--                           states (deaded / cycled out), kept as they come
 --   service_requests.status 0 deleted, 1 live, 2 completed
---   tasks.status            0 open, 1 completed
+--   tasks.status            0 open, 1 completed, 2 closed without completion
+--   policies.status         text: active (AZ 1), pending (AZ 3, the next term
+--                           issued), expired (AZ 4, a past term), cancelled (AZ 0)
 -- Dates are "YYYY-MM-DD HH:MM:SS" on the agency's clock (staff.json
 -- agency.timezone), the way AgencyZoom's notes read; the API says which.
 

@@ -35,11 +35,12 @@
   ],
   // Pantheon's own CRM (Frank, 2026-10-06; site/crm.js, schema in
   // site/crm/migrations/): the D1 database pantheon-crm, created in the
-  // account on 2026-10-06 (WNAM) with 0001_init.sql applied the same day.
-  // A later schema change is a new file in site/crm/migrations/, applied
-  // with `wrangler d1 migrations apply pantheon-crm --remote`. The history
-  // loads with crm_import.py (CRM.md "Turning it on"). Only staff.json's
-  // `crm` key (Frank alone, until further notice) may call /api/crm.
+  // account on 2026-10-06 (WNAM) with migrations 0001-0003 applied the same
+  // day. A later schema change is a new file in site/crm/migrations/,
+  // applied with `wrangler d1 migrations apply pantheon-crm --remote`. The
+  // nightly and the checkpoints mirror AgencyZoom into it (crm_sync.py,
+  // CF_API_TOKEN in the cloud environment). Only staff.json's `crm` key
+  // (Frank alone, until further notice) may call /api/crm.
   "d1_databases": [
     { "binding": "CRM", "database_name": "pantheon-crm",
       "database_id": "ba899473-2aac-49a2-9a02-c336758c2f8b",

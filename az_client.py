@@ -276,6 +276,12 @@ class AgencyZoom:
     def pipelines_and_stages(self):
         return self.get("/v1/api/pipelines-and-stages") or []
 
+    def service_categories(self):
+        """GET /v1/api/service-categories -- the SR categories by id (an SR
+        record carries categoryId with categoryName null). One request; the
+        nightly saves it as data/az_service_categories.json for the CRM."""
+        return self.get("/v1/api/service-categories") or []
+
 
 if __name__ == "__main__":
     az = AgencyZoom()
