@@ -52,6 +52,15 @@ import crm_import   # noqa: E402
 STATE_KEY = "cache/crm_sync_state.json"
 BATCH_BYTES = 60_000          # SQL text per D1 request (its statement limit is 100 KB)
 BATCH_STATEMENTS = 200
+# D1 counts every index entry as a row written (a lead costs ~8), and the free
+# tier allows 100,000 a day: the first load tripped it on 2026-10-06. A run
+# sends at most this many rows and leaves the rest for the next one, so a
+# fingerprint change or a re-import can never spend a whole day's budget at
+# once (CRM_SYNC_MAX_ROWS overrides).
+MAX_ROWS_PER_RUN = int(os.environ.get("CRM_SYNC_MAX_ROWS") or 25_000)
+# The database refusing everything (the daily write limit, a bad token, a
+# schema mismatch) is not a bad row: stop the run instead of retrying each row.
+REFUSED_ALL = re.compile(r"limit|quota|exceeded|blocked|unauthori|authentication|no such table|no such column", re.I)
 API = "https://api.cloudflare.com/client/v4"
 TOKEN_NAMES = ("CF_API_TOKEN", "CLOUDFLARE_API_TOKEN")
 
@@ -179,10 +188,15 @@ def sync(db, rows, state, log=print, full=False, dry_run=False, save=lambda s: N
     if not todo:
         log("  crm sync: nothing new")
         return 0
+    held = 0
+    if len(todo) > MAX_ROWS_PER_RUN:
+        held = len(todo) - MAX_ROWS_PER_RUN
+        todo = todo[:MAX_ROWS_PER_RUN]
     by_table = {}
     for t, *_ in todo:
         by_table[t] = by_table.get(t, 0) + 1
-    log("  crm sync: " + ", ".join(f"{t} {n:,}" for t, n in sorted(by_table.items())) + (" (dry run)" if dry_run else ""))
+    log("  crm sync: " + ", ".join(f"{t} {n:,}" for t, n in sorted(by_table.items())) + (" (dry run)" if dry_run else "")
+        + (f"; {held:,} more held for the next run" if held else ""))
     if dry_run:
         return len(todo)
     sent, bad = 0, []
@@ -191,15 +205,20 @@ def sync(db, rows, state, log=print, full=False, dry_run=False, save=lambda s: N
             db.execute("\n".join(it[3] for it in batch))
             ok = batch
         except Exception as e:
+            if REFUSED_ALL.search(str(e)):
+                raise RuntimeError(f"the database is refusing writes ({str(e)[:160]}); {sent:,} rows were sent, the rest wait for the next run")
             # One bad row must not stop the load: find it, log it, leave it out
             # of the state so the next run tries it again, and keep the rest.
-            ok = []
+            ok, errs = [], []
             for it in batch:
                 try:
                     db.execute(it[3])
                     ok.append(it)
                 except Exception as e1:
                     bad.append((it[0], it[1], str(e1)[:160]))
+                    errs.append(str(e1)[:160])
+                    if len(errs) >= 3 and not ok and len(set(errs)) == 1:
+                        raise RuntimeError(f"the database is refusing every row ({errs[0]}); {sent:,} rows were sent, the rest wait for the next run")
         for t, k, fp, _ in ok:
             state.setdefault(t, {})[k] = fp
         sent += len(ok)

@@ -160,8 +160,9 @@ def as_list(x):
 # ---- the rows -----------------------------------------------------------------
 # Tables AgencyZoom owns while it is still the record: a sync UPDATES an
 # imported row (az_id set) when AgencyZoom's copy changed, and never touches a
-# row Pantheon made itself (az_id NULL). Lookups are upserted by name; notes
-# and stage moves never change once written.
+# row Pantheon made itself (az_id NULL). Lookups are added once and never
+# rewritten (Frank consolidates and renames them in Pantheon); notes and stage
+# moves never change once written.
 AZ_OWNED = {"leads", "households", "policies", "tasks", "service_requests"}
 LOOKUPS = {"lead_sources", "workflows", "stages", "service_categories", "resolutions", "carriers"}
 
@@ -174,9 +175,10 @@ def statement(table, row, mode="ignore"):
     if mode == "upsert" and table in AZ_OWNED:
         sets = ", ".join(f"{k} = excluded.{k}" for k in keys if k not in ("id", "az_id"))
         return f"{head} ON CONFLICT(id) DO UPDATE SET {sets} WHERE {table}.az_id IS NOT NULL;"
-    if mode == "upsert" and table in LOOKUPS:
-        sets = ", ".join(f"{k} = excluded.{k}" for k in keys if k != "id")
-        return f"{head} ON CONFLICT(id) DO UPDATE SET {sets};" if sets else f"INSERT OR IGNORE{head[6:]};"
+    # A lookup (lead source, pipeline, stage, category, resolution, carrier) is
+    # added when AgencyZoom first shows it and never rewritten: Frank is
+    # consolidating and renaming these in Pantheon (2026-10-06), so his names
+    # win over AgencyZoom's from the moment he sets them.
     return f"INSERT OR IGNORE{head[6:]};"
 
 
