@@ -828,7 +828,11 @@ conversation but sits OUTSIDE the contact rate, so the Live contacts list
 says "N in the contact rate · M call-ins". daily.py keeps the premium quoted
 per lead (`quoted_premium`) and `speed_rows` -- the same first-dial rule as
 `speed_to_dial`, so the list matches the tile. Policy records carry no
-customer, so Sold lists the leads marked sold beside the policies. Past days:
+customer, so Sold is ONE table of the policies with a Customer column (Frank, 2026-10-06: "i dont need
+the lead and the policy info, just the policy info with the customer name"; `policyCustomer`): the lead
+marked sold that day by the same producer on the same source, else that producer's only sold household,
+blank when several households share it; a household marked sold whose policy is dated another day is one
+line under it. Household Completion's policies carry the same column. Past days:
 `python3 digest_rows.py --backfill 2026-09-01` from R2's saved inputs (no
 quoted premium, and no quoted list before 2026-09-24's `quoted_leads`).
 **Everything on the Digest opens its accounts** (Frank, 2026-09-29:
