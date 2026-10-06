@@ -1,0 +1,418 @@
+{
+  "_about": "The demo agency: Copperline Insurance Group, Austin, Texas -- a fictional agency with fictional people and carriers, for showing Pantheon and for testing that nothing in the code is Flores's. Same shape as the root staff.json (staff.py says what every key means).",
+  "agency": {
+    "name": "Copperline Insurance Group",
+    "short_name": "Copperline",
+    "carrier": "Northstar",
+    "carriers_spoken": [
+      "Northstar",
+      "Northstar Mutual",
+      "Harbor General",
+      "Pinecrest"
+    ],
+    "also_known_as": [
+      "Harlan Agency"
+    ],
+    "misheard_as": "Copper Lane",
+    "place": "Texas",
+    "timezone": "America/Chicago",
+    "sender": "digest@copperline-demo.example",
+    "contact": "ops@copperline-demo.example"
+  },
+  "people": [
+    {
+      "name": "Elena Vargas",
+      "email": "elena@copperline-demo.example",
+      "ext": "201",
+      "rc_id": "501001",
+      "az_id": 70001,
+      "heard_as": [
+        "Elaina"
+      ],
+      "producer": true,
+      "digest": "staff",
+      "service": {
+        "role": "Hybrid",
+        "playbook": "member",
+        "order": 3
+      },
+      "tags": [
+        "licensed",
+        "sells_service",
+        "hybrid_util",
+        "service_only_dials",
+        "zero_dial_exempt",
+        "task_assignee"
+      ],
+      "board": [
+        "rotation",
+        "sales_log_all"
+      ],
+      "color": "#ff4b4b",
+      "email_dot": "cA",
+      "handle": "elena.endorses"
+    },
+    {
+      "name": "Maya Delgado",
+      "email": "maya@copperline-demo.example",
+      "ext": "202",
+      "rc_id": "501002",
+      "az_id": 70002,
+      "producer": true,
+      "digest": "staff",
+      "tags": [
+        "task_assignee"
+      ],
+      "board": [],
+      "color": "#cd81ff",
+      "email_dot": "cB",
+      "handle": "maya.makes.it.rain"
+    },
+    {
+      "name": "Jordan Pike",
+      "email": "jordan@copperline-demo.example",
+      "ext": "203",
+      "rc_id": "501003",
+      "az_id": 70003,
+      "producer": true,
+      "digest": "staff",
+      "tags": [
+        "task_assignee"
+      ],
+      "board": [],
+      "color": "#5656fe",
+      "email_dot": "cC",
+      "handle": "jordan.just.bundles"
+    },
+    {
+      "name": "Theo Brandt",
+      "email": "theo@copperline-demo.example",
+      "ext": "204",
+      "rc_id": "501004",
+      "az_id": 70004,
+      "producer": true,
+      "digest": "staff",
+      "sales_team": "theo-priya",
+      "tags": [
+        "task_assignee"
+      ],
+      "board": [],
+      "color": "#00ffcf",
+      "email_dot": "cJ",
+      "handle": "theo.total.loss"
+    },
+    {
+      "name": "Priya Nair",
+      "email": "priya@copperline-demo.example",
+      "ext": "205",
+      "rc_id": "501005",
+      "az_id": 70005,
+      "heard_as": [
+        "Pria"
+      ],
+      "producer": true,
+      "digest": "staff",
+      "sales_team": "theo-priya",
+      "tags": [
+        "task_assignee"
+      ],
+      "board": [],
+      "color": "#ffb48c",
+      "email_dot": "cK",
+      "handle": "priya.premium"
+    },
+    {
+      "name": "Rosa Camacho",
+      "email": "rosa@copperline-demo.example",
+      "ext": "200",
+      "rc_id": "501000",
+      "az_id": 70010,
+      "digest": "staff",
+      "service": {
+        "role": "CSR",
+        "playbook": "front_desk",
+        "order": 1
+      },
+      "tags": [
+        "task_assignee",
+        "missed_call_fallback"
+      ],
+      "board": [
+        "rotation",
+        "rotation_edit"
+      ],
+      "color": "#0b0b0b",
+      "email_dot": "cE",
+      "handle": "rosa.on.the.line"
+    },
+    {
+      "name": "Nate Harlan",
+      "email": "nate@copperline-demo.example",
+      "ext": "101",
+      "rc_id": "500101",
+      "az_id": 70100,
+      "digest": "ops",
+      "tags": [
+        "licensed",
+        "training_lead_owner",
+        "commercial_owner",
+        "task_assignee"
+      ],
+      "board": [
+        "commercial",
+        "coeus_usage",
+        "card_review",
+        "roleplay_voices",
+        "rotation",
+        "rotation_edit",
+        "scrub",
+        "scrub_edit",
+        "roleplay_history",
+        "commission_all",
+        "sales_log_all"
+      ],
+      "handle": "nate.full.coverage"
+    },
+    {
+      "name": "Luis Ortega",
+      "email": "luis@copperline-demo.example",
+      "az_id": 70101,
+      "digest": "ops",
+      "tags": [
+        "licensed",
+        "insightful_not_tracked",
+        "referral_source",
+        "task_assignee"
+      ],
+      "board": [
+        "rotation",
+        "rotation_edit",
+        "scrub",
+        "scrub_edit",
+        "roleplay_history"
+      ],
+      "handle": "dm.luis"
+    },
+    {
+      "name": "Kim Yoon",
+      "email": "kim@copperline-demo.example",
+      "ext": "102",
+      "rc_id": "500102",
+      "az_id": 70102,
+      "digest": "ops",
+      "tags": [
+        "licensed"
+      ],
+      "board": [
+        "rotation",
+        "rotation_edit",
+        "scrub",
+        "scrub_edit",
+        "roleplay_history"
+      ],
+      "handle": "kim.keeps.it.covered"
+    },
+    {
+      "name": "Dana Whitfield",
+      "email": "dana@copperline-demo.example",
+      "ext": "103",
+      "rc_id": "500103",
+      "az_id": 70103,
+      "digest": "ops",
+      "service": {
+        "role": "Ops Mngr",
+        "playbook": "lead",
+        "order": 2
+      },
+      "tags": [
+        "licensed",
+        "sells_service",
+        "training_lead_owner",
+        "team_util_exclude",
+        "sales_sheet",
+        "task_assignee"
+      ],
+      "board": [
+        "rotation",
+        "rotation_edit",
+        "scrub",
+        "scrub_edit",
+        "roleplay_history",
+        "commission_all",
+        "sales_log_all"
+      ],
+      "color": "#baffff",
+      "email_dot": "cL",
+      "handle": "dana.approves"
+    },
+    {
+      "name": "Owen Reyes",
+      "status": "former",
+      "az_id": 70200,
+      "tags": [
+        "task_assignee"
+      ],
+      "board": []
+    }
+  ],
+  "rotation": {
+    "people": [
+      "Maya Delgado",
+      "Priya Nair",
+      "Dana Whitfield",
+      "Theo Brandt",
+      "Elena Vargas",
+      "Jordan Pike"
+    ],
+    "lists": {
+      "personal": {
+        "label": "Personal lines",
+        "order": [
+          "Maya Delgado",
+          "Priya Nair",
+          "Dana Whitfield",
+          "Theo Brandt",
+          "Elena Vargas"
+        ]
+      },
+      "life": {
+        "label": "Life",
+        "order": [
+          "Jordan Pike",
+          "Maya Delgado",
+          "Theo Brandt"
+        ]
+      },
+      "mexico": {
+        "label": "Mexico policies",
+        "order": [
+          "Maya Delgado",
+          "Dana Whitfield",
+          "Elena Vargas",
+          "Jordan Pike",
+          "Theo Brandt",
+          "Priya Nair"
+        ]
+      }
+    }
+  },
+  "commission_units": [
+    {
+      "key": "elena",
+      "label": "Elena",
+      "members": [
+        "Elena Vargas"
+      ],
+      "schedule": "individual"
+    },
+    {
+      "key": "maya",
+      "label": "Maya",
+      "members": [
+        "Maya Delgado"
+      ],
+      "schedule": "individual"
+    },
+    {
+      "key": "jordan",
+      "label": "Jordan",
+      "members": [
+        "Jordan Pike"
+      ],
+      "schedule": "individual"
+    },
+    {
+      "key": "team",
+      "label": "Theo & Priya",
+      "members": [
+        "Theo Brandt",
+        "Priya Nair"
+      ],
+      "schedule": "team"
+    }
+  ],
+  "sales_teams": {
+    "theo-priya": {
+      "label": "The Lone Star Closers",
+      "color": "#ffd700"
+    }
+  },
+  "orders": {
+    "coaching": [
+      "Maya Delgado",
+      "Elena Vargas",
+      "Jordan Pike",
+      "Theo Brandt",
+      "Priya Nair"
+    ],
+    "email_util_panel": [
+      "Elena Vargas",
+      "Jordan Pike",
+      "Rosa Camacho",
+      "Maya Delgado",
+      "Theo Brandt",
+      "Priya Nair"
+    ],
+    "util_panel": [
+      "Elena Vargas",
+      "Maya Delgado",
+      "Jordan Pike",
+      "Rosa Camacho",
+      "Dana Whitfield",
+      "Theo Brandt",
+      "Priya Nair"
+    ]
+  },
+  "commission": {
+    "_about": "Frank's Commission Sheet and Team Commission Sheet (2026-10-01), in numbers: the tiers (name, monthly premium minimum per schedule, rate on the whole premium), the team schedule's split, and the additional pay (life per policy, a new household bundle, a cross-sell line, an umbrella, business as a share of premium, the Kraft Lake bonus at its premium minimum). site/commission.js reads it through staff.js; commission_units says who is on which schedule.",
+    "tier_names": [
+      "Good",
+      "Better",
+      "Best",
+      "Great",
+      "Excellent",
+      "Outstanding"
+    ],
+    "rates": [
+      0.03,
+      0.033,
+      0.0429,
+      0.0438,
+      0.0444,
+      0.05
+    ],
+    "schedules": {
+      "individual": {
+        "mins": [
+          25000,
+          30000,
+          35000,
+          40000,
+          45000,
+          50000
+        ],
+        "split": 1
+      },
+      "team": {
+        "mins": [
+          50000,
+          60000,
+          70000,
+          80000,
+          90000,
+          100000
+        ],
+        "split": 0.5
+      }
+    },
+    "pay": {
+      "life": 100,
+      "bundle": 50,
+      "xsell": 25,
+      "umbrella": 25,
+      "business": 0.035,
+      "kraftMin": 10000,
+      "kraft": 300
+    }
+  }
+}

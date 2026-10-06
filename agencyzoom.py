@@ -51,8 +51,10 @@ import json
 import pathlib
 import sys
 
+import agency_files
+
 ROOT = pathlib.Path(__file__).resolve().parent
-JSON_PATH = ROOT / "agencyzoom.json"
+JSON_PATH = agency_files.path("agencyzoom.json")   # PANTHEON_AGENCY picks the agency
 DATA = json.loads(JSON_PATH.read_text())
 
 

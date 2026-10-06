@@ -1940,6 +1940,7 @@ const staffOrder = key => (STAFF.orders || {})[key] || [];
 const GOALS = window.GOALS || { thresholds: {}, reply_goal_minutes: { green: 15, red: 60 }, life_weekly_goal: 1, week_premium_goal: 20000 };
 /* The agency itself (staff.json agency): the tab's title and the menu's brand. */
 const AGENCY = STAFF.agency || {};
+if (window.bpFilled) window.BLUEPRINTS = bpFilled(bpValues(AGENCY));   // the guides, with the carrier's name filled in
 if (AGENCY.name) document.title = `Pantheon — ${AGENCY.name}`;
 if (AGENCY.short_name) { const b = document.getElementById("brand"); if (b) b.innerHTML = `${AGENCY.short_name}<br><span>Insurance</span>`; }
 /* The agency's clock (staff.json agency.timezone, through staff.js): every
@@ -8374,7 +8375,7 @@ async function paintTab() {
     v.innerHTML = rangeControlHtml() + '<div class="empty">Loading…</div>';
     wireRangeControl();
     const err = await ensureCurForRange();
-    $("#topsub").textContent = "The Flores Post" + (cur ? " · " + (cur.label || cur.date || curRangeLabel) : "");
+    $("#topsub").textContent = `The ${AGENCY.short_name || "Flores"} Post` + (cur ? " · " + (cur.label || cur.date || curRangeLabel) : "");
     let body;
     try { body = await postPanel(err); } catch (e) { console.error(e); body = drawErrorHtml(e); }
     v.innerHTML = rangeControlHtml() + body;
@@ -10332,7 +10333,7 @@ const TOUR_STEPS = [
   { view: "digest", find: () => $("#view .chatbox"), title: "How the day went",
     text: "The floor's group chat: each producer's calls, quotes and sales as they happened, with Apollo answering only with coaching notes (a nice close, or the line to say next time). A line opens its coaching card or list. Beside it, what needs someone right now." },
   { view: "editions", find: () => $("#view .edtabs") || $("#view .press"), title: "The editions",
-    text: "A published day or a folio, seven ways: The Flores Post (the newspaper, with Primetime), The Flores Feed, Fourth and Goal, KFLR The Close, FLRS 500, Cold Call Comics and CLOSER. React, vote, comment: everyone sees the same tally." },
+    text: "A published day or a folio, seven ways: the newspaper (with Primetime), the feed, Fourth and Goal, the podcast, the market close, Cold Call Comics and CLOSER. React, vote, comment: everyone sees the same tally." },
   { view: "sales", title: "The Sales sheet",
     text: "Log a sale, look back at any folio, or break sales down by lead source, product or producer. Live sales are added here automatically. The Commission tab shows where you stand on the commission schedule this folio." },
   { view: "messages", title: "Texts & Emails",

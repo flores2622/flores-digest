@@ -66,8 +66,10 @@ import re
 import sys
 from zoneinfo import ZoneInfo
 
+import agency_files
+
 ROOT = pathlib.Path(__file__).resolve().parent
-JSON_PATH = ROOT / "staff.json"
+JSON_PATH = agency_files.path("staff.json")   # PANTHEON_AGENCY picks the agency
 JS_PATH = ROOT / "site" / "staff_data.js"
 PUBLIC_PATH = ROOT / "site" / "public" / "staff.js"
 # What the board page may know: never an email, a phone extension or an

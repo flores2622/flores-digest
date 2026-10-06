@@ -394,7 +394,7 @@ def render(day, rows):
         hourstrip=hourstrip(), made_table=table(made, False),
         done_table=(table(done, True) if done else
                     '<p class="empty">Nobody was called back yet.</p>'),
-        stamp=f"{dt.datetime.now(AZ):%-I:%M %p} Arizona")
+        stamp=f"{dt.datetime.now(AZ):%-I:%M %p} {staff.PLACE}")
 
 
 TEMPLATE = """<title>Missed Call Audit</title>
