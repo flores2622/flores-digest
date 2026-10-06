@@ -35,6 +35,7 @@
 
 import { contactItems, messageEvents, contactDeltas, messageDeltas, last10, e164, noteText, rxOf } from "./live_notes.js";
 import { TZ, localDay, localParts, localStr, localClock, dayStartMs, dayStartIso } from "./staff.js";
+import LEAD_SOURCES from "./lead_sources_data.js";
 
 export const CACHE_SECONDS = 120;
 export const QUOTES_STALE_SECONDS = 180;
@@ -754,7 +755,7 @@ export function taskCompletion(basis, tasks, flags) {
    first, in call-log order, as Python's dict order does); the lead's
    createDate (UTC) moved to Arizona before it is compared with the day; and
    both sides keyed by az_corpus.e164, the last ten digits. */
-const SPEED_SOURCES = ["surequote", "mav ai", "mav"];
+const SPEED_SOURCES = LEAD_SOURCES.speed_sources;   // lead_sources.json, via `python3 lead_sources.py --write-js`
 const median = xs => { const v = [...xs].sort((a, b) => a - b), m = v.length >> 1; return v.length % 2 ? v[m] : (v[m - 1] + v[m]) / 2; };
 export function speedToDial(day, basis, leads, recs) {
   const byExt = Object.fromEntries(Object.entries(basis.producers || {}).map(([n, v]) => [String(v.rc_id), n]));

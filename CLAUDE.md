@@ -591,6 +591,37 @@ already, so it reads nothing new. Still in code: the Service Center's
 board labels and kinds (`PIPELINES`), `RESOLUTIONS_FROM`, the staff ids
 (staff.json) and the lead sources (`lead_sources.py`, next).
 
+## This agency's lead sources
+
+**`lead_sources.json` holds the agency's lead-source NAMES** (Frank,
+2026-10-06: "start on the lead sources next" -- the fourth blocker to
+running Pantheon for another agency): each AgencyZoom source name (lower-
+cased, trimmed) and its group, the product each cross-sell source sells,
+a source's own Role Play backstory where its group's is not right (Home no
+Auto, Auto no Home, Francisco), and the internet sources Speed to Dial
+times (SureQuote, MAV). **The rules stay in `lead_sources.py`**: the
+GROUPS (who the lead is, what to sell, the approach, Role Play, which are
+existing households and not a sale), a staff member's name as a source
+(staff.json decides: their own network, or a Referral for
+`referral_source`), "Name at Company" as a center of influence. `SOURCES`,
+`CROSS_SELL_PRODUCT`, `SOURCE_BACKSTORY`, `NOT_A_SALE` and
+`EXISTING_HOUSEHOLD` are built from the file, names and order unchanged --
+checked identical, every constant, classify / prompt_block / board_map on
+60 names, before and after. New: `lead_sources.SPEED_SOURCES` (daily.py's
+speed rows read it) and `LIFE_SOURCES` (the cross-sell sources selling
+life; `digest_config.LIFE_LEAD_SOURCES` is it). **The Worker reads
+`site/lead_sources_data.js`**, written by `python3 lead_sources.py
+--write-js` -- never by hand: live.js's speed sources and commission.js's
+cross-sell names (checked the same on 20 names). `python3 lead_sources.py
+--check` validates the file (every group exists, names normalised, no
+staff name, a not-a-sale source, the Worker's copy current);
+`--discover` lists every source in the saved lead corpus by group with the
+unclassified first -- what a new agency's file is missing (no AgencyZoom
+request). Still naming this agency's sources: the GROUPS' `who` lines and
+the guides in blueprints.js (words for a person, not matching), and the
+Worker's `live_basis` still carries not-a-sale / existing-household from
+Python as before.
+
 ## Phone numbers
 
 `az_corpus.e164` keys on the **last ten digits**. AgencyZoom stores every number

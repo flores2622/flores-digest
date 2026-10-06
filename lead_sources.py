@@ -5,7 +5,21 @@ product and not a household: the same source covers every lead it ever
 brought in. This module turns the ~83 raw names into a few GROUPS. Each group
 says who the lead is, what we can sell them, and how to work them.
 
-    python3 lead_sources.py      every source in the lead corpus, with its group
+**The names are this agency's, in lead_sources.json** (the one place): each
+source name and its group, the product each cross-sell source sells, a
+source's own Role Play backstory where its group's is not right, and the
+internet sources Speed to Dial times. The GROUPS -- what a group means and
+how it is worked -- and every rule (a staff member's name, "Name at
+Company", the money rules) stay here. A new agency starts by writing its
+own lead_sources.json; `--discover` lists what its corpus holds.
+
+    python3 lead_sources.py --discover   every source in the saved lead corpus,
+                                         with its group; unclassified marked
+    python3 lead_sources.py --check      validate lead_sources.json and the
+                                         Worker's copy
+    python3 lead_sources.py --write-js   rewrite site/lead_sources_data.js (the
+                                         Worker's: the speed sources, the
+                                         cross-sell and not-a-sale names)
 
 It is also the single definition of two money rules that digest_config
 imports:
@@ -17,9 +31,16 @@ imports:
 (`APPROACH_CONFIRMED`). `roleplay` says whether Role Play may use a group as
 a session's lead source. Every lead source is still coached.
 """
+import json
+import pathlib
 import re
 
 import staff
+
+ROOT = pathlib.Path(__file__).resolve().parent
+JSON_PATH = ROOT / "lead_sources.json"
+JS_PATH = ROOT / "site" / "lead_sources_data.js"
+DATA = json.loads(JSON_PATH.read_text())
 
 ANY = "any product"
 
@@ -201,56 +222,22 @@ for _k, _g in GROUPS.items():
 # building on that later". A new or rewritten line starts False again.
 APPROACH_CONFIRMED = {k: g["approach"] is not None for k, g in GROUPS.items()}
 
-# Normalised name (see norm) -> group. Everything not listed here is decided
-# by the patterns in classify().
-SOURCES = {
-    # cross-sell
-    "home no auto": "cross_sell", "auto no home": "cross_sell",
-    "life cross sell": "cross_sell", "umbrella": "cross_sell",
-    "cross sell": "cross_sell",
-    "existing client purchased a new": "existing_new_purchase",
-    # generated / purchased
-    "surequote": "generated", "smart financial": "generated",
-    "smart financial live transfer": "generated", "enterprise": "generated",
-    "mav ai": "generated", "alpha media": "generated",
-    "arizona insurance reports": "generated", "facebook": "generated",
-    # Instagram and LinkedIn share AgencyZoom's Social Media category with
-    # Facebook but are their own group (social_media, below). Neither has a
-    # lead yet (2026-09-24).
-    "instagram": "social_media", "linkedin": "social_media",
-    # found us -> part of call-in / walk-in (Frank, 2026-09-24)
-    "google": "inbound", "farmers.com": "inbound",
-    "found us on google": "inbound",   # the name on some 2026-09 lead records
-    # winback
-    "winback": "winback", "winback by agencyzoom": "winback",
-    # referral
-    "existing customer referral": "referral", "referral by agencyzoom": "referral",
-    # centers of influence without an "at Company" in the name (Mariah Serna:
-    # Frank, 2026-09-24)
-    "lender no longer in the industry": "center_of_influence",
-    "mariah serna": "center_of_influence",
-    # inbound
-    "call-in": "inbound", "walk-in": "inbound",
-    # cold / misc
-    "cold lead": "cold", "fig qnt": "cold", "crane benefit fair": "cold",
-    "old mvp leads": "cold",
-    "utv expo": "cold",   # an event booth, like Crane; no leads yet
-    # other one-offs
-    "hometown quotes": "one_off", "x": "one_off", "other lead": "one_off",
-    # commercial -> Cerberus
-    "leo": "commercial", "work comp": "commercial",
-    "district comm leads": "commercial", "agent promoter comm leads": "commercial",
-    "rcfbh group life": "commercial",
-    "kraft lake": "commercial",   # AgencyZoom's Commercial Leads category; no leads yet
-    # not a sale
-    "bob": "not_a_sale", "rewrite": "not_a_sale",
-}
+# Normalised name (see norm) -> group: lead_sources.json's `sources`, in its
+# order (a key starting with "_" is a comment there). Everything not listed
+# is decided by the rules in classify().
+SOURCES = {k: v for k, v in DATA["sources"].items() if not k.startswith("_")}
 
-# The product each cross-sell source is selling into the household.
-CROSS_SELL_PRODUCT = {
-    "home no auto": "auto", "auto no home": "home",
-    "life cross sell": "life", "umbrella": "umbrella", "cross sell": None,
-}
+# The product each cross-sell source is selling into the household
+# (lead_sources.json's `cross_sell_product`).
+CROSS_SELL_PRODUCT = dict(DATA["cross_sell_product"])
+
+# The internet sources Speed to Dial times (daily.speed_rows, the Worker's
+# speedToDial): a lead whose source name CONTAINS one of these.
+SPEED_SOURCES = tuple(DATA["speed_sources"])
+
+# A lead marked sold on a life source is a life sale, not a household sold
+# (digest_config.is_life_lead): the cross-sell sources selling life.
+LIFE_SOURCES = {n for n, p in CROSS_SELL_PRODUCT.items() if p == "life"}
 
 # Staff whose name used as a lead source means their own referral or network.
 # Current and past team; a new hire's name as a source lands in "unclassified"
@@ -263,25 +250,14 @@ STAFF = {p["name"].lower() for p in staff.PEOPLE}
 # 2026-09-24).
 STAFF_REFERRAL = {p["name"].lower() for p in staff.tagged("referral_source")}
 
-# Role Play backstory for one source where its group's own is not right: a
-# Francisco lead is a referral or a warm transfer (Frank, 2026-09-24). Home
-# no Auto and Auto no Home say which policy the agency already has (Frank,
-# 2026-09-30: "If its Home no auto, that means we have the home and not the
-# auto. we are trying to sell the auto") -- the group's "one policy" left the
-# prospect saying they already had the auto with us.
-SOURCE_BACKSTORY = {
-    "home no auto": "Your home is insured with this agency. Your cars are insured "
-                    "with another company, not this agency. The producer is calling "
-                    "about your auto insurance. You do not need a home quote -- this "
-                    "agency already has your home.",
-    "auto no home": "Your cars are insured with this agency. Your home is insured "
-                    "with another company, not this agency. The producer is calling "
-                    "about your home insurance. You do not need an auto quote -- this "
-                    "agency already has your cars.",
-    "francisco flores": "You spoke with Francisco at this agency and he either "
-                        "transferred your call to this producer or passed your "
-                        "information along and told you they would call.",
-}
+# Role Play backstory for one source where its group's own is not right
+# (lead_sources.json's `source_backstory`): a Francisco lead is a referral or
+# a warm transfer (Frank, 2026-09-24). Home no Auto and Auto no Home say
+# which policy the agency already has (Frank, 2026-09-30: "If its Home no
+# auto, that means we have the home and not the auto. we are trying to sell
+# the auto") -- the group's "one policy" left the prospect saying they
+# already had the auto with us.
+SOURCE_BACKSTORY = dict(DATA["source_backstory"])
 
 # "Name at Company" / "Name @ Company" is a center of influence.
 _COI = re.compile(r"\s(at|@)\s", re.I)
@@ -373,23 +349,87 @@ NOT_A_SALE = names_in("not_a_sale")
 EXISTING_HOUSEHOLD = {n for n, g in SOURCES.items() if GROUPS[g]["existing_household"]}
 
 
-def main():
-    import collections, json, pathlib
-    leads = json.loads((pathlib.Path(__file__).parent / "data/az_leads_all.json").read_text())
+def _js():
+    body = json.dumps({"speed_sources": list(SPEED_SOURCES), "not_a_sale": sorted(NOT_A_SALE),
+                       "existing_household": sorted(EXISTING_HOUSEHOLD),
+                       "cross_sell_product": {n: p for n, p in CROSS_SELL_PRODUCT.items() if p}},
+                      indent=2, ensure_ascii=False)
+    return ("// WRITTEN BY `python3 lead_sources.py --write-js` FROM lead_sources.json -- do not edit.\n"
+            "// The Worker's copy of the agency's lead-source names: see lead_sources.py.\n"
+            f"export default {body};\n")
+
+
+def check(log=print):
+    """Validate lead_sources.json against the groups and rules here, and the
+    Worker's copy against the file. Returns the problems."""
+    bad = []
+    for n, g in SOURCES.items():
+        if g not in GROUPS:
+            bad.append(f"sources: {n!r} -> {g!r} is not a group ({', '.join(GROUPS)})")
+        if n != norm(n):
+            bad.append(f"sources: {n!r} is not in its normalised form ({norm(n)!r})")
+        if n in STAFF:
+            bad.append(f"sources: {n!r} is a staff member's name -- staff.json decides it; drop it here")
+    for n, p in CROSS_SELL_PRODUCT.items():
+        if n not in SOURCES or not GROUPS[SOURCES[n]]["existing_household"]:
+            bad.append(f"cross_sell_product: {n!r} is not a cross-sell source")
+    for n in SOURCE_BACKSTORY:
+        if n not in SOURCES and n not in STAFF:
+            bad.append(f"source_backstory: {n!r} is not a listed source or a staff member")
+    if not NOT_A_SALE:
+        bad.append("sources: no not_a_sale source (BOB-style housekeeping) -- every agency has one")
+    if not SPEED_SOURCES:
+        bad.append("speed_sources: empty -- Speed to Dial would time no lead")
+    if not JS_PATH.exists() or JS_PATH.read_text() != _js():
+        bad.append(f"{JS_PATH.relative_to(ROOT)} is out of date: run python3 lead_sources.py --write-js")
+    for b in bad:
+        log(f"  lead_sources.json: {b}")
+    return bad
+
+
+def discover():
+    """Every source in the saved lead corpus (data/az_leads_all.json), by
+    group, the unclassified ones first -- what a new agency's file is
+    missing. Reads the nightly's own file; no AgencyZoom request."""
+    import collections
+    path = ROOT / "data/az_leads_all.json"
+    if not path.exists():
+        print("no data/az_leads_all.json here -- run after a nightly pull")
+        return
+    leads = json.loads(path.read_text())
     count = collections.Counter(l.get("leadSourceName") for l in leads if l.get("leadSourceName"))
     by = collections.defaultdict(list)
     for name, n in count.items():
         by[classify(name)].append((n, name.strip()))
-    for key, g in GROUPS.items():
+    for key in ["unclassified"] + [k for k in GROUPS if k != "unclassified"]:
         if not by.get(key):
             continue
+        g = GROUPS[key]
         rows = sorted(by[key], reverse=True)
+        mark = "  <- NOT IN lead_sources.json: add each, or leave it unclassified on purpose" if key == "unclassified" else ""
         print(f"\n{g['label']}  ({len(rows)} sources, {sum(n for n, _ in rows):,} leads)"
               f"  products: {g['products'] or '-'}  owner: {g['owner'] or '-'}"
-              f"  role play: {'yes' if g['roleplay'] else 'no'}")
+              f"  role play: {'yes' if g['roleplay'] else 'no'}{mark}")
         for n, name in rows:
             print(f"   {n:6,d}  {name}")
 
 
+def main(argv):
+    if "--write-js" in argv:
+        JS_PATH.write_text(_js())
+        print(f"wrote {JS_PATH.relative_to(ROOT)}")
+        return 0
+    if "--check" in argv:
+        bad = check()
+        print("lead_sources.json ok" if not bad else f"{len(bad)} problem(s)")
+        return 1 if bad else 0
+    if "--discover" in argv:
+        discover()
+        return 0
+    print(__doc__)
+    return 0
+
+
 if __name__ == "__main__":
-    main()
+    import sys
+    sys.exit(main(sys.argv[1:]))

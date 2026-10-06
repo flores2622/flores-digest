@@ -16,6 +16,7 @@ import base64
 import collections
 import datetime as dt
 import staff
+import lead_sources
 import json
 import os
 import pathlib
@@ -1086,7 +1087,7 @@ def speed_rows(day, leads, dials):
     rows = []
     for l in leads:
         src = (l.get("leadSourceName") or "").lower()
-        if not any(k in src for k in ("surequote", "mav ai", "mav")):
+        if not any(k in src for k in lead_sources.SPEED_SOURCES):   # lead_sources.json
             continue
         if not l.get("createDate"):
             continue
