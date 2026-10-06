@@ -20,12 +20,22 @@ function d1(db) {
 }
 function fresh() {
   const db = new DatabaseSync(":memory:");
-  db.exec(readFileSync(new URL("./crm/migrations/0001_init.sql", import.meta.url), "utf8"));
+  for (const f of ["0001_init.sql", "0002_stage_move_note.sql", "0003_lead_source_names.sql", "0004_lists.sql"])
+    db.exec(readFileSync(new URL("./crm/migrations/" + f, import.meta.url), "utf8"));
   db.exec(`INSERT INTO lead_sources (id, name) VALUES (1, 'Facebook'), (2, 'Home no Auto');
-    INSERT INTO workflows (id, name, kind) VALUES (10, '1 Pipeline', 'sales'), (20, 'Service Pipeline', 'service');
+    INSERT INTO workflows (id, name, kind) VALUES (10, '1 Pipeline', 'sales'), (20, 'Service Pipeline', 'service'), (30, 'Late Payments', 'service');
     INSERT INTO stages (id, workflow_id, name, ord) VALUES (101, 10, 'New', 1), (102, 10, 'Contacted, In Progress', 2), (103, 10, 'Quotes Presented', 3), (201, 20, 'New', 1);
     INSERT INTO resolutions (id, name) VALUES (32571, 'Completed'), (32574, 'Renewed: Accepted as is');
-    INSERT INTO carriers (id, name, short) VALUES (484668, 'Farmers Insurance', 'Farmers');`);
+    INSERT INTO carriers (id, name, short) VALUES (484668, 'Farmers Insurance', 'Farmers');
+    INSERT INTO service_categories (id, name) VALUES (91, 'General'), (93, 'Monthly');
+    -- Frank's lists and the map, as crm_lists.py seeds them (a slice)
+    INSERT INTO lists (kind, id, name, parent_id, detail_label, meaning, ord) VALUES
+      ('source', 2, 'Internet lead', NULL, 'Vendor', 'bought online', 2), ('source', 4, 'Cross-sell: Home no Auto', NULL, NULL, NULL, 4),
+      ('pipeline', 1, 'New Business', NULL, NULL, NULL, 1), ('stage', 101, 'New', 1, NULL, NULL, 1), ('stage', 105, 'Contacted, In Progress', 1, NULL, NULL, 5), ('stage', 107, 'Quotes Presented', 1, NULL, NULL, 7),
+      ('service', 1, 'Billing', NULL, 'Payment', NULL, 1), ('service', 4, 'Personal Endorsements', NULL, 'Change', NULL, 4);
+    INSERT INTO list_map (kind, az_id, list_id, detail) VALUES ('source', 1, 2, 'Facebook'), ('source', 2, 4, NULL),
+      ('workflow', 10, 1, NULL), ('stage', 101, 101, NULL), ('stage', 102, 105, NULL), ('stage', 103, 107, NULL),
+      ('workflow', 20, 4, NULL), ('workflow', 30, 1, NULL), ('category', 91, NULL, NULL), ('category', 93, 1, 'Monthly');`);
   return { raw: db, env: { CRM: d1(db) } };
 }
 const FRANK = STAFF.people.find((p) => p.name.startsWith("Frank"));
@@ -216,4 +226,81 @@ test("lists page from 0 and cap the page size", async () => {
   assert.equal(p2.customers.length, 1);
   assert.equal((await call(env, "GET", "/api/crm/households?limit=9999")).body.limit, 500);
   assert.equal((await call(env, "GET", "/api/crm/households?q=h3")).body.customers.length, 1);
+});
+
+test("Frank's lists: a record carries his names beside AgencyZoom's", async () => {
+  const { env } = fresh();
+  const lead = (await call(env, "POST", "/api/crm/leads", { lastname: "Ortiz", leadSourceId: 1, workflowStageId: 102 })).body;
+  assert.equal(lead.leadSourceName, "Facebook");             // AgencyZoom's, untouched
+  assert.equal(lead.sourceName, "Internet lead");            // Frank's
+  assert.equal(lead.sourceDetail, "Facebook");
+  assert.equal(lead.pipelineName, "New Business");
+  assert.equal(lead.stageName, "Contacted, In Progress");
+  const hh = (await call(env, "POST", "/api/crm/households", { lastname: "Sanchez" })).body;
+  // an SR on a category that says nothing follows its workflow; one on Monthly is Billing
+  let sr = (await call(env, "POST", "/api/crm/srs", { householdId: hh.id, workflowId: 20, categoryId: 91, subject: "x" })).body;
+  assert.equal(sr.workflowName, "Service Pipeline");
+  assert.equal(sr.pipelineName, "Personal Endorsements");
+  sr = (await call(env, "POST", "/api/crm/srs", { householdId: hh.id, workflowId: 20, categoryId: 93, subject: "y" })).body;
+  assert.equal(sr.pipelineName, "Billing");
+  assert.equal(sr.pipelineDetail, "Monthly");
+  // a service workflow placed at list 1 is Billing, not pipeline 1 (New Business): the ids overlap
+  sr = (await call(env, "POST", "/api/crm/srs", { householdId: hh.id, workflowId: 30, categoryId: 91, subject: "z" })).body;
+  assert.equal(sr.pipelineName, "Billing");
+  const page = (await call(env, "GET", "/api/crm/lists")).body;
+  assert.equal(page.az.workflows.find((x) => x.id === 30).listId, 1);
+  assert.equal(page.unsorted, 0);
+  const lk = (await call(env, "GET", "/api/crm/lookups")).body;
+  assert.equal(lk.lists.ready, true);
+  assert.equal(lk.lists.pipelines[0].stages.length, 3);
+});
+
+test("the Lists page: counts, unsorted, place, add, edit, order", async () => {
+  const { env } = fresh();
+  await call(env, "POST", "/api/crm/leads", { lastname: "A", leadSourceId: 1, workflowStageId: 101 });
+  await call(env, "POST", "/api/crm/leads", { lastname: "B", leadSourceId: 1, workflowStageId: 103 });
+  let r = await call(env, "GET", "/api/crm/lists");
+  assert.equal(r.status, 200, JSON.stringify(r.body));
+  assert.equal(r.body.ready, true);
+  const fb = r.body.az.sources.find((x) => x.id === 1);
+  assert.equal(fb.leads, 2);
+  assert.equal(fb.listId, 2);
+  assert.equal(fb.placedBy, "rule");
+  assert.equal(r.body.az.workflows.find((x) => x.id === 10).leads, 2);
+  assert.equal(r.body.az.categories.find((x) => x.id === 91).placed, true);
+  assert.equal(r.body.az.categories.find((x) => x.id === 91).listId, null);
+  assert.equal(r.body.unsorted, 0);
+  // a new AgencyZoom source the nightly brought in is Unsorted until placed
+  await env.CRM.prepare("INSERT INTO lead_sources (id, name) VALUES (3, 'New Vendor')").run();
+  r = await call(env, "GET", "/api/crm/lists");
+  assert.equal(r.body.unsorted, 1);
+  assert.equal((await call(env, "POST", "/api/crm/lists/place", { kind: "source", azId: 3, listId: 999 })).status, 400);
+  assert.equal((await call(env, "POST", "/api/crm/lists/place", { kind: "source", azId: 3, listId: 2, detail: "New Vendor" })).status, 200);
+  r = await call(env, "GET", "/api/crm/lists");
+  assert.equal(r.body.unsorted, 0);
+  assert.equal(r.body.az.sources.find((x) => x.id === 3).placedBy, FRANK.email);
+  // moving a category to "follows the workflow" is allowed; a source needs a list
+  assert.equal((await call(env, "POST", "/api/crm/lists/place", { kind: "category", azId: 93, listId: null })).status, 200);
+  assert.equal((await call(env, "POST", "/api/crm/lists/place", { kind: "source", azId: 3, listId: null })).status, 400);
+  // add, edit, order
+  r = await call(env, "POST", "/api/crm/lists", { op: "add", kind: "source", name: "Billboard", detailLabel: "Where" });
+  assert.equal(r.status, 200, JSON.stringify(r.body));
+  const newId = r.body.id;
+  assert.equal((await call(env, "POST", "/api/crm/lists", { op: "add", kind: "source", name: "billboard" })).status, 409);
+  r = await call(env, "POST", "/api/crm/lists", { op: "add", kind: "stage", parentId: 1, name: "Ready to Present" });
+  assert.equal(r.body.id, 108);
+  assert.equal((await call(env, "POST", "/api/crm/lists", { op: "edit", kind: "source", id: newId, name: "Billboards", active: false })).status, 200);
+  assert.equal((await call(env, "POST", "/api/crm/lists", { op: "order", kind: "source", ids: [4, 2, newId] })).status, 200);
+  r = await call(env, "GET", "/api/crm/lists");
+  assert.deepEqual(r.body.lists.sources.map((x) => x.name), ["Cross-sell: Home no Auto", "Internet lead", "Billboards"]);
+  assert.equal(r.body.lists.sources[2].active, false);
+  const ev = (await call(env, "GET", `/api/crm/events?object=list&id=${newId}`)).body;
+  assert.equal(ev.length, 2);
+  // the page reads before migration 0004 say so instead of failing
+  const bare = new DatabaseSync(":memory:");
+  bare.exec(readFileSync(new URL("./crm/migrations/0001_init.sql", import.meta.url), "utf8"));
+  r = await call({ CRM: d1(bare) }, "GET", "/api/crm/lists");
+  assert.equal(r.body.ready, false);
+  assert.equal((await call({ CRM: d1(bare) }, "GET", "/api/crm/lookups")).body.lists.ready, false);
+  assert.equal((await call({ CRM: d1(bare) }, "POST", "/api/crm/lists/place", { kind: "source", azId: 1, listId: 2 })).status, 409);
 });

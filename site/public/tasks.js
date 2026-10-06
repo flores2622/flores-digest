@@ -140,7 +140,7 @@
 
   function onClick(e) {
     const t = e.target.closest("[data-tab],[data-open],[data-close],[data-new],[data-cancelnew],[data-unlink],[data-hit],.tklead");
-    if (!t || !$("#view").contains(t)) return;
+    if (!t || !$("#view").contains(t) || $("#view").dataset.view !== "tasks") return;   // lists.js shares the look, not the clicks
     if (t.dataset.tab) { tkTab = t.dataset.tab; tkOpen = {}; saveWhere(); refresh(); return; }
     if (t.dataset.open) { tkOpen = { [t.dataset.id]: t.dataset.open }; repaint(); return; }
     if (t.dataset.close) { delete tkOpen[t.dataset.close]; repaint(); return; }
@@ -156,7 +156,7 @@
   }
   function onChange(e) {
     const s = e.target.closest("[data-who]");
-    if (s && $("#view").contains(s)) { tkWho = s.value; saveWhere(); refresh(); }
+    if (s && $("#view").contains(s) && $("#view").dataset.view === "tasks") { tkWho = s.value; saveWhere(); refresh(); }
   }
   let findTimer = 0;
   function onInput(e) {

@@ -149,7 +149,12 @@ def fingerprint(row):
 
 
 def row_key(table, row):
-    """What identifies a row in the state: its id, or a stage move's note."""
+    """What identifies a row in the state: its id, or a stage move's note; a
+    list entry or a map row by its kind and id (the two tables' keys)."""
+    if table == "lists":
+        return f"{row.get('kind')}:{row.get('id')}"
+    if table == "list_map":
+        return f"{row.get('kind')}:{row.get('az_id')}"
     if row.get("id") is not None:
         return str(row["id"])
     if table == "stage_moves":
@@ -183,6 +188,21 @@ def batches(items):
         yield cur
 
 
+LISTS_MIGRATION = ROOT / "site" / "crm" / "migrations" / "0004_lists.sql"
+
+
+def ensure_lists_tables(db, log=print):
+    """The lists and list_map tables (migration 0004) exist before their rows
+    go: CREATE TABLE IF NOT EXISTS, so a database that has them is untouched
+    (no row written). `wrangler d1 migrations apply` is still the formal
+    route; this only keeps a deploy that went out before it from failing
+    every lists row until someone runs it."""
+    try:
+        db.execute(LISTS_MIGRATION.read_text())
+    except Exception as e:
+        log(f"  crm sync: could not check the lists tables ({str(e)[:120]})")
+
+
 def sync(db, rows, state, log=print, full=False, dry_run=False, save=lambda s: None):
     todo = plan(rows, state, full)
     if not todo:
@@ -199,6 +219,8 @@ def sync(db, rows, state, log=print, full=False, dry_run=False, save=lambda s: N
         + (f"; {held:,} more held for the next run" if held else ""))
     if dry_run:
         return len(todo)
+    if any(t in ("lists", "list_map") for t, *_ in todo):
+        ensure_lists_tables(db, log)
     sent, bad = 0, []
     for batch in batches(todo):
         try:
