@@ -1998,6 +1998,9 @@ repaint clears the list).
   re-read only multiple call cards?" ... "yes set it up and run it"): `python3 legs_backfill.py --backfill
   2026-09-01` asks one short question per card with two or more call headers (8 in 09-01..10-02) and adds ONLY
   `legs`, clock times from R2's saved transcripts and RC log (backups under `backups/<today>-legs-backfill/`).
+  Each call's time is matched one call at a time across every row the card joins, and a read that does not
+  give one outcome per call is asked once more, then left alone -- never written as empty badges (Mike / Maria
+  Ortiz 09-02: three dials on one row and a call-in on another, a 1m27s "hello" call among them).
   A card without `legs` keeps the per-row pills above.
 - **The search is all-time** (Frank, 2026-10-02: "can it just be a
   universal all time search?") **and a lead opens its coaching card, never

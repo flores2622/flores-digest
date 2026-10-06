@@ -129,8 +129,8 @@ def _ask_card(model, transcript, notes, seconds, producer, lead, call_count=1,
                    f"continuing relationship, in the order the calls happened")
     n_legs = len(LEG_HEAD.findall(transcript or ""))
     if n_legs > 1:
-        length_line += (f"\nThis transcript holds {n_legs} calls -- return `legs`, one outcome per call, "
-                        f"in the order of their headers")
+        length_line += (f"\nThis transcript holds {n_legs} calls -- return `legs` with EXACTLY {n_legs} entries, "
+                        f"one per header in order, even for a call of only a few words")
     msg = [{"role": "user", "content":
             f"Producer on this call: {producer}\n"
             f"Lead: {lead or '(name unknown)'}\n"
