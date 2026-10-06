@@ -650,6 +650,37 @@ subjects, data), the `Flores_ANTHROPIC_API_KEY` env name, wrangler.jsonc's
 Worker name, bucket and `ACCESS_TEAM_DOMAIN` (deployment, set per
 agency), and the guides' plain words.
 
+## The coaching documents are rendered: method, carrier layer, agency layer
+
+**`coaching/METHODOLOGY.md` and `coaching/TRAINING.md` are WRITTEN by
+`python3 coaching_text.py --write`** (2026-10-06, the sixth blocker to
+running Pantheon for another agency) from `coaching/src/METHODOLOGY.md` and
+`coaching/src/TRAINING.md` -- the method, with `{{placeholders}}` where a
+carrier or the agency is named -- filled by two layers: **the carrier
+layer**, `coaching/carrier/<carrier>/` (staff.json's `agency.carrier`,
+lower-cased; Farmers today): `carrier.json` (the name, its possessive, how
+transcripts mishear it -- "Farmer's" -- the quoting system ALTA and the
+website Farmers.com) and the occupation-discount text, METHODOLOGY's list
+of groups (`occupations_methodology.md`) and the Training deck's opening
+(`occupations_training.md`); and **the agency layer**, staff.json: the
+agency's name and short name, `also_known_as` ("Frank Flores Agency" --
+the greeting rule's list of names not to say), `misheard_as` ("Florence"),
+the front desk (the service person whose playbook role is `front_desk`:
+Debbie) and the referral staff member (`referral_source`: Francisco).
+Everything else in the templates -- the rules, Frank's rulings and dates,
+the example calls with Mike, Lorena and Coral -- is the method and stays as
+written. **Edit the templates or a layer, never the rendered files**;
+`python3 coaching_text.py --check` fails when they are stale, `--fills`
+prints every value. Rendered and compared: TRAINING byte-identical,
+METHODOLOGY identical but for one line wrap (Francisco's name no longer
+breaks across lines) -- no word changed, so Apollo reads the same method;
+the one-off scripts' section anchors (sendoff, assume_reread,
+legs_backfill) all still match. ROLEPLAY.md names no carrier or agency and
+is not rendered. Every reader (coaching_cards, call_summary, the Worker's
+imports, Coeus) still reads the rendered files, unchanged. A new carrier
+means a new `coaching/carrier/<name>/` folder with its own discount list;
+the guides in blueprints.js still say "Farmers" in plain words.
+
 ## Phone numbers
 
 `az_corpus.e164` keys on the **last ten digits**. AgencyZoom stores every number

@@ -1,0 +1,8 @@
+{
+  "_about": "The carrier layer of the coaching documents: what Apollo is told about the carrier the agency writes for. coaching_text.py fills coaching/src/*.md with it (staff.json's agency.carrier picks the folder). occupations_methodology.md is METHODOLOGY's occupation-discount list (the groups, as the carrier states them); occupations_training.md the TRAINING deck's opening line.",
+  "name": "Farmers",
+  "possessive": "Farmers'",
+  "misheard_as": "Farmer's",
+  "quoting_system": "ALTA",
+  "website": "Farmers.com"
+}

@@ -12,6 +12,10 @@ export default {
       "Bristol West",
       "Foremost"
     ],
+    "also_known_as": [
+      "Frank Flores Agency"
+    ],
+    "misheard_as": "Florence",
     "place": "Arizona",
     "timezone": "America/Phoenix",
     "sender": "salesdigest@floresinsuranceagency.com",
