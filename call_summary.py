@@ -54,7 +54,11 @@ MAX_FOREIGN_SHARE = 0.25  # mostly "(speaking in foreign language)" is unusable
 API_URL = "https://api.anthropic.com/v1/messages"
 MODELS_URL = "https://api.anthropic.com/v1/models"
 API_VERSION = "2023-06-01"
-TIMEOUT = 90
+# Five minutes a read (Frank, 2026-10-05). A coaching card's answer can run to
+# 9,000 tokens and took longer than the old 90 seconds: two of 2026-10-05's
+# nine cards (Edgardo Cosme, Hugo Vega) timed out and had no card until a
+# re-run. A timeout is still not retried (see _send_retrying).
+TIMEOUT = 300
 
 
 
