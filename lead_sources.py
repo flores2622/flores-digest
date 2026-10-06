@@ -35,10 +35,11 @@ import json
 import pathlib
 import re
 
+import agency_files
 import staff
 
 ROOT = pathlib.Path(__file__).resolve().parent
-JSON_PATH = ROOT / "lead_sources.json"
+JSON_PATH = agency_files.path("lead_sources.json")   # PANTHEON_AGENCY picks the agency
 JS_PATH = ROOT / "site" / "lead_sources_data.js"
 DATA = json.loads(JSON_PATH.read_text())
 
@@ -97,8 +98,8 @@ GROUPS = {
     },
     "referral": {
         "label": "Referral",
-        "who": "A customer's referral, or a source named after Francisco Flores: "
-               "a referral or a warm transfer he handed to the producer.",
+        "who": "A customer's referral, or a source named after a staff member "
+               "whose referrals come through them (staff.json's referral_source).",
         "products": ANY,
         "existing_household": False, "sale": True, "owner": "apollo",
         # Role Play: what the prospect knows about how this call came about.
@@ -114,7 +115,7 @@ GROUPS = {
     "personal_network": {
         "label": "Personal network",
         "who": "A staff member's own personal network (a source named after one "
-               "of us, other than Francisco). Each person works their own "
+               "of us, other than {referral_first}). Each person works their own "
                "network, never someone else's.",
         "products": ANY,
         "existing_household": False, "sale": True, "owner": "apollo",
@@ -156,21 +157,18 @@ GROUPS = {
         # Found us (Google, Farmers.com) is part of this group (Frank,
         # 2026-09-24): they looked for an agent and came to us themselves.
         "who": "Someone who came to us on their own: called, walked in, or "
-               "found us on Google or farmers.com (a form Farmers passes on) "
-               "and asked an agent to contact them. Not purchased.",
+               "found us online and asked an agent to contact them. Not purchased.",
         "products": ANY,
         "existing_household": False, "sale": True, "owner": "apollo",
         # Role Play: what the prospect knows about how this call came about.
-        "backstory": 'You reached out to this agency yourself because you want a quote: you called, or found them on Google or farmers.com and asked for a call.',
+        "backstory": 'You reached out to this agency yourself because you want a quote: you called, or found them on Google or {carrier_site_lc} and asked for a call.',
         "approach": "They are ready now. Answer the question they came with, then "
                     "ask what else they have and who insures it. A Google or "
-                    "farmers.com request gets called fast.",
+                    "{carrier_site_lc} request gets called fast.",
     },
     "cold": {
         "label": "Cold / misc",
-        "who": "Dug out of the system, or a one-off list: Cold lead, FIG QNT "
-               "(Farmers Quotes Not Taken), Crane Benefit Fair (a booth at a "
-               "local school fair), Old MVP Leads (the old CRM).",
+        "who": "Dug out of the system, or a one-off list.",
         "products": ANY,
         "existing_household": False, "sale": True, "owner": "apollo",
         "roleplay": False,   # Frank, 2026-09-24: barely used
@@ -178,15 +176,14 @@ GROUPS = {
     },
     "one_off": {
         "label": "Other one-offs",
-        "who": "Hometown Quotes, X, Other lead. Little volume and no set meaning.",
+        "who": "Little volume and no set meaning.",
         "products": ANY,
         "existing_household": False, "sale": True, "owner": "apollo",
         "approach": None,
     },
     "commercial": {
         "label": "Commercial",
-        "who": "Commercial lead generators and lists (Leo, Work Comp, District / "
-               "Agent Promoter Comm Leads, RCFBH Group Life).",
+        "who": "Commercial lead generators and lists.",
         "products": "commercial lines",
         "existing_household": False, "sale": True, "owner": "cerberus",
         "approach": None,   # Cerberus's, not Apollo's
@@ -217,6 +214,25 @@ GROUPS = {
 # "i want coaching cards still developed for those lead sources").
 for _k, _g in GROUPS.items():
     _g.setdefault("roleplay", _g["approach"] is not None)
+
+# An agency's own wording of who a group's leads are, naming its sources
+# (lead_sources.json's `group_who`), over the plain line above.
+for _k, _w in (DATA.get("group_who") or {}).items():
+    GROUPS[_k]["who"] = _w
+
+# The lines name the referral staff member's first name and the carrier's
+# website: {referral_first} and {carrier_site_lc}, from staff.json and the
+# coaching carrier layer (coaching_text.carrier()).
+def _fill_names():
+    import coaching_text
+    ref = staff.tagged("referral_source")
+    first = staff.first(ref[0]) if ref else "the referral staff member"
+    site = (coaching_text.carrier().get("website") or (staff.CARRIER + ".com")).lower()
+    for g in GROUPS.values():
+        for f in ("who", "approach", "backstory"):
+            if g.get(f):
+                g[f] = g[f].replace("{referral_first}", first).replace("{carrier_site_lc}", site)
+_fill_names()
 
 # Frank read every approach line on 2026-09-24: "all looks good. we can keep
 # building on that later". A new or rewritten line starts False again.

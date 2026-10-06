@@ -229,8 +229,20 @@ def pull_sources(day):
             elif isinstance(o, list):
                 for v in o:
                     walk(v)
-        walk(az.pipelines_and_stages())
+        raw = az.pipelines_and_stages()
+        walk(raw)
         p.write_text(json.dumps({str(k): v for k, v in stage.items()}))
+        # The response as it came, for Pantheon's CRM (crm_import.py): the
+        # real workflow and stage ids, which the map above folds into names.
+        (ROOT / "data/az_pipelines.json").write_text(json.dumps(raw))
+    # The SR categories by id, for Pantheon's CRM too (an SR record carries
+    # categoryId with categoryName null). One request per cold container.
+    p = ROOT / "data/az_service_categories.json"
+    if not p.exists():
+        try:
+            p.write_text(json.dumps(az.service_categories()))
+        except Exception as e:
+            log(f"  service categories: {type(e).__name__}: {str(e)[:120]} -- the CRM names them by id")
 
     # Push whatever is now on local disk -- freshly fetched here, or already
     # brought in by sync_down_day above -- so the NEXT run, in this session or
@@ -1329,6 +1341,12 @@ def _run(a):
     # reads.
     import r2_cache
     r2_cache.sync_up_day(day, log=log)
+
+    # Pantheon's own CRM (CRM.md): mirror what this run saved from AgencyZoom
+    # into the CRM's database. A saving, never a step the run depends on --
+    # it logs and carries on without CF_API_TOKEN or on any error.
+    import crm_sync
+    crm_sync.run(days={day}, log=log)
 
     if held:
         log("SEND_HOLD: sales log and missed-call tasks skipped with the email")

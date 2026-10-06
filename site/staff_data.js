@@ -174,7 +174,8 @@ export default {
         "hygiene",
         "roleplay_history",
         "commission_all",
-        "sales_log_all"
+        "sales_log_all",
+        "crm"
       ],
       "handle": "frank.full.coverage"
     },

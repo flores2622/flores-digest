@@ -35,6 +35,7 @@ import pathlib
 import re
 import sys
 
+import agency_files
 import staff
 
 ROOT = pathlib.Path(__file__).resolve().parent
@@ -45,7 +46,7 @@ _PH = re.compile(r"\{\{(\w+)\}\}")
 
 
 def carrier_dir():
-    return ROOT / "coaching" / "carrier" / (staff.CARRIER or "generic").lower()
+    return agency_files.carrier_dir(staff.CARRIER)   # the agency's own carrier/, else coaching/carrier/<carrier>/
 
 
 def carrier():

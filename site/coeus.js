@@ -35,7 +35,7 @@
 import METHODOLOGY_MD from "../coaching/METHODOLOGY.md";
 import TRAINING_MD from "../coaching/TRAINING.md";
 import "./public/blueprints.js";
-import { PRODUCER_NAMES, AGENCY, hasBoard, localDay, localParts } from "./staff.js";
+import { PRODUCER_NAMES, AGENCY, TZ, hasBoard, localDay, localParts } from "./staff.js";
 import { claimsForViewer } from "./claims_view.js";   // sets BLUEPRINTS on the global (window in the browser)
 
 const MODEL = "claude-sonnet-5";
@@ -71,7 +71,7 @@ function methodologyText() {
 let STATIC_SYSTEM = null;   // {manager: text, staff: text}
 function staticSystem(manager) {
   if (!STATIC_SYSTEM) {
-    const guides = (globalThis.BLUEPRINTS || {}).guides || [];
+    const guides = (globalThis.bpFilled ? globalThis.bpFilled(globalThis.bpValues(AGENCY)) : globalThis.BLUEPRINTS || {}).guides || [];
     const build = (mgr) => [
       `# Apollo
 
@@ -85,7 +85,7 @@ How to answer:
 - Short and plain. Lead with the answer. A comparison across producers or days goes in a small markdown table; a single figure in a sentence. Money as $1,234; a rate as 23%; talk time as 4m 12s.
 - The chat window is narrow (about 420px). A table has at most 4 columns with short headers (a first name, "Team", "Goal"), and never more than one figure per cell; put the measures down the first column and the people across. Anything wider goes as a list instead.
 - Plain words only: no field names, file names, JSON keys or code. Call things what the board calls them (Dials, Live contacts, HH Quoted, Premium Sold, Household Completion, Speed to Dial, SRs, Role Play).
-- When a question is about "today", "yesterday", "this week", "last Friday" or "the folio", work out the dates from today's date and the published days (list_days) and say which you used. Arizona has no daylight saving time.
+- When a question is about "today", "yesterday", "this week", "last Friday" or "the folio", work out the dates from today's date and the published days (list_days) and say which you used. The agency's clock is ${TZ}.
 - Today's figures are the latest hourly checkpoint; the board itself keeps some tiles live between checkpoints (a pulsing green glow), so a live tile may be a little ahead of what you read. Say so when it matters.
 - If a tool says something is not permitted or not published, say that plainly; never guess around it.
 - Never invent a call, a quote, a sale, a name or a number. If the documents do not hold what was asked, say what they do hold.
@@ -681,7 +681,7 @@ function contextBlock(me, scope, commercial, c) {
   const time = `${String(now.h).padStart(2, "0")}:${String(now.min).padStart(2, "0")}`;
   const looking = [c.page ? `the ${c.page} page` : "", c.sub ? `(${c.sub})` : "", c.range ? `for ${c.range}` : (c.day ? `for ${c.day}` : ""), c.producer ? `filtered to ${c.producer}` : ""].filter(Boolean).join(" ");
   return `# Right now
-- Today is ${dow} ${az.toISOString().slice(0, 10)}, ${time} Arizona time.
+- Today is ${dow} ${az.toISOString().slice(0, 10)}, ${time} on the agency's clock (${TZ}).
 - Asking: ${me.name || "someone"} (${me.email || "unknown login"}), ${role}.
 - They are looking at ${looking || "the board"}.${c.from && c.to ? ` The range on screen is ${c.from} to ${c.to}.` : ""}
 - A question with no day named is about what they are looking at; "today" is ${az.toISOString().slice(0, 10)}.`;

@@ -62,6 +62,7 @@ import { leadsIndex } from "./lead_index.js";
 import { rotationGet, rotationPost } from "./rotation.js";
 import { scrubGet, scrubPost } from "./scrub.js";
 import { hygieneGet, hygienePost } from "./hygiene.js";
+import { crm } from "./crm.js";
 import { claimsForViewer } from "./claims_view.js";
 import { PRODUCER_EMAILS, STAFF_FIRST_NAMES, SALES_SHEET_NAMES, SALES_TEAMS, AGENCY, hasBoard, boardEmails, TZ, localDay } from "./staff.js";
 
@@ -186,6 +187,13 @@ export default {
         if (parts[2] && !id) return new Response("Not found", { status: 404 });
         if (request.method === "GET") return scrubGet(request, env, identityOf, id);
         if (request.method === "POST") return scrubPost(request, env, identityOf, id);
+      }
+
+      // Pantheon's own CRM (Frank, 2026-10-06): site/crm.js over the D1
+      // binding CRM, for every active person in staff.json. Without the
+      // binding it answers 503 and nothing else changes.
+      if (parts[1] === "crm" && parts.length >= 3 && parts.length <= 5) {
+        return crm(request, env, identityOf, parts.slice(2), url);
       }
 
       // Apollo's doubts, Frank's alone (Frank, 2026-10-05).

@@ -1,6 +1,7 @@
 /* The Flores Post (Frank, 2026-10-01) --------------------------------------
    The dateline's agency line is staff.json's agency (name · place), through
    the page's STAFF. */
+const POST_NAME = `The ${(((window.STAFF || {}).agency || {}).short_name) || "Flores"} Post`;
 const AGENCY_LINE = (() => { const a = (window.STAFF || {}).agency || {}; return [a.name, a.place].filter(Boolean).join(" · "); })();
 /*
    The published day, and the folio, as a newspaper: its own page under the
@@ -519,7 +520,7 @@ function postPaperHtml(E, F, opts) {
   return `<article class="paper${live ? " islive" : ""}">
   <header class="mast">
     <div class="mrow lab"><span>${cesc(E.edition)}</span></div>
-    <h1>The Flores Post</h1>
+    <h1>${POST_NAME}</h1>
     <div class="mrow lab rule"><span>${cesc(E.dateline)}</span><span>${cesc(AGENCY_LINE)}</span><span>Apollo · Athena · Cerberus</span></div>
   </header>
   ${eds ? editionsNav(eds) : ""}
@@ -544,7 +545,7 @@ function postPaperHtml(E, F, opts) {
     <article>${k(E.wireT || "The wire")}${E.wire && E.wire.length ? briefsHtml(E.wire) : '<p class="sd">Quiet.</p>'}</article>
   </div>
   ${primetimeHtml(F, E.nums, isFolio, E.take)}
-  <footer class="foot lab"><span>The Flores Post</span><span>${cesc(E.foot)}</span><span>Every figure is on the Digest</span></footer>
+  <footer class="foot lab"><span>${POST_NAME}</span><span>${cesc(E.foot)}</span><span>Every figure is on the Digest</span></footer>
   </article>`;
 }
 function postGateHtml(title, text) {
