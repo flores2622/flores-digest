@@ -495,7 +495,13 @@ pipeline tags (licensed, hybrid, training-lead owner, commercial owner ...)
 and their `board` keys -- who may open Commercial, Rotation, Lead Scrub,
 Apollo's doubts, voice ratings, Coeus usage, every Role Play history,
 everyone's commission, and log sales for everyone -- live there and nowhere
-else. `staff.py` reads it for Python and says what every tag and key means;
+else. **Crystal's commission schedule is her own** (Frank, 2026-10-06: "crystals comm
+schedule and goal is different than the others" -- his "Crystal Comm Schedule" sheet): staff.json's
+`commission.schedules.flat` (a schedule with `pay`; `commission.js` pays it instead of the rate), a set amount per tier of the folio's Personal Lines premium ($15,000 $600, $20,000 $800,
+$25,000 $1,000, $30,000 $1,250, $35,000 $1,500, $40,000+ $1,750; nothing under $15,000 -- Frank: the table,
+not the sheet's stale "less than $30,000" note), her `commission_units` entry's `schedule`; the extras are
+the same as everyone's (Frank: "bonus's and life is the same as the rest", so the sheet's $75 life, $50
+umbrella and 35% business are not used). The board says "$800 flat at Better" where the others say a rate. `staff.py` reads it for Python and says what every tag and key means;
 digest_config, missed_call_tasks / _audit, service_digest, service_playbook,
 claims, commercial, lead_sources, insightful_client, sanity_gate and
 sales_log_auto build their old constants from it, names and shapes
@@ -2525,7 +2531,15 @@ repaint clears the list).
   high over downtown ("it disappears behind the pavement, and takes off to small"; then "gets lost behind the
   card because its not getting height fast enough": it climbs steeply once off the runway and flies on above
   the tiles at a good size; then "its still off to the right and small, center it and make it bigger": it rolls
-  and climbs on the runway's centre line at full size, its wings showing either side of first place); Yuma's contrails fade out
+  and climbs on the runway's centre line at full size, its wings showing either side of first place; then, 2026-10-06,
+  "gets lost when taking off then randomly appears": the climb is ONE steady motion -- it gathers speed down the
+  runway, lifts off and keeps the same climb through the leaderboard's top edge, behind the tiles (translucent, so
+  its ghost slides up behind them) and out over their top edge, only then easing off and shrinking, fading out
+  while still in the sky; it used to rush the hidden band and all but stop the moment it cleared the tiles, popping
+  up into the sun's glare white on white, so the day jet now has a shaded belly and a fine dark edge. The
+  keyframes are piecewise linear on purpose -- an eased segment stops it dead at each one. Checked in Chromium
+  that the two picture copies, the top card's and the leaderboard's, keep their animations in step, re-created
+  or scrolled away and back, so no timing fix was needed); Yuma's contrails fade out
   behind each jet ("can their trail fade properly?"). The two cities' Service banners are their
   own places, not a generic street ("for dallas and yuma make the
   neighborhood something else specific to the respective cities"): Dallas's
