@@ -111,13 +111,13 @@ const TOOLS = [
     description: "The days the board has a published report for, newest first, and whether today has an hourly checkpoint yet. Use it to map 'yesterday', 'last Friday', 'this week' or 'the folio' to dates, or to see what exists.",
     input_schema: { type: "object", properties: { limit: { type: "integer", description: "How many days to list (default 30, max 120)" } } } },
   { name: "sales_day",
-    description: "One day's Sales Center (Apollo): team totals and each producer's dials, live contacts, contact rate, average talk time, call-ins, households and premium quoted, policies, premium and households sold, life, utilization, tasks due and done, Coach AI call score and role play, texts and emails, replies waiting and speed to reply; the leaderboard with points, the call outcome breakdown, speed to dial, the tier colours, what the coaching cards say overall (assumed the quote, sent the quote, flags by category) and the objection groups. `sections` adds the accounts behind a card: sold (policies and households sold), life, quoted, contacts (every conversation with the producer's note and Apollo's summary), dials (one per number with outcome), speed (each internet lead's wait), tasks, messages (the replies and quotes), misfiled (open leads in the wrong pipeline). Today's report is the latest checkpoint.",
+    description: "One day's Sales Center (Apollo): team totals and each producer's dials, live contacts, contact rate, average talk time, call-ins, households and premium quoted, policies, premium and households sold, life, utilization, tasks due and done, role play (score and sessions), texts and emails, replies waiting and speed to reply; the leaderboard with points, the call outcome breakdown, speed to dial, the tier colours, what the coaching cards say overall (assumed the quote, sent the quote, flags by category) and the objection groups. `sections` adds the accounts behind a card: sold (policies and households sold), life, quoted, contacts (every conversation with the producer's note and Apollo's summary), dials (one per number with outcome), speed (each internet lead's wait), tasks, messages (the replies and quotes), misfiled (open leads in the wrong pipeline). Today's report is the latest checkpoint.",
     input_schema: { type: "object", required: ["day"], properties: {
       day: { type: "string", description: "YYYY-MM-DD" },
       sections: { type: "array", items: { type: "string", enum: SALES_SECTIONS } },
       producer: { type: "string", description: "Limit the rows to one producer (first or full name)" } } } },
   { name: "sales_range",
-    description: "Sales figures added up over a range of published days, inclusive, like the Digest's week / month / folio view: per producer and team -- days worked, dials, live contacts, contact rate, average talk, households and premium quoted, policies, premium and households sold, life, tasks, role play average, Coach AI score -- plus the objection groups and card tallies summed and a one-line trend per day. Up to 45 days.",
+    description: "Sales figures added up over a range of published days, inclusive, like the Digest's week / month / folio view: per producer and team -- days worked, dials, live contacts, contact rate, average talk, households and premium quoted, policies, premium and households sold, life, tasks, role play average and sessions -- plus the objection groups and card tallies summed and a one-line trend per day. Up to 45 days.",
     input_schema: { type: "object", required: ["from", "to"], properties: { from: { type: "string" }, to: { type: "string" } } } },
   { name: "coaching_cards",
     description: "Apollo's coaching cards for one day, one per coached conversation: producer, lead, time, length, what the call was for (first conversation / finish quote / follow-up), who dialled, lead source and whether it was worked right, stage before and after, call type, outcome category, whether the quote and the sale were assumed, whether the quote was sent instead of presented and whose idea, each objection with its score out of 10 and whether it was overcome, the flags by category, what went well and badly, the step-by-step scores and Apollo's summary. Filter by producer and/or lead name. With `full` (one lead), the whole card: transcript, every fix line and the call spine.",
@@ -292,7 +292,10 @@ function producerLine(p, doc) {
     life_policies: p.life || 0, life_this_week: p.life_week,
     cross_sells: p.cross_sell || 0, utilization_pct: p.util, tracked: p.util_total, productive: p.util_prod,
     tasks_due: (p.tasks || {}).total, tasks_done: (p.tasks || {}).completed,
-    coach_ai: p.coach && Object.keys(p.coach).length ? { calls: p.coach.calls, call_score: p.coach.score, sentiment: p.coach.sentiment, role_play: p.coach.roleplay } : null,
+    // Role Play: the share of Apollo's checklist met in the producer's own
+    // sessions that day (roleplay_score.py). Days before 2026-10-07 carry
+    // Coach AI's figure under the same key, with no session count.
+    role_play: p.coach && Object.keys(p.coach).length ? { score: p.coach.roleplay, sessions: p.coach.sessions ?? null, source: p.coach.source || "coach_ai" } : null,
     speed_to_dial_median_seconds: sp ? sp.median : null, internet_leads: sp ? sp.n : 0,
     texts_typed: M.texts, emails_typed: M.emails, automated_texts: M.auto_texts, automated_emails: M.auto_emails,
     replies_in: M.replies, replies_answered: M.answered, replies_waiting: waiting.length,
@@ -376,7 +379,7 @@ async function toolSalesRange(env, inp) {
     for (const p of doc.producers || []) {
       const r = per[p.name] || (per[p.name] = { name: p.name, days_worked: 0, dials: 0, live_contacts: 0, call_ins: 0, hh_quoted: 0, premium_quoted: 0, policies_sold: 0, premium_sold: 0,
         hh_sold: 0, life_policies: 0, talk_w: 0, convos: 0, tasks_due: 0, tasks_done: 0, rp_sum: 0, rp_n: 0, rp_scored_sum: 0, rp_scored_n: 0,
-        coach_calls: 0, coach_w: 0, util_total: 0, util_prod: 0, coached_calls: 0, quote_came_up: 0, quote_sent_instead: 0, assumed_quote: 0, asked_for_quote: 0 });
+        rp_sessions: 0, util_total: 0, util_prod: 0, coached_calls: 0, quote_came_up: 0, quote_sent_instead: 0, assumed_quote: 0, asked_for_quote: 0 });
       const worked = !!(p.total_dials || p.dials || p.live || p.hh || p.pol || p.ps || (p.coach || {}).roleplay);
       if (worked) r.days_worked++;
       r.dials += p.dials || 0; r.live_contacts += p.live || 0; r.call_ins += p.inbound || 0; r.hh_quoted += p.hh || 0; r.premium_quoted += p.pq || 0;
@@ -388,7 +391,7 @@ async function toolSalesRange(env, inp) {
       const rp = (p.coach || {}).roleplay;
       if (rp) { r.rp_sum += rp; r.rp_n++; }
       if (dayHasRp && worked) { r.rp_scored_sum += rp || 0; r.rp_scored_n++; }
-      if (p.coach && p.coach.calls) { r.coach_calls += p.coach.calls; r.coach_w += (p.coach.score || 0) * p.coach.calls; }
+      r.rp_sessions += (p.coach || {}).sessions || 0;
       if (p.util != null && p.util_total) { r.util_total += hhmmSecs(p.util_total); r.util_prod += hhmmSecs(p.util_prod); }
     }
     for (const [g, raised, won] of doc.objcats || []) { const o = objs[g] || (objs[g] = { raised: 0, overcome: 0 }); o.raised += raised; o.overcome += won; }
@@ -408,7 +411,7 @@ async function toolSalesRange(env, inp) {
     per_day_worked: r.days_worked ? { dials: Math.round(r.dials / r.days_worked), hh_quoted: Math.round((10 * r.hh_quoted) / r.days_worked) / 10, premium_quoted: Math.round(r.premium_quoted / r.days_worked), premium_sold: Math.round(r.premium_sold / r.days_worked) } : null,
     tasks_due: r.tasks_due, tasks_done: r.tasks_done, task_completion_pct: pct(r.tasks_done, r.tasks_due),
     role_play_avg_of_sessions: r.rp_n ? Math.round(r.rp_sum / r.rp_n) : null, role_play_avg_counting_missed_days_as_0: r.rp_scored_n ? Math.round(r.rp_scored_sum / r.rp_scored_n) : null,
-    coach_ai_call_score_avg: r.coach_calls ? Math.round(r.coach_w / r.coach_calls) : null, utilization_pct: r.util_total ? Math.round((100 * r.util_prod) / r.util_total) : null,
+    role_play_sessions: r.rp_sessions, utilization_pct: r.util_total ? Math.round((100 * r.util_prod) / r.util_total) : null,
     coached_calls: r.coached_calls, quote_came_up: r.quote_came_up, quote_sent_instead_of_presented: r.quote_sent_instead, assumed_quote: r.assumed_quote, asked_for_quote: r.asked_for_quote,
   });
   return {

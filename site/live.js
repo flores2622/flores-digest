@@ -451,6 +451,50 @@ export function salesFrom(basis, policies, sourceNames) {
   return out;
 }
 
+/* ---- role play: Pantheon's own sessions -------------------------------- */
+
+/* The Role Play score is ours since Coach AI was cancelled (Frank,
+   2026-10-06): the share of Apollo's checklist met per session, 0-100,
+   averaged over the sessions a producer did that day -- a line-for-line
+   mirror of roleplay_score.scores_from (keep them in step). Read from the
+   board's own roleplay-index.json (rpSummary's rows: producer, beta,
+   created_at, met, of); a beta session or a grade with no checklist counts
+   nothing. Only from ROLEPLAY_FROM: before it the day's figure is Coach AI's,
+   as the nightly wrote it. */
+export const ROLEPLAY_FROM = "2026-10-07";
+// Python's round(x): half to even on an exact tie (62.5 -> 62), where
+// Math.round would give 63 -- the nightly and the live figure must agree.
+const pyRound0 = x => {
+  const f = Math.floor(x);
+  if (x - f === 0.5) return f % 2 === 0 ? f : f + 1;
+  return Math.round(x);
+};
+export function roleplayScores(sessions, day, names = null) {
+  const per = {};
+  if (names) for (const n of names) per[n] = [];
+  for (const s of sessions || []) {
+    if (!s || typeof s !== "object" || s.beta) continue;
+    const who = s.producer;
+    if (!who || (names && !(who in per))) continue;
+    const t = Date.parse(s.created_at || "");
+    if (!Number.isFinite(t) || localDay(t) !== day) continue;
+    const of = Number(s.of) || 0, met = Math.max(0, Math.min(Number(s.met) || 0, of));
+    if (of <= 0) continue;
+    (per[who] || (per[who] = [])).push(pyRound0(100 * met / of));
+  }
+  const out = {};
+  for (const [n, v] of Object.entries(per)) {
+    out[n] = { roleplay: v.length ? pyRound0(v.reduce((a, b) => a + b, 0) / v.length) : 0, sessions: v.length, source: "roleplay" };
+  }
+  return out;
+}
+async function roleplayLive(env, day) {
+  if (day < ROLEPLAY_FROM) throw new Error(`Coach AI's figures until ${ROLEPLAY_FROM}`);
+  const idx = await env.BOARD.get("roleplay-index.json");
+  const sessions = idx ? Object.values(((await idx.json()) || {}).sessions || {}) : [];
+  return { per: roleplayScores(sessions, day), fetched_at: new Date().toISOString() };
+}
+
 /* ---- utilization: Insightful ------------------------------------------- */
 
 const INS = "https://app.insightful.io/api/v1";
@@ -1039,6 +1083,7 @@ const NEEDS = {
   contacts: ["RC_CLIENT_ID", "RC_CLIENT_SECRET", "RC_SERVER_URL", "RC_JWT"],
   sold: ["AZ_USERNAME", "AZ_PASSWORD"],
   tasks: ["AZ_USERNAME", "AZ_PASSWORD"],
+  roleplay: [],   // the board's own R2 index, no outside request
 };
 
 const part = async (env, key, fn) => {
@@ -1056,7 +1101,7 @@ export async function computeFast(env, day, basis, fetchFn = fetch, evidence = n
   const inputs = {};   // for syncSalesLog; never stored
   let log = null;
   const callLog = async () => (log || (log = rcCallLog(env, day, fetchFn)));
-  const [dials, contacts, sales, util, sold] = await Promise.all([
+  const [dials, contacts, sales, util, sold, roleplay] = await Promise.all([
     part(env, "dials", async () => dialDeltas(basis, await callLog())),
     part(env, "contacts", async () => {
       if (!basis.contact || !basis.talk) throw new Error("needs a checkpoint built after this update");
@@ -1069,6 +1114,7 @@ export async function computeFast(env, day, basis, fetchFn = fetch, evidence = n
     }),
     part(env, "util", async () => insightfulUtil(env, day, basis, fetchFn)),
     part(env, "sold", async () => soldLeadsToday(env, day, basis, fetchFn, kept)),
+    part(env, "roleplay", async () => roleplayLive(env, day)),
   ]);
   // Task completion: the kept tasks are re-judged every run (a verdict can
   // arrive with the quotes pass), re-fetched only every TASKS_REFRESH_SECONDS.
@@ -1112,7 +1158,7 @@ export async function computeFast(env, day, basis, fetchFn = fetch, evidence = n
     : !sold.ok ? { ok: false, reason: sold.reason }
     : !(inputs.active || {}).complete ? { ok: false, reason: "today's lead list was cut short" }
     : await part(env, "dials", async () => speedToDial(day, basis, inputs.active.leads, await log));
-  return { fetched_at: new Date().toISOString(), dials, contacts, sales, util, sold, speed, tasks, calls, _inputs: inputs };
+  return { fetched_at: new Date().toISOString(), dials, contacts, sales, util, sold, speed, tasks, roleplay, calls, _inputs: inputs };
 }
 
 function dialTouches(basis, recs) {
@@ -1203,7 +1249,7 @@ async function refreshFast(env, day, cp) {
     try { await r2put(env, k.leads, _inputs.active); }
     catch (e) { console.log(`kept lead list not saved: ${e && e.message || e}`); }
   }
-  const out = keepGood(prev, { checkpoint: cp.as_of, ...fast }, cp, ["dials", "contacts", "sales", "util", "sold", "speed", "tasks"]);
+  const out = keepGood(prev, { checkpoint: cp.as_of, ...fast }, cp, ["dials", "contacts", "sales", "util", "sold", "speed", "tasks", "roleplay"]);
   if (!out.calls && prev && prev.checkpoint === cp.as_of) out.calls = prev.calls;
   // The numbers dialled since the checkpoint, so the next quotes pass reads
   // their leads' notes first.
@@ -1242,7 +1288,7 @@ export async function getLive(env, day) {
   await flushAzLog(env, day);
   return jsonResp({ live: true, day, checkpoint: cp.as_of, fetched_at: f.fetched_at,
     dials: f.dials, contacts: f.contacts, sales: f.sales, util: f.util, sold: f.sold, speed: f.speed, tasks: f.tasks,
-    quotes: q.quotes, messages: q.messages, quotes_fetched_at: q.fetched_at }, 200);
+    roleplay: f.roleplay, quotes: q.quotes, messages: q.messages, quotes_fetched_at: q.fetched_at }, 200);
 }
 
 /* Worker cron (wrangler.jsonc, every minute in business hours): even minutes

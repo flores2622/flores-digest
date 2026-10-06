@@ -1004,7 +1004,11 @@ def build_metrics(day):
         day, _raw_tasks, dials, leads,
         json.loads((ROOT / "data/az_customers_all.json").read_text()),
         _verdicts)
-    coach = coach_from_gmail(day)
+    # Role Play from Pantheon's own sessions (roleplay_score.py; Frank,
+    # 2026-10-06, Coach AI cancelled). A day before the switch reads the
+    # saved Coach AI file, so a rebuild does not move it.
+    import roleplay_score
+    coach = roleplay_score.day_scores(day, log=log)
     s2d = speed_to_dial(day, leads, dials)
 
     out = {"day": day, "producers": M, "utilization": util,
@@ -1132,39 +1136,6 @@ def speed_to_dial(day, leads, dials):
         out[p] = ({"median": int(statistics.median(v)), "n": len(v),
                    "quickest": v[0], "longest": v[-1], "secs": v} if v else None)
     return out
-
-
-def coach_from_gmail(day):
-    """Coach AI titles each email with the UTC date at generation, ONE DAY AHEAD
-    of the Arizona day it describes. Verified repeatedly -- do not relitigate.
-
-    Per-user rows exist only in the HTML part; the plaintext table is empty.
-    If the mailbox is unreachable in a headless run, fall back to zeros so the
-    report still builds rather than failing outright.
-    """
-    from digest_config import PRODUCERS
-    blank = {p: {"calls": 0, "score": 0, "sentiment": 0, "roleplay": 0}
-             for p in PRODUCERS}
-    path = ROOT / f"data/coach_{day}.json"
-    if path.exists():
-        # Merge OVER the blank template rather than returning the file as-is.
-        # This file is hand-written each evening from the Coach AI emails, and a
-        # producer with no rows in those emails is simply absent from it. Before
-        # 2026-08-24 the roster and the file always matched, so a raw return was
-        # safe; with five producers a missing name became a KeyError deep inside
-        # the leaderboard. Zeros are the correct reading of "absent" here.
-        loaded = json.loads(path.read_text())
-        merged = {p: dict(blank[p], **loaded.get(p, {})) for p in blank}
-        missing = [p for p in blank if p not in loaded]
-        if missing:
-            log(f"  coach AI: no rows for {', '.join(missing)} -- using zeros")
-        extra = [p for p in loaded if p not in blank]
-        if extra:
-            log(f"  coach AI: ignoring non-producer rows: {', '.join(extra)}")
-        return merged
-    log("  coach AI: no cached figures, using zeros "
-        "(populate data/coach_<day>.json to override)")
-    return blank
 
 
 def main():

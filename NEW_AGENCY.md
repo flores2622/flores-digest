@@ -87,8 +87,8 @@ naming its sources, for Apollo and the board. A staff member's name as a source 
 ## 4. The goals -- `goals.json`
 
 The green / yellow pair for every metric, the straight-count metrics that
-scale for the team row, the life goal, the reply-speed goal, the week's
-premium goal and the Coach AI bar ranges. The guides in
+scale for the team row, the life goal, the reply-speed goal and the week's
+premium goal. The guides in
 `site/public/blueprints.js` still say the numbers in words; change them
 too.
 

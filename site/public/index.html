@@ -3270,7 +3270,7 @@ function teamLeaderboardHtml(d, who) {
   const rows = ranked.map((p, i) => `<tr>
     <td><span class="who">${
        !focus && i < 3 ? `<span class="mdl" role="img" aria-label="${["1st", "2nd", "3rd"][i]}">${MEDAL[i]}</span>` : ""}${pbadge(DOT[p.name] || "#8a877f", p.name)}</span></td>
-    ${hasRoleplay ? `<td class="num ${tc(p.name, "roleplay")}"${lbRankTag(d, "Role Play", p.name)}>${(p.coach || {}).roleplay ?? "—"}${p.rp_missed ? `<span style="display:block;color:var(--text-muted);font-weight:400;white-space:nowrap;font-size:10.5px" title="Days worked with no role play -- each counts as 0 in the ranking">${p.rp_missed} missed</span>` : ""}</td>` : ""}
+    ${hasRoleplay ? `<td class="num ${tc(p.name, "roleplay")}${liveOn(d, "roleplay") ? " isLive" : ""}"${lbRankTag(d, "Role Play", p.name)}>${(p.coach || {}).roleplay ?? "—"}${(p.coach || {}).sessions ? `<span style="display:block;color:var(--text-muted);font-weight:400;white-space:nowrap;font-size:10.5px" title="Role Play sessions on the board; the score is the share of Apollo's checklist met, averaged over them">${p.coach.sessions} session${p.coach.sessions === 1 ? "" : "s"}</span>` : ""}${p.rp_missed ? `<span style="display:block;color:var(--text-muted);font-weight:400;white-space:nowrap;font-size:10.5px" title="Days worked with no role play -- each counts as 0 in the ranking">${p.rp_missed} missed</span>` : ""}</td>` : ""}
     <td class="num ${tc(p.name, "dials")}${lv("dials")}${cc("dials", p.name)[0]}"${cc("dials", p.name)[1]}${lbRankTag(d, "Call Volume", p.name)}>${p.dials ?? 0}${dialsSub(p)}</td>
     <td class="num ${tc(p.name, "talk")}${lv("contacts")}${cc("contacts", p.name)[0]}"${cc("contacts", p.name)[1]}${lbRankTag(d, "Avg Talk Time", p.name)}>${hhmm(p.talk)}</td>
     <td class="num ${tc(p.name, "rate")}${lv("contacts")}${cc("contacts", p.name)[0]}"${cc("contacts", p.name)[1]}${lbRankTag(d, "Contact Rate", p.name)}>${p.rate ?? 0}% <span style="opacity:.72">(${p.live ?? 0})</span></td>
@@ -3422,9 +3422,10 @@ ${assumeStatsHtml(d)}
   return `<div class="sect"><h2>Wins and Losses</h2>${says}</div>`;
 }
 
-/* The next four sections mirror the customized email digest's own panels
+/* The next sections mirror the customized email digest's own panels
    (Frank, 2026-09-10) -- Task Completion Rate, Call Outcome Breakdown,
-   Utilization and Efficiency, and Coaching & Call Quality. All four read
+   Utilization and Efficiency (and, until 2026-10-06, Coaching & Call
+   Quality, Coach AI's). They read
    data board_payload.py already computed (d.totals.tasks/producers[].tasks,
    d.outcomes, producers[].util*, producers[].coach) but that had no
    frontend renderer at all until now -- board_payload.outcome_breakdown's
@@ -3514,37 +3515,10 @@ function utilizationHtml(d, who) {
    <div class="tiles">${cards}${teamCard}</div></div>`;
 }
 
-// Must mirror digest_config.COACH_BAR_RANGES -- team-relative extremes over
-// the trailing window, not a share of the 0-800 scale (CLAUDE.md's Coach AI
-// section). Not exposed in the JSON payload since it's a fixed, manually-
-// curated constant, not per-day data.
-const COACH_BAR_RANGES = { "Avg Call Score": [38, 251], "Avg Sentiment": [11, 43], "Role Play": [58, 87] };
-function coachQualityHtml(d, who) {
-  const byName = Object.fromEntries((d.producers || []).map(p => [p.name, p]));
-  const focus = who ? byName[who] : null;
-  const list = (focus ? [focus] : (d.producers || []))
-    .filter(p => p.coach && (p.coach.calls || p.coach.score || p.coach.roleplay));
-  if (!list.length) return "";
-  const bar = (color, label, val) => {
-    const [lo, hi] = COACH_BAR_RANGES[label];
-    const pct = hi > lo ? Math.max(0, Math.min(100, (val - lo) / (hi - lo) * 100)) : 0;
-    return `<div class="sbar"><div class="sbl">${label}</div>
-      <div class="ptrack"><div class="pfill" style="width:${pct.toFixed(2)}%;background:${color}"></div></div>
-      <div class="sbv">${val ?? "—"}</div></div>`;
-  };
-  const cards = list.map(p => { const c = p.coach; const color = DOT[p.name] || "#8a877f";
-    return `<div class="tile" style="text-align:left">
-    <div class="who" style="margin-bottom:8px">${pbadge(color, p.name.split(" ")[0])}</div>
-    ${bar(color, "Avg Call Score", c.score || 0)}
-    ${bar(color, "Avg Sentiment", c.sentiment || 0)}
-    ${bar(color, "Role Play", c.roleplay || 0)}
-    </div>`; }).join("");
-  return `<div class="sect svcsec" style="--sc:var(--accent)"><h2>Coaching &amp; Call Quality</h2>
-   <p class="sd">Coach AI (TRAQ). Avg Call Score and Avg Sentiment are excluded from the leaderboard — TRAQ
-   scores a voicemail as a call (~3 against a live call's ~292), so both track who answered more than how
-   the call went.</p>
-   <div class="tiles" style="grid-template-columns:repeat(auto-fill,minmax(210px,1fr))">${cards}</div></div>`;
-}
+// The Coaching & Call Quality section (Coach AI's call score and sentiment
+// bars) came out on 2026-10-06 with the Coach AI subscription. Role Play is
+// the board's own now (roleplay_score.py) and sits on the leaderboard; past
+// days' coach.score / coach.sentiment stay in their documents, unshown.
 
 function speedPanel(d, who) {
   const s = d.speed_to_dial;
@@ -4169,8 +4143,11 @@ function applyLive(base, L) {
   const ps = d.producers || [];
   // The checkpoint's own figures, so the leaderboard can be re-ranked on
   // what the live parts add (liveRerank, below).
-  const LB_FIELDS = { "Call Volume": "dials", "Avg Talk Time": "talk", "Contact Rate": "rate",
+  const LB_FIELDS = { "Role Play": "rp_lb", "Call Volume": "dials", "Avg Talk Time": "talk", "Contact Rate": "rate",
     "Households Quoted": "hh", "Premium Quoted": "pq", "Premium Sold": "ps" };
+  // Role Play's value sits in coach.roleplay; a flat mirror for the re-rank
+  // (taken off again below).
+  for (const p of ps) p.rp_lb = (p.coach || {}).roleplay || 0;
   const before = Object.fromEntries(ps.map(p => [p.name, Object.fromEntries(Object.values(LB_FIELDS).map(k => [k, p[k] || 0]))]));
   const sum = k => ps.reduce((s, p) => s + (p[k] || 0), 0);
   if (L.dials && L.dials.ok) {
@@ -4290,7 +4267,24 @@ function applyLive(base, L) {
       (tiers.team || (tiers.team = {})).util = tierColor("utilization_pct", T.util);
     }
   }
+  // Role Play is the board's own sessions (site/live.js roleplayScores, a
+  // mirror of roleplay_score.py): today's figure per producer, the team's
+  // average of those who did one (board_payload._team_talk_and_roleplay).
+  if (L.roleplay && L.roleplay.ok) {
+    d.live_parts.push("roleplay");
+    const per = L.roleplay.data.per || {};
+    for (const p of ps) {
+      const x = per[p.name];
+      p.coach = { roleplay: x ? x.roleplay : 0, sessions: x ? x.sessions : 0, source: "roleplay" };
+      p.rp_lb = p.coach.roleplay || 0;
+      (tiers[p.name] || (tiers[p.name] = {})).roleplay = tierColor("roleplay_score", p.coach.roleplay || null);
+    }
+    const rec = ps.map(p => p.coach.roleplay).filter(Boolean);
+    T.roleplay = rec.length ? rec.reduce((a, b) => a + b, 0) / rec.length : null;
+    (tiers.team || (tiers.team = {})).roleplay = tierColor("roleplay_score", T.roleplay);
+  }
   liveRerank(d, before, LB_FIELDS);
+  for (const p of ps) delete p.rp_lb;
   return d;
 }
 /* The standing, the podium and every leaderboard hover follow the live
@@ -4422,7 +4416,7 @@ function digestPanel(d, who) {
   ${rangeMode === "day" ? `<div class="digestgrid"><div>${digestFeedHtml(d, who)}</div><div>${needsNowHtml(d, who)}</div></div>` : ""}
   <div class="digestgrid">
     <div>${outcomeBreakdownHtml(d, who)}${taskCompletionHtml(d, who)}${speedPanel(d, who)}${speedReplyPanel(d, who)}</div>
-    <div>${utilizationHtml(d, who)}${householdCompletionHtml(d, who)}${coachQualityHtml(d, who)}</div>
+    <div>${utilizationHtml(d, who)}${householdCompletionHtml(d, who)}</div>
   </div>
   ${auditPanel(d, who)}
   ${misfiledPanel(d, who)}`;
@@ -4525,7 +4519,7 @@ function secsToHHMM(s) {
    policy_streak colouring, a day-to-day sale streak with no meaning
    stretched across a range; polTitle() falls back to "no sale on record".
 
-   Talk time, utilization and Coach AI score/sentiment are all reweighted
+   Talk time and utilization are reweighted
    from the underlying totals (seconds, call counts), not averaged day to
    day, for the same reason CLAUDE.md's month/folio rollups already do
    this server-side: a 3-call day and a 60-call day are not equally
@@ -4545,8 +4539,7 @@ function median(arr) {
 }
 
 // Mirrors digest_config.THRESHOLDS/tier()/TEAM_SCALE -- update this in
-// lockstep if that file's copy ever changes, same obligation
-// COACH_BAR_RANGES above already carries. speed_to_dial_min is omitted:
+// lockstep if that file's copy ever changes. speed_to_dial_min is omitted:
 // nothing renders a tier off Speed to Dial today. Policies/Premium Sold on a
 // single DAY colour on the sale streak instead (apply_policy_streak,
 // day-relative -- a streak has no meaning over a range), but a range uses
@@ -4683,7 +4676,7 @@ function mergeDayDocs(docs) {
     for (const p of doc.producers || []) {
       const row = per[p.name] || (per[p.name] = {
         name: p.name, days: 0, talk_secs: 0, convos: 0, inbound: 0, util_total_secs: 0, util_prod_secs: 0,
-        coach_calls: 0, coach_score_wsum: 0, coach_sentiment_wsum: 0, coach_roleplay_sum: 0, coach_roleplay_n: 0, rp_scored_sum: 0, rp_scored_n: 0, worked: 0,
+        coach_sessions: 0, coach_roleplay_sum: 0, coach_roleplay_n: 0, rp_scored_sum: 0, rp_scored_n: 0, worked: 0,
         tasks: { total: 0, completed: 0 }, ...Object.fromEntries(NUM.map(k => [k, 0])),
       });
       for (const k of NUM) row[k] += p[k] || 0;
@@ -4704,19 +4697,16 @@ function mergeDayDocs(docs) {
         teamUtilTotalSecs += tSecs; teamUtilProdSecs += pSecs;
       }
       if (p.tasks) { row.tasks.total += p.tasks.total || 0; row.tasks.completed += p.tasks.completed || 0; }
-      if (p.coach) {
-        const c = p.coach;
-        row.coach_calls += c.calls || 0;
-        row.coach_score_wsum += (c.score || 0) * (c.calls || 0);
-        row.coach_sentiment_wsum += (c.sentiment || 0) * (c.calls || 0);
-      }
+      // Role Play sessions on the board (roleplay_score.py, from 2026-10-07;
+      // Coach AI's days before it carry none).
+      row.coach_sessions += (p.coach || {}).sessions || 0;
       // Role play, two ways (Frank, 2026-09-28: "I want it to hurt their
       // points but not average. i do want to see the true avg between
-      // sessions"). The Role Play figure shown is the average of the sessions
-      // they actually did; the leaderboard ranks on rp_scored, where a day
+      // sessions"). The Role Play figure shown is the average of the days
+      // they practised; the leaderboard ranks on rp_scored, where a day
       // WITHOUT a role play counts as 0 -- only on a day they worked that has
-      // role play figures for someone, so neither a day off nor a day the
-      // Coach AI email never came in costs anything.
+      // a role play figure for someone, so a day off costs nothing (nor,
+      // before 2026-10-07, a day the Coach AI email never came in).
       const rp = (p.coach || {}).roleplay;
       if (rp) { row.coach_roleplay_sum += rp; row.coach_roleplay_n++; }
       // A day worked, for the range leaderboard's per-day averages. A day
@@ -4773,15 +4763,13 @@ function mergeDayDocs(docs) {
     }
     delete row.util_total_secs; delete row.util_prod_secs;
     if (row.tasks.total) row.tasks.pct = Math.round(1000 * row.tasks.completed / row.tasks.total) / 10;
-    if (row.coach_calls || row.coach_roleplay_n) {
+    if (row.coach_sessions || row.coach_roleplay_n) {
       row.coach = {
-        calls: row.coach_calls,
-        score: row.coach_calls ? Math.round(row.coach_score_wsum / row.coach_calls) : 0,
-        sentiment: row.coach_calls ? Math.round(row.coach_sentiment_wsum / row.coach_calls) : 0,
+        sessions: row.coach_sessions,
         roleplay: row.coach_roleplay_n ? Math.round(row.coach_roleplay_sum / row.coach_roleplay_n) : null,
       };
     }
-    delete row.coach_calls; delete row.coach_score_wsum; delete row.coach_sentiment_wsum;
+    delete row.coach_sessions;
     row._rp_sum = row.coach_roleplay_sum; row._rp_n = row.coach_roleplay_n;
     row.rp_scored = row.rp_scored_n ? row.rp_scored_sum / row.rp_scored_n : 0;
     // Worked days with role play figures for someone but none for them
