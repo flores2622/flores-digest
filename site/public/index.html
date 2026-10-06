@@ -2205,6 +2205,7 @@ const SALES_TEAM_NAMES = new Set(Object.values(SALES_TEAM_GROUPS));
 const salesShortLabel = name => SALES_TEAM_NAMES.has(name) ? name : name.split(" ")[0];
 let salesDay = null;          // set to today's AZ date on first load -- still the day a NEW sale is logged against
 let salesEntries = [];        // the picked folio's entries (or just salesDay's, if it falls outside any known folio), newest-added first
+let salesFirstDay = "";       // the earliest day the Sales sheet holds (the Worker's first_day): folios before it have no sheet
 let salesFolioPick = "";      // a FOLIO_CLOSE_DATES entry; "" means the current folio (the one covering today) -- lets Frank reference a closed folio's sheet (2026-09-21: "its a new folio ... I need to be able to reference the old folios")
 let salesSubTab = "log";      // "log" | "breakdown" -- second sub-tab added 2026-09-21 (Frank: "a second tab ... that I can filter by lead source, by policy type, or by producer, that will display the data in a type of graph")
 let salesBreakdownDim = "lead_source";
@@ -7457,6 +7458,7 @@ async function loadSalesLog(day, folioEnd) {
     const url = end ? `/api/saleslog/folio/${end}` : `/api/saleslog/${d}`;
     const r = await fetch(url, { cache: "no-store" });
     const body = r.ok ? await r.json() : { entries: [] };
+    if (body.first_day) salesFirstDay = body.first_day;
     salesEntries = (body.entries || []).map(e => ({ day: d, ...e }))
       .sort((a, b) => (b.created_at || "").localeCompare(a.created_at || ""));
   } catch (_) { salesEntries = []; }
@@ -7563,14 +7565,16 @@ function prodSelStyle(name) {
   const color = DOT[name] || "";
   return color ? `background:${color};color:${badgeTextColor(color)}` : "";
 }
-// Every closed folio through the current one, newest first -- Frank wants
-// to reach for "last folio" fast when a new one just opened (2026-09-21).
-// Sales has no other way to reach a closed folio's sheet.
+// Every closed folio that holds a sheet, through the current one, newest first -- Frank wants to reach for
+// "last folio" fast when a new one just opened (2026-09-21). Sales has no other way to reach a closed
+// folio's sheet. Folios before the sheet's first day are left out (Frank, 2026-10-06: "you added all the
+// past folios but no data, remove them" -- "same on the sales sheet").
 function salesFolioOptions() {
   const today = isoDate(azTodayDate());
   const curEnd = folioEndFor(today);
+  const firstEnd = salesFirstDay ? folioEndFor(salesFirstDay) : null;
   const choices = curEnd
-    ? FOLIO_CLOSE_DATES.filter(end => end <= curEnd).sort((a, b) => b.localeCompare(a))
+    ? FOLIO_CLOSE_DATES.filter(end => end <= curEnd && (!firstEnd || end >= firstEnd || end === salesFolioPick)).sort((a, b) => b.localeCompare(a))
     : [];
   const picked = salesFolioPick || curEnd;
   return choices.map(end => {

@@ -529,9 +529,15 @@ async function getSalesLogFolio(env, end) {
     return json({ error: "bad folio end date" }, 400);
   }
   const { start, entries } = await folioEntries(env, end);
+  // the earliest day the sheet holds (keys sort by day), so the page's folio picker lists only folios with
+  // a sheet (Frank, 2026-10-06: "you added all the past folios but no data, remove them" -- "same on the
+  // sales sheet")
+  const first = await env.BOARD.list({ prefix: "saleslog/", limit: 1 });
+  const first_day = ((first.objects || [])[0] || {}).key?.slice(9, 19) || null;
   return json({
     folio_start: start,
     folio_end: end,
+    first_day,
     entries,
   });
 }
