@@ -395,5 +395,57 @@ export default {
       "Coral Barwick",
       "Sarahi Chin"
     ]
+  },
+  "commission": {
+    "_about": "Frank's Commission Sheet and Team Commission Sheet (2026-10-01), in numbers: the tiers (name, monthly premium minimum per schedule, rate on the whole premium), the team schedule's split, and the additional pay (life per policy, a new household bundle, a cross-sell line, an umbrella, business as a share of premium, the Kraft Lake bonus at its premium minimum). site/commission.js reads it through staff.js; commission_units says who is on which schedule.",
+    "tier_names": [
+      "Good",
+      "Better",
+      "Best",
+      "Great",
+      "Excellent",
+      "Outstanding"
+    ],
+    "rates": [
+      0.03,
+      0.033,
+      0.0429,
+      0.0438,
+      0.0444,
+      0.05
+    ],
+    "schedules": {
+      "individual": {
+        "mins": [
+          25000,
+          30000,
+          35000,
+          40000,
+          45000,
+          50000
+        ],
+        "split": 1
+      },
+      "team": {
+        "mins": [
+          50000,
+          60000,
+          70000,
+          80000,
+          90000,
+          100000
+        ],
+        "split": 0.5
+      }
+    },
+    "pay": {
+      "life": 100,
+      "bundle": 50,
+      "xsell": 25,
+      "umbrella": 25,
+      "business": 0.035,
+      "kraftMin": 10000,
+      "kraft": 300
+    }
   }
 };

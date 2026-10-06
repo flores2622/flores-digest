@@ -707,6 +707,29 @@ inclusive >=), the pace rules, the page's `tierColor` / `lifeTier` /
 `replyTier`. Still in words: the guides' "50 dials, 7 minutes, 13%" lines
 in blueprints.js -- change them with goals.json.
 
+## The Sales sheet's product names and the commission schedule
+
+**The sheet's product names are rules in `agencyzoom.json`'s
+`product_names`** (2026-10-06, the eighth blocker to running Pantheon for
+another agency): an ordered list, each rule a carrier (the short name in
+`carriers`, or any) and a case-insensitive regex on AgencyZoom's policy
+type name, giving the name with `{carrier}` / `{raw}` filled in, then a
+default -- the same ten rules `sales_log_auto.product_name` and
+`live.js productName` used to carry as code (BW-Auto for any BW auto,
+Foremost-MH / Landlord / Toys / Vacant / Home, Farmers-Home / Life,
+`{carrier}-Auto` for any other auto, else `{carrier}-{raw}`). Both walk
+the list, the Worker's copy riding in `live_basis.saleslog.product_rules`
+/ `product_default`; `agencyzoom.py --check` compiles every regex. Checked
+identical on 315 type-name x carrier cases, old against new on each side
+and Python against JS. **Frank's commission schedule is staff.json's
+`commission`**: the tier names, rates and each schedule's monthly minimums
+and split, and the additional pay (life, bundle, cross-sell, umbrella,
+business share, the Kraft Lake bonus and its minimum); `site/commission.js`
+reads it through `staff.js`'s `COMMISSION`, and the business line's
+carrier word comes from `agency.carrier`. Schedules, pay and both tier
+tables checked equal. Still in code: what makes a product life / umbrella /
+Kraft Lake / business (`kindOf`'s words) and the eligible lines.
+
 ## Phone numbers
 
 `az_corpus.e164` keys on the **last ten digits**. AgencyZoom stores every number

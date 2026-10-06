@@ -113,37 +113,26 @@ def _term(effective, expiry):
 # Anything else keeps AgencyZoom's own name.
 # The ids are agencyzoom.json's `carriers`.
 CARRIER = dict(agencyzoom.CARRIERS)
-_AUTO_TYPES = re.compile(r"auto", re.I)
-_TOY_TYPES = re.compile(r"atv|motorcycle|trailer|boat|watercraft|motor home|\brv\b|golf cart|toy", re.I)
+PRODUCT_RULES = agencyzoom.PRODUCT_RULES
+PRODUCT_DEFAULT = agencyzoom.PRODUCT_DEFAULT
 
 
 def product_name(p):
-    """The sheet's product name for one AgencyZoom policy record."""
+    """The sheet's product name for one AgencyZoom policy record: the first
+    of agencyzoom.json's product_names rules that fits (carrier and a regex
+    on the type name), else its default. live.js productName walks the same
+    list -- keep them in step."""
     raw = str(p.get("policyTypeName") or "").strip()
     carrier = CARRIER.get(p.get("carrierId"))
     if not carrier or not raw:
         return raw
-    if carrier == "BW":
-        return "BW-Auto" if _AUTO_TYPES.search(raw) else f"BW-{raw}"
-    if _AUTO_TYPES.search(raw):
-        return f"{carrier}-Auto"
-    if carrier == "Foremost":
-        if re.search(r"mobile|manufactured", raw, re.I):
-            return "Foremost-MH"
-        if re.search(r"landlord|dp\d|dwelling", raw, re.I):
-            return "Foremost-Landlord"
-        if _TOY_TYPES.search(raw):
-            return "Foremost-Toys"
-        if re.search(r"vacant", raw, re.I):
-            return "Foremost-Vacant"
-        if re.search(r"home|ho-?\d", raw, re.I):
-            return "Foremost-Home"
-    if carrier == "Farmers":
-        if re.search(r"homeowner|^home$|ho-?\d", raw, re.I):
-            return "Farmers-Home"
-        if re.search(r"term|life", raw, re.I):
-            return "Farmers-Life"
-    return f"{carrier}-{raw}"
+    for r in PRODUCT_RULES:
+        if r.get("carrier") and r["carrier"] != carrier:
+            continue
+        if r.get("match") and not re.search(r["match"], raw, re.I):
+            continue
+        return r["name"].replace("{carrier}", carrier).replace("{raw}", raw)
+    return PRODUCT_DEFAULT.replace("{carrier}", carrier).replace("{raw}", raw)
 
 
 # Flood (Flood, Private Flood) is never on the Sales sheet: nobody is paid
