@@ -39,8 +39,21 @@
      POST /api/crm/tasks/<id>/complete
      POST /api/crm/srs/<id>/complete       {resolutionId, note?}
      GET  /api/crm/events?object=&id=      the audit trail of one record
+     GET  /api/crm/lists                   Frank's lists (lead sources, sales
+                                           pipelines with stages, service
+                                           pipelines) and every AgencyZoom
+                                           entry's place under them, with counts
+     POST /api/crm/lists                   {op: add|edit|order, kind, ...}
+     POST /api/crm/lists/place             {kind, azId, listId, detail}
    <obj> is leads, households, policies, quotes, tasks or srs. Every write
    lands in `events` with the Access email, before and after.
+
+   FRANK'S LISTS (CRM.md, "Consolidating the lists"; crm_lists.py): AgencyZoom's
+   lookups and ids stay on every record, and each record ALSO carries Frank's
+   name for it, read through list_map -- a lead's sourceName / sourceDetail /
+   pipelineName / stageName, a policy's sourceName, an SR's pipelineName /
+   pipelineDetail (its category's place, else its workflow's). The
+   AgencyZoom-shaped fields (leadSourceName, workflowName ...) are untouched.
 
    Nothing here reads AgencyZoom, RingCentral or Insightful. Without the CRM
    binding every call answers 503 "CRM is not configured", like Coeus with no
@@ -267,12 +280,18 @@ function rowToApi(spec, row, lk) {
     out.workflowStageName = lk.stages.get(out.workflowStageId) || null;
     out.assignedToName = personName(out.assignedTo);
     out.name = `${out.firstname || ""} ${out.lastname || ""}`.trim();
+    const pl = lk.placed, src = pl && pl.source.get(out.leadSourceId), wf = pl && pl.workflow.get(out.workflowId), st = pl && pl.stage.get(out.workflowStageId);
+    out.sourceName = src ? src.name : null; out.sourceDetail = src ? src.detail : null;
+    out.pipelineName = wf && wf.kind === "pipeline" ? wf.name : null;
+    out.stageName = st ? st.name : null;
   } else if (spec.table === "households") {
     out.name = out.businessName || `${out.firstname || ""} ${out.lastname || ""}`.trim();
     out.assignedToName = personName(out.assignedTo);
   } else if (spec.table === "policies") {
     out.agentName = personName(out.agentId);
     out.leadSourceName = lk.sources.get(out.leadSourceId) || null;
+    const src = lk.placed && lk.placed.source.get(out.leadSourceId);
+    out.sourceName = src ? src.name : null; out.sourceDetail = src ? src.detail : null;
     if (!out.carrierName && out.carrierId) out.carrierName = lk.carriers.get(out.carrierId) || null;
   } else if (spec.table === "tasks") {
     out.assignees = out.assigneeId ? [{ id: out.assigneeId, name: personName(out.assigneeId) }] : [];
@@ -287,6 +306,8 @@ function rowToApi(spec, row, lk) {
     const p = personById(out.csr);
     out.csrFirstname = p ? p.name.split(" ")[0] : null;
     out.categoryName = lk.categories.get(out.categoryId) || null;
+    const sp = lk.placed ? srPipeline(lk.placed, out.categoryId, out.workflowId) : null;
+    out.pipelineName = sp ? sp.name : null; out.pipelineDetail = sp ? sp.detail : null;
     if (!out.resolutionDesc && out.resolutionId) out.resolutionDesc = lk.resolutions.get(out.resolutionId) || null;
     out.customerId = out.householdId || out.leadId || null;
     out.customerName = row.customer_name || null;
@@ -299,6 +320,64 @@ function noteToApi(r) {
     createdByName: personName(r.created_by), origin: r.origin,
     attr: r.attr ? JSON.parse(r.attr) : {}, attachments: r.attachments ? JSON.parse(r.attachments) : [],
     leadId: r.lead_id, householdId: r.household_id, srId: r.sr_id };
+}
+
+/* ---- Frank's lists and the map ------------------------------------------------- */
+const LIST_KINDS = new Set(["source", "pipeline", "stage", "service"]);
+const MAP_KINDS = new Set(["source", "workflow", "stage", "category"]);
+function listToApi(x) {
+  return { id: x.id, name: x.name, parentId: x.parent_id, detailLabel: x.detail_label, meaning: x.meaning, ord: x.ord, active: !!x.active };
+}
+/** The lists and list_map rows; empty before migration 0004 (the tables are made
+    by the first sync after a deploy, or `wrangler d1 migrations apply`). */
+async function listTables(db) {
+  try {
+    const [l, m] = await db.batch([
+      db.prepare("SELECT kind, id, name, parent_id, detail_label, meaning, ord, active FROM lists ORDER BY kind, ord, id"),
+      db.prepare("SELECT kind, az_id, list_id, detail, placed_by FROM list_map"),
+    ]);
+    return { lists: (l.results || []).map(listToApi).map((x, i) => ({ ...x, kind: (l.results || [])[i].kind })), map: m.results || [], ready: true };
+  } catch (_) {
+    return { lists: [], map: [], ready: false };
+  }
+}
+/** lists grouped by kind, stages under their pipeline. */
+function listsByKind(lists) {
+  const out = { source: [], pipeline: [], stage: [], service: [] };
+  for (const x of lists) if (out[x.kind]) out[x.kind].push(x);
+  for (const p of [...out.pipeline, ...out.service]) p.stages = out.stage.filter((s) => s.parentId === p.id);
+  return out;
+}
+/** az id -> Frank's entry, per map kind, for rowToApi. `wfKinds` is az workflow
+    id -> "sales" | "service": a sales workflow is placed under a pipeline, a
+    service one under a service pipeline (their ids overlap). */
+function placedMaps(t, wfKinds = new Map()) {
+  const by = {};
+  for (const x of t.lists) by[`${x.kind}:${x.id}`] = x;
+  const stageParent = new Map(t.lists.filter((x) => x.kind === "stage").map((x) => [x.id, x.parentId]));
+  const wfKind = new Map();   // az workflow id -> "pipeline" | "service" (which list kind it is placed in)
+  const out = { source: new Map(), workflow: new Map(), stage: new Map(), category: new Map(), ready: t.ready, wfKind };
+  for (const m of t.map) {
+    if (m.kind === "source") { const e = by[`source:${m.list_id}`]; if (e) out.source.set(m.az_id, { id: e.id, name: e.name, detail: m.detail, label: e.detailLabel }); }
+    else if (m.kind === "workflow") {
+      const k = wfKinds.get(m.az_id);
+      const e = k === "service" ? by[`service:${m.list_id}`] : k === "sales" ? by[`pipeline:${m.list_id}`] : (by[`pipeline:${m.list_id}`] || by[`service:${m.list_id}`]);
+      if (e) { out.workflow.set(m.az_id, { id: e.id, name: e.name, kind: e.kind, detail: m.detail }); wfKind.set(m.az_id, e.kind); }
+    } else if (m.kind === "stage") { const e = by[`stage:${m.list_id}`]; if (e) out.stage.set(m.az_id, { id: e.id, name: e.name, pipelineId: stageParent.get(e.id) }); }
+    else if (m.kind === "category") {
+      const e = m.list_id == null ? null : by[`service:${m.list_id}`];
+      out.category.set(m.az_id, e ? { id: e.id, name: e.name, detail: m.detail, label: e.detailLabel } : { id: null, name: null, detail: m.detail, follows: true });
+    }
+  }
+  return out;
+}
+/** An SR's service pipeline: its category's place, else its workflow's. */
+function srPipeline(pl, categoryId, workflowId) {
+  const c = categoryId != null ? pl.category.get(categoryId) : null;
+  if (c && c.id != null) return { name: c.name, detail: c.detail };
+  const w = workflowId != null ? pl.workflow.get(workflowId) : null;
+  if (w && w.kind === "service") return { name: w.name, detail: (c && c.detail) || w.detail || null };
+  return null;
 }
 
 /* ---- lookups --------------------------------------------------------------- */
@@ -314,7 +393,10 @@ async function lookups(db) {
   const rows = (x) => (x && x.results) || [];
   const stagesByWf = {};
   for (const x of rows(st)) (stagesByWf[x.workflow_id] = stagesByWf[x.workflow_id] || []).push({ id: x.id, name: x.name, ord: x.ord, active: !!x.active });
+  const t = await listTables(db);
+  const byKind = listsByKind(t.lists);
   return {
+    lists: { ready: t.ready, sources: byKind.source, pipelines: byKind.pipeline, service: byKind.service },
     leadSources: rows(s).map((x) => ({ id: x.id, name: x.name, active: !!x.active })),
     workflows: rows(w).map((x) => ({ id: x.id, name: x.name, kind: x.kind, active: !!x.active, stages: stagesByWf[x.id] || [] })),
     serviceCategories: rows(c).map((x) => ({ id: x.id, name: x.name, active: !!x.active })),
@@ -331,7 +413,8 @@ async function nameMaps(db) {
   const stages = new Map();
   for (const w of lk.workflows) for (const s of w.stages) stages.set(s.id, s.name);
   return { sources: m(lk.leadSources), workflows: m(lk.workflows), stages, categories: m(lk.serviceCategories),
-    resolutions: m(lk.resolutions), carriers: m(lk.carriers), stageWorkflow: new Map(lk.workflows.flatMap((w) => w.stages.map((s) => [s.id, w.id]))),
+    resolutions: m(lk.resolutions), carriers: m(lk.carriers), placed: placedMaps(await listTables(db), new Map(lk.workflows.map((w) => [w.id, w.kind]))),
+    stageWorkflow: new Map(lk.workflows.flatMap((w) => w.stages.map((s) => [s.id, w.id]))),
     whereOf: new Map(lk.workflows.flatMap((w) => w.stages.map((s) => [`${w.name} | ${s.name}`, { workflowId: w.id, stageId: s.id }]))) };
 }
 
@@ -633,6 +716,132 @@ async function events(db, url) {
     before: e.before ? JSON.parse(e.before) : null, after: e.after ? JSON.parse(e.after) : null })));
 }
 
+/* ---- the Lists page's reads and writes ------------------------------------------- */
+/** Frank's lists, every AgencyZoom entry with its place, and how much sits on
+    each (leads / policies per source, leads per workflow and stage, SRs per
+    workflow and category) -- six GROUP BY passes, so only the Lists page asks. */
+async function listsPage(db, lk) {
+  const t = await listTables(db);
+  const byKind = listsByKind(t.lists);
+  const mapOf = {};
+  for (const m of t.map) mapOf[`${m.kind}:${m.az_id}`] = m;
+  const counts = {};
+  if (t.ready) {
+    const [ls, ps, lw, lst, sw, sc] = await db.batch([
+      db.prepare("SELECT lead_source_id AS k, count(*) AS n FROM leads GROUP BY lead_source_id"),
+      db.prepare("SELECT lead_source_id AS k, count(*) AS n FROM policies GROUP BY lead_source_id"),
+      db.prepare("SELECT workflow_id AS k, count(*) AS n FROM leads WHERE status = 0 GROUP BY workflow_id"),
+      db.prepare("SELECT workflow_stage_id AS k, count(*) AS n FROM leads WHERE status = 0 GROUP BY workflow_stage_id"),
+      db.prepare("SELECT workflow_id AS k, count(*) AS n FROM service_requests GROUP BY workflow_id"),
+      db.prepare("SELECT category_id AS k, count(*) AS n FROM service_requests GROUP BY category_id"),
+    ]);
+    const toMap = (r) => new Map((r.results || []).map((x) => [x.k, x.n]));
+    Object.assign(counts, { leadsBySource: toMap(ls), policiesBySource: toMap(ps), openLeadsByWorkflow: toMap(lw), openLeadsByStage: toMap(lst), srsByWorkflow: toMap(sw), srsByCategory: toMap(sc) });
+  }
+  const c = (m, k) => (m && m.get(k)) || 0;
+  const place = (kind, id) => { const m = mapOf[`${kind}:${id}`]; return m ? { listId: m.list_id, detail: m.detail, placedBy: m.placed_by, placed: true } : { listId: null, detail: null, placedBy: null, placed: false }; };
+  const [s, w, st, cat] = await db.batch([
+    db.prepare("SELECT id, name, active FROM lead_sources ORDER BY name"),
+    db.prepare("SELECT id, name, kind, active FROM workflows ORDER BY kind, name"),
+    db.prepare("SELECT id, workflow_id, name, ord, active FROM stages ORDER BY workflow_id, ord, id"),
+    db.prepare("SELECT id, name, active FROM service_categories ORDER BY name"),
+  ]);
+  const rows = (x) => (x && x.results) || [];
+  const az = {
+    sources: rows(s).map((x) => ({ id: x.id, name: x.name, active: !!x.active, ...place("source", x.id), leads: c(counts.leadsBySource, x.id), policies: c(counts.policiesBySource, x.id) })),
+    workflows: rows(w).map((x) => ({ id: x.id, name: x.name, kind: x.kind, active: !!x.active, ...place("workflow", x.id), leads: c(counts.openLeadsByWorkflow, x.id), srs: c(counts.srsByWorkflow, x.id) })),
+    stages: rows(st).map((x) => ({ id: x.id, workflowId: x.workflow_id, name: x.name, active: !!x.active, ...place("stage", x.id), leads: c(counts.openLeadsByStage, x.id) })),
+    categories: rows(cat).map((x) => ({ id: x.id, name: x.name, active: !!x.active, ...place("category", x.id), srs: c(counts.srsByCategory, x.id) })),
+  };
+  // a stage of a workflow nobody placed, or of a service workflow, is not Unsorted: it waits on its workflow
+  const salesWf = new Set(az.workflows.filter((x) => x.placed && x.kind === "sales").map((x) => x.id));
+  for (const x of az.stages) x.waits = !salesWf.has(x.workflowId);
+  const unsorted = az.sources.filter((x) => !x.placed).length + az.workflows.filter((x) => !x.placed).length
+    + az.stages.filter((x) => !x.placed && !x.waits).length + az.categories.filter((x) => !x.placed).length;
+  return json({ ready: t.ready, lists: { sources: byKind.source, pipelines: byKind.pipeline, service: byKind.service }, az, unsorted });
+}
+/** add / edit / order one of Frank's lists. */
+async function listsWrite(db, body, me) {
+  if (!body || typeof body !== "object") return json({ error: "a JSON object is expected" }, 400);
+  const op = String(body.op || ""), kind = String(body.kind || "");
+  if (!LIST_KINDS.has(kind)) return json({ error: "kind: source, pipeline, stage or service" }, 400);
+  const t = await listTables(db);
+  if (!t.ready) return json({ error: "the lists are not loaded yet (migration 0004 / the first sync)" }, 409);
+  const mine = t.lists.filter((x) => x.kind === kind);
+  const clean = (v, n) => (typeof v === "string" ? v.trim().slice(0, n) : null);
+  if (op === "add") {
+    const name = clean(body.name, 80);
+    if (!name) return json({ error: "name is required" }, 400);
+    if (mine.some((x) => x.name.toLowerCase() === name.toLowerCase() && (kind !== "stage" || x.parentId === Number(body.parentId)))) return json({ error: "that name is already on the list" }, 409);
+    let parent = null, id;
+    if (kind === "stage") {
+      parent = Number(body.parentId);
+      if (!t.lists.some((x) => (x.kind === "pipeline" || x.kind === "service") && x.id === parent)) return json({ error: "parentId: no such pipeline" }, 400);
+      const sibs = mine.filter((x) => x.parentId === parent);
+      id = Math.max(parent * 100, ...sibs.map((x) => x.id)) + 1;
+    } else id = Math.max(0, ...mine.map((x) => x.id)) + 1;
+    const ord = Math.max(0, ...mine.filter((x) => x.parentId === parent).map((x) => x.ord)) + 1;
+    await db.batch([
+      db.prepare("INSERT INTO lists (kind, id, name, parent_id, detail_label, meaning, ord, active) VALUES (?, ?, ?, ?, ?, ?, ?, 1)")
+        .bind(kind, id, name, parent, clean(body.detailLabel, 60), clean(body.meaning, 400), ord),
+      eventStmt(db, me.email, "list", id, "create", null, { kind, name, parentId: parent }),
+    ]);
+    return json({ ok: true, id });
+  }
+  if (op === "edit") {
+    const id = Number(body.id), cur = mine.find((x) => x.id === id);
+    if (!cur) return json({ error: "no such entry" }, 404);
+    const set = {}, before = {}, after = {};
+    if ("name" in body) { const v = clean(body.name, 80); if (!v) return json({ error: "name cannot be empty" }, 400); set.name = v; }
+    if ("detailLabel" in body) set.detail_label = clean(body.detailLabel, 60);
+    if ("meaning" in body) set.meaning = clean(body.meaning, 400);
+    if ("active" in body) set.active = body.active ? 1 : 0;
+    const back = { name: "name", detail_label: "detailLabel", meaning: "meaning", active: "active" };
+    for (const [c, v] of Object.entries(set)) { const k = back[c]; const was = k === "active" ? (cur.active ? 1 : 0) : cur[k]; if ((was ?? null) !== (v ?? null)) { before[k] = was ?? null; after[k] = v ?? null; } }
+    if (!Object.keys(after).length) return json({ ok: true, id });
+    const keys = Object.keys(set);
+    await db.batch([
+      db.prepare(`UPDATE lists SET ${keys.map((k) => `${k} = ?`).join(", ")} WHERE kind = ? AND id = ?`).bind(...keys.map((k) => set[k]), kind, id),
+      eventStmt(db, me.email, "list", id, "update", { kind, ...before }, { kind, ...after }),
+    ]);
+    return json({ ok: true, id });
+  }
+  if (op === "order") {
+    const ids = Array.isArray(body.ids) ? body.ids.map(Number) : [];
+    if (!ids.length || ids.some((i) => !mine.some((x) => x.id === i))) return json({ error: "ids: entries of that list" }, 400);
+    await db.batch([...ids.map((i, k) => db.prepare("UPDATE lists SET ord = ? WHERE kind = ? AND id = ?").bind(k + 1, kind, i)),
+      eventStmt(db, me.email, "list", 0, "order", null, { kind, ids })]);
+    return json({ ok: true });
+  }
+  return json({ error: "op: add, edit or order" }, 400);
+}
+/** Place an AgencyZoom entry under one of Frank's: list_map upsert, placed_by the email. */
+async function listsPlace(db, body, me) {
+  if (!body || typeof body !== "object") return json({ error: "a JSON object is expected" }, 400);
+  const kind = String(body.kind || ""), azId = Number(body.azId);
+  if (!MAP_KINDS.has(kind)) return json({ error: "kind: source, workflow, stage or category" }, 400);
+  if (!Number.isInteger(azId) || azId <= 0) return json({ error: "azId is required" }, 400);
+  const t = await listTables(db);
+  if (!t.ready) return json({ error: "the lists are not loaded yet (migration 0004 / the first sync)" }, 409);
+  const listId = body.listId == null || body.listId === "" ? null : Number(body.listId);
+  if (listId === null && kind !== "category") return json({ error: "listId is required (only a category may follow its workflow)" }, 400);
+  if (listId !== null) {
+    const ok = { source: ["source"], workflow: ["pipeline", "service"], stage: ["stage"], category: ["service"] }[kind];
+    if (!t.lists.some((x) => ok.includes(x.kind) && x.id === listId)) return json({ error: `listId: not a ${ok.join(" or ")} entry` }, 400);
+  }
+  const table = { source: "lead_sources", workflow: "workflows", stage: "stages", category: "service_categories" }[kind];
+  const az = await db.prepare(`SELECT id FROM ${table} WHERE id = ?`).bind(azId).first();
+  if (!az) return json({ error: `no AgencyZoom ${kind} ${azId}` }, 404);
+  const detail = typeof body.detail === "string" ? body.detail.trim().slice(0, 120) || null : null;
+  const was = t.map.find((m) => m.kind === kind && m.az_id === azId) || null;
+  await db.batch([
+    db.prepare("INSERT INTO list_map (kind, az_id, list_id, detail, placed_by) VALUES (?, ?, ?, ?, ?) ON CONFLICT(kind, az_id) DO UPDATE SET list_id = excluded.list_id, detail = excluded.detail, placed_by = excluded.placed_by")
+      .bind(kind, azId, listId, detail, me.email),
+    eventStmt(db, me.email, "list_map", azId, was ? "update" : "create", was ? { kind, listId: was.list_id, detail: was.detail } : null, { kind, listId, detail }),
+  ]);
+  return json({ ok: true });
+}
+
 /* ---- the route ----------------------------------------------------------------- */
 async function readBody(request) {
   try { return await request.json(); } catch (_) { return null; }
@@ -652,6 +861,12 @@ export async function crm(request, env, identityOf, parts, url) {
   try {
     if (head === "lookups" && get && parts.length === 1) return json(await lookups(db));
     if (head === "events" && get && parts.length === 1) return events(db, url);
+    if (head === "lists") {
+      if (parts.length === 1 && get) return listsPage(db);
+      if (parts.length === 1 && post) return listsWrite(db, await readBody(request), me);
+      if (parts.length === 2 && id === "place" && post) return listsPlace(db, await readBody(request), me);
+      return json({ error: "not found" }, 404);
+    }
     const lk = await nameMaps(db);
     if (head === "search" && get && parts.length === 1) return search(db, url, lk);
     const spec = OBJECTS[head];

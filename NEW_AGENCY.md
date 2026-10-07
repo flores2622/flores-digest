@@ -116,6 +116,17 @@ Farmers folder and rewrite it. The agency layer comes from `staff.json`.
 - The nightly routine: `CRON_TZ=<agency.timezone> 55 8-17 * * 1-5`
   (CLAUDE.md, "THE RUN STARTS AT 5:35 PM").
 
+## 7. The CRM's own lists -- `crm_lists.py`
+
+Pantheon's CRM (CRM.md) keeps the agency's OWN lead sources, sales pipelines
+with their stages, and service pipelines (which are the SR categories), and
+maps every AgencyZoom id onto them by name. `crm_lists.py`'s `SOURCES`,
+`PIPELINES` / `STAGES` and `SERVICE` are Flores's lists and its placement
+rules name Flores's AgencyZoom entries (Call-In, Farmers.com, AZ Sun ...);
+another agency writes its own and runs `python3 crm_lists.py --discover`
+over its saved files to see what lands Unsorted. `--check` validates the
+lists.
+
 ## What is still Flores's in words
 
 The editions' names (The Flores Post, The Flores Feed, KFLR The Close,

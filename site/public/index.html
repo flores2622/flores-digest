@@ -8488,6 +8488,8 @@ async function paintTab() {
     await hygienePaint();    // hygiene.js; only reachable for staff.json's `hygiene`
   } else if (view === "tasks") {
     await tasksPaint();      // tasks.js; Pantheon's own CRM, only reachable for staff.json's `crm`
+  } else if (view === "lists") {
+    await listsPaint();      // lists.js; the CRM's lead sources, pipelines and service pipelines (same gate)
   }
 }
 
@@ -10570,6 +10572,7 @@ paintCenterBar();
     if (w.view === "scrub") ok = await (window.SCRUB_READY || Promise.resolve(false));
     if (w.view === "hygiene") ok = await (window.HYG_READY || Promise.resolve(false));
     if (w.view === "tasks") ok = await (window.CRM_READY || Promise.resolve(false));
+    if (w.view === "lists") ok = await (window.LISTS_READY || Promise.resolve(false));
     if (ok) setViewQuiet(w.view);
   }
   if (w) {
@@ -10844,5 +10847,6 @@ async function coeusSend(text) {
 <script src="scrub.js"></script>
 <script src="hygiene.js"></script>
 <script src="tasks.js"></script>
+<script src="lists.js"></script>
 </body>
 </html>

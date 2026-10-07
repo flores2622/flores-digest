@@ -29,6 +29,9 @@ Reads only what the pipeline already keeps under data/ (nothing is fetched):
     data/notes/<lead>.json            every lead's notes; MOVE_STAGE notes
                                       also become stage_moves rows
     agencyzoom.json                   resolutions, claim categories, carriers
+    crm_lists.py                      Frank's own lists (lead sources, pipelines
+                                      and stages, service pipelines) and where
+                                      each AgencyZoom entry lands (list_map)
 
 Every row keeps AgencyZoom's own id (`id` AND `az_id`), so the published day
 documents' lead_ids, the Sales sheet's policy ids and the Service Center's
@@ -164,7 +167,7 @@ def as_list(x):
 # rewritten (Frank consolidates and renames them in Pantheon); notes and stage
 # moves never change once written.
 AZ_OWNED = {"leads", "households", "policies", "tasks", "service_requests"}
-LOOKUPS = {"lead_sources", "workflows", "stages", "service_categories", "resolutions", "carriers"}
+LOOKUPS = {"lead_sources", "workflows", "stages", "service_categories", "resolutions", "carriers", "lists", "list_map"}
 
 
 def statement(table, row, mode="ignore"):
@@ -296,7 +299,7 @@ def build(rows, days=None):
             stage_wf[sid] = wid
     next_wf = SYNTHETIC_WORKFLOW_FROM
     sr_names = {intval(t.get("workflowId")): t.get("workflowName") for t in srs.values() if intval(t.get("workflowId")) and t.get("workflowName")}
-    wf_done = set()
+    wf_done, wf_rows = set(), {}
     for name in sorted(wf_kind):
         if name not in wf_ids:
             wf_ids[name] = next_wf
@@ -305,8 +308,9 @@ def build(rows, days=None):
         if wid in wf_done:        # one row per id: a renamed workflow (Missing Documents ->
             continue              # Contingencies, 61459) is known by both names
         wf_done.add(wid)
+        wf_rows[wid] = (sr_names.get(wid, name), wf_kind[name])
         rows.insert("workflows", {"id": wid, "name": sr_names.get(wid, name), "kind": wf_kind[name]})
-    ords = {}
+    ords, stage_list = {}, {}
     for sid, (wid, sname, ord_) in sorted(stage_rows.items(), key=lambda kv: (str(kv[1][0]), kv[1][2], kv[0])):
         if wid is None:                           # from the fallback map: its pipeline's name
             wid = wf_ids.get(stage_wf.get(sid))
@@ -314,6 +318,7 @@ def build(rows, days=None):
         if not wid:
             continue
         ords[wid] = ords.get(wid, 0) + 1
+        stage_list[sid] = (wid, sname)
         rows.insert("stages", {"id": sid, "workflow_id": wid, "name": sname, "ord": ord_ or ords[wid]})
 
     def service_stage(wf_name, stage_name):
@@ -349,6 +354,14 @@ def build(rows, days=None):
         if cid and cid not in seen_carriers:
             seen_carriers.add(cid)
             rows.insert("carriers", {"id": cid, "name": p.get("carrierName") or f"Carrier {cid}", "short": None})
+
+    # Frank's own lists and where each AgencyZoom entry lands (crm_lists.py;
+    # INSERT OR IGNORE, so a name or a placement set on the Lists page stays).
+    import crm_lists
+    unsorted = crm_lists.add_rows(rows, sources, wf_rows, stage_list, cat_names)
+    if unsorted:
+        log(f"  lists: {len(unsorted)} AgencyZoom entries no rule places (Unsorted on the Lists page): "
+            + ", ".join(f"{k} {n!r}" for k, _, n in unsorted[:8]) + (" ..." if len(unsorted) > 8 else ""))
 
     # households (customers), then a stub for every household id a lead, policy,
     # task or SR points at that the customer corpus does not carry -- the
@@ -578,7 +591,8 @@ def write_sqlite(rows, path):
     if p.exists():
         p.unlink()
     c = sqlite3.connect(p)
-    c.executescript(SCHEMA.read_text())
+    for f in sorted(SCHEMA.parent.glob("*.sql")):
+        c.executescript(f.read_text())
     c.executescript("\n".join(rows.stmts))
     c.commit()
     counts = {t: c.execute(f"SELECT count(*) FROM {t}").fetchone()[0] for t in sorted(rows.counts)}

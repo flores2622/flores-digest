@@ -2887,6 +2887,30 @@ on a published day. The rules:
   live database by hand on 2026-10-06; a later one goes through
   `wrangler d1 migrations apply pantheon-crm --remote` (the earlier files
   are IF NOT EXISTS / rebuild-safe, so re-running them changes nothing).
+- **Frank's own lists, and AgencyZoom's ids mapped onto them** (Frank,
+  2026-10-06: "i want to consolidate lead sources, pipelines, service
+  request categories. I want to customize and rebuild"; CRM.md
+  "Consolidating the lists"). `crm_lists.py` holds the lists and places
+  every AgencyZoom entry BY NAME (`crm_import.build` -> `add_rows`; migration
+  0004's `lists` / `list_map`, INSERT OR IGNORE so a name or placement set
+  on the page stays). His decisions: **Call-in / Walk-in is one source with
+  "How they found us"** (Called, Walked in, Google, Farmers.com); **the four
+  cross-sell lines stay apart**; the vendor, partner or staff member is a
+  field on Internet lead / Lender referral / Personal network, never a
+  source; five sales pipelines with **AZ Sun under New Business**; **IL
+  Interested and Transfer Pending stay as stages for now**; **the SR
+  category IS the service pipeline** -- Billing, Contingencies, Personal
+  Renewals, Personal Endorsements, Commercial Renewals, Commercial
+  Endorsements, plus Claims (type as the field) -- and a category that says
+  nothing (General, UNASSIGNED) follows the SR's workflow. The Worker reads
+  each record through the map (`sourceName` / `sourceDetail` /
+  `pipelineName` / `stageName`; an SR's `pipelineName` is its category's
+  place, else its workflow's) beside the untouched AgencyZoom fields;
+  **Sales Center > Lists** (`site/public/lists.js`, the same `crm` gate)
+  edits the lists and places the **Unsorted**. The first sync after a
+  deploy creates the two tables itself (`crm_sync.ensure_lists_tables`,
+  CREATE IF NOT EXISTS). The Digest, Apollo and Coeus still read
+  `lead_sources.py` / `pipelines.py`, which the lists agree with.
 - `node --test site/crm.test.mjs` is its test; run it after touching
   `site/crm.js` or the schema. A new field is added to the schema (a new
   migration file), to `OBJECTS` in `site/crm.js` and to the test together.

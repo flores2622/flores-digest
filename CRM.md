@@ -145,87 +145,90 @@ let them in; the Tasks page then appears in their Sales Center menu.
 ## Consolidating the lists (Frank, 2026-10-06: "i want to consolidate lead sources, pipelines, service request categories. I want to customize and rebuild")
 
 AgencyZoom's lists grew by accretion: 97 lead sources, 16 sales pipelines, 43
-SR categories. Pantheon's CRM gets Frank's own lists, and AgencyZoom's ids
-are mapped onto them while AgencyZoom is still the record.
+SR categories. Pantheon's CRM keeps **Frank's own lists** as the real ones
+and a **map from every AgencyZoom id** onto one of his entries; AgencyZoom's
+ids stay on every record while it is the record, and the pages read through
+the map. **Built 2026-10-06** from Frank's decisions that day.
 
-**How it works.** The CRM keeps Frank's lists as the real ones (lead sources,
-pipelines with their stages, SR categories) and a map from every AgencyZoom
-id to one of his entries. The mirror keeps writing AgencyZoom's ids on each
-record, and the pages, the Digest and Apollo read through the map, so a lead
-sourced "Nellie Robertson at Guild Mortgage" in AgencyZoom shows as **Lender
-referral · Guild Mortgage (Nellie Robertson)** in Pantheon. An AgencyZoom id
-nobody has placed lands in an **Unsorted** bucket on the page for Frank to
-drag into place. The mirror adds a lookup the first time AgencyZoom shows it
-and never rewrites one (from 2026-10-06), so a name Frank sets stays. Nothing
-changes in AgencyZoom itself; at cutover, Frank's lists simply are the lists.
-`lead_sources.py` and `pipelines.py` already carry the agency's meaning for
-most of these -- the proposal below starts from them and from the counts in
-the loaded database (leads ever / in the last 90 days; SRs ever / 90 days).
+**How it works.** `crm_lists.py` holds the lists (`SOURCES`, `PIPELINES` +
+`STAGES`, `SERVICE`) and the placement rules, by NAME, so an AgencyZoom
+entry is placed the night it first appears (`crm_import.build` calls
+`add_rows`; one no rule knows is **Unsorted** on the Lists page). Migration
+0004 adds `lists` (kind source / pipeline / stage / service; the one
+`detail_label` kept beside an entry; a `meaning` line) and `list_map` (kind
+source / workflow / stage / category, az_id -> list_id, `detail`,
+`placed_by`). Every row goes INSERT OR IGNORE, so a name or a placement set
+on the page is never undone by the nightly. The Worker (`site/crm.js`) reads
+each record through the map: a lead's `sourceName` / `sourceDetail` /
+`pipelineName` / `stageName`, a policy's `sourceName`, an SR's
+`pipelineName` / `pipelineDetail` -- beside the untouched AgencyZoom-shaped
+fields. `GET /api/crm/lists` is the page's read (counts per entry), `POST
+/api/crm/lists` adds / edits / reorders an entry, `POST /api/crm/lists/place`
+places an AgencyZoom id. **Sales Center > Lists** (`site/public/lists.js`,
+the same `crm` gate) is where Frank works them. `python3 crm_lists.py
+--discover` lists every AgencyZoom entry with its place from the saved files.
 
-**Lead sources, 97 -> 15** (the partner, vendor or staff member becomes a
-field on the source, not a source of its own):
+**Lead sources, 97 -> 17.** The partner, vendor or staff member is a FIELD on
+the source, not a source of its own.
 
-| Proposed | AgencyZoom sources folded in | Leads ever / 90d |
+| Frank's source | Field | AgencyZoom sources placed there |
 |---|---|---|
-| Winback | Winback, Winback by AgencyZoom | 2,084 / 197 |
-| Internet lead (vendor kept as a field) | Smart Financial (1,918 / 0), Smart Financial Live Transfer, SureQuote (517 / 414), Mav AI (282 / 282), Alpha Media (307 / 136), Enterprise (207 / 5), Arizona Insurance Reports x2 (620 / 0), Hometown Quotes, Old MVP Leads | 3,897 / 838 |
-| Call-in | Call-In | 884 / 39 |
-| Walk-in | Walk-In | 268 / 13 |
-| Found us online | Google, Farmers.com | 524 / 41 |
-| Cross-sell: Home no Auto | Home no Auto | 768 / 144 |
-| Cross-sell: Auto no Home | Auto no Home | 200 / 66 |
-| Cross-sell: Life | Life Cross Sell | 181 / 38 |
-| Cross-sell: Umbrella / other | Umbrella, Cross Sell (the plain one, 762 / 24, retired for new leads) | 771 / 25 |
-| Existing client, new purchase | Existing client purchased a new | 41 / 4 |
-| Customer referral | Existing Customer Referral, Referral by AgencyZoom, Francisco Flores | 434 / 32 |
-| Lender referral (partner kept as a field) | the 30 "<name> at <lender>" sources, Mortgage Lenders | ~1,000 / 20 |
-| Personal network (staff member kept as a field) | the 16 staff-name sources (Frank Flores 471 / 4 the largest) | ~660 / 14 |
-| Social media | Facebook, Instagram, LinkedIn | 66 / 41 |
-| Cold / event | Cold lead, FIG QNT, Crane Benefit Fair, UTV Expo | 104 / 56 |
-| Commercial lead (Cerberus) | Leo, Work Comp, District Comm Leads, Agent Promoter Comm Leads, RCFBH Group Life, Kraft Lake | 187 / 0 |
-| Not a sale: BOB / Rewrite | kept as two, for the service bookkeeping | 150 / 6 |
-| Other | X, X, Other lead, Lender no longer in the Industry, Automation Team | 23 / 5 |
+| Winback | | Winback, Winback by AgencyZoom |
+| Internet lead | Vendor | Smart Financial (+ Live Transfer), SureQuote, Mav AI, Alpha Media, Enterprise, Arizona Insurance Reports (both), Hometown Quotes, Facebook (purchased, per the 09-24 rule) |
+| **Call-in / Walk-in** | **How they found us** | Call-In (Called), Walk-In (Walked in), Google / Found us on Google (Google), Farmers.com -- Frank: "it should be callin/walk in, with a field on how they found us" |
+| Cross-sell: Home no Auto | | Home no Auto |
+| Cross-sell: Auto no Home | | Auto no Home |
+| Cross-sell: Life | | Life Cross Sell |
+| Cross-sell: Umbrella / other | Product | Umbrella, the plain Cross Sell -- the four lines **stay apart** (Frank) |
+| Existing client, new purchase | | Existing client purchased a new |
+| Customer referral | Referred by | Existing Customer Referral, Referral by AgencyZoom, Francisco Flores |
+| Lender referral | Partner | every "Name at Company" source as "Company (Name)", Mariah Serna, Lender no longer in the Industry, Mortgage Lenders |
+| Personal network | Staff member | the staff-name sources (Frank Flores, Lorena Gonzalez, Mike Olvera ...), each as that person |
+| Social media | Network | Instagram, LinkedIn |
+| Cold / event | Event or list | Cold lead, FIG QNT, Crane Benefit Fair, UTV Expo, Old MVP Leads |
+| Commercial lead | Generator | Leo, Work Comp, District / Agent Promoter Comm Leads, RCFBH Group Life, Kraft Lake |
+| BOB, Rewrite | | kept as the two not-a-sale sources |
+| Other | What it was | X (both), Other lead, Automation Team |
+| Unsorted | | Source 9308229 (an id with no name), and anything new no rule knows |
 
-**Sales pipelines, 16 -> 5** (stages in Frank's order; IL Interested and
-Transfer Pending go, since they were never agency stages):
+**Sales pipelines, 16 -> 5**, each with Frank's stages in order:
 
-| Proposed | Stages | From | Open leads now |
+| Pipeline | Stages | AgencyZoom pipelines placed there |
+|---|---|---|
+| New Business | New, 1st / 2nd / 3rd Cycle, Contacted, In Progress, Ready to Present, Quotes Presented, Lender Referral, FSD (Pending Bind), **IL Interested, Transfer Pending** (not ours, "leave ... for now" -- Frank) | 1 Pipeline, Pipeline (junk), Tello's Leads, Test Test, x1 Pipeline Refreshed, **AZ Sun Quote Tracker** ("New business" -- Frank), 1. Personal Lines Marketing, Mortgage Lenders |
+| Quotes Not Closed | 1st / 2nd / 3rd Cycle, Contacted, Quoted | 1-1 QNC, x1-1 QNC Refreshed |
+| Not Quoted | the same five | 1-2 Leads Not Quoted |
+| Life | New, Contacted, Quoted, Applications, Med. Records Needed, Approved | Life Pipeline |
+| Commercial | New, 1st / 2nd / 3rd Cycle, Contacted, Applications, Underwriting, Set Present Appt, Quoted, Bind | Frankie's Commercial Pipeline, 2 Commercial Pipeline, 2-1 Commercial QNC, 2-2 Commercial Leads Not Quoted |
+
+An AgencyZoom stage is placed under the stage of the same name in the
+pipeline its workflow went to ("Quoted" = Quotes Presented, "Contacted" =
+Contacted, In Progress, "New 1st Cycle" = 1st Cycle); a stage name no
+pipeline has is Unsorted. Service workflows' stages are not mapped (only
+Late Payments is worked by stage; the Service Center reads AgencyZoom's).
+
+**Service pipelines = SR categories, 43 categories + 8 workflows -> 7**
+(Frank: "the category is really the service pipeline it goes into"):
+
+| Service pipeline | Field | AgencyZoom workflows | AgencyZoom categories |
 |---|---|---|---|
-| New Business | New, Contacted / In Progress, Ready to Present, Quotes Presented, Lender Referral (holding), FSD (Pending Bind) | 1 Pipeline (593), Pipeline (2, junk), Tello's Leads (2), Test Test (1), x1 Pipeline Refreshed | 598 |
-| Quotes Not Closed | 1st Cycle, 2nd Cycle, 3rd Cycle, Contacted, Quoted | 1-1 QNC (57), x1-1 QNC Refreshed | 57 |
-| Not Quoted | 1st Cycle, 2nd Cycle, 3rd Cycle, Contacted, Quoted | 1-2 Leads Not Quoted | 212 |
-| Life | New, Contacted, Quoted, Applications, Med. Records Needed, Approved | Life Pipeline | 27 |
-| Commercial (Cerberus) | New, Contacted, Applications, Underwriting, Set Present Appt, Quoted, Bind; cycles for QNC / not quoted | Frankie's Commercial Pipeline (95), 2 Commercial Pipeline (74), 2-1 Commercial QNC, 2-2 Commercial Leads Not Quoted (6), AZ Sun Quote Tracker (126) | 301 |
-| retired | | 1. Personal Lines Marketing (0 leads), Mortgage Lenders (8 -- partners become the Lender referral field) | |
+| Billing | Payment | Late Payments, Reinstatement | Monthly (x3), NOC: Monthly EFT / Monthly, Mortgagee Bill |
+| Contingencies | | Contingencies / Missing Documents | Missing Docs, address verification, UW Request For Driver License Number |
+| Personal Renewals | Carrier | Personal Renewals, Other 30 day Renewals (Bristol West) | Renewals: Personal, Personal Renewal, VIP Personal Renewal, Non Renewals |
+| Personal Endorsements | Change | Service Pipeline | Personal Policy Change, add / remove a car, add a driver, change address, deductible, Coverage Change, +/- Driver / Insured, Add discount, Client Cancelling, Pending Cancellation, COI, Question, Inspection(s), Remarket, Carrier Request |
+| Commercial Renewals | | Commercial Renewals | Renewals: Commercial, Renewals: Surplus |
+| Commercial Endorsements | | (none: a commercial change is a Service Pipeline SR on a commercial household, commercial.py's rule, until cutover files them here) | Commercial Endorsement |
+| Claims | Claim type | Claim | Claim: Auto / Home / Life / Specialty / Commercial / Work Comp (the type is the field; Commercial and Work Comp stay Cerberus's by claims.py) |
+| *follows the workflow* | | | General (1,219 SRs -- "they are all of them": the workflow says which), UNASSIGNED, Category 81878 |
 
-**Service workflows, 8 -> 7**: Personal Renewals (3,757 SRs), Bristol West
-Renewals (Other 30 day Renewals, 1,028), Service (1,572), Late Payments
-(909, taking Reinstatement's 2 -- it already has a Cancelled/Reinstate
-stage), Contingencies (271), Commercial Renewals (105, Cerberus), Claims (2).
+An SR lands on the pipeline its category is placed under; a category that
+follows the workflow lands where the SR's AgencyZoom workflow is placed.
 
-**SR categories, 43 -> 11** (a claim's type and a payment's kind become a
-field on the category):
-
-| Proposed | AgencyZoom categories folded in | SRs ever / 90d |
-|---|---|---|
-| Renewal | Renewals: Personal, Personal Renewal, VIP Personal Renewal, Non Renewals | 4,881 / 1,150 |
-| Commercial renewal | Renewals: Commercial, Renewals: Surplus | 105 / 24 |
-| Payment | Monthly x3, NOC: Monthly EFT, NOC: Monthly x2, Mortgagee Bill | 914 / 190 |
-| Missing documents | Missing Docs, Missing the address verification documentation, UW Request For Driver License Number | 275 / 73 |
-| Policy change | Personal Policy Change, requested to add / remove a car, add a driver, change your address, increase the deductible, Coverage Change, +/- Driver, +/- Insured, Add discount, Commercial Endorsement | 146 / 6 |
-| Cancellation | Service: Client Cancelling, Service: Pending Cancellation | 77 / 11 |
-| Certificate (COI) | Service: COI | 18 / 0 |
-| Claim (type kept as a field) | Claim: Auto / Home / Life / Specialty / Commercial / Work Comp | 7 / 0 |
-| Question / general | General (1,219 / 211 -- the catch-all; worth a look at what lands there), Service: Question, UNASSIGNED, Category 81878 | 1,223 / 211 |
-| Inspection | Service: Inspection, Inspections | 0 |
-| Remarket / carrier request | Service: Remarket, Service: Carrier Request | 0 |
-
-What Frank decides: the names, which of the Cross-sell lines stay separate,
-whether Call-in and Walk-in stay apart (the rotation treats them alike),
-whether AZ Sun belongs under Commercial, and what "General" should become.
-Then the build: the three lists and the map as tables, a Lists page under
-the CRM to edit them and sort the Unsorted bucket, and the Digest, Apollo
-and Coeus reading the consolidated names.
+**Still to come**: the Digest, Apollo and Coeus read `lead_sources.py`'s
+groups and `pipelines.py` today, both of which the lists agree with; they
+move to the lists when the leads and SRs themselves do (phases 3 and 7).
+The lists are Flores's; another agency writes its own `crm_lists.py` entries
+(NEW_AGENCY.md).
 
 ## Decisions still Frank's
 
@@ -235,9 +238,9 @@ and Coeus reading the consolidated names.
 - **Texting**: through RingCentral's SMS API on each producer's own line
   (what AgencyZoom does now, on the service lines at least), or a dedicated
   number. Affects phase 4 and the Texts & Emails page.
-- **Stage names**: keep AgencyZoom's as they are (the import does) or
-  simplify when the producers move over. `pipelines.py` is the one place
-  the meanings live.
+- **Stage names**: decided 2026-10-06 -- Frank's stages are in
+  `crm_lists.STAGES` and on the Lists page; `pipelines.py` still carries
+  the meanings Apollo reads.
 - **Who may delete**: nothing in the CRM deletes today (status codes and the
   audit trail instead). A `crm_admin` board key in staff.json is the
   natural place if that changes.
