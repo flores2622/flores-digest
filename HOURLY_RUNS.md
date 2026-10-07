@@ -271,8 +271,9 @@ Monday–Friday. No Saturday.** (Frank, 2026-09-28: "run it on :55 hourly", then
     CRON_TZ=America/Phoenix 55 8-17 * * 1-5
 
 8:55 AM–4:55 PM are checkpoints (`intraday.py`, then `missed_call_tasks.py
---live`). **5:55 PM is the final run**: it reads Coach AI (whose reports Frank
-moved to 5:30 PM) and runs `daily.py`, which creates the rest of the day's
+--live`). **5:55 PM is the final run**: it runs `daily.py` (which read Coach
+AI's emailed figures until 2026-10-06; Role Play is the board's own sessions
+now, `roleplay_score.py`), which creates the rest of the day's
 missed-call tasks itself (`make_missed_call_tasks`, after the email; a
 SEND_HOLD night skips them). Calls after the final roll into the next
 morning's 8:55 run. It replaced seven routines on Frank's earlier ten times

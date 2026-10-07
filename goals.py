@@ -4,8 +4,8 @@ What is green, yellow and red on the Digest and the nightly email (one
 (green, yellow) pair per metric; `lower_better` where lower wins), which
 straight-count metrics scale by the number of producers for the team row,
 the life goal (policies a week, per producer), the reply-speed goal
-(minutes: green at or under, red over), the week's premium goal The Flores
-Post judges a slow week by, and the Coach AI bar ranges. digest_config
+(minutes: green at or under, red over) and the week's premium goal The
+Flores Post judges a slow week by. digest_config
 builds its old constants from here, names and shapes unchanged; the board
 page reads site/public/goals.js (window.GOALS), written from the same file.
 How a tier is JUDGED -- the boundary rules in digest_config.tier(), the
@@ -30,7 +30,8 @@ TEAM_SCALED_METRICS = set(DATA["team_scaled_metrics"])
 LIFE_WEEKLY_GOAL = int(DATA["life_weekly_goal"])
 REPLY_GOAL = dict(DATA["reply_goal_minutes"])
 WEEK_PREMIUM_GOAL = DATA["week_premium_goal"]
-COACH_BAR_RANGES = {k: tuple(v) for k, v in DATA["coach_bar_ranges"].items()}
+# (coach_bar_ranges, the Coaching & Call Quality panel's bar extremes, left
+# with Coach AI on 2026-10-06.)
 
 
 def _js():
