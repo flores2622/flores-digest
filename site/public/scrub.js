@@ -1,7 +1,8 @@
 /* The lead scrub tracker (Frank, 2026-10-02: "an interactive way to track a
    list of leads we are scrubbing, making sure they are updated in both apex
-   and agency zoom"). Sales Center > Lead Scrub, shown only to the people
-   /api/scrub answers (site/scrub.js, staff.json's `scrub`).
+   and agency zoom"). Operations Center > Lead Scrub (Frank, 2026-10-06; it
+   began under the Sales Center), shown only to the people /api/scrub
+   answers (site/scrub.js, staff.json's `scrub`).
 
    A manager imports the report (Excel or CSV, as it comes) as a scrub
    list; the columns are matched by their headers and can be changed before
@@ -14,7 +15,7 @@
    what is left to do, any detail on the report and a search; clients on
    the same phone or email are marked; the list downloads as a CSV in the
    sheet's column order. Uses the board's own
-   helpers ($, $$, cesc, pbadge, DOT, CENTERS, SEARCH_PAGES, paintCenterBar),
+   helpers ($, $$, cesc, pbadge, DOT, opsShow),
    so it loads after index.html's main script. */
 (function () {
   let SC = null;            // the last /api/scrub answer (the lists)
@@ -44,9 +45,9 @@
   // whether it did, so a refresh on this page can reopen it (index.html).
   window.SCRUB_READY = (async function scInit() {
     try { SC = await api(""); } catch (_) { return false; }
-    if (!CENTERS.salescenter.some(([k]) => k === "scrub")) CENTERS.salescenter.push(["scrub", "Lead Scrub"]);
-    SEARCH_PAGES.push(["Lead Scrub", "Sales Center · leads cleaned up in Apex and AgencyZoom", "scrub"]);
-    paintCenterBar();
+    // Operations Center > Lead Scrub (Frank, 2026-10-06: "move the lead scrubber there as well"; it
+    // was under the Sales Center).
+    opsShow("scrub", "Lead Scrub", "leads cleaned up in Apex and AgencyZoom");
     return true;
   })();
 

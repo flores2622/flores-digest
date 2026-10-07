@@ -492,7 +492,7 @@ staff list" -- the first step to running Pantheon for another agency). Every
 person's AgencyZoom id, RingCentral extension and id, email, which nightly
 email they get, whether they are a producer, their Service Center role, their
 pipeline tags (licensed, hybrid, training-lead owner, commercial owner ...)
-and their `board` keys -- who may open Commercial, Rotation, Lead Scrub,
+and their `board` keys -- who may open Commercial, Rotation, Lead Scrub, CRM Hygiene,
 Apollo's doubts, voice ratings, Coeus usage, every Role Play history,
 everyone's commission, and log sales for everyone -- live there and nowhere
 else. **Crystal's commission schedule is her own** (Frank, 2026-10-06: "crystals comm
@@ -1187,10 +1187,46 @@ carried in on 2026-10-02 (logged by "Debbie (Rotation Sheet)"; Crystal's
 blank slot as a skip); earlier folios stay in the sheet. Producers have no
 tour step for it, since they can't open it.
 
+## The Operations Center
+
+**Operations Center is the ops team's own Center** (Frank, 2026-10-06: "a
+new category for operatonis only"): a left-bar group of its own between
+Athena's and Cerberus's, hidden until the Worker lets the login in (like
+Commercial), holding **CRM Hygiene** and **Lead Scrub** (moved from the
+Sales Center the same day: "move the lead scrubber there as well"). Each
+page's own module adds it through `opsShow` (index.html) when its Worker
+route answers, so `CENTERS.operations` is empty for everyone else and the
+Center never enters the menu, the search or the start-page list.
+
+**CRM Hygiene is Amanda's "CRM Hygeine" Google Doc as a log** (Frank,
+2026-10-06: "look at file named CRM Hygiene, build that into pantheon") --
+"CSR Redirection & Process Tracking": accounts handled incorrectly, assigned
+improperly or left without notes, tasks or follow-ups, reviewed in the
+one-on-ones. `site/hygiene.js` (Worker, `/api/hygiene`) keeps one R2 file,
+`hygiene/log.json`, etag-guarded like the rotation. **Its columns are the
+doc's** -- Client Name, Policy Number, Note / Description of Issue, Date --
+plus the rep the entry is about (the service team first in the
+suggestions, anything typed accepted), which line of the doc's
+**Redirection Standard Checklist** it missed (`STANDARDS`: Check before
+passing / Ownership / Calendar accuracy / Other, the doc's words, shown
+beside the log), who logged it and when, every edit's earlier version, and
+a **Reviewed in a one-on-one** tick with who and when. The doc's six rows
+are the log's first entries (`SEED`, logged as "Amanda (CRM Hygiene doc)",
+rep blank -- the doc names none), written the first time anyone posts.
+**Only the ops team sees it**: staff.json's `hygiene` (Frank, Francisco,
+Veronica, Amanda); everyone who sees it logs, edits, reviews and removes.
+The page (`site/public/hygiene.js`) shows entries, this month, how many
+wait for a one-on-one and the standard missed most, a count per rep that
+filters, the log newest first with search / rep / standard / reviewed
+filters and a CSV, and the checklist card. Athena's Road Map carries the
+standard's three lines for the service team; the log itself is never
+described there.
+
 ## The lead scrub
 
-**Sales Center > Lead Scrub tracks a lead list being cleaned up in both Apex
-and AgencyZoom** (Frank, 2026-10-02). `site/scrub.js` (Worker, `/api/scrub`
+**Operations Center > Lead Scrub tracks a lead list being cleaned up in both
+Apex and AgencyZoom** (Frank, 2026-10-02; under the Sales Center until
+2026-10-06). `site/scrub.js` (Worker, `/api/scrub`
 and `/api/scrub/<id>`) keeps one R2 file per list, `scrub/lists/<id>.json`,
 its progress in the object's customMetadata so the picker reads no list.
 **Its columns are Frank's scrub sheet** (his screenshot, 2026-10-02):
@@ -2770,6 +2806,94 @@ over `text/event-stream` with status lines while it reads.
 - **When the board changes, Coeus changes with it** through `blueprints.js`
   -- another reason to keep the guides current in the same change. A new
   figure Coeus should read needs its compact reading added in `coeus.js`.
+
+## Pantheon's own CRM (2026-10-06)
+
+**Frank is replacing AgencyZoom with a CRM built into Pantheon** (Frank,
+2026-10-06: "i basically want to build my own, built into Pantheon").
+`CRM.md` is the roadmap: eight phases, tasks first, AgencyZoom kept as the
+record for everything not yet moved, nothing switched until the two agree
+on a published day. The rules:
+- **The CRM speaks AgencyZoom's shapes.** `site/crm.js` (Cloudflare D1,
+  binding `CRM`, schema `site/crm/migrations/`) answers `/api/crm/...` with
+  the field names and codes the pipeline already reads -- `assignedTo`,
+  `leadSourceId`, `status` 2 = sold, `soldDate`, `convertedHouseholdId`,
+  `workflowStageId`, a policy's `agentId` + `soldDate`, an SR's status
+  0 / 1 / 2 and `resolutionId`, notes newest first with a MOVE_STAGE note
+  per move -- so a module moves over by swapping its client, never by
+  changing what a number means. Imported rows keep AgencyZoom's ids
+  (`crm_import.py`, from the nightly's saved `data/` files, INSERT OR IGNORE
+  so it can be run again); people are staff.json's `az_id`. Dates are on the
+  agency's clock (`staff.js localStr`).
+- **Every write is an event** (`events`: who, before, after); nothing is
+  deleted, status codes say what a record is. An SR completes only on one
+  of Frank's resolutions; a lead's `sold` sets status 2 and a soldDate and
+  makes its household; `move` writes the structured move and the note.
+- **Who may use it: Frank alone, until further notice** (Frank,
+  2026-10-06: "all of this is available to only me until further notice"):
+  staff.json's `crm` board key, checked by `site/crm.js` on every call;
+  anyone else gets 403 and the Tasks page never enters their menu or the
+  search (`site/public/tasks.js` probes `/api/crm/lookups`, like Rotation).
+  To open it to someone, add `crm` to their `board` and run
+  `python3 staff.py --write-js`. The D1 database `pantheon-crm` exists in the
+  account (created 2026-10-06, WNAM, schema applied) and wrangler.jsonc
+  carries its binding; a schema change is a new file under
+  `site/crm/migrations/`, applied with `wrangler d1 migrations apply
+  pantheon-crm --remote`.
+- **Sales Center > Tasks is the CRM's first page** (Frank, 2026-10-06:
+  "start on the tasks page next"; `site/public/tasks.js`, painted by
+  `tasksPaint`): Due today / Overdue / Next 7 days / Done today / All open,
+  for everyone or one person, Done with what happened (a TASK note on the
+  lead), Reschedule, New task hung on a lead or household found by name or
+  number, and a lead's name opening its coaching card (the CRM keeps
+  AgencyZoom's lead ids, so `openLeadCard` finds it). Tasks made here live
+  only in Pantheon until phase 2 of `CRM.md` moves `missed_call_tasks`' write
+  and `az_tasks.audit` / `live.js taskCompletion` over -- the nightly and the
+  board still read AgencyZoom's tasks.
+- **AgencyZoom is mirrored into the CRM every run** (Frank, 2026-10-06:
+  the token is "done"; `crm_sync.py`, called at the end of every
+  `intraday.py` checkpoint and of `daily.py` after its R2 save -- never
+  raises, never stops a run). It builds the rows `crm_import.build` gives
+  from the files the run just saved and sends only what is new or changed
+  (one fingerprint per row, kept in R2 `cache/crm_sync_state.json`, written
+  back after each accepted batch) to the D1 REST API as upserts: an imported
+  row (`az_id` set) follows AgencyZoom while it is the record, a row Pantheon
+  made (`az_id` NULL) is never touched, notes and stage moves are written
+  once (`stage_moves.note_id` is unique, migration 0002). **It needs
+  `CF_API_TOKEN`** (a Cloudflare API token with D1 edit; `CLOUDFLARE_API_TOKEN`
+  is read too) in the cloud environment's variables beside the R2 keys;
+  without it the run logs "CF_API_TOKEN not set -- skipped". The first run
+  with the token is the full load: the 2026-10-06 snapshot built locally to
+  12,349 leads, 4,139 households, 12,803 policies, 7,101 SRs and 524 tasks
+  -- 37,248 statements, ~885 requests, a few minutes. `python3 crm_sync.py
+  --sqlite out/x.db --state out/s.json` runs the same thing against a local
+  SQLite (`CRM_DATA=<dir>` points `crm_import` at another data folder).
+- **What the snapshot taught the importer** (2026-10-06): every AgencyZoom
+  record stamp -- lead, customer, policy, task, SR -- is UTC (hours cluster
+  15-23 = 8 AM-4 PM Arizona; notes alone are local); a policy's `status` is
+  1 current term, 3 next term issued, 4 past term, 0 cancelled
+  (`crm_import.POLICY_STATUS`, as `renewal_report` reads them); a lead's is
+  0 open, 2 sold, 3 and 5 closed; a task's `completedBy`, an SR's
+  `createdBy` / `modifiedBy` come back as NAMES ("Debbie Aguilera"), mapped
+  to staff az_ids by `crm_import.person`; a task's clock is `taskDateTime`
+  only when `timeSpecific`, else its `dueDate` day; the household map is
+  `{id: {fetched, policies: [...]}}` with premiums in cents; lead source
+  names repeat ("X" twice -- migration 0003 dropped the unique name). The
+  real workflow and stage ids come from `data/az_pipelines.json`
+  (`/v1/api/pipelines-and-stages` as it came, saved by daily.py beside
+  `az_stages.json`) and from the SRs themselves; the SR categories' names
+  from `data/az_service_categories.json` (`az_client.service_categories`,
+  one request per cold container). Migrations 0001-0003 were applied to the
+  live database by hand on 2026-10-06; a later one goes through
+  `wrangler d1 migrations apply pantheon-crm --remote` (the earlier files
+  are IF NOT EXISTS / rebuild-safe, so re-running them changes nothing).
+- `node --test site/crm.test.mjs` is its test; run it after touching
+  `site/crm.js` or the schema. A new field is added to the schema (a new
+  migration file), to `OBJECTS` in `site/crm.js` and to the test together.
+- Nothing in the CRM's API reads AgencyZoom, RingCentral or Insightful; the
+  mirror reads only the files the run already saved. Until a phase cuts a
+  workflow over, the nightly and the live refresh keep reading AgencyZoom
+  as before.
 
 ## Never
 
