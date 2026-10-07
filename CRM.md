@@ -230,6 +230,58 @@ move to the lists when the leads and SRs themselves do (phases 3 and 7).
 The lists are Flores's; another agency writes its own `crm_lists.py` entries
 (NEW_AGENCY.md).
 
+## Workflows (Frank, 2026-10-07: "how do we start building our own workflows? or display what we currently have so we can adjust or change as needed")
+
+A workflow has two layers. The **pipeline** -- which stages a lead or SR
+moves through -- is Frank's already (the Lists page). The **automation** --
+what happens on its own when something changes: the text that goes out
+when a SureQuote lead lands, the task set for whoever is up, the second
+text two days later, the Smart-Cycle after three unanswered cycles, the
+shot-clock task on a renewal -- is what AgencyZoom still runs. Built in
+two steps:
+
+**1. What AgencyZoom runs today (built 2026-10-07).** AgencyZoom's API does
+not hand out its rules (api.agencyzoom.com's OpenAPI spec, checked
+2026-10-06: pipelines and stages, no rules or drips), so `az_automations.py`
+reads them back from the evidence on the leads: every automated TEXT
+carries `attr.triggerRuleId`; drip EMAILs carry a template subject
+(`messages.TEMPLATE_SUBJECTS`, plus any subject sent to 5+ leads with no
+attachment); a TASK wording repeated on 5+ leads (the nightly's task files'
+titles and the TASK notes); every MOVE_STAGE into Smart-Cycle, back into a
+cycle stage or to Dead, with who made it (a staff name is a person, anything
+else the automation). Each rule: its wording with the lead's and the staff's
+names, numbers, links and dates blanked (`_blank`; nothing personal
+travels), when it fires (the stage the lead sat in -- from its move history,
+`_where` -- and the days since entering it, the days since the lead arrived,
+the peak hour), the sources, how many leads in the last 90 days, how many
+wrote back within 2 days (3 for email), opt-outs (STOP), opens and bounces.
+`--fetch` restores the newest corpus snapshot from R2 and downloads the
+notes of every lead active in the window, paced like `messages.py`'s
+backfill (~5,000 leads, about half an hour; from the nightly's environment,
+never the Worker's address); `--build --publish` writes
+`data/az_automations.json` and R2 `crm/automations.json`. The Worker serves
+it at `GET /api/crm/automations` with Frank's marks (`crm/automation_marks.json`;
+`POST /api/crm/automations/mark` {key, mark keep|change|drop|null, note}),
+same `crm` gate. **Sales Center > Workflows** (`site/public/workflows.js`):
+Texts / Emails / Tasks / Smart-Cycle tabs, a card per rule with Keep /
+Change / Drop and a note. The marks are the brief for step 2. Rerun the
+read whenever the picture should refresh; it is not on the nightly.
+
+**2. Pantheon's own rules (next).** A rule reads as a sentence: **when** a
+lead arrives on a source / enters a stage / sits N days with no activity /
+does not reply N hours after a text / is marked sold, or an SR opens in a
+pipeline / sits N days open / a renewal is N days out / a call is missed,
+**then** text (template with {first}, {producer} ...), email, a task for
+someone due in N, move stage, Smart-Cycle for N days, notify, stop the
+other rules on that lead. Rules and their runs live in D1
+(`workflow_rules`, `rule_runs`), the Worker's one-minute cron evaluates
+them. **Draft mode first**: until the leads live in the CRM the mirror is
+only as fresh as the last hourly checkpoint, and sending needs phase 4's
+RingCentral SMS and mail senders -- so the first version shows what each
+rule WOULD have fired on today's leads beside what AgencyZoom did (the
+agree-on-a-published-day test), tasks go live first (the CRM owns them),
+texts and emails switch on with their senders.
+
 ## Decisions still Frank's
 
 - **Which vendors push leads and how** (phase 5): each needs a webhook URL

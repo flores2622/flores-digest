@@ -18,6 +18,20 @@ function d1(db) {
   // batch() must give .results for a SELECT and run a write: .all() does both in node:sqlite.
   return { prepare: (sql) => stmt(sql), batch: async (stmts) => { const out = []; for (const s of stmts) out.push(await s.all()); return out; } };
 }
+/** An R2 shim: get/put with etags, enough for the automations marks. */
+function r2() {
+  const store = new Map(); let n = 0;
+  return {
+    async get(key) { const v = store.get(key); if (!v) return null; return { etag: v.etag, json: async () => JSON.parse(v.body), text: async () => v.body }; },
+    async put(key, body, opts = {}) {
+      const cur = store.get(key), only = opts.onlyIf || {};
+      if (only.etagMatches && (!cur || cur.etag !== only.etagMatches)) return null;
+      if (only.etagDoesNotMatch === "*" && cur) return null;
+      const v = { body: String(body), etag: "e" + (++n) }; store.set(key, v); return v;
+    },
+    _store: store,
+  };
+}
 function fresh() {
   const db = new DatabaseSync(":memory:");
   for (const f of ["0001_init.sql", "0002_stage_move_note.sql", "0003_lead_source_names.sql", "0004_lists.sql"])
@@ -36,7 +50,7 @@ function fresh() {
     INSERT INTO list_map (kind, az_id, list_id, detail) VALUES ('source', 1, 2, 'Facebook'), ('source', 2, 4, NULL),
       ('workflow', 10, 1, NULL), ('stage', 101, 101, NULL), ('stage', 102, 105, NULL), ('stage', 103, 107, NULL),
       ('workflow', 20, 4, NULL), ('workflow', 30, 1, NULL), ('category', 91, NULL, NULL), ('category', 93, 1, 'Monthly');`);
-  return { raw: db, env: { CRM: d1(db) } };
+  return { raw: db, env: { CRM: d1(db), BOARD: r2() } };
 }
 const FRANK = STAFF.people.find((p) => p.name.startsWith("Frank"));
 const CRYSTAL = STAFF.people.find((p) => p.name.startsWith("Crystal"));
@@ -303,4 +317,24 @@ test("the Lists page: counts, unsorted, place, add, edit, order", async () => {
   assert.equal(r.body.ready, false);
   assert.equal((await call({ CRM: d1(bare) }, "GET", "/api/crm/lookups")).body.lists.ready, false);
   assert.equal((await call({ CRM: d1(bare) }, "POST", "/api/crm/lists/place", { kind: "source", azId: 1, listId: 2 })).status, 409);
+});
+
+test("automations: the report from R2 and Frank's marks", async () => {
+  const { env } = fresh();
+  let r = await call(env, "GET", "/api/crm/automations");
+  assert.equal(r.status, 200);
+  assert.equal(r.body.report, null);          // the read has not run
+  assert.deepEqual(r.body.marks, {});
+  await env.BOARD.put("crm/automations.json", JSON.stringify({ built: "2026-10-07", texts: [{ key: "text:7001", fired: 40 }] }));
+  r = await call(env, "GET", "/api/crm/automations");
+  assert.equal(r.body.report.texts[0].key, "text:7001");
+  assert.equal((await call(env, "POST", "/api/crm/automations/mark", { key: "text:7001", mark: "maybe" })).status, 400);
+  r = await call(env, "POST", "/api/crm/automations/mark", { key: "text:7001", mark: "change", note: "too salesy" });
+  assert.equal(r.status, 200, JSON.stringify(r.body));
+  assert.equal(r.body.marks["text:7001"].mark, "change");
+  assert.equal(r.body.marks["text:7001"].by, FRANK.name);
+  r = await call(env, "POST", "/api/crm/automations/mark", { key: "text:7001", mark: null });
+  assert.deepEqual(r.body.marks, {});
+  assert.equal((await call(env, "GET", "/api/crm/automations", null, CRYSTAL.email)).status, 403);
+  assert.equal((await call({ CRM: env.CRM }, "GET", "/api/crm/automations")).status, 503);
 });
