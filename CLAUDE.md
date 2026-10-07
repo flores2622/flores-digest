@@ -492,7 +492,7 @@ staff list" -- the first step to running Pantheon for another agency). Every
 person's AgencyZoom id, RingCentral extension and id, email, which nightly
 email they get, whether they are a producer, their Service Center role, their
 pipeline tags (licensed, hybrid, training-lead owner, commercial owner ...)
-and their `board` keys -- who may open Commercial, Rotation, Lead Scrub,
+and their `board` keys -- who may open Commercial, Rotation, Lead Scrub, CRM Hygiene,
 Apollo's doubts, voice ratings, Coeus usage, every Role Play history,
 everyone's commission, and log sales for everyone -- live there and nowhere
 else. **Crystal's commission schedule is her own** (Frank, 2026-10-06: "crystals comm
@@ -696,9 +696,9 @@ yellow pair per metric, `lower_better` for Speed to Dial), the two
 straight-count metrics that scale by the number of producers for the team
 row, the life goal (policies a week per producer), the reply-speed goal
 (15 minutes green, over an hour red), the week's premium goal The Flores
-Post judges a slow week by ($20,000) and the Coach AI bar ranges.
-`goals.py` reads it; `digest_config.THRESHOLDS`, `TEAM_SCALED_METRICS`,
-`LIFE_WEEKLY_GOAL` and `COACH_BAR_RANGES` are built from it, names and
+Post judges a slow week by ($20,000) (and, until 2026-10-06, the Coach AI
+bar ranges). `goals.py` reads it; `digest_config.THRESHOLDS`,
+`TEAM_SCALED_METRICS` and `LIFE_WEEKLY_GOAL` are built from it, names and
 shapes unchanged -- `tier()` and `life_week_tier` checked identical on 31
 values per metric and every weekday case. **The board page reads
 `site/public/goals.js`** (`window.GOALS`), written by `python3 goals.py
@@ -834,12 +834,15 @@ on or before the day and was not already closed before it.
 and have 1 routine that takes care of the whole day"). "Flores daily: hourly
 checkpoints + 5:55 PM final (AZ)" fires `CRON_TZ=America/Phoenix 55 8-17 * *
 1-5`: 8:55 AM-4:55 PM are checkpoints (`intraday.py`, then
-`missed_call_tasks.py --live`), and **5:55 PM is the final run** -- Coach AI
-from Gmail into `data/coach_<day>.json`, then `daily.py`, which sends, publishes
-the boards and creates the rest of the day's missed-call tasks. It skips the
-final if `publish_board.day_is_finalized` is already true. It runs in the
-environment that holds the secrets (no credentials in the prompt) with Gmail
-on the routine. The 5:35 PM "Flores Daily Sales Digest" routine and the seven
+`missed_call_tasks.py --live`), and **5:55 PM is the final run** -- `daily.py`,
+which sends, publishes the boards and creates the rest of the day's
+missed-call tasks. It skips the final if `publish_board.day_is_finalized` is
+already true. It runs in the environment that holds the secrets (no
+credentials in the prompt). **Until 2026-10-06 the final run first read Coach
+AI's emails from Gmail into `data/coach_<day>.json`** (the routine carried
+Gmail for that alone); Frank cancelled Coach AI that day and the Role Play
+figure is the board's own now (see "Role Play score"), so the routine's Gmail
+step and connector are to be removed. The 5:35 PM "Flores Daily Sales Digest" routine and the seven
 per-time missed-call routines are disabled, not deleted. The prefetch section
 below describes that retired 5:35 flow; `hourly.py` is not needed at 5:55
 because the checkpoints have already cached the day.
@@ -848,7 +851,7 @@ because the checkpoints have already cached the day.
 6:45 PM `python3 daily.py` and is stale.** Changed 2026-09-01.
 
     1.  python3 hourly.py        <- FIRST. Downloads and transcribes the day.
-    2.  wait for the Coach AI emails, then write data/coach_<day>.json
+    2.  (until 2026-10-06) wait for the Coach AI emails, then write data/coach_<day>.json
     3.  python3 daily.py         <- finds every transcript already cached
 
 **Why.** Roughly 30 minutes of the old run was nothing but downloading
@@ -867,21 +870,20 @@ survives between them, and a scheduled session cannot push to the repository to
 carry it either. Both were measured on 2026-09-01. Do not rebuild the separate
 hourly schedule until one of those two facts changes.
 
-**Coach AI's emails arrive at 5:30 PM Arizona** (Frank moved their send time
-from 6:30 on 2026-09-28). Until then they landed at 6:30 every night
+**Coach AI's emails arrived at 5:30 PM Arizona** (Frank moved their send time
+from 6:30 on 2026-09-28; the subscription ended 2026-10-06, so nothing waits
+for them any more). Until then they landed at 6:30 every night
 (measured 09-22..09-25: 01:30 UTC), and the nightly sat idle for most of an
 hour waiting for them -- the digest went out 6:42-6:56, 12-26 minutes after
 they arrived. The recordings, transcripts, call summaries and coaching cards
 are NOT the slow part: the hourly checkpoints (`intraday.py`) build all of
 them through the day into R2's cache/<day>/, so by 5:21 PM nearly every
 recording is already there and the nightly only adds the last half hour's.
-If the emails have not arrived, wait for them rather than writing zeros.
 
 **Timing to expect.**
 
-    5:30   Coach AI emails land
+    5:30   office closes
     5:35   hourly.py starts        a few minutes: only the calls since the last checkpoint
-    ~5:40  Coach AI figures        already in the mailbox
     ~5:45  daily.py starts         transcription and cards already cached
     ~6:00-6:15  both emails sent   (was 6:42-6:56 with Coach AI at 6:30)
 
@@ -1185,10 +1187,46 @@ carried in on 2026-10-02 (logged by "Debbie (Rotation Sheet)"; Crystal's
 blank slot as a skip); earlier folios stay in the sheet. Producers have no
 tour step for it, since they can't open it.
 
+## The Operations Center
+
+**Operations Center is the ops team's own Center** (Frank, 2026-10-06: "a
+new category for operatonis only"): a left-bar group of its own between
+Athena's and Cerberus's, hidden until the Worker lets the login in (like
+Commercial), holding **CRM Hygiene** and **Lead Scrub** (moved from the
+Sales Center the same day: "move the lead scrubber there as well"). Each
+page's own module adds it through `opsShow` (index.html) when its Worker
+route answers, so `CENTERS.operations` is empty for everyone else and the
+Center never enters the menu, the search or the start-page list.
+
+**CRM Hygiene is Amanda's "CRM Hygeine" Google Doc as a log** (Frank,
+2026-10-06: "look at file named CRM Hygiene, build that into pantheon") --
+"CSR Redirection & Process Tracking": accounts handled incorrectly, assigned
+improperly or left without notes, tasks or follow-ups, reviewed in the
+one-on-ones. `site/hygiene.js` (Worker, `/api/hygiene`) keeps one R2 file,
+`hygiene/log.json`, etag-guarded like the rotation. **Its columns are the
+doc's** -- Client Name, Policy Number, Note / Description of Issue, Date --
+plus the rep the entry is about (the service team first in the
+suggestions, anything typed accepted), which line of the doc's
+**Redirection Standard Checklist** it missed (`STANDARDS`: Check before
+passing / Ownership / Calendar accuracy / Other, the doc's words, shown
+beside the log), who logged it and when, every edit's earlier version, and
+a **Reviewed in a one-on-one** tick with who and when. The doc's six rows
+are the log's first entries (`SEED`, logged as "Amanda (CRM Hygiene doc)",
+rep blank -- the doc names none), written the first time anyone posts.
+**Only the ops team sees it**: staff.json's `hygiene` (Frank, Francisco,
+Veronica, Amanda); everyone who sees it logs, edits, reviews and removes.
+The page (`site/public/hygiene.js`) shows entries, this month, how many
+wait for a one-on-one and the standard missed most, a count per rep that
+filters, the log newest first with search / rep / standard / reviewed
+filters and a CSV, and the checklist card. Athena's Road Map carries the
+standard's three lines for the service team; the log itself is never
+described there.
+
 ## The lead scrub
 
-**Sales Center > Lead Scrub tracks a lead list being cleaned up in both Apex
-and AgencyZoom** (Frank, 2026-10-02). `site/scrub.js` (Worker, `/api/scrub`
+**Operations Center > Lead Scrub tracks a lead list being cleaned up in both
+Apex and AgencyZoom** (Frank, 2026-10-02; under the Sales Center until
+2026-10-06). `site/scrub.js` (Worker, `/api/scrub`
 and `/api/scrub/<id>`) keeps one R2 file per list, `scrub/lists/<id>.json`,
 its progress in the object's customMetadata so the picker reads no list.
 **Its columns are Frank's scrub sheet** (his screenshot, 2026-10-02):
@@ -1847,7 +1885,43 @@ like the Service Center's (`commercial_digest.refresh_past_renewals`, every
 day on the board, back 365 days; an SR older than the nightly pull's year is
 reached for once, e.g. 6836965 created 2025-08-03).
 
-## Coach AI
+## Role Play score
+
+**The leaderboard's Role Play figure is the board's own** (Frank, 2026-10-06:
+Coach AI cancelled; he chose scoring from Pantheon's sessions over dropping
+the category). `roleplay_score.py`: a session scores the share of Apollo's
+checklist it met (round(100 x met / of); Apollo's Role Play grade returns a
+checklist, `resolved`, a summary and a tip, no number -- `roleplayGrade` in
+site/worker.js), a producer's day is the mean of their sessions that agency
+day (`created_at` in `staff.TZ`), rounded; a beta session or a grade with no
+checklist counts nothing; no session is 0 (red, as before -- Frank,
+2026-09-10 -- and no activity on the leaderboard). It reads R2's
+`roleplay-index.json` (rpSummary's rows: producer, beta, created_at, met,
+of), no outside request; if R2 cannot be read the run goes on with zeros and
+says so. **The document keeps the key and shape**: `producers[].coach =
+{roleplay, sessions, source: "roleplay"}`, so index.html, editions.js,
+post.js, coeus.js and board_payload read it unchanged; the leaderboard cell
+says "N sessions". **It is live** (`site/live.js roleplayScores`, a mirror
+of `roleplay_score.scores_from` -- keep them in step; the `roleplay` part of
+the even-minute refresh, no secret needed), re-ranking the leaderboard like
+the other live categories (index.html's `LB_FIELDS` carries "Role Play" as
+`rp_lb`). **From `ROLEPLAY_FROM` = 2026-10-07 only**: a rebuild of an
+earlier day reads the saved `data/coach_<day>.json` (Coach AI's calls /
+score / sentiment / roleplay) so its figures do not move, and the live part
+refuses an earlier day. goals.json's `roleplay_score` threshold (80 green)
+stays: four of five checklist items. The range view's rule is unchanged (a
+worked day with no role play counts 0 in the ranking, not in the average;
+`rp_scored`). **Gone with Coach AI**: the email's Coaching & Call Quality
+panel (build_day drops the template's), the Digest's Coach AI cards,
+`COACH_BAR_RANGES` / goals.json's `coach_bar_ranges`, `COACH_TITLE_IS_NEXT_DAY`,
+`TRAQ_REVISIT_DATE`, `daily.coach_from_gmail`, and the nightly routine's
+Gmail step (to be removed from the routine itself). Past days' `coach.score`
+/ `coach.sentiment` stay in their documents, unshown. The TRAQ note patterns
+in `live_contact` / `lead_history` / `live_notes` stay: past notes carry
+them and they only ever say "not a contact". The section below is the record
+of how Coach AI's figures read while they were used.
+
+## Coach AI (cancelled 2026-10-06 -- history)
 
 - **The call score is NOT a 0-100 percentage.** Frank, 2026-09-01: a *perfect
   call* scores **750-800**. A producer averaging 224 is near 29% of a perfect

@@ -171,6 +171,7 @@ export default {
         "rotation_edit",
         "scrub",
         "scrub_edit",
+        "hygiene",
         "roleplay_history",
         "commission_all",
         "sales_log_all",
@@ -194,6 +195,7 @@ export default {
         "rotation_edit",
         "scrub",
         "scrub_edit",
+        "hygiene",
         "roleplay_history"
       ],
       "handle": "dm.francisco"
@@ -213,6 +215,7 @@ export default {
         "rotation_edit",
         "scrub",
         "scrub_edit",
+        "hygiene",
         "roleplay_history"
       ],
       "handle": "vero.vacation.approved"
@@ -242,6 +245,7 @@ export default {
         "rotation_edit",
         "scrub",
         "scrub_edit",
+        "hygiene",
         "roleplay_history",
         "commission_all",
         "sales_log_all"

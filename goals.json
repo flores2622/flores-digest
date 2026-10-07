@@ -1,5 +1,5 @@
 {
-  "_about": "The agency's goals and colour thresholds, in one place: what is green, yellow and red on the Digest and the email, the life goal, the reply-speed goal, the week's premium goal and the Coach AI bar ranges. goals.py reads it for Python (digest_config builds its old constants from it) and `python3 goals.py --write-js` writes site/public/goals.js for the board page (window.GOALS) -- never edit that by hand; `python3 goals.py --check` fails when it is stale. The rules (how a tier is judged, which metrics scale for the team) stay in digest_config.tier; only the numbers live here.",
+  "_about": "The agency's goals and colour thresholds, in one place: what is green, yellow and red on the Digest and the email, the life goal, the reply-speed goal and the week's premium goal. goals.py reads it for Python (digest_config builds its old constants from it) and `python3 goals.py --write-js` writes site/public/goals.js for the board page (window.GOALS) -- never edit that by hand; `python3 goals.py --check` fails when it is stale. The rules (how a tier is judged, which metrics scale for the team) stay in digest_config.tier; only the numbers live here.",
   "thresholds": {
     "call_volume": {
       "green": 50,
@@ -60,19 +60,5 @@
     "green": 15,
     "red": 60
   },
-  "week_premium_goal": 20000,
-  "coach_bar_ranges": {
-    "Avg Call Score": [
-      38,
-      251
-    ],
-    "Avg Sentiment": [
-      11,
-      43
-    ],
-    "Role Play": [
-      58,
-      87
-    ]
-  }
+  "week_premium_goal": 20000
 }

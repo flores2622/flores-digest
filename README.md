@@ -2,7 +2,7 @@
 
 Builds and sends the daily operations and staff reports from live data:
 RingCentral (calls + recordings), AgencyZoom (leads, tasks, quotes, policies),
-Insightful (utilization) and Coach AI (call quality).
+Insightful (utilization) and the board's own Role Play sessions (R2).
 
 ## Run
 
@@ -31,20 +31,17 @@ Create `secrets/*.env` with, between them:
 
 `chmod 600`. Never commit them — `.gitignore` covers `secrets/`.
 
-## Coach AI
+## Role Play score
 
-Per-user call-quality figures live only in the Coach AI emails, and only in
-their HTML part — the plaintext table is empty. A script cannot read the
-mailbox, so the caller writes them first:
+The leaderboard's Role Play figure is the share of Apollo's checklist a
+producer met in the Role Play sessions they did that day (`roleplay_score.py`,
+read from R2's `roleplay-index.json`; no email, no outside request). Until
+2026-10-06 it was Coach AI's, read from its emails into `data/coach_<day>.json`
+(Coach AI titled each email with the UTC date, one day ahead of the Arizona
+day). Frank cancelled Coach AI that day; a rebuild of a day before 2026-10-07
+still reads that file so the published figures do not move.
 
-    data/coach_<day>.json
-    {"Crystal Mango": {"calls": 31, "score": 66, "sentiment": 16, "roleplay": 0}, ...}
-
-**Coach AI titles each email with the UTC date at generation, one day ahead of
-the Arizona day it describes.** For Arizona Aug 13, read the emails titled
-"Aug 14". Verified repeatedly — do not relitigate.
-
-If the file is absent the run still completes, with zeros in that panel.
+If R2 cannot be read the run still completes, with zeros in that column.
 
 ## What decides a live contact
 

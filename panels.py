@@ -205,47 +205,10 @@ def speed_table(s2d, team):
             + "".join(rows) + '</table>')
 
 
-# ---- Coaching & Call Quality ----------------------------------------------
-def coach_cards(coach):
-    def bar(p, label, val, lo, hi):
-        pct = max(0.0, min(100.0, (val - lo) / (hi - lo) * 100)) if hi > lo else 0
-        return (f'<div class="ss"><div class="sl">{label}</div>'
-                f'<table role="presentation" cellpadding="0" cellspacing="0" class="st">'
-                f'<tr><td><div class="sk"><div class="sf {DOT[p]}" '
-                f'style="width:{pct:.2f}%"></div></div></td>'
-                f'<td class="sy"><span class="sv">{val}</span></td></tr></table></div>')
-
-    def col(p):
-        c = coach[p]
-        r = cfg.COACH_BAR_RANGES
-        return (f'<div class="lb-col"><div class="rep">'
-                f'<span class="dot {DOT[p]}"></span>{p}</div>'
-                + bar(p, "Avg Call Score", c["score"], *r["Avg Call Score"])
-                + bar(p, "Avg Sentiment", c["sentiment"], *r["Avg Sentiment"])
-                + bar(p, "Role Play", c["roleplay"], *r["Role Play"])
-                + '</div>')
-    # Two columns per row, any producer count. An odd producer out spans both
-    # columns on the final row, which is exactly how the approved three-producer
-    # layout behaved -- so the two-per-row rhythm and padding are preserved.
-    cols = [col(p) for p in P3]
-    rows = []
-    for i in range(0, len(cols), 2):
-        pair = cols[i:i + 2]
-        last = i + 2 >= len(cols)
-        pad_b = "0" if last else "12px"
-        if len(pair) == 2:
-            rows.append(
-                f'<tr><td valign="top" style="width:50%;border-bottom:none;'
-                f'padding:0 6px {pad_b} 0">{pair[0]}</td>'
-                f'<td valign="top" style="width:50%;border-bottom:none;'
-                f'padding:0 0 {pad_b} 6px">{pair[1]}</td></tr>')
-        else:
-            rows.append(
-                f'<tr><td valign="top" colspan="2" style="border-bottom:none;'
-                f'padding:0 0 {pad_b} 0">{pair[0]}</td></tr>')
-    return ('<table role="presentation" cellpadding="0" cellspacing="0" '
-            'style="width:100%;border-collapse:collapse;table-layout:fixed">'
-            + "".join(rows) + '</table>')
+# The Coaching & Call Quality panel (Coach AI's Avg Call Score, Avg Sentiment
+# and Role Play bars, `coach_cards`) came out of the email on 2026-10-06 with
+# the Coach AI subscription; build_day drops the template's panel. Role Play
+# is the board's own now (roleplay_score.py) and stays on the leaderboard.
 
 
 # ---- Team Leaderboard ------------------------------------------------------
@@ -253,19 +216,15 @@ def leaderboard(M, coach):
     cats = []
     def vals(key, fn):
         return {p: fn(M[p], coach[p]) for p in P3}
-    cats.append(("Role Play", vals(None, lambda m, c: c["roleplay"]), lambda v: str(v)))
+    # Role Play: the share of Apollo's checklist met in the producer's own
+    # Role Play sessions that day (roleplay_score.py; Coach AI's figure until
+    # 2026-10-06). 0 with no session, which scores as no activity.
+    cats.append(("Role Play", vals(None, lambda m, c: c.get("roleplay", 0)), lambda v: str(v)))
     cats.append(("Call Volume", vals(None, lambda m, c: m["call_volume"]), str))
     cats.append(("Avg Talk Time", vals(None, lambda m, c: m["avg_talk"]), hhmm))
-    # Avg Call Score and Avg Sentiment are NOT scored here. Frank, 2026-09-01.
-    # TRAQ scores a voicemail as a call: measured on three of Sarahi's, a
-    # voicemail scores 3 with sentiment 0 against a live conversation's 292 with
-    # sentiment 48. Both figures are therefore driven by how many people picked
-    # up, not by how the producer talked -- and ranking on them pays producers
-    # for NOT connecting. On 2026-08-31 Lorena took first on Avg Call Score with
-    # TRAQ seeing only 9 of her 52 dials, because the calls she hangs up before
-    # pickup never record and so never enter her average.
-    # Both still DISPLAY in the Coaching & Call Quality panel; they just do not
-    # award points. Restore them here once they can be normalised by answer rate.
+    # Coach AI's Avg Call Score and Avg Sentiment were never scored here from
+    # 2026-09-01 (TRAQ scored a voicemail as a call, so both tracked the
+    # answer rate) and left the email with Coach AI on 2026-10-06.
     cats.append(("Contact Rate", vals(None, lambda m, c: m["contact_rate"]),
                  lambda v: f"{v}%"))
     cats.append(("Households Quoted", vals(None, lambda m, c: m["households_quoted"]), str))
@@ -319,15 +278,14 @@ def leaderboard(M, coach):
     #
     # DO NOT name a panel by its exact heading in body copy. render_report's
     # panel helpers locate a panel with html.find(heading), so the first literal
-    # match wins -- this footnote originally read "shown in Coaching &amp; Call
-    # Quality", which sits earlier in the document than the panel itself, and
+    # match wins -- a footnote here once read "shown in Coaching &amp; Call
+    # Quality", which sat earlier in the document than the panel itself, and
     # the build died with "panel close not found: Coaching &amp; Call Quality"
     # while walking div depth from the wrong opening tag.
     note = ('<div style="margin-top:10px;font-size:11px;line-height:1.5;'
-            'color:#52514e">Avg Call Score and Avg Sentiment are still shown '
-            'below but no longer award points. TRAQ scores a voicemail as a '
-            'call (3 against a live call&rsquo;s 292), so both track how many '
-            'people answered rather than how the call went.</div>')
+            'color:#52514e">Role Play is the share of Apollo&rsquo;s checklist '
+            'met in the producer&rsquo;s own Role Play sessions today, averaged '
+            'over them; no session scores 0.</div>')
     return (f'<div class="mvp-podium">{podium}</div>'
             f'<div class="table-scroll"><table>{head}<tbody>'
             f'{"".join(rows)}{total}</tbody></table>{note}</div>')
