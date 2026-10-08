@@ -2911,6 +2911,23 @@ on a published day. The rules:
   deploy creates the two tables itself (`crm_sync.ensure_lists_tables`,
   CREATE IF NOT EXISTS). The Digest, Apollo and Coeus still read
   `lead_sources.py` / `pipelines.py`, which the lists agree with.
+- **Workflows: what AgencyZoom's automations run today** (Frank,
+  2026-10-07: "how do we start building our own workflows? or display what
+  we currently have so we can adjust or change as needed"; CRM.md
+  "Workflows"). AgencyZoom's API has no rules endpoint, so
+  `az_automations.py` reads them back from the leads' notes: texts by
+  `attr.triggerRuleId`, drip emails by template subject, tasks by a wording
+  on 5+ leads, Smart-Cycle from the MOVE_STAGE notes (who made the move: a
+  staff name is a person, anything else the automation). Every wording is
+  blanked of names, numbers, links and dates before it is stored. `--fetch`
+  downloads the last 90 days' active leads' notes, paced, from the nightly's
+  environment (never the Worker's); `--build --publish` writes R2
+  `crm/automations.json`. **Sales Center > Workflows**
+  (`site/public/workflows.js`, the `crm` gate) shows each rule -- wording,
+  when it fires, sources, leads, replies, opt-outs, opens -- with Frank's
+  Keep / Change / Drop marks (`/api/crm/automations/mark`, R2
+  `crm/automation_marks.json`), the brief for Pantheon's own rules (CRM.md
+  step 2, draft mode first). Not on the nightly; rerun by hand to refresh.
 - `node --test site/crm.test.mjs` is its test; run it after touching
   `site/crm.js` or the schema. A new field is added to the schema (a new
   migration file), to `OBJECTS` in `site/crm.js` and to the test together.

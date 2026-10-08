@@ -45,6 +45,11 @@
                                            entry's place under them, with counts
      POST /api/crm/lists                   {op: add|edit|order, kind, ...}
      POST /api/crm/lists/place             {kind, azId, listId, detail}
+     GET  /api/crm/automations             what AgencyZoom's automations run
+                                           today (az_automations.py's report
+                                           in R2, crm/automations.json) and
+                                           Frank's keep / change / drop marks
+     POST /api/crm/automations/mark        {key, mark: keep|change|drop|null, note}
    <obj> is leads, households, policies, quotes, tasks or srs. Every write
    lands in `events` with the Access email, before and after.
 
@@ -842,6 +847,38 @@ async function listsPlace(db, body, me) {
   return json({ ok: true });
 }
 
+/* ---- what AgencyZoom runs today, and Frank's marks on it ---------------------------- */
+const AUTOMATIONS_KEY = "crm/automations.json";          // az_automations.py --publish
+const AUTOMATION_MARKS_KEY = "crm/automation_marks.json";
+const MARKS = new Set(["keep", "change", "drop"]);
+async function r2json(env, key) {
+  try { const o = await env.BOARD.get(key); if (!o) return { body: null, etag: null }; return { body: await o.json(), etag: o.etag }; }
+  catch (_) { return { body: null, etag: null }; }
+}
+/** GET: the report (null until the read has run) and the marks. */
+async function automationsGet(env) {
+  const [{ body: report }, { body: marks }] = await Promise.all([r2json(env, AUTOMATIONS_KEY), r2json(env, AUTOMATION_MARKS_KEY)]);
+  return json({ report, marks: (marks && marks.marks) || {} });
+}
+/** POST {key, mark, note}: one mark per rule key, who and when; mark null clears it. */
+async function automationsMark(env, body, me) {
+  if (!body || typeof body !== "object") return json({ error: "a JSON object is expected" }, 400);
+  const key = String(body.key || "").trim().slice(0, 80);
+  if (!key) return json({ error: "key is required" }, 400);
+  const mark = body.mark == null || body.mark === "" ? null : String(body.mark);
+  if (mark !== null && !MARKS.has(mark)) return json({ error: "mark: keep, change, drop or null" }, 400);
+  const note = typeof body.note === "string" ? body.note.trim().slice(0, 500) : "";
+  for (let attempt = 0; attempt < 5; attempt++) {
+    const { body: cur, etag } = await r2json(env, AUTOMATION_MARKS_KEY);
+    const state = cur && typeof cur === "object" && cur.marks ? cur : { marks: {} };
+    if (mark === null && !note) delete state.marks[key];
+    else state.marks[key] = { mark, note, by: me.name, at: localStr() };
+    const opts = { httpMetadata: { contentType: "application/json" }, onlyIf: etag ? { etagMatches: etag } : { etagDoesNotMatch: "*" } };
+    if ((await env.BOARD.put(AUTOMATION_MARKS_KEY, JSON.stringify(state), opts)) !== null) return json({ ok: true, marks: state.marks });
+  }
+  return json({ error: "the marks are busy -- try again" }, 503);
+}
+
 /* ---- the route ----------------------------------------------------------------- */
 async function readBody(request) {
   try { return await request.json(); } catch (_) { return null; }
@@ -853,11 +890,18 @@ export async function crm(request, env, identityOf, parts, url) {
   // staff.json's `crm`: Frank alone until further notice (Frank, 2026-10-06:
   // "all of this is available to only me until further notice").
   if (!person || !hasBoard(me0.email, "crm")) return json({ error: "not permitted" }, 403);
-  const db = env.CRM;
-  if (!db) return json({ error: "CRM is not configured", detail: "add the D1 binding CRM in wrangler.jsonc and apply site/crm/migrations" }, 503);
   const me = { email: me0.email, id: person.az_id || null, name: person.name };
   const get = request.method === "GET", post = request.method === "POST";
   const [head, id, sub] = parts;
+  // The automations report and its marks live in R2 (env.BOARD), not D1.
+  if (head === "automations") {
+    if (!env.BOARD) return json({ error: "no R2 bucket" }, 503);
+    if (parts.length === 1 && get) return automationsGet(env);
+    if (parts.length === 2 && id === "mark" && post) return automationsMark(env, await readBody(request), me);
+    return json({ error: "not found" }, 404);
+  }
+  const db = env.CRM;
+  if (!db) return json({ error: "CRM is not configured", detail: "add the D1 binding CRM in wrangler.jsonc and apply site/crm/migrations" }, 503);
   try {
     if (head === "lookups" && get && parts.length === 1) return json(await lookups(db));
     if (head === "events" && get && parts.length === 1) return events(db, url);
