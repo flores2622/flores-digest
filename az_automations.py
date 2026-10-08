@@ -137,6 +137,10 @@ def _blank(text, lead=None):
             v = str(lead.get(k) or "").strip()
             if len(v) >= 2:
                 t = re.sub(r"\b" + re.escape(v) + r"\b", tag, t, flags=re.I)
+    # a signature or a sign-off names whoever's automation it was, past staff
+    # included ("~ Erick Gutierrez - Flores Insurance Agency", "Completed by X Y")
+    t = re.sub(r"\b[A-Z][a-z]+ [A-Z][a-z]+(?=\s*[,~-]*\s*(with |from |at |-\s*)?(Flores|Farmers|" + re.escape(staff.AGENCY.get("short_name", "Flores")) + r"))", "{producer}", t)
+    t = re.sub(r"(?i)(completed by )[A-Z][a-z]+ [A-Z][a-z]+", r"\1{producer}", t)
     t = re.sub(r"https?://\S+|www\.\S+", "{link}", t)
     t = re.sub(r"[\w.+-]+@[\w-]+\.[\w.]+", "{email}", t)
     t = re.sub(r"\(?\b\d{3}\)?[\s.-]?\d{3}[\s.-]?\d{4}\b", "{phone}", t)
@@ -202,7 +206,7 @@ def restore(log=log):
 
 def leads_active(days):
     leads = json.loads((DATA / "az_leads_all.json").read_text())
-    since = (dt.datetime.utcnow() - dt.timedelta(days=days)).strftime("%Y-%m-%d %H:%M:%S")
+    since = (dt.datetime.now(dt.timezone.utc) - dt.timedelta(days=days)).strftime("%Y-%m-%d %H:%M:%S")
     return leads, [l["id"] for l in leads if str(l.get("lastActivityDate") or "").replace("T", " ") >= since]
 
 
@@ -297,7 +301,10 @@ def _where(timeline, t, now_stage, arrived):
     after = [m for m in timeline if m[0] > t]
     if after:
         return after[0][1], arrived
-    return now_stage or "", arrived
+    # never moved on record: it has sat where it is since it arrived only if
+    # that is an entry stage; a lead in a cycle stage with no move notes got
+    # there by a bulk move nobody noted, so when it arrived there is unknown
+    return now_stage or "", (arrived if re.search(r"\| New$", now_stage or "") or not now_stage else None)
 
 
 def build(days=DAYS, log=log):
