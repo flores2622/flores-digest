@@ -300,7 +300,8 @@ def _where(timeline, t, now_stage, arrived):
         return before[-1][2], before[-1][0]
     after = [m for m in timeline if m[0] > t]
     if after:
-        return after[0][1], arrived
+        st = after[0][1]
+        return st, (arrived if re.search(r"\| New$", st or "") else None)
     # never moved on record: it has sat where it is since it arrived only if
     # that is an entry stage; a lead in a cycle stage with no move notes got
     # there by a bulk move nobody noted, so when it arrived there is unknown
