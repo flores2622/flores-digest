@@ -84,6 +84,12 @@ _CYCLES = [("1st Cycle", "Smart-Cycled back for a first new attempt.", ("New 1st
            ("3rd Cycle", "The last cycle: deaded if it does not advance.", ("New 3rd Cycle",))]
 _CONTACTED = ("Contacted", "We got hold of them and are working on a quote or waiting on info.", ("Contacted, In Progress",))
 _QUOTED = ("Quoted", "We presented numbers and are following up on the quote.", ("Quotes Presented",))
+# Frank, 2026-10-12: "new business did not have 3 cycles, only QNC and leads
+# not quoted". The three cycle stages under New Business are RETIRED, not
+# removed: a stage's id is its place in the list (stage_id), and the live
+# lists table and the drafts already carry those ids, so the entries stay
+# with active = 0 and nothing is placed on them.
+RETIRED_STAGES = {(1, "1st Cycle"), (1, "2nd Cycle"), (1, "3rd Cycle")}
 STAGES = {
     1: [("New", "A new or updated lead.", ()), *_CYCLES,
         ("Contacted, In Progress", _CONTACTED[1], ("Contacted",)),
@@ -203,9 +209,16 @@ def place_stage(pipeline_id, stage_name):
     """An AgencyZoom stage of a workflow placed under `pipeline_id` -> the stage's list id."""
     n = _norm(stage_name)
     for k, (sname, _, aliases) in enumerate(STAGES.get(pipeline_id, []), 1):
+        if (pipeline_id, sname) in RETIRED_STAGES:
+            continue
         if n == _norm(sname) or any(n == _norm(a) for a in aliases):
             return stage_id(pipeline_id, k)
     return None
+
+
+def active_stages(pipeline_id):
+    """Frank's stages of a pipeline, in order, the retired ones left out."""
+    return [st[0] for st in STAGES.get(pipeline_id, []) if (pipeline_id, st[0]) not in RETIRED_STAGES]
 
 
 _CATEGORY = [
@@ -244,7 +257,8 @@ def list_rows():
     for k, (i, name, meaning) in enumerate(PIPELINES, 1):
         out.append({"kind": "pipeline", "id": i, "name": name, "parent_id": None, "detail_label": None, "meaning": meaning, "ord": k})
         for j, (sname, smeaning, _) in enumerate(STAGES[i], 1):
-            out.append({"kind": "stage", "id": stage_id(i, j), "name": sname, "parent_id": i, "detail_label": None, "meaning": smeaning, "ord": j})
+            out.append({"kind": "stage", "id": stage_id(i, j), "name": sname, "parent_id": i, "detail_label": None, "meaning": smeaning, "ord": j,
+                        "active": 0 if (i, sname) in RETIRED_STAGES else 1})
     for k, (i, name, label, meaning) in enumerate(SERVICE, 1):
         out.append({"kind": "service", "id": i, "name": name, "parent_id": None, "detail_label": label, "meaning": meaning, "ord": k})
     return out

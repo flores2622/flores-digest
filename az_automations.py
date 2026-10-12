@@ -654,7 +654,7 @@ def my_stages():
     """Frank's own stages per pipeline, in his order (crm_lists.STAGES) -- what
     a rule of Pantheon's own is written against."""
     import crm_lists
-    return {name: [st[0] for st in crm_lists.STAGES.get(i, [])] for i, name, *_ in crm_lists.PIPELINES}
+    return {name: crm_lists.active_stages(i) for i, name, *_ in crm_lists.PIPELINES}
 
 
 def publish(report, log=log):
