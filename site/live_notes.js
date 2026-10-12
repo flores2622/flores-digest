@@ -397,6 +397,10 @@ export function messageDeltas(basis, leads, day, calls = []) {
     const n = newest(v.events);
     if (n > groups[k].newest) groups[k].newest = n;
   }
+  // The Service Center's people (messages.service_people: a customer, or an
+  // open SR) are never a producer's to answer.
+  const service = new Set(M.service || []);
+  for (const k of Object.keys(groups)) if (service.has(k)) delete groups[k];
   // Nothing newer than the checkpoint read on this person: nothing to add
   // (a dial can still answer a reply it left waiting -- below).
   for (const k of Object.keys(groups)) if (groups[k].newest <= ((people[k] || {}).seen || "") && !(people[k] || {}).open) delete groups[k];

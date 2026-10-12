@@ -1375,6 +1375,20 @@ policies-per-household thresholds are gone.
 **`messages.py` builds the Sales Center's Texts & Emails page** (Frank,
 2026-09-27), into the day document's `messages`, from the lead notes the run
 already downloads. Leads only; a customer's texts are Athena's.
+- **A customer is told apart by number, not by lead record** (Frank,
+  2026-10-12: Maritza Salazar, a customer since 2025-11, texted Crystal about
+  her renewal on 10-09 and was listed under Mike, on her old sold lead, as
+  never answered -- the Service Center had it, answered by Amanda in 91
+  minutes). `messages.service_people` leaves out a number that routes to
+  service (`service_messages.SERVICE_BUCKETS`: a customer, or an open SR)
+  unless a lead on it is being worked -- open (status 0), X-dated (5), lost
+  (3) with activity in the window -- or the household became a customer in
+  the last 30 days (`NEW_BUSINESS_DAYS`: signing, first payment and ID cards
+  follow the sale; it also keeps rebuilds from reading a lead sold later as
+  a customer). The Worker gets the list as `live_basis.messages.service` and
+  never adds those people back. Published days 09-01..10-09 had only those
+  people's reply and bad-contact rows taken out, counts with them (backups
+  under `backups/2026-10-12-messages-service-split/`).
 - **Who sent it:** TEXT/EMAIL notes carry `attr.outbound` (True/False on a
   text, 1/0 on an email -- `messages._inbound` reads both); a text with
   `attr.triggerRuleId` is an AgencyZoom automation. **Emails have no

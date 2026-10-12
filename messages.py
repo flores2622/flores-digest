@@ -213,6 +213,7 @@ def build(day, log=print, live=False):
         first[lid] = (l.get("firstname") or "").strip()
     if not person:
         return None
+    service = service_people(day, set(person.values()), log=log)
 
     # Every text / email on those leads, tagged.
     events = collections.defaultdict(list)     # person -> [event]
@@ -309,6 +310,8 @@ def build(day, log=print, live=False):
     replies, quotes, bad = [], [], []
     carry = {}                                  # person -> live state (live=True)
     for key, evs in events.items():
+        if key in service:
+            continue
         evs.sort(key=lambda e: e["at"])
         own = owner.get(key)
         lead = name.get(key, "(no name)")
@@ -443,11 +446,61 @@ def build(day, log=print, live=False):
            "producers": {p: dict(c) for p, c in stats.items()},
            "replies": replies, "quotes": quotes, "bad_contact": bad}
     if live:
-        out["_live"] = live_basis(carry, templates)
+        out["_live"] = live_basis(carry, templates, service)
     return out
 
 
-def live_basis(people, templates):
+WORKED_LEAD = (0, 5)          # open, X-dated: a producer's lead still being worked
+# A household that became a customer this recently is still its producer's:
+# the signing, the first payment and the ID cards follow the sale. It also
+# keeps a rebuild honest -- the lead and customer records are as of now, so a
+# lead sold on or after a past day must not read as a customer on it (Keila
+# Guerra and Dulce Juarez, 09-18, closing that day).
+NEW_BUSINESS_DAYS = 30
+
+
+def service_people(day, keys, log=print, idx=None):
+    """The people among `keys` who are Athena's, not a producer's: their
+    number routes to service by the rule the Service Center's own texts use
+    (service_messages.SERVICE_BUCKETS through missed_call_audit.route) -- a
+    customer, or anyone with an open SR -- and no lead on it is being worked
+    (open, status 0, or X-dated, status 5: a quote follow-up or a re-quote to
+    a customer is still a producer's). Maritza Salazar, 2026-10-09: a
+    customer since 2025-11, her only lead sold, texting Crystal about her
+    renewal, was listed under Mike as never answered; the Service Center had
+    her, a renewal answered by Amanda in 91 minutes. A household sold in the
+    last NEW_BUSINESS_DAYS stays its producer's."""
+    try:
+        import missed_call_audit as mca
+        import service_messages as sm
+        idx = idx if idx is not None else mca.build_index(day)[0]
+    except Exception as e:
+        log(f"  messages: customers not told apart ({type(e).__name__})")
+        return set()
+    since = (dt.date.fromisoformat(day) - dt.timedelta(days=NEW_BUSINESS_DAYS)).isoformat()
+    active_from = window(day)[0].astimezone(dt.timezone.utc).strftime("%Y-%m-%d %H:%M:%S")
+    out = set()
+    for k in keys:
+        hit = idx.get(k[-10:]) if not k.startswith("lead:") else None
+        if not (hit and mca.route(hit)[0] in sm.SERVICE_BUCKETS):
+            continue
+        if any(l.get("status") in WORKED_LEAD for l in hit["lead"]):
+            continue
+        # A lead lost with activity in the window was being worked that day:
+        # a lead lost on or after a past day reads lost on a rebuild (Alana
+        # Barnicle's cross-sell, signing on 09-22).
+        if any(l.get("status") == 3 and str(l.get("lastActivityDate") or "") >= active_from
+               for l in hit["lead"]):
+            continue
+        # Sold lately (or after this day, on a rebuild): still the producer's.
+        if any(str(l.get("soldDate") or "")[:10] >= since for l in hit["lead"]) \
+                or any(str(c.get("asCustomerDate") or "")[:10] >= since for c in hit["cust"]):
+            continue
+        out.add(k)
+    return out
+
+
+def live_basis(people, templates, service=()):
     """What the Worker (site/live.js messagesLive) needs to carry the day on
     from this checkpoint: per person (phone number), the lead records, the
     newest note this build read (anything later is new), whose lead it is,
@@ -461,6 +514,9 @@ def live_basis(people, templates):
         return [src, ("i" if r.flags & re.I or "(?i)" in r.pattern else "") + ("s" if r.flags & re.S else "")]
     return {
         "people": people,
+        # Numbers that are the Service Center's (service_people): the Worker
+        # never adds them here between checkpoints.
+        "service": sorted(service),
         "templates": sorted(templates),
         "rx": {k: rx(v) for k, v in (("ack", ACK), ("ack_short", ACK_SHORT), ("opt_out", OPT_OUT),
                                      ("wrong", WRONG), ("email_quote", _EMAIL_QUOTE),
