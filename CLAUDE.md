@@ -1046,7 +1046,16 @@ and anything without the glow is the checkpoint's (Frank, 2026-09-24).
   `live_basis.quotes.min_quote_id`. Seeded with 10-09's 15,592,009 (the top id
   on that day's quoted households). Households quoted are unchanged; a
   household quoted today on a quote built earlier shows $0. A day with no
-  earlier mark counts every quote, as before. Published days were not rebuilt.
+  earlier mark counts every quote, as before. **Published 09-24..10-09 were
+  recounted** (Frank, 2026-10-12: "yes recount september and october"): each
+  day's quoted households' quotes read as they stand, each day given its own
+  id band (from the previous day's top quote, the day's own cluster within
+  15,000 of its middle, at most 40,000 on) -- $258,802 -> $193,240 -- and
+  only `pq`, `totals.pq`, the `pq` / `closing_pq` tiers, `rows.quoted`
+  premiums and the leaderboard re-scored from the published values (checked:
+  unchanged values reproduce all 12 orders) moved; backups under
+  `backups/2026-10-12-quote-recount/`. 09-01..09-23 saved no quoted list and
+  stay as they went out.
 - **A one-minute Worker cron** (wrangler.jsonc, business hours) refreshes
   the parts in batches sized for the free plan's 50 outside requests per
   run: even minutes dials/contacts/sales/utilization, odd minutes up to 30
@@ -1285,8 +1294,9 @@ Segment - 2 or 3 Star", Oct 2025: 167 quotes, 125 people); every unmatched
 column is kept on the lead as detail and filterable. **Only the ops team
 sees it** (Frank, 2026-10-02: "ops team"): `scrub` (staff.json) and
 `scrub_edit` (staff.json) are both Frank, Francisco, Veronica and Amanda -- and
-Sarahi (Frank, 2026-10-12: "give Sarahi access to the lead scrub"; she sees
-the Operations Center with the Lead Scrub only, CRM Hygiene still 403s); anyone else
+Sarahi and Crystal (Frank, 2026-10-12: "give Sarahi access to the lead scrub",
+"give crystal access to lead scrub as well"; they see the Operations Center
+with the Lead Scrub only, CRM Hygiene still 403s); anyone else
 gets a 403 and the page never enters the menu or the search.
 
 ## Apollo's Road Map (ARM) and the tour

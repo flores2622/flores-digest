@@ -49,7 +49,9 @@ export default {
       ],
       "board": [
         "rotation",
-        "sales_log_all"
+        "sales_log_all",
+        "scrub",
+        "scrub_edit"
       ],
       "color": "#ff4b4b",
       "email_dot": "cA",
