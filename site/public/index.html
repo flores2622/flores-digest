@@ -9188,6 +9188,10 @@ function svcDrillFor(m, keys) {
   if (kind === "dials") { const rs = m.dials.filter(r => a === "team" || r.who === a);
     return svcDrillList(`${a === "team" ? "Team" : cesc(a.split(" ")[0])} · dials · ${rs.length} number${rs.length === 1 ? "" : "s"}`,
       (m.dialDays ? "" : "Dials are counted from 2026-09-29. ") + "One row per number, with how many times it was dialled. Crystal's are her service dials only; her new-business dials are on the Sales Center.", svcDialTable(rs, m)); }
+  if (kind === "talk") { const t = svcTalk(m.dials.filter(r => a === "team" || r.who === a), m.front.calls.filter(r => a === "team" || r.who === a));
+    return svcDrillList(`${a === "team" ? "Team" : cesc(a.split(" ")[0])} · talk time · ${t.n} conversation${t.n === 1 ? "" : "s"}`,
+      `${t.dialled} dialled (${secs(t.dialled_secs)}) and ${t.inbound} call-in${t.inbound === 1 ? "" : "s"} picked up first (${secs(t.inbound_secs)}). A dial counts its longest connected leg.`,
+      `<h4 class="rh3" style="margin:8px 0 4px">Dialled</h4>${svcDialTable(t.conn, m)}<h4 class="rh3" style="margin:12px 0 4px">Call-ins</h4>${svcCallTable(t.calls, m)}`); }
   if (kind === "sentby") { const rs = m.msg.sent.filter(r => a === "team" || r.who === a);
     return svcDrillList(`${a === "team" ? "Team" : cesc(a.split(" ")[0])} · sent · ${rs.filter(r => !r.auto).length} typed`, "Every text and email to a customer, typed first.", svcSentTable(rs, m)); }
   if (kind === "front") { const rs = a === "calls" ? m.front.calls : m.front.created;
@@ -9344,7 +9348,23 @@ function svcStats(m, n) {
     autos: msum("auto_texts") + msum("auto_emails"), customers: msum("customers"),
     opp: { worked: aud.filter(r => r.audit.opp === "passed").length, missed: aud.filter(r => r.audit.opp === "missed").length, sells: !n || sells.has(n) },
     cancel: cancelOf(aud),
-    calls: m.front.calls.filter(r => !n || r.who === n), created: m.front.created.filter(r => !n || r.by === n) };
+    calls: m.front.calls.filter(r => !n || r.who === n), created: m.front.created.filter(r => !n || r.by === n),
+    talk: svcTalk(dials, m.front.calls.filter(r => !n || r.who === n)) };
+}
+// Talk time on the service side (Frank, 2026-10-12: "do the same on the service center talk time", after the
+// Digest's Avg Talk Time hover): every conversation is a dial that connected (a number's longest connected
+// leg, as the Dials list shows it) or a call-in the person picked up first. The average is over all of them,
+// and the hover says how many were dialled, how many were call-ins and how much of the time the call-ins
+// brought -- so a day with no dials and a little talk time explains itself.
+function svcTalk(dials, calls) {
+  const conn = dials.filter(r => r.seconds > 0);
+  const dsecs = conn.reduce((a, r) => a + (r.seconds || 0), 0), isecs = calls.reduce((a, r) => a + (r.seconds || 0), 0);
+  const n = conn.length + calls.length, total = dsecs + isecs;
+  return { conn, calls, dialled: conn.length, dialled_secs: dsecs, inbound: calls.length, inbound_secs: isecs, n, secs: total, avg: n ? Math.round(total / n) : null };
+}
+function svcTalkTip(t) {
+  if (!t.n) return "Talk time: the average over every conversation, dialled or a call-in picked up first. No conversations yet.";
+  return `Talk time: the average over every conversation, dialled or a call-in picked up first. ${t.n} conversation${t.n === 1 ? "" : "s"}: ${t.dialled} dialled, ${t.inbound} call-in${t.inbound === 1 ? "" : "s"}${t.inbound ? ` (${secs(t.inbound_secs)} of talk time from call-ins)` : ""}. A dial counts its longest connected leg.`;
 }
 function serviceStatsHtml(m) {
   // The playbook's own order and titles (Service Lead, Service Team Member,
@@ -9378,6 +9398,8 @@ function serviceStatsHtml(m) {
     tile(g(`role:${n}:open`, "openall"), "Open SRs", S.b.open ?? 0, `<b${S.b.overdue ? ' style="color:var(--bad)"' : ""}>${S.b.overdue ?? 0}</b> overdue &middot; as of ${fmtShortDate(m.days[m.days.length - 1])}`),
     tile(`g-dials:${n || "team"}`, n && staffHas(n, "service_only_dials") ? "Service dials" : "Dials", m.dialDays ? S.dials.length : "—",
       m.dialDays ? `numbers &middot; ${S.dials.reduce((a, r) => a + r.attempts, 0)} dials &middot; ${connected} connected${staffHas(n, "service_only_dials") ? " &middot; service only" : ""}` : "counted from 2026-09-29"),
+    (m.dialDays || m.front.days) ? `<div${sdk(`g-talk:${n || "team"}`)} title="${cesc(svcTalkTip(S.talk))}"><div class="k">Talk time</div><div class="v">${S.talk.n ? secs(S.talk.avg) : "—"}</div><div class="n">${S.talk.n ? `average &middot; ${S.talk.n} conversation${S.talk.n === 1 ? "" : "s"} &middot; ${secs(S.talk.secs)} on the line` : "no conversations"}</div></div>`
+      : tile("", "Talk time", "—", "counted from 2026-09-29"),
     tile(g(`cbwho:${n}`, "callbacks"), "Call backs", `<span class="${replyTier(cbMed)}">${fmtMins(cbMed)}</span>`,
       n ? `median to return &middot; ${S.cbDone.length} returned` : `median to return &middot; ${S.cbDone.length} of ${S.cbs.length} missed calls returned same day`),
     tile(g(`msg:who:${n}`, "msg:answered"), "Speed to reply", `<span class="${replyTier(rMed)}">${fmtMins(rMed)}</span>`,

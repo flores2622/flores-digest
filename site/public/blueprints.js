@@ -392,6 +392,7 @@
           ["Tasks done", "AgencyZoom service tasks completed."],
           ["Open SRs", "What's still open at the end of the day, and how much is overdue."],
           ["Dials", "Service calls you made. For Crystal, only calls to service numbers (a customer or an open SR); her new-business dials are on the Sales Center."],
+          ["Talk time", "Average length of the conversations: dials that connected and call-ins picked up first. Hover the number to see how many were dialled, how many were call-ins and how much of the time the call-ins brought. The card opens both lists."],
           ["Call backs", "Missed service calls and how fast they were returned."],
           ["Speed to reply", "When a customer texts or emails, how long until someone answered."],
           ["Texts / Emails", "What each person typed to customers themselves. Automated messages are counted apart."],
