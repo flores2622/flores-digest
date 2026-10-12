@@ -946,6 +946,13 @@ details.sc .scb { padding: 0 12px 12px; }
 .flag.red { background: var(--badbg); color: var(--bad); }
 .flag.green { background: var(--goodbg); color: var(--good); }
 .chip { display: inline-block; font-size: 9.5px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em; padding: 2px 7px; border-radius: 3px; white-space: nowrap; }
+.objfold > summary { list-style: none; cursor: pointer; display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; }
+.objfold > summary::-webkit-details-marker { display: none; }
+.objfold > summary .bl { margin: 0; flex-basis: 100%; }
+.objfold > summary .chead { margin: 0; flex: 1 1 auto; }
+.objfold > summary .objcaret { margin-left: auto; color: var(--text-muted); font-size: 13px; transition: transform .15s; }
+.objfold[open] > summary .objcaret { transform: rotate(90deg); }
+.objfold[open] > summary { margin-bottom: 11px; }
 .c-g { background: var(--goodbg); color: var(--good); border: 1px solid var(--goodbd); }
 .c-w { background: var(--warnbg); color: var(--warn); border: 1px solid var(--warnbd); }
 .c-r { background: var(--badbg); color: var(--bad); border: 1px solid var(--badbd); }
@@ -5305,9 +5312,12 @@ function card(c) {
   // One block per objection -- a card can carry several (Frank, 2026-09-15:
   // "I want them as their own badge"), each scored on its own instead of one
   // shared verdict for the whole call.
-  const objBlk = objs.map(o => `<div class="blk"><div class="bl">Objection — ${cesc(o.group || "Other")}</div>
-    <div class="chead" style="margin-bottom:11px"><span class="cat" style="background:var(--text-primary);color:var(--surface);white-space:normal;max-width:100%">${cesc(o.cat)}</span>
-    <span>${chips(o)}</span></div>
+  // Each objection folds (Frank, 2026-10-12: "make the objections within the
+  // coaching card expandable or a dropdown"): closed, it is one line -- the
+  // group, Apollo's category and its score chips; open, the rest as before.
+  const objBlk = objs.map(o => `<details class="blk objfold"><summary><span class="bl">Objection — ${cesc(o.group || "Other")}</span>
+    <span class="chead"><span class="cat" style="background:var(--text-primary);color:var(--surface);white-space:normal;max-width:100%">${cesc(o.cat)}</span>
+    <span>${chips(o)}</span></span><span class="objcaret" aria-hidden="true">▸</span></summary>
     <div class="two">
       <div><div class="ol">They said · ${cesc(o.at)}</div><div class="said">${cesc(o.they)}${o.theyen ? `<br><span class="en">${cesc(o.theyen)}</span>` : ""}</div></div>
       <div><div class="ol">You said${o.noresp ? ` <span class="chip c-r">no response</span>` : ""}</div>
@@ -5315,7 +5325,7 @@ function card(c) {
     </div>
     <div class="anal">${cesc(o.anal)}</div>
     ${o.fix && o.fix.length ? `<div class="fix"><span class="fixl">Ways to take it on</span>${o.fix.map((f, i) => `<b>${i + 1}.</b> ${cesc(f)}`).join("<br>")}</div>` : ""}
-    </div>`).join("");
+    </details>`).join("");
   const bdg = v => v === null || v === undefined ? `<span class="chip c-n">n/a</span>` : (v ? `<span class="chip c-g">yes</span>` : `<span class="chip c-r">no</span>`);
   const spine = (c.spine && c.spine.length) ? `<div class="blk"><div class="bl">How the call went</div><div class="tl">${
     c.spine.map(([t, m, h, s], i) => `<div class="tlt">${cesc(t)}</div>
