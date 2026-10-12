@@ -475,6 +475,14 @@ Everything caches under `data/`, so a re-run resumes rather than restarting.
   "no answer" note and under 60s. A screened call-in with no recording is
   still a conversation (an entry with no text: talk time and Call Detail,
   no coaching card); it is read once a recording appears.
+  **A call back answers a dial made BEFORE it** (Frank, 2026-10-12: George
+  Starks called in at 9:18, reached Sarahi for 7 seconds, and her 10:19 /
+  10:20 dials -- no answer, voicemail -- were scored a live contact by the
+  call-in "answering" them): `inbound.link_callbacks` and `live_notes.js`
+  compare start times on the same day, so a call-in followed by the
+  producer's own dials stays a cold call-in. About one call-in a day had
+  been linked to a later dial (10-01, 10-02, 10-08); published days not
+  rebuilt.
 - **Talk time counts every conversation**, inbound included. **So does the
   team's** (Frank, 2026-09-30): `finalize.team_avg_talk` weights each
   producer by live + inbound, `_totals`' own divisor, for the email and the

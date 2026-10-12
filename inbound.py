@@ -164,8 +164,16 @@ def link_callbacks(rows, window, day, lookback=CALLBACK_LOOKBACK_DAYS):
         if n and w in PRODUCERS:
             dialled[(w, n)].append((d, r))
     for row in rows:
-        prior = dialled.get((row["producer"], last10(row["number"])) , [])
-        prior.sort(key=lambda x: x[0])
+        # Only a dial made BEFORE the call-in can be what it answers (Frank,
+        # 2026-10-12: George Starks called in at 9:18 and reached Sarahi for
+        # 7 seconds; she dialled him back at 10:19 and 10:20 -- no answer,
+        # voicemail -- and the 9:18 call-in, linked to those later dials as a
+        # "call back", turned them into a live contact). Days compared first,
+        # then start times on the same day.
+        prior = [(d, r) for d, r in dialled.get((row["producer"], last10(row["number"])), [])
+                 if d < day or not row.get("start") or not r.get("startTime")
+                 or str(r["startTime"]) < str(row["start"])]
+        prior.sort(key=lambda x: (x[0], str(x[1].get("startTime") or "")))
         row["callback_of"] = prior[-1][1]["id"] if prior else None
         row["callback_day"] = prior[-1][0] if prior else None
         row["kind"] = "callback" if prior else "cold call-in"

@@ -233,7 +233,13 @@ export function contactDeltas(basis, recs, evidence) {
     if (seen.has(r.id)) continue;
     const who = r.who, num = last10(r.num);
     if (!num || excluded[who].has(num) || dropped[who].has(num)) continue;
-    const callback = counted[who].has(num) || !!legs[who][num] || !!before[who][num];
+    // A call back answers a dial made BEFORE it (inbound.link_callbacks --
+    // keep them in step): a call-in followed by the producer's own dials is
+    // still a call-in, never a call back to those later dials (George
+    // Starks, 2026-10-12). Every dial today is in legs / before with its start.
+    const dialsOn = [...(legs[who][num] || []), ...(before[who][num] || [])];
+    const callback = dialsOn.length ? dialsOn.some(l => Date.parse(l.start) < Date.parse(r.start))
+      : counted[who].has(num);
     // Only a call-in inbound.screen would keep adds talk time: a number the
     // checkpoint already kept or is talking on, a call back to today's
     // dial, or a number the lead notes read since show is a lead's. A
