@@ -3020,6 +3020,15 @@ on a published day. The rules:
   -- kept in R2 `crm/rules.json` (`/api/crm/automations/rule`), drawn as
   "Pantheon · draft" rows on the timeline, filtered like the rest. They do
   not fire until the senders and the CRM's task write exist (CRM.md step 2).
+  **The stages are Frank's own** (Frank, 2026-10-12: "why is there so many
+  stages on the dropdown ... it was just supposed to be the stages from 1
+  pipeline" -- the form had listed every stage of every AgencyZoom workflow
+  placed under New Business, 51): the report's `stages` is `crm_lists.STAGES`
+  per pipeline, the form offers only those, and each AgencyZoom stage in
+  `stage_order` carries its `my_stage` / `my_ord` (`crm_lists.place_stage`),
+  so the timeline groups "1 Pipeline | New", "AZ Sun | New" and a draft at
+  "New" under one New (the AgencyZoom names in small italics beside it); a
+  stage with no match keeps its AgencyZoom name.
 - `node --test site/crm.test.mjs` is its test; run it after touching
   `site/crm.js` or the schema. A new field is added to the schema (a new
   migration file), to `OBJECTS` in `site/crm.js` and to the test together.

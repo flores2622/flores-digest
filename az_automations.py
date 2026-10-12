@@ -621,6 +621,7 @@ def build(days=DAYS, log=log):
         "transitions": [{"from": f, "to": t, "who": w, "n": n} for (f, t, w), n in transitions.most_common(40)],
         "actors": _top(actors, 12),
         "stage_order": stage_order(),
+        "stages": my_stages(),
     }
     return report
 
@@ -641,8 +642,19 @@ def stage_order():
         lid, _ = crm_lists.place_workflow(wf.get("name") or "", "sales")
         mine = next((n for i, n, *_ in crm_lists.PIPELINES if i == lid), None)
         for st in sorted(wf.get("stages") or [], key=lambda x: x.get("seq") or 0):
-            out.append({"stage": f"{wf.get('name')} | {st.get('name')}", "pipeline": mine or wf.get("name"), "az_pipeline": wf.get("name")})
+            # Frank's own stage for it (crm_lists.STAGES, by name or alias), when it has one
+            sid = crm_lists.place_stage(lid, st.get("name") or "") if lid else None
+            my = crm_lists.STAGES[lid][sid - lid * 100 - 1][0] if sid else None
+            out.append({"stage": f"{wf.get('name')} | {st.get('name')}", "pipeline": mine or wf.get("name"), "az_pipeline": wf.get("name"),
+                        "my_stage": my, "my_ord": (sid - lid * 100) if sid else None})
     return out
+
+
+def my_stages():
+    """Frank's own stages per pipeline, in his order (crm_lists.STAGES) -- what
+    a rule of Pantheon's own is written against."""
+    import crm_lists
+    return {name: [st[0] for st in crm_lists.STAGES.get(i, [])] for i, name, *_ in crm_lists.PIPELINES}
 
 
 def publish(report, log=log):

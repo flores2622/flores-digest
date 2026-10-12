@@ -55,19 +55,26 @@
   const isPerson = (name) => /^(Crystal|Lorena|Mike|Coral|Sarahi|Amanda|Debbie|Frank|Francisco|Veronica)/.test(name || "");
 
   // ---- where a rule sits on the timeline ----
+  // every AgencyZoom stage -> its pipeline (Frank's name), Frank's own stage for it when it has one
+  // (the Lists page's; "1 Pipeline | New" and "AZ Sun | New" both read as New), and its order
   function stageMap(R) {
-    const m = {}; (R.stage_order || []).forEach((s, i) => { m[s.stage] = { pipeline: s.pipeline, az: s.az_pipeline, ord: i }; });
+    const m = {}; (R.stage_order || []).forEach((s, i) => { m[s.stage] = { pipeline: s.pipeline, az: s.az_pipeline, ord: s.my_ord != null ? s.my_ord : 1000 + i, my: s.my_stage || null }; });
     return m;
   }
-  function placeOf(r, sm) {
-    if (r.own) { const k = sm[r.stage]; return { pipeline: r.pipeline, stage: r.stage, ord: k ? k.ord : (r.stage === "Smart-Cycle" ? 0 : 5000) }; }
+  const myStages = (R, pipeline) => (pipeline === "Smart-Cycle" ? ["Smart-Cycle"] : ((R.stages || {})[pipeline] || []));
+  function placeOf(r, sm, R) {
+    if (r.own) {
+      const k = sm[r.stage];                                   // a draft written against an AgencyZoom stage name
+      const stage = k && k.my ? k.my : r.stage, i = myStages(R || D.report || {}, r.pipeline).indexOf(stage);
+      return { pipeline: r.pipeline, stage, ord: i >= 0 ? i + 1 : (k ? k.ord : (stage === "Smart-Cycle" ? 0 : 5000)) };
+    }
     const st = (r.stages || [])[0], name = st && st.name !== "(unknown)" ? st.name : "";
     if (r.kind === "cycle") return { pipeline: r.key === "cycle:dead" ? "Dead" : "Smart-Cycle", stage: r.key === "cycle:park" ? "Into Smart-Cycle" : r.key === "cycle:back" ? "Smart-Cycle" : "Dead", ord: r.key === "cycle:park" ? -1 : 0 };
     if (!name) return { pipeline: "No sales stage on record", stage: "Service tasks, and tasks on customers", ord: 9999 };
     if (name === "Smart-Cycle") return { pipeline: "Smart-Cycle", stage: "Smart-Cycle", ord: 0 };
     if (name === "Dead") return { pipeline: "Dead", stage: "Dead", ord: 0 };
     const k = sm[name];
-    return { pipeline: k ? k.pipeline : azPipe(name) || "No sales stage on record", stage: name, ord: k ? k.ord : 5000 };
+    return { pipeline: k ? k.pipeline : azPipe(name) || "No sales stage on record", stage: k && k.my ? k.my : name, az: name, ord: k ? k.ord : 5000 };
   }
   function allRules(R) {
     return [].concat(R.texts || [], R.emails || [], R.tasks || [], (R.cycles || []).filter((c) => c.fired));
@@ -93,7 +100,7 @@
   }
   function options(R) {
     const sources = {}, pipes = {}, sm = stageMap(R);
-    allRules(R).forEach((r) => { (r.groups || []).forEach((g) => { sources[g.name] = (sources[g.name] || 0) + g.n; }); const p = placeOf(r, sm).pipeline; pipes[p] = (pipes[p] || 0) + 1; });
+    allRules(R).forEach((r) => { (r.groups || []).forEach((g) => { sources[g.name] = (sources[g.name] || 0) + g.n; }); const p = placeOf(r, sm, R).pipeline; pipes[p] = (pipes[p] || 0) + 1; });
     const pipeKeys = Object.keys(pipes).sort((a, b) => (PIPE_ORDER.indexOf(a) + 1 || 99) - (PIPE_ORDER.indexOf(b) + 1 || 99) || a.localeCompare(b));
     return { sources: Object.keys(sources).sort((a, b) => sources[b] - sources[a]), pipes: pipeKeys };
   }
@@ -184,9 +191,9 @@
   // the add / edit form, prefilled from wfForm.rule
   function formHtml(R) {
     const f = wfForm.rule, sm = stageMap(R || {});
-    const pipes = [...new Set((R.stage_order || []).map((s) => s.pipeline))].concat(["Smart-Cycle"]);
-    const stages = f.pipeline === "Smart-Cycle" ? ["Smart-Cycle"] : (R.stage_order || []).filter((s) => s.pipeline === f.pipeline).map((s) => s.stage);
-    const allStages = (R.stage_order || []).map((s) => s.stage).concat(["Smart-Cycle", "Dead"]);
+    const pipes = Object.keys(R.stages || {}).concat(["Smart-Cycle"]);
+    const stages = myStages(R, f.pipeline);
+    const allStages = pipes.flatMap((p) => myStages(R, p).map((st) => [p === "Smart-Cycle" ? st : `${p} | ${st}`, p === "Smart-Cycle" ? st : `${p} · ${st}`])).concat([["Dead", "Dead"]]);
     const o = options(R);
     const sel = (name, list, cur, blank) => `<select class="lsin" name="${name}">${blank ? `<option value="">${blank}</option>` : ""}${list.map(([v, t]) => `<option value="${cesc(v)}"${v === cur ? " selected" : ""}>${cesc(t)}</option>`).join("")}</select>`;
     const kind = f.kind || "text";
@@ -196,13 +203,13 @@
       <div class="wfformgrid">
         <label><span>What</span>${sel("kind", [["text", "Text"], ["email", "Email"], ["task", "Task"], ["move", "Move the lead"]], kind)}</label>
         <label><span>Pipeline</span>${sel("pipeline", pipes.map((p) => [p, p]), f.pipeline)}</label>
-        <label><span>Stage</span>${sel("stage", stages.map((s) => [s, stageName(s)]), f.stage)}</label>
+        <label><span>Stage</span>${sel("stage", stages.map((s) => [s, s]), f.stage)}</label>
         <label><span>Day</span><input type="number" class="lsin" name="day" min="1" max="3650" value="${cesc(String(f.day || 1))}" required><small>Day 1 is the day it gets there, in business days</small></label>
         <label><span>Around</span>${sel("hour", [...Array(24).keys()].filter((h) => h >= 7 && h <= 19).map((h) => [String(h), hour(h)]), f.hour == null ? "" : String(f.hour), "any time")}</label>
         <label><span>Language</span>${sel("lang", [["en", "English"], ["es", "Spanish"]], f.lang || "en")}</label>
         ${kind === "email" ? `<label class="wfwide"><span>Subject</span><input type="text" class="lsin" name="subject" value="${cesc(f.subject || "")}" maxlength="200" required></label>` : ""}
         ${kind === "task" ? `<label class="wfwide"><span>Task title</span><input type="text" class="lsin" name="title" value="${cesc(f.title || "")}" maxlength="200" required></label><label><span>For</span>${sel("who", [["producer", "the lead's producer"], ["front desk", "the front desk"], ["service", "the service team"]], f.who || "producer")}</label>` : ""}
-        ${kind === "move" ? `<label class="wfwide"><span>Move to</span>${sel("to_stage", allStages.map((s) => [s, s]), f.to_stage)}</label>` : ""}
+        ${kind === "move" ? `<label class="wfwide"><span>Move to</span>${sel("to_stage", allStages, f.to_stage)}</label>` : ""}
         ${kind !== "move" ? `<label class="wfwide"><span>${kind === "task" ? "Task description (optional)" : "Wording"}</span><textarea class="lsin" name="body" rows="4" maxlength="2000"${kind === "task" ? "" : " required"} placeholder="{first} is the lead's first name, {producer} the producer's">${cesc(f.body || "")}</textarea></label>` : ""}
         <fieldset class="wfwide wfsrcs"><legend>Lead sources <small>(none ticked = every source)</small></legend>${o.sources.filter((src) => !/^\(|^Unsorted$/.test(src)).map((src) => `<label class="wfck"><input type="checkbox" name="sources" value="${cesc(src)}"${(f.sources || []).includes(src) ? " checked" : ""}> ${cesc(src)}</label>`).join("")}</fieldset>
         <label class="wfwide"><span>Note</span><input type="text" class="lsin" name="note" value="${cesc(f.note || "")}" maxlength="500" placeholder="why, or what it replaces"></label>
@@ -238,10 +245,11 @@
     const rules = allRules(R).concat(ownRules()).filter(passes);
     const byPipe = {}, ownAt = {};
     rules.forEach((r) => {
-      const p = placeOf(r, sm);
+      const p = placeOf(r, sm, R);
       if (F.pipeline && p.pipeline !== F.pipeline) return;
       const P = byPipe[p.pipeline] || (byPipe[p.pipeline] = { stages: {} });
-      const S = P.stages[p.stage] || (P.stages[p.stage] = { ord: p.ord, days: {}, n: 0 });
+      const S = P.stages[p.stage] || (P.stages[p.stage] = { ord: p.ord, days: {}, n: 0, az: {} });
+      if (p.az && p.az !== p.stage) S.az[p.az] = (S.az[p.az] || 0) + 1;
       const d = r.key === "cycle:park" ? null : dayN(r.day);
       if (r.own) ownAt[p.pipeline + "|" + p.stage] = true;
       const k = d == null ? "none" : String(d);
@@ -249,21 +257,21 @@
     });
     const pipes = Object.keys(byPipe).sort((a, b) => (PIPE_ORDER.indexOf(a) + 1 || 99) - (PIPE_ORDER.indexOf(b) + 1 || 99) || a.localeCompare(b));
     if (!pipes.length) return `<div class="empty">No rule matches these filters.</div>`;
-    const addBtn = (pn, sn) => (sm[sn] || sn === "Smart-Cycle" ? `<button type="button" class="ghost tksmall wfaddhere" data-addrule="${cesc(pn + "|" + sn)}" title="Add a rule of Pantheon's own at this stage">＋ Add here</button>` : "");
+    const addBtn = (pn, sn) => (myStages(R, pn).includes(sn) ? `<button type="button" class="ghost tksmall wfaddhere" data-addrule="${cesc(pn + "|" + sn)}" title="Add a rule of Pantheon's own at this stage">＋ Add here</button>` : "");
     const kindOrd = { text: 0, email: 1, task: 2, cycle: 3 };
     void ownAt;
     return pipes.map((pn) => {
       const P = byPipe[pn];
       const stages = Object.keys(P.stages).sort((a, b) => P.stages[a].ord - P.stages[b].ord || a.localeCompare(b));
       const total = stages.reduce((a, s) => a + P.stages[s].n, 0);
-      const az = [...new Set(stages.map(azPipe).filter(Boolean))];
+      const az = [...new Set(stages.flatMap((sn) => Object.keys(P.stages[sn].az).map(azPipe).concat(azPipe(sn) ? [azPipe(sn)] : [])).filter(Boolean))];
       return `<section class="wfpipe">
         <h2 class="wfpipeh"><span>${cesc(pn)}</span><small>${az.length ? `AgencyZoom's ${az.map((x) => `“${cesc(x)}”`).join(", ")} · ` : ""}${n(total)} rule${total === 1 ? "" : "s"}</small></h2>
         ${stages.map((sn) => {
           const S = P.stages[sn];
           const days = Object.keys(S.days).sort((a, b) => (a === "none" ? 1e9 : +a) - (b === "none" ? 1e9 : +b));
           return `<div class="wfstage">
-            <h3 class="wfstageh">${cesc(stageName(sn))}<small>${n(S.n)}</small>${addBtn(pn, sn)}</h3>
+            <h3 class="wfstageh">${cesc(stageName(sn))}<small>${n(S.n)}</small>${Object.keys(S.az).length ? `<small class="wfazst" title="AgencyZoom's own stage names folded in here">${Object.keys(S.az).map(cesc).join(" · ")}</small>` : ""}${addBtn(pn, sn)}</h3>
             ${wfForm && !wfForm.id && wfForm.at === pn + "|" + sn ? formHtml(R) : ""}
             <ol class="wftl">${days.map((dk) => {
               const d = dk === "none" ? null : +dk;
@@ -337,7 +345,7 @@
     if (t.dataset.addrule != null) {
       const [pipeline, stage] = t.dataset.addrule.split("|");
       wfForm = { id: null, at: t.dataset.addrule, rule: { kind: "text", pipeline: pipeline || "New Business", stage: stage || "", day: 1, lang: "en", sources: [] } };
-      if (!wfForm.rule.stage) { const first = ((D.report || {}).stage_order || []).find((s) => s.pipeline === wfForm.rule.pipeline); wfForm.rule.stage = first ? first.stage : "Smart-Cycle"; }
+      if (!wfForm.rule.stage) wfForm.rule.stage = myStages(D.report || {}, wfForm.rule.pipeline)[0] || "Smart-Cycle";
       wfMsg = null; repaint(); const f = $("#view").querySelector(".wfform"); if (f) f.scrollIntoView({ block: "center" }); return;
     }
     if (t.dataset.editrule) { const r = (D.rules || []).find((x) => x.id === t.dataset.editrule); if (!r) return; wfForm = { id: r.id, at: "", rule: Object.assign({}, r) }; wfExp[r.id] = true; wfMsg = null; repaint(); return; }
@@ -364,7 +372,7 @@
       // the form redraws on a kind or pipeline change (its fields depend on them); the rest is read on submit
       wfForm.rule = readForm(fm);
       if (e.target.name === "kind" || e.target.name === "pipeline") {
-        if (e.target.name === "pipeline") { const first = ((D.report || {}).stage_order || []).find((s) => s.pipeline === wfForm.rule.pipeline); wfForm.rule.stage = first ? first.stage : "Smart-Cycle"; }
+        if (e.target.name === "pipeline") wfForm.rule.stage = myStages(D.report || {}, wfForm.rule.pipeline)[0] || "Smart-Cycle";
         repaint();
       }
       return;
@@ -424,7 +432,7 @@
 .wfpipeh { display: flex; flex-wrap: wrap; align-items: baseline; gap: 10px; margin: 0 0 8px; padding-bottom: 6px; border-bottom: 2px solid var(--accent); font-size: 20px; }
 .wfpipeh small { font-size: 12px; font-weight: 500; color: var(--text-muted); }
 .wfstage { margin: 0 0 14px 4px; }
-.wfstageh { display: flex; align-items: baseline; gap: 8px; margin: 10px 0 4px; font-size: 15px; } .wfstageh small { font-size: 11px; color: var(--text-muted); font-weight: 600; }
+.wfstageh { display: flex; align-items: baseline; gap: 8px; margin: 10px 0 4px; font-size: 15px; } .wfstageh small { font-size: 11px; color: var(--text-muted); font-weight: 600; } .wfstageh .wfazst { font-weight: 500; font-style: italic; }
 .wftl { list-style: none; margin: 0; padding: 0 0 0 14px; border-left: 3px solid var(--border-strong); }
 .wfday { position: relative; padding: 2px 0 10px 16px; }
 .wfday::before { content: ""; position: absolute; left: -23px; top: 9px; width: 13px; height: 13px; border-radius: 50%; background: var(--accent); border: 3px solid var(--surface); box-shadow: 0 0 0 2px var(--accent); }
