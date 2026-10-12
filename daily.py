@@ -735,6 +735,13 @@ def build_metrics(day):
     lead_ix = _pidx(leads)
     _pick = day_calls.pick_lead
     M = {}
+    # Premium quoted is only what was quoted in the last day (quote_marks;
+    # Frank, 2026-10-12): an old quote still on the lead is not counted again.
+    import quote_marks
+    q_mark = quote_marks.mark_before(day)
+    if q_mark is None:
+        log("  quotes: no earlier quote mark -- premium quoted counts every quote on file")
+    q_seen = []
     for who in PRODUCERS:
         all_rows = rows.get(who, [])
         counted = [r for r in all_rows if not r["excluded"]]
@@ -900,8 +907,10 @@ def build_metrics(day):
             except Exception:
                 qs = []
             arr = qs.get("quotes") if isinstance(qs, dict) else qs
-            qprem[str(lid)] = round(sum(float(q.get("premium") or 0) for q in (arr or [])))
-            tot += sum(float(q.get("premium") or 0) for q in (arr or []))
+            q_seen += [q.get("id") for q in (arr or [])]
+            new = [q for q in (arr or []) if quote_marks.is_new(q, q_mark)]
+            qprem[str(lid)] = round(sum(float(q.get("premium") or 0) for q in new))
+            tot += sum(float(q.get("premium") or 0) for q in new)
         n_sold, prem = real.get(who, (0, 0.0))
         # ONE PERSON, ONE CONTACT. Keying on (producer, number) is right for
         # attribution, but a lead reachable on two numbers becomes two rows for
@@ -993,6 +1002,7 @@ def build_metrics(day):
                   "new_bundle": bundle.get(who, {}).get("new_bundle", 0),
                   "bundle_resolved": bundle.get(who, {}).get("resolved", 0),
                   "bundle_resolved_households": bundle.get(who, {}).get("resolved_households", 0)}
+    quote_marks.note(day, q_seen, log=log)
 
     # Insightful down, or its token missing (SystemExit from secrets_load),
     # must not stop the email (2026-09-30): everyone reads as untracked --

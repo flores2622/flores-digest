@@ -149,6 +149,8 @@ def _quote_basis(M):
     very same patterns rather than a copy that can drift. None for a
     checkpoint built before daily.py kept the lead ids."""
     import daily
+    import quote_marks
+    import staff
     per = {who: (M.get("producers", {}).get(who) or {}) for who in cfg.PRODUCERS}
     if any("quoted_leads" not in v for v in per.values() if v):
         return None
@@ -167,6 +169,9 @@ def _quote_basis(M):
         "stage_pattern": daily.QUOTED_STAGE.pattern,
         "presented_pattern": daily._PRESENTED.pattern,
         "past_pattern": daily._PAST.pattern,
+        # Premium quoted counts only quotes above this id -- made since the
+        # last business day (quote_marks; Frank, 2026-10-12). None counts all.
+        "min_quote_id": quote_marks.mark_before(M.get("day") or staff.today()),
     }
 
 
