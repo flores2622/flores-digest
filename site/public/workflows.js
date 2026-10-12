@@ -20,6 +20,7 @@
   const PIPE_ORDER = ["New Business", "Quotes Not Closed", "Not Quoted", "Life", "Commercial", "Smart-Cycle", "Dead", "No sales stage on record"];
   const MIN_LEADS = 5;
   let D = null, wfBusy = false, wfMsg = null, wfNote = null, wfExp = {};
+  let wfForm = null;   // {id|null, at: stage key or "", rule: the fields as typed}
   let F = { kinds: { text: true, email: true, task: true, cycle: true }, source: "", pipeline: "", lang: "", q: "", small: false };
   try { const w = JSON.parse(sessionStorage.getItem("workflows-where") || "{}"); if (w.F) F = Object.assign(F, w.F, { kinds: Object.assign(F.kinds, w.F.kinds || {}) }); if (w.exp) wfExp = w.exp; } catch (_) {}
   const saveWhere = () => { try { sessionStorage.setItem("workflows-where", JSON.stringify({ F, exp: wfExp })); } catch (_) {} };
@@ -59,6 +60,7 @@
     return m;
   }
   function placeOf(r, sm) {
+    if (r.own) { const k = sm[r.stage]; return { pipeline: r.pipeline, stage: r.stage, ord: k ? k.ord : (r.stage === "Smart-Cycle" ? 0 : 5000) }; }
     const st = (r.stages || [])[0], name = st && st.name !== "(unknown)" ? st.name : "";
     if (r.kind === "cycle") return { pipeline: r.key === "cycle:dead" ? "Dead" : "Smart-Cycle", stage: r.key === "cycle:park" ? "Into Smart-Cycle" : r.key === "cycle:back" ? "Smart-Cycle" : "Dead", ord: r.key === "cycle:park" ? -1 : 0 };
     if (!name) return { pipeline: "No sales stage on record", stage: "Service tasks, and tasks on customers", ord: 9999 };
@@ -70,7 +72,18 @@
   function allRules(R) {
     return [].concat(R.texts || [], R.emails || [], R.tasks || [], (R.cycles || []).filter((c) => c.fired));
   }
+  // Pantheon's own rules (drafts), shaped enough to sit on the timeline
+  function ownRules() {
+    return ((D && D.rules) || []).map((r) => Object.assign({}, r, { own: true, key: r.id, kind: r.kind === "move" ? "cycle" : r.kind, rkind: r.kind, day: r.day, lang: r.lang || "en" }));
+  }
   function passes(r) {
+    if (r.own) {
+      if (!F.kinds[r.kind]) return false;
+      if (F.source && r.sources.length && !r.sources.includes(F.source)) return false;
+      if (F.lang && r.lang !== F.lang) return false;
+      if (F.q) { const q = F.q.toLowerCase(); if (!((r.title || "") + " " + (r.subject || "") + " " + (r.body || "")).toLowerCase().includes(q)) return false; }
+      return true;
+    }
     if (!F.kinds[r.kind]) return false;
     if (!F.small && r.kind !== "cycle" && r.leads < MIN_LEADS) return false;
     if (F.source && !(r.groups || []).some((g) => g.name === F.source)) return false;
@@ -142,7 +155,64 @@
     const one = t.replace(/\s+/g, " ").trim();
     return one.length > 150 ? one.slice(0, 148) + "…" : one;
   }
+  function ownRow(r) {
+    const open = !!wfExp[r.key];
+    const what = r.rkind === "email" ? r.subject : r.rkind === "task" ? r.title : r.rkind === "move" ? `Move to ${stageName(r.to_stage)}` : (r.body || "");
+    const one = what.replace(/\s+/g, " ").trim();
+    const srcs = r.sources.length ? `${r.sources.length} source${r.sources.length === 1 ? "" : "s"}` : "every source";
+    return `<li class="wfev wf-${r.kind} own${open ? " open" : ""}" id="wf-${cesc(r.key)}">
+      <button type="button" class="wfrow" data-open="${cesc(r.key)}" aria-expanded="${open}">
+        <span class="wfico" title="${KIND_WORD[r.kind]}">${ICON[r.kind]}</span>
+        <span class="wftxt"><span class="wfkind">${KIND_WORD[r.kind]}</span> ${cesc(one.length > 150 ? one.slice(0, 148) + "…" : one)}</span>
+        <span class="wfmeta">${r.lang === "es" ? `<span class="wflang">Spanish</span>` : ""}<span class="wfbadge draft">Pantheon · draft</span><span class="wfn">${srcs}</span><span class="wfarrow">${open ? "▲" : "▼"}</span></span>
+      </button>
+      ${open ? `<div class="wfdetail">${wfForm && wfForm.id === r.id ? formHtml(D.report) : ownDetail(r)}</div>` : ""}
+    </li>`;
+  }
+  function ownDetail(r) {
+    const when = `Day ${n(r.day)} in <b>${cesc(stageName(r.stage))}</b> (${cesc(r.pipeline)})${r.hour != null ? `, around ${hour(r.hour)}` : ""}, for ${r.sources.length ? r.sources.map((x) => `<span class="wfchip">${cesc(x)}</span>`).join(" ") : "every lead source"}${r.lang === "es" ? ", Spanish-speaking leads" : ""}.`;
+    const what = r.rkind === "text" ? `<blockquote class="wftpl">${cesc(r.body)}</blockquote>`
+      : r.rkind === "email" ? `<p class="wfwhen"><b>Subject:</b> ${cesc(r.subject)}</p><blockquote class="wftpl">${cesc(r.body)}</blockquote>`
+      : r.rkind === "task" ? `<p class="wfwhen"><b>Task:</b> ${cesc(r.title)} -- for ${cesc(r.who || "the lead's producer")}${r.body ? `</p><blockquote class="wftpl">${cesc(r.body)}</blockquote><p>` : ""}</p>`
+      : `<p class="wfwhen"><b>Move the lead to</b> ${cesc(r.to_stage)}.</p>`;
+    return `<p class="wfwhen">${when}</p>${what}${r.note ? `<div class="wfnote">${cesc(r.note)}</div>` : ""}
+      <div class="wfmark"><span class="wfdraftnote">A draft: Pantheon does not run it yet. It will, once the CRM owns the tasks and the text and email senders are in.</span>
+        <button type="button" class="btn tksmall" data-editrule="${cesc(r.id)}">Edit</button>
+        <button type="button" class="ghost tksmall" data-delrule="${cesc(r.id)}">Delete</button>
+        <small class="lsmute">${cesc((r.updated_by || r.by || "").split(" ")[0])} ${cesc((r.updated || r.at || "").slice(0, 10))}</small></div>`;
+  }
+  // the add / edit form, prefilled from wfForm.rule
+  function formHtml(R) {
+    const f = wfForm.rule, sm = stageMap(R || {});
+    const pipes = [...new Set((R.stage_order || []).map((s) => s.pipeline))].concat(["Smart-Cycle"]);
+    const stages = f.pipeline === "Smart-Cycle" ? ["Smart-Cycle"] : (R.stage_order || []).filter((s) => s.pipeline === f.pipeline).map((s) => s.stage);
+    const allStages = (R.stage_order || []).map((s) => s.stage).concat(["Smart-Cycle", "Dead"]);
+    const o = options(R);
+    const sel = (name, list, cur, blank) => `<select class="lsin" name="${name}">${blank ? `<option value="">${blank}</option>` : ""}${list.map(([v, t]) => `<option value="${cesc(v)}"${v === cur ? " selected" : ""}>${cesc(t)}</option>`).join("")}</select>`;
+    const kind = f.kind || "text";
+    void sm;
+    return `<form class="wfform" data-ruleform="${cesc(wfForm.id || "")}">
+      <div class="wfformh"><strong>${wfForm.id ? "Edit the rule" : "A rule of Pantheon's own"}</strong><span class="wfbadge draft">draft</span></div>
+      <div class="wfformgrid">
+        <label><span>What</span>${sel("kind", [["text", "Text"], ["email", "Email"], ["task", "Task"], ["move", "Move the lead"]], kind)}</label>
+        <label><span>Pipeline</span>${sel("pipeline", pipes.map((p) => [p, p]), f.pipeline)}</label>
+        <label><span>Stage</span>${sel("stage", stages.map((s) => [s, stageName(s)]), f.stage)}</label>
+        <label><span>Day</span><input type="number" class="lsin" name="day" min="1" max="3650" value="${cesc(String(f.day || 1))}" required><small>Day 1 is the day it gets there, in business days</small></label>
+        <label><span>Around</span>${sel("hour", [...Array(24).keys()].filter((h) => h >= 7 && h <= 19).map((h) => [String(h), hour(h)]), f.hour == null ? "" : String(f.hour), "any time")}</label>
+        <label><span>Language</span>${sel("lang", [["en", "English"], ["es", "Spanish"]], f.lang || "en")}</label>
+        ${kind === "email" ? `<label class="wfwide"><span>Subject</span><input type="text" class="lsin" name="subject" value="${cesc(f.subject || "")}" maxlength="200" required></label>` : ""}
+        ${kind === "task" ? `<label class="wfwide"><span>Task title</span><input type="text" class="lsin" name="title" value="${cesc(f.title || "")}" maxlength="200" required></label><label><span>For</span>${sel("who", [["producer", "the lead's producer"], ["front desk", "the front desk"], ["service", "the service team"]], f.who || "producer")}</label>` : ""}
+        ${kind === "move" ? `<label class="wfwide"><span>Move to</span>${sel("to_stage", allStages.map((s) => [s, s]), f.to_stage)}</label>` : ""}
+        ${kind !== "move" ? `<label class="wfwide"><span>${kind === "task" ? "Task description (optional)" : "Wording"}</span><textarea class="lsin" name="body" rows="4" maxlength="2000"${kind === "task" ? "" : " required"} placeholder="{first} is the lead's first name, {producer} the producer's">${cesc(f.body || "")}</textarea></label>` : ""}
+        <fieldset class="wfwide wfsrcs"><legend>Lead sources <small>(none ticked = every source)</small></legend>${o.sources.filter((src) => !/^\(|^Unsorted$/.test(src)).map((src) => `<label class="wfck"><input type="checkbox" name="sources" value="${cesc(src)}"${(f.sources || []).includes(src) ? " checked" : ""}> ${cesc(src)}</label>`).join("")}</fieldset>
+        <label class="wfwide"><span>Note</span><input type="text" class="lsin" name="note" value="${cesc(f.note || "")}" maxlength="500" placeholder="why, or what it replaces"></label>
+      </div>
+      <div class="wfmark"><button type="submit" class="btn tkpri"${wfBusy ? " disabled" : ""}>${wfForm.id ? "Save" : "Add the draft"}</button><button type="button" class="btn" data-cancelrule="1">Cancel</button>
+        ${wfMsg && wfMsg.err ? `<span class="wfbad">${cesc(wfMsg.err)}</span>` : ""}</div>
+    </form>`;
+  }
   function row(r) {
+    if (r.own) return ownRow(r);
     const m = (D.marks || {})[r.key] || {};
     const open = !!wfExp[r.key];
     const g = F.source ? (r.groups || []).find((x) => x.name === F.source) : null;
@@ -165,20 +235,23 @@
   // ---- the timeline ----
   function timelineHtml(R) {
     const sm = stageMap(R);
-    const rules = allRules(R).filter(passes);
-    const byPipe = {};
+    const rules = allRules(R).concat(ownRules()).filter(passes);
+    const byPipe = {}, ownAt = {};
     rules.forEach((r) => {
       const p = placeOf(r, sm);
       if (F.pipeline && p.pipeline !== F.pipeline) return;
       const P = byPipe[p.pipeline] || (byPipe[p.pipeline] = { stages: {} });
       const S = P.stages[p.stage] || (P.stages[p.stage] = { ord: p.ord, days: {}, n: 0 });
       const d = r.key === "cycle:park" ? null : dayN(r.day);
+      if (r.own) ownAt[p.pipeline + "|" + p.stage] = true;
       const k = d == null ? "none" : String(d);
       (S.days[k] || (S.days[k] = [])).push(r); S.n++;
     });
     const pipes = Object.keys(byPipe).sort((a, b) => (PIPE_ORDER.indexOf(a) + 1 || 99) - (PIPE_ORDER.indexOf(b) + 1 || 99) || a.localeCompare(b));
     if (!pipes.length) return `<div class="empty">No rule matches these filters.</div>`;
+    const addBtn = (pn, sn) => (sm[sn] || sn === "Smart-Cycle" ? `<button type="button" class="ghost tksmall wfaddhere" data-addrule="${cesc(pn + "|" + sn)}" title="Add a rule of Pantheon's own at this stage">＋ Add here</button>` : "");
     const kindOrd = { text: 0, email: 1, task: 2, cycle: 3 };
+    void ownAt;
     return pipes.map((pn) => {
       const P = byPipe[pn];
       const stages = Object.keys(P.stages).sort((a, b) => P.stages[a].ord - P.stages[b].ord || a.localeCompare(b));
@@ -190,7 +263,8 @@
           const S = P.stages[sn];
           const days = Object.keys(S.days).sort((a, b) => (a === "none" ? 1e9 : +a) - (b === "none" ? 1e9 : +b));
           return `<div class="wfstage">
-            <h3 class="wfstageh">${cesc(stageName(sn))}<small>${n(S.n)}</small></h3>
+            <h3 class="wfstageh">${cesc(stageName(sn))}<small>${n(S.n)}</small>${addBtn(pn, sn)}</h3>
+            ${wfForm && !wfForm.id && wfForm.at === pn + "|" + sn ? formHtml(R) : ""}
             <ol class="wftl">${days.map((dk) => {
               const d = dk === "none" ? null : +dk;
               const list = S.days[dk].sort((a, b) => kindOrd[a.kind] - kindOrd[b.kind] || b.fired - a.fired);
@@ -229,7 +303,9 @@
         <label class="wff wfq"><span>Find</span><input type="search" class="lsin" data-wff="q" value="${cesc(F.q)}" placeholder="a word in the wording"></label>
         <label class="wff wfck"><input type="checkbox" data-wff="small"${F.small ? " checked" : ""}> include rules under ${MIN_LEADS} leads</label>
         ${F.source || F.pipeline || F.lang || F.q ? `<button type="button" class="ghost tksmall" data-wfclear="1">Clear</button>` : ""}
-      </div>`;
+        <button type="button" class="btn tkpri wfaddbtn" data-addrule="">＋ Add a rule</button>
+      </div>
+      ${wfForm && !wfForm.id && !wfForm.at ? formHtml(R) : ""}`;
       body = timelineHtml(R) + movesHtml(R);
     }
     v.innerHTML = `<section class="tkpage wfpage">
@@ -238,7 +314,7 @@
       <p class="lsintro">What AgencyZoom's automations actually do, read back from the leads${R ? ` -- the last ${R.days} days, ${n(R.leads_read)} leads' notes, as of ${cesc(R.built)}` : ""}, laid out the way a lead sees them: pipeline by pipeline, stage by stage, from the day it gets there. AgencyZoom does not hand out its rules, so each is rebuilt from what it sent. Open a row for the wording and what came back; mark it <b>Keep</b>, <b>Change</b> or <b>Drop</b> and say why -- that is the brief for the rules Pantheon runs itself.</p>
       ${filters}
       ${body}
-      <p class="tkfoot">Pantheon's own CRM. Nothing here changes AgencyZoom. Texts carry the rule that sent them; emails are known by their template subject; a task counts when the same wording went to five or more leads. The day is counted the way AgencyZoom counts it: Day 1 is the day the lead got to the stage, in business days, and each rule sits on its usual day (the median over every time it fired); a task's day is the day it was due. A task wording the Day 2, 4 and 7 reminders share is listed once, named after them.</p>
+      <p class="tkfoot">Pantheon's own CRM. Nothing here changes AgencyZoom. A rule you add is Pantheon's own, a draft on the timeline beside AgencyZoom's until the CRM runs it. Texts carry the rule that sent them; emails are known by their template subject; a task counts when the same wording went to five or more leads. The day is counted the way AgencyZoom counts it: Day 1 is the day the lead got to the stage, in business days, and each rule sits on its usual day (the median over every time it fired); a task's day is the day it was due. A task wording the Day 2, 4 and 7 reminders share is listed once, named after them.</p>
     </section>`;
     const f = v.querySelector(".lsform input[autofocus]"); if (f) f.focus();
   }
@@ -251,13 +327,26 @@
     if (wfBusy) return;
     wfBusy = true;
     try { const r = await fn(); if (r && r.marks) D.marks = r.marks; wfNote = null; wfMsg = ok ? { ok } : null; }
-    catch (e) { wfMsg = { err: e.message }; }
+    catch (e) { wfMsg = { err: e.message }; }   // a form stays open with the error beside its button
     wfBusy = false; repaint();
   }
   const onPage = () => !!$("#view").querySelector(".wfpage");
   function onClick(e) {
-    const t = e.target.closest("[data-wfkind],[data-open],[data-mark],[data-note],[data-cancelnote],[data-wfclear]");
+    const t = e.target.closest("[data-wfkind],[data-open],[data-mark],[data-note],[data-cancelnote],[data-wfclear],[data-addrule],[data-editrule],[data-delrule],[data-cancelrule]");
     if (!t || !$("#view").contains(t) || !onPage()) return;
+    if (t.dataset.addrule != null) {
+      const [pipeline, stage] = t.dataset.addrule.split("|");
+      wfForm = { id: null, at: t.dataset.addrule, rule: { kind: "text", pipeline: pipeline || "New Business", stage: stage || "", day: 1, lang: "en", sources: [] } };
+      if (!wfForm.rule.stage) { const first = ((D.report || {}).stage_order || []).find((s) => s.pipeline === wfForm.rule.pipeline); wfForm.rule.stage = first ? first.stage : "Smart-Cycle"; }
+      wfMsg = null; repaint(); const f = $("#view").querySelector(".wfform"); if (f) f.scrollIntoView({ block: "center" }); return;
+    }
+    if (t.dataset.editrule) { const r = (D.rules || []).find((x) => x.id === t.dataset.editrule); if (!r) return; wfForm = { id: r.id, at: "", rule: Object.assign({}, r) }; wfExp[r.id] = true; wfMsg = null; repaint(); return; }
+    if (t.dataset.cancelrule) { wfForm = null; wfMsg = null; repaint(); return; }
+    if (t.dataset.delrule) {
+      const r = (D.rules || []).find((x) => x.id === t.dataset.delrule);
+      if (r && confirm("Delete this draft rule?")) act(() => api("automations/rule", { op: "del", id: r.id }).then((j) => { D.rules = j.rules; return j; }), "Deleted.");
+      return;
+    }
     if (t.dataset.wfkind) { F.kinds[t.dataset.wfkind] = !F.kinds[t.dataset.wfkind]; saveWhere(); repaint(); return; }
     if (t.dataset.open) { const k = t.dataset.open; if (wfExp[k]) delete wfExp[k]; else wfExp[k] = true; if (wfNote && wfNote !== k) wfNote = null; saveWhere(); repaint(); return; }
     if (t.dataset.wfclear) { F.source = F.pipeline = F.lang = F.q = ""; saveWhere(); repaint(); return; }
@@ -270,6 +359,16 @@
     if (t.dataset.cancelnote) { wfNote = null; repaint(); return; }
   }
   function onChange(e) {
+    const fm = e.target.closest("form.wfform");
+    if (fm && $("#view").contains(fm) && wfForm) {
+      // the form redraws on a kind or pipeline change (its fields depend on them); the rest is read on submit
+      wfForm.rule = readForm(fm);
+      if (e.target.name === "kind" || e.target.name === "pipeline") {
+        if (e.target.name === "pipeline") { const first = ((D.report || {}).stage_order || []).find((s) => s.pipeline === wfForm.rule.pipeline); wfForm.rule.stage = first ? first.stage : "Smart-Cycle"; }
+        repaint();
+      }
+      return;
+    }
     const t = e.target.closest("[data-wff]");
     if (!t || !$("#view").contains(t) || !onPage()) return;
     const k = t.dataset.wff;
@@ -283,7 +382,19 @@
     if (!t || !$("#view").contains(t) || !onPage()) return;
     clearTimeout(qTimer); qTimer = setTimeout(() => onChange(e), 250);
   }
+  function readForm(fm) {
+    const fd = new FormData(fm), g = (k) => String(fd.get(k) == null ? "" : fd.get(k));
+    return { kind: g("kind"), pipeline: g("pipeline"), stage: g("stage"), day: Number(g("day")) || 1, hour: g("hour") === "" ? null : Number(g("hour")), lang: g("lang") || "en",
+      subject: g("subject"), title: g("title"), who: g("who"), to_stage: g("to_stage"), body: g("body"), note: g("note"), sources: fd.getAll("sources").map(String) };
+  }
   function onSubmit(e) {
+    const rf = e.target.closest("form.wfform");
+    if (rf && $("#view").contains(rf) && wfForm) {
+      e.preventDefault();
+      const rule = readForm(rf), id = wfForm.id;
+      act(() => api("automations/rule", id ? { op: "edit", id, rule } : { op: "add", rule }).then((j) => { D.rules = j.rules; wfForm = null; if (!id) { const last = j.rules[j.rules.length - 1]; if (last) wfExp[last.id] = true; } return j; }), id ? "Saved." : "Added as a draft.");
+      return;
+    }
     const form = e.target.closest("form[data-notefor]");
     if (!form || !$("#view").contains(form)) return;
     e.preventDefault();
@@ -333,6 +444,21 @@
 .wfn { font-weight: 700; } .wfback { color: var(--text-muted); } .wfarrow { font-size: 10px; color: var(--text-muted); }
 .wflang { font-size: 10px; font-weight: 800; letter-spacing: .05em; text-transform: uppercase; padding: 1px 7px; border-radius: 999px; background: color-mix(in oklab, var(--s4, #d9a21b) 22%, var(--surface)); color: var(--text); }
 .wfbadge { font-size: 10px; font-weight: 800; letter-spacing: .05em; text-transform: uppercase; padding: 1px 7px; border-radius: 999px; color: #fff; }
+.wfbadge.draft { background: var(--text-secondary); }
+.wfev.own { border-style: dashed; background: color-mix(in oklab, var(--accent) 5%, var(--surface)); }
+.wfdraftnote { flex-basis: 100%; font-size: 12px; color: var(--text-muted); }
+.wfaddhere { margin-left: auto; } .wfaddbtn { margin-left: auto; align-self: flex-end; }
+.wfform { margin: 6px 0 12px; padding: 12px 14px; border: 2px dashed var(--accent); border-radius: 12px; background: var(--surface); }
+.wfformh { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; }
+.wfformgrid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px 14px; }
+.wfformgrid label { display: flex; flex-direction: column; gap: 3px; font-size: 12px; color: var(--text-secondary); }
+.wfformgrid label > span, .wfformgrid legend { font-weight: 700; text-transform: uppercase; letter-spacing: .06em; font-size: 10px; }
+.wfformgrid label small { font-weight: 500; text-transform: none; letter-spacing: 0; color: var(--text-muted); }
+.wfformgrid .lsin { width: 100%; box-sizing: border-box; } .wfformgrid textarea.lsin { font: inherit; resize: vertical; }
+.wfwide { grid-column: 1 / -1; }
+.wfsrcs { border: 1px solid var(--border); border-radius: 10px; padding: 6px 10px 8px; display: flex; flex-wrap: wrap; gap: 4px 14px; }
+.wfsrcs .wfck { padding: 0; font-size: 12px; }
+@media (max-width: 900px) { .wfformgrid { grid-template-columns: 1fr; } }
 .wfbadge.keep { background: var(--good); } .wfbadge.change { background: var(--s4, #d9a21b); } .wfbadge.drop { background: var(--bad); }
 .wfnotedot { color: var(--accent); font-weight: 700; cursor: help; }
 .wfdetail { padding: 2px 12px 10px 42px; border-top: 1px dashed var(--border); }

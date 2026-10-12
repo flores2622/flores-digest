@@ -50,6 +50,9 @@
                                            in R2, crm/automations.json) and
                                            Frank's keep / change / drop marks
      POST /api/crm/automations/mark        {key, mark: keep|change|drop|null, note}
+     POST /api/crm/automations/rule        {op: add|edit|del, rule} -- Pantheon's
+                                           own rules, drafts beside AgencyZoom's
+                                           on the timeline (R2 crm/rules.json)
    <obj> is leads, households, policies, quotes, tasks or srs. Every write
    lands in `events` with the Access email, before and after.
 
@@ -851,14 +854,77 @@ async function listsPlace(db, body, me) {
 const AUTOMATIONS_KEY = "crm/automations.json";          // az_automations.py --publish
 const AUTOMATION_MARKS_KEY = "crm/automation_marks.json";
 const MARKS = new Set(["keep", "change", "drop"]);
+/* Pantheon's own rules (Frank, 2026-10-12: "can you give me the option now to
+   add one?"): written on the Workflows page as DRAFTS that sit on the same
+   timeline as AgencyZoom's, so the workflow is designed in place. They do
+   not fire: a text or email needs phase 4's senders, a task the CRM's own
+   task write (CRM.md, Workflows step 2). Kept in R2 until they go live, when
+   they move to D1 with their runs. */
+const RULES_KEY = "crm/rules.json";
+const RULE_KINDS = new Set(["text", "email", "task", "move"]);
+const RULE_LANGS = new Set(["en", "es"]);
+const RULE_FIELDS = {    // what a rule may carry, and how long
+  kind: 20, pipeline: 80, stage: 120, lang: 2, body: 2000, subject: 200, title: 200, who: 40, note: 500, to_stage: 120,
+};
+function cleanRule(r, cur) {
+  if (!r || typeof r !== "object") return { error: "rule: a JSON object is expected" };
+  const out = Object.assign({}, cur || {});
+  for (const [k, max] of Object.entries(RULE_FIELDS)) {
+    if (k in r) out[k] = typeof r[k] === "string" ? r[k].trim().slice(0, max) : "";
+  }
+  if ("day" in r) { const d = Number(r.day); out.day = Number.isFinite(d) && d >= 1 && d <= 3650 ? Math.round(d) : null; }
+  if ("hour" in r) { const h = Number(r.hour); out.hour = r.hour === "" || r.hour == null ? null : (Number.isInteger(h) && h >= 0 && h <= 23 ? h : null); }
+  if ("sources" in r) out.sources = Array.isArray(r.sources) ? r.sources.map((x) => String(x).trim().slice(0, 80)).filter(Boolean).slice(0, 40) : [];
+  if (!RULE_KINDS.has(out.kind)) return { error: "kind: text, email, task or move" };
+  if (!out.pipeline) return { error: "pipeline is required" };
+  if (!out.stage) return { error: "stage is required" };
+  if (out.day == null) return { error: "day: 1 or more (Day 1 is the day the lead gets to the stage)" };
+  if (!RULE_LANGS.has(out.lang)) out.lang = "en";
+  if ((out.kind === "text" || out.kind === "email") && !out.body) return { error: "the wording is required" };
+  if (out.kind === "email" && !out.subject) return { error: "an email needs a subject" };
+  if (out.kind === "task" && !out.title) return { error: "a task needs a title" };
+  if (out.kind === "move" && !out.to_stage) return { error: "a move needs the stage to move to" };
+  if (!out.sources) out.sources = [];
+  out.status = "draft";
+  return { rule: out };
+}
+async function automationsRule(env, body, me) {
+  if (!body || typeof body !== "object") return json({ error: "a JSON object is expected" }, 400);
+  const op = String(body.op || "");
+  if (!["add", "edit", "del"].includes(op)) return json({ error: "op: add, edit or del" }, 400);
+  for (let attempt = 0; attempt < 5; attempt++) {
+    const { body: cur, etag } = await r2json(env, RULES_KEY);
+    const state = cur && typeof cur === "object" && Array.isArray(cur.rules) ? cur : { rules: [], next: 1 };
+    const now = localStr();
+    if (op === "add") {
+      const c = cleanRule(body.rule, null);
+      if (c.error) return json({ error: c.error }, 400);
+      const id = "rule:" + state.next++;
+      state.rules.push(Object.assign(c.rule, { id, by: me.name, at: now, updated: now }));
+    } else {
+      const id = String(body.id || (body.rule && body.rule.id) || "");
+      const i = state.rules.findIndex((r) => r.id === id);
+      if (i < 0) return json({ error: "no such rule" }, 404);
+      if (op === "del") state.rules.splice(i, 1);
+      else {
+        const c = cleanRule(body.rule, state.rules[i]);
+        if (c.error) return json({ error: c.error }, 400);
+        state.rules[i] = Object.assign(c.rule, { id, by: state.rules[i].by, at: state.rules[i].at, updated: now, updated_by: me.name });
+      }
+    }
+    const opts = { httpMetadata: { contentType: "application/json" }, onlyIf: etag ? { etagMatches: etag } : { etagDoesNotMatch: "*" } };
+    if ((await env.BOARD.put(RULES_KEY, JSON.stringify(state), opts)) !== null) return json({ ok: true, rules: state.rules });
+  }
+  return json({ error: "the rules are busy -- try again" }, 503);
+}
 async function r2json(env, key) {
   try { const o = await env.BOARD.get(key); if (!o) return { body: null, etag: null }; return { body: await o.json(), etag: o.etag }; }
   catch (_) { return { body: null, etag: null }; }
 }
 /** GET: the report (null until the read has run) and the marks. */
 async function automationsGet(env) {
-  const [{ body: report }, { body: marks }] = await Promise.all([r2json(env, AUTOMATIONS_KEY), r2json(env, AUTOMATION_MARKS_KEY)]);
-  return json({ report, marks: (marks && marks.marks) || {} });
+  const [{ body: report }, { body: marks }, { body: rules }] = await Promise.all([r2json(env, AUTOMATIONS_KEY), r2json(env, AUTOMATION_MARKS_KEY), r2json(env, RULES_KEY)]);
+  return json({ report, marks: (marks && marks.marks) || {}, rules: (rules && Array.isArray(rules.rules) && rules.rules) || [] });
 }
 /** POST {key, mark, note}: one mark per rule key, who and when; mark null clears it. */
 async function automationsMark(env, body, me) {
@@ -898,6 +964,7 @@ export async function crm(request, env, identityOf, parts, url) {
     if (!env.BOARD) return json({ error: "no R2 bucket" }, 503);
     if (parts.length === 1 && get) return automationsGet(env);
     if (parts.length === 2 && id === "mark" && post) return automationsMark(env, await readBody(request), me);
+    if (parts.length === 2 && id === "rule" && post) return automationsRule(env, await readBody(request), me);
     return json({ error: "not found" }, 404);
   }
   const db = env.CRM;

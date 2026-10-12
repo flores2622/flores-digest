@@ -286,7 +286,17 @@ description, so that text is listed once with `aka` naming them. 374 task
 "rules" became 69. The marks are the brief for step 2. Rerun the read
 whenever the picture should refresh; it is not on the nightly.
 
-**2. Pantheon's own rules (next).** A rule reads as a sentence: **when** a
+**2. Pantheon's own rules -- drafts first (built 2026-10-12; Frank: "can you
+give me the option now to add one?").** The Workflows page's **Add a rule**
+/ **Add here** writes a rule as a draft: kind (text / email / task / move),
+pipeline, stage, day (AgencyZoom's count), the hour, language, the lead
+sources (none = all), the wording with `{first}` / `{producer}`, a subject
+or task title, a note. Kept in R2 `crm/rules.json` (`POST
+/api/crm/automations/rule` {op: add|edit|del}, `cleanRule` checks the
+shape; `GET /api/crm/automations` returns them as `rules`), drawn on the
+timeline as "Pantheon · draft" rows beside AgencyZoom's, under the same
+filters. Nothing runs them yet; when they go live they move to D1 with
+their runs, as below. A rule reads as a sentence: **when** a
 lead arrives on a source / enters a stage / sits N days with no activity /
 does not reply N hours after a text / is marked sold, or an SR opens in a
 pipeline / sits N days open / a renewal is N days out / a call is missed,

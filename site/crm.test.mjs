@@ -335,6 +335,25 @@ test("automations: the report from R2 and Frank's marks", async () => {
   assert.equal(r.body.marks["text:7001"].by, FRANK.name);
   r = await call(env, "POST", "/api/crm/automations/mark", { key: "text:7001", mark: null });
   assert.deepEqual(r.body.marks, {});
+  // Pantheon's own rules: drafts beside AgencyZoom's
+  r = await call(env, "POST", "/api/crm/automations/rule", { op: "add", rule: { kind: "text", pipeline: "New Business", stage: "1 Pipeline | New", day: 3, lang: "es", body: "Hola {first}, soy {producer}." } });
+  assert.equal(r.status, 200, JSON.stringify(r.body));
+  assert.equal(r.body.rules.length, 1);
+  assert.equal(r.body.rules[0].id, "rule:1");
+  assert.equal(r.body.rules[0].status, "draft");
+  assert.equal(r.body.rules[0].by, FRANK.name);
+  assert.equal((await call(env, "POST", "/api/crm/automations/rule", { op: "add", rule: { kind: "email", pipeline: "Life", stage: "Life Pipeline | New", day: 1, body: "x" } })).status, 400);   // no subject
+  assert.equal((await call(env, "POST", "/api/crm/automations/rule", { op: "add", rule: { kind: "text", pipeline: "Life", stage: "Life Pipeline | New", day: 0, body: "x" } })).status, 400);   // day 0
+  r = await call(env, "POST", "/api/crm/automations/rule", { op: "edit", id: "rule:1", rule: { day: 4, sources: ["Internet lead"] } });
+  assert.equal(r.status, 200);
+  assert.equal(r.body.rules[0].day, 4);
+  assert.deepEqual(r.body.rules[0].sources, ["Internet lead"]);
+  assert.equal(r.body.rules[0].body, "Hola {first}, soy {producer}.");
+  r = await call(env, "GET", "/api/crm/automations");
+  assert.equal(r.body.rules.length, 1);
+  assert.equal((await call(env, "POST", "/api/crm/automations/rule", { op: "del", id: "rule:9" })).status, 404);
+  r = await call(env, "POST", "/api/crm/automations/rule", { op: "del", id: "rule:1" });
+  assert.equal(r.body.rules.length, 0);
   assert.equal((await call(env, "GET", "/api/crm/automations", null, CRYSTAL.email)).status, 403);
   assert.equal((await call({ CRM: env.CRM }, "GET", "/api/crm/automations")).status, 503);
 });

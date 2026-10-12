@@ -3014,7 +3014,12 @@ on a published day. The rules:
   title, and a note stamped 5 PM is for the NEXT day (checked against the
   records' dueDate); the Day 2 / 4 / 7 reminders' shared text is listed
   once, `aka` naming them. "Missed Call from <name>" titles are blanked to
-  `{caller}`.
+  `{caller}`. **Frank writes Pantheon's own rules there as drafts** (Frank,
+  2026-10-12: "can you give me the option now to add one?"): Add a rule /
+  Add here -- kind, pipeline, stage, day, hour, language, sources, wording
+  -- kept in R2 `crm/rules.json` (`/api/crm/automations/rule`), drawn as
+  "Pantheon · draft" rows on the timeline, filtered like the rest. They do
+  not fire until the senders and the CRM's task write exist (CRM.md step 2).
 - `node --test site/crm.test.mjs` is its test; run it after touching
   `site/crm.js` or the schema. A new field is added to the schema (a new
   migration file), to `OBJECTS` in `site/crm.js` and to the test together.
