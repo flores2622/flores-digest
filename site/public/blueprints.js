@@ -32,7 +32,7 @@
    `window` in the browser and on the global in the Worker -- keep it a plain
    script (no import/export), or the <script src> in index.html breaks. */
 (typeof window !== "undefined" ? window : globalThis).BLUEPRINTS = {
-  updated: "2026-10-06",
+  updated: "2026-10-12",
   guides: [
 
   /* ------------------------------------------------------------------ */
@@ -99,7 +99,7 @@
         { terms: [
           ["Dials", "Outbound calls the producer made on new business. One account is one attempt, even if we called two of their numbers. Numbers that aren't new business, like a customer calling about a payment, are left out."],
           ["Live contacts / Contact rate", "Dials that reached a person, over dials. **Outbound only.** A lead calling back turns their earlier dial into a contact. A cold call-in is a conversation but sits outside the rate. **Most dials reach voicemail; a low contact rate is real, not a fault.** The producer's own note wins over the recording (\"no answer\" means no answer)."],
-          ["Avg Talk Time", "Average length of the day's conversations, call-ins included."],
+          ["Avg Talk Time", "Average length of the day's conversations, call-ins included. Hover the number to see how many of those conversations were dialled and how many were call-ins, and how much of the talk time the call-ins brought -- a producer with no dials can still show talk time from a call they answered."],
           ["HH / Prem. Quoted", "Households quoted and the premium quoted. A household counts once however many quotes it got. A quote counts when AgencyZoom's quote date is today, the producer moved the lead into a quoted stage, or the producer's note says a quote was sent."],
           ["HH / Prem. Sold", "Households marked sold, and the premium on the policies sold. **A sale entered with no lead marked sold still counts** when a brand-new customer record for that producer sits behind the policy (the list shows it as a customer record). **BOB and Rewrite are not sales.** A renewal is not a sale. Selling a product the household doesn't have yet is a sale, even to a twenty-year customer. **Life insurance is not counted here.**"],
           ["Life Sold", "Life policies sold (term, whole, universal life), **counted on their own** -- a count of policies, no premium figure, since life premium is not tracked. They never count as a household sold, in Premium Sold, on the leaderboard or in the closing ratio. **The goal is 1 life policy a week per producer** (5 for the team): green once the week has one, yellow Monday to Thursday without one, red on Friday without one."],

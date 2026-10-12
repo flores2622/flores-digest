@@ -478,7 +478,17 @@ Everything caches under `data/`, so a re-run resumes rather than restarting.
 - **Talk time counts every conversation**, inbound included. **So does the
   team's** (Frank, 2026-09-30): `finalize.team_avg_talk` weights each
   producer by live + inbound, `_totals`' own divisor, for the email and the
-  board alike -- it was avg x outbound live only.
+  board alike -- it was avg x outbound live only. **The leaderboard's Avg
+  Talk Time says so on hover** (Frank, 2026-10-12, of Sarahi's 7s on a day
+  with no dials -- one 7-second lead-line pick-up from another producer's
+  lead: "on the hover can we show its from an inbound?"): `talkTip` --
+  "N conversations: M dialled, K call-ins (Xs of talk time from call-ins)",
+  after the rank line, on each producer's cell and the Team row (the range
+  view too). The count is the row's `inbound`; the seconds are
+  `inbound_seconds` (board_payload, from `_totals`, from 2026-10-12 -- an
+  older day shows the count only) plus the Worker's live `inbound` /
+  `inbound_seconds` (`live_notes.contactDeltas`: call-ins that are not call
+  backs). Figures unchanged.
 - **Notes win over the recording** (Frank, 2026-08-18). A producer writing "no
   answer" outranks a 12-second transcript that sounds live. Duration is the
   last resort and is labelled as such.

@@ -182,7 +182,9 @@ export function contactDeltas(basis, recs, evidence) {
   const counted = ten("counted"), dropped = ten("dropped"), excluded = ten("excluded"), live = ten("live");
   const convo = Object.fromEntries(Object.entries(basis.talk || {}).map(([n, v]) => [n, new Set((v.numbers || []).map(last10))]));
   const out = {}, legs = {}, before = {};
-  for (const n of names) { out[n] = { live: 0, conversations: 0, seconds: 0, provisional: [], dialled: [] }; legs[n] = {}; before[n] = {}; }
+  // inbound / inbound_seconds: the call-ins among the conversations (not call backs, which turn a dial live), for the
+  // hover on Avg Talk Time (Frank, 2026-10-12: "on the hover can we show its from an inbound?")
+  for (const n of names) { out[n] = { live: 0, conversations: 0, seconds: 0, inbound: 0, inbound_seconds: 0, provisional: [], dialled: [] }; legs[n] = {}; before[n] = {}; }
   for (const r of recs) {
     if (r.direction !== "Outbound") continue;
     const who = byExt[String((r.extension || {}).id || (r.from || {}).extensionId || "")];
@@ -241,6 +243,7 @@ export function contactDeltas(basis, recs, evidence) {
     const known = callback || convo[who].has(num) || live[who].has(num) || screenedIn[who].has(num);
     if (!known && (screenedOut[who].has(num) || !(((evidence || {})[num] || {}).leads || []).length)) continue;
     out[who].seconds += r.secs;
+    if (!callback) out[who].inbound_seconds += r.secs;
     if (convo[who].has(num) || live[who].has(num)) continue;       // talking on a row already counted
     convo[who].add(num);
     out[who].conversations++;
@@ -249,7 +252,7 @@ export function contactDeltas(basis, recs, evidence) {
     if (callback) {
       out[who].live++; live[who].add(num);
       out[who].provisional.push({ number: num, seconds: r.secs, basis: "call back" });
-    }
+    } else out[who].inbound++;
   }
   return out;
 }

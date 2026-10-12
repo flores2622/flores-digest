@@ -3201,10 +3201,14 @@ const LB_PLACE = { 5: "1st", 4: "2nd", 3: "3rd", 2: "4th", 1: "5th" };
 // A title attribute, so hovering the number tells its place (Frank,
 // 2026-09-28: "i dont want it displayed, do it if I hover over the number").
 function lbRankTag(d, label, name) {
+  const t = lbRankText(d, label, name);
+  return t ? ` title="${t}"` : "";
+}
+function lbRankText(d, label, name) {
   const cat = ((d.leaderboard || {}).categories || []).find(c => c.label === label);
   if (!cat || !cat.points || !(name in cat.points)) return "";
   const pts = cat.points[name] || 0;
-  if (!pts) return ` title="${label}: no activity, 0 points"`;
+  if (!pts) return `${label}: no activity, 0 points`;
   const tie = Object.entries(cat.points).some(([n, v]) => n !== name && v === pts);
   const place = (tie ? "tied " : "") + (LB_PLACE[pts] || "");
   // On a range the table shows totals but the ranking is per day worked, so
@@ -3213,7 +3217,33 @@ function lbRankTag(d, label, name) {
   const PER_DAY = { "Call Volume": x => x.toFixed(1) + " dials", "Households Quoted": x => x.toFixed(1) + " households",
     "Premium Quoted": x => money(x), "Premium Sold": x => money(x) };
   const ranked = v != null && PER_DAY[label] ? ` (ranked on ${PER_DAY[label](v)} per day worked)` : "";
-  return ` title="${label}: ${place}, ${pts} point${pts === 1 ? "" : "s"}${ranked}"`;
+  return `${label}: ${place}, ${pts} point${pts === 1 ? "" : "s"}${ranked}`;
+}
+// The hover on Avg Talk Time says what the average is over: how many of the
+// conversations were dialled and how many were call-ins, with the call-ins'
+// talk time where the document carries it (Frank, 2026-10-12, of Sarahi's 7s
+// on a day with no dials: "on the hover can we show its from an inbound?").
+// `p` is a producer row, or the team's sums; a day document built before
+// 2026-10-12 has the count but not the seconds.
+function teamTalkSums(ps) {       // the team's conversations for talkTip: every producer's, seconds only when every row has them
+  const t = { convos: 0, inbound: 0, inbound_seconds: 0 };
+  for (const p of ps) {
+    t.convos += p.convos ?? ((p.live || 0) + (p.inbound || 0)); t.inbound += p.inbound || 0;
+    if (t.inbound_seconds != null) t.inbound_seconds = p.inbound_seconds == null && (p.inbound || 0) ? null : t.inbound_seconds + (p.inbound_seconds || 0);
+  }
+  return t;
+}
+function talkTip(d, p) {
+  const rank = p.name ? lbRankText(d, "Avg Talk Time", p.name) : "";
+  const n = p.convos ?? ((p.live || 0) + (p.inbound || 0));
+  const inb = p.inbound || 0;
+  let what;
+  if (!n) what = "No conversations yet.";
+  else {
+    what = `${n} conversation${n === 1 ? "" : "s"}: ${n - inb} dialled, ${inb} call-in${inb === 1 ? "" : "s"}`;
+    if (inb && p.inbound_seconds != null) what += ` (${secs(p.inbound_seconds)} of talk time from call-ins)`;
+  }
+  return ` title="${cesc((rank ? rank + ". " : "Avg Talk Time: ") + "The average over every conversation, call-ins included. " + what)}"`;
 }
 function teamLeaderboardHtml(d, who) {
   const byName = Object.fromEntries((d.producers || []).map(p => [p.name, p]));
@@ -3271,7 +3301,7 @@ function teamLeaderboardHtml(d, who) {
        !focus && i < 3 ? `<span class="mdl" role="img" aria-label="${["1st", "2nd", "3rd"][i]}">${MEDAL[i]}</span>` : ""}${pbadge(DOT[p.name] || "#8a877f", p.name)}</span></td>
     ${hasRoleplay ? `<td class="num ${tc(p.name, "roleplay")}"${lbRankTag(d, "Role Play", p.name)}>${(p.coach || {}).roleplay ?? "—"}${p.rp_missed ? `<span style="display:block;color:var(--text-muted);font-weight:400;white-space:nowrap;font-size:10.5px" title="Days worked with no role play -- each counts as 0 in the ranking">${p.rp_missed} missed</span>` : ""}</td>` : ""}
     <td class="num ${tc(p.name, "dials")}${lv("dials")}${cc("dials", p.name)[0]}"${cc("dials", p.name)[1]}${lbRankTag(d, "Call Volume", p.name)}>${p.dials ?? 0}${dialsSub(p)}</td>
-    <td class="num ${tc(p.name, "talk")}${lv("contacts")}${cc("contacts", p.name)[0]}"${cc("contacts", p.name)[1]}${lbRankTag(d, "Avg Talk Time", p.name)}>${hhmm(p.talk)}</td>
+    <td class="num ${tc(p.name, "talk")}${lv("contacts")}${cc("contacts", p.name)[0]}"${cc("contacts", p.name)[1]}${talkTip(d, p)}>${hhmm(p.talk)}</td>
     <td class="num ${tc(p.name, "rate")}${lv("contacts")}${cc("contacts", p.name)[0]}"${cc("contacts", p.name)[1]}${lbRankTag(d, "Contact Rate", p.name)}>${p.rate ?? 0}% <span style="opacity:.72">(${p.live ?? 0})</span></td>
     ${msgCell(MP && MP[p.name])}
     ${soCell(SO.filter(c => c.who === p.name), p.name)}
@@ -3286,7 +3316,7 @@ function teamLeaderboardHtml(d, who) {
   const tot = focus ? "" : `<tr class="tot"><td><span class="who">${pbadge(TEAM_DOT, "Team")}</span></td>
     ${hasRoleplay ? `<td class="num ${tt("roleplay")}">${T.roleplay != null ? Math.round(T.roleplay) : "—"}</td>` : ""}
     <td class="num ${tt("dials")}${lv("dials")}${cc("dials")[0]}"${cc("dials")[1]}>${T.dials ?? 0}${dialsSub(T)}</td>
-    <td class="num ${tt("talk")}${lv("contacts")}${cc("contacts")[0]}"${cc("contacts")[1]}>${hhmm(T.talk)}</td>
+    <td class="num ${tt("talk")}${lv("contacts")}${cc("contacts")[0]}"${cc("contacts")[1]}${talkTip(d, teamTalkSums(ranked))}>${hhmm(T.talk)}</td>
     <td class="num ${tt("rate")}${lv("contacts")}${cc("contacts")[0]}"${cc("contacts")[1]}>${teamRate}% <span style="opacity:.72">(${T.live ?? 0})</span></td>
     ${msgCell(msgTeam)}
     ${soCell(SO, "")}
@@ -4207,6 +4237,11 @@ function applyLive(base, L) {
       p.talk = n ? pyRound(secs / n) : 0;
       p.rate = p.dials ? pyRound(p.live / p.dials * 100, 1) : 0;
       p.provisional = x.provisional;
+      // for the Avg Talk Time hover (talkTip): the call-ins among the conversations
+      p.convos = n;
+      p.inbound = (p.inbound || 0) + (x.inbound || 0);
+      if (p.inbound_seconds != null && x.inbound_seconds != null) p.inbound_seconds += x.inbound_seconds;
+      else if (p.inbound) p.inbound_seconds = null;
       const row = tiers[p.name] || (tiers[p.name] = {});
       row.rate = tierColor("contact_rate_pct", p.rate);
       row.talk = tierColor("avg_talk_min", p.talk / 60);
@@ -4681,7 +4716,7 @@ function mergeDayDocs(docs) {
     const dayHasRp = (doc.producers || []).some(p => (p.coach || {}).roleplay);
     for (const p of doc.producers || []) {
       const row = per[p.name] || (per[p.name] = {
-        name: p.name, days: 0, talk_secs: 0, convos: 0, inbound: 0, util_total_secs: 0, util_prod_secs: 0,
+        name: p.name, days: 0, talk_secs: 0, convos: 0, inbound: 0, inbound_seconds: 0, util_total_secs: 0, util_prod_secs: 0,
         coach_calls: 0, coach_score_wsum: 0, coach_sentiment_wsum: 0, coach_roleplay_sum: 0, coach_roleplay_n: 0, rp_scored_sum: 0, rp_scored_n: 0, worked: 0,
         tasks: { total: 0, completed: 0 }, ...Object.fromEntries(NUM.map(k => [k, 0])),
       });
@@ -4691,6 +4726,8 @@ function mergeDayDocs(docs) {
       // finalize._totals's divisor, live + inbound (2026-09-30).
       const convos = (p.live || 0) + (p.inbound || 0);
       row.talk_secs += (p.talk || 0) * convos; row.convos += convos; row.inbound += p.inbound || 0;
+      // the call-ins' seconds for the Avg Talk Time hover: unknown for the range once a day lacks them
+      if (row.inbound_seconds != null) row.inbound_seconds = p.inbound_seconds == null && (p.inbound || 0) ? null : row.inbound_seconds + (p.inbound_seconds || 0);
       // util_prod can be set on a day whose util_total is null (real data:
       // Insightful didn't cleanly report total tracked time that day, e.g.
       // 2026-09-01/02 for Mike Olvera) -- summing prod seconds from every
@@ -4764,7 +4801,7 @@ function mergeDayDocs(docs) {
     row.rate = row.dials ? pyRound(row.live / row.dials * 100, 1) : 0;
     row.talk = row.convos ? pyRound(row.talk_secs / row.convos) : 0;
     teamTalk.secs += row.talk_secs; teamTalk.n += row.convos;
-    delete row.talk_secs; delete row.convos;
+    delete row.talk_secs;                       // convos stays for the Avg Talk Time hover
     if (row.util_total_secs) {
       row.util = Math.round(1000 * row.util_prod_secs / row.util_total_secs) / 10;
       row.util_total = secsToHHMM(row.util_total_secs);

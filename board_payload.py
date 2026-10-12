@@ -246,6 +246,7 @@ def build(day, live=False):
             "raw_dials": v.get("raw_dials"),
             "live": v["live"], "rate": v["contact_rate"], "talk": v["avg_talk"],
             "inbound": v.get("inbound", 0),
+            "inbound_seconds": v.get("inbound_seconds", 0),   # the hover on Avg Talk Time (Frank, 2026-10-12)
             "hh": v["households_quoted"], "pq": v["premium_quoted"],
             "pol": v["policies"], "ps": v["premium_sold"],
             "life": v.get("life_policies", 0), "life_ps": v.get("life_premium", 0),
