@@ -196,7 +196,8 @@ export default {
         "scrub",
         "scrub_edit",
         "hygiene",
-        "roleplay_history"
+        "roleplay_history",
+        "workflows_suggest"
       ],
       "handle": "dm.francisco"
     },
@@ -216,7 +217,8 @@ export default {
         "scrub",
         "scrub_edit",
         "hygiene",
-        "roleplay_history"
+        "roleplay_history",
+        "workflows_suggest"
       ],
       "handle": "vero.vacation.approved"
     },
@@ -248,7 +250,8 @@ export default {
         "hygiene",
         "roleplay_history",
         "commission_all",
-        "sales_log_all"
+        "sales_log_all",
+        "workflows_suggest"
       ],
       "color": "#baffff",
       "email_dot": "cL",

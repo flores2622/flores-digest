@@ -296,7 +296,12 @@ or task title, a note. Kept in R2 `crm/rules.json` (`POST
 shape; `GET /api/crm/automations` returns them as `rules`), drawn on the
 timeline as "Pantheon · draft" rows beside AgencyZoom's, under the same
 filters. Nothing runs them yet; when they go live they move to D1 with
-their runs, as below. A rule reads as a sentence: **when** a
+their runs, as below. **The ops team suggests** (Frank, 2026-10-12):
+staff.json's `workflows_suggest` opens the timeline to Francisco, Veronica
+and Amanda in a suggest-only mode -- a Suggest button on each rule and a
+Suggestions box for the page (`POST /api/crm/automations/suggest`, R2
+`crm/suggestions.json`), a 💡 highlight on a rule with an open suggestion
+until Frank ticks it done. A rule reads as a sentence: **when** a
 lead arrives on a source / enters a stage / sits N days with no activity /
 does not reply N hours after a text / is marked sold, or an SR opens in a
 pipeline / sits N days open / a renewal is N days out / a call is missed,

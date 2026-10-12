@@ -3028,7 +3028,23 @@ on a published day. The rules:
   `stage_order` carries its `my_stage` / `my_ord` (`crm_lists.place_stage`),
   so the timeline groups "1 Pipeline | New", "AZ Sun | New" and a draft at
   "New" under one New (the AgencyZoom names in small italics beside it); a
-  stage with no match keeps its AgencyZoom name.
+  stage with no match keeps its AgencyZoom name. **New Business has no cycle
+  stages** (Frank, 2026-10-12: "new business did not have 3 cycles, only QNC
+  and leads not quoted"): `crm_lists.RETIRED_STAGES` keeps the three at their
+  ids with active = 0 (a stage's id is its place in the list; the live table
+  and the drafts carry them), `place_stage` never places on them, and
+  `active_stages()` is what the form and timeline offer; the live lists rows
+  102-104 were set inactive the same day. **The ops team suggests** (Frank,
+  2026-10-12: "add a suggestions box or highlighter for the other ops members
+  to suggest"): staff.json's `workflows_suggest` (Francisco, Veronica,
+  Amanda) opens GET automations and `POST /api/crm/automations/suggest`
+  ({op: add|done|undone|del, key, text, id}; R2 `crm/suggestions.json`) and
+  nothing else of the CRM; the page probes `/api/crm/automations` itself
+  (not CRM_READY), hides the marks, Add a rule and Edit / Delete when
+  `can.edit` is false, shows a Suggest button on every open rule and a
+  Suggestions box for the page ("general"); a rule with an open suggestion is
+  highlighted (💡 N, amber edge) until Frank ticks it done; the author or
+  Frank removes one.
 - `node --test site/crm.test.mjs` is its test; run it after touching
   `site/crm.js` or the schema. A new field is added to the schema (a new
   migration file), to `OBJECTS` in `site/crm.js` and to the test together.
