@@ -31,10 +31,11 @@ import digest_config as cfg
 ROOT = pathlib.Path(__file__).resolve().parent
 AZ = staff.TZ
 
-# Seven scored categories. Avg Call Score and Avg Sentiment are NOT here: TRAQ
-# scores a voicemail as a call, so both track answer rate rather than call
-# quality and ranking on them pays producers for not connecting (Frank,
-# 2026-09-01). They still display in Coaching & Call Quality.
+# Seven scored categories. Role Play is the share of Apollo's checklist met in
+# the producer's own Role Play sessions that day (roleplay_score.py; Coach
+# AI's emailed figure until 2026-10-06). Coach AI's Avg Call Score and Avg
+# Sentiment were never scored (TRAQ scored a voicemail as a call, so both
+# tracked the answer rate -- Frank, 2026-09-01) and left with it.
 LEADERBOARD = [
     ("Role Play",         lambda m, c: c.get("roleplay", 0)),
     ("Call Volume",       lambda m, c: m["call_volume"]),
@@ -162,10 +163,10 @@ def _producer_tiers(p, pace=None):
     pq = p.get("pq") or 0
     out["closing_pq"] = cfg.tier("closing_ratio_pct",
         (100 * (p.get("ps") or 0) / pq) if pq else None)
-    # daily.py's coach blank-fill sets 0, not None, when no Coach AI figure
-    # was recorded for this producer today -- fold that back to None so
-    # tier()'s existing None->red rule gives the red 0 Frank asked for
-    # (2026-09-10), rather than the generic formula's yellow-at-0.
+    # roleplay_score writes 0, not None, for a producer with no Role Play
+    # session today (as daily.py's Coach AI blank-fill did) -- fold that back
+    # to None so tier()'s existing None->red rule gives the red 0 Frank asked
+    # for (2026-09-10), rather than the generic formula's yellow-at-0.
     rp = (p.get("coach") or {}).get("roleplay") or None
     out["roleplay"] = cfg.tier("roleplay_score", rp)
     tp = (p.get("tasks") or {}).get("pct")

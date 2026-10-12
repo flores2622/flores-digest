@@ -31,7 +31,7 @@
    assistant can never disagree. That is why the assignment below lands on
    `window` in the browser and on the global in the Worker -- keep it a plain
    script (no import/export), or the <script src> in index.html breaks. */
-(typeof window !== "undefined" ? window : globalThis).BLUEPRINTS = {
+(typeof window !== "undefined" ? window : globalThis).BLUEPRINTS_RAW = {
   updated: "2026-10-12",
   guides: [
 
@@ -59,8 +59,8 @@
         { terms: [
           ["8:55 AM to 4:55 PM", "Every hour on the :55, a checkpoint pulls the day so far: calls, recordings, transcripts, coaching cards, sales, quotes, tasks. Weekdays only."],
           ["Between checkpoints", "The board keeps dials, sales, quotes, contacts, talk time, texts and emails, speed to dial, task completion and utilization live. A live number has a **pulsing green glow**. Anything without the glow is from the last checkpoint."],
-          ["5:30 PM", "Coach AI (TRAQ) sends its daily emails with call scores and role play scores."],
-          ["5:55 PM", "The final run. It reads the Coach AI emails, builds the day, sends the emails and publishes the boards. Expect the emails a little after 6:00."],
+          ["5:30 PM", "The office closes. Every call of the day exists by now."],
+          ["5:55 PM", "The final run. It builds the day, reads the day's Role Play sessions for the leaderboard, sends the emails and publishes the boards. Expect the emails a little after 6:00."],
         ] },
         "Two emails go out. **Ops** (Frank, Francisco, Veronica, Amanda) get the Sales Digest plus the Call Detail and Task Completion Audit. **Staff** (the producers and Debbie) get the Sales Digest only.",
         "Live contact rate and talk time are **provisional** until the next checkpoint. The board can't hear a recording between checkpoints, so it judges a new dial from the notes and the call length. The checkpoint listens and settles every call. It is normal for these to shift by a call or two on the hour.",
@@ -69,15 +69,19 @@
 
     { h: "Where everything is",
       body: [
-        "The left bar holds the Centers: the Sales Center, **Apollo's Academy** (the coaching cards plus Role Play, Session History, Training and this Road Map), the Service Center and the Commercial Center. **Each Center opens like a dropdown to its pages**; click its arrow to open or close it. Each Center also has tabs across the top. Every page shares two filters at the top: **the day or range** (a single day, this week, month to date, year to date, a folio, or custom dates) and **the producer** (everyone, or one person). **Every number, card and bar opens the accounts behind it**; click it and the list appears underneath.",
+        "The left bar holds the Centers: the Sales Center, **Apollo's Academy** (the coaching cards plus Role Play, Session History, Training and this Road Map), the Service Center, the Claims Center, the **Operations Center** (the ops team's own: the CRM Hygiene log and the Lead Scrub; nobody else sees it) and the Commercial Center. **Each Center opens like a dropdown to its pages**; click its arrow to open or close it. Each Center also has tabs across the top. Every page shares two filters at the top: **the day or range** (a single day, this week, month to date, year to date, a folio, or custom dates) and **the producer** (everyone, or one person). **Every number, card and bar opens the accounts behind it**; click it and the list appears underneath.",
         "**Ask Apollo** when you cannot find something or want a number read out: the button at the bottom right of every page. It knows which page, day and producer you are looking at, so \"how did we do?\" means that day and that person.",
         { table: { head: ["Where", "What it's for"], rows: [
-          ["Sales Center > Digest", "The day at a glance: dials, contacts, quotes, sales, closing ratio, the leaderboard, speed to dial and reply, task completion, household completion, utilization, Coach AI scores."],
+          ["Sales Center > Digest", "The day at a glance: dials, contacts, quotes, sales, closing ratio, the leaderboard, speed to dial and reply, task completion, household completion, utilization, the Role Play score."],
           ["Sales Center > Sales", "The Sales sheet. Log a sale, look back at any folio, and break sales down by lead source, product or producer. Self-reported, not the official Premium Sold. Live sales are added to it automatically, and the nightly run adds any sale entered late in the last two weeks. Flood is never added, since nobody is paid for it. An added sale keeps the premium it was sold at: if AgencyZoom's premium changes afterwards (a correction, or an endorsement nobody is paid on), an amber \"AZ $...\" tag shows AgencyZoom's figure beside it for someone to check. Click a producer's card, their name or their slice of the pie in Totals to show only their sales in the folio log; click it again, or Team, to see everyone."],
-          ["Sales Center > Sales > Commission", "Where each producer stands on the commission schedule this folio, worked out from the Sales sheet as sales are logged: their tier and rate, how far to the next tier and what it pays, and the extras (life $100 a policy whatever the tier -- life is counted by policies, and its premium never counts toward the tier; a bundle to a new household $50 and a cross-sell to an existing household $25 a line once the tier minimum is met; umbrella $25; Farmers business 3.5% of the premium, which doesn't count toward the tier; Kraft Lake $300). Lorena and Mike are on the individual schedule (a rate on the whole premium); Crystal is on her own flat schedule (a set amount per tier: $600 at $15,000 up to $1,750 at $40,000, with the same extras as everyone); Sarahi and Coral share the team schedule, split 50/50. A Winback counts as a new household. Each producer sees only their own (Sarahi and Coral their team's); Frank and Amanda see everyone. Estimates: a wrong entry on the Sales sheet changes it, and the rates are subject to change."],
+          ["Sales Center > Sales > Commission", "Where each producer stands on the commission schedule this folio, worked out from the Sales sheet as sales are logged: their tier and rate, how far to the next tier and what it pays, and the extras (life $100 a policy whatever the tier -- life is counted by policies, and its premium never counts toward the tier; a bundle to a new household $50 and a cross-sell to an existing household $25 a line once the tier minimum is met; umbrella $25; {{carrier}} business 3.5% of the premium, which doesn't count toward the tier; Kraft Lake $300). Lorena and Mike are on the individual schedule (a rate on the whole premium); Crystal is on her own flat schedule (a set amount per tier: $600 at $15,000 up to $1,750 at $40,000, with the same extras as everyone); Sarahi and Coral share the team schedule, split 50/50. A Winback counts as a new household. Each producer sees only their own (Sarahi and Coral their team's); Frank and Amanda see everyone. Estimates: a wrong entry on the Sales sheet changes it, and the rates are subject to change."],
           ["Sales Center > Texts & Emails", "Every text and email with a lead: what each producer typed (automation counted apart), replies still waiting, and how fast replies were answered."],
           ["Sales Center > Rotation", "Who gets the next new-business walk-in or call-in. Three rotations, each with its own turn: **Personal lines** (Lorena, Sarahi, Amanda, Coral, Crystal; never Mike), **Life** (Mike, Lorena, Coral) and **Mexico policies** (Lorena, Amanda, Crystal, Mike, Coral, Sarahi). Debbie types the client and gives it to whoever is up. If they're **busy**, the client goes to the next person and whoever was busy stays up for the next one; the person who covered gets passed over once, so covering counts as their turn. If they're **out**, the client goes to the next person and the one who's out loses that turn (with no client name typed, their turn is just skipped, for when you know someone is out before anyone walks in). When the client asks for someone, she gives it out of turn and the turn stays where it was. Below the rotations is the folio's log: what each person got. Only Debbie, Crystal and the ops team can see it. Managers and Debbie change an order or who is up. It replaced the Rotation Sheet in Google Drive on October 2."],
-          ["Sales Center > Lead Scrub", "Tracks a list of clients being cleaned up in both **Apex** and **AgencyZoom**, in the same columns as the scrub sheet: Client, Month, Apex Status, AZ Status (with **Duplicates Cleaned** and **Tagged** boxes beside it), Lead Status, Action Taken, Date, Rep, Notes and Next Step. A manager imports the report as it comes (Excel or CSV; someone quoted on two lines becomes one client). The status boxes suggest the usual answers (Active, Updated / Smart Cycled, Account reviewed, None) and take anything typed. Every change saves at once and fills in the Date and Rep with today and whoever made it. A client is done when Apex Status, AZ Status and Lead Status are filled in and both boxes are ticked. Filter by rep, by what is left, by anything on the report (line of business, risk segment) or search. Download CSV gives the list back in the sheet's column order. Only the ops team can see it."],
+          ["Sales Center > Tasks", "The first page of Pantheon's own CRM, the replacement for AgencyZoom being built into the board (October 6). Every task in the CRM: **Due today**, **Overdue**, **Next 7 days**, **Done today** and **All open**, for everyone or one person. Each row says who it is for, what it is about (the lead or household it hangs on; a lead's name opens their coaching card), and has **Done** (with a line on what happened, which goes on the lead as a task note) and **Reschedule**. **New task** makes one for anyone, due on a day and time, hung on a lead or household found by name or phone number. Tasks made here live only in Pantheon for now: the nightly's missed-call tasks and Task Completion still read AgencyZoom until that part moves over. Only Frank can see it until further notice."],
+          ["Sales Center > Lists", "The CRM's own lists, decided October 6: **lead sources**, **sales pipelines** with their stages, and **service pipelines**. AgencyZoom's lists grew to 97 sources, 16 pipelines and 43 SR categories; here each AgencyZoom entry sits under one of ours, and a lead or SR shows our name for it. The vendor, partner or staff member is a field on the source, not a source of its own: Call-in / Walk-in carries how they found us (called, walked in, Google, Farmers.com), Internet lead carries the vendor, Lender referral the partner. The four cross-sell lines stay apart. The sales pipelines are New Business (AZ Sun included), Quotes Not Closed, Not Quoted, Life and Commercial; IL Interested and Transfer Pending stay as stages for now. The SR category is the service pipeline it goes into: Billing, Contingencies, Personal Renewals, Personal Endorsements, Commercial Renewals, Commercial Endorsements and Claims; a category that says nothing (General) follows the SR's workflow. Anything the nightly's rules could not place waits in **Unsorted** at the top until someone picks where it goes. Rename, add, retire or reorder an entry; move an AgencyZoom name to another; a change here is never undone by the nightly. Only Frank can see it until further notice."],
+          ["Sales Center > Workflows", "What AgencyZoom's automations actually run today, read back from the leads (October 7). AgencyZoom does not hand out its rules, so each is rebuilt from the evidence: every automated text carries the rule that sent it, drip emails carry their template subject, tasks that repeat the same wording, and every Smart-Cycle move. Each rule shows its wording with names blanked, when it fires (the stage the lead sat in and how many days after getting there, how many days after the lead arrived, the usual hour), which sources it hits, how many leads it reached in the last 90 days, how many wrote back and how many opted out; emails show opens and bounces; the Smart-Cycle tab shows how long leads sit before they are parked, how long they stay parked, and every stage move with whether a person or the automation made it. Mark each rule **Keep**, **Change** or **Drop** with a note: those marks are the brief for the rules Pantheon will run itself. Nothing here changes AgencyZoom. Only Frank can see it until further notice."],
+          ["Operations Center > CRM Hygiene", "Amanda's CRM Hygiene & Audit Log, for the service team's one-on-ones: accounts that were handled incorrectly, assigned improperly, or left without the notes, tasks or follow-ups the playbook asks for. Log an account with the client, policy number, the rep it concerns, what happened, the date, and which line of the **Redirection Standard** it missed (Check before passing, Ownership, Calendar accuracy). Tick **Review** once it has been gone over in a one-on-one; hover a line to see who logged it and when. The top counts the entries, this month's, how many still wait for a one-on-one and the standard missed most, with a count per rep that filters the log. Download CSV gives the log back in the doc's column order. The doc's own rows from September and October are its first entries. Only the ops team can see it."],
+          ["Operations Center > Lead Scrub", "Tracks a list of clients being cleaned up in both **Apex** and **AgencyZoom**, in the same columns as the scrub sheet: Client, Month, Apex Status, AZ Status (with **Duplicates Cleaned** and **Tagged** boxes beside it), Lead Status, Action Taken, Date, Rep, Notes and Next Step. A manager imports the report as it comes (Excel or CSV; someone quoted on two lines becomes one client). The status boxes suggest the usual answers (Active, Updated / Smart Cycled, Account reviewed, None) and take anything typed. Every change saves at once and fills in the Date and Rep with today and whoever made it. A client is done when Apex Status, AZ Status and Lead Status are filled in and both boxes are ticked. Filter by rep, by what is left, by anything on the report (line of business, risk segment) or search. Download CSV gives the list back in the sheet's column order. Only the ops team can see it."],
 
           ["Apollo's Academy > Cards", "One coaching card per recorded sales conversation. Filter by producer, day or objection. The outcome badge sits at the top right of the card; when the producer and the lead spoke more than once that day, there is one badge per call, each with its talk time, and a dial that went unanswered before the lead called back reads No answer. From October 5 on, a card with two or more conversations labels them Call 1, Call 2 and so on, each with its time, talk time and its own outcome, judged as that call ended: a quote presented in the morning and sold in the afternoon shows as Quoted, then Sold."],
           ["Apollo's Academy > Objections", "Every objection Apollo found, grouped, with how each was handled."],
@@ -104,7 +108,7 @@
           ["HH / Prem. Sold", "Households marked sold, and the premium on the policies sold. **A sale entered with no lead marked sold still counts** when a brand-new customer record for that producer sits behind the policy (the list shows it as a customer record). **BOB and Rewrite are not sales.** A renewal is not a sale. Selling a product the household doesn't have yet is a sale, even to a twenty-year customer. **Life insurance is not counted here.**"],
           ["Life Sold", "Life policies sold (term, whole, universal life), **counted on their own** -- a count of policies, no premium figure, since life premium is not tracked. They never count as a household sold, in Premium Sold, on the leaderboard or in the closing ratio. **The goal is 1 life policy a week per producer** (5 for the team): green once the week has one, yellow Monday to Thursday without one, red on Friday without one."],
           ["Closing Ratio", "Households sold over households quoted, and premium sold over premium quoted."],
-          ["Speed to Dial", "For internet leads that arrived today (SureQuote, MAV), how long until the first dial. The Team card is the middle of everyone's times."],
+          ["Speed to Dial", "For internet leads that arrived today (the quote sites), how long until the first dial. The Team card is the middle of everyone's times."],
           ["Speed to Reply", "When a lead texts or emails us, how long until the producer answered by text, email or call. Green at 15 minutes or less, red over an hour. Replies still waiting are listed."],
           ["Task Completion", "AgencyZoom tasks due today that were done. Duplicate leads and smart-cycled leads are excused."],
           ["Household Completion", "Policies sold per household sold. Green when they sold to an existing customer or a new household bought more than one policy; yellow when every sale was one policy to a new household; a red dash for no sales."],
@@ -122,10 +126,10 @@
           ["Closing ratio", "25%", "15%"],
           ["Utilization", "85%", "80%"],
           ["Task completion", "100%", "90%"],
-          ["Role play score", "80", "anything above 0"],
+          ["Role play score", "80 (four of five checklist items met)", "anything above 0"],
         ] } },
         "**The leaderboard** ranks the five producers in seven categories (Role Play, Call Volume, Avg Talk Time, Contact Rate, Households Quoted, Premium Quoted, Premium Sold): 5 points for first down to 1 for fifth. Ties are broken by premium sold, then households quoted, then dials. Over a date range it ranks each producer's daily averages over the days they worked, so a day off costs nothing; a worked day with no role play counts as zero for the ranking but not in the Role Play average shown.",
-        "**Coach AI scores** are TRAQ's, copied from its email. A perfect call scores 750 to 800, not 100. A voicemail scores about 3, so a producer who reaches more voicemails posts a lower average however well they talk. Don't rank producers on these averages.",
+        "**The Role Play score** is the board's own. Each Role Play session on Apollo's Academy ends with Apollo's checklist, each item met or missed; a session scores the share it met, 0 to 100, and a producer's day is the average of the sessions they did. No session that day is 0, shown red, and scores as no activity on the leaderboard. The leaderboard cell says how many sessions are behind the number, and it is live through the day like the other figures. Until October 6 the figure came from Coach AI, a separate tool the agency has since cancelled; days before October 7 keep the figures as they went out, and nothing on them is re-read.",
       ] },
 
     { h: "How Apollo coaches a call",
@@ -202,10 +206,10 @@
         { terms: [
           ["Cross-sell", "An existing customer missing a product. **Home no Auto means we have the home and we're selling the auto; Auto no Home is the opposite.** Also Life Cross Sell, Umbrella and plain Cross Sell."],
           ["Existing client, new purchase", "A customer who bought something new, usually a property, and came to us."],
-          ["Generated / purchased", "Leads we paid for or generated: SureQuote, Smart Financial, MAV AI, Alpha Media, Arizona Insurance Reports, Facebook. Speed wins; expect shopping."],
+          ["Generated / purchased", "Leads we paid for or generated: the internet quote sites and Facebook. Speed wins; expect shopping."],
           ["Winback", "A **former** customer who now insures elsewhere. Find out why they left before quoting."],
           ["Referral", "A customer's referral, or Francisco's name as the source."],
-          ["Call-in / walk-in", "They came to us: called, walked in, or found us on Google or farmers.com."],
+          ["Call-in / walk-in", "They came to us: called, walked in, or found us on Google or {{carrier_site}}."],
           ["Personal network", "A staff member's own name as the source. Each person works their own network, never someone else's."],
           ["Social media", "Instagram or LinkedIn."],
           ["Center of influence", "A lender or realtor (\"Name at Company\"). We deal with them, not the client."],
@@ -251,7 +255,7 @@
         "**What not to do**:",
         { list: [
           "Don't push a producer on contact rate alone. Most dials reach voicemail.",
-          "Don't compare Coach AI averages between producers.",
+          "Don't read a Role Play score across a range as a count of practice: the average is over the days they practised, and the sessions line says how many there were.",
           "Don't treat a provisional live contact rate as final before the hour's checkpoint.",
           "Don't count a renewal, a payment or paperwork as a sale.",
         ] },
@@ -331,6 +335,16 @@
         "**Service first, opportunity second.** Don't force a sales conversation into every call, but don't miss the ones clients hand you. \"I'm adding a new vehicle\": handle the change, then see if the household could be reviewed. \"We're buying a house\": handle the need, and make sure the home gets to a producer.",
       ] },
 
+    { h: "The Redirection Standard",
+      body: [
+        "Three checks before an account is passed, touched or rescheduled. An account that misses one goes on the ops team's CRM Hygiene log and comes up in the one-on-ones.",
+        { list: [
+          "**Check before passing:** always review policy status, open SRs, and recent notes before assigning tasks or escalating to licensed service.",
+          "**Ownership:** if a client call or task is touched, ensure complete notes are logged and clear next steps/tasks are created.",
+          "**Calendar accuracy:** double-check team calendars for conflicts before confirming or moving appointment times.",
+        ] },
+      ] },
+
     { h: "A client who wants to cancel",
       body: [
         "**Never ask if they'll give us the opportunity to review it.** They say no every time. Assume the review and do it.",
@@ -395,7 +409,7 @@
     { h: "The pipelines",
       body: [
         { terms: [
-          ["Personal Renewals", "Farmers and Foremost renewals. Judged on completion time and outcome."],
+          ["Personal Renewals", "The main carrier's renewals ({{carrier}} and the lines written with it). Judged on completion time and outcome."],
           ["Other 30 day Renewals", "Bristol West renewals. The same."],
           ["Service Pipeline", "Changes, endorsements and basic service. Outcome read from your note: change made, policy cancelled, other service, not done, or unable to contact."],
           ["Late Payments", "The only pipeline worked stage by stage. Outcome: paid, cancelled for non-pay, client cancelled, unable to contact, or other. \"Saved\" is paid over paid or cancelled."],
@@ -448,7 +462,7 @@
     { h: "The Renewals tab",
       body: [
         { terms: [
-          ["Retention", "Three rates. The **settled 4 weeks** (renewals 14 to 41 days ago; the newest two weeks are still settling), the **date filter's period**, and the **last 12 months**, the one to compare with Farmers'. Here the policy record counts too: a policy the record shows cancelled is lost even if no SR says so."],
+          ["Retention", "Three rates. The **settled 4 weeks** (renewals 14 to 41 days ago; the newest two weeks are still settling), the **date filter's period**, and the **last 12 months**, the one to compare with {{carrier}}'s. Here the policy record counts too: a policy the record shows cancelled is lost even if no SR says so."],
           ["Renewal SR Work", "One card per person (renewal SRs, retained, open, overdue) and a grid below, the team's until you pick someone: renewal SRs completed, retained, reviewed with the customer, renewal tasks, open and overdue, coming up and high risk, lost, renewal dials, call backs, speed to reply, and texts and emails."],
           ["Renewal Outcome Breakdown", "A bar per person, split by resolution."],
           ["Coming up", "Renewals in the next 45 days, and how each renewal SR is being worked. **High risk** means not yet discussed with the customer and a warning sign: an open Late Payment or a cancellation SR on the household."],
@@ -515,7 +529,7 @@
       body: [
         { steps: [
           "Start on Sales Center > Digest. Pick your name at the top to see only your numbers.",
-          "Call new internet leads first. Speed to Dial measures how fast you call a SureQuote or MAV lead after it arrives, and the first real conversation usually wins.",
+          "Call new internet leads first. Speed to Dial measures how fast you call an internet lead after it arrives, and the first real conversation usually wins.",
           "Work your AgencyZoom tasks. Task Completion shows how many of today's are done.",
           "Answer texts and emails from leads quickly. Speed to Reply turns green at 15 minutes.",
           "Write a note in AgencyZoom after every call: who you talked to, what they need, what happens next.",
@@ -536,7 +550,7 @@
           ["Closing ratio", "25% of households quoted"],
           ["Life sold", "1 life policy a week"],
           ["Task completion", "100%"],
-          ["Role play score", "80"],
+          ["Role play score", "80 (meet four of the five checklist items in your Role Play sessions)"],
         ] } },
         "The leaderboard ranks everyone in seven categories. Don't worry about the leaderboard in your first month. Worry about your coaching cards.",
       ] },
@@ -545,8 +559,8 @@
       body: [
         "Apollo scores your first conversations on nine steps. Here they are in plain terms:",
         { steps: [
-          "**Open well.** Say your name and the agency, and make sure you're talking to the right person. \"Hi Maria, this is Lorena with Farmers.\"",
-          "**Ask questions (discovery).** Who drives, what vehicles, the home, who's in the household, and **what they do for a living**. Farmers has occupation discounts for about twenty careers (teachers, nurses, engineers, military, police, firefighters and more). Ask it open, never as a yes / no list, and if they say they're retired, ask what they retired from: a retiree of those careers still gets the discount. The Training tab has a deck with the whole list.",
+          "**Open well.** Say your name and the agency, and make sure you're talking to the right person. \"Hi Maria, this is Lorena with {{carrier}}.\"",
+          "**Ask questions (discovery).** Who drives, what vehicles, the home, who's in the household, and **what they do for a living**. {{carrier}} has occupation discounts for a long list of careers (teachers, nurses, engineers, military, police, firefighters and more). Ask it open, never as a yes / no list, and if they say they're retired, ask what they retired from: a retiree of those careers still gets the discount. The Training tab has a deck with the whole list.",
           "**Get what they pay now, and check it.** You can't beat a price you don't know. Look at the **Prior Insurance** screen in ALTA: is their policy six months or a year? \"About $1,000 a year\" is often the six-month price.",
           "**Get their renewal date.** If now isn't the time, you know when is.",
           "**Know the product.** Answer their questions clearly.",
@@ -584,8 +598,8 @@
           ["Home no Auto", "We insure their home, not their car. Offer the auto."],
           ["Auto no Home", "We insure their car, not their home. Offer the home."],
           ["Winback", "A former customer who went to another company. Ask why they left."],
-          ["SureQuote, Smart Financial, MAV", "They asked for a quote online, probably from several agents. Call fast."],
-          ["Call-in, Walk-in, Google, farmers.com", "They came to us. They're ready now."],
+          ["The internet quote sites", "They asked for a quote online, probably from several agents. Call fast."],
+          ["Call-in, Walk-in, Google, {{carrier_site}}", "They came to us. They're ready now."],
           ["Referral", "Someone sent them. Say who, right away."],
         ] },
       ] },
@@ -644,7 +658,7 @@
       body: [
         "When a quote was already given (on a call or by email or text), your next call is a follow-up, and Apollo scores it on six steps:",
         { steps: [
-          "Reconnect and assume the sale up front: \"Hi Ana, it's Mike with Farmers. I'm calling to get your auto started on the $812 quote I sent Tuesday. Do you have your card handy?\"",
+          "Reconnect and assume the sale up front: \"Hi Ana, it's Mike with {{carrier}}. I'm calling to get your auto started on the $812 quote I sent Tuesday. Do you have your card handy?\"",
           "Check where they are: did they review it, has anything changed.",
           "Handle what stalled it last time.",
           "Re-present only what's needed, against what they pay now.",
@@ -882,3 +896,20 @@
     ] },
   ],
 };
+
+/* The guides name the agency's carrier as {{carrier}} and its website as
+   {{carrier_site}} (staff.json's agency, through the page's STAFF or the
+   Worker's AGENCY): bpFilled(values) returns the guides with them filled in,
+   and BLUEPRINTS is the unfilled copy until the page or the Worker fills it. */
+(function (G) {
+  G.bpFilled = function (vals) {
+    const v = vals || {};
+    return JSON.parse(JSON.stringify(G.BLUEPRINTS_RAW).replace(/\{\{(\w+)\}\}/g, (m, k) => (v[k] != null ? String(v[k]) : m)));
+  };
+  G.bpValues = function (agency) {
+    const a = agency || {};
+    const carrier = a.carrier || "the carrier";
+    return { carrier, carrier_site: a.carrier ? a.carrier.toLowerCase() + ".com" : "the carrier's site", place: a.place || "the agency's area" };
+  };
+  G.BLUEPRINTS = G.bpFilled({});
+})(typeof window !== "undefined" ? window : globalThis);

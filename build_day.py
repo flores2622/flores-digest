@@ -71,7 +71,6 @@ def build(day, template=TEMPLATE):
         ("Team Leaderboard", panels.leaderboard(P, M["coach"])),
         ("Call Outcome Breakdown", panels.outcome_rows(P)),
         ("Speed to Dial", panels.speed_table(s2d, team_s2d)),
-        ("Coaching &amp; Call Quality", panels.coach_cards(M["coach"])),
         ("Call Detail &nbsp;", panels.call_detail(P, day)),
         # Was static template HTML until 2026-08-18 -- see task_audit.
         # "&middot;" pins this to the panel's own h2 -- the bare phrase also
@@ -93,6 +92,11 @@ def build(day, template=TEMPLATE):
     # then removed, so that deleting this one line can never ship the template's
     # stale placeholder rows.
     h = rr.drop_panel(h, "Recontact Struggle")
+    # Coaching & Call Quality was Coach AI's (TRAQ) call score and sentiment
+    # bars. Frank cancelled Coach AI on 2026-10-06; Role Play is the board's
+    # own now and sits on the leaderboard, so the template's panel is dropped
+    # rather than shipped with its sample rows.
+    h = rr.drop_panel(h, "Coaching &amp; Call Quality")
 
     # If nobody received internet leads there is nothing to time, and
     # panels.speed_table returns "" rather than a grid of placeholders (Frank,

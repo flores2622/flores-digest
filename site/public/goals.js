@@ -61,19 +61,5 @@ window.GOALS = {
   "green": 15,
   "red": 60
  },
- "week_premium_goal": 20000,
- "coach_bar_ranges": {
-  "Avg Call Score": [
-   38,
-   251
-  ],
-  "Avg Sentiment": [
-   11,
-   43
-  ],
-  "Role Play": [
-   58,
-   87
-  ]
- }
+ "week_premium_goal": 20000
 };

@@ -39,7 +39,7 @@ process going forward: Frank's nightly feedback on what Apollo got right or
 wrong is read and folded in the same way, not left as a separate document
 Apollo never sees.
 
-Cards land ONLY on the internal board (flores-board), never in the emailed
+Cards land ONLY on the internal board, never in the emailed
 digest, and only you currently have the board link. Nobody is coached off an
 unreviewed card.
 

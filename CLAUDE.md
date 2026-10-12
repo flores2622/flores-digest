@@ -502,7 +502,7 @@ staff list" -- the first step to running Pantheon for another agency). Every
 person's AgencyZoom id, RingCentral extension and id, email, which nightly
 email they get, whether they are a producer, their Service Center role, their
 pipeline tags (licensed, hybrid, training-lead owner, commercial owner ...)
-and their `board` keys -- who may open Commercial, Rotation, Lead Scrub,
+and their `board` keys -- who may open Commercial, Rotation, Lead Scrub, CRM Hygiene,
 Apollo's doubts, voice ratings, Coeus usage, every Role Play history,
 everyone's commission, and log sales for everyone -- live there and nowhere
 else. **Crystal's commission schedule is her own** (Frank, 2026-10-06: "crystals comm
@@ -706,9 +706,9 @@ yellow pair per metric, `lower_better` for Speed to Dial), the two
 straight-count metrics that scale by the number of producers for the team
 row, the life goal (policies a week per producer), the reply-speed goal
 (15 minutes green, over an hour red), the week's premium goal The Flores
-Post judges a slow week by ($20,000) and the Coach AI bar ranges.
-`goals.py` reads it; `digest_config.THRESHOLDS`, `TEAM_SCALED_METRICS`,
-`LIFE_WEEKLY_GOAL` and `COACH_BAR_RANGES` are built from it, names and
+Post judges a slow week by ($20,000) (and, until 2026-10-06, the Coach AI
+bar ranges). `goals.py` reads it; `digest_config.THRESHOLDS`,
+`TEAM_SCALED_METRICS` and `LIFE_WEEKLY_GOAL` are built from it, names and
 shapes unchanged -- `tier()` and `life_week_tier` checked identical on 31
 values per metric and every weekday case. **The board page reads
 `site/public/goals.js`** (`window.GOALS`), written by `python3 goals.py
@@ -786,6 +786,40 @@ coaching_text; `--fix` rewrites the generated files first) and must say
 "every setup file checks out" before a deploy. Run it after touching any
 of those files here too: the Workers build does not.
 
+## The demo agency, and the PANTHEON_AGENCY switch
+
+**`agencies/copperline/` is Copperline Insurance Group** (Frank, 2026-10-06:
+"start on the demo agency"): a fictional agency in Austin, Texas
+(America/Chicago -- a zone WITH daylight saving), writing for the fictional
+Northstar Mutual (Harbor General and Pinecrest beside it), with fictional
+people (Elena Vargas, Maya Delgado, Jordan Pike, Theo Brandt, Priya Nair;
+Rosa Camacho at the front desk; Nate Harlan the owner; Luis Ortega the
+DM). Its five setup files and carrier layer have the same shape as Flores's.
+**`PANTHEON_AGENCY=<key>` picks an agency** (`agency_files.py`): every reader
+(staff, agencyzoom, lead_sources, goals, coaching_text) takes its file from
+`agencies/<key>/` instead of the root, and the generated files (the Worker's
+and page's copies, the rendered coaching documents) are written FOR that
+agency -- one deploy is one agency. Unset, nothing changes. **Running
+everything as Copperline found what still said Flores**, now fixed so the
+same code serves both: the guides in blueprints.js name the carrier through
+`{{carrier}}` / `{{carrier_site}}` (`bpFilled` / `bpValues`, filled by the
+page from STAFF and by Coeus from AGENCY; the lead-source example names
+became plain words); the editions are named from `agency.short_name`
+(`ED_SHORT`, the ticker `ED_SYM` from its consonants -- Flores -> FLRS --
+and the call sign `ED_CALL` -- KFLR; Copperline is CPPR 500 / KCPP The
+Close), The Flores Post's title and footer too; Coeus's clock lines say the
+zone; METHODOLOGY's template no longer says "flores-board"; the missed-call
+audit's stamp says `agency.place`; and `lead_sources.GROUPS`' lines about
+Francisco and farmers.com are filled from staff.json and the carrier layer
+(`{referral_first}`, `{carrier_site_lc}`), with each agency's own wording
+of who a group's leads are in lead_sources.json's `group_who` (Flores's
+exact lines live there now -- checked identical). As Copperline: every
+check passes, every module imports, the coaching documents render with no
+Farmers or Flores word, the page loads with its own title, editions and
+guides, and `staff.py --crons` says one UTC cron set cannot follow its
+zone. After running anything as another agency, run `python3
+agency_check.py --fix` with it unset to put Flores's generated files back.
+
 ## Phone numbers
 
 `az_corpus.e164` keys on the **last ten digits**. AgencyZoom stores every number
@@ -810,12 +844,15 @@ on or before the day and was not already closed before it.
 and have 1 routine that takes care of the whole day"). "Flores daily: hourly
 checkpoints + 5:55 PM final (AZ)" fires `CRON_TZ=America/Phoenix 55 8-17 * *
 1-5`: 8:55 AM-4:55 PM are checkpoints (`intraday.py`, then
-`missed_call_tasks.py --live`), and **5:55 PM is the final run** -- Coach AI
-from Gmail into `data/coach_<day>.json`, then `daily.py`, which sends, publishes
-the boards and creates the rest of the day's missed-call tasks. It skips the
-final if `publish_board.day_is_finalized` is already true. It runs in the
-environment that holds the secrets (no credentials in the prompt) with Gmail
-on the routine. The 5:35 PM "Flores Daily Sales Digest" routine and the seven
+`missed_call_tasks.py --live`), and **5:55 PM is the final run** -- `daily.py`,
+which sends, publishes the boards and creates the rest of the day's
+missed-call tasks. It skips the final if `publish_board.day_is_finalized` is
+already true. It runs in the environment that holds the secrets (no
+credentials in the prompt). **Until 2026-10-06 the final run first read Coach
+AI's emails from Gmail into `data/coach_<day>.json`** (the routine carried
+Gmail for that alone); Frank cancelled Coach AI that day and the Role Play
+figure is the board's own now (see "Role Play score"), so the routine's Gmail
+step and connector are to be removed. The 5:35 PM "Flores Daily Sales Digest" routine and the seven
 per-time missed-call routines are disabled, not deleted. The prefetch section
 below describes that retired 5:35 flow; `hourly.py` is not needed at 5:55
 because the checkpoints have already cached the day.
@@ -824,7 +861,7 @@ because the checkpoints have already cached the day.
 6:45 PM `python3 daily.py` and is stale.** Changed 2026-09-01.
 
     1.  python3 hourly.py        <- FIRST. Downloads and transcribes the day.
-    2.  wait for the Coach AI emails, then write data/coach_<day>.json
+    2.  (until 2026-10-06) wait for the Coach AI emails, then write data/coach_<day>.json
     3.  python3 daily.py         <- finds every transcript already cached
 
 **Why.** Roughly 30 minutes of the old run was nothing but downloading
@@ -843,21 +880,20 @@ survives between them, and a scheduled session cannot push to the repository to
 carry it either. Both were measured on 2026-09-01. Do not rebuild the separate
 hourly schedule until one of those two facts changes.
 
-**Coach AI's emails arrive at 5:30 PM Arizona** (Frank moved their send time
-from 6:30 on 2026-09-28). Until then they landed at 6:30 every night
+**Coach AI's emails arrived at 5:30 PM Arizona** (Frank moved their send time
+from 6:30 on 2026-09-28; the subscription ended 2026-10-06, so nothing waits
+for them any more). Until then they landed at 6:30 every night
 (measured 09-22..09-25: 01:30 UTC), and the nightly sat idle for most of an
 hour waiting for them -- the digest went out 6:42-6:56, 12-26 minutes after
 they arrived. The recordings, transcripts, call summaries and coaching cards
 are NOT the slow part: the hourly checkpoints (`intraday.py`) build all of
 them through the day into R2's cache/<day>/, so by 5:21 PM nearly every
 recording is already there and the nightly only adds the last half hour's.
-If the emails have not arrived, wait for them rather than writing zeros.
 
 **Timing to expect.**
 
-    5:30   Coach AI emails land
+    5:30   office closes
     5:35   hourly.py starts        a few minutes: only the calls since the last checkpoint
-    ~5:40  Coach AI figures        already in the mailbox
     ~5:45  daily.py starts         transcription and cards already cached
     ~6:00-6:15  both emails sent   (was 6:42-6:56 with Coach AI at 6:30)
 
@@ -1161,10 +1197,46 @@ carried in on 2026-10-02 (logged by "Debbie (Rotation Sheet)"; Crystal's
 blank slot as a skip); earlier folios stay in the sheet. Producers have no
 tour step for it, since they can't open it.
 
+## The Operations Center
+
+**Operations Center is the ops team's own Center** (Frank, 2026-10-06: "a
+new category for operatonis only"): a left-bar group of its own between
+Athena's and Cerberus's, hidden until the Worker lets the login in (like
+Commercial), holding **CRM Hygiene** and **Lead Scrub** (moved from the
+Sales Center the same day: "move the lead scrubber there as well"). Each
+page's own module adds it through `opsShow` (index.html) when its Worker
+route answers, so `CENTERS.operations` is empty for everyone else and the
+Center never enters the menu, the search or the start-page list.
+
+**CRM Hygiene is Amanda's "CRM Hygeine" Google Doc as a log** (Frank,
+2026-10-06: "look at file named CRM Hygiene, build that into pantheon") --
+"CSR Redirection & Process Tracking": accounts handled incorrectly, assigned
+improperly or left without notes, tasks or follow-ups, reviewed in the
+one-on-ones. `site/hygiene.js` (Worker, `/api/hygiene`) keeps one R2 file,
+`hygiene/log.json`, etag-guarded like the rotation. **Its columns are the
+doc's** -- Client Name, Policy Number, Note / Description of Issue, Date --
+plus the rep the entry is about (the service team first in the
+suggestions, anything typed accepted), which line of the doc's
+**Redirection Standard Checklist** it missed (`STANDARDS`: Check before
+passing / Ownership / Calendar accuracy / Other, the doc's words, shown
+beside the log), who logged it and when, every edit's earlier version, and
+a **Reviewed in a one-on-one** tick with who and when. The doc's six rows
+are the log's first entries (`SEED`, logged as "Amanda (CRM Hygiene doc)",
+rep blank -- the doc names none), written the first time anyone posts.
+**Only the ops team sees it**: staff.json's `hygiene` (Frank, Francisco,
+Veronica, Amanda); everyone who sees it logs, edits, reviews and removes.
+The page (`site/public/hygiene.js`) shows entries, this month, how many
+wait for a one-on-one and the standard missed most, a count per rep that
+filters, the log newest first with search / rep / standard / reviewed
+filters and a CSV, and the checklist card. Athena's Road Map carries the
+standard's three lines for the service team; the log itself is never
+described there.
+
 ## The lead scrub
 
-**Sales Center > Lead Scrub tracks a lead list being cleaned up in both Apex
-and AgencyZoom** (Frank, 2026-10-02). `site/scrub.js` (Worker, `/api/scrub`
+**Operations Center > Lead Scrub tracks a lead list being cleaned up in both
+Apex and AgencyZoom** (Frank, 2026-10-02; under the Sales Center until
+2026-10-06). `site/scrub.js` (Worker, `/api/scrub`
 and `/api/scrub/<id>`) keeps one R2 file per list, `scrub/lists/<id>.json`,
 its progress in the object's customMetadata so the picker reads no list.
 **Its columns are Frank's scrub sheet** (his screenshot, 2026-10-02):
@@ -1823,7 +1895,43 @@ like the Service Center's (`commercial_digest.refresh_past_renewals`, every
 day on the board, back 365 days; an SR older than the nightly pull's year is
 reached for once, e.g. 6836965 created 2025-08-03).
 
-## Coach AI
+## Role Play score
+
+**The leaderboard's Role Play figure is the board's own** (Frank, 2026-10-06:
+Coach AI cancelled; he chose scoring from Pantheon's sessions over dropping
+the category). `roleplay_score.py`: a session scores the share of Apollo's
+checklist it met (round(100 x met / of); Apollo's Role Play grade returns a
+checklist, `resolved`, a summary and a tip, no number -- `roleplayGrade` in
+site/worker.js), a producer's day is the mean of their sessions that agency
+day (`created_at` in `staff.TZ`), rounded; a beta session or a grade with no
+checklist counts nothing; no session is 0 (red, as before -- Frank,
+2026-09-10 -- and no activity on the leaderboard). It reads R2's
+`roleplay-index.json` (rpSummary's rows: producer, beta, created_at, met,
+of), no outside request; if R2 cannot be read the run goes on with zeros and
+says so. **The document keeps the key and shape**: `producers[].coach =
+{roleplay, sessions, source: "roleplay"}`, so index.html, editions.js,
+post.js, coeus.js and board_payload read it unchanged; the leaderboard cell
+says "N sessions". **It is live** (`site/live.js roleplayScores`, a mirror
+of `roleplay_score.scores_from` -- keep them in step; the `roleplay` part of
+the even-minute refresh, no secret needed), re-ranking the leaderboard like
+the other live categories (index.html's `LB_FIELDS` carries "Role Play" as
+`rp_lb`). **From `ROLEPLAY_FROM` = 2026-10-07 only**: a rebuild of an
+earlier day reads the saved `data/coach_<day>.json` (Coach AI's calls /
+score / sentiment / roleplay) so its figures do not move, and the live part
+refuses an earlier day. goals.json's `roleplay_score` threshold (80 green)
+stays: four of five checklist items. The range view's rule is unchanged (a
+worked day with no role play counts 0 in the ranking, not in the average;
+`rp_scored`). **Gone with Coach AI**: the email's Coaching & Call Quality
+panel (build_day drops the template's), the Digest's Coach AI cards,
+`COACH_BAR_RANGES` / goals.json's `coach_bar_ranges`, `COACH_TITLE_IS_NEXT_DAY`,
+`TRAQ_REVISIT_DATE`, `daily.coach_from_gmail`, and the nightly routine's
+Gmail step (to be removed from the routine itself). Past days' `coach.score`
+/ `coach.sentiment` stay in their documents, unshown. The TRAQ note patterns
+in `live_contact` / `lead_history` / `live_notes` stay: past notes carry
+them and they only ever say "not a contact". The section below is the record
+of how Coach AI's figures read while they were used.
+
+## Coach AI (cancelled 2026-10-06 -- history)
 
 - **The call score is NOT a 0-100 percentage.** Frank, 2026-09-01: a *perfect
   call* scores **750-800**. A producer averaging 224 is near 29% of a perfect
@@ -2708,6 +2816,135 @@ over `text/event-stream` with status lines while it reads.
 - **When the board changes, Coeus changes with it** through `blueprints.js`
   -- another reason to keep the guides current in the same change. A new
   figure Coeus should read needs its compact reading added in `coeus.js`.
+
+## Pantheon's own CRM (2026-10-06)
+
+**Frank is replacing AgencyZoom with a CRM built into Pantheon** (Frank,
+2026-10-06: "i basically want to build my own, built into Pantheon").
+`CRM.md` is the roadmap: eight phases, tasks first, AgencyZoom kept as the
+record for everything not yet moved, nothing switched until the two agree
+on a published day. The rules:
+- **The CRM speaks AgencyZoom's shapes.** `site/crm.js` (Cloudflare D1,
+  binding `CRM`, schema `site/crm/migrations/`) answers `/api/crm/...` with
+  the field names and codes the pipeline already reads -- `assignedTo`,
+  `leadSourceId`, `status` 2 = sold, `soldDate`, `convertedHouseholdId`,
+  `workflowStageId`, a policy's `agentId` + `soldDate`, an SR's status
+  0 / 1 / 2 and `resolutionId`, notes newest first with a MOVE_STAGE note
+  per move -- so a module moves over by swapping its client, never by
+  changing what a number means. Imported rows keep AgencyZoom's ids
+  (`crm_import.py`, from the nightly's saved `data/` files, INSERT OR IGNORE
+  so it can be run again); people are staff.json's `az_id`. Dates are on the
+  agency's clock (`staff.js localStr`).
+- **Every write is an event** (`events`: who, before, after); nothing is
+  deleted, status codes say what a record is. An SR completes only on one
+  of Frank's resolutions; a lead's `sold` sets status 2 and a soldDate and
+  makes its household; `move` writes the structured move and the note.
+- **Who may use it: Frank alone, until further notice** (Frank,
+  2026-10-06: "all of this is available to only me until further notice"):
+  staff.json's `crm` board key, checked by `site/crm.js` on every call;
+  anyone else gets 403 and the Tasks page never enters their menu or the
+  search (`site/public/tasks.js` probes `/api/crm/lookups`, like Rotation).
+  To open it to someone, add `crm` to their `board` and run
+  `python3 staff.py --write-js`. The D1 database `pantheon-crm` exists in the
+  account (created 2026-10-06, WNAM, schema applied) and wrangler.jsonc
+  carries its binding; a schema change is a new file under
+  `site/crm/migrations/`, applied with `wrangler d1 migrations apply
+  pantheon-crm --remote`.
+- **Sales Center > Tasks is the CRM's first page** (Frank, 2026-10-06:
+  "start on the tasks page next"; `site/public/tasks.js`, painted by
+  `tasksPaint`): Due today / Overdue / Next 7 days / Done today / All open,
+  for everyone or one person, Done with what happened (a TASK note on the
+  lead), Reschedule, New task hung on a lead or household found by name or
+  number, and a lead's name opening its coaching card (the CRM keeps
+  AgencyZoom's lead ids, so `openLeadCard` finds it). Tasks made here live
+  only in Pantheon until phase 2 of `CRM.md` moves `missed_call_tasks`' write
+  and `az_tasks.audit` / `live.js taskCompletion` over -- the nightly and the
+  board still read AgencyZoom's tasks.
+- **AgencyZoom is mirrored into the CRM every run** (Frank, 2026-10-06:
+  the token is "done"; `crm_sync.py`, called at the end of every
+  `intraday.py` checkpoint and of `daily.py` after its R2 save -- never
+  raises, never stops a run). It builds the rows `crm_import.build` gives
+  from the files the run just saved and sends only what is new or changed
+  (one fingerprint per row, kept in R2 `cache/crm_sync_state.json`, written
+  back after each accepted batch) to the D1 REST API as upserts: an imported
+  row (`az_id` set) follows AgencyZoom while it is the record, a row Pantheon
+  made (`az_id` NULL) is never touched, notes and stage moves are written
+  once (`stage_moves.note_id` is unique, migration 0002). **It needs
+  `CF_API_TOKEN`** (a Cloudflare API token with D1 edit; `CLOUDFLARE_API_TOKEN`
+  is read too) in the cloud environment's variables beside the R2 keys;
+  without it the run logs "CF_API_TOKEN not set -- skipped". The first run
+  with the token is the full load: the 2026-10-06 snapshot built locally to
+  12,349 leads, 4,139 households, 12,803 policies, 7,101 SRs and 524 tasks
+  -- 37,248 statements, ~885 requests, a few minutes. `python3 crm_sync.py
+  --sqlite out/x.db --state out/s.json` runs the same thing against a local
+  SQLite (`CRM_DATA=<dir>` points `crm_import` at another data folder).
+- **What the snapshot taught the importer** (2026-10-06): every AgencyZoom
+  record stamp -- lead, customer, policy, task, SR -- is UTC (hours cluster
+  15-23 = 8 AM-4 PM Arizona; notes alone are local); a policy's `status` is
+  1 current term, 3 next term issued, 4 past term, 0 cancelled
+  (`crm_import.POLICY_STATUS`, as `renewal_report` reads them); a lead's is
+  0 open, 2 sold, 3 and 5 closed; a task's `completedBy`, an SR's
+  `createdBy` / `modifiedBy` come back as NAMES ("Debbie Aguilera"), mapped
+  to staff az_ids by `crm_import.person`; a task's clock is `taskDateTime`
+  only when `timeSpecific`, else its `dueDate` day; the household map is
+  `{id: {fetched, policies: [...]}}` with premiums in cents; lead source
+  names repeat ("X" twice -- migration 0003 dropped the unique name). The
+  real workflow and stage ids come from `data/az_pipelines.json`
+  (`/v1/api/pipelines-and-stages` as it came, saved by daily.py beside
+  `az_stages.json`) and from the SRs themselves; the SR categories' names
+  from `data/az_service_categories.json` (`az_client.service_categories`,
+  one request per cold container). Migrations 0001-0003 were applied to the
+  live database by hand on 2026-10-06; a later one goes through
+  `wrangler d1 migrations apply pantheon-crm --remote` (the earlier files
+  are IF NOT EXISTS / rebuild-safe, so re-running them changes nothing).
+- **Frank's own lists, and AgencyZoom's ids mapped onto them** (Frank,
+  2026-10-06: "i want to consolidate lead sources, pipelines, service
+  request categories. I want to customize and rebuild"; CRM.md
+  "Consolidating the lists"). `crm_lists.py` holds the lists and places
+  every AgencyZoom entry BY NAME (`crm_import.build` -> `add_rows`; migration
+  0004's `lists` / `list_map`, INSERT OR IGNORE so a name or placement set
+  on the page stays). His decisions: **Call-in / Walk-in is one source with
+  "How they found us"** (Called, Walked in, Google, Farmers.com); **the four
+  cross-sell lines stay apart**; the vendor, partner or staff member is a
+  field on Internet lead / Lender referral / Personal network, never a
+  source; five sales pipelines with **AZ Sun under New Business**; **IL
+  Interested and Transfer Pending stay as stages for now**; **the SR
+  category IS the service pipeline** -- Billing, Contingencies, Personal
+  Renewals, Personal Endorsements, Commercial Renewals, Commercial
+  Endorsements, plus Claims (type as the field) -- and a category that says
+  nothing (General, UNASSIGNED) follows the SR's workflow. The Worker reads
+  each record through the map (`sourceName` / `sourceDetail` /
+  `pipelineName` / `stageName`; an SR's `pipelineName` is its category's
+  place, else its workflow's) beside the untouched AgencyZoom fields;
+  **Sales Center > Lists** (`site/public/lists.js`, the same `crm` gate)
+  edits the lists and places the **Unsorted**. The first sync after a
+  deploy creates the two tables itself (`crm_sync.ensure_lists_tables`,
+  CREATE IF NOT EXISTS). The Digest, Apollo and Coeus still read
+  `lead_sources.py` / `pipelines.py`, which the lists agree with.
+- **Workflows: what AgencyZoom's automations run today** (Frank,
+  2026-10-07: "how do we start building our own workflows? or display what
+  we currently have so we can adjust or change as needed"; CRM.md
+  "Workflows"). AgencyZoom's API has no rules endpoint, so
+  `az_automations.py` reads them back from the leads' notes: texts by
+  `attr.triggerRuleId`, drip emails by template subject, tasks by a wording
+  on 5+ leads, Smart-Cycle from the MOVE_STAGE notes (who made the move: a
+  staff name is a person, anything else the automation). Every wording is
+  blanked of names, numbers, links and dates before it is stored. `--fetch`
+  downloads the last 90 days' active leads' notes, paced, from the nightly's
+  environment (never the Worker's); `--build --publish` writes R2
+  `crm/automations.json`. **Sales Center > Workflows**
+  (`site/public/workflows.js`, the `crm` gate) shows each rule -- wording,
+  when it fires, sources, leads, replies, opt-outs, opens -- with Frank's
+  Keep / Change / Drop marks (`/api/crm/automations/mark`, R2
+  `crm/automation_marks.json`), the brief for Pantheon's own rules (CRM.md
+  step 2, draft mode first). Not on the nightly; rerun by hand to refresh.
+- `node --test site/crm.test.mjs` is its test; run it after touching
+  `site/crm.js` or the schema. A new field is added to the schema (a new
+  migration file), to `OBJECTS` in `site/crm.js` and to the test together.
+- Nothing in the CRM's API reads AgencyZoom, RingCentral or Insightful; the
+  mirror reads only the files the run already saved. Until a phase cuts a
+  workflow over, the nightly and the live refresh keep reading AgencyZoom
+  as before.
 
 ## Never
 

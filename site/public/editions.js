@@ -310,14 +310,21 @@
   const st = document.createElement("style"); st.textContent = css; document.head.appendChild(st);
 })();
 
-const ED_PUBS = [["post", "The Flores Post"], ["feed", "The Flores Feed"], ["grid", "Fourth and Goal"], ["pod", "KFLR The Close"], ["mkt", "FLRS 500"], ["comic", "Cold Call Comics"], ["closer", "CLOSER"]];
+/* The editions are named for the agency (staff.json's agency.short_name):
+   The <Short> Post and Feed, the market's ticker symbol from the short
+   name's consonants (Flores -> FLRS) and the station's call sign from
+   its first three (KFLR). */
+const ED_SHORT = (((window.STAFF || {}).agency || {}).short_name) || "Flores";
+const ED_SYM = (ED_SHORT.replace(/[^a-z]/gi, "").replace(/[aeiou]/gi, "").toUpperCase() + ED_SHORT.replace(/[^a-z]/gi, "").toUpperCase()).slice(0, 4);
+const ED_CALL = "K" + ED_SYM.slice(0, 3);
+const ED_PUBS = [["post", `The ${ED_SHORT} Post`], ["feed", `The ${ED_SHORT} Feed`], ["grid", "Fourth and Goal"], ["pod", `${ED_CALL} The Close`], ["mkt", `${ED_SYM} 500`], ["comic", "Cold Call Comics"], ["closer", "CLOSER"]];
 let edPub = "post";
 try { const v = localStorage.getItem("board-edition"); if (ED_PUBS.some(p => p[0] === v)) edPub = v; } catch (_) {}
 const edMine = { watch: {}, cover: "", flip: {}, seen: {} };   // this viewer's own picks
 try { Object.assign(edMine, JSON.parse(localStorage.getItem("board-edition-mine") || "{}")); } catch (_) {}
 const edSaveMine = () => { try { localStorage.setItem("board-edition-mine", JSON.stringify(edMine)); } catch (_) {} };
 const edShared = { key: "", state: null };                      // everyone's: reactions, comments, votes, mailbag, likes
-let edSeg = 0, edPlaying = false, edTick = null, edSel = "FLRS", edRng = "folio";
+let edSeg = 0, edPlaying = false, edTick = null, edSel = ED_SYM, edRng = "folio";
 const edMe = () => ME.name || "Someone";
 let edGifOpen = "";   // the post whose GIF picker is open
 const edEsc = s => cesc(s);
@@ -364,7 +371,7 @@ function edFacts(d, folioRows, lastFolio, isFolio) {
   const rows = folioRows || [];
   const dayKey = d.date || (rows.length ? rows[rows.length - 1].date : "");
   const idx = rows.findIndex(r => r.date === dayKey);
-  const series = w => { let a = 0; return rows.map(r => a += (w === "FLRS" ? r.ps : (r.by[w] || 0))); };
+  const series = w => { let a = 0; return rows.map(r => a += (w === ED_SYM ? r.ps : (r.by[w] || 0))); };
   const FTOT = rows.reduce((a, r) => a + r.ps, 0);
   const goal = lastFolio && lastFolio.days ? Math.round(lastFolio.ps / lastFolio.days) : (rows.length > 1 ? Math.round(FTOT / rows.length) : 3000);
   const streak = {};
@@ -620,7 +627,7 @@ function edSegs(X) {
 function edPod(X) {
   const S = edShared.state, mail = S.mail || [], segs = edSegs(X), seg = Math.min(edSeg, segs.length - 1), o = X.F.objs[0];
   const ep = X.isFolio ? "Folio special" : `Episode ${Math.max(1, DAYS.length - DAYS.indexOf(X.dayKey))}`;
-  return `<div class="pod"><div class="col"><div class="art" style="background:radial-gradient(circle at 50% 62%,#ffd27a 0,#ffd27a 22%,#e59a6f 23%,#b5532f 60%,#5a2416 100%)"><span>KFLR · The Close</span><div><b>${edEsc(X.isFolio ? "The folio" : pdow3(X.dayKey) + ",")}<br>${edEsc(X.isFolio ? "so far" : pmd(X.dayKey))}</b><div style="margin-top:8px;font-size:14px">${ep} · Apollo</div></div></div>
+  return `<div class="pod"><div class="col"><div class="art" style="background:radial-gradient(circle at 50% 62%,#ffd27a 0,#ffd27a 22%,#e59a6f 23%,#b5532f 60%,#5a2416 100%)"><span>${ED_CALL} · The Close</span><div><b>${edEsc(X.isFolio ? "The folio" : pdow3(X.dayKey) + ",")}<br>${edEsc(X.isFolio ? "so far" : pmd(X.dayKey))}</b><div style="margin-top:8px;font-size:14px">${ep} · Apollo</div></div></div>
    <div class="edcard"><div class="player"><button type="button" id="edplay" aria-label="Play">${edPlaying ? "❚❚" : "▶"}</button><div class="wave">${Array.from({ length: 60 }, (_, i) => `<i class="${i <= (seg + 1) * 60 / segs.length ? "on" : ""}" style="height:${20 + Math.round(26 * Math.abs(Math.sin(i * 1.7)))}%"></i>`).join("")}</div><span class="note" id="edpos">${segs[seg][1]} / 14:02</span></div><div class="hrow"><span class="note">Play steps through the segments</span><span class="echip">the board</span></div></div>
    <div class="edcard"><h3>Villain of the Day</h3><div class="hrow"><b style="font:400 24px var(--display)">${o ? `"${edEsc(o[0])}"` : "None"}</b><span class="echip ${o && o[2] < o[1] ? "r" : "g"}">${o ? `${o[1]} up · ${o[2]} down` : "quiet"}</span></div><div class="hp"><i style="width:${o ? Math.round(100 * (o[1] - o[2]) / o[1]) : 0}%"></i></div><p style="margin:0;font-size:14px;line-height:1.5">${o ? `${plural(o[1], "call")} hit it. Health bar at ${Math.round(100 * (o[1] - o[2]) / o[1])}%: ${o[2] ? `${o[2]} landed` : "nobody landed a hit"}.` : "No objections were raised on a coached call."}</p></div>
    <div class="edcard"><h3>The Countdown</h3><div class="cnt">${[...X.order].reverse().map((f, i) => `<div><b>${X.order.length - i}</b><span style="display:flex;align-items:center;gap:8px">${edAvatar(X, f, 28)}${edEsc(X.full[f])}</span><span class="note">${X.NUM[f].pts} pts · ${pmoney(X.NUM[f].ps)}</span></div>`).join("")}</div></div></div>
@@ -653,19 +660,19 @@ function edChart(X, f) {
 function edMkt(X) {
   const F = X.F, di = X.idx >= 0 ? X.idx : X.rows.length - 1;
   const rows = X.order.map(f => { const s = X.series(f), n = X.NUM[f]; return { f, sym: edSym(X, f), last: s[s.length - 1] || 0, chg: X.rows[di] ? (X.rows[di].by[f] || 0) : n.ps, hi: Math.max(...s, 0), open: di > 0 ? s[di - 1] : 0, n }; }).sort((a, b) => b.chg - a.chg);
-  const team = { f: "Team", sym: "FLRS", last: X.FTOT, chg: X.rows[di] ? X.rows[di].ps : F.ps, hi: X.FTOT, open: X.FTOT - (X.rows[di] ? X.rows[di].ps : F.ps) };
-  const cur = edSel === "FLRS" ? team : (rows.find(r => r.sym === edSel) || team);
-  const curF = edSel === "FLRS" ? "FLRS" : cur.f;
+  const team = { f: "Team", sym: ED_SYM, last: X.FTOT, chg: X.rows[di] ? X.rows[di].ps : F.ps, hi: X.FTOT, open: X.FTOT - (X.rows[di] ? X.rows[di].ps : F.ps) };
+  const cur = edSel === ED_SYM ? team : (rows.find(r => r.sym === edSel) || team);
+  const curF = edSel === ED_SYM ? ED_SYM : cur.f;
   const up = rows.filter(r => r.chg > 0), flat = rows.filter(r => !r.chg);
   const when = X.isFolio ? "this folio" : pdow(X.dayKey);
-  return `<div class="mkt"><div class="tape">${[...rows, ...rows].map(r => `<span><b>${r.sym}</b> ${pmoney(r.last)} <span class="${r.chg ? "up" : "fl"}">${r.chg ? "▲" : "■"} ${r.chg ? pmoney(r.chg) : "0.00"}</span></span>`).join("")}<span><b>FLRS</b> ${pmoney(X.FTOT)} <span class="${team.chg ? "up" : "fl"}">${team.chg ? "▲ " + pmoney(team.chg) : "■ 0.00"}</span></span></div>
-   <div class="g"><div><div class="hrow"><div><div class="lab" style="color:#9fb0c8">Market close · ${edEsc(X.isFolio ? "the folio so far" : plong(X.dayKey))}</div><h2>FLRS 500</h2></div><div style="text-align:right"><span class="fl">${cur.sym} · ${edEsc(cur.f === "Team" ? "Team" : X.full[cur.f])}</span><div class="up" style="font-size:40px;line-height:1">${Math.round(cur.last).toLocaleString()}</div><span class="${cur.chg ? "up" : "fl"}">${cur.chg ? `▲ +${Math.round(cur.chg).toLocaleString()} (${cur.open ? Math.round(cur.chg / cur.open * 100) + "%" : "new"}) ${edEsc(when)}` : `unchanged ${edEsc(when)}`}</span></div></div>
+  return `<div class="mkt"><div class="tape">${[...rows, ...rows].map(r => `<span><b>${r.sym}</b> ${pmoney(r.last)} <span class="${r.chg ? "up" : "fl"}">${r.chg ? "▲" : "■"} ${r.chg ? pmoney(r.chg) : "0.00"}</span></span>`).join("")}<span><b>${ED_SYM}</b> ${pmoney(X.FTOT)} <span class="${team.chg ? "up" : "fl"}">${team.chg ? "▲ " + pmoney(team.chg) : "■ 0.00"}</span></span></div>
+   <div class="g"><div><div class="hrow"><div><div class="lab" style="color:#9fb0c8">Market close · ${edEsc(X.isFolio ? "the folio so far" : plong(X.dayKey))}</div><h2>${ED_SYM} 500</h2></div><div style="text-align:right"><span class="fl">${cur.sym} · ${edEsc(cur.f === "Team" ? "Team" : X.full[cur.f])}</span><div class="up" style="font-size:40px;line-height:1">${Math.round(cur.last).toLocaleString()}</div><span class="${cur.chg ? "up" : "fl"}">${cur.chg ? `▲ +${Math.round(cur.chg).toLocaleString()} (${cur.open ? Math.round(cur.chg / cur.open * 100) + "%" : "new"}) ${edEsc(when)}` : `unchanged ${edEsc(when)}`}</span></div></div>
     <div class="chartbox"><div class="hrow"><div class="rng">${[["1d", "1D"], ["1w", "1W"], ["folio", "FOLIO"]].map(([k, l]) => `<button type="button" data-rng="${k}" aria-pressed="${edRng === k}">${l}</button>`).join("")}</div><span class="fl" style="font-size:12px">price = folio premium to date · open ${pmoney(cur.open)} · folio high ${pmoney(cur.hi)}</span></div>${edChart(X, curF)}</div>
     <div class="scroll" style="margin-top:14px"><table><thead><tr><th></th><th>Sym</th><th>Producer</th><th>Last</th><th>Chg</th><th>HH</th><th>Dials</th><th>Contact</th><th>Quoted</th><th>Util</th><th>RP</th><th>Pts</th><th>Rating</th></tr></thead><tbody>
-     <tr class="mk ${edSel === "FLRS" ? "on" : ""}" data-sym="FLRS"><td></td><td class="sym">FLRS</td><td>Team · index</td><td>${pmoney(X.FTOT)}</td><td class="${team.chg ? "up" : "fl"}">${team.chg ? "+" + pmoney(team.chg) : "0.00"}</td><td>${F.hhSold ? "+" + F.hhSold : "0"}</td><td>${F.dials}</td><td>${ppct(F.rate)}</td><td>${pmoney(F.pq)}</td><td>${F.util != null ? ppct(F.util) : "—"}</td><td>${X.T.rp != null ? Math.round(X.T.rp) : "—"}</td><td></td><td class="${F.ps ? "up" : "dn"}">${F.ps ? "BUY" : "HOLD"}</td></tr>
+     <tr class="mk ${edSel === ED_SYM ? "on" : ""}" data-sym="${ED_SYM}"><td></td><td class="sym">${ED_SYM}</td><td>Team · index</td><td>${pmoney(X.FTOT)}</td><td class="${team.chg ? "up" : "fl"}">${team.chg ? "+" + pmoney(team.chg) : "0.00"}</td><td>${F.hhSold ? "+" + F.hhSold : "0"}</td><td>${F.dials}</td><td>${ppct(F.rate)}</td><td>${pmoney(F.pq)}</td><td>${F.util != null ? ppct(F.util) : "—"}</td><td>${X.T.rp != null ? Math.round(X.T.rp) : "—"}</td><td></td><td class="${F.ps ? "up" : "dn"}">${F.ps ? "BUY" : "HOLD"}</td></tr>
      ${rows.map(r => { const n = r.n; return `<tr class="mk ${edSel === r.sym ? "on" : ""}" data-sym="${r.sym}"><td><button class="star" data-watch="${r.sym}" aria-pressed="${!!edMine.watch[r.sym]}" aria-label="Watch">★</button></td><td class="sym">${r.sym}</td><td>${edEsc(X.full[r.f])}</td><td>${pmoney(r.last)}</td><td class="${r.chg ? "up" : "fl"}">${r.chg ? "+" + pmoney(r.chg) : "0.00"}</td><td>${n.hhSold ? "+" + n.hhSold : "0"}</td><td>${n.dials}</td><td>${ppct(n.rate)}</td><td>${pmoney(n.pq)}</td><td>${n.util != null ? ppct(n.util) : "—"}</td><td>${n.rp || "—"}</td><td class="sym">${n.pts}</td><td class="${r.chg ? "up" : n.pq > 4000 ? "fl" : "dn"}">${r.chg ? "BUY" : n.pq > 4000 ? "HOLD · heavy volume" : "HOLD"}</td></tr>`; }).join("")}</tbody></table></div></div>
    <div class="anal"><h4>Analyst note · Apollo</h4><p>${up.length} of ${rows.length} issues closed up ${edEsc(when)}.${up.map(r => ` ${r.sym} +${pmoney(r.chg)}${X.SALES.filter(s => s.w === r.f).length ? ` on ${plist([...new Set(X.SALES.filter(s => s.w === r.f).map(s => (s.src || "a sale").toLowerCase()))])}` : ""}.`).join("")}${flat.length ? ` ${plist(flat.map(r => r.sym))} flat${flat.some(r => r.n.pq) ? ` on heavy volume: ${pmoney(flat.reduce((a, r) => a + r.n.pq, 0))} quoted between them` : ""}.` : ""}</p>
-    <p>The FLRS index is at ${pmoney(X.FTOT)} after ${plural(X.rows.length, "session")}${X.rows.filter(r => !r.ps).length ? ` with ${plural(X.rows.filter(r => !r.ps).length, "zero day")}` : ""}. Catalysts: ${plural(Math.max(0, F.hh - F.hhSold), "quoted household")}, ${F.atRisk} at risk, ${F.misfiled} misfiled.</p>
+    <p>The ${ED_SYM} index is at ${pmoney(X.FTOT)} after ${plural(X.rows.length, "session")}${X.rows.filter(r => !r.ps).length ? ` with ${plural(X.rows.filter(r => !r.ps).length, "zero day")}` : ""}. Catalysts: ${plural(Math.max(0, F.hh - F.hhSold), "quoted household")}, ${F.atRisk} at risk, ${F.misfiled} misfiled.</p>
     <div class="r"><span>Closing ratio</span><b class="${F.closeHH >= 25 ? "up" : "dn"}">${F.closeHH == null ? "—" : ppct(F.closeHH)}</b></div><div class="r"><span>Contact rate</span><b class="${F.rate >= 13 ? "up" : "dn"}">${ppct(F.rate)}</b></div>${F.objs[0] ? `<div class="r"><span>${edEsc(F.objs[0][0])} overcome</span><b class="${F.objs[0][2] ? "up" : "dn"}">${F.objs[0][2]} of ${F.objs[0][1]}</b></div>` : ""}<div class="r"><span>Earnings (folio close)</span><b>${X.folioEnd ? pmd(X.folioEnd) : "—"}</b></div><div class="r" style="border:0"><span>Watchlist</span><b>${Object.keys(edMine.watch).filter(k => edMine.watch[k]).join(" · ") || "tap ★ on a row"}</b></div>
 </div></div><div class="mktfull"><h4>Closing prices · the full tape</h4>${edLbt(X, "lbt mktlb")}</div></div>`;
 }

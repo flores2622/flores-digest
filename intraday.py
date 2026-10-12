@@ -166,6 +166,12 @@ def run(day, dry_run=False):
     # real "sales" card this way and it never reached the published board).
     r2_cache.sync_up_day(day, log=log)
 
+    # Pantheon's own CRM (CRM.md): mirror this checkpoint's AgencyZoom files
+    # into the CRM's database -- only what changed since the last run. Never
+    # raises; without CF_API_TOKEN it logs one line and moves on.
+    import crm_sync
+    crm_sync.run(days={day}, log=log)
+
     # Free (R2 reads only, no paid API), so the live board's Policies/Premium
     # Sold columns get the same sale-streak colouring as the finalized one
     # instead of going uncoloured until tonight -- publish_board.build() alone

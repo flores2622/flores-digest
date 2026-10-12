@@ -45,7 +45,6 @@ SAFETY_BYTES = 2_000
 SHED_ORDER = [
     ("Task Completion Audit &middot;", "Task Completion Audit"),
     ("Call Detail &nbsp;&middot;&nbsp;", "Call Detail"),
-    ("Coaching &amp; Call Quality", "Coaching &amp; Call Quality"),
     ("Speed to Dial &middot;", "Speed to Dial"),
     ("Call Outcome Breakdown &middot;", "Call Outcome Breakdown"),
 ]

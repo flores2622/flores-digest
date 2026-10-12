@@ -1,0 +1,171 @@
+{
+  "_about": "The demo agency's AgencyZoom account: fictional ids and names in the same shape as the root agencyzoom.json (agencyzoom.py says what each key means).",
+  "workflows": {
+    "junk": {
+      "id": 31001,
+      "name": "Pipeline"
+    },
+    "claim": {
+      "id": 31002,
+      "names": [
+        "Claim"
+      ]
+    },
+    "commercial_renewals": {
+      "names": [
+        "Commercial Renewals"
+      ]
+    },
+    "service": {
+      "renewals_ff": [
+        "Northstar Renewals"
+      ],
+      "renewals_bw": [
+        "Harbor General Renewals"
+      ],
+      "changes": [
+        "Service Requests"
+      ],
+      "late_payments": [
+        "Late Payments"
+      ],
+      "missing_docs": [
+        "Pending Items"
+      ],
+      "reinstatement": [
+        "Reinstatement"
+      ],
+      "claims": [
+        "Claim"
+      ]
+    },
+    "service_labels": {
+      "renewals_ff": "Northstar & Pinecrest Renewals",
+      "renewals_bw": "Harbor General Renewals",
+      "changes": "Changes & Service",
+      "late_payments": "Late Payments",
+      "missing_docs": "Pending Items",
+      "reinstatement": "Reinstatement",
+      "claims": "Claims"
+    }
+  },
+  "claim_categories": {
+    "51001": "Auto",
+    "51002": "Home",
+    "51003": "Life",
+    "51004": "Specialty",
+    "51005": "Commercial",
+    "51006": "Work Comp"
+  },
+  "commercial_claim_categories": [
+    51005,
+    51006
+  ],
+  "resolutions": {
+    "labels": {
+      "61001": "Renewed: Accepted as is",
+      "61002": "Renewed: Endorsed",
+      "61003": "Rewrite Accepted",
+      "61004": "Cancelled: Rewrite Declined",
+      "61005": "Cancelled, no endorse/rewrite available",
+      "61006": "Unable to Contact/No Show",
+      "61007": "No action: Review if needed",
+      "61008": "Client Cancelled",
+      "61009": "Mid-term Cancellation",
+      "61010": "Cancelled: Sold/Moved",
+      "61011": "Completed"
+    },
+    "outcome_by_id": {
+      "61001": "renewed_as_is",
+      "61007": "no_action_review",
+      "61002": "renewed_endorsed",
+      "61003": "rewrite_accepted",
+      "61004": "cancelled_rewrite_declined",
+      "61005": "cancelled_no_option",
+      "61008": "client_cancelled",
+      "61006": "unable_to_contact",
+      "61009": "cancelled_before_sr",
+      "61010": "sold_moved"
+    },
+    "valid_from": {},
+    "trusted_by_pipeline": {
+      "late_payments": {
+        "61006": "unable_to_contact"
+      },
+      "changes": {
+        "61005": "policy_cancelled",
+        "61006": "unable_to_contact"
+      },
+      "missing_docs": {
+        "61006": "unable_to_contact"
+      }
+    }
+  },
+  "carriers": {
+    "9001": "Northstar",
+    "9002": "Northstar",
+    "9101": "Harbor",
+    "9201": "Pinecrest"
+  },
+  "product_names": {
+    "_about": "The Sales sheet's product names, the way the team types them (Frank, 2026-09-25: 'we only have 2 auto products. Farmers and BW'): the first rule whose carrier (the short name in `carriers`; none = any) and `match` (a case-insensitive regex searched in AgencyZoom's policy type name; none = always) fit names the row -- {carrier} and {raw} are filled in -- else `default`. sales_log_auto.product_name and the Worker's productName walk this same list.",
+    "rules": [
+      {
+        "carrier": "Harbor",
+        "match": "auto",
+        "name": "Harbor-Auto"
+      },
+      {
+        "carrier": "Harbor",
+        "name": "Harbor-{raw}"
+      },
+      {
+        "match": "auto",
+        "name": "{carrier}-Auto"
+      },
+      {
+        "carrier": "Pinecrest",
+        "match": "mobile|manufactured",
+        "name": "Pinecrest-MH"
+      },
+      {
+        "carrier": "Pinecrest",
+        "match": "landlord|dp\\d|dwelling",
+        "name": "Pinecrest-Landlord"
+      },
+      {
+        "carrier": "Pinecrest",
+        "match": "home|ho-?\\d",
+        "name": "Pinecrest-Home"
+      },
+      {
+        "carrier": "Northstar",
+        "match": "homeowner|^home$|ho-?\\d",
+        "name": "Northstar-Home"
+      },
+      {
+        "carrier": "Northstar",
+        "match": "term|life",
+        "name": "Northstar-Life"
+      }
+    ],
+    "default": "{carrier}-{raw}"
+  },
+  "renewal_ff_carriers": [
+    9001,
+    9002,
+    9201
+  ],
+  "test_lead_ids": [],
+  "email_template_subjects": [
+    "do you still need insurance?",
+    "can we try again?",
+    "your insurance quote options",
+    "just checking in",
+    "thank you for your time today",
+    "we lowered rates!",
+    "about your home policy!",
+    "about your auto insurance!"
+  ],
+  "_email_template_subjects": "this account's AgencyZoom automation email subjects, lower-cased, the lead's first name taken off the front (messages.TEMPLATE_SUBJECTS: an email with one of these and no attachment is a drip, never credited to a person; read off 3,191 sent emails, 2026-09-27). Subjects sent to 5+ leads in a night are learned on top."
+}

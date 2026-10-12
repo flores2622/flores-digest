@@ -492,7 +492,9 @@ JUNK_WORKFLOW_NAME = agencyzoom.JUNK_WORKFLOW_NAME
 # a per-producer Policies column colours on the sale streak instead),
 # task_completion_pct, speed_to_dial_min (lower is better),
 # utilization_pct, roleplay_score (Frank, 2026-09-10: 80+ green, under
-# yellow, none red -- >= 80 like every other threshold), closing_ratio_pct
+# yellow, none red -- >= 80 like every other threshold; since 2026-10-07 the
+# score is the share of Apollo's checklist met in the producer's own Role
+# Play sessions, roleplay_score.py, on the same 0-100 scale), closing_ratio_pct
 # (Frank, 2026-09-23: one scheme for both halves of the Closing Ratio).
 # Household Completion is coloured by what was sold, not a threshold.
 THRESHOLDS = goals.THRESHOLDS
@@ -586,10 +588,11 @@ def paced_tier(metric, value, fraction):
 # leading total. Zero-activity override: no recorded activity in a category
 # scores 0, not a ranked point.
 #
-# Avg Call Score and Avg Sentiment were REMOVED 2026-09-01 (Frank). TRAQ scores
+# Avg Call Score and Avg Sentiment were REMOVED 2026-09-01 (Frank). TRAQ scored
 # voicemails as calls -- 3 and sentiment 0, against 292 and 48 for a live
-# conversation -- so both rank producers on their answer rate and pay for not
-# connecting. They still display in Coaching & Call Quality. See CLAUDE.md.
+# conversation -- so both ranked producers on their answer rate and paid for
+# not connecting. They left the report altogether on 2026-10-06 with Coach AI;
+# Role Play is the board's own sessions now (roleplay_score.py). See CLAUDE.md.
 #
 # NOTE: this list is descriptive. The scored categories are built in
 # panels.leaderboard; change both together.
@@ -714,22 +717,13 @@ def objection_group(label):
     return "Other"
 
 
-# --- Coach AI (HANDOFF_4 s7) ------------------------------------------------
-# VERIFIED, DO NOT RELITIGATE. Coach AI titles each email with the UTC date at
-# generation, ONE DAY AHEAD of the Arizona day it describes. The email titled
-# "Aug 08" reports Arizona Aug 7. Proof: it reports 76 scored calls, and Arizona
-# Aug 8 was a Saturday with zero producer dials.
-COACH_TITLE_IS_NEXT_DAY = True
-# Bars scale against PER-PRODUCER extremes over the trailing window -- not team
-# daily averages, which put individual scores below the floor.
-#
-# THESE ARE TEAM-RELATIVE, NOT A SHARE OF THE SCALE. Frank, 2026-09-01: a
-# perfect call scores 750-800, so the 251 ceiling here is "best anyone has
-# posted lately", not "full marks". A producer at 224 draws an almost-full bar
-# while sitting under a third of a perfect call. Anchoring to 800 instead is
-# honest but makes every bar a sliver, which is the floor problem noted above.
-# Left as-is deliberately; revisit only with Frank.
-COACH_BAR_RANGES = goals.COACH_BAR_RANGES   # goals.json
+# --- Role Play ---------------------------------------------------------------
+# The Role Play score is Pantheon's own since 2026-10-07 (roleplay_score.py:
+# the share of Apollo's checklist met per session, averaged over the day's
+# sessions). Coach AI (TRAQ), whose emailed figures filled it until then, was
+# cancelled on 2026-10-06; its email-title rule (dated one day ahead) and the
+# Coaching & Call Quality panel's bar ranges went with it. Days before the
+# switch keep the figures as they went out (CLAUDE.md, "Role Play score").
 
 # --- Call Detail row colours (HANDOFF_4 s7) ---------------------------------
 # Recovered from the approved design, then amended by Frank.
@@ -904,7 +898,7 @@ INLINE_RECONTACT_PER_GROUP = 3   # overflow lives in the attachment
 COLUMN_LEFT = ["Sales Funnel by Producer", "Task Completion Rate",
                "Recontact Struggle"]
 COLUMN_RIGHT = ["Team Leaderboard", "Call Outcome Breakdown", "Speed to Dial",
-                "Utilization and Efficiency", "Coaching & Call Quality"]
+                "Utilization and Efficiency"]   # Coaching & Call Quality left 2026-10-06
 # Sales Funnel is BY DATA CATEGORY -- one card per metric, producers ranked
 # highest to lowest inside each, then Team Total. Producer bars scale to the top
 # producer, not the team total.
@@ -928,11 +922,8 @@ GMAIL_CLIP_BYTES = 102_400
 # --- parked items -----------------------------------------------------------
 # Frank, 2026-08-14:
 #   * Credential rotation -- deferred, he will do it himself. Do not chase.
-#   * TRAQ.ai / Coach AI API key -- DROPPED until 2026-09-15. It is not arriving
-#     soon, so stop treating it as imminent. Call transcription is handled
-#     locally now (transcribe.py, Whisper base via sherpa-onnx), which removes
-#     the dependency entirely; the key would only make it cheaper.
-TRAQ_REVISIT_DATE = dt.date(2026, 9, 15)
+#   * (The TRAQ / Coach AI API key, parked here until 2026-10-06, is moot:
+#     Frank cancelled Coach AI that day. Transcription is Deepgram's.)
 
 # --- open questions (HANDOFF_4 s6) ------------------------------------------
 # Surfaced automatically as a highlighted block in the audit on/after this date.

@@ -90,3 +90,17 @@ export function dayStartMs(day) { const [y, m, d] = day.split("-").map(Number); 
 export function dayStartIso(day) { return `${day}T00:00:00${tzOffsetStr(dayStartMs(day))}`; }
 /** A clock time on the agency's clock, "2:05 PM". */
 export function localClock(ms) { return new Date(ms).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", timeZone: TZ }); }
+
+/* ---- Pantheon's own CRM (site/crm.js, 2026-10-06) --------------------------
+   Who may use it: every active person in staff.json with an email. A person's
+   id inside the CRM (assigned_to, agent_id, csr, created_by ...) is their
+   staff.json az_id, so the pipeline's ids never change. */
+export const PEOPLE = ACTIVE;
+export function personByEmail(email) {
+  const e = lower(email);
+  return e ? ACTIVE.find((p) => lower(p.email) === e) || null : null;
+}
+export function personById(id) {
+  return ACTIVE.find((p) => p.az_id === Number(id)) || null;
+}
+export function isStaff(email) { return !!personByEmail(email); }

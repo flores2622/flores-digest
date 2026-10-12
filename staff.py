@@ -48,8 +48,8 @@ names a sales team on the Sales tab; `orders` keeps the display orders (the
 coaching page, the email's and the board's utilization panels).
 A person's `board` keys (what they may open, the Worker's checks):
     commercial, coeus_usage, card_review, roleplay_voices, rotation,
-    rotation_edit, scrub, scrub_edit, roleplay_history, commission_all,
-    sales_log_all
+    rotation_edit, scrub, scrub_edit, hygiene (the Operations Center's CRM
+    Hygiene log), roleplay_history, commission_all, sales_log_all
 `digest` is which nightly email they get (ops / staff); `producer` means
 their numbers are counted; `service` puts them on the Service Center.
 
@@ -66,8 +66,10 @@ import re
 import sys
 from zoneinfo import ZoneInfo
 
+import agency_files
+
 ROOT = pathlib.Path(__file__).resolve().parent
-JSON_PATH = ROOT / "staff.json"
+JSON_PATH = agency_files.path("staff.json")   # PANTHEON_AGENCY picks the agency
 JS_PATH = ROOT / "site" / "staff_data.js"
 PUBLIC_PATH = ROOT / "site" / "public" / "staff.js"
 # What the board page may know: never an email, a phone extension or an
