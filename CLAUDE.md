@@ -1764,6 +1764,15 @@ Crystal (hybrid); credit always goes to whoever COMPLETED the SR or task.
   left out, renewal numbers split to the Renewals side. Past days: `python3
   service_digest.py --add-dials 2026-09-01 2026-09-28` (backs up under
   `backups/<today>-dials/`, adds only `dials`). The Renewals tab is next.
+  **Talk time is the grid's card after Dials** (Frank, 2026-10-12: "do the
+  same on the service center talk time", after the Digest's Avg Talk Time
+  hover; `svcTalk` / `svcTalkTip`, list key `g-talk`): the average over
+  every conversation -- a dial that connected (the number's longest
+  connected leg, as the Dials list shows it) or a call-in picked up first
+  -- with "N conversations · Xm on the line" under it, the hover saying
+  how many were dialled, how many call-ins and the call-ins' seconds, and
+  the card opening both lists. From the saved rows only -- no new figure
+  in the documents.
   **Laid out for the full-width board** (Frank, 2026-09-30: "it looks
   off"): the person strip is three equal columns (`.svcstrip`), the stat
   cards come in even rows of six (`.svcgrid`; four, then two, on narrower
