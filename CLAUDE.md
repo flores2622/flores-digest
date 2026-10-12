@@ -1294,8 +1294,9 @@ Segment - 2 or 3 Star", Oct 2025: 167 quotes, 125 people); every unmatched
 column is kept on the lead as detail and filterable. **Only the ops team
 sees it** (Frank, 2026-10-02: "ops team"): `scrub` (staff.json) and
 `scrub_edit` (staff.json) are both Frank, Francisco, Veronica and Amanda -- and
-Sarahi (Frank, 2026-10-12: "give Sarahi access to the lead scrub"; she sees
-the Operations Center with the Lead Scrub only, CRM Hygiene still 403s); anyone else
+Sarahi and Crystal (Frank, 2026-10-12: "give Sarahi access to the lead scrub",
+"give crystal access to lead scrub as well"; they see the Operations Center
+with the Lead Scrub only, CRM Hygiene still 403s); anyone else
 gets a 403 and the page never enters the menu or the search.
 
 ## Apollo's Road Map (ARM) and the tour
