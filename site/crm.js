@@ -53,6 +53,11 @@
      POST /api/crm/automations/rule        {op: add|edit|del, rule} -- Pantheon's
                                            own rules, drafts beside AgencyZoom's
                                            on the timeline (R2 crm/rules.json)
+     POST /api/crm/automations/suggest     {op: add|done|undone|del, key, text, id}
+                                           -- the ops team's suggestions on a
+                                           rule or the page (R2 crm/suggestions.json);
+                                           staff.json's `workflows_suggest` opens
+                                           GET automations and this to them
    <obj> is leads, households, policies, quotes, tasks or srs. Every write
    lands in `events` with the Access email, before and after.
 
@@ -888,6 +893,45 @@ function cleanRule(r, cur) {
   out.status = "draft";
   return { rule: out };
 }
+/* The ops team's suggestions (Frank, 2026-10-12: "add a suggestions box or
+   highlighter for the other ops members to suggest"): staff.json's
+   `workflows_suggest` lets them see the timeline and leave a note on a rule
+   (its key) or on the page ("general"); a rule with open suggestions is
+   highlighted for Frank, who ticks each one done. The author or Frank
+   removes one. */
+const SUGGEST_KEY = "crm/suggestions.json";
+async function automationsSuggest(env, body, me, full) {
+  if (!body || typeof body !== "object") return json({ error: "a JSON object is expected" }, 400);
+  const op = String(body.op || "");
+  if (!["add", "done", "undone", "del"].includes(op)) return json({ error: "op: add, done, undone or del" }, 400);
+  for (let attempt = 0; attempt < 5; attempt++) {
+    const { body: cur, etag } = await r2json(env, SUGGEST_KEY);
+    const state = cur && typeof cur === "object" && Array.isArray(cur.items) ? cur : { items: [], next: 1 };
+    const now = localStr();
+    if (op === "add") {
+      const key = String(body.key || "general").trim().slice(0, 80) || "general";
+      const text = typeof body.text === "string" ? body.text.trim().slice(0, 1000) : "";
+      if (!text) return json({ error: "the suggestion is empty" }, 400);
+      state.items.push({ id: "sg:" + state.next++, key, text, by: me.name, at: now, done: false });
+    } else {
+      const id = String(body.id || "");
+      const i = state.items.findIndex((x) => x.id === id);
+      if (i < 0) return json({ error: "no such suggestion" }, 404);
+      const it = state.items[i];
+      if (op === "del") {
+        if (!full && it.by !== me.name) return json({ error: "not yours to remove" }, 403);
+        state.items.splice(i, 1);
+      } else {
+        if (!full) return json({ error: "only the CRM's owner ticks a suggestion done" }, 403);
+        it.done = op === "done";
+        if (it.done) { it.done_by = me.name; it.done_at = now; } else { delete it.done_by; delete it.done_at; }
+      }
+    }
+    const opts = { httpMetadata: { contentType: "application/json" }, onlyIf: etag ? { etagMatches: etag } : { etagDoesNotMatch: "*" } };
+    if ((await env.BOARD.put(SUGGEST_KEY, JSON.stringify(state), opts)) !== null) return json({ ok: true, suggestions: state.items });
+  }
+  return json({ error: "the suggestions are busy -- try again" }, 503);
+}
 async function automationsRule(env, body, me) {
   if (!body || typeof body !== "object") return json({ error: "a JSON object is expected" }, 400);
   const op = String(body.op || "");
@@ -922,9 +966,11 @@ async function r2json(env, key) {
   catch (_) { return { body: null, etag: null }; }
 }
 /** GET: the report (null until the read has run) and the marks. */
-async function automationsGet(env) {
-  const [{ body: report }, { body: marks }, { body: rules }] = await Promise.all([r2json(env, AUTOMATIONS_KEY), r2json(env, AUTOMATION_MARKS_KEY), r2json(env, RULES_KEY)]);
-  return json({ report, marks: (marks && marks.marks) || {}, rules: (rules && Array.isArray(rules.rules) && rules.rules) || [] });
+async function automationsGet(env, me, full) {
+  const [{ body: report }, { body: marks }, { body: rules }, { body: sug }] = await Promise.all([
+    r2json(env, AUTOMATIONS_KEY), r2json(env, AUTOMATION_MARKS_KEY), r2json(env, RULES_KEY), r2json(env, SUGGEST_KEY)]);
+  return json({ report, marks: (marks && marks.marks) || {}, rules: (rules && Array.isArray(rules.rules) && rules.rules) || [],
+    suggestions: (sug && Array.isArray(sug.items) && sug.items) || [], can: { edit: full, suggest: true, name: me.name } });
 }
 /** POST {key, mark, note}: one mark per rule key, who and when; mark null clears it. */
 async function automationsMark(env, body, me) {
@@ -954,15 +1000,21 @@ export async function crm(request, env, identityOf, parts, url) {
   const me0 = identityOf(request, env);
   const person = personByEmail(me0.email);
   // staff.json's `crm`: Frank alone until further notice (Frank, 2026-10-06:
-  // "all of this is available to only me until further notice").
-  if (!person || !hasBoard(me0.email, "crm")) return json({ error: "not permitted" }, 403);
+  // "all of this is available to only me until further notice"). The ops
+  // team's `workflows_suggest` opens the Workflows timeline and its
+  // suggestions box, nothing else.
+  const full = !!person && hasBoard(me0.email, "crm");
+  const suggest = full || (!!person && hasBoard(me0.email, "workflows_suggest"));
+  if (!person || !(full || (suggest && parts[0] === "automations"))) return json({ error: "not permitted" }, 403);
   const me = { email: me0.email, id: person.az_id || null, name: person.name };
   const get = request.method === "GET", post = request.method === "POST";
   const [head, id, sub] = parts;
-  // The automations report and its marks live in R2 (env.BOARD), not D1.
+  // The automations report, its marks, the drafts and the suggestions live in R2 (env.BOARD), not D1.
   if (head === "automations") {
     if (!env.BOARD) return json({ error: "no R2 bucket" }, 503);
-    if (parts.length === 1 && get) return automationsGet(env);
+    if (parts.length === 1 && get) return automationsGet(env, me, full);
+    if (parts.length === 2 && id === "suggest" && post) return automationsSuggest(env, await readBody(request), me, full);
+    if (!full) return json({ error: "not permitted" }, 403);
     if (parts.length === 2 && id === "mark" && post) return automationsMark(env, await readBody(request), me);
     if (parts.length === 2 && id === "rule" && post) return automationsRule(env, await readBody(request), me);
     return json({ error: "not found" }, 404);

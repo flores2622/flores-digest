@@ -21,6 +21,7 @@
   const MIN_LEADS = 5;
   let D = null, wfBusy = false, wfMsg = null, wfNote = null, wfExp = {};
   let wfForm = null;   // {id|null, at: stage key or "", rule: the fields as typed}
+  let wfSug = null;    // the rule key (or "general") whose suggestion box is open
   let F = { kinds: { text: true, email: true, task: true, cycle: true }, source: "", pipeline: "", lang: "", q: "", small: false };
   try { const w = JSON.parse(sessionStorage.getItem("workflows-where") || "{}"); if (w.F) F = Object.assign(F, w.F, { kinds: Object.assign(F.kinds, w.F.kinds || {}) }); if (w.exp) wfExp = w.exp; } catch (_) {}
   const saveWhere = () => { try { sessionStorage.setItem("workflows-where", JSON.stringify({ F, exp: wfExp })); } catch (_) {} };
@@ -32,8 +33,8 @@
     return j;
   }
   window.WORKFLOWS_READY = (async function () {
-    const ok = await (window.CRM_READY || Promise.resolve(false));
-    if (!ok) return false;
+    // its own probe: the ops team (workflows_suggest) sees this page and no other CRM page
+    try { D = await api("automations"); } catch (_) { return false; }
     if (!CENTERS.salescenter.some(([k]) => k === "workflows")) CENTERS.salescenter.push(["workflows", "Workflows"]);
     SEARCH_PAGES.push(["Workflows", "Sales Center · what AgencyZoom's automations run today, as a timeline, and what to keep", "workflows"]);
     paintCenterBar();
@@ -52,22 +53,32 @@
   const ICON = { text: "💬", email: "✉️", task: "☑️", cycle: "🔁" };
   const KIND_WORD = { text: "Text", email: "Email", task: "Task", cycle: "Move" };
   const LANG = { en: "English", es: "Spanish" };
+  const canEdit = () => !!(D && D.can && D.can.edit);
+  const sugsOf = (key) => ((D && D.suggestions) || []).filter((x) => x.key === key);
+  const openSugs = (key) => sugsOf(key).filter((x) => !x.done);
   const isPerson = (name) => /^(Crystal|Lorena|Mike|Coral|Sarahi|Amanda|Debbie|Frank|Francisco|Veronica)/.test(name || "");
 
   // ---- where a rule sits on the timeline ----
+  // every AgencyZoom stage -> its pipeline (Frank's name), Frank's own stage for it when it has one
+  // (the Lists page's; "1 Pipeline | New" and "AZ Sun | New" both read as New), and its order
   function stageMap(R) {
-    const m = {}; (R.stage_order || []).forEach((s, i) => { m[s.stage] = { pipeline: s.pipeline, az: s.az_pipeline, ord: i }; });
+    const m = {}; (R.stage_order || []).forEach((s, i) => { m[s.stage] = { pipeline: s.pipeline, az: s.az_pipeline, ord: s.my_ord != null ? s.my_ord : 1000 + i, my: s.my_stage || null }; });
     return m;
   }
-  function placeOf(r, sm) {
-    if (r.own) { const k = sm[r.stage]; return { pipeline: r.pipeline, stage: r.stage, ord: k ? k.ord : (r.stage === "Smart-Cycle" ? 0 : 5000) }; }
+  const myStages = (R, pipeline) => (pipeline === "Smart-Cycle" ? ["Smart-Cycle"] : ((R.stages || {})[pipeline] || []));
+  function placeOf(r, sm, R) {
+    if (r.own) {
+      const k = sm[r.stage];                                   // a draft written against an AgencyZoom stage name
+      const stage = k && k.my ? k.my : r.stage, i = myStages(R || D.report || {}, r.pipeline).indexOf(stage);
+      return { pipeline: r.pipeline, stage, ord: i >= 0 ? i + 1 : (k ? k.ord : (stage === "Smart-Cycle" ? 0 : 5000)) };
+    }
     const st = (r.stages || [])[0], name = st && st.name !== "(unknown)" ? st.name : "";
     if (r.kind === "cycle") return { pipeline: r.key === "cycle:dead" ? "Dead" : "Smart-Cycle", stage: r.key === "cycle:park" ? "Into Smart-Cycle" : r.key === "cycle:back" ? "Smart-Cycle" : "Dead", ord: r.key === "cycle:park" ? -1 : 0 };
     if (!name) return { pipeline: "No sales stage on record", stage: "Service tasks, and tasks on customers", ord: 9999 };
     if (name === "Smart-Cycle") return { pipeline: "Smart-Cycle", stage: "Smart-Cycle", ord: 0 };
     if (name === "Dead") return { pipeline: "Dead", stage: "Dead", ord: 0 };
     const k = sm[name];
-    return { pipeline: k ? k.pipeline : azPipe(name) || "No sales stage on record", stage: name, ord: k ? k.ord : 5000 };
+    return { pipeline: k ? k.pipeline : azPipe(name) || "No sales stage on record", stage: k && k.my ? k.my : name, az: name, ord: k ? k.ord : 5000 };
   }
   function allRules(R) {
     return [].concat(R.texts || [], R.emails || [], R.tasks || [], (R.cycles || []).filter((c) => c.fired));
@@ -93,7 +104,7 @@
   }
   function options(R) {
     const sources = {}, pipes = {}, sm = stageMap(R);
-    allRules(R).forEach((r) => { (r.groups || []).forEach((g) => { sources[g.name] = (sources[g.name] || 0) + g.n; }); const p = placeOf(r, sm).pipeline; pipes[p] = (pipes[p] || 0) + 1; });
+    allRules(R).forEach((r) => { (r.groups || []).forEach((g) => { sources[g.name] = (sources[g.name] || 0) + g.n; }); const p = placeOf(r, sm, R).pipeline; pipes[p] = (pipes[p] || 0) + 1; });
     const pipeKeys = Object.keys(pipes).sort((a, b) => (PIPE_ORDER.indexOf(a) + 1 || 99) - (PIPE_ORDER.indexOf(b) + 1 || 99) || a.localeCompare(b));
     return { sources: Object.keys(sources).sort((a, b) => sources[b] - sources[a]), pipes: pipeKeys };
   }
@@ -117,12 +128,29 @@
   function markHtml(r) {
     const m = (D.marks || {})[r.key] || {};
     const open = wfNote === r.key;
+    if (!canEdit()) return `<div class="wfmark">${m.mark ? `<span class="wfbadge ${m.mark}">${m.mark[0].toUpperCase() + m.mark.slice(1)}</span>` : ""}${m.note ? `<div class="wfnote">${cesc(m.note)}</div>` : ""}</div>${sugHtml(r.key)}`;
     return `<div class="wfmark">
       ${["keep", "change", "drop"].map((k) => `<button type="button" class="wfmk ${k}${m.mark === k ? " on" : ""}" data-mark="${k}" data-key="${cesc(r.key)}"${wfBusy ? " disabled" : ""}>${k[0].toUpperCase() + k.slice(1)}</button>`).join("")}
       <button type="button" class="ghost tksmall" data-note="${cesc(r.key)}">${m.note ? "Edit note" : "Add a note"}</button>
       ${m.mark || m.note ? `<small class="lsmute">${m.by ? cesc(m.by.split(" ")[0]) : ""} ${m.at ? cesc(m.at.slice(0, 10)) : ""}</small>` : ""}
       ${m.note && !open ? `<div class="wfnote">${cesc(m.note)}</div>` : ""}
       ${open ? `<form class="lsform" data-notefor="${cesc(r.key)}"><input type="text" class="lsin lswide" name="note" value="${cesc(m.note || "")}" placeholder="What should change, or why it goes" maxlength="500" autofocus><button type="submit" class="btn tkpri">Save</button><button type="button" class="btn" data-cancelnote="1">Cancel</button></form>` : ""}
+    </div>${sugHtml(r.key)}`;
+  }
+  // the suggestions on one rule (or the page, key "general"): the list, then the box
+  function sugHtml(key, big) {
+    const list = sugsOf(key), me = (D.can || {}).name;
+    const items = list.map((x) => `<li class="wfsug${x.done ? " done" : ""}">
+      <span class="wfsugtxt">${cesc(x.text)}</span>
+      <small class="lsmute">${cesc(x.by.split(" ")[0])} ${cesc(x.at.slice(0, 10))}${x.done ? ` · done by ${cesc((x.done_by || "").split(" ")[0])}` : ""}</small>
+      ${canEdit() ? `<button type="button" class="ghost tksmall" data-sugdone="${cesc(x.id)}:${x.done ? 0 : 1}">${x.done ? "Reopen" : "Done"}</button>` : ""}
+      ${canEdit() || x.by === me ? `<button type="button" class="ghost tksmall" data-sugdel="${cesc(x.id)}">Remove</button>` : ""}
+    </li>`).join("");
+    const open = wfSug === key;
+    return `<div class="wfsugs${big ? " big" : ""}">
+      ${items ? `<ul class="wfsuglist">${items}</ul>` : (big ? `<p class="lsmute">No suggestions yet.</p>` : "")}
+      ${open ? `<form class="lsform wfsugform" data-sugfor="${cesc(key)}"><input type="text" class="lsin lswide" name="text" maxlength="1000" placeholder="${key === "general" ? "A rule we should have, a stage that needs one, anything on the page" : "What should change on this one"}" autofocus><button type="submit" class="btn tkpri">Suggest</button><button type="button" class="btn" data-cancelsug="1">Cancel</button></form>`
+        : `<button type="button" class="ghost tksmall wfsugbtn" data-suggest="${cesc(key)}">💡 ${big ? "Add a suggestion" : "Suggest"}</button>`}
     </div>`;
   }
   function cameLine(r) {
@@ -149,6 +177,7 @@
   }
 
   // ---- one row on the timeline ----
+  const sugBadge = (key) => { const o = openSugs(key).length; return o ? `<span class="wfbadge sug" title="${o} open suggestion${o === 1 ? "" : "s"}">💡 ${o}</span>` : ""; };
   function excerpt(r) {
     if (r.kind === "cycle") return r.title;
     const t = r.kind === "email" ? r.title : (r.template || r.title || "");
@@ -160,11 +189,11 @@
     const what = r.rkind === "email" ? r.subject : r.rkind === "task" ? r.title : r.rkind === "move" ? `Move to ${stageName(r.to_stage)}` : (r.body || "");
     const one = what.replace(/\s+/g, " ").trim();
     const srcs = r.sources.length ? `${r.sources.length} source${r.sources.length === 1 ? "" : "s"}` : "every source";
-    return `<li class="wfev wf-${r.kind} own${open ? " open" : ""}" id="wf-${cesc(r.key)}">
+    return `<li class="wfev wf-${r.kind} own${open ? " open" : ""}${openSugs(r.id).length ? " hl" : ""}" id="wf-${cesc(r.key)}">
       <button type="button" class="wfrow" data-open="${cesc(r.key)}" aria-expanded="${open}">
         <span class="wfico" title="${KIND_WORD[r.kind]}">${ICON[r.kind]}</span>
         <span class="wftxt"><span class="wfkind">${KIND_WORD[r.kind]}</span> ${cesc(one.length > 150 ? one.slice(0, 148) + "…" : one)}</span>
-        <span class="wfmeta">${r.lang === "es" ? `<span class="wflang">Spanish</span>` : ""}<span class="wfbadge draft">Pantheon · draft</span><span class="wfn">${srcs}</span><span class="wfarrow">${open ? "▲" : "▼"}</span></span>
+        <span class="wfmeta">${sugBadge(r.id)}${r.lang === "es" ? `<span class="wflang">Spanish</span>` : ""}<span class="wfbadge draft">Pantheon · draft</span><span class="wfn">${srcs}</span><span class="wfarrow">${open ? "▲" : "▼"}</span></span>
       </button>
       ${open ? `<div class="wfdetail">${wfForm && wfForm.id === r.id ? formHtml(D.report) : ownDetail(r)}</div>` : ""}
     </li>`;
@@ -177,16 +206,16 @@
       : `<p class="wfwhen"><b>Move the lead to</b> ${cesc(r.to_stage)}.</p>`;
     return `<p class="wfwhen">${when}</p>${what}${r.note ? `<div class="wfnote">${cesc(r.note)}</div>` : ""}
       <div class="wfmark"><span class="wfdraftnote">A draft: Pantheon does not run it yet. It will, once the CRM owns the tasks and the text and email senders are in.</span>
-        <button type="button" class="btn tksmall" data-editrule="${cesc(r.id)}">Edit</button>
-        <button type="button" class="ghost tksmall" data-delrule="${cesc(r.id)}">Delete</button>
-        <small class="lsmute">${cesc((r.updated_by || r.by || "").split(" ")[0])} ${cesc((r.updated || r.at || "").slice(0, 10))}</small></div>`;
+        ${canEdit() ? `<button type="button" class="btn tksmall" data-editrule="${cesc(r.id)}">Edit</button>
+        <button type="button" class="ghost tksmall" data-delrule="${cesc(r.id)}">Delete</button>` : ""}
+        <small class="lsmute">${cesc((r.updated_by || r.by || "").split(" ")[0])} ${cesc((r.updated || r.at || "").slice(0, 10))}</small></div>${sugHtml(r.id)}`;
   }
   // the add / edit form, prefilled from wfForm.rule
   function formHtml(R) {
     const f = wfForm.rule, sm = stageMap(R || {});
-    const pipes = [...new Set((R.stage_order || []).map((s) => s.pipeline))].concat(["Smart-Cycle"]);
-    const stages = f.pipeline === "Smart-Cycle" ? ["Smart-Cycle"] : (R.stage_order || []).filter((s) => s.pipeline === f.pipeline).map((s) => s.stage);
-    const allStages = (R.stage_order || []).map((s) => s.stage).concat(["Smart-Cycle", "Dead"]);
+    const pipes = Object.keys(R.stages || {}).concat(["Smart-Cycle"]);
+    const stages = myStages(R, f.pipeline);
+    const allStages = pipes.flatMap((p) => myStages(R, p).map((st) => [p === "Smart-Cycle" ? st : `${p} | ${st}`, p === "Smart-Cycle" ? st : `${p} · ${st}`])).concat([["Dead", "Dead"]]);
     const o = options(R);
     const sel = (name, list, cur, blank) => `<select class="lsin" name="${name}">${blank ? `<option value="">${blank}</option>` : ""}${list.map(([v, t]) => `<option value="${cesc(v)}"${v === cur ? " selected" : ""}>${cesc(t)}</option>`).join("")}</select>`;
     const kind = f.kind || "text";
@@ -196,13 +225,13 @@
       <div class="wfformgrid">
         <label><span>What</span>${sel("kind", [["text", "Text"], ["email", "Email"], ["task", "Task"], ["move", "Move the lead"]], kind)}</label>
         <label><span>Pipeline</span>${sel("pipeline", pipes.map((p) => [p, p]), f.pipeline)}</label>
-        <label><span>Stage</span>${sel("stage", stages.map((s) => [s, stageName(s)]), f.stage)}</label>
+        <label><span>Stage</span>${sel("stage", stages.map((s) => [s, s]), f.stage)}</label>
         <label><span>Day</span><input type="number" class="lsin" name="day" min="1" max="3650" value="${cesc(String(f.day || 1))}" required><small>Day 1 is the day it gets there, in business days</small></label>
         <label><span>Around</span>${sel("hour", [...Array(24).keys()].filter((h) => h >= 7 && h <= 19).map((h) => [String(h), hour(h)]), f.hour == null ? "" : String(f.hour), "any time")}</label>
         <label><span>Language</span>${sel("lang", [["en", "English"], ["es", "Spanish"]], f.lang || "en")}</label>
         ${kind === "email" ? `<label class="wfwide"><span>Subject</span><input type="text" class="lsin" name="subject" value="${cesc(f.subject || "")}" maxlength="200" required></label>` : ""}
         ${kind === "task" ? `<label class="wfwide"><span>Task title</span><input type="text" class="lsin" name="title" value="${cesc(f.title || "")}" maxlength="200" required></label><label><span>For</span>${sel("who", [["producer", "the lead's producer"], ["front desk", "the front desk"], ["service", "the service team"]], f.who || "producer")}</label>` : ""}
-        ${kind === "move" ? `<label class="wfwide"><span>Move to</span>${sel("to_stage", allStages.map((s) => [s, s]), f.to_stage)}</label>` : ""}
+        ${kind === "move" ? `<label class="wfwide"><span>Move to</span>${sel("to_stage", allStages, f.to_stage)}</label>` : ""}
         ${kind !== "move" ? `<label class="wfwide"><span>${kind === "task" ? "Task description (optional)" : "Wording"}</span><textarea class="lsin" name="body" rows="4" maxlength="2000"${kind === "task" ? "" : " required"} placeholder="{first} is the lead's first name, {producer} the producer's">${cesc(f.body || "")}</textarea></label>` : ""}
         <fieldset class="wfwide wfsrcs"><legend>Lead sources <small>(none ticked = every source)</small></legend>${o.sources.filter((src) => !/^\(|^Unsorted$/.test(src)).map((src) => `<label class="wfck"><input type="checkbox" name="sources" value="${cesc(src)}"${(f.sources || []).includes(src) ? " checked" : ""}> ${cesc(src)}</label>`).join("")}</fieldset>
         <label class="wfwide"><span>Note</span><input type="text" class="lsin" name="note" value="${cesc(f.note || "")}" maxlength="500" placeholder="why, or what it replaces"></label>
@@ -222,11 +251,11 @@
     const lang = r.kind !== "cycle" && r.lang === "es" ? `<span class="wflang">Spanish</span>` : "";
     const mark = m.mark ? `<span class="wfbadge ${m.mark}">${m.mark[0].toUpperCase() + m.mark.slice(1)}</span>` : "";
     const noteDot = m.note ? `<span class="wfnotedot" title="${cesc(m.note)}">✎</span>` : "";
-    return `<li class="wfev wf-${r.kind}${m.mark ? " m-" + m.mark : ""}${open ? " open" : ""}" id="wf-${cesc(r.key)}">
+    return `<li class="wfev wf-${r.kind}${m.mark ? " m-" + m.mark : ""}${open ? " open" : ""}${openSugs(r.key).length ? " hl" : ""}" id="wf-${cesc(r.key)}">
       <button type="button" class="wfrow" data-open="${cesc(r.key)}" aria-expanded="${open}">
         <span class="wfico" title="${KIND_WORD[r.kind]}">${ICON[r.kind]}</span>
         <span class="wftxt"><span class="wfkind">${KIND_WORD[r.kind]}</span> ${cesc(excerpt(r))}${r.aka && r.aka.length ? ` <small class="wfaka">the text of ${r.aka.map((a) => `“${cesc(a)}”`).join(" / ")}</small>` : ""}</span>
-        <span class="wfmeta">${lang}${mark}${noteDot}<span class="wfn">${leads}</span>${back ? `<span class="wfback">${back}</span>` : ""}<span class="wfarrow">${open ? "▲" : "▼"}</span></span>
+        <span class="wfmeta">${sugBadge(r.key)}${lang}${mark}${noteDot}<span class="wfn">${leads}</span>${back ? `<span class="wfback">${back}</span>` : ""}<span class="wfarrow">${open ? "▲" : "▼"}</span></span>
       </button>
       ${open ? `<div class="wfdetail">${detail(r)}</div>` : ""}
     </li>`;
@@ -238,10 +267,11 @@
     const rules = allRules(R).concat(ownRules()).filter(passes);
     const byPipe = {}, ownAt = {};
     rules.forEach((r) => {
-      const p = placeOf(r, sm);
+      const p = placeOf(r, sm, R);
       if (F.pipeline && p.pipeline !== F.pipeline) return;
       const P = byPipe[p.pipeline] || (byPipe[p.pipeline] = { stages: {} });
-      const S = P.stages[p.stage] || (P.stages[p.stage] = { ord: p.ord, days: {}, n: 0 });
+      const S = P.stages[p.stage] || (P.stages[p.stage] = { ord: p.ord, days: {}, n: 0, az: {} });
+      if (p.az && p.az !== p.stage) S.az[p.az] = (S.az[p.az] || 0) + 1;
       const d = r.key === "cycle:park" ? null : dayN(r.day);
       if (r.own) ownAt[p.pipeline + "|" + p.stage] = true;
       const k = d == null ? "none" : String(d);
@@ -249,21 +279,21 @@
     });
     const pipes = Object.keys(byPipe).sort((a, b) => (PIPE_ORDER.indexOf(a) + 1 || 99) - (PIPE_ORDER.indexOf(b) + 1 || 99) || a.localeCompare(b));
     if (!pipes.length) return `<div class="empty">No rule matches these filters.</div>`;
-    const addBtn = (pn, sn) => (sm[sn] || sn === "Smart-Cycle" ? `<button type="button" class="ghost tksmall wfaddhere" data-addrule="${cesc(pn + "|" + sn)}" title="Add a rule of Pantheon's own at this stage">＋ Add here</button>` : "");
+    const addBtn = (pn, sn) => (canEdit() && myStages(R, pn).includes(sn) ? `<button type="button" class="ghost tksmall wfaddhere" data-addrule="${cesc(pn + "|" + sn)}" title="Add a rule of Pantheon's own at this stage">＋ Add here</button>` : "");
     const kindOrd = { text: 0, email: 1, task: 2, cycle: 3 };
     void ownAt;
     return pipes.map((pn) => {
       const P = byPipe[pn];
       const stages = Object.keys(P.stages).sort((a, b) => P.stages[a].ord - P.stages[b].ord || a.localeCompare(b));
       const total = stages.reduce((a, s) => a + P.stages[s].n, 0);
-      const az = [...new Set(stages.map(azPipe).filter(Boolean))];
+      const az = [...new Set(stages.flatMap((sn) => Object.keys(P.stages[sn].az).map(azPipe).concat(azPipe(sn) ? [azPipe(sn)] : [])).filter(Boolean))];
       return `<section class="wfpipe">
         <h2 class="wfpipeh"><span>${cesc(pn)}</span><small>${az.length ? `AgencyZoom's ${az.map((x) => `“${cesc(x)}”`).join(", ")} · ` : ""}${n(total)} rule${total === 1 ? "" : "s"}</small></h2>
         ${stages.map((sn) => {
           const S = P.stages[sn];
           const days = Object.keys(S.days).sort((a, b) => (a === "none" ? 1e9 : +a) - (b === "none" ? 1e9 : +b));
           return `<div class="wfstage">
-            <h3 class="wfstageh">${cesc(stageName(sn))}<small>${n(S.n)}</small>${addBtn(pn, sn)}</h3>
+            <h3 class="wfstageh">${cesc(stageName(sn))}<small>${n(S.n)}</small>${Object.keys(S.az).length ? `<small class="wfazst" title="AgencyZoom's own stage names folded in here">${Object.keys(S.az).map(cesc).join(" · ")}</small>` : ""}${addBtn(pn, sn)}</h3>
             ${wfForm && !wfForm.id && wfForm.at === pn + "|" + sn ? formHtml(R) : ""}
             <ol class="wftl">${days.map((dk) => {
               const d = dk === "none" ? null : +dk;
@@ -274,6 +304,17 @@
         }).join("")}
       </section>`;
     }).join("");
+  }
+  // the page's own suggestions box, and Frank's list of everything still open
+  function sugBoxHtml() {
+    const all = (D.suggestions || []), open = all.filter((x) => !x.done);
+    const onRules = open.filter((x) => x.key !== "general");
+    const name = (key) => { const r = allRules(D.report || {}).concat(ownRules()).find((x) => x.key === key); return r ? (r.own ? excerpt(r) : (r.title || key)) : key; };
+    const where = canEdit() && onRules.length ? `<ul class="wfsugwhere">${onRules.map((x) => `<li><button type="button" class="linkish" data-goto="${cesc(x.key)}">${cesc(name(x.key).slice(0, 80))}</button> <small class="lsmute">${cesc(x.by.split(" ")[0])}: ${cesc(x.text.slice(0, 120))}</small></li>`).join("")}</ul>` : "";
+    return `<details class="wfsugbox"${open.length || wfSug === "general" ? " open" : ""}><summary>💡 Suggestions${open.length ? ` <span class="wfbadge sug">${open.length} open</span>` : ""}${canEdit() ? "" : " <small class=\"lsmute\">-- what you would change; Frank reads these</small>"}</summary>
+      ${canEdit() ? `<p class="lsmute">${open.length ? `${open.length} open, ${onRules.length} on rules (💡 on the row; open the rule to tick it done).` : "Nothing open. The ops team leaves suggestions here and on any rule."}</p>${where}` : `<p class="lsmute">Open any rule for a <b>Suggest</b> button, or use the box here for the page as a whole. A rule with an open suggestion carries 💡 until Frank ticks it done.</p>`}
+      ${sugHtml("general", true)}
+    </details>`;
   }
   function movesHtml(R) {
     const parked = Object.entries(R.parked_days || {}).map(([k, v]) => `<span class="wfchip">${cesc(stageName(k))} <small>${v.median} days parked · ${n(v.n)}</small></span>`).join("");
@@ -303,15 +344,16 @@
         <label class="wff wfq"><span>Find</span><input type="search" class="lsin" data-wff="q" value="${cesc(F.q)}" placeholder="a word in the wording"></label>
         <label class="wff wfck"><input type="checkbox" data-wff="small"${F.small ? " checked" : ""}> include rules under ${MIN_LEADS} leads</label>
         ${F.source || F.pipeline || F.lang || F.q ? `<button type="button" class="ghost tksmall" data-wfclear="1">Clear</button>` : ""}
-        <button type="button" class="btn tkpri wfaddbtn" data-addrule="">＋ Add a rule</button>
+        ${canEdit() ? `<button type="button" class="btn tkpri wfaddbtn" data-addrule="">＋ Add a rule</button>` : ""}
       </div>
-      ${wfForm && !wfForm.id && !wfForm.at ? formHtml(R) : ""}`;
+      ${wfForm && !wfForm.id && !wfForm.at ? formHtml(R) : ""}
+      ${sugBoxHtml()}`;
       body = timelineHtml(R) + movesHtml(R);
     }
     v.innerHTML = `<section class="tkpage wfpage">
       <div class="tkhead"><div class="tktiles">${tiles}</div>${tally}</div>
       ${wfMsg ? `<p class="tkmsg ${wfMsg.err ? "bad" : "good"}">${cesc(wfMsg.err || wfMsg.ok)}</p>` : ""}
-      <p class="lsintro">What AgencyZoom's automations actually do, read back from the leads${R ? ` -- the last ${R.days} days, ${n(R.leads_read)} leads' notes, as of ${cesc(R.built)}` : ""}, laid out the way a lead sees them: pipeline by pipeline, stage by stage, from the day it gets there. AgencyZoom does not hand out its rules, so each is rebuilt from what it sent. Open a row for the wording and what came back; mark it <b>Keep</b>, <b>Change</b> or <b>Drop</b> and say why -- that is the brief for the rules Pantheon runs itself.</p>
+      <p class="lsintro">What AgencyZoom's automations actually do, read back from the leads${R ? ` -- the last ${R.days} days, ${n(R.leads_read)} leads' notes, as of ${cesc(R.built)}` : ""}, laid out the way a lead sees them: pipeline by pipeline, stage by stage, from the day it gets there. AgencyZoom does not hand out its rules, so each is rebuilt from what it sent. Open a row for the wording and what came back${canEdit() ? "; mark it <b>Keep</b>, <b>Change</b> or <b>Drop</b> and say why -- that is the brief for the rules Pantheon runs itself" : ", and <b>Suggest</b> what you would change"}.</p>
       ${filters}
       ${body}
       <p class="tkfoot">Pantheon's own CRM. Nothing here changes AgencyZoom. A rule you add is Pantheon's own, a draft on the timeline beside AgencyZoom's until the CRM runs it. Texts carry the rule that sent them; emails are known by their template subject; a task counts when the same wording went to five or more leads. The day is counted the way AgencyZoom counts it: Day 1 is the day the lead got to the stage, in business days, and each rule sits on its usual day (the median over every time it fired); a task's day is the day it was due. A task wording the Day 2, 4 and 7 reminders share is listed once, named after them.</p>
@@ -332,12 +374,17 @@
   }
   const onPage = () => !!$("#view").querySelector(".wfpage");
   function onClick(e) {
-    const t = e.target.closest("[data-wfkind],[data-open],[data-mark],[data-note],[data-cancelnote],[data-wfclear],[data-addrule],[data-editrule],[data-delrule],[data-cancelrule]");
+    const t = e.target.closest("[data-wfkind],[data-open],[data-mark],[data-note],[data-cancelnote],[data-wfclear],[data-addrule],[data-editrule],[data-delrule],[data-cancelrule],[data-suggest],[data-cancelsug],[data-sugdone],[data-sugdel],[data-goto]");
     if (!t || !$("#view").contains(t) || !onPage()) return;
+    if (t.dataset.suggest != null) { wfSug = t.dataset.suggest; wfMsg = null; repaint(); return; }
+    if (t.dataset.cancelsug) { wfSug = null; repaint(); return; }
+    if (t.dataset.sugdone) { const [id, done] = t.dataset.sugdone.split(":"); act(() => api("automations/suggest", { op: done === "1" ? "done" : "undone", id }).then((j) => { D.suggestions = j.suggestions; return j; }), done === "1" ? "Done." : "Reopened."); return; }
+    if (t.dataset.sugdel) { act(() => api("automations/suggest", { op: "del", id: t.dataset.sugdel }).then((j) => { D.suggestions = j.suggestions; return j; }), "Removed."); return; }
+    if (t.dataset.goto) { wfExp[t.dataset.goto] = true; saveWhere(); repaint(); const el = document.getElementById("wf-" + t.dataset.goto); if (el) el.scrollIntoView({ block: "center" }); return; }
     if (t.dataset.addrule != null) {
       const [pipeline, stage] = t.dataset.addrule.split("|");
       wfForm = { id: null, at: t.dataset.addrule, rule: { kind: "text", pipeline: pipeline || "New Business", stage: stage || "", day: 1, lang: "en", sources: [] } };
-      if (!wfForm.rule.stage) { const first = ((D.report || {}).stage_order || []).find((s) => s.pipeline === wfForm.rule.pipeline); wfForm.rule.stage = first ? first.stage : "Smart-Cycle"; }
+      if (!wfForm.rule.stage) wfForm.rule.stage = myStages(D.report || {}, wfForm.rule.pipeline)[0] || "Smart-Cycle";
       wfMsg = null; repaint(); const f = $("#view").querySelector(".wfform"); if (f) f.scrollIntoView({ block: "center" }); return;
     }
     if (t.dataset.editrule) { const r = (D.rules || []).find((x) => x.id === t.dataset.editrule); if (!r) return; wfForm = { id: r.id, at: "", rule: Object.assign({}, r) }; wfExp[r.id] = true; wfMsg = null; repaint(); return; }
@@ -364,7 +411,7 @@
       // the form redraws on a kind or pipeline change (its fields depend on them); the rest is read on submit
       wfForm.rule = readForm(fm);
       if (e.target.name === "kind" || e.target.name === "pipeline") {
-        if (e.target.name === "pipeline") { const first = ((D.report || {}).stage_order || []).find((s) => s.pipeline === wfForm.rule.pipeline); wfForm.rule.stage = first ? first.stage : "Smart-Cycle"; }
+        if (e.target.name === "pipeline") wfForm.rule.stage = myStages(D.report || {}, wfForm.rule.pipeline)[0] || "Smart-Cycle";
         repaint();
       }
       return;
@@ -388,6 +435,14 @@
       subject: g("subject"), title: g("title"), who: g("who"), to_stage: g("to_stage"), body: g("body"), note: g("note"), sources: fd.getAll("sources").map(String) };
   }
   function onSubmit(e) {
+    const sf = e.target.closest("form[data-sugfor]");
+    if (sf && $("#view").contains(sf)) {
+      e.preventDefault();
+      const key = sf.dataset.sugfor, text = String(new FormData(sf).get("text") || "").trim();
+      if (!text) return;
+      act(() => api("automations/suggest", { op: "add", key, text }).then((j) => { D.suggestions = j.suggestions; wfSug = null; return j; }), "Suggested. Frank sees it on the rule.");
+      return;
+    }
     const rf = e.target.closest("form.wfform");
     if (rf && $("#view").contains(rf) && wfForm) {
       e.preventDefault();
@@ -409,7 +464,7 @@
   window.workflowsPaint = async function workflowsPaint() {
     $("#topsub").textContent = "what AgencyZoom's automations run today";
     $("#view").innerHTML = '<div class="empty">Loading…</div>';
-    wfMsg = null; wfNote = null;
+    wfMsg = null; wfNote = null; wfSug = null;
     await refresh();
   };
 
@@ -424,7 +479,7 @@
 .wfpipeh { display: flex; flex-wrap: wrap; align-items: baseline; gap: 10px; margin: 0 0 8px; padding-bottom: 6px; border-bottom: 2px solid var(--accent); font-size: 20px; }
 .wfpipeh small { font-size: 12px; font-weight: 500; color: var(--text-muted); }
 .wfstage { margin: 0 0 14px 4px; }
-.wfstageh { display: flex; align-items: baseline; gap: 8px; margin: 10px 0 4px; font-size: 15px; } .wfstageh small { font-size: 11px; color: var(--text-muted); font-weight: 600; }
+.wfstageh { display: flex; align-items: baseline; gap: 8px; margin: 10px 0 4px; font-size: 15px; } .wfstageh small { font-size: 11px; color: var(--text-muted); font-weight: 600; } .wfstageh .wfazst { font-weight: 500; font-style: italic; }
 .wftl { list-style: none; margin: 0; padding: 0 0 0 14px; border-left: 3px solid var(--border-strong); }
 .wfday { position: relative; padding: 2px 0 10px 16px; }
 .wfday::before { content: ""; position: absolute; left: -23px; top: 9px; width: 13px; height: 13px; border-radius: 50%; background: var(--accent); border: 3px solid var(--surface); box-shadow: 0 0 0 2px var(--accent); }
@@ -445,6 +500,16 @@
 .wflang { font-size: 10px; font-weight: 800; letter-spacing: .05em; text-transform: uppercase; padding: 1px 7px; border-radius: 999px; background: color-mix(in oklab, var(--s4, #d9a21b) 22%, var(--surface)); color: var(--text); }
 .wfbadge { font-size: 10px; font-weight: 800; letter-spacing: .05em; text-transform: uppercase; padding: 1px 7px; border-radius: 999px; color: #fff; }
 .wfbadge.draft { background: var(--text-secondary); }
+.wfbadge.sug { background: #e0a800; color: #1d1a14; }
+.wfev.hl { box-shadow: inset 4px 0 0 #e0a800, 0 0 0 2px color-mix(in oklab, #e0a800 55%, transparent); }
+.wfsugs { margin-top: 8px; } .wfsugs.big { margin-top: 4px; }
+.wfsuglist { list-style: none; margin: 0 0 6px; padding: 0; display: grid; gap: 4px; }
+.wfsug { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; padding: 6px 10px; border-radius: 8px; background: color-mix(in oklab, #e0a800 14%, var(--surface)); border-left: 4px solid #e0a800; font-size: 13px; }
+.wfsug.done { opacity: .6; border-left-color: var(--good); background: color-mix(in oklab, var(--good) 8%, var(--surface)); } .wfsug.done .wfsugtxt { text-decoration: line-through; }
+.wfsugtxt { flex: 1 1 260px; }
+.wfsugbox { margin: 6px 0 14px; padding: 8px 12px; border: 1px solid #e0a800; border-radius: 12px; background: color-mix(in oklab, #e0a800 6%, var(--surface)); } .wfsugbox summary { cursor: pointer; font-weight: 700; }
+.wfsugwhere { margin: 4px 0 8px; padding-left: 18px; font-size: 13px; } .wfsugwhere li { margin: 2px 0; }
+.linkish { font: inherit; color: var(--accent); background: none; border: 0; padding: 0; cursor: pointer; text-decoration: underline; }
 .wfev.own { border-style: dashed; background: color-mix(in oklab, var(--accent) 5%, var(--surface)); }
 .wfdraftnote { flex-basis: 100%; font-size: 12px; color: var(--text-muted); }
 .wfaddhere { margin-left: auto; } .wfaddbtn { margin-left: auto; align-self: flex-end; }

@@ -354,6 +354,29 @@ test("automations: the report from R2 and Frank's marks", async () => {
   assert.equal((await call(env, "POST", "/api/crm/automations/rule", { op: "del", id: "rule:9" })).status, 404);
   r = await call(env, "POST", "/api/crm/automations/rule", { op: "del", id: "rule:1" });
   assert.equal(r.body.rules.length, 0);
+  // the ops team suggests (workflows_suggest): sees the timeline, writes a note, never marks or drafts
+  const AMANDA = STAFF.people.find((p) => p.name.startsWith("Amanda"));
+  r = await call(env, "GET", "/api/crm/automations", null, AMANDA.email);
+  assert.equal(r.status, 200);
+  assert.equal(r.body.can.edit, false);
+  assert.equal((await call(env, "POST", "/api/crm/automations/mark", { key: "text:7001", mark: "keep" }, AMANDA.email)).status, 403);
+  assert.equal((await call(env, "POST", "/api/crm/automations/rule", { op: "add", rule: {} }, AMANDA.email)).status, 403);
+  assert.equal((await call(env, "GET", "/api/crm/lookups", null, AMANDA.email)).status, 403);
+  r = await call(env, "POST", "/api/crm/automations/suggest", { op: "add", key: "text:7001", text: "Lead with the producer's name" }, AMANDA.email);
+  assert.equal(r.status, 200, JSON.stringify(r.body));
+  assert.equal(r.body.suggestions[0].by, AMANDA.name);
+  assert.equal(r.body.suggestions[0].done, false);
+  assert.equal((await call(env, "POST", "/api/crm/automations/suggest", { op: "done", id: "sg:1" }, AMANDA.email)).status, 403);
+  r = await call(env, "POST", "/api/crm/automations/suggest", { op: "done", id: "sg:1" });
+  assert.equal(r.body.suggestions[0].done, true);
+  assert.equal(r.body.suggestions[0].done_by, FRANK.name);
+  r = await call(env, "POST", "/api/crm/automations/suggest", { op: "add", text: "A Spanish drip for every pipeline" });
+  assert.equal(r.body.suggestions[1].key, "general");
+  assert.equal((await call(env, "POST", "/api/crm/automations/suggest", { op: "del", id: "sg:2" }, AMANDA.email)).status, 403);   // not hers
+  r = await call(env, "POST", "/api/crm/automations/suggest", { op: "del", id: "sg:1" }, AMANDA.email);                            // hers
+  assert.equal(r.body.suggestions.length, 1);
+  r = await call(env, "GET", "/api/crm/automations");
+  assert.equal(r.body.suggestions.length, 1);
   assert.equal((await call(env, "GET", "/api/crm/automations", null, CRYSTAL.email)).status, 403);
   assert.equal((await call({ CRM: env.CRM }, "GET", "/api/crm/automations")).status, 503);
 });

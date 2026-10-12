@@ -49,7 +49,9 @@ coaching page, the email's and the board's utilization panels).
 A person's `board` keys (what they may open, the Worker's checks):
     commercial, coeus_usage, card_review, roleplay_voices, rotation,
     rotation_edit, scrub, scrub_edit, hygiene (the Operations Center's CRM
-    Hygiene log), roleplay_history, commission_all, sales_log_all
+    Hygiene log), roleplay_history, commission_all, sales_log_all, crm
+    (Pantheon's own CRM: Frank alone), workflows_suggest (the ops team: see
+    the Workflows timeline and leave suggestions on it, nothing else)
 `digest` is which nightly email they get (ops / staff); `producer` means
 their numbers are counted; `service` puts them on the Service Center.
 

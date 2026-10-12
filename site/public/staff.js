@@ -147,7 +147,8 @@ window.STAFF = {
     "scrub",
     "scrub_edit",
     "hygiene",
-    "roleplay_history"
+    "roleplay_history",
+    "workflows_suggest"
    ],
    "handle": "dm.francisco"
   },
@@ -163,7 +164,8 @@ window.STAFF = {
     "scrub",
     "scrub_edit",
     "hygiene",
-    "roleplay_history"
+    "roleplay_history",
+    "workflows_suggest"
    ],
    "handle": "vero.vacation.approved"
   },
@@ -191,7 +193,8 @@ window.STAFF = {
     "hygiene",
     "roleplay_history",
     "commission_all",
-    "sales_log_all"
+    "sales_log_all",
+    "workflows_suggest"
    ],
    "color": "#baffff",
    "handle": "amanda.approves"
