@@ -92,6 +92,23 @@ def _utc_local(s):
     return dt.datetime.fromisoformat(v) if v else None
 
 
+def _bdays(a, b):
+    """Weekdays in (a, b] by date -- AgencyZoom counts a task's day in business
+    days, so 'Day 4' from a Wednesday is Monday; Day 1 is the day it got there."""
+    if not a or not b:
+        return None
+    d, e = a.date(), b.date()
+    if e <= d:
+        return 0
+    days = (e - d).days
+    full, rest = divmod(days, 7)
+    n = full * 5
+    for i in range(1, rest + 1):
+        if (d + dt.timedelta(days=i)).weekday() < 5:
+            n += 1
+    return n
+
+
 def _median(xs):
     xs = [x for x in xs if x is not None]
     return round(statistics.median(xs), 1) if xs else None
@@ -141,6 +158,7 @@ def _blank(text, lead=None):
     # included ("~ Erick Gutierrez - Flores Insurance Agency", "Completed by X Y")
     t = re.sub(r"\b[A-Z][a-z]+ [A-Z][a-z]+(?=\s*[,~-]*\s*(with |from |at |-\s*)?(Flores|Farmers|" + re.escape(staff.AGENCY.get("short_name", "Flores")) + r"))", "{producer}", t)
     t = re.sub(r"(?i)(completed by )[A-Z][a-z]+ [A-Z][a-z]+", r"\1{producer}", t)
+    t = re.sub(r"(?i)^(missed call from )(?!\{phone\}).+$", r"\1{caller}", t)
     t = re.sub(r"https?://\S+|www\.\S+", "{link}", t)
     t = re.sub(r"[\w.+-]+@[\w-]+\.[\w.]+", "{email}", t)
     t = re.sub(r"\(?\b\d{3}\)?[\s.-]?\d{3}[\s.-]?\d{4}\b", "{phone}", t)
@@ -153,6 +171,17 @@ def _blank(text, lead=None):
 def _hkey(text):
     """A stable short key for a wording (Python's hash() changes per process)."""
     return hashlib.sha1(text.encode()).hexdigest()[:10]
+
+
+_ES = re.compile(r"\b(hola|gracias|buenos|buenas|usted|para|pero|tiene|puede|seguro|cotizaci[oó]n|p[oó]liza|aseguranza|llamada|mensaje|d[ií]as|informaci[oó]n|cualquier|estamos|tenemos|quiero|quieres|también|tambien|ahora|hemos|sobre|cuando|donde|d[oó]nde|est[aá]s?|nosotros|contigo|conmigo)\b|[¿¡]|[áéíóúñ]", re.I)
+_EN = re.compile(r"\b(the|and|you|your|with|this|that|have|call|quote|insurance|thanks|please|here|just|would|want|still|about|back|let|know|when|time)\b", re.I)
+
+
+def lang_of(text):
+    """'es' or 'en' from the wording (a Spanish drip is its own rule)."""
+    t = text or ""
+    es, en = len(_ES.findall(t)), len(_EN.findall(t))
+    return "es" if es >= 3 and es > en else "en"
 
 
 def _actor(move_body):
@@ -228,9 +257,14 @@ class Rule:
         self.sources = collections.Counter()
         self.stages = collections.Counter()
         self.by = collections.Counter()
+        self.groups = collections.Counter()       # Frank's lead sources (crm_lists)
+        self.pipelines = collections.Counter()    # Frank's pipelines (crm_lists)
         self.hours = collections.Counter()
         self.days_in_stage = []
         self.days_since_arrival = []
+        self.bday_stage = []        # AgencyZoom's own count: business days since the stage
+        self.bday_arrival = []
+        self.aka = []               # task titles this wording belongs to, when it could be any of them
         self.replied = 0
         self.opted_out = 0
         self.opened = 0
@@ -244,9 +278,15 @@ class Rule:
             self.bodies[body] += 1
         self.sources[source or "(no source)"] += 1
         self.stages[stage or "(unknown)"] += 1
+        self.groups[_group_of(source)] += 1
+        self.pipelines[_pipeline_of(stage)] += 1
         self.by[by or "(nobody)"] += 1
         if when:
             self.hours[when.hour] += 1
+            if entered:
+                self.bday_stage.append(_bdays(entered, when))
+            elif arrived:
+                self.bday_arrival.append(_bdays(arrived, when))
             d = when.strftime("%Y-%m-%d")
             self.first = d if not self.first or d < self.first else self.first
             self.last = d if not self.last or d > self.last else self.last
@@ -264,7 +304,14 @@ class Rule:
             "variants": len(self.bodies),
             "fired": self.fired, "leads": len(self.leads),
             "first": self.first, "last": self.last,
-            "stages": _top(self.stages), "sources": _top(self.sources), "by": _top(self.by, 3),
+            "stages": _top(self.stages, 8), "sources": _top(self.sources, 8), "by": _top(self.by, 3),
+            "groups": _top(self.groups, 20), "pipelines": _top(self.pipelines, 8),
+            "lang": lang_of(self.bodies.most_common(1)[0][0]) if self.bodies else "en",
+            # the timeline's day, AgencyZoom's way: Day 1 is the day the lead got
+            # to the stage, counted in business days (the median over every firing)
+            "day": (int(round(_median(self.bday_stage if self.bday_stage else self.bday_arrival))) + 1
+                    if (self.bday_stage or self.bday_arrival) else None),
+            "aka": self.aka,
             "days_in_stage": {"median": _median(self.days_in_stage), "hist": _hist(self.days_in_stage)},
             "days_since_arrival": {"median": _median(self.days_since_arrival), "hist": _hist(self.days_since_arrival)},
             "peak_hour": peak[0][0] if peak else None,
@@ -272,6 +319,33 @@ class Rule:
             "opted_out": self.opted_out,
             "opened": self.opened, "bounced": self.bounced,
         }
+
+
+_GROUP_CACHE, _PIPE_CACHE = {}, {}
+
+
+def _group_of(source):
+    """An AgencyZoom source name -> Frank's source (crm_lists), else Unsorted."""
+    if source not in _GROUP_CACHE:
+        import crm_lists
+        lid, _ = crm_lists.place_source(source) if source else (None, None)
+        name = next((n for i, n, *_ in crm_lists.SOURCES if i == lid), None)
+        _GROUP_CACHE[source] = name or ("(no source)" if not source else "Unsorted")
+    return _GROUP_CACHE[source]
+
+
+def _pipeline_of(stage):
+    """'1 Pipeline | New' -> Frank's pipeline (crm_lists), 'Smart-Cycle' -> 'Smart-Cycle'."""
+    if stage not in _PIPE_CACHE:
+        import crm_lists
+        pipe = stage.split(" | ")[0] if stage and " | " in stage else ""
+        if not pipe:
+            _PIPE_CACHE[stage] = stage or "(unknown)"
+        else:
+            lid, _ = crm_lists.place_workflow(pipe, "sales")
+            name = next((n for i, n, *_ in crm_lists.PIPELINES if i == lid), None)
+            _PIPE_CACHE[stage] = name or pipe
+    return _PIPE_CACHE[stage]
 
 
 def _timeline(notes):
@@ -356,7 +430,73 @@ def build(days=DAYS, log=log):
                 learn[messages._subject_key(n, first)].add(lid)
     templates = set(messages.TEMPLATE_SUBJECTS) | {k for k, v in learn.items() if k and len(v) >= LEARN_LEADS}
 
+    # a TASK note is the task's own text with the producer's completion note
+    # typed around it ("Called, left VM" before, "Left VM" inside), so the
+    # task is known by its CANNED lines: the ones that repeat on 5+ leads
+    def _task_lines(n, lead):
+        out = []
+        for sg in re.split(r"<br\s*/?>|</p>|<p[^>]*>|\r?\n", n.get("body") or ""):
+            t = _blank(sg, lead)
+            t = re.sub(r"(?i)^(lead source)\s*:\s*.+$", r"\1: {source}", t)
+            if t and not re.match(r"(?i)^completed by", t):
+                out.append(t)
+        return out
+    task_lines = collections.defaultdict(set)
+    for lid, lead, notes in per_lead:
+        for n in notes:
+            if n.get("type") == "TASK":
+                t = _local(n.get("createDate"))
+                if t and t >= since:
+                    for ln in set(_task_lines(n, lead)):
+                        task_lines[ln].add(lid)
+    # a producer's own outcome line ("No answer", "Called, left VM") is short
+    # and carries no placeholder; the task's canned text is neither
+    canned_line = lambda ln: len(ln) > 16 or "{" in ln
+    # the saved task records say the task's TITLE ("Never quoted lead- Day 2
+    # NEW") beside its description (`comments`, the note's text), so a TASK
+    # note is known by its title through the description's lines
+    line_title = collections.defaultdict(collections.Counter)
+    task_recs, seen_tasks = [], set()
+    for f in sorted(glob.glob(str(DATA / "az_tasks_*.json"))):
+        try:
+            rows = json.loads(pathlib.Path(f).read_text())
+        except Exception:
+            continue
+        for t in (rows.values() if isinstance(rows, dict) else rows or []):
+            tid = t.get("id")
+            if not tid or tid in seen_tasks:
+                continue
+            seen_tasks.add(tid)
+            task_recs.append(t)
+            title = _blank(t.get("title"))
+            if title and t.get("comments"):
+                lead = leads.get(t.get("customerId")) if t.get("customerType") == "lead" else None
+                for ln in set(_task_lines({"body": t.get("comments")}, lead)):
+                    if canned_line(ln):
+                        line_title[ln][title] += 1
+
+    def title_of(lines):
+        """(the task title the note's canned lines point at, or None; the titles
+        they could belong to) -- the Day 2 / 4 / 7 reminders share one text."""
+        best, cands = None, collections.Counter()
+        for ln in lines:
+            c = line_title.get(ln)
+            if not c:
+                continue
+            tot = sum(c.values())
+            title, k = c.most_common(1)[0]
+            if tot >= 3 and k / tot >= 0.6 and (best is None or tot > best[1]):
+                best = (title, tot)
+            if tot >= 3:
+                for ttl, kk in c.items():
+                    if kk / tot >= 0.15:
+                        cands[ttl] += kk
+        return (best[0] if best else None), [t for t, _ in cands.most_common(6)]
+
     task_bodies = collections.defaultdict(lambda: Rule("task", "", ""))
+    task_titles = collections.defaultdict(lambda: Rule("task", "", ""))
+    note_tasks = set()  # (lead id, the task's day) seen as a TASK note, so its record is not counted twice
+    where_of = {}       # lead id -> (timeline, stage now, arrived), for the task records below
     for lid, lead, notes in per_lead:
         notes = [n for n in notes if _local(n.get("createDate"))]
         notes.sort(key=lambda n: _local(n.get("createDate")))
@@ -364,6 +504,7 @@ def build(days=DAYS, log=log):
         now_stage = stages.get(str(lead.get("workflowStageId") or ""), "")
         source = lead.get("leadSourceName") or src_names.get(lead.get("leadSourceId")) or ""
         tl = _timeline(notes)
+        where_of[lid] = (tl, now_stage, arrived)
         inbound_texts = [(_local(n["createDate"]), lc._text(n.get("body"))) for n in notes
                          if n.get("type") == "TEXT" and messages._inbound(n.get("attr") or {})]
         inbound_any = inbound_texts + [(_local(n["createDate"]), "") for n in notes
@@ -397,13 +538,28 @@ def build(days=DAYS, log=log):
                     if any(t < rt <= t + dt.timedelta(hours=EMAIL_REPLY_HOURS) for (rt, _) in inbound_any):
                         r.replied += 1
             elif typ == "TASK":
-                body = _blank(n.get("body"), lead)
-                body = re.sub(r"completed by \{producer\}", "", body, flags=re.I).strip(" .~-")
-                if body:
-                    r = task_bodies[body]
-                    r.key, r.title = "task:" + _hkey(body), body[:90]
-                    stage, entered = _where(tl, t, now_stage, arrived)
-                    r.hit(t, lid, body, source, stage, entered, arrived, lc.task_note_parts(n.get("body"))[0])
+                lines = _task_lines(n, lead)
+                canned = " ".join(ln for ln in lines if canned_line(ln) and len(task_lines[ln]) >= LEARN_LEADS)[:400].strip(" .~-")
+                title, cands = title_of(lines)
+                # a TASK note is stamped 5 PM the evening before the task's day
+                # (checked 2026-10-12 against the task records' dueDate), so the
+                # day it was FOR is the next one
+                day = t + dt.timedelta(hours=15)
+                if title:
+                    r = task_titles[title]
+                    r.key, r.title = "tasktitle:" + _hkey(title), title[:90]
+                    body = canned or title
+                    note_tasks.add((lid, day.date()))
+                elif canned:
+                    r = task_bodies[canned]
+                    r.key, r.title = "task:" + _hkey(canned), canned[:90]
+                    body = canned
+                    if len(cands) >= 2 and not r.aka:
+                        r.aka = cands
+                else:
+                    continue
+                stage, entered = _where(tl, t, now_stage, arrived)
+                r.hit(day, lid, body, source, stage, entered, arrived, lc.task_note_parts(n.get("body"))[0])
         # Smart-Cycle and the moves
         prev_t = arrived
         for (t, frm, to, who, person) in tl:
@@ -424,30 +580,32 @@ def build(days=DAYS, log=log):
                     r.hit(t, lid, None, source, frm, prev_t, arrived, who)
             prev_t = t
 
-    # the saved task files: titles that repeat
-    task_titles = collections.defaultdict(lambda: Rule("task", "", ""))
-    seen_tasks = set()
-    for f in sorted(glob.glob(str(DATA / "az_tasks_*.json"))):
-        try:
-            rows = json.loads(pathlib.Path(f).read_text())
-        except Exception:
-            continue
-        for t in (rows.values() if isinstance(rows, dict) else rows or []):
+    # the saved task records: titles that repeat, less the tasks the notes
+    # already counted (a lead's TASK note on the task's day)
+    for t in task_recs:
+        if t.get("customerType") == "lead" and t.get("dueDate"):
+            try:
+                if (t.get("customerId"), dt.date.fromisoformat(str(t["dueDate"])[:10])) in note_tasks:
+                    continue
+            except ValueError:
+                pass
+        lead = leads.get(t.get("customerId")) if t.get("customerType") == "lead" else None
+        title = _blank(t.get("title"), lead)
+        if title:
             tid = t.get("id")
-            if not tid or tid in seen_tasks:
-                continue
-            seen_tasks.add(tid)
-            title = _blank(t.get("title"))
-            if not title:
-                continue
             r = task_titles[title]
             r.key, r.title = "tasktitle:" + _hkey(title), title[:90]
-            when = _utc_local(t.get("createDate")) or _utc_local(t.get("dueDate"))
-            lead = leads.get(t.get("customerId")) if t.get("customerType") == "lead" else None
+            # the task's day is the day it is due (a record made by the automation
+            # is created the morning of its due day; a person's may be set ahead)
+            when = _local(str(t.get("dueDate") or "")[:10] + " 08:00:00") or _utc_local(t.get("createDate"))
             arrived = _utc_local(lead.get("createDate")) if lead else None
             assignee = t.get("assigneeId") or ((t.get("assignees") or [{}])[0].get("id") if t.get("assignees") else None)
             who = next((p["name"] for p in staff.PEOPLE if p.get("az_id") == assignee), str(assignee or ""))
-            r.hit(when, t.get("customerId") or tid, title, (lead or {}).get("leadSourceName") or "", "", None, arrived, who)
+            stage, entered = "", None
+            if lead and lead["id"] in where_of and when:
+                tl, now_stage, _arr = where_of[lead["id"]]
+                stage, entered = _where(tl, when, now_stage, arrived)
+            r.hit(when, t.get("customerId") or tid, title, (lead or {}).get("leadSourceName") or "", stage, entered, arrived, who)
 
     def rules_out(d, min_fired=1):
         return sorted((r.out() for r in d.values() if r.fired >= min_fired), key=lambda x: -x["fired"])
@@ -462,8 +620,29 @@ def build(days=DAYS, log=log):
         "parked_days": {k: {"median": _median(v), "n": len(v)} for k, v in parked_days.items()},
         "transitions": [{"from": f, "to": t, "who": w, "n": n} for (f, t, w), n in transitions.most_common(40)],
         "actors": _top(actors, 12),
+        "stage_order": stage_order(),
     }
     return report
+
+
+def stage_order():
+    """Every sales stage as '<pipeline> | <stage>' in AgencyZoom's own order,
+    with Frank's pipeline for each (crm_lists) -- the timeline's spine."""
+    p = DATA / "az_pipelines.json"
+    if not p.exists():
+        return []
+    try:
+        pipes = json.loads(p.read_text())
+    except Exception:
+        return []
+    import crm_lists
+    out = []
+    for wf in sorted((x for x in pipes if x.get("type") == "lead"), key=lambda x: x.get("seq") or 0):
+        lid, _ = crm_lists.place_workflow(wf.get("name") or "", "sales")
+        mine = next((n for i, n, *_ in crm_lists.PIPELINES if i == lid), None)
+        for st in sorted(wf.get("stages") or [], key=lambda x: x.get("seq") or 0):
+            out.append({"stage": f"{wf.get('name')} | {st.get('name')}", "pipeline": mine or wf.get("name"), "az_pipeline": wf.get("name")})
+    return out
 
 
 def publish(report, log=log):

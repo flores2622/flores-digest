@@ -2939,7 +2939,14 @@ on a published day. The rules:
   to staff az_ids by `crm_import.person`; a task's clock is `taskDateTime`
   only when `timeSpecific`, else its `dueDate` day; the household map is
   `{id: {fetched, policies: [...]}}` with premiums in cents; lead source
-  names repeat ("X" twice -- migration 0003 dropped the unique name). The
+  names repeat ("X" twice -- migration 0003 dropped the unique name).
+  **A note carries no id** (found 2026-10-12: type, createDate, createdBy,
+  title, body, attr only -- four nights had loaded no notes), so
+  `crm_import.note_id` makes a stable one from the lead, the stamp, the type
+  and the text (`az_id` NULL), and **only the last 30 days' notes go through
+  the mirror** (`NOTE_DAYS`; a lead's file is its whole history, ~40 notes,
+  and D1 counts every index entry as a write) -- the history is a one-off
+  backfill once the account is on Workers Paid. The
   real workflow and stage ids come from `data/az_pipelines.json`
   (`/v1/api/pipelines-and-stages` as it came, saved by daily.py beside
   `az_stages.json`) and from the SRs themselves; the SR categories' names
@@ -2989,6 +2996,20 @@ on a published day. The rules:
   Keep / Change / Drop marks (`/api/crm/automations/mark`, R2
   `crm/automation_marks.json`), the brief for Pantheon's own rules (CRM.md
   step 2, draft mode first). Not on the nightly; rerun by hand to refresh.
+  **It is a timeline** (Frank, 2026-10-12: "easier to look at as a
+  timeline, the way the automation tab looks for current leads in agency
+  zoom, with a way to filter to lead source, pipeline, or language"):
+  pipeline by pipeline (Frank's names), stage by stage (AgencyZoom's order,
+  the report's `stage_order`), each rule on its `day` -- AgencyZoom's own
+  count, Day 1 = the day the lead got to the stage, in business days
+  (`_bdays`) -- with filters for Frank's lead sources (`groups`), pipeline,
+  language (`lang`) and a word. **A task is known by its title**: the task
+  records' `comments` is the TASK note's text, so a note's canned lines
+  (5+ leads, over 16 characters or a placeholder) point at the record's
+  title, and a note stamped 5 PM is for the NEXT day (checked against the
+  records' dueDate); the Day 2 / 4 / 7 reminders' shared text is listed
+  once, `aka` naming them. "Missed Call from <name>" titles are blanked to
+  `{caller}`.
 - `node --test site/crm.test.mjs` is its test; run it after touching
   `site/crm.js` or the schema. A new field is added to the schema (a new
   migration file), to `OBJECTS` in `site/crm.js` and to the test together.

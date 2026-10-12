@@ -61,6 +61,7 @@ NAME_TO_ID = {p["name"].strip().lower(): p.get("az_id") for p in staff.PEOPLE if
 
 DATA = pathlib.Path(os.environ.get("CRM_DATA") or ROOT / "data")
 SCHEMA = ROOT / "site" / "crm" / "migrations" / "0001_init.sql"
+NOTE_DAYS = int(os.environ.get("CRM_NOTE_DAYS") or 30)   # notes newer than this go through the mirror; 0 = all
 SYNTHETIC_WORKFLOW_FROM = 900001   # a sales pipeline AgencyZoom never gave us an id for
 SYNTHETIC_STAGE_FROM = 800001      # a service stage known only by name
 STATEMENTS_PER_FILE = 4000
@@ -129,6 +130,15 @@ def intval(v):
         return int(v) if v not in (None, "") else None
     except (TypeError, ValueError):
         return None
+
+
+def note_id(lead_id, when, ntype, body):
+    """A stable id for a note AgencyZoom gives none: 52 bits of a hash over the
+    lead, the stamp, the type and the text (fits SQLite's integer and a JS
+    number). Two identical notes at the same second on one lead are one."""
+    import hashlib
+    h = hashlib.sha1(f"{lead_id}|{when}|{ntype}|{body}".encode()).hexdigest()
+    return int(h[:13], 16)
 
 
 def person(v):
@@ -525,25 +535,35 @@ def build(rows, days=None):
     except Exception:
         pipelines = live_contact = None
     n_files = 0
+    # Only notes from the last NOTE_DAYS go through the nightly mirror: a lead's
+    # file holds its whole history (about 40 notes a lead), and D1 counts every
+    # index entry as a row written, so the history is a one-off backfill, not
+    # a nightly's work.
+    note_floor = (dt.datetime.now(staff.TZ).replace(tzinfo=None) - dt.timedelta(days=NOTE_DAYS)).strftime("%Y-%m-%d %H:%M:%S") if NOTE_DAYS else ""
     for f in sorted(glob.glob(str(DATA / "notes" / "*.json"))):
         lid = intval(pathlib.Path(f).stem)
         if not lid or (lead_ids and lid not in lead_ids):
             continue
         n_files += 1
         for n in as_list(json.loads(pathlib.Path(f).read_text())):
-            nid = intval(n.get("id"))
-            if not nid:
-                continue
             attr = n.get("attr") if isinstance(n.get("attr"), dict) else {}
             body = n.get("body") if n.get("body") is not None else (n.get("text") or "")
             ntype = str(n.get("type") or "NOTE").upper()
+            when = local_dt(n.get("createDate"), utc=False) or "1970-01-01 00:00:00"
+            if when < note_floor:
+                continue
+            # AgencyZoom's notes carry NO id (type, createDate, createdBy, title,
+            # body, attr only -- found 2026-10-12, after four nights of loading
+            # nothing), so the row's id is made from the lead, the stamp, the
+            # type and the text: the same note gets the same id on every run,
+            # and stage_moves.note_id can point at it. az_id stays NULL.
+            nid = note_id(lid, when, ntype, body)
             created_by = person(n.get("createdBy"))
             if created_by is None and n.get("createdBy"):
                 attr = dict(attr, createdByName=str(n["createdBy"]))
             origin = "automation" if attr.get("triggerRuleId") else ("traq" if str(body).lstrip().lower().startswith("traq") else "import")
-            when = local_dt(n.get("createDate"), utc=False) or "1970-01-01 00:00:00"
             rows.insert("notes", {
-                "id": nid, "az_id": nid, "lead_id": lid, "type": ntype, "body": str(body),
+                "id": nid, "az_id": None, "lead_id": lid, "type": ntype, "body": str(body),
                 "attr": json.dumps(attr) if attr else None,
                 "attachments": json.dumps(n.get("attachments")) if n.get("attachments") else None,
                 "origin": origin, "created_by": created_by, "create_date": when,

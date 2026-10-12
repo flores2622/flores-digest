@@ -262,10 +262,29 @@ never the Worker's address); `--build --publish` writes
 `data/az_automations.json` and R2 `crm/automations.json`. The Worker serves
 it at `GET /api/crm/automations` with Frank's marks (`crm/automation_marks.json`;
 `POST /api/crm/automations/mark` {key, mark keep|change|drop|null, note}),
-same `crm` gate. **Sales Center > Workflows** (`site/public/workflows.js`):
-Texts / Emails / Tasks / Smart-Cycle tabs, a card per rule with Keep /
-Change / Drop and a note. The marks are the brief for step 2. Rerun the
-read whenever the picture should refresh; it is not on the nightly.
+same `crm` gate. **Sales Center > Workflows** (`site/public/workflows.js`)
+is a timeline (Frank, 2026-10-12: "easier to look at as a timeline, the way
+the automation tab looks for current leads in agency zoom, with a way to
+filter to lead source, pipeline, or language"): pipeline by pipeline (Frank's
+names, `crm_lists.place_workflow`), stage by stage in AgencyZoom's order
+(the report's `stage_order`, from `data/az_pipelines.json`), each rule on
+its usual day -- `day`, AgencyZoom's own count: Day 1 is the day the lead
+got to the stage, in business days (`_bdays`), the median over every
+firing. Filters: lead source (Frank's sources, each rule's `groups` via
+`crm_lists.place_source`), pipeline (`pipelines`), language (`lang`, a
+Spanish-word count on the wording), a word, and rules under 5 leads. A row
+opens to the old card with Keep / Change / Drop and the note. **Tasks are
+known by their title**: a TASK note is the task's description with the
+producer's outcome typed around it ("Called, left VM"), stamped 5 PM the
+evening before the task's day; the task records (`az_tasks_*.json`) carry
+`title` beside `comments` (that same description), so each canned line of
+a description (on 5+ leads, over 16 characters or with a placeholder --
+a producer's outcome line is short) points at a title, and a note takes
+the title its lines agree on; a record already counted as a note (same
+lead, same due day) is skipped. The Day 2 / 4 / 7 reminders share one
+description, so that text is listed once with `aka` naming them. 374 task
+"rules" became 69. The marks are the brief for step 2. Rerun the read
+whenever the picture should refresh; it is not on the nightly.
 
 **2. Pantheon's own rules (next).** A rule reads as a sentence: **when** a
 lead arrives on a source / enters a stage / sits N days with no activity /
