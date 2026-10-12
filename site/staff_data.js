@@ -120,7 +120,10 @@ export default {
       "tags": [
         "task_assignee"
       ],
-      "board": [],
+      "board": [
+        "scrub",
+        "scrub_edit"
+      ],
       "color": "#ffb48c",
       "email_dot": "cK",
       "handle": "safe.with.sarahi"

@@ -77,7 +77,10 @@ window.STAFF = {
    "tags": [
     "task_assignee"
    ],
-   "board": [],
+   "board": [
+    "scrub",
+    "scrub_edit"
+   ],
    "sales_team": "coral-sarahi",
    "color": "#ffb48c",
    "handle": "safe.with.sarahi"
