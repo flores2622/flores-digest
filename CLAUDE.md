@@ -262,6 +262,11 @@ Everything caches under `data/`, so a re-run resumes rather than restarting.
   "▼ Expand ▼" at its bottom and closes from "▲ Collapse ▲" at the bottom of
   the open card** (Frank, 2026-09-30, replacing the small top-right arrow;
   the header still opens it too), which scrolls back to the card's top.
+  **Each objection inside an open card folds** (Frank, 2026-10-12: "make the
+  objections within the coaching card expandable or a dropdown"): closed by
+  default to one line -- the group, Apollo's category and its score chips --
+  and a click opens what they said, what the producer said, Apollo's read and
+  the ways to take it on (`.objfold`, a `<details>` per objection in `card`).
 - **Card flags are categorised** (Frank, 2026-09-27): Apollo names each
   flag's category from `digest_config.FLAG_GROUPS` (No next step, Quote not
   presented, Discovery missed, Approach skipped, Objection dropped, Call cut
