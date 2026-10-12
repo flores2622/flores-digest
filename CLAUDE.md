@@ -2959,6 +2959,20 @@ on a published day. The rules:
   Keep / Change / Drop marks (`/api/crm/automations/mark`, R2
   `crm/automation_marks.json`), the brief for Pantheon's own rules (CRM.md
   step 2, draft mode first). Not on the nightly; rerun by hand to refresh.
+  **It is a timeline** (Frank, 2026-10-12: "easier to look at as a
+  timeline, the way the automation tab looks for current leads in agency
+  zoom, with a way to filter to lead source, pipeline, or language"):
+  pipeline by pipeline (Frank's names), stage by stage (AgencyZoom's order,
+  the report's `stage_order`), each rule on its `day` -- AgencyZoom's own
+  count, Day 1 = the day the lead got to the stage, in business days
+  (`_bdays`) -- with filters for Frank's lead sources (`groups`), pipeline,
+  language (`lang`) and a word. **A task is known by its title**: the task
+  records' `comments` is the TASK note's text, so a note's canned lines
+  (5+ leads, over 16 characters or a placeholder) point at the record's
+  title, and a note stamped 5 PM is for the NEXT day (checked against the
+  records' dueDate); the Day 2 / 4 / 7 reminders' shared text is listed
+  once, `aka` naming them. "Missed Call from <name>" titles are blanked to
+  `{caller}`.
 - `node --test site/crm.test.mjs` is its test; run it after touching
   `site/crm.js` or the schema. A new field is added to the schema (a new
   migration file), to `OBJECTS` in `site/crm.js` and to the test together.

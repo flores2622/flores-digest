@@ -1,18 +1,28 @@
 /* Workflows -- what AgencyZoom's automations run today, read back from the
    leads (Frank, 2026-10-07: "how do we start building our own workflows? or
-   display what we currently have so we can adjust or change as needed").
-   Sales Center > Workflows, shown only to whoever /api/crm answers (Frank
-   alone for now). The report is az_automations.py's (R2 crm/automations.json,
-   through /api/crm/automations): every text rule, drip email, repeated task
-   and the Smart-Cycle moves, each with its wording blanked of names, when it
-   fires, who it hits and what came back. Frank marks each keep / change /
-   drop with a note; the marks are the brief for the rules Pantheon will run
-   itself (CRM.md, Workflows). Loads after tasks.js: it waits on CRM_READY. */
+   display what we currently have so we can adjust or change as needed"),
+   drawn as a timeline (Frank, 2026-10-12: "easier to look at as a timeline,
+   the way the automation tab looks for current leads in agency zoom, with a
+   way to filter to lead source, pipeline, or language"). Sales Center >
+   Workflows, shown only to whoever /api/crm answers (Frank alone for now).
+   The report is az_automations.py's (R2 crm/automations.json, through
+   /api/crm/automations): every text rule, drip email, repeated task and the
+   Smart-Cycle moves, each with its wording blanked of names, the stage it
+   fires in and on which day, who it hits and what came back. The page lays
+   them out pipeline by pipeline, stage by stage, Day 0 downwards, like
+   AgencyZoom's automation tab on a lead; the filters are Frank's lead
+   sources and pipelines (crm_lists) and the wording's language. A row
+   opens to the whole rule; Frank marks each keep / change / drop with a
+   note; the marks are the brief for the rules Pantheon will run itself
+   (CRM.md, Workflows). Loads after tasks.js: it waits on CRM_READY. */
 (function () {
-  const TABS = [["texts", "Texts"], ["emails", "Emails"], ["tasks", "Tasks"], ["cycles", "Smart-Cycle"]];
-  let D = null, wfTab = "texts", wfBusy = false, wfMsg = null, wfOpen = {};
-  try { const w = JSON.parse(sessionStorage.getItem("workflows-where") || "{}"); if (TABS.some(([k]) => k === w.tab)) wfTab = w.tab; } catch (_) {}
-  const saveWhere = () => { try { sessionStorage.setItem("workflows-where", JSON.stringify({ tab: wfTab })); } catch (_) {} };
+  const KINDS = [["text", "Texts", "var(--accent)"], ["email", "Emails", "var(--s4)"], ["task", "Tasks", "var(--s3)"], ["cycle", "Smart-Cycle", "var(--good)"]];
+  const PIPE_ORDER = ["New Business", "Quotes Not Closed", "Not Quoted", "Life", "Commercial", "Smart-Cycle", "Dead", "No sales stage on record"];
+  const MIN_LEADS = 5;
+  let D = null, wfBusy = false, wfMsg = null, wfNote = null, wfExp = {};
+  let F = { kinds: { text: true, email: true, task: true, cycle: true }, source: "", pipeline: "", lang: "", q: "", small: false };
+  try { const w = JSON.parse(sessionStorage.getItem("workflows-where") || "{}"); if (w.F) F = Object.assign(F, w.F, { kinds: Object.assign(F.kinds, w.F.kinds || {}) }); if (w.exp) wfExp = w.exp; } catch (_) {}
+  const saveWhere = () => { try { sessionStorage.setItem("workflows-where", JSON.stringify({ F, exp: wfExp })); } catch (_) {} };
 
   async function api(path, body) {
     const r = await fetch("/api/crm/" + path, body ? { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(body) } : { cache: "no-store" });
@@ -24,7 +34,7 @@
     const ok = await (window.CRM_READY || Promise.resolve(false));
     if (!ok) return false;
     if (!CENTERS.salescenter.some(([k]) => k === "workflows")) CENTERS.salescenter.push(["workflows", "Workflows"]);
-    SEARCH_PAGES.push(["Workflows", "Sales Center · what AgencyZoom's automations run today, and what to keep", "workflows"]);
+    SEARCH_PAGES.push(["Workflows", "Sales Center · what AgencyZoom's automations run today, as a timeline, and what to keep", "workflows"]);
     paintCenterBar();
     return true;
   })();
@@ -33,6 +43,49 @@
   const pct = (a, b) => (b ? Math.round(100 * a / b) : 0);
   const hour = (h) => (h == null ? "" : `${h % 12 || 12} ${h < 12 ? "AM" : "PM"}`);
   const stageName = (s) => (s || "").split(" | ").pop() || s;
+  const azPipe = (s) => ((s || "").includes(" | ") ? s.split(" | ")[0] : "");
+  // AgencyZoom's own count: Day 1 is the day the lead gets to the stage, in business days
+  const dayN = (d) => (d == null ? null : Math.max(1, Math.round(d)));
+  const dayLabel = (d) => (d == null ? "No set day" : `Day ${n(d)}`);
+  const daySub = (d) => (d == null ? "fires with no fixed day on record" : d === 1 ? "the day the lead gets there" : d === 2 ? "the next business day" : d >= 250 ? `about ${(d / 250).toFixed(1).replace(/\.0$/, "")} years in the stage` : d >= 45 ? `about ${Math.round(d / 21.7)} months in the stage` : `${n(d - 1)} business days after it gets there`);
+  const ICON = { text: "💬", email: "✉️", task: "☑️", cycle: "🔁" };
+  const KIND_WORD = { text: "Text", email: "Email", task: "Task", cycle: "Move" };
+  const LANG = { en: "English", es: "Spanish" };
+  const isPerson = (name) => /^(Crystal|Lorena|Mike|Coral|Sarahi|Amanda|Debbie|Frank|Francisco|Veronica)/.test(name || "");
+
+  // ---- where a rule sits on the timeline ----
+  function stageMap(R) {
+    const m = {}; (R.stage_order || []).forEach((s, i) => { m[s.stage] = { pipeline: s.pipeline, az: s.az_pipeline, ord: i }; });
+    return m;
+  }
+  function placeOf(r, sm) {
+    const st = (r.stages || [])[0], name = st && st.name !== "(unknown)" ? st.name : "";
+    if (r.kind === "cycle") return { pipeline: r.key === "cycle:dead" ? "Dead" : "Smart-Cycle", stage: r.key === "cycle:park" ? "Into Smart-Cycle" : r.key === "cycle:back" ? "Smart-Cycle" : "Dead", ord: r.key === "cycle:park" ? -1 : 0 };
+    if (!name) return { pipeline: "No sales stage on record", stage: "Service tasks, and tasks on customers", ord: 9999 };
+    if (name === "Smart-Cycle") return { pipeline: "Smart-Cycle", stage: "Smart-Cycle", ord: 0 };
+    if (name === "Dead") return { pipeline: "Dead", stage: "Dead", ord: 0 };
+    const k = sm[name];
+    return { pipeline: k ? k.pipeline : azPipe(name) || "No sales stage on record", stage: name, ord: k ? k.ord : 5000 };
+  }
+  function allRules(R) {
+    return [].concat(R.texts || [], R.emails || [], R.tasks || [], (R.cycles || []).filter((c) => c.fired));
+  }
+  function passes(r) {
+    if (!F.kinds[r.kind]) return false;
+    if (!F.small && r.kind !== "cycle" && r.leads < MIN_LEADS) return false;
+    if (F.source && !(r.groups || []).some((g) => g.name === F.source)) return false;
+    if (F.lang && r.kind !== "cycle" && (r.lang || "en") !== F.lang) return false;
+    if (F.q) { const q = F.q.toLowerCase(); if (!((r.title || "") + " " + (r.template || "")).toLowerCase().includes(q)) return false; }
+    return true;
+  }
+  function options(R) {
+    const sources = {}, pipes = {}, sm = stageMap(R);
+    allRules(R).forEach((r) => { (r.groups || []).forEach((g) => { sources[g.name] = (sources[g.name] || 0) + g.n; }); const p = placeOf(r, sm).pipeline; pipes[p] = (pipes[p] || 0) + 1; });
+    const pipeKeys = Object.keys(pipes).sort((a, b) => (PIPE_ORDER.indexOf(a) + 1 || 99) - (PIPE_ORDER.indexOf(b) + 1 || 99) || a.localeCompare(b));
+    return { sources: Object.keys(sources).sort((a, b) => sources[b] - sources[a]), pipes: pipeKeys };
+  }
+
+  // ---- the pieces of an open rule (the old card) ----
   function whenLine(r) {
     const st = (r.stages || [])[0], ds = r.days_in_stage || {}, da = r.days_since_arrival || {};
     const parts = [];
@@ -50,7 +103,7 @@
   }
   function markHtml(r) {
     const m = (D.marks || {})[r.key] || {};
-    const open = wfOpen[r.key];
+    const open = wfNote === r.key;
     return `<div class="wfmark">
       ${["keep", "change", "drop"].map((k) => `<button type="button" class="wfmk ${k}${m.mark === k ? " on" : ""}" data-mark="${k}" data-key="${cesc(r.key)}"${wfBusy ? " disabled" : ""}>${k[0].toUpperCase() + k.slice(1)}</button>`).join("")}
       <button type="button" class="ghost tksmall" data-note="${cesc(r.key)}">${m.note ? "Edit note" : "Add a note"}</button>
@@ -59,57 +112,133 @@
       ${open ? `<form class="lsform" data-notefor="${cesc(r.key)}"><input type="text" class="lsin lswide" name="note" value="${cesc(m.note || "")}" placeholder="What should change, or why it goes" maxlength="500" autofocus><button type="submit" class="btn tkpri">Save</button><button type="button" class="btn" data-cancelnote="1">Cancel</button></form>` : ""}
     </div>`;
   }
-  function ruleCard(r) {
-    const m = (D.marks || {})[r.key] || {};
-    const came = r.kind === "text" ? `${n(r.replied)} wrote back within 2 days (${r.replied_pct}%)${r.opted_out ? ` · <span class="wfbad">${n(r.opted_out)} opted out</span>` : ""}`
-      : r.kind === "email" ? `${n(r.opened)} opened (${pct(r.opened, r.fired)}%) · ${n(r.replied)} wrote back within 3 days${r.bounced ? ` · <span class="wfbad">${n(r.bounced)} bounced</span>` : ""}`
-      : "";
-    return `<li class="wfcard${m.mark ? " wf-" + m.mark : ""}" id="wf-${cesc(r.key)}">
-      <div class="wfhead"><strong>${cesc(r.title)}</strong><span class="wfcount">${n(r.fired)} time${r.fired === 1 ? "" : "s"} · ${n(r.leads)} lead${r.leads === 1 ? "" : "s"}</span>${r.first ? `<small class="lsmute">${cesc(r.first)} to ${cesc(r.last)}</small>` : ""}</div>
-      ${r.template ? `<blockquote class="wftpl">${cesc(r.template)}${r.variants > 1 ? ` <small class="lsmute">(${r.variants} wordings; the commonest shown)</small>` : ""}</blockquote>` : ""}
-      <p class="wfwhen">${whenLine(r)}</p>
+  function cameLine(r) {
+    if (r.kind === "text") return `${n(r.replied)} wrote back within 2 days (${r.replied_pct}%)${r.opted_out ? ` · <span class="wfbad">${n(r.opted_out)} opted out</span>` : ""}`;
+    if (r.kind === "email") return `${n(r.opened)} opened (${pct(r.opened, r.fired)}%) · ${n(r.replied)} wrote back within 3 days${r.bounced ? ` · <span class="wfbad">${n(r.bounced)} bounced</span>` : ""}`;
+    return "";
+  }
+  function detail(r) {
+    if (r.kind === "cycle") {
+      const auto = (r.by || []).filter((b) => !isPerson(b.name)).reduce((a, b) => a + b.n, 0);
+      const verb = r.key === "cycle:park" ? "Parked" : r.key === "cycle:back" ? "Brought back" : "Deaded";
+      return `<p class="wfwhen">${verb} about <b>${r.days_in_stage.median} days</b> after the lead got to where it was; ${n(auto)} of ${n(r.fired)} by the automation, the rest by a person.</p>
+        <div class="wfgrid"><div>${chips(r.stages, r.key === "cycle:back" ? "Came back into" : "From")}${chips(r.groups, "Lead sources")}${chips(r.by, "By")}</div><div><div class="wflab">Days there first</div>${hist(r.days_in_stage)}</div></div>${markHtml(r)}`;
+    }
+    const came = cameLine(r);
+    return `${r.template ? `<blockquote class="wftpl">${cesc(r.template)}${r.variants > 1 ? ` <small class="lsmute">(${r.variants} wordings; the commonest shown)</small>` : ""}</blockquote>` : ""}
+      <p class="wfwhen">${whenLine(r)}${r.first ? ` <small class="lsmute">${cesc(r.first)} to ${cesc(r.last)}.</small>` : ""}</p>
       <div class="wfgrid">
-        <div>${chips(r.sources, "Sources")}${chips(r.stages, "Stage when it fired")}${chips(r.by, r.kind === "task" ? "For" : "Signed by")}</div>
-        <div>${r.days_in_stage && r.days_in_stage.median != null ? `<div class="wflab">Days in the stage when it fired</div>${hist(r.days_in_stage)}` : ""}</div>
+        <div>${chips(r.groups, "Lead sources")}${chips(r.stages, "Stage when it fired")}${chips(r.by, r.kind === "task" ? "For" : "Signed by")}</div>
+        <div>${r.days_in_stage && r.days_in_stage.median != null ? `<div class="wflab">Days in the stage when it fired</div>${hist(r.days_in_stage)}` : ""}${chips(r.sources, "AgencyZoom sources")}</div>
       </div>
       ${came ? `<p class="wfcame">${came}</p>` : ""}
-      ${markHtml(r)}
+      ${markHtml(r)}`;
+  }
+
+  // ---- one row on the timeline ----
+  function excerpt(r) {
+    if (r.kind === "cycle") return r.title;
+    const t = r.kind === "email" ? r.title : (r.template || r.title || "");
+    const one = t.replace(/\s+/g, " ").trim();
+    return one.length > 150 ? one.slice(0, 148) + "…" : one;
+  }
+  function row(r) {
+    const m = (D.marks || {})[r.key] || {};
+    const open = !!wfExp[r.key];
+    const g = F.source ? (r.groups || []).find((x) => x.name === F.source) : null;
+    const leads = r.kind === "cycle" ? `${n(r.fired)} leads` : g ? `${n(g.n)} of ${n(r.leads)} leads` : `${n(r.leads)} lead${r.leads === 1 ? "" : "s"}`;
+    const back = r.kind === "text" ? `${r.replied_pct}% wrote back${r.opted_out ? ` · <span class="wfbad">${n(r.opted_out)} opted out</span>` : ""}`
+      : r.kind === "email" ? `${pct(r.opened, r.fired)}% opened · ${pct(r.replied, r.fired)}% wrote back` : "";
+    const lang = r.kind !== "cycle" && r.lang === "es" ? `<span class="wflang">Spanish</span>` : "";
+    const mark = m.mark ? `<span class="wfbadge ${m.mark}">${m.mark[0].toUpperCase() + m.mark.slice(1)}</span>` : "";
+    const noteDot = m.note ? `<span class="wfnotedot" title="${cesc(m.note)}">✎</span>` : "";
+    return `<li class="wfev wf-${r.kind}${m.mark ? " m-" + m.mark : ""}${open ? " open" : ""}" id="wf-${cesc(r.key)}">
+      <button type="button" class="wfrow" data-open="${cesc(r.key)}" aria-expanded="${open}">
+        <span class="wfico" title="${KIND_WORD[r.kind]}">${ICON[r.kind]}</span>
+        <span class="wftxt"><span class="wfkind">${KIND_WORD[r.kind]}</span> ${cesc(excerpt(r))}${r.aka && r.aka.length ? ` <small class="wfaka">the text of ${r.aka.map((a) => `“${cesc(a)}”`).join(" / ")}</small>` : ""}</span>
+        <span class="wfmeta">${lang}${mark}${noteDot}<span class="wfn">${leads}</span>${back ? `<span class="wfback">${back}</span>` : ""}<span class="wfarrow">${open ? "▲" : "▼"}</span></span>
+      </button>
+      ${open ? `<div class="wfdetail">${detail(r)}</div>` : ""}
     </li>`;
   }
-  function cyclesHtml(R) {
-    const park = R.cycles.find((c) => c.key === "cycle:park"), back = R.cycles.find((c) => c.key === "cycle:back"), dead = R.cycles.find((c) => c.key === "cycle:dead");
-    const auto = (c) => (c.by || []).filter((b) => !/^(Crystal|Lorena|Mike|Coral|Sarahi|Amanda|Debbie|Frank|Francisco|Veronica)/.test(b.name)).reduce((a, b) => a + b.n, 0);
-    const line = (c, verb) => c && c.fired ? `<li class="wfcard"><div class="wfhead"><strong>${cesc(c.title)}</strong><span class="wfcount">${n(c.fired)} leads</span></div>
-      <p class="wfwhen">${verb} about <b>${c.days_in_stage.median} days</b> after the lead got to where it was; ${n(auto(c))} of ${n(c.fired)} by the automation, the rest by a person.</p>
-      <div class="wfgrid"><div>${chips(c.stages, c.key === "cycle:back" ? "Came back into" : "From")}${chips(c.sources, "Sources")}${chips(c.by, "By")}</div><div><div class="wflab">Days there first</div>${hist(c.days_in_stage)}</div></div>${markHtml(c)}</li>` : "";
+
+  // ---- the timeline ----
+  function timelineHtml(R) {
+    const sm = stageMap(R);
+    const rules = allRules(R).filter(passes);
+    const byPipe = {};
+    rules.forEach((r) => {
+      const p = placeOf(r, sm);
+      if (F.pipeline && p.pipeline !== F.pipeline) return;
+      const P = byPipe[p.pipeline] || (byPipe[p.pipeline] = { stages: {} });
+      const S = P.stages[p.stage] || (P.stages[p.stage] = { ord: p.ord, days: {}, n: 0 });
+      const d = r.key === "cycle:park" ? null : dayN(r.day);
+      const k = d == null ? "none" : String(d);
+      (S.days[k] || (S.days[k] = [])).push(r); S.n++;
+    });
+    const pipes = Object.keys(byPipe).sort((a, b) => (PIPE_ORDER.indexOf(a) + 1 || 99) - (PIPE_ORDER.indexOf(b) + 1 || 99) || a.localeCompare(b));
+    if (!pipes.length) return `<div class="empty">No rule matches these filters.</div>`;
+    const kindOrd = { text: 0, email: 1, task: 2, cycle: 3 };
+    return pipes.map((pn) => {
+      const P = byPipe[pn];
+      const stages = Object.keys(P.stages).sort((a, b) => P.stages[a].ord - P.stages[b].ord || a.localeCompare(b));
+      const total = stages.reduce((a, s) => a + P.stages[s].n, 0);
+      const az = [...new Set(stages.map(azPipe).filter(Boolean))];
+      return `<section class="wfpipe">
+        <h2 class="wfpipeh"><span>${cesc(pn)}</span><small>${az.length ? `AgencyZoom's ${az.map((x) => `“${cesc(x)}”`).join(", ")} · ` : ""}${n(total)} rule${total === 1 ? "" : "s"}</small></h2>
+        ${stages.map((sn) => {
+          const S = P.stages[sn];
+          const days = Object.keys(S.days).sort((a, b) => (a === "none" ? 1e9 : +a) - (b === "none" ? 1e9 : +b));
+          return `<div class="wfstage">
+            <h3 class="wfstageh">${cesc(stageName(sn))}<small>${n(S.n)}</small></h3>
+            <ol class="wftl">${days.map((dk) => {
+              const d = dk === "none" ? null : +dk;
+              const list = S.days[dk].sort((a, b) => kindOrd[a.kind] - kindOrd[b.kind] || b.fired - a.fired);
+              return `<li class="wfday"><div class="wfdaylab"><b>${dayLabel(d)}</b><small>${daySub(d)}</small></div><ul class="wfevs">${list.map(row).join("")}</ul></li>`;
+            }).join("")}</ol>
+          </div>`;
+        }).join("")}
+      </section>`;
+    }).join("");
+  }
+  function movesHtml(R) {
     const parked = Object.entries(R.parked_days || {}).map(([k, v]) => `<span class="wfchip">${cesc(stageName(k))} <small>${v.median} days parked · ${n(v.n)}</small></span>`).join("");
     const trans = (R.transitions || []).slice(0, 20).map((t) => `<tr><td>${cesc(stageName(t.from))}</td><td>→</td><td>${cesc(stageName(t.to))}</td><td>${t.who === "automation" ? "<span class=\"wfauto\">automation</span>" : "a person"}</td><td class="num">${n(t.n)}</td></tr>`).join("");
-    return `<ul class="wflist">${line(park, "Parked")}${line(back, "Brought back")}${line(dead, "Deaded")}</ul>
+    return `<details class="wfmoves"><summary>Every stage move in the period, and how long leads stay parked</summary>
       ${parked ? `<div class="wfchips"><span class="wflab">How long a lead stays parked before each return</span>${parked}</div>` : ""}
-      <h3 class="wfh3">Every stage move in the period</h3>
-      <div class="scroll"><table class="tktab wftrans"><thead><tr><th>From</th><th></th><th>To</th><th>Who</th><th class="num">Leads</th></tr></thead><tbody>${trans}</tbody></table></div>`;
+      <div class="scroll"><table class="tktab wftrans"><thead><tr><th>From</th><th></th><th>To</th><th>Who</th><th class="num">Leads</th></tr></thead><tbody>${trans}</tbody></table></div></details>`;
   }
 
   function repaint() {
     const v = $("#view");
     const R = D && D.report;
-    const counts = R ? { texts: R.texts.length, emails: R.emails.length, tasks: R.tasks.length, cycles: R.cycles.filter((c) => c.fired).length } : {};
-    const tabs = TABS.map(([k, l]) => `<button type="button" class="tktile${k === wfTab ? " on" : ""}" data-wftab="${k}" style="--th:${{ texts: "var(--accent)", emails: "var(--s4)", tasks: "var(--s3)", cycles: "var(--good)" }[k]}"><span>${l}</span><strong>${counts[k] == null ? "…" : counts[k]}</strong></button>`).join("");
+    const counts = {};
+    if (R) allRules(R).forEach((r) => { if (F.small || r.kind === "cycle" || r.leads >= MIN_LEADS) counts[r.kind] = (counts[r.kind] || 0) + 1; });
+    const tiles = KINDS.map(([k, l, c]) => `<button type="button" class="tktile${F.kinds[k] ? " on" : " off"}" data-wfkind="${k}" style="--th:${c}" title="${F.kinds[k] ? "Hide" : "Show"} ${l.toLowerCase()}"><span>${l}</span><strong>${!R ? "…" : n(counts[k] || 0)}</strong></button>`).join("");
     const marked = Object.values((D && D.marks) || {});
     const tally = marked.length ? `<span class="lsbadge lsok">${marked.filter((m) => m.mark === "keep").length} keep · ${marked.filter((m) => m.mark === "change").length} change · ${marked.filter((m) => m.mark === "drop").length} drop</span>` : "";
-    let body;
+    let body, filters = "";
     if (!R) body = `<div class="empty">The read has not run yet. It reads the last 90 days' active leads' notes from AgencyZoom and rebuilds the rules from what they sent; it runs from the nightly's environment in the evening.</div>`;
-    else if (wfTab === "cycles") body = cyclesHtml(R);
     else {
-      const list = R[wfTab] || [];
-      body = list.length ? `<ul class="wflist">${list.map(ruleCard).join("")}</ul>` : `<div class="empty">Nothing of this kind in the last ${R.days} days.</div>`;
+      const o = options(R);
+      const sel = (name, label, list, cur, any) => `<label class="wff"><span>${label}</span><select class="lsin" data-wff="${name}"><option value="">${any}</option>${list.map(([val, txt]) => `<option value="${cesc(val)}"${val === cur ? " selected" : ""}>${cesc(txt)}</option>`).join("")}</select></label>`;
+      filters = `<div class="wffilters">
+        ${sel("source", "Lead source", o.sources.map((s) => [s, s]), F.source, "Every source")}
+        ${sel("pipeline", "Pipeline", o.pipes.map((p) => [p, p]), F.pipeline, "Every pipeline")}
+        ${sel("lang", "Language", [["en", "English"], ["es", "Spanish"]], F.lang, "Any language")}
+        <label class="wff wfq"><span>Find</span><input type="search" class="lsin" data-wff="q" value="${cesc(F.q)}" placeholder="a word in the wording"></label>
+        <label class="wff wfck"><input type="checkbox" data-wff="small"${F.small ? " checked" : ""}> include rules under ${MIN_LEADS} leads</label>
+        ${F.source || F.pipeline || F.lang || F.q ? `<button type="button" class="ghost tksmall" data-wfclear="1">Clear</button>` : ""}
+      </div>`;
+      body = timelineHtml(R) + movesHtml(R);
     }
     v.innerHTML = `<section class="tkpage wfpage">
-      <div class="tkhead"><div class="tktiles">${tabs}</div>${tally}</div>
+      <div class="tkhead"><div class="tktiles">${tiles}</div>${tally}</div>
       ${wfMsg ? `<p class="tkmsg ${wfMsg.err ? "bad" : "good"}">${cesc(wfMsg.err || wfMsg.ok)}</p>` : ""}
-      <p class="lsintro">What AgencyZoom's automations actually do, read back from the leads${R ? ` -- the last ${R.days} days, ${n(R.leads_read)} leads' notes, as of ${cesc(R.built)}` : ""}. AgencyZoom does not hand out its rules, so each one is rebuilt from what it sent: its wording with names blanked, when it fires, who it hits and what came back. Mark each <b>Keep</b>, <b>Change</b> or <b>Drop</b> and say why; that is the brief for the rules Pantheon runs itself.</p>
+      <p class="lsintro">What AgencyZoom's automations actually do, read back from the leads${R ? ` -- the last ${R.days} days, ${n(R.leads_read)} leads' notes, as of ${cesc(R.built)}` : ""}, laid out the way a lead sees them: pipeline by pipeline, stage by stage, from the day it gets there. AgencyZoom does not hand out its rules, so each is rebuilt from what it sent. Open a row for the wording and what came back; mark it <b>Keep</b>, <b>Change</b> or <b>Drop</b> and say why -- that is the brief for the rules Pantheon runs itself.</p>
+      ${filters}
       ${body}
-      <p class="tkfoot">Pantheon's own CRM. Nothing here changes AgencyZoom. Texts carry the rule that sent them; emails are known by their template subject; a task counts when the same wording went to five or more leads.</p>
+      <p class="tkfoot">Pantheon's own CRM. Nothing here changes AgencyZoom. Texts carry the rule that sent them; emails are known by their template subject; a task counts when the same wording went to five or more leads. The day is counted the way AgencyZoom counts it: Day 1 is the day the lead got to the stage, in business days, and each rule sits on its usual day (the median over every time it fired); a task's day is the day it was due. A task wording the Day 2, 4 and 7 reminders share is listed once, named after them.</p>
     </section>`;
     const f = v.querySelector(".lsform input[autofocus]"); if (f) f.focus();
   }
@@ -121,21 +250,38 @@
   async function act(fn, ok) {
     if (wfBusy) return;
     wfBusy = true;
-    try { const r = await fn(); if (r && r.marks) D.marks = r.marks; wfOpen = {}; wfMsg = ok ? { ok } : null; }
+    try { const r = await fn(); if (r && r.marks) D.marks = r.marks; wfNote = null; wfMsg = ok ? { ok } : null; }
     catch (e) { wfMsg = { err: e.message }; }
     wfBusy = false; repaint();
   }
+  const onPage = () => !!$("#view").querySelector(".wfpage");
   function onClick(e) {
-    const t = e.target.closest("[data-wftab],[data-mark],[data-note],[data-cancelnote]");
-    if (!t || !$("#view").contains(t) || !$("#view").querySelector(".wfpage")) return;
-    if (t.dataset.wftab) { wfTab = t.dataset.wftab; wfOpen = {}; saveWhere(); repaint(); return; }
+    const t = e.target.closest("[data-wfkind],[data-open],[data-mark],[data-note],[data-cancelnote],[data-wfclear]");
+    if (!t || !$("#view").contains(t) || !onPage()) return;
+    if (t.dataset.wfkind) { F.kinds[t.dataset.wfkind] = !F.kinds[t.dataset.wfkind]; saveWhere(); repaint(); return; }
+    if (t.dataset.open) { const k = t.dataset.open; if (wfExp[k]) delete wfExp[k]; else wfExp[k] = true; if (wfNote && wfNote !== k) wfNote = null; saveWhere(); repaint(); return; }
+    if (t.dataset.wfclear) { F.source = F.pipeline = F.lang = F.q = ""; saveWhere(); repaint(); return; }
     if (t.dataset.mark) {
       const key = t.dataset.key, cur = (D.marks || {})[key] || {};
       const mark = cur.mark === t.dataset.mark ? null : t.dataset.mark;   // the same button again clears it
       act(() => api("automations/mark", { key, mark, note: cur.note || "" }), mark ? "Marked." : "Cleared."); return;
     }
-    if (t.dataset.note) { wfOpen = { [t.dataset.note]: true }; repaint(); return; }
-    if (t.dataset.cancelnote) { wfOpen = {}; repaint(); return; }
+    if (t.dataset.note) { wfNote = t.dataset.note; repaint(); return; }
+    if (t.dataset.cancelnote) { wfNote = null; repaint(); return; }
+  }
+  function onChange(e) {
+    const t = e.target.closest("[data-wff]");
+    if (!t || !$("#view").contains(t) || !onPage()) return;
+    const k = t.dataset.wff;
+    if (k === "small") F.small = t.checked; else F[k] = t.value.trim();
+    saveWhere(); repaint();
+    if (k === "q") { const i = $("#view").querySelector('[data-wff="q"]'); if (i) { i.focus(); i.setSelectionRange(i.value.length, i.value.length); } }
+  }
+  let qTimer = null;
+  function onInput(e) {
+    const t = e.target.closest('[data-wff="q"]');
+    if (!t || !$("#view").contains(t) || !onPage()) return;
+    clearTimeout(qTimer); qTimer = setTimeout(() => onChange(e), 250);
   }
   function onSubmit(e) {
     const form = e.target.closest("form[data-notefor]");
@@ -145,22 +291,51 @@
     act(() => api("automations/mark", { key, mark: cur.mark || null, note: String(new FormData(form).get("note") || "").trim() }), "Saved.");
   }
   document.addEventListener("click", onClick);
+  document.addEventListener("change", onChange);
+  document.addEventListener("input", onInput);
   document.addEventListener("submit", onSubmit);
 
   window.workflowsPaint = async function workflowsPaint() {
     $("#topsub").textContent = "what AgencyZoom's automations run today";
     $("#view").innerHTML = '<div class="empty">Loading…</div>';
-    wfMsg = null; wfOpen = {};
+    wfMsg = null; wfNote = null;
     await refresh();
   };
 
   const css = document.createElement("style");
   css.textContent = `
-.wflist { list-style: none; margin: 0; padding: 0; }
-.wfcard { border: 1px solid var(--border-strong); border-left: 6px solid var(--border-strong); border-radius: 12px; padding: 12px 14px; margin-bottom: 12px; background: var(--surface); }
-.wfcard.wf-keep { border-left-color: var(--good); } .wfcard.wf-change { border-left-color: var(--s4, #d9a21b); } .wfcard.wf-drop { border-left-color: var(--bad); }
-.wfhead { display: flex; flex-wrap: wrap; align-items: baseline; gap: 10px; } .wfhead strong { font-size: 16px; }
-.wfcount { font-weight: 700; color: var(--text-secondary); }
+.wfpage .tktile.off { opacity: .45; } .wfpage .tktile.off strong { text-decoration: line-through; }
+.wffilters { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 10px 16px; margin: 6px 0 14px; padding: 10px 12px; border: 1px solid var(--border-strong); border-radius: 12px; background: var(--surface-raised); }
+.wff { display: flex; flex-direction: column; gap: 3px; font-size: 12px; color: var(--text-secondary); } .wff > span { font-weight: 700; text-transform: uppercase; letter-spacing: .06em; font-size: 10px; }
+.wff select.lsin, .wff input.lsin { min-width: 170px; } .wfq input.lsin { min-width: 220px; }
+.wfck { flex-direction: row; align-items: center; gap: 6px; padding-bottom: 6px; }
+.wfpipe { margin: 0 0 22px; }
+.wfpipeh { display: flex; flex-wrap: wrap; align-items: baseline; gap: 10px; margin: 0 0 8px; padding-bottom: 6px; border-bottom: 2px solid var(--accent); font-size: 20px; }
+.wfpipeh small { font-size: 12px; font-weight: 500; color: var(--text-muted); }
+.wfstage { margin: 0 0 14px 4px; }
+.wfstageh { display: flex; align-items: baseline; gap: 8px; margin: 10px 0 4px; font-size: 15px; } .wfstageh small { font-size: 11px; color: var(--text-muted); font-weight: 600; }
+.wftl { list-style: none; margin: 0; padding: 0 0 0 14px; border-left: 3px solid var(--border-strong); }
+.wfday { position: relative; padding: 2px 0 10px 16px; }
+.wfday::before { content: ""; position: absolute; left: -23px; top: 9px; width: 13px; height: 13px; border-radius: 50%; background: var(--accent); border: 3px solid var(--surface); box-shadow: 0 0 0 2px var(--accent); }
+.wfdaylab { display: flex; align-items: baseline; gap: 8px; margin: 0 0 4px; } .wfdaylab b { font-size: 14px; } .wfdaylab small { font-size: 12px; color: var(--text-muted); }
+.wfevs { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: minmax(0, 1fr); gap: 4px; }
+.wfev { min-width: 0; border: 1px solid var(--border); border-left: 5px solid var(--border-strong); border-radius: 10px; background: var(--surface); }
+.wfev.wf-text { border-left-color: var(--accent); } .wfev.wf-email { border-left-color: var(--s4, #d9a21b); } .wfev.wf-task { border-left-color: var(--s3, #7a8); } .wfev.wf-cycle { border-left-color: var(--good); }
+.wfev.m-keep { background: color-mix(in oklab, var(--good) 8%, var(--surface)); } .wfev.m-change { background: color-mix(in oklab, var(--s4, #d9a21b) 10%, var(--surface)); } .wfev.m-drop { background: color-mix(in oklab, var(--bad) 8%, var(--surface)); }
+.wfrow { display: flex; min-width: 0; align-items: center; gap: 10px; width: 100%; text-align: left; font: inherit; color: inherit; background: none; border: 0; padding: 7px 10px; cursor: pointer; border-radius: 10px; }
+.wfrow:hover { background: color-mix(in oklab, var(--accent) 6%, transparent); }
+.wfico { flex: 0 0 auto; font-size: 15px; width: 22px; text-align: center; }
+.wftxt { flex: 1 1 auto; min-width: 0; font-size: 13.5px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.wfev.open .wftxt { white-space: normal; }
+.wfaka { color: var(--text-muted); font-size: 12px; }
+.wfkind { font-size: 10px; font-weight: 800; text-transform: uppercase; letter-spacing: .07em; color: var(--text-muted); margin-right: 4px; }
+.wfmeta { flex: 0 0 auto; display: flex; align-items: center; gap: 8px; font-size: 12px; color: var(--text-secondary); white-space: nowrap; }
+.wfn { font-weight: 700; } .wfback { color: var(--text-muted); } .wfarrow { font-size: 10px; color: var(--text-muted); }
+.wflang { font-size: 10px; font-weight: 800; letter-spacing: .05em; text-transform: uppercase; padding: 1px 7px; border-radius: 999px; background: color-mix(in oklab, var(--s4, #d9a21b) 22%, var(--surface)); color: var(--text); }
+.wfbadge { font-size: 10px; font-weight: 800; letter-spacing: .05em; text-transform: uppercase; padding: 1px 7px; border-radius: 999px; color: #fff; }
+.wfbadge.keep { background: var(--good); } .wfbadge.change { background: var(--s4, #d9a21b); } .wfbadge.drop { background: var(--bad); }
+.wfnotedot { color: var(--accent); font-weight: 700; cursor: help; }
+.wfdetail { padding: 2px 12px 10px 42px; border-top: 1px dashed var(--border); }
 .wftpl { margin: 8px 0; padding: 8px 12px; border-left: 3px solid var(--accent); background: color-mix(in oklab, var(--accent) 7%, var(--surface)); font-size: 14px; white-space: pre-wrap; }
 .wfwhen { margin: 4px 0 8px; font-size: 14px; color: var(--text-secondary); } .wfcame { margin: 6px 0 4px; font-size: 14px; }
 .wfgrid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px 18px; }
@@ -176,8 +351,9 @@
 .wfmk.keep.on { background: var(--good); border-color: var(--good); color: #fff; } .wfmk.change.on { background: var(--s4, #d9a21b); border-color: var(--s4, #d9a21b); color: #fff; } .wfmk.drop.on { background: var(--bad); border-color: var(--bad); color: #fff; }
 .wfnote { flex-basis: 100%; font-size: 13px; color: var(--text-secondary); font-style: italic; }
 .wfbad { color: var(--bad); font-weight: 700; } .wfauto { color: var(--accent); font-weight: 700; }
-.wfh3 { margin: 16px 0 6px; font-size: 15px; } .wftrans td.num, .wftrans th.num { text-align: right; }
-@media (max-width: 900px) { .wfgrid { grid-template-columns: 1fr; } }
+.wfmoves { margin: 10px 0; padding: 8px 12px; border: 1px solid var(--border-strong); border-radius: 12px; background: var(--surface); } .wfmoves summary { cursor: pointer; font-weight: 700; }
+.wftrans td.num, .wftrans th.num { text-align: right; }
+@media (max-width: 900px) { .wfgrid { grid-template-columns: 1fr; } .wfrow { flex-wrap: wrap; } .wftxt { flex-basis: 100%; white-space: normal; } .wfmeta { padding-left: 32px; } }
 `;
   document.head.appendChild(css);
 })();
