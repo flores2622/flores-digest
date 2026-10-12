@@ -1313,6 +1313,13 @@ names or prompt wording.
 
 ## Date ranges on the Digest
 
+**Weeks, not just this week** (Frank, 2026-10-12: "make it read 'weeks' and
+let me choose what week i want to see"): the filter's week option reads
+**Weeks** and opens a picker of every week from the one holding the oldest
+report to this one, newest first (`weekPick`, Sunday-anchored like
+`weekStart`; "" is this week, kept per tab with the rest of `saveWhere`). A
+past week runs Sunday to Saturday and is labelled "Week of <date>".
+
 **The range leaderboard is re-ranked on averages** (Frank, 2026-09-28):
 the same seven categories and 5-4-3-2-1 scoring as a single day
 (`rankLeaderboard` on the board, a mirror of `digest_config.
