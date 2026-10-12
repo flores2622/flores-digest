@@ -1021,6 +1021,19 @@ and anything without the glow is the checkpoint's (Frank, 2026-09-24).
   quotes", "your quotes are attached"; Frank, 2026-09-24). A lead is re-read only when its
   lastActivityDate moves. The closing ratio is live once both sales and
   quotes are.
+- **Premium quoted counts only what was quoted in the last day** (Frank,
+  2026-10-12: Mike / Adrian Alcantara Renteria read $3,664 for a $1,340 home
+  quote -- the rest an auto and home from May still on the lead: "only
+  anything quoted in the last day"). AgencyZoom dates no quote, but numbers
+  them in order (an old one 5,051,698; 10-12's 15,603,743), so
+  `quote_marks.py` keeps the highest quote id each run read per day (R2
+  `cache/quote_marks.json`, written only by a run for today) and a day counts
+  only quotes above the highest mark of any EARLIER day -- daily.py's
+  `quoted_premium` / `premium_quoted`, and the Worker through
+  `live_basis.quotes.min_quote_id`. Seeded with 10-09's 15,592,009 (the top id
+  on that day's quoted households). Households quoted are unchanged; a
+  household quoted today on a quote built earlier shows $0. A day with no
+  earlier mark counts every quote, as before. Published days were not rebuilt.
 - **A one-minute Worker cron** (wrangler.jsonc, business hours) refreshes
   the parts in batches sized for the free plan's 50 outside requests per
   run: even minutes dials/contacts/sales/utilization, odd minutes up to 30

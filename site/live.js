@@ -535,8 +535,8 @@ export async function insightfulUtil(env, day, basis, fetchFn = fetch) {
    a quoted stage today (the STAGE only, never the pipeline), or (3) a note
    of theirs today delivers a quote (daily.quote_presented). The patterns
    come from the checkpoint (live_basis.quotes), i.e. from daily.py itself.
-   Premium quoted is every quote on each NEW household's lead, summed, as
-   daily.py sums it. Only leads active since the checkpoint read its notes
+   Premium quoted is the quotes made since the last business day on each NEW
+   household's lead, summed, as daily.py sums them. Only leads active since the checkpoint read its notes
    are looked at, newest first, and a lead is re-read only when its
    lastActivityDate moves. */
 
@@ -1050,7 +1050,10 @@ export async function quotedLive(env, day, basis, memo, fetchFn = fetch, wanted 
         else { limited = true; pending++; continue; }
       }
       const arr = Array.isArray(qs) ? qs : (qs || {}).quotes || [];
-      v.prem = arr.reduce((s, x) => s + (Number(x.premium) || 0), 0);
+      // Only quotes made since the last business day (live_basis.quotes.min_quote_id,
+      // quote_marks.py): AgencyZoom numbers quotes in order and dates none.
+      const minId = Number(q.min_quote_id) || 0;
+      v.prem = arr.filter(x => !minId || !(Number(x.id) <= minId)).reduce((s, x) => s + (Number(x.premium) || 0), 0);
     }
     for (const w of fresh) { per[w].hh++; per[w].pq += v.prem; per[w].new_leads.push(Number(id)); }
   }
