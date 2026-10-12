@@ -4625,6 +4625,10 @@ function rangeProducerTiers(p, businessDays) {
     ps: p.ps ? tierColor("premium_sold_per_policy", p.ps / pol) : polTier,
   };
   if (p.util != null) out.util = tierColor("utilization_pct", p.util);
+  // Closing Ratio, both halves, as board_payload colours a day (a range had
+  // none, so its premium half was never coloured).
+  out.closing_hh = tierColor("closing_ratio_pct", hh ? 100 * pol / hh : null);
+  out.closing_pq = tierColor("closing_ratio_pct", p.pq ? 100 * (p.ps || 0) / p.pq : null);
   out.roleplay = tierColor("roleplay_score", (p.coach || {}).roleplay || null);
   const tp = (p.tasks || {}).pct;
   if (tp != null) out.tasks = tierColor("task_completion_pct", tp || 0);
@@ -4646,6 +4650,8 @@ function rangeTeamTiers(totals, businessDays) {
     ps: totals.ps ? tierColor("premium_sold_per_policy", totals.ps / pol) : polTier,
   };
   if (totals.util != null) out.util = tierColor("utilization_pct", totals.util);
+  out.closing_hh = tierColor("closing_ratio_pct", hh ? 100 * pol / hh : null);
+  out.closing_pq = tierColor("closing_ratio_pct", totals.pq ? 100 * (totals.ps || 0) / totals.pq : null);
   out.roleplay = tierColor("roleplay_score", totals.roleplay || null);
   const ttp = (totals.tasks || {}).pct;
   if (ttp != null) out.tasks = tierColor("task_completion_pct", ttp || 0);
