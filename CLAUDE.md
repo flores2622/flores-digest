@@ -2902,7 +2902,14 @@ on a published day. The rules:
   to staff az_ids by `crm_import.person`; a task's clock is `taskDateTime`
   only when `timeSpecific`, else its `dueDate` day; the household map is
   `{id: {fetched, policies: [...]}}` with premiums in cents; lead source
-  names repeat ("X" twice -- migration 0003 dropped the unique name). The
+  names repeat ("X" twice -- migration 0003 dropped the unique name).
+  **A note carries no id** (found 2026-10-12: type, createDate, createdBy,
+  title, body, attr only -- four nights had loaded no notes), so
+  `crm_import.note_id` makes a stable one from the lead, the stamp, the type
+  and the text (`az_id` NULL), and **only the last 30 days' notes go through
+  the mirror** (`NOTE_DAYS`; a lead's file is its whole history, ~40 notes,
+  and D1 counts every index entry as a write) -- the history is a one-off
+  backfill once the account is on Workers Paid. The
   real workflow and stage ids come from `data/az_pipelines.json`
   (`/v1/api/pipelines-and-stages` as it came, saved by daily.py beside
   `az_stages.json`) and from the SRs themselves; the SR categories' names
