@@ -2084,6 +2084,7 @@ const hhmm = secs;
 
 let DAYS = [];       // date strings from /api/days, newest first
 let cur = null;      // the currently loaded day's full document
+let lastDay = "";    // the day loadDay() opened last: what "Day" goes back to after a range (2026-10-13)
 let view = "digest";
 /* Left-bar sections that hold more than one page (Frank, 2026-09-23): the
    Sales Center is the Digest plus the Sales sheet, the Learning Center is
@@ -8193,7 +8194,7 @@ function rangeControlHtml() {
     // A calendar, not a dropdown (Frank, 2026-10-05: "the day dropdown is
     // getting long, make it a calendar instead"): only days with a report,
     // and today while it is live, can be picked.
-    const d0 = cur ? cur.date : (DAYS[0] || today);
+    const d0 = (cur && cur.date) || DAYS[0] || today;
     const label = d0 === today && !DAYS.includes(today) ? "Today (live)"
       : new Date(d0 + "T12:00:00").toLocaleDateString(undefined, { weekday: "short", month: "short", day: "numeric" });
     extra = `<div class="daycal"><button type="button" id="daypick" class="daybtn" aria-label="Reporting day" aria-haspopup="dialog" aria-expanded="false">${cesc(label)}<svg viewBox="0 0 16 16" width="15" height="15" aria-hidden="true"><rect x="2" y="3" width="12" height="11" rx="2" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M2 6.5h12M5.5 1.5v3M10.5 1.5v3" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg></button><div class="calpop" id="calpop" role="dialog" aria-label="Pick a day" hidden></div></div>`;
@@ -8248,7 +8249,15 @@ function rangeControlHtml() {
 document.addEventListener("click", () => { const p = document.getElementById("calpop"); if (p && !p.hidden) { p.hidden = true; const b = document.getElementById("daypick"); if (b) b.setAttribute("aria-expanded", "false"); } });
 function wireRangeControl() {
   const sel = $("#rangesel");
-  if (sel) sel.onchange = () => { rangeMode = sel.value; paint(); };
+  // Picking "Day" after a range reloads the day that was open before it: a
+  // range leaves `cur` as the merged document (date null), which the day
+  // calendar and the Service / Commercial day picks cannot draw -- "Cannot
+  // read properties of null (reading 'slice')" until a refresh (Frank,
+  // 2026-10-13: "this keeps happening when changing dates").
+  if (sel) sel.onchange = () => {
+    if (sel.value === "day") { loadDay(lastDay || (cur && cur.date) || DAYS[0] || isoDate(azTodayDate())); return; }
+    rangeMode = sel.value; paint();
+  };
   const fp = $("#foliopick");
   if (fp) fp.onchange = () => { folioPick = fp.value; paint(); };
   const wp = $("#weekpick");
@@ -8257,7 +8266,7 @@ function wireRangeControl() {
   if (dp && pop) {
     const today = isoDate(azTodayDate());
     const avail = new Set(DAYS.includes(today) ? DAYS : [today, ...DAYS]);
-    const picked = cur ? cur.date : (DAYS[0] || today);
+    const picked = (cur && cur.date) || DAYS[0] || today;
     const months = [...avail].map(d => d.slice(0, 7)).sort();
     let ym = picked.slice(0, 7);
     const draw = () => {
@@ -10378,7 +10387,7 @@ async function paintCommercialTab() {
 }
 
 async function loadDay(day) {
-  rangeMode = "day";
+  rangeMode = "day"; lastDay = day;
   $("#view").innerHTML = '<div class="empty">Loading…</div>';
   cur = null; curLive = false; curCheckpoint = null; curLiveData = null; stopLivePoll();
   try {
