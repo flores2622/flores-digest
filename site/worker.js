@@ -623,8 +623,11 @@ async function getCommission(request, env, end) {
  * holding today, plus the folios the sheet holds for the picker. */
 const FOLIO_GOALS = new Set(boardEmails("folio_goals"));   // staff.json
 async function getFolioGoals(request, env, end) {
+  // Everyone signed in reads it (Frank, 2026-10-13: "with the total team on our
+  // sales digest as well" -- the Digest's card shows every producer's minimum);
+  // `ops` says whether the Operations Center's page is theirs to open.
   const me = identityOf(request, env);
-  if (!FOLIO_GOALS.has(me.email)) return json({ error: "not available" }, 403);
+  const ops = FOLIO_GOALS.has(me.email);
   const today = localDay(Date.now());
   if (!end) end = FOLIO_CLOSE_DATES.find((d) => today <= d) || "";
   if (!/^\d{4}-\d{2}-\d{2}$/.test(end) || !FOLIO_CLOSE_DATES.includes(end)) {
@@ -640,7 +643,7 @@ async function getFolioGoals(request, env, end) {
     rows: u.rows.map((r) => ({ day: r.day, producer: r.producer, premium: r.premium })),
   }));
   const sheet = entries.map((e) => ({ day: e.day, producer: e.producer || "", premium: +e.premium || 0 }));
-  return new Response(JSON.stringify({ folio_start: start, folio_end: end, today, first_day,
+  return new Response(JSON.stringify({ folio_start: start, folio_end: end, today, first_day, ops,
     folios: FOLIO_CLOSE_DATES.filter((d) => (!first_day || d >= first_day) && d <= (FOLIO_CLOSE_DATES.find((x) => today <= x) || d)),
     units, sheet }), { headers: { "content-type": "application/json; charset=utf-8", "cache-control": "no-store" } });
 }

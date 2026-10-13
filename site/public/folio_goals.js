@@ -20,6 +20,7 @@
 
   window.FG_READY = (async function fgInit() {
     try { FG = await load(""); } catch (_) { return false; }
+    if (!FG.ops) return false;   // everyone reads the figures (the Digest's card); the page is the ops team's
     opsShow("goals", "Minimums & Goal", "every producer's minimum and the team goal");
     return true;
   })();
@@ -72,7 +73,7 @@
         <div class="mgtop"><h2>Minimums &amp; the team goal</h2>
           <label class="sd">Folio <select id="fgfolio">${opts}</select></label></div>
         <p class="sd" style="margin:6px 0 0">${asof === end ? "The folio as it closed." : `As of ${fmtShortDate(asof)}, ${done} of ${all} business days in.`} A minimum is the first tier of the producer's commission schedule: what they have to reach, not a goal. The team goal is everyone on the Sales sheet.</p>
-        ${folioGoalsHtml(S, FG.units || [], end, asof, "")}</div>
+        ${folioGoalsHtml(S, FG.units || [], end, asof, "", true)}</div>
       ${tableHtml(asof, done, all)}`;
     const sel = $("#fgfolio");
     if (sel) sel.onchange = () => { fgEnd = sel.value; FG = null; paint(); };

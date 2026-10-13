@@ -4548,10 +4548,10 @@ function digestPanel(d, who) {
    the first tier of their commission schedule (staff.json's commission:
    $25,000 on their own, $50,000 for Sarahi & Coral together, Crystal's
    $15,000), counted the way the Commission page counts it -- the Sales
-   sheet's premium, life and business left out -- and shown only to whoever
-   may see that producer's commission (the Worker's /api/commission decides:
-   a producer their own, Sarahi and Coral their team's, the managers
-   everyone). The team goal is goals.json's folio_premium_goal against the
+   sheet's premium, life and business left out -- every producer's, for
+   everyone (Frank, 2026-10-13: "with the total team on our sales digest as
+   well"; the Worker's /api/folio-goals, no pay or rates; the next tier past
+   a met minimum only for the ops team). The team goal is goals.json's folio_premium_goal against the
    sheet's Team total, every entry (post.js's folioSheet, the same total the
    editions use). Both are as of the day on screen (a range: its last day),
    with a line on each bar where they should be by now. The card is drawn
@@ -4572,13 +4572,15 @@ function monthGoalHtml(d, who) {
     <div class="mgbody">${last || `<p class="sd" style="margin:10px 0 0">Reading the Sales sheet…</p>`}</div></div>`;
 }
 let MGOAL_LAST = { key: "", html: "" };
-const mgCommCache = {};
-async function mgCommission(end) {
-  const c = mgCommCache[end];
+// Every producer's minimum, for everyone (Frank, 2026-10-13: "with the total team on our
+// sales digest as well"): the Worker's /api/folio-goals, the Sales sheet's figures, no pay.
+const mgUnitsCache = {};
+async function mgUnits(end) {
+  const c = mgUnitsCache[end];
   if (c && Date.now() - c.at < 120000) return c.v;
   let v = null;
-  try { const r = await fetch(`/api/commission/${end}`, { cache: "no-store" }); if (r.ok) v = await r.json(); } catch (_) {}
-  mgCommCache[end] = { v, at: Date.now() };
+  try { const r = await fetch(`/api/folio-goals/${end}`, { cache: "no-store" }); if (r.ok) v = await r.json(); } catch (_) {}
+  mgUnitsCache[end] = { v, at: Date.now() };
   return v;
 }
 // green on or ahead of the line (where they should be by now), yellow within 10% of it, red further behind
@@ -4590,7 +4592,7 @@ function mgBar(have, target, due, frac, tier, tip) {
    (fillMonthGoal) and the Operations Center's Minimums & Goal page (folio_goals.js)
    draw the same thing. S: the sheet ({upto(day)}); units: commission units
    ({label, members, tiers, rows}); who: one producer, or "" for every unit given. */
-function folioGoalsHtml(S, allUnits, end, asof, who) {
+function folioGoalsHtml(S, allUnits, end, asof, who, showNext) {
   const goal = window.GOALS.folio_premium_goal;
   const start = folioStartFor(end) || asof;
   const biz = pbizDays(start, end), all = biz.length || 1, done = Math.max(1, biz.filter(x => x <= asof).length), left = all - done;
@@ -4606,7 +4608,7 @@ function folioGoalsHtml(S, allUnits, end, asof, who) {
     const names = u.members.map(m => m.name || m), team = names.length > 1;
     const line = need
       ? `<b class="${tier}">${money(have)}</b> of ${money(min)} · ${money(need)} to go${left ? ` · ${money(need / left)} a day for the ${daysLeft(left)}` : ""}`
-      : `<b class="tg">Minimum met</b> with ${money(have)}${next ? ` · next tier, ${cesc(next.name)} at ${money(next.min)}: ${money(next.min - have)} to go` : " · at the top tier"}`;
+      : `<b class="tg">Minimum met</b> with ${money(have)}${!showNext ? "" : next ? ` · next tier, ${cesc(next.name)} at ${money(next.min)}: ${money(next.min - have)} to go` : " · at the top tier"}`;
     const own = who && team ? (u.rows || []).filter(r => r.producer === who && (!r.day || r.day <= asof)).reduce((t, r) => t + (+r.premium || 0), 0) : null;
     return `<div class="mgrow" title="The minimum is the first tier of the commission schedule (${cesc(u.tiers[0].name)}): a requirement, not a goal">
       <div class="mglab"><b>${team ? cesc(u.label) : cesc(firstName(names[0]))}</b> · ${team ? "team minimum" : "minimum"} ${money(min)}</div>
@@ -4633,11 +4635,11 @@ async function fillMonthGoal() {
   const el = document.getElementById("mgoal");
   if (!el || el.dataset.filled === el.dataset.end + el.dataset.asof + el.dataset.who) return;
   const { end, asof, who } = el.dataset, key = end + asof + who;
-  const [S, C] = await Promise.all([typeof folioSheet === "function" ? folioSheet(end) : null, mgCommission(end)]);
+  const [S, C] = await Promise.all([typeof folioSheet === "function" ? folioSheet(end) : null, mgUnits(end)]);
   if (el.isConnected === false || el.dataset.end + el.dataset.asof + el.dataset.who !== key) return;
   const body = el.querySelector(".mgbody");
   if (!S) { body.innerHTML = `<p class="sd" style="margin:10px 0 0">The Sales sheet could not be read just now.</p>`; return; }
-  body.innerHTML = folioGoalsHtml(S, (C && C.units) || [], end, asof, who);
+  body.innerHTML = folioGoalsHtml(S, (C && C.units) || [], end, asof, who, !!(C && C.ops));   // the next tier: the ops team only
   el.dataset.filled = key;
   MGOAL_LAST = { key, html: body.innerHTML };
 }
