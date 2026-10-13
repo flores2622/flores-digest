@@ -393,3 +393,39 @@ test("automations: the report from R2 and Frank's marks", async () => {
   assert.equal((await call(env, "GET", "/api/crm/automations", null, CRYSTAL.email)).status, 403);
   assert.equal((await call({ CRM: env.CRM }, "GET", "/api/crm/automations")).status, 503);
 });
+
+test("the lead page: one read with the lead, household, policies, tasks, notes, moves and where it can go", async () => {
+  const { env } = fresh();
+  let r = await call(env, "POST", "/api/crm/leads", { firstname: "Ana", lastname: "Reyes", phone: "(602) 555-0102", assignedTo: CRYSTAL.az_id, leadSourceId: 2, workflowStageId: 101 });
+  const id = r.body.id;
+  assert.equal((await call(env, "POST", `/api/crm/leads/${id}/notes`, { body: "Spoke, wants the home quote" })).status, 201);
+  assert.equal((await call(env, "POST", `/api/crm/leads/${id}/move`, { to: "1 Pipeline | Quotes Presented" })).status, 200);
+  assert.equal((await call(env, "POST", "/api/crm/tasks", { title: "Follow up", assigneeId: CRYSTAL.az_id, leadId: id, dueDate: "2026-10-14 09:00" })).status, 200);
+  r = await call(env, "GET", `/api/crm/leads/${id}/page`);
+  assert.equal(r.status, 200, JSON.stringify(r.body));
+  const p = r.body;
+  assert.equal(p.lead.id, id);
+  assert.equal(p.lead.where, "1 Pipeline | Quotes Presented");
+  assert.equal(p.lead.sourceName, "Cross-sell: Home no Auto");
+  assert.equal(p.lead.stageName, "Quotes Presented");
+  assert.equal(p.household, null);
+  assert.deepEqual(p.policies, []);
+  assert.equal(p.tasks.length, 1); assert.equal(p.tasks[0].customerName, "Ana Reyes");
+  assert.deepEqual(p.notes.map((n) => n.type), ["MOVE_STAGE", "NOTE"]);   // newest first
+  assert.equal(p.moves.length, 1); assert.equal(p.moves[0].to, "1 Pipeline | Quotes Presented"); assert.equal(p.moves[0].movedByName, FRANK.name);
+  assert.ok(p.events.some((e) => e.action === "move"));
+  const opt = p.stageOptions;
+  assert.ok(opt.length >= 3);
+  assert.ok(opt.every((o) => o.workflow === "1 Pipeline"), "only the sales pipelines are offered");   // Service Pipeline / Late Payments are kind service
+  assert.ok(opt.every((o) => o.pipelineName === "New Business"), "Frank's pipeline name on every option");
+  assert.equal(opt.find((o) => o.current).stage, "Quotes Presented");
+  assert.equal(opt.find((o) => o.stage === "New").stageName, "New");   // Frank's name, from the map
+  assert.deepEqual(p.exits, ["Smart-Cycle", "Dead", "Sold"]);
+  // sold: the household appears, with its policies
+  assert.equal((await call(env, "POST", `/api/crm/leads/${id}/sold`, {})).status, 200);
+  r = await call(env, "GET", `/api/crm/leads/${id}/page`);
+  assert.ok(r.body.household && r.body.household.name === "Ana Reyes");
+  assert.equal(r.body.lead.where, "Sold");
+  assert.equal((await call(env, "GET", "/api/crm/leads/999/page")).status, 404);
+  assert.equal((await call(env, "GET", `/api/crm/leads/${id}/page`, null, CRYSTAL.email)).status, 403);
+});

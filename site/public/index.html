@@ -5557,7 +5557,7 @@ function card(c) {
      <span class="flowedge" style="--fc:${edge.color}"${edge.label ? ` title="${escAttr(edge.label + (edge.why ? ": " + edge.why : ""))}" aria-label="${escAttr(edge.label)}"` : ""}></span>
      <div class="chead"><div><div class="cname">${c.lead_id
        ? `<a href="${AZ_URL.lead}${encodeURIComponent(c.lead_id)}" target="_blank" rel="noopener" onclick="event.stopPropagation()">${cesc(c.lead || "")}</a>`
-       : cesc(c.lead || "")}</div>
+       : cesc(c.lead || "")}${c.lead_id && window.CRM_OK ? ` <button type="button" class="ghost ldopen" data-ldopen="${escAttr(String(c.lead_id))}" data-ldname="${escAttr(c.lead || "")}" title="Open the lead's page in Pantheon's CRM">Lead page</button>` : ""}</div>
        <div class="cmeta">${cesc(c.who || "")} · ${cesc(fmtShortDate(c.day))}${c.time ? ` ${cesc(c.time)}` : ""} · ${durCell} · ${cesc(c.lang || "")} · ${cesc(c.src || "")}${c.leadsrc ? ` · ${cesc(c.leadsrc)}` : ""}</div>
 </div>
 </div>
@@ -8716,6 +8716,8 @@ async function paintTab() {
     await listsPaint();      // lists.js; the CRM's lead sources, pipelines and service pipelines (same gate)
   } else if (view === "workflows") {
     await workflowsPaint();  // workflows.js; what AgencyZoom's automations run today (same gate)
+  } else if (view === "lead") {
+    await leadPaint();       // lead.js; the CRM's lead page (same gate)
   }
 }
 
@@ -10860,6 +10862,7 @@ paintCenterBar();
     if (w.view === "tasks") ok = await (window.CRM_READY || Promise.resolve(false));
     if (w.view === "lists") ok = await (window.LISTS_READY || Promise.resolve(false));
     if (w.view === "workflows") ok = await (window.WORKFLOWS_READY || Promise.resolve(false));
+    if (w.view === "lead") ok = await (window.LEAD_READY || Promise.resolve(false));
     if (ok) setViewQuiet(w.view);
   }
   if (w) {
@@ -11136,5 +11139,6 @@ async function coeusSend(text) {
 <script src="tasks.js"></script>
 <script src="lists.js"></script>
 <script src="workflows.js"></script>
+<script src="lead.js"></script>
 </body>
 </html>
