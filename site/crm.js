@@ -53,6 +53,10 @@
      POST /api/crm/automations/rule        {op: add|edit|del, rule} -- Pantheon's
                                            own rules, drafts beside AgencyZoom's
                                            on the timeline (R2 crm/rules.json)
+     GET  /api/crm/taskcheck               phase 2's cutover test: Task
+                                           Completion from AgencyZoom and from
+                                           the CRM side by side, the last 14
+                                           days (task_check.py, R2 crm/task_check/)
      POST /api/crm/automations/suggest     {op: add|done|undone|del, key, text, id}
                                            -- the ops team's suggestions on a
                                            rule or the page (R2 crm/suggestions.json);
@@ -961,6 +965,24 @@ async function automationsRule(env, body, me) {
   }
   return json({ error: "the rules are busy -- try again" }, 503);
 }
+const TASK_CHECK_PREFIX = "crm/task_check/";
+const TASK_CHECK_DAYS = 14;
+async function taskCheck(env) {
+  const keys = [];
+  let cursor;
+  do {
+    const l = await env.BOARD.list({ prefix: TASK_CHECK_PREFIX, cursor });
+    for (const o of l.objects || []) keys.push(o.key);
+    cursor = l.truncated ? l.cursor : undefined;
+  } while (cursor);
+  keys.sort().reverse();
+  const days = [];
+  for (const k of keys.slice(0, TASK_CHECK_DAYS)) {
+    const { body } = await r2json(env, k);
+    if (body) days.push(body);
+  }
+  return json({ days });
+}
 async function r2json(env, key) {
   try { const o = await env.BOARD.get(key); if (!o) return { body: null, etag: null }; return { body: await o.json(), etag: o.etag }; }
   catch (_) { return { body: null, etag: null }; }
@@ -1009,6 +1031,7 @@ export async function crm(request, env, identityOf, parts, url) {
   const me = { email: me0.email, id: person.az_id || null, name: person.name };
   const get = request.method === "GET", post = request.method === "POST";
   const [head, id, sub] = parts;
+  if (head === "taskcheck" && get && parts.length === 1) return env.BOARD ? taskCheck(env) : json({ error: "no R2 bucket" }, 503);
   // The automations report, its marks, the drafts and the suggestions live in R2 (env.BOARD), not D1.
   if (head === "automations") {
     if (!env.BOARD) return json({ error: "no R2 bucket" }, 503);

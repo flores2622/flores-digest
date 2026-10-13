@@ -53,11 +53,24 @@ for the rest. Nothing is switched until the two agree on a published day.
    the lead's coaching card a click away). **The mirror is built**
    (`crm_sync.py`, same day): every checkpoint and the nightly copy what
    they saved from AgencyZoom into the database, so the Tasks page shows the
-   real book from the first run with `CF_API_TOKEN` set. Still to do:
-   `missed_call_tasks.create` writing to `/api/crm/tasks` instead of
-   AgencyZoom, and `az_tasks.audit` / `live.js taskCompletion` reading from
-   it. Cutover test: Task Completion identical both ways on a day run in
-   parallel.
+   real book from the first run with `CF_API_TOKEN` set. **The switch is
+   built** (2026-10-13): `TASKS_SOURCE=crm` in the nightly's environment
+   makes `az_tasks.audit` read the CRM's tasks (`crm_tasks.read_day`,
+   AgencyZoom-shaped, through the D1 REST API; the AgencyZoom file stays the
+   fallback), `missed_call_tasks` check and write the CRM (`crm_tasks.
+   create_task`: az_id NULL, an events row by `pantheon:missed_call_tasks`),
+   and the checkpoint's `live_basis.tasks.source` makes the Worker's live
+   figure read the D1 binding (`live.js crmTasksDue`, one query, never
+   paged) instead of AgencyZoom. Default `agencyzoom`: nothing changes until
+   it is set. **The cutover test runs every night** (`task_check.py`, after
+   `crm_sync`): Task Completion from AgencyZoom's file and from the CRM's
+   copy, the same verdicts, compared per producer and team and written to
+   R2 `crm/task_check/<day>.json`; Sales Center > Tasks shows the last 14
+   days as the **Cutover check** card (`GET /api/crm/taskcheck`). The switch
+   is Frank's to flip once the days agree -- and the producers need to see
+   their tasks somewhere other than AgencyZoom first (phase 3's lead page,
+   or the Tasks page opened to them), since a task written to the CRM is not
+   in AgencyZoom.
 3. **Notes, calls and the lead screen**: the lead page (the coaching card's
    lead opens it), typed notes, the call log written by the nightly's own
    RingCentral pass as CALL notes, stage moves from the page.
