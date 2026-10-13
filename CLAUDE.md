@@ -3079,6 +3079,16 @@ over `text/event-stream` with status lines while it reads.
   the drawer's **Usage** button shows it (hidden on a 403), and the
   `coeus_usage` tool lets those viewers ask Coeus itself. The figure is an
   estimate, not the bill.
+- **`node --test site/coeus.test.mjs` runs after touching `coeus.js`**
+  (2026-10-13): the handler end to end with the model stubbed. **Every
+  question failed from 2026-10-06 to 10-13** on a bare Cloudflare 500
+  ("Apollo could not answer (500)" -- Mike, asking for his home quotes
+  since September 1st): the time-zone change (#370) removed the `az` Date
+  that `contextBlock` still read for today's date, a ReferenceError before
+  the stream opened, which nothing ran before a deploy. `azToday()` now;
+  the setup before the stream is one try that answers a JSON error with
+  the reason; and wrangler.jsonc turns on Workers Logs (`observability`),
+  so the dashboard's Observability > Logs holds the next one.
 - **When the board changes, Coeus changes with it** through `blueprints.js`
   -- another reason to keep the guides current in the same change. A new
   figure Coeus should read needs its compact reading added in `coeus.js`.

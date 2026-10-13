@@ -684,10 +684,10 @@ function contextBlock(me, scope, commercial, c) {
   const time = `${String(now.h).padStart(2, "0")}:${String(now.min).padStart(2, "0")}`;
   const looking = [c.page ? `the ${c.page} page` : "", c.sub ? `(${c.sub})` : "", c.range ? `for ${c.range}` : (c.day ? `for ${c.day}` : ""), c.producer ? `filtered to ${c.producer}` : ""].filter(Boolean).join(" ");
   return `# Right now
-- Today is ${dow} ${az.toISOString().slice(0, 10)}, ${time} on the agency's clock (${TZ}).
+- Today is ${dow} ${azToday()}, ${time} on the agency's clock (${TZ}).
 - Asking: ${me.name || "someone"} (${me.email || "unknown login"}), ${role}.
 - They are looking at ${looking || "the board"}.${c.from && c.to ? ` The range on screen is ${c.from} to ${c.to}.` : ""}
-- A question with no day named is about what they are looking at; "today" is ${az.toISOString().slice(0, 10)}.`;
+- A question with no day named is about what they are looking at; "today" is ${azToday()}.`;
 }
 
 function sanitizeMessages(raw) {
@@ -815,13 +815,23 @@ export async function coeusChat(request, env, ctx, deps) {
   try { body = await request.json(); } catch (_) { return jsonResp({ error: "bad request body" }, 400); }
   const messages = sanitizeMessages(body.messages);
   if (!messages.length) return jsonResp({ error: "nothing asked" }, 400);
-  const me = identityOf(request, env), scope = rpScope(request, env), commercial = commercialAllowed(request, env);
-
-  const system = [
-    { type: "text", text: staticSystem(scope.all), cache_control: { type: "ephemeral" } },
-    { type: "text", text: contextBlock(me, scope, commercial, body.context) },
-  ];
-  const toolCtx = { env, scope, commercial, rpMaySee, usageViewer: usageAllowed(request, env, deps) };
+  // Everything before the stream opens is one try: a fault here (an
+  // undefined name, a guide that fails to fill) used to escape as a bare
+  // Cloudflare 500 with no reason on the board -- every question from
+  // 2026-10-06 to 10-13 died that way on a variable the time-zone change
+  // had removed. Now the client gets the message.
+  let me, scope, commercial, system, toolCtx;
+  try {
+    me = identityOf(request, env); scope = rpScope(request, env); commercial = commercialAllowed(request, env);
+    system = [
+      { type: "text", text: staticSystem(scope.all), cache_control: { type: "ephemeral" } },
+      { type: "text", text: contextBlock(me, scope, commercial, body.context) },
+    ];
+    toolCtx = { env, scope, commercial, rpMaySee, usageViewer: usageAllowed(request, env, deps) };
+  } catch (e) {
+    console.error("coeus: could not set up the question", e);
+    return jsonResp({ error: `Apollo could not start on that question: ${String(e && e.message || e).slice(0, 200)}` }, 500);
+  }
   const enc = new TextEncoder();
   const { readable, writable } = new TransformStream();
   const w = writable.getWriter();
