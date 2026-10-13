@@ -3364,7 +3364,7 @@ function teamLeaderboardHtml(d, who) {
   const T = d.totals || {};
   const teamRate = T.rate != null ? (+T.rate).toFixed(1) : (T.dials ? (100 * T.live / T.dials).toFixed(1) : "0");   // see digestDay
   const tot = focus ? "" : `<tr class="tot"><td><span class="who">${pbadge(TEAM_DOT, "Team")}</span></td>
-    ${hasRoleplay ? `<td class="num ${tt("roleplay")}">${T.roleplay != null ? Math.round(T.roleplay) : "—"}</td>` : ""}
+    ${hasRoleplay ? `<td class="num ${tt("roleplay")}${lv("roleplay")}">${T.roleplay != null ? Math.round(T.roleplay) : "—"}</td>` : ""}
     <td class="num ${tt("dials")}${lv("dials")}${cc("dials")[0]}"${cc("dials")[1]}>${T.dials ?? 0}${dialsSub(T)}</td>
     <td class="num ${tt("talk")}${lv("contacts")}${cc("contacts")[0]}"${cc("contacts")[1]}${talkTip(d, teamTalkSums(ranked))}>${hhmm(T.talk)}</td>
     <td class="num ${tt("rate")}${lv("contacts")}${cc("contacts")[0]}"${cc("contacts")[1]}>${teamRate}% <span style="opacity:.72">(${T.live ?? 0})</span></td>
