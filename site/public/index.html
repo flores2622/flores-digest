@@ -8740,6 +8740,13 @@ function splitRenewals(m) {
   m.callbacks = m.callbacks.filter(r => !r.renewal);
   m.renewalDials = m.dials.filter(r => r.renewal);
   m.dials = m.dials.filter(r => !r.renewal);
+  // Call-ins picked up first split the same way (Frank, 2026-10-13, for the Renewals tab's Talk time): by the
+  // row's own flag on service days built from 2026-10-13, else a number the day's renewal dials or call backs
+  // already mark as renewal business (every number is normalised the same way in service_digest).
+  const renNums = new Set([...m.renewalDials, ...m.renewalCallbacks].map(r => r.number).filter(Boolean));
+  const renCall = r => r.renewal != null ? !!r.renewal : renNums.has(r.number);
+  m.renewalCalls = (m.front.calls || []).filter(renCall);
+  m.front.calls = (m.front.calls || []).filter(r => !renCall(r));
   const msgSide = keep => {
     const sent = m.msg.sent.filter(r => !!r.renewal === keep), people = {};
     for (const n of team) people[n] = { texts: 0, emails: 0, auto_texts: 0, auto_emails: 0, customers: 0 };
@@ -10021,7 +10028,8 @@ function renewalWorkHtml(m, doc, rb) {
     const need = M.replies.filter(r => (!x || r.who === x) && !r.ack && !r.optout), ans = need.filter(r => r.minutes != null);
     const sent = M.sent.filter(r => !x || r.who === x);
     const dials = (m.renewalDials || []).filter(r => !x || r.who === x);
-    return { done, outs, open, tasks, tk, cb, cbDone, need, ans, sent, dials,
+    const calls = (m.renewalCalls || []).filter(r => !x || r.who === x);
+    return { done, outs, open, tasks, tk, cb, cbDone, need, ans, sent, dials, calls, talk: svcTalk(dials, calls),
       rate: renewalRate(outs, kind), disc: outs.filter(r => REN_DISCUSSED.has(r.outcome)),
       settled: settledAll.filter(srOf), lost: lostAll.filter(srOf), up: ahead.filter(srOf) };
   };
@@ -10049,6 +10057,10 @@ function renewalWorkHtml(m, doc, rb) {
     tile("settled", "Retention · settled 4 weeks", rs.pct == null ? "—" : rs.pct + "%", `policies renewed 2-6 weeks ago${n ? " on their SRs" : ""} &middot; ${rs.k} of ${rs.k + rs.l} kept`),
     tile("lost", "Lost", S.lost.length, `policies renewed in this period${n ? " on their SRs" : ""}`),
     tile("dials", "Renewal dials", m.dialDays ? S.dials.length : "—", m.dialDays ? `numbers &middot; ${S.dials.reduce((a, r) => a + r.attempts, 0)} dials` : "counted from 2026-09-29"),
+    // Talk time on the renewal side (Frank, 2026-10-13: "do the same on the renewals tab"): renewal dials that
+    // connected and renewal customers' call-ins picked up first, the hover saying which were which.
+    (m.dialDays || m.front.days) ? `<div class="tile rdrill${renDrill === "rw:talk" + sfx ? " on" : ""}" data-drill="rw:talk${sfx}" role="button" tabindex="0" title="${cesc(svcTalkTip(S.talk).replace("Talk time:", "Renewal talk time:"))}"><div class="k">Renewal talk time</div><div class="v">${S.talk.n ? secs(S.talk.avg) : "—"}</div><div class="n">${S.talk.n ? `average &middot; ${S.talk.n} conversation${S.talk.n === 1 ? "" : "s"} &middot; ${secs(S.talk.secs)} on the line` : "no conversations"}</div></div>`
+      : tile("talk", "Renewal talk time", "—", "counted from 2026-09-29"),
     tile("cb", "Renewal call backs", `<span class="${replyTier(cbMed)}">${fmtMins(cbMed)}</span>`, n ? `median to return &middot; ${S.cbDone.length} returned` : `median to return &middot; ${S.cbDone.length} of ${S.cb.length} returned same day`),
     tile("replies", "Speed to reply", `<span class="${replyTier(rMed)}">${fmtMins(rMed)}</span>`, `median &middot; ${S.ans.length} answered${wait ? ` &middot; <b style="color:var(--bad)">${wait} waiting</b>` : ""}`),
     tile("sent", "Texts / emails", `${S.sent.filter(r => r.channel === "text" && !r.auto).length} / ${S.sent.filter(r => r.channel === "email" && !r.auto).length}`, `typed &middot; ${S.sent.filter(r => r.auto).length} more by automation`),
@@ -10078,6 +10090,9 @@ function renewalWorkHtml(m, doc, rb) {
     if (k === "settled") list = pol(`Retention · settled 4 weeks${whoTag}`, "renewed 2-6 weeks ago, retained and lost", T.settled.filter(r => r.status === "retained" || r.status === "lost"));
     if (k === "lost") list = pol(`Lost${whoTag}`, "renewals lost in this period", T.lost);
     if (k === "dials") list = head(`Renewal dials${whoTag} · ${T.dials.length} number${T.dials.length === 1 ? "" : "s"}`, "Numbers whose open SRs are all renewal SRs.") + svcDialTable(T.dials, m) + "</div>";
+    if (k === "talk") list = head(`Renewal talk time${whoTag} · ${T.talk.n} conversation${T.talk.n === 1 ? "" : "s"}`,
+      `${T.talk.dialled} dialled (${secs(T.talk.dialled_secs)}) and ${T.talk.inbound} call-in${T.talk.inbound === 1 ? "" : "s"} picked up first (${secs(T.talk.inbound_secs)}), with customers whose open SRs are all renewal SRs. A dial counts its longest connected leg.`)
+      + `<h4 class="rh3" style="margin:8px 0 4px">Dialled</h4>${svcDialTable(T.talk.conn, m)}<h4 class="rh3" style="margin:12px 0 4px">Call-ins</h4>${svcCallTable(T.talk.calls, m)}</div>`;
     if (k === "cb") list = head(`Renewal call backs${whoTag} · ${T.cb.length}`, "Missed calls from customers whose open SRs are all renewal SRs. Not returned first.") + svcCallbackTable(T.cb) + "</div>";
     if (k === "replies") list = head(`Renewal customer messages${whoTag} · ${T.need.length}`, "Waiting first, then slowest answered.") + svcReplyTable(T.need, m) + "</div>";
     if (k === "sent") list = head(`Renewal texts & emails${whoTag} · ${T.sent.filter(r => !r.auto).length} typed`, "Typed first.") + svcSentTable(T.sent, m) + "</div>";

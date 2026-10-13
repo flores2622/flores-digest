@@ -511,14 +511,18 @@ def front_figures(day, done, live, recs=None):
     import inbound
     import missed_call_audit as mca
     recs = recs if recs is not None else mca.collect(day, refresh=False)
+    idx, *_ = mca.build_index(day)
     calls = []
     for r in recs:
         if r.get("direction") != "Inbound" or r.get("result") != "Accepted" or inbound.az_day(r) != day:
             continue
         first = first_pickup(r)
         if first and first[0] in SERVICE_TEAM:
-            calls.append({"who": first[0], "at": r.get("startTime"), "seconds": first[1],
-                          "number": mca.norm((r.get("from") or {}).get("phoneNumber")),
+            n = mca.norm((r.get("from") or {}).get("phoneNumber"))
+            calls.append({"who": first[0], "at": r.get("startTime"), "seconds": first[1], "number": n,
+                          # A renewal customer's call-in is the Renewals tab's, like their dials and call
+                          # backs (Frank, 2026-10-13, the Renewals tab's Talk time); the board splits it.
+                          "renewal": renewal_caller(idx.get(n)),
                           # The call's recording, for its transcript and player
                           # (service_calls.py); None when it was not recorded.
                           "rec": r.get("id") if r.get("recording") else None})
