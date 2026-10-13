@@ -700,7 +700,12 @@ const leadFields = l => ({ id: l.id, lastActivityDate: l.lastActivityDate, enter
    stage moves, which the quotes pass reads anyway (taskFlags). Refreshed
    every TASKS_REFRESH_SECONDS, not every run: tasks change slowly, and it
    is one list page per producer each time. */
-export const TASKS_REFRESH_SECONDS = 330;
+// 900, not 330, since 2026-10-12 (Frank: "do the timer cuts"): five task
+// reads every 15 minutes instead of every 5.5 -- 282 of Monday's 1,532
+// AgencyZoom calls were the task list, and AgencyZoom's firewall had been
+// refusing the Worker for the afternoon on four of nine days. Task
+// Completion now moves every 15 minutes between checkpoints.
+export const TASKS_REFRESH_SECONDS = 900;
 const TASK_PAGES = 5;
 export function taskFlags(notes, day, basis) {
   const t = basis.tasks;
@@ -960,7 +965,10 @@ export async function syncSalesLog(env, day, basis, policies, sourceNames, soldR
    (live/<day>-leads.json) instead of paging it again -- when it is under
    ACTIVE_LIST_FRESH_SECONDS old and reaches back to the checkpoint. A lead
    active in that minute is read on the next pass. */
-export const ACTIVE_LIST_FRESH_SECONDS = 150;
+// 270, not 150, since 2026-10-12: the sold part reads the list every 4
+// minutes now (SALES_REFRESH_SECONDS), and a quotes pass that found the
+// copy stale would page its own -- the very calls the cut is saving.
+export const ACTIVE_LIST_FRESH_SECONDS = 270;
 export function fromShared(shared, since) {
   if (!shared || !Array.isArray(shared.leads) || !shared.fetched_at) return null;
   if (Date.now() - Date.parse(shared.fetched_at) > ACTIVE_LIST_FRESH_SECONDS * 1000) return null;
@@ -1096,11 +1104,34 @@ const part = async (env, key, fn) => {
   catch (e) { return { ok: false, reason: String(e && e.message || e) }; }
 };
 
+/* Sales and the leads marked sold are read from AgencyZoom every 4 minutes,
+   not every 2 (2026-10-12, Frank: "do the timer cuts" -- 169 policy reads
+   and 173 lead-list reads on Monday, and AgencyZoom's firewall refusing the
+   Worker for the afternoon on four of nine days). The refresh still runs
+   every even minute for dials, contacts, utilization and Role Play; on the
+   in-between run the last real sales / sold / speed answers are carried
+   as they are, stamped `as_of`. A carried answer is never carried twice:
+   the next run sees the stamp and reads afresh. Nothing is carried over a
+   failed read (keepGood already does that, with the same stamp) or across
+   a checkpoint. A sale lands on the board up to 4 minutes after AgencyZoom
+   has it, instead of 2. */
+export const SALES_REFRESH_SECONDS = 240;
+export function carrySales(prev, cpAsOf, now = Date.now()) {
+  if (!prev || prev.checkpoint !== cpAsOf || !prev.fetched_at) return null;
+  const s = prev.sales || {}, d = prev.sold || {};
+  if (!s.ok || !d.ok || s.as_of || d.as_of) return null;   // failed, or already carried once
+  if (now - Date.parse(prev.fetched_at) >= SALES_REFRESH_SECONDS * 1000) return null;
+  const stamp = x => ({ ...x, as_of: prev.fetched_at });
+  return { sales: stamp(s), sold: stamp(d),
+    speed: prev.speed ? stamp(prev.speed) : { ok: false, reason: "no speed to dial on the last read" } };
+}
+
 /* Dials, contacts and talk time, sales (policies and the leads marked
    sold) and utilization: a handful of requests, refreshed together.
    `evidence` is the last quotes pass's read of the lead notes
-   (live/<day>-quotes.json). */
-export async function computeFast(env, day, basis, fetchFn = fetch, evidence = null, kept = null, taskPrev = null, flags = null) {
+   (live/<day>-quotes.json). `carry` is carrySales()'s answer: the sales,
+   sold and speed parts to reuse this run instead of reading AgencyZoom. */
+export async function computeFast(env, day, basis, fetchFn = fetch, evidence = null, kept = null, taskPrev = null, flags = null, carry = null) {
   const inputs = {};   // for syncSalesLog; never stored
   let log = null;
   const callLog = async () => (log || (log = rcCallLog(env, day, fetchFn)));
@@ -1110,13 +1141,13 @@ export async function computeFast(env, day, basis, fetchFn = fetch, evidence = n
       if (!basis.contact || !basis.talk) throw new Error("needs a checkpoint built after this update");
       return contactDeltas(basis, await callLog(), evidence || {});
     }),
-    part(env, "sales", async () => {
+    carry ? carry.sales : part(env, "sales", async () => {
       const [pols, names] = await Promise.all([azPoliciesSold(env, day, fetchFn), azLeadSources(env, fetchFn)]);
       inputs.policies = pols; inputs.names = names;
       return salesFrom(basis, pols, names);
     }),
     part(env, "util", async () => insightfulUtil(env, day, basis, fetchFn)),
-    part(env, "sold", async () => soldLeadsToday(env, day, basis, fetchFn, kept)),
+    carry ? carry.sold : part(env, "sold", async () => soldLeadsToday(env, day, basis, fetchFn, kept)),
     part(env, "roleplay", async () => roleplayLive(env, day)),
   ]);
   // Task completion: the kept tasks are re-judged every run (a verdict can
@@ -1131,7 +1162,7 @@ export async function computeFast(env, day, basis, fetchFn = fetch, evidence = n
     tasks = !got.ok ? got : !got.data.complete ? { ok: false, reason: "more tasks due today than the page cap" }
       : { ok: true, data: taskCompletion(basis, got.data.tasks, flags) };
   }
-  if (sold.ok) {
+  if (!carry && sold.ok) {   // a carried answer went through this on its own run
     // A lead sold as life on a policy entered since the checkpoint: today's
     // policies, when the sales read got them, join the checkpoint's.
     const recent = lifeRecent(basis, sales.ok ? inputs.policies : null);
@@ -1157,7 +1188,8 @@ export async function computeFast(env, day, basis, fetchFn = fetch, evidence = n
   let calls = null;
   if (log) try { calls = dialTouches(basis, await log); } catch (_) {}
   // Speed to dial needs every lead created today, so only a complete list.
-  const speed = !dials.ok ? { ok: false, reason: dials.reason }
+  const speed = carry ? carry.speed
+    : !dials.ok ? { ok: false, reason: dials.reason }
     : !sold.ok ? { ok: false, reason: sold.reason }
     : !(inputs.active || {}).complete ? { ok: false, reason: "today's lead list was cut short" }
     : await part(env, "dials", async () => speedToDial(day, basis, inputs.active.leads, await log));
@@ -1232,7 +1264,7 @@ async function refreshFast(env, day, cp) {
   const [prev, q, kept, taskPrev] = await Promise.all([r2json(env, k.fast), r2json(env, k.quotes), r2json(env, k.leads), r2json(env, k.tasks)]);
   const evidence = q && q.checkpoint === cp.as_of ? q.evidence : null;
   const flags = q && q.checkpoint === cp.as_of ? q.task_flags : null;
-  const { _inputs, ...fast } = await computeFast(env, day, cp.basis, fetch, evidence, kept, taskPrev, flags);
+  const { _inputs, ...fast } = await computeFast(env, day, cp.basis, fetch, evidence, kept, taskPrev, flags, carrySales(prev, cp.as_of));
   if (_inputs.tasks) {
     try { await r2put(env, k.tasks, _inputs.tasks); }
     catch (e) { console.log(`tasks not saved: ${e && e.message || e}`); }

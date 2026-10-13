@@ -1061,6 +1061,25 @@ and anything without the glow is the checkpoint's (Frank, 2026-09-24).
   run: even minutes dials/contacts/sales/utilization, odd minutes up to 30
   lead reads (quotes, contact evidence and messages from the same reads). AgencyZoom 429s on bursts of note reads; a failed part keeps its
   last good answer for the same checkpoint instead of blanking the board.
+  **The timer cuts** (Frank, 2026-10-12: "do the timer cuts" -- AgencyZoom's
+  firewall, answering as Cloudflare, refused the Worker with bare 403s for
+  the afternoon on four of nine days, 10-01 / 10-06 / 10-07 / 10-12, from
+  the one shared egress address 2a06:98c0:3600::103; Monday's 1,532 calls
+  were 868 lead-note reads, 282 task-list reads, 173 lead-list and 169
+  policy reads): **sales and the leads marked sold are read every 4 minutes,
+  not 2** (`live.js SALES_REFRESH_SECONDS` / `carrySales`: the in-between
+  even-minute run carries the last real sales / sold / speed answers
+  stamped `as_of`, never twice in a row, never over a failed read or across
+  a checkpoint; `ACTIVE_LIST_FRESH_SECONDS` 270 so the quotes pass keeps
+  reusing that list), and **the five task reads come every 15 minutes, not
+  5.5** (`TASKS_REFRESH_SECONDS` 900). A sale or a task lands on the board
+  up to 4 or 15 minutes later; nothing by the hour changes. Note reads
+  were measured, not cut: coalescing a lead's re-reads into 10-minute
+  windows would save only 5-8% of the call-driven ones (modelled on the RC
+  call log for 10-06, 10-08 and 10-12), and calls explain only ~40% of the
+  note reads -- the rest are texts, drips, stage moves and the hourly
+  missed-call tasks bumping leads, which cannot be told apart without the
+  read itself. The sure fix is AgencyZoom allowlisting that address.
 - **The Worker logs in to AgencyZoom ONCE a day, not once a run.** A per-run
   login meant ~30 an hour, and on 2026-09-24 AgencyZoom began refusing the
   Worker's logins (403) within the hour while the same account still worked
