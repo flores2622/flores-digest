@@ -62,7 +62,7 @@
           ["5:30 PM", "The office closes. Every call of the day exists by now."],
           ["5:55 PM", "The final run. It builds the day, reads the day's Role Play sessions for the leaderboard, sends the emails and publishes the boards. Expect the emails a little after 6:00."],
         ] },
-        "Two emails go out. **Ops** (Frank, Francisco, Veronica, Amanda) get the Sales Digest plus the Call Detail and Task Completion Audit. **Staff** (the producers and Debbie) get the Sales Digest only.",
+        "**The nightly email is the board, not a report of its own** (October 13). It is written from the same day document the Digest and the coaching cards are drawn from, so nothing in it can disagree with the board. **Each producer gets their own**: their figures, a short version of every coaching card Apollo wrote on their calls that day (the top strength, the top miss, one line to say next time, the flags), their texts still waiting on a reply, what the team ran into (the objections and the wins and losses line) and the leaderboard. **Ops** (Frank, Francisco, Veronica, Amanda) get every producer's section, Left on the desk and the Missed Call Audit attached. **Debbie** gets the day's line and the leaderboard. Every lead's name in it opens that card on the board.",
         "Live contact rate and talk time are **provisional** until the next checkpoint. The board can't hear a recording between checkpoints, so it judges a new dial from the notes and the call length. The checkpoint listens and settles every call. It is normal for these to shift by a call or two on the hour.",
         "A day that has already gone out is never changed after the fact unless Frank asks.",
       ] },

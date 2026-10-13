@@ -1238,29 +1238,14 @@ def _run(a):
         for w, (b, a) in moved.items():
             log(f"  {w}: call volume {b} -> {a} (service found in the call)")
 
-    import build_day
-    out, html = build_day.build(day)
-    log(f"rendered {out} ({len(html.encode()):,} bytes)")
-
-    import attachments
-    # A bug in attachment generation must never cost the digest itself --
-    # confirmed 2026-09-15: build_attachments.py's KeyError: 'Coral Barwick'
-    # (a hardcoded 3-producer colour map that PR #78 exposed by finally
-    # letting their leads reach the Recontact Detail table) raised straight
-    # out of an unguarded call here, aborting main() before send() was ever
-    # reached -- the ALREADY-RENDERED report sat unsent until someone
-    # noticed and hand-patched the bug. make_missed_call_audit() right below
-    # already has the correct shape for this (try/except, log, degrade to no
-    # attachment); this call never did. The two PDFs are companion
-    # documents, not the headline numbers -- send() already tolerates a
-    # missing one (see ops_only_pdfs=[missed] if missed else [] below).
-    try:
-        notes, rec = make_attachments(day)
-        log(f"attachments: {notes}, {rec}")
-    except (Exception, SystemExit) as e:
-        log(f"attachments failed ({type(e).__name__}: {e}) -- "
-            f"sending the digest without them")
-        notes, rec = None, None
+    # THE EMAIL IS THE BOARD'S DAY DOCUMENT (Frank, 2026-10-13: "it shouldnt
+    # have its own rules or cards or anything, it should now be a reflection
+    # of the board data and coaching info"). The document is built HERE, once
+    # -- publish_board.build, coaching cards included -- emailed by
+    # email_digest.py, then handed to publish_day() as it is, so the email
+    # and days/<day>.json can never disagree. It replaced build_day.py's
+    # template email and the Notes & Methodology / Recontact Detail PDFs.
+    doc = build_document(day)
     missed = make_missed_call_audit(day)
 
     if a.no_send:
@@ -1299,6 +1284,10 @@ def _run(a):
     if held:
         log(f"SEND_HOLD present, NOT sending -- {hold.read_text().strip()[:200]} "
             f"-- the boards still build")
+    elif doc is None:
+        send_error = SystemExit("NOT SENT: the day document could not be built, "
+                                "so there is no email to send (see the error above)")
+        log(f"{send_error} -- the boards still try to build")
     elif short:
         # Too many leads' notes could not be read from AgencyZoom: notes win
         # over the recording (Frank, 2026-08-18), so the contact rate and
@@ -1309,14 +1298,14 @@ def _run(a):
         log(f"{send_error} -- the boards still build")
     else:
         try:
-            send(day, html, [p for p in (notes, rec) if p], audience=a.audience,
+            send(day, doc, audience=a.audience,
                  ops_only_pdfs=[missed] if missed else [],
                  resend=a.resend)
         except (Exception, SystemExit) as e:
             send_error = e
             log(f"send failed ({type(e).__name__}: {e}) -- the boards still build, "
                 f"then this run reports failed")
-    publish_day(day)
+    publish_day(day, doc)
     publish_service(day)
     publish_commercial(day)
     topup_late_policies(day)
@@ -1410,8 +1399,25 @@ def publish_commercial(day):
             f"earlier days keep their outcomes")
 
 
-def publish_day(day):
-    """Push the day onto the Sales Floor board (publish_board.publish, live).
+def build_document(day):
+    """The day document (publish_board.build) the email is written from and
+    the board is published with -- one build, both readers. None when it
+    cannot be built: the email is then not sent (nothing to reflect) and
+    publish_day tries the build once more on its own, logging its error."""
+    try:
+        import publish_board
+        doc = publish_board.build(day, log=log)
+        log(f"day document built: {len(doc.get('calls') or [])} coaching cards, "
+            f"{len(doc.get('producers') or [])} producers")
+        return doc
+    except (Exception, SystemExit) as e:
+        log(f"day document failed ({type(e).__name__}: {e})")
+        return None
+
+
+def publish_day(day, doc=None):
+    """Push the day onto the Sales Floor board (publish_board.publish, live),
+    `doc` being the document the email was written from (build_document).
 
     Runs AFTER send(), for the same reason make_missed_call_tasks does: the
     emails have already gone out by this point, so nothing here may ever raise.
@@ -1426,7 +1432,7 @@ def publish_day(day):
     """
     try:
         import publish_board
-        publish_board.publish(day, log=log)
+        publish_board.publish(day, doc=doc, log=log)
     except (Exception, SystemExit) as e:
         # secrets_load.load() raises SystemExit, not a plain Exception, when a
         # secret is missing -- and that IS the expected way for a not-yet-
@@ -1481,32 +1487,12 @@ def sync_sales_log(day):
             f"the digest already sent, so nothing else is affected")
 
 
-def make_attachments(day):
-    """Both companions, as PDF. HTML attachments arrive corrupted: they carry
-    ?id=NNNNNNN lead links and =NN is a quoted-printable escape, so any hop that
-    treats the part as text eats two digits from every link.
-    """
-    import attachments
-    import build_attachments
-    n_html, r_html = build_attachments.build(day)
-    n_pdf = f"out/Notes_and_Methodology_{day}.pdf"
-    r_pdf = f"out/Recontact_Detail_{day}.pdf"
-    attachments.to_pdf(n_html, n_pdf, landscape=False)
-    attachments.to_pdf(r_html, r_pdf, landscape=True)
-    for p, must in ((n_pdf, ["Utilization"]), (r_pdf, ["At risk of going cold"])):
-        pages, chars, missing = attachments.verify_pdf(p, must)
-        if missing:
-            raise SystemExit(f"{p} is missing {missing} -- refusing to send")
-    return n_pdf, r_pdf
-
-
 def make_missed_call_audit(day):
     """The missed-call audit, ops only. Read-only -- creates nothing.
 
-    A PDF attachment rather than a panel on purpose. The body is already inside
-    two hard Gmail limits (a ~16 KB stylesheet cap and a 102 KB body cap, see
-    render_report.prune_css and overflow.relieve) and a new panel is the fastest
-    way back to an unstyled email.
+    A PDF attachment rather than a section of the email on purpose: the body
+    sits under Gmail's 102 KB clip (email_digest.fit) and a management view
+    of volume and response time is not what the coaching email is for.
 
     NEVER let this stop the digest. It is a companion report; if it fails the
     day's numbers still have to go out.
@@ -1533,102 +1519,67 @@ def make_missed_call_audit(day):
 
 
 def sent_marker(day, audience):
-    """data/sent_<day>_<audience>.json -- written the moment that audience's
-    email is accepted by Resend (2026-09-30), and carried between containers
-    by r2_cache like the day's other files."""
+    """data/sent_<day>_<audience>.json -- written the moment that email is
+    accepted by Resend (2026-09-30), and carried between containers by
+    r2_cache like the day's other files. `audience` is the email's key
+    (email_digest.jobs): `ops`, or a person's first name (crystal, debbie)
+    since 2026-10-13, when each producer got their own email."""
     return ROOT / f"data/sent_{day}_{audience}.json"
 
 
-def send(day, ops_html, pdfs, audience="both", ops_only_pdfs=(), resend=False):
-    """Email each audience, ONE AT A TIME (2026-09-30).
+def send(day, doc, audience="both", ops_only_pdfs=(), resend=False):
+    """Email everyone their own version of the day, ONE AT A TIME.
 
-    Each audience that goes out leaves a sent marker, and a re-run skips an
-    audience that has one -- saying so -- so re-running a night that failed
-    halfway never emails ops twice to reach staff once. One audience failing
-    (Resend down after send_digest's own retries, an overflow the body cannot
-    shed, the staff panel not found) no longer costs the other: every
-    audience is tried, and only then does this raise, naming each failure,
+    email_digest.jobs builds one email per recipient group from the day
+    document: `ops` together, each producer their own, the rest of the staff
+    digest (the front desk) the leaderboard only. `--audience staff` is the
+    producers and the front desk; `ops` the ops team; `both` everyone.
+
+    Each email that goes out leaves a sent marker (sent_marker, keyed by the
+    job's `key`), and a re-run skips one that has it -- saying so -- so
+    re-running a night that failed halfway never emails ops twice to reach a
+    producer once. One email failing (Resend down after send_digest's own
+    retries, a body over the clip even at one-line cards) costs nobody else:
+    every job is tried, and only then does this raise, naming each failure,
     so the run is still reported failed."""
-    import digest_config as cfg
+    import email_digest
     import r2_cache
     import send_digest
-    from attachments import qp_safe
-    label = dt.date.fromisoformat(day).strftime("%b %-d, %Y")
-    ops = qp_safe(ops_html)
-
-    # Staff used to lose the whole audit section, which cut Call Detail along with
-    # it. Frank, 2026-08-24: staff should see the live call detail. So the staff
-    # body now keeps the audit section and drops only the Task Completion Audit
-    # panel, and its heading is retitled to match what is actually left in it.
-    # Removing one panel by depth walk keeps the section wrapper balanced, which
-    # cutting at the section boundary did by brute force.
-    import render_report as rr
-
-    def staff_body():
-        staff = rr.drop_panel(ops, "Task Completion Audit &middot;")
-        staff = (staff
-                 .replace("Call Detail &amp; Task Completion Audit", "Call Detail")
-                 .replace("Daily Sales Digest &amp; Call Detail Audit",
-                          "Daily Sales Digest"))
-        return rr.prune_css(staff, log=log)
-    # Prune the stylesheet LAST, per audience, after shedding -- a shed panel's
-    # rules are dead weight in the body that remains, and Gmail throws away any
-    # <style> block over ~16 KB (see render_report.prune_css).
-    def ops_body():
-        return rr.prune_css(ops, log=log)
-    def load(paths):
-        return [(pathlib.Path(p).name, pathlib.Path(p).read_bytes())
-                for p in paths if p]
-    atts = load(pdfs)
     # The missed-call audit goes to ops alone. It is a management view of
     # volume and response time while the rules are being watched; staff get
     # real tasks once the feature is switched on, not a rehearsal document.
-    ops_atts = atts + load(ops_only_pdfs)
-    jobs = []
-    if audience in ("ops", "both"):
-        jobs.append(("ops", f"Daily Sales Digest & Call Detail Audit — {label}",
-                     ops_body, cfg.RECIPIENTS_OPS, ops_atts))
-    if audience in ("staff", "both"):
-        jobs.append(("staff", f"Daily Sales Digest — {label}", staff_body,
-                     cfg.RECIPIENTS_STAFF, atts))
-    # On a heavy day the body can pass Gmail's clip threshold. Rather than
-    # refuse the whole send -- which cost BOTH audiences their report -- shed
-    # panels into a PDF attachment and say so at the top of the email (Frank,
-    # 2026-08-25). Each audience is measured on its own: the staff body is
-    # already lighter by one panel, so it can still fit when ops does not.
-    import overflow
+    ops_atts = [(pathlib.Path(p).name, pathlib.Path(p).read_bytes())
+                for p in ops_only_pdfs if p]
     failed = []
-    for aud, subj, build, to, base_atts in jobs:
-        marker = sent_marker(day, aud)
+    for job in email_digest.jobs(day, doc, audience=audience, log=log):
+        key, subj, to = job["key"], job["subject"], job["to"]
+        marker = sent_marker(day, key)
         if marker.exists() and not resend:
             try:
                 when = json.loads(marker.read_text()).get("sent_at", "?")
             except ValueError:
                 when = "?"
-            log(f"{aud}: already sent for {day} (at {when}) -- skipping; delete "
+            log(f"{key}: already sent for {day} (at {when}) -- skipping; delete "
                 f"{marker.relative_to(ROOT)} and its R2 copy, or pass --resend, "
                 f"to send it again")
             continue
         try:
-            body, extra = overflow.relieve(day, build(), log=log)
-            a = list(base_atts)
-            if extra:
-                a.append((pathlib.Path(extra).name,
-                          pathlib.Path(extra).read_bytes()))
-            res = send_digest.send(subj, body, to, attachments=a, binary=True)
+            res = send_digest.send(subj, job["html"], to,
+                                   attachments=ops_atts if job["kind"] == "ops" else [],
+                                   binary=True)
         except (Exception, SystemExit) as e:
-            log(f"SEND FAILED: {aud} ({type(e).__name__}: {str(e)[:300]}) -- "
+            log(f"SEND FAILED: {key} ({type(e).__name__}: {str(e)[:300]}) -- "
                 f"carrying on with the rest")
-            failed.append(f"{aud}: {type(e).__name__}: {str(e)[:200]}")
+            failed.append(f"{key}: {type(e).__name__}: {str(e)[:200]}")
             continue
-        log(f"sent: {subj} -> {len(to)}")
+        log(f"sent: {subj} -> {len(to)} ({key})")
         marker.write_text(json.dumps({
-            "day": day, "audience": aud, "subject": subj, "recipients": len(to),
+            "day": day, "audience": key, "subject": subj, "recipients": len(to),
             "sent_at": dt.datetime.now(AZ).isoformat(timespec="seconds"),
             "resend_id": (res or {}).get("id") if isinstance(res, dict) else None}))
         r2_cache.push_file(day, marker.name, log=log)
     if failed:
-        raise SystemExit("digest not sent to every audience -- " + "; ".join(failed))
+        raise SystemExit("digest not sent to everyone -- " + "; ".join(failed))
 
 
 def make_missed_call_tasks(day):

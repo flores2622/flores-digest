@@ -10,10 +10,12 @@ calls qualify, what to hand the model, how to parse what comes back, and the
 handful of fields that are cheaper and safer to compute than to ask an LLM
 for (lead, who, time, dur, cat/catc, tab -- see _finish_card).
 
-BOARD ONLY, NEVER THE EMAIL (Frank, 2026-09-09: "put those coaching cards
-only on the domain, not the email"). This module is wired into
-publish_board.build(), never into render_report.py or daily.py's own email
-path. Nobody reading the digest email sees a word of this.
+THE BOARD'S, AND THE EMAIL REFLECTS THE BOARD. This module is wired into
+publish_board.build() only; email_digest.py (2026-10-13) reads each card
+off the finished day document -- the top strength, miss, one "next time"
+line and the flags -- and never asks for a read of its own. (Until then the
+template email carried no card at all -- Frank, 2026-09-09: "put those
+coaching cards only on the domain, not the email".)
 
 WHY THIS RUNS UNATTENDED, UNLIKE THE HAND-AUTHORED cards_<day>.py FILES IT
 CAN STILL BE OVERRIDDEN BY. Those were deliberately never generated -- an

@@ -19,7 +19,8 @@ export default {
     "place": "Arizona",
     "timezone": "America/Phoenix",
     "sender": "salesdigest@floresinsuranceagency.com",
-    "contact": "frank@floresinsuranceagency.com"
+    "contact": "frank@floresinsuranceagency.com",
+    "board_url": "https://flores-board.frank-f1e.workers.dev"
   },
   "people": [
     {

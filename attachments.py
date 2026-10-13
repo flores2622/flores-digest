@@ -1,4 +1,8 @@
-"""Build the two companion attachments as PDF, and make the body QP-safe.
+"""Render an HTML file to PDF (the Missed Call Audit, ops only) and verify
+it; qp_safe is kept for any HTML body that carries `=XX` sequences.
+
+Until 2026-10-13 this also built the Notes & Methodology and Recontact
+Detail PDFs for the template email; email_digest.py replaced that email.
 
 WHY PDF INSTEAD OF HTML
 -----------------------
@@ -83,36 +87,3 @@ def verify_pdf(path, must_contain):
     joined = "\n".join(text)
     missing = [s for s in must_contain if s not in joined]
     return pages, len(joined), missing
-
-
-if __name__ == "__main__":
-    import quopri
-    jobs = [
-        ("recovered/Notes_and_Methodology_2026-08-12.html",
-         "out/Notes_and_Methodology_2026-08-12.pdf", False,
-         ["Utilization and Efficiency", "Live Contact", "Avg Talk Time"]),
-        ("recovered/Recontact_Detail_2026-08-12.html",
-         "out/Recontact_Detail_2026-08-12.pdf", True,
-         ["Lance Savard", "At risk of going cold", "Pamela Rice"]),
-    ]
-    # notes attachment gets the updated footnote 6 first
-    import notes_patch
-    src = pathlib.Path("recovered/Notes_and_Methodology_2026-08-12.html").read_text()
-    pathlib.Path("out/Notes_and_Methodology_2026-08-12.html").write_text(
-        notes_patch.patch(src))
-    jobs[0] = ("out/Notes_and_Methodology_2026-08-12.html",) + jobs[0][1:]
-
-    for src, dest, land, checks in jobs:
-        to_pdf(src, dest, land)
-        pages, chars, missing = verify_pdf(dest, checks)
-        size = pathlib.Path(dest).stat().st_size
-        print(f"{dest:48} {pages:3} pages  {size:>8,}b  {chars:>7,} chars text"
-              f"  {'OK' if not missing else 'MISSING ' + str(missing)}")
-
-    body = pathlib.Path("out/Ops_Report_2026-08-12_util.html").read_text()
-    safe = qp_safe(body)
-    pathlib.Path("out/Ops_Report_2026-08-12_final.html").write_text(safe)
-    print(f"\nbody qp_safe: {len(QP_HAZARD.findall(body))} hazards escaped")
-    print(f"  survives a QP decode unchanged: "
-          f"{quopri.decodestring(safe.encode()) == safe.encode()}"
-          f"   (before: {quopri.decodestring(body.encode()) == body.encode()})")

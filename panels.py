@@ -10,7 +10,22 @@ import re
 import digest_config as cfg
 import live_contact as lc
 import staff
-from render_report import DOT, TEAM_DOT, TIER, hhmm, money
+
+# The email's swatch classes and tier classes (they were render_report.py's,
+# retired with the template email on 2026-10-13; kept here for the Call
+# Detail / outcome markup board_payload and coaching_cards still read).
+DOT = staff.email_dot([p["name"] for p in staff.active()])
+TEAM_DOT = "cE"
+TIER = {"green": "tier-text-good", "yellow": "tier-text-warning",
+        "red": "tier-text-critical", "none": ""}
+
+
+def hhmm(sec):
+    return f"{sec // 60}m {sec % 60:02d}s" if sec >= 60 else f"{sec}s"
+
+
+def money(v):
+    return f"${v:,.0f}"
 
 SHORT = {p["name"]: staff.first(p) for p in staff.producers()}   # staff.json
 # Historical name -- it was three producers until 2026-08-24, when Coral and

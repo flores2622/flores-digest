@@ -7,11 +7,14 @@ that introduced it first.
 
 ## What this builds
 
-`python3 daily.py` reports ONE Arizona day and emails two audiences at 6:30 PM
-AZ: **ops** (frank@, francisco@, veronica@, amanda@) get the digest plus the
-Call Detail & Task Completion Audit; **staff** (the producers plus debbie@) get
-the Sales Digest only. `--day YYYY-MM-DD` rebuilds a past day, `--audience
-ops|staff|both`, `--no-send` builds without emailing.
+`python3 daily.py` reports ONE Arizona day, publishes it to the board and
+emails it at ~6:00 PM AZ -- **one email per person, from the board's own day
+document** (`email_digest.py`, 2026-10-13; see "The nightly email is the
+board"): **ops** (frank@, francisco@, veronica@, amanda@) every producer's
+section plus the Missed Call Audit PDF; **each producer** their own section;
+**debbie@** the leaderboard only. `--day YYYY-MM-DD` rebuilds a past day,
+`--audience ops|staff|both` (staff = the producers and Debbie), `--no-send`
+builds without emailing.
 
 Everything caches under `data/`, so a re-run resumes rather than restarting.
 
@@ -939,13 +942,15 @@ Commercial boards and saves the day to R2; it skips the sales-log sync and the
 AgencyZoom missed-call tasks along with the email. `--no-send` (hand rebuilds)
 still stops before anything is published.
 
-**Each audience that is emailed leaves a sent marker** (2026-09-30):
-`data/sent_<day>_ops.json` / `_staff.json`, carried in R2 with the day's
-files. A re-run skips an audience already sent, and says so; `--resend`
-(or deleting the marker here AND in R2's cache/<day>/) sends it again. A
-send that fails (after `send_digest`'s three tries) no longer stops the
-run: the other audience, the boards, the R2 save, the sales log and the
-missed-call tasks still run, then the run fails so the healthcheck alerts.
+**Each email that goes out leaves a sent marker** (2026-09-30):
+`data/sent_<day>_<key>.json` -- `ops`, or the person's first name
+(`crystal`, `debbie`) since each producer got their own email (2026-10-13;
+it was `ops` / `staff`) -- carried in R2 with the day's files. A re-run
+skips one already sent, and says so; `--resend` (or deleting the marker
+here AND in R2's cache/<day>/) sends it again. A send that fails (after
+`send_digest`'s three tries) no longer stops the run: the other emails, the
+boards, the R2 save, the sales log and the missed-call tasks still run,
+then the run fails so the healthcheck alerts.
 It also refuses to email -- boards still built -- when more than 10% (and
 10+) of the leads' notes could not be fetched (`day_calls.notes_shortfall`).
 R2 cache syncs and Insightful never stop the run; they log and carry on.
@@ -971,6 +976,55 @@ that is still the same: just run `daily.py`.
 If `hourly.py` fails for any reason, **just run `daily.py`** — it does its own
 downloading and the day still goes out, only later. Never skip the digest
 because the prefetch broke.
+
+## The nightly email is the board (2026-10-13)
+
+**The email is written from the published day document, nothing else**
+(Frank, 2026-10-13: "it shouldnt have its own rules or cards or anything, it
+should now be a reflection of the board data and coaching info"; "more
+coaching focused"; "one per producer, debbie gets the only the leaderboard").
+`daily.py` builds the document ONCE (`build_document` -> `publish_board.build`,
+coaching cards included) before the send, `email_digest.py` writes every
+email from it, and the same object goes to `publish_day` -> `publish_board.
+publish(day, doc)`, so an email figure can never disagree with the board. No
+rule about what a number means lives in the email: it adds up what the
+document holds (households sold the way `hhSoldSplit` does, Sent the Quote
+the leaderboard's way, closing from the tiers) and nothing more. Three
+versions (`email_digest.jobs`, from staff.json): **ops** (`digest: ops`,
+together) -- every producer's section, What the team ran into, the
+leaderboard, Left on the desk, the Missed Call Audit PDF; **each producer**
+(`producer` + `digest: staff`, their own address) -- their figures line,
+Apollo's coaching card per conversation (lead, time, flow, direction,
+Apollo's outcome pill, the top `good`, the top `bad`, one "Next time" line
+-- the first objection under 8's `fix`, else `askfix`, the Quick coaching
+rule -- and the flag categories; a card with neither strength nor miss
+shows Apollo's `summary`), their texts waiting on a reply, the team's
+objections and wins-and-losses line, the leaderboard; **front** (anyone
+else on the staff digest: Debbie) -- the day's line and the leaderboard.
+Subjects: "Apollo's coaching digest — <date>", "Your coaching digest — ...",
+"Sales leaderboard — ...". **Every lead name links to its card on the board**:
+`<board_url>/#card/<day>/<lead_id>` (staff.json's `agency.board_url`,
+deployment -- `https://flores-board.frank-f1e.workers.dev`; index.html's
+`init` opens that day and card, then clears the hash). Email-safe HTML:
+tables, inline styles, one <style> block for the card classes, a 680px
+frame checked at 680 in Chromium (the leaderboard is 11 columns, 632px).
+**It must stay under Gmail's clip** (`cfg.GMAIL_CLIP_BYTES`, with a 4 KB
+margin): `email_digest.fit` renders at three levels of card detail --
+full, shorter clips, one line per card -- and takes the first that fits,
+saying so in the log; 10-12's ops version is 64 KB at full. A day document
+that cannot be built means NO email (nothing to reflect) and the run
+reports failed; the boards still try. **Gone**: build_day.py, the
+template/ email and its two companion PDFs (build_attachments, the Notes &
+Methodology and Recontact Detail), render_report, util_panel, overflow
+(panel shedding), link_repair and notes_patch (the 2026-08-12 recovery);
+`panels.py` keeps the Call Detail / outcome helpers board_payload and
+coaching_cards read (and `DOT` / `TIER` / `hhmm` / `money`, once
+render_report's); `attachments.py` keeps `to_pdf` / `verify_pdf` for the
+Missed Call Audit. **A test copy of a published day**: `python3
+email_digest.py <day> --as ops|front|"<producer name>" --to <address>`
+(reads R2's days/<day>.json, writes out/email_<day>_<who>.html, no sent
+marker; `--doc` a saved document instead). Frank was sent 2026-10-12's
+three versions on 2026-10-13 before the first nightly.
 
 ## Live figures between checkpoints
 
