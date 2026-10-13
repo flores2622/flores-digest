@@ -2304,7 +2304,25 @@ repaint clears the list).
   had added up the published days' Premium Sold, and the board's days only
   start 09-01, so the 08-20..09-18 folio read $45,294 against the sheet's
   $73,963 (Frank: "look at the sales sheet, whete did that number come
-  from?"). The day rows, best day and standings stay the board's own. No links back to
+  from?"). The day rows, best day and standings stay the board's own.
+  **The Digest carries it too** (Frank, 2026-10-13: "add the $75k goal to
+  the digest too"): a **Monthly goal** card under the leaderboard
+  (`monthGoalHtml`, filled by `fillMonthGoal` after every paint from the same
+  `folioSheet`, as of the day on screen or a range's last day): a bar to the
+  goal with a line where the team should be by now, sold / to go / pace /
+  a day needed / a day so far, green on or ahead of the line, yellow within
+  10%, red behind; filtered to a producer, the team's goal with their share
+  of the sheet; it opens the Sales sheet. **Each producer's minimum sits
+  above it** (Frank, 2026-10-13: "can each producer have a team goal bar,
+  and a personal goal bar above it? but its not a 'goal' for them, its tier
+  1, its a requirement, find the right word for that" -- **"minimum"**, the
+  commission sheets' own word for a tier's floor): the first tier of their
+  staff.json commission schedule ($25,000; Sarahi & Coral's $50,000 team
+  minimum, with the filtered one's part; Crystal's $15,000), counted as the
+  Commission page counts it (`/api/commission/<end>`'s unit rows, life and
+  business out, as of the day on screen) and only for whoever that endpoint
+  lets see the unit -- a producer their own, the managers everyone; a
+  producer filter shows that producer's unit alone. No links back to
   the Digest ("tabs on the left is enough").
 - **The Editions** (`site/public/editions.js`, one page under the Sales
   Center, every edition the full 1600px -- `.main` is `width: 100%`, since

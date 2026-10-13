@@ -296,6 +296,24 @@ html[data-mode="dark"] .tg { color: var(--good); }
 html[data-mode="dark"] .ty { color: var(--warn); }
 html[data-mode="dark"] .tr { color: var(--bad); }
 .mdl { font-size: 14px; line-height: 1; margin-right: 5px; }
+/* The monthly goal card on the Digest (monthGoalHtml / fillMonthGoal) */
+.mgoal { cursor: pointer; }
+.mgoal .mgtop { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; flex-wrap: wrap; }
+.mgoal .mgtop h2 { margin: 0; }
+.mgoal .mgbar { position: relative; height: 16px; border-radius: 8px; background: var(--surface); border: 1px solid var(--border-strong); margin: 8px 0 6px; overflow: visible; }
+.mgoal .mgrow { margin-top: 14px; }
+.mgoal .mglab { font-size: 14px; }
+.mgoal .mgmins .mgbar { height: 11px; }
+.mgoal .mgline { font-size: 12.5px; }
+.mgoal .mgmins { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); column-gap: 24px; }
+.mgoal .mgteam { border-top: 1px solid var(--border); padding-top: 12px; margin-top: 16px; }
+.mgoal .mgfill { height: 100%; border-radius: 8px; background: currentColor; max-width: 100%; }
+.mgoal .mgpace { position: absolute; top: -5px; bottom: -5px; width: 2px; background: var(--text-primary); opacity: .7; }
+.mgoal .mgnums { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 12px; margin-top: 10px; }
+.mgoal .mgnums div { display: flex; flex-direction: column; gap: 2px; }
+.mgoal .mgnums b { font-family: var(--display); font-weight: var(--dw, 700); font-size: 22px; line-height: 1.1; }
+.mgoal .mgnums span { font-size: 12px; color: var(--text-muted); }
+@media (max-width: 720px) { .mgoal .mgnums { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 .ptrack { flex: 1; height: 10px; border-radius: 5px; background: var(--surface); border: 1px solid var(--border-strong); overflow: hidden; }
 .pfill { height: 100%; border-radius: 5px; }
 
@@ -4513,6 +4531,7 @@ function digestPanel(d, who) {
   // card in that family rather than a new kind of section.
   return `${liveBannerHtml(d, who)}
   ${digestDay(d, who)}
+  ${monthGoalHtml(d, who)}
   ${rangeMode === "day" ? `<div class="digestgrid"><div>${digestFeedHtml(d, who)}</div><div>${needsNowHtml(d, who)}</div></div>` : ""}
   <div class="digestgrid">
     <div>${outcomeBreakdownHtml(d, who)}${taskCompletionHtml(d, who)}${speedPanel(d, who)}${speedReplyPanel(d, who)}</div>
@@ -4520,6 +4539,100 @@ function digestPanel(d, who) {
   </div>
   ${auditPanel(d, who)}
   ${misfiledPanel(d, who)}`;
+}
+
+/* The folio on the Digest: each producer's MINIMUM above the team's monthly
+   goal (Frank, 2026-10-13: "add the $75k goal to the digest too", then "can
+   each producer have a team goal bar, and a personal goal bar above it? but
+   its not a 'goal' for them, its tier 1, its a requirement"). A minimum is
+   the first tier of their commission schedule (staff.json's commission:
+   $25,000 on their own, $50,000 for Sarahi & Coral together, Crystal's
+   $15,000), counted the way the Commission page counts it -- the Sales
+   sheet's premium, life and business left out -- and shown only to whoever
+   may see that producer's commission (the Worker's /api/commission decides:
+   a producer their own, Sarahi and Coral their team's, the managers
+   everyone). The team goal is goals.json's folio_premium_goal against the
+   sheet's Team total, every entry (post.js's folioSheet, the same total the
+   editions use). Both are as of the day on screen (a range: its last day),
+   with a line on each bar where they should be by now. The card is drawn
+   empty and filled once the Worker answers (fillMonthGoal, after every
+   paint); it opens the Sales sheet. */
+function monthGoalHtml(d, who) {
+  const goal = (window.GOALS || {}).folio_premium_goal;
+  if (!goal) return "";
+  const today = isoDate(azTodayDate());
+  let asof = d.date || (curRangeDocs.length ? curRangeDocs.map(x => x.date).sort().pop() : today);
+  if (asof > today) asof = today;
+  const end = folioEndFor(asof);
+  if (!end) return "";
+  // A repaint (the live board's every minute) redraws the last answer at once instead of "Reading".
+  const key = end + asof + (who || ""), last = MGOAL_LAST.key === key ? MGOAL_LAST.html : "";
+  return `<div class="sect mgoal" id="mgoal" data-end="${end}" data-asof="${asof}" data-who="${cesc(who || "")}" data-goview="sales" role="button" tabindex="0" title="Open the Sales sheet">
+    <div class="mgtop"><h2>The folio · minimums and the team goal</h2><span class="sd">${fmtShortDate(folioStartFor(end) || asof)} – ${fmtShortDate(end)} · from the Sales sheet</span></div>
+    <div class="mgbody">${last || `<p class="sd" style="margin:10px 0 0">Reading the Sales sheet…</p>`}</div></div>`;
+}
+let MGOAL_LAST = { key: "", html: "" };
+const mgCommCache = {};
+async function mgCommission(end) {
+  const c = mgCommCache[end];
+  if (c && Date.now() - c.at < 120000) return c.v;
+  let v = null;
+  try { const r = await fetch(`/api/commission/${end}`, { cache: "no-store" }); if (r.ok) v = await r.json(); } catch (_) {}
+  mgCommCache[end] = { v, at: Date.now() };
+  return v;
+}
+// green on or ahead of the line (where they should be by now), yellow within 10% of it, red further behind
+const mgTier = (have, target, due) => have >= target || have >= due ? "tg" : have >= due * 0.9 ? "ty" : "tr";
+function mgBar(have, target, due, frac, tier, tip) {
+  return `<div class="mgbar ${tier}" title="${cesc(tip)}"><div class="mgfill" style="width:${Math.min(100, 100 * have / target)}%"></div><div class="mgpace" style="left:${Math.min(100, 100 * frac)}%"></div></div>`;
+}
+async function fillMonthGoal() {
+  const el = document.getElementById("mgoal");
+  if (!el || el.dataset.filled === el.dataset.end + el.dataset.asof + el.dataset.who) return;
+  const { end, asof, who } = el.dataset, key = end + asof + who;
+  const [S, C] = await Promise.all([typeof folioSheet === "function" ? folioSheet(end) : null, mgCommission(end)]);
+  if (el.isConnected === false || el.dataset.end + el.dataset.asof + el.dataset.who !== key) return;
+  const body = el.querySelector(".mgbody");
+  if (!S) { body.innerHTML = `<p class="sd" style="margin:10px 0 0">The Sales sheet could not be read just now.</p>`; return; }
+  const goal = window.GOALS.folio_premium_goal;
+  const start = folioStartFor(end) || asof;
+  const biz = pbizDays(start, end), all = biz.length || 1, done = Math.max(1, biz.filter(x => x <= asof).length), left = all - done;
+  const frac = done / all;
+  const daysLeft = n => `${n} day${n === 1 ? "" : "s"} left`;
+
+  // Each producer's minimum: tier 1 of their schedule, a requirement rather than a goal.
+  const units = ((C && C.units) || []).filter(u => u.tiers && u.tiers.length && (!who || u.members.some(m => (m.name || m) === who)));
+  const mins = units.map(u => {
+    const min = u.tiers[0].min, have = (u.rows || []).filter(r => !r.day || r.day <= asof).reduce((a, r) => a + (+r.premium || 0), 0);
+    const due = min * frac, tier = mgTier(have, min, due), need = Math.max(0, min - have);
+    const next = u.tiers.find(t => t.min > have);
+    const names = u.members.map(m => m.name || m), team = names.length > 1;
+    const line = need
+      ? `<b class="${tier}">${money(have)}</b> of ${money(min)} · ${money(need)} to go${left ? ` · ${money(need / left)} a day for the ${daysLeft(left)}` : ""}`
+      : `<b class="tg">Minimum met</b> with ${money(have)}${next ? ` · next tier, ${cesc(next.name)} at ${money(next.min)}: ${money(next.min - have)} to go` : " · at the top tier"}`;
+    const own = who && team ? (u.rows || []).filter(r => r.producer === who && (!r.day || r.day <= asof)).reduce((t, r) => t + (+r.premium || 0), 0) : null;
+    return `<div class="mgrow" title="The minimum is the first tier of the commission schedule (${cesc(u.tiers[0].name)}): a requirement, not a goal">
+      <div class="mglab"><b>${team ? cesc(u.label) : cesc(firstName(names[0]))}</b> · ${team ? "team minimum" : "minimum"} ${money(min)}</div>
+      ${mgBar(have, min, due, frac, tier, `${money(have)} of the ${money(min)} minimum; the line is where ${team ? "they" : firstName(names[0])} should be after ${done} of ${all} business days (${money(due)})`)}
+      <div class="mgline sd">${line}${own != null ? ` · ${cesc(firstName(who))}'s part ${money(own)}` : ""}</div></div>`;
+  }).join("");
+
+  // The team's monthly goal.
+  const sold = S.upto(asof), need = Math.max(0, goal - sold), pace = sold / done * all;
+  const due = goal * frac, tier = mgTier(sold, goal, due);
+  const pct = v => Math.round(100 * v / goal);
+  body.innerHTML = `${mins ? `<div class="mgmins">${mins}</div>` : ""}
+    <div class="mgrow${mins ? " mgteam" : ""}"><div class="mglab"><b>Team goal</b> · ${money(goal)} <span class="sd">(everyone on the Sales sheet)</span></div>
+    ${mgBar(sold, goal, due, frac, tier, `${money(sold)} of ${money(goal)}; the line is where the team should be after ${done} of ${all} business days (${money(due)})`)}
+    <div class="mgnums">
+      <div><b class="${tier}">${money(sold)}</b><span>sold · ${pct(sold)}% of the goal</span></div>
+      <div><b>${need ? money(need) : "Made"}</b><span>${need ? "to go" : `over by ${money(sold - goal)}`}</span></div>
+      <div><b class="${pace >= goal ? "tg" : pace >= goal * 0.9 ? "ty" : "tr"}">${money(pace)}</b><span>on pace to close</span></div>
+      <div><b>${need && left ? money(need / left) : "—"}</b><span>${need && left ? `a day for the ${daysLeft(left)}` : left ? daysLeft(left) : "last day of the folio"}</span></div>
+      <div><b>${money(sold / done)}</b><span>a day so far (${done} of ${all} days)</span></div>
+    </div></div>`;
+  el.dataset.filled = key;
+  MGOAL_LAST = { key, html: body.innerHTML };
 }
 
 /* ---- Range aggregates (This Week / MTD / YTD / Folio / Custom) ------------
@@ -8435,7 +8548,7 @@ document.addEventListener("click", e => {
   if (e.target.closest("[data-ddrill], [data-sdrill], [role=button], button, a, input, select, .tabs, .coeus, .coeusfab")) return;
   const c = f.querySelector(".flipfront"); if (c) c.click();
 });
-new MutationObserver(() => { placeVista(); flipLists(); }).observe(document.getElementById("view"), { childList: true });
+new MutationObserver(() => { placeVista(); flipLists(); fillMonthGoal(); }).observe(document.getElementById("view"), { childList: true });
 async function paint() {
   try { await paintTab(); wireFeed(); } catch (e) { paintFailed(e); }
   saveWhere();
