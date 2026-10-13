@@ -2256,9 +2256,22 @@ repaint clears the list).
   updates every published day (and from today's checkpoint while open),
   Friday editions frozen as they went out, a countdown at two or fewer
   business days left, a closing edition. Slow editions (no sales on a day,
-  a week under $20,000, a folio under last folio's pace) carry What to try /
+  a week under $20,000, a folio whose pace misses the monthly goal) carry What to try /
   What to look for and the goal board. **Primetime is a permanent part of
-  the paper and the only place it carries the standings.** No links back to
+  the paper and the only place it carries the standings.**
+  **The editions measure the folio against the team's monthly goal, $75,000**
+  (Frank, 2026-10-13: "lets start focusing on that in the editions, not what
+  we sold last month"; goals.json's `folio_premium_goal`, `FOLIO_GOAL` in
+  post.js): the folio / week / closing editions' headline, deck, pull quote,
+  numbers and countdown say what is left to the goal, the pace against it and
+  what a day it takes; Fourth and Goal's day goal is it spread over the
+  folio's business days. **The folio's premium is the Sales sheet's Team
+  total** (`folioSheet`, `/api/saleslog/folio/<end>`, every entry, Amanda's
+  included; a week edition the sheet's days up to its Friday): "last folio"
+  had added up the published days' Premium Sold, and the board's days only
+  start 09-01, so the 08-20..09-18 folio read $45,294 against the sheet's
+  $73,963 (Frank: "look at the sales sheet, whete did that number come
+  from?"). The day rows, best day and standings stay the board's own. No links back to
   the Digest ("tabs on the left is enough").
 - **The Editions** (`site/public/editions.js`, one page under the Sales
   Center, every edition the full 1600px -- `.main` is `width: 100%`, since

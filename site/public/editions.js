@@ -348,7 +348,7 @@ async function edPost(op, data) {
 }
 
 /* ---- the figures ----------------------------------------------------------------- */
-function edFacts(d, folioRows, lastFolio, isFolio) {
+function edFacts(d, folioRows, dayGoal, isFolio) {
   const F = postFacts(d);
   const names = PRODUCER_ROSTER.filter(n => F.byName[n]).concat(F.prods.map(p => p.name).filter(n => !PRODUCER_ROSTER.includes(n)));
   const P = names.map(n => ({ n, f: pfirst(n), i: n.split(" ").map(x => x[0]).join("").slice(0, 2).toUpperCase(), c: DOT[n] || "#2a2320" }));
@@ -373,7 +373,9 @@ function edFacts(d, folioRows, lastFolio, isFolio) {
   const idx = rows.findIndex(r => r.date === dayKey);
   const series = w => { let a = 0; return rows.map(r => a += (w === ED_SYM ? r.ps : (r.by[w] || 0))); };
   const FTOT = rows.reduce((a, r) => a + r.ps, 0);
-  const goal = lastFolio && lastFolio.days ? Math.round(lastFolio.ps / lastFolio.days) : (rows.length > 1 ? Math.round(FTOT / rows.length) : 3000);
+  // A day's goal is the monthly goal spread over the folio's business days (Frank, 2026-10-13: $75k a
+  // month as a team -- it was last folio's average day).
+  const goal = dayGoal || 3000;
   const streak = {};
   for (const p of P) { let s = 0; for (let i = (idx >= 0 ? idx : rows.length - 1); i >= 0 && (rows[i].by[p.f] || 0) > 0; i--) s++; streak[p.f] = s; }
   const order = F.order.map(pfirst).filter(f => NUM[f]);
@@ -587,7 +589,7 @@ function edGrid(X) {
   const injuries = X.order.map(f => X.NUM[f]).flatMap(n => [...(n.open ? [[pfirst(n.n), `${plural(n.open, "task")} open${n.open >= 3 ? " (questionable)" : ""}`]] : []), ...(!n.rp ? [[pfirst(n.n), "no role play"]] : [])]);
   const ballPct = Math.min(90, 10 + 80 * F.ps / (X.goal * 2));
   const recap = `${top ? `${edEsc(X.full[top])} ${topN.ps ? `opened the scoring with ${pmoney(topN.ps)}` : `led the standings with ${topN.pts} points`}` : "Nobody scored"}${F.spBest ? ` and ${pfirst(F.spBest[0]) === top ? "set" : `${pfirst(F.spBest[0])} set`} the speed record at ${edFmtStd(F.spBest[1].median)}` : ""}. ${X.SALES.filter(s => s.w !== top).map(s => `${s.w} converted ${/^[aeiou]/i.test(s.src) ? "an" : "a"} ${(s.src || "sale").toLowerCase()}`).filter((v, i, a) => a.indexOf(v) === i).join(". ")}${X.SALES.filter(s => s.w !== top).length ? ". " : ""}${quoter ? `${edEsc(quoter.n)} moved the ball all ${X.isFolio ? "folio" : "day"}, ${quoter.dials} dials and ${pmoney(quoter.pq)} quoted, and turned it over on downs. ` : ""}${F.objs[0] ? `The ${edEsc(F.objs[0][0])} objection sacked the offence ${plural(F.objs[0][1], "time")}.` : ""}`;
-  return `<div class="gi"><div class="sb"><div class="tm">${edAvatar(X, "Apollo", 48)}<div><b>FLORES</b><div style="font-size:12px;color:#9fd3b6">${edEsc(edWhen(X))} · home</div></div><span class="pt">${Math.round(F.ps).toLocaleString()}</span></div><div class="q">FINAL<b>${edEsc(X.isFolio ? "THE FOLIO" : pdow3(X.dayKey).toUpperCase() + " " + pmd(X.dayKey).toUpperCase())}</b>${F.pol} TD · ${F.hhSold} HH</div><div class="tm r"><span class="pt" style="color:#9fd3b6">${X.goal.toLocaleString()}</span><div style="text-align:right"><b>GOAL</b><div style="font-size:12px;color:#9fd3b6">last folio’s average day</div></div></div></div>
+  return `<div class="gi"><div class="sb"><div class="tm">${edAvatar(X, "Apollo", 48)}<div><b>FLORES</b><div style="font-size:12px;color:#9fd3b6">${edEsc(edWhen(X))} · home</div></div><span class="pt">${Math.round(F.ps).toLocaleString()}</span></div><div class="q">FINAL<b>${edEsc(X.isFolio ? "THE FOLIO" : pdow3(X.dayKey).toUpperCase() + " " + pmd(X.dayKey).toUpperCase())}</b>${F.pol} TD · ${F.hhSold} HH</div><div class="tm r"><span class="pt" style="color:#9fd3b6">${X.goal.toLocaleString()}</span><div style="text-align:right"><b>GOAL</b><div style="font-size:12px;color:#9fd3b6">the ${edEsc(pmoney(FOLIO_GOAL))} month, a day</div></div></div></div>
    <div class="field"><div class="ez" style="left:0">FLORES</div><div class="ez" style="right:0;background:#3f5f7a">GOAL</div>${[20, 30, 40, 50, 60, 70, 80].map(x => `<div class="yd" style="left:${x}%"><span>${x <= 50 ? x - 10 : 90 - x}</span></div>`).join("")}
     <div class="ball" id="edball" style="left:${ballPct}%;background:${X.C[top] || "#b5532f"}">${edEsc(X.INI[top] || "F")}</div><div class="cap" id="edcap">Click a drive to replay it. Ball at the ${pmoney(F.ps)} yard line: ${Math.round(F.ps / X.goal * 100)}% of the goal${F.ps >= X.goal ? ", covered" : ""}.</div></div>
    <div class="drives">${drives.map(d => `<button type="button" class="drive" data-drive="${d.i}"><b>TD</b><div><strong>${edEsc(X.full[d.w] || d.n)} · ${edEsc(d.prod)}</strong><span>${pmoney(d.amt)}${d.src ? ` · ${edEsc(d.src)}` : ""}</span></div></button>`).join("")}
@@ -847,9 +849,9 @@ async function editionsPanel(err) {
   else { if (!postCache.fdocs || postCache.fdocsKey !== end + day) { postCache.fdocs = await fetchRangeDocs(start, day); postCache.fdocsKey = end + day; } docs = postCache.fdocs; }
   docs = docs.filter(x => x && x.date).sort((a, b) => a.date.localeCompare(b.date));
   const rows = docs.map(x => { const f = postFacts(x); const by = {}; for (const p of f.prods) by[pfirst(p.name)] = +p.ps || 0; return { date: x.date, ps: f.ps, by }; });
-  const last = await lastFolioTotal(end);
-  const X = edFacts(isFolio ? cur : cur, rows, last, isFolio);
-  X.folioEnd = end; X.bizAll = rows.length + pbizDays(start || rows[0]?.date || today, end).filter(d => d > (rows.length ? rows[rows.length - 1].date : "")).length;
+  const bizAll = pbizDays(start || rows[0]?.date || today, end).length;
+  const X = edFacts(isFolio ? cur : cur, rows, bizAll ? Math.round(FOLIO_GOAL / bizAll) : 0, isFolio);
+  X.folioEnd = end; X.bizAll = bizAll;
   const key = isFolio ? `folio-${end}` : day;
   await edLoadShared(key);
   edX = X;

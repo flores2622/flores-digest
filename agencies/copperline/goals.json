@@ -60,5 +60,6 @@
     "green": 15,
     "red": 60
   },
-  "week_premium_goal": 15000
+  "week_premium_goal": 15000,
+  "folio_premium_goal": 60000
 }
