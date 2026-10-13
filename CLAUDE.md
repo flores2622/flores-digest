@@ -1413,6 +1413,15 @@ the Service / Commercial day pick fell back to the newest day the same way.
 `(cur && cur.date) || DAYS[0] || today`. Reproduced and checked in headless
 Chromium on every range-driven page (a mock of the Worker over the R2 day
 documents, in the session's scratchpad).
+**The producer filter was checked the same way** (Frank, 2026-10-13: "do the
+same check for the producer filter"): every producer and Whole Agency on the
+Digest, Texts & Emails, Coaching (each sub-tab) and Apollo's Doubts, on a
+published day, the live day and every range, with each of the Digest's 83
+lists open, the filter left on across a date change and across every other
+page -- 700-odd states, no error. The one crash it found was the Training
+page with no decks (the Worker's read failed): `wireTrainingPanel` now
+returns before wiring when there is no deck, so "No training content yet."
+shows instead of the error box.
 
 **The range leaderboard is re-ranked on averages** (Frank, 2026-09-28):
 the same seven categories and 5-4-3-2-1 scoring as a single day

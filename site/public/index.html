@@ -7576,7 +7576,10 @@ function wireTrainingPanel(data) {
     quizQuestions = []; matchPairs = [];   // fresh questions/pairs every time a mode is (re-)entered
     repaintAll();
   });
-  const deck = decks[trainingDeckIdx];
+  // No decks (the Worker's read failed) draws "No training content yet."
+  // above; nothing to wire, and ensureTrainingOrder would throw (2026-10-13).
+  const deck = decks[trainingDeckIdx] || decks[0];
+  if (!deck) return;
   if (trainingMode === "quiz") { wireQuiz(deck, repaintAll); return; }
   if (trainingMode === "match") { wireMatch(deck, repaintAll); return; }
 
