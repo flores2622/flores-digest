@@ -10317,10 +10317,13 @@ function mergeCommercialDocs(docs) {
     open: q ? q.open : null, asOf: q ? q.date : null,
     outcomes: last.outcomes || [], resolutionsFrom: last.resolutions_from,
     claims: { days: 0, opened: [], completed: [], flags: [], open: ((last.claims || {}).open) || null,
-      types: ((last.claims || {}).types) || ["Commercial", "Work Comp"] } };
+      types: ((last.claims || {}).types) || ["Commercial", "Work Comp"] },
+    // Cerberus's calls (2026-10-13): the days that carry them, their dials and call-ins; no transcripts here
+    calls: { days: 0, dials: [], calls: [] }, callTx: {} };
   for (const x of docs) {
     m.completed.push(...(x.completed || []));
     if (x.claims) { m.claims.days++; for (const k of ["opened", "completed", "flags"]) m.claims[k].push(...(x.claims[k] || [])); }
+    if (x.calls) { m.calls.days++; m.calls.dials.push(...(x.calls.dials || [])); m.calls.calls.push(...(x.calls.calls || [])); }
     for (const [k, n] of Object.entries(x.unnamed || {})) m.unnamed[k] = (m.unnamed[k] || 0) + n;
   }
   return m;
@@ -10373,6 +10376,26 @@ function comQueueHtml(m) {
     <div class="scroll"><table class="comtab"><thead><tr><th>Pipeline</th><th class="t">Stage</th><th class="num">Open</th><th class="num">Past due</th><th class="num">Median age</th></tr></thead><tbody>${stageRows}</tbody></table></div>
     <h3 class="rh3">Every open SR, soonest due first</h3>
     <div class="scroll" style="max-height:520px;overflow-y:auto"><table class="comtab"><thead><tr><th>Account</th><th class="t">Line</th><th class="num">Premium</th><th class="t">Stage</th><th class="num">Age</th><th class="num">Due</th></tr></thead><tbody>${list}</tbody></table></div></div>`;
+}
+/* Cerberus's calls (Frank, 2026-10-13: "do the same on the commercial center", after the Service Center's and
+   the Renewals tab's Talk time): the owner's dials to households holding a commercial policy and the call-ins
+   from them picked up first, from each day's call log -- commercial_digest.call_figures. The same figure and
+   hover as the service side (svcTalk / svcTalkTip); the lists fold open under the cards. */
+function comCallsHtml(m) {
+  const C = m.calls;
+  if (!C || !C.days) return `<div class="sect svcsec" style="--sc:var(--s7)"><h2>Calls</h2><p class="sd">No call log was saved for ${m.days.length === 1 ? "this day" : "these days"}, so Cerberus's calls are not counted.</p></div>`;
+  const t = svcTalk(C.dials, C.calls);
+  const tip = cesc(svcTalkTip(t).replace("Talk time:", "Commercial talk time:"));
+  const connected = t.conn.length, attempts = C.dials.reduce((a, r) => a + (r.attempts || 0), 0);
+  return `<div class="sect svcsec" style="--sc:var(--s7)"><h2>Calls</h2>
+    <p class="sd">Frank's calls on commercial households: dials to a household holding a commercial policy, and the call-ins from one that he picked up first. A dial counts its longest connected leg.</p>
+    <div class="tiles statgrid">
+      <div class="tile" style="--hc:var(--s7)"><div class="k">Dials</div><div class="v">${C.dials.length}</div><div class="n">numbers &middot; ${attempts} dial${attempts === 1 ? "" : "s"} &middot; ${connected} connected</div></div>
+      <div class="tile" style="--hc:var(--s1)" title="${tip}"><div class="k">Talk time</div><div class="v">${t.n ? secs(t.avg) : "—"}</div><div class="n">${t.n ? `average &middot; ${t.n} conversation${t.n === 1 ? "" : "s"} &middot; ${secs(t.secs)} on the line` : "no conversations"}</div></div>
+      <div class="tile" style="--hc:var(--good)"><div class="k">Call-ins answered</div><div class="v">${C.calls.length}</div><div class="n">picked up first &middot; ${secs(t.inbound_secs)} on the line</div></div>
+    </div>
+    <details class="msgd" style="margin-top:10px"><summary style="cursor:pointer">Dialled (${C.dials.length})</summary>${svcDialTable(C.dials, m)}</details>
+    <details class="msgd"><summary style="cursor:pointer">Call-ins (${C.calls.length})</summary>${svcCallTable(C.calls, m)}</details></div>`;
 }
 function comOutcomesHtml(m) {
   const rows = m.completed.filter(r => r.kind === "renewal");
@@ -10462,7 +10485,7 @@ async function paintCommercialTab() {
     v.innerHTML = controls + `<div class="empty">No Cerberus report for ${rangeMode === "day" ? "this day" : "this range"} yet.</div>`;
   } else {
     const m = mergeCommercialDocs(docs);
-    v.innerHTML = controls + comQueueHtml(m) + comOutcomesHtml(m) + comClaimsHtml(m) + comCompletedHtml(m);
+    v.innerHTML = controls + comQueueHtml(m) + comCallsHtml(m) + comOutcomesHtml(m) + comClaimsHtml(m) + comCompletedHtml(m);
   }
   wireRangeControl();
 }

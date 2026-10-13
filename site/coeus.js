@@ -138,7 +138,7 @@ const TOOLS = [
     input_schema: { type: "object", properties: { from: { type: "string" }, to: { type: "string" },
       list: { type: "string", enum: ["lost", "risk", "upcoming", "unconfirmed", "mid_term", "sold_moved", "retained", "flagged"] } } } },
   { name: "commercial_day",
-    description: "The Commercial Center (Cerberus) for one day: commercial SRs completed with outcomes, and the open queue. Frank's alone; anyone else is refused.",
+    description: "The Commercial Center (Cerberus) for one day: commercial SRs completed with outcomes, the open queue, the commercial claims, and Frank's calls on commercial households (dials with their longest connected leg, call-ins he picked up -- the Talk time card averages both). Frank's alone; anyone else is refused.",
     input_schema: { type: "object", required: ["day"], properties: { day: { type: "string" } } } },
   { name: "coeus_usage",
     description: "What you, the assistant, have cost: questions asked and estimated spend per person and per day over a date range (default the last 30 days). Only for the usage viewers; anyone else is refused.",
