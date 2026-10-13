@@ -177,6 +177,7 @@ export default {
         "scrub",
         "scrub_edit",
         "hygiene",
+        "folio_goals",
         "roleplay_history",
         "commission_all",
         "sales_log_all",
@@ -201,6 +202,7 @@ export default {
         "scrub",
         "scrub_edit",
         "hygiene",
+        "folio_goals",
         "roleplay_history",
         "workflows_suggest"
       ],
@@ -222,6 +224,7 @@ export default {
         "scrub",
         "scrub_edit",
         "hygiene",
+        "folio_goals",
         "roleplay_history",
         "workflows_suggest"
       ],
@@ -253,6 +256,7 @@ export default {
         "scrub",
         "scrub_edit",
         "hygiene",
+        "folio_goals",
         "roleplay_history",
         "commission_all",
         "sales_log_all",

@@ -1279,7 +1279,7 @@ tour step for it, since they can't open it.
 **Operations Center is the ops team's own Center** (Frank, 2026-10-06: "a
 new category for operatonis only"): a left-bar group of its own between
 Athena's and Cerberus's, hidden until the Worker lets the login in (like
-Commercial), holding **CRM Hygiene** and **Lead Scrub** (moved from the
+Commercial), holding **Minimums & Goal** (2026-10-13), **CRM Hygiene** and **Lead Scrub** (moved from the
 Sales Center the same day: "move the lead scrubber there as well"). Each
 page's own module adds it through `opsShow` (index.html) when its Worker
 route answers, so `CENTERS.operations` is empty for everyone else and the
@@ -2342,10 +2342,23 @@ repaint clears the list).
   commission sheets' own word for a tier's floor): the first tier of their
   staff.json commission schedule ($25,000; Sarahi & Coral's $50,000 team
   minimum, with the filtered one's part; Crystal's $15,000), counted as the
-  Commission page counts it (`/api/commission/<end>`'s unit rows, life and
-  business out, as of the day on screen) and only for whoever that endpoint
-  lets see the unit -- a producer their own, the managers everyone; a
-  producer filter shows that producer's unit alone. No links back to
+  Commission page counts it (unit rows, life and business out, as of the
+  day on screen) -- **every producer's, for everyone** (Frank, 2026-10-13:
+  "with the total team on our sales digest as well"; from
+  `/api/folio-goals`, which answers anyone signed in with the Sales sheet's
+  figures and no pay or rates; the next tier past a met minimum shows only
+  to the ops team); a producer filter shows that producer's unit alone. **The ops team has a
+  page of everyone's** (Frank, 2026-10-13: "give the ops team a tab with
+  everyone's and the team goal"): Operations Center > **Minimums & Goal**
+  (`site/public/folio_goals.js`, `folioGoalsPaint`, view `goals`), from the
+  Worker's `/api/folio-goals[/<end>]` -- the page only for staff.json's
+  `folio_goals` board key (Frank, Francisco, Veronica, Amanda: the answer's
+  `ops`), the figures for anyone signed in (the Digest's card); it sends each
+  unit's tier minimums and countable rows and the sheet's day / producer /
+  premium, never pay or rates. The same bars (`folioGoalsHtml`, shared with
+  the Digest card) for every unit, then a row per producer: sold, toward
+  the minimum, % of it, to go and a day needed, the next tier, share of the
+  team; a folio picker over the folios the sheet holds. No links back to
   the Digest ("tabs on the left is enough").
 - **The Editions** (`site/public/editions.js`, one page under the Sales
   Center, every edition the full 1600px -- `.main` is `width: 100%`, since
