@@ -401,9 +401,14 @@ async function folioSheet(end) {
   try {
     const r = await fetch(`/api/saleslog/folio/${end}`, { cache: "no-store" });
     if (r.ok) {
-      const body = await r.json(), byDay = {};
-      for (const e of body.entries || []) byDay[e.day] = (byDay[e.day] || 0) + (+e.premium || 0);
-      v = { byDay, upto: d => Object.entries(byDay).reduce((a, [k, x]) => k <= d ? a + x : a, 0),
+      const body = await r.json(), byDay = {}, byWho = {};
+      for (const e of body.entries || []) {
+        byDay[e.day] = (byDay[e.day] || 0) + (+e.premium || 0);
+        const w = byWho[e.producer || ""] || (byWho[e.producer || ""] = {});
+        w[e.day] = (w[e.day] || 0) + (+e.premium || 0);
+      }
+      // whoUpto: one person's sheet premium up to a day (the Digest's goal card, filtered)
+      v = { byDay, whoUpto: (who, d) => Object.entries(byWho[who] || {}).reduce((a, [k, x]) => k <= d ? a + x : a, 0), upto: d => Object.entries(byDay).reduce((a, [k, x]) => k <= d ? a + x : a, 0),
             between: (a, b) => Object.entries(byDay).reduce((t, [k, x]) => k >= a && k <= b ? t + x : t, 0),
             total: Object.values(byDay).reduce((a, x) => a + x, 0) };
     }
