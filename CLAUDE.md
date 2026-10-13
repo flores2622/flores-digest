@@ -440,6 +440,22 @@ Everything caches under `data/`, so a re-run resumes rather than restarting.
   over the board's `life_week` (Monday to the day; `lifeTier` in index.html
   mirrors it) -- green once the week has one, yellow before Friday without
   one, red on Friday without one. A range wants 1 per week it touches.
+  **A life policy entered after its day's run reaches that day** (Frank,
+  2026-10-12: "we do have a life sale, its alondra, why is it not on the
+  totals" -- Coral's Individual Life for Alondra Angulo, sold 09-29, entered
+  09-30; Life Sold is counted by soldDate, so the 09-29 page was built
+  without it and no later day counted it -- only `life_week` on 10-01 and
+  10-02, which recounts the week each night). `life_topup.run` (nightly,
+  after the boards publish; `python3 life_topup.py --day ... --dry-run` by
+  hand) re-reads the last 14 published days against the fresh policy list
+  and ADDS what a day is missing -- the producer's and team's `life` /
+  `life_ps`, `rows.life`, and `life_week` on that day and the later days of
+  its week -- only ever adding, nothing else on the page (backups under
+  `backups/<today>-life-topup/`). Premium Sold is not touched: a non-life
+  policy entered late is the Sales sheet's 14-day sync's business and the
+  day's sales stay as they went out. Days before 2026-10-01 carry no life
+  keys unless the top-up added them (09-29 and 09-30 got Coral's on
+  2026-10-13).
 - **A renewal is not new business.** Neither is servicing, a payment, a claim,
   or chasing paperwork on a policy already sold.
 - **Selling a product the household does not have yet IS new business**, even to
@@ -3061,7 +3077,11 @@ on a published day. The rules:
   0 open, 2 sold, 3 and 5 closed; a task's `completedBy`, an SR's
   `createdBy` / `modifiedBy` come back as NAMES ("Debbie Aguilera"), mapped
   to staff az_ids by `crm_import.person`; a task's clock is `taskDateTime`
-  only when `timeSpecific`, else its `dueDate` day; the household map is
+  only when `timeSpecific`, else its `dueDate` day -- **and its due DAY is
+  always AgencyZoom's `dueDate`** (2026-10-13: converting a time-specific
+  "04:30:00" stamp from UTC slid the task to the evening before, and
+  `task_check` found it on the wrong day; only the time of day comes from
+  the clock); the household map is
   `{id: {fetched, policies: [...]}}` with premiums in cents; lead source
   names repeat ("X" twice -- migration 0003 dropped the unique name).
   **A note carries no id** (found 2026-10-12: type, createDate, createdBy,
@@ -3164,6 +3184,21 @@ on a published day. The rules:
   Suggestions box for the page ("general"); a rule with an open suggestion is
   highlighted (💡 N, amber edge) until Frank ticks it done; the author or
   Frank removes one.
+- **Phase 2's switch and its test** (2026-10-13; CRM.md phase 2):
+  `TASKS_SOURCE=crm` in the nightly's environment moves the task reads and
+  writes to the CRM -- `crm_tasks.py` (the D1 REST API with crm_sync's
+  token; `read_day` gives the day's tasks in AgencyZoom's shape, so
+  `az_tasks.audit`, `task_audit` and `missed_call_tasks` are unchanged;
+  `create_task` writes a missed-call task with az_id NULL and an events row)
+  -- and `live_basis.tasks.source` makes the Worker's live Task Completion
+  read the D1 binding (`live.js crmTasksDue`; keep its SELECT and mapping in
+  step with `crm_tasks`). Unset, everything reads AgencyZoom as before.
+  **Every night `task_check.py` compares both sides** (after `crm_sync`, so
+  the CRM holds what AgencyZoom held): the same verdicts, per producer and
+  team, R2 `crm/task_check/<day>.json`, shown on Sales Center > Tasks as the
+  Cutover check card (`GET /api/crm/taskcheck`, Frank only). Flip the switch
+  only when the days agree, and only once the producers can see a CRM task
+  somewhere other than AgencyZoom.
 - `node --test site/crm.test.mjs` is its test; run it after touching
   `site/crm.js` or the schema. A new field is added to the schema (a new
   migration file), to `OBJECTS` in `site/crm.js` and to the test together.

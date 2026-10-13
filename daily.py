@@ -1015,6 +1015,17 @@ def build_metrics(day):
             f"{str(e)[:200]}) -- sending without it")
         util, weighted = {}, 0.0
     _raw_tasks = json.loads((ROOT / f"data/az_tasks_{day}.json").read_text())
+    # CRM.md phase 2: with TASKS_SOURCE=crm, Task Completion reads Pantheon's
+    # own CRM (crm_tasks.read_day, AgencyZoom-shaped); the AgencyZoom file
+    # stays the fallback and the saved input. Default: AgencyZoom, as before.
+    import crm_tasks
+    if crm_tasks.uses_crm():
+        _crm_rows = crm_tasks.read_day(day, log=log)
+        if _crm_rows is None:
+            log("TASKS_SOURCE=crm but the CRM could not be read -- Task Completion from AgencyZoom's file")
+        else:
+            log(f"Task Completion from the CRM: {len(_crm_rows)} tasks due {day}")
+            _raw_tasks = _crm_rows
     import task_audit as _ta
     _verdicts = _ta.cancellation_verdicts(
         day, _raw_tasks, {v["az_id"]: k for k, v in PRODUCERS.items()})
@@ -1308,6 +1319,7 @@ def _run(a):
     publish_day(day)
     publish_service(day)
     publish_commercial(day)
+    topup_life(day)
 
     # publish_day() -> publish_board.build() -> coaching_cards.build() writes
     # data/coaching_cards_<day>.json, and call_summary.build() above wrote
@@ -1328,6 +1340,10 @@ def _run(a):
     # it logs and carries on without CF_API_TOKEN or on any error.
     import crm_sync
     crm_sync.run(days={day}, log=log)
+    # Phase 2's cutover test: Task Completion from AgencyZoom and from the
+    # CRM side by side, written to R2 for the Tasks page (task_check.py).
+    import task_check
+    task_check.run(day, log=log)
 
     if held:
         log("SEND_HOLD: sales log and missed-call tasks skipped with the email")
@@ -1421,6 +1437,19 @@ def publish_day(day):
         # function's docstring promises cannot happen.
         log(f"board publish failed ({type(e).__name__}: {e}) -- "
             f"the digest already sent, so nothing else is affected")
+
+
+def topup_life(day):
+    """A life policy entered after its day's run reaches that day (Frank,
+    2026-10-12: Alondra Angulo's, sold 09-29, entered 09-30, was on no day's
+    totals). life_topup.run adds it to the last two weeks' published pages.
+    Board-only and after send(), so like publish_day it never raises."""
+    try:
+        import life_topup
+        life_topup.run(day, log=log)
+    except (Exception, SystemExit) as e:
+        log(f"life top-up failed ({type(e).__name__}: {e}) -- "
+            f"the boards are published, so nothing else is affected")
 
 
 def sync_sales_log(day):

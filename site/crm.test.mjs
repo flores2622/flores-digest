@@ -29,6 +29,7 @@ function r2() {
       if (only.etagDoesNotMatch === "*" && cur) return null;
       const v = { body: String(body), etag: "e" + (++n) }; store.set(key, v); return v;
     },
+    async list({ prefix = "" } = {}) { return { objects: [...store.keys()].filter((k) => k.startsWith(prefix)).map((key) => ({ key })), truncated: false }; },
     _store: store,
   };
 }
@@ -317,6 +318,18 @@ test("the Lists page: counts, unsorted, place, add, edit, order", async () => {
   assert.equal(r.body.ready, false);
   assert.equal((await call({ CRM: d1(bare) }, "GET", "/api/crm/lookups")).body.lists.ready, false);
   assert.equal((await call({ CRM: d1(bare) }, "POST", "/api/crm/lists/place", { kind: "source", azId: 1, listId: 2 })).status, 409);
+});
+
+test("taskcheck: the last comparisons from R2, newest first, Frank only", async () => {
+  const env = { CRM: fresh(), BOARD: r2() };
+  let r = await call(env, "GET", "/api/crm/taskcheck");
+  assert.equal(r.status, 200); assert.deepEqual(r.body.days, []);
+  for (const d of ["2026-10-06", "2026-10-07", "2026-10-08"]) await env.BOARD.put("crm/task_check/" + d + ".json", JSON.stringify({ day: d, agree: d !== "2026-10-07" }));
+  r = await call(env, "GET", "/api/crm/taskcheck");
+  assert.deepEqual(r.body.days.map((x) => x.day), ["2026-10-08", "2026-10-07", "2026-10-06"]);
+  assert.equal((await call(env, "GET", "/api/crm/taskcheck", null, CRYSTAL.email)).status, 403);
+  const AMANDA = STAFF.people.find((p) => p.name.startsWith("Amanda"));
+  assert.equal((await call(env, "GET", "/api/crm/taskcheck", null, AMANDA.email)).status, 403);   // suggest opens automations only
 });
 
 test("automations: the report from R2 and Frank's marks", async () => {

@@ -69,6 +69,18 @@ def sold_at(lead, day):
     return t.strftime("%I:%M %p").lstrip("0")
 
 
+def policy_row(x, who, smap):
+    """One Sold / Life Sold list row for policy `x` (life_topup adds the
+    same shape to a published day)."""
+    import sales_log_auto
+    return {"who": who, "product": sales_log_auto.product_name(x),
+            "policy": x.get("policyNumber") or "", "premium": round(float(x.get("premium") or 0)),
+            "source": smap.get(x.get("leadSourceId"), ""),
+            # Household Completion's cross-sell, by its own rule.
+            "cross_sell": cfg.is_cross_sell(x, smap),
+            "effective": str(x.get("effectiveDate") or "")[:10]}
+
+
 def is_existing(source_name):
     """A sold lead whose source says it was an existing customer -- the same
     set Household Completion's cross-sell always read off the policy."""
@@ -136,12 +148,7 @@ def build(day, log=print):
                 continue
             # Life is its own list and its own stat, never a policy sold
             # (Frank, 2026-09-30).
-            (out["life"] if cfg.is_life(x) else out["sold"]).append({"who": who, "product": sales_log_auto.product_name(x),
-                                "policy": x.get("policyNumber") or "", "premium": round(float(x.get("premium") or 0)),
-                                "source": smap.get(x.get("leadSourceId"), ""),
-                                # Household Completion's cross-sell, by its own rule.
-                                                "cross_sell": cfg.is_cross_sell(x, smap),
-                                "effective": str(x.get("effectiveDate") or "")[:10]})
+            (out["life"] if cfg.is_life(x) else out["sold"]).append(policy_row(x, who, smap))
     except Exception as e:
         log(f"  digest rows: no policy list ({type(e).__name__}: {e})")
     # Every task in the Task Completion rate (az_tasks.audit's own items),

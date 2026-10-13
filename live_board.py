@@ -260,7 +260,11 @@ def _task_basis(day):
             lead_ids = {l.get("id") for l in json.loads(corpus.read_text())}
             customers = sorted({t["customerId"] for t in tasks
                                 if t.get("customerId") and t["customerId"] not in lead_ids})
+    import crm_tasks
     return {
+        # CRM.md phase 2: "crm" makes the Worker read the day's tasks from the
+        # CRM (live.js crmTasksDue) instead of AgencyZoom
+        "source": crm_tasks.SOURCE,
         "verdicts": {str(k): v for k, v in verdicts.items()},
         "customers": customers,
         "rx": {"title": rx(cfg.SERVICE_TITLE_RE), "body": rx(cfg.SERVICE_BODY_RE),
