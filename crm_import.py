@@ -481,8 +481,14 @@ def build(rows, days=None):
         ctype = t.get("customerType") or None
         cid = intval(t.get("customerId"))
         assignee = person(t.get("assigneeId")) or person((t.get("assignees") or [None])[0])
-        due = local_dt(t.get("taskDateTime")) if t.get("timeSpecific") and t.get("taskDateTime") else (
-            f"{str(t.get('dueDate'))[:10]} 00:00:00" if t.get("dueDate") else None)
+        # The due DAY is AgencyZoom's own dueDate -- what the producer sees and
+        # what Task Completion counts (az_client.tasks filters on it); a
+        # time-specific task takes only its time of day from taskDateTime.
+        # Converting the whole stamp slid a "2026-10-07 04:30:00" task to the
+        # evening of the 6th and put it on the wrong day (task_check, 2026-10-13).
+        due_day = str(t.get("dueDate") or "")[:10] or None
+        clock = local_dt(t.get("taskDateTime")) if t.get("timeSpecific") and t.get("taskDateTime") else None
+        due = (f"{due_day} {clock[11:]}" if clock and due_day else clock) if clock else (f"{due_day} 00:00:00" if due_day else None)
         title = t.get("title") or ""
         kind = (t.get("type") or "").lower()
         if kind not in ("call", "email", "text", "todo"):

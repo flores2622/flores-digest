@@ -2962,7 +2962,11 @@ on a published day. The rules:
   0 open, 2 sold, 3 and 5 closed; a task's `completedBy`, an SR's
   `createdBy` / `modifiedBy` come back as NAMES ("Debbie Aguilera"), mapped
   to staff az_ids by `crm_import.person`; a task's clock is `taskDateTime`
-  only when `timeSpecific`, else its `dueDate` day; the household map is
+  only when `timeSpecific`, else its `dueDate` day -- **and its due DAY is
+  always AgencyZoom's `dueDate`** (2026-10-13: converting a time-specific
+  "04:30:00" stamp from UTC slid the task to the evening before, and
+  `task_check` found it on the wrong day; only the time of day comes from
+  the clock); the household map is
   `{id: {fetched, policies: [...]}}` with premiums in cents; lead source
   names repeat ("X" twice -- migration 0003 dropped the unique name).
   **A note carries no id** (found 2026-10-12: type, createDate, createdBy,
