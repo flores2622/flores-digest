@@ -440,22 +440,29 @@ Everything caches under `data/`, so a re-run resumes rather than restarting.
   over the board's `life_week` (Monday to the day; `lifeTier` in index.html
   mirrors it) -- green once the week has one, yellow before Friday without
   one, red on Friday without one. A range wants 1 per week it touches.
-  **A life policy entered after its day's run reaches that day** (Frank,
+  **A policy entered after its day's run reaches that day** (Frank,
   2026-10-12: "we do have a life sale, its alondra, why is it not on the
   totals" -- Coral's Individual Life for Alondra Angulo, sold 09-29, entered
-  09-30; Life Sold is counted by soldDate, so the 09-29 page was built
-  without it and no later day counted it -- only `life_week` on 10-01 and
-  10-02, which recounts the week each night). `life_topup.run` (nightly,
-  after the boards publish; `python3 life_topup.py --day ... --dry-run` by
-  hand) re-reads the last 14 published days against the fresh policy list
-  and ADDS what a day is missing -- the producer's and team's `life` /
-  `life_ps`, `rows.life`, and `life_week` on that day and the later days of
-  its week -- only ever adding, nothing else on the page (backups under
-  `backups/<today>-life-topup/`). Premium Sold is not touched: a non-life
-  policy entered late is the Sales sheet's 14-day sync's business and the
-  day's sales stay as they went out. Days before 2026-10-01 carry no life
+  09-30; Life Sold and Premium Sold are counted by soldDate, so the 09-29
+  page was built without it and no later day counted it -- only `life_week`
+  on 10-01 and 10-02, which recounts the week each night; then 2026-10-13:
+  "add late policies to premium sold the same way"). `late_policies.run`
+  (nightly, after the boards publish; `python3 late_policies.py --day ...
+  --dry-run` by hand) re-reads the last 14 published days against the fresh
+  policy list and ADDS what a day is missing: a life policy -- the
+  producer's and team's `life` / `life_ps`, `rows.life`, and `life_week` on
+  that day and the later days of its week; any other real policy -- `pol`,
+  `ps` and `cross_sell` (producer and team), `rows.sold`, the day's `pol` /
+  `ps` / `closing_hh` / `closing_pq` tiers, the leaderboard re-scored from
+  its published values with the new Premium Sold (as the quote recount
+  did), the sale streak on that day and the later days of the window
+  (`apply_policy_streak`) and the month's trend rollup. Only ever adding --
+  a premium changed on a policy already counted is never applied (the
+  Sales sheet flags it), `bundle_*` keys are not recomputed, the email is
+  not re-sent -- nothing else on the page (backups under
+  `backups/<today>-late-policies/`). Days before 2026-10-01 carry no life
   keys unless the top-up added them (09-29 and 09-30 got Coral's on
-  2026-10-13).
+  2026-10-13, under `backups/2026-10-13-life-topup/`).
 - **A renewal is not new business.** Neither is servicing, a payment, a claim,
   or chasing paperwork on a policy already sold.
 - **Selling a product the household does not have yet IS new business**, even to

@@ -1308,7 +1308,7 @@ def _run(a):
     publish_day(day)
     publish_service(day)
     publish_commercial(day)
-    topup_life(day)
+    topup_late_policies(day)
 
     # publish_day() -> publish_board.build() -> coaching_cards.build() writes
     # data/coaching_cards_<day>.json, and call_summary.build() above wrote
@@ -1424,16 +1424,17 @@ def publish_day(day):
             f"the digest already sent, so nothing else is affected")
 
 
-def topup_life(day):
-    """A life policy entered after its day's run reaches that day (Frank,
-    2026-10-12: Alondra Angulo's, sold 09-29, entered 09-30, was on no day's
-    totals). life_topup.run adds it to the last two weeks' published pages.
+def topup_late_policies(day):
+    """A policy entered after its day's run reaches that day (Frank,
+    2026-10-12: Alondra Angulo's life policy, sold 09-29, entered 09-30, was
+    on no day's totals; 2026-10-13: Premium Sold the same way).
+    late_policies.run adds it to the last two weeks' published pages.
     Board-only and after send(), so like publish_day it never raises."""
     try:
-        import life_topup
-        life_topup.run(day, log=log)
+        import late_policies
+        late_policies.run(day, log=log)
     except (Exception, SystemExit) as e:
-        log(f"life top-up failed ({type(e).__name__}: {e}) -- "
+        log(f"late policies failed ({type(e).__name__}: {e}) -- "
             f"the boards are published, so nothing else is affected")
 
 
