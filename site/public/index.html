@@ -10888,7 +10888,17 @@ paintCenterBar();
     rangeMode = w.rangeMode; customFrom = w.customFrom || ""; customTo = w.customTo || ""; folioPick = w.folioPick || ""; weekPick = w.weekPick || "";
   }
   whereReady = true;
-  if (rangeMode === "day") await loadDay(day);
+  // A link from the nightly email (email_digest.py): #card/<day>/<lead id>
+  // opens that day and that lead's coaching card, then drops the hash so a
+  // refresh stays where the person went next.
+  const deep = (location.hash || "").match(/^#card\/(\d{4}-\d{2}-\d{2})\/(\d+)$/);
+  if (deep && days.includes(deep[1])) {
+    history.replaceState(null, "", location.pathname + location.search);
+    await loadDay(deep[1]);
+    const c = (cur && cur.calls || []).find(c => String(c.lead_id) === deep[2]);
+    if (c) await openCoachingCard(c);
+    else await openLeadCard({ id: deep[2] });
+  } else if (rangeMode === "day") await loadDay(day);
   else { await ensureCurForRange(); await paint(); }
   paintGreeting(true);   // again, now that it knows the day (sales, the folio clock)
 })();
