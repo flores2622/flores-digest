@@ -1457,7 +1457,15 @@ already downloads. Leads only; a customer's texts are Athena's.
   out. It is answered by the next typed text or email, any call back (the
   RC call log or AgencyZoom's CALL notes), or a call the lead made that was
   still going when the text arrived (30s+). One row per wait; "ok" / "thanks"
-  and STOP are counted but never listed as waiting.
+  and STOP are counted but never listed as waiting. **A reaction is the end
+  of the conversation** (Frank, 2026-10-12: Denisse Rodriguez liked Sarahi's
+  appointment text -- an iPhone tapback arrives as the text `Liked "..."` --
+  and sat in Needs someone now): `messages.REACTION` (Liked / Loved /
+  Laughed at / Emphasized / Disliked / Questioned, the Spanish phones' Le
+  gustó / Le encantó / Se rió de / Enfatizó / No le gustó / Preguntó,
+  "reacted ... to") and a bare emoji are in `ACK`, so they count as a reply
+  and never wait; the Worker gets the same pattern through
+  `live_basis.messages.rx`. Published days were not rebuilt.
 - **Replies are windowed from the office's close the business day before**
   (5:30 PM) to 5:30 PM, so evening and weekend replies land on the next
   business day; the clock starts at 8:30 for a reply that came in closed.

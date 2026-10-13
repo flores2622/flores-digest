@@ -67,8 +67,17 @@ OFFICE_CLOSE = (17, 30)     # "the office closes at 5:30" (CLAUDE.md)
 
 # A reply that asks for nothing -- "ok", "thanks", a thumbs up. Counted as a
 # reply (the lead wrote back) but never listed as waiting on an answer.
+# A reaction to our message -- an iPhone tapback arrives as the text
+# 'Liked "..."' / 'Loved "..."' (Spanish phones: 'Le gustó "..."') -- is the
+# end of the conversation, never a reply waiting on us (Frank, 2026-10-12:
+# Denisse Rodriguez liked Sarahi's appointment text and sat in Needs
+# someone now). A bare emoji is the same.
+REACTION = (r"(liked|loved|laughed at|emphasi[sz]ed|disliked|questioned|"
+            r"le gust[oó]|le encant[oó]|se ri[oó] de|enfatiz[oó]|no le gust[oó]|pregunt[oó]|"
+            r"reacted (\S+ )?to)\s+[\"“”'‘’].*[\"“”'‘’]")
 ACK = re.compile(r"^\s*(ok(ay)?|k|thanks?|thank you( so much)?|ty|gracias|muchas gracias|"
-                 r"perfect|perfecto|sounds good|great|👍|🙏|❤️|😊)[\s!.,👍🙏😊❤️]*$", re.I)
+                 r"perfect|perfecto|sounds good|great|👍|🙏|❤️|😊|👌|🙂|😁|✅|" + REACTION +
+                 r")[\s!.,👍🙏😊❤️👌🙂😁✅🏻🏼🏽🏾🏿]*$", re.I | re.S)
 # A short "you too" / "thank you again" -- no question in it -- is an
 # acknowledgement too (2026-09-27, a September spot-check).
 ACK_SHORT = re.compile(r"^\s*(ok(ay)?|thanks?|thank you|gracias|grx|you too|same to you|igualmente|"
