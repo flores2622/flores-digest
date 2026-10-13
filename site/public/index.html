@@ -2976,6 +2976,19 @@ function hhSoldSplit(d, name) {
   return { n: v.length, existing: v.filter(x => x === true).length,
            fresh: v.filter(x => x === false).length, unknown: v.filter(x => x == null).length };
 }
+/* One producer's closing ratio (name) or the team's (""), the way the
+   Digest's Closing Ratio tile reads it: the checkpoint's own figures until
+   liveOn(d, "closing"). Shared by the tile's flip and the leaderboard's
+   Closing Ratio column (Frank, 2026-10-13). */
+function closingOf(d, name) {
+  const t = name ? ((d.producers || []).find(p => p.name === name) || {}) : (d.totals || {});
+  const hh = t.cp_hh ?? t.hh ?? 0, pol = t.cp_pol ?? t.pol ?? 0, pq = t.cp_pq ?? t.pq ?? 0, ps = t.cp_ps ?? t.ps ?? 0;
+  const sold = liveOn(d, "closing") ? hhSoldOf(d, name) : hhSoldCheckpoint(d, name);
+  const hhPct = hh ? 100 * (sold ?? pol) / hh : null, pqPct = pq ? 100 * ps / pq : null;
+  const TI = { green: "tg", yellow: "ty", red: "tr" };
+  return { hh, sold: sold ?? pol, soldIsHH: sold != null, pq, ps, hhPct, pqPct,
+           hhTier: TI[tierColor("closing_ratio_pct", hhPct)] || "", pqTier: TI[tierColor("closing_ratio_pct", pqPct)] || "" };
+}
 function digestDay(d, who) {
   const byName = Object.fromEntries((d.producers || []).map(p => [p.name, p]));
   const focus = who ? byName[who] : null;
@@ -3310,6 +3323,15 @@ function teamLeaderboardHtml(d, who) {
     return `<td class="num${cl}"${at}>${n} <span style="opacity:.72">of ${list.length}</span></td>`;
   };
 
+  // Closing ratio per producer (Frank, 2026-10-13: "add the closing ratio
+  // column to the leaderboard"): households, then premium, as the Digest's
+  // tile reads them. Shown, not scored; opens the closing ratio flip.
+  const crCell = name => {
+    const c = closingOf(d, name), pc = v => v == null ? "—" : Math.round(v) + "%";
+    const [cl, at] = cc("closing", name);
+    return `<td class="num${lv("closing")}${cl}"${at} style="white-space:nowrap" title="Households: ${c.sold} ${c.soldIsHH ? "sold" : "policies"} of ${c.hh} quoted · Premium: ${money(c.ps)} of ${money(c.pq)} quoted"><span class="${c.hhTier}">${pc(c.hhPct)}</span> <span style="opacity:.72">/</span> <span class="${c.pqTier}">${pc(c.pqPct)}</span></td>`;
+  };
+
   let podium = "";
   if (!focus && lb.order && lb.order.length > 1) {
     const points = lb.points || {};
@@ -3336,6 +3358,7 @@ function teamLeaderboardHtml(d, who) {
     <td class="num ${tc(p.name, "pq")}${lv("quotes")}${cc("quoted", p.name)[0]}"${cc("quoted", p.name)[1]}${lbRankTag(d, "Premium Quoted", p.name)}>${money(p.pq)}</td>
     <td class="num ${hhCol && hhSoldOf(d, p.name) > 0 ? TI.green : tc(p.name, "pol")}${lv(hhCol ? "hhsold" : "sales")}${cc("sold", p.name)[0]}"${cc("sold", p.name)[1]} title="${polTitle(p.name)}">${hhCol ? `${hhSoldOf(d, p.name)} <span style="opacity:.72">(${p.pol ?? 0} pol)</span>` : (p.pol ?? 0)}</td>
     <td class="num ${tc(p.name, "ps")}${lv("sales")}${cc("sold", p.name)[0]}"${cc("sold", p.name)[1]}${lbRankTag(d, "Premium Sold", p.name)}>${money(p.ps)}</td>
+    ${crCell(p.name)}
     ${p.util != null ? `<td class="num ${tc(p.name, "util")}${lv("util")}">${p.util}%</td>` : ""}</tr>`).join("");
   const tt = k => TI[((d.tiers || {})["team"] || {})[k]] || "";
   const T = d.totals || {};
@@ -3351,6 +3374,7 @@ function teamLeaderboardHtml(d, who) {
     <td class="num ${tt("pq")}${lv("quotes")}${cc("quoted")[0]}"${cc("quoted")[1]}>${money(T.pq)}</td>
     <td class="num ${hhCol && hhSoldOf(d, "") > 0 ? TI.green : tt("pol")}${lv(hhCol ? "hhsold" : "sales")}${cc("sold")[0]}"${cc("sold")[1]}>${hhCol ? `${hhSoldOf(d, "")} <span style="opacity:.72">(${T.pol ?? 0} pol)</span>` : (T.pol ?? 0)}</td>
     <td class="num ${tt("ps")}${lv("sales")}${cc("sold")[0]}"${cc("sold")[1]}>${money(T.ps)}</td>
+    ${crCell("")}
     ${T.util != null ? `<td class="num ${tt("util")}${lv("util")}">${T.util}%</td>` : ""}</tr>`;
 
   const rangeNote = !focus && lb.averaged ? `<p class="sd">Ranked on the ${lb.days} reporting days: each producer's per-day averages over the days they worked, scored like a single day. For the ranking a missed role play counts as 0; the Role Play column is the average of the sessions they did.</p>` : "";
@@ -3362,6 +3386,7 @@ function teamLeaderboardHtml(d, who) {
    ${SO.length ? `<th class="num" title="Calls where the producer offered on their own to send the quote instead of keeping the lead on the phone, of the calls where a quote came up">Sent the Quote</th>` : ""}
    <th class="num">Households Quoted</th><th class="num">Premium Quoted</th>
    <th class="num">${hhCol ? "HH Sold" : "Policies"}</th><th class="num">Premium Sold</th>
+   <th class="num" title="Households sold over households quoted / premium sold over premium quoted. Shown, not scored.">Closing Ratio</th>
    ${ranked.some(p => p.util != null) ? "<th class=\"num\">Utilization</th>" : ""}</tr></thead>
    <tbody>${rows}${tot}</tbody></table></div></div>`;
 }
@@ -3635,10 +3660,11 @@ function digDrillFor(d, who, keys) {
   if (at > 0) { who = k.slice(at + 1); k = k.slice(0, at); }
   if (k.startsWith("lb-")) k = k.slice(3);
   const R = d.rows;
-  if (!R) return digDrillList("", "", DIG_NO_ROWS);
+  // The closing ratio's flip is figures, not rows: it opens on any day.
+  if (!R && !k.startsWith("closing")) return digDrillList("", "", DIG_NO_ROWS);
   // 09-03, 09-04, 09-16 lost their call data and were rebuilt from
   // RingCentral on 2026-09-27 against today's AgencyZoom records.
-  const rb = d.date ? (R.rebuilt ? [d.date] : []) : (R.rebuilt_days || []);
+  const rb = !R ? [] : d.date ? (R.rebuilt ? [d.date] : []) : (R.rebuilt_days || []);
   digRebuiltNote = rb.length ? `<p class="sd" style="margin:10px 0 0;color:var(--warn, #b45309)">${rb.map(fmtShortDate).join(", ")}: this list was rebuilt from RingCentral on 9/27 against today's AgencyZoom records, so it can differ from the card's figure, which stays as it went out.</p>` : "";
   const [kind, a, b] = k.split(":");
   const mine = rs => (rs || []).filter(r => !who || r.who === who);
@@ -3669,18 +3695,31 @@ function digDrillFor(d, who, keys) {
       "Every conversation, longest first. A call-in the producer answered is a conversation but sits outside the contact rate, which counts only the producer's own dials.",
       note("contacts", "live") + digTable(d, `<th>Producer</th><th>Lead</th><th>Source</th><th class="num">On the phone</th><th>How</th><th class="said">What happened</th>`, tr));
   }
-  if (kind === "quoted" || kind === "closing") {
+  if (kind === "closing") {
+    // Each producer's own closing ratio, so nobody has to filter to them
+    // (Frank, 2026-10-13: "make the card flip to their individual numbers
+    // ... i dont want to see the sales, i can see that if i flip the
+    // policies and HH sold card").
+    const names = who ? [who] : (((d.leaderboard || {}).order) || (d.producers || []).map(p => p.name));
+    const pc = v => v == null ? "—" : v.toFixed(1) + "%";
+    const line = (n, c, tot) => `<tr${tot ? ` class="tot"` : ""}>${d.date ? "" : "<td></td>"}<td>${tot ? `<span class="who">${pbadge(TEAM_DOT, "Team")}</span>` : digWho({ who: n })}</td>
+      <td class="num">${c.hh}</td><td class="num">${c.sold}</td><td class="num ${c.hhTier}"><b>${pc(c.hhPct)}</b></td>
+      <td class="num">${money(c.pq)}</td><td class="num">${money(c.ps)}</td><td class="num ${c.pqTier}"><b>${pc(c.pqPct)}</b></td></tr>`;
+    const tr = names.filter(n => (d.producers || []).some(p => p.name === n)).map(n => line(n, closingOf(d, n)));
+    if (!who) tr.push(line("", closingOf(d, ""), true));
+    const soldWord = closingOf(d, who || "").soldIsHH ? "HH sold" : "Policies";
+    return digDrillList(`Closing ratio${whoTag}`,
+      `Households: ${soldWord === "HH sold" ? "households sold" : "policies sold"} over households quoted. Premium: premium sold over premium quoted.${d.live_parts && !liveOn(d, "closing") ? " As of the last checkpoint until sales and quotes are both live." : ""}`,
+      digTable(d, `<th>Producer</th><th class="num">HH quoted</th><th class="num">${soldWord}</th><th class="num">Households</th><th class="num">Premium quoted</th><th class="num">Premium sold</th><th class="num">Premium</th>`, tr));
+  }
+  if (kind === "quoted") {
     const rs = mine(R.quoted);
     // The filtered producer's own households quoted, not the team's.
-    if (!rs.length && cpf("hh")) return digDrillList(kind === "closing" ? "Closing ratio" : "Households quoted", "", DIG_NO_ROWS);
-    // The closing ratio is the checkpoint's until it is live, and so is its list.
-    const RC = kind === "closing" && !liveOn(d, "closing") && d.cp_sold_leads ? { ...R, sold_leads: d.cp_sold_leads } : R;
-    const soldIds = new Set(mine(RC.sold_leads).map(r => r.lead_id));
+    if (!rs.length && cpf("hh")) return digDrillList("Households quoted", "", DIG_NO_ROWS);
     const tr = rs.map(r => `<tr>${digDay(d, r)}<td>${digWho(r)}</td><td>${digLead(r)}</td><td>${cesc(r.source)}</td>
-      <td class="num">${r.premium === "" || r.premium == null ? "—" : money(r.premium)}</td>${kind === "closing" ? `<td>${soldIds.has(r.lead_id) ? `<span class="chip c-g">sold</span>` : ""}</td>` : ""}</tr>`);
-    return digDrillList(`Households quoted${whoTag} · ${rs.length}`, kind === "closing" ? "Sold marks a household quoted that was also marked sold the same day." : "",
-      (kind === "quoted" || liveOn(d, "closing") ? note("quotes", "hh") : "") + digTable(d, `<th>Producer</th><th>Lead</th><th>Source</th><th class="num">Premium quoted</th>${kind === "closing" ? "<th>Sold</th>" : ""}`, tr)
-      + (kind === "closing" ? digDrillSold(d, mine, liveOn(d, "closing") ? note("sales", "pol") : "", RC) : ""));
+      <td class="num">${r.premium === "" || r.premium == null ? "—" : money(r.premium)}</td></tr>`);
+    return digDrillList(`Households quoted${whoTag} · ${rs.length}`, "",
+      note("quotes", "hh") + digTable(d, `<th>Producer</th><th>Lead</th><th>Source</th><th class="num">Premium quoted</th>`, tr));
   }
   if (kind === "life") {
     // Life policies sold, counted apart from Premium Sold (Frank, 2026-09-30).

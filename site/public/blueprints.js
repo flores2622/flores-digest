@@ -32,7 +32,7 @@
    `window` in the browser and on the global in the Worker -- keep it a plain
    script (no import/export), or the <script src> in index.html breaks. */
 (typeof window !== "undefined" ? window : globalThis).BLUEPRINTS_RAW = {
-  updated: "2026-10-12",
+  updated: "2026-10-13",
   guides: [
 
   /* ------------------------------------------------------------------ */
@@ -108,7 +108,7 @@
           ["HH / Prem. Quoted", "Households quoted and the premium quoted. A household counts once however many quotes it got. A quote counts when AgencyZoom's quote date is today, the producer moved the lead into a quoted stage, or the producer's note says a quote was sent."],
           ["HH / Prem. Sold", "Households marked sold, and the premium on the policies sold. **A sale entered with no lead marked sold still counts** when a brand-new customer record for that producer sits behind the policy (the list shows it as a customer record). **BOB and Rewrite are not sales.** A renewal is not a sale. Selling a product the household doesn't have yet is a sale, even to a twenty-year customer. **Life insurance is not counted here.**"],
           ["Life Sold", "Life policies sold (term, whole, universal life), **counted on their own** -- a count of policies, no premium figure, since life premium is not tracked. They never count as a household sold, in Premium Sold, on the leaderboard or in the closing ratio. **The goal is 1 life policy a week per producer** (5 for the team): green once the week has one, yellow Monday to Thursday without one, red on Friday without one."],
-          ["Closing Ratio", "Households sold over households quoted, and premium sold over premium quoted."],
+          ["Closing Ratio", "Households sold over households quoted, and premium sold over premium quoted. Click the card and it turns over to every producer's own closing ratio side by side, with the team's underneath -- no need to filter to each person. The sales themselves are on the HH/Prem. Sold card. The leaderboard has a **Closing Ratio** column too (households / premium), shown but not scored."],
           ["Speed to Dial", "For internet leads that arrived today (the quote sites), how long until the first dial. The Team card is the middle of everyone's times."],
           ["Speed to Reply", "When a lead texts or emails us, how long until the producer answered by text, email or call. Green at 15 minutes or less, red over an hour. Replies still waiting are listed."],
           ["Task Completion", "AgencyZoom tasks due today that were done. Duplicate leads and smart-cycled leads are excused."],

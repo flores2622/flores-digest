@@ -1371,6 +1371,19 @@ uses `rp_scored`, where a day they WORKED without a role play counts as 0
 ("hurt their points but not average"). A day off, or a day with no role
 play figures for anyone (no Coach AI email), counts neither way.
 
+## The closing ratio per producer
+
+**The Closing Ratio card flips to every producer's own ratio** (Frank,
+2026-10-13: "make the card flip to their individual numbers so i dont have
+to filter to them, i dont want to see the sales, i can see that if i flip
+the policies and HH sold card"): one row per producer and a Team row --
+households quoted, sold, the households ratio, premium quoted, sold, the
+premium ratio, each tier-coloured -- from `closingOf` (index.html), which
+reads them the way the tile does (the checkpoint's until `liveOn(d,
+"closing")`). No quoted or sales list on it any more. **The leaderboard has a
+Closing Ratio column** ("households / premium", after Premium Sold), shown,
+not scored like Sent the Quote, opening the same flip for that producer.
+
 ## Households, not policies, on the Digest
 
 **Sold is counted in households, like quoted** (Frank, 2026-09-28: "it
