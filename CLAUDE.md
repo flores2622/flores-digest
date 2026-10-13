@@ -1400,6 +1400,20 @@ report to this one, newest first (`weekPick`, Sunday-anchored like
 `weekStart`; "" is this week, kept per tab with the rest of `saveWhere`). A
 past week runs Sunday to Saturday and is labelled "Week of <date>".
 
+**Picking "Day" after a range goes back to the day that was open** (Frank,
+2026-10-13: "This section could not be drawn: Cannot read properties of null
+(reading 'slice') ... this keeps happening when changing dates, before
+refreshing"): a range leaves `cur` as the merged document, whose `date` is
+null, and the Day pick used to paint it as a day -- the day calendar's
+`picked.slice(0, 7)` threw, and `paintFailed` threw again drawing the
+controls, so the bare error box stood under the greeting until a refresh;
+the Service / Commercial day pick fell back to the newest day the same way.
+`wireRangeControl`'s select now calls `loadDay(lastDay ...)` for "day"
+(`lastDay` is what `loadDay` opened last), and the calendar reads
+`(cur && cur.date) || DAYS[0] || today`. Reproduced and checked in headless
+Chromium on every range-driven page (a mock of the Worker over the R2 day
+documents, in the session's scratchpad).
+
 **The range leaderboard is re-ranked on averages** (Frank, 2026-09-28):
 the same seven categories and 5-4-3-2-1 scoring as a single day
 (`rankLeaderboard` on the board, a mirror of `digest_config.
