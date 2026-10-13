@@ -1157,6 +1157,25 @@ and anything without the glow is the checkpoint's (Frank, 2026-09-24).
   note reads -- the rest are texts, drips, stage moves and the hourly
   missed-call tasks bumping leads, which cannot be told apart without the
   read itself. The sure fix is AgencyZoom allowlisting that address.
+  **The proxy** (Frank, 2026-10-13: "start on the proxy" -- that day the
+  Worker was refused from its FIRST request at 9:26 AM, the login included,
+  17 of 17 tries; the same login worked from anywhere else; an email to
+  support@agencyzoom.com bounced -- AgencyZoom (Vertafore) takes support
+  only through the live chat in the app, 8 AM-8 PM ET): `proxy/server.js`,
+  one dependency-free Node process for a small VPS with an address of its
+  own (`proxy/README.md`: Ubuntu, Caddy for HTTPS at
+  az-proxy.floresinsuranceagency.com, the systemd unit, two Worker secrets).
+  It takes the Worker's call with the shared key (`x-pantheon-key`),
+  forwards it to api.agencyzoom.com unchanged -- method, path, body, the
+  Authorization header -- and hands the answer back verbatim, 403s and 429s
+  included, so `azGet`'s pacing and pausing are untouched; nothing without
+  the key, nothing outside `/v1/api/`, GET and POST only, no body or token
+  in its log; `/healthz` says the address AgencyZoom sees. The Worker
+  switches by `AZ_PROXY_URL` + `AZ_PROXY_KEY` (`live.js azBase` /
+  `azHeaders`; unset, it calls AgencyZoom directly as before), and each
+  refusal in the az log records the host that answered. `node --test
+  proxy/server.test.mjs` runs it against a fake AgencyZoom. The server
+  itself is Frank's to make (an account, a $5 box, one DNS record).
 - **The Worker logs in to AgencyZoom ONCE a day, not once a run.** A per-run
   login meant ~30 an hour, and on 2026-09-24 AgencyZoom began refusing the
   Worker's logins (403) within the hour while the same account still worked

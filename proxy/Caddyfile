@@ -1,0 +1,6 @@
+# HTTPS in front of the Pantheon AgencyZoom proxy (proxy/README.md step 4).
+# Caddy gets and renews the certificate itself; the name must point at this
+# server (an A record) before Caddy starts.
+az-proxy.floresinsuranceagency.com {
+    reverse_proxy 127.0.0.1:8787
+}

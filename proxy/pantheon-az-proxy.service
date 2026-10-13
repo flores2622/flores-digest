@@ -1,0 +1,19 @@
+[Unit]
+Description=Pantheon AgencyZoom proxy (proxy/server.js)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+EnvironmentFile=/etc/pantheon/proxy.env
+ExecStart=/usr/bin/node /opt/pantheon/server.js
+Restart=always
+RestartSec=3
+User=nobody
+Group=nogroup
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=true
+PrivateTmp=true
+
+[Install]
+WantedBy=multi-user.target
