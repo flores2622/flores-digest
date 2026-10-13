@@ -1256,7 +1256,7 @@ tour step for it, since they can't open it.
 **Operations Center is the ops team's own Center** (Frank, 2026-10-06: "a
 new category for operatonis only"): a left-bar group of its own between
 Athena's and Cerberus's, hidden until the Worker lets the login in (like
-Commercial), holding **CRM Hygiene** and **Lead Scrub** (moved from the
+Commercial), holding **Minimums & Goal** (2026-10-13), **CRM Hygiene** and **Lead Scrub** (moved from the
 Sales Center the same day: "move the lead scrubber there as well"). Each
 page's own module adds it through `opsShow` (index.html) when its Worker
 route answers, so `CENTERS.operations` is empty for everyone else and the
@@ -2322,7 +2322,17 @@ repaint clears the list).
   Commission page counts it (`/api/commission/<end>`'s unit rows, life and
   business out, as of the day on screen) and only for whoever that endpoint
   lets see the unit -- a producer their own, the managers everyone; a
-  producer filter shows that producer's unit alone. No links back to
+  producer filter shows that producer's unit alone. **The ops team has a
+  page of everyone's** (Frank, 2026-10-13: "give the ops team a tab with
+  everyone's and the team goal"): Operations Center > **Minimums & Goal**
+  (`site/public/folio_goals.js`, `folioGoalsPaint`, view `goals`), from the
+  Worker's `/api/folio-goals[/<end>]` -- staff.json's `folio_goals` board key
+  (Frank, Francisco, Veronica, Amanda), 403 for anyone else; it sends each
+  unit's tier minimums and countable rows and the sheet's day / producer /
+  premium, never pay or rates. The same bars (`folioGoalsHtml`, shared with
+  the Digest card) for every unit, then a row per producer: sold, toward
+  the minimum, % of it, to go and a day needed, the next tier, share of the
+  team; a folio picker over the folios the sheet holds. No links back to
   the Digest ("tabs on the left is enough").
 - **The Editions** (`site/public/editions.js`, one page under the Sales
   Center, every edition the full 1600px -- `.main` is `width: 100%`, since

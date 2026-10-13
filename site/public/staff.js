@@ -125,6 +125,7 @@ window.STAFF = {
     "scrub",
     "scrub_edit",
     "hygiene",
+    "folio_goals",
     "roleplay_history",
     "commission_all",
     "sales_log_all",
@@ -147,6 +148,7 @@ window.STAFF = {
     "scrub",
     "scrub_edit",
     "hygiene",
+    "folio_goals",
     "roleplay_history",
     "workflows_suggest"
    ],
@@ -164,6 +166,7 @@ window.STAFF = {
     "scrub",
     "scrub_edit",
     "hygiene",
+    "folio_goals",
     "roleplay_history",
     "workflows_suggest"
    ],
@@ -191,6 +194,7 @@ window.STAFF = {
     "scrub",
     "scrub_edit",
     "hygiene",
+    "folio_goals",
     "roleplay_history",
     "commission_all",
     "sales_log_all",

@@ -111,6 +111,10 @@ export default {
       if (parts[1] === "commission" && parts.length === 3) {
         return getCommission(request, env, parts[2]);
       }
+      // Operations Center > Minimums & Goal (Frank, 2026-10-13): staff.json's `folio_goals` only.
+      if (parts[1] === "folio-goals" && parts.length <= 3) {
+        return getFolioGoals(request, env, parts[2] || "");
+      }
 
       if (parts[1] === "renewals" && parts.length === 2) {
         return getRenewals(env);
@@ -606,6 +610,39 @@ async function getCommission(request, env, end) {
   return new Response(JSON.stringify({ folio_start: start, folio_end: end, all, units,
     built_at: new Date().toISOString() }), { headers: {
       "content-type": "application/json; charset=utf-8", "cache-control": "no-store" } });
+}
+
+/* GET /api/folio-goals[/:end] -> every producer's minimum and the team goal
+ * for a folio, for the Operations Center (Frank, 2026-10-13: "give the ops
+ * team a tab with everyone's and the team goal"): staff.json's `folio_goals`
+ * (the ops team), 403 for anyone else. A minimum is the first tier of each
+ * commission unit's schedule, counted from the Sales sheet as commission.js
+ * counts it (life and business out); the team goal is goals.json's, against
+ * every entry on the sheet. Sends the sheet's day-by-day premium per person
+ * and each unit's tier minimums -- no pay, no rates. No end: the folio
+ * holding today, plus the folios the sheet holds for the picker. */
+const FOLIO_GOALS = new Set(boardEmails("folio_goals"));   // staff.json
+async function getFolioGoals(request, env, end) {
+  const me = identityOf(request, env);
+  if (!FOLIO_GOALS.has(me.email)) return json({ error: "not available" }, 403);
+  const today = localDay(Date.now());
+  if (!end) end = FOLIO_CLOSE_DATES.find((d) => today <= d) || "";
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(end) || !FOLIO_CLOSE_DATES.includes(end)) {
+    return json({ error: "bad folio end date" }, 400);
+  }
+  const { start, entries } = await folioEntries(env, end);
+  const first = await env.BOARD.list({ prefix: "saleslog/", limit: 1 });
+  const first_day = ((first.objects || [])[0] || {}).key?.slice(9, 19) || null;
+  const units = commission(entries, () => true).map((u) => ({
+    key: u.key, label: u.label, schedule: u.schedule,
+    members: u.members.map((m) => m.name),
+    tiers: u.tiers.map((t) => ({ name: t.name, min: t.min })),
+    rows: u.rows.map((r) => ({ day: r.day, producer: r.producer, premium: r.premium })),
+  }));
+  const sheet = entries.map((e) => ({ day: e.day, producer: e.producer || "", premium: +e.premium || 0 }));
+  return new Response(JSON.stringify({ folio_start: start, folio_end: end, today, first_day,
+    folios: FOLIO_CLOSE_DATES.filter((d) => (!first_day || d >= first_day) && d <= (FOLIO_CLOSE_DATES.find((x) => today <= x) || d)),
+    units, sheet }), { headers: { "content-type": "application/json; charset=utf-8", "cache-control": "no-store" } });
 }
 
 // The Docs Signed dropdown's exact options, taken from the real Google
