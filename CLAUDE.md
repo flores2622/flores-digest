@@ -1979,6 +1979,20 @@ Athena's rules exactly** (Frank's resolutions only) and are re-read every night
 like the Service Center's (`commercial_digest.refresh_past_renewals`, every
 day on the board, back 365 days; an SR older than the nightly pull's year is
 reached for once, e.g. 6836965 created 2025-08-03).
+**Calls are on it too** (Frank, 2026-10-13: "do the same on the commercial
+center", after the Service Center's and the Renewals tab's Talk time):
+`commercial_digest.call_figures` puts the day's `calls` on the document --
+the owner's dials to households holding ANY commercial policy (one row per
+number, attempts, the longest connected leg; `dial_figures`' shape) and the
+call-ins from those households he picked up first (`front_figures`' shape)
+-- from the saved RC log (`data/rc_raw_<day>.json`; None, and a dash on the
+board, when a day has none). The Commercial Center's **Calls** section
+(`comCallsHtml`, after the Open Queue): Dials, **Talk time** (the service
+side's `svcTalk` / `svcTalkTip`: the average over both kinds, the hover
+saying how many were dialled and how many call-ins) and Call-ins answered,
+with the two lists folded under them. No transcripts (service_calls.py
+reads the service team's calls only). Days built before 2026-10-13 have no
+`calls` and say so.
 
 ## Role Play score
 

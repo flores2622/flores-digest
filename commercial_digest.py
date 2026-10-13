@@ -167,6 +167,66 @@ def _outcomes():
     return sr_mod.outcomes(), sr_mod.RESOLUTIONS_FROM
 
 
+def call_figures(day, commercial_hh, recs=None, log=log):
+    """Cerberus's calls (Frank, 2026-10-13: "do the same on the commercial
+    center" -- the Talk time card): the commercial owner's dials to households
+    holding a commercial policy, one row per number (attempts, the longest
+    connected leg -- service_digest.dial_figures' shape), and the call-ins
+    from those households the owner picked up first (front_figures' shape).
+    From the day's saved RC call log; None when the day has none (a day
+    rebuilt without one shows a dash). The household is the only signal, as
+    for a commercial service change."""
+    import inbound
+    import missed_call_audit as mca
+    import service_digest
+    if recs is None:
+        f = ROOT / f"data/rc_raw_{day}.json"
+        if not f.exists():
+            return None
+        recs = json.loads(f.read_text())
+    idx, *_ = mca.build_index(day)
+    owner = commercial.FRANK_NAME
+
+    def is_commercial(hit):
+        ids = {c.get("id") for c in (hit or {}).get("cust") or []}
+        ids |= {t.get("householdId") for t in (hit or {}).get("tix") or []}
+        return bool({i for i in ids if i is not None} & commercial_hh)
+
+    per, calls = {}, []
+    for r in recs:
+        if inbound.az_day(r) != day:
+            continue
+        if r.get("direction") == "Outbound":
+            who = (r.get("from") or {}).get("name")
+            n = mca.norm((r.get("to") or {}).get("phoneNumber"))
+            if who != owner or not n:
+                continue
+            hit = idx.get(n)
+            if not is_commercial(hit):
+                continue
+            row = per.get(n)
+            if row is None:
+                h = hit or {}
+                cust = (h.get("cust") or [None])[0]
+                row = per[n] = {"who": who, "number": n, "attempts": 0, "seconds": 0,
+                                "name": mca.name_for(h, None), "first": r.get("startTime"),
+                                "link_kind": "customer" if cust else None, "link_id": (cust or {}).get("id"), "recs": []}
+            row["attempts"] += 1
+            if r.get("recording") and r.get("result") == "Call connected":
+                row["recs"].append(r.get("id"))
+            row["seconds"] = max(row["seconds"], int(r.get("duration") or 0) if r.get("result") == "Call connected" else 0)
+        elif r.get("direction") == "Inbound" and r.get("result") == "Accepted":
+            first = service_digest.first_pickup(r)
+            if not first or first[0] != owner:
+                continue
+            n = mca.norm((r.get("from") or {}).get("phoneNumber"))
+            if not n or not is_commercial(idx.get(n)):
+                continue
+            calls.append({"who": owner, "at": r.get("startTime"), "seconds": first[1], "number": n,
+                          "name": mca.name_for(idx.get(n), None), "rec": r.get("id") if r.get("recording") else None})
+    return {"dials": sorted(per.values(), key=lambda x: x["first"] or ""), "calls": calls}
+
+
 def build(day, done=None, live=None, log=log):
     import service_digest
     import service_retention as sr_mod
@@ -194,6 +254,8 @@ def build(day, done=None, live=None, log=log):
         "claims": claims.figures(day, [t for t in done if claims.is_commercial_claim(t)],
                                  [t for t in (live or []) if claims.is_commercial_claim(t)],
                                  types=claims.COMMERCIAL_TYPES),
+        # The owner's calls on commercial households, for the Talk time card (2026-10-13).
+        "calls": call_figures(day, commercial.households(hh)[0], log=log),
     }
 
 
