@@ -1806,7 +1806,16 @@ Crystal (hybrid); credit always goes to whoever COMPLETED the SR or task.
   -- with "N conversations · Xm on the line" under it, the hover saying
   how many were dialled, how many call-ins and the call-ins' seconds, and
   the card opening both lists. From the saved rows only -- no new figure
-  in the documents.
+  in the documents. **The Renewals tab has its own** (Frank, 2026-10-13:
+  "do the same on the renewals tab"): Renewal SR Work's **Renewal talk
+  time** card after Renewal dials (`rw:talk`), over the renewal dials that
+  connected and the renewal customers' call-ins. **Call-ins picked up
+  first now split like the dials and call backs**: `front_figures` marks
+  each with `renewal` (`renewal_caller`, service days built from
+  2026-10-13) and `splitRenewals` moves them to `m.renewalCalls` -- on an
+  earlier day by the number, when the day's renewal dials or call backs
+  carry it -- so the Service Center's Calls answered and Talk time are the
+  service side only, and the two tabs' talk time never count a call twice.
   **Laid out for the full-width board** (Frank, 2026-09-30: "it looks
   off"): the person strip is three equal columns (`.svcstrip`), the stat
   cards come in even rows of six (`.svcgrid`; four, then two, on narrower

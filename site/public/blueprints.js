@@ -32,7 +32,7 @@
    `window` in the browser and on the global in the Worker -- keep it a plain
    script (no import/export), or the <script src> in index.html breaks. */
 (typeof window !== "undefined" ? window : globalThis).BLUEPRINTS_RAW = {
-  updated: "2026-10-12",
+  updated: "2026-10-13",
   guides: [
 
   /* ------------------------------------------------------------------ */
@@ -396,7 +396,7 @@
           ["Call backs", "Missed service calls and how fast they were returned."],
           ["Speed to reply", "When a customer texts or emails, how long until someone answered."],
           ["Texts / Emails", "What each person typed to customers themselves. Automated messages are counted apart."],
-          ["Calls answered", "Inbound calls each person picked up first. **Listen & read** plays the call with its transcript."],
+          ["Calls answered", "Inbound calls each person picked up first. A renewal customer's call-ins count on the Renewals tab instead. **Listen & read** plays the call with its transcript."],
           ["SRs created", "SRs each person opened."],
           ["Note standard", "How many notes left out a part of the note standard, and which part."],
           ["Opportunities", "Sales opportunities in the SRs: worked (quoted, a lead set, or passed to a producer) or not noted."],
@@ -464,7 +464,7 @@
       body: [
         { terms: [
           ["Retention", "Three rates. The **settled 4 weeks** (renewals 14 to 41 days ago; the newest two weeks are still settling), the **date filter's period**, and the **last 12 months**, the one to compare with {{carrier}}'s. Here the policy record counts too: a policy the record shows cancelled is lost even if no SR says so."],
-          ["Renewal SR Work", "One card per person (renewal SRs, retained, open, overdue) and a grid below, the team's until you pick someone: renewal SRs completed, retained, reviewed with the customer, renewal tasks, open and overdue, coming up and high risk, lost, renewal dials, call backs, speed to reply, and texts and emails."],
+          ["Renewal SR Work", "One card per person (renewal SRs, retained, open, overdue) and a grid below, the team's until you pick someone: renewal SRs completed, retained, reviewed with the customer, renewal tasks, open and overdue, coming up and high risk, lost, renewal dials, renewal talk time (the average over renewal dials that connected and renewal customers' call-ins, with how many were which on hover), call backs, speed to reply, and texts and emails."],
           ["Renewal Outcome Breakdown", "A bar per person, split by resolution."],
           ["Coming up", "Renewals in the next 45 days, and how each renewal SR is being worked. **High risk** means not yet discussed with the customer and a warning sign: an open Late Payment or a cancellation SR on the household."],
           ["Lost, Not confirmed", "Policies lost in the period, and ones the records haven't settled yet."],
