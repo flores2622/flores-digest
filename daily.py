@@ -1015,6 +1015,17 @@ def build_metrics(day):
             f"{str(e)[:200]}) -- sending without it")
         util, weighted = {}, 0.0
     _raw_tasks = json.loads((ROOT / f"data/az_tasks_{day}.json").read_text())
+    # CRM.md phase 2: with TASKS_SOURCE=crm, Task Completion reads Pantheon's
+    # own CRM (crm_tasks.read_day, AgencyZoom-shaped); the AgencyZoom file
+    # stays the fallback and the saved input. Default: AgencyZoom, as before.
+    import crm_tasks
+    if crm_tasks.uses_crm():
+        _crm_rows = crm_tasks.read_day(day, log=log)
+        if _crm_rows is None:
+            log("TASKS_SOURCE=crm but the CRM could not be read -- Task Completion from AgencyZoom's file")
+        else:
+            log(f"Task Completion from the CRM: {len(_crm_rows)} tasks due {day}")
+            _raw_tasks = _crm_rows
     import task_audit as _ta
     _verdicts = _ta.cancellation_verdicts(
         day, _raw_tasks, {v["az_id"]: k for k, v in PRODUCERS.items()})
@@ -1328,6 +1339,10 @@ def _run(a):
     # it logs and carries on without CF_API_TOKEN or on any error.
     import crm_sync
     crm_sync.run(days={day}, log=log)
+    # Phase 2's cutover test: Task Completion from AgencyZoom and from the
+    # CRM side by side, written to R2 for the Tasks page (task_check.py).
+    import task_check
+    task_check.run(day, log=log)
 
     if held:
         log("SEND_HOLD: sales log and missed-call tasks skipped with the email")

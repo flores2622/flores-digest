@@ -3065,6 +3065,21 @@ on a published day. The rules:
   Suggestions box for the page ("general"); a rule with an open suggestion is
   highlighted (💡 N, amber edge) until Frank ticks it done; the author or
   Frank removes one.
+- **Phase 2's switch and its test** (2026-10-13; CRM.md phase 2):
+  `TASKS_SOURCE=crm` in the nightly's environment moves the task reads and
+  writes to the CRM -- `crm_tasks.py` (the D1 REST API with crm_sync's
+  token; `read_day` gives the day's tasks in AgencyZoom's shape, so
+  `az_tasks.audit`, `task_audit` and `missed_call_tasks` are unchanged;
+  `create_task` writes a missed-call task with az_id NULL and an events row)
+  -- and `live_basis.tasks.source` makes the Worker's live Task Completion
+  read the D1 binding (`live.js crmTasksDue`; keep its SELECT and mapping in
+  step with `crm_tasks`). Unset, everything reads AgencyZoom as before.
+  **Every night `task_check.py` compares both sides** (after `crm_sync`, so
+  the CRM holds what AgencyZoom held): the same verdicts, per producer and
+  team, R2 `crm/task_check/<day>.json`, shown on Sales Center > Tasks as the
+  Cutover check card (`GET /api/crm/taskcheck`, Frank only). Flip the switch
+  only when the days agree, and only once the producers can see a CRM task
+  somewhere other than AgencyZoom.
 - `node --test site/crm.test.mjs` is its test; run it after touching
   `site/crm.js` or the schema. A new field is added to the schema (a new
   migration file), to `OBJECTS` in `site/crm.js` and to the test together.

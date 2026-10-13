@@ -739,6 +739,26 @@ async function azTasksDue(env, day, basis, fetchFn) {
   }
   return { tasks: [...out.values()], complete };
 }
+/* CRM.md phase 2: with the checkpoint's basis.tasks.source === "crm" the
+   day's tasks come from Pantheon's own CRM (the D1 binding), in the same
+   shape azTasksDue gives, so taskCompletion reads either side unchanged.
+   crm_tasks.read_day is the Python twin -- keep the SELECT and the mapping
+   in step. One query, never paged, so it is always complete. */
+const CRM_TASKS_SELECT = "SELECT t.id, t.az_id, t.title, t.comments, t.assignee_id, t.lead_id, t.household_id, t.sr_id, t.customer_type, t.due_date, t.status, t.complete_date, "
+  + "coalesce(nullif(trim(l.firstname || ' ' || l.lastname), ''), l.business_name, nullif(trim(h.firstname || ' ' || h.lastname), ''), h.business_name) AS customer_name "
+  + "FROM tasks t LEFT JOIN leads l ON l.id = t.lead_id LEFT JOIN households h ON h.id = t.household_id WHERE substr(t.due_date, 1, 10) = ? ORDER BY t.due_date, t.id";
+export async function crmTasksDue(env, day) {
+  if (!env.CRM) throw new Error("the CRM binding is not configured");
+  const r = await env.CRM.prepare(CRM_TASKS_SELECT).bind(day).all();
+  const tasks = (r.results || []).map(x => ({
+    id: x.az_id ?? x.id, crm_id: x.id, title: x.title || "", comments: x.comments, status: Number(x.status || 0),
+    customerType: x.customer_type || (x.lead_id ? "lead" : x.household_id ? "customer" : x.sr_id ? "serviceTicket" : null),
+    customerId: x.lead_id || x.household_id || x.sr_id || null, customerName: x.customer_name || null,
+    assignees: x.assignee_id ? [{ id: x.assignee_id }] : [],
+    dueDate: String(x.due_date || "").slice(0, 10) || null, completeDate: x.complete_date || null,
+  }));
+  return { tasks, complete: true };
+}
 // Python's round(x, 1): half to even on an exact tie (13 of 16 is 81.25 ->
 // 81.2), where Math.round would give 81.3.
 const pyRound1 = x => {
@@ -1125,7 +1145,8 @@ export async function computeFast(env, day, basis, fetchFn = fetch, evidence = n
   if (!basis.tasks) tasks = { ok: false, reason: "needs a checkpoint built after this update" };
   else {
     const stale = !taskPrev || !taskPrev.fetched_at || Date.now() - Date.parse(taskPrev.fetched_at) > TASKS_REFRESH_SECONDS * 1000;
-    const got = stale ? await part(env, "tasks", async () => azTasksDue(env, day, basis, fetchFn))
+    const useCrm = basis.tasks.source === "crm";
+    const got = stale ? await part(env, "tasks", async () => useCrm ? crmTasksDue(env, day) : azTasksDue(env, day, basis, fetchFn))
       : { ok: true, data: { tasks: taskPrev.tasks, complete: taskPrev.complete } };
     if (got.ok && stale) inputs.tasks = { tasks: got.data.tasks, complete: got.data.complete, fetched_at: new Date().toISOString() };
     tasks = !got.ok ? got : !got.data.complete ? { ok: false, reason: "more tasks due today than the page cap" }

@@ -33,6 +33,7 @@ import json
 import pathlib
 import re
 
+import crm_tasks
 import missed_call_audit as audit
 import staff
 
@@ -161,7 +162,12 @@ def _todays_tasks(azc, day):
     global _ALL_TASKS
     if _ALL_TASKS is None:
         try:
-            _ALL_TASKS = azc.tasks(day, day)
+            if crm_tasks.uses_crm():
+                # CRM.md phase 2: the CRM's own list (AgencyZoom-shaped); None
+                # when it cannot be read, so nothing is created this run
+                _ALL_TASKS = crm_tasks.read_day(day, log=log)
+            else:
+                _ALL_TASKS = azc.tasks(day, day)
         except (Exception, SystemExit) as e:
             log(f"  could not read today's tasks ({type(e).__name__}: {e})")
             return None
@@ -215,8 +221,9 @@ def _standalone_titles(azc, day):
     return _STANDALONE
 
 
-def create(azc, r, live):
-    """POST /v1/api/tasks.
+def create(azc, r, live, day=None):
+    """POST /v1/api/tasks -- or, with TASKS_SOURCE=crm, a row in Pantheon's
+    own CRM (crm_tasks.create_task, the same body; CRM.md phase 2).
 
     Two different shapes depending on what the task hangs off, found by
     probe_lead_task.py (2026-09-10). AgencyZoom's own create endpoint answers
@@ -241,8 +248,10 @@ def create(azc, r, live):
     if not live:
         where = (f"on {r['record_type']} {r['record_id']}"
                  if r.get("record_id") else "standalone")
-        log(f"    would create: {body['title']} -> {r['who']} ({where})")
+        log(f"    would create{' in the CRM' if crm_tasks.uses_crm() else ''}: {body['title']} -> {r['who']} ({where})")
         return None
+    if crm_tasks.uses_crm():
+        return crm_tasks.create_task(body, day or dt.datetime.now(AZ).date().isoformat(), log=log)
     j = azc.post("/v1/api/tasks", body) or {}
     return j.get("id")
 
@@ -296,7 +305,7 @@ def run(day, live=False, intraday=False):
             continue
         log(f"  {who} -> {r['who']} ({r['bucket']})")
         try:
-            tid = create(azc, r, live)
+            tid = create(azc, r, live, day)
         except Exception as e:
             # One record AgencyZoom rejects must not abandon the rest of the
             # batch. The lead-bucket 400 seen 2026-09-02 through 2026-09-10
