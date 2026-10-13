@@ -61,5 +61,6 @@ window.GOALS = {
   "green": 15,
   "red": 60
  },
- "week_premium_goal": 20000
+ "week_premium_goal": 20000,
+ "folio_premium_goal": 75000
 };

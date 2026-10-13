@@ -11,8 +11,9 @@ const AGENCY_LINE = (() => { const a = (window.STAFF || {}).agency || {}; return
    the published day's document, a folio edition merges the folio's days
    (ensureCurForRange keeps them in curRangeDocs) and reads the last
    folio's for the pace to beat. Sales come first, always. A slow edition
-   -- no sales on a day, a week under the goal (goals.json's week_premium_goal), a folio under last folio's
-   pace -- says so and carries "What to try / What to look for". Primetime,
+   -- no sales on a day, a week under the goal (goals.json's week_premium_goal), a folio whose pace
+   misses the monthly goal (folio_premium_goal, $75,000 -- Frank, 2026-10-13: "lets start focusing on that
+   in the editions, not what we sold last month") -- says so and carries "What to try / What to look for". Primetime,
    the sports section, is a permanent part of the paper and is the only
    place the paper carries the standings table. */
 
@@ -115,7 +116,7 @@ table.box.spt th { padding: 6px 4px; } table.box.spt td { padding: 7px 4px; whit
 })();
 
 let postEd = "";                                   // the edition picked on a folio ("" = the default)
-const postCache = { lastFolio: {}, today: null, todayAt: 0 };
+const postCache = { sheet: {}, today: null, todayAt: 0 };
 
 const pmoney = n => "$" + Math.round(+n || 0).toLocaleString("en-US");
 const pfirst = n => String(n || "").split(" ")[0];
@@ -198,6 +199,7 @@ const POST_GOALS = (() => {
     ["closing_hh", "Closing ratio", `${n(g("closing_ratio_pct"))}% or more`]];
 })();
 const WEEK_GOAL = (window.GOALS || {}).week_premium_goal || 20000;   // goals.json: a week under it is slow
+const FOLIO_GOAL = (window.GOALS || {}).folio_premium_goal || 75000; // goals.json: the team's monthly premium goal
 function goalBoardHtml(F, title) {
   const rows = POST_GOALS.filter(([k]) => F.prods.some(p => (F.tiers[p.name] || {})[k] != null));
   const hit = rows.map(([k]) => F.prods.filter(p => (F.tiers[p.name] || {})[k] === "green").map(p => pfirst(p.name)));
@@ -384,17 +386,30 @@ function folioDayRow(doc, live) {
   const note = !F.ps ? `No sales · ${plural(F.dials, "dial")}` : F.sellers.length === 1 ? `${pfirst(top.name)} sold ${plural(F.hhSoldBy(top.name), "household")} · the only sale` : `${pfirst(top.name)} led with ${pmoney(top.ps)} · ${plural(F.hhSold, "household")}`;
   return { date: doc.date, ps: F.ps, pol: F.pol, hhSold: F.hhSold, dials: F.dials, note, live: !!live, doc };
 }
-async function lastFolioTotal(end) {
-  if (postCache.lastFolio[end] !== undefined) return postCache.lastFolio[end];
-  const i = FOLIO_CLOSE_DATES.indexOf(end);
-  let total = null;
-  if (i > 0) {
-    const prevEnd = FOLIO_CLOSE_DATES[i - 1], prevStart = folioStartFor(prevEnd) || "";
-    const docs = await fetchRangeDocs(prevStart, prevEnd);
-    if (docs.length) total = { ps: docs.reduce((a, x) => a + (+(x.totals || {}).ps || 0), 0), days: docs.length, start: prevStart, end: prevEnd };
-  }
-  postCache.lastFolio[end] = total;
-  return total;
+/* What the folio has sold, from the Sales sheet (Frank, 2026-10-13: "look at
+   the sales sheet, whete did that number come from?" -- "last folio" was the
+   published days' Premium Sold added up, and the board's days only start
+   09-01, so 08-20..09-18 read $45,294 against the sheet's $73,963). The
+   monthly goal is measured on the sheet's Team total, the number the agency
+   pays on: every entry, Amanda's included. Premium by sheet day, so a week
+   edition can take the days up to its Friday. An open folio is re-read
+   every 2 minutes. */
+async function folioSheet(end) {
+  const c = postCache.sheet[end];
+  if (c && (end < isoDate(azTodayDate()) || Date.now() - c.at < 120000)) return c.v;
+  let v = null;
+  try {
+    const r = await fetch(`/api/saleslog/folio/${end}`, { cache: "no-store" });
+    if (r.ok) {
+      const body = await r.json(), byDay = {};
+      for (const e of body.entries || []) byDay[e.day] = (byDay[e.day] || 0) + (+e.premium || 0);
+      v = { byDay, upto: d => Object.entries(byDay).reduce((a, [k, x]) => k <= d ? a + x : a, 0),
+            between: (a, b) => Object.entries(byDay).reduce((t, [k, x]) => k >= a && k <= b ? t + x : t, 0),
+            total: Object.values(byDay).reduce((a, x) => a + x, 0) };
+    }
+  } catch (_) {}
+  postCache.sheet[end] = { v, at: Date.now() };
+  return v;
 }
 async function todayCheckpoint(today) {
   if (postCache.today && Date.now() - postCache.todayAt < 120000) return postCache.today;
@@ -430,11 +445,18 @@ function timelineHtml(rows, ahead, title, sub, inWeek) {
     ${ahead.map(day => `<div class="tlr ahead"><span class="d">${pmd(day)}<small>${pdow3(day)}</small></span><div class="b"></div><span class="m">—</span><span class="e">ahead</span></div>`).join("")}</div></section>`;
 }
 function writeFolio(merged, rows, ctx) {
-  // merged: the days' documents merged (ensureCurForRange's), rows: one per day, ctx: {start, end, bizdays, ahead, open, last, live, ed}
+  // merged: the days' documents merged (ensureCurForRange's), rows: one per day, ctx: {start, end, bizdays, ahead, open, live, ed, sheet}
   const F = postFacts(merged);
-  const tot = rows.reduce((a, r) => a + r.ps, 0), nDone = rows.length, all = nDone + ctx.ahead.length;
+  // The folio's premium is the Sales sheet's Team total (folioSheet); the day rows (the board's Premium
+  // Sold) only tell the days apart. No sheet answer: the board's own days, said as such.
+  const boardTot = rows.reduce((a, r) => a + r.ps, 0), tot = ctx.sheet ? ctx.sheet.total : boardTot;
+  // Days counted on the calendar, not the published days: a sheet total over a folio the board only
+  // partly holds must not be spread over fewer days than it took to sell.
+  const all = ctx.bizdays && ctx.bizdays.length ? ctx.bizdays.length : rows.length + ctx.ahead.length;
+  const nDone = ctx.sheet ? Math.max(1, all - ctx.ahead.length) : rows.length;
   const pace = nDone ? tot / nDone * all : 0;
-  const last = ctx.last, gap = last ? last.ps - pace : null;
+  // Measured against the monthly goal, not last folio (Frank, 2026-10-13).
+  const goal = FOLIO_GOAL, gap = goal - pace, need = Math.max(0, goal - tot);
   const best = rows.reduce((a, r) => !a || r.ps > a.ps ? r : a, null), worst = rows.reduce((a, r) => !a || r.ps < a.ps ? r : a, null);
   const hhSold = rows.reduce((a, r) => a + r.hhSold, 0);
   const span = `${pmd(ctx.start)} – ${pmd(ctx.end)}`;
@@ -445,26 +467,25 @@ function writeFolio(merged, rows, ctx) {
   const zeroDays = rows.filter(r => !r.ps);
   const mondays = rows.filter(r => pdow3(r.date) === "Mon"), notMon = rows.filter(r => pdow3(r.date) !== "Mon");
   const avg = xs => xs.length ? xs.reduce((a, r) => a + r.ps, 0) / xs.length : 0;
-  const slow = last ? pace < last.ps : false;
+  const slow = pace < goal;
   if (ctx.open) {
     E.edition = `Folio edition · day ${nDone} of ${all} · ${ctx.live ? "updating live" : "as of the last published day"}`;
     E.kicker = "The folio so far"; E.by = "By Apollo · Updated every published day";
-    E.hl = gap != null ? `${nDone === 1 ? "One day" : `${nDone} days`} in, the folio has ${pmoney(tot)} and is ${pmoney(Math.abs(gap))} ${gap > 0 ? "behind" : "ahead of"} last folio’s pace`
-      : `${nDone === 1 ? "One day" : `${nDone} days`} in, the folio has ${pmoney(tot)}`;
-    E.deck = `${nDone} of ${all} business days are done. At this pace it finishes near ${pmoney(pace)}${last ? `; last folio closed at ${pmoney(last.ps)}` : ""}.`;
+    E.hl = tot >= goal ? `${nDone === 1 ? "One day" : `${nDone} days`} in, the folio has ${pmoney(tot)}: the ${pmoney(goal)} goal is made`
+      : `${nDone === 1 ? "One day" : `${nDone} days`} in, the folio has ${pmoney(tot)}, ${pmoney(need)} from the ${pmoney(goal)} goal`;
+    E.deck = `${nDone} of ${all} business days are done. At this pace it finishes near ${pmoney(pace)}, ${gap > 0 ? `${pmoney(gap)} short of` : `${pmoney(-gap)} over`} the ${pmoney(goal)} goal.`;
     E.body = [
-      `The folio has ${pmoney(tot)} in new premium after ${plural(nDone, "business day")}.${best && best.ps ? ` Its best day was ${pdow(best.date)} the ${pord(+best.date.slice(8))}, ${pmoney(best.ps)}: ${best.note}.` : ""}${worst && !worst.ps ? ` Its worst was ${pdow(worst.date)} the ${pord(+worst.date.slice(8))}, with no sales at all.` : ""}`,
-      gap != null ? `At the current pace the folio closes near ${pmoney(pace)}, ${gap > 0 ? `about ${pmoney(gap)} short of the last one` : `about ${pmoney(-gap)} over the last one`}.${left ? ` ${plural(left, "business day")} ${left === 1 ? "is" : "are"} left${gap > 0 ? ` to close that gap: roughly ${pmoney(gap / left)} a day more than the team is averaging` : ""}.` : ""}`
-        : `${left ? `${plural(left, "business day")} ${left === 1 ? "is" : "are"} left; at this pace the folio closes near ${pmoney(pace)}.` : "The folio is on its last day."}`,
+      `The folio has ${pmoney(tot)} in new premium${ctx.sheet ? " on the Sales sheet" : ""} after ${plural(nDone, "business day")}.${best && best.ps ? ` Its best day was ${pdow(best.date)} the ${pord(+best.date.slice(8))}, ${pmoney(best.ps)}: ${best.note}.` : ""}${worst && !worst.ps ? ` Its worst was ${pdow(worst.date)} the ${pord(+worst.date.slice(8))}, with no sales at all.` : ""}`,
+      `At the current pace the folio closes near ${pmoney(pace)}, ${gap > 0 ? `about ${pmoney(gap)} short of the ${pmoney(goal)} goal` : `about ${pmoney(-gap)} over the ${pmoney(goal)} goal`}.${left ? ` ${plural(left, "business day")} ${left === 1 ? "is" : "are"} left${need > 0 ? `: ${pmoney(need / left)} a day reaches the goal, against the ${pmoney(nDone ? tot / nDone : 0)} a day the team is averaging` : ""}.` : need > 0 ? ` ${pmoney(need)} to go on the last day.` : ""}`,
       topName ? `${topName} leads on per-day averages with ${F.byName[topName].pts} points${perDay(F.byName[topName], "dials") >= 50 ? " and is over the 50-dial goal" : ""}.${
         F.sellers[0] && F.sellers[0].name !== topName ? ` ${F.sellers[0].name} has sold the most premium, ${pmoney(F.sellers[0].ps)}.` : ""}${
         F.overGoal("talk").length ? ` ${plist(F.overGoal("talk").map(pfirst))} ${F.overGoal("talk").length === 1 ? "has" : "have"} the longest calls.` : ""}` : "",
       F.hh ? `${plural(F.hh - hhSold > 0 ? F.hh - hhSold : 0, "quoted household")} ${F.hh - hhSold === 1 ? "has" : "have"} not bought yet. They are the fastest way back to pace.` : "",
     ].filter(Boolean);
-    E.pull = gap != null && gap > 0 && left ? [`${pmoney(gap / left)} more a day closes the gap to last folio.`, `The gap to last folio’s total, spread over the ${plural(left, "day")} left`]
+    E.pull = need > 0 && left ? [`${pmoney(need / left)} a day reaches ${pmoney(goal)}.`, `What is left of the monthly goal, spread over the ${plural(left, "day")} to go`]
       : best ? [`${best.note}.`, `${pdow(best.date)}, ${pmd(best.date)}, the best day so far`] : ["The folio is open.", "Apollo"];
-    E.nums = [["Premium sold", pmoney(tot)], ["Pace to close", pmoney(pace)], ["Last folio", last ? pmoney(last.ps) : "—"], ["Days to go", String(left)], ["Households sold", F.hh ? `${hhSold} of ${F.hh}` : String(hhSold)], ["Closing ratio", F.hh ? ppct(100 * hhSold / F.hh) : "—"]];
-    E.tips = slow ? [`Behind last folio’s pace. <em>What to try with ${plural(left, "day")} left.</em>`, [
+    E.nums = [["Premium sold", pmoney(tot)], ["Pace to close", pmoney(pace)], ["Goal", pmoney(goal)], ["To goal", need ? pmoney(need) : "Made"], ["Days to go", String(left)], ["Households sold", F.hh ? `${hhSold} of ${F.hh}` : String(hhSold)], ["Closing ratio", F.hh ? ppct(100 * hhSold / F.hh) : "—"]];
+    E.tips = slow ? [`Behind the pace for ${pmoney(goal)}. <em>What to try with ${plural(left, "day")} left.</em>`, [
       `<b>Close what is already quoted.</b> ${plural(Math.max(0, F.hh - hhSold), "household")} have a quote and no sale. A call to each, presenting on the phone, is worth more than new leads.`,
       mondays.length && notMon.length && avg(mondays) < avg(notMon) * 0.6 ? `<b>Protect Mondays.</b> This folio’s Mondays average ${pmoney(avg(mondays))} against ${pmoney(avg(notMon))} on other days. Start Monday with call backs, not new dials.` : "<b>Protect the first hour.</b> Start the day with call backs and follow-ups, then new dials.",
       "<b>Bundle every auto quote.</b> Households with two policies close at a higher rate and lift premium per household.",
@@ -486,10 +507,10 @@ function writeFolio(merged, rows, ctx) {
     E.body = [
       `The folio ran from ${pmd(ctx.start)} to ${pmd(ctx.end)}.${best ? ` Its best day was ${pdow(best.date)} ${pmd(best.date)} at ${pmoney(best.ps)}: ${best.note}.` : ""}${zeroDays.length ? ` ${plural(zeroDays.length, "day")} ended without a sale${zeroDays.length <= 3 ? ` (${plist(zeroDays.map(r => pmd(r.date)))})` : ""}.` : " Every business day had a sale."}`,
       topName ? `${topName} won the folio with ${F.byName[topName].pts} points on per-day averages${F.sellers[0] ? `, and ${F.sellers[0].name === topName ? "the most premium" : `${F.sellers[0].name} sold the most premium`}, ${pmoney(F.sellers[0].ps)}` : ""}.` : "",
-      `Across the folio the team sold ${plural(hhSold, "household")}${F.hh ? ` of the ${F.hh} it quoted, a ${ppct(100 * hhSold / F.hh)} close` : ""}, on ${plural(F.dials, "dial")} and a ${ppct(F.rate)} contact rate.${last ? ` Last folio closed at ${pmoney(last.ps)}; this one ${tot >= last.ps ? "beat it" : "fell short"} by ${pmoney(Math.abs(tot - last.ps))}.` : ""}`,
+      `Across the folio the team sold ${plural(hhSold, "household")}${F.hh ? ` of the ${F.hh} it quoted, a ${ppct(100 * hhSold / F.hh)} close` : ""}, on ${plural(F.dials, "dial")} and a ${ppct(F.rate)} contact rate. The goal was ${pmoney(goal)}; the folio ${tot >= goal ? `made it by ${pmoney(tot - goal)}` : `fell ${pmoney(goal - tot)} short`}.`,
     ].filter(Boolean);
     E.pull = best ? [`${best.note}.`, `${pdow(best.date)}, ${pmd(best.date)}, the best day of the folio`] : ["The folio is closed.", "Apollo"];
-    E.nums = [["Premium sold", pmoney(tot)], ["Households sold", F.hh ? `${hhSold} of ${F.hh}` : String(hhSold)], ["Closing ratio", F.hh ? ppct(100 * hhSold / F.hh) : "—"], ["Best day", best ? pmoney(best.ps) : "—"], ["Dials", String(F.dials)], ["Contact rate", ppct(F.rate)]];
+    E.nums = [["Premium sold", pmoney(tot)], ["Goal", `${pmoney(goal)} · ${tot >= goal ? "made" : `${ppct(100 * tot / goal, 0)}`}`], ["Households sold", F.hh ? `${hhSold} of ${F.hh}` : String(hhSold)], ["Closing ratio", F.hh ? ppct(100 * hhSold / F.hh) : "—"], ["Best day", best ? pmoney(best.ps) : "—"], ["Dials", String(F.dials)], ["Contact rate", ppct(F.rate)]];
     E.tips = null;
     E.s1 = ["Folio honours", `${pfirst(topName || "Nobody")} wins the folio`, `Top producer: ${topName || "—"}.${F.sellers[0] ? ` Most premium: ${F.sellers[0].name}, ${pmoney(F.sellers[0].ps)}.` : ""}${best ? ` Best day: ${pmd(best.date)}, ${pmoney(best.ps)}.` : ""}${F.overGoal("rate").length ? ` Over the contact-rate goal: ${plist(F.overGoal("rate").map(pfirst))}.` : ""}`];
     E.s2 = ["Carried forward", `${plural(Math.max(0, F.hh - hhSold), "quoted household")} still open`, `${Math.max(0, F.hh - hhSold)} households quoted this folio had not bought when it closed. They open the new folio as its first calls.`];
@@ -502,8 +523,11 @@ function writeFolio(merged, rows, ctx) {
 }
 function writeWeek(docsUpto, rows, ctx, ed) {
   const weekRows = rows.filter(r => r.date >= ed.from && r.date <= ed.upto);
-  const wkTot = weekRows.reduce((a, r) => a + r.ps, 0), fTot = rows.reduce((a, r) => a + r.ps, 0);
-  const all = rows.length + ctx.ahead.length, pace = rows.length ? fTot / rows.length * all : 0;
+  // From the Sales sheet when it answers (folioSheet), as the folio edition.
+  const S = ctx.sheet;
+  const wkTot = S ? S.between(ed.from, ed.upto) : weekRows.reduce((a, r) => a + r.ps, 0), fTot = S ? S.upto(ed.upto) : rows.reduce((a, r) => a + r.ps, 0);
+  const all = ctx.start && ctx.end ? pbizDays(ctx.start, ctx.end).length : rows.length + ctx.ahead.length;
+  const done = S ? Math.max(1, all - ctx.ahead.length) : rows.length, pace = done ? fTot / done * all : 0;
   const best = weekRows.reduce((a, r) => !a || r.ps > a.ps ? r : a, null);
   const slowW = wkTot < WEEK_GOAL;
   const zeroDays = weekRows.filter(r => !r.ps);
@@ -573,23 +597,23 @@ async function postPanel(err) {
   const eds = folioEditions(bizdays, docDates, open);
   const edId = eds.some(x => x.id === postEd && !x.ahead) ? postEd : (eds.find(x => x.def) || {}).id;
   const ed = eds.find(x => x.id === edId) || eds[0];
-  const last = await lastFolioTotal(end);
+  const sheet = await folioSheet(end);
   if (ed && ed.week) {
     const upto = docs.filter(x => x.date <= ed.upto);
     const rows = upto.map(x => folioDayRow(x));
     const ahead = bizdays.filter(day => day > ed.upto);
-    const W = writeWeek(upto, rows, { start, end, ahead }, ed);
+    const W = writeWeek(upto, rows, { start, end, ahead, sheet }, ed);
     const F = W.F;
     const E = {
       edition: `Week ${ed.week} edition · published Fri ${pmd(ed.date)}`, dateline: `Folio ${pmd(start)} – ${pmd(end)}, ${end.slice(0, 4)} · week of ${pmd(ed.from)} – ${pmd(ed.date)}`,
       kicker: ed.final ? "The last Friday of the folio" : `Week ${ed.week} in review`, by: `By Apollo · Week ${ed.week} edition`, goalTitle: "The goal board · this week",
       hl: ed.final ? `${W.nWord} left: the folio stands at ${pmoney(W.fTot)}` : W.slowW ? `A slow week: ${pmoney(W.wkTot)} in, under the ${pmoney(WEEK_GOAL)} line` : `Week ${ed.week} adds ${pmoney(W.wkTot)}; the folio stands at ${pmoney(W.fTot)}`,
-      deck: `${rows.length} of ${W.all} business days done. At this pace the folio finishes near ${pmoney(W.pace)}${last ? `; last folio closed at ${pmoney(last.ps)}` : ""}.`,
+      deck: `${rows.length} of ${W.all} business days done. At this pace the folio finishes near ${pmoney(W.pace)}, ${W.pace >= FOLIO_GOAL ? "over" : `${pmoney(FOLIO_GOAL - W.pace)} short of`} the ${pmoney(FOLIO_GOAL)} goal.`,
       body: [`The team sold ${pmoney(W.wkTot)} in new premium from ${pmd(ed.from)} to ${pmd(ed.date)}, across ${plural(W.weekRows.length, "business day")}.${W.best ? ` The best day was ${pdow(W.best.date)} ${pmd(W.best.date)}, at ${pmoney(W.best.ps)}: ${W.best.note}.` : ""}`,
         W.weekRows.filter(r => r.ps && r !== W.best).length ? W.weekRows.filter(r => r !== W.best).map(r => `${pmd(r.date)}: ${r.note}.`).join(" ") : "",
         `The folio has ${pmoney(W.fTot)} after ${plural(rows.length, "day")}. ${ed.final ? `${W.nWord} before it closes on ${pdow(W.closeDay)} ${pmd(W.closeDay)}: follow up every open quote, call back every lead that asked, and put the rest of the day's dials on the phone.` : `${plural(ahead.length, "business day")} remain before it closes on ${pmd(end)}.`}`].filter(Boolean),
       pull: W.best ? [`${W.best.note}.`, `${pdow(W.best.date)}, ${pmd(W.best.date)}, the best day of the week`] : ["No sales this week.", "Apollo"],
-      nums: [["This week", pmoney(W.wkTot)], ["Folio to date", pmoney(W.fTot)], ["Best day", W.best ? pmoney(W.best.ps) : "—"], ["Days done", `${rows.length} of ${W.all}`], ["Pace to close", pmoney(W.pace)], ["Last folio", last ? pmoney(last.ps) : "—"]],
+      nums: [["This week", pmoney(W.wkTot)], ["Folio to date", pmoney(W.fTot)], ["Best day", W.best ? pmoney(W.best.ps) : "—"], ["Days done", `${rows.length} of ${W.all}`], ["Pace to close", pmoney(W.pace)], ["To goal", W.fTot >= FOLIO_GOAL ? "Made" : pmoney(FOLIO_GOAL - W.fTot)]],
       tips: W.slowW ? [`A slow week: ${pmoney(W.wkTot)}, under the ${pmoney(WEEK_GOAL)} line.${ed.final ? " <em>Here is how to finish the folio.</em>" : ""}`, [
         "<b>Call back every household quoted this week.</b> Present the quote on the phone and ask for the sale; a quote sent by email rarely closes on its own.",
         "<b>Work 1-1 QNC before new leads.</b> Quotes that never closed in the last 30 days are the quickest premium on the board.",
@@ -604,7 +628,7 @@ async function postPanel(err) {
       foot: `Frozen as it went out on ${pmd(ed.date)}`,
       take: `Week ${ed.week}: ${pmoney(W.wkTot)}${W.slowW ? ", under the ${pmoney(WEEK_GOAL)} line" : ""}. ${pfirst(F.order[0] || "Nobody")} tops the week's standings.`,
     };
-    const count = ed.final ? `<section class="count"><div class="big">${ed.left}</div><div class="l1">${W.nWord}. The folio closes ${pdow(W.closeDay)}, ${pmd(W.closeDay)}.</div><div class="l2">${last ? `${pmoney(Math.max(0, last.ps - W.fTot))} to beat last folio's ${pmoney(last.ps)}. ` : ""}Every household still quoted is a sale that counts this folio if it closes by ${pmd(W.closeDay)}. Make the calls.</div></section>` : "";
+    const count = ed.final ? `<section class="count"><div class="big">${ed.left}</div><div class="l1">${W.nWord}. The folio closes ${pdow(W.closeDay)}, ${pmd(W.closeDay)}.</div><div class="l2">${W.fTot >= FOLIO_GOAL ? `The ${pmoney(FOLIO_GOAL)} goal is made. ` : `${pmoney(FOLIO_GOAL - W.fTot)} to the ${pmoney(FOLIO_GOAL)} goal. `}Every household still quoted is a sale that counts this folio if it closes by ${pmd(W.closeDay)}. Make the calls.</div></section>` : "";
     const inWeek = r => r.date >= ed.from && r.date <= ed.upto;
     return postPaperHtml(E, F, { isFolio: true, live: false, eds, extra: count, timeline: timelineHtml(rows, ahead, `The folio through week ${ed.week}`, "this week in colour", inWeek) });
   }
@@ -614,7 +638,7 @@ async function postPanel(err) {
   const lastDate = rows.length ? rows[rows.length - 1].date : start;
   const ahead = bizdays.filter(day => day > lastDate && day > (liveDoc ? today : lastDate));
   const merged = cur;
-  const W = writeFolio(merged, rows, { start, end, bizdays, ahead, open, last, live: !!liveDoc, ed });
+  const W = writeFolio(merged, rows, { start, end, bizdays, ahead, open, live: !!liveDoc, ed, sheet });
   const tl = timelineHtml(rows, ahead, open ? "The folio, day by day" : "How the folio went, day by day", open ? `${plural(ahead.length, "business day")} to go` : "every business day of the folio");
   return postPaperHtml(W.E, W.F, { isFolio: true, live: !!liveDoc, eds, timeline: tl });
 }
