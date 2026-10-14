@@ -1176,6 +1176,15 @@ and anything without the glow is the checkpoint's (Frank, 2026-09-24).
   refusal in the az log records the host that answered. `node --test
   proxy/server.test.mjs` runs it against a fake AgencyZoom. The server
   itself is Frank's to make (an account, a $5 box, one DNS record).
+  **The block is geographic** (AgencyZoom support, 2026-10-14, through the
+  in-app chat: "when the 403 Forbidden error is going out, that means the
+  servers are usually not in the states"; a US address "will auto be
+  allowlisted"). The az log's `egress.colo` agrees on every day with
+  refusals: every 403 came when the Worker ran from FRA, KIX, LHR, CDG or
+  WAW; from LAX, SLC and IAD it only ever got 429s. Cloudflare picks where
+  a scheduled Worker runs, so the good days were the days it landed in the
+  US. **The proxy's server must be in a US data center**; no allowlist
+  request is needed once it is.
 - **The Worker logs in to AgencyZoom ONCE a day, not once a run.** A per-run
   login meant ~30 an hour, and on 2026-09-24 AgencyZoom began refusing the
   Worker's logins (403) within the hour while the same account still worked
