@@ -150,6 +150,7 @@
       const secs = +(du.replace(/\D/g, "") || 0), len = !du ? "" : secs >= 60 ? `${Math.floor(secs / 60)}m ${secs % 60}s` : `${secs}s`;
       v.text = [st && st.replace(/([a-z])([A-Z])/g, "$1 $2").toLowerCase(), len].filter(Boolean).join(" · ") || lines.join("\n");
       const rest = lines.filter(x => !/^(Call Status|Start Time|End Time|Duration):/i.test(x)).join("\n").trim(); if (rest) v.text += "\n" + rest;
+      if (n.origin === "pantheon") v.extra = [a.route === "transferred" ? "transferred" : "", a.recording ? "recorded" : "", "Pantheon's own note"].filter(Boolean).join(" · ");
     } else if (t === "TASK") { v.kind = "task"; v.label = "Task"; }
     else if (t === "MOVE_STAGE") { v.kind = "stage"; v.label = "Stage"; v.text = v.text.replace(/\s+/g, " "); }
     else if (t === "SOLD") { v.kind = "stage"; v.label = "Sold"; }
@@ -158,8 +159,18 @@
     if (!v.who && n.origin === "import") v.who = v.kind === "system" ? "AgencyZoom" : "";
     return v;
   }
+  // Pantheon writes its own CALL note from the RingCentral log (phase 3) and
+  // AgencyZoom's integration writes one too: the same call shows once --
+  // Pantheon's -- when AgencyZoom's sits on this lead within three minutes
+  // in the same direction (the call check's rule).
+  function dedupedNotes() {
+    const ms = s => Date.parse(String(s || "").replace(" ", "T")) || 0;
+    const ours = P.notes.filter(n => n.type === "CALL" && n.origin === "pantheon");
+    if (!ours.length) return P.notes;
+    return P.notes.filter(n => !(n.type === "CALL" && n.origin !== "pantheon" && ours.some(o => !!(o.attr || {}).outbound === !!(n.attr || {}).outbound && Math.abs(ms(o.createDate) - ms(n.createDate)) <= 180000)));
+  }
   function timelineHtml() {
-    const notes = P.notes.map(n => ({ n, v: noteView(n) }));
+    const notes = dedupedNotes().map(n => ({ n, v: noteView(n) }));
     const counts = {}; for (const { v } of notes) counts[v.kind] = (counts[v.kind] || 0) + 1;
     const chips = FILTERS.map(([k, l]) => `<button type="button" class="ldchip${k === ldFilter ? " on" : ""}" data-ldfilter="${k}">${l}${k === "all" ? ` <small>${notes.length}</small>` : counts[k] ? ` <small>${counts[k]}</small>` : ""}</button>`).join("");
     const shown = notes.filter(({ v }) => ldFilter === "all" || v.kind === ldFilter);
