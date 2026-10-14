@@ -102,7 +102,9 @@ export default {
       "tags": [
         "task_assignee"
       ],
-      "board": [],
+      "board": [
+        "scrub"
+      ],
       "color": "#00ffcf",
       "email_dot": "cJ",
       "handle": "coral.covers.it.all"
