@@ -75,12 +75,15 @@ OFFICE_CLOSE = (17, 30)     # "the office closes at 5:30" (CLAUDE.md)
 REACTION = (r"(liked|loved|laughed at|emphasi[sz]ed|disliked|questioned|"
             r"le gust[oó]|le encant[oó]|se ri[oó] de|enfatiz[oó]|no le gust[oó]|pregunt[oó]|"
             r"reacted (\S+ )?to)\s+[\"“”'‘’].*[\"“”'‘’]")
-ACK = re.compile(r"^\s*(ok(ay)?|k|thanks?|thank you( so much)?|ty|gracias|muchas gracias|"
+ACK = re.compile(r"^\s*(ok(ay)?|k|thanks?|thanks again|thank you( so much)?( again)?|ty|gracias|muchas gracias|"
+                 r"(i )?appreciate (it|that|this|you)( so much)?|much appreciated|got it|will do|noted|"
+                 r"awesome|no problem|you'?re welcome|de nada|"
                  r"perfect|perfecto|sounds good|great|👍|🙏|❤️|😊|👌|🙂|😁|✅|" + REACTION +
                  r")[\s!.,👍🙏😊❤️👌🙂😁✅🏻🏼🏽🏾🏿]*$", re.I | re.S)
 # A short "you too" / "thank you again" -- no question in it -- is an
 # acknowledgement too (2026-09-27, a September spot-check).
 ACK_SHORT = re.compile(r"^\s*(ok(ay)?|thanks?|thank you|gracias|grx|you too|same to you|igualmente|"
+                       r"(i )?appreciate (it|that|this|you)|much appreciated|got it|will do|"
                        r"have a (good|great|nice)|perfect|perfecto|sounds good)\b", re.I)
 # The lead asking us to stop: counted, never waiting on an answer.
 OPT_OUT = re.compile(r"^\s*(stop( all)?|unsubscribe|cancel|end|quit|alto|baja|"
@@ -222,7 +225,6 @@ def build(day, log=print, live=False):
         first[lid] = (l.get("firstname") or "").strip()
     if not person:
         return None
-    service = service_people(day, set(person.values()), log=log)
 
     # Every text / email on those leads, tagged.
     events = collections.defaultdict(list)     # person -> [event]
@@ -314,6 +316,16 @@ def build(day, log=print, live=False):
                 seen.add(sig)
                 keep.append(e)
         events[key] = keep
+
+    # Who last typed to each person by the end of the day -- the reply row's
+    # owner, and what tells a customer's renewal texts with Crystal from a
+    # producer working their own open lead (service_people).
+    last_typed = {}
+    for key, evs in events.items():
+        sent = [e for e in evs if e["kind"] == "sent" and e.get("by") and e["at"] <= day_end]
+        if sent:
+            last_typed[key] = max(sent, key=lambda e: e["at"])["by"]
+    service = service_people(day, set(person.values()), log=log, typed=last_typed)
 
     stats = {p: collections.Counter() for p in cfg.PRODUCERS}
     replies, quotes, bad = [], [], []
@@ -468,7 +480,7 @@ WORKED_LEAD = (0, 5)          # open, X-dated: a producer's lead still being wor
 NEW_BUSINESS_DAYS = 30
 
 
-def service_people(day, keys, log=print, idx=None):
+def service_people(day, keys, log=print, idx=None, typed=None):
     """The people among `keys` who are Athena's, not a producer's: their
     number routes to service by the rule the Service Center's own texts use
     (service_messages.SERVICE_BUCKETS through missed_call_audit.route) -- a
@@ -478,7 +490,18 @@ def service_people(day, keys, log=print, idx=None):
     customer since 2025-11, her only lead sold, texting Crystal about her
     renewal, was listed under Mike as never answered; the Service Center had
     her, a renewal answered by Amanda in 91 minutes. A household sold in the
-    last NEW_BUSINESS_DAYS stays its producer's."""
+    last NEW_BUSINESS_DAYS stays its producer's.
+
+    `typed`: per key, the staff member who last typed to that person (the
+    reply row's owner). **A customer's open lead keeps them a producer's only
+    when THAT producer is the one typing** (Frank, 2026-10-13: Jose Renteria,
+    a customer since 2022 with Mike's open Life Cross Sell lead, texting
+    Crystal about his renewal draft, deductible and mailing address --
+    "it is a renewal that crystal is working and the lead is assigned to
+    mike, it should be in service"). With nobody typing, any open lead keeps
+    them, as before."""
+    typed = typed or {}
+    az_of = {n: str(v["az_id"]) for n, v in cfg.PRODUCERS.items()}
     try:
         import missed_call_audit as mca
         import service_messages as sm
@@ -491,9 +514,15 @@ def service_people(day, keys, log=print, idx=None):
     out = set()
     for k in keys:
         hit = idx.get(k[-10:]) if not k.startswith("lead:") else None
-        if not (hit and mca.route(hit)[0] in sm.SERVICE_BUCKETS):
+        # A customer, or an open SR: the number routes to service. route()
+        # answers "open lead" first, so a customer with one is read here
+        # from the records, not the bucket.
+        if not (hit and (mca.route(hit)[0] in sm.SERVICE_BUCKETS or hit["cust"]
+                         or any(t.get("status") == 1 for t in hit["tix"]))):
             continue
-        if any(l.get("status") in WORKED_LEAD for l in hit["lead"]):
+        worked = [l for l in hit["lead"] if l.get("status") in WORKED_LEAD]
+        who = az_of.get(typed.get(k) or "")
+        if worked and (k not in typed or any(str(l.get("assignedTo")) == who for l in worked)):
             continue
         # A lead lost with activity in the window was being worked that day:
         # a lead lost on or after a past day reads lost on a rebuild (Alana

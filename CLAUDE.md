@@ -1604,6 +1604,19 @@ already downloads. Leads only; a customer's texts are Athena's.
   never adds those people back. Published days 09-01..10-09 had only those
   people's reply and bad-contact rows taken out, counts with them (backups
   under `backups/2026-10-12-messages-service-split/`).
+  **A customer's open lead keeps them a producer's only when THAT producer
+  is the one typing** (Frank, 2026-10-13: Jose Renteria, a customer since
+  2022 with Mike's open Life Cross Sell lead, texting Crystal about his
+  renewal draft, deductible and mailing address, sat in Needs someone now
+  under Crystal -- "it is a renewal that crystal is working and the lead is
+  assigned to mike, it should be in service"): `messages.build` works out who
+  last typed to each person by the day's end (`last_typed`) and
+  `service_people(..., typed=)` lets an open / X-dated lead keep a customer
+  (or a number with an open SR) only when it is assigned to that person;
+  with nobody typing, any open lead keeps them, as before. `route()` answers
+  "open lead" before "customer", so the records are read, not the bucket.
+  10-13's `messages` were rebuilt under it (backups under
+  `backups/2026-10-14-messages-renteria/`).
 - **Who sent it:** TEXT/EMAIL notes carry `attr.outbound` (True/False on a
   text, 1/0 on an email -- `messages._inbound` reads both); a text with
   `attr.triggerRuleId` is an AgencyZoom automation. **Emails have no
@@ -1625,7 +1638,10 @@ already downloads. Leads only; a customer's texts are Athena's.
   gustó / Le encantó / Se rió de / Enfatizó / No le gustó / Preguntó,
   "reacted ... to") and a bare emoji are in `ACK`, so they count as a reply
   and never wait; the Worker gets the same pattern through
-  `live_basis.messages.rx`. Published days were not rebuilt.
+  `live_basis.messages.rx`. Published days were not rebuilt. **So is a thank-you in other
+  words** (Frank, 2026-10-13: Jose Renteria's "I appreciate it!" -- "its the
+  end of the convo"): appreciate it / that / you, much appreciated, got it,
+  will do, noted, awesome, no problem, you're welcome, thanks again.
 - **Replies are windowed from the office's close the business day before**
   (5:30 PM) to 5:30 PM, so evening and weekend replies land on the next
   business day; the clock starts at 8:30 for a reply that came in closed.
