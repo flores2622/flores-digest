@@ -3316,6 +3316,40 @@ on a published day. The rules:
   Cutover check card (`GET /api/crm/taskcheck`, Frank only). Flip the switch
   only when the days agree, and only once the producers can see a CRM task
   somewhere other than AgencyZoom.
+- **Phase 3 starts with the lead page** (Frank, 2026-10-13: "go"; CRM.md
+  phase 3). **Sales Center > Leads** (`site/public/lead.js`, painted by
+  `leadPaint`; the same `crm` gate, through `LEAD_READY` after `CRM_READY`):
+  a picker (search by name or phone through `/api/crm/search`, and the 40
+  leads worked most recently, for everyone or one person) and one page per
+  lead from ONE read, `GET /api/crm/leads/<id>/page` (`crm.js leadPage`):
+  the lead with Frank's source / pipeline / stage names and AgencyZoom's in
+  italics beside them, the producer, the household and its policies once
+  sold, the quotes, the tasks (open first, Done with a comment on each),
+  the household's SRs, the stage history (`stage_moves`, else the
+  MOVE_STAGE notes), the lead's own events, and every note newest first
+  grouped by day with a filter -- Notes / Texts (sent, received, failed,
+  automation) / Emails (subject, attachments, opened) / Calls (status and
+  length read out of AgencyZoom's CALL body) / Tasks / Stages / System
+  (tags, enrolments, reassignments, dimmed). **AgencyZoom's note bodies
+  are HTML** (`<p>`, `javascript:` links, an `<audio>` player, whole Gmail
+  quotes): `plain()` keeps the words only, never the markup. The writes are
+  the CRM's existing ones: **+ Note** (a NOTE), **Move stage**, **Mark
+  sold** and **+ Task** (hung on the lead, for its producer by default).
+  **The move form offers Frank's own pipelines and stages once each**
+  (`crm.js stageOptions`, the 2026-10-12 rule): every active sales
+  workflow's active stages collapsed onto Frank's (pipeline, stage), the
+  lead's own workflow's stage winning, else the lowest workflow id (1
+  Pipeline before the rest), the AgencyZoom "Workflow | Stage" it lands on
+  as the value and on hover; a retired stage is never offered; a stage of
+  the lead's own workflow with no place of Frank's is offered under
+  AgencyZoom's names. **A coaching card's lead name and a task's lead on the
+  Tasks page carry a "Lead page" button** once the CRM has let the login in
+  (`window.CRM_OK`; any element with `data-ldopen` opens the page --
+  `window.openLead`, which falls back to the coaching card for anyone
+  else), and the page's **Coaching card** button goes the other way. The
+  page you were on is kept per tab (`lead-where`, with the filter and the
+  Recent-for pick). Still AgencyZoom's: the policies, the calls (the
+  nightly's own CALL notes are the next step of phase 3) and texting.
 - `node --test site/crm.test.mjs` is its test; run it after touching
   `site/crm.js` or the schema. A new field is added to the schema (a new
   migration file), to `OBJECTS` in `site/crm.js` and to the test together.

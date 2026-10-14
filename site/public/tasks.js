@@ -71,7 +71,7 @@
   function rowHtml(r) {
     const open = tkOpen[r.id];
     const late = r.status === 0 && r.dueDate && r.dueDate < today() + " 00:00:00";
-    const whoFor = r.customerName ? `<a href="#" class="tklead" data-lead="${r.leadId || ""}" data-name="${cesc(r.customerName)}" title="${r.leadId ? "Open the lead's coaching card" : "A household: no coaching card"}">${cesc(r.customerName)}</a>${r.customerPhone ? ` <small class="tkmute">${cesc(r.customerPhone)}</small>` : ""}` : '<span class="tkmute">no one attached</span>';
+    const whoFor = r.customerName ? `<a href="#" class="tklead" data-lead="${r.leadId || ""}" data-name="${cesc(r.customerName)}" title="${r.leadId ? "Open the lead's coaching card" : "A household: no coaching card"}">${cesc(r.customerName)}</a>${r.customerPhone ? ` <small class="tkmute">${cesc(r.customerPhone)}</small>` : ""}${r.leadId && window.CRM_OK ? ` <button type="button" class="ghost tksmall" data-ldopen="${r.leadId}" data-ldname="${cesc(r.customerName)}" title="Open the lead's page">Lead page</button>` : ""}` : '<span class="tkmute">no one attached</span>';
     const when = r.status === 1 ? `<span class="tkdone">done ${clock(r.completeDate)}</span>` : `<span class="${late ? "tklate" : ""}">${cesc(dayLabel(r.dueDate))}${r.dueDate && r.dueDate.slice(11, 16) !== "00:00" ? " · " + clock(r.dueDate) : ""}</span>`;
     const form = open === "done" ? `<form class="tkform" data-done="${r.id}"><input type="text" class="tkin tkwide" name="comment" placeholder="What happened? (optional)" maxlength="500" autofocus>
         <button type="submit" class="btn tkpri"${tkBusy ? " disabled" : ""}>Mark done</button><button type="button" class="btn" data-close="${r.id}">Cancel</button></form>`

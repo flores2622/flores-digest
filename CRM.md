@@ -76,6 +76,19 @@ for the rest. Nothing is switched until the two agree on a published day.
    RingCentral pass as CALL notes, stage moves from the page.
    `lead_history`, `messages.py` and `day_calls.fetch_notes` read Pantheon.
    Cutover test: a day's contacts, outcomes and Texts & Emails identical.
+   **The lead page is built** (2026-10-13, `site/public/lead.js`, Sales
+   Center > Leads): the picker (name or phone, the leads worked most
+   recently), and per lead one read (`GET /api/crm/leads/<id>/page`) with
+   the record in Frank's names and AgencyZoom's, the household and its
+   policies, quotes, tasks (Done on each), the household's SRs, the stage
+   history, the audit trail and every note newest first with a filter by
+   kind; + Note, Move stage (Frank's pipelines and stages, each landing on
+   one AgencyZoom stage), Mark sold and + Task write through the CRM's
+   existing calls. The coaching cards and the Tasks page open it, and it
+   opens the coaching card. Next in this phase: the nightly writing its own
+   CALL notes from the RingCentral pass, then `lead_history` /
+   `messages.py` / `day_calls.fetch_notes` reading Pantheon's notes, with
+   the day-identical cutover test.
 4. **Texting and email from the page**, through RingCentral's message API
    (the service lines already feed `rc_client.texts`) and the agency's own
    mail; templates and drips as scheduled jobs in the Worker (a cron it

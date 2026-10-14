@@ -373,14 +373,15 @@ function placedMaps(t, wfKinds = new Map()) {
   for (const x of t.lists) by[`${x.kind}:${x.id}`] = x;
   const stageParent = new Map(t.lists.filter((x) => x.kind === "stage").map((x) => [x.id, x.parentId]));
   const wfKind = new Map();   // az workflow id -> "pipeline" | "service" (which list kind it is placed in)
-  const out = { source: new Map(), workflow: new Map(), stage: new Map(), category: new Map(), ready: t.ready, wfKind };
+  const out = { source: new Map(), workflow: new Map(), stage: new Map(), category: new Map(), ready: t.ready, wfKind,
+    pipelines: new Map(t.lists.filter((x) => x.kind === "pipeline").map((x) => [x.id, { name: x.name, ord: x.ord }])) };   // Frank's pipelines by id
   for (const m of t.map) {
     if (m.kind === "source") { const e = by[`source:${m.list_id}`]; if (e) out.source.set(m.az_id, { id: e.id, name: e.name, detail: m.detail, label: e.detailLabel }); }
     else if (m.kind === "workflow") {
       const k = wfKinds.get(m.az_id);
       const e = k === "service" ? by[`service:${m.list_id}`] : k === "sales" ? by[`pipeline:${m.list_id}`] : (by[`pipeline:${m.list_id}`] || by[`service:${m.list_id}`]);
       if (e) { out.workflow.set(m.az_id, { id: e.id, name: e.name, kind: e.kind, detail: m.detail }); wfKind.set(m.az_id, e.kind); }
-    } else if (m.kind === "stage") { const e = by[`stage:${m.list_id}`]; if (e) out.stage.set(m.az_id, { id: e.id, name: e.name, pipelineId: stageParent.get(e.id) }); }
+    } else if (m.kind === "stage") { const e = by[`stage:${m.list_id}`]; if (e) out.stage.set(m.az_id, { id: e.id, name: e.name, pipelineId: stageParent.get(e.id), ord: e.ord, active: e.active }); }
     else if (m.kind === "category") {
       const e = m.list_id == null ? null : by[`service:${m.list_id}`];
       out.category.set(m.az_id, e ? { id: e.id, name: e.name, detail: m.detail, label: e.detailLabel } : { id: null, name: null, detail: m.detail, follows: true });
@@ -429,7 +430,7 @@ async function nameMaps(db) {
   const m = (list) => new Map(list.map((x) => [x.id, x.name]));
   const stages = new Map();
   for (const w of lk.workflows) for (const s of w.stages) stages.set(s.id, s.name);
-  return { sources: m(lk.leadSources), workflows: m(lk.workflows), stages, categories: m(lk.serviceCategories),
+  return { sources: m(lk.leadSources), workflows: m(lk.workflows), workflowRows: lk.workflows, stages, categories: m(lk.serviceCategories),
     resolutions: m(lk.resolutions), carriers: m(lk.carriers), placed: placedMaps(await listTables(db), new Map(lk.workflows.map((w) => [w.id, w.kind]))),
     stageWorkflow: new Map(lk.workflows.flatMap((w) => w.stages.map((s) => [s.id, w.id]))),
     whereOf: new Map(lk.workflows.flatMap((w) => w.stages.map((s) => [`${w.name} | ${s.name}`, { workflowId: w.id, stageId: s.id }]))) };
@@ -724,6 +725,74 @@ async function search(db, url, lk) {
     customers: (hhs.results || []).map((r) => rowToApi(OBJECTS.households, r, lk)),
     serviceTickets: (srs.results || []).map((r) => rowToApi(OBJECTS.srs, r, lk)),
   });
+}
+/* ---- the lead page (CRM.md phase 3; Frank, 2026-10-13: "go") ---------------
+   One read gives the page everything: the lead, its household and the
+   household's policies, its quotes, tasks (open first), the household's SRs,
+   every note newest first, the stage history, the lead's own events and the
+   places a move can go (every active sales pipeline's active stages, named
+   Frank's way beside AgencyZoom's, plus the exits). Nothing here reads
+   AgencyZoom. */
+async function leadPage(db, id, lk) {
+  const lead = await db.prepare("SELECT * FROM leads WHERE id = ?").bind(id).first();
+  if (!lead) return json({ error: `lead ${id} not found` }, 404);
+  const hh = lead.converted_household_id;
+  const [hhRow, pols, quotes, tasks, srs, notes, moves, evs] = await db.batch([
+    db.prepare("SELECT * FROM households WHERE id = ?").bind(hh || 0),
+    db.prepare("SELECT * FROM policies WHERE household_id = ? OR lead_id = ? ORDER BY sold_date DESC, id DESC LIMIT 100").bind(hh || 0, id),
+    db.prepare("SELECT * FROM quotes WHERE lead_id = ? ORDER BY quote_date DESC, id DESC LIMIT 100").bind(id),
+    db.prepare(`SELECT t.*, ${CUSTOMER_JOIN.select} FROM tasks t ${CUSTOMER_JOIN.sql} WHERE t.lead_id = ? ORDER BY t.status ASC, CASE WHEN t.status = 0 THEN t.due_date END ASC, t.complete_date DESC, t.id DESC LIMIT 200`).bind(id),
+    db.prepare(`SELECT t.*, ${CUSTOMER_JOIN.select} FROM service_requests t ${CUSTOMER_JOIN.sql} WHERE t.household_id = ? OR t.lead_id = ? ORDER BY t.status ASC, t.create_date DESC LIMIT 100`).bind(hh || 0, id),
+    db.prepare("SELECT * FROM notes WHERE lead_id = ? ORDER BY create_date DESC, id DESC LIMIT 1000").bind(id),
+    db.prepare("SELECT * FROM stage_moves WHERE lead_id = ? ORDER BY at DESC, id DESC LIMIT 200").bind(id),
+    db.prepare("SELECT * FROM events WHERE object = 'lead' AND object_id = ? ORDER BY at DESC, id DESC LIMIT 100").bind(id),
+  ]);
+  const rows = (x) => (x && x.results) || [];
+  const seen = new Set(), policies = [];
+  for (const r of rows(pols)) { if (seen.has(r.id)) continue; seen.add(r.id); policies.push(rowToApi(OBJECTS.policies, r, lk)); }
+  const l = rowToApi(OBJECTS.leads, lead, lk);
+  l.where = lead.workflow_stage_id ? `${lk.workflows.get(lead.workflow_id)} | ${lk.stages.get(lead.workflow_stage_id)}` : (lead.exit || null);
+  return json({
+    lead: l,
+    household: rows(hhRow)[0] ? rowToApi(OBJECTS.households, rows(hhRow)[0], lk) : null,
+    policies, quotes: rows(quotes).map((r) => rowToApi(OBJECTS.quotes, r, lk)),
+    tasks: rows(tasks).map((r) => rowToApi(OBJECTS.tasks, r, lk)),
+    serviceTickets: rows(srs).map((r) => rowToApi(OBJECTS.srs, r, lk)),
+    notes: rows(notes).map(noteToApi),
+    moves: rows(moves).map((m) => ({ id: m.id, from: m.from_where, to: m.to_where, lossReason: m.loss_reason, movedBy: m.moved_by, movedByName: personName(m.moved_by), at: m.at, noteId: m.note_id })),
+    events: rows(evs).map((e) => ({ id: e.id, at: e.at, who: e.who, action: e.action, before: e.before ? JSON.parse(e.before) : null, after: e.after ? JSON.parse(e.after) : null })),
+    stageOptions: stageOptions(lk, lead),
+    exits: [...EXITS],
+  });
+}
+/** Where a lead may be moved -- Frank's own pipelines and stages (Frank,
+    2026-10-12, of the Workflows form: "it was just supposed to be the stages
+    from 1 pipeline"), each landing on ONE AgencyZoom stage, "Workflow | Stage"
+    as moveLead wants it: the lead's own workflow's stage where it has one
+    placed there, else the first active sales workflow's (1 Pipeline before
+    the rest, by id). A retired stage (crm_lists.RETIRED_STAGES, active 0) is
+    never offered; a stage of the lead's own workflow with no place of
+    Frank's is offered under AgencyZoom's names, so nothing is unreachable. */
+function stageOptions(lk, lead) {
+  const byKey = new Map(), loose = [];
+  const wfs = [...lk.workflowRows].sort((a, b) => (a.id === lead.workflow_id ? -1 : b.id === lead.workflow_id ? 1 : a.id - b.id));
+  for (const w of wfs) {
+    const own = w.id === lead.workflow_id;
+    if (!(w.kind === "sales" && w.active) && !own) continue;
+    const pw = lk.placed && lk.placed.workflow.get(w.id);
+    for (const s of w.stages) {
+      const current = s.id === lead.workflow_stage_id;
+      if (!s.active && !current) continue;
+      const ps = lk.placed && lk.placed.stage.get(s.id);
+      const pp = ps && lk.placed.pipelines.get(ps.pipelineId);
+      const o = { where: `${w.name} | ${s.name}`, workflowId: w.id, stageId: s.id, workflow: w.name, stage: s.name,
+        pipelineName: pp ? pp.name : pw && pw.kind === "pipeline" ? pw.name : null, stageName: ps ? ps.name : null, current,
+        ord: [pp ? pp.ord : 999, ps ? ps.ord : s.ord] };
+      if (ps && pp && (ps.active || current)) { const k = `${ps.pipelineId}|${ps.id}`; if (!byKey.has(k) || current) byKey.set(k, o); }
+      else if (own || current) loose.push(o);
+    }
+  }
+  return [...byKey.values(), ...loose].sort((a, b) => a.ord[0] - b.ord[0] || a.ord[1] - b.ord[1] || a.workflowId - b.workflowId).map(({ ord, ...o }) => o);
 }
 async function events(db, url) {
   const object = url.searchParams.get("object") || "", id = Number(url.searchParams.get("id"));
@@ -1072,6 +1141,7 @@ export async function crm(request, env, identityOf, parts, url) {
         if (get) return notesOf(db, NOTE_PARENT[head], nid);
         if (post) return addNote(db, NOTE_PARENT[head], nid, await readBody(request), me);
       }
+      if (get && head === "leads" && sub === "page") return leadPage(db, nid, lk);
       if (head === "leads" && sub === "quotes") {
         if (get) { url.searchParams.set("leadId", String(nid)); return list(db, OBJECTS.quotes, url, lk); }
         if (post) return create(db, OBJECTS.quotes, { ...(await readBody(request) || {}), leadId: nid }, me, lk);
