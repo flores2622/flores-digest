@@ -1604,17 +1604,21 @@ already downloads. Leads only; a customer's texts are Athena's.
   never adds those people back. Published days 09-01..10-09 had only those
   people's reply and bad-contact rows taken out, counts with them (backups
   under `backups/2026-10-12-messages-service-split/`).
-  **A customer's open lead keeps them a producer's only when THAT producer
-  is the one typing** (Frank, 2026-10-13: Jose Renteria, a customer since
-  2022 with Mike's open Life Cross Sell lead, texting Crystal about his
-  renewal draft, deductible and mailing address, sat in Needs someone now
-  under Crystal -- "it is a renewal that crystal is working and the lead is
-  assigned to mike, it should be in service"): `messages.build` works out who
-  last typed to each person by the day's end (`last_typed`) and
-  `service_people(..., typed=)` lets an open / X-dated lead keep a customer
-  (or a number with an open SR) only when it is assigned to that person;
-  with nobody typing, any open lead keeps them, as before. `route()` answers
-  "open lead" before "customer", so the records are read, not the bucket.
+  **The service team texting a customer is service work, whoever's open
+  lead sits on the number** (Frank, 2026-10-13: Jose Renteria, a customer
+  since 2022 with Mike's open Life Cross Sell lead, texting Crystal about
+  his renewal draft, deductible and mailing address, sat in Needs someone
+  now under Crystal -- "it is a renewal that crystal is working and the
+  lead is assigned to mike, it should be in service"): `messages.build`
+  works out who last typed to each person by the day's end (`last_typed`)
+  and `service_people(..., typed=)` moves a customer (or a number with an
+  open SR) to service when that person is on staff.json's service team
+  (Debbie, Amanda, Crystal) and the open / X-dated lead is not their own;
+  a producer typing, or nobody, keeps them a producer's on any open lead,
+  as before (a first cut that moved them for ANY other producer's lead took
+  121 people off 10-13's page, Sarahi's winbacks on Lorena's old leads among
+  them -- too wide). `route()` answers "open lead" before "customer", so
+  the records are read, not the bucket.
   10-13's `messages` were rebuilt under it (backups under
   `backups/2026-10-14-messages-renteria/`).
 - **Who sent it:** TEXT/EMAIL notes carry `attr.outbound` (True/False on a

@@ -493,15 +493,18 @@ def service_people(day, keys, log=print, idx=None, typed=None):
     last NEW_BUSINESS_DAYS stays its producer's.
 
     `typed`: per key, the staff member who last typed to that person (the
-    reply row's owner). **A customer's open lead keeps them a producer's only
-    when THAT producer is the one typing** (Frank, 2026-10-13: Jose Renteria,
-    a customer since 2022 with Mike's open Life Cross Sell lead, texting
-    Crystal about his renewal draft, deductible and mailing address --
-    "it is a renewal that crystal is working and the lead is assigned to
-    mike, it should be in service"). With nobody typing, any open lead keeps
-    them, as before."""
+    reply row's owner). **The service team texting a customer is service
+    work, whoever's open lead sits on the number** (Frank, 2026-10-13: Jose
+    Renteria, a customer since 2022 with Mike's open Life Cross Sell lead,
+    texting Crystal about his renewal draft, deductible and mailing address
+    -- "it is a renewal that crystal is working and the lead is assigned to
+    mike, it should be in service"): Debbie, Amanda or Crystal (staff.json's
+    service team) typing last moves them here unless the open lead is that
+    person's own (Crystal's cross-sell). A producer typing, or nobody, keeps
+    them a producer's on any open lead, as before."""
     typed = typed or {}
     az_of = {n: str(v["az_id"]) for n, v in cfg.PRODUCERS.items()}
+    service_team = {p["name"] for p in staff.service_team()}
     try:
         import missed_call_audit as mca
         import service_messages as sm
@@ -521,8 +524,9 @@ def service_people(day, keys, log=print, idx=None, typed=None):
                          or any(t.get("status") == 1 for t in hit["tix"]))):
             continue
         worked = [l for l in hit["lead"] if l.get("status") in WORKED_LEAD]
-        who = az_of.get(typed.get(k) or "")
-        if worked and (k not in typed or any(str(l.get("assignedTo")) == who for l in worked)):
+        typer = typed.get(k)
+        if worked and (typer not in service_team
+                       or any(str(l.get("assignedTo")) == az_of.get(typer) for l in worked)):
             continue
         # A lead lost with activity in the window was being worked that day:
         # a lead lost on or after a past day reads lost on a rebuild (Alana
