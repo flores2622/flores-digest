@@ -4,12 +4,14 @@ One small program on a machine with an address of its own. The board's
 Worker sends its AgencyZoom reads here instead of straight to
 api.agencyzoom.com, and the proxy forwards them from that address.
 
-**Why.** Every Cloudflare Worker in a region leaves through a few shared
-outbound addresses, and AgencyZoom's firewall judges the address, not our
-account. On October 1, 6, 7 and 12 it refused the Worker for the afternoon,
-and on October 13 from the first request of the day, while the same login
-worked from anywhere else. A proxy gives AgencyZoom one address that is
-ours alone, and one address to allowlist.
+**Why.** Cloudflare picks where a scheduled Worker runs, and AgencyZoom's
+firewall blocks requests from outside the United States (their support,
+2026-10-14; the Worker's own log agrees: every 403 came when it ran from
+Frankfurt, Osaka, London, Paris or Warsaw, never from Los Angeles, Salt
+Lake City or Ashburn). On October 1, 6, 7 and 12 it refused the Worker for
+the afternoon, and on October 13 from the first request of the day. A
+proxy on a US server gives AgencyZoom one US address that is ours alone,
+which they allow automatically.
 
 **What it does.** Takes a request from the Worker (with the shared key),
 forwards it to api.agencyzoom.com unchanged, and hands the answer back
@@ -24,8 +26,13 @@ You need a small Linux server with its own public address. A $5-6 a month
 VPS is plenty (Hetzner, DigitalOcean, Vultr, Linode: the smallest Ubuntu
 box). The proxy handles under two requests a second at most.
 
-1. **Make the server.** Ubuntu 24.04, the smallest size, any US region.
-   Note its public IP address. Add a DNS record for it:
+1. **Make the server.** Ubuntu 24.04, the smallest size, **in a US data
+   center** (Hetzner Ashburn or Hillsboro, DigitalOcean New York or San
+   Francisco, Vultr any US city). This is the whole point: AgencyZoom's
+   firewall blocks requests that come from outside the United States, and
+   their support said a US address is allowed automatically (2026-10-14).
+   A European or Asian region would be blocked like the Worker was. Note
+   its public IP address. Add a DNS record for it:
    `az-proxy.floresinsuranceagency.com  A  <that IP>` (wherever the
    domain's DNS lives). The Worker needs HTTPS, and a name is how the
    certificate gets issued.
