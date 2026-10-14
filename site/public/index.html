@@ -1305,8 +1305,8 @@ html[data-look="mesa"] .chatbox .pinned { background: var(--text-primary); color
 .todo .accts { list-style: none; margin: 0; padding: 0; max-height: 180px; overflow: auto; display: flex; flex-direction: column; gap: 4px; }
 .todo .accts li { display: grid; grid-template-columns: auto auto minmax(0, 1fr); gap: 8px; align-items: center; font-size: 12.5px; padding: 4px 6px; border-radius: 8px; }
 .todo .accts li:nth-child(odd) { background: color-mix(in oklab, var(--sc, var(--s4)) 7%, transparent); }
-.todo .accts button.acct { border: 0; background: none; padding: 0; font: 700 13px var(--body); color: var(--accent); cursor: pointer; text-align: left; }
-.todo .accts button.acct:hover { text-decoration: underline; }
+.todo .accts button.acct, .todo .accts a.acct { border: 0; background: none; padding: 0; font: 700 13px var(--body); color: var(--accent); cursor: pointer; text-align: left; text-decoration: none; }
+.todo .accts button.acct:hover, .todo .accts a.acct:hover { text-decoration: underline; }
 .todo .accts small { color: var(--text-muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .todo .accts .who .pbadge { font-size: 10.5px; }
 /* a card flipping to its list: only the card turns over, into a smaller
@@ -2656,7 +2656,7 @@ async function openLeadCard(e) {
   }
 }
 async function openCoachingCard(c) {
-  if (view !== "coaching" || coachSubTab !== "cards") { coachSubTab = "cards"; if (view !== "coaching") await goView("coaching"); else repaintCoaching(); }
+  if (view !== "coaching" || coachSubTab !== "detail") { coachSubTab = "detail"; if (view !== "coaching") await goView("coaching"); else repaintCoaching(); }
   // goView paints without awaiting, and the Coaching tab repaints once more
   // as it finishes loading: wait for the page to hold still with cards on it.
   for (let i = 0, last = -1; i < 40; i++) {
@@ -2831,8 +2831,10 @@ function needsNowRows(d, who) {
 /* Each row is a card that FLIPS to the accounts behind its number (Frank,
    2026-10-02: "left on the desk card should drop down what was actually
    left on the desk ... make it so that the card flips"): the front is the
-   count and the line, the back every account, each opening its coaching
-   card (openLeadCard), with the page button beside. */
+   count and the line, the back every account, with the page button beside.
+   A name opens the lead in AgencyZoom (Frank, 2026-10-14: "it should take
+   me to the agency zoom lead, not to the texts and emails tab"); only a row
+   with no lead id falls back to its coaching card (openLeadCard). */
 let needsFlipped = new Set();
 function needsNowHtml(d, who) {
   const live = curLive && rangeMode === "day", rows = needsNowRows(d, who);
@@ -2840,7 +2842,8 @@ function needsNowHtml(d, who) {
     const pageBtn = r.n ? `<button type="button"${r.goview ? ` data-goview="${r.goview}"` : ` data-feedh2="${cesc(r.h2)}"`}>${cesc(r.btn)}</button>` : "";
     const key = r.t.replace(/[^a-z]/gi, "").slice(0, 24);
     const back = r.accts && r.accts.length ? `<div class="face back"><div class="bk-h"><b>${r.n} ${cesc(r.t)}</b><span>${pageBtn}<button type="button" class="flipback" data-flipback>▲ Front</button></span></div>
-      <ul class="accts">${r.accts.map(a => `<li><button type="button" class="acct" data-acct-l="${cesc(a.l || "")}" data-acct-id="${cesc(a.id ?? "")}" data-acct-who="${cesc(a.who || "")}" data-acct-parts="${a.parts || ""}">${cesc(a.l || "—")}</button><span class="who">${pbadge(DOT[a.who] || TEAM_DOT, firstName(a.who || ""))}</span><small>${cesc(a.note || "")}</small></li>`).join("")}</ul></div>` : "";
+      <ul class="accts">${r.accts.map(a => `<li>${a.id != null && a.id !== "" ? `<a class="acct" href="${AZ_URL.lead}${encodeURIComponent(a.id)}" target="_blank" rel="noopener" title="Open the lead in AgencyZoom">${cesc(a.l || "—")}</a>`
+        : `<button type="button" class="acct" data-acct-l="${cesc(a.l || "")}" data-acct-id="" data-acct-who="${cesc(a.who || "")}" data-acct-parts="${a.parts || ""}">${cesc(a.l || "—")}</button>`}<span class="who">${pbadge(DOT[a.who] || TEAM_DOT, firstName(a.who || ""))}</span><small>${cesc(a.note || "")}</small></li>`).join("")}</ul></div>` : "";
     return `<li class="${r.cls}${back ? " flip" : ""}${back && needsFlipped.has(key) ? " on" : ""}" data-flipkey="${key}"><div class="flipin"><div class="face front"><b class="n">${r.n}</b><div class="t">${cesc(r.t)}<small>${cesc(r.sub)}</small></div>${back ? `<span class="flipcue" aria-hidden="true">accounts ▸</span>` : pageBtn}</div>${back}</div></li>`; }).join("");
   return `<div class="sect svcsec" style="--sc:var(--s4)"><h2>${live ? "Needs someone now" : "Left on the desk"}</h2>
     <p class="sd">${live ? "What is waiting on a person at this minute." : "What the day ended with still waiting."}</p><ul class="todo">${html}</ul></div>`;
@@ -7576,7 +7579,10 @@ function wireTrainingPanel(data) {
     quizQuestions = []; matchPairs = [];   // fresh questions/pairs every time a mode is (re-)entered
     repaintAll();
   });
-  const deck = decks[trainingDeckIdx];
+  // No decks (the Worker's read failed) draws "No training content yet."
+  // above; nothing to wire, and ensureTrainingOrder would throw (2026-10-13).
+  const deck = decks[trainingDeckIdx] || decks[0];
+  if (!deck) return;
   if (trainingMode === "quiz") { wireQuiz(deck, repaintAll); return; }
   if (trainingMode === "match") { wireMatch(deck, repaintAll); return; }
 

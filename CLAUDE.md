@@ -1157,6 +1157,25 @@ and anything without the glow is the checkpoint's (Frank, 2026-09-24).
   note reads -- the rest are texts, drips, stage moves and the hourly
   missed-call tasks bumping leads, which cannot be told apart without the
   read itself. The sure fix is AgencyZoom allowlisting that address.
+  **The proxy** (Frank, 2026-10-13: "start on the proxy" -- that day the
+  Worker was refused from its FIRST request at 9:26 AM, the login included,
+  17 of 17 tries; the same login worked from anywhere else; an email to
+  support@agencyzoom.com bounced -- AgencyZoom (Vertafore) takes support
+  only through the live chat in the app, 8 AM-8 PM ET): `proxy/server.js`,
+  one dependency-free Node process for a small VPS with an address of its
+  own (`proxy/README.md`: Ubuntu, Caddy for HTTPS at
+  az-proxy.floresinsuranceagency.com, the systemd unit, two Worker secrets).
+  It takes the Worker's call with the shared key (`x-pantheon-key`),
+  forwards it to api.agencyzoom.com unchanged -- method, path, body, the
+  Authorization header -- and hands the answer back verbatim, 403s and 429s
+  included, so `azGet`'s pacing and pausing are untouched; nothing without
+  the key, nothing outside `/v1/api/`, GET and POST only, no body or token
+  in its log; `/healthz` says the address AgencyZoom sees. The Worker
+  switches by `AZ_PROXY_URL` + `AZ_PROXY_KEY` (`live.js azBase` /
+  `azHeaders`; unset, it calls AgencyZoom directly as before), and each
+  refusal in the az log records the host that answered. `node --test
+  proxy/server.test.mjs` runs it against a fake AgencyZoom. The server
+  itself is Frank's to make (an account, a $5 box, one DNS record).
 - **The Worker logs in to AgencyZoom ONCE a day, not once a run.** A per-run
   login meant ~30 an hour, and on 2026-09-24 AgencyZoom began refusing the
   Worker's logins (403) within the hour while the same account still worked
@@ -1467,6 +1486,24 @@ the Service / Commercial day pick fell back to the newest day the same way.
 `(cur && cur.date) || DAYS[0] || today`. Reproduced and checked in headless
 Chromium on every range-driven page (a mock of the Worker over the R2 day
 documents, in the session's scratchpad).
+**The producer filter was checked the same way** (Frank, 2026-10-13: "do the
+same check for the producer filter"): every producer and Whole Agency on the
+Digest, Texts & Emails, Coaching (each sub-tab) and Apollo's Doubts, on a
+published day, the live day and every range, with each of the Digest's 83
+lists open, the filter left on across a date change and across every other
+page -- 700-odd states, no error. The one crash it found was the Training
+page with no decks (the Worker's read failed): `wireTrainingPanel` now
+returns before wiring when there is no deck, so "No training content yet."
+shows instead of the error box.
+**And the Coaching sub-tabs** (Frank, 2026-10-14: "do the same check for
+the coaching sub tabs"): Cards, Objections and Wins and Losses, switched
+from the Academy's own header tabs, on a published day, the live day and
+every range, then Day again and another day; on each tab every card
+expanded, every objection fold and bar, every fold-out list clicked (25
+cards, 30 folds, 10 bars, 6 lists on 10-09), with each producer and Whole
+Agency; an objection bar's filter left on across the other tabs and the
+date; a lead's card opened from the Digest; a refresh on each tab -- 370
+states, no error, nothing to change.
 
 **The range leaderboard is re-ranked on averages** (Frank, 2026-09-28):
 the same seven categories and 5-4-3-2-1 scoring as a single day
@@ -2353,10 +2390,15 @@ actually left on the desk ... make it so that the card flips"): the front
 is the count and its line ("accounts ▸"), a click turns it over to every
 account behind the number -- the waiting texts with the time and what the
 lead said, the misfiled leads with stage and source, the quoted leads
-going cold with days since the last dial -- each name opening the lead's
-coaching card through the search's `openLeadCard` (a misfiled lead with no
-card goes to the Pipeline list, row lit), with the page button and "▲
-Front" beside. The showing face sets the card's height; which rows are
+going cold with days since the last dial -- with the page button and "▲
+Front" beside. **A name on the back opens the lead in AgencyZoom, in a new
+tab** (Frank, 2026-10-14: "when i click on the link on the name on the needs
+someone now it should take me to the agency zoom lead, not to the texts and
+emails tab"): `AZ_URL.lead` + the row's lead id; only a row with no lead id
+(none on the three lists today) still goes through the search's
+`openLeadCard` (a misfiled lead with no card to the Pipeline list, row lit).
+The card stays turned over and the page stays put. The search itself still
+opens coaching cards, never AgencyZoom (Frank, 2026-10-02). The showing face sets the card's height; which rows are
 turned survives a repaint (`needsFlipped`). **And every card that opens a
 list flips to it** (Frank, 2026-10-02: "any card that drops down data"):
 after a paint, `flipLists` takes each open list (`.rdrill-list` -- the

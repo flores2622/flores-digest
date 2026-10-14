@@ -137,6 +137,23 @@ export function dialDeltas(basis, recs) {
    whatever the volume, while the same token worked from elsewhere. Same
    endpoints, same data, same login on both (checked 2026-09-30). */
 const AZ = "https://api.agencyzoom.com";
+/* THROUGH THE PROXY WHEN ONE IS SET (2026-10-13; proxy/server.js). Every
+   Worker in a region leaves through a few shared addresses, and AgencyZoom's
+   firewall judges the address: 10-01, 10-06, 10-07, 10-12 afternoons and all
+   of 10-13 refused from 2a06:98c0:3600::103 while the same token worked
+   elsewhere. With AZ_PROXY_URL and AZ_PROXY_KEY in the Worker's secrets
+   (Settings -> Variables and Secrets) every AgencyZoom call goes to the
+   proxy -- same path, body and Authorization header, plus the key -- and the
+   proxy forwards it from an address that is ours alone, handing back the
+   answer verbatim (a 403 or 429 still pauses as below). Unset, nothing
+   changes. Frank, 2026-10-13: "start on the proxy". */
+export function azBase(env) {
+  const u = (env && env.AZ_PROXY_URL || "").trim().replace(/\/$/, "");
+  return u && env.AZ_PROXY_KEY ? u : AZ;
+}
+export function azHeaders(env, h) {
+  return azBase(env) === AZ ? h : { ...h, "x-pantheon-key": env.AZ_PROXY_KEY };
+}
 
 /* ---- what AgencyZoom sees of us, for when it refuses ------------------- */
 
@@ -164,14 +181,14 @@ async function egress(fetchFn) {
     return { ip: f.ip, colo: f.colo, loc: f.loc };
   } catch (_) { return null; }
 }
-async function noteRefusal(path, r, fetchFn) {
+async function noteRefusal(path, r, fetchFn, host = AZ) {
   let body = "";
   try { body = (await r.clone().text()).slice(0, 600); } catch (_) {}
   const keep = ["server", "content-type", "date", "via", "retry-after", "x-amzn-requestid", "x-amzn-errortype",
     "x-amz-cf-id", "x-cache", "www-authenticate"];
   const headers = {};
   for (const [k, v] of r.headers) if (keep.includes(k.toLowerCase()) || k.toLowerCase().startsWith("x-amzn")) headers[k] = v;
-  azRefusals.push({ at: new Date().toISOString(), host: AZ, path, status: r.status, headers, body,
+  azRefusals.push({ at: new Date().toISOString(), host, path, status: r.status, headers, body,
     egress: await egress(fetchFn) });
 }
 export async function flushAzLog(env, day) {
@@ -224,11 +241,11 @@ async function azToken(env, fetchFn) {
       }
     }
     countAz("/v1/api/auth/login");
-    const r = await fetchFn(`${AZ}/v1/api/auth/login`, {
-      method: "POST", headers: { "content-type": "application/json" },
+    const r = await fetchFn(`${azBase(env)}/v1/api/auth/login`, {
+      method: "POST", headers: azHeaders(env, { "content-type": "application/json" }),
       body: JSON.stringify({ username: env.AZ_USERNAME, password: env.AZ_PASSWORD }),
     });
-    if (r.status === 403 || r.status === 429) await noteRefusal("/v1/api/auth/login", r, fetchFn);
+    if (r.status === 403 || r.status === 429) await noteRefusal("/v1/api/auth/login", r, fetchFn, azBase(env));
     if (!r.ok) {
       if (R2 && (r.status === 403 || r.status === 429)) {
         await R2.put(AZ_PAUSE_KEY, JSON.stringify({ until: Date.now() + AZ_PAUSE_MINUTES * 60000, status: r.status, at: new Date().toISOString() }));
@@ -291,8 +308,8 @@ async function azGet(env, path, fetchFn, init = {}) {
   await azTurn();
   if (Date.now() < azPauseSeen.until) throw new Error(`AgencyZoom paused until ${azClock(azPauseSeen.until)} after a refused request`);
   countAz(path);
-  const r = await fetchFn(`${AZ}${path}`, { ...init, headers: { ...(init.headers || {}), authorization: `Bearer ${tok}`, "content-type": "application/json" } });
-  if (r.status === 403 || r.status === 429) await noteRefusal(path, r, fetchFn);
+  const r = await fetchFn(`${azBase(env)}${path}`, { ...init, headers: azHeaders(env, { ...(init.headers || {}), authorization: `Bearer ${tok}`, "content-type": "application/json" }) });
+  if (r.status === 403 || r.status === 429) await noteRefusal(path, r, fetchFn, azBase(env));
   if (r.status === 401) await azForget(env);          // the saved login stopped working: log in afresh next time
   if ((r.status === 403 || r.status === 429) && env.BOARD) {
     const after = Number((r.headers && r.headers.get && r.headers.get("retry-after")) || 0);
