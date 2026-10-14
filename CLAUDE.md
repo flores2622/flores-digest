@@ -2390,10 +2390,15 @@ actually left on the desk ... make it so that the card flips"): the front
 is the count and its line ("accounts ▸"), a click turns it over to every
 account behind the number -- the waiting texts with the time and what the
 lead said, the misfiled leads with stage and source, the quoted leads
-going cold with days since the last dial -- each name opening the lead's
-coaching card through the search's `openLeadCard` (a misfiled lead with no
-card goes to the Pipeline list, row lit), with the page button and "▲
-Front" beside. The showing face sets the card's height; which rows are
+going cold with days since the last dial -- with the page button and "▲
+Front" beside. **A name on the back opens the lead in AgencyZoom, in a new
+tab** (Frank, 2026-10-14: "when i click on the link on the name on the needs
+someone now it should take me to the agency zoom lead, not to the texts and
+emails tab"): `AZ_URL.lead` + the row's lead id; only a row with no lead id
+(none on the three lists today) still goes through the search's
+`openLeadCard` (a misfiled lead with no card to the Pipeline list, row lit).
+The card stays turned over and the page stays put. The search itself still
+opens coaching cards, never AgencyZoom (Frank, 2026-10-02). The showing face sets the card's height; which rows are
 turned survives a repaint (`needsFlipped`). **And every card that opens a
 list flips to it** (Frank, 2026-10-02: "any card that drops down data"):
 after a paint, `flipLists` takes each open list (`.rdrill-list` -- the
