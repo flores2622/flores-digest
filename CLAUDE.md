@@ -1422,6 +1422,20 @@ Sarahi and Crystal (Frank, 2026-10-12: "give Sarahi access to the lead scrub",
 "give crystal access to lead scrub as well"; they see the Operations Center
 with the Lead Scrub only, CRM Hygiene still 403s); anyone else
 gets a 403 and the page never enters the menu or the search.
+**A list can carry its own columns** (Frank, 2026-10-14: "i want coral to
+review the quoted ones. Can you make an interactive list for her"): a list's
+own `fields`, `done_fields` and `done_boxes` replace FIELDS / DONE_FIELDS and
+the two boxes for that list alone (`fieldsOf` / `doneOf` / `boxesOf` in
+site/scrub.js; the page follows what the Worker sends, a field's `tones`
+colour its answers, the list's `about` is its description); a list without
+them is a scrub list as before. The first is **Quoted internet leads in
+Smart-Cycle -- Coral's review**: the 217 internet leads with a quote on file
+that the 2026-10-13 Smart-Cycle clean-up left alone (it re-dated 1,715
+never-contacted ones to the next 21 business days and spread them evenly over
+the five producers), biggest quote first, each with its quote, products,
+carrier and Smart-Cycle date, done when Result and Lead now are filled in.
+Coral has `scrub` (not `scrub_edit`) for it, so she also sees the other
+lists.
 
 ## Apollo's Road Map (ARM) and the tour
 
