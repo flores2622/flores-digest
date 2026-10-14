@@ -1495,6 +1495,15 @@ page -- 700-odd states, no error. The one crash it found was the Training
 page with no decks (the Worker's read failed): `wireTrainingPanel` now
 returns before wiring when there is no deck, so "No training content yet."
 shows instead of the error box.
+**And the Coaching sub-tabs** (Frank, 2026-10-14: "do the same check for
+the coaching sub tabs"): Cards, Objections and Wins and Losses, switched
+from the Academy's own header tabs, on a published day, the live day and
+every range, then Day again and another day; on each tab every card
+expanded, every objection fold and bar, every fold-out list clicked (25
+cards, 30 folds, 10 bars, 6 lists on 10-09), with each producer and Whole
+Agency; an objection bar's filter left on across the other tabs and the
+date; a lead's card opened from the Digest; a refresh on each tab -- 370
+states, no error, nothing to change.
 
 **The range leaderboard is re-ranked on averages** (Frank, 2026-09-28):
 the same seven categories and 5-4-3-2-1 scoring as a single day
