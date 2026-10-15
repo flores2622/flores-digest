@@ -118,7 +118,7 @@
       ${hits}
       <h3 class="ldh3">Worked most recently</h3>
       ${ldRecent === null ? '<div class="empty">Loading…</div>' : ldRecent.length ? table(ldRecent) : `<div class="empty">No leads on file${ldErr ? ": " + cesc(ldErr) : ""}.</div>`}
-      <p class="ldfoot">Pantheon's own CRM. A lead's coaching card and the Tasks page open its page here; the search (Ctrl K) still opens coaching cards.</p>
+      <p class="ldfoot">Elysium Pro's own CRM. A lead's coaching card and the Tasks page open its page here; the search (Ctrl K) still opens coaching cards.</p>
     </section>`;
   }
 
@@ -220,7 +220,7 @@
     const openTasks = P.tasks.filter(t => t.status === 0).length;
     return `<div class="ldhead">
       <div class="ldtitle"><h2 class="ldname">${cesc(L.name || L.businessName || "#" + L.id)}</h2>${statusPill(L)}${L.businessName && L.name ? `<span class="ldmute">${cesc(L.businessName)}</span>` : ""}
-        <span class="ldmute ldid">#${L.id}${L.azId ? " · AgencyZoom's record" : " · made in Pantheon"}</span></div>
+        <span class="ldmute ldid">#${L.id}${L.azId ? " · AgencyZoom's record" : " · made in Elysium Pro"}</span></div>
       <div class="ldacts">
         <button type="button" class="btn tkpri" data-ldformopen="note"${ldForm === "note" ? " disabled" : ""}>+ Note</button>
         <button type="button" class="btn" data-ldformopen="task"${ldForm === "task" ? " disabled" : ""}>+ Task${openTasks ? ` <small>${openTasks} open</small>` : ""}</button>
@@ -249,7 +249,7 @@
     const srs = P.serviceTickets.length ? `<ul class="ldlist">${P.serviceTickets.map(s => `<li><b>${cesc(s.subject || "")}</b> <small class="ldmute">${cesc(s.pipelineName || s.workflowName || "")} · ${s.status === 2 ? "completed " + cesc(dayOf(s.completeDate)) + (s.resolutionDesc ? " · " + cesc(s.resolutionDesc) : "") : s.status === 1 ? "open" : "deleted"} · ${cesc(s.csrFirstname || "")}</small></li>`).join("")}</ul>` : `<p class="ldmute">No SRs${H ? "" : " (no household yet)"}.</p>`;
     const moves = P.moves.length ? P.moves.map(m => `<li><span class="ldwhen">${cesc(when(m.at))}</span> ${cesc(m.from || "New lead")} → <b>${cesc(m.to)}</b>${m.movedByName ? ` <small class="ldmute">by ${cesc(first(m.movedByName))}</small>` : ""}${m.lossReason ? ` <small class="ldmute">· ${cesc(m.lossReason)}</small>` : ""}</li>`).join("")
       : P.notes.filter(n => n.type === "MOVE_STAGE").map(n => `<li><span class="ldwhen">${cesc(when(n.createDate))}</span> ${cesc(plain(n.body).replace(/^Lead\s+.*?\s+moved\s+/i, "").replace(/\s+/g, " "))}</li>`).join("");
-    const ev = P.events.length ? `<ul class="ldlist ldsmall">${P.events.map(e => `<li><span class="ldwhen">${cesc(when(e.at))}</span> ${cesc(e.action)} <small class="ldmute">${cesc(e.who)}${e.after ? " · " + cesc(JSON.stringify(e.after).slice(0, 120)) : ""}</small></li>`).join("")}</ul>` : `<p class="ldmute">No changes made in Pantheon.</p>`;
+    const ev = P.events.length ? `<ul class="ldlist ldsmall">${P.events.map(e => `<li><span class="ldwhen">${cesc(when(e.at))}</span> ${cesc(e.action)} <small class="ldmute">${cesc(e.who)}${e.after ? " · " + cesc(JSON.stringify(e.after).slice(0, 120)) : ""}</small></li>`).join("")}</ul>` : `<p class="ldmute">No changes made in Elysium Pro.</p>`;
     return `<div class="ldside">
       <section class="ldbox"><h3>Tasks <small class="ldmute">${open.length} open</small></h3>${open.length ? `<ul class="ldtasks">${open.map(taskRow).join("")}</ul>` : `<p class="ldmute">Nothing open.</p>`}
         ${done.length ? `<details class="ldfold"${ldDoneOpen ? " open" : ""} data-ldfold="done"><summary>${done.length} done</summary><ul class="ldtasks">${done.map(taskRow).join("")}</ul></details>` : ""}</section>
@@ -258,7 +258,7 @@
       ${H ? `<section class="ldbox"><h3>Household</h3><dl class="ldfacts one"><div><dt>Name</dt><dd>${cesc(H.name)}${H.azId ? ` <a class="ldaz" href="${AZ_URL.customer}${encodeURIComponent(H.azId)}" target="_blank" rel="noopener">AgencyZoom ↗</a>` : ""}</dd></div><div><dt>Phone</dt><dd>${[tel(H.phone), tel(H.secondaryPhone)].filter(Boolean).join(" · ") || "—"}</dd></div><div><dt>Email</dt><dd>${H.email ? `<a href="mailto:${escAttr(H.email)}">${cesc(H.email)}</a>` : "—"}</dd></div><div><dt>Address</dt><dd>${cesc([H.address, [H.city, H.state].filter(Boolean).join(", "), H.zip].filter(Boolean).join(" · ") || "—")}</dd></div><div><dt>Assigned</dt><dd>${badge(H.assignedTo)}</dd></div><div><dt>Since</dt><dd>${cesc(dayOf(H.asCustomerDate) || "—")}</dd></div></dl></section>` : ""}
       <section class="ldbox"><h3>Service requests</h3>${srs}</section>
       <section class="ldbox"><h3>Stage history</h3>${moves ? `<ul class="ldlist">${moves}</ul>` : `<p class="ldmute">No moves on record.</p>`}</section>
-      <details class="ldfold ldbox"${ldEventsOpen ? " open" : ""} data-ldfold="events"><summary>Changes made in Pantheon <small class="ldmute">${P.events.length}</small></summary>${ev}</details>
+      <details class="ldfold ldbox"${ldEventsOpen ? " open" : ""} data-ldfold="events"><summary>Changes made in Elysium Pro <small class="ldmute">${P.events.length}</small></summary>${ev}</details>
     </div>`;
   }
   function pageHtml() {

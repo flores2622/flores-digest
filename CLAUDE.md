@@ -3062,7 +3062,24 @@ repaint clears the list).
   scratchpad, not the repo; `design/flores-board-preview.html` is the
   approved mock-up the restyle followed.
 
-## The board is Pantheon; its assistant is Apollo (2026-10-04)
+## The board is Elysium Pro (2026-10-15); its assistant is Apollo
+
+**The board is named Elysium Pro** (Frank, 2026-10-15: "Lets do Elysium
+Pro" -- the platform is to be sold to other agencies, and "pantheon and
+apollo are taken": Pantheon is a web-hosting company). Everything a person
+reads says it: the page title and header eyebrow, the home-screen app's
+name (`manifest.webmanifest`, `apple-mobile-web-app-title`), the tour's
+welcome, the guides in blueprints.js, the CRM pages' footers and the
+Workflows drafts' badge, the nightly email's header, link and title, and
+Apollo's chat instructions. **Code, comments, file names, R2 keys and this
+file keep the name Pantheon** (as they kept "Sales Floor" before it), so
+nothing saved moves; "Pantheon" below means the board. Elysian, a funded
+insurance-claims AI company, holds trademarks near the name -- Frank was
+told and chose it (2026-10-15); a trademark search is his to run.
+elysiumpro.com is parked for sale (HugeDomains); elysiumpro.io / .ai /
+.insure / .agency and getelysiumpro.com were open that day.
+
+## The board was Pantheon (2026-10-04); its assistant is Apollo
 
 **The board is named Pantheon** (Frank, 2026-10-04: "let's name it
 Pantheon" -- it "has become much more than a sales floor"): the page title,

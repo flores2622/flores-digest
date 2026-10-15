@@ -1,4 +1,4 @@
-/* Tasks -- the first page of Pantheon's own CRM (Frank, 2026-10-06: "start
+/* Tasks -- the first page of Elysium Pro's own CRM (Frank, 2026-10-06: "start
    on the tasks page next, all of this is available to only me until further
    notice"). Sales Center > Tasks, shown only to whoever /api/crm answers
    (site/crm.js: staff.json's `crm` -- Frank alone for now); for anyone else
@@ -13,7 +13,7 @@
    own helpers ($, cesc, pbadge, DOT, azTodayDate, isoDate, openLeadCard),
    so it loads after index.html's main script.
 
-   Nothing here reads AgencyZoom: a task made here lives only in Pantheon
+   Nothing here reads AgencyZoom: a task made here lives only in Elysium Pro
    until phase 2 of CRM.md moves the pipeline's own task writes over. */
 (function () {
   const TABS = [["today", "Due today"], ["overdue", "Overdue"], ["week", "Next 7 days"], ["done", "Done today"], ["all", "All open"]];
@@ -120,7 +120,7 @@
       ${tkRows.length ? `<div class="scroll"><table class="tktab"><thead><tr><th>${tkTab === "done" ? "Done" : "Due"}</th><th>Who</th><th>Task</th><th>About</th><th>Kind</th><th></th></tr></thead><tbody>${tkRows.map(rowHtml).join("")}</tbody></table></div>`
         : `<div class="empty">${{ today: "Nothing due today", overdue: "Nothing overdue", week: "Nothing due in the next 7 days", done: "Nothing done yet today", all: "No open tasks" }[tkTab]}${tkWho ? ` for ${cesc(first((person(tkWho) || {}).name))}` : ""}.</div>`}
       ${checkHtml()}
-      <p class="tkfoot">Pantheon's own CRM. ${LK.employees.length} people, ${LK.workflows.length} pipelines and workflows, ${LK.leadSources.length} lead sources on file. Tasks made here live only in Pantheon until the pipeline's task writes move over (CRM.md, phase 2).</p>
+      <p class="tkfoot">Elysium Pro's own CRM. ${LK.employees.length} people, ${LK.workflows.length} pipelines and workflows, ${LK.leadSources.length} lead sources on file. Tasks made here live only in Elysium Pro until the pipeline's task writes move over (CRM.md, phase 2).</p>
     </section>`;
     const f = v.querySelector(".tkform input[autofocus], .tknew input[autofocus]"); if (f) f.focus();
   }

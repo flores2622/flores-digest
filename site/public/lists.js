@@ -132,7 +132,7 @@
       ${unsortedHtml(m)}
       <div class="lsnewbox">${addForm}</div>
       <ol class="lsentries">${m.entries.map((e, i) => entryHtml(m, e, i, m.entries)).join("")}${followsHtml(m)}</ol>
-      <p class="tkfoot">Pantheon's own CRM. AgencyZoom's own names and ids stay on every record; the board reads them through these lists. A placement or a name set here is never undone by the nightly.</p>
+      <p class="tkfoot">Elysium Pro's own CRM. AgencyZoom's own names and ids stay on every record; the board reads them through these lists. A placement or a name set here is never undone by the nightly.</p>
     </section>`;
     const f = v.querySelector(".lsform input[autofocus]"); if (f) f.focus();
   }

@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>Pantheon</title>
+<title>Elysium Pro</title>
 <!-- The board as a phone app (Frank, 2026-10-03: "coeus icon, build the app"): Safari > Share >
      Add to Home Screen opens it full screen under the owl (Apollo's, the assistant's). The name below is what the icon is
      labelled; the manifest carries it for Android. Icons are drawn by design/app_icon.py. -->
@@ -12,7 +12,7 @@
 <link rel="icon" type="image/png" sizes="32x32" href="app/favicon-32.png">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-title" content="Pantheon">
+<meta name="apple-mobile-web-app-title" content="Elysium Pro">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="theme-color" content="#14122b">
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,700&family=Bebas+Neue&family=Anton&family=Bangers&family=Comic+Neue:wght@400;700&family=JetBrains+Mono:wght@400;700&display=swap">
@@ -1925,7 +1925,7 @@ html[data-theme="phoenix"] .tourcard .tbtns .tback { background: #f4e2cf; border
   </nav>
   <div class="wrap">
     <div class="top">
-      <div class="greetwrap"><div class="eyebrow">Pantheon</div><h1 class="greet" id="greet">Welcome back.</h1></div>
+      <div class="greetwrap"><div class="eyebrow">Elysium Pro</div><h1 class="greet" id="greet">Welcome back.</h1></div>
       <div class="search">
         <label for="q"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg>
           <input id="q" type="search" placeholder="Find a lead, producer, page…" autocomplete="off" aria-controls="res"><kbd>Ctrl K</kbd></label>
@@ -1969,7 +1969,7 @@ const GOALS = window.GOALS || { thresholds: {}, reply_goal_minutes: { green: 15,
 /* The agency itself (staff.json agency): the tab's title and the menu's brand. */
 const AGENCY = STAFF.agency || {};
 if (window.bpFilled) window.BLUEPRINTS = bpFilled(bpValues(AGENCY));   // the guides, with the carrier's name filled in
-if (AGENCY.name) document.title = `Pantheon — ${AGENCY.name}`;
+if (AGENCY.name) document.title = `Elysium Pro — ${AGENCY.name}`;
 if (AGENCY.short_name) { const b = document.getElementById("brand"); if (b) b.innerHTML = `${AGENCY.short_name}<br><span>Insurance</span>`; }
 /* The agency's clock (staff.json agency.timezone, through staff.js): every
    "today", clock time and business-hour figure on the page is worked out in
@@ -5377,7 +5377,7 @@ document.addEventListener("click", async ev => {
 });
 
 /* ---- Apollo's Doubts (Frank, 2026-10-05: "can apollo send me a list
-   everyday, or make it visible to only me in Pantheon, of questionable or
+   everyday, or make it visible to only me in Elysium Pro, of questionable or
    unsure coaching calls? ... or maybe even of things it is hearing for the
    first time?") -----------------------------------------------------------
    Two sources, side by side: what Apollo itself wrote down as unsure or new
@@ -5570,7 +5570,7 @@ function card(c) {
      <span class="flowedge" style="--fc:${edge.color}"${edge.label ? ` title="${escAttr(edge.label + (edge.why ? ": " + edge.why : ""))}" aria-label="${escAttr(edge.label)}"` : ""}></span>
      <div class="chead"><div><div class="cname">${c.lead_id
        ? `<a href="${AZ_URL.lead}${encodeURIComponent(c.lead_id)}" target="_blank" rel="noopener" onclick="event.stopPropagation()">${cesc(c.lead || "")}</a>`
-       : cesc(c.lead || "")}${c.lead_id && window.CRM_OK ? ` <button type="button" class="ghost ldopen" data-ldopen="${escAttr(String(c.lead_id))}" data-ldname="${escAttr(c.lead || "")}" title="Open the lead's page in Pantheon's CRM">Lead page</button>` : ""}</div>
+       : cesc(c.lead || "")}${c.lead_id && window.CRM_OK ? ` <button type="button" class="ghost ldopen" data-ldopen="${escAttr(String(c.lead_id))}" data-ldname="${escAttr(c.lead || "")}" title="Open the lead's page in Elysium Pro's CRM">Lead page</button>` : ""}</div>
        <div class="cmeta">${cesc(c.who || "")} · ${cesc(fmtShortDate(c.day))}${c.time ? ` ${cesc(c.time)}` : ""} · ${durCell} · ${cesc(c.lang || "")} · ${cesc(c.src || "")}${c.leadsrc ? ` · ${cesc(c.leadsrc)}` : ""}</div>
 </div>
 </div>
@@ -8710,7 +8710,7 @@ async function paintTab() {
     v.innerHTML = trainingPanel(data);
     wireTrainingPanel(data);
   } else if (view === "blueprint" || view === "athenamap") {
-    $("#topsub").textContent = view === "athenamap" ? "how the service team works, in plain language" : "how Pantheon works, in plain language";
+    $("#topsub").textContent = view === "athenamap" ? "how the service team works, in plain language" : "how Elysium Pro works, in plain language";
     v.innerHTML = blueprintPanel(view === "athenamap" ? "athena" : "apollo");
     wireBlueprintPanel();
   } else if (view === "sales") {
@@ -8737,7 +8737,7 @@ async function paintTab() {
   } else if (view === "hygiene") {
     await hygienePaint();    // hygiene.js; only reachable for staff.json's `hygiene`
   } else if (view === "tasks") {
-    await tasksPaint();      // tasks.js; Pantheon's own CRM, only reachable for staff.json's `crm`
+    await tasksPaint();      // tasks.js; Elysium Pro's own CRM, only reachable for staff.json's `crm`
   } else if (view === "lists") {
     await listsPaint();      // lists.js; the CRM's lead sources, pipelines and service pipelines (same gate)
   } else if (view === "workflows") {
@@ -10640,7 +10640,7 @@ function wireBlueprintPanel() {
    A step whose part is not on the page (no data that day) explains it anyway,
    with the card in the middle. Esc or Skip ends it. */
 const TOUR_STEPS = [
-  { title: "Welcome to Pantheon",
+  { title: "Welcome to Elysium Pro",
     text: "This is the agency's board. It shows how the day is going, coaches every recorded sales call, and gives you places to practise. This tour takes about two minutes." },
   { find: () => $("nav.tabs"), title: "The left bar",
     text: "Three desks: Apollo for sales, Athena for service, Cerberus for commercial -- and, for the ops team, an Operations Center (the CRM Hygiene log and the Lead Scrub). Each Center opens like a dropdown to its pages: click its arrow to open or close it. Settings at the bottom picks your world (the desert, space, the ocean, the mountains, game day, a retro arcade or Phoenix) and your look within it, each with a dark side." },
