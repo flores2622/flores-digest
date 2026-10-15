@@ -72,7 +72,7 @@
         ? (l.created ? `Create · <span class="tg" title="Created ${cesc(l.created.day)}${l.created.name ? " as " + cesc(l.created.name) : ""}">made ${day(l.created.day)}</span>`
           : (l.lead_ids || []).length ? `Create · <span class="tg">found</span>` : `Create · <span class="tr">not yet</span>`)
         : `Reassign${l.from ? ` <span class="sd">from ${cesc(l.from)}</span>` : ""}`;
-      const q = (l.quotes || []).map(x => `${x.line} ${money(x.premium)} (${x.date})`).join("; ");
+      const q = (l.quotes || []).map(x => `${x.line} ${money(x.premium)} (${x.date})`).join("; ") || l.note || "";
       return `<tr>
         <td>${badge(l.producer)}</td>
         <td>${id ? `<a href="#" class="cplead" data-i="${i}">${cesc(l.name)}</a>` : cesc(l.name)}<div class="sd" style="font-size:11px" title="${cesc(q)}">${cesc(q.length > 60 ? q.slice(0, 60) + "…" : q)}</div></td>

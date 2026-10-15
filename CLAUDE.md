@@ -1415,7 +1415,14 @@ producer is credited only with their own work on their own campaign leads
 the leaderboard's 5-4-3-2-1 per category (worked, reached, quoted, premium
 quoted, sold, created; ties share the higher points, nothing for zero). The
 page is `site/public/campaigns.js` (view `campaigns`, `opsShow`). A new batch
-is a new `list.json` under its own key, in the same shape.
+is a new `list.json` under its own key, in the same shape. **Batch 2 is the sheet's Winback
+tab** (Frank, 2026-10-15: "add the winback list as batch 2";
+`rate-decrease-2`): former customers, same 5 + 5 per producer -- no phone,
+DNC / DNC Litigator / PWC Revoked, a number back on an active policy, or
+anyone in batch 1 left out; the most recently lost first; one lead per
+household (address); BOB / Rewrite leads and leads worked that day skipped;
+a Spanish-tagged lead never to Crystal. With no quote on a former customer,
+the lead's line on the page is its note ("Former customer, inactive <date>").
 
 ## The lead scrub
 
