@@ -1300,7 +1300,24 @@ customer, so Sold is ONE table of the policies with a Customer column (Frank, 20
 the lead and the policy info, just the policy info with the customer name"; `policyCustomer`): the lead
 marked sold that day by the same producer on the same source, else that producer's only sold household,
 blank when several households share it; a household marked sold whose policy is dated another day is one
-line under it. Household Completion's policies carry the same column. Past days:
+line under it. Household Completion's policies carry the same column. **Quotes and
+policies show their line of business** (Frank, 2026-10-15: "I want to start
+displaying LOB (Line of Business) when listing quotes or policies"): the
+Quoted list has an **LOB** column -- each counted quote's carrier and
+product named by the Sales sheet's own rules (`sales_log_auto.product_name`
+on the quote's `carrierId` + `productName`: Farmers-Home, BW-Auto,
+Foremost-MH; an unknown carrier keeps the bare product), kept by daily.py
+as `quoted_lob` beside `quoted_premium` and put on each `rows.quoted` row
+as `lob` ([{lob, premium}], the same quotes the premium counts; `quoteLobHtml`
+groups repeats "BW-Auto ×2", premiums on hover, a dash when the household
+is quoted by a stage move or a sent quote with no new quote that day).
+Days built before 2026-10-15 carry no `lob` and keep the old columns (a
+range shows them blank); the live refresh adds counts, not rows, so the
+list is the checkpoint's. The policy lists' Product column (Sold, Household
+Completion, Life -- already the sheet's product name) is headed **LOB**, and
+every Renewals list (Coming up, Lost, a card's list, Cancellations to check)
+has an **LOB** column from the report's `type` beside the policy number. The
+lead page, Campaigns and the Commercial queue already named the line. Past days:
 `python3 digest_rows.py --backfill 2026-09-01` from R2's saved inputs (no
 quoted premium, and no quoted list before 2026-09-24's `quoted_leads`).
 **Everything on the Digest opens its accounts** (Frank, 2026-09-29:
