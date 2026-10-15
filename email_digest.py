@@ -240,7 +240,7 @@ def header(doc, kind, name=None):
            "front": "The sales leaderboard"}[kind]
     return (f'<tr><td style="padding:18px 22px 8px 22px">'
             f'<div style="font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:#8a6d3b;font-weight:700">'
-            f'Pantheon · {E(who)}</div>'
+            f'Elysium Pro · {E(who)}</div>'
             f'<div style="font-size:22px;font-weight:800;margin-top:4px">{E(doc.get("label") or doc.get("date"))}</div>'
             f'<div style="font-size:13px;color:#52514e;margin-top:6px">The team: {line}</div></td></tr>')
 
@@ -444,7 +444,7 @@ def leaderboard(doc):
 
 
 def footer(kind):
-    link = (f' <a href="{E(BOARD_URL)}/" style="color:#8a6d3b;font-weight:700">Open Pantheon</a>'
+    link = (f' <a href="{E(BOARD_URL)}/" style="color:#8a6d3b;font-weight:700">Open Elysium Pro</a>'
             if BOARD_URL else "")
     note = {"ops": "Every lead name opens its coaching card on the board. Attached: the Missed Call Audit.",
             "producer": "Every lead name opens your full coaching card on the board, with the recording and transcript.",
@@ -478,7 +478,7 @@ def render(doc, kind, name=None, level=2):
         parts.append(leaderboard(doc))
     parts.append(footer(kind))
     body = "".join(parts)
-    title = E(f"{doc.get('label') or doc.get('date')} — Pantheon")
+    title = E(f"{doc.get('label') or doc.get('date')} — Elysium Pro")
     return (f'<!doctype html><html><head><meta charset="utf-8"><title>{title}</title>{STYLE}</head>'
             f'<body style="margin:0;background:#f3ece0">'
             f'<div style="background:#f3ece0;padding:18px 0;font-family:-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;color:#1a1a1a">'

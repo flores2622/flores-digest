@@ -1,4 +1,4 @@
-/* Tasks -- the first page of Pantheon's own CRM (Frank, 2026-10-06: "start
+/* Tasks -- the first page of Elysium Pro's own CRM (Frank, 2026-10-06: "start
    on the tasks page next, all of this is available to only me until further
    notice"). Sales Center > Tasks, shown only to whoever /api/crm answers
    (site/crm.js: staff.json's `crm` -- Frank alone for now); for anyone else
@@ -13,7 +13,7 @@
    own helpers ($, cesc, pbadge, DOT, azTodayDate, isoDate, openLeadCard),
    so it loads after index.html's main script.
 
-   Nothing here reads AgencyZoom: a task made here lives only in Pantheon
+   Nothing here reads AgencyZoom: a task made here lives only in Elysium Pro
    until phase 2 of CRM.md moves the pipeline's own task writes over. */
 (function () {
   const TABS = [["today", "Due today"], ["overdue", "Overdue"], ["week", "Next 7 days"], ["done", "Done today"], ["all", "All open"]];
@@ -120,7 +120,7 @@
       ${tkRows.length ? `<div class="scroll"><table class="tktab"><thead><tr><th>${tkTab === "done" ? "Done" : "Due"}</th><th>Who</th><th>Task</th><th>About</th><th>Kind</th><th></th></tr></thead><tbody>${tkRows.map(rowHtml).join("")}</tbody></table></div>`
         : `<div class="empty">${{ today: "Nothing due today", overdue: "Nothing overdue", week: "Nothing due in the next 7 days", done: "Nothing done yet today", all: "No open tasks" }[tkTab]}${tkWho ? ` for ${cesc(first((person(tkWho) || {}).name))}` : ""}.</div>`}
       ${checkHtml()}
-      <p class="tkfoot">Pantheon's own CRM. ${LK.employees.length} people, ${LK.workflows.length} pipelines and workflows, ${LK.leadSources.length} lead sources on file. Tasks made here live only in Pantheon until the pipeline's task writes move over (CRM.md, phase 2).</p>
+      <p class="tkfoot">Elysium Pro's own CRM. ${LK.employees.length} people, ${LK.workflows.length} pipelines and workflows, ${LK.leadSources.length} lead sources on file. Tasks made here live only in Elysium Pro until the pipeline's task writes move over (CRM.md, phase 2).</p>
     </section>`;
     const f = v.querySelector(".tkform input[autofocus], .tknew input[autofocus]"); if (f) f.focus();
   }
@@ -132,21 +132,21 @@
     try { tkCheck = (await api("taskcheck")).days || []; } catch (_) { tkCheck = null; }
     try { tkCalls = (await api("callcheck")).days || []; } catch (_) { tkCalls = null; }
   }
-  // Phase 3's: AgencyZoom's CALL notes on the leads against Pantheon's own,
+  // Phase 3's: AgencyZoom's CALL notes on the leads against Elysium Pro's own,
   // written from the RingCentral log (call_check.py). Dials decide agreement;
-  // call-ins are shown (AgencyZoom logs the line that rang, Pantheon who answered).
+  // call-ins are shown (AgencyZoom logs the line that rang, Elysium Pro who answered).
   function callsHtml() {
     if (!tkCalls || !tkCalls.length) return "";
     const agree = tkCalls.filter((d) => d.agree).length;
     const rows = tkCalls.map((d) => { const c = d.counts || {}; const why = [];
       if (c.only_agencyzoom_outbound) why.push(`${c.only_agencyzoom_outbound} dial${c.only_agencyzoom_outbound === 1 ? "" : "s"} only in AgencyZoom`);
-      if (c.only_pantheon_outbound) why.push(`${c.only_pantheon_outbound} only in Pantheon`);
+      if (c.only_pantheon_outbound) why.push(`${c.only_pantheon_outbound} only in Elysium Pro`);
       const ins = (c.only_agencyzoom_inbound || 0) + (c.only_pantheon_inbound || 0);
       return `<tr class="${d.agree ? "" : "tkck-off"}"><td>${cesc(d.day)}</td><td>${c.agencyzoom ?? "—"}${c.noise ? ` <small class="tkmute">+${c.noise} with no number</small>` : ""}</td><td>${c.pantheon ?? "—"}</td><td>${c.matched ?? "—"}</td>
         <td>${d.agree ? "✓ every dial both ways" : why.join(", ")}${ins ? ` <small class="tkmute">· ${ins} call-in${ins === 1 ? "" : "s"} differ</small>` : ""}</td></tr>`; }).join("");
-    return `<h4 class="tkckh">Calls on the lead: AgencyZoom's notes vs Pantheon's <span class="lsbadge ${agree === tkCalls.length ? "lsok" : ""}">${agree} of ${tkCalls.length} days agree</span></h4>
-      <p class="lsmute">Every checkpoint Pantheon writes its own call note on the lead from the RingCentral log, the way AgencyZoom's integration does; each night the two are matched call by call on the lead. One note per lead record, as AgencyZoom writes them.</p>
-      <div class="scroll"><table class="tktab tkcktab"><thead><tr><th>Day</th><th>AgencyZoom</th><th>Pantheon</th><th>Matched</th><th>Result</th></tr></thead><tbody>${rows}</tbody></table></div>`;
+    return `<h4 class="tkckh">Calls on the lead: AgencyZoom's notes vs Elysium Pro's <span class="lsbadge ${agree === tkCalls.length ? "lsok" : ""}">${agree} of ${tkCalls.length} days agree</span></h4>
+      <p class="lsmute">Every checkpoint Elysium Pro writes its own call note on the lead from the RingCentral log, the way AgencyZoom's integration does; each night the two are matched call by call on the lead. One note per lead record, as AgencyZoom writes them.</p>
+      <div class="scroll"><table class="tktab tkcktab"><thead><tr><th>Day</th><th>AgencyZoom</th><th>Elysium Pro</th><th>Matched</th><th>Result</th></tr></thead><tbody>${rows}</tbody></table></div>`;
   }
   function checkHtml() {
     if (!tkCheck && !tkCalls) return "";
