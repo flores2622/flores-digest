@@ -1670,6 +1670,23 @@ already downloads. Leads only; a customer's texts are Athena's.
   never adds those people back. Published days 09-01..10-09 had only those
   people's reply and bad-contact rows taken out, counts with them (backups
   under `backups/2026-10-12-messages-service-split/`).
+  **The service team texting a customer is service work, whoever's open
+  lead sits on the number** (Frank, 2026-10-13: Jose Renteria, a customer
+  since 2022 with Mike's open Life Cross Sell lead, texting Crystal about
+  his renewal draft, deductible and mailing address, sat in Needs someone
+  now under Crystal -- "it is a renewal that crystal is working and the
+  lead is assigned to mike, it should be in service"): `messages.build`
+  works out who last typed to each person by the day's end (`last_typed`)
+  and `service_people(..., typed=)` moves a customer (or a number with an
+  open SR) to service when that person is on staff.json's service team
+  (Debbie, Amanda, Crystal) and the open / X-dated lead is not their own;
+  a producer typing, or nobody, keeps them a producer's on any open lead,
+  as before (a first cut that moved them for ANY other producer's lead took
+  121 people off 10-13's page, Sarahi's winbacks on Lorena's old leads among
+  them -- too wide). `route()` answers "open lead" before "customer", so
+  the records are read, not the bucket.
+  10-13's `messages` were rebuilt under it (backups under
+  `backups/2026-10-14-messages-renteria/`).
 - **Who sent it:** TEXT/EMAIL notes carry `attr.outbound` (True/False on a
   text, 1/0 on an email -- `messages._inbound` reads both); a text with
   `attr.triggerRuleId` is an AgencyZoom automation. **Emails have no
@@ -1691,7 +1708,10 @@ already downloads. Leads only; a customer's texts are Athena's.
   gustó / Le encantó / Se rió de / Enfatizó / No le gustó / Preguntó,
   "reacted ... to") and a bare emoji are in `ACK`, so they count as a reply
   and never wait; the Worker gets the same pattern through
-  `live_basis.messages.rx`. Published days were not rebuilt.
+  `live_basis.messages.rx`. Published days were not rebuilt. **So is a thank-you in other
+  words** (Frank, 2026-10-13: Jose Renteria's "I appreciate it!" -- "its the
+  end of the convo"): appreciate it / that / you, much appreciated, got it,
+  will do, noted, awesome, no problem, you're welcome, thanks again.
 - **Replies are windowed from the office's close the business day before**
   (5:30 PM) to 5:30 PM, so evening and weekend replies land on the next
   business day; the clock starts at 8:30 for a reply that came in closed.
@@ -3207,6 +3227,16 @@ over `text/event-stream` with status lines while it reads.
   the drawer's **Usage** button shows it (hidden on a 403), and the
   `coeus_usage` tool lets those viewers ask Coeus itself. The figure is an
   estimate, not the bill.
+- **`node --test site/coeus.test.mjs` runs after touching `coeus.js`**
+  (2026-10-13): the handler end to end with the model stubbed. **Every
+  question failed from 2026-10-06 to 10-13** on a bare Cloudflare 500
+  ("Apollo could not answer (500)" -- Mike, asking for his home quotes
+  since September 1st): the time-zone change (#370) removed the `az` Date
+  that `contextBlock` still read for today's date, a ReferenceError before
+  the stream opened, which nothing ran before a deploy. `azToday()` now;
+  the setup before the stream is one try that answers a JSON error with
+  the reason; and wrangler.jsonc turns on Workers Logs (`observability`),
+  so the dashboard's Observability > Logs holds the next one.
 - **When the board changes, Coeus changes with it** through `blueprints.js`
   -- another reason to keep the guides current in the same change. A new
   figure Coeus should read needs its compact reading added in `coeus.js`.

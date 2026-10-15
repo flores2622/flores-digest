@@ -9,6 +9,10 @@
   "name": "flores-board",
   "compatibility_date": "2026-09-05",
   "main": "site/worker.js",
+  // Workers Logs (free on every plan): a request that fails, as Apollo's
+  // chat did for a week on a bare 1101, leaves its reason in the dashboard
+  // (Observability > Logs) instead of nothing (2026-10-13).
+  "observability": { "enabled": true },
   "assets": {
     "directory": "site/public",
     "binding": "ASSETS"
