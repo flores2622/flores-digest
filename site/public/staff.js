@@ -67,7 +67,9 @@ window.STAFF = {
    "tags": [
     "task_assignee"
    ],
-   "board": [],
+   "board": [
+    "scrub"
+   ],
    "sales_team": "coral-sarahi",
    "color": "#00ffcf",
    "handle": "coral.covers.it.all"
@@ -129,7 +131,8 @@ window.STAFF = {
     "roleplay_history",
     "commission_all",
     "sales_log_all",
-    "crm"
+    "crm",
+    "campaigns"
    ],
    "handle": "frank.full.coverage"
   },

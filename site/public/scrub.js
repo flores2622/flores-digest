@@ -161,14 +161,17 @@
   /* ---- what is left on a lead ---- */
   const DONE = () => (LIST && LIST.done_fields) || (SC && SC.done_fields) || ["apex", "az", "lead"];
   const filled = v => !!String(v == null ? "" : v).trim();
+  // A list can carry its own columns and done rule (the Worker sends them).
+  const BOXES = () => (LIST && LIST.done_boxes) || ["az_dups", "az_tagged"];
   function leftOn(l) {
     const s = l.s || {}, left = DONE().filter(k => !filled(s[k]));
-    if (!s.az_dups) left.push("az_dups");
-    if (!s.az_tagged) left.push("az_tagged");
+    for (const k of BOXES()) if (!s[k]) left.push(k);
     return left;
   }
-  const TODO = [["", "Everything"], ["open", "Not done"], ["done", "Done"], ["apex", "No Apex Status"],
-    ["az", "No AZ Status"], ["lead", "No Lead Status"], ["az_dups", "Duplicates not cleaned"], ["az_tagged", "Not tagged"],
+  const label = k => ((LIST && LIST.fields || []).find(f => f.key === k) || {}).label || k;
+  const TODO_KEYS = () => [...DONE(), ...BOXES()];
+  const TODO = () => [["", "Everything"], ["open", "Not done"], ["done", "Done"],
+    ...TODO_KEYS().map(k => [k, BOXES().includes(k) ? `Not ticked: ${label(k)}` : `No ${label(k)}`]),
     ["next", "Has a next step"], ["today", "Worked today"], ["dupe", "Same phone or email as another lead"]];
 
   function dupeSets(leads) {
@@ -196,7 +199,7 @@
       const t = scF.todo;
       if (t === "open" && !left.length) return false;
       if (t === "done" && left.length) return false;
-      if (["apex", "az", "lead", "az_dups", "az_tagged"].includes(t) && !left.includes(t)) return false;
+      if (TODO_KEYS().includes(t) && !left.includes(t)) return false;
       if (t === "next" && (!filled(s.next) || /^none$/i.test(s.next.trim()))) return false;
       if (t === "today" && s.date !== LIST.today) return false;
       if (t === "dupe" && !dupes[l.id]) return false;
@@ -214,6 +217,9 @@
       <small>of ${of.toLocaleString()} · ${pct}%</small><i style="width:${pct}%"></i></div>`;
   }
   function progressHtml(s) {
+    if (LIST && LIST.list && LIST.list.fields && s.progress)
+      return `<div class="sctiles">${tile("Fully done", s.done, s.count, "var(--good)")}${s.progress.map((p, i) =>
+        tile(p.label, p.n, s.count, ["var(--s3)", "var(--s4)", "var(--s5)", "var(--accent)", "var(--warn)"][i % 5])).join("")}</div>`;
     return `<div class="sctiles">${tile("Fully done", s.done, s.count, "var(--good)")}${tile("Apex Status", s.apex, s.count, "var(--s3)")}
       ${tile("AZ Status", s.az, s.count, "var(--s4)")}${tile("Duplicates Cleaned", s.az_dups, s.count, "var(--s5)")}
       ${tile("Tagged", s.az_tagged, s.count, "var(--accent)")}${tile("Lead Status", s.lead || 0, s.count, "var(--warn)")}</div>`;
@@ -280,6 +286,7 @@
     if (f.key === "apex" || f.key === "az") return /^active$/i.test(v) ? "ok" : /inactive|cancel|not in|not found/i.test(v) ? "bad" : "mid";
     if (f.key === "lead") return "ok";
     if (f.key === "next") return /^none$/i.test(v) ? "ok" : "mid";
+    if (f.tones) for (const [t, re] of Object.entries(f.tones)) if (new RegExp(re, "i").test(v)) return t;
     return "";
   }
 
@@ -310,7 +317,7 @@
         ${l.az_id || l.stage || l.assigned ? `<div class="scsub">${[l.az_id && "AZ " + l.az_id, l.stage, l.assigned && first(l.assigned)].filter(Boolean).map(cesc).join(" · ")}</div>` : ""}
         ${extra.length ? `<div class="scx">${extra.map(([k, v]) => `<span title="${cesc(k)}">${cesc(v)}</span>`).join("")}</div>` : ""}</td>
       ${cols.map(cell).join("")}
-      <td>${left.length ? `<span class="scleft" title="Still to do: ${cesc(left.map(k => (F(k) || {}).label || k).join(", "))}">${left.length}</span>` : '<span class="scok" title="Done in both">✓</span>'}${LIST.can_edit ? `<button type="button" class="icon-btn del-btn" data-scrm="${cesc(l.id)}" aria-label="Take this client off the list" title="Take this client off the list">✕</button>` : ""}</td>
+      <td>${left.length ? `<span class="scleft" title="Still to do: ${cesc(left.map(k => (F(k) || {}).label || k).join(", "))}">${left.length}</span>` : '<span class="scok" title="Done">✓</span>'}${LIST.can_edit ? `<button type="button" class="icon-btn del-btn" data-scrm="${cesc(l.id)}" aria-label="Take this client off the list" title="Take this client off the list">✕</button>` : ""}</td>
     </tr>`;
   }
 
@@ -328,13 +335,14 @@
     const head = fields.filter(f => !f.beside).map(f => `<th class="t">${cesc(f.label)}</th>`).join("");
     return `<div class="sect" style="--sc:var(--s3)">
       <h2>${cesc(L.name)}</h2>
+      ${L.about ? `<p class="sd">${cesc(L.about)}</p>` : ""}
       <p class="sd">${L.month ? cesc(L.month) + " · " : ""}Imported ${cesc(when(L.created_at))} by ${cesc(L.created_by || "")}. Every change saves at once and fills in the Date and Rep; hover a box to see who set it.</p>
       ${progressHtml(s)}
       <div class="controls scfilters">
         <input type="search" id="scQ" placeholder="Search client, notes, details" value="${cesc(scF.q)}" aria-label="Search">
         ${xopts ? `<select id="scX" aria-label="Detail"><option value="">Any detail</option>${xopts}</select>` : ""}
         ${reps.length ? `<select id="scWho" aria-label="Rep"><option value="">Every rep</option>${reps.map(w => `<option value="${cesc(w)}"${w === scF.who ? " selected" : ""}>${cesc(w)}</option>`).join("")}</select>` : ""}
-        <select id="scTodo" aria-label="Show">${TODO.map(([k, l]) => `<option value="${k}"${k === scF.todo ? " selected" : ""}>${cesc(l)}</option>`).join("")}</select>
+        <select id="scTodo" aria-label="Show">${TODO().map(([k, l]) => `<option value="${k}"${k === scF.todo ? " selected" : ""}>${cesc(l)}</option>`).join("")}</select>
         <span class="romute">${rows.length.toLocaleString()} shown</span>
         <span style="flex:1"></span>
         <button type="button" class="btn" id="scCsv">Download CSV</button>

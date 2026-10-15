@@ -62,6 +62,7 @@ import { leadsIndex } from "./lead_index.js";
 import { rotationGet, rotationPost } from "./rotation.js";
 import { scrubGet, scrubPost } from "./scrub.js";
 import { hygieneGet, hygienePost } from "./hygiene.js";
+import { campaignsGet } from "./campaigns.js";
 import { crm } from "./crm.js";
 import { claimsForViewer } from "./claims_view.js";
 import { PRODUCER_EMAILS, STAFF_FIRST_NAMES, SALES_SHEET_NAMES, SALES_TEAMS, AGENCY, hasBoard, boardEmails, TZ, localDay } from "./staff.js";
@@ -182,6 +183,14 @@ export default {
       if (parts[1] === "hygiene" && parts.length === 2) {
         if (request.method === "GET") return hygieneGet(request, env, identityOf);
         if (request.method === "POST") return hygienePost(request, env, identityOf);
+      }
+
+      // Lead campaigns (Frank, 2026-10-15): site/campaigns.js,
+      // staff.json's `campaigns` only (Frank alone for now).
+      if (parts[1] === "campaigns" && parts.length <= 3 && request.method === "GET") {
+        const key = /^[a-z0-9-]{1,60}$/.test(parts[2] || "") ? parts[2] : "";
+        if (parts[2] && !key) return new Response("Not found", { status: 404 });
+        return campaignsGet(request, env, identityOf, key);
       }
 
       // The lead scrub tracker (Frank, 2026-10-02): site/scrub.js,

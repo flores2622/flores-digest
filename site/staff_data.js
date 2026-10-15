@@ -102,7 +102,9 @@ export default {
       "tags": [
         "task_assignee"
       ],
-      "board": [],
+      "board": [
+        "scrub"
+      ],
       "color": "#00ffcf",
       "email_dot": "cJ",
       "handle": "coral.covers.it.all"
@@ -182,7 +184,8 @@ export default {
         "roleplay_history",
         "commission_all",
         "sales_log_all",
-        "crm"
+        "crm",
+        "campaigns"
       ],
       "handle": "frank.full.coverage"
     },

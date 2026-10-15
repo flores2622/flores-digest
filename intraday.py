@@ -171,6 +171,9 @@ def run(day, dry_run=False):
     # raises; without CF_API_TOKEN it logs one line and moves on.
     import crm_sync
     crm_sync.run(days={day}, log=log)
+    # Pantheon's own CALL notes from this checkpoint's RingCentral log (CRM.md phase 3).
+    import crm_calls
+    crm_calls.run(day, log=log)
 
     # Free (R2 reads only, no paid API), so the live board's Policies/Premium
     # Sold columns get the same sale-streak colouring as the finalized one

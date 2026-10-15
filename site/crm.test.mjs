@@ -35,7 +35,7 @@ function r2() {
 }
 function fresh() {
   const db = new DatabaseSync(":memory:");
-  for (const f of ["0001_init.sql", "0002_stage_move_note.sql", "0003_lead_source_names.sql", "0004_lists.sql"])
+  for (const f of ["0001_init.sql", "0002_stage_move_note.sql", "0003_lead_source_names.sql", "0004_lists.sql", "0005_contacts_links.sql"])
     db.exec(readFileSync(new URL("./crm/migrations/" + f, import.meta.url), "utf8"));
   db.exec(`INSERT INTO lead_sources (id, name) VALUES (1, 'Facebook'), (2, 'Home no Auto');
     INSERT INTO workflows (id, name, kind) VALUES (10, '1 Pipeline', 'sales'), (20, 'Service Pipeline', 'service'), (30, 'Late Payments', 'service');
@@ -392,4 +392,132 @@ test("automations: the report from R2 and Frank's marks", async () => {
   assert.equal(r.body.suggestions.length, 1);
   assert.equal((await call(env, "GET", "/api/crm/automations", null, CRYSTAL.email)).status, 403);
   assert.equal((await call({ CRM: env.CRM }, "GET", "/api/crm/automations")).status, 503);
+});
+
+test("the lead page: one read with the lead, household, policies, tasks, notes, moves and where it can go", async () => {
+  const { env } = fresh();
+  let r = await call(env, "POST", "/api/crm/leads", { firstname: "Ana", lastname: "Reyes", phone: "(602) 555-0102", assignedTo: CRYSTAL.az_id, leadSourceId: 2, workflowStageId: 101 });
+  const id = r.body.id;
+  assert.equal((await call(env, "POST", `/api/crm/leads/${id}/notes`, { body: "Spoke, wants the home quote" })).status, 201);
+  assert.equal((await call(env, "POST", `/api/crm/leads/${id}/move`, { to: "1 Pipeline | Quotes Presented" })).status, 200);
+  assert.equal((await call(env, "POST", "/api/crm/tasks", { title: "Follow up", assigneeId: CRYSTAL.az_id, leadId: id, dueDate: "2026-10-14 09:00" })).status, 200);
+  r = await call(env, "GET", `/api/crm/leads/${id}/page`);
+  assert.equal(r.status, 200, JSON.stringify(r.body));
+  const p = r.body;
+  assert.equal(p.lead.id, id);
+  assert.equal(p.lead.where, "1 Pipeline | Quotes Presented");
+  assert.equal(p.lead.sourceName, "Cross-sell: Home no Auto");
+  assert.equal(p.lead.stageName, "Quotes Presented");
+  assert.equal(p.household, null);
+  assert.deepEqual(p.policies, []);
+  assert.equal(p.tasks.length, 1); assert.equal(p.tasks[0].customerName, "Ana Reyes");
+  assert.deepEqual(p.notes.map((n) => n.type), ["MOVE_STAGE", "NOTE"]);   // newest first
+  assert.equal(p.moves.length, 1); assert.equal(p.moves[0].to, "1 Pipeline | Quotes Presented"); assert.equal(p.moves[0].movedByName, FRANK.name);
+  assert.ok(p.events.some((e) => e.action === "move"));
+  const opt = p.stageOptions;
+  assert.ok(opt.length >= 3);
+  assert.ok(opt.every((o) => o.workflow === "1 Pipeline"), "only the sales pipelines are offered");   // Service Pipeline / Late Payments are kind service
+  assert.ok(opt.every((o) => o.pipelineName === "New Business"), "Frank's pipeline name on every option");
+  assert.equal(opt.find((o) => o.current).stage, "Quotes Presented");
+  assert.equal(opt.find((o) => o.stage === "New").stageName, "New");   // Frank's name, from the map
+  assert.deepEqual(p.exits, ["Smart-Cycle", "Dead", "Sold"]);
+  // sold: the household appears, with its policies
+  assert.equal((await call(env, "POST", `/api/crm/leads/${id}/sold`, {})).status, 200);
+  r = await call(env, "GET", `/api/crm/leads/${id}/page`);
+  assert.ok(r.body.household && r.body.household.name === "Ana Reyes");
+  assert.equal(r.body.lead.where, "Sold");
+  assert.equal((await call(env, "GET", "/api/crm/leads/999/page")).status, 404);
+  assert.equal((await call(env, "GET", `/api/crm/leads/${id}/page`, null, CRYSTAL.email)).status, 403);
+});
+
+test("the call check (phase 3) reads like the task check: the last days from R2, Frank only", async () => {
+  const { env } = fresh();
+  const put = (d, doc) => env.BOARD.put("crm/call_check/" + d + ".json", JSON.stringify(doc));
+  await put("2026-10-13", { day: "2026-10-13", agree: true, counts: { agencyzoom: 150, pantheon: 320, matched: 130, noise: 31 } });
+  await put("2026-10-12", { day: "2026-10-12", agree: false, counts: { agencyzoom: 100, pantheon: 90, matched: 80, only_agencyzoom_outbound: 3 } });
+  const r = await call(env, "GET", "/api/crm/callcheck");
+  assert.equal(r.status, 200);
+  assert.deepEqual(r.body.days.map((d) => d.day), ["2026-10-13", "2026-10-12"]);   // newest first
+  assert.equal(r.body.days[1].counts.only_agencyzoom_outbound, 3);
+  assert.equal((await call(env, "GET", "/api/crm/callcheck", null, CRYSTAL.email)).status, 403);
+  assert.equal((await call({ CRM: env.CRM }, "GET", "/api/crm/callcheck")).status, 503);
+});
+
+test("contacts and linked accounts: Claudia / the LLC / Norma, a primary that switches, links from both sides", async () => {
+  const { raw, env } = fresh();
+  raw.exec(`INSERT INTO households (id, firstname, lastname, phone, phone_key, email, customer_type, create_date, assigned_to, az_id) VALUES
+      (22182068, 'Claudia', 'Gallardo', '(928) 246-8408', '+19282468408', 'cgallardo72@gmail.com', 'personal', '2024-01-12 18:37:31', 82589, 22182068),
+      (32707089, 'Norma', 'De Leon', '(928) 261-8832', '+19282618832', 'deleon23norma@gmail.com', 'personal', '2025-09-24 17:14:50', 82588, 32707089);
+    INSERT INTO households (id, firstname, lastname, business_name, phone, email, customer_type, create_date, az_id) VALUES
+      (37076394, 'Celerino A. Gallardo, L.L.c.', '', 'Celerino A. Gallardo, L.L.c.', '(928) 247-3314', 'maxxbuilders1@gmail.com', 'business', '2026-06-01 18:47:13', 37076394),
+      (900, 'Nordell, Inc', '', 'Nordell, Inc', '(928) 261-8832', 'deleon23norma@gmail.com', 'business', '2025-10-01 00:00:00', 900);
+    INSERT INTO policies (id, household_id, premium, status, create_date) VALUES (1, 37076394, 4250, 1, '2026-06-01 00:00:00'), (2, 37076394, 375, 1, '2026-06-01 00:00:00'), (3, 37076394, 999, 4, '2025-06-01 00:00:00');`);
+  const people = (id) => call(env, "GET", `/api/crm/households/${id}/page`);
+  // A plain account shows its own name as its one primary contact, before anything is written.
+  let r = await people(22182068);
+  assert.equal(r.status, 200);
+  assert.deepEqual(r.body.contacts.map((c) => [c.name, c.primary, !!c.virtual]), [["Claudia Gallardo", true, true]]);
+  assert.equal(r.body.holder.name, "Claudia Gallardo");
+  // A business with no contacts has none (its name is not a person).
+  assert.deepEqual((await people(37076394)).body.contacts, []);
+  // Add Celerino to Claudia's account: Claudia becomes a real contact and stays primary.
+  r = await call(env, "POST", "/api/crm/households/22182068/people", { op: "add", firstname: "Celerino", middlename: "A", lastname: "Gallardo", email: "gallaale17@hotmail.com", phone: "(928) 247-3314" });
+  assert.equal(r.status, 200);
+  assert.deepEqual(r.body.contacts.map((c) => [c.name, c.primary, !!c.virtual]), [["Claudia Gallardo", true, false], ["Celerino A Gallardo", false, false]]);
+  const claudia = r.body.contacts[0].id, celerino = r.body.contacts[1].id;
+  // The LLC takes both as contacts (existing records, shared); Celerino is its primary.
+  assert.equal((await call(env, "POST", "/api/crm/households/37076394/people", { op: "attach", contactId: celerino })).body.contacts[0].primary, true);
+  r = await call(env, "POST", "/api/crm/households/37076394/people", { op: "attach", contactId: claudia });
+  assert.deepEqual(r.body.contacts.map((c) => [c.id === celerino ? "Celerino" : "Claudia", c.primary]), [["Celerino", true], ["Claudia", false]]);
+  // Attaching twice changes nothing.
+  assert.equal((await call(env, "POST", "/api/crm/households/37076394/people", { op: "attach", contactId: claudia })).body.contacts.length, 2);
+  // Search finds a contact with every account it is on.
+  r = await call(env, "GET", "/api/crm/contacts?q=celerino");
+  assert.equal(r.body.contacts.length, 1); assert.deepEqual(r.body.contacts[0].accounts.map((a) => a.id).sort(), [22182068, 37076394]);
+  r = await call(env, "GET", "/api/crm/contacts?q=" + encodeURIComponent("(928) 247-3314"));   // by number too
+  assert.deepEqual(r.body.contacts.map((c) => c.name), ["Celerino A Gallardo"]);
+  assert.equal((await call(env, "GET", "/api/crm/contacts?q=x")).status, 400);
+  // Switch the primary account holder on Claudia's account to Celerino: that account only.
+  r = await call(env, "POST", "/api/crm/households/22182068/people", { op: "primary", contactId: celerino });
+  assert.equal(r.body.holder.name, "Celerino A Gallardo");
+  assert.deepEqual(r.body.contacts.map((c) => c.primary), [true, false]);
+  assert.equal((await people(37076394)).body.holder.name, "Celerino A Gallardo");   // the LLC unchanged
+  const ev = raw.prepare("SELECT before, after FROM events WHERE action = 'primary_changed'").all();
+  assert.equal(ev.length, 1); assert.equal(JSON.parse(ev[0].before).primary, "Claudia Gallardo"); assert.equal(JSON.parse(ev[0].after).primary, "Celerino A Gallardo");
+  // A contact that is not on the account cannot be made primary.
+  assert.equal((await call(env, "POST", "/api/crm/households/32707089/people", { op: "primary", contactId: celerino })).status, 404);
+  // Link the accounts: seen from both sides, each with its contacts and current policies only.
+  r = await call(env, "POST", "/api/crm/households/22182068/people", { op: "link", householdId: 37076394 });
+  assert.equal(r.body.linked.length, 1);
+  const L = r.body.linked[0];
+  assert.deepEqual([L.id, L.name, L.policies, L.premium, L.contacts.length], [37076394, "Celerino A. Gallardo, L.L.c.", 2, 4625, 2]);
+  assert.equal((await people(37076394)).body.linked[0].id, 22182068);
+  await call(env, "POST", "/api/crm/households/37076394/people", { op: "link", householdId: 22182068 });   // again from the other side: still one
+  assert.equal(raw.prepare("SELECT count(*) n FROM household_links").get().n, 1);
+  assert.equal((await call(env, "POST", "/api/crm/households/22182068/people", { op: "link", householdId: 22182068 })).status, 400);
+  assert.equal((await call(env, "POST", "/api/crm/households/22182068/people", { op: "link", householdId: 5 })).status, 404);
+  // Norma: several businesses linked, a contact edited, the primary removed and the next one promoted.
+  for (const [f, l, e] of [["Melissa", "De la Torre", "melissadlt622@gmail.com"], ["Pricila", "De La Torre", "pricila10078942@gmail.com"]])
+    await call(env, "POST", "/api/crm/households/32707089/people", { op: "add", firstname: f, lastname: l, email: e });
+  await call(env, "POST", "/api/crm/households/32707089/people", { op: "link", householdId: 900 });
+  r = await people(32707089);
+  assert.deepEqual(r.body.contacts.map((c) => c.name), ["Norma De Leon", "Melissa De la Torre", "Pricila De La Torre"]);
+  const pricila = r.body.contacts[2].id;
+  r = await call(env, "POST", "/api/crm/households/32707089/people", { op: "edit", contactId: pricila, phone: "(928) 430-6825" });
+  assert.equal(r.body.contacts[2].phone, "(928) 430-6825");
+  assert.equal(raw.prepare("SELECT phone_key FROM contacts WHERE id = ?").get(pricila).phone_key, "+19284306825");
+  r = await call(env, "POST", "/api/crm/households/32707089/people", { op: "detach", contactId: r.body.contacts[0].id });
+  assert.deepEqual(r.body.contacts.map((c) => [c.name, c.primary]), [["Melissa De la Torre", true], ["Pricila De La Torre", false]]);
+  // Unlink removes it from both sides; the lead page and the account page both carry the people.
+  await call(env, "POST", "/api/crm/households/22182068/people", { op: "unlink", householdId: 37076394 });
+  assert.equal((await people(22182068)).body.linked.length, 0); assert.equal((await people(37076394)).body.linked.length, 0);
+  assert.equal((await call(env, "POST", "/api/crm/households/22182068/people", { op: "nope" })).status, 400);
+  assert.equal((await call(env, "POST", "/api/crm/households/22182068/people", { op: "add", firstname: " " })).status, 400);
+  const lead = await call(env, "POST", "/api/crm/leads", { firstname: "Norma", lastname: "De Leon", phone: "(928) 261-8832" });
+  await call(env, "POST", `/api/crm/leads/${lead.body.id}/sold`, { householdId: 32707089 });
+  assert.equal((await call(env, "GET", `/api/crm/leads/${lead.body.id}/page`)).body.people.holder.name, "Melissa De la Torre");
+  assert.equal((await people(32707089)).body.leads.length, 1);
+  assert.equal((await call(env, "GET", "/api/crm/households/1/page")).status, 404);
+  // Only the crm key opens any of it.
+  assert.equal((await call(env, "POST", "/api/crm/households/22182068/people", { op: "unlink", householdId: 1 }, CRYSTAL.email)).status, 403);
 });

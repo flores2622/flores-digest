@@ -100,7 +100,7 @@
       "tags": [
         "task_assignee"
       ],
-      "board": [],
+      "board": ["scrub"],
       "color": "#00ffcf",
       "email_dot": "cJ",
       "handle": "coral.covers.it.all"
@@ -180,7 +180,8 @@
         "roleplay_history",
         "commission_all",
         "sales_log_all",
-        "crm"
+        "crm",
+        "campaigns"
       ],
       "handle": "frank.full.coverage"
     },

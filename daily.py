@@ -901,6 +901,13 @@ def build_metrics(day):
 
         tot = 0
         qprem = {}
+        # Each counted quote's line of business, for the Quoted list's LOB
+        # column (Frank, 2026-10-15: "I want to start displaying LOB when
+        # listing quotes or policies"): the Sales sheet's own product name
+        # (sales_log_auto.product_name -- Farmers-Home, BW-Auto ...) from the
+        # quote's carrier and product, so a quote reads like a policy sold.
+        qlob = {}
+        import sales_log_auto
         for lid in hh.get(who, ()):
             try:
                 qs = az.quotes(lid) or []
@@ -910,6 +917,10 @@ def build_metrics(day):
             q_seen += [q.get("id") for q in (arr or [])]
             new = [q for q in (arr or []) if quote_marks.is_new(q, q_mark)]
             qprem[str(lid)] = round(sum(float(q.get("premium") or 0) for q in new))
+            qlob[str(lid)] = [{"lob": sales_log_auto.product_name(
+                                  {"carrierId": q.get("carrierId"),
+                                   "policyTypeName": q.get("productName") or q.get("policyTypeName")}),
+                               "premium": round(float(q.get("premium") or 0))} for q in new]
             tot += sum(float(q.get("premium") or 0) for q in new)
         n_sold, prem = real.get(who, (0, 0.0))
         # ONE PERSON, ONE CONTACT. Keying on (producer, number) is right for
@@ -975,6 +986,7 @@ def build_metrics(day):
                   # Premium quoted per lead, for the Digest card's list
                   # (digest_rows.py, Frank 2026-09-27). Same quotes as `tot`.
                   "quoted_premium": qprem,
+                  "quoted_lob": qlob,
                   "premium_quoted": round(tot),
                   "policies": n_sold, "premium_sold": round(prem),
                   # Life sales, counted apart (Frank, 2026-09-30).
@@ -1333,6 +1345,12 @@ def _run(a):
     # CRM side by side, written to R2 for the Tasks page (task_check.py).
     import task_check
     task_check.run(day, log=log)
+    # Phase 3: Pantheon's own CALL notes from the day's RingCentral log, then
+    # the comparison with AgencyZoom's (crm_calls.py, call_check.py).
+    import crm_calls
+    crm_calls.run(day, log=log)
+    import call_check
+    call_check.run(day, log=log)
 
     if held:
         log("SEND_HOLD: sales log and missed-call tasks skipped with the email")

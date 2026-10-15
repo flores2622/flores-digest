@@ -45,6 +45,14 @@ export const FIELDS = [
 ];
 // Filled in for a lead to be done (plus both boxes).
 export const DONE_FIELDS = ["apex", "az", "lead"];
+export const DONE_BOXES = ["az_dups", "az_tagged"];
+// A list can carry its own columns (Frank, 2026-10-14: Coral's review of the
+// quoted internet leads left in Smart-Cycle -- the Apex columns don't fit):
+// `fields`, `done_fields` and `done_boxes` on the list itself, same shapes.
+// A list without them is a scrub list as before.
+const fieldsOf = (list) => (list && Array.isArray(list.fields) && list.fields.length ? list.fields : FIELDS);
+const doneOf = (list) => (list && Array.isArray(list.done_fields) ? list.done_fields : DONE_FIELDS);
+const boxesOf = (list) => (list && Array.isArray(list.done_boxes) ? list.done_boxes : DONE_BOXES);
 import { hasBoard, localDay } from "./staff.js";
 
 const COLS = ["name", "phone", "email", "az_id", "assigned", "source", "stage"];
@@ -59,25 +67,30 @@ const json = (body, status = 200) => new Response(JSON.stringify(body), {
   status, headers: { "content-type": "application/json; charset=utf-8", "cache-control": "no-store" } });
 const str = (v, n = MAX_VAL) => String(v == null ? "" : v).trim().slice(0, n);
 
-export function isDone(s) {
+export function isDone(s, list) {
   s = s || {};
-  return DONE_FIELDS.every((k) => String(s[k] || "").trim()) && !!s.az_dups && !!s.az_tagged;
+  return doneOf(list).every((k) => String(s[k] || "").trim()) && boxesOf(list).every((k) => !!s[k]);
 }
 function summary(list) {
   const leads = list.leads || [];
   const ok = (k) => leads.filter((l) => String((l.s || {})[k] || "").trim()).length;
   return {
     id: list.id, name: list.name, created_at: list.created_at, created_by: list.created_by,
-    count: leads.length, done: leads.filter((l) => isDone(l.s)).length,
+    count: leads.length, done: leads.filter((l) => isDone(l.s, list)).length,
     apex: ok("apex"), az: ok("az"), lead: ok("lead"),
     az_dups: leads.filter((l) => (l.s || {}).az_dups).length,
     az_tagged: leads.filter((l) => (l.s || {}).az_tagged).length,
     updated_at: list.updated_at || list.created_at,
+    // One tile per column the done rule names, for a list with its own columns.
+    progress: [...doneOf(list), ...boxesOf(list)].map((k) => ({
+      key: k, label: (fieldsOf(list).find((f) => f.key === k) || {}).label || k,
+      n: leads.filter((l) => { const v = (l.s || {})[k]; return typeof v === "boolean" ? v : !!String(v || "").trim(); }).length,
+    })),
   };
 }
 function meta(list) {
   const m = {};
-  for (const [k, v] of Object.entries(summary(list))) m[k] = String(v == null ? "" : v);
+  for (const [k, v] of Object.entries(summary(list))) if (k !== "progress") m[k] = String(v == null ? "" : v);
   return m;
 }
 async function load(env, id) {
@@ -113,7 +126,8 @@ export async function scrubGet(request, env, identityOf, id) {
   if (id) {
     const got = await load(env, id);
     if (!got) return json({ error: "no such list" }, 404);
-    return json({ ...base, list: got.list, summary: summary(got.list) });
+    const L = got.list;
+    return json({ ...base, fields: fieldsOf(L), done_fields: doneOf(L), done_boxes: boxesOf(L), list: L, summary: summary(L) });
   }
   const lists = [];
   let cursor;
@@ -183,7 +197,7 @@ function apply(list, body, me, a, now) {
     const lead = list.leads.find((l) => l.id === String(body.lead || ""));
     if (!lead) return { error: "lead not found", status: 404 };
     const key = String(body.field || "");
-    const f = FIELDS.find((x) => x.key === key);
+    const f = fieldsOf(list).find((x) => x.key === key);
     if (!f) return { error: "bad field" };
     let value;
     if (f.type === "check") value = !!body.value;

@@ -1176,6 +1176,15 @@ and anything without the glow is the checkpoint's (Frank, 2026-09-24).
   refusal in the az log records the host that answered. `node --test
   proxy/server.test.mjs` runs it against a fake AgencyZoom. The server
   itself is Frank's to make (an account, a $5 box, one DNS record).
+  **The block is geographic** (AgencyZoom support, 2026-10-14, through the
+  in-app chat: "when the 403 Forbidden error is going out, that means the
+  servers are usually not in the states"; a US address "will auto be
+  allowlisted"). The az log's `egress.colo` agrees on every day with
+  refusals: every 403 came when the Worker ran from FRA, KIX, LHR, CDG or
+  WAW; from LAX, SLC and IAD it only ever got 429s. Cloudflare picks where
+  a scheduled Worker runs, so the good days were the days it landed in the
+  US. **The proxy's server must be in a US data center**; no allowlist
+  request is needed once it is.
 - **The Worker logs in to AgencyZoom ONCE a day, not once a run.** A per-run
   login meant ~30 an hour, and on 2026-09-24 AgencyZoom began refusing the
   Worker's logins (403) within the hour while the same account still worked
@@ -1291,7 +1300,24 @@ customer, so Sold is ONE table of the policies with a Customer column (Frank, 20
 the lead and the policy info, just the policy info with the customer name"; `policyCustomer`): the lead
 marked sold that day by the same producer on the same source, else that producer's only sold household,
 blank when several households share it; a household marked sold whose policy is dated another day is one
-line under it. Household Completion's policies carry the same column. Past days:
+line under it. Household Completion's policies carry the same column. **Quotes and
+policies show their line of business** (Frank, 2026-10-15: "I want to start
+displaying LOB (Line of Business) when listing quotes or policies"): the
+Quoted list has an **LOB** column -- each counted quote's carrier and
+product named by the Sales sheet's own rules (`sales_log_auto.product_name`
+on the quote's `carrierId` + `productName`: Farmers-Home, BW-Auto,
+Foremost-MH; an unknown carrier keeps the bare product), kept by daily.py
+as `quoted_lob` beside `quoted_premium` and put on each `rows.quoted` row
+as `lob` ([{lob, premium}], the same quotes the premium counts; `quoteLobHtml`
+groups repeats "BW-Auto ×2", premiums on hover, a dash when the household
+is quoted by a stage move or a sent quote with no new quote that day).
+Days built before 2026-10-15 carry no `lob` and keep the old columns (a
+range shows them blank); the live refresh adds counts, not rows, so the
+list is the checkpoint's. The policy lists' Product column (Sold, Household
+Completion, Life -- already the sheet's product name) is headed **LOB**, and
+every Renewals list (Coming up, Lost, a card's list, Cancellations to check)
+has an **LOB** column from the report's `type` beside the policy number. The
+lead page, Campaigns and the Commercial queue already named the line. Past days:
 `python3 digest_rows.py --backfill 2026-09-01` from R2's saved inputs (no
 quoted premium, and no quoted list before 2026-09-24's `quoted_leads`).
 **Everything on the Digest opens its accounts** (Frank, 2026-09-29:
@@ -1382,6 +1408,32 @@ filters and a CSV, and the checklist card. Athena's Road Map carries the
 standard's three lines for the service team; the log itself is never
 described there.
 
+## Campaigns
+
+**Operations Center > Campaigns tracks a batch of campaign leads handed out
+to the producers** (Frank, 2026-10-15: "after receiving the results of what
+they did ill decide who will be getting the highest load of these leads ...
+create me a tracker for it"; "just me for now" -- staff.json's `campaigns`,
+Frank alone). The first is the **Rate Decrease Campaign**'s batch 1 from his
+"Rate Decrease Campaign" sheet's QNC tab: 10 per producer, 5 found in
+AgencyZoom by phone or email and reassigned to them on 2026-10-15 (one lead
+record, not a customer, untouched 30+ days, no DNC number; Leticia Alvarez,
+tagged Spanish, went to Coral instead of Crystal) and 5 not in AgencyZoom for
+them to create. The list is R2 `campaigns/<key>/list.json` (names, phones,
+addresses -- never in the repo); `site/campaigns.js` (`/api/campaigns[/<key>]`)
+builds the tracker on each request from what the board already holds, no new
+AgencyZoom or RingCentral request: each day's `days/` document (else that
+day's `intraday/` checkpoint) -- `rows.dials` / `contacts` / `quoted` /
+`sold_leads` by lead id -- and `live/<day>-leads.json`, where a lead to create
+is found by its phone (last ten digits) once someone makes it, or by the
+producer's own dial row on the same last four digits and a name word. A
+producer is credited only with their own work on their own campaign leads
+(another producer's shows on the lead as "also worked by"). The scoreboard is
+the leaderboard's 5-4-3-2-1 per category (worked, reached, quoted, premium
+quoted, sold, created; ties share the higher points, nothing for zero). The
+page is `site/public/campaigns.js` (view `campaigns`, `opsShow`). A new batch
+is a new `list.json` under its own key, in the same shape.
+
 ## The lead scrub
 
 **Operations Center > Lead Scrub tracks a lead list being cleaned up in both
@@ -1413,6 +1465,20 @@ Sarahi and Crystal (Frank, 2026-10-12: "give Sarahi access to the lead scrub",
 "give crystal access to lead scrub as well"; they see the Operations Center
 with the Lead Scrub only, CRM Hygiene still 403s); anyone else
 gets a 403 and the page never enters the menu or the search.
+**A list can carry its own columns** (Frank, 2026-10-14: "i want coral to
+review the quoted ones. Can you make an interactive list for her"): a list's
+own `fields`, `done_fields` and `done_boxes` replace FIELDS / DONE_FIELDS and
+the two boxes for that list alone (`fieldsOf` / `doneOf` / `boxesOf` in
+site/scrub.js; the page follows what the Worker sends, a field's `tones`
+colour its answers, the list's `about` is its description); a list without
+them is a scrub list as before. The first is **Quoted internet leads in
+Smart-Cycle -- Coral's review**: the 217 internet leads with a quote on file
+that the 2026-10-13 Smart-Cycle clean-up left alone (it re-dated 1,715
+never-contacted ones to the next 21 business days and spread them evenly over
+the five producers), biggest quote first, each with its quote, products,
+carrier and Smart-Cycle date, done when Result and Lead now are filled in.
+Coral has `scrub` (not `scrub_edit`) for it, so she also sees the other
+lists.
 
 ## Apollo's Road Map (ARM) and the tour
 
@@ -3059,7 +3125,27 @@ repaint clears the list).
   scratchpad, not the repo; `design/flores-board-preview.html` is the
   approved mock-up the restyle followed.
 
-## The board is Pantheon; its assistant is Apollo (2026-10-04)
+## The board is Elysium Pro (2026-10-15); its assistant is Apollo
+
+**The board is named Elysium Pro** (Frank, 2026-10-15: "Lets do Elysium
+Pro" -- the platform is to be sold to other agencies, and "pantheon and
+apollo are taken": Pantheon is a web-hosting company). Everything a person
+reads says it: the page title and header eyebrow, the home-screen app's
+name (`manifest.webmanifest`, `apple-mobile-web-app-title`), the tour's
+welcome, the guides in blueprints.js, the CRM pages' footers and the
+Workflows drafts' badge, the nightly email's header, link and title, and
+Apollo's chat instructions. **Code, comments, file names, R2 keys and this
+file keep the name Pantheon** (as they kept "Sales Floor" before it), so
+nothing saved moves; "Pantheon" below means the board. Elysian, a funded
+insurance-claims AI company, holds trademarks near the name -- Frank was
+told and chose it (2026-10-15). His own USPTO search found KNITT LLC's
+ELYSIUM registrations in class 42 (cloud workload hosting, 2026) and
+Elysium Digital's in 35 / 42; he kept the name ("keep elysium pro, ill
+talk to an attorney") -- do not raise it again unless he asks.
+elysiumpro.com is parked for sale (HugeDomains); elysiumpro.io / .ai /
+.insure / .agency and getelysiumpro.com were open that day.
+
+## The board was Pantheon (2026-10-04); its assistant is Apollo
 
 **The board is named Pantheon** (Frank, 2026-10-04: "let's name it
 Pantheon" -- it "has become much more than a sales floor"): the page title,
@@ -3346,6 +3432,124 @@ on a published day. The rules:
   Cutover check card (`GET /api/crm/taskcheck`, Frank only). Flip the switch
   only when the days agree, and only once the producers can see a CRM task
   somewhere other than AgencyZoom.
+- **Phase 3 starts with the lead page** (Frank, 2026-10-13: "go"; CRM.md
+  phase 3). **Sales Center > Leads** (`site/public/lead.js`, painted by
+  `leadPaint`; the same `crm` gate, through `LEAD_READY` after `CRM_READY`):
+  a picker (search by name or phone through `/api/crm/search`, and the 40
+  leads worked most recently, for everyone or one person) and one page per
+  lead from ONE read, `GET /api/crm/leads/<id>/page` (`crm.js leadPage`):
+  the lead with Frank's source / pipeline / stage names and AgencyZoom's in
+  italics beside them, the producer, the household and its policies once
+  sold, the quotes, the tasks (open first, Done with a comment on each),
+  the household's SRs, the stage history (`stage_moves`, else the
+  MOVE_STAGE notes), the lead's own events, and every note newest first
+  grouped by day with a filter -- Notes / Texts (sent, received, failed,
+  automation) / Emails (subject, attachments, opened) / Calls (status and
+  length read out of AgencyZoom's CALL body) / Tasks / Stages / System
+  (tags, enrolments, reassignments, dimmed). **AgencyZoom's note bodies
+  are HTML** (`<p>`, `javascript:` links, an `<audio>` player, whole Gmail
+  quotes): `plain()` keeps the words only, never the markup. The writes are
+  the CRM's existing ones: **+ Note** (a NOTE), **Move stage**, **Mark
+  sold** and **+ Task** (hung on the lead, for its producer by default).
+  **The move form offers Frank's own pipelines and stages once each**
+  (`crm.js stageOptions`, the 2026-10-12 rule): every active sales
+  workflow's active stages collapsed onto Frank's (pipeline, stage), the
+  lead's own workflow's stage winning, else the lowest workflow id (1
+  Pipeline before the rest), the AgencyZoom "Workflow | Stage" it lands on
+  as the value and on hover; a retired stage is never offered; a stage of
+  the lead's own workflow with no place of Frank's is offered under
+  AgencyZoom's names. **A coaching card's lead name and a task's lead on the
+  Tasks page carry a "Lead page" button** once the CRM has let the login in
+  (`window.CRM_OK`; any element with `data-ldopen` opens the page --
+  `window.openLead`, which falls back to the coaching card for anyone
+  else), and the page's **Coaching card** button goes the other way. The
+  page you were on is kept per tab (`lead-where`, with the filter and the
+  Recent-for pick). Still AgencyZoom's: the policies, the calls (the
+  nightly's own CALL notes are the next step of phase 3) and texting.
+- **Pantheon writes its own CALL notes** (Frank, 2026-10-14: "go"; phase 3's
+  second step). `crm_calls.py` runs after `crm_sync` at every checkpoint and
+  in the nightly: from the run's own RingCentral log (`data/rc_raw_<day>.json`)
+  it writes a CALL note for every dial by anyone on staff (`staff.PEOPLE`'s
+  `rc_id`) to a number the lead corpus knows and every call-in someone on
+  staff answered (`inbound.attribute`'s pick-up rule over everyone on staff,
+  not the producers alone) -- **on EVERY lead record on that number**
+  (`az_corpus.phone_index`), as AgencyZoom's own integration writes it and as
+  `lead_history` reads them. The note is AgencyZoom's shape (From / To / Call
+  Status / Start Time / End Time / Duration, US numbers as "(928) 726-3221",
+  `attr.outbound`), so `live_contact`, `messages.py` and the lead page read it
+  unchanged: a connected call says "completed" (what AgencyZoom writes and
+  `live_contact` tests); any other result keeps RingCentral's own word
+  (Voicemail, No Answer, Hang Up -- AgencyZoom writes only "canceled").
+  `origin` "pantheon", `attr.source` "ringcentral", `attr.rcId` the record,
+  `created_by` the staff member; the id is `crm_import.note_id` over the
+  lead and the record id, written INSERT OR IGNORE, so a checkpoint and the
+  nightly land on one row (10-13: 242 calls on leads, 320 notes over their
+  records, idempotent). A note whose lead the mirror has not written yet
+  waits (the foreign key). The lead's own stamps are not touched; no events
+  rows (machine-written, like the mirror's). **Every night `call_check.py`
+  compares the two** (after `crm_calls`): every CALL note stamped that day in
+  the CRM, Pantheon's against AgencyZoom's, matched on the same lead, same
+  direction, starts within 180 s; AgencyZoom's notes with no number at all
+  (From / To empty, "Duration: (s)" -- a ring on a group line) are `noise`,
+  counted and left out; **`agree` is every dial matched both ways** -- call-ins
+  are listed but do not decide it (AgencyZoom logs the line that rang,
+  Pantheon who answered). R2 `crm/call_check/<day>.json`; Sales Center >
+  Tasks shows it under the Cutover check (`GET /api/crm/callcheck`), the
+  last 14 days. **The lead page shows a call once**: an AgencyZoom CALL note
+  within three minutes of a Pantheon one in the same direction is hidden
+  (`lead.js dedupedNotes`), and Pantheon's says so. On the local copy of
+  10-07 (notes fetched before the day ended) one dial of 154 was AgencyZoom's
+  alone; the real figure is tonight's. Next: `lead_history`, `messages.py`
+  and `day_calls.fetch_notes` reading Pantheon's notes, with the
+  day-identical cutover test.
+- **Contacts and linked accounts** (Frank, 2026-10-14, with screenshots of
+  AgencyZoom's customer page for Claudia A Gallardo, Celerino A. Gallardo,
+  L.L.C. and Norma De Leon: "I want to make sure that feature is available on
+  my system as well"; "i want the ability to be able to switch the primary
+  account holder"). AgencyZoom's customer page has **Contacts** (the people on
+  an account, one of them Primary), **Customers** (other accounts linked to
+  it) and **Leads**; its public API returns none of the first two (the
+  customer record carries only the primary contact's name; every guessed
+  contacts / linked-customers path 404s -- checked 2026-10-14), so Pantheon
+  keeps its own, migration 0005: `contacts` (a person; one record can sit on
+  several accounts), `household_contacts` (which account each is on,
+  `is_primary` -- at most one per account -- and a relationship) and
+  `household_links` (one row per linked pair, the lower id first, read from
+  either side). **Nothing mirrors them**: az_id stays NULL, so the nightly
+  never touches them. A household with no contact rows shows its own name,
+  phone and email as its one primary contact until the first write makes that
+  real (`ensureContacts`); a business account (a business name, or customer
+  type business / commercial -- AgencyZoom puts the business name in
+  `firstname`) has none until someone adds them. `site/crm.js`:
+  `GET households/<id>/page` (the account's page), `POST households/<id>/
+  people` {op add | attach | detach | primary | edit | link | unlink} (every
+  change an `events` row on the household; link / unlink on both) and `GET
+  contacts?q=` (find a contact by name, email or number, with the accounts it
+  sits on). **Switching the primary account holder is `primary`**: that
+  account only, so Celerino can be primary on Claudia's account and on the
+  LLC's separately. It changes WHO THE ACCOUNT HOLDER IS (the Contacts box,
+  the account page's header facts, the lead page); it does not rewrite the
+  household's own name / phone / email columns, which the mirror still
+  overwrites from AgencyZoom whenever its copy changes -- those follow at the
+  phase 7 cutover. The lead page's side shows the lead's household's
+  Contacts and Linked accounts (**Open account** on its Household box), and
+  Sales Center > Leads' search lists matching **accounts** beside the leads;
+  an account's page (`openAccount` in `site/public/lead.js`) carries the
+  Contacts (**+ Contact**, **Link existing** to put a contact already on
+  another account here, Edit, Remove, **Set primary**), Linked accounts
+  (**Link account**, Unlink; each opens its own page), the account's leads
+  and its policies, SRs and open tasks. **Policies show only when the CRM has
+  tied them to the account**: AgencyZoom's policy records carry no customer,
+  so `policies.household_id` is empty until phase 7. `python3
+  crm_links_seed.py` (check first, `--write` to apply, idempotent) loads
+  the three accounts as Frank's screenshots showed them -- Claudia (Claudia
+  primary, Celerino), the LLC (Celerino primary, Claudia; linked to Claudia),
+  Norma (Norma primary, Melissa De la Torre, Norver LLC, Pricila De La Torre;
+  linked to Nordell, Inc, Delato Corp, Los Choches LLC, Meli's Inc, each
+  business's primary read from the email and phone the screen showed under it:
+  Norma, Norma, Pricila, Melissa). Their other contacts were not on the
+  screens; add them on the account's page. The migration is applied with
+  `wrangler d1 migrations apply pantheon-crm --remote`.
 - `node --test site/crm.test.mjs` is its test; run it after touching
   `site/crm.js` or the schema. A new field is added to the schema (a new
   migration file), to `OBJECTS` in `site/crm.js` and to the test together.
