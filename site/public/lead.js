@@ -28,14 +28,16 @@
   let P = null;                        // /api/crm/leads/<id>/page
   let ldFilter = "all", ldForm = null, ldBusy = false, ldMsg = null, ldErr = "";
   let ldOpenTask = {};                 // task id -> true (its Done form is open)
+  let acctId = null, acctName = "", A = null, acctBack = false;   // an account on screen (households/<id>/page)
+  let pplForm = null, pplQ = "", pplHits = null;                   // contacts: "new" | "contact" | "account" | "edit:<id>"; their search
   let ldQ = "", ldHits = null, ldRecent = null, ldWho = "", ldDoneOpen = false, ldEventsOpen = false;
-  try { const w = JSON.parse(sessionStorage.getItem("lead-where") || "{}"); if (w.id) { ldId = w.id; ldName = w.name || ""; } if (FILTERS.some(([k]) => k === w.filter)) ldFilter = w.filter; if (typeof w.who === "string") ldWho = w.who; } catch (_) {}
+  try { const w = JSON.parse(sessionStorage.getItem("lead-where") || "{}"); if (w.id) { ldId = w.id; ldName = w.name || ""; } if (w.acct) { acctId = w.acct; acctName = w.acctName || ""; acctBack = !!w.acctBack; } if (FILTERS.some(([k]) => k === w.filter)) ldFilter = w.filter; if (typeof w.who === "string") ldWho = w.who; } catch (_) {}
 
   const first = n => String(n || "").split(" ")[0];
   const today = () => isoDate(azTodayDate());
   const person = id => (LK && LK.employees || []).find(e => String(e.id) === String(id)) || null;
   const badge = id => { const p = person(id); return p ? (DOT[p.name] ? pbadge(DOT[p.name], first(p.name)) : `<b>${cesc(first(p.name))}</b>`) : '<span class="ldmute">nobody</span>'; };
-  const saveWhere = () => { try { sessionStorage.setItem("lead-where", JSON.stringify({ id: ldId, name: ldName, filter: ldFilter, who: ldWho })); } catch (_) {} };
+  const saveWhere = () => { try { sessionStorage.setItem("lead-where", JSON.stringify({ id: ldId, name: ldName, filter: ldFilter, who: ldWho, acct: acctId, acctName, acctBack })); } catch (_) {} };
   const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
   const DAYS = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
   const clock = s => { if (!s || s.length < 16) return ""; const [h, m] = s.slice(11, 16).split(":").map(Number); return `${h % 12 || 12}:${String(m).padStart(2, "0")} ${h < 12 ? "AM" : "PM"}`; };
@@ -76,7 +78,16 @@
       Before the CRM has let this login in, the coaching card is the page. */
   window.openLead = async function openLead(id, name) {
     if (!(await window.LEAD_READY)) { openLeadCard({ id, l: name || "" }); return; }
+    acctId = null; A = null; acctBack = false; pplForm = null; pplHits = null; pplQ = "";
     ldId = String(id); ldName = name || ""; ldForm = null; ldMsg = null; ldOpenTask = {}; ldDoneOpen = false; ldEventsOpen = false; P = null;
+    saveWhere();
+    if (view !== "lead") goView("lead"); else await leadPaint();
+  };
+  /** Open an account's page (a household): its contacts, the accounts linked to it, its leads, policies and SRs. */
+  window.openAccount = async function openAccount(id, name) {
+    if (!(await window.LEAD_READY)) return;
+    if (!acctId) acctBack = !!ldId;
+    acctId = String(id); acctName = name || ""; A = null; pplForm = null; pplHits = null; pplQ = ""; ldMsg = null;
     saveWhere();
     if (view !== "lead") goView("lead"); else await leadPaint();
   };
@@ -97,8 +108,8 @@
   async function find(q) {
     ldQ = q;
     if (q.trim().length < 2) { ldHits = null; repaint(); return; }
-    try { const r = await api(`search?q=${encodeURIComponent(q.trim())}`); if (ldQ === q) { ldHits = { leads: r.leads || [], hh: (r.customers || []).length }; repaint(); } }
-    catch (e) { ldHits = { leads: [], hh: 0, err: e.message }; repaint(); }
+    try { const r = await api(`search?q=${encodeURIComponent(q.trim())}`); if (ldQ === q) { ldHits = { leads: r.leads || [], hhs: r.customers || [] }; repaint(); } }
+    catch (e) { ldHits = { leads: [], hhs: [], err: e.message }; repaint(); }
   }
   const leadRow = l => `<tr class="ldpick" data-ldopen="${l.id}" data-ldname="${escAttr(l.name || "")}" tabindex="0" role="button">
     <td><b>${cesc(l.name || l.businessName || "#" + l.id)}</b>${l.businessName && l.name ? ` <small class="ldmute">${cesc(l.businessName)}</small>` : ""}</td>
@@ -109,7 +120,8 @@
     const people = (LK.employees || []).filter(e => e.producer || e.service);
     const table = rows => `<div class="scroll"><table class="ldtab"><thead><tr><th>Lead</th><th>Phone</th><th>Producer</th><th>Source</th><th>Where</th><th>Last activity</th></tr></thead><tbody>${rows.map(leadRow).join("")}</tbody></table></div>`;
     let hits = "";
-    if (ldHits) hits = ldHits.err ? `<p class="ldmsg bad">${cesc(ldHits.err)}</p>` : `<h3 class="ldh3">${ldHits.leads.length} lead${ldHits.leads.length === 1 ? "" : "s"} match${ldHits.hh ? ` <small class="ldmute">· ${ldHits.hh} household${ldHits.hh === 1 ? "" : "s"} too (no page yet)</small>` : ""}</h3>${ldHits.leads.length ? table(ldHits.leads) : ""}`;
+    if (ldHits) hits = ldHits.err ? `<p class="ldmsg bad">${cesc(ldHits.err)}</p>` : `<h3 class="ldh3">${ldHits.leads.length} lead${ldHits.leads.length === 1 ? "" : "s"} match</h3>${ldHits.leads.length ? table(ldHits.leads) : ""}
+      ${ldHits.hhs.length ? `<h3 class="ldh3">${ldHits.hhs.length} account${ldHits.hhs.length === 1 ? "" : "s"} <small class="ldmute">· customers, with their contacts and linked accounts</small></h3><div class="scroll"><table class="ldtab"><thead><tr><th>Account</th><th>Phone</th><th>Producer</th><th>Customer since</th></tr></thead><tbody>${ldHits.hhs.map(h => `<tr class="ldpick" data-ldacct="${h.id}" data-ldacctname="${escAttr(h.name || "")}" tabindex="0" role="button"><td><b>${cesc(h.name || "#" + h.id)}</b></td><td>${h.phone ? cesc(fmtPhone(h.phone)) : ""}</td><td>${badge(h.assignedTo)}</td><td class="ldwhen">${cesc(dayOf(h.asCustomerDate) || "")}</td></tr>`).join("")}</tbody></table></div>` : ""}`;
     return `<section class="ldpage">
       <div class="ldpickhead">
         <input type="search" class="tkin ldq" placeholder="Find a lead by name or phone number" value="${escAttr(ldQ)}" autocomplete="off" autofocus>
@@ -211,6 +223,73 @@
     return `<form class="ldform" data-ldsold="1"><p>Mark <b>${cesc(P.lead.name)}</b> sold today? The lead becomes a household (its policies hang there) and leaves the pipeline. The policies themselves still come in from AgencyZoom until phase 7.</p>
       <div class="tkrow"><button type="submit" class="btn tkpri"${ldBusy ? " disabled" : ""}>Mark sold</button><button type="button" class="btn" data-ldcancel="1">Cancel</button></div></form>`;
   }
+  /* ---- contacts and linked accounts ------------------------------------------ */
+  const pplDeps = () => (A ? A : P && P.people ? P.people : null);
+  const pplHh = () => (A ? A.household : P && P.household);
+  function contactCard(c) {
+    if (pplForm === "edit:" + c.id) return `<form class="ldform ldct" data-ldctedit="${c.id}">${contactFields(c)}<div class="tkrow"><button type="submit" class="btn tkpri"${ldBusy ? " disabled" : ""}>Save</button><button type="button" class="btn" data-ldcancel="1">Cancel</button></div></form>`;
+    return `<div class="ldct${c.primary ? " prim" : ""}"><div class="ldcthead"><b>${cesc(c.name)}</b>${c.relationship ? ` <small class="ldmute">${cesc(c.relationship)}</small>` : ""}
+      ${c.primary ? '<span class="ldprim" title="The account holder">★ Primary</span>' : c.virtual ? "" : `<button type="button" class="ghost ldsm" data-ldprimary="${c.id}" title="Make ${escAttr(c.name)} the account holder">☆ Set primary</button>`}</div>
+      <div class="ldctline">${c.email ? `<a href="mailto:${escAttr(c.email)}">${cesc(c.email)}</a>` : '<span class="ldmute">no email</span>'}${c.phone ? ` · ${tel(c.phone)}` : ""}${c.birthday ? ` <small class="ldmute">· born ${cesc(c.birthday)}</small>` : ""}</div>
+      ${c.virtual ? "" : `<div class="ldctacts"><button type="button" class="ghost ldsm" data-ldpform="edit:${c.id}">Edit</button><button type="button" class="ghost ldsm" data-ldremove="${c.id}" data-ldremovename="${escAttr(c.name)}">Remove</button></div>`}</div>`;
+  }
+  const contactFields = (c = {}) => `<div class="tkgrid">
+      <label>First name<input type="text" class="tkin" name="firstname" value="${escAttr(c.firstname || "")}" maxlength="80" autofocus></label>
+      <label>Middle<input type="text" class="tkin" name="middlename" value="${escAttr(c.middlename || "")}" maxlength="80"></label>
+      <label>Last name<input type="text" class="tkin" name="lastname" value="${escAttr(c.lastname || "")}" maxlength="80"></label>
+      <label>Email<input type="email" class="tkin" name="email" value="${escAttr(c.email || "")}" maxlength="120"></label>
+      <label>Phone<input type="tel" class="tkin" name="phone" value="${escAttr(c.phone || "")}" maxlength="40"></label>
+      <label>Birthday<input type="text" class="tkin" name="birthday" value="${escAttr(c.birthday || "")}" placeholder="mm/dd/yyyy" maxlength="20"></label>
+      ${c.id ? "" : `<label class="tkspan">Relationship <small class="ldmute">(optional: spouse, owner, driver ...)</small><input type="text" class="tkin tkwide" name="relationship" maxlength="60"></label>`}</div>`;
+  function pplFinder(kind) {
+    const hits = pplHits && pplHits.kind === kind ? pplHits.rows : null;
+    const people = pplDeps();
+    const have = new Set(kind === "contact" ? people.contacts.map(c => c.id) : [(pplHh() || {}).id, ...people.linked.map(l => l.id)]);
+    const rows = (hits || []).filter(r => !have.has(r.id)).map(r => kind === "contact"
+      ? `<li><b>${cesc(r.name)}</b> <small class="ldmute">${[r.email, r.phone && fmtPhone(r.phone), r.accounts && r.accounts.length ? "on " + r.accounts.map(a => a.name).join(", ") : ""].filter(Boolean).map(cesc).join(" · ")}</small> <button type="button" class="btn tksmall tkpri" data-ldattach="${r.id}">Add to this account</button></li>`
+      : `<li><b>${cesc(r.name)}</b> <small class="ldmute">${[r.phone && fmtPhone(r.phone), r.email].filter(Boolean).map(cesc).join(" · ")}</small> <button type="button" class="btn tksmall tkpri" data-ldlinkacct="${r.id}">Link</button></li>`);
+    return `<div class="ldform"><label>${kind === "contact" ? "Find a contact already in Elysium Pro (name, email or phone)" : "Find the account to link (name or phone)"}<input type="search" class="tkin tkwide ldpq" data-kind="${kind}" value="${escAttr(pplQ)}" placeholder="2+ characters" autocomplete="off" autofocus></label>
+      ${hits === null ? "" : rows.length ? `<ul class="ldlist ldfind">${rows.join("")}</ul>` : `<p class="ldmute">${hits.length ? "Everything found is already here." : "No match."}</p>`}
+      <div class="tkrow"><button type="button" class="btn" data-ldcancel="1">Close</button></div></div>`;
+  }
+  function peopleBox() {
+    const pp = pplDeps(), H = pplHh();
+    if (!pp || !H) return "";
+    const form = pplForm === "new" ? `<form class="ldform" data-ldctnew="1">${contactFields()}<div class="tkrow"><button type="submit" class="btn tkpri"${ldBusy ? " disabled" : ""}>Add contact</button><button type="button" class="btn" data-ldcancel="1">Cancel</button></div></form>`
+      : pplForm === "contact" ? pplFinder("contact") : pplForm === "account" ? pplFinder("account") : "";
+    const linked = pp.linked.map(l => `<div class="ldct ldlinked"><div class="ldcthead"><a class="ldacctlink" href="#" data-ldacct="${l.id}" data-ldacctname="${escAttr(l.name)}"><b>${cesc(l.name)}</b></a>
+        ${l.policies ? `<small class="ldmute">${l.policies} current polic${l.policies === 1 ? "y" : "ies"}${l.premium ? " · " + money(l.premium) : ""}</small>` : ""}</div>
+      <div class="ldctline">${l.email ? `<a href="mailto:${escAttr(l.email)}">${cesc(l.email)}</a>` : ""}${l.phone ? ` · ${tel(l.phone)}` : ""}</div>
+      ${l.contacts.length ? `<div class="ldctline ldmute">Contacts: ${l.contacts.map(c => cesc(c.name) + (c.primary ? " ★" : "")).join(", ")}</div>` : ""}
+      <div class="ldctacts"><button type="button" class="ghost ldsm" data-ldunlink="${l.id}" data-ldunlinkname="${escAttr(l.name)}">Unlink</button></div></div>`).join("");
+    return `<section class="ldbox ldppl"><h3>Contacts <span class="ldcount">${pp.contacts.length}</span>
+        <span class="ldh3acts"><button type="button" class="ghost ldsm" data-ldpform="contact" title="Add a contact that is already on another account">Link existing</button><button type="button" class="ghost ldsm" data-ldpform="new">+ Contact</button></span></h3>
+      ${pp.holder ? `<p class="ldholder">Account holder: <b>${cesc(pp.holder.name)}</b></p>` : ""}
+      ${pp.contacts.length ? pp.contacts.map(contactCard).join("") : '<p class="ldmute">No contacts yet.</p>'}
+      ${form}
+      <h3 class="ldh3b">Linked accounts <span class="ldcount">${pp.linked.length}</span><span class="ldh3acts"><button type="button" class="ghost ldsm" data-ldpform="account">Link account</button></span></h3>
+      ${pp.linked.length ? linked : '<p class="ldmute">No other accounts linked.</p>'}
+    </section>`;
+  }
+  const polTable = list => list.length ? `<table class="ldtab ldsmall"><thead><tr><th>Policy</th><th>Carrier</th><th>Premium</th><th>Sold</th><th>Status</th></tr></thead><tbody>${list.map(p => `<tr><td><b>${cesc(p.policyTypeName || "")}</b>${p.policyNumber ? `<br><small class="ldmute">${cesc(p.policyNumber)}</small>` : ""}</td><td>${cesc(p.carrierName || "")}</td><td>${money(p.premium)}</td><td>${cesc(dayOf(p.soldDate))}</td><td>${cesc(p.status === 1 ? "Current" : p.status === 0 ? "Cancelled" : p.status === 3 ? "Next term" : "Past")}${p.expiryDate ? `<br><small class="ldmute">to ${cesc(dayOf(p.expiryDate))}</small>` : ""}</td></tr>`).join("")}</tbody></table>` : `<p class="ldmute">None on file.</p>`;
+  function accountHtml() {
+    const H = A.household, addr = [H.address, [H.city, H.state].filter(Boolean).join(", "), H.zip].filter(Boolean).join(" · ");
+    const facts = [["Producer", badge(H.assignedTo)], ["Account holder", A.holder ? cesc(A.holder.name) : "—"], ["Phone", [tel(H.phone), tel(H.secondaryPhone)].filter(Boolean).join(" · ") || "—"],
+      ["Email", H.email ? `<a href="mailto:${escAttr(H.email)}">${cesc(H.email)}</a>` : "—"], ["Address", cesc(addr || "—")], ["Type", cesc(H.customerType || "—")], ["Customer since", cesc(dayOf(H.asCustomerDate) || "—")]];
+    const leads = A.leads.length ? `<ul class="ldlist">${A.leads.map(l => `<li><a href="#" data-ldopen="${l.id}" data-ldname="${escAttr(l.name || "")}"><b>${cesc(l.name || "#" + l.id)}</b></a> ${statusPill(l)} <small class="ldmute">${cesc(l.sourceName || l.leadSourceName || "")}${l.soldDate ? " · sold " + cesc(dayOf(l.soldDate)) : ""}</small></li>`).join("")}</ul>` : '<p class="ldmute">There are no related leads.</p>';
+    const srs = A.serviceTickets.length ? `<ul class="ldlist">${A.serviceTickets.map(s => `<li><b>${cesc(s.subject || "")}</b> <small class="ldmute">${cesc(s.pipelineName || s.workflowName || "")} · ${s.status === 2 ? "completed " + cesc(dayOf(s.completeDate)) : s.status === 1 ? "open" : "deleted"}</small></li>`).join("")}</ul>` : '<p class="ldmute">No SRs.</p>';
+    const tasks = A.tasks.length ? `<ul class="ldlist">${A.tasks.map(t => `<li><span class="ldwhen">${cesc(when(t.dueDate))}</span> <b>${cesc(t.title)}</b> ${badge(t.assigneeId)}</li>`).join("")}</ul>` : '<p class="ldmute">Nothing open.</p>';
+    return `<section class="ldpage">
+      <p class="ldback"><button type="button" class="ghost" data-ldback="1">◂ ${acctBack ? "Back to the lead" : "All leads"}</button></p>
+      <div class="ldhead"><div class="ldtitle"><h2 class="ldname">${cesc(H.name || "#" + H.id)}</h2><span class="ldst ldst-open">Account</span>
+        <span class="ldmute ldid">#${H.id}${H.azId ? " · AgencyZoom's record" : " · made in Elysium Pro"}</span></div>
+        <div class="ldacts">${H.azId ? `<a class="ghost ldlink" href="${AZ_URL.customer}${encodeURIComponent(H.azId)}" target="_blank" rel="noopener">AgencyZoom ↗</a>` : ""}</div>
+        <dl class="ldfacts">${facts.map(([k, v]) => `<div><dt>${k}</dt><dd>${v}</dd></div>`).join("")}</dl>
+        ${ldMsg ? `<p class="ldmsg ${ldMsg.err ? "bad" : "good"}" role="${ldMsg.err ? "alert" : "status"}">${cesc(ldMsg.err || ldMsg.ok)}</p>` : ""}</div>
+      <div class="ldcols"><div class="ldmain">${peopleBox()}<section class="ldbox"><h3>Leads <span class="ldcount">${A.leads.length}</span></h3>${leads}</section></div>
+        <div class="ldside"><section class="ldbox"><h3>Policies</h3>${A.policies.length ? polTable(A.policies) : '<p class="ldmute">None tied to this account in the CRM yet. AgencyZoom\'s policy records carry no customer, so they attach once policies are entered in Elysium Pro (phase 7); until then the policies are in AgencyZoom.</p>'}</section><section class="ldbox"><h3>Service requests</h3>${srs}</section><section class="ldbox"><h3>Open tasks</h3>${tasks}</section></div></div>
+    </section>`;
+  }
   function headHtml() {
     const L = P.lead, H = P.household;
     const addr = [L.address, [L.city, L.state].filter(Boolean).join(", "), L.zip].filter(Boolean).join(" · ");
@@ -266,7 +345,8 @@
         ${done.length ? `<details class="ldfold"${ldDoneOpen ? " open" : ""} data-ldfold="done"><summary>${done.length} done</summary><ul class="ldtasks">${done.map(taskRow).join("")}</ul></details>` : ""}</section>
       <section class="ldbox"><h3>Quotes</h3>${quotes}</section>
       <section class="ldbox"><h3>Policies${H ? ` <small class="ldmute">${cesc(H.name)}</small>` : ""}</h3>${pol}</section>
-      ${H ? `<section class="ldbox"><h3>Household</h3><dl class="ldfacts one"><div><dt>Name</dt><dd>${cesc(H.name)}${H.azId ? ` <a class="ldaz" href="${AZ_URL.customer}${encodeURIComponent(H.azId)}" target="_blank" rel="noopener">AgencyZoom ↗</a>` : ""}</dd></div><div><dt>Phone</dt><dd>${[tel(H.phone), tel(H.secondaryPhone)].filter(Boolean).join(" · ") || "—"}</dd></div><div><dt>Email</dt><dd>${H.email ? `<a href="mailto:${escAttr(H.email)}">${cesc(H.email)}</a>` : "—"}</dd></div><div><dt>Address</dt><dd>${cesc([H.address, [H.city, H.state].filter(Boolean).join(", "), H.zip].filter(Boolean).join(" · ") || "—")}</dd></div><div><dt>Assigned</dt><dd>${badge(H.assignedTo)}</dd></div><div><dt>Since</dt><dd>${cesc(dayOf(H.asCustomerDate) || "—")}</dd></div></dl></section>` : ""}
+      ${peopleBox()}
+      ${H ? `<section class="ldbox"><h3>Household</h3><dl class="ldfacts one"><div><dt>Name</dt><dd>${cesc(H.name)} <button type="button" class="ghost ldsm" data-ldacct="${H.id}" data-ldacctname="${escAttr(H.name)}">Open account</button>${H.azId ? ` <a class="ldaz" href="${AZ_URL.customer}${encodeURIComponent(H.azId)}" target="_blank" rel="noopener">AgencyZoom ↗</a>` : ""}</dd></div><div><dt>Phone</dt><dd>${[tel(H.phone), tel(H.secondaryPhone)].filter(Boolean).join(" · ") || "—"}</dd></div><div><dt>Email</dt><dd>${H.email ? `<a href="mailto:${escAttr(H.email)}">${cesc(H.email)}</a>` : "—"}</dd></div><div><dt>Address</dt><dd>${cesc([H.address, [H.city, H.state].filter(Boolean).join(", "), H.zip].filter(Boolean).join(" · ") || "—")}</dd></div><div><dt>Assigned</dt><dd>${badge(H.assignedTo)}</dd></div><div><dt>Since</dt><dd>${cesc(dayOf(H.asCustomerDate) || "—")}</dd></div></dl></section>` : ""}
       <section class="ldbox"><h3>Service requests</h3>${srs}</section>
       <section class="ldbox"><h3>Stage history</h3>${moves ? `<ul class="ldlist">${moves}</ul>` : `<p class="ldmute">No moves on record.</p>`}</section>
       <details class="ldfold ldbox"${ldEventsOpen ? " open" : ""} data-ldfold="events"><summary>Changes made in Elysium Pro <small class="ldmute">${P.events.length}</small></summary>${ev}</details>
@@ -283,28 +363,47 @@
   function repaint() {
     const v = $("#view");
     if ($("#view").dataset.view !== "lead") return;
-    v.innerHTML = ldId ? (P ? pageHtml() : `<section class="ldpage"><p class="ldback"><button type="button" class="ghost" data-ldback="1">◂ All leads</button></p><div class="empty">${ldErr ? cesc(ldErr) : "Loading " + cesc(ldName || "the lead") + "…"}</div></section>`) : pickerHtml();
-    const f = v.querySelector("[autofocus]"); if (f && f.tagName !== "INPUT" || (f && f.classList.contains("ldq") && ldQ)) f.focus(); else if (f) f.focus();
+    v.innerHTML = acctId ? (A ? accountHtml() : `<section class="ldpage"><p class="ldback"><button type="button" class="ghost" data-ldback="1">◂ Back</button></p><div class="empty">${ldErr ? cesc(ldErr) : "Loading " + cesc(acctName || "the account") + "…"}</div></section>`) : ldId ? (P ? pageHtml() : `<section class="ldpage"><p class="ldback"><button type="button" class="ghost" data-ldback="1">◂ All leads</button></p><div class="empty">${ldErr ? cesc(ldErr) : "Loading " + cesc(ldName || "the lead") + "…"}</div></section>`) : pickerHtml();
+    const f = v.querySelector("[autofocus]"); if (f) { f.focus(); if (f.setSelectionRange && f.type !== "email" && f.value) { try { f.setSelectionRange(f.value.length, f.value.length); } catch (_) {} } }
   }
   async function load() {
+    if (acctId) {
+      try { A = await api(`households/${encodeURIComponent(acctId)}/page`); ldErr = ""; acctName = A.household.name || acctName; saveWhere(); }
+      catch (e) { A = null; ldErr = e.status === 404 ? `Account #${acctId} is not in the CRM.` : e.message; }
+      return;
+    }
     try { P = await api(`leads/${encodeURIComponent(ldId)}/page`); ldErr = ""; ldName = P.lead.name || ldName; saveWhere(); }
     catch (e) { P = null; ldErr = e.status === 404 ? `Lead #${ldId} is not in the CRM.` : e.message; }
   }
   async function act(fn, ok) {
     if (ldBusy) return;
     ldBusy = true; repaint();
-    try { await fn(); ldForm = null; ldOpenTask = {}; ldMsg = { ok }; await load(); }
+    try { await fn(); ldForm = null; ldOpenTask = {}; pplForm = null; pplHits = null; pplQ = ""; ldMsg = { ok }; await load(); }
     catch (e) { ldMsg = { err: e.message }; }
     ldBusy = false; repaint();
   }
 
   function onClick(e) {
-    const t = e.target.closest("[data-ldfilter],[data-ldformopen],[data-ldcancel],[data-ldcard],[data-ldback],[data-ldtaskopen],[data-ldtaskclose]");
+    const t = e.target.closest("[data-ldfilter],[data-ldformopen],[data-ldcancel],[data-ldcard],[data-ldback],[data-ldtaskopen],[data-ldtaskclose],[data-ldacct],[data-ldpform],[data-ldprimary],[data-ldremove],[data-ldattach],[data-ldlinkacct],[data-ldunlink]");
     if (!t || !$("#view").contains(t) || $("#view").dataset.view !== "lead") return;
     if (t.dataset.ldfilter) { ldFilter = t.dataset.ldfilter; saveWhere(); repaint(); return; }
     if (t.dataset.ldformopen) { ldForm = t.dataset.ldformopen; ldMsg = null; repaint(); return; }
-    if (t.dataset.ldcancel) { ldForm = null; repaint(); return; }
+    if (t.dataset.ldcancel) { ldForm = null; pplForm = null; pplHits = null; pplQ = ""; repaint(); return; }
+    if (t.dataset.ldacct) { e.preventDefault(); openAccount(t.dataset.ldacct, t.dataset.ldacctname || ""); return; }
+    if (t.dataset.ldpform) { pplForm = t.dataset.ldpform; pplHits = null; pplQ = ""; ldMsg = null; repaint(); return; }
+    const hh = acctId || (P && P.household && P.household.id), people = pplDeps(), post = (body, ok) => act(() => api(`households/${hh}/people`, body), ok);
+    if (t.dataset.ldprimary) { const c = people.contacts.find(x => String(x.id) === t.dataset.ldprimary); post({ op: "primary", contactId: +t.dataset.ldprimary }, `${c ? c.name : "The contact"} is now the account holder.`); return; }
+    if (t.dataset.ldremove) { if (confirm(`Take ${t.dataset.ldremovename} off this account? The contact stays on any other account.`)) post({ op: "detach", contactId: +t.dataset.ldremove }, `${t.dataset.ldremovename} removed from this account.`); return; }
+    if (t.dataset.ldattach) { post({ op: "attach", contactId: +t.dataset.ldattach }, "Contact added to this account."); return; }
+    if (t.dataset.ldlinkacct) { post({ op: "link", householdId: +t.dataset.ldlinkacct }, "Account linked."); return; }
+    if (t.dataset.ldunlink) { if (confirm(`Unlink ${t.dataset.ldunlinkname} from this account? Both accounts keep everything else.`)) post({ op: "unlink", householdId: +t.dataset.ldunlink }, `${t.dataset.ldunlinkname} unlinked.`); return; }
     if (t.dataset.ldcard) { openLeadCard({ id: ldId, l: ldName }); return; }
+    if (t.dataset.ldback && acctId) {
+      acctId = null; A = null; pplForm = null; pplHits = null; pplQ = ""; ldMsg = null;
+      if (!acctBack) { ldId = null; P = null; } acctBack = false; saveWhere(); repaint();
+      if (ldId) load().then(repaint); else if (ldRecent === null) loadRecent().then(repaint);
+      return;
+    }
     if (t.dataset.ldback) { ldId = null; P = null; ldForm = null; ldMsg = null; saveWhere(); repaint(); if (ldRecent === null) loadRecent().then(repaint); return; }
     if (t.dataset.ldtaskopen) { ldOpenTask = { [t.dataset.ldtaskopen]: true }; repaint(); return; }
     if (t.dataset.ldtaskclose) { ldOpenTask = {}; repaint(); return; }
@@ -315,9 +414,23 @@
   }
   function onKey(e) {
     const r = e.target.closest("tr.ldpick"); if (!r || (e.key !== "Enter" && e.key !== " ")) return;
-    e.preventDefault(); openLead(r.dataset.ldopen, r.dataset.ldname);
+    e.preventDefault(); if (r.dataset.ldacct) openAccount(r.dataset.ldacct, r.dataset.ldacctname); else openLead(r.dataset.ldopen, r.dataset.ldname);
+  }
+  let pplTimer = 0;
+  async function pplFind(kind, q) {
+    try {
+      const rows = kind === "contact" ? (await api(`contacts?q=${encodeURIComponent(q.trim())}`)).contacts
+        : ((await api(`search?q=${encodeURIComponent(q.trim())}`)).customers || []).map(h => ({ id: h.id, name: h.name, phone: h.phone, email: h.email }));
+      if (pplQ === q) { pplHits = { kind, rows }; repaint(); }
+    } catch (err) { if (pplQ === q) { pplHits = { kind, rows: [] }; ldMsg = { err: err.message }; repaint(); } }
   }
   function onInput(e) {
+    const pq = e.target.closest(".ldpq");
+    if (pq && $("#view").dataset.view === "lead") {
+      pplQ = pq.value; clearTimeout(pplTimer);
+      if (pq.value.trim().length < 2) { pplHits = null; return; }
+      pplTimer = setTimeout(() => pplFind(pq.dataset.kind, pq.value), 250); return;
+    }
     const q = e.target.closest(".ldq"); if (!q || $("#view").dataset.view !== "lead") return;
     ldQ = q.value; clearTimeout(findTimer); findTimer = setTimeout(() => find(q.value), 220);
   }
@@ -332,6 +445,8 @@
     else if (f.dataset.ldmove) { e.preventDefault(); act(() => api(`leads/${ldId}/move`, { to: d.to, why: d.why || "" }), `Moved to ${d.to}.`); }
     else if (f.dataset.ldsold) { e.preventDefault(); act(() => api(`leads/${ldId}/sold`, {}), "Marked sold."); }
     else if (f.dataset.ldtask) { e.preventDefault(); act(() => api("tasks", { title: d.title, assigneeId: +d.assigneeId, leadId: +ldId, dueDate: `${d.day} ${d.time || "09:00"}`, type: d.type || "todo", comments: d.comments || "" }), "Task added."); }
+    else if (f.dataset.ldctnew) { e.preventDefault(); const hh = acctId || P.household.id; act(() => api(`households/${hh}/people`, { op: "add", ...d }), `${[d.firstname, d.lastname].filter(Boolean).join(" ")} added.`); }
+    else if (f.dataset.ldctedit) { e.preventDefault(); const hh = acctId || P.household.id; act(() => api(`households/${hh}/people`, { op: "edit", contactId: +f.dataset.ldctedit, ...d }), "Contact saved."); }
     else if (f.dataset.lddone) { e.preventDefault(); act(() => api(`tasks/${f.dataset.lddone}/complete`, { comment: d.comment || "" }), "Task done."); }
   }
   document.addEventListener("click", onClick);
@@ -344,7 +459,8 @@
   window.leadPaint = async function leadPaint() {
     const v = $("#view"); v.dataset.view = "lead";
     if (!(await window.LEAD_READY)) { v.innerHTML = '<div class="empty">The CRM is not open to this login.</div>'; return; }
-    if (ldId) { if (!P || String(P.lead.id) !== String(ldId)) { repaint(); await load(); } }
+    if (acctId) { if (!A || String(A.household.id) !== String(acctId)) { repaint(); await load(); } }
+    else if (ldId) { if (!P || String(P.lead.id) !== String(ldId)) { repaint(); await load(); } }
     else if (ldRecent === null) { repaint(); await loadRecent(); }
     repaint();
   };
@@ -387,6 +503,13 @@ tr.ldpick { cursor: pointer; } tr.ldpick:hover td, tr.ldpick:focus td { backgrou
 .ldtasks { list-style: none; margin: 0; padding: 0; } .ldtask { padding: 6px 0; border-bottom: 1px solid var(--border); } .ldtask:last-child { border-bottom: 0; } .ldtask.done { opacity: .7; } .ldtask.late .ldwhen { color: var(--bad); font-weight: 700; }
 .ldtask .tkcomm { max-height: 7.5em; overflow: auto; }
 .ldtaskrow { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; font-size: 13.5px; } .ldtaskrow b { flex: 1; min-width: 120px; }
+.ldppl h3 { display: flex; align-items: center; gap: 8px; } .ldh3b { margin: 16px 0 8px; font-size: 14px; display: flex; align-items: center; gap: 8px; } .ldh3acts { margin-left: auto; display: flex; gap: 6px; }
+.ldcount { display: inline-block; min-width: 20px; text-align: center; font-size: 12px; font-weight: 800; padding: 1px 7px; border-radius: 999px; background: var(--bad); color: #fff; }
+.ldsm { font-size: 12px; padding: 3px 9px; } .ldholder { margin: 0 0 8px; font-size: 13px; color: var(--text-secondary); }
+.ldct { padding: 10px 12px; margin: 6px 0; border: 1px solid var(--border); border-radius: 12px; background: color-mix(in oklab, var(--accent) 6%, var(--surface)); } .ldct.prim { border-color: var(--accent); }
+.ldcthead { display: flex; flex-wrap: wrap; gap: 8px; align-items: baseline; } .ldcthead .ldprim, .ldcthead .ldsm { margin-left: auto; } .ldprim { font-size: 12px; font-weight: 800; color: var(--accent); }
+.ldctline { font-size: 13px; margin-top: 3px; overflow-wrap: anywhere; } .ldctacts { display: flex; gap: 6px; margin-top: 6px; } .ldfind { list-style: none; padding: 0; } .ldfind li { padding: 5px 0; border-bottom: 1px solid var(--border); font-size: 13.5px; }
+.ldacctlink { text-decoration: none; color: var(--accent); }
 @media (max-width: 980px) { .ldcols { grid-template-columns: 1fr; } .ldid { margin-left: 0; } }
 `;
   document.head.appendChild(css);

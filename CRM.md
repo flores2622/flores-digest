@@ -76,6 +76,10 @@ for the rest. Nothing is switched until the two agree on a published day.
    RingCentral pass as CALL notes, stage moves from the page.
    `lead_history`, `messages.py` and `day_calls.fetch_notes` read Pantheon.
    Cutover test: a day's contacts, outcomes and Texts & Emails identical.
+   **Contacts and linked accounts are built** (2026-10-14, migration 0005):
+   an account's contacts (one primary, switchable), the accounts linked to it
+   and its page -- AgencyZoom's customer-page sections its API never returns;
+   see CLAUDE.md, "Contacts and linked accounts", and `crm_links_seed.py`.
    **The lead page is built** (2026-10-13, `site/public/lead.js`, Sales
    Center > Leads): the picker (name or phone, the leads worked most
    recently), and per lead one read (`GET /api/crm/leads/<id>/page`) with
