@@ -1333,6 +1333,12 @@ def _run(a):
     # CRM side by side, written to R2 for the Tasks page (task_check.py).
     import task_check
     task_check.run(day, log=log)
+    # Phase 3: Pantheon's own CALL notes from the day's RingCentral log, then
+    # the comparison with AgencyZoom's (crm_calls.py, call_check.py).
+    import crm_calls
+    crm_calls.run(day, log=log)
+    import call_check
+    call_check.run(day, log=log)
 
     if held:
         log("SEND_HOLD: sales log and missed-call tasks skipped with the email")

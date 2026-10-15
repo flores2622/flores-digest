@@ -1035,12 +1035,13 @@ async function automationsRule(env, body, me) {
   return json({ error: "the rules are busy -- try again" }, 503);
 }
 const TASK_CHECK_PREFIX = "crm/task_check/";
+const CALL_CHECK_PREFIX = "crm/call_check/";    // call_check.py: AgencyZoom's CALL notes against Pantheon's own (phase 3)
 const TASK_CHECK_DAYS = 14;
-async function taskCheck(env) {
+async function taskCheck(env, prefix = TASK_CHECK_PREFIX) {
   const keys = [];
   let cursor;
   do {
-    const l = await env.BOARD.list({ prefix: TASK_CHECK_PREFIX, cursor });
+    const l = await env.BOARD.list({ prefix, cursor });
     for (const o of l.objects || []) keys.push(o.key);
     cursor = l.truncated ? l.cursor : undefined;
   } while (cursor);
@@ -1101,6 +1102,7 @@ export async function crm(request, env, identityOf, parts, url) {
   const get = request.method === "GET", post = request.method === "POST";
   const [head, id, sub] = parts;
   if (head === "taskcheck" && get && parts.length === 1) return env.BOARD ? taskCheck(env) : json({ error: "no R2 bucket" }, 503);
+  if (head === "callcheck" && get && parts.length === 1) return env.BOARD ? taskCheck(env, CALL_CHECK_PREFIX) : json({ error: "no R2 bucket" }, 503);
   // The automations report, its marks, the drafts and the suggestions live in R2 (env.BOARD), not D1.
   if (head === "automations") {
     if (!env.BOARD) return json({ error: "no R2 bucket" }, 503);
