@@ -1300,7 +1300,24 @@ customer, so Sold is ONE table of the policies with a Customer column (Frank, 20
 the lead and the policy info, just the policy info with the customer name"; `policyCustomer`): the lead
 marked sold that day by the same producer on the same source, else that producer's only sold household,
 blank when several households share it; a household marked sold whose policy is dated another day is one
-line under it. Household Completion's policies carry the same column. Past days:
+line under it. Household Completion's policies carry the same column. **Quotes and
+policies show their line of business** (Frank, 2026-10-15: "I want to start
+displaying LOB (Line of Business) when listing quotes or policies"): the
+Quoted list has an **LOB** column -- each counted quote's carrier and
+product named by the Sales sheet's own rules (`sales_log_auto.product_name`
+on the quote's `carrierId` + `productName`: Farmers-Home, BW-Auto,
+Foremost-MH; an unknown carrier keeps the bare product), kept by daily.py
+as `quoted_lob` beside `quoted_premium` and put on each `rows.quoted` row
+as `lob` ([{lob, premium}], the same quotes the premium counts; `quoteLobHtml`
+groups repeats "BW-Auto ×2", premiums on hover, a dash when the household
+is quoted by a stage move or a sent quote with no new quote that day).
+Days built before 2026-10-15 carry no `lob` and keep the old columns (a
+range shows them blank); the live refresh adds counts, not rows, so the
+list is the checkpoint's. The policy lists' Product column (Sold, Household
+Completion, Life -- already the sheet's product name) is headed **LOB**, and
+every Renewals list (Coming up, Lost, a card's list, Cancellations to check)
+has an **LOB** column from the report's `type` beside the policy number. The
+lead page, Campaigns and the Commercial queue already named the line. Past days:
 `python3 digest_rows.py --backfill 2026-09-01` from R2's saved inputs (no
 quoted premium, and no quoted list before 2026-09-24's `quoted_leads`).
 **Everything on the Digest opens its accounts** (Frank, 2026-09-29:
@@ -3088,7 +3105,27 @@ repaint clears the list).
   scratchpad, not the repo; `design/flores-board-preview.html` is the
   approved mock-up the restyle followed.
 
-## The board is Pantheon; its assistant is Apollo (2026-10-04)
+## The board is Elysium Pro (2026-10-15); its assistant is Apollo
+
+**The board is named Elysium Pro** (Frank, 2026-10-15: "Lets do Elysium
+Pro" -- the platform is to be sold to other agencies, and "pantheon and
+apollo are taken": Pantheon is a web-hosting company). Everything a person
+reads says it: the page title and header eyebrow, the home-screen app's
+name (`manifest.webmanifest`, `apple-mobile-web-app-title`), the tour's
+welcome, the guides in blueprints.js, the CRM pages' footers and the
+Workflows drafts' badge, the nightly email's header, link and title, and
+Apollo's chat instructions. **Code, comments, file names, R2 keys and this
+file keep the name Pantheon** (as they kept "Sales Floor" before it), so
+nothing saved moves; "Pantheon" below means the board. Elysian, a funded
+insurance-claims AI company, holds trademarks near the name -- Frank was
+told and chose it (2026-10-15). His own USPTO search found KNITT LLC's
+ELYSIUM registrations in class 42 (cloud workload hosting, 2026) and
+Elysium Digital's in 35 / 42; he kept the name ("keep elysium pro, ill
+talk to an attorney") -- do not raise it again unless he asks.
+elysiumpro.com is parked for sale (HugeDomains); elysiumpro.io / .ai /
+.insure / .agency and getelysiumpro.com were open that day.
+
+## The board was Pantheon (2026-10-04); its assistant is Apollo
 
 **The board is named Pantheon** (Frank, 2026-10-04: "let's name it
 Pantheon" -- it "has become much more than a sales floor"): the page title,

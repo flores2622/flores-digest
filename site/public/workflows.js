@@ -13,7 +13,7 @@
    AgencyZoom's automation tab on a lead; the filters are Frank's lead
    sources and pipelines (crm_lists) and the wording's language. A row
    opens to the whole rule; Frank marks each keep / change / drop with a
-   note; the marks are the brief for the rules Pantheon will run itself
+   note; the marks are the brief for the rules Elysium Pro will run itself
    (CRM.md, Workflows). Loads after tasks.js: it waits on CRM_READY. */
 (function () {
   const KINDS = [["text", "Texts", "var(--accent)"], ["email", "Emails", "var(--s4)"], ["task", "Tasks", "var(--s3)"], ["cycle", "Smart-Cycle", "var(--good)"]];
@@ -83,7 +83,7 @@
   function allRules(R) {
     return [].concat(R.texts || [], R.emails || [], R.tasks || [], (R.cycles || []).filter((c) => c.fired));
   }
-  // Pantheon's own rules (drafts), shaped enough to sit on the timeline
+  // Elysium Pro's own rules (drafts), shaped enough to sit on the timeline
   function ownRules() {
     return ((D && D.rules) || []).map((r) => Object.assign({}, r, { own: true, key: r.id, kind: r.kind === "move" ? "cycle" : r.kind, rkind: r.kind, day: r.day, lang: r.lang || "en" }));
   }
@@ -193,7 +193,7 @@
       <button type="button" class="wfrow" data-open="${cesc(r.key)}" aria-expanded="${open}">
         <span class="wfico" title="${KIND_WORD[r.kind]}">${ICON[r.kind]}</span>
         <span class="wftxt"><span class="wfkind">${KIND_WORD[r.kind]}</span> ${cesc(one.length > 150 ? one.slice(0, 148) + "…" : one)}</span>
-        <span class="wfmeta">${sugBadge(r.id)}${r.lang === "es" ? `<span class="wflang">Spanish</span>` : ""}<span class="wfbadge draft">Pantheon · draft</span><span class="wfn">${srcs}</span><span class="wfarrow">${open ? "▲" : "▼"}</span></span>
+        <span class="wfmeta">${sugBadge(r.id)}${r.lang === "es" ? `<span class="wflang">Spanish</span>` : ""}<span class="wfbadge draft">Elysium Pro · draft</span><span class="wfn">${srcs}</span><span class="wfarrow">${open ? "▲" : "▼"}</span></span>
       </button>
       ${open ? `<div class="wfdetail">${wfForm && wfForm.id === r.id ? formHtml(D.report) : ownDetail(r)}</div>` : ""}
     </li>`;
@@ -205,7 +205,7 @@
       : r.rkind === "task" ? `<p class="wfwhen"><b>Task:</b> ${cesc(r.title)} -- for ${cesc(r.who || "the lead's producer")}${r.body ? `</p><blockquote class="wftpl">${cesc(r.body)}</blockquote><p>` : ""}</p>`
       : `<p class="wfwhen"><b>Move the lead to</b> ${cesc(r.to_stage)}.</p>`;
     return `<p class="wfwhen">${when}</p>${what}${r.note ? `<div class="wfnote">${cesc(r.note)}</div>` : ""}
-      <div class="wfmark"><span class="wfdraftnote">A draft: Pantheon does not run it yet. It will, once the CRM owns the tasks and the text and email senders are in.</span>
+      <div class="wfmark"><span class="wfdraftnote">A draft: Elysium Pro does not run it yet. It will, once the CRM owns the tasks and the text and email senders are in.</span>
         ${canEdit() ? `<button type="button" class="btn tksmall" data-editrule="${cesc(r.id)}">Edit</button>
         <button type="button" class="ghost tksmall" data-delrule="${cesc(r.id)}">Delete</button>` : ""}
         <small class="lsmute">${cesc((r.updated_by || r.by || "").split(" ")[0])} ${cesc((r.updated || r.at || "").slice(0, 10))}</small></div>${sugHtml(r.id)}`;
@@ -221,7 +221,7 @@
     const kind = f.kind || "text";
     void sm;
     return `<form class="wfform" data-ruleform="${cesc(wfForm.id || "")}">
-      <div class="wfformh"><strong>${wfForm.id ? "Edit the rule" : "A rule of Pantheon's own"}</strong><span class="wfbadge draft">draft</span></div>
+      <div class="wfformh"><strong>${wfForm.id ? "Edit the rule" : "A rule of Elysium Pro's own"}</strong><span class="wfbadge draft">draft</span></div>
       <div class="wfformgrid">
         <label><span>What</span>${sel("kind", [["text", "Text"], ["email", "Email"], ["task", "Task"], ["move", "Move the lead"]], kind)}</label>
         <label><span>Pipeline</span>${sel("pipeline", pipes.map((p) => [p, p]), f.pipeline)}</label>
@@ -279,7 +279,7 @@
     });
     const pipes = Object.keys(byPipe).sort((a, b) => (PIPE_ORDER.indexOf(a) + 1 || 99) - (PIPE_ORDER.indexOf(b) + 1 || 99) || a.localeCompare(b));
     if (!pipes.length) return `<div class="empty">No rule matches these filters.</div>`;
-    const addBtn = (pn, sn) => (canEdit() && myStages(R, pn).includes(sn) ? `<button type="button" class="ghost tksmall wfaddhere" data-addrule="${cesc(pn + "|" + sn)}" title="Add a rule of Pantheon's own at this stage">＋ Add here</button>` : "");
+    const addBtn = (pn, sn) => (canEdit() && myStages(R, pn).includes(sn) ? `<button type="button" class="ghost tksmall wfaddhere" data-addrule="${cesc(pn + "|" + sn)}" title="Add a rule of Elysium Pro's own at this stage">＋ Add here</button>` : "");
     const kindOrd = { text: 0, email: 1, task: 2, cycle: 3 };
     void ownAt;
     return pipes.map((pn) => {
@@ -353,10 +353,10 @@
     v.innerHTML = `<section class="tkpage wfpage">
       <div class="tkhead"><div class="tktiles">${tiles}</div>${tally}</div>
       ${wfMsg ? `<p class="tkmsg ${wfMsg.err ? "bad" : "good"}">${cesc(wfMsg.err || wfMsg.ok)}</p>` : ""}
-      <p class="lsintro">What AgencyZoom's automations actually do, read back from the leads${R ? ` -- the last ${R.days} days, ${n(R.leads_read)} leads' notes, as of ${cesc(R.built)}` : ""}, laid out the way a lead sees them: pipeline by pipeline, stage by stage, from the day it gets there. AgencyZoom does not hand out its rules, so each is rebuilt from what it sent. Open a row for the wording and what came back${canEdit() ? "; mark it <b>Keep</b>, <b>Change</b> or <b>Drop</b> and say why -- that is the brief for the rules Pantheon runs itself" : ", and <b>Suggest</b> what you would change"}.</p>
+      <p class="lsintro">What AgencyZoom's automations actually do, read back from the leads${R ? ` -- the last ${R.days} days, ${n(R.leads_read)} leads' notes, as of ${cesc(R.built)}` : ""}, laid out the way a lead sees them: pipeline by pipeline, stage by stage, from the day it gets there. AgencyZoom does not hand out its rules, so each is rebuilt from what it sent. Open a row for the wording and what came back${canEdit() ? "; mark it <b>Keep</b>, <b>Change</b> or <b>Drop</b> and say why -- that is the brief for the rules Elysium Pro runs itself" : ", and <b>Suggest</b> what you would change"}.</p>
       ${filters}
       ${body}
-      <p class="tkfoot">Pantheon's own CRM. Nothing here changes AgencyZoom. A rule you add is Pantheon's own, a draft on the timeline beside AgencyZoom's until the CRM runs it. Texts carry the rule that sent them; emails are known by their template subject; a task counts when the same wording went to five or more leads. The day is counted the way AgencyZoom counts it: Day 1 is the day the lead got to the stage, in business days, and each rule sits on its usual day (the median over every time it fired); a task's day is the day it was due. A task wording the Day 2, 4 and 7 reminders share is listed once, named after them.</p>
+      <p class="tkfoot">Elysium Pro's own CRM. Nothing here changes AgencyZoom. A rule you add is Elysium Pro's own, a draft on the timeline beside AgencyZoom's until the CRM runs it. Texts carry the rule that sent them; emails are known by their template subject; a task counts when the same wording went to five or more leads. The day is counted the way AgencyZoom counts it: Day 1 is the day the lead got to the stage, in business days, and each rule sits on its usual day (the median over every time it fired); a task's day is the day it was due. A task wording the Day 2, 4 and 7 reminders share is listed once, named after them.</p>
     </section>`;
     const f = v.querySelector(".lsform input[autofocus]"); if (f) f.focus();
   }

@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>Pantheon</title>
+<title>Elysium Pro</title>
 <!-- The board as a phone app (Frank, 2026-10-03: "coeus icon, build the app"): Safari > Share >
      Add to Home Screen opens it full screen under the owl (Apollo's, the assistant's). The name below is what the icon is
      labelled; the manifest carries it for Android. Icons are drawn by design/app_icon.py. -->
@@ -12,7 +12,7 @@
 <link rel="icon" type="image/png" sizes="32x32" href="app/favicon-32.png">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-title" content="Pantheon">
+<meta name="apple-mobile-web-app-title" content="Elysium Pro">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="theme-color" content="#14122b">
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,700&family=Bebas+Neue&family=Anton&family=Bangers&family=Comic+Neue:wght@400;700&family=JetBrains+Mono:wght@400;700&display=swap">
@@ -1925,7 +1925,7 @@ html[data-theme="phoenix"] .tourcard .tbtns .tback { background: #f4e2cf; border
   </nav>
   <div class="wrap">
     <div class="top">
-      <div class="greetwrap"><div class="eyebrow">Pantheon</div><h1 class="greet" id="greet">Welcome back.</h1></div>
+      <div class="greetwrap"><div class="eyebrow">Elysium Pro</div><h1 class="greet" id="greet">Welcome back.</h1></div>
       <div class="search">
         <label for="q"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg>
           <input id="q" type="search" placeholder="Find a lead, producer, page…" autocomplete="off" aria-controls="res"><kbd>Ctrl K</kbd></label>
@@ -1969,7 +1969,7 @@ const GOALS = window.GOALS || { thresholds: {}, reply_goal_minutes: { green: 15,
 /* The agency itself (staff.json agency): the tab's title and the menu's brand. */
 const AGENCY = STAFF.agency || {};
 if (window.bpFilled) window.BLUEPRINTS = bpFilled(bpValues(AGENCY));   // the guides, with the carrier's name filled in
-if (AGENCY.name) document.title = `Pantheon — ${AGENCY.name}`;
+if (AGENCY.name) document.title = `Elysium Pro — ${AGENCY.name}`;
 if (AGENCY.short_name) { const b = document.getElementById("brand"); if (b) b.innerHTML = `${AGENCY.short_name}<br><span>Insurance</span>`; }
 /* The agency's clock (staff.json agency.timezone, through staff.js): every
    "today", clock time and business-hour figure on the page is worked out in
@@ -3738,10 +3738,16 @@ function digDrillFor(d, who, keys) {
     const rs = mine(R.quoted);
     // The filtered producer's own households quoted, not the team's.
     if (!rs.length && cpf("hh")) return digDrillList("Households quoted", "", DIG_NO_ROWS);
-    const tr = rs.map(r => `<tr>${digDay(d, r)}<td>${digWho(r)}</td><td>${digLead(r)}</td><td>${cesc(r.source)}</td>
+    // Each quote's line of business (Frank, 2026-10-15: "I want to start
+    // displaying LOB when listing quotes or policies") -- the Sales sheet's
+    // product name, so a quote reads like the policy it would become. Days
+    // built before it carry no `lob` and keep the old columns.
+    const hasLob = rs.some(r => Array.isArray(r.lob));
+    const tr = rs.map(r => `<tr>${digDay(d, r)}<td>${digWho(r)}</td><td>${digLead(r)}</td>${hasLob ? `<td>${quoteLobHtml(r.lob)}</td>` : ""}<td>${cesc(r.source)}</td>
       <td class="num">${r.premium === "" || r.premium == null ? "—" : money(r.premium)}</td></tr>`);
     return digDrillList(`Households quoted${whoTag} · ${rs.length}`, "",
-      note("quotes", "hh") + digTable(d, `<th>Producer</th><th>Lead</th><th>Source</th><th class="num">Premium quoted</th>`, tr));
+      note("quotes", "hh") + digTable(d, `<th>Producer</th><th>Lead</th>${hasLob ? "<th>LOB</th>" : ""}<th>Source</th><th class="num">Premium quoted</th>`, tr)
+      + (hasLob && rs.some(r => Array.isArray(r.lob) && !r.lob.length) ? `<p class="sd" style="margin-top:6px">A dash under LOB: the household counts as quoted (moved to a quoted stage, or a quote was sent) but no new quote was on the lead today.</p>` : ""));
   }
   if (kind === "life") {
     // Life policies sold, counted apart from Premium Sold (Frank, 2026-09-30).
@@ -3750,7 +3756,7 @@ function digDrillFor(d, who, keys) {
       <td class="num">${money(r.premium)}</td><td>${cesc(r.source)}</td><td class="num">${r.effective ? fmtShortDate(r.effective) : ""}</td></tr>`);
     return digDrillList(`Life sold${whoTag} · ${lr.length} polic${lr.length === 1 ? "y" : "ies"}`,
       (R.life ? "" : "Days built before life was counted apart list their life policies with the others. ") + "Life insurance is its own stat: it is never a household sold or part of Premium Sold.",
-      digTable(d, `<th>Producer</th><th>Product</th><th>Policy</th><th class="num">Premium</th><th>Lead source</th><th class="num">Effective</th>`, tr));
+      digTable(d, `<th>Producer</th><th>LOB</th><th>Policy</th><th class="num">Premium</th><th>Lead source</th><th class="num">Effective</th>`, tr));
   }
   if (kind === "sold") return digDrillList(`Sold${whoTag} · ${mine(R.sold).length} polic${mine(R.sold).length === 1 ? "y" : "ies"}`, "", digDrillSold(d, mine, note("sales", "pol")));
   if (kind === "hhc") {
@@ -3766,7 +3772,7 @@ function digDrillFor(d, who, keys) {
       + digTable(d, `<th>Producer</th><th>Lead</th><th>Source</th><th>Household</th>`, lr)
       + `<h3 class="rh3" style="margin-top:10px">Policies · ${ps.length}</h3>`
       + note("sales", "pol")
-      + digTable(d, `<th>Producer</th><th>Customer</th><th>Product</th><th>Policy</th><th class="num">Premium</th><th>Lead source</th>`, tr));
+      + digTable(d, `<th>Producer</th><th>Customer</th><th>LOB</th><th>Policy</th><th class="num">Premium</th><th>Lead source</th>`, tr));
   }
   if (kind === "tasks") {
     if (!R.tasks || (!R.tasks.length && ((who ? ((d.producers || []).find(p => p.name === who) || {}).tasks : (d.totals || {}).tasks) || {}).total)) return digDrillList(`Tasks${whoTag}`, "", DIG_NO_ROWS);
@@ -3849,7 +3855,7 @@ function digDrillSold(d, mine, polNote = "", rows = null) {
   // a household marked sold whose policy is dated another day still shows, in one line
   const rest = ls.filter((x, i) => !used.has(hh(x)) && ls.findIndex(y => hh(y) === hh(x)) === i);
   return `${polNote || ""}
-    ${digTable(d, `<th>Producer</th><th>Customer</th><th>Product</th><th>Policy</th><th class="num">Premium</th><th>Lead source</th><th class="num">Effective</th>`, tr)}
+    ${digTable(d, `<th>Producer</th><th>Customer</th><th>LOB</th><th>Policy</th><th class="num">Premium</th><th>Lead source</th><th class="num">Effective</th>`, tr)}
     ${rest.length ? `<p class="sd" style="margin:6px 0 0">Also marked sold, policy dated another day: ${rest.map(x => `${digLead(x)} (${cesc((x.who || "").split(" ")[0])})`).join(", ")}</p>` : ""}`;
 }
 
@@ -3998,6 +4004,15 @@ function messagesPanel(d, who) {
     <tbody>${bRows}</tbody></table></div></div>` : ""}`;
 }
 
+// A household's quotes as their lines of business: "BW-Auto · Farmers-Home",
+// each one's premium on hover; one line quoted twice reads "BW-Auto ×2".
+function quoteLobHtml(lob) {
+  if (!Array.isArray(lob)) return "";            // a day built before LOB was kept
+  if (!lob.length) return "—";
+  const by = new Map();
+  for (const q of lob) { const k = q.lob || "Quote"; const x = by.get(k) || { n: 0, p: [] }; x.n++; x.p.push(q.premium); by.set(k, x); }
+  return [...by].map(([k, x]) => `<span title="${cesc(x.p.map(v => money(v)).join(" + "))}">${cesc(k)}${x.n > 1 ? ` ×${x.n}` : ""}</span>`).join(" · ");
+}
 function recontactPanel(d, who) {
   const all = ((d.recontact || {}).at_risk || []).filter(r => !who || r.producer === who);
   const rows = all.slice(0, 14).map(r => `<tr>
@@ -5377,7 +5392,7 @@ document.addEventListener("click", async ev => {
 });
 
 /* ---- Apollo's Doubts (Frank, 2026-10-05: "can apollo send me a list
-   everyday, or make it visible to only me in Pantheon, of questionable or
+   everyday, or make it visible to only me in Elysium Pro, of questionable or
    unsure coaching calls? ... or maybe even of things it is hearing for the
    first time?") -----------------------------------------------------------
    Two sources, side by side: what Apollo itself wrote down as unsure or new
@@ -5570,7 +5585,7 @@ function card(c) {
      <span class="flowedge" style="--fc:${edge.color}"${edge.label ? ` title="${escAttr(edge.label + (edge.why ? ": " + edge.why : ""))}" aria-label="${escAttr(edge.label)}"` : ""}></span>
      <div class="chead"><div><div class="cname">${c.lead_id
        ? `<a href="${AZ_URL.lead}${encodeURIComponent(c.lead_id)}" target="_blank" rel="noopener" onclick="event.stopPropagation()">${cesc(c.lead || "")}</a>`
-       : cesc(c.lead || "")}${c.lead_id && window.CRM_OK ? ` <button type="button" class="ghost ldopen" data-ldopen="${escAttr(String(c.lead_id))}" data-ldname="${escAttr(c.lead || "")}" title="Open the lead's page in Pantheon's CRM">Lead page</button>` : ""}</div>
+       : cesc(c.lead || "")}${c.lead_id && window.CRM_OK ? ` <button type="button" class="ghost ldopen" data-ldopen="${escAttr(String(c.lead_id))}" data-ldname="${escAttr(c.lead || "")}" title="Open the lead's page in Elysium Pro's CRM">Lead page</button>` : ""}</div>
        <div class="cmeta">${cesc(c.who || "")} · ${cesc(fmtShortDate(c.day))}${c.time ? ` ${cesc(c.time)}` : ""} · ${durCell} · ${cesc(c.lang || "")} · ${cesc(c.src || "")}${c.leadsrc ? ` · ${cesc(c.leadsrc)}` : ""}</div>
 </div>
 </div>
@@ -8710,7 +8725,7 @@ async function paintTab() {
     v.innerHTML = trainingPanel(data);
     wireTrainingPanel(data);
   } else if (view === "blueprint" || view === "athenamap") {
-    $("#topsub").textContent = view === "athenamap" ? "how the service team works, in plain language" : "how Pantheon works, in plain language";
+    $("#topsub").textContent = view === "athenamap" ? "how the service team works, in plain language" : "how Elysium Pro works, in plain language";
     v.innerHTML = blueprintPanel(view === "athenamap" ? "athena" : "apollo");
     wireBlueprintPanel();
   } else if (view === "sales") {
@@ -8739,7 +8754,7 @@ async function paintTab() {
   } else if (view === "hygiene") {
     await hygienePaint();    // hygiene.js; only reachable for staff.json's `hygiene`
   } else if (view === "tasks") {
-    await tasksPaint();      // tasks.js; Pantheon's own CRM, only reachable for staff.json's `crm`
+    await tasksPaint();      // tasks.js; Elysium Pro's own CRM, only reachable for staff.json's `crm`
   } else if (view === "lists") {
     await listsPaint();      // lists.js; the CRM's lead sources, pipelines and service pipelines (same gate)
   } else if (view === "workflows") {
@@ -9912,7 +9927,7 @@ function renDrillHtml([title, what, rs], label, pipeName) {
   const sorted = [...rs].sort((a, b) => a.renewal < b.renewal ? -1 : a.renewal > b.renewal ? 1 : 0);
   const rows = sorted.map(r => `<tr>
     <td>${renDate(r.renewal)}</td><td>${renCustomer(r)}</td>
-    <td>${cesc(r.type)} <span style="color:var(--text-muted)">${cesc(r.policy)}</span><div style="font-size:11.5px;color:var(--text-muted)">${cesc(pipeName[r.pipeline] || "")}</div></td>
+    <td>${cesc(r.type || "—")}</td><td><span style="color:var(--text-muted)">${cesc(r.policy)}</span><div style="font-size:11.5px;color:var(--text-muted)">${cesc(pipeName[r.pipeline] || "")}</div></td>
     <td class="num">${renMoney(r.renewal_premium != null ? r.renewal_premium : r.premium)}</td>
     <td><span class="pd rdot" style="${renFill(r.status)}"></span> ${cesc((REN_STATUS[r.status] || [r.status === "upcoming" ? "Coming up" : r.status])[0])}
       ${r.how && r.how.length && r.status !== "upcoming" ? `<div style="font-size:11.5px;color:var(--text-muted)">${cesc(r.how.join(", "))}${r.cancel_date ? ` ${renDate(r.cancel_date)}` : ""}</div>` : ""}</td>
@@ -9923,7 +9938,7 @@ function renDrillHtml([title, what, rs], label, pipeName) {
     <h3 class="rh3" style="margin:0">${title} · ${rs.length} renewal${rs.length === 1 ? "" : "s"}</h3>
     <a href="#" data-drill-close style="font-size:12.5px">Close</a></div>
     <p class="sd" style="margin:0 0 6px">${what}. Customer names open the customer in AgencyZoom.</p>
-    ${rs.length ? `<div class="scroll"><table class="rtable"><thead><tr><th>Renews</th><th>Customer</th><th>Policy</th><th class="num">Premium</th><th>Status</th><th>Renewal SR</th>${upcoming ? "<th>Flags</th><th>Risk</th>" : ""}</tr></thead><tbody>${rows}</tbody></table></div>` : '<p class="sd">None.</p>'}</div>`;
+    ${rs.length ? `<div class="scroll"><table class="rtable"><thead><tr><th>Renews</th><th>Customer</th><th>LOB</th><th>Policy</th><th class="num">Premium</th><th>Status</th><th>Renewal SR</th>${upcoming ? "<th>Flags</th><th>Risk</th>" : ""}</tr></thead><tbody>${rows}</tbody></table></div>` : '<p class="sd">None.</p>'}</div>`;
 }
 /* Cancellations to check (Frank, 2026-09-27: "flag them"; moved here from
    the Service Center with the rest of renewals): a renewal SR counted as
@@ -9937,13 +9952,13 @@ function renFlagHtml(doc, label, inRange = () => true) {
   const rs = (doc.rows || []).filter(r => r.sr && r.sr.flag && inRange(r)).sort((a, b) => a.renewal < b.renewal ? -1 : 1);
   if (!rs.length) return "";
   const rows = rs.map(r => `<tr><td>${renDate(r.renewal)}</td><td>${renCustomer(r)}</td>
-    <td>${cesc(r.type)} <span style="color:var(--text-muted)">${cesc(r.policy)}</span></td>
+    <td>${cesc(r.type || "—")}</td><td><span style="color:var(--text-muted)">${cesc(r.policy)}</span></td>
     <td>${renSrCell(r, label)}</td></tr>`).join("");
   // A dropdown (Frank, 2026-09-28): closed until clicked, count on the label.
   return `<div class="sect"><details class="msgd"${renFlagOpen ? " open" : ""} ontoggle="renFlagOpen=this.open">
     <summary style="cursor:pointer"><h2 style="display:inline">Cancellations to check</h2> <span class="chip c-w" style="margin-left:6px">${rs.length}</span></summary>
     <p class="sd" style="color:var(--warn, #b45309);margin-top:8px">${rs.length} renewal SR${rs.length === 1 ? "" : "s"} renewing in this period counted as Mid-term Cancellation, outside the rate, but nothing shows the policy cancelled before the renewal SR opened: AgencyZoom's policy record has not changed since it was loaded, and the note gives no date. If it cancelled during the renewal, change the SR's resolution to Client Cancelled.</p>
-    <div class="scroll"><table class="rtable"><thead><tr><th>Renews</th><th>Customer</th><th>Policy</th><th>Renewal SR</th></tr></thead><tbody>${rows}</tbody></table></div></details></div>`;
+    <div class="scroll"><table class="rtable"><thead><tr><th>Renews</th><th>Customer</th><th>LOB</th><th>Policy</th><th>Renewal SR</th></tr></thead><tbody>${rows}</tbody></table></div></details></div>`;
 }
 function renewalsPanel(doc, workHtml = "", rb = null) {
   const label = Object.fromEntries((doc.sr_outcomes || []).map(([k, l]) => [k, l]));
@@ -10016,7 +10031,7 @@ function renewalsPanel(doc, workHtml = "", rb = null) {
     return c ? `<span class="oleg-item"><span class="pd rdot" style="${renFill(k)}"></span>${l} <b>${c}</b></span>` : ""; }).join("");
   const lostRows = lost.sort((a, b) => a.renewal < b.renewal ? -1 : 1).map(r => `<tr>
     <td>${renDate(r.renewal)}${r.kind === "upcoming" ? ' <span class="chip c-n">ahead</span>' : ""}</td><td>${cesc(r.name || "—")}</td>
-    <td>${cesc(r.type)} <span style="color:var(--text-muted)">${cesc(r.policy)}</span></td><td class="num">${renMoney(r.premium)}</td>
+    <td>${cesc(r.type || "—")}</td><td><span style="color:var(--text-muted)">${cesc(r.policy)}</span></td><td class="num">${renMoney(r.premium)}</td>
     <td>${renSrCell(r, label)}</td><td>${cesc((r.how || []).join(", "))}${r.cancel_date ? ` <span style="color:var(--text-muted)">${renDate(r.cancel_date)}</span>` : ""}
       ${(r.cancel_srs || []).length ? `<div style="font-size:11.5px;color:var(--text-muted)">${cesc(r.cancel_srs[0].note)}</div>` : ""}</td></tr>`).join("");
   // Coming up, filtered.
@@ -10028,7 +10043,7 @@ function renewalsPanel(doc, workHtml = "", rb = null) {
   const sel = (id, cur, opts, all) => `<select id="${id}">${[["", all], ...opts].map(([v, l]) => `<option value="${v}"${v === cur ? " selected" : ""}>${l}</option>`).join("")}</select>`;
   const upRows = shown.map(r => `<tr>
     <td>${renDate(r.renewal)}</td><td>${cesc(r.name || "—")}</td>
-    <td>${cesc(r.type)} <span style="color:var(--text-muted)">${cesc(r.policy)}</span><div style="font-size:11.5px;color:var(--text-muted)">${cesc(pipeName[r.pipeline] || "")}</div></td>
+    <td>${cesc(r.type || "—")}</td><td><span style="color:var(--text-muted)">${cesc(r.policy)}</span><div style="font-size:11.5px;color:var(--text-muted)">${cesc(pipeName[r.pipeline] || "")}</div></td>
     <td class="num">${r.renewal_premium != null ? `${renMoney(r.renewal_premium)}<div style="font-size:11.5px;color:var(--text-muted)">issued renewal</div>` : renMoney(r.premium)}</td>
     <td>${renSrCell(r, label)}</td>
     <td>${(r.flags || []).filter(x => REN_FLAGS[x]).map(x => `<span class="chip ${REN_FLAGS[x][1]}" style="margin:0 4px 3px 0">${REN_FLAGS[x][0]}</span>`).join("")}</td>
@@ -10042,7 +10057,7 @@ function renewalsPanel(doc, workHtml = "", rb = null) {
     <h3 class="rh3">By how the renewal SR was worked</h3><div class="tiles rtiles">${workedCards}</div>
     <h3 class="rh3">By pipeline</h3><div class="tiles rtiles">${pipeCards}</div></div>
     <div class="sect svcsec" style="--sc:var(--bad)"><h2>Lost</h2><p class="sd">Every renewal lost in this period, and any renewal still ahead that has already cancelled, with how we know.${rangeNote}</p>
-    ${lostRows ? `<div class="scroll"><table class="rtable"><thead><tr><th>Renews</th><th>Customer</th><th>Policy</th><th class="num">Premium</th><th>Renewal SR</th><th>How we know</th></tr></thead><tbody>${lostRows}</tbody></table></div>` : '<p class="sd">None.</p>'}</div>
+    ${lostRows ? `<div class="scroll"><table class="rtable"><thead><tr><th>Renews</th><th>Customer</th><th>LOB</th><th>Policy</th><th class="num">Premium</th><th>Renewal SR</th><th>How we know</th></tr></thead><tbody>${lostRows}</tbody></table></div>` : '<p class="sd">None.</p>'}</div>
     ${renFlagHtml(doc, label, inRange)}
     <div class="sect svcsec" style="--sc:var(--s4)"><h2>Coming up · next ${doc.upcoming_days} days</h2>
     <p class="sd">High = not yet discussed with the customer (no renewal SR, the SR still open, No action or Unable to Contact) and a warning sign: an open Late Payment SR or a cancellation SR on the household. Medium = not discussed and renewing within ${doc.soon_days} days, or discussed with a warning sign.${gone ? ` ${gone} more policies renewing in this window were already cancelled mid term and are left out.` : ""}</p>
@@ -10051,7 +10066,7 @@ function renewalsPanel(doc, workHtml = "", rb = null) {
       ${sel("renWorked", f.worked, REN_WORKED.filter(([k]) => ahead.some(r => renWorked(r) === k)), "However worked")}
       ${sel("renWho", f.who, whoOpts.map(n => [n, n]), "Anyone")}
       <span style="color:var(--text-muted);font-size:12.5px">${shown.length} of ${ahead.length}</span></div>
-    <div class="scroll"><table class="rtable"><thead><tr><th>Renews</th><th>Customer</th><th>Policy</th><th class="num">Premium</th><th>Renewal SR</th><th>Flags</th><th>Risk</th></tr></thead><tbody>${upRows}</tbody></table></div></div>`;
+    <div class="scroll"><table class="rtable"><thead><tr><th>Renews</th><th>Customer</th><th>LOB</th><th>Policy</th><th class="num">Premium</th><th>Renewal SR</th><th>Flags</th><th>Risk</th></tr></thead><tbody>${upRows}</tbody></table></div></div>`;
 }
 /* Renewal SR Work (Frank, 2026-09-27: "a service digest and a renewal
    digest"): the renewal SRs the Service Digest no longer counts -- completed
@@ -10642,7 +10657,7 @@ function wireBlueprintPanel() {
    A step whose part is not on the page (no data that day) explains it anyway,
    with the card in the middle. Esc or Skip ends it. */
 const TOUR_STEPS = [
-  { title: "Welcome to Pantheon",
+  { title: "Welcome to Elysium Pro",
     text: "This is the agency's board. It shows how the day is going, coaches every recorded sales call, and gives you places to practise. This tour takes about two minutes." },
   { find: () => $("nav.tabs"), title: "The left bar",
     text: "Three desks: Apollo for sales, Athena for service, Cerberus for commercial -- and, for the ops team, an Operations Center (the CRM Hygiene log and the Lead Scrub). Each Center opens like a dropdown to its pages: click its arrow to open or close it. Settings at the bottom picks your world (the desert, space, the ocean, the mountains, game day, a retro arcade or Phoenix) and your look within it, each with a dark side." },
