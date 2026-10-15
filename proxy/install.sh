@@ -4,12 +4,16 @@
 #
 #   curl -fsSL https://raw.githubusercontent.com/flores2622/flores-digest/main/proxy/install.sh | bash
 #
+# PROXY_HOST picks the name Caddy serves (default az-proxy.floresinsuranceagency.com):
+#   curl -fsSL ... | PROXY_HOST=az-proxy.example.com bash
+#
 # It installs Node and Caddy, downloads proxy/server.js, the systemd unit and
 # the Caddyfile from this repository, makes the shared key ON THE SERVER (it is
 # never typed or sent anywhere), starts everything and prints the two secrets
 # the Worker needs. Safe to run again: the key is kept, the files refreshed.
 set -euo pipefail
 RAW="${PANTHEON_RAW:-https://raw.githubusercontent.com/flores2622/flores-digest/main/proxy}"
+HOST="${PROXY_HOST:-az-proxy.floresinsuranceagency.com}"
 
 [ "$(id -u)" = 0 ] || { echo "run as root"; exit 1; }
 echo "== installing node, caddy"
@@ -21,7 +25,7 @@ mkdir -p /opt/pantheon /etc/pantheon /etc/caddy
 echo "== downloading the proxy from $RAW"
 curl -fsSL "$RAW/server.js" -o /opt/pantheon/server.js
 curl -fsSL "$RAW/pantheon-az-proxy.service" -o /etc/systemd/system/pantheon-az-proxy.service
-curl -fsSL "$RAW/Caddyfile" -o /etc/caddy/Caddyfile
+curl -fsSL "$RAW/Caddyfile" | sed "s/az-proxy\.floresinsuranceagency\.com/$HOST/" > /etc/caddy/Caddyfile
 node --check /opt/pantheon/server.js
 
 if [ ! -s /etc/pantheon/proxy.env ]; then
@@ -49,10 +53,10 @@ echo "=================================================================="
 echo " DONE. Copy these two into Cloudflare: Workers & Pages ->"
 echo " flores-board -> Settings -> Variables and Secrets (type Secret):"
 echo
-echo "   AZ_PROXY_URL   https://az-proxy.floresinsuranceagency.com"
+echo "   AZ_PROXY_URL   https://$HOST"
 echo "   AZ_PROXY_KEY   $KEY"
 echo
 echo " The 'egress' address above is the one to give AgencyZoom."
 echo " Caddy gets the HTTPS certificate on its own once the DNS record"
-echo " az-proxy.floresinsuranceagency.com -> this server's IP exists."
+echo " $HOST -> this server's IP exists."
 echo "=================================================================="
