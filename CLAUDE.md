@@ -3118,7 +3118,10 @@ Apollo's chat instructions. **Code, comments, file names, R2 keys and this
 file keep the name Pantheon** (as they kept "Sales Floor" before it), so
 nothing saved moves; "Pantheon" below means the board. Elysian, a funded
 insurance-claims AI company, holds trademarks near the name -- Frank was
-told and chose it (2026-10-15); a trademark search is his to run.
+told and chose it (2026-10-15). His own USPTO search found KNITT LLC's
+ELYSIUM registrations in class 42 (cloud workload hosting, 2026) and
+Elysium Digital's in 35 / 42; he kept the name ("keep elysium pro, ill
+talk to an attorney") -- do not raise it again unless he asks.
 elysiumpro.com is parked for sale (HugeDomains); elysiumpro.io / .ai /
 .insure / .agency and getelysiumpro.com were open that day.
 
