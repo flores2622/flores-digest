@@ -1391,6 +1391,32 @@ filters and a CSV, and the checklist card. Athena's Road Map carries the
 standard's three lines for the service team; the log itself is never
 described there.
 
+## Campaigns
+
+**Operations Center > Campaigns tracks a batch of campaign leads handed out
+to the producers** (Frank, 2026-10-15: "after receiving the results of what
+they did ill decide who will be getting the highest load of these leads ...
+create me a tracker for it"; "just me for now" -- staff.json's `campaigns`,
+Frank alone). The first is the **Rate Decrease Campaign**'s batch 1 from his
+"Rate Decrease Campaign" sheet's QNC tab: 10 per producer, 5 found in
+AgencyZoom by phone or email and reassigned to them on 2026-10-15 (one lead
+record, not a customer, untouched 30+ days, no DNC number; Leticia Alvarez,
+tagged Spanish, went to Coral instead of Crystal) and 5 not in AgencyZoom for
+them to create. The list is R2 `campaigns/<key>/list.json` (names, phones,
+addresses -- never in the repo); `site/campaigns.js` (`/api/campaigns[/<key>]`)
+builds the tracker on each request from what the board already holds, no new
+AgencyZoom or RingCentral request: each day's `days/` document (else that
+day's `intraday/` checkpoint) -- `rows.dials` / `contacts` / `quoted` /
+`sold_leads` by lead id -- and `live/<day>-leads.json`, where a lead to create
+is found by its phone (last ten digits) once someone makes it, or by the
+producer's own dial row on the same last four digits and a name word. A
+producer is credited only with their own work on their own campaign leads
+(another producer's shows on the lead as "also worked by"). The scoreboard is
+the leaderboard's 5-4-3-2-1 per category (worked, reached, quoted, premium
+quoted, sold, created; ties share the higher points, nothing for zero). The
+page is `site/public/campaigns.js` (view `campaigns`, `opsShow`). A new batch
+is a new `list.json` under its own key, in the same shape.
+
 ## The lead scrub
 
 **Operations Center > Lead Scrub tracks a lead list being cleaned up in both
