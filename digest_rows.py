@@ -126,11 +126,18 @@ def build(day, log=print):
                                     "note": (r.get("note_producer") or "").replace("&middot;", "·")[:400],
                                     "summary": str(s.get("summary") or "")[:400]})
         qp = p.get("quoted_premium") or {}
+        ql = p.get("quoted_lob")
         for lid in p.get("quoted_leads") or []:
             l = by_id.get(lid) or {}
-            out["quoted"].append({"who": who, "lead": _name(l) if l else "(no lead record)", "lead_id": lid,
-                                  "source": (l.get("leadSourceName") or "").strip(),
-                                  "premium": qp.get(str(lid), "")})
+            row = {"who": who, "lead": _name(l) if l else "(no lead record)", "lead_id": lid,
+                   "source": (l.get("leadSourceName") or "").strip(),
+                   "premium": qp.get(str(lid), "")}
+            # The line of business of each quote counted (Frank, 2026-10-15),
+            # [{lob, premium}]; only on days built with it -- an older day's
+            # row has no `lob` and the board leaves the column off.
+            if ql is not None:
+                row["lob"] = ql.get(str(lid)) or []
+            out["quoted"].append(row)
 
     azid = {v["az_id"]: n for n, v in cfg.PRODUCERS.items()}
     try:
