@@ -52,7 +52,9 @@ A person's `board` keys (what they may open, the Worker's checks):
     Hygiene log), folio_goals (the Operations Center's Minimums & Goal: every
     producer's minimum and the team goal), roleplay_history, commission_all, sales_log_all, crm
     (Pantheon's own CRM: Frank alone), workflows_suggest (the ops team: see
-    the Workflows timeline and leave suggestions on it, nothing else)
+    the Workflows timeline and leave suggestions on it, nothing else),
+    campaigns (the Operations Center's Campaigns: how each producer worked
+    a batch of campaign leads; Frank alone)
 `digest` is which nightly email they get (ops / staff); `producer` means
 their numbers are counted; `service` puts them on the Service Center.
 
