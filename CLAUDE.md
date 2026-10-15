@@ -3409,6 +3409,54 @@ on a published day. The rules:
   alone; the real figure is tonight's. Next: `lead_history`, `messages.py`
   and `day_calls.fetch_notes` reading Pantheon's notes, with the
   day-identical cutover test.
+- **Contacts and linked accounts** (Frank, 2026-10-14, with screenshots of
+  AgencyZoom's customer page for Claudia A Gallardo, Celerino A. Gallardo,
+  L.L.C. and Norma De Leon: "I want to make sure that feature is available on
+  my system as well"; "i want the ability to be able to switch the primary
+  account holder"). AgencyZoom's customer page has **Contacts** (the people on
+  an account, one of them Primary), **Customers** (other accounts linked to
+  it) and **Leads**; its public API returns none of the first two (the
+  customer record carries only the primary contact's name; every guessed
+  contacts / linked-customers path 404s -- checked 2026-10-14), so Pantheon
+  keeps its own, migration 0005: `contacts` (a person; one record can sit on
+  several accounts), `household_contacts` (which account each is on,
+  `is_primary` -- at most one per account -- and a relationship) and
+  `household_links` (one row per linked pair, the lower id first, read from
+  either side). **Nothing mirrors them**: az_id stays NULL, so the nightly
+  never touches them. A household with no contact rows shows its own name,
+  phone and email as its one primary contact until the first write makes that
+  real (`ensureContacts`); a business account (a business name, or customer
+  type business / commercial -- AgencyZoom puts the business name in
+  `firstname`) has none until someone adds them. `site/crm.js`:
+  `GET households/<id>/page` (the account's page), `POST households/<id>/
+  people` {op add | attach | detach | primary | edit | link | unlink} (every
+  change an `events` row on the household; link / unlink on both) and `GET
+  contacts?q=` (find a contact by name, email or number, with the accounts it
+  sits on). **Switching the primary account holder is `primary`**: that
+  account only, so Celerino can be primary on Claudia's account and on the
+  LLC's separately. It changes WHO THE ACCOUNT HOLDER IS (the Contacts box,
+  the account page's header facts, the lead page); it does not rewrite the
+  household's own name / phone / email columns, which the mirror still
+  overwrites from AgencyZoom whenever its copy changes -- those follow at the
+  phase 7 cutover. The lead page's side shows the lead's household's
+  Contacts and Linked accounts (**Open account** on its Household box), and
+  Sales Center > Leads' search lists matching **accounts** beside the leads;
+  an account's page (`openAccount` in `site/public/lead.js`) carries the
+  Contacts (**+ Contact**, **Link existing** to put a contact already on
+  another account here, Edit, Remove, **Set primary**), Linked accounts
+  (**Link account**, Unlink; each opens its own page), the account's leads
+  and its policies, SRs and open tasks. **Policies show only when the CRM has
+  tied them to the account**: AgencyZoom's policy records carry no customer,
+  so `policies.household_id` is empty until phase 7. `python3
+  crm_links_seed.py` (check first, `--write` to apply, idempotent) loads
+  the three accounts as Frank's screenshots showed them -- Claudia (Claudia
+  primary, Celerino), the LLC (Celerino primary, Claudia; linked to Claudia),
+  Norma (Norma primary, Melissa De la Torre, Norver LLC, Pricila De La Torre;
+  linked to Nordell, Inc, Delato Corp, Los Choches LLC, Meli's Inc, each
+  business's primary read from the email and phone the screen showed under it:
+  Norma, Norma, Pricila, Melissa). Their other contacts were not on the
+  screens; add them on the account's page. The migration is applied with
+  `wrangler d1 migrations apply pantheon-crm --remote`.
 - `node --test site/crm.test.mjs` is its test; run it after touching
   `site/crm.js` or the schema. A new field is added to the schema (a new
   migration file), to `OBJECTS` in `site/crm.js` and to the test together.
