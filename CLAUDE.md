@@ -1391,6 +1391,32 @@ filters and a CSV, and the checklist card. Athena's Road Map carries the
 standard's three lines for the service team; the log itself is never
 described there.
 
+## Campaigns
+
+**Operations Center > Campaigns tracks a batch of campaign leads handed out
+to the producers** (Frank, 2026-10-15: "after receiving the results of what
+they did ill decide who will be getting the highest load of these leads ...
+create me a tracker for it"; "just me for now" -- staff.json's `campaigns`,
+Frank alone). The first is the **Rate Decrease Campaign**'s batch 1 from his
+"Rate Decrease Campaign" sheet's QNC tab: 10 per producer, 5 found in
+AgencyZoom by phone or email and reassigned to them on 2026-10-15 (one lead
+record, not a customer, untouched 30+ days, no DNC number; Leticia Alvarez,
+tagged Spanish, went to Coral instead of Crystal) and 5 not in AgencyZoom for
+them to create. The list is R2 `campaigns/<key>/list.json` (names, phones,
+addresses -- never in the repo); `site/campaigns.js` (`/api/campaigns[/<key>]`)
+builds the tracker on each request from what the board already holds, no new
+AgencyZoom or RingCentral request: each day's `days/` document (else that
+day's `intraday/` checkpoint) -- `rows.dials` / `contacts` / `quoted` /
+`sold_leads` by lead id -- and `live/<day>-leads.json`, where a lead to create
+is found by its phone (last ten digits) once someone makes it, or by the
+producer's own dial row on the same last four digits and a name word. A
+producer is credited only with their own work on their own campaign leads
+(another producer's shows on the lead as "also worked by"). The scoreboard is
+the leaderboard's 5-4-3-2-1 per category (worked, reached, quoted, premium
+quoted, sold, created; ties share the higher points, nothing for zero). The
+page is `site/public/campaigns.js` (view `campaigns`, `opsShow`). A new batch
+is a new `list.json` under its own key, in the same shape.
+
 ## The lead scrub
 
 **Operations Center > Lead Scrub tracks a lead list being cleaned up in both
@@ -3390,6 +3416,42 @@ on a published day. The rules:
   page you were on is kept per tab (`lead-where`, with the filter and the
   Recent-for pick). Still AgencyZoom's: the policies, the calls (the
   nightly's own CALL notes are the next step of phase 3) and texting.
+- **Pantheon writes its own CALL notes** (Frank, 2026-10-14: "go"; phase 3's
+  second step). `crm_calls.py` runs after `crm_sync` at every checkpoint and
+  in the nightly: from the run's own RingCentral log (`data/rc_raw_<day>.json`)
+  it writes a CALL note for every dial by anyone on staff (`staff.PEOPLE`'s
+  `rc_id`) to a number the lead corpus knows and every call-in someone on
+  staff answered (`inbound.attribute`'s pick-up rule over everyone on staff,
+  not the producers alone) -- **on EVERY lead record on that number**
+  (`az_corpus.phone_index`), as AgencyZoom's own integration writes it and as
+  `lead_history` reads them. The note is AgencyZoom's shape (From / To / Call
+  Status / Start Time / End Time / Duration, US numbers as "(928) 726-3221",
+  `attr.outbound`), so `live_contact`, `messages.py` and the lead page read it
+  unchanged: a connected call says "completed" (what AgencyZoom writes and
+  `live_contact` tests); any other result keeps RingCentral's own word
+  (Voicemail, No Answer, Hang Up -- AgencyZoom writes only "canceled").
+  `origin` "pantheon", `attr.source` "ringcentral", `attr.rcId` the record,
+  `created_by` the staff member; the id is `crm_import.note_id` over the
+  lead and the record id, written INSERT OR IGNORE, so a checkpoint and the
+  nightly land on one row (10-13: 242 calls on leads, 320 notes over their
+  records, idempotent). A note whose lead the mirror has not written yet
+  waits (the foreign key). The lead's own stamps are not touched; no events
+  rows (machine-written, like the mirror's). **Every night `call_check.py`
+  compares the two** (after `crm_calls`): every CALL note stamped that day in
+  the CRM, Pantheon's against AgencyZoom's, matched on the same lead, same
+  direction, starts within 180 s; AgencyZoom's notes with no number at all
+  (From / To empty, "Duration: (s)" -- a ring on a group line) are `noise`,
+  counted and left out; **`agree` is every dial matched both ways** -- call-ins
+  are listed but do not decide it (AgencyZoom logs the line that rang,
+  Pantheon who answered). R2 `crm/call_check/<day>.json`; Sales Center >
+  Tasks shows it under the Cutover check (`GET /api/crm/callcheck`), the
+  last 14 days. **The lead page shows a call once**: an AgencyZoom CALL note
+  within three minutes of a Pantheon one in the same direction is hidden
+  (`lead.js dedupedNotes`), and Pantheon's says so. On the local copy of
+  10-07 (notes fetched before the day ended) one dial of 154 was AgencyZoom's
+  alone; the real figure is tonight's. Next: `lead_history`, `messages.py`
+  and `day_calls.fetch_notes` reading Pantheon's notes, with the
+  day-identical cutover test.
 - `node --test site/crm.test.mjs` is its test; run it after touching
   `site/crm.js` or the schema. A new field is added to the schema (a new
   migration file), to `OBJECTS` in `site/crm.js` and to the test together.

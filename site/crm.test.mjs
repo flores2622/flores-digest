@@ -429,3 +429,16 @@ test("the lead page: one read with the lead, household, policies, tasks, notes, 
   assert.equal((await call(env, "GET", "/api/crm/leads/999/page")).status, 404);
   assert.equal((await call(env, "GET", `/api/crm/leads/${id}/page`, null, CRYSTAL.email)).status, 403);
 });
+
+test("the call check (phase 3) reads like the task check: the last days from R2, Frank only", async () => {
+  const { env } = fresh();
+  const put = (d, doc) => env.BOARD.put("crm/call_check/" + d + ".json", JSON.stringify(doc));
+  await put("2026-10-13", { day: "2026-10-13", agree: true, counts: { agencyzoom: 150, pantheon: 320, matched: 130, noise: 31 } });
+  await put("2026-10-12", { day: "2026-10-12", agree: false, counts: { agencyzoom: 100, pantheon: 90, matched: 80, only_agencyzoom_outbound: 3 } });
+  const r = await call(env, "GET", "/api/crm/callcheck");
+  assert.equal(r.status, 200);
+  assert.deepEqual(r.body.days.map((d) => d.day), ["2026-10-13", "2026-10-12"]);   // newest first
+  assert.equal(r.body.days[1].counts.only_agencyzoom_outbound, 3);
+  assert.equal((await call(env, "GET", "/api/crm/callcheck", null, CRYSTAL.email)).status, 403);
+  assert.equal((await call({ CRM: env.CRM }, "GET", "/api/crm/callcheck")).status, 503);
+});

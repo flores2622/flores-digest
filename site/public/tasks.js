@@ -127,21 +127,39 @@
 
   // CRM.md phase 2's cutover test (task_check.py): Task Completion from
   // AgencyZoom and from the CRM side by side, the last 14 published days.
-  let tkCheck = null;
+  let tkCheck = null, tkCalls = null;
   async function loadCheck() {
     try { tkCheck = (await api("taskcheck")).days || []; } catch (_) { tkCheck = null; }
+    try { tkCalls = (await api("callcheck")).days || []; } catch (_) { tkCalls = null; }
+  }
+  // Phase 3's: AgencyZoom's CALL notes on the leads against Elysium Pro's own,
+  // written from the RingCentral log (call_check.py). Dials decide agreement;
+  // call-ins are shown (AgencyZoom logs the line that rang, Elysium Pro who answered).
+  function callsHtml() {
+    if (!tkCalls || !tkCalls.length) return "";
+    const agree = tkCalls.filter((d) => d.agree).length;
+    const rows = tkCalls.map((d) => { const c = d.counts || {}; const why = [];
+      if (c.only_agencyzoom_outbound) why.push(`${c.only_agencyzoom_outbound} dial${c.only_agencyzoom_outbound === 1 ? "" : "s"} only in AgencyZoom`);
+      if (c.only_pantheon_outbound) why.push(`${c.only_pantheon_outbound} only in Elysium Pro`);
+      const ins = (c.only_agencyzoom_inbound || 0) + (c.only_pantheon_inbound || 0);
+      return `<tr class="${d.agree ? "" : "tkck-off"}"><td>${cesc(d.day)}</td><td>${c.agencyzoom ?? "—"}${c.noise ? ` <small class="tkmute">+${c.noise} with no number</small>` : ""}</td><td>${c.pantheon ?? "—"}</td><td>${c.matched ?? "—"}</td>
+        <td>${d.agree ? "✓ every dial both ways" : why.join(", ")}${ins ? ` <small class="tkmute">· ${ins} call-in${ins === 1 ? "" : "s"} differ</small>` : ""}</td></tr>`; }).join("");
+    return `<h4 class="tkckh">Calls on the lead: AgencyZoom's notes vs Elysium Pro's <span class="lsbadge ${agree === tkCalls.length ? "lsok" : ""}">${agree} of ${tkCalls.length} days agree</span></h4>
+      <p class="lsmute">Every checkpoint Elysium Pro writes its own call note on the lead from the RingCentral log, the way AgencyZoom's integration does; each night the two are matched call by call on the lead. One note per lead record, as AgencyZoom writes them.</p>
+      <div class="scroll"><table class="tktab tkcktab"><thead><tr><th>Day</th><th>AgencyZoom</th><th>Elysium Pro</th><th>Matched</th><th>Result</th></tr></thead><tbody>${rows}</tbody></table></div>`;
   }
   function checkHtml() {
-    if (!tkCheck) return "";
-    const days = tkCheck;
+    if (!tkCheck && !tkCalls) return "";
+    const days = tkCheck || [];
     const src = days.length && days[0].source === "crm" ? "the CRM" : "AgencyZoom";
     const agree = days.filter((d) => d.agree).length;
     const fig = (f) => f && f.total != null ? `${f.completed}/${f.total}${f.pct != null ? ` (${f.pct}%)` : ""}` : "—";
     const rows = days.map((d) => `<tr class="${d.agree ? "" : "tkck-off"}"><td>${cesc(d.day)}</td><td>${fig(d.agencyzoom && d.agencyzoom.team)}</td><td>${fig(d.crm && d.crm.team)}</td>
       <td>${d.agree ? "✓ agree" : `${d.differences.length} differ: ` + d.differences.map((x) => `${cesc(x.who.split(" ")[0])} ${fig(x.agencyzoom)} vs ${fig(x.crm)}`).join("; ")}${(d.missing_in_crm || []).length ? ` · ${d.missing_in_crm.length} task${d.missing_in_crm.length === 1 ? "" : "s"} not in the CRM` : ""}${(d.extra_in_crm || []).length ? ` · ${d.extra_in_crm.length} only in the CRM` : ""}</td></tr>`).join("");
-    return `<details class="tkcheck"${days.some((d) => !d.agree) ? " open" : ""}><summary>Cutover check: Task Completion from AgencyZoom vs the CRM${days.length ? ` <span class="lsbadge ${agree === days.length ? "lsok" : ""}">${agree} of ${days.length} days agree</span>` : ""}</summary>
+    return `<details class="tkcheck"${days.some((d) => !d.agree) || (tkCalls || []).some((d) => !d.agree) ? " open" : ""}><summary>Cutover check: Task Completion from AgencyZoom vs the CRM${days.length ? ` <span class="lsbadge ${agree === days.length ? "lsok" : ""}">${agree} of ${days.length} days agree</span>` : ""}</summary>
       <p class="lsmute">Task Completion reads <b>${src}</b> today. Every night the figure is worked out both ways -- AgencyZoom's task list and the CRM's copy of it, the same rules -- and the two are compared; the switch to the CRM (and the missed-call tasks with it) waits until they agree day after day.</p>
       ${days.length ? `<div class="scroll"><table class="tktab tkcktab"><thead><tr><th>Day</th><th>AgencyZoom</th><th>CRM</th><th>Result</th></tr></thead><tbody>${rows}</tbody></table></div>` : `<p class="lsmute">No comparison yet: the first is written by tonight's run.</p>`}
+      ${callsHtml()}
     </details>`;
   }
   async function refresh(msg) {
@@ -275,7 +293,7 @@
 .tkmsg { margin: 0 0 10px; font-weight: 600; } .tkmsg.bad { color: var(--bad); } .tkmsg.good { color: var(--good); }
 .tkfoot { margin: 12px 0 0; font-size: 12px; color: var(--text-muted); }
 .tkcheck { margin: 14px 0 0; padding: 8px 12px; border: 1px solid var(--border-strong); border-radius: 12px; background: var(--surface); } .tkcheck summary { cursor: pointer; font-weight: 700; }
-.tkcktab td, .tkcktab th { font-size: 13px; } .tkck-off td { background: color-mix(in oklab, var(--bad) 8%, var(--surface)); }
+.tkcktab td, .tkcktab th { font-size: 13px; } .tkckh { margin: 14px 0 4px; font-size: 14px; } .tkck-off td { background: color-mix(in oklab, var(--bad) 8%, var(--surface)); }
 @media (max-width: 900px) { .tkgrid { grid-template-columns: 1fr 1fr; } .tktile { min-width: 96px; } .tktab th:nth-child(5), .tktab td:nth-child(5) { display: none; } }
 `;
   document.head.appendChild(css);

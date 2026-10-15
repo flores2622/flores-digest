@@ -85,8 +85,13 @@ for the rest. Nothing is switched until the two agree on a published day.
    kind; + Note, Move stage (Frank's pipelines and stages, each landing on
    one AgencyZoom stage), Mark sold and + Task write through the CRM's
    existing calls. The coaching cards and the Tasks page open it, and it
-   opens the coaching card. Next in this phase: the nightly writing its own
-   CALL notes from the RingCentral pass, then `lead_history` /
+   opens the coaching card. **Pantheon's own CALL notes are written**
+   (2026-10-14, `crm_calls.py`, after `crm_sync` at every checkpoint and in
+   the nightly): every dial and answered call-in in the RingCentral log, on
+   every lead record on the number, in AgencyZoom's note shape with origin
+   "pantheon"; `call_check.py` matches them against AgencyZoom's each night
+   (R2 `crm/call_check/<day>.json`, shown under the Tasks page's Cutover
+   check: `agree` = every dial matched both ways). Next: `lead_history` /
    `messages.py` / `day_calls.fetch_notes` reading Pantheon's notes, with
    the day-identical cutover test.
 4. **Texting and email from the page**, through RingCentral's message API
