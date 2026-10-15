@@ -26,6 +26,15 @@ You need a small Linux server with its own public address. A $5-6 a month
 VPS is plenty (Hetzner, DigitalOcean, Vultr, Linode: the smallest Ubuntu
 box). The proxy handles under two requests a second at most.
 
+**The short way**: make the server (step 1 below), then paste this into its
+console as root -- `proxy/install.sh` does steps 2-4, makes the key on the
+server and prints the two secrets for step 5:
+
+    curl -fsSL https://raw.githubusercontent.com/flores2622/flores-digest/main/proxy/install.sh | bash
+
+Flores's server is a DigitalOcean Droplet in New York, 159.223.135.202
+(made 2026-10-15). The steps in full:
+
 1. **Make the server.** Ubuntu 24.04, the smallest size, **in a US data
    center** (Hetzner Ashburn or Hillsboro, DigitalOcean New York or San
    Francisco, Vultr any US city). This is the whole point: AgencyZoom's
