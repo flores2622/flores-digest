@@ -131,7 +131,8 @@ window.STAFF = {
     "roleplay_history",
     "commission_all",
     "sales_log_all",
-    "crm"
+    "crm",
+    "campaigns"
    ],
    "handle": "frank.full.coverage"
   },
