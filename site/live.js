@@ -1397,13 +1397,42 @@ export async function getLive(env, day) {
    stays live whether or not anyone has it open. */
 export async function scheduledLive(event, env) {
   const day = azToday();
-  const cp = await checkpointFor(env, day);
-  if (!cp.basis) return;
-  const minute = new Date(event.scheduledTime || Date.now()).getUTCMinutes();
+  const t0 = Date.now(), at = new Date(event.scheduledTime || t0);
+  const minute = at.getUTCMinutes(), part = minute % 2 === 0 ? "fast" : "quotes";
+  const run = { run: localClock(at.getTime()), part };
+  await cronBeat(env, day, { ...run, started: new Date(t0).toISOString() });
+  let error = null, skipped = null;
   try {
-    if (minute % 2 === 0) await refreshFast(env, day, cp);
+    const cp = await checkpointFor(env, day);
+    if (!cp.basis) { skipped = cp.reason; return; }
+    if (part === "fast") await refreshFast(env, day, cp);
     else await refreshQuotes(env, day, cp);
-  } finally { await flushAzLog(env, day); }
+  } catch (e) { error = String(e && e.message || e).slice(0, 300); throw e; }
+  finally {
+    await flushAzLog(env, day);
+    await cronBeat(env, day, { ...run, ended: new Date().toISOString(), ms: Date.now() - t0,
+      ...(error ? { error } : skipped ? { skipped } : { ok: true }) });
+  }
+}
+/* Every timer run leaves two lines in worker-private/cron_beat/<day>.json --
+   when it started, and when it ended, how long it took and how (2026-10-16:
+   after the switch to Workers Paid the timer still saved nothing between
+   page views, and nothing here could tell a run that never fired from one
+   that died). A start with no end is a run Cloudflare stopped. The newest
+   CRON_BEAT_KEEP lines are kept; served by no route. */
+const CRON_BEAT_PREFIX = "worker-private/cron_beat/";
+const CRON_BEAT_KEEP = 300;
+async function cronBeat(env, day, line) {
+  if (!env.BOARD) return;
+  console.log(`cron ${line.part} ${line.run} ${line.started ? "started" : `ended ${line.ms}ms ${line.error || line.skipped || "ok"}`}`);
+  try {
+    const key = `${CRON_BEAT_PREFIX}${day}.json`;
+    const o = await env.BOARD.get(key);
+    const log = o === null ? { day, runs: [] } : await o.json();
+    log.runs.push(line);
+    if (log.runs.length > CRON_BEAT_KEEP) log.runs = log.runs.slice(-CRON_BEAT_KEEP);
+    await env.BOARD.put(key, JSON.stringify(log));
+  } catch (e) { console.log(`cron beat not saved: ${e && e.message || e}`); }
 }
 
 function jsonResp(body, status) {
