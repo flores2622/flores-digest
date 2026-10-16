@@ -189,6 +189,7 @@ def batches(items):
 
 
 LISTS_MIGRATION = ROOT / "site" / "crm" / "migrations" / "0004_lists.sql"
+HOLDER_MIGRATIONS = [ROOT / "site" / "crm" / "migrations" / f for f in ("0005_contacts_links.sql", "0006_household_holder.sql")]
 
 
 def ensure_lists_tables(db, log=print):
@@ -201,6 +202,20 @@ def ensure_lists_tables(db, log=print):
         db.execute(LISTS_MIGRATION.read_text())
     except Exception as e:
         log(f"  crm sync: could not check the lists tables ({str(e)[:120]})")
+
+
+def ensure_holder_tables(db, log=print):
+    """The contacts, links and household_holder tables (migrations 0005 and
+    0006) exist before a household row is upserted: the upsert reads
+    household_holder to leave a changed account holder alone, so a deploy
+    that went out before `wrangler d1 migrations apply` must not fail every
+    household. CREATE ... IF NOT EXISTS, so a database that has them is
+    untouched."""
+    for f in HOLDER_MIGRATIONS:
+        try:
+            db.execute(f.read_text())
+        except Exception as e:
+            log(f"  crm sync: could not check {f.name} ({str(e)[:120]})")
 
 
 def sync(db, rows, state, log=print, full=False, dry_run=False, save=lambda s: None):
@@ -221,6 +236,8 @@ def sync(db, rows, state, log=print, full=False, dry_run=False, save=lambda s: N
         return len(todo)
     if any(t in ("lists", "list_map") for t, *_ in todo):
         ensure_lists_tables(db, log)
+    if any(t == "households" for t, *_ in todo):
+        ensure_holder_tables(db, log)
     sent, bad = 0, []
     for batch in batches(todo):
         try:

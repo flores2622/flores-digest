@@ -3543,7 +3543,7 @@ on a published day. The rules:
   it) and **Leads**; its public API returns none of the first two (the
   customer record carries only the primary contact's name; every guessed
   contacts / linked-customers path 404s -- checked 2026-10-14), so Pantheon
-  keeps its own, migration 0005: `contacts` (a person; one record can sit on
+  keeps its own, migrations 0005 and 0006: `contacts` (a person; one record can sit on
   several accounts), `household_contacts` (which account each is on,
   `is_primary` -- at most one per account -- and a relationship) and
   `household_links` (one row per linked pair, the lower id first, read from
@@ -3557,13 +3557,27 @@ on a published day. The rules:
   people` {op add | attach | detach | primary | edit | link | unlink} (every
   change an `events` row on the household; link / unlink on both) and `GET
   contacts?q=` (find a contact by name, email or number, with the accounts it
-  sits on). **Switching the primary account holder is `primary`**: that
-  account only, so Celerino can be primary on Claudia's account and on the
-  LLC's separately. It changes WHO THE ACCOUNT HOLDER IS (the Contacts box,
-  the account page's header facts, the lead page); it does not rewrite the
-  household's own name / phone / email columns, which the mirror still
-  overwrites from AgencyZoom whenever its copy changes -- those follow at the
-  phase 7 cutover. The lead page's side shows the lead's household's
+  sits on). **Making a contact the account holder is `primary`** (Frank, 2026-10-16:
+  "if we never speak with Claudia and always with Celerino, we should be able
+  to make him the account holder"): that account only, so Celerino can be the
+  holder of Claudia's account and of the LLC's separately -- and **the ACCOUNT
+  takes the holder's details, not only a flag** (`applyHolder`): a personal
+  account's name becomes theirs, a business keeps its business name, and the
+  phone and email become theirs (a field the contact has no value for keeps the
+  account's); it is an `events` row with the account's before and after, a
+  contact edited while holder is the account's edit too, and removing the
+  holder promotes the next contact the same way. It shows everywhere the
+  account does -- the page's title, search by name or number, the lead page.
+  **The nightly mirror leaves it alone** (migration 0006, `household_holder`):
+  the first change records what AgencyZoom had (`original`, shown on the page
+  as "AgencyZoom still has this account as ...") and from then on
+  `crm_import.statement`'s households upsert keeps the account's own name,
+  phone and email (`HOLDER_COLUMNS`) whatever AgencyZoom says -- every other
+  column still follows AgencyZoom. `crm_sync.ensure_holder_tables` creates the
+  0005 / 0006 tables (IF NOT EXISTS) before any household row goes, so a deploy
+  ahead of `wrangler d1 migrations apply` cannot fail the nightly. Checked
+  with the real upsert on SQLite: the changed holder kept, another account
+  following AgencyZoom's new name. The lead page's side shows the lead's household's
   Contacts and Linked accounts (**Open account** on its Household box), and
   Sales Center > Leads' search lists matching **accounts** beside the leads;
   an account's page (`openAccount` in `site/public/lead.js`) carries the

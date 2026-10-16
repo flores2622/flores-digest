@@ -177,6 +177,8 @@ def as_list(x):
 # rewritten (Frank consolidates and renames them in Pantheon); notes and stage
 # moves never change once written.
 AZ_OWNED = {"leads", "households", "policies", "tasks", "service_requests"}
+# The household columns an account holder switch rewrites (site/crm.js applyHolder).
+HOLDER_COLUMNS = {"firstname", "lastname", "phone", "phone_key", "email"}
 LOOKUPS = {"lead_sources", "workflows", "stages", "service_categories", "resolutions", "carriers", "lists", "list_map"}
 
 
@@ -186,7 +188,15 @@ def statement(table, row, mode="ignore"):
     keys = list(row)
     head = f"INSERT INTO {table} ({', '.join(keys)}) VALUES ({', '.join(q(row[k]) for k in keys)})"
     if mode == "upsert" and table in AZ_OWNED:
-        sets = ", ".join(f"{k} = excluded.{k}" for k in keys if k not in ("id", "az_id"))
+        def take(k):
+            # A household whose account holder was changed in Elysium Pro
+            # (household_holder, migration 0006) keeps its own name / phone /
+            # email: AgencyZoom still has the old holder's.
+            if table == "households" and k in HOLDER_COLUMNS:
+                return (f"{k} = CASE WHEN EXISTS (SELECT 1 FROM household_holder o WHERE o.household_id = households.id) "
+                        f"THEN households.{k} ELSE excluded.{k} END")
+            return f"{k} = excluded.{k}"
+        sets = ", ".join(take(k) for k in keys if k not in ("id", "az_id"))
         return f"{head} ON CONFLICT(id) DO UPDATE SET {sets} WHERE {table}.az_id IS NOT NULL;"
     # A lookup (lead source, pipeline, stage, category, resolution, carrier) is
     # added when AgencyZoom first shows it and never rewritten: Frank is
