@@ -65,7 +65,9 @@ DAY_FILES = [
     "metrics_{day}.json", "az_service_tickets_{day}.json", "az_tasks_{day}.json",
     "audiorefs_{day}.json", "legmeta_{day}.json", "az_service_tickets_done_{day}.json", "rc_texts_{day}.json",
     # Which audiences tonight's email already reached (daily.send, 2026-09-30),
-    # so a re-run in a fresh container does not email them twice.
+    # so a re-run in a fresh container does not email them twice. Since
+    # 2026-10-13 each producer and Debbie get their own email and marker:
+    # those names come from staff.json (sent_markers), not this list.
     "sent_{day}_ops.json", "sent_{day}_staff.json",
     "servicetx_{day}.json",
     # Who the sales page gave to service by what the texts were about
@@ -74,6 +76,36 @@ DAY_FILES = [
     # every quote the nightly read, for the CRM's quote mirror (2026-10-15)
     "az_quotes_{day}.json",
 ]
+
+
+def sent_markers(day):
+    """Every sent marker a night can leave for `day`: ops, the old shared
+    staff marker, and one per person on the staff digest (email_digest.jobs'
+    keys -- the person's first name, email_digest.slug). Found 2026-10-16:
+    only ops / staff were carried, so a re-run in a fresh container found no
+    per-person marker and would have emailed every producer and Debbie again."""
+    names = [f"sent_{day}_ops.json", f"sent_{day}_staff.json"]
+    try:
+        import staff
+        import email_digest
+        for p in staff.active():
+            if p.get("digest") == "staff" and p.get("email"):
+                n = f"sent_{day}_{email_digest.slug(p)}.json"
+                if n not in names:
+                    names.append(n)
+    except Exception:
+        pass
+    # Any marker already on disk for the day, whatever its key.
+    for f in sorted((ROOT / "data").glob(f"sent_{day}_*.json")):
+        if f.name not in names:
+            names.append(f.name)
+    return names
+
+
+def day_files(day):
+    """DAY_FILES for `day`, then every sent marker."""
+    out = [n.format(day=day) for n in DAY_FILES]
+    return out + [n for n in sent_markers(day) if n not in out]
 
 
 def _client():
@@ -117,8 +149,7 @@ def sync_down_day(day, log=print):
     """
     cli, bucket = _client()
     pulled = []
-    for name in DAY_FILES:
-        fname = name.format(day=day)
+    for fname in day_files(day):
         p = ROOT / "data" / fname
         if p.exists():
             continue
@@ -195,8 +226,7 @@ def sync_up_day(day, log=print):
     """
     cli, bucket = _client()
     pushed = []
-    for name in DAY_FILES:
-        fname = name.format(day=day)
+    for fname in day_files(day):
         p = ROOT / "data" / fname
         if not p.exists():
             continue
