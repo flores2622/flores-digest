@@ -674,7 +674,9 @@ def build_metrics(day):
             if w:
                 hh[w].add(l["id"])
     for f in (ROOT / "data/notes").glob("*.json"):
-        for n in json.loads(f.read_text()):
+        notes = json.loads(f.read_text())
+        first = first_move(notes, day)
+        for n in notes:
             if not str(n.get("createDate") or "").startswith(day):
                 continue
             if n.get("createdBy") not in PRODUCERS:
@@ -686,7 +688,7 @@ def build_metrics(day):
                 # is the pipeline leads are recycled into when they were never
                 # quoted, so matching the full path counted those as quoted.
                 dest = dest.split("|")[-1]
-                if QS.search(dest):
+                if QS.search(dest) and not back_to_start(mv, first):
                     hh[n["createdBy"]].add(int(f.stem))
             elif quote_presented(lc._text(n.get("body"))):
                 hh[n["createdBy"]].add(int(f.stem))
@@ -1091,6 +1093,37 @@ def build_metrics(day):
 # A MOVE_STAGE into one of these stages counts the lead as a household quoted
 # (matched on the stage only, never the pipeline -- see build_metrics).
 QUOTED_STAGE = re.compile(r"quoted|quotes presented|fsd|pending bind", re.I)
+
+_BY = re.compile(r" by [^|]*$")
+
+
+def first_move(notes, day):
+    """The day's oldest MOVE_STAGE line on a lead ("A to B"), by anyone, or ""."""
+    ms = [n for n in notes or () if n.get("type") == "MOVE_STAGE"
+          and str(n.get("createDate") or "").startswith(day)]
+    if not ms:
+        return ""
+    # Notes arrive newest first, so among equal stamps the last listed is oldest.
+    oldest = min(reversed(ms), key=lambda n: str(n.get("createDate") or ""))
+    import live_contact
+    return live_contact._move_stage_parts(live_contact._text(oldest.get("body")))[0]
+
+
+def back_to_start(move, first):
+    """True when `move` ("A to B") ends in the stage the lead began the day in
+    -- the `from` of the day's first move. Sarahi's Denisse Rodriguez,
+    2026-10-16: Quotes Presented to Ready to Present and straight back, with
+    nothing quoted (Frank: take her off) -- a move that ends where the day
+    started is not a quote. Tried at every " to ", since a stage name can
+    hold one (Ready to Present). Mirrored by site/live.js backToStart."""
+    if not first:
+        return False
+    # The line ends "... by Sarahi Chin"; the stages are what is compared.
+    move, first = _BY.sub("", move), _BY.sub("", first)
+    parts = move.split(" to ")
+    return any(first.startswith(" to ".join(parts[k:]).strip() + " to ")
+               for k in range(1, len(parts)))
+
 
 # A note counts as a quote ONLY when the quote is delivered in that message.
 # The team's outreach is saturated with the word "quote" -- solicitation
