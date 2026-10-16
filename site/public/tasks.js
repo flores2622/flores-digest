@@ -10,7 +10,7 @@
    New task (for whom, due when, hung on a lead or household found by name or
    number), and the lead's coaching card a click away (the CRM keeps
    AgencyZoom's lead ids, so the search index finds it). Uses the board's
-   own helpers ($, cesc, pbadge, DOT, azTodayDate, isoDate, openLeadCard),
+   own helpers ($, cesc, pbadge, DOT, azTodayDate, isoDate, openLeadCard, AZ_URL),
    so it loads after index.html's main script.
 
    Nothing here reads AgencyZoom: a task made here lives only in Elysium Pro
@@ -71,7 +71,8 @@
   function rowHtml(r) {
     const open = tkOpen[r.id];
     const late = r.status === 0 && r.dueDate && r.dueDate < today() + " 00:00:00";
-    const whoFor = r.customerName ? `<a href="#" class="tklead" data-lead="${r.leadId || ""}" data-name="${cesc(r.customerName)}" title="${r.leadId ? "Open the lead's coaching card" : "A household: no coaching card"}">${cesc(r.customerName)}</a>${r.customerPhone ? ` <small class="tkmute">${cesc(r.customerPhone)}</small>` : ""}${r.leadId && window.CRM_OK ? ` <button type="button" class="ghost tksmall" data-ldopen="${r.leadId}" data-ldname="${cesc(r.customerName)}" title="Open the lead's page">Lead page</button>` : ""}` : '<span class="tkmute">no one attached</span>';
+    const azHref = r.leadId ? AZ_URL.lead + encodeURIComponent(r.leadId) : r.householdId ? AZ_URL.customer + encodeURIComponent(r.householdId) : "";
+    const whoFor = r.customerName ? `${azHref ? `<a href="${azHref}" target="_blank" rel="noopener" class="tklead" title="Open in AgencyZoom">${cesc(r.customerName)}</a>` : `<span class="tklead">${cesc(r.customerName)}</span>`}${r.leadId ? ` <button type="button" class="ghost tksmall tkcoach" data-lead="${r.leadId}" data-name="${cesc(r.customerName)}" title="Open the lead's coaching card in Elysium Pro">Coaching</button>` : ""}${r.customerPhone ? ` <small class="tkmute">${cesc(r.customerPhone)}</small>` : ""}${r.leadId && window.CRM_OK ? ` <button type="button" class="ghost tksmall" data-ldopen="${r.leadId}" data-ldname="${cesc(r.customerName)}" title="Open the lead's page">Lead page</button>` : ""}` : '<span class="tkmute">no one attached</span>';
     const when = r.status === 1 ? `<span class="tkdone">done ${clock(r.completeDate)}</span>` : `<span class="${late ? "tklate" : ""}">${cesc(dayLabel(r.dueDate))}${r.dueDate && r.dueDate.slice(11, 16) !== "00:00" ? " · " + clock(r.dueDate) : ""}</span>`;
     const form = open === "done" ? `<form class="tkform" data-done="${r.id}"><input type="text" class="tkin tkwide" name="comment" placeholder="What happened? (optional)" maxlength="500" autofocus>
         <button type="submit" class="btn tkpri"${tkBusy ? " disabled" : ""}>Mark done</button><button type="button" class="btn" data-close="${r.id}">Cancel</button></form>`
@@ -178,7 +179,7 @@
   }
 
   function onClick(e) {
-    const t = e.target.closest("[data-tab],[data-open],[data-close],[data-new],[data-cancelnew],[data-unlink],[data-hit],.tklead");
+    const t = e.target.closest("[data-tab],[data-open],[data-close],[data-new],[data-cancelnew],[data-unlink],[data-hit],.tkcoach");
     if (!t || !$("#view").contains(t) || $("#view").dataset.view !== "tasks") return;   // lists.js shares the look, not the clicks
     if (t.dataset.tab) { tkTab = t.dataset.tab; tkOpen = {}; saveWhere(); refresh(); return; }
     if (t.dataset.open) { tkOpen = { [t.dataset.id]: t.dataset.open }; repaint(); return; }
@@ -187,9 +188,8 @@
     if (t.dataset.cancelnew) { tkNew = false; tkLink = null; tkHits = []; repaint(); return; }
     if (t.dataset.unlink) { tkLink = null; repaint(); return; }
     if (t.dataset.hit) { tkLink = tkHits[+t.dataset.hit] || null; tkHits = []; repaint(); return; }
-    if (t.classList.contains("tklead")) {
-      e.preventDefault();
-      if (t.dataset.lead) openLeadCard({ id: t.dataset.lead, l: t.dataset.name });
+    if (t.classList.contains("tkcoach")) {
+      openLeadCard({ id: t.dataset.lead, l: t.dataset.name });
       return;
     }
   }

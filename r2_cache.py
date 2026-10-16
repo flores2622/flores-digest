@@ -68,6 +68,8 @@ DAY_FILES = [
     # so a re-run in a fresh container does not email them twice.
     "sent_{day}_ops.json", "sent_{day}_staff.json",
     "servicetx_{day}.json",
+    # every quote the nightly read, for the CRM's quote mirror (2026-10-15)
+    "az_quotes_{day}.json",
 ]
 
 

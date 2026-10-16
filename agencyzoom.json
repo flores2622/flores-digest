@@ -113,10 +113,12 @@
     "484668": "Farmers",
     "484654": "Farmers",
     "1030958": "Farmers",
+    "2448048": "Farmers",
     "186": "BW",
     "2448054": "BW",
     "102": "Foremost",
-    "262": "Foremost"
+    "262": "Foremost",
+    "2448051": "Foremost"
   },
   "product_names": {
     "_about": "The Sales sheet's product names, the way the team types them (Frank, 2026-09-25: 'we only have 2 auto products. Farmers and BW'): the first rule whose carrier (the short name in `carriers`; none = any) and `match` (a case-insensitive regex searched in AgencyZoom's policy type name; none = always) fit names the row -- {carrier} and {raw} are filled in -- else `default`. sales_log_auto.product_name and the Worker's productName walk this same list.",

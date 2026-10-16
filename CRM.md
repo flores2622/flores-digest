@@ -89,7 +89,10 @@ for the rest. Nothing is switched until the two agree on a published day.
    kind; + Note, Move stage (Frank's pipelines and stages, each landing on
    one AgencyZoom stage), Mark sold and + Task write through the CRM's
    existing calls. The coaching cards and the Tasks page open it, and it
-   opens the coaching card. **Pantheon's own CALL notes are written**
+   opens the coaching card. **Its quotes are mirrored** (2026-10-15): the
+   nightly saves every quote it reads (`data/az_quotes_<day>.json`) and
+   `crm_import` loads them, dated by `quote_marks`; the page names each by
+   its line of business (CLAUDE.md, "Pantheon's own CRM"). **Pantheon's own CALL notes are written**
    (2026-10-14, `crm_calls.py`, after `crm_sync` at every checkpoint and in
    the nightly): every dial and answered call-in in the RingCentral log, on
    every lead record on the number, in AgencyZoom's note shape with origin
