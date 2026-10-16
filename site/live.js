@@ -750,6 +750,19 @@ export function taskFlags(notes, day, basis) {
   }
   return isDup || cycled.size ? { dup: isDup, cycled: [...cycled] } : null;
 }
+/* Only what taskCompletion reads (2026-10-16). The saved list,
+   live/<day>-tasks.json, is read back on every even-minute run, and the
+   whole records -- each with its agencyTodo copy of itself, 60% of the bytes
+   -- had grown to ~520 KB: parsing and rewriting that alone took the
+   free plan's 10 ms of CPU a timer run gets, so the runs were cut off
+   before they saved and the board went live only when someone opened it. */
+const TASK_FIELDS = ["id", "title", "comments", "status", "customerId", "customerName", "customerType", "dueDate", "completeDate"];
+export function slimTask(t) {
+  const o = {};
+  for (const k of TASK_FIELDS) if (t[k] !== undefined) o[k] = t[k];
+  o.assignees = (t.assignees || []).map(a => ({ id: a && a.id }));
+  return o;
+}
 async function azTasksDue(env, day, basis, fetchFn) {
   // One producer at a time (assigneeId): the whole-day list's pages overlap
   // and drop tasks (az_client.tasks, 2026-09-29), while one person's day
@@ -764,7 +777,7 @@ async function azTasksDue(env, day, basis, fetchFn) {
       });
       const batch = j.tasks || j.data || [];
       fetched += batch.length;
-      for (const t of batch) if (t && t.id != null && !out.has(t.id)) out.set(t.id, t);
+      for (const t of batch) if (t && t.id != null && !out.has(t.id)) out.set(t.id, slimTask(t));
       page++;
       if (!batch.length || (j.totalCount != null ? fetched >= j.totalCount : batch.length < 100)) break;
       if (page >= TASK_PAGES) { complete = false; break; }
