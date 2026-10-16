@@ -199,9 +199,20 @@ export async function flushAzLog(env, day) {
     const key = `${AZ_LOG_PREFIX}${day}.json`;
     const o = await env.BOARD.get(key);
     const log = o === null ? { day, host: AZ, calls: {}, refusals: [] } : await o.json();
+    // Which address this run's calls went to (2026-10-15: the top-level host
+    // was written once, when the day's log began, so it could not show the
+    // switch to the proxy). `host` is now the last run's, and `via` counts
+    // each hour's calls by the host that carried them -- every call in one
+    // run goes through the same azBase(env).
+    const via = azBase(env);
+    log.host = via;
+    log.via = log.via || {};
     for (const [h, eps] of Object.entries(calls)) {
       const b = log.calls[h] || (log.calls[h] = {});
-      for (const [ep, n] of Object.entries(eps)) b[ep] = (b[ep] || 0) + n;
+      let n = 0;
+      for (const [ep, k] of Object.entries(eps)) { b[ep] = (b[ep] || 0) + k; n += k; }
+      const v = log.via[h] || (log.via[h] = {});
+      v[via] = (v[via] || 0) + n;
     }
     for (const x of refusals) if (log.refusals.length < AZ_LOG_REFUSALS) log.refusals.push(x);
     log.refused = (log.refused || 0) + refusals.length;

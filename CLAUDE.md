@@ -1185,7 +1185,14 @@ and anything without the glow is the checkpoint's (Frank, 2026-09-24).
   WAW; from LAX, SLC and IAD it only ever got 429s. Cloudflare picks where
   a scheduled Worker runs, so the good days were the days it landed in the
   US. **The proxy's server must be in a US data center**; no allowlist
-  request is needed once it is.
+  request is needed once it is. **It runs** (2026-10-15): a DigitalOcean
+  Droplet in New York, 159.223.135.202, at az-proxy.elysiumpro.io (DNS at
+  GoDaddy), set up by `proxy/install.sh` (`PROXY_HOST` names the host);
+  the Worker's two secrets were set at ~4:53 PM that day. **The az log
+  says which host carried the calls**: `host` is the last run's
+  `azBase(env)` and `via` counts each hour's calls by host (until
+  2026-10-15 `host` was written once, when the day's log began, and showed
+  nothing about the proxy).
 - **The Worker logs in to AgencyZoom ONCE a day, not once a run.** A per-run
   login meant ~30 an hour, and on 2026-09-24 AgencyZoom began refusing the
   Worker's logins (403) within the hour while the same account still worked
