@@ -947,7 +947,15 @@ still stops before anything is published.
 **Each email that goes out leaves a sent marker** (2026-09-30):
 `data/sent_<day>_<key>.json` -- `ops`, or the person's first name
 (`crystal`, `debbie`) since each producer got their own email (2026-10-13;
-it was `ops` / `staff`) -- carried in R2 with the day's files. A re-run
+it was `ops` / `staff`) -- carried in R2 with the day's files. **Every
+person's marker comes back down** (2026-10-16): `r2_cache.sent_markers`
+names one per person on the staff digest (`email_digest.slug`, from
+staff.json) and `sync_down_day` / `sync_up_day` walk `day_files(day)`;
+until then only `ops` / `staff` were pulled, so a re-run in a fresh
+container would have emailed every producer and Debbie again (10-13..10-15
+all had their markers in R2; checked by pulling 10-14's into an empty
+folder and running the send with the sender stubbed -- all seven
+skipped). A re-run
 skips one already sent, and says so; `--resend` (or deleting the marker
 here AND in R2's cache/<day>/) sends it again. A send that fails (after
 `send_digest`'s three tries) no longer stops the run: the other emails, the
