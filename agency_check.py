@@ -23,14 +23,15 @@ The setup files, and what checks each (NEW_AGENCY.md says how to fill them):
 
 Each --check also fails when a file it generates is stale; --fix runs the
 matching --write first (staff.py --write-js, lead_sources.py --write-js,
-goals.py --write-js, coaching_text.py --write).
+goals.py --write-js, agencyzoom.py --write-js,
+coaching_text.py --write).
 """
 import subprocess
 import sys
 
 CHECKS = [
     ("staff.py", ["--write-js"]),
-    ("agencyzoom.py", None),
+    ("agencyzoom.py", ["--write-js"]),
     ("lead_sources.py", ["--write-js"]),
     ("goals.py", ["--write-js"]),
     ("coaching_text.py", ["--write"]),

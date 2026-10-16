@@ -26,6 +26,9 @@ Reads only what the pipeline already keeps under data/ (nothing is fetched):
     data/az_tasks_<day>.json          every day's tasks, merged by id
     data/az_service_tickets_<day>.json, _done_<day>.json   SRs, merged by id
                                       (the newest day's copy of an SR wins)
+    data/az_quotes_<day>.json         {lead id: [quote]} -- every quote the
+                                      nightly read that day (daily.py), merged
+                                      by id; dated by quote_marks (below)
     data/notes/<lead>.json            every lead's notes; MOVE_STAGE notes
                                       also become stage_moves rows
     agencyzoom.json                   resolutions, claim categories, carriers
@@ -60,6 +63,7 @@ import staff        # noqa: E402
 NAME_TO_ID = {p["name"].strip().lower(): p.get("az_id") for p in staff.PEOPLE if p.get("az_id")}
 
 DATA = pathlib.Path(os.environ.get("CRM_DATA") or ROOT / "data")
+QUOTE_DAYS_KEY = "cache/quote_days.json"
 SCHEMA = ROOT / "site" / "crm" / "migrations" / "0001_init.sql"
 NOTE_DAYS = int(os.environ.get("CRM_NOTE_DAYS") or 30)   # notes newer than this go through the mirror; 0 = all
 SYNTHETIC_WORKFLOW_FROM = 900001   # a sales pipeline AgencyZoom never gave us an id for
@@ -473,6 +477,62 @@ def build(rows, days=None):
             "status": _policy_status(p), "cancel_date": local_day(p.get("cancelDate") or p.get("cancellationDate")),
             "create_date": local_dt(p.get("createDate")) or local_dt(p.get("soldDate")) or "1970-01-01 00:00:00",
             "modify_date": local_dt(p.get("modifyDate")), "created_by": person(p.get("createdBy")),
+        })
+
+    # quotes: every saved day's az_quotes file (daily.py), merged by id, the
+    # newest read's premium winning. AgencyZoom dates no quote, so a quote's
+    # day is worked out the way quote_marks counts them -- ids run in order,
+    # so the first day whose highest id reached it, after the day before's --
+    # else the night it was new: the same day every run gives. A quote older
+    # than the first mark has no
+    # day at all: 1970-01-01, which the lead page shows as "date unknown"
+    # (AgencyZoom's ids still go back years: a Landlord quote at 7,803,832).
+    # The days the 2026-10-15 backfill read off the published Quoted lists
+    # (quotes older than the first mark) are kept in R2 cache/quote_days.json,
+    # {quote id: day}, so a later night re-reading the lead keeps them.
+    try:
+        import quote_marks
+        ledger = quote_marks.load()
+    except Exception:
+        ledger = {}
+    try:
+        import publish_board
+        cli, bucket = publish_board._client()
+        known_days = {int(k): v for k, v in json.loads(cli.get_object(Bucket=bucket, Key=QUOTE_DAYS_KEY)["Body"].read()).items()}
+    except Exception:
+        known_days = {}
+    bands, prev = [], None
+    for d in sorted(ledger):
+        if prev is not None:
+            bands.append((prev, ledger[d], d))
+        prev = ledger[d] if prev is None else max(prev, ledger[d])
+    quotes = {}
+    for f in sorted(glob.glob(str(DATA / "az_quotes_*.json"))):
+        fday = pathlib.Path(f).stem[len("az_quotes_"):]
+        if days is not None and fday not in days:
+            continue
+        for lid, qs in (json.loads(pathlib.Path(f).read_text()) or {}).items():
+            for q in qs or []:
+                qid = intval(q.get("id"))
+                if qid:
+                    hint = quotes.get(qid, (None, None, None))[1]
+                    # the newest read's fields; the first night it was new
+                    if not hint and q.get("_new"):
+                        hint = fday
+                    quotes[qid] = (intval(lid), hint, q)
+    for qid, (lid, hint, q) in sorted(quotes.items()):
+        if lid not in lead_ids:
+            continue                        # the mirror has no such lead (foreign key)
+        qday = known_days.get(qid) or next((d for lo, hi, d in bands if lo < qid <= hi), None) or hint
+        qday = qday or "1970-01-01"
+        rows.insert("quotes", {
+            "id": qid, "az_id": qid, "lead_id": lid,
+            "carrier_id": intval(q.get("carrierId")),
+            "carrier_name": (q.get("carrierName") or "").strip() or None,
+            "policy_type_name": (q.get("productName") or q.get("policyTypeName") or "").strip() or None,
+            "premium": num(q.get("premium")), "term_months": intval(q.get("term") or q.get("termMonths")),
+            "quote_date": f"{qday[:10]} 00:00:00",
+            "status": "sold" if q.get("sold") else "presented",
         })
 
     # tasks: every saved day, merged by id (the newest file wins)
