@@ -84,6 +84,8 @@
    key, so a deploy before the database exists breaks nothing else. */
 
 import { hasBoard, personByEmail, personById, PEOPLE, localStr } from "./staff.js";
+import { productName } from "./live.js";
+import AZ from "./agencyzoom_data.js";
 
 const json = (body, status = 200) => new Response(JSON.stringify(body), {
   status, headers: { "content-type": "application/json; charset=utf-8", "cache-control": "no-store" } });
@@ -763,7 +765,13 @@ async function leadPage(db, id, lk) {
     lead: l,
     household: rows(hhRow)[0] ? rowToApi(OBJECTS.households, rows(hhRow)[0], lk) : null,
     people: rows(hhRow)[0] ? await peopleOf(db, rows(hhRow)[0], lk) : null,
-    policies, quotes: rows(quotes).map((r) => rowToApi(OBJECTS.quotes, r, lk)),
+    // Each quote's line of business, named by the Sales sheet's own rules
+    // (Farmers-Home, BW-Auto ...; Frank, 2026-10-15: "show the LOB on the lead
+    // page quotes too"); an unknown carrier keeps the bare product.
+    policies, quotes: rows(quotes).map((r) => {
+      const q = rowToApi(OBJECTS.quotes, r, lk);
+      return { ...q, lob: productName(q, AZ.carriers, AZ.product_rules, AZ.product_default) || null };
+    }),
     tasks: rows(tasks).map((r) => rowToApi(OBJECTS.tasks, r, lk)),
     serviceTickets: rows(srs).map((r) => rowToApi(OBJECTS.srs, r, lk)),
     notes: rows(notes).map(noteToApi),

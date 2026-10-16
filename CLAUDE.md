@@ -627,7 +627,8 @@ and which are commercial, the resolutions (their names as the fallback when
 `/v1/api/service-resolutions` fails, deleted ones kept because past SRs
 carry them; id -> renewal outcome key; Unable to Contact's `valid_from`;
 the resolutions `service_notes` trusts per pipeline), the carrier ids the
-Sales sheet names (Farmers / BW / Foremost), the Personal Renewals carriers
+Sales sheet names (Farmers / BW / Foremost; the Worker's copy, with the
+product names, is `site/agencyzoom_data.js` -- `--write-js`), the Personal Renewals carriers
 and the test lead ids. `agencyzoom.py` reads it and says what each key
 means; claims, commercial, service_digest (`PIPELINES`' name sets),
 service_retention, service_notes, sales_log_auto, renewal_report,
@@ -3498,6 +3499,28 @@ on a published day. The rules:
   page you were on is kept per tab (`lead-where`, with the filter and the
   Recent-for pick). Still AgencyZoom's: the policies, the calls (the
   nightly's own CALL notes are the next step of phase 3) and texting.
+  **Its quotes come from AgencyZoom and show their LOB** (Frank, 2026-10-15:
+  "show the LOB on the lead page quotes too" -- the CRM held no quotes: the
+  mirror never carried them). The nightly saves every quote it reads for the
+  quoted households (`daily.py`, `data/az_quotes_<day>.json`, an R2 day file,
+  each quote with `_new`, the quote_marks verdict) and `crm_import` loads
+  them as `quotes` rows (AgencyZoom's id; status sold / presented). **A
+  quote's day**: AgencyZoom dates none, so it is R2 `cache/quote_days.json`
+  ({quote id: day}, written once by the backfill), else the quote_marks band
+  its id falls in (after one day's highest id, up to the next's), else the
+  night it was new, else 1970-01-01, which the page shows as "date unknown"
+  -- never the lead's own last-quoted date, which made a years-old Landlord
+  quote look like 10-12's. `crm.js leadPage` names each quote by the Sales
+  sheet's rules (`live.js productName` over `site/agencyzoom_data.js`, the
+  carriers and `product_names` that `python3 agencyzoom.py --write-js`
+  writes -- never by hand; `--check` and `agency_check.py --fix` cover it):
+  "Farmers-Home · $1,264 · presented Sep 24", an unknown carrier keeping
+  product and carrier. **The quoted households of 09-24..10-14 were loaded**
+  (2026-10-16): the 166 quotes on their 123 leads as read that day, each
+  counted quote dated by its published day (the same matching as the Quoted
+  list's LOB backfill), 11 older ones "date unknown"; their files went to
+  R2's cache/<day>/ beside the rest and `crm_sync.restore_from_r2` pulls
+  them.
 - **Pantheon writes its own CALL notes** (Frank, 2026-10-14: "go"; phase 3's
   second step). `crm_calls.py` runs after `crm_sync` at every checkpoint and
   in the nightly: from the run's own RingCentral log (`data/rc_raw_<day>.json`)

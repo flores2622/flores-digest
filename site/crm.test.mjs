@@ -421,6 +421,12 @@ test("the lead page: one read with the lead, household, policies, tasks, notes, 
   assert.equal(opt.find((o) => o.current).stage, "Quotes Presented");
   assert.equal(opt.find((o) => o.stage === "New").stageName, "New");   // Frank's name, from the map
   assert.deepEqual(p.exits, ["Smart-Cycle", "Dead", "Sold"]);
+  // each quote carries its line of business, named by the Sales sheet's rules
+  await call(env, "POST", `/api/crm/leads/${id}/quotes`, { policyTypeName: "Home", premium: 1326, carrierId: 484668 });
+  await call(env, "POST", `/api/crm/leads/${id}/quotes`, { policyTypeName: "Auto", premium: 900, carrierId: 2448054 });
+  await call(env, "POST", `/api/crm/leads/${id}/quotes`, { policyTypeName: "Boat", premium: 300, carrierId: 777 });
+  const lobs = (await call(env, "GET", `/api/crm/leads/${id}/page`)).body.quotes.map((q) => q.lob).sort();
+  assert.deepEqual(lobs, ["BW-Auto", "Boat", "Farmers-Home"]);   // an unknown carrier keeps the bare product
   // sold: the household appears, with its policies
   assert.equal((await call(env, "POST", `/api/crm/leads/${id}/sold`, {})).status, 200);
   r = await call(env, "GET", `/api/crm/leads/${id}/page`);

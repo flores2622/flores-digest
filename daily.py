@@ -742,6 +742,7 @@ def build_metrics(day):
     if q_mark is None:
         log("  quotes: no earlier quote mark -- premium quoted counts every quote on file")
     q_seen = []
+    q_saved = {}     # every quote read, by lead: data/az_quotes_<day>.json for the CRM's mirror
     for who in PRODUCERS:
         all_rows = rows.get(who, [])
         counted = [r for r in all_rows if not r["excluded"]]
@@ -915,6 +916,7 @@ def build_metrics(day):
                 qs = []
             arr = qs.get("quotes") if isinstance(qs, dict) else qs
             q_seen += [q.get("id") for q in (arr or [])]
+            q_saved[str(lid)] = [{**q, "_new": quote_marks.is_new(q, q_mark)} for q in (arr or []) if isinstance(q, dict)]
             new = [q for q in (arr or []) if quote_marks.is_new(q, q_mark)]
             qprem[str(lid)] = round(sum(float(q.get("premium") or 0) for q in new))
             qlob[str(lid)] = [{"lob": sales_log_auto.product_name(
@@ -1015,6 +1017,14 @@ def build_metrics(day):
                   "bundle_resolved": bundle.get(who, {}).get("resolved", 0),
                   "bundle_resolved_households": bundle.get(who, {}).get("resolved_households", 0)}
     quote_marks.note(day, q_seen, log=log)
+    # The quotes read tonight, for the CRM's mirror (crm_import): the lead
+    # page lists a lead's quotes with their line of business (Frank,
+    # 2026-10-15: "show the LOB on the lead page quotes too"). `_new` is the
+    # quote_marks verdict -- made since the last business day -- which dates it.
+    try:
+        (ROOT / "data" / f"az_quotes_{day}.json").write_text(json.dumps(q_saved))
+    except Exception as e:
+        log(f"  quotes for the CRM not saved ({type(e).__name__})")
 
     # Insightful down, or its token missing (SystemExit from secrets_load),
     # must not stop the email (2026-09-30): everyone reads as untracked --
