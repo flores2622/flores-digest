@@ -745,6 +745,12 @@ async function search(db, url, lk) {
    places a move can go (every active sales pipeline's active stages, named
    Frank's way beside AgencyZoom's, plus the exits). Nothing here reads
    AgencyZoom. */
+/* A quote's or a policy's line of business, named by the Sales sheet's own
+   rules (Farmers-Home, BW-Auto ...; Frank, 2026-10-15: "show the LOB on the
+   lead page quotes too", then "on the account page policies too"); an
+   unknown carrier keeps the bare product. */
+const withLob = (x) => ({ ...x, lob: productName(x, AZ.carriers, AZ.product_rules, AZ.product_default) || null });
+
 async function leadPage(db, id, lk) {
   const lead = await db.prepare("SELECT * FROM leads WHERE id = ?").bind(id).first();
   if (!lead) return json({ error: `lead ${id} not found` }, 404);
@@ -768,13 +774,7 @@ async function leadPage(db, id, lk) {
     lead: l,
     household: rows(hhRow)[0] ? rowToApi(OBJECTS.households, rows(hhRow)[0], lk) : null,
     people: rows(hhRow)[0] ? await peopleOf(db, rows(hhRow)[0], lk) : null,
-    // Each quote's line of business, named by the Sales sheet's own rules
-    // (Farmers-Home, BW-Auto ...; Frank, 2026-10-15: "show the LOB on the lead
-    // page quotes too"); an unknown carrier keeps the bare product.
-    policies, quotes: rows(quotes).map((r) => {
-      const q = rowToApi(OBJECTS.quotes, r, lk);
-      return { ...q, lob: productName(q, AZ.carriers, AZ.product_rules, AZ.product_default) || null };
-    }),
+    policies: policies.map(withLob), quotes: rows(quotes).map((r) => withLob(rowToApi(OBJECTS.quotes, r, lk))),
     tasks: rows(tasks).map((r) => rowToApi(OBJECTS.tasks, r, lk)),
     serviceTickets: rows(srs).map((r) => rowToApi(OBJECTS.srs, r, lk)),
     notes: rows(notes).map(noteToApi),
@@ -1177,7 +1177,7 @@ async function linkedOf(db, id, lk) {
   const hs = (await db.prepare("SELECT h.* FROM household_links l JOIN households h ON h.id = CASE WHEN l.household_a = ? THEN l.household_b ELSE l.household_a END WHERE l.household_a = ? OR l.household_b = ? ORDER BY h.business_name, h.lastname, h.firstname, h.id").bind(id, id, id).all()).results || [];
   const out = [];
   for (const h of hs) {
-    const pol = await db.prepare("SELECT count(*) AS n, coalesce(sum(premium), 0) AS p FROM policies WHERE household_id = ? AND status = 1").bind(h.id).first();
+    const pol = await db.prepare("SELECT count(*) AS n, coalesce(sum(premium), 0) AS p FROM policies WHERE household_id = ? AND status = 'active'").bind(h.id).first();
     const a = rowToApi(OBJECTS.households, h, lk);
     out.push({ id: a.id, name: a.name, businessName: a.businessName || "", customerType: a.customerType, assignedTo: a.assignedTo, phone: a.phone, email: a.email, azId: a.azId,
       contacts: await contactsOf(db, h), policies: pol ? pol.n : 0, premium: pol ? pol.p : 0 });
@@ -1207,7 +1207,7 @@ async function householdPage(db, id, lk) {
   if (!h) return json({ error: `household ${id} not found` }, 404);
   const [leads, pols, srs, tasks] = await db.batch([
     db.prepare("SELECT * FROM leads WHERE converted_household_id = ? ORDER BY sold_date DESC, id DESC LIMIT 50").bind(id),
-    db.prepare("SELECT * FROM policies WHERE household_id = ? ORDER BY status = 1 DESC, sold_date DESC, id DESC LIMIT 200").bind(id),
+    db.prepare("SELECT * FROM policies WHERE household_id = ? ORDER BY status = 'active' DESC, sold_date DESC, id DESC LIMIT 200").bind(id),   // status is a word: active / pending (next term) / expired / cancelled
     db.prepare(`SELECT t.*, ${CUSTOMER_JOIN.select} FROM service_requests t ${CUSTOMER_JOIN.sql} WHERE t.household_id = ? ORDER BY t.status ASC, t.create_date DESC LIMIT 100`).bind(id),
     db.prepare(`SELECT t.*, ${CUSTOMER_JOIN.select} FROM tasks t ${CUSTOMER_JOIN.sql} WHERE t.household_id = ? AND t.status = 0 ORDER BY t.due_date LIMIT 100`).bind(id),
   ]);
@@ -1215,7 +1215,7 @@ async function householdPage(db, id, lk) {
   return json({
     household: rowToApi(OBJECTS.households, h, lk), ...(await peopleOf(db, h, lk)),
     leads: rows(leads).map((r) => rowToApi(OBJECTS.leads, r, lk)),
-    policies: rows(pols).map((r) => rowToApi(OBJECTS.policies, r, lk)),
+    policies: rows(pols).map((r) => withLob(rowToApi(OBJECTS.policies, r, lk))),
     serviceTickets: rows(srs).map((r) => rowToApi(OBJECTS.srs, r, lk)),
     tasks: rows(tasks).map((r) => rowToApi(OBJECTS.tasks, r, lk)),
   });
