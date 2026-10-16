@@ -76,6 +76,10 @@ for the rest. Nothing is switched until the two agree on a published day.
    RingCentral pass as CALL notes, stage moves from the page.
    `lead_history`, `messages.py` and `day_calls.fetch_notes` read Pantheon.
    Cutover test: a day's contacts, outcomes and Texts & Emails identical.
+   **Contacts and linked accounts are built** (2026-10-14, migration 0005):
+   an account's contacts (one primary, switchable), the accounts linked to it
+   and its page -- AgencyZoom's customer-page sections its API never returns;
+   see CLAUDE.md, "Contacts and linked accounts", and `crm_links_seed.py`.
    **The lead page is built** (2026-10-13, `site/public/lead.js`, Sales
    Center > Leads): the picker (name or phone, the leads worked most
    recently), and per lead one read (`GET /api/crm/leads/<id>/page`) with
@@ -85,7 +89,10 @@ for the rest. Nothing is switched until the two agree on a published day.
    kind; + Note, Move stage (Frank's pipelines and stages, each landing on
    one AgencyZoom stage), Mark sold and + Task write through the CRM's
    existing calls. The coaching cards and the Tasks page open it, and it
-   opens the coaching card. **Pantheon's own CALL notes are written**
+   opens the coaching card. **Its quotes are mirrored** (2026-10-15): the
+   nightly saves every quote it reads (`data/az_quotes_<day>.json`) and
+   `crm_import` loads them, dated by `quote_marks`; the page names each by
+   its line of business (CLAUDE.md, "Pantheon's own CRM"). **Pantheon's own CALL notes are written**
    (2026-10-14, `crm_calls.py`, after `crm_sync` at every checkpoint and in
    the nightly): every dial and answered call-in in the RingCentral log, on
    every lead record on the number, in AgencyZoom's note shape with origin

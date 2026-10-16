@@ -76,7 +76,7 @@
       const q = (l.quotes || []).map(x => `${x.line} ${money(x.premium)} (${x.date})`).join("; ") || l.note || "";
       return `<tr>
         <td>${badge(l.producer)}</td>
-        <td>${id ? `<a href="${AZ_URL.lead}${encodeURIComponent(id)}" target="_blank" rel="noopener" title="Open the lead in AgencyZoom">${cesc(l.name)}</a> <button type="button" class="ghost cpcoach" data-i="${i}" title="Open the lead's coaching card in Pantheon">Coaching</button>` : cesc(l.name)}<div class="sd" style="font-size:11px" title="${cesc(q)}">${cesc(q.length > 60 ? q.slice(0, 60) + "…" : q)}</div></td>
+        <td>${id ? `<a href="${AZ_URL.lead}${encodeURIComponent(id)}" target="_blank" rel="noopener" title="Open the lead in AgencyZoom">${cesc(l.name)}</a> <button type="button" class="ghost cpcoach" data-i="${i}" title="Open the lead's coaching card in Elysium Pro">Coaching</button>` : cesc(l.name)}<div class="sd" style="font-size:11px" title="${cesc(q)}">${cesc(q.length > 60 ? q.slice(0, 60) + "…" : q)}</div></td>
         <td>${kind}</td>
         <td><b class="${cls}">${label}</b>${(l.others || []).length ? `<div class="sd" style="font-size:11px">also worked by ${cesc(l.others.map(first).join(", "))}</div>` : ""}</td>
         <td class="num">${l.dials || "—"}</td>

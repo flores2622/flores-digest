@@ -38,6 +38,13 @@
                                            converts to a household if none
      POST /api/crm/tasks/<id>/complete
      POST /api/crm/srs/<id>/complete       {resolutionId, note?}
+     GET  /api/crm/households/<id>/page    an account's page: contacts (one primary),
+                                           linked accounts, leads, policies, SRs, tasks
+     POST /api/crm/households/<id>/people  {op: add | attach | detach | primary | edit
+                                           | link | unlink, ...} -- the account's
+                                           contacts and linked accounts (migration 0005)
+     GET  /api/crm/contacts?q=             find a contact by name, email or phone, with
+                                           the accounts it sits on
      GET  /api/crm/events?object=&id=      the audit trail of one record
      GET  /api/crm/lists                   Frank's lists (lead sources, sales
                                            pipelines with stages, service
@@ -77,6 +84,8 @@
    key, so a deploy before the database exists breaks nothing else. */
 
 import { hasBoard, personByEmail, personById, PEOPLE, localStr } from "./staff.js";
+import { productName } from "./live.js";
+import AZ from "./agencyzoom_data.js";
 
 const json = (body, status = 200) => new Response(JSON.stringify(body), {
   status, headers: { "content-type": "application/json; charset=utf-8", "cache-control": "no-store" } });
@@ -755,7 +764,14 @@ async function leadPage(db, id, lk) {
   return json({
     lead: l,
     household: rows(hhRow)[0] ? rowToApi(OBJECTS.households, rows(hhRow)[0], lk) : null,
-    policies, quotes: rows(quotes).map((r) => rowToApi(OBJECTS.quotes, r, lk)),
+    people: rows(hhRow)[0] ? await peopleOf(db, rows(hhRow)[0], lk) : null,
+    // Each quote's line of business, named by the Sales sheet's own rules
+    // (Farmers-Home, BW-Auto ...; Frank, 2026-10-15: "show the LOB on the lead
+    // page quotes too"); an unknown carrier keeps the bare product.
+    policies, quotes: rows(quotes).map((r) => {
+      const q = rowToApi(OBJECTS.quotes, r, lk);
+      return { ...q, lob: productName(q, AZ.carriers, AZ.product_rules, AZ.product_default) || null };
+    }),
     tasks: rows(tasks).map((r) => rowToApi(OBJECTS.tasks, r, lk)),
     serviceTickets: rows(srs).map((r) => rowToApi(OBJECTS.srs, r, lk)),
     notes: rows(notes).map(noteToApi),
@@ -1083,6 +1099,176 @@ async function automationsMark(env, body, me) {
   return json({ error: "the marks are busy -- try again" }, 503);
 }
 
+/* ---- contacts and linked accounts (migration 0005) --------------------------
+   AgencyZoom's customer page has Contacts (the people on the account, one of
+   them Primary -- the account holder), Customers (other accounts linked to
+   it: a business and its owner, an owner and each of her businesses) and
+   Leads. Its API returns none of it, so Pantheon keeps its own: a contact is
+   a record that can sit on several accounts (each account with its own
+   primary), and a link joins two accounts and reads from both sides. A
+   household with no contact rows is shown with its own name, phone and email
+   as its one primary contact until the first write makes that real
+   (ensureContacts) -- so no import is needed for the ~4,000 plain accounts. */
+const CONTACT_FIELDS = ["firstname", "middlename", "lastname", "email", "phone", "birthday"];
+const isBusiness = (h) => !!h.business_name || /business|commercial/i.test(h.customer_type || "");
+function contactToApi(c, extra = {}) {
+  return {
+    id: c.id ?? null, firstname: c.firstname || "", middlename: c.middlename || "", lastname: c.lastname || "",
+    name: [c.firstname, c.middlename, c.lastname].filter(Boolean).join(" ").trim(),
+    email: c.email || "", phone: c.phone || "", birthday: c.birthday || "",
+    primary: !!c.is_primary, relationship: c.relationship || "", ...extra,
+  };
+}
+async function contactsOf(db, h) {
+  const rows = (await db.prepare("SELECT c.*, hc.is_primary, hc.relationship FROM household_contacts hc JOIN contacts c ON c.id = hc.contact_id WHERE hc.household_id = ? ORDER BY hc.is_primary DESC, hc.added_at, c.id").bind(h.id).all()).results || [];
+  if (rows.length) return rows.map((r) => contactToApi(r));
+  if (isBusiness(h) || !(h.firstname || h.lastname)) return [];
+  return [contactToApi({ id: null, firstname: h.firstname, lastname: h.lastname, email: h.email, phone: h.phone, is_primary: 1 }, { virtual: true })];
+}
+/** Turn a plain household's own name into its first real contact, primary. */
+async function ensureContacts(db, h, me) {
+  const n = await db.prepare("SELECT count(*) AS n FROM household_contacts WHERE household_id = ?").bind(h.id).first("n");
+  if (n || isBusiness(h) || !(h.firstname || h.lastname)) return;
+  const now = localStr();
+  const r = await db.prepare("INSERT INTO contacts (firstname, lastname, email, phone, phone_key, create_date, created_by) VALUES (?, ?, ?, ?, ?, ?, ?)")
+    .bind(h.firstname || "", h.lastname || "", h.email || null, h.phone || null, phoneKey(h.phone), now, me.id).run();
+  await db.prepare("INSERT INTO household_contacts (household_id, contact_id, is_primary, added_at, added_by) VALUES (?, ?, 1, ?, ?)")
+    .bind(h.id, r.meta.last_row_id, now, me.id).run();
+}
+/** The accounts linked to `id`, each with its own contacts and current policies. */
+async function linkedOf(db, id, lk) {
+  const hs = (await db.prepare("SELECT h.* FROM household_links l JOIN households h ON h.id = CASE WHEN l.household_a = ? THEN l.household_b ELSE l.household_a END WHERE l.household_a = ? OR l.household_b = ? ORDER BY h.business_name, h.lastname, h.firstname, h.id").bind(id, id, id).all()).results || [];
+  const out = [];
+  for (const h of hs) {
+    const pol = await db.prepare("SELECT count(*) AS n, coalesce(sum(premium), 0) AS p FROM policies WHERE household_id = ? AND status = 1").bind(h.id).first();
+    const a = rowToApi(OBJECTS.households, h, lk);
+    out.push({ id: a.id, name: a.name, businessName: a.businessName || "", customerType: a.customerType, assignedTo: a.assignedTo, phone: a.phone, email: a.email, azId: a.azId,
+      contacts: await contactsOf(db, h), policies: pol ? pol.n : 0, premium: pol ? pol.p : 0 });
+  }
+  return out;
+}
+async function peopleOf(db, h, lk) {
+  const contacts = await contactsOf(db, h);
+  return { contacts, holder: contacts.find((c) => c.primary) || null, linked: await linkedOf(db, h.id, lk) };
+}
+async function contactsFind(db, url) {
+  const q = (url.searchParams.get("q") || "").trim().toLowerCase(), pk = phoneKey(q);
+  if (q.length < 2) return json({ error: "q (2+ characters) is required" }, 400);
+  const like = `%${q}%`;
+  const rows = (await (pk
+    ? db.prepare("SELECT * FROM contacts WHERE phone_key = ? ORDER BY lastname, firstname LIMIT 20").bind(pk)
+    : db.prepare("SELECT * FROM contacts WHERE lower(trim(firstname || ' ' || lastname)) LIKE ? OR lower(coalesce(email,'')) LIKE ? ORDER BY lastname, firstname LIMIT 20").bind(like, like)).all()).results || [];
+  const out = [];
+  for (const c of rows) {
+    const accts = (await db.prepare("SELECT h.id, coalesce(h.business_name, trim(h.firstname || ' ' || h.lastname)) AS name FROM household_contacts hc JOIN households h ON h.id = hc.household_id WHERE hc.contact_id = ?").bind(c.id).all()).results || [];
+    out.push(contactToApi(c, { accounts: accts }));
+  }
+  return json({ contacts: out });
+}
+async function householdPage(db, id, lk) {
+  const h = await db.prepare("SELECT * FROM households WHERE id = ?").bind(id).first();
+  if (!h) return json({ error: `household ${id} not found` }, 404);
+  const [leads, pols, srs, tasks] = await db.batch([
+    db.prepare("SELECT * FROM leads WHERE converted_household_id = ? ORDER BY sold_date DESC, id DESC LIMIT 50").bind(id),
+    db.prepare("SELECT * FROM policies WHERE household_id = ? ORDER BY status = 1 DESC, sold_date DESC, id DESC LIMIT 200").bind(id),
+    db.prepare(`SELECT t.*, ${CUSTOMER_JOIN.select} FROM service_requests t ${CUSTOMER_JOIN.sql} WHERE t.household_id = ? ORDER BY t.status ASC, t.create_date DESC LIMIT 100`).bind(id),
+    db.prepare(`SELECT t.*, ${CUSTOMER_JOIN.select} FROM tasks t ${CUSTOMER_JOIN.sql} WHERE t.household_id = ? AND t.status = 0 ORDER BY t.due_date LIMIT 100`).bind(id),
+  ]);
+  const rows = (x) => (x && x.results) || [];
+  return json({
+    household: rowToApi(OBJECTS.households, h, lk), ...(await peopleOf(db, h, lk)),
+    leads: rows(leads).map((r) => rowToApi(OBJECTS.leads, r, lk)),
+    policies: rows(pols).map((r) => rowToApi(OBJECTS.policies, r, lk)),
+    serviceTickets: rows(srs).map((r) => rowToApi(OBJECTS.srs, r, lk)),
+    tasks: rows(tasks).map((r) => rowToApi(OBJECTS.tasks, r, lk)),
+  });
+}
+/** POST /households/<id>/people {op: add | attach | detach | primary | edit | link | unlink, ...}.
+    Every change is an events row on the household. */
+async function peopleWrite(db, hhId, body, me, lk) {
+  const h = await db.prepare("SELECT * FROM households WHERE id = ?").bind(hhId).first();
+  if (!h) return json({ error: `household ${hhId} not found` }, 404);
+  if (!body || typeof body !== "object") return json({ error: "a JSON object is expected" }, 400);
+  const op = body.op, now = localStr();
+  const ev = (obj, action, before, after) => eventStmt(db, me.email, "household", obj, action, before, after).run();
+  const cname = (c) => [c.firstname, c.middlename, c.lastname].filter(Boolean).join(" ");
+  const attached = (cid) => db.prepare("SELECT hc.*, c.firstname, c.middlename, c.lastname FROM household_contacts hc JOIN contacts c ON c.id = hc.contact_id WHERE hc.household_id = ? AND hc.contact_id = ?").bind(hhId, cid).first();
+  const hasPrimary = async () => !!(await db.prepare("SELECT 1 AS x FROM household_contacts WHERE household_id = ? AND is_primary = 1").bind(hhId).first());
+  const cid = body.contactId == null ? null : Number(body.contactId);
+  if (["add", "attach", "detach", "primary", "edit"].includes(op)) await ensureContacts(db, h, me);
+  if (op === "add") {
+    const c = {};
+    for (const k of CONTACT_FIELDS) { const v = body[k]; if (v != null && typeof v !== "string") return json({ error: `${k}: not a text` }, 400); c[k] = (v || "").trim(); }
+    if (!c.firstname && !c.lastname) return json({ error: "a contact needs a name" }, 400);
+    const r = await db.prepare("INSERT INTO contacts (firstname, middlename, lastname, email, phone, phone_key, birthday, create_date, created_by) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)")
+      .bind(c.firstname, c.middlename || null, c.lastname, c.email || null, c.phone || null, phoneKey(c.phone), c.birthday || null, now, me.id).run();
+    const id = r.meta.last_row_id, primary = body.primary === true || !(await hasPrimary());
+    if (primary) await db.prepare("UPDATE household_contacts SET is_primary = 0 WHERE household_id = ?").bind(hhId).run();
+    await db.prepare("INSERT INTO household_contacts (household_id, contact_id, is_primary, relationship, added_at, added_by) VALUES (?, ?, ?, ?, ?, ?)")
+      .bind(hhId, id, primary ? 1 : 0, (body.relationship || "").trim() || null, now, me.id).run();
+    await ev(hhId, "contact_add", null, { contactId: id, name: cname(c), primary });
+  } else if (op === "attach") {
+    const c = cid && await db.prepare("SELECT * FROM contacts WHERE id = ?").bind(cid).first();
+    if (!c) return json({ error: "contact not found" }, 404);
+    if (!(await attached(cid))) {
+      await db.prepare("INSERT INTO household_contacts (household_id, contact_id, is_primary, relationship, added_at, added_by) VALUES (?, ?, ?, ?, ?, ?)")
+        .bind(hhId, cid, (await hasPrimary()) ? 0 : 1, (body.relationship || "").trim() || null, now, me.id).run();
+      await ev(hhId, "contact_link", null, { contactId: cid, name: cname(c) });
+    }
+  } else if (op === "detach") {
+    const a = cid && await attached(cid);
+    if (!a) return json({ error: "that contact is not on this account" }, 404);
+    await db.prepare("DELETE FROM household_contacts WHERE household_id = ? AND contact_id = ?").bind(hhId, cid).run();
+    let promoted = null;
+    if (a.is_primary) {
+      const next = await db.prepare("SELECT hc.contact_id, c.firstname, c.middlename, c.lastname FROM household_contacts hc JOIN contacts c ON c.id = hc.contact_id WHERE hc.household_id = ? ORDER BY hc.added_at, hc.contact_id LIMIT 1").bind(hhId).first();
+      if (next) { await db.prepare("UPDATE household_contacts SET is_primary = 1 WHERE household_id = ? AND contact_id = ?").bind(hhId, next.contact_id).run(); promoted = cname(next); }
+    }
+    await ev(hhId, "contact_unlink", { contactId: cid, name: cname(a), primary: !!a.is_primary }, promoted ? { primary: promoted } : null);
+  } else if (op === "primary") {
+    const a = cid && await attached(cid);
+    if (!a) return json({ error: "that contact is not on this account" }, 404);
+    if (!a.is_primary) {
+      const prev = await db.prepare("SELECT c.firstname, c.middlename, c.lastname FROM household_contacts hc JOIN contacts c ON c.id = hc.contact_id WHERE hc.household_id = ? AND hc.is_primary = 1").bind(hhId).first();
+      await db.prepare("UPDATE household_contacts SET is_primary = 0 WHERE household_id = ?").bind(hhId).run();
+      await db.prepare("UPDATE household_contacts SET is_primary = 1 WHERE household_id = ? AND contact_id = ?").bind(hhId, cid).run();
+      await ev(hhId, "primary_changed", { primary: prev ? cname(prev) : null }, { primary: cname(a), contactId: cid });
+    }
+  } else if (op === "edit") {
+    const a = cid && await attached(cid);
+    if (!a) return json({ error: "that contact is not on this account" }, 404);
+    const cur = await db.prepare("SELECT * FROM contacts WHERE id = ?").bind(cid).first();
+    const sets = [], vals = [], before = {}, after = {};
+    for (const k of CONTACT_FIELDS) {
+      if (!(k in body)) continue;
+      if (body[k] != null && typeof body[k] !== "string") return json({ error: `${k}: not a text` }, 400);
+      const v = (body[k] || "").trim() || null;
+      if ((cur[k] ?? null) === v) continue;
+      sets.push(`${k} = ?`); vals.push(v); before[k] = cur[k] ?? null; after[k] = v;
+      if (k === "phone") { sets.push("phone_key = ?"); vals.push(phoneKey(v)); }
+    }
+    if (!(body.firstname !== undefined ? (body.firstname || cur.firstname) : cur.firstname) && !(body.lastname !== undefined ? (body.lastname || cur.lastname) : cur.lastname)) return json({ error: "a contact needs a name" }, 400);
+    if (sets.length) { await db.prepare(`UPDATE contacts SET ${sets.join(", ")} WHERE id = ?`).bind(...vals, cid).run(); await ev(hhId, "contact_edit", { contactId: cid, ...before }, { contactId: cid, ...after }); }
+  } else if (op === "link" || op === "unlink") {
+    const other = Number(body.householdId);
+    if (!Number.isInteger(other) || other < 1) return json({ error: "householdId is required" }, 400);
+    if (other === hhId) return json({ error: "an account cannot be linked to itself" }, 400);
+    const o = await db.prepare("SELECT * FROM households WHERE id = ?").bind(other).first();
+    if (!o) return json({ error: `household ${other} not found` }, 404);
+    const a = Math.min(hhId, other), b = Math.max(hhId, other);
+    const there = await db.prepare("SELECT 1 AS x FROM household_links WHERE household_a = ? AND household_b = ?").bind(a, b).first();
+    const nm = (x) => x.business_name || `${x.firstname || ""} ${x.lastname || ""}`.trim();
+    if (op === "link" && !there) {
+      await db.prepare("INSERT INTO household_links (household_a, household_b, added_at, added_by) VALUES (?, ?, ?, ?)").bind(a, b, now, me.id).run();
+      await ev(hhId, "account_link", null, { householdId: other, name: nm(o) }); await ev(other, "account_link", null, { householdId: hhId, name: nm(h) });
+    } else if (op === "unlink" && there) {
+      await db.prepare("DELETE FROM household_links WHERE household_a = ? AND household_b = ?").bind(a, b).run();
+      await ev(hhId, "account_unlink", { householdId: other, name: nm(o) }, null); await ev(other, "account_unlink", { householdId: hhId, name: nm(h) }, null);
+    }
+  } else return json({ error: "op must be add, attach, detach, primary, edit, link or unlink" }, 400);
+  return json(await peopleOf(db, h, lk));
+}
+
 /* ---- the route ----------------------------------------------------------------- */
 async function readBody(request) {
   try { return await request.json(); } catch (_) { return null; }
@@ -1118,6 +1304,7 @@ export async function crm(request, env, identityOf, parts, url) {
   try {
     if (head === "lookups" && get && parts.length === 1) return json(await lookups(db));
     if (head === "events" && get && parts.length === 1) return events(db, url);
+    if (head === "contacts" && get && parts.length === 1) return contactsFind(db, url);
     if (head === "lists") {
       if (parts.length === 1 && get) return listsPage(db);
       if (parts.length === 1 && post) return listsWrite(db, await readBody(request), me);
@@ -1144,6 +1331,8 @@ export async function crm(request, env, identityOf, parts, url) {
         if (post) return addNote(db, NOTE_PARENT[head], nid, await readBody(request), me);
       }
       if (get && head === "leads" && sub === "page") return leadPage(db, nid, lk);
+      if (get && head === "households" && sub === "page") return householdPage(db, nid, lk);
+      if (post && head === "households" && sub === "people") return peopleWrite(db, nid, await readBody(request), me, lk);
       if (head === "leads" && sub === "quotes") {
         if (get) { url.searchParams.set("leadId", String(nid)); return list(db, OBJECTS.quotes, url, lk); }
         if (post) return create(db, OBJECTS.quotes, { ...(await readBody(request) || {}), leadId: nid }, me, lk);

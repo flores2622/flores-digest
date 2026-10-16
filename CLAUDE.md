@@ -40,8 +40,9 @@ Everything caches under `data/`, so a re-run resumes rather than restarting.
   2026-09-25: "we only have 2 auto products. Farmers and BW"):
   `sales_log_auto.product_name` turns an auto-added row's AgencyZoom policy
   type into Farmers-Auto / BW-Auto / Farmers-Home / Foremost-MH / ... by
-  carrier id (Farmers 484668, 484654, 1030958; BW 186, 2448054; Foremost
-  102, 262). The nightly sync re-applies it to the last 14 days' auto rows,
+  carrier id (Farmers 484668, 484654, 1030958, 2448048; BW 186, 2448054;
+  Foremost 102, 262, 2448051 -- the 24480xx Farmers / Foremost ids found on
+  quotes, 2026-10-15). The nightly sync re-applies it to the last 14 days' auto rows,
   never to a row a person typed or edited.
 - **An auto-added Sales sheet row keeps the premium it was sold at, and a
   later AgencyZoom change is FLAGGED, never applied** (Frank, 2026-10-05:
@@ -626,7 +627,8 @@ and which are commercial, the resolutions (their names as the fallback when
 `/v1/api/service-resolutions` fails, deleted ones kept because past SRs
 carry them; id -> renewal outcome key; Unable to Contact's `valid_from`;
 the resolutions `service_notes` trusts per pipeline), the carrier ids the
-Sales sheet names (Farmers / BW / Foremost), the Personal Renewals carriers
+Sales sheet names (Farmers / BW / Foremost; the Worker's copy, with the
+product names, is `site/agencyzoom_data.js` -- `--write-js`), the Personal Renewals carriers
 and the test lead ids. `agencyzoom.py` reads it and says what each key
 means; claims, commercial, service_digest (`PIPELINES`' name sets),
 service_retention, service_notes, sales_log_auto, renewal_report,
@@ -1184,7 +1186,14 @@ and anything without the glow is the checkpoint's (Frank, 2026-09-24).
   WAW; from LAX, SLC and IAD it only ever got 429s. Cloudflare picks where
   a scheduled Worker runs, so the good days were the days it landed in the
   US. **The proxy's server must be in a US data center**; no allowlist
-  request is needed once it is.
+  request is needed once it is. **It runs** (2026-10-15): a DigitalOcean
+  Droplet in New York, 159.223.135.202, at az-proxy.elysiumpro.io (DNS at
+  GoDaddy), set up by `proxy/install.sh` (`PROXY_HOST` names the host);
+  the Worker's two secrets were set at ~4:53 PM that day. **The az log
+  says which host carried the calls**: `host` is the last run's
+  `azBase(env)` and `via` counts each hour's calls by host (until
+  2026-10-15 `host` was written once, when the day's log began, and showed
+  nothing about the proxy).
 - **The Worker logs in to AgencyZoom ONCE a day, not once a run.** A per-run
   login meant ~30 an hour, and on 2026-09-24 AgencyZoom began refusing the
   Worker's logins (403) within the hour while the same account still worked
@@ -1230,6 +1239,21 @@ and anything without the glow is the checkpoint's (Frank, 2026-09-24).
   hosts. `azGet` now queues every request `AZ_GAP_MS` (400 ms) apart and a
   429 pauses AgencyZoom for `AZ_BUSY_MINUTES` (5, or its Retry-After); a
   403 still pauses 30.
+  **The free plan's 10 ms of CPU per timer run is the next wall**
+  (2026-10-16: the proxy carried all 181 of the morning's AgencyZoom calls
+  with no refusal, yet the timer saved nothing all morning, and the board
+  went live only when Frank opened it -- the first viewer's request did the
+  whole morning's catch-up, ~5 minutes). Each run reads and rewrites its R2
+  files: the even-minute run's checkpoint, kept lead list, saved task list,
+  quotes and its own file came to ~1 MB, ~16 ms of JSON parse and rewrite
+  alone before any work (measured locally), and Cloudflare cuts off a run
+  that goes over consistently -- before it saves, and before the az log is
+  flushed. A run that does nothing (AgencyZoom paused) stays under, which is
+  why the log still showed the paused days' logins. `slimTask` keeps only
+  the task fields `taskCompletion` reads (the saved list 505 KB -> 108 KB,
+  Task Completion identical), but the run is still ~12 ms of files alone:
+  **Workers Paid (30 s CPU per timer run) is the fix**, Frank's to switch
+  on.
 - **Contact rate, live contacts and Avg Talk Time are live too** (Frank,
   2026-09-28: "avg talk time, contact rate, and texts and emails should all
   be live as well"), and they are PROVISIONAL: the Worker cannot hear a
@@ -1300,7 +1324,33 @@ customer, so Sold is ONE table of the policies with a Customer column (Frank, 20
 the lead and the policy info, just the policy info with the customer name"; `policyCustomer`): the lead
 marked sold that day by the same producer on the same source, else that producer's only sold household,
 blank when several households share it; a household marked sold whose policy is dated another day is one
-line under it. Household Completion's policies carry the same column. Past days:
+line under it. Household Completion's policies carry the same column. **Quotes and
+policies show their line of business** (Frank, 2026-10-15: "I want to start
+displaying LOB (Line of Business) when listing quotes or policies"): the
+Quoted list has an **LOB** column -- each counted quote's carrier and
+product named by the Sales sheet's own rules (`sales_log_auto.product_name`
+on the quote's `carrierId` + `productName`: Farmers-Home, BW-Auto,
+Foremost-MH; an unknown carrier keeps the bare product), kept by daily.py
+as `quoted_lob` beside `quoted_premium` and put on each `rows.quoted` row
+as `lob` ([{lob, premium}], the same quotes the premium counts; `quoteLobHtml`
+groups repeats "BW-Auto ×2", premiums on hover, a dash when the household
+is quoted by a stage move or a sent quote with no new quote that day).
+**Published 09-24..10-14 were given theirs** (Frank, 2026-10-15: "yes fill
+in the past days too") by `python3 digest_rows.py --add-quote-lob
+2026-09-24 2026-10-14`: each quoted row's quotes re-read, the run of them
+(in id order) whose premiums add up to the published premium -- 186 of 189
+rows, none ambiguous, and on 10-12..10-14 exactly the quote_marks band; the
+3 re-priced since take the lead's quotes inside the day's matched id range
+(the lines that day's, the hover premiums today's). Only `lob` added,
+backups under `backups/2026-10-16-quote-lob/`. Quotes carry two carrier ids
+policies had not shown, now in `carriers`: 2448048 Farmers, 2448051
+Foremost. 09-01..09-23 saved no quoted list and have no LOB column (a range
+shows them blank); the live refresh adds counts, not rows, so the list is
+the checkpoint's. The policy lists' Product column (Sold, Household
+Completion, Life -- already the sheet's product name) is headed **LOB**, and
+every Renewals list (Coming up, Lost, a card's list, Cancellations to check)
+has an **LOB** column from the report's `type` beside the policy number. The
+lead page, Campaigns and the Commercial queue already named the line. Past days:
 `python3 digest_rows.py --backfill 2026-09-01` from R2's saved inputs (no
 quoted premium, and no quoted list before 2026-09-24's `quoted_leads`).
 **Everything on the Digest opens its accounts** (Frank, 2026-09-29:
@@ -1661,6 +1711,23 @@ already downloads. Leads only; a customer's texts are Athena's.
   never adds those people back. Published days 09-01..10-09 had only those
   people's reply and bad-contact rows taken out, counts with them (backups
   under `backups/2026-10-12-messages-service-split/`).
+  **The service team texting a customer is service work, whoever's open
+  lead sits on the number** (Frank, 2026-10-13: Jose Renteria, a customer
+  since 2022 with Mike's open Life Cross Sell lead, texting Crystal about
+  his renewal draft, deductible and mailing address, sat in Needs someone
+  now under Crystal -- "it is a renewal that crystal is working and the
+  lead is assigned to mike, it should be in service"): `messages.build`
+  works out who last typed to each person by the day's end (`last_typed`)
+  and `service_people(..., typed=)` moves a customer (or a number with an
+  open SR) to service when that person is on staff.json's service team
+  (Debbie, Amanda, Crystal) and the open / X-dated lead is not their own;
+  a producer typing, or nobody, keeps them a producer's on any open lead,
+  as before (a first cut that moved them for ANY other producer's lead took
+  121 people off 10-13's page, Sarahi's winbacks on Lorena's old leads among
+  them -- too wide). `route()` answers "open lead" before "customer", so
+  the records are read, not the bucket.
+  10-13's `messages` were rebuilt under it (backups under
+  `backups/2026-10-14-messages-renteria/`).
 - **Who sent it:** TEXT/EMAIL notes carry `attr.outbound` (True/False on a
   text, 1/0 on an email -- `messages._inbound` reads both); a text with
   `attr.triggerRuleId` is an AgencyZoom automation. **Emails have no
@@ -1682,7 +1749,10 @@ already downloads. Leads only; a customer's texts are Athena's.
   gustó / Le encantó / Se rió de / Enfatizó / No le gustó / Preguntó,
   "reacted ... to") and a bare emoji are in `ACK`, so they count as a reply
   and never wait; the Worker gets the same pattern through
-  `live_basis.messages.rx`. Published days were not rebuilt.
+  `live_basis.messages.rx`. Published days were not rebuilt. **So is a thank-you in other
+  words** (Frank, 2026-10-13: Jose Renteria's "I appreciate it!" -- "its the
+  end of the convo"): appreciate it / that / you, much appreciated, got it,
+  will do, noted, awesome, no problem, you're welcome, thanks again.
 - **Replies are windowed from the office's close the business day before**
   (5:30 PM) to 5:30 PM, so evening and weekend replies land on the next
   business day; the clock starts at 8:30 for a reply that came in closed.
@@ -3096,7 +3166,27 @@ repaint clears the list).
   scratchpad, not the repo; `design/flores-board-preview.html` is the
   approved mock-up the restyle followed.
 
-## The board is Pantheon; its assistant is Apollo (2026-10-04)
+## The board is Elysium Pro (2026-10-15); its assistant is Apollo
+
+**The board is named Elysium Pro** (Frank, 2026-10-15: "Lets do Elysium
+Pro" -- the platform is to be sold to other agencies, and "pantheon and
+apollo are taken": Pantheon is a web-hosting company). Everything a person
+reads says it: the page title and header eyebrow, the home-screen app's
+name (`manifest.webmanifest`, `apple-mobile-web-app-title`), the tour's
+welcome, the guides in blueprints.js, the CRM pages' footers and the
+Workflows drafts' badge, the nightly email's header, link and title, and
+Apollo's chat instructions. **Code, comments, file names, R2 keys and this
+file keep the name Pantheon** (as they kept "Sales Floor" before it), so
+nothing saved moves; "Pantheon" below means the board. Elysian, a funded
+insurance-claims AI company, holds trademarks near the name -- Frank was
+told and chose it (2026-10-15). His own USPTO search found KNITT LLC's
+ELYSIUM registrations in class 42 (cloud workload hosting, 2026) and
+Elysium Digital's in 35 / 42; he kept the name ("keep elysium pro, ill
+talk to an attorney") -- do not raise it again unless he asks.
+elysiumpro.com is parked for sale (HugeDomains); elysiumpro.io / .ai /
+.insure / .agency and getelysiumpro.com were open that day.
+
+## The board was Pantheon (2026-10-04); its assistant is Apollo
 
 **The board is named Pantheon** (Frank, 2026-10-04: "let's name it
 Pantheon" -- it "has become much more than a sales floor"): the page title,
@@ -3178,6 +3268,16 @@ over `text/event-stream` with status lines while it reads.
   the drawer's **Usage** button shows it (hidden on a 403), and the
   `coeus_usage` tool lets those viewers ask Coeus itself. The figure is an
   estimate, not the bill.
+- **`node --test site/coeus.test.mjs` runs after touching `coeus.js`**
+  (2026-10-13): the handler end to end with the model stubbed. **Every
+  question failed from 2026-10-06 to 10-13** on a bare Cloudflare 500
+  ("Apollo could not answer (500)" -- Mike, asking for his home quotes
+  since September 1st): the time-zone change (#370) removed the `az` Date
+  that `contextBlock` still read for today's date, a ReferenceError before
+  the stream opened, which nothing ran before a deploy. `azToday()` now;
+  the setup before the stream is one try that answers a JSON error with
+  the reason; and wrangler.jsonc turns on Workers Logs (`observability`),
+  so the dashboard's Observability > Logs holds the next one.
 - **When the board changes, Coeus changes with it** through `blueprints.js`
   -- another reason to keep the guides current in the same change. A new
   figure Coeus should read needs its compact reading added in `coeus.js`.
@@ -3409,6 +3509,28 @@ on a published day. The rules:
   page you were on is kept per tab (`lead-where`, with the filter and the
   Recent-for pick). Still AgencyZoom's: the policies, the calls (the
   nightly's own CALL notes are the next step of phase 3) and texting.
+  **Its quotes come from AgencyZoom and show their LOB** (Frank, 2026-10-15:
+  "show the LOB on the lead page quotes too" -- the CRM held no quotes: the
+  mirror never carried them). The nightly saves every quote it reads for the
+  quoted households (`daily.py`, `data/az_quotes_<day>.json`, an R2 day file,
+  each quote with `_new`, the quote_marks verdict) and `crm_import` loads
+  them as `quotes` rows (AgencyZoom's id; status sold / presented). **A
+  quote's day**: AgencyZoom dates none, so it is R2 `cache/quote_days.json`
+  ({quote id: day}, written once by the backfill), else the quote_marks band
+  its id falls in (after one day's highest id, up to the next's), else the
+  night it was new, else 1970-01-01, which the page shows as "date unknown"
+  -- never the lead's own last-quoted date, which made a years-old Landlord
+  quote look like 10-12's. `crm.js leadPage` names each quote by the Sales
+  sheet's rules (`live.js productName` over `site/agencyzoom_data.js`, the
+  carriers and `product_names` that `python3 agencyzoom.py --write-js`
+  writes -- never by hand; `--check` and `agency_check.py --fix` cover it):
+  "Farmers-Home · $1,264 · presented Sep 24", an unknown carrier keeping
+  product and carrier. **The quoted households of 09-24..10-14 were loaded**
+  (2026-10-16): the 166 quotes on their 123 leads as read that day, each
+  counted quote dated by its published day (the same matching as the Quoted
+  list's LOB backfill), 11 older ones "date unknown"; their files went to
+  R2's cache/<day>/ beside the rest and `crm_sync.restore_from_r2` pulls
+  them.
 - **Pantheon writes its own CALL notes** (Frank, 2026-10-14: "go"; phase 3's
   second step). `crm_calls.py` runs after `crm_sync` at every checkpoint and
   in the nightly: from the run's own RingCentral log (`data/rc_raw_<day>.json`)
@@ -3445,6 +3567,54 @@ on a published day. The rules:
   alone; the real figure is tonight's. Next: `lead_history`, `messages.py`
   and `day_calls.fetch_notes` reading Pantheon's notes, with the
   day-identical cutover test.
+- **Contacts and linked accounts** (Frank, 2026-10-14, with screenshots of
+  AgencyZoom's customer page for Claudia A Gallardo, Celerino A. Gallardo,
+  L.L.C. and Norma De Leon: "I want to make sure that feature is available on
+  my system as well"; "i want the ability to be able to switch the primary
+  account holder"). AgencyZoom's customer page has **Contacts** (the people on
+  an account, one of them Primary), **Customers** (other accounts linked to
+  it) and **Leads**; its public API returns none of the first two (the
+  customer record carries only the primary contact's name; every guessed
+  contacts / linked-customers path 404s -- checked 2026-10-14), so Pantheon
+  keeps its own, migration 0005: `contacts` (a person; one record can sit on
+  several accounts), `household_contacts` (which account each is on,
+  `is_primary` -- at most one per account -- and a relationship) and
+  `household_links` (one row per linked pair, the lower id first, read from
+  either side). **Nothing mirrors them**: az_id stays NULL, so the nightly
+  never touches them. A household with no contact rows shows its own name,
+  phone and email as its one primary contact until the first write makes that
+  real (`ensureContacts`); a business account (a business name, or customer
+  type business / commercial -- AgencyZoom puts the business name in
+  `firstname`) has none until someone adds them. `site/crm.js`:
+  `GET households/<id>/page` (the account's page), `POST households/<id>/
+  people` {op add | attach | detach | primary | edit | link | unlink} (every
+  change an `events` row on the household; link / unlink on both) and `GET
+  contacts?q=` (find a contact by name, email or number, with the accounts it
+  sits on). **Switching the primary account holder is `primary`**: that
+  account only, so Celerino can be primary on Claudia's account and on the
+  LLC's separately. It changes WHO THE ACCOUNT HOLDER IS (the Contacts box,
+  the account page's header facts, the lead page); it does not rewrite the
+  household's own name / phone / email columns, which the mirror still
+  overwrites from AgencyZoom whenever its copy changes -- those follow at the
+  phase 7 cutover. The lead page's side shows the lead's household's
+  Contacts and Linked accounts (**Open account** on its Household box), and
+  Sales Center > Leads' search lists matching **accounts** beside the leads;
+  an account's page (`openAccount` in `site/public/lead.js`) carries the
+  Contacts (**+ Contact**, **Link existing** to put a contact already on
+  another account here, Edit, Remove, **Set primary**), Linked accounts
+  (**Link account**, Unlink; each opens its own page), the account's leads
+  and its policies, SRs and open tasks. **Policies show only when the CRM has
+  tied them to the account**: AgencyZoom's policy records carry no customer,
+  so `policies.household_id` is empty until phase 7. `python3
+  crm_links_seed.py` (check first, `--write` to apply, idempotent) loads
+  the three accounts as Frank's screenshots showed them -- Claudia (Claudia
+  primary, Celerino), the LLC (Celerino primary, Claudia; linked to Claudia),
+  Norma (Norma primary, Melissa De la Torre, Norver LLC, Pricila De La Torre;
+  linked to Nordell, Inc, Delato Corp, Los Choches LLC, Meli's Inc, each
+  business's primary read from the email and phone the screen showed under it:
+  Norma, Norma, Pricila, Melissa). Their other contacts were not on the
+  screens; add them on the account's page. The migration is applied with
+  `wrangler d1 migrations apply pantheon-crm --remote`.
 - `node --test site/crm.test.mjs` is its test; run it after touching
   `site/crm.js` or the schema. A new field is added to the schema (a new
   migration file), to `OBJECTS` in `site/crm.js` and to the test together.

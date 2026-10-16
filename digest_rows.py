@@ -126,11 +126,18 @@ def build(day, log=print):
                                     "note": (r.get("note_producer") or "").replace("&middot;", "·")[:400],
                                     "summary": str(s.get("summary") or "")[:400]})
         qp = p.get("quoted_premium") or {}
+        ql = p.get("quoted_lob")
         for lid in p.get("quoted_leads") or []:
             l = by_id.get(lid) or {}
-            out["quoted"].append({"who": who, "lead": _name(l) if l else "(no lead record)", "lead_id": lid,
-                                  "source": (l.get("leadSourceName") or "").strip(),
-                                  "premium": qp.get(str(lid), "")})
+            row = {"who": who, "lead": _name(l) if l else "(no lead record)", "lead_id": lid,
+                   "source": (l.get("leadSourceName") or "").strip(),
+                   "premium": qp.get(str(lid), "")}
+            # The line of business of each quote counted (Frank, 2026-10-15),
+            # [{lob, premium}]; only on days built with it -- an older day's
+            # row has no `lob` and the board leaves the column off.
+            if ql is not None:
+                row["lob"] = ql.get(str(lid)) or []
+            out["quoted"].append(row)
 
     azid = {v["az_id"]: n for n, v in cfg.PRODUCERS.items()}
     try:
@@ -310,8 +317,99 @@ def add_sold_times(start, end=None, log=print):
         log(f"  {day}: {n} of {len(rows)} households sold given a time")
 
 
+def add_quote_lob(start, end=None, dry=False, force=False, log=print):
+    """Give each published day's Quoted rows their `lob` (2026-10-15): the
+    quotes that day counted, each named by the Sales sheet's rules. The day
+    counted a lead's quotes in one id band (quote_marks), so the quotes are
+    the run of the lead's quotes, in id order, whose premiums add up to the
+    published row's premium -- the run nearest the day's own quotes when
+    more than one does. A row no run matches (a quote re-priced since) takes
+    the lead's quotes inside the id range of the day's matched ones -- the
+    lines are that day's, the premiums on hover today's; with none there it
+    is left without. Backs each page up under backups/<today>-quote-lob/
+    (once: --force redoes a day without touching its backup) and adds only
+    `lob`; every figure stays."""
+    import statistics, publish_board, az_client, sales_log_auto
+    cli, bucket = publish_board._client()
+    end = end or dt.date.today().isoformat()
+    today = dt.date.today().isoformat()
+    az, seen = az_client.AgencyZoom(), {}
+
+    def quotes(lid):
+        if lid not in seen:
+            try:
+                seen[lid] = sorted((q for q in az.quotes(lid) if q.get("id")), key=lambda q: int(q["id"]))
+            except Exception as e:
+                log(f"  quotes for {lid} unreadable ({type(e).__name__})"); seen[lid] = None
+        return seen[lid]
+
+    def runs(qs, want):
+        out = []
+        for i in range(len(qs)):
+            tot = 0
+            for j in range(i, len(qs)):
+                tot += float(qs[j].get("premium") or 0)
+                if round(tot) == want:
+                    out.append(qs[i:j + 1])
+        return out
+
+    keys = [o["Key"][5:15] for o in cli.list_objects_v2(Bucket=bucket, Prefix="days/").get("Contents", []) if o["Key"].endswith(".json")]
+    tally = [0, 0, 0]
+    for day in sorted(d for d in keys if start <= d <= end):
+        raw = cli.get_object(Bucket=bucket, Key=f"days/{day}.json")["Body"].read()
+        doc = json.loads(raw)
+        rows = (doc.get("rows") or {}).get("quoted") or []
+        if not rows or (not force and any(isinstance(r.get("lob"), list) for r in rows)):
+            log(f"  {day}: {'already has LOB' if rows else 'no quoted list'}"); continue
+        found = {}
+        for k, r in enumerate(rows):
+            r.pop("lob", None)
+            try:
+                want = round(float(r.get("premium") or 0))
+            except (TypeError, ValueError):
+                continue
+            if want <= 0:
+                found[k] = "none"            # quoted by a stage move or a sent quote
+            elif r.get("lead_id") and quotes(r["lead_id"]):
+                found[k] = runs(quotes(r["lead_id"]), want)
+        anchors = [int(q["id"]) for c in found.values() if c != "none" and len(c) == 1 for q in c[0]]
+        mid = statistics.median(anchors) if anchors else None
+        n = miss = moved = 0
+        for k, r in enumerate(rows):
+            c = found.get(k)
+            if c == "none":
+                r["lob"] = []; n += 1; continue
+            if not c and c is not None and anchors:
+                inside = [q for q in quotes(r["lead_id"]) if min(anchors) <= int(q["id"]) <= max(anchors)]
+                c = [inside] if inside else []
+                moved += bool(inside)
+            if not c:
+                miss += 1; continue
+            pick = min(c, key=lambda run: max(abs(int(q["id"]) - mid) for q in run)) if mid and len(c) > 1 else c[0]
+            r["lob"] = [{"lob": sales_log_auto.product_name({"carrierId": q.get("carrierId"),
+                                                             "policyTypeName": q.get("productName") or q.get("policyTypeName")}),
+                         "premium": round(float(q.get("premium") or 0))} for q in pick]
+            n += 1
+        tally[0] += n; tally[1] += miss; tally[2] += len(rows)
+        log(f"  {day}: {n} of {len(rows)} quoted rows given LOB" + (f", {moved} re-priced since" if moved else "")
+            + (f", {miss} not matched" if miss else ""))
+        if dry or not n:
+            continue
+        bkey = f"backups/{today}-quote-lob/days/{day}.json"
+        try:
+            cli.head_object(Bucket=bucket, Key=bkey)
+        except Exception:
+            cli.put_object(Bucket=bucket, Key=bkey, Body=raw, ContentType="application/json")
+        cli.put_object(Bucket=bucket, Key=f"days/{day}.json", Body=json.dumps(doc, default=str).encode(),
+                       ContentType="application/json", CacheControl="no-store")
+    log(f"done: {tally[0]} of {tally[2]} rows, {tally[1]} not matched" + (" (dry run)" if dry else ""))
+
+
 if __name__ == "__main__":
-    if sys.argv[1:2] == ["--add-sold-times"]:
+    if sys.argv[1:2] == ["--add-quote-lob"]:
+        add_quote_lob(sys.argv[2], sys.argv[3] if len(sys.argv) > 3 and not sys.argv[3].startswith("--") else None,
+                      dry="--dry-run" in sys.argv, force="--force" in sys.argv)
+    elif sys.argv[1:2] == ["--add-sold-times"]:
         add_sold_times(sys.argv[2], sys.argv[3] if len(sys.argv) > 3 else None)
     elif sys.argv[1:2] == ["--backfill"]:
         backfill(sys.argv[2], sys.argv[3] if len(sys.argv) > 3 and not sys.argv[3].startswith("--") else None,
