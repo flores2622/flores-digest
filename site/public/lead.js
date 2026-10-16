@@ -229,7 +229,7 @@
   function contactCard(c) {
     if (pplForm === "edit:" + c.id) return `<form class="ldform ldct" data-ldctedit="${c.id}">${contactFields(c)}<div class="tkrow"><button type="submit" class="btn tkpri"${ldBusy ? " disabled" : ""}>Save</button><button type="button" class="btn" data-ldcancel="1">Cancel</button></div></form>`;
     return `<div class="ldct${c.primary ? " prim" : ""}"><div class="ldcthead"><b>${cesc(c.name)}</b>${c.relationship ? ` <small class="ldmute">${cesc(c.relationship)}</small>` : ""}
-      ${c.primary ? '<span class="ldprim" title="The account holder">★ Primary</span>' : c.virtual ? "" : `<button type="button" class="ghost ldsm" data-ldprimary="${c.id}" title="Make ${escAttr(c.name)} the account holder">☆ Set primary</button>`}</div>
+      ${c.primary ? '<span class="ldprim" title="The person the account is under: its name, phone and email are theirs">★ Account holder</span>' : c.virtual ? "" : `<button type="button" class="ghost ldsm" data-ldprimary="${c.id}" data-ldprimaryname="${escAttr(c.name)}" title="The account takes ${escAttr(c.name)}'s name, phone and email">☆ Make account holder</button>`}</div>
       <div class="ldctline">${c.email ? `<a href="mailto:${escAttr(c.email)}">${cesc(c.email)}</a>` : '<span class="ldmute">no email</span>'}${c.phone ? ` · ${tel(c.phone)}` : ""}${c.birthday ? ` <small class="ldmute">· born ${cesc(c.birthday)}</small>` : ""}</div>
       ${c.virtual ? "" : `<div class="ldctacts"><button type="button" class="ghost ldsm" data-ldpform="edit:${c.id}">Edit</button><button type="button" class="ghost ldsm" data-ldremove="${c.id}" data-ldremovename="${escAttr(c.name)}">Remove</button></div>`}</div>`;
   }
@@ -264,7 +264,7 @@
       <div class="ldctacts"><button type="button" class="ghost ldsm" data-ldunlink="${l.id}" data-ldunlinkname="${escAttr(l.name)}">Unlink</button></div></div>`).join("");
     return `<section class="ldbox ldppl"><h3>Contacts <span class="ldcount">${pp.contacts.length}</span>
         <span class="ldh3acts"><button type="button" class="ghost ldsm" data-ldpform="contact" title="Add a contact that is already on another account">Link existing</button><button type="button" class="ghost ldsm" data-ldpform="new">+ Contact</button></span></h3>
-      ${pp.holder ? `<p class="ldholder">Account holder: <b>${cesc(pp.holder.name)}</b></p>` : ""}
+      ${pp.holder ? `<p class="ldholder">Account holder: <b>${cesc(pp.holder.name)}</b>${pp.holderChanged && pp.holderChanged.original ? `<br><small class="ldmute" title="Changed ${escAttr(when(pp.holderChanged.setAt))}${pp.holderChanged.setBy ? " by " + escAttr(first(pp.holderChanged.setBy)) : ""}">AgencyZoom still has this account as ${cesc([pp.holderChanged.original.firstname, pp.holderChanged.original.lastname].filter(Boolean).join(" ") || "its old name")}${pp.holderChanged.original.email ? " (" + cesc(pp.holderChanged.original.email) + ")" : ""}; it stays as you set it here.</small>` : ""}</p>` : ""}
       ${pp.contacts.length ? pp.contacts.map(contactCard).join("") : '<p class="ldmute">No contacts yet.</p>'}
       ${form}
       <h3 class="ldh3b">Linked accounts <span class="ldcount">${pp.linked.length}</span><span class="ldh3acts"><button type="button" class="ghost ldsm" data-ldpform="account">Link account</button></span></h3>
@@ -395,7 +395,12 @@
     if (t.dataset.ldacct) { e.preventDefault(); openAccount(t.dataset.ldacct, t.dataset.ldacctname || ""); return; }
     if (t.dataset.ldpform) { pplForm = t.dataset.ldpform; pplHits = null; pplQ = ""; ldMsg = null; repaint(); return; }
     const hh = acctId || (P && P.household && P.household.id), people = pplDeps(), post = (body, ok) => act(() => api(`households/${hh}/people`, body), ok);
-    if (t.dataset.ldprimary) { const c = people.contacts.find(x => String(x.id) === t.dataset.ldprimary); post({ op: "primary", contactId: +t.dataset.ldprimary }, `${c ? c.name : "The contact"} is now the account holder.`); return; }
+    if (t.dataset.ldprimary) {
+      const c = people.contacts.find(x => String(x.id) === t.dataset.ldprimary), nm = c ? c.name : t.dataset.ldprimaryname || "This contact";
+      if (confirm(`Make ${nm} the account holder?\n\nThe account will carry ${nm}'s name, phone and email. Everyone else stays on the account, and you can switch it back any time.`))
+        post({ op: "primary", contactId: +t.dataset.ldprimary }, `${nm} is now the account holder -- the account carries their name, phone and email.`);
+      return;
+    }
     if (t.dataset.ldremove) { if (confirm(`Take ${t.dataset.ldremovename} off this account? The contact stays on any other account.`)) post({ op: "detach", contactId: +t.dataset.ldremove }, `${t.dataset.ldremovename} removed from this account.`); return; }
     if (t.dataset.ldattach) { post({ op: "attach", contactId: +t.dataset.ldattach }, "Contact added to this account."); return; }
     if (t.dataset.ldlinkacct) { post({ op: "link", householdId: +t.dataset.ldlinkacct }, "Account linked."); return; }

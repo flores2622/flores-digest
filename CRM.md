@@ -80,6 +80,9 @@ for the rest. Nothing is switched until the two agree on a published day.
    an account's contacts (one primary, switchable), the accounts linked to it
    and its page -- AgencyZoom's customer-page sections its API never returns;
    see CLAUDE.md, "Contacts and linked accounts", and `crm_links_seed.py`.
+   **Making a contact the account holder changes the account's name, phone and
+   email** (2026-10-16, migration 0006): the mirror leaves those three alone
+   for that account from then on.
    **The lead page is built** (2026-10-13, `site/public/lead.js`, Sales
    Center > Leads): the picker (name or phone, the leads worked most
    recently), and per lead one read (`GET /api/crm/leads/<id>/page`) with
