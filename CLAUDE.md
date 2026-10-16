@@ -627,7 +627,8 @@ and which are commercial, the resolutions (their names as the fallback when
 `/v1/api/service-resolutions` fails, deleted ones kept because past SRs
 carry them; id -> renewal outcome key; Unable to Contact's `valid_from`;
 the resolutions `service_notes` trusts per pipeline), the carrier ids the
-Sales sheet names (Farmers / BW / Foremost), the Personal Renewals carriers
+Sales sheet names (Farmers / BW / Foremost; the Worker's copy, with the
+product names, is `site/agencyzoom_data.js` -- `--write-js`), the Personal Renewals carriers
 and the test lead ids. `agencyzoom.py` reads it and says what each key
 means; claims, commercial, service_digest (`PIPELINES`' name sets),
 service_retention, service_notes, sales_log_auto, renewal_report,
@@ -1134,6 +1135,21 @@ and anything without the glow is the checkpoint's (Frank, 2026-09-24).
   unchanged values reproduce all 12 orders) moved; backups under
   `backups/2026-10-12-quote-recount/`. 09-01..09-23 saved no quoted list and
   stay as they went out.
+  **A three-business-day window, and never twice** (Frank, 2026-10-15:
+  Coral's Ryan Baker $2,008 and Jose Tulao $1,423, built 10-13 and
+  presented 10-14, read $0 -- the one-day rule counted them on NO day,
+  their households first quoted the day after): a quote counts when its id
+  is above `quote_marks.window_mark` (the mark of the run-day two run-days
+  before the last) and no earlier day counted it (`counted_before`, R2
+  `cache/quote_counted.json`, {quote id: day}, written by a run for today,
+  45 days kept; the Worker gets the recent ones as
+  `live_basis.quotes.counted`). Seeded from the published 10-12..10-15
+  pages (each page's premiums re-read and matched first); 10-14 was
+  recounted (Coral $6,639 -> $10,070, team $36,106; order unchanged; backup
+  under `backups/2026-10-16-quote-window/`). **A lead's own record lists its
+  quotes under other numbers** (GET /v1/api/leads/<id>: Dayanne Martinez's
+  3,730,646, against 15,650,391 from /leads/<id>/quotes) -- the marks are
+  the /quotes list's, which is all daily.py and the Worker read.
 - **A one-minute Worker cron** (wrangler.jsonc, business hours) refreshes
   the parts in batches sized for the free plan's 50 outside requests per
   run: even minutes dials/contacts/sales/utilization, odd minutes up to 30
@@ -1463,8 +1479,16 @@ producer is credited only with their own work on their own campaign leads
 (another producer's shows on the lead as "also worked by"). The scoreboard is
 the leaderboard's 5-4-3-2-1 per category (worked, reached, quoted, premium
 quoted, sold, created; ties share the higher points, nothing for zero). The
-page is `site/public/campaigns.js` (view `campaigns`, `opsShow`). A new batch
-is a new `list.json` under its own key, in the same shape.
+page is `site/public/campaigns.js` (view `campaigns`, `opsShow`); a lead's
+name opens AgencyZoom and its **Coaching** button the card (2026-10-16). A new batch
+is a new `list.json` under its own key, in the same shape. **Batch 2 is the sheet's Winback
+tab** (Frank, 2026-10-15: "add the winback list as batch 2";
+`rate-decrease-2`): former customers, same 5 + 5 per producer -- no phone,
+DNC / DNC Litigator / PWC Revoked, a number back on an active policy, or
+anyone in batch 1 left out; the most recently lost first; one lead per
+household (address); BOB / Rewrite leads and leads worked that day skipped;
+a Spanish-tagged lead never to Crystal. With no quote on a former customer,
+the lead's line on the page is its note ("Former customer, inactive <date>").
 
 ## The lead scrub
 
@@ -3311,8 +3335,10 @@ on a published day. The rules:
   `tasksPaint`): Due today / Overdue / Next 7 days / Done today / All open,
   for everyone or one person, Done with what happened (a TASK note on the
   lead), Reschedule, New task hung on a lead or household found by name or
-  number, and a lead's name opening its coaching card (the CRM keeps
-  AgencyZoom's lead ids, so `openLeadCard` finds it). Tasks made here live
+  number, and a lead's name opening it in AgencyZoom with a **Coaching**
+  button beside it for the coaching card (Frank, 2026-10-16: "clicking names
+  for now should take me to agency zoom"; the CRM keeps AgencyZoom's lead
+  ids, so `openLeadCard` finds it). Tasks made here live
   only in Pantheon until phase 2 of `CRM.md` moves `missed_call_tasks`' write
   and `az_tasks.audit` / `live.js taskCompletion` over -- the nightly and the
   board still read AgencyZoom's tasks.
@@ -3498,6 +3524,28 @@ on a published day. The rules:
   page you were on is kept per tab (`lead-where`, with the filter and the
   Recent-for pick). Still AgencyZoom's: the policies, the calls (the
   nightly's own CALL notes are the next step of phase 3) and texting.
+  **Its quotes come from AgencyZoom and show their LOB** (Frank, 2026-10-15:
+  "show the LOB on the lead page quotes too" -- the CRM held no quotes: the
+  mirror never carried them). The nightly saves every quote it reads for the
+  quoted households (`daily.py`, `data/az_quotes_<day>.json`, an R2 day file,
+  each quote with `_new`, the quote_marks verdict) and `crm_import` loads
+  them as `quotes` rows (AgencyZoom's id; status sold / presented). **A
+  quote's day**: AgencyZoom dates none, so it is R2 `cache/quote_days.json`
+  ({quote id: day}, written once by the backfill), else the quote_marks band
+  its id falls in (after one day's highest id, up to the next's), else the
+  night it was new, else 1970-01-01, which the page shows as "date unknown"
+  -- never the lead's own last-quoted date, which made a years-old Landlord
+  quote look like 10-12's. `crm.js leadPage` names each quote by the Sales
+  sheet's rules (`live.js productName` over `site/agencyzoom_data.js`, the
+  carriers and `product_names` that `python3 agencyzoom.py --write-js`
+  writes -- never by hand; `--check` and `agency_check.py --fix` cover it):
+  "Farmers-Home · $1,264 · presented Sep 24", an unknown carrier keeping
+  product and carrier. **The quoted households of 09-24..10-14 were loaded**
+  (2026-10-16): the 166 quotes on their 123 leads as read that day, each
+  counted quote dated by its published day (the same matching as the Quoted
+  list's LOB backfill), 11 older ones "date unknown"; their files went to
+  R2's cache/<day>/ beside the rest and `crm_sync.restore_from_r2` pulls
+  them.
 - **Pantheon writes its own CALL notes** (Frank, 2026-10-14: "go"; phase 3's
   second step). `crm_calls.py` runs after `crm_sync` at every checkpoint and
   in the nightly: from the run's own RingCentral log (`data/rc_raw_<day>.json`)

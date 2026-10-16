@@ -42,6 +42,10 @@ sheet's product names -- stays in those modules.
     test_lead_ids                   lead records that are tests, by id
 
     python3 agencyzoom.py --check     validate the file against the code's keys
+                                      (and the Worker's copy against the file)
+    python3 agencyzoom.py --write-js  rewrite site/agencyzoom_data.js, the
+                                      Worker's copy of the carriers and
+                                      product names (the CRM's lead page)
     python3 agencyzoom.py --discover  read the account's current workflows,
                                       categories, resolutions and carriers
                                       from AgencyZoom and say what the file
@@ -93,7 +97,20 @@ CARRIERS = _ints(DATA["carriers"])
 PRODUCT_RULES = [dict(r) for r in DATA["product_names"]["rules"]]
 PRODUCT_DEFAULT = DATA["product_names"]["default"]
 FF_CARRIERS = {int(x) for x in DATA["renewal_ff_carriers"]}
+JS_PATH = ROOT / "site" / "agencyzoom_data.js"
 TEST_LEAD_IDS = {int(x) for x in DATA["test_lead_ids"]}
+
+
+def _js():
+    """The Worker's copy of what the CRM's pages need from the file: the
+    carriers and the Sales sheet's product-name rules (the lead page names
+    each quote's line of business with them -- live.js productName)."""
+    body = json.dumps({"carriers": {str(k): v for k, v in CARRIERS.items()},
+                       "product_rules": PRODUCT_RULES, "product_default": PRODUCT_DEFAULT},
+                      indent=2, ensure_ascii=False)
+    return ("// WRITTEN BY `python3 agencyzoom.py --write-js` FROM agencyzoom.json -- do not edit.\n"
+            "// The Worker's copy of the carriers and the Sales sheet's product names: see agencyzoom.py.\n"
+            f"export default {body};\n")
 
 
 def check(log=print):
@@ -140,6 +157,8 @@ def check(log=print):
             re.compile(r.get("match") or "")
         except re.error as e:
             bad.append(f"product_names.rules[{i}]: bad match regex ({e})")
+    if not JS_PATH.exists() or JS_PATH.read_text() != _js():
+        bad.append(f"{JS_PATH.relative_to(ROOT)} is out of date: run python3 agencyzoom.py --write-js")
     for b in bad:
         log(f"  agencyzoom.json: {b}")
     return bad
@@ -218,6 +237,10 @@ def label_names():
 
 
 def main(argv):
+    if "--write-js" in argv:
+        JS_PATH.write_text(_js())
+        print(f"wrote {JS_PATH.relative_to(ROOT)}")
+        return 0
     if "--check" in argv:
         bad = check()
         print("agencyzoom.json ok" if not bad else f"{len(bad)} problem(s)")

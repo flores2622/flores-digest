@@ -319,17 +319,18 @@ def restore_from_r2(day, log=print):
         log("  az_household_policies.json: not in R2 -- policies load without their household")
     pull("worker-private/lead_sources.json", "az_lead_sources.json")
     d0 = dt.date.fromisoformat(day)
-    days, got = set(), {"tasks": 0, "live": 0, "done": 0}
+    days, got = set(), {"tasks": 0, "live": 0, "done": 0, "quotes": 0}
     for back in range(RESTORE_DAYS):
         d = (d0 - dt.timedelta(days=back)).isoformat()
         hit = False
-        for kind, name in (("tasks", f"az_tasks_{d}.json"), ("live", f"az_service_tickets_{d}.json"), ("done", f"az_service_tickets_done_{d}.json")):
+        for kind, name in (("tasks", f"az_tasks_{d}.json"), ("live", f"az_service_tickets_{d}.json"),
+                           ("done", f"az_service_tickets_done_{d}.json"), ("quotes", f"az_quotes_{d}.json")):
             if pull(f"cache/{d}/{name}", name):
                 got[kind] += 1
                 hit = True
         if hit:
             days.add(d)
-    log(f"  restored from R2: {day}'s corpus, {got['tasks']} days of tasks, {got['live']} live-SR and {got['done']} completed-SR files")
+    log(f"  restored from R2: {day}'s corpus, {got['tasks']} days of tasks, {got['live']} live-SR, {got['done']} completed-SR and {got['quotes']} quote files")
     if not got["done"]:
         log("  no completed-SR file in the window -- the completed SRs load once the nightly writes one")
     if not (data / "az_pipelines.json").exists() or not (data / "az_service_categories.json").exists():
