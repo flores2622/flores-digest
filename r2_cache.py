@@ -71,6 +71,8 @@ DAY_FILES = [
     # Who the sales page gave to service by what the texts were about
     # (message_topics, 2026-10-16): the Service Center's texts read it.
     "msg_topics_{day}.json",
+    # every quote the nightly read, for the CRM's quote mirror (2026-10-15)
+    "az_quotes_{day}.json",
 ]
 
 

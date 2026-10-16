@@ -110,6 +110,8 @@ def _term(effective, expiry):
 #            still sold 2026-08; not Bristol West's G01- numbers)
 #   BW       186, 2448054 (every G01- policy number)
 #   Foremost 102, 262
+#   2448048 Farmers and 2448051 Foremost are AgencyZoom's carrier ids on QUOTES
+#   (2026-10-15, the Quoted list's LOB), named the same way.
 # Anything else keeps AgencyZoom's own name.
 # The ids are agencyzoom.json's `carriers`.
 CARRIER = dict(agencyzoom.CARRIERS)

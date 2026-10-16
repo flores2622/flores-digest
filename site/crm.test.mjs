@@ -35,7 +35,7 @@ function r2() {
 }
 function fresh() {
   const db = new DatabaseSync(":memory:");
-  for (const f of ["0001_init.sql", "0002_stage_move_note.sql", "0003_lead_source_names.sql", "0004_lists.sql", "0005_contacts_links.sql"])
+  for (const f of ["0001_init.sql", "0002_stage_move_note.sql", "0003_lead_source_names.sql", "0004_lists.sql", "0005_contacts_links.sql", "0006_household_holder.sql"])
     db.exec(readFileSync(new URL("./crm/migrations/" + f, import.meta.url), "utf8"));
   db.exec(`INSERT INTO lead_sources (id, name) VALUES (1, 'Facebook'), (2, 'Home no Auto');
     INSERT INTO workflows (id, name, kind) VALUES (10, '1 Pipeline', 'sales'), (20, 'Service Pipeline', 'service'), (30, 'Late Payments', 'service');
@@ -421,6 +421,12 @@ test("the lead page: one read with the lead, household, policies, tasks, notes, 
   assert.equal(opt.find((o) => o.current).stage, "Quotes Presented");
   assert.equal(opt.find((o) => o.stage === "New").stageName, "New");   // Frank's name, from the map
   assert.deepEqual(p.exits, ["Smart-Cycle", "Dead", "Sold"]);
+  // each quote carries its line of business, named by the Sales sheet's rules
+  await call(env, "POST", `/api/crm/leads/${id}/quotes`, { policyTypeName: "Home", premium: 1326, carrierId: 484668 });
+  await call(env, "POST", `/api/crm/leads/${id}/quotes`, { policyTypeName: "Auto", premium: 900, carrierId: 2448054 });
+  await call(env, "POST", `/api/crm/leads/${id}/quotes`, { policyTypeName: "Boat", premium: 300, carrierId: 777 });
+  const lobs = (await call(env, "GET", `/api/crm/leads/${id}/page`)).body.quotes.map((q) => q.lob).sort();
+  assert.deepEqual(lobs, ["BW-Auto", "Boat", "Farmers-Home"]);   // an unknown carrier keeps the bare product
   // sold: the household appears, with its policies
   assert.equal((await call(env, "POST", `/api/crm/leads/${id}/sold`, {})).status, 200);
   r = await call(env, "GET", `/api/crm/leads/${id}/page`);
@@ -481,9 +487,33 @@ test("contacts and linked accounts: Claudia / the LLC / Norma, a primary that sw
   r = await call(env, "POST", "/api/crm/households/22182068/people", { op: "primary", contactId: celerino });
   assert.equal(r.body.holder.name, "Celerino A Gallardo");
   assert.deepEqual(r.body.contacts.map((c) => c.primary), [true, false]);
-  assert.equal((await people(37076394)).body.holder.name, "Celerino A Gallardo");   // the LLC unchanged
-  const ev = raw.prepare("SELECT before, after FROM events WHERE action = 'primary_changed'").all();
-  assert.equal(ev.length, 1); assert.equal(JSON.parse(ev[0].before).primary, "Claudia Gallardo"); assert.equal(JSON.parse(ev[0].after).primary, "Celerino A Gallardo");
+  assert.equal((await people(37076394)).body.holder.name, "Celerino A Gallardo");   // the LLC has him as its own primary (the same contact), unchanged
+  // ... and the ACCOUNT now reads as Celerino: his name, phone and email, with what AgencyZoom had kept.
+  const acct = raw.prepare("SELECT firstname, lastname, phone, phone_key, email FROM households WHERE id = 22182068").get();
+  assert.deepEqual({ ...acct }, { firstname: "Celerino", lastname: "Gallardo", phone: "(928) 247-3314", phone_key: "+19282473314", email: "gallaale17@hotmail.com" });
+  assert.equal((await call(env, "GET", "/api/crm/households/22182068/page")).body.household.name, "Celerino Gallardo");
+  assert.equal((await call(env, "GET", "/api/crm/search?phone=" + encodeURIComponent("(928) 247-3314"))).body.customers.some((x) => x.id === 22182068), true);   // found by his number now
+  r = await people(22182068);
+  assert.deepEqual([r.body.holderChanged.original.firstname, r.body.holderChanged.original.email, r.body.holderChanged.setBy], ["Claudia", "cgallardo72@gmail.com", "Frank Flores"]);
+  assert.equal((await people(37076394)).body.holderChanged, null);
+  // The business keeps its business name when its holder changes, and follows the holder's phone and email.
+  r = await call(env, "POST", "/api/crm/households/37076394/people", { op: "primary", contactId: claudia });
+  assert.deepEqual({ ...raw.prepare("SELECT firstname, business_name, phone, email FROM households WHERE id = 37076394").get() },
+    { firstname: "Celerino A. Gallardo, L.L.c.", business_name: "Celerino A. Gallardo, L.L.c.", phone: "(928) 246-8408", email: "cgallardo72@gmail.com" });
+  await call(env, "POST", "/api/crm/households/37076394/people", { op: "primary", contactId: celerino });   // and back
+  assert.equal(raw.prepare("SELECT email FROM households WHERE id = 37076394").get().email, "gallaale17@hotmail.com");
+  // Back to Claudia on her own account: her details are the account's again.
+  await call(env, "POST", "/api/crm/households/22182068/people", { op: "primary", contactId: claudia });
+  assert.deepEqual({ ...raw.prepare("SELECT firstname, email FROM households WHERE id = 22182068").get() }, { firstname: "Claudia", email: "cgallardo72@gmail.com" });
+  await call(env, "POST", "/api/crm/households/22182068/people", { op: "primary", contactId: celerino });
+  // Editing the holder's phone is the account's phone.
+  await call(env, "POST", "/api/crm/households/22182068/people", { op: "edit", contactId: celerino, phone: "(928) 555-0101" });
+  assert.equal(raw.prepare("SELECT phone_key FROM households WHERE id = 22182068").get().phone_key, "+19285550101");
+  await call(env, "POST", "/api/crm/households/22182068/people", { op: "edit", contactId: celerino, phone: "(928) 247-3314" });
+  const ev = raw.prepare("SELECT before, after FROM events WHERE action = 'primary_changed' AND object_id = 22182068 ORDER BY id").all();
+  assert.equal(ev.length, 3);   // to Celerino, back to Claudia, to Celerino again
+  assert.equal(JSON.parse(ev[0].before).primary, "Claudia Gallardo"); assert.equal(JSON.parse(ev[0].after).primary, "Celerino A Gallardo");
+  assert.equal(JSON.parse(ev[0].before).email, "cgallardo72@gmail.com"); assert.equal(JSON.parse(ev[0].after).email, "gallaale17@hotmail.com");   // the account's own change is in the history
   // A contact that is not on the account cannot be made primary.
   assert.equal((await call(env, "POST", "/api/crm/households/32707089/people", { op: "primary", contactId: celerino })).status, 404);
   // Link the accounts: seen from both sides, each with its contacts and current policies only.

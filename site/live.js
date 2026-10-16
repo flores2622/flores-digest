@@ -199,9 +199,20 @@ export async function flushAzLog(env, day) {
     const key = `${AZ_LOG_PREFIX}${day}.json`;
     const o = await env.BOARD.get(key);
     const log = o === null ? { day, host: AZ, calls: {}, refusals: [] } : await o.json();
+    // Which address this run's calls went to (2026-10-15: the top-level host
+    // was written once, when the day's log began, so it could not show the
+    // switch to the proxy). `host` is now the last run's, and `via` counts
+    // each hour's calls by the host that carried them -- every call in one
+    // run goes through the same azBase(env).
+    const via = azBase(env);
+    log.host = via;
+    log.via = log.via || {};
     for (const [h, eps] of Object.entries(calls)) {
       const b = log.calls[h] || (log.calls[h] = {});
-      for (const [ep, n] of Object.entries(eps)) b[ep] = (b[ep] || 0) + n;
+      let n = 0;
+      for (const [ep, k] of Object.entries(eps)) { b[ep] = (b[ep] || 0) + k; n += k; }
+      const v = log.via[h] || (log.via[h] = {});
+      v[via] = (v[via] || 0) + n;
     }
     for (const x of refusals) if (log.refusals.length < AZ_LOG_REFUSALS) log.refusals.push(x);
     log.refused = (log.refused || 0) + refusals.length;
@@ -739,6 +750,19 @@ export function taskFlags(notes, day, basis) {
   }
   return isDup || cycled.size ? { dup: isDup, cycled: [...cycled] } : null;
 }
+/* Only what taskCompletion reads (2026-10-16). The saved list,
+   live/<day>-tasks.json, is read back on every even-minute run, and the
+   whole records -- each with its agencyTodo copy of itself, 60% of the bytes
+   -- had grown to ~520 KB: parsing and rewriting that alone took the
+   free plan's 10 ms of CPU a timer run gets, so the runs were cut off
+   before they saved and the board went live only when someone opened it. */
+const TASK_FIELDS = ["id", "title", "comments", "status", "customerId", "customerName", "customerType", "dueDate", "completeDate"];
+export function slimTask(t) {
+  const o = {};
+  for (const k of TASK_FIELDS) if (t[k] !== undefined) o[k] = t[k];
+  o.assignees = (t.assignees || []).map(a => ({ id: a && a.id }));
+  return o;
+}
 async function azTasksDue(env, day, basis, fetchFn) {
   // One producer at a time (assigneeId): the whole-day list's pages overlap
   // and drop tasks (az_client.tasks, 2026-09-29), while one person's day
@@ -753,7 +777,7 @@ async function azTasksDue(env, day, basis, fetchFn) {
       });
       const batch = j.tasks || j.data || [];
       fetched += batch.length;
-      for (const t of batch) if (t && t.id != null && !out.has(t.id)) out.set(t.id, t);
+      for (const t of batch) if (t && t.id != null && !out.has(t.id)) out.set(t.id, slimTask(t));
       page++;
       if (!batch.length || (j.totalCount != null ? fetched >= j.totalCount : batch.length < 100)) break;
       if (page >= TASK_PAGES) { complete = false; break; }
@@ -1095,10 +1119,13 @@ export async function quotedLive(env, day, basis, memo, fetchFn = fetch, wanted 
         else { limited = true; pending++; continue; }
       }
       const arr = Array.isArray(qs) ? qs : (qs || {}).quotes || [];
-      // Only quotes made since the last business day (live_basis.quotes.min_quote_id,
-      // quote_marks.py): AgencyZoom numbers quotes in order and dates none.
+      // Only quotes made in the last three business days (live_basis.quotes.min_quote_id,
+      // quote_marks.window_mark) that no earlier day counted (.counted):
+      // AgencyZoom numbers quotes in order and dates none.
       const minId = Number(q.min_quote_id) || 0;
-      v.prem = arr.filter(x => !minId || !(Number(x.id) <= minId)).reduce((s, x) => s + (Number(x.premium) || 0), 0);
+      const done = new Set((q.counted || []).map(String));
+      v.prem = arr.filter(x => (!minId || !(Number(x.id) <= minId)) && !done.has(String(x.id)))
+        .reduce((s, x) => s + (Number(x.premium) || 0), 0);
     }
     for (const w of fresh) { per[w].hh++; per[w].pq += v.prem; per[w].new_leads.push(Number(id)); }
   }
@@ -1370,13 +1397,42 @@ export async function getLive(env, day) {
    stays live whether or not anyone has it open. */
 export async function scheduledLive(event, env) {
   const day = azToday();
-  const cp = await checkpointFor(env, day);
-  if (!cp.basis) return;
-  const minute = new Date(event.scheduledTime || Date.now()).getUTCMinutes();
+  const t0 = Date.now(), at = new Date(event.scheduledTime || t0);
+  const minute = at.getUTCMinutes(), part = minute % 2 === 0 ? "fast" : "quotes";
+  const run = { run: localClock(at.getTime()), part };
+  await cronBeat(env, day, { ...run, started: new Date(t0).toISOString() });
+  let error = null, skipped = null;
   try {
-    if (minute % 2 === 0) await refreshFast(env, day, cp);
+    const cp = await checkpointFor(env, day);
+    if (!cp.basis) { skipped = cp.reason; return; }
+    if (part === "fast") await refreshFast(env, day, cp);
     else await refreshQuotes(env, day, cp);
-  } finally { await flushAzLog(env, day); }
+  } catch (e) { error = String(e && e.message || e).slice(0, 300); throw e; }
+  finally {
+    await flushAzLog(env, day);
+    await cronBeat(env, day, { ...run, ended: new Date().toISOString(), ms: Date.now() - t0,
+      ...(error ? { error } : skipped ? { skipped } : { ok: true }) });
+  }
+}
+/* Every timer run leaves two lines in worker-private/cron_beat/<day>.json --
+   when it started, and when it ended, how long it took and how (2026-10-16:
+   after the switch to Workers Paid the timer still saved nothing between
+   page views, and nothing here could tell a run that never fired from one
+   that died). A start with no end is a run Cloudflare stopped. The newest
+   CRON_BEAT_KEEP lines are kept; served by no route. */
+const CRON_BEAT_PREFIX = "worker-private/cron_beat/";
+const CRON_BEAT_KEEP = 300;
+async function cronBeat(env, day, line) {
+  if (!env.BOARD) return;
+  console.log(`cron ${line.part} ${line.run} ${line.started ? "started" : `ended ${line.ms}ms ${line.error || line.skipped || "ok"}`}`);
+  try {
+    const key = `${CRON_BEAT_PREFIX}${day}.json`;
+    const o = await env.BOARD.get(key);
+    const log = o === null ? { day, runs: [] } : await o.json();
+    log.runs.push(line);
+    if (log.runs.length > CRON_BEAT_KEEP) log.runs = log.runs.slice(-CRON_BEAT_KEEP);
+    await env.BOARD.put(key, JSON.stringify(log));
+  } catch (e) { console.log(`cron beat not saved: ${e && e.message || e}`); }
 }
 
 function jsonResp(body, status) {

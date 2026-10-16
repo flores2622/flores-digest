@@ -42,7 +42,10 @@
                                            linked accounts, leads, policies, SRs, tasks
      POST /api/crm/households/<id>/people  {op: add | attach | detach | primary | edit
                                            | link | unlink, ...} -- the account's
-                                           contacts and linked accounts (migration 0005)
+                                           contacts and linked accounts (migration 0005);
+                                           `primary` makes a contact the account holder: the
+                                           account carries their name, phone and email, and the
+                                           mirror leaves them alone (migration 0006)
      GET  /api/crm/contacts?q=             find a contact by name, email or phone, with
                                            the accounts it sits on
      GET  /api/crm/events?object=&id=      the audit trail of one record
@@ -84,6 +87,8 @@
    key, so a deploy before the database exists breaks nothing else. */
 
 import { hasBoard, personByEmail, personById, PEOPLE, localStr } from "./staff.js";
+import { productName } from "./live.js";
+import AZ from "./agencyzoom_data.js";
 
 const json = (body, status = 200) => new Response(JSON.stringify(body), {
   status, headers: { "content-type": "application/json; charset=utf-8", "cache-control": "no-store" } });
@@ -763,7 +768,13 @@ async function leadPage(db, id, lk) {
     lead: l,
     household: rows(hhRow)[0] ? rowToApi(OBJECTS.households, rows(hhRow)[0], lk) : null,
     people: rows(hhRow)[0] ? await peopleOf(db, rows(hhRow)[0], lk) : null,
-    policies, quotes: rows(quotes).map((r) => rowToApi(OBJECTS.quotes, r, lk)),
+    // Each quote's line of business, named by the Sales sheet's own rules
+    // (Farmers-Home, BW-Auto ...; Frank, 2026-10-15: "show the LOB on the lead
+    // page quotes too"); an unknown carrier keeps the bare product.
+    policies, quotes: rows(quotes).map((r) => {
+      const q = rowToApi(OBJECTS.quotes, r, lk);
+      return { ...q, lob: productName(q, AZ.carriers, AZ.product_rules, AZ.product_default) || null };
+    }),
     tasks: rows(tasks).map((r) => rowToApi(OBJECTS.tasks, r, lk)),
     serviceTickets: rows(srs).map((r) => rowToApi(OBJECTS.srs, r, lk)),
     notes: rows(notes).map(noteToApi),
@@ -1127,6 +1138,40 @@ async function ensureContacts(db, h, me) {
   await db.prepare("INSERT INTO household_contacts (household_id, contact_id, is_primary, added_at, added_by) VALUES (?, ?, 1, ?, ?)")
     .bind(h.id, r.meta.last_row_id, now, me.id).run();
 }
+/** Make `c` (a contacts row) the face of the account: the household carries
+    THEIR name (a business keeps its business name), phone and email, so the
+    account reads, searches and lists as the person the agency speaks with
+    (Frank, 2026-10-16: "if we never speak with Claudia and always with
+    Celerino, we should be able to make him the account holder"). A field the
+    contact has no value for keeps the account's. The first change records
+    what AgencyZoom had (household_holder.original) and from then on the
+    nightly mirror leaves the name, phone and email alone (crm_import
+    .statement). Returns the columns that changed, before and after. */
+async function applyHolder(db, hhId, c, me) {
+  const cur = await db.prepare("SELECT * FROM households WHERE id = ?").bind(hhId).first();
+  const cols = {};
+  if (!isBusiness(cur)) { cols.firstname = c.firstname || ""; cols.lastname = c.lastname || ""; }
+  if (c.phone) { cols.phone = c.phone; cols.phone_key = phoneKey(c.phone); }
+  if (c.email) cols.email = c.email;
+  const before = {}, after = {};
+  for (const [k, v] of Object.entries(cols)) if ((cur[k] ?? null) !== (v ?? null)) { before[k] = cur[k] ?? null; after[k] = v ?? null; }
+  if (!Object.keys(after).length) return { before, after };
+  const now = localStr();
+  await db.prepare("INSERT OR IGNORE INTO household_holder (household_id, set_at, set_by, original) VALUES (?, ?, ?, ?)")
+    .bind(hhId, now, me.id, JSON.stringify({ firstname: cur.firstname, lastname: cur.lastname, phone: cur.phone, email: cur.email })).run();
+  const keys = Object.keys(cols);
+  await db.prepare(`UPDATE households SET ${keys.map((k) => `${k} = ?`).join(", ")}, modify_date = ? WHERE id = ?`)
+    .bind(...keys.map((k) => cols[k]), now, hhId).run();
+  return { before, after };
+}
+async function holderOverride(db, id) {
+  try {
+    const r = await db.prepare("SELECT * FROM household_holder WHERE household_id = ?").bind(id).first();
+    if (!r) return null;
+    let original = null; try { original = r.original ? JSON.parse(r.original) : null; } catch (_) {}
+    return { setAt: r.set_at, setBy: personName(r.set_by), original };
+  } catch (_) { return null; }   // migration 0006 not applied yet
+}
 /** The accounts linked to `id`, each with its own contacts and current policies. */
 async function linkedOf(db, id, lk) {
   const hs = (await db.prepare("SELECT h.* FROM household_links l JOIN households h ON h.id = CASE WHEN l.household_a = ? THEN l.household_b ELSE l.household_a END WHERE l.household_a = ? OR l.household_b = ? ORDER BY h.business_name, h.lastname, h.firstname, h.id").bind(id, id, id).all()).results || [];
@@ -1141,7 +1186,7 @@ async function linkedOf(db, id, lk) {
 }
 async function peopleOf(db, h, lk) {
   const contacts = await contactsOf(db, h);
-  return { contacts, holder: contacts.find((c) => c.primary) || null, linked: await linkedOf(db, h.id, lk) };
+  return { contacts, holder: contacts.find((c) => c.primary) || null, holderChanged: await holderOverride(db, h.id), linked: await linkedOf(db, h.id, lk) };
 }
 async function contactsFind(db, url) {
   const q = (url.searchParams.get("q") || "").trim().toLowerCase(), pk = phoneKey(q);
@@ -1198,7 +1243,8 @@ async function peopleWrite(db, hhId, body, me, lk) {
     if (primary) await db.prepare("UPDATE household_contacts SET is_primary = 0 WHERE household_id = ?").bind(hhId).run();
     await db.prepare("INSERT INTO household_contacts (household_id, contact_id, is_primary, relationship, added_at, added_by) VALUES (?, ?, ?, ?, ?, ?)")
       .bind(hhId, id, primary ? 1 : 0, (body.relationship || "").trim() || null, now, me.id).run();
-    await ev(hhId, "contact_add", null, { contactId: id, name: cname(c), primary });
+    const face = primary ? await applyHolder(db, hhId, { ...c, id }, me) : null;
+    await ev(hhId, "contact_add", null, { contactId: id, name: cname(c), primary, ...(face && Object.keys(face.after).length ? { account: face.after } : {}) });
   } else if (op === "attach") {
     const c = cid && await db.prepare("SELECT * FROM contacts WHERE id = ?").bind(cid).first();
     if (!c) return json({ error: "contact not found" }, 404);
@@ -1214,7 +1260,10 @@ async function peopleWrite(db, hhId, body, me, lk) {
     let promoted = null;
     if (a.is_primary) {
       const next = await db.prepare("SELECT hc.contact_id, c.firstname, c.middlename, c.lastname FROM household_contacts hc JOIN contacts c ON c.id = hc.contact_id WHERE hc.household_id = ? ORDER BY hc.added_at, hc.contact_id LIMIT 1").bind(hhId).first();
-      if (next) { await db.prepare("UPDATE household_contacts SET is_primary = 1 WHERE household_id = ? AND contact_id = ?").bind(hhId, next.contact_id).run(); promoted = cname(next); }
+      if (next) {
+        await db.prepare("UPDATE household_contacts SET is_primary = 1 WHERE household_id = ? AND contact_id = ?").bind(hhId, next.contact_id).run(); promoted = cname(next);
+        await applyHolder(db, hhId, await db.prepare("SELECT * FROM contacts WHERE id = ?").bind(next.contact_id).first(), me);
+      }
     }
     await ev(hhId, "contact_unlink", { contactId: cid, name: cname(a), primary: !!a.is_primary }, promoted ? { primary: promoted } : null);
   } else if (op === "primary") {
@@ -1224,7 +1273,8 @@ async function peopleWrite(db, hhId, body, me, lk) {
       const prev = await db.prepare("SELECT c.firstname, c.middlename, c.lastname FROM household_contacts hc JOIN contacts c ON c.id = hc.contact_id WHERE hc.household_id = ? AND hc.is_primary = 1").bind(hhId).first();
       await db.prepare("UPDATE household_contacts SET is_primary = 0 WHERE household_id = ?").bind(hhId).run();
       await db.prepare("UPDATE household_contacts SET is_primary = 1 WHERE household_id = ? AND contact_id = ?").bind(hhId, cid).run();
-      await ev(hhId, "primary_changed", { primary: prev ? cname(prev) : null }, { primary: cname(a), contactId: cid });
+      const face = await applyHolder(db, hhId, await db.prepare("SELECT * FROM contacts WHERE id = ?").bind(cid).first(), me);
+      await ev(hhId, "primary_changed", { primary: prev ? cname(prev) : null, ...face.before }, { primary: cname(a), contactId: cid, ...face.after });
     }
   } else if (op === "edit") {
     const a = cid && await attached(cid);
@@ -1240,7 +1290,12 @@ async function peopleWrite(db, hhId, body, me, lk) {
       if (k === "phone") { sets.push("phone_key = ?"); vals.push(phoneKey(v)); }
     }
     if (!(body.firstname !== undefined ? (body.firstname || cur.firstname) : cur.firstname) && !(body.lastname !== undefined ? (body.lastname || cur.lastname) : cur.lastname)) return json({ error: "a contact needs a name" }, 400);
-    if (sets.length) { await db.prepare(`UPDATE contacts SET ${sets.join(", ")} WHERE id = ?`).bind(...vals, cid).run(); await ev(hhId, "contact_edit", { contactId: cid, ...before }, { contactId: cid, ...after }); }
+    if (sets.length) {
+      await db.prepare(`UPDATE contacts SET ${sets.join(", ")} WHERE id = ?`).bind(...vals, cid).run();
+      await ev(hhId, "contact_edit", { contactId: cid, ...before }, { contactId: cid, ...after });
+      // The account holder's own details are the account's.
+      if (a.is_primary) await applyHolder(db, hhId, await db.prepare("SELECT * FROM contacts WHERE id = ?").bind(cid).first(), me);
+    }
   } else if (op === "link" || op === "unlink") {
     const other = Number(body.householdId);
     if (!Number.isInteger(other) || other < 1) return json({ error: "householdId is required" }, 400);
