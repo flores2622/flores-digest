@@ -913,7 +913,7 @@ def build_metrics(day):
         # quote's carrier and product, so a quote reads like a policy sold.
         qlob = {}
         import sales_log_auto
-        for lid in hh.get(who, ()):
+        for lid in sorted(hh.get(who, ())):
             try:
                 qs = az.quotes(lid) or []
             except Exception:
@@ -922,6 +922,15 @@ def build_metrics(day):
             q_seen += [q.get("id") for q in (arr or [])]
             q_saved[str(lid)] = [{**q, "_new": quote_marks.is_new(q, q_mark, q_counted)} for q in (arr or []) if isinstance(q, dict)]
             new = [q for q in (arr or []) if quote_marks.is_new(q, q_mark, q_counted)]
+            # A household already counted for these quotes is not quoted again
+            # on a later day with nothing new (Frank, 2026-10-16: Crystal's
+            # Paola Nunez and Leobardo Espinoza, counted on 10-15 with their
+            # premium, then moved into Quoted / sent the same quotes again on
+            # 10-16, $0). quote_marks.repeat_household.
+            if quote_marks.repeat_household(arr, new, q_counted):
+                hh[who].discard(lid)
+                q_saved[str(lid)] = q_saved.get(str(lid), [])
+                continue
             q_new += [q.get("id") for q in new]
             qprem[str(lid)] = round(sum(float(q.get("premium") or 0) for q in new))
             qlob[str(lid)] = [{"lob": sales_log_auto.product_name(

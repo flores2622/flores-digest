@@ -180,8 +180,10 @@ def _quote_basis(M):
 def _quote_window(day):
     import quote_marks
     mark = quote_marks.window_mark(day)
-    counted = sorted(i for i in quote_marks.counted_before(day)
-                     if mark is None or int(i) > mark)
+    # Every quote an earlier day counted (45 days): above the mark they are
+    # not counted again, and a household holding one with nothing new is not
+    # quoted again (quote_marks.repeat_household).
+    counted = sorted(quote_marks.counted_before(day), key=int)
     return {"min_quote_id": mark, "counted": counted}
 
 
