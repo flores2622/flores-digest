@@ -1133,6 +1133,21 @@ and anything without the glow is the checkpoint's (Frank, 2026-09-24).
   unchanged values reproduce all 12 orders) moved; backups under
   `backups/2026-10-12-quote-recount/`. 09-01..09-23 saved no quoted list and
   stay as they went out.
+  **A three-business-day window, and never twice** (Frank, 2026-10-15:
+  Coral's Ryan Baker $2,008 and Jose Tulao $1,423, built 10-13 and
+  presented 10-14, read $0 -- the one-day rule counted them on NO day,
+  their households first quoted the day after): a quote counts when its id
+  is above `quote_marks.window_mark` (the mark of the run-day two run-days
+  before the last) and no earlier day counted it (`counted_before`, R2
+  `cache/quote_counted.json`, {quote id: day}, written by a run for today,
+  45 days kept; the Worker gets the recent ones as
+  `live_basis.quotes.counted`). Seeded from the published 10-12..10-15
+  pages (each page's premiums re-read and matched first); 10-14 was
+  recounted (Coral $6,639 -> $10,070, team $36,106; order unchanged; backup
+  under `backups/2026-10-16-quote-window/`). **A lead's own record lists its
+  quotes under other numbers** (GET /v1/api/leads/<id>: Dayanne Martinez's
+  3,730,646, against 15,650,391 from /leads/<id>/quotes) -- the marks are
+  the /quotes list's, which is all daily.py and the Worker read.
 - **A one-minute Worker cron** (wrangler.jsonc, business hours) refreshes
   the parts in batches sized for the free plan's 50 outside requests per
   run: even minutes dials/contacts/sales/utilization, odd minutes up to 30
