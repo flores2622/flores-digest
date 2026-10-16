@@ -3670,7 +3670,16 @@ on a published day. The rules:
   (**Link account**, Unlink; each opens its own page), the account's leads
   and its policies, SRs and open tasks. **Policies show only when the CRM has
   tied them to the account**: AgencyZoom's policy records carry no customer,
-  so `policies.household_id` is empty until phase 7. `python3
+  so `policies.household_id` is empty until phase 7. **Its policies show
+  their LOB** (Frank, 2026-10-16: "show the LOB on the account page policies
+  too"), named like the quotes (`crm.js withLob`, the Sales sheet's rules):
+  an LOB / Premium / Sold / Status table, the policy number under the LOB --
+  the lead page's household policies the same. **A policy's status is a
+  word** (`crm_import.POLICY_STATUS`: active / pending = next term issued /
+  expired / cancelled), and the page reads it so (Current / Next term / Past /
+  Cancelled): it had compared numbers, so every policy read "Past", current
+  ones did not sort first, and a linked account's "N current policies" was
+  always 0 -- fixed the same day. `python3
   crm_links_seed.py` (check first, `--write` to apply, idempotent) loads
   the three accounts as Frank's screenshots showed them -- Claudia (Claudia
   primary, Celerino), the LLC (Celerino primary, Claudia; linked to Claudia),
