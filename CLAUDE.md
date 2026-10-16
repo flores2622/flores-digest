@@ -1687,6 +1687,33 @@ already downloads. Leads only; a customer's texts are Athena's.
   the records are read, not the bucket.
   10-13's `messages` were rebuilt under it (backups under
   `backups/2026-10-14-messages-renteria/`).
+  **What the conversation is about decides first** (Frank, 2026-10-16:
+  "can we just figure out what their responding to and decide if its for
+  service or sales?"): every person on a number that routes to service
+  (`messages.routes_to_service`) with someone TYPING in the reply window is
+  read by `message_topics.py` -- the window's messages, the three before it
+  they may be answering (`messages.conversation`, redacted) and a line about
+  the records (`records_line`) -- as sales (a quote, a new policy, a
+  winback, a reply to a sales drip, paperwork on a sale in the last 30
+  days), service (a renewal, a payment, ID cards, a change, a claim, a
+  REWRITE at renewal -- Rewrite is the service department's) or unclear. A
+  sales or service read decides before every rule above; unclear, no read
+  or only automation leaves those rules to decide. A sale still being
+  worked keeps a mixed conversation sales (Perla / Mike's home quote, 10-13);
+  a new product the person turned down does not (Debra Mihalicz, Sharone
+  O'Brien). The cache is by number + the text read
+  (`data/message_topic_reads.json` + R2 `cache/message_topic_reads.json`),
+  so a checkpoint re-reads only a conversation that grew; 10-13 had 34.
+  **The Service Center takes the same decision**: `message_topics.save_day`
+  writes `data/msg_topics_<day>.json` (an R2 day file) with the numbers
+  given to service and the ones a read kept as sales, and
+  `service_messages.build` counts the first as its own (even with an open
+  lead on the number -- Jose Renteria had been on neither page) and drops
+  the second, so a person is on one page only (Everardo De La Cruz and
+  Lorena Renteria, prospects shopping Crystal's quotes, had been on both).
+  The Worker keeps the checkpoint's service list as before. 10-13 was
+  rebuilt both sides (backups under `backups/2026-10-16-messages-topics/`);
+  10-14 and 10-15 stay as they went out.
 - **Who sent it:** TEXT/EMAIL notes carry `attr.outbound` (True/False on a
   text, 1/0 on an email -- `messages._inbound` reads both); a text with
   `attr.triggerRuleId` is an AgencyZoom automation. **Emails have no
@@ -2347,7 +2374,8 @@ of how Coach AI's figures read while they were used.
 ## Cost
 
 Transcription is Deepgram, paid per audio minute (about $1-2 a day; below). **The Anthropic API reads in `call_summary.py`,
-`renewal_notes.py` and `service_notes.py` are the only paid steps** (plus
+`renewal_notes.py`, `service_notes.py` and `message_topics.py` (a few dozen
+shared conversations a day, 20 a call) are the only paid steps** (plus
 `sendoff.py` and `assume_reread.py --backfill`, each run once for September) — roughly one call per live
 contact per day, plus one call per 25 renewal SR notes (each SR's note is read
 once and kept in `data/renewal_note_reads.json` and its R2 copy; only an edited

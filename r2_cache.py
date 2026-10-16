@@ -68,6 +68,9 @@ DAY_FILES = [
     # so a re-run in a fresh container does not email them twice.
     "sent_{day}_ops.json", "sent_{day}_staff.json",
     "servicetx_{day}.json",
+    # Who the sales page gave to service by what the texts were about
+    # (message_topics, 2026-10-16): the Service Center's texts read it.
+    "msg_topics_{day}.json",
 ]
 
 
