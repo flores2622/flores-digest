@@ -1135,6 +1135,14 @@ and anything without the glow is the checkpoint's (Frank, 2026-09-24).
   unchanged values reproduce all 12 orders) moved; backups under
   `backups/2026-10-12-quote-recount/`. 09-01..09-23 saved no quoted list and
   stay as they went out.
+  **A move back to where the day started is not a quote** (Frank,
+  2026-10-16: Sarahi's Denisse Rodriguez, already at Quotes Presented, moved
+  to Ready to Present and straight back six seconds later, $0, before a
+  follow-up appointment -- "take her off"): a producer's move into a quoted
+  stage counts only when it does not end in the stage the lead began the day
+  in (the `from` of the day's first move by anyone; `daily.first_move` /
+  `back_to_start`, `live.js firstMove` / `backToStart`, keep them in step).
+  A real move up still counts. 10-16's checkpoint had her taken off by hand.
   **A three-business-day window, and never twice** (Frank, 2026-10-15:
   Coral's Ryan Baker $2,008 and Jose Tulao $1,423, built 10-13 and
   presented 10-14, read $0 -- the one-day rule counted them on NO day,
