@@ -22,8 +22,10 @@
   // UTC-7, no DST) on weekdays. Cloudflare crons are UTC, so these are that
   // window in UTC: 15:00-23:59 Mon-Fri plus 00:00-00:59 Tue-Sat; another
   // zone, or one with daylight saving, means re-deriving them. Two entries
-  // of the account's cron quota.
-  "triggers": { "crons": ["* 15-23 * * 1-5", "* 0 * * 2-6"] },
+  // of the account's cron quota. Weekdays by NAME: Cloudflare counts
+  // 1 = Sunday, so the "1-5" / "2-6" these once said ran Sunday to Thursday
+  // and never on a Friday (2026-10-16). `python3 staff.py --crons` writes them.
+  "triggers": { "crons": ["* 15-23 * * MON-FRI", "* 0 * * TUE-SAT"] },
   // Workers AI, for Role Play's prospect headshots (site/worker.js
   // roleplayFace; Frank, 2026-09-29). Each face is drawn once and kept in R2.
   "ai": { "binding": "AI" },

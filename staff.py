@@ -145,9 +145,15 @@ def worker_crons(year=None):
         return None, f"{TZ_NAME} is not a whole-hour offset; write the crons by hand"
     start = (WORKER_CRON_HOURS[0] - int(off)) % 24
     end = (WORKER_CRON_HOURS[1] - int(off)) % 24
+    # Weekdays by NAME: Cloudflare counts 1 = Sunday (Quartz), so the "1-5"
+    # these lines once carried meant Sunday to Thursday -- no timer on a
+    # Friday (found 2026-10-16, a Friday; the dashboard's "Next" said Sunday).
     if start <= end:
-        return [f"* {start}-{end} * * 1-5"], None
-    return [f"* {start}-23 * * 1-5", f"* 0-{end} * * 2-6" if end else "* 0 * * 2-6"], None
+        return [f"* {start}-{end} * * MON-FRI"], None
+    tail = f"* 0-{end} * * " if end else "* 0 * * "
+    if off < 0:     # the window runs past UTC midnight into the next UTC day
+        return [f"* {start}-23 * * MON-FRI", tail + "TUE-SAT"], None
+    return [f"* {start}-23 * * SUN-THU", tail + "MON-FRI"], None
 
 # --- the agency's clock -----------------------------------------------------
 TZ_NAME = AGENCY.get("timezone") or "America/Phoenix"
