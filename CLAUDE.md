@@ -1266,9 +1266,17 @@ and anything without the glow is the checkpoint's (Frank, 2026-09-24).
   flushed. A run that does nothing (AgencyZoom paused) stays under, which is
   why the log still showed the paused days' logins. `slimTask` keeps only
   the task fields `taskCompletion` reads (the saved list 505 KB -> 108 KB,
-  Task Completion identical), but the run is still ~12 ms of files alone:
-  **Workers Paid (30 s CPU per timer run) is the fix**, Frank's to switch
-  on.
+  Task Completion identical), but the run is still ~12 ms of files alone,
+  so Frank moved the account to **Workers Paid** (30 s CPU per timer run)
+  the same day. **And the timer never ran on a Friday** (found that Friday,
+  2026-10-16, when nothing saved even on Paid): Cloudflare counts weekdays
+  from 1 = SUNDAY, so wrangler.jsonc's `1-5` / `2-6` were Sunday-Thursday
+  and the 5 PM hour Sunday-Thursday -- the dashboard's Trigger events said
+  "Next: Sun". The lines name the days now (`MON-FRI`, `TUE-SAT`;
+  `staff.worker_crons` writes them). **Each run leaves a heartbeat**:
+  `worker-private/cron_beat/<day>.json`, a start and an end line per run (ms,
+  ok / error / skipped, newest 300) -- a start with no end is a run
+  Cloudflare stopped, no lines at all is a timer that did not fire.
 - **Contact rate, live contacts and Avg Talk Time are live too** (Frank,
   2026-09-28: "avg talk time, contact rate, and texts and emails should all
   be live as well"), and they are PROVISIONAL: the Worker cannot hear a
