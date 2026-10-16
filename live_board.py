@@ -169,10 +169,20 @@ def _quote_basis(M):
         "stage_pattern": daily.QUOTED_STAGE.pattern,
         "presented_pattern": daily._PRESENTED.pattern,
         "past_pattern": daily._PAST.pattern,
-        # Premium quoted counts only quotes above this id -- made since the
-        # last business day (quote_marks; Frank, 2026-10-12). None counts all.
-        "min_quote_id": quote_marks.mark_before(M.get("day") or staff.today()),
+        # Premium quoted counts only quotes above this id -- made in the last
+        # three business days (quote_marks.window_mark) -- and none an earlier
+        # day already counted (`counted`, only those above the id: the rest
+        # are out anyway). None counts all.
+        **_quote_window(M.get("day") or staff.today()),
     }
+
+
+def _quote_window(day):
+    import quote_marks
+    mark = quote_marks.window_mark(day)
+    counted = sorted(i for i in quote_marks.counted_before(day)
+                     if mark is None or int(i) > mark)
+    return {"min_quote_id": mark, "counted": counted}
 
 
 # How long a dial made since the checkpoint must run, with nothing written

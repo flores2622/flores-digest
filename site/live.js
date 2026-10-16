@@ -1119,10 +1119,13 @@ export async function quotedLive(env, day, basis, memo, fetchFn = fetch, wanted 
         else { limited = true; pending++; continue; }
       }
       const arr = Array.isArray(qs) ? qs : (qs || {}).quotes || [];
-      // Only quotes made since the last business day (live_basis.quotes.min_quote_id,
-      // quote_marks.py): AgencyZoom numbers quotes in order and dates none.
+      // Only quotes made in the last three business days (live_basis.quotes.min_quote_id,
+      // quote_marks.window_mark) that no earlier day counted (.counted):
+      // AgencyZoom numbers quotes in order and dates none.
       const minId = Number(q.min_quote_id) || 0;
-      v.prem = arr.filter(x => !minId || !(Number(x.id) <= minId)).reduce((s, x) => s + (Number(x.premium) || 0), 0);
+      const done = new Set((q.counted || []).map(String));
+      v.prem = arr.filter(x => (!minId || !(Number(x.id) <= minId)) && !done.has(String(x.id)))
+        .reduce((s, x) => s + (Number(x.premium) || 0), 0);
     }
     for (const w of fresh) { per[w].hh++; per[w].pq += v.prem; per[w].new_leads.push(Number(id)); }
   }
