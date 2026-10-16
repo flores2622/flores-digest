@@ -1119,7 +1119,7 @@ export async function quotedLive(env, day, basis, memo, fetchFn = fetch, wanted 
       else { limited = true; pending++; if (was) leads[id] = was; continue; }
     }
     const ns = Array.isArray(notes) ? notes : [];
-    leads[id] = { act: l.lastActivityDate, who: [...quotedBy(l, ns, day, basis, rx)], prem: was ? was.prem : null,
+    leads[id] = { act: l.lastActivityDate, who: [...quotedBy(l, ns, day, basis, rx)], prem: was ? was.prem : null, rep: was ? was.rep : undefined,
       lead: { firstname: l.firstname, lastname: l.lastname, assignedTo: l.assignedTo, phone: l.phone, secondaryPhone: l.secondaryPhone },
       items: contactItems(ns, day, basis), events: messageEvents(l, ns, day, basis, presented),
       tf: taskFlags(ns, day, basis) };
@@ -1128,6 +1128,7 @@ export async function quotedLive(env, day, basis, memo, fetchFn = fetch, wanted 
   for (const [id, v] of Object.entries(leads)) {
     const fresh = v.who.filter(w => per[w] && !(already[w] || new Set()).has(id));
     if (!fresh.length) continue;
+    if (v.rep === undefined) v.prem = null;   // read before repeat_household: read its quotes once more
     if (v.prem == null) {
       if (quotesRead >= QUOTES_PER_REFRESH || limited) { pending++; continue; }
       quotesRead++;
@@ -1146,9 +1147,13 @@ export async function quotedLive(env, day, basis, memo, fetchFn = fetch, wanted 
       // AgencyZoom numbers quotes in order and dates none.
       const minId = Number(q.min_quote_id) || 0;
       const done = new Set((q.counted || []).map(String));
-      v.prem = arr.filter(x => (!minId || !(Number(x.id) <= minId)) && !done.has(String(x.id)))
-        .reduce((s, x) => s + (Number(x.premium) || 0), 0);
+      const fresh_q = arr.filter(x => (!minId || !(Number(x.id) <= minId)) && !done.has(String(x.id)));
+      v.prem = fresh_q.reduce((s, x) => s + (Number(x.premium) || 0), 0);
+      // quote_marks.repeat_household: no new quote, and an earlier day already
+      // counted one of its quotes -- not quoted again (Crystal's Paola Nunez, 10-16).
+      v.rep = !fresh_q.length && arr.some(x => done.has(String(x.id)));
     }
+    if (v.rep) continue;
     for (const w of fresh) { per[w].hh++; per[w].pq += v.prem; per[w].new_leads.push(Number(id)); }
   }
   for (const v of Object.values(per)) v.pq = Math.round(v.pq);

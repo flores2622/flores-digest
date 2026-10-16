@@ -1142,7 +1142,15 @@ and anything without the glow is the checkpoint's (Frank, 2026-09-24).
   stage counts only when it does not end in the stage the lead began the day
   in (the `from` of the day's first move by anyone; `daily.first_move` /
   `back_to_start`, `live.js firstMove` / `backToStart`, keep them in step).
-  A real move up still counts. 10-16's checkpoint had her taken off by hand.
+  A real move up still counts. **Nor is a household quoted twice for the same
+  quotes** (Frank, 2026-10-16: Crystal's Paola Nunez and Leobardo Espinoza,
+  counted on 10-15 with their premium, then moved into Quoted / sent the same
+  quotes again on 10-16, $0): a household with no new quote, one of whose
+  quotes an earlier day counted (`cache/quote_counted.json`), is not a
+  household quoted (`quote_marks.repeat_household`; live, `v.rep` in
+  `quotedLive`, `live_basis.quotes.counted` now every counted id, not only
+  those above the mark). A household whose quotes no day counted still
+  counts as before. 10-16's checkpoint had all three taken off by hand.
   **A three-business-day window, and never twice** (Frank, 2026-10-15:
   Coral's Ryan Baker $2,008 and Jose Tulao $1,423, built 10-13 and
   presented 10-14, read $0 -- the one-day rule counted them on NO day,

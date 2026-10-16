@@ -109,6 +109,18 @@ def is_new(quote, mark, counted=()):
         return True
 
 
+def repeat_household(quotes, new, counted):
+    """True when a household has no new quote and at least one of its quotes
+    was already counted on an earlier day: it was quoted then, and a stage
+    move or the same quotes sent again today does not quote it twice (Frank,
+    2026-10-16: Crystal's Paola Nunez and Leobardo Espinoza). A household
+    whose quotes no day counted (older than the record, or none on file)
+    still counts as before. Mirrored by site/live.js quotedLive."""
+    if new or not counted:
+        return False
+    return any(str((q or {}).get("id")) in counted for q in quotes or ())
+
+
 def note(day, ids, log=print):
     """Record the highest quote id read today. Past days are never written."""
     ids = [int(i) for i in ids if str(i).isdigit()]
