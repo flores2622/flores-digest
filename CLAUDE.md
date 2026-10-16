@@ -1414,7 +1414,8 @@ producer is credited only with their own work on their own campaign leads
 (another producer's shows on the lead as "also worked by"). The scoreboard is
 the leaderboard's 5-4-3-2-1 per category (worked, reached, quoted, premium
 quoted, sold, created; ties share the higher points, nothing for zero). The
-page is `site/public/campaigns.js` (view `campaigns`, `opsShow`). A new batch
+page is `site/public/campaigns.js` (view `campaigns`, `opsShow`); a lead's
+name opens AgencyZoom and its **Coaching** button the card (2026-10-16). A new batch
 is a new `list.json` under its own key, in the same shape. **Batch 2 is the sheet's Winback
 tab** (Frank, 2026-10-15: "add the winback list as batch 2";
 `rate-decrease-2`): former customers, same 5 + 5 per producer -- no phone,
@@ -3219,8 +3220,10 @@ on a published day. The rules:
   `tasksPaint`): Due today / Overdue / Next 7 days / Done today / All open,
   for everyone or one person, Done with what happened (a TASK note on the
   lead), Reschedule, New task hung on a lead or household found by name or
-  number, and a lead's name opening its coaching card (the CRM keeps
-  AgencyZoom's lead ids, so `openLeadCard` finds it). Tasks made here live
+  number, and a lead's name opening it in AgencyZoom with a **Coaching**
+  button beside it for the coaching card (Frank, 2026-10-16: "clicking names
+  for now should take me to agency zoom"; the CRM keeps AgencyZoom's lead
+  ids, so `openLeadCard` finds it). Tasks made here live
   only in Pantheon until phase 2 of `CRM.md` moves `missed_call_tasks`' write
   and `az_tasks.audit` / `live.js taskCompletion` over -- the nightly and the
   board still read AgencyZoom's tasks.
