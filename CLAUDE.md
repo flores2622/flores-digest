@@ -1238,6 +1238,21 @@ and anything without the glow is the checkpoint's (Frank, 2026-09-24).
   hosts. `azGet` now queues every request `AZ_GAP_MS` (400 ms) apart and a
   429 pauses AgencyZoom for `AZ_BUSY_MINUTES` (5, or its Retry-After); a
   403 still pauses 30.
+  **The free plan's 10 ms of CPU per timer run is the next wall**
+  (2026-10-16: the proxy carried all 181 of the morning's AgencyZoom calls
+  with no refusal, yet the timer saved nothing all morning, and the board
+  went live only when Frank opened it -- the first viewer's request did the
+  whole morning's catch-up, ~5 minutes). Each run reads and rewrites its R2
+  files: the even-minute run's checkpoint, kept lead list, saved task list,
+  quotes and its own file came to ~1 MB, ~16 ms of JSON parse and rewrite
+  alone before any work (measured locally), and Cloudflare cuts off a run
+  that goes over consistently -- before it saves, and before the az log is
+  flushed. A run that does nothing (AgencyZoom paused) stays under, which is
+  why the log still showed the paused days' logins. `slimTask` keeps only
+  the task fields `taskCompletion` reads (the saved list 505 KB -> 108 KB,
+  Task Completion identical), but the run is still ~12 ms of files alone:
+  **Workers Paid (30 s CPU per timer run) is the fix**, Frank's to switch
+  on.
 - **Contact rate, live contacts and Avg Talk Time are live too** (Frank,
   2026-09-28: "avg talk time, contact rate, and texts and emails should all
   be live as well"), and they are PROVISIONAL: the Worker cannot hear a
