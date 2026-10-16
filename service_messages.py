@@ -220,6 +220,11 @@ def build(day, idx=None, commercial_only=frozenset(), log=log, download_notes=Tr
     day_end = msg._clock(dt.date.fromisoformat(day), (23, 59))
     opens_at = msg._clock(dt.date.fromisoformat(day), msg.OFFICE_OPEN)
     templates = {tuple(x) for x in raw.get("templates") or []}
+    try:
+        import message_topics
+        decided = message_topics.load_day(day)
+    except Exception:
+        decided = None
     names = raw.get("names") or {}
 
     def bucket(n):
@@ -325,6 +330,15 @@ def build(day, idx=None, commercial_only=frozenset(), log=log, download_notes=Tr
         evs.sort(key=lambda e: e["at"])
         b = bucket(n)
         mine = b in SERVICE_BUCKETS
+        # The sales page's own decision for the people on both sides
+        # (message_topics, 2026-10-16): one it handed to service is ours
+        # even with an open lead on the number, one it kept is not -- so no
+        # one is on both pages, or on neither. Commercial stays Cerberus's.
+        if decided is not None and b != "commercial":
+            if n[-10:] in decided[0]:
+                mine = True
+            elif n[-10:] in decided[1]:
+                mine = False
         # Renewal business (Frank, 2026-09-27: "everything should be
         # separated"): every SR the customer has open is a renewal SR, or the
         # message itself is about the renewal.

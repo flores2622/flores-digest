@@ -325,7 +325,44 @@ def build(day, log=print, live=False):
         sent = [e for e in evs if e["kind"] == "sent" and e.get("by") and e["at"] <= day_end]
         if sent:
             last_typed[key] = max(sent, key=lambda e: e["at"])["by"]
-    service = service_people(day, set(person.values()), log=log, typed=last_typed)
+    # What each shared person's conversation is about (Frank, 2026-10-16:
+    # "can we just figure out what their responding to and decide if its for
+    # service or sales?"): a number that routes to service and has a lead is
+    # read by message_topics, and the read decides before the records do.
+    keys = set(person.values())
+    try:
+        import missed_call_audit as mca
+        idx = mca.build_index(day)[0]
+    except Exception as e:
+        log(f"  messages: customers not told apart ({type(e).__name__})")
+        idx = None
+    topics = {}
+    if idx is not None:
+        convs = {}
+        for k in keys:
+            hit = idx.get(k[-10:]) if not k.startswith("lead:") else None
+            if hit and routes_to_service(hit):
+                c = conversation(events.get(k, ()), start, end, records_line(hit, day))
+                if c:
+                    convs[k] = c
+        if convs:
+            try:
+                import message_topics
+                topics = message_topics.read(convs, log=log)
+            except Exception as e:
+                log(f"  messages: topics not read ({type(e).__name__}: {str(e)[:160]}) -- the records decide")
+                topics = {}
+            n = collections.Counter(topics.values())
+            log(f"  messages: {len(convs)} shared people read by topic -- "
+                f"{n['sales']} sales, {n['service']} service, {n['unclear']} unclear, "
+                f"{len(convs) - len(topics)} not read")
+    service = service_people(day, keys, log=log, idx=idx, typed=last_typed, topics=topics) if idx is not None else set()
+    if idx is not None:
+        try:
+            import message_topics
+            message_topics.save_day(day, service, {k for k, v in topics.items() if v == "sales"})
+        except Exception as e:
+            log(f"  messages: topic decisions not saved for the Service Center ({type(e).__name__})")
 
     stats = {p: collections.Counter() for p in cfg.PRODUCERS}
     replies, quotes, bad = [], [], []
@@ -480,7 +517,72 @@ WORKED_LEAD = (0, 5)          # open, X-dated: a producer's lead still being wor
 NEW_BUSINESS_DAYS = 30
 
 
-def service_people(day, keys, log=print, idx=None, typed=None):
+def routes_to_service(hit):
+    """A customer, or an open SR: the number routes to service. route()
+    answers "open lead" first, so a customer with one is read here from the
+    records, not the bucket."""
+    import missed_call_audit as mca
+    import service_messages as sm
+    return bool(hit and (mca.route(hit)[0] in sm.SERVICE_BUCKETS or hit["cust"]
+                         or any(t.get("status") == 1 for t in hit["tix"])))
+
+
+TOPIC_PRIOR = 3              # messages before the window the person may be answering
+TOPIC_PRIOR_DAYS = 30
+TOPIC_CHARS = 2500
+
+
+def conversation(evs, start, end, records):
+    """What message_topics reads for one person: the typed and automated
+    messages in the reply window, the few before them they may be answering,
+    and the records line -- or None when nobody typed in the window (only
+    automation, or nothing), which leaves the records to decide."""
+    msgs = sorted((e for e in evs if e.get("kind") in ("in", "sent", "auto") and (e.get("text") or e.get("subject"))),
+                  key=lambda e: e["at"])
+    inside = [e for e in msgs if start < e["at"] <= end]
+    if not any(e["kind"] in ("in", "sent") for e in inside):
+        return None
+    floor = start - dt.timedelta(days=TOPIC_PRIOR_DAYS)
+    prior = [e for e in msgs if floor <= e["at"] <= start][-TOPIC_PRIOR:]
+
+    def line(e):
+        ch = "email" if e["type"] == "EMAIL" else "text"
+        who = {"in": f"Person ({ch})", "auto": f"Agency automation ({ch})"}.get(
+            e["kind"], f"Agency, {e.get('by') or 'staff'} ({ch})")
+        subj = f"[subject: {redact(e['subject'])[:120]}] " if e.get("subject") else ""
+        return f"[{e['at'].strftime('%m-%d %H:%M')}] {who}: {subj}{redact(e.get('text') or '')[:400]}"
+    lines = [line(e) for e in prior] + (["--- today ---"] if prior else []) + [line(e) for e in inside]
+    text = "\n".join(lines)
+    while len(text) > TOPIC_CHARS and len(lines) > 2:
+        lines.pop(0)
+        text = "\n".join(lines)
+    return f"Records: {records}\n{text[-TOPIC_CHARS:]}"
+
+
+def records_line(hit, day):
+    """One line about the records on the number, for the read: customer
+    since when, the leads still being worked or sold lately, the open SRs."""
+    out = []
+    since = sorted(str(c.get("asCustomerDate") or "")[:10] for c in hit.get("cust") or () if c.get("asCustomerDate"))
+    if since:
+        days = (dt.date.fromisoformat(day) - dt.date.fromisoformat(since[0])).days
+        out.append(f"customer since {since[0]} ({days} days before this day)")
+    for l in hit.get("lead") or ():
+        st = l.get("status")
+        who = " ".join(x for x in (l.get("assignToFirstname"), l.get("assignToLastname")) if x) or "a producer"
+        src = l.get("leadSourceName") or "a lead"
+        if st in WORKED_LEAD:
+            stage = f", stage {l['workflowStageName']}" if l.get("workflowStageName") else ""
+            out.append(f"{'open' if st == 0 else 'X-dated'} lead: {src}, {who}{stage}")
+        elif st == 2 and l.get("soldDate"):
+            out.append(f"lead sold {str(l['soldDate'])[:10]}: {src}, {who}")
+    for t in hit.get("tix") or ():
+        if t.get("status") == 1:
+            out.append(f"open service request: {t.get('workflowName') or ''} -- {(t.get('subject') or '')[:80]}".strip())
+    return "; ".join(out[:8]) or "none"
+
+
+def service_people(day, keys, log=print, idx=None, typed=None, topics=None):
     """The people among `keys` who are Athena's, not a producer's: their
     number routes to service by the rule the Service Center's own texts use
     (service_messages.SERVICE_BUCKETS through missed_call_audit.route) -- a
@@ -501,8 +603,13 @@ def service_people(day, keys, log=print, idx=None, typed=None):
     mike, it should be in service"): Debbie, Amanda or Crystal (staff.json's
     service team) typing last moves them here unless the open lead is that
     person's own (Crystal's cross-sell). A producer typing, or nobody, keeps
-    them a producer's on any open lead, as before."""
+    them a producer's on any open lead, as before.
+
+    `topics`: per key, what message_topics read the conversation as. A
+    "service" or "sales" read decides before any rule below (Frank,
+    2026-10-16); "unclear", or no read, leaves the rules to decide."""
     typed = typed or {}
+    topics = topics or {}
     az_of = {n: str(v["az_id"]) for n, v in cfg.PRODUCERS.items()}
     service_team = {p["name"] for p in staff.service_team()}
     try:
@@ -517,11 +624,12 @@ def service_people(day, keys, log=print, idx=None, typed=None):
     out = set()
     for k in keys:
         hit = idx.get(k[-10:]) if not k.startswith("lead:") else None
-        # A customer, or an open SR: the number routes to service. route()
-        # answers "open lead" first, so a customer with one is read here
-        # from the records, not the bucket.
-        if not (hit and (mca.route(hit)[0] in sm.SERVICE_BUCKETS or hit["cust"]
-                         or any(t.get("status") == 1 for t in hit["tix"]))):
+        if not routes_to_service(hit):
+            continue
+        if topics.get(k) == "service":
+            out.add(k)
+            continue
+        if topics.get(k) == "sales":
             continue
         worked = [l for l in hit["lead"] if l.get("status") in WORKED_LEAD]
         typer = typed.get(k)
