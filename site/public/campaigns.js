@@ -7,7 +7,7 @@
    (site/campaigns.js, /api/campaigns). Shown only to staff.json's
    `campaigns` (Frank); for anyone else the page never enters the menu or the
    search. Uses the board's helpers ($, cesc, pbadge, DOT, money, opsShow,
-   fmtShortDate, openLeadCard, paint), so it loads after index.html's main
+   fmtShortDate, openLeadCard, AZ_URL, paint), so it loads after index.html's main
    script. */
 (function () {
   let CP = null;           // the last /api/campaigns/<key> answer
@@ -34,6 +34,7 @@
   const badge = n => DOT[n] ? pbadge(DOT[n], first(n)) : `<b>${cesc(first(n) || "—")}</b>`;
   const day = d => d ? fmtShortDate(d) : "—";
   const mins = s => s ? (s >= 60 ? `${Math.round(s / 60)}m` : `${s}s`) : "—";
+  const CP_CSS = `<style>.cpcoach{font-size:11px;padding:2px 7px;margin-left:4px;vertical-align:1px}</style>`;
   const STATUS = {
     sold: ["Sold", "tg"], quoted: ["Quoted", "tg"], reached: ["Reached", "ty"],
     dialed: ["Dialed", "ty"], created: ["Created, not dialed", "ty"], untouched: ["Not touched", "tr"],
@@ -72,10 +73,10 @@
         ? (l.created ? `Create · <span class="tg" title="Created ${cesc(l.created.day)}${l.created.name ? " as " + cesc(l.created.name) : ""}">made ${day(l.created.day)}</span>`
           : (l.lead_ids || []).length ? `Create · <span class="tg">found</span>` : `Create · <span class="tr">not yet</span>`)
         : `Reassign${l.from ? ` <span class="sd">from ${cesc(l.from)}</span>` : ""}`;
-      const q = (l.quotes || []).map(x => `${x.line} ${money(x.premium)} (${x.date})`).join("; ");
+      const q = (l.quotes || []).map(x => `${x.line} ${money(x.premium)} (${x.date})`).join("; ") || l.note || "";
       return `<tr>
         <td>${badge(l.producer)}</td>
-        <td>${id ? `<a href="#" class="cplead" data-i="${i}">${cesc(l.name)}</a>` : cesc(l.name)}<div class="sd" style="font-size:11px" title="${cesc(q)}">${cesc(q.length > 60 ? q.slice(0, 60) + "…" : q)}</div></td>
+        <td>${id ? `<a href="${AZ_URL.lead}${encodeURIComponent(id)}" target="_blank" rel="noopener" title="Open the lead in AgencyZoom">${cesc(l.name)}</a> <button type="button" class="ghost cpcoach" data-i="${i}" title="Open the lead's coaching card in Elysium Pro">Coaching</button>` : cesc(l.name)}<div class="sd" style="font-size:11px" title="${cesc(q)}">${cesc(q.length > 60 ? q.slice(0, 60) + "…" : q)}</div></td>
         <td>${kind}</td>
         <td><b class="${cls}">${label}</b>${(l.others || []).length ? `<div class="sd" style="font-size:11px">also worked by ${cesc(l.others.map(first).join(", "))}</div>` : ""}</td>
         <td class="num">${l.dials || "—"}</td>
@@ -89,7 +90,7 @@
     return `<div class="sect"><div class="mgtop"><h2>The leads</h2>
         <span><select id="cpwho">${opt("", "Every producer", cpWho)}${names.map(n => opt(n, n, cpWho)).join("")}</select>
         <select id="cpkind">${opt("", "Reassigned and created", cpKind)}${opt("reassign", "Reassigned", cpKind)}${opt("create", "To create", cpKind)}</select></span></div>
-      <p class="sd">A name with a lead behind it opens its coaching card. Reached is talk time on the calls that counted as contacts; the last column is Apollo's summary of the latest one.</p>
+      <p class="sd">A name opens the lead in AgencyZoom; <b>Coaching</b> beside it opens its coaching card here. Reached is talk time on the calls that counted as contacts; the last column is Apollo's summary of the latest one.</p>
       <div class="scroll"><table class="msgt"><thead><tr><th>Producer</th><th>Lead</th><th>Kind</th><th>Where it stands</th><th class="num">Dials</th><th class="num">Reached</th><th class="num">Quoted</th><th>Sold</th><th>Last worked</th><th>Latest call</th></tr></thead>
       <tbody>${rows || `<tr><td colspan="10" class="sd">No leads match.</td></tr>`}</tbody></table></div></div>`;
   }
@@ -108,14 +109,13 @@
     const asof = CP.as_of ? `${CP.as_of.src === "checkpoint" ? "Today's last checkpoint" : "Published"} ${fmtShortDate(CP.as_of.day)}` : "nothing read yet";
     v.innerHTML = `<div class="sect"><div class="mgtop"><h2>${cesc(CP.title)}</h2>${pick}</div>
         <p class="sd" style="margin:6px 0 0">Handed out ${fmtShortDate(CP.start)}${CP.source ? ` from ${cesc(CP.source)}` : ""} · ${(CP.leads || []).length} leads · as of ${asof} (the board's hourly checkpoints; today's last hour shows after the next one).</p></div>
-      ${boardHtml()}${leadsHtml()}`;
+      ${boardHtml()}${leadsHtml()}${CP_CSS}`;
     const s = $("#cppick"); if (s) s.onchange = () => { cpKey = s.value; CP = null; paint(); };
     const w = $("#cpwho"); if (w) w.onchange = () => { cpWho = w.value; paint(); };
     const k = $("#cpkind"); if (k) k.onchange = () => { cpKind = k.value; paint(); };
     const shown = (CP.leads || []).filter(l => (!cpWho || l.producer === cpWho) && (!cpKind || l.kind === cpKind));
-    for (const a of v.querySelectorAll("a.cplead")) a.onclick = ev => {
-      ev.preventDefault();
-      const l = shown[+a.dataset.i];
+    for (const b of v.querySelectorAll("button.cpcoach")) b.onclick = () => {
+      const l = shown[+b.dataset.i];
       if (l) openLeadCard({ id: (l.lead_ids || [])[0], l: l.name });
     };
   };
