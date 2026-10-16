@@ -40,8 +40,9 @@ Everything caches under `data/`, so a re-run resumes rather than restarting.
   2026-09-25: "we only have 2 auto products. Farmers and BW"):
   `sales_log_auto.product_name` turns an auto-added row's AgencyZoom policy
   type into Farmers-Auto / BW-Auto / Farmers-Home / Foremost-MH / ... by
-  carrier id (Farmers 484668, 484654, 1030958; BW 186, 2448054; Foremost
-  102, 262). The nightly sync re-applies it to the last 14 days' auto rows,
+  carrier id (Farmers 484668, 484654, 1030958, 2448048; BW 186, 2448054;
+  Foremost 102, 262, 2448051 -- the 24480xx Farmers / Foremost ids found on
+  quotes, 2026-10-15). The nightly sync re-applies it to the last 14 days' auto rows,
   never to a row a person typed or edited.
 - **An auto-added Sales sheet row keeps the premium it was sold at, and a
   later AgencyZoom change is FLAGGED, never applied** (Frank, 2026-10-05:
@@ -1311,9 +1312,18 @@ as `quoted_lob` beside `quoted_premium` and put on each `rows.quoted` row
 as `lob` ([{lob, premium}], the same quotes the premium counts; `quoteLobHtml`
 groups repeats "BW-Auto ×2", premiums on hover, a dash when the household
 is quoted by a stage move or a sent quote with no new quote that day).
-Days built before 2026-10-15 carry no `lob` and keep the old columns (a
-range shows them blank); the live refresh adds counts, not rows, so the
-list is the checkpoint's. The policy lists' Product column (Sold, Household
+**Published 09-24..10-14 were given theirs** (Frank, 2026-10-15: "yes fill
+in the past days too") by `python3 digest_rows.py --add-quote-lob
+2026-09-24 2026-10-14`: each quoted row's quotes re-read, the run of them
+(in id order) whose premiums add up to the published premium -- 186 of 189
+rows, none ambiguous, and on 10-12..10-14 exactly the quote_marks band; the
+3 re-priced since take the lead's quotes inside the day's matched id range
+(the lines that day's, the hover premiums today's). Only `lob` added,
+backups under `backups/2026-10-16-quote-lob/`. Quotes carry two carrier ids
+policies had not shown, now in `carriers`: 2448048 Farmers, 2448051
+Foremost. 09-01..09-23 saved no quoted list and have no LOB column (a range
+shows them blank); the live refresh adds counts, not rows, so the list is
+the checkpoint's. The policy lists' Product column (Sold, Household
 Completion, Life -- already the sheet's product name) is headed **LOB**, and
 every Renewals list (Coming up, Lost, a card's list, Cancellations to check)
 has an **LOB** column from the report's `type` beside the policy number. The
