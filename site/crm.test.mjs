@@ -457,7 +457,8 @@ test("contacts and linked accounts: Claudia / the LLC / Norma, a primary that sw
     INSERT INTO households (id, firstname, lastname, business_name, phone, email, customer_type, create_date, az_id) VALUES
       (37076394, 'Celerino A. Gallardo, L.L.c.', '', 'Celerino A. Gallardo, L.L.c.', '(928) 247-3314', 'maxxbuilders1@gmail.com', 'business', '2026-06-01 18:47:13', 37076394),
       (900, 'Nordell, Inc', '', 'Nordell, Inc', '(928) 261-8832', 'deleon23norma@gmail.com', 'business', '2025-10-01 00:00:00', 900);
-    INSERT INTO policies (id, household_id, premium, status, create_date) VALUES (1, 37076394, 4250, 1, '2026-06-01 00:00:00'), (2, 37076394, 375, 1, '2026-06-01 00:00:00'), (3, 37076394, 999, 4, '2025-06-01 00:00:00');`);
+    INSERT INTO carriers (id, name, short) VALUES (102, 'Foremost', 'Foremost');
+    INSERT INTO policies (id, household_id, premium, status, create_date, carrier_id, policy_type_name) VALUES (1, 37076394, 4250, 'active', '2026-06-01 00:00:00', 484668, 'Commercial Auto'), (2, 37076394, 375, 'active', '2026-06-01 00:00:00', 102, 'Mobile Home'), (3, 37076394, 999, 'expired', '2025-06-01 00:00:00', NULL, 'Umbrella');`);
   const people = (id) => call(env, "GET", `/api/crm/households/${id}/page`);
   // A plain account shows its own name as its one primary contact, before anything is written.
   let r = await people(22182068);
@@ -466,6 +467,8 @@ test("contacts and linked accounts: Claudia / the LLC / Norma, a primary that sw
   assert.equal(r.body.holder.name, "Claudia Gallardo");
   // A business with no contacts has none (its name is not a person).
   assert.deepEqual((await people(37076394)).body.contacts, []);
+  // Its policies carry their line of business, the Sales sheet's names (an unknown carrier keeps the product).
+  assert.deepEqual((await people(37076394)).body.policies.map((p) => p.lob).sort(), ["Farmers-Auto", "Foremost-MH", "Umbrella"]);
   // Add Celerino to Claudia's account: Claudia becomes a real contact and stays primary.
   r = await call(env, "POST", "/api/crm/households/22182068/people", { op: "add", firstname: "Celerino", middlename: "A", lastname: "Gallardo", email: "gallaale17@hotmail.com", phone: "(928) 247-3314" });
   assert.equal(r.status, 200);

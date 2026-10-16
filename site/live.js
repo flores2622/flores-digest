@@ -595,6 +595,27 @@ function moveOf(text) {
   return text.replace(/^Lead .*? moved from /, "").trim();
 }
 
+/* daily.first_move / back_to_start, line for line: a move into a quoted
+   stage that ends where the lead began the day is not a quote (Sarahi's
+   Denisse Rodriguez, 2026-10-16 -- out to Ready to Present and straight back). */
+export function firstMove(notes, day) {
+  let oldest = null;
+  for (const n of notes || []) {   // newest first: the last of equal stamps is oldest
+    if (n.type !== "MOVE_STAGE" || !String(n.createDate || "").startsWith(day)) continue;
+    if (!oldest || String(n.createDate || "") <= String(oldest.createDate || "")) oldest = n;
+  }
+  return oldest ? moveOf(azText(oldest.body)) : "";
+}
+
+export function backToStart(move, first) {
+  if (!first) return false;
+  const by = / by [^|]*$/;   // the line ends "... by Sarahi Chin"
+  move = move.replace(by, ""); first = first.replace(by, "");
+  const parts = move.split(" to ");
+  for (let k = 1; k < parts.length; k++) if (first.startsWith(parts.slice(k).join(" to ").trim() + " to ")) return true;
+  return false;
+}
+
 export function quotedBy(lead, notes, day, basis, rx) {
   const byAz = Object.fromEntries(Object.entries(basis.producers || {}).map(([n, v]) => [String(v.az_id), n]));
   const names = new Set(Object.keys(basis.producers || {}));
@@ -603,13 +624,14 @@ export function quotedBy(lead, notes, day, basis, rx) {
     const w = byAz[String(lead.assignedTo)];
     if (w) out.add(w);
   }
+  const first = firstMove(notes, day);
   for (const n of notes || []) {
     if (!String(n.createDate || "").startsWith(day) || !names.has(n.createdBy)) continue;
     const text = azText(n.body);
     if (n.type === "MOVE_STAGE") {
       const mv = moveOf(text);
       const dest = (mv.includes(" to ") ? mv.split(" to ").pop() : mv).split("|").pop();
-      if (rx.stage.test(dest)) out.add(n.createdBy);
+      if (rx.stage.test(dest) && !backToStart(mv, first)) out.add(n.createdBy);
     } else {
       const b = text.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ");
       if (rx.presented.test(b) && !rx.past.test(b)) out.add(n.createdBy);

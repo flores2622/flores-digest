@@ -1143,6 +1143,14 @@ and anything without the glow is the checkpoint's (Frank, 2026-09-24).
   unchanged values reproduce all 12 orders) moved; backups under
   `backups/2026-10-12-quote-recount/`. 09-01..09-23 saved no quoted list and
   stay as they went out.
+  **A move back to where the day started is not a quote** (Frank,
+  2026-10-16: Sarahi's Denisse Rodriguez, already at Quotes Presented, moved
+  to Ready to Present and straight back six seconds later, $0, before a
+  follow-up appointment -- "take her off"): a producer's move into a quoted
+  stage counts only when it does not end in the stage the lead began the day
+  in (the `from` of the day's first move by anyone; `daily.first_move` /
+  `back_to_start`, `live.js firstMove` / `backToStart`, keep them in step).
+  A real move up still counts. 10-16's checkpoint had her taken off by hand.
   **A three-business-day window, and never twice** (Frank, 2026-10-15:
   Coral's Ryan Baker $2,008 and Jose Tulao $1,423, built 10-13 and
   presented 10-14, read $0 -- the one-day rule counted them on NO day,
@@ -3678,7 +3686,16 @@ on a published day. The rules:
   (**Link account**, Unlink; each opens its own page), the account's leads
   and its policies, SRs and open tasks. **Policies show only when the CRM has
   tied them to the account**: AgencyZoom's policy records carry no customer,
-  so `policies.household_id` is empty until phase 7. `python3
+  so `policies.household_id` is empty until phase 7. **Its policies show
+  their LOB** (Frank, 2026-10-16: "show the LOB on the account page policies
+  too"), named like the quotes (`crm.js withLob`, the Sales sheet's rules):
+  an LOB / Premium / Sold / Status table, the policy number under the LOB --
+  the lead page's household policies the same. **A policy's status is a
+  word** (`crm_import.POLICY_STATUS`: active / pending = next term issued /
+  expired / cancelled), and the page reads it so (Current / Next term / Past /
+  Cancelled): it had compared numbers, so every policy read "Past", current
+  ones did not sort first, and a linked account's "N current policies" was
+  always 0 -- fixed the same day. `python3
   crm_links_seed.py` (check first, `--write` to apply, idempotent) loads
   the three accounts as Frank's screenshots showed them -- Claudia (Claudia
   primary, Celerino), the LLC (Celerino primary, Claudia; linked to Claudia),
