@@ -1199,6 +1199,13 @@ and anything without the glow is the checkpoint's (Frank, 2026-09-24).
   `quotedLive`, `live_basis.quotes.counted` now every counted id, not only
   those above the mark). A household whose quotes no day counted still
   counts as before. 10-16's checkpoint had all three taken off by hand.
+  **Every published day was recounted under both rules** (Frank, 2026-10-20:
+  "recount all data this way"): each quoted row's notes re-read, 13 rows off
+  9 days (09-24..10-14; Lorena's Michelle Sheridan on four of them), all $0 --
+  only `hh`, `totals.hh`, the `hh` / `closing_hh` tiers, `rows.quoted` and the
+  leaderboard re-scored from the published values moved (one order change,
+  10-13: Sarahi above Crystal); backups under `backups/2026-10-20-quoted-rules/`.
+  09-03 / 09-16 (no premiums) and days with no lead snapshot were left alone.
   **A three-business-day window, and never twice** (Frank, 2026-10-15:
   Coral's Ryan Baker $2,008 and Jose Tulao $1,423, built 10-13 and
   presented 10-14, read $0 -- the one-day rule counted them on NO day,
