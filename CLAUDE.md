@@ -1773,6 +1773,25 @@ has its own ticket so a day picked while another loads wins. Reproduced in
 headless Chromium with a 1.5 s Service fetch: Service then Digest used to
 leave the Digest selected with the Service page drawn.
 
+**Every table with headings sorts on a click** (Frank, 2026-10-20: "make
+the leaderboard categories sortable, and do it wherever it can apply"):
+index.html's sorter (`sortTable` / `applySorts`, a click on any `thead th`
+inside `#view`) -- first click biggest first for a column of numbers (A to
+Z for words), second the other way, third the page's own order (the
+leaderboard's rank); a `tr.tot` row stays last, a hidden / `svc-tx-row`
+row travels with the row above, a blank or "—" cell sorts last; the pick
+is kept per table in sessionStorage `board-sort` (keyed by the page, the
+section heading and the headings' words, never a column index, since the
+leaderboard's columns come and go) and put back after every repaint by a
+subtree MutationObserver, so the live refresh and a drill click keep it.
+`sortValue` reads "$1,234", "12.5% (6)", "2 of 5", "3 / 2" on their first
+figure, "4m 12s" / "1h 12m" / "2.5d" as seconds, "Oct 19" / "10:21 AM" as
+dates and clock times, a leading medal or badge stripped; `data-sort` on a
+cell overrides. Left alone: the editions (`.ed`, `.paper`), the guides'
+tables, the cards' `.askt`, Apollo's drawer, anything `.nosort`. Checked
+in headless Chromium: the leaderboard's three clicks, the Team row pinned,
+the pick surviving a page change and back, a drill list, no errors.
+
 **The range leaderboard is re-ranked on averages** (Frank, 2026-09-28):
 the same seven categories and 5-4-3-2-1 scoring as a single day
 (`rankLeaderboard` on the board, a mirror of `digest_config.
