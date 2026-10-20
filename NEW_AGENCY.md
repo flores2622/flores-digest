@@ -65,7 +65,10 @@ marking NEW and GONE. Fill in:
   the outcome on their own per pipeline (`trusted_by_pipeline`);
 - `carriers` (carrier id -> the short name the Sales sheet uses),
   `product_names` (how the sheet names a policy: ordered rules on carrier
-  and policy type), `renewal_ff_carriers`;
+  and policy type), `sales_sheet` (the Sales sheet's Product and Term
+  dropdowns: per carrier, the AgencyZoom policy types the agency sells --
+  `python3 agencyzoom.py --sheet-products` lists any the saved policy corpus
+  shows sold that are missing -- and the terms), `renewal_ff_carriers`;
 - `email_template_subjects` (the account's drip email subjects, lower-cased,
   the lead's first name taken off the front) and `test_lead_ids`.
 

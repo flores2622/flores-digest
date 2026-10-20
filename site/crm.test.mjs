@@ -55,6 +55,14 @@ function fresh() {
 }
 const FRANK = STAFF.people.find((p) => p.name.startsWith("Frank"));
 const CRYSTAL = STAFF.people.find((p) => p.name.startsWith("Crystal"));
+// Someone with workflows_suggest and not crm. Nobody is today (the ops team
+// holds crm from 2026-10-20), so Debbie stands in for the test; pop it after.
+function suggestOnly() {
+  const p = STAFF.people.find((x) => x.name.startsWith("Debbie"));
+  p.board = p.board || [];
+  p.board.push("workflows_suggest");
+  return p;
+}
 const who = { email: FRANK.email };
 const identityOf = (req) => ({ email: req.headers.get("x-test-email") || who.email });
 async function call(env, method, path, body, email) {
@@ -329,7 +337,11 @@ test("taskcheck: the last comparisons from R2, newest first, Frank only", async 
   assert.deepEqual(r.body.days.map((x) => x.day), ["2026-10-08", "2026-10-07", "2026-10-06"]);
   assert.equal((await call(env, "GET", "/api/crm/taskcheck", null, CRYSTAL.email)).status, 403);
   const AMANDA = STAFF.people.find((p) => p.name.startsWith("Amanda"));
-  assert.equal((await call(env, "GET", "/api/crm/taskcheck", null, AMANDA.email)).status, 403);   // suggest opens automations only
+  assert.equal((await call(env, "GET", "/api/crm/taskcheck", null, AMANDA.email)).status, 200);   // the ops team holds crm (2026-10-20)
+  const SUG = suggestOnly();
+  try {
+    assert.equal((await call(env, "GET", "/api/crm/taskcheck", null, SUG.email)).status, 403);    // suggest opens automations only
+  } finally { SUG.board.pop(); }
 });
 
 test("automations: the report from R2 and Frank's marks", async () => {
@@ -367,29 +379,36 @@ test("automations: the report from R2 and Frank's marks", async () => {
   assert.equal((await call(env, "POST", "/api/crm/automations/rule", { op: "del", id: "rule:9" })).status, 404);
   r = await call(env, "POST", "/api/crm/automations/rule", { op: "del", id: "rule:1" });
   assert.equal(r.body.rules.length, 0);
-  // the ops team suggests (workflows_suggest): sees the timeline, writes a note, never marks or drafts
+  // the ops team holds crm (2026-10-20), so it edits like Frank
   const AMANDA = STAFF.people.find((p) => p.name.startsWith("Amanda"));
   r = await call(env, "GET", "/api/crm/automations", null, AMANDA.email);
   assert.equal(r.status, 200);
+  assert.equal(r.body.can.edit, true);
+  // workflows_suggest without crm: sees the timeline, writes a note, never marks or drafts
+  const SUG = suggestOnly();
+  try {
+  r = await call(env, "GET", "/api/crm/automations", null, SUG.email);
+  assert.equal(r.status, 200);
   assert.equal(r.body.can.edit, false);
-  assert.equal((await call(env, "POST", "/api/crm/automations/mark", { key: "text:7001", mark: "keep" }, AMANDA.email)).status, 403);
-  assert.equal((await call(env, "POST", "/api/crm/automations/rule", { op: "add", rule: {} }, AMANDA.email)).status, 403);
-  assert.equal((await call(env, "GET", "/api/crm/lookups", null, AMANDA.email)).status, 403);
-  r = await call(env, "POST", "/api/crm/automations/suggest", { op: "add", key: "text:7001", text: "Lead with the producer's name" }, AMANDA.email);
+  assert.equal((await call(env, "POST", "/api/crm/automations/mark", { key: "text:7001", mark: "keep" }, SUG.email)).status, 403);
+  assert.equal((await call(env, "POST", "/api/crm/automations/rule", { op: "add", rule: {} }, SUG.email)).status, 403);
+  assert.equal((await call(env, "GET", "/api/crm/lookups", null, SUG.email)).status, 403);
+  r = await call(env, "POST", "/api/crm/automations/suggest", { op: "add", key: "text:7001", text: "Lead with the producer's name" }, SUG.email);
   assert.equal(r.status, 200, JSON.stringify(r.body));
-  assert.equal(r.body.suggestions[0].by, AMANDA.name);
+  assert.equal(r.body.suggestions[0].by, SUG.name);
   assert.equal(r.body.suggestions[0].done, false);
-  assert.equal((await call(env, "POST", "/api/crm/automations/suggest", { op: "done", id: "sg:1" }, AMANDA.email)).status, 403);
+  assert.equal((await call(env, "POST", "/api/crm/automations/suggest", { op: "done", id: "sg:1" }, SUG.email)).status, 403);
   r = await call(env, "POST", "/api/crm/automations/suggest", { op: "done", id: "sg:1" });
   assert.equal(r.body.suggestions[0].done, true);
   assert.equal(r.body.suggestions[0].done_by, FRANK.name);
   r = await call(env, "POST", "/api/crm/automations/suggest", { op: "add", text: "A Spanish drip for every pipeline" });
   assert.equal(r.body.suggestions[1].key, "general");
-  assert.equal((await call(env, "POST", "/api/crm/automations/suggest", { op: "del", id: "sg:2" }, AMANDA.email)).status, 403);   // not hers
-  r = await call(env, "POST", "/api/crm/automations/suggest", { op: "del", id: "sg:1" }, AMANDA.email);                            // hers
+  assert.equal((await call(env, "POST", "/api/crm/automations/suggest", { op: "del", id: "sg:2" }, SUG.email)).status, 403);   // not hers
+  r = await call(env, "POST", "/api/crm/automations/suggest", { op: "del", id: "sg:1" }, SUG.email);                            // hers
   assert.equal(r.body.suggestions.length, 1);
   r = await call(env, "GET", "/api/crm/automations");
   assert.equal(r.body.suggestions.length, 1);
+  } finally { SUG.board.pop(); }
   assert.equal((await call(env, "GET", "/api/crm/automations", null, CRYSTAL.email)).status, 403);
   assert.equal((await call({ CRM: env.CRM }, "GET", "/api/crm/automations")).status, 503);
 });
