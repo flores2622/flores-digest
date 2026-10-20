@@ -62,7 +62,8 @@
   window.folioGoalsPaint = async function () {
     const v = $("#view");
     if (!FG || (fgEnd && FG.folio_end !== fgEnd)) {
-      try { FG = await load(fgEnd); } catch (e) { v.innerHTML = `<div class="sect"><p class="sd">${cesc(e.message)}</p></div>`; return; }
+      try { FG = await load(fgEnd); } catch (e) { if (view === "goals") v.innerHTML = `<div class="sect"><p class="sd">${cesc(e.message)}</p></div>`; return; }
+      if (view !== "goals") return;   // another page was opened while this loaded
     }
     const end = FG.folio_end, start = FG.folio_start || folioStartFor(end) || end;
     const asof = FG.today < end ? FG.today : end;

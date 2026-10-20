@@ -503,6 +503,7 @@
     $("#topsub").textContent = "leads cleaned up in Apex and AgencyZoom";
     if (!SC) $("#view").innerHTML = '<div class="empty">Loading…</div>';
     await reloadLists();
+    if (view !== "scrub") return;   // another page was opened while this loaded
     if (!SC) { $("#view").innerHTML = '<div class="empty">The lead scrub is only open to the ops team.</div>'; return; }
     if (!scId && (SC.lists || []).length) scId = SC.lists[0].id;
     if (scId) { await openList(scId); return; }

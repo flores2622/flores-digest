@@ -302,6 +302,7 @@
     $("#topsub").textContent = "who gets the next walk-in or call-in";
     if (!ROT) $("#view").innerHTML = '<div class="empty">Loading…</div>';
     try { await rotLoad(); } catch (_) {}
+    if (view !== "rotation") return;   // another page was opened while this loaded
     if (!ROT) { $("#view").innerHTML = '<div class="empty">The rotation is only open to the front desk, Crystal and the ops team.</div>'; return; }
     rotMsg = {};
     repaint();

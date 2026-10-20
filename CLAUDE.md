@@ -1759,6 +1759,19 @@ cards, 30 folds, 10 bars, 6 lists on 10-09), with each producer and Whole
 Agency; an objection bar's filter left on across the other tabs and the
 date; a lead's card opened from the Digest; a refresh on each tab -- 370
 states, no error, nothing to change.
+**The page you clicked last is the one on screen** (Frank, 2026-10-20: "if
+a page is loading and i click on another, it will load as if im on the
+second page i clicked, but load the first one"): every `paint()` takes a
+ticket (`paintSeq`) and hands `stale()` down to every painter that awaits
+a fetch -- the Digest, Post, Editions, Texts & Emails, Coaching, Doubts,
+Training, Sales, Service, Renewals, Claims and Commercial, and
+`ensureCurForRange`, which no longer overwrites `cur` for a paint that
+lost -- so a page still loading when the next is opened draws nothing when
+its fetch lands; the CRM and ops pages (tasks, lists, workflows, campaigns,
+goals, hygiene, rotation, scrub) check `view` the same way, and `loadDay`
+has its own ticket so a day picked while another loads wins. Reproduced in
+headless Chromium with a 1.5 s Service fetch: Service then Digest used to
+leave the Digest selected with the Service page drawn.
 
 **The range leaderboard is re-ranked on averages** (Frank, 2026-09-28):
 the same seven categories and 5-4-3-2-1 scoring as a single day
