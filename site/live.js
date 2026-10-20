@@ -1249,10 +1249,12 @@ const part = async (env, key, fn) => {
    last real sales / sold / speed answers were carried as they were,
    stamped `as_of`, never twice in a row, never over a failed read (keepGood
    does that, with the same stamp) or across a checkpoint. carrySales keeps
-   that shape; at 120 s it carries nothing, since the previous run is
-   always ~120 s old by the time the next one asks. Raise it again if
-   AgencyZoom's firewall starts refusing the proxy's address. */
-export const SALES_REFRESH_SECONDS = 120;
+   that shape; at 60 s it carries nothing between timer runs -- the previous
+   run's answer is ~110 s old when the next even-minute run asks (120 was
+   tried first, 2026-10-20, and still carried every other run) -- and only
+   reuses an answer a page view fetched moments ago. Raise it to 240 again
+   if AgencyZoom's firewall starts refusing the proxy's address. */
+export const SALES_REFRESH_SECONDS = 60;
 export function carrySales(prev, cpAsOf, now = Date.now()) {
   if (!prev || prev.checkpoint !== cpAsOf || !prev.fetched_at) return null;
   const s = prev.sales || {}, d = prev.sold || {};
