@@ -362,7 +362,8 @@
   }
   async function refresh(msg) {
     wfMsg = msg || null;
-    try { D = await api("automations"); } catch (e) { $("#view").innerHTML = `<div class="empty">${cesc(e.message)}</div>`; return; }
+    try { D = await api("automations"); } catch (e) { if (view === "workflows") $("#view").innerHTML = `<div class="empty">${cesc(e.message)}</div>`; return; }
+    if (view !== "workflows") return;   // another page was opened while this loaded
     repaint();
   }
   async function act(fn, ok) {

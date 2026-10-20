@@ -8526,12 +8526,13 @@ function rangeBounds() {
   return { from, to, label };
 }
 
-async function ensureCurForRange() {
+async function ensureCurForRange(stale = () => false) {
   if (rangeMode === "day") { curRangeLabel = ""; curRangeSub = ""; return null; }
   const b = rangeBounds();
   if (b.err) return b.err;
   const { from, to, label } = b;
   const docs = await fetchRangeDocs(from || "", to);
+  if (stale()) return null;   // a newer paint owns `cur` now
   if (!docs.length) return `No reports in ${from || "the start"} → ${to}.`;
   cur = mergeDayDocs(docs); curLive = false; curRangeDocs = docs;
   cur.label = label;
@@ -8620,9 +8621,17 @@ document.addEventListener("click", e => {
   const c = f.querySelector(".flipfront"); if (c) c.click();
 });
 new MutationObserver(() => { placeVista(); flipLists(); fillMonthGoal(); }).observe(document.getElementById("view"), { childList: true });
+/* Every paint carries a ticket. A page still loading when the next one is
+   opened finishes its fetch, finds a newer ticket and draws nothing, so the
+   page you clicked last is the one on screen (Frank, 2026-10-20: "if a page
+   is loading and i click on another, it will load as if im on the second
+   page i clicked, but load the first one"). The ticket is `stale()`, handed
+   down to every painter that awaits; the CRM and ops pages check `view`. */
+let paintSeq = 0;
 async function paint() {
-  try { await paintTab(); wireFeed(); } catch (e) { paintFailed(e); }
-  saveWhere();
+  const seq = ++paintSeq, stale = () => seq !== paintSeq;
+  try { await paintTab(stale); if (!stale()) wireFeed(); } catch (e) { if (!stale()) paintFailed(e); }
+  if (!stale()) saveWhere();
 }
 /* A refresh opens where you were (Frank, 2026-10-02: "when refreshing any
    page, i want it to open back up where i was, not back to the digest"):
@@ -8651,12 +8660,13 @@ function setViewQuiet(v) {
   $$(".tab").forEach(x => x.setAttribute("aria-selected", String(x.dataset.v === c)));
   paintCenterBar();
 }
-async function paintTab() {
+async function paintTab(stale = () => false) {
   const v = $("#view");
   v.dataset.view = view;
   if (view === "digest") {
     if (rangeMode !== "day") v.innerHTML = rangeControlHtml() + producerControlHtml() + '<div class="empty">Loading…</div>';
-    const err = await ensureCurForRange();
+    const err = await ensureCurForRange(stale);
+    if (stale()) return;
     const controls = rangeControlHtml() + producerControlHtml();
     $("#topsub").textContent = cur ? (cur.label || cur.date) + " · " + ((cur.calls || []).length ? (cur.calls.length + " coached calls") : "stats only") + (curLive ? " · live" : "") : (err || "");
     v.innerHTML = controls + (err ? `<div class="empty">${err}</div>`
@@ -8675,24 +8685,29 @@ async function paintTab() {
   } else if (view === "post") {
     v.innerHTML = rangeControlHtml() + '<div class="empty">Loading…</div>';
     wireRangeControl();
-    const err = await ensureCurForRange();
+    const err = await ensureCurForRange(stale);
+    if (stale()) return;
     $("#topsub").textContent = `The ${AGENCY.short_name || "Flores"} Post` + (cur ? " · " + (cur.label || cur.date || curRangeLabel) : "");
     let body;
     try { body = await postPanel(err); } catch (e) { console.error(e); body = drawErrorHtml(e); }
+    if (stale()) return;
     v.innerHTML = rangeControlHtml() + body;
     wireRangeControl(); wirePost();
   } else if (view === "editions") {
     v.innerHTML = rangeControlHtml() + '<div class="empty">Loading…</div>';
     wireRangeControl();
-    const err = await ensureCurForRange();
+    const err = await ensureCurForRange(stale);
+    if (stale()) return;
     $("#topsub").textContent = "Editions" + (cur ? " · " + (cur.label || cur.date || curRangeLabel) : "");
     let body;
     try { body = await editionsPanel(err); } catch (e) { console.error(e); body = drawErrorHtml(e); }
+    if (stale()) return;
     v.innerHTML = rangeControlHtml() + body;
     wireRangeControl(); wirePost();   // the edition tabs are wired by editions.js's own click handler
   } else if (view === "messages") {
     if (rangeMode !== "day") v.innerHTML = rangeControlHtml() + producerControlHtml() + '<div class="empty">Loading…</div>';
-    const err = await ensureCurForRange();
+    const err = await ensureCurForRange(stale);
+    if (stale()) return;
     const controls = rangeControlHtml() + producerControlHtml();
     $("#topsub").textContent = cur ? (cur.label || cur.date) + " · texts and emails" : (err || "");
     v.innerHTML = controls + (err ? `<div class="empty">${err}</div>`
@@ -8700,7 +8715,8 @@ async function paintTab() {
     wireRangeControl(); wireProducerControl();
   } else if (view === "coaching") {
     if (rangeMode !== "day") v.innerHTML = rangeControlHtml() + producerControlHtml() + '<div class="empty">Loading…</div>';
-    const err = await ensureCurForRange();
+    const err = await ensureCurForRange(stale);
+    if (stale()) return;
     $("#topsub").textContent = cur ? (cur.label || cur.date) : (err || "");
     // Calendar filter + shortcut on every tab, editable in place (Frank,
     // 2026-09-10) -- same rangeControlHtml()/wireRangeControl() Digest
@@ -8725,13 +8741,14 @@ async function paintTab() {
     }
   } else if (view === "review") {
     if (!(ME && ME.review)) { v.innerHTML = `<div class="empty">This page is Frank's.</div>`; return; }
-    const err = await ensureCurForRange();
+    const err = await ensureCurForRange(stale);
+    if (stale()) return;
     $("#topsub").textContent = "the calls Apollo wasn't sure of";
     const controls = rangeControlHtml() + producerControlHtml();
     if (err || !cur) { v.innerHTML = controls + `<div class="empty">${err || "Loading…"}</div>`; wireRangeControl(); wireProducerControl(); return; }
     const days = [...new Set((cur.calls || []).map(c => c.day).filter(Boolean))].slice(-31);
     await loadReview(days);
-    if (view !== "review") return;
+    if (stale()) return;
     v.innerHTML = controls + rangeHeaderHtml() + reviewPanel(cur, producerFilter);
     wireRangeControl(); wireProducerControl();
   } else if (view === "roleplay") {
@@ -8754,6 +8771,7 @@ async function paintTab() {
     $("#topsub").textContent = "Apollo training -- flashcards for objections, info-gathering and technique";
     v.innerHTML = '<div class="empty">Loading…</div>';
     const data = await loadTraining();
+    if (stale()) return;
     v.innerHTML = trainingPanel(data);
     wireTrainingPanel(data);
   } else if (view === "blueprint" || view === "athenamap") {
@@ -8764,17 +8782,18 @@ async function paintTab() {
     $("#topsub").textContent = "log today's sales, reference any past folio's sheet, or break it down by source/type/producer -- the sales record commission and the folio goal count";
     v.innerHTML = '<div class="empty">Loading…</div>';
     const [data] = await Promise.all([loadSalesLog(salesDay, salesFolioPick), loadLeadSources(), loadSalesOptions()]);
+    if (stale()) return;
     salesLastData = data;
     repaintSales();
     if (salesSubTab === "commission") { commDoc = null; paintCommission(data); }
   } else if (view === "service") {
-    await paintService();
+    await paintService(stale);
   } else if (view === "renewals") {
-    await paintRenewals();
+    await paintRenewals(stale);
   } else if (view === "claims") {
-    await paintClaims();
+    await paintClaims(stale);
   } else if (view === "commercial") {
-    await paintCommercial();
+    await paintCommercial(stale);
   } else if (view === "rotation") {
     await rotationPaint();   // rotation.js; only reachable for staff.json's `rotation`
   } else if (view === "scrub") {
@@ -9253,18 +9272,20 @@ function claimsCenterHtml(m) {
   const com = !$('.tab[data-v="commercial"]').hidden ? `<p class="sd" style="margin-top:6px">Commercial and Work Comp claims are on the Commercial Center.</p>` : "";
   return `${hero}<div class="digestgrid"><div>${types}</div><div>${where}</div></div>${com}`;
 }
-async function paintClaims() {
-  try { await paintClaimsTab(); } catch (e) { paintFailed(e); }
+async function paintClaims(stale = () => false) {
+  try { await paintClaimsTab(stale); } catch (e) { if (!stale()) paintFailed(e); }
 }
-async function paintClaimsTab() {
+async function paintClaimsTab(stale = () => false) {
   const v = $("#view");
   const controls = rangeControlHtml();
   v.innerHTML = controls + '<div class="empty">Loading…</div>';
   wireRangeControl();
   const all = await serviceDays();
+  if (stale()) return;
   const rg = serviceRangeDays(all);
   if (rg.err) { v.innerHTML = controls + `<div class="empty">${rg.err}</div>`; wireRangeControl(); return; }
   const docs = await fetchServiceDocs(rg.wanted);
+  if (stale()) return;
   $("#topsub").textContent = "Athena · claims" + (rg.label ? " · " + rg.label : "");
   const merged = docs.length ? mergeServiceDocs(docs) : null;
   const paint = () => {
@@ -9838,19 +9859,21 @@ function serviceRangeDays(all) {
   if (b.err) return { err: b.err };
   return { wanted: all.filter(d => d >= (b.from || "") && d <= b.to), label: `${b.label} · ${b.from || "the start"} → ${b.to}` };
 }
-async function paintService() {
-  try { await paintServiceTab(); } catch (e) { paintFailed(e); }
+async function paintService(stale = () => false) {
+  try { await paintServiceTab(stale); } catch (e) { if (!stale()) paintFailed(e); }
 }
-async function paintServiceTab() {
+async function paintServiceTab(stale = () => false) {
   const v = $("#view");
   const controls = rangeControlHtml();
   v.innerHTML = controls + '<div class="empty">Loading…</div>';
   wireRangeControl();
   const all = await serviceDays();
+  if (stale()) return;
   const rg = serviceRangeDays(all);
   if (rg.err) { v.innerHTML = controls + `<div class="empty">${rg.err}</div>`; wireRangeControl(); return; }
   const { wanted, label } = rg;
   const docs = await fetchServiceDocs(wanted);
+  if (stale()) return;
   $("#topsub").textContent = "Athena · service team" + (label ? " · " + label : "");
   const merged = docs.length ? splitRenewals(mergeServiceDocs(docs)) : null;
   const paint = () => {
@@ -10299,10 +10322,10 @@ function renewalWorkHtml(m, doc, rb) {
     ${tr ? `<h3 class="rh3" style="margin-top:14px">By pipeline</h3><div class="scroll"><table><thead><tr><th>Pipeline</th><th class="num">Completed</th><th class="num">Median</th><th class="num">90% within</th></tr></thead><tbody>${tr}</tbody></table></div>` : ""}
     ${renDrill.startsWith("rw:pipe:") ? list : ""}</div>`;
 }
-async function paintRenewals() {
-  try { await paintRenewalsTab(); } catch (e) { paintFailed(e); }
+async function paintRenewals(stale = () => false) {
+  try { await paintRenewalsTab(stale); } catch (e) { if (!stale()) paintFailed(e); }
 }
-async function paintRenewalsTab() {
+async function paintRenewalsTab(stale = () => false) {
   const v = $("#view");
   $("#topsub").textContent = "Athena · renewals";
   if (!RENEWALS_DOC) {
@@ -10311,12 +10334,15 @@ async function paintRenewalsTab() {
       const r = await fetch("/api/renewals", { cache: "no-store" });
       RENEWALS_DOC = r.ok ? await r.json() : null;
     } catch (_) { RENEWALS_DOC = null; }
+    if (stale()) return;
   }
   const controls = rangeControlHtml();
   const rg = serviceRangeDays(await serviceDays());
+  if (stale()) return;
   let work = null;
   if (!rg.err) {
     try { work = await loadRenewalWork(rg.wanted); } catch (_) { work = null; }
+    if (stale()) return;
     if (work) work.label = rg.label;
     $("#topsub").textContent = "Athena · renewals" + (rg.label ? " · " + rg.label : "");
   }
@@ -10536,10 +10562,10 @@ function comClaimsHtml(m) {
     <details class="msgd"><summary style="cursor:pointer">Completed claims (${C.completed.length})</summary>${list(C.completed, "None completed in this period.")}</details>
     ${C.flags.length ? `<details class="msgd" open><summary style="cursor:pointer;color:var(--bad)">Not licensed (${C.flags.length})</summary>${list(C.flags, "")}</details>` : ""}</div>`;
 }
-async function paintCommercial() {
-  try { await paintCommercialTab(); } catch (e) { paintFailed(e); }
+async function paintCommercial(stale = () => false) {
+  try { await paintCommercialTab(stale); } catch (e) { if (!stale()) paintFailed(e); }
 }
-async function paintCommercialTab() {
+async function paintCommercialTab(stale = () => false) {
   const v = $("#view");
   const controls = rangeControlHtml();
   v.innerHTML = controls + '<div class="empty">Loading…</div>';
@@ -10557,6 +10583,7 @@ async function paintCommercialTab() {
     label = `${b.label} · ${b.from || "the start"} → ${b.to}`;
   }
   const docs = await fetchCommercialDocs(wanted);
+  if (stale()) return;
   $("#topsub").textContent = "Cerberus · commercial" + (label ? " · " + label : "");
   if (!docs.length) {
     v.innerHTML = controls + `<div class="empty">No Cerberus report for ${rangeMode === "day" ? "this day" : "this range"} yet.</div>`;
@@ -10567,14 +10594,21 @@ async function paintCommercialTab() {
   wireRangeControl();
 }
 
+// A day picked while another is still loading wins: the older read is
+// dropped when it lands (the same ticket as paint(), for the day itself).
+let loadSeq = 0;
 async function loadDay(day) {
+  const seq = ++loadSeq, stale = () => seq !== loadSeq;
   rangeMode = "day"; lastDay = day;
   $("#view").innerHTML = '<div class="empty">Loading…</div>';
   cur = null; curLive = false; curCheckpoint = null; curLiveData = null; stopLivePoll();
+  let doc = null;
   try {
     const r = await fetch(`/api/days/${day}`, { cache: "no-store" });
-    if (r.ok) cur = await r.json();
+    if (r.ok) doc = await r.json();
   } catch (_) {}
+  if (stale()) return;
+  cur = doc;
   if (!cur) {
     // No finalized report for this day yet -- almost always because it's
     // still in progress (today, before tonight's build). Falls back to
@@ -10587,12 +10621,15 @@ async function loadDay(day) {
     // fallback for exactly this shape (no `calls` array).
     try {
       const ir = await fetch(`/api/intraday/${day}`, { cache: "no-store" });
-      if (ir.ok) { cur = await ir.json(); curLive = true; curCheckpoint = cur; }
+      if (ir.ok) doc = await ir.json();
     } catch (_) {}
+    if (stale()) return;
+    if (doc) { cur = doc; curLive = true; curCheckpoint = cur; }
   }
   if (!cur) { $("#view").innerHTML = '<div class="empty">No report for this day yet.</div>'; $("#topsub").textContent = day; return; }
   await paint();
-  if (curLive) { await refreshLive(day); startLivePoll(day); }
+  if (stale()) return;
+  if (curLive) { await refreshLive(day); if (!stale()) startLivePoll(day); }
 }
 
 /* ---- Road Map / ARM (Frank, 2026-09-30) -----------------------------------

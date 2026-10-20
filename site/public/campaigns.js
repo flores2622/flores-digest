@@ -101,7 +101,8 @@
       try {
         if (!cpKey) { const list = await load(""); cpKey = ((list.campaigns || [])[0] || {}).key || ""; }
         CP = cpKey ? await load(cpKey) : null;
-      } catch (e) { v.innerHTML = `<div class="sect"><p class="sd">${cesc(e.message)}</p></div>`; return; }
+      } catch (e) { if (view === "campaigns") v.innerHTML = `<div class="sect"><p class="sd">${cesc(e.message)}</p></div>`; return; }
+      if (view !== "campaigns") return;   // another page was opened while this loaded
     }
     if (!CP) { v.innerHTML = `<div class="sect"><p class="sd">No campaigns yet.</p></div>`; return; }
     const pick = (CP.campaigns || []).length > 1

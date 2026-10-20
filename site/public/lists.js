@@ -139,7 +139,8 @@
 
   async function refresh(msg) {
     lsMsg = msg || null;
-    try { D = await api("lists"); } catch (e) { $("#view").innerHTML = `<div class="empty">${cesc(e.message)}</div>`; return; }
+    try { D = await api("lists"); } catch (e) { if (view === "lists") $("#view").innerHTML = `<div class="empty">${cesc(e.message)}</div>`; return; }
+    if (view !== "lists") return;   // another page was opened while this loaded
     repaint();
   }
   async function act(fn, ok) {

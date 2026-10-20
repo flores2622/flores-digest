@@ -212,6 +212,7 @@
     $("#topsub").textContent = "accounts handled wrong, assigned wrong or left without notes -- for the one-on-ones";
     if (!HG) $("#view").innerHTML = '<div class="empty">Loading…</div>';
     try { HG = await api(); } catch (_) { HG = null; }
+    if (view !== "hygiene") return;   // another page was opened while this loaded
     if (!HG) { $("#view").innerHTML = '<div class="empty">The CRM Hygiene log is only open to the ops team.</div>'; return; }
     repaint();
   };

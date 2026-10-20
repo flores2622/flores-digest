@@ -167,6 +167,7 @@
     tkMsg = msg || null;
     try { await load(); tkErr = ""; } catch (e) { tkErr = e.message; }
     if (tkCheck === null) await loadCheck();
+    if (view !== "tasks") return;   // another page was opened while this loaded
     repaint();
   }
 
@@ -245,10 +246,11 @@
   window.tasksPaint = async function tasksPaint() {
     $("#topsub").textContent = "the CRM's tasks: due today, overdue, done";
     $("#view").innerHTML = '<div class="empty">Loading…</div>';
-    if (!LK) { try { LK = await api("lookups"); } catch (e) { $("#view").innerHTML = `<div class="empty">${e.status === 503 ? "The CRM is not turned on yet." : "Tasks are not open to this login."}</div>`; return; } }
+    if (!LK) { try { LK = await api("lookups"); } catch (e) { if (view === "tasks") $("#view").innerHTML = `<div class="empty">${e.status === 503 ? "The CRM is not turned on yet." : "Tasks are not open to this login."}</div>`; return; } }
+    if (view !== "tasks") return;   // another page was opened while this loaded
     tkMsg = null; tkOpen = {};
     await refresh();
-    if (tkErr) $("#view").insertAdjacentHTML("afterbegin", `<p class="tkmsg bad" role="alert">${cesc(tkErr)}</p>`);
+    if (tkErr && view === "tasks") $("#view").insertAdjacentHTML("afterbegin", `<p class="tkmsg bad" role="alert">${cesc(tkErr)}</p>`);
   };
 
   const css = document.createElement("style");
