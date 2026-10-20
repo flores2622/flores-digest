@@ -1152,6 +1152,28 @@ and anything without the glow is the checkpoint's (Frank, 2026-09-24).
   only ever adding, never a policy already there or typed by hand. The name
   is the one lead marked sold today with the same agent and lead source,
   else blank.
+  **A tick on the sheet saves, or says why it did not** (Frank, 2026-10-20:
+  "the review sent checkbox does not save, an error message comes up and a
+  refresh wipes it" -- the day the sheet became the sales record; no Docs
+  Signed or Review Sent change made on the board had landed since the
+  sheet's September import, and the page's alert said only "Couldn't save
+  that"). The page's Sales writes go through `salesPost` (index.html):
+  the Worker's own reason in the alert, a sign-in Access bounced
+  (`redirect: "manual"`, opaqueredirect / 403 not authenticated) named as
+  such, and a refused tick put back while a saved one is kept on the row.
+  The Worker (`editSalesLogEntry`) finds the row by id in the day the page
+  names, else any `saleslog/` day, writes under the file's etag with
+  retries, and logs every refusal -- who, what, why -- to R2
+  `worker-private/saleslog_refused.json` (newest 200): read it before
+  guessing the next time. **Every writer of `saleslog/<day>.json` is
+  etag-guarded now**, so none overwrites another: a new sale
+  (`postSalesLog`), the live refresh (`syncSalesLog`, which skips to its
+  next refresh on a conflict), the nightly (`sales_log_auto.sync_day`,
+  If-Match, re-reading the day and re-applying; `fix_products`, leaving
+  the rename for the next night) -- R2 honours If-Match / If-None-Match on
+  PUT (checked 2026-10-20). The deployed Worker's logs could not be read
+  from the session (the token has no Workers Observability access), so
+  the first refusal's reason was not known when this went in.
 - **Households and premium quoted** are daily.py's own three rules (quoteDate
   today; a producer's move into a quoted stage; a producer's note delivering
   a quote), applied only to leads active since the checkpoint, newest first,

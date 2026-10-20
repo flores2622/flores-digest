@@ -7698,6 +7698,24 @@ function wireMatch(deck, repaintAll) {
    own `day` (from the folio endpoint, or injected here for the single-day
    fallback) so a delete request targets the right day's R2 key even when
    that's not today. */
+/* A Sales sheet write, with the reason when it is refused: the Worker's own
+   words, or -- when Cloudflare Access sends the request to its sign-in page
+   instead (a sign-in that expired with the page open) -- that. redirect:
+   "manual" keeps that bounce from turning into a bare network error. */
+async function salesPost(url, body) {
+  let r;
+  try {
+    r = await fetch(url, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(body), redirect: "manual" });
+  } catch (_) {
+    return { ok: false, why: "the board could not be reached (connection?) -- nothing was saved." };
+  }
+  if (r.ok) return { ok: true, body: await r.json().catch(() => ({})) };
+  if (r.type === "opaqueredirect" || r.status === 401) return { ok: false, why: "your sign-in has expired -- refresh the page, then try again." };
+  const j = await r.json().catch(() => ({}));
+  if (r.status === 403 && /not authenticated/i.test(j.error || "")) return { ok: false, why: "your sign-in has expired -- refresh the page, then try again." };
+  return { ok: false, why: `${j.error || "the board refused it"} (${r.status}).` };
+}
+
 async function loadSalesLog(day, folioEnd) {
   if (!salesDay) salesDay = isoDate(azTodayDate());
   const d = day || salesDay;
@@ -7988,43 +8006,43 @@ function wireSalesPanel(data) {
     }
     salesBusy = true;
     submit.disabled = true;
-    try {
-      const r = await fetch(`/api/saleslog/${salesDay}`, {
-        method: "POST", headers: { "content-type": "application/json" },
-        body: JSON.stringify({
-          producer, client_name,
-          az_customer_id: $("#salesCustomerId").value.trim(),
-          lead_source: $("#salesLeadSource").value,
-          policy_number: $("#salesPolicy").value.trim(),
-          product: $("#salesProduct").value.trim(),
-          premium: $("#salesPremium").value ? Number($("#salesPremium").value) : null,
-          term: $("#salesTerm").value.trim(),
-          date_sold: $("#salesDateSold").value,
-          effective_date: $("#salesEffectiveDate").value,
-          notes: $("#salesNotes").value.trim(),
-          docs_signed: $("#salesDocsSigned").value,
-          review_sent: $("#salesReviewSent").checked,
-        }),
-      });
-      if (!r.ok) alert("Couldn't save that -- try again.");
-    } catch (_) { alert("Couldn't save that -- try again."); }
+    const r = await salesPost(`/api/saleslog/${salesDay}`, {
+      producer, client_name,
+      az_customer_id: $("#salesCustomerId").value.trim(),
+      lead_source: $("#salesLeadSource").value,
+      policy_number: $("#salesPolicy").value.trim(),
+      product: $("#salesProduct").value.trim(),
+      premium: $("#salesPremium").value ? Number($("#salesPremium").value) : null,
+      term: $("#salesTerm").value.trim(),
+      date_sold: $("#salesDateSold").value,
+      effective_date: $("#salesEffectiveDate").value,
+      notes: $("#salesNotes").value.trim(),
+      docs_signed: $("#salesDocsSigned").value,
+      review_sent: $("#salesReviewSent").checked,
+    });
+    if (!r.ok) alert(`Not saved: ${r.why}`);
     salesBusy = false;
     await repaintAll();
   };
   // Docs Signed / Review Sent are editable in place on any row via /track
   // -- neither touches the sale record itself (see trackSalesLogEntry in
-  // worker.js).
+  // worker.js). The box shows only what the board saved (Frank, 2026-10-20:
+  // "the review sent checkbox does not save, an error message comes up and a
+  // refresh wipes it"): a refused save puts it back and says why, a saved one
+  // is kept on the row so a repaint does not undo it.
   $$("[data-track]").forEach(el => el.onchange = async () => {
     const field = el.dataset.track;
     const value = el.type === "checkbox" ? el.checked : el.value;
+    const row = salesEntries.find(e => e.id === el.dataset.id);
+    const before = row ? row[field] : (el.type === "checkbox" ? !value : "");
     el.disabled = true;
-    try {
-      const r = await fetch(`/api/saleslog/${el.dataset.day}/track`, {
-        method: "POST", headers: { "content-type": "application/json" },
-        body: JSON.stringify({ id: el.dataset.id, [field]: value }),
-      });
-      if (!r.ok) alert("Couldn't save that -- try again.");
-    } catch (_) { alert("Couldn't save that -- try again."); }
+    const r = await salesPost(`/api/saleslog/${el.dataset.day}/track`, { id: el.dataset.id, [field]: value });
+    if (r.ok) {
+      if (row) row[field] = value;
+    } else {
+      if (el.type === "checkbox") el.checked = !!before; else el.value = before || "";
+      alert(`Not saved: ${r.why}`);
+    }
     el.disabled = false;
   });
   // Each row's own day (see loadSalesLog), not the fixed salesDay a NEW sale
@@ -8033,13 +8051,8 @@ function wireSalesPanel(data) {
   // actually lives under.
   $$("[data-del]").forEach(b => b.onclick = async () => {
     if (!confirm("Delete this logged sale?")) return;
-    try {
-      const r = await fetch(`/api/saleslog/${b.dataset.day}/delete`, {
-        method: "POST", headers: { "content-type": "application/json" },
-        body: JSON.stringify({ id: b.dataset.del }),
-      });
-      if (!r.ok) alert("Couldn't delete that -- try again.");
-    } catch (_) { alert("Couldn't delete that -- try again."); }
+    const r = await salesPost(`/api/saleslog/${b.dataset.day}/delete`, { id: b.dataset.del });
+    if (!r.ok) alert(`Not deleted: ${r.why}`);
     await repaintAll();
   });
 }
