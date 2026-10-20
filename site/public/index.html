@@ -2267,6 +2267,11 @@ let salesLastData = null;     // last-loaded {day, entries, folio_end} -- lets s
 let salesProducer = "";       // who's currently logging a sale
 let salesBusy = false;
 let salesLeadSourceCache = null;   // AgencyZoom's own lead source names, fetched once
+// The Sales sheet's Product and Term dropdowns (Frank, 2026-10-20: "the sales sheet is supposed to be
+// dropdowns with the same options as agency zoom for product and term"): the Worker's /api/saleslog/options,
+// from agencyzoom.json's sales_sheet -- AgencyZoom's policy types per carrier, each under the name an
+// AgencyZoom-added row gets (Farmers-Auto, BW-Auto, Foremost-MH ...), and the terms. Fetched once.
+let salesOptionsCache = null;
 
 /* ---- tooltip -------------------------------------------------------------- */
 const tip = $("#tip");
@@ -7705,6 +7710,27 @@ async function loadSalesLog(day, folioEnd) {
   return { day: d, entries: salesEntries, folio_end: end };
 }
 
+async function loadSalesOptions() {
+  if (salesOptionsCache) return salesOptionsCache;
+  try {
+    const r = await fetch("/api/saleslog/options", { cache: "no-store" });
+    salesOptionsCache = r.ok ? await r.json() : null;
+  } catch (_) { salesOptionsCache = null; }
+  return salesOptionsCache || { products: [], terms: [] };
+}
+
+const SALES_CARRIER_LABEL = { BW: "Bristol West", Other: "Other carriers" };
+function salesProductOpts() {
+  const groups = (salesOptionsCache && salesOptionsCache.products) || [];
+  return `<option value="">Product</option>` + groups.map(g => `<optgroup label="${cesc(SALES_CARRIER_LABEL[g.carrier] || g.carrier)}">${
+    (g.options || []).map(o => `<option value="${cesc(o.value)}" title="${cesc("AgencyZoom: " + (o.types || []).join(", "))}">${cesc(o.value)}</option>`).join("")
+  }</optgroup>`).join("");
+}
+function salesTermOpts() {
+  const terms = (salesOptionsCache && salesOptionsCache.terms) || [];
+  return `<option value="">Term</option>` + terms.map(t => `<option value="${cesc(t.value)}">${cesc(t.label)}</option>`).join("");
+}
+
 async function loadLeadSources() {
   if (salesLeadSourceCache) return salesLeadSourceCache;
   try {
@@ -7889,9 +7915,9 @@ function salesPanel(data) {
       <input id="salesCustomerId" type="text" placeholder="AZ customer ID (if known)" style="width:170px">
       <select id="salesLeadSource">${sourceOpts}</select>
       <input id="salesPolicy" type="text" placeholder="Policy # (if known)" style="width:150px">
-      <input id="salesProduct" type="text" placeholder="Product" style="width:140px">
+      <select id="salesProduct" aria-label="Product" style="max-width:220px">${salesProductOpts()}</select>
       <input id="salesPremium" type="number" step="0.01" placeholder="Premium" style="width:110px">
-      <input id="salesTerm" type="text" placeholder="Term" style="width:90px">
+      <select id="salesTerm" aria-label="Term">${salesTermOpts()}</select>
       <select id="salesDocsSigned">${docsSignedOpts("")}</select>
       <label style="display:flex;align-items:center;gap:5px;font-size:12.5px"><input id="salesReviewSent" type="checkbox"> Review sent</label>
     </div>
@@ -8731,7 +8757,7 @@ async function paintTab() {
   } else if (view === "sales") {
     $("#topsub").textContent = "log today's sales, reference any past folio's sheet, or break it down by source/type/producer -- self-reported, not the official Premium Sold figure";
     v.innerHTML = '<div class="empty">Loading…</div>';
-    const [data] = await Promise.all([loadSalesLog(salesDay, salesFolioPick), loadLeadSources()]);
+    const [data] = await Promise.all([loadSalesLog(salesDay, salesFolioPick), loadLeadSources(), loadSalesOptions()]);
     salesLastData = data;
     repaintSales();
     if (salesSubTab === "commission") { commDoc = null; paintCommission(data); }

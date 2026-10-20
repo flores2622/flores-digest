@@ -785,7 +785,28 @@ and split, and the additional pay (life, bundle, cross-sell, umbrella,
 business share, the Kraft Lake bonus and its minimum); `site/commission.js`
 reads it through `staff.js`'s `COMMISSION`, and the business line's
 carrier word comes from `agency.carrier`. Schedules, pay and both tier
-tables checked equal. Still in code: what makes a product life / umbrella /
+tables checked equal.
+**The sheet's Product and Term are dropdowns** (Frank, 2026-10-20: "the
+sales sheet is supposed to be dropdowns with the same options as agency
+zoom for product and term"; they were free text -- "6 mo", "6", "1 Yr",
+"auto", "pen"): `agencyzoom.json`'s `sales_sheet` -- `products`, per carrier
+short name (and Other), AgencyZoom's own policy type names this agency sold
+in the two years to 2026-10-20 (the policy corpus; flood out), and `terms`,
+[value, label] with the value as `sales_log_auto._term` writes an added
+row's (6mo / 12mo; 120 / 240 / 360mo for term life). AgencyZoom's API has no
+term list -- a policy carries effective and expiry dates only -- and its
+`/v1/api/product-lines` (179 lines, read once that day) names no carrier,
+so the agency's carrier x type pairs come from its policies. Each type is
+offered under the name the sheet gives it (`agencyzoom.sheet_options`,
+through `sales_log_auto.product_name`), grouped by carrier, AgencyZoom's
+types on hover -- the same value an AgencyZoom-added row carries, so the
+Breakdown never splits Farmers-Auto from "Auto" again (Frank, 2026-09-25).
+`--write-js` puts them in `site/agencyzoom_data.js` as `sheet`, the Worker
+serves them at `GET /api/saleslog/options`, and the page's form
+(`salesProductOpts` / `salesTermOpts`) loads them once. `python3
+agencyzoom.py --sheet-products` lists types the saved corpus shows sold
+that the file is missing; `--check` fails on an empty list, flood, or a
+term not like "6mo". Rows already typed are left as they were. Still in code: what makes a product life / umbrella /
 Kraft Lake / business (`kindOf`'s words) and the eligible lines.
 
 ## The words on the calls, the drip subjects and the Worker's cron

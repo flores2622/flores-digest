@@ -65,6 +65,7 @@ import { hygieneGet, hygienePost } from "./hygiene.js";
 import { campaignsGet } from "./campaigns.js";
 import { crm } from "./crm.js";
 import { claimsForViewer } from "./claims_view.js";
+import AZ_DATA from "./agencyzoom_data.js";
 import { PRODUCER_EMAILS, STAFF_FIRST_NAMES, SALES_SHEET_NAMES, SALES_TEAMS, AGENCY, hasBoard, boardEmails, TZ, localDay } from "./staff.js";
 
 export default {
@@ -260,6 +261,14 @@ export default {
         if (parts[2] === "voices" && request.method === "GET") {
           return roleplayVoiceRatings(request, env);
         }
+      }
+
+      // The Sales sheet's Product and Term dropdowns (agencyzoom.json's
+      // sales_sheet, via agencyzoom_data.js): AgencyZoom's policy types this
+      // agency sells, each under the name the sheet gives it, and the terms.
+      if (parts[1] === "saleslog" && parts[2] === "options" && parts.length === 3
+          && request.method === "GET") {
+        return json(AZ_DATA.sheet || { products: [], terms: [] });
       }
 
       if (parts[1] === "saleslog" && parts[2] === "folio" && parts[3] && parts.length === 4

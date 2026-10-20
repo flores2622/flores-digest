@@ -40,12 +40,18 @@ sheet's product names -- stays in those modules.
     renewal_ff_carriers             the carriers the Personal Renewals
                                     workflow carries (renewal_report)
     test_lead_ids                   lead records that are tests, by id
+    sales_sheet                     the Sales sheet's Product and Term
+                                    dropdowns: AgencyZoom's policy types this
+                                    agency sells, per carrier, and the terms
 
     python3 agencyzoom.py --check     validate the file against the code's keys
                                       (and the Worker's copy against the file)
     python3 agencyzoom.py --write-js  rewrite site/agencyzoom_data.js, the
                                       Worker's copy of the carriers and
                                       product names (the CRM's lead page)
+    python3 agencyzoom.py --sheet-products  the policy types the saved policy
+                                      corpus shows sold in the last two years
+                                      that sales_sheet.products is missing
     python3 agencyzoom.py --discover  read the account's current workflows,
                                       categories, resolutions and carriers
                                       from AgencyZoom and say what the file
@@ -99,6 +105,33 @@ PRODUCT_DEFAULT = DATA["product_names"]["default"]
 FF_CARRIERS = {int(x) for x in DATA["renewal_ff_carriers"]}
 JS_PATH = ROOT / "site" / "agencyzoom_data.js"
 TEST_LEAD_IDS = {int(x) for x in DATA["test_lead_ids"]}
+SHEET = DATA.get("sales_sheet") or {}
+SHEET_PRODUCTS = {k: list(v) for k, v in (SHEET.get("products") or {}).items()}
+SHEET_TERMS = [list(t) for t in SHEET.get("terms") or []]
+OTHER_CARRIERS = "Other"
+
+
+def sheet_options():
+    """The Sales sheet's dropdowns (Frank, 2026-10-20: "the sales sheet is
+    supposed to be dropdowns with the same options as agency zoom for product
+    and term"): {"products": [{"carrier", "options": [{"value", "types"}]}],
+    "terms": [{"value", "label"}]}. Each AgencyZoom policy type is offered
+    under the name the sheet gives it (sales_log_auto.product_name -- the
+    name an AgencyZoom-added row gets), so several types can share one option
+    (ATV, Boat, Trailer ... are Foremost-Toys); `types` keeps AgencyZoom's
+    own names for the hover. Other carriers keep AgencyZoom's bare name, as
+    an added row does."""
+    import sales_log_auto
+    groups = []
+    for carrier, types in SHEET_PRODUCTS.items():
+        cid = next((i for i, c in CARRIERS.items() if c == carrier), None)
+        seen = {}
+        for t in types:
+            name = sales_log_auto.product_name({"carrierId": cid, "policyTypeName": t}) if cid else t.strip()
+            seen.setdefault(name, []).append(t.strip())
+        groups.append({"carrier": carrier, "options": [{"value": v, "types": ts}
+                                                       for v, ts in sorted(seen.items(), key=lambda x: x[0].lower())]})
+    return {"products": groups, "terms": [{"value": v, "label": l} for v, l in SHEET_TERMS]}
 
 
 def _js():
@@ -106,7 +139,8 @@ def _js():
     carriers and the Sales sheet's product-name rules (the lead page names
     each quote's line of business with them -- live.js productName)."""
     body = json.dumps({"carriers": {str(k): v for k, v in CARRIERS.items()},
-                       "product_rules": PRODUCT_RULES, "product_default": PRODUCT_DEFAULT},
+                       "product_rules": PRODUCT_RULES, "product_default": PRODUCT_DEFAULT,
+                       "sheet": sheet_options()},
                       indent=2, ensure_ascii=False)
     return ("// WRITTEN BY `python3 agencyzoom.py --write-js` FROM agencyzoom.json -- do not edit.\n"
             "// The Worker's copy of the carriers and the Sales sheet's product names: see agencyzoom.py.\n"
@@ -157,6 +191,17 @@ def check(log=print):
             re.compile(r.get("match") or "")
         except re.error as e:
             bad.append(f"product_names.rules[{i}]: bad match regex ({e})")
+    for c, types in SHEET_PRODUCTS.items():
+        if c != OTHER_CARRIERS and c not in CARRIERS.values():
+            bad.append(f"sales_sheet.products: {c!r} is not a short name in carriers (or {OTHER_CARRIERS!r})")
+        if not types or not all(isinstance(t, str) and t.strip() for t in types):
+            bad.append(f"sales_sheet.products.{c}: needs AgencyZoom policy type names")
+        if any(re.search("flood", t, re.I) for t in types):
+            bad.append(f"sales_sheet.products.{c}: flood is never on the Sales sheet")
+    if not SHEET_PRODUCTS:
+        bad.append("sales_sheet.products: empty -- the Sales sheet's Product dropdown would have no choices")
+    if not SHEET_TERMS or not all(len(t) == 2 and re.fullmatch(r"\d+mo", str(t[0])) for t in SHEET_TERMS):
+        bad.append("sales_sheet.terms: each needs [value like '6mo', label] -- the way an added row's term reads")
     if not JS_PATH.exists() or JS_PATH.read_text() != _js():
         bad.append(f"{JS_PATH.relative_to(ROOT)} is out of date: run python3 agencyzoom.py --write-js")
     for b in bad:
@@ -236,6 +281,36 @@ def label_names():
     return "service names in the file: " + ", ".join(names)
 
 
+def sheet_products_missing(years=2, log=print):
+    """The policy types the saved policy corpus (data/az_policies_all.json)
+    shows sold in the last `years` that sales_sheet.products does not list,
+    per carrier -- no AgencyZoom request. Add them to the file by hand."""
+    import datetime as dt
+    import sales_log_auto
+    f = ROOT / "data" / "az_policies_all.json"
+    if not f.exists():
+        log("no data/az_policies_all.json -- run the nightly (or r2_cache.load_corpus) first")
+        return {}
+    pol = json.loads(f.read_text())
+    pol = pol if isinstance(pol, list) else (pol.get("policies") or list(pol.values()))
+    since = (dt.date.today() - dt.timedelta(days=365 * years)).isoformat()
+    have = {c: {t.strip() for t in ts} for c, ts in SHEET_PRODUCTS.items()}
+    missing = {}
+    for p in pol:
+        if str(p.get("soldDate") or p.get("effectiveDate") or "")[:10] < since or not sales_log_auto.on_sheet(p):
+            continue
+        c = CARRIERS.get(p.get("carrierId")) or OTHER_CARRIERS
+        t = str(p.get("policyTypeName") or "").strip()
+        if t and t not in have.get(c, set()):
+            missing.setdefault(c, {}).setdefault(t, 0)
+            missing[c][t] += 1
+    for c, ts in missing.items():
+        log(f"{c}: " + ", ".join(f"{t} ({n})" for t, n in sorted(ts.items(), key=lambda x: -x[1])))
+    if not missing:
+        log("sales_sheet.products lists every policy type sold in the last two years")
+    return missing
+
+
 def main(argv):
     if "--write-js" in argv:
         JS_PATH.write_text(_js())
@@ -245,6 +320,9 @@ def main(argv):
         bad = check()
         print("agencyzoom.json ok" if not bad else f"{len(bad)} problem(s)")
         return 1 if bad else 0
+    if "--sheet-products" in argv:
+        sheet_products_missing()
+        return 0
     if "--discover" in argv:
         discover()
         return 0

@@ -251,5 +251,106 @@
     "¿te gustaría empezar?",
     "💭 are you still interested in hearing from us? 💭"
   ],
-  "_email_template_subjects": "this account's AgencyZoom automation email subjects, lower-cased, the lead's first name taken off the front (messages.TEMPLATE_SUBJECTS: an email with one of these and no attachment is a drip, never credited to a person; read off 3,191 sent emails, 2026-09-27). Subjects sent to 5+ leads in a night are learned on top."
+  "_email_template_subjects": "this account's AgencyZoom automation email subjects, lower-cased, the lead's first name taken off the front (messages.TEMPLATE_SUBJECTS: an email with one of these and no attachment is a drip, never credited to a person; read off 3,191 sent emails, 2026-09-27). Subjects sent to 5+ leads in a night are learned on top.",
+  "sales_sheet": {
+    "_about": "The Sales sheet's Product and Term dropdowns (Frank, 2026-10-20: 'the sales sheet is supposed to be dropdowns with the same options as agency zoom for product and term'). `products`: per carrier (the short names in `carriers`; Other = any other carrier), AgencyZoom's own policy type names this agency sold in the two years to 2026-10-20 (the policy corpus; flood left out -- never on the sheet). Each is offered under the name the sheet gives it (product_names: Farmers-Auto, BW-Auto, Foremost-MH ...), the same name an AgencyZoom-added row gets, so typed and added rows agree. `terms`: [value, label] -- the value the sheet stores, as sales_log_auto._term writes an added row's term from AgencyZoom's effective and expiry dates (6mo / 12mo; the long ones are life terms). Refresh `products` with `python3 agencyzoom.py --sheet-products`.",
+    "products": {
+      "Farmers": [
+        "10 year term",
+        "20 year term",
+        "30  year term",
+        "Auto",
+        "Commercial Auto",
+        "Commercial BOP",
+        "Commercial BOP Property",
+        "Commercial GL",
+        "Commercial Property",
+        "Commercial Umbrella",
+        "Condo",
+        "Course of Construction",
+        "Home",
+        "Homeowners",
+        "Index Universal Life",
+        "Individual Life",
+        "Landlord",
+        "Motorcycle",
+        "Renters",
+        "Secondary Home",
+        "Standard Auto",
+        "Umbrella",
+        "Universal Life",
+        "Variable Universal Life",
+        "Whole Life",
+        "Workers Comp"
+      ],
+      "BW": [
+        "Auto",
+        "Commercial Auto",
+        "Non Owner Auto"
+      ],
+      "Foremost": [
+        "ATV",
+        "Boat",
+        "DP1 - Property",
+        "Golf Cart",
+        "HO-3",
+        "Home",
+        "Landlord",
+        "Manufactured Home",
+        "Mobile Home",
+        "Motor Home",
+        "Motorcycle",
+        "Personal Watercraft",
+        "RV",
+        "Seasonal Home",
+        "Secondary Home",
+        "Short-Term Rental",
+        "Trailer",
+        "Vacant",
+        "Vacation"
+      ],
+      "Other": [
+        "Auto",
+        "Bond",
+        "Builders Risk",
+        "Classic Auto",
+        "Commercial Auto",
+        "Commercial BOP",
+        "Commercial BOP Liability",
+        "Commercial GL",
+        "Commercial Package",
+        "Dealer Bond",
+        "Driver License MX Liability",
+        "General Liability",
+        "Landlord",
+        "Mexico Auto Policy",
+        "Professional Liability",
+        "Standard Auto",
+        "Umbrella",
+        "Workers Comp"
+      ]
+    },
+    "terms": [
+      [
+        "6mo",
+        "6 months"
+      ],
+      [
+        "12mo",
+        "12 months"
+      ],
+      [
+        "120mo",
+        "10 years (term life)"
+      ],
+      [
+        "240mo",
+        "20 years (term life)"
+      ],
+      [
+        "360mo",
+        "30 years (term life)"
+      ]
+    ]
+  }
 }
