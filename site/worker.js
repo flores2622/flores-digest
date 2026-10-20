@@ -708,16 +708,16 @@ async function postSalesLog(request, env, day) {
   try {
     body = await request.json();
   } catch (_) {
-    return json({ error: "bad request body" }, 400);
+    return refuseSales(env, request, 400, "bad request body", { what: "log", day });
   }
   const producer = String(body.producer || "").trim();
   const client_name = String(body.client_name || "").trim();
   if (!producer || !client_name) {
-    return json({ error: "producer and client_name are required" }, 400);
+    return refuseSales(env, request, 400, "pick who sold it and enter the client's name", { what: "log", day });
   }
   const me = identityOf(request, env);
   if (!me.canLogFor.includes(producer)) {
-    return json({ error: `your login cannot log a sale for ${producer}` }, 403);
+    return refuseSales(env, request, 403, `your login cannot log a sale for ${producer}`, { what: "log", day });
   }
   const premiumNum = Number(body.premium);
   const docsSigned = String(body.docs_signed || "");
@@ -751,14 +751,20 @@ async function postSalesLog(request, env, day) {
     review_sent: Boolean(body.review_sent),
     logged_by: me.name,
   };
+  // Appended under the file's etag (a new day: only if still absent), so a
+  // live refresh adding a sale to the same day at that moment loses nothing.
   const key = salesLogKey(day);
-  const existing = await env.BOARD.get(key);
-  const doc = existing ? JSON.parse(await existing.text()) : { day, entries: [] };
-  doc.entries.push(entry);
-  await env.BOARD.put(key, JSON.stringify(doc), {
-    httpMetadata: { contentType: "application/json" },
-  });
-  return json({ entry });
+  for (let attempt = 0; attempt < 4; attempt++) {
+    const existing = await env.BOARD.get(key);
+    const doc = existing ? JSON.parse(await existing.text()) : { day, entries: [] };
+    doc.entries.push(entry);
+    const put = await env.BOARD.put(key, JSON.stringify(doc), {
+      onlyIf: existing ? { etagMatches: existing.etag } : { etagDoesNotMatch: "*" },
+      httpMetadata: { contentType: "application/json" },
+    });
+    if (put) return json({ entry });
+  }
+  return refuseSales(env, request, 409, "the Sales sheet kept changing while saving -- try again", { what: "log", day });
 }
 
 /** POST /api/saleslog/:day/track {id, docs_signed?, review_sent?} -> the
@@ -767,54 +773,103 @@ async function postSalesLog(request, env, day) {
  * should be able to be interactive... when they get signed later they
  * should be able to change it"). */
 async function trackSalesLogEntry(request, env, day) {
-  let body;
-  try {
-    body = await request.json();
-  } catch (_) {
-    return json({ error: "bad request body" }, 400);
-  }
-  const id = String(body.id || "");
-  const key = salesLogKey(day);
-  const existing = await env.BOARD.get(key);
-  if (!existing) return json({ error: "no entries for this day" }, 404);
-  const doc = JSON.parse(await existing.text());
-  const target = doc.entries.find((e) => e.id === id);
-  if (!target) return json({ error: "entry not found" }, 404);
-  if (!identityOf(request, env).canLogFor.includes(target.producer)) return json({ error: "your login cannot change that sale" }, 403);
-  if ("review_sent" in body) target.review_sent = Boolean(body.review_sent);
-  if ("docs_signed" in body) {
-    const v = String(body.docs_signed || "");
-    if (!DOCS_SIGNED_OPTIONS.includes(v)) return json({ error: "bad docs_signed value" }, 400);
-    target.docs_signed = v;
-  }
-  await env.BOARD.put(key, JSON.stringify(doc), {
-    httpMetadata: { contentType: "application/json" },
+  return editSalesLogEntry(request, env, day, "track", (doc, target, body) => {
+    if ("docs_signed" in body) {
+      const v = String(body.docs_signed || "");
+      if (!DOCS_SIGNED_OPTIONS.includes(v)) return { error: "that is not one of the Docs Signed choices" };
+      target.docs_signed = v;
+    }
+    if ("review_sent" in body) target.review_sent = Boolean(body.review_sent);
+    return { result: { entry: target } };
   });
-  return json({ entry: target });
 }
 
 /** POST /api/saleslog/:day/delete {id} -- removes one entry (e.g. a typo'd
  * duplicate). */
 async function deleteSalesLogEntry(request, env, day) {
+  return editSalesLogEntry(request, env, day, "delete", (doc, target) => {
+    doc.entries = doc.entries.filter((e) => e !== target);
+    return { result: { ok: true } };
+  });
+}
+
+/* A change to one Sales sheet row (Frank, 2026-10-20: "the review sent
+   checkbox does not save, an error message comes up and a refresh wipes
+   it" -- the day the sheet became the sales record, and nothing ticked on
+   the board had ever landed since the sheet's import; the page's alert
+   said only "Couldn't save that"). Now:
+   - the row is found by its id in the day the page names, else in any
+     saleslog/ day (the page only knows the day it read the row from);
+   - the write is guarded by the file's etag and retried, so a live refresh
+     or the nightly adding a sale to the same day cannot be overwritten by,
+     or overwrite, a tick;
+   - every refusal answers its reason (the page shows it) and is kept in
+     worker-private/saleslog_refused.json (newest 200: who, what, why). */
+async function editSalesLogEntry(request, env, day, what, apply) {
   let body;
   try {
     body = await request.json();
   } catch (_) {
-    return json({ error: "bad request body" }, 400);
+    return refuseSales(env, request, 400, "bad request body", { what, day });
   }
-  const id = String(body.id || "");
-  const key = salesLogKey(day);
-  const existing = await env.BOARD.get(key);
-  if (!existing) return json({ error: "no entries for this day" }, 404);
-  const doc = JSON.parse(await existing.text());
-  const target = doc.entries.find((e) => e.id === id);
-  if (!target) return json({ error: "entry not found" }, 404);
-  if (!identityOf(request, env).canLogFor.includes(target.producer)) return json({ error: "your login cannot delete that sale" }, 403);
-  doc.entries = doc.entries.filter((e) => e.id !== id);
-  await env.BOARD.put(key, JSON.stringify(doc), {
-    httpMetadata: { contentType: "application/json" },
-  });
-  return json({ ok: true });
+  const id = String((body && body.id) || "");
+  if (!id) return refuseSales(env, request, 400, "no sale named", { what, day });
+  const me = identityOf(request, env);
+  for (let attempt = 0; attempt < 4; attempt++) {
+    const hit = await findSalesLogEntry(env, day, id);
+    if (!hit) return refuseSales(env, request, 404, "that sale is no longer on the Sales sheet -- refresh the page", { what, day, id });
+    if (!me.canLogFor.includes(hit.target.producer)) {
+      return refuseSales(env, request, 403, `your login cannot change ${hit.target.producer}'s sales`, { what, day, id });
+    }
+    const out = apply(hit.doc, hit.target, body) || {};
+    if (out.error) return refuseSales(env, request, 400, out.error, { what, day, id });
+    const put = await env.BOARD.put(hit.key, JSON.stringify(hit.doc), {
+      onlyIf: { etagMatches: hit.etag },
+      httpMetadata: { contentType: "application/json" },
+    });
+    if (put) return json(out.result || { ok: true });
+    // someone saved the same day in between: read it again and re-apply
+  }
+  return refuseSales(env, request, 409, "the Sales sheet kept changing while saving -- try again", { what, day, id });
+}
+
+/** Where a sale's row lives: {key, etag, doc, target}, or null. */
+async function findSalesLogEntry(env, day, id) {
+  const tryKey = async (key) => {
+    const obj = await env.BOARD.get(key);
+    if (!obj) return null;
+    const doc = JSON.parse(await obj.text());
+    const target = (doc.entries || []).find((e) => e.id === id);
+    return target ? { key, etag: obj.etag, doc, target } : null;
+  };
+  const home = /^\d{4}-\d{2}-\d{2}$/.test(day) ? salesLogKey(day) : null;
+  if (home) {
+    const hit = await tryKey(home);
+    if (hit) return hit;
+  }
+  let cursor;
+  do {
+    const page = await env.BOARD.list({ prefix: "saleslog/", cursor });
+    for (const o of (page.objects || []).slice().reverse()) {
+      if (o.key === home || !/^saleslog\/\d{4}-\d{2}-\d{2}\.json$/.test(o.key)) continue;
+      const hit = await tryKey(o.key);
+      if (hit) return hit;
+    }
+    cursor = page.truncated ? page.cursor : undefined;
+  } while (cursor);
+  return null;
+}
+
+const SALES_REFUSED_KEY = "worker-private/saleslog_refused.json";
+async function refuseSales(env, request, status, error, extra) {
+  try {
+    const me = identityOf(request, env);
+    const obj = await env.BOARD.get(SALES_REFUSED_KEY);
+    const log = obj ? JSON.parse(await obj.text()) : [];
+    log.push({ at: new Date().toISOString(), who: me.email, status, error, ...extra });
+    await env.BOARD.put(SALES_REFUSED_KEY, JSON.stringify(log.slice(-200)), { httpMetadata: { contentType: "application/json" } });
+  } catch (_) { /* the log never stops the answer */ }
+  return json({ error }, status);
 }
 
 /** Parses coaching/TRAINING.md into [{ name, cards: [{ front, back }] }].

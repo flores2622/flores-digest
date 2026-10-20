@@ -253,7 +253,7 @@ def _household_reader(log=print):
     return household_of
 
 
-def sync_day(day, log=print, dry_run=False):
+def sync_day(day, log=print, dry_run=False, _attempt=0):
     """Add any missing auto-entries for `day` to saleslog/<day>.json.
     Returns the number of entries added. Never touches an existing entry
     -- only appends new ones, so a producer's hand-edits (docs signed,
@@ -272,9 +272,11 @@ def sync_day(day, log=print, dry_run=False):
     import publish_board
     cli, bucket = publish_board._client()
     key = f"saleslog/{day}.json"
+    etag = None
     try:
-        body = cli.get_object(Bucket=bucket, Key=key)["Body"].read()
-        doc = json.loads(body)
+        obj = cli.get_object(Bucket=bucket, Key=key)
+        doc = json.loads(obj["Body"].read())
+        etag = obj.get("ETag")
     except Exception:
         doc = {"day": day, "entries": []}
 
@@ -354,8 +356,18 @@ def sync_day(day, log=print, dry_run=False):
     if dry_run:
         return added
 
-    cli.put_object(Bucket=bucket, Key=key, Body=json.dumps(doc).encode(),
-                    ContentType="application/json", CacheControl="no-store")
+    # Written only over the copy just read (2026-10-20): a Docs Signed or
+    # Review Sent tick, or a sale typed on the board, saved meanwhile is never
+    # overwritten -- the day is read again and the new rows re-applied.
+    try:
+        cli.put_object(Bucket=bucket, Key=key, Body=json.dumps(doc).encode(),
+                        ContentType="application/json", CacheControl="no-store",
+                        **({"IfMatch": etag} if etag else {"IfNoneMatch": "*"}))
+    except cli.exceptions.ClientError as e:
+        if e.response.get("Error", {}).get("Code") == "PreconditionFailed" and _attempt < 3:
+            log(f"  sales log auto: {day} changed while saving -- reading it again")
+            return sync_day(day, log=log, dry_run=dry_run, _attempt=_attempt + 1)
+        raise
     return added
 
 
@@ -384,7 +396,8 @@ def fix_products(log=print, dry_run=False, since=None):
         token = r["NextContinuationToken"]
     total = 0
     for key in sorted(keys):
-        doc = json.loads(cli.get_object(Bucket=bucket, Key=key)["Body"].read())
+        obj = cli.get_object(Bucket=bucket, Key=key)
+        doc = json.loads(obj["Body"].read())
         n = 0
         for e in doc.get("entries") or []:
             p = by_id.get(e.get("az_policy_id"))
@@ -395,8 +408,14 @@ def fix_products(log=print, dry_run=False, since=None):
                 e["product"] = product_name(p)
                 n += 1
         if n and not dry_run:
-            cli.put_object(Bucket=bucket, Key=key, Body=json.dumps(doc).encode(),
-                           ContentType="application/json", CacheControl="no-store")
+            try:   # only over the copy read: a tick saved meanwhile wins, the rename waits a night
+                cli.put_object(Bucket=bucket, Key=key, Body=json.dumps(doc).encode(),
+                               ContentType="application/json", CacheControl="no-store", IfMatch=obj["ETag"])
+            except cli.exceptions.ClientError as e:
+                if e.response.get("Error", {}).get("Code") != "PreconditionFailed":
+                    raise
+                log(f"  {key[9:19]}: changed while renaming -- left for the next run")
+                continue
         total += n
     if total or since is None:
         log(f"  sales log products: {total} auto-added entr{'y' if total == 1 else 'ies'} renamed"
