@@ -36,6 +36,7 @@ import METHODOLOGY_MD from "../coaching/METHODOLOGY.md";
 import TRAINING_MD from "../coaching/TRAINING.md";
 import "./public/blueprints.js";
 import { PRODUCER_NAMES, AGENCY, TZ, hasBoard, localDay, localParts } from "./staff.js";
+import { demoize } from "./demo.js";
 import { claimsForViewer } from "./claims_view.js";   // sets BLUEPRINTS on the global (window in the browser)
 
 const MODEL = "claude-sonnet-5";
@@ -632,6 +633,11 @@ async function toolListDays(env, inp) {
 }
 
 async function runTool(name, inp, ctx) {
+  // Demo mode (site/demo.js): what a tool read comes back with its customers made up, like every other answer.
+  const out = await runToolReal(name, inp, ctx);
+  return ctx.demo ? demoize(out) : out;
+}
+async function runToolReal(name, inp, ctx) {
   const { env, scope, commercial, rpMaySee } = ctx;
   inp = inp || {};
   try {
@@ -827,7 +833,7 @@ export async function coeusChat(request, env, ctx, deps) {
       { type: "text", text: staticSystem(scope.all), cache_control: { type: "ephemeral" } },
       { type: "text", text: contextBlock(me, scope, commercial, body.context) },
     ];
-    toolCtx = { env, scope, commercial, rpMaySee, usageViewer: usageAllowed(request, env, deps) };
+    toolCtx = { env, scope, commercial, rpMaySee, usageViewer: !deps.demo && usageAllowed(request, env, deps), demo: !!deps.demo };
   } catch (e) {
     console.error("coeus: could not set up the question", e);
     return jsonResp({ error: `Apollo could not start on that question: ${String(e && e.message || e).slice(0, 200)}` }, 500);

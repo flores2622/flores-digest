@@ -54,7 +54,9 @@ A person's `board` keys (what they may open, the Worker's checks):
     (Pantheon's own CRM: Frank alone), workflows_suggest (the ops team: see
     the Workflows timeline and leave suggestions on it, nothing else),
     campaigns (the Operations Center's Campaigns: how each producer worked
-    a batch of campaign leads; Frank alone)
+    a batch of campaign leads; Frank alone), demo (may switch the board's
+    demo mode on -- customers made up, the CRM and ops pages hidden -- to
+    show the board to people outside the agency; site/demo.js)
 `digest` is which nightly email they get (ops / staff); `producer` means
 their numbers are counted; `service` puts them on the Service Center.
 

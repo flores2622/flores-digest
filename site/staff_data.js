@@ -185,7 +185,8 @@ export default {
         "commission_all",
         "sales_log_all",
         "crm",
-        "campaigns"
+        "campaigns",
+        "demo"
       ],
       "handle": "frank.full.coverage"
     },
@@ -216,7 +217,8 @@ export default {
         "commission_all",
         "sales_log_all",
         "crm",
-        "campaigns"
+        "campaigns",
+        "demo"
       ],
       "handle": "dm.francisco"
     },
@@ -246,7 +248,8 @@ export default {
         "commission_all",
         "sales_log_all",
         "crm",
-        "campaigns"
+        "campaigns",
+        "demo"
       ],
       "handle": "vero.vacation.approved"
     },
@@ -286,7 +289,8 @@ export default {
         "card_review",
         "roleplay_voices",
         "crm",
-        "campaigns"
+        "campaigns",
+        "demo"
       ],
       "color": "#baffff",
       "email_dot": "cL",
