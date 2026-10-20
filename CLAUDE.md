@@ -1194,8 +1194,10 @@ and anything without the glow is the checkpoint's (Frank, 2026-09-24).
   up to 4 or 15 minutes later; nothing by the hour changes. **Both cuts
   were undone on 2026-10-20** (Frank: "anything else we can improve with
   the new server and upgraded worker?" -- the proxy had carried every call
-  for three days with no refusal): `SALES_REFRESH_SECONDS` 120 (carrySales
-  keeps its shape and carries nothing at that value), `TASKS_REFRESH_SECONDS`
+  for three days with no refusal): `SALES_REFRESH_SECONDS` 60 (carrySales
+  keeps its shape and carries nothing between timer runs at that value --
+  120 still carried every other run, the previous answer being ~110 s old
+  when the next run asked), `TASKS_REFRESH_SECONDS`
   330, and the per-run reads sized for the free plan's 50 requests went to
   `NOTES_PER_REFRESH` 60 / `QUOTES_PER_REFRESH` 16 (a morning run had been
   reading its full 30 and leaving leads pending; each read is ~1 s through
