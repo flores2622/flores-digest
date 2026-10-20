@@ -96,3 +96,14 @@ Flores's server is a DigitalOcean Droplet in New York, 159.223.135.202
 - If AgencyZoom ever refuses the proxy's address too, the log shows 403s
   with `server: cloudflare` the same way, and the address in `/healthz` is
   the one to send them.
+
+## If the server is down
+
+The Worker gives every call through the proxy 20 seconds. When the proxy
+does not answer at all -- the Droplet off, Caddy or the service stopped, a
+502 from the proxy itself -- that call goes straight to api.agencyzoom.com
+once instead, which works whenever Cloudflare happens to run the Worker from
+a US data center. An answer AgencyZoom gave through the proxy (a 403, a 429)
+is never retried. The az log (`worker-private/az_log/<day>.json`) counts
+these as `proxy_down`; a day with many means the server needs looking at:
+`systemctl status pantheon-az-proxy caddy` on the Droplet.

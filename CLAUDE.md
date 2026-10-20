@@ -1191,7 +1191,15 @@ and anything without the glow is the checkpoint's (Frank, 2026-09-24).
   a checkpoint; `ACTIVE_LIST_FRESH_SECONDS` 270 so the quotes pass keeps
   reusing that list), and **the five task reads come every 15 minutes, not
   5.5** (`TASKS_REFRESH_SECONDS` 900). A sale or a task lands on the board
-  up to 4 or 15 minutes later; nothing by the hour changes. Note reads
+  up to 4 or 15 minutes later; nothing by the hour changes. **Both cuts
+  were undone on 2026-10-20** (Frank: "anything else we can improve with
+  the new server and upgraded worker?" -- the proxy had carried every call
+  for three days with no refusal): `SALES_REFRESH_SECONDS` 120 (carrySales
+  keeps its shape and carries nothing at that value), `TASKS_REFRESH_SECONDS`
+  330, and the per-run reads sized for the free plan's 50 requests went to
+  `NOTES_PER_REFRESH` 60 / `QUOTES_PER_REFRESH` 16 (a morning run had been
+  reading its full 30 and leaving leads pending; each read is ~1 s through
+  the proxy, so a quotes run is ~60 s inside its 2-minute cadence). Note reads
   were measured, not cut: coalescing a lead's re-reads into 10-minute
   windows would save only 5-8% of the call-driven ones (modelled on the RC
   call log for 10-06, 10-08 and 10-12), and calls explain only ~40% of the
@@ -1232,7 +1240,17 @@ and anything without the glow is the checkpoint's (Frank, 2026-09-24).
   says which host carried the calls**: `host` is the last run's
   `azBase(env)` and `via` counts each hour's calls by host (until
   2026-10-15 `host` was written once, when the day's log began, and showed
-  nothing about the proxy).
+  nothing about the proxy). **Every AgencyZoom call has a 20 s timeout and
+  falls back to api.agencyzoom.com when the proxy itself does not answer**
+  (2026-10-20, `live.js azRequest`: the connection refused, the timeout, or
+  a 502 / 503 / 504 from the proxy or Caddy -- proxy/server.js answers 502
+  when it cannot reach AgencyZoom; one quotes run on 10-20 had hung for
+  200 s on a call that never came back). That one call goes direct, which
+  still works whenever Cloudflare runs the Worker from a US data center; an
+  answer AgencyZoom itself gave, 403 and 429 included, is never retried and
+  pauses as before. The az log counts fallbacks as `proxy_down` (the first
+  20 with their reason under `fallbacks`) and `via` counts each call under
+  the host that actually carried it.
 - **The Worker logs in to AgencyZoom ONCE a day, not once a run.** A per-run
   login meant ~30 an hour, and on 2026-09-24 AgencyZoom began refusing the
   Worker's logins (403) within the hour while the same account still worked
@@ -1300,7 +1318,15 @@ and anything without the glow is the checkpoint's (Frank, 2026-09-24).
   `staff.worker_crons` writes them). **Each run leaves a heartbeat**:
   `worker-private/cron_beat/<day>.json`, a start and an end line per run (ms,
   ok / error / skipped, newest 300) -- a start with no end is a run
-  Cloudflare stopped, no lines at all is a timer that did not fire.
+  Cloudflare stopped, no lines at all is a timer that did not fire. **And
+  it checks in** (2026-10-20): with `LIVE_HEALTHCHECK_URL` (a Healthchecks.io
+  check's ping URL, a Worker secret) every run pings when it ends -- a plain
+  ping for ok or nothing-to-do-yet, `/fail` with the reason for a run that
+  threw (`liveHealthPing`) -- so the service emails Frank when the timer
+  goes quiet. The check is a CRON one on the timer's own schedule (every
+  minute, 8 AM-5:59 PM weekdays, America/Phoenix, grace ~10 minutes), so an
+  evening is not an alarm and a timer that stops at 10 AM is. Frank's to
+  create and set; unset, nothing is pinged.
 - **Contact rate, live contacts and Avg Talk Time are live too** (Frank,
   2026-09-28: "avg talk time, contact rate, and texts and emails should all
   be live as well"), and they are PROVISIONAL: the Worker cannot hear a
@@ -1348,7 +1374,9 @@ and anything without the glow is the checkpoint's (Frank, 2026-09-24).
 - The Worker needs its own secrets, set in Cloudflare (Workers & Pages ->
   flores-board -> Settings -> Variables and Secrets, type Secret):
   `RC_CLIENT_ID`, `RC_CLIENT_SECRET`, `RC_SERVER_URL`, `RC_JWT`,
-  `AZ_USERNAME`, `AZ_PASSWORD`, `INSIGHTFUL_TOKEN`. A missing one leaves that
+  `AZ_USERNAME`, `AZ_PASSWORD`, `INSIGHTFUL_TOKEN` (and `AZ_PROXY_URL` /
+  `AZ_PROXY_KEY` for the proxy, `LIVE_HEALTHCHECK_URL` for the timer's
+  check-in). A missing one leaves that
   part on the checkpoint, so it simply does not glow. **The header never
   lists what is or is not live, or why** (Frank, 2026-09-25: "I know whats
   flashing green is live, and whats not flashing green is not") -- do not
