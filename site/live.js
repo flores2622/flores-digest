@@ -154,6 +154,38 @@ export function azBase(env) {
 export function azHeaders(env, h) {
   return azBase(env) === AZ ? h : { ...h, "x-pantheon-key": env.AZ_PROXY_KEY };
 }
+/* EVERY AGENCYZOOM CALL GOES THROUGH HERE (2026-10-20). Two things the
+   proxy made necessary: a TIMEOUT -- a call that hangs used to hang the run
+   (one quotes run on 10-20 took 200 s) -- and a FALLBACK: the Droplet is the
+   only road to AgencyZoom, so a proxy that does not answer at all (the
+   connection refused, the timeout, or Caddy's / the proxy's own 502 / 503 /
+   504 -- proxy/server.js answers 502 when it cannot reach AgencyZoom) sends
+   THAT call straight to api.agencyzoom.com once, which still works whenever
+   Cloudflare runs this Worker from a US data center. AgencyZoom's own
+   answer, a 403 or 429 included, is never retried: the proxy hands it back
+   verbatim and azGet pauses on it as before. Each fallback is counted in
+   the az log (`proxy_down`, the first few with their reason) and the call
+   is counted under the host that carried it (`via`). Returns [response,
+   host]. */
+export const AZ_TIMEOUT_MS = 20_000;
+const PROXY_DOWN = new Set([502, 503, 504]);
+async function azRequest(env, path, fetchFn, init = {}) {
+  const base = azBase(env);
+  const go = (host) => {
+    countAz(path, host);
+    const headers = host === AZ ? { ...(init.headers || {}) } : { ...(init.headers || {}), "x-pantheon-key": env.AZ_PROXY_KEY };
+    return fetchFn(`${host}${path}`, { ...init, headers, signal: AbortSignal.timeout(AZ_TIMEOUT_MS) });
+  };
+  if (base === AZ) return [await go(AZ), AZ];
+  let why;
+  try {
+    const r = await go(base);
+    if (!PROXY_DOWN.has(r.status)) return [r, base];
+    why = `proxy answered ${r.status}`;
+  } catch (e) { why = `proxy ${e && e.name === "TimeoutError" ? `timed out after ${AZ_TIMEOUT_MS / 1000}s` : (e && e.message || e)}`; }
+  noteFallback(path, why);
+  return [await go(AZ), AZ];
+}
 
 /* ---- what AgencyZoom sees of us, for when it refuses ------------------- */
 
@@ -166,13 +198,20 @@ export function azHeaders(env, h) {
    per run (flushAzLog), never per request. */
 const AZ_LOG_PREFIX = "worker-private/az_log/";
 const AZ_LOG_REFUSALS = 50;                        // per day, the first ones
-let azCalls = {}, azRefusals = [];
+let azCalls = {}, azRefusals = [], azVia = {}, azFallbacks = [];
+const AZ_LOG_FALLBACKS = 20;                       // per day, the first ones
 const hourAZ = () => String(localParts().h).padStart(2, "0");
-function countAz(path) {
+function countAz(path, host = AZ) {
   const ep = path.split("?")[0].replace(/\/\d+/g, "/N");
   const h = hourAZ();
   const b = azCalls[h] || (azCalls[h] = {});
   b[ep] = (b[ep] || 0) + 1;
+  const v = azVia[h] || (azVia[h] = {});
+  v[host] = (v[host] || 0) + 1;
+}
+function noteFallback(path, why) {
+  console.log(`AgencyZoom proxy did not answer (${why}); ${path} sent direct`);
+  azFallbacks.push({ at: new Date().toISOString(), path, why });
 }
 async function egress(fetchFn) {
   try {
@@ -192,30 +231,35 @@ async function noteRefusal(path, r, fetchFn, host = AZ) {
     egress: await egress(fetchFn) });
 }
 export async function flushAzLog(env, day) {
-  if (!env.BOARD || (!Object.keys(azCalls).length && !azRefusals.length)) return;
-  const calls = azCalls, refusals = azRefusals;
-  azCalls = {}; azRefusals = [];
+  if (!env.BOARD || (!Object.keys(azCalls).length && !azRefusals.length && !azFallbacks.length)) return;
+  const calls = azCalls, refusals = azRefusals, via = azVia, fallbacks = azFallbacks;
+  azCalls = {}; azRefusals = []; azVia = {}; azFallbacks = [];
   try {
     const key = `${AZ_LOG_PREFIX}${day}.json`;
     const o = await env.BOARD.get(key);
     const log = o === null ? { day, host: AZ, calls: {}, refusals: [] } : await o.json();
     // Which address this run's calls went to (2026-10-15: the top-level host
     // was written once, when the day's log began, so it could not show the
-    // switch to the proxy). `host` is now the last run's, and `via` counts
-    // each hour's calls by the host that carried them -- every call in one
-    // run goes through the same azBase(env).
-    const via = azBase(env);
-    log.host = via;
+    // switch to the proxy). `host` is the last run's azBase(env), and `via`
+    // counts each hour's calls by the host that actually carried them -- the
+    // proxy, or api.agencyzoom.com when a call fell back (azRequest).
+    log.host = azBase(env);
     log.via = log.via || {};
     for (const [h, eps] of Object.entries(calls)) {
       const b = log.calls[h] || (log.calls[h] = {});
-      let n = 0;
-      for (const [ep, k] of Object.entries(eps)) { b[ep] = (b[ep] || 0) + k; n += k; }
+      for (const [ep, k] of Object.entries(eps)) b[ep] = (b[ep] || 0) + k;
+    }
+    for (const [h, hosts] of Object.entries(via)) {
       const v = log.via[h] || (log.via[h] = {});
-      v[via] = (v[via] || 0) + n;
+      for (const [host, k] of Object.entries(hosts)) v[host] = (v[host] || 0) + k;
     }
     for (const x of refusals) if (log.refusals.length < AZ_LOG_REFUSALS) log.refusals.push(x);
     log.refused = (log.refused || 0) + refusals.length;
+    if (fallbacks.length) {
+      log.fallbacks = log.fallbacks || [];
+      for (const x of fallbacks) if (log.fallbacks.length < AZ_LOG_FALLBACKS) log.fallbacks.push(x);
+      log.proxy_down = (log.proxy_down || 0) + fallbacks.length;
+    }
     await env.BOARD.put(key, JSON.stringify(log));
   } catch (e) { console.log(`AgencyZoom log not saved: ${e && e.message || e}`); }
 }
@@ -251,12 +295,11 @@ async function azToken(env, fetchFn) {
         if (Date.now() < x.until) throw new Error(`AgencyZoom paused until ${azClock(x.until)} after a refused login (${x.status})`);
       }
     }
-    countAz("/v1/api/auth/login");
-    const r = await fetchFn(`${azBase(env)}/v1/api/auth/login`, {
-      method: "POST", headers: azHeaders(env, { "content-type": "application/json" }),
+    const [r, host] = await azRequest(env, "/v1/api/auth/login", fetchFn, {
+      method: "POST", headers: { "content-type": "application/json" },
       body: JSON.stringify({ username: env.AZ_USERNAME, password: env.AZ_PASSWORD }),
     });
-    if (r.status === 403 || r.status === 429) await noteRefusal("/v1/api/auth/login", r, fetchFn, azBase(env));
+    if (r.status === 403 || r.status === 429) await noteRefusal("/v1/api/auth/login", r, fetchFn, host);
     if (!r.ok) {
       if (R2 && (r.status === 403 || r.status === 429)) {
         await R2.put(AZ_PAUSE_KEY, JSON.stringify({ until: Date.now() + AZ_PAUSE_MINUTES * 60000, status: r.status, at: new Date().toISOString() }));
@@ -318,9 +361,8 @@ async function azGet(env, path, fetchFn, init = {}) {
   const tok = await azToken(env, fetchFn);
   await azTurn();
   if (Date.now() < azPauseSeen.until) throw new Error(`AgencyZoom paused until ${azClock(azPauseSeen.until)} after a refused request`);
-  countAz(path);
-  const r = await fetchFn(`${azBase(env)}${path}`, { ...init, headers: azHeaders(env, { ...(init.headers || {}), authorization: `Bearer ${tok}`, "content-type": "application/json" }) });
-  if (r.status === 403 || r.status === 429) await noteRefusal(path, r, fetchFn, azBase(env));
+  const [r, host] = await azRequest(env, path, fetchFn, { ...init, headers: { ...(init.headers || {}), authorization: `Bearer ${tok}`, "content-type": "application/json" } });
+  if (r.status === 403 || r.status === 429) await noteRefusal(path, r, fetchFn, host);
   if (r.status === 401) await azForget(env);          // the saved login stopped working: log in afresh next time
   if ((r.status === 403 || r.status === 429) && env.BOARD) {
     const after = Number((r.headers && r.headers.get && r.headers.get("retry-after")) || 0);
@@ -568,10 +610,14 @@ export async function insightfulUtil(env, day, basis, fetchFn = fetch) {
    are looked at, newest first, and a lead is re-read only when its
    lastActivityDate moves. */
 
-// Per run. Sized for the Workers free plan's 50 outside requests per
-// invocation: 30 note reads + 8 quote reads + the lead list and a login.
-export const NOTES_PER_REFRESH = 30;
-export const QUOTES_PER_REFRESH = 8;
+// Per run. 30 + 8 until 2026-10-20, sized for the Workers free plan's 50
+// outside requests per invocation; on Workers Paid (10,000) the cap is the
+// run's own length -- each read is ~1 s through the proxy (LEAD_READ_GAP_MS
+// plus the round trip), and the quotes pass must finish well inside its
+// 2-minute cadence. A morning run had been reading its full 30 and leaving
+// leads pending; 60 clears a busy hour in one pass.
+export const NOTES_PER_REFRESH = 60;
+export const QUOTES_PER_REFRESH = 16;
 
 const ENTITIES = { amp: "&", lt: "<", gt: ">", quot: '"', apos: "'", "#39": "'", nbsp: " " };
 function unescapeHtml(s) {
@@ -750,12 +796,12 @@ const leadFields = l => ({ id: l.id, lastActivityDate: l.lastActivityDate, enter
    stage moves, which the quotes pass reads anyway (taskFlags). Refreshed
    every TASKS_REFRESH_SECONDS, not every run: tasks change slowly, and it
    is one list page per producer each time. */
-// 900, not 330, since 2026-10-12 (Frank: "do the timer cuts"): five task
-// reads every 15 minutes instead of every 5.5 -- 282 of Monday's 1,532
-// AgencyZoom calls were the task list, and AgencyZoom's firewall had been
-// refusing the Worker for the afternoon on four of nine days. Task
-// Completion now moves every 15 minutes between checkpoints.
-export const TASKS_REFRESH_SECONDS = 900;
+// 330: five task reads every 5.5 minutes. It was 900 from 2026-10-12 (Frank:
+// "do the timer cuts" -- AgencyZoom's firewall refusing the Worker's shared
+// address for the afternoon on four of nine days) until 2026-10-20, when
+// the proxy had carried every call for three days with no refusal (Frank:
+// "anything else we can improve with the new server").
+export const TASKS_REFRESH_SECONDS = 330;
 const TASK_PAGES = 5;
 export function taskFlags(notes, day, basis) {
   const t = basis.tasks;
@@ -1195,18 +1241,18 @@ const part = async (env, key, fn) => {
   catch (e) { return { ok: false, reason: String(e && e.message || e) }; }
 };
 
-/* Sales and the leads marked sold are read from AgencyZoom every 4 minutes,
-   not every 2 (2026-10-12, Frank: "do the timer cuts" -- 169 policy reads
-   and 173 lead-list reads on Monday, and AgencyZoom's firewall refusing the
-   Worker for the afternoon on four of nine days). The refresh still runs
-   every even minute for dials, contacts, utilization and Role Play; on the
-   in-between run the last real sales / sold / speed answers are carried
-   as they are, stamped `as_of`. A carried answer is never carried twice:
-   the next run sees the stamp and reads afresh. Nothing is carried over a
-   failed read (keepGood already does that, with the same stamp) or across
-   a checkpoint. A sale lands on the board up to 4 minutes after AgencyZoom
-   has it, instead of 2. */
-export const SALES_REFRESH_SECONDS = 240;
+/* Sales and the leads marked sold are read from AgencyZoom every even
+   minute again (2026-10-20). From 2026-10-12 (Frank: "do the timer cuts" --
+   169 policy reads and 173 lead-list reads on Monday, and AgencyZoom's
+   firewall refusing the Worker's shared address for the afternoon on four
+   of nine days) they were read every 4 minutes: on the in-between run the
+   last real sales / sold / speed answers were carried as they were,
+   stamped `as_of`, never twice in a row, never over a failed read (keepGood
+   does that, with the same stamp) or across a checkpoint. carrySales keeps
+   that shape; at 120 s it carries nothing, since the previous run is
+   always ~120 s old by the time the next one asks. Raise it again if
+   AgencyZoom's firewall starts refusing the proxy's address. */
+export const SALES_REFRESH_SECONDS = 120;
 export function carrySales(prev, cpAsOf, now = Date.now()) {
   if (!prev || prev.checkpoint !== cpAsOf || !prev.fetched_at) return null;
   const s = prev.sales || {}, d = prev.sold || {};
@@ -1439,7 +1485,25 @@ export async function scheduledLive(event, env) {
     await flushAzLog(env, day);
     await cronBeat(env, day, { ...run, ended: new Date().toISOString(), ms: Date.now() - t0,
       ...(error ? { error } : skipped ? { skipped } : { ok: true }) });
+    await liveHealthPing(env, error, `${run.part} ${run.run}: ${error || skipped || "ok"} in ${Date.now() - t0} ms`);
   }
+}
+/* The timer checks in (2026-10-20), as the nightly does through
+   healthcheck.py: with LIVE_HEALTHCHECK_URL (a Healthchecks.io check's ping
+   URL, a Worker secret) every run pings it when it ends -- a plain ping for
+   a run that worked or had nothing to do yet, /fail with the reason for one
+   that threw -- and the service emails Frank when the pings stop. The check
+   is a CRON one on the timer's own schedule (every minute, 8 AM-5:59 PM
+   weekdays, America/Phoenix) with a grace of ~10 minutes, so a quiet
+   evening is not an alarm and a timer that stops at 10 AM is. Best-effort:
+   a ping that fails never touches the run. Unset, nothing happens. */
+async function liveHealthPing(env, error, message) {
+  const url = String(env.LIVE_HEALTHCHECK_URL || "").trim().replace(/\/$/, "");
+  if (!url) return;
+  try {
+    await fetch(error ? `${url}/fail` : url, { method: "POST", body: String(message || "").slice(0, 10000),
+      signal: AbortSignal.timeout(10_000) });
+  } catch (e) { console.log(`healthcheck ping failed: ${e && e.message || e}`); }
 }
 /* Every timer run leaves two lines in worker-private/cron_beat/<day>.json --
    when it started, and when it ended, how long it took and how (2026-10-16:
