@@ -753,6 +753,12 @@ tr.tot td { font-weight: 700; background: var(--surface); }
 tbody tr:hover { background: color-mix(in oklab, var(--bar) 7%, transparent); }
 .scroll { overflow-x: auto; border: 1px solid var(--border); border-radius: 8px; }
 .scroll table { min-width: 640px; }
+/* Sortable tables (Frank, 2026-10-20): a heading that sorts shows a hand and,
+   once picked, its arrow. */
+thead th.sortth { cursor: pointer; user-select: none; }
+thead th.sortth:hover, thead th.sortth:focus-visible { color: var(--text); }
+thead th.sortth[aria-sort="descending"]::after { content: " \25BC"; font-size: 8px; vertical-align: 1px; }
+thead th.sortth[aria-sort="ascending"]::after { content: " \25B2"; font-size: 8px; vertical-align: 1px; }
 .msgt td.said, .msgt th.said { min-width: 220px; white-space: normal; text-align: left; color: var(--text-secondary); }
 .msgt .said-m { display: none; }
 @media (max-width: 600px) {
@@ -8634,6 +8640,136 @@ document.addEventListener("click", e => {
   const c = f.querySelector(".flipfront"); if (c) c.click();
 });
 new MutationObserver(() => { placeVista(); flipLists(); fillMonthGoal(); }).observe(document.getElementById("view"), { childList: true });
+
+/* ---- Sortable tables (Frank, 2026-10-20: "make the leaderboard categories
+   sortable, and do it wherever it can apply") --------------------------------
+   Every table on a page with a heading row sorts on a click of a heading:
+   the first click puts the biggest first for a column of numbers (A to Z
+   for words), the second turns it round, the third goes back to the page's
+   own order -- the leaderboard's rank. A Team / total row stays at the
+   bottom, a row that belongs to the one above it (a service call's
+   transcript) travels with it, and a blank or "—" cell sorts last either
+   way. The pick is kept per table for this browser tab (the page, the
+   section and the headings' words, sessionStorage) and put back after every
+   repaint, since the live refresh redraws the Digest every minute and a
+   drill click repaints the page. Numbers are read off the cell: "$1,234",
+   "12.5% (6)", "2 of 5", "3 / 2" and "33% / 20%" sort on their first
+   figure, "4m 12s" / "1h 12m" / "2.5d" as time, "Oct 19" and "10:21 AM"
+   as dates and clock times. A cell can say its own value in data-sort.
+   The editions, the guides, the coaching cards' own small tables and
+   Apollo's drawer are left alone. */
+const SORT_KEY = "board-sort";
+let SORTS = (() => { try { return JSON.parse(sessionStorage.getItem(SORT_KEY) || "{}") || {}; } catch (_) { return {}; } })();
+const saveSorts = () => { try { sessionStorage.setItem(SORT_KEY, JSON.stringify(SORTS)); } catch (_) {} };
+const SORT_SKIP = ".ed, .paper, .bptw, .askt, .bktip, .coeus, .nosort";
+const thText = th => (th.textContent || "").replace(/\s+/g, " ").trim();
+function sortableTable(t) {
+  return !!(t && t.tagName === "TABLE" && t.tHead && t.tHead.rows[0] && t.tBodies[0] && !t.closest(SORT_SKIP) && t.closest("#view"));
+}
+function sortTableKey(t) {
+  if (t.dataset.sortkey) return t.dataset.sortkey;
+  const sect = t.closest(".rdrill-list, .sect"), h = sect && sect.querySelector("h2, h3");
+  return `${view}|${h ? thText(h) : ""}|${[...t.tHead.rows[0].cells].map(thText).join("|")}`;
+}
+const SORT_DUR = /^(?:(\d+(?:\.\d+)?)d\s*)?(?:(\d+(?:\.\d+)?)h\s*)?(?:(\d+(?:\.\d+)?)m\s*)?(?:(\d+(?:\.\d+)?)s)?$/;
+const SORT_DATE = /^(?:[A-Z][a-z]{2},? )?[A-Z][a-z]{2}\.? \d{1,2}(?:,? \d{4})?$|^\d{4}-\d{2}-\d{2}|^\d{1,2}\/\d{1,2}(?:\/\d{2,4})?$/;
+const SORT_CLOCK = /^(\d{1,2}):(\d{2})(?::\d{2})?\s*(AM|PM|am|pm)?$/;
+function sortValue(td) {
+  if (td.dataset.sort != null) { const n = +td.dataset.sort; return td.dataset.sort !== "" && !isNaN(n) ? n : (td.dataset.sort || null); }
+  let t = (td.textContent || "").replace(/\s+/g, " ").trim();
+  if (!t || t === "—" || t === "-" || t === "–" || t === "n/a") return null;
+  t = t.replace(/^[^\p{L}\p{N}$+-]+/u, "");   // a medal or a badge dot before the name
+  const d = t.match(SORT_DUR);
+  if (d && (d[1] || d[2] || d[3] || d[4])) return (+d[1] || 0) * 86400 + (+d[2] || 0) * 3600 + (+d[3] || 0) * 60 + (+d[4] || 0);
+  const c = t.match(SORT_CLOCK);
+  if (c) { let h = +c[1] % 12; if (/pm/i.test(c[3] || "")) h += 12; return h * 60 + +c[2]; }
+  if (SORT_DATE.test(t)) { const ms = Date.parse(t); if (!isNaN(ms)) return ms; }
+  const bare = t.replace(/[$,]/g, "");
+  const m = bare.match(/^[+-]?\d+(?:\.\d+)?/);
+  if (m) return +m[0];
+  return t;
+}
+function sortTable(t, col, dir) {
+  const body = t.tBodies[0];
+  const groups = []; let g = null, i = 0;
+  for (const r of [...body.rows]) {
+    if (r.hidden || r.classList.contains("svc-tx-row")) { if (g) g.subs.push(r); continue; }   // belongs to the row above
+    if (r.dataset.ord == null) r.dataset.ord = i;
+    g = { row: r, subs: [], pinned: r.classList.contains("tot"), ord: +r.dataset.ord }; groups.push(g); i++;
+  }
+  const main = groups.filter(x => !x.pinned), pinned = groups.filter(x => x.pinned);
+  if (dir) {
+    main.forEach(x => { x.v = sortValue(x.row.cells[col]); });
+    const nums = main.filter(x => typeof x.v === "number").length, words = main.filter(x => typeof x.v === "string").length;
+    const numeric = nums >= words;
+    main.sort((a, b) => {
+      if (a.v == null && b.v == null) return a.ord - b.ord;
+      if (a.v == null) return 1;
+      if (b.v == null) return -1;
+      let c;
+      if (numeric) {
+        const an = typeof a.v === "number", bn = typeof b.v === "number";
+        if (an && bn) c = a.v - b.v;
+        else if (an !== bn) return an ? -1 : 1;
+        else c = String(a.v).localeCompare(String(b.v), undefined, { numeric: true, sensitivity: "base" });
+      } else c = String(a.v).localeCompare(String(b.v), undefined, { numeric: true, sensitivity: "base" });
+      if (dir === "desc") c = -c;
+      return c || a.ord - b.ord;
+    });
+  } else main.sort((a, b) => a.ord - b.ord);
+  for (const x of [...main, ...pinned]) { body.appendChild(x.row); x.subs.forEach(s => body.appendChild(s)); }
+  [...t.tHead.rows[0].cells].forEach((th, k) => { if (k === col && dir) th.setAttribute("aria-sort", dir === "desc" ? "descending" : "ascending"); else th.removeAttribute("aria-sort"); });
+  t.dataset.sortedAs = dir ? `${thText(t.tHead.rows[0].cells[col])}:${dir}` : "";
+}
+function columnNumeric(t, col) {
+  const vs = [...t.tBodies[0].rows].filter(r => !r.hidden && !r.classList.contains("tot")).map(r => r.cells[col] ? sortValue(r.cells[col]) : null).filter(v => v != null);
+  return vs.filter(v => typeof v === "number").length >= vs.filter(v => typeof v === "string").length;
+}
+function markSortable(t) {
+  [...t.tHead.rows[0].cells].forEach(th => {
+    if (!thText(th) || th.classList.contains("sortth")) return;
+    th.classList.add("sortth"); th.tabIndex = 0;
+    if (!th.title) th.title = "Click to sort";
+  });
+}
+let sortsBusy = false;
+function applySorts() {
+  for (const t of document.getElementById("view").querySelectorAll("table")) {
+    if (!sortableTable(t)) continue;
+    markSortable(t);
+    const s = SORTS[sortTableKey(t)];
+    const want = s ? `${s.col}:${s.dir}` : "";
+    if ((t.dataset.sortedAs || "") === want) continue;
+    if (!s) { sortTable(t, 0, ""); continue; }
+    const col = [...t.tHead.rows[0].cells].findIndex(th => thText(th) === s.col);
+    if (col < 0) continue;
+    sortTable(t, col, s.dir);
+  }
+}
+function sortClick(th) {
+  const t = th.closest("table");
+  if (!sortableTable(t) || !thText(th)) return;
+  const col = th.cellIndex, key = sortTableKey(t), name = thText(th), prev = SORTS[key];
+  const first = columnNumeric(t, col) ? "desc" : "asc", second = first === "desc" ? "asc" : "desc";
+  const dir = prev && prev.col === name ? (prev.dir === first ? second : "") : first;
+  if (dir) SORTS[key] = { col: name, dir }; else delete SORTS[key];
+  saveSorts();
+  sortTable(t, col, dir);
+}
+document.addEventListener("click", e => {
+  const th = e.target.closest("thead th"); if (!th || e.target.closest("a, button, input, select")) return;
+  sortClick(th);
+});
+document.addEventListener("keydown", e => {
+  if (e.key !== "Enter" && e.key !== " ") return;
+  const th = e.target.closest && e.target.closest("thead th.sortth"); if (!th) return;
+  e.preventDefault(); sortClick(th);
+});
+new MutationObserver(() => {
+  if (sortsBusy) return;
+  sortsBusy = true;
+  requestAnimationFrame(() => { try { applySorts(); } catch (e) { console.error(e); } finally { sortsBusy = false; } });
+}).observe(document.getElementById("view"), { childList: true, subtree: true });
 /* Every paint carries a ticket. A page still loading when the next one is
    opened finishes its fetch, finds a newer ticket and draws nothing, so the
    page you clicked last is the one on screen (Frank, 2026-10-20: "if a page
