@@ -1053,7 +1053,11 @@ export async function syncSalesLog(env, day, basis, policies, sourceNames, soldR
   const cands = salesLogEntries(day, basis, policies, sourceNames, soldRaw);
   if (!cands.length) return 0;
   const key = `saleslog/${day}.json`;
-  const doc = (await r2json(env, key)) || { day, entries: [] };
+  // Read with its etag and written only over that same copy: a tick or a
+  // typed sale saved in between is never overwritten (the next refresh adds
+  // this one instead).
+  const obj = await env.BOARD.get(key);
+  const doc = obj ? await obj.json() : { day, entries: [] };
   const have = new Set(doc.entries.filter(e => e.az_policy_id != null).map(e => String(e.az_policy_id)));
   const typed = new Set(doc.entries.filter(e => e.policy_number && e.az_policy_id == null).map(e => e.policy_number));
   const byPid = new Map(doc.entries.filter(e => e.az_policy_id != null).map(e => [String(e.az_policy_id), e]));
@@ -1084,7 +1088,13 @@ export async function syncSalesLog(env, day, basis, policies, sourceNames, soldR
     if (c.az_policy_id != null) have.add(String(c.az_policy_id));
     added++;
   }
-  if (added || changed) await r2put(env, key, doc);
+  if (added || changed) {
+    const put = await env.BOARD.put(key, JSON.stringify(doc), {
+      onlyIf: obj ? { etagMatches: obj.etag } : { etagDoesNotMatch: "*" },
+      httpMetadata: { contentType: "application/json" },
+    });
+    if (!put) return 0;
+  }
   return added;
 }
 
