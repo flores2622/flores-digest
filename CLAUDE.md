@@ -1357,8 +1357,10 @@ and anything without the glow is the checkpoint's (Frank, 2026-09-24).
   threw (`liveHealthPing`) -- so the service emails Frank when the timer
   goes quiet. The check is a CRON one on the timer's own schedule (every
   minute, 8 AM-5:59 PM weekdays, America/Phoenix, grace ~10 minutes), so an
-  evening is not an alarm and a timer that stops at 10 AM is. Frank's to
-  create and set; unset, nothing is pinged.
+  evening is not an alarm and a timer that stops at 10 AM is. Frank made
+  the check and set the secret on 2026-10-20 (`* 8-17 * * 1-5` in
+  Healthchecks' own cron, where 1 is Monday); it read Up within minutes.
+  Unset, nothing is pinged.
 - **Contact rate, live contacts and Avg Talk Time are live too** (Frank,
   2026-09-28: "avg talk time, contact rate, and texts and emails should all
   be live as well"), and they are PROVISIONAL: the Worker cannot hear a
