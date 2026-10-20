@@ -153,7 +153,15 @@ window.STAFF = {
     "hygiene",
     "folio_goals",
     "roleplay_history",
-    "workflows_suggest"
+    "workflows_suggest",
+    "commercial",
+    "coeus_usage",
+    "card_review",
+    "roleplay_voices",
+    "commission_all",
+    "sales_log_all",
+    "crm",
+    "campaigns"
    ],
    "handle": "dm.francisco"
   },
@@ -171,7 +179,15 @@ window.STAFF = {
     "hygiene",
     "folio_goals",
     "roleplay_history",
-    "workflows_suggest"
+    "workflows_suggest",
+    "commercial",
+    "coeus_usage",
+    "card_review",
+    "roleplay_voices",
+    "commission_all",
+    "sales_log_all",
+    "crm",
+    "campaigns"
    ],
    "handle": "vero.vacation.approved"
   },
@@ -201,7 +217,13 @@ window.STAFF = {
     "roleplay_history",
     "commission_all",
     "sales_log_all",
-    "workflows_suggest"
+    "workflows_suggest",
+    "commercial",
+    "coeus_usage",
+    "card_review",
+    "roleplay_voices",
+    "crm",
+    "campaigns"
    ],
    "color": "#baffff",
    "handle": "amanda.approves"

@@ -241,7 +241,8 @@ Everything caches under `data/`, so a re-run resumes rather than restarting.
 - **Apollo's Doubts** (Frank, 2026-10-05: "a list ... of questionable or
   unsure coaching calls ... or maybe even of things it is hearing for the
   first time"; "visible to only me"). Apollo's Academy > Apollo's Doubts,
-  shown only to staff.json's `card_review` (`/api/me` `review`).
+  shown only to staff.json's `card_review` (`/api/me` `review`; the ops
+  team since 2026-10-20).
   Two sources: **Apollo's own** -- each read returns `doubts` ([kind, text],
   kind "unsure" or "new"; METHODOLOGY.md's Output format), which
   `coaching_cards.split_doubts` takes OFF the card before publishing (the day
@@ -320,7 +321,7 @@ Everything caches under `data/`, so a re-run resumes rather than restarting.
   grades in English whatever the call's language. **Producers rate the voice
   after each graded session** (stars, again yes / no, a comment), saved on
   the session and in `roleplay-voices/ratings.json`; the ratings table on
-  the Role Play tab is Frank's alone (`roleplay_voices` (staff.json)). **Every
+  the Role Play tab is the ops team's (`roleplay_voices` (staff.json); Frank's alone until 2026-10-20)). **Every
   prospect has an AI-drawn headshot that glows green while they speak**
   (Frank, 2026-09-29: "remove the talking face, its too slow and cuts me
   off. lets just do headshots of AI generated faces with glow when they are
@@ -545,7 +546,15 @@ pipeline tags (licensed, hybrid, training-lead owner, commercial owner ...)
 and their `board` keys -- who may open Commercial, Rotation, Lead Scrub, CRM Hygiene,
 Apollo's doubts, voice ratings, Coeus usage, every Role Play history,
 everyone's commission, and log sales for everyone -- live there and nowhere
-else. **Crystal's commission schedule is her own** (Frank, 2026-10-06: "crystals comm
+else. **The ops team has Frank's access** (Frank, 2026-10-20: "Veronica,
+Francisco, and Amanda should have the same access and permissions I have as
+operations"): every `board` key Frank holds -- Commercial, the CRM pages
+(Tasks, Leads, Lists, Workflows), Campaigns, Apollo's Doubts, Apollo's usage,
+the voice ratings, everyone's commission and logging sales for everyone --
+is on Francisco's, Veronica's and Amanda's too (Amanda already logged for
+everyone through the Worker's sales-log rule). Access only: the
+`commercial_owner` tag and who a commercial SR is credited to stay Frank's.
+**Crystal's commission schedule is her own** (Frank, 2026-10-06: "crystals comm
 schedule and goal is different than the others" -- his "Crystal Comm Schedule" sheet): staff.json's
 `commission.schedules.flat` (a schedule with `pay`; `commission.js` pays it instead of the rate), a set amount per tier of the folio's Personal Lines premium ($15,000 $600, $20,000 $800,
 $25,000 $1,000, $30,000 $1,250, $35,000 $1,500, $40,000+ $1,750; nothing under $15,000 -- Frank: the table,
@@ -1545,7 +1554,7 @@ described there.
 to the producers** (Frank, 2026-10-15: "after receiving the results of what
 they did ill decide who will be getting the highest load of these leads ...
 create me a tracker for it"; "just me for now" -- staff.json's `campaigns`,
-Frank alone). The first is the **Rate Decrease Campaign**'s batch 1 from his
+Frank alone, then the ops team from 2026-10-20). The first is the **Rate Decrease Campaign**'s batch 1 from his
 "Rate Decrease Campaign" sheet's QNC tab: 10 per producer, 5 found in
 AgencyZoom by phone or email and reassigned to them on 2026-10-15 (one lead
 record, not a customer, untouched 30+ days, no DNC number; Leticia Alvarez,
@@ -2364,8 +2373,9 @@ Crystal (hybrid); credit always goes to whoever COMPLETED the SR or task.
 ## Cerberus -- Commercial
 
 **Cerberus is Commercial's name** (Frank, 2026-09-24), beside Apollo and
-Athena. **Commercial is Frank's alone**, so nothing commercial touches anyone
-else's numbers. `commercial.py` is the one definition, imported by Athena to
+Athena. **Commercial is Frank's work**, so nothing commercial touches anyone
+else's numbers (the ops team can SEE the Commercial Center from 2026-10-20;
+the work and the attribution stay Frank's). `commercial.py` is the one definition, imported by Athena to
 exclude and by Cerberus to count:
 - every SR in the **Commercial Renewals** workflow, whoever completed it;
 - a **commercial service change**: a Service Pipeline SR on a household holding
@@ -2376,7 +2386,8 @@ exclude and by Cerberus to count:
 
 The service team's work on a commercial household (payments, a business
 owner's personal lines) stays in Athena. Commercial renewals use the same six
-resolutions, Unable to Contact retained, and the section is visible to Frank only.
+resolutions, Unable to Contact retained, and the section is visible to the ops team only
+(Frank alone until 2026-10-20).
 
 **The Commercial Center** (Frank named it, 2026-09-24): `commercial_digest.py`
 builds `commercial/<day>.json` from `daily.py` after the service board (board
@@ -3390,7 +3401,7 @@ over `text/event-stream` with status lines while it reads.
   `coeus-usage/<day>.json` under the asker (`recordUsage`), with an
   estimated cost at the model's list prices (`PRICE`; update it if the
   model or prices change). `GET /api/coeus/usage?from=&to=` adds it up per
-  person and per day for staff.json's `coeus_usage` (Frank);
+  person and per day for staff.json's `coeus_usage` (the ops team);
   the drawer's **Usage** button shows it (hidden on a 403), and the
   `coeus_usage` tool lets those viewers ask Coeus itself. The figure is an
   estimate, not the bill.
@@ -3430,8 +3441,10 @@ on a published day. The rules:
   deleted, status codes say what a record is. An SR completes only on one
   of Frank's resolutions; a lead's `sold` sets status 2 and a soldDate and
   makes its household; `move` writes the structured move and the note.
-- **Who may use it: Frank alone, until further notice** (Frank,
-  2026-10-06: "all of this is available to only me until further notice"):
+- **Who may use it: the ops team** (Frank, 2026-10-06: "all of this is
+  available to only me until further notice"; opened to Francisco, Veronica
+  and Amanda 2026-10-20 -- "the same access and permissions I have as
+  operations"):
   staff.json's `crm` board key, checked by `site/crm.js` on every call;
   anyone else gets 403 and the Tasks page never enters their menu or the
   search (`site/public/tasks.js` probes `/api/crm/lookups`, like Rotation).
@@ -3578,7 +3591,9 @@ on a published day. The rules:
   102-104 were set inactive the same day. **The ops team suggests** (Frank,
   2026-10-12: "add a suggestions box or highlighter for the other ops members
   to suggest"): staff.json's `workflows_suggest` (Francisco, Veronica,
-  Amanda) opens GET automations and `POST /api/crm/automations/suggest`
+  Amanda -- who also hold `crm` from 2026-10-20, so they mark and write rules
+  and tick suggestions done like Frank; the key now matters only for someone
+  given it without `crm`) opens GET automations and `POST /api/crm/automations/suggest`
   ({op: add|done|undone|del, key, text, id}; R2 `crm/suggestions.json`) and
   nothing else of the CRM; the page probes `/api/crm/automations` itself
   (not CRM_READY), hides the marks, Add a rule and Edit / Delete when
