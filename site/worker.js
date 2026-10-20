@@ -684,10 +684,13 @@ const DOCS_SIGNED_OPTIONS = ["", "Paperless", "Docs + Paperless",
  * az_customer_id, policy_number, product, premium, term, date_sold,
  * effective_date, notes, docs_signed, review_sent} -> the created entry.
  *
- * A same-day, self-reported log (Frank, 2026-09-12: "I want a sales tab
- * where they go in and enter their sales for the day") -- explicitly NOT
- * the official Premium Sold figure, which stays AgencyZoom-derived as it
- * already is everywhere else on this board.
+ * The agency's Sales sheet (Frank, 2026-09-12: "I want a sales tab where
+ * they go in and enter their sales for the day"; since 2026-10-20 the sales
+ * record itself -- Frank retired the Google sheet: "they will be manually
+ * entering into the digest or it will pull from AZ"). Typed rows and the
+ * rows the live refresh / nightly add from AgencyZoom sit together; the
+ * commission page and the folio goal count them. The Digest's Premium Sold
+ * stays AgencyZoom's policies by soldDate.
  *
  * docs_signed/review_sent mirror two of the real Sales sheet's own
  * tracking columns (Frank, 2026-09-14; AZ Profile, the third, removed
@@ -721,7 +724,7 @@ async function postSalesLog(request, env, day) {
   // date_sold/effective_date are plain YYYY-MM-DD strings, same "typed in
   // if known, blank otherwise" pattern as policy_number/product/term below
   // -- an invalid or missing value is just blank, never a 400, since this
-  // is a same-day self-reported log, not a validated record.
+  // is a sheet a person fills in, not a validated record.
   const dateSold = String(body.date_sold || "");
   const effectiveDate = String(body.effective_date || "");
   const entry = {

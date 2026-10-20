@@ -817,6 +817,16 @@ agencyzoom.py --sheet-products` lists types the saved corpus shows sold
 that the file is missing; `--check` fails on an empty list, flood, or a
 term not like "6mo". Rows already typed are left as they were. Still in code: what makes a product life / umbrella /
 Kraft Lake / business (`kindOf`'s words) and the eligible lines.
+**The board's Sales sheet IS the sales record** (Frank, 2026-10-20: "i got
+rid of the sheet effective today, they will be manually entering into the
+digest or it will pull from AZ"; Crystal's John Johnson that day came from
+AgencyZoom, the test policies everyone added were removed): the Google
+sheet is retired, so the page, its guide and the code comments no longer
+call it "self-reported, not the official Premium Sold". The Log a sale note
+says a sale AgencyZoom has is added on its own, so log only what AgencyZoom
+does not have yet. The Digest's Premium Sold is still AgencyZoom's policies
+by soldDate; the sheet and the tile can differ by a late entry or a
+flagged premium.
 
 ## The words on the calls, the drip subjects and the Worker's cron
 
