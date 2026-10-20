@@ -2231,10 +2231,15 @@ let matchSolved = new Set();
 let matchWrong = null;      // {term, def} pair indices to flash red, cleared on next render
 let matchAttempts = 0;
 
-// Sales tab state (Frank, 2026-09-12): a same-day, self-reported log,
-// explicitly NOT the official Premium Sold figure (that stays AgencyZoom-
-// derived, as it already is everywhere else on this board). Entered sales
-// are stored in R2 (saleslog/<day>.json, site/worker.js).
+// Sales tab state (Frank, 2026-09-12): the agency's Sales sheet. It began
+// as a same-day self-reported log beside Frank's Google sheet; that sheet
+// was retired on 2026-10-20 ("they will be manually entering into the
+// digest or it will pull from AZ"), so this is the sales record now --
+// typed rows and the rows AgencyZoom adds, side by side -- and what the
+// commission page and the folio goal count. The Digest's Premium Sold is
+// still AgencyZoom's policies by soldDate; the two can differ by a late
+// entry or a flagged premium. Entries are stored in R2 (saleslog/<day>.json,
+// site/worker.js).
 //
 // Amanda logs sales here even though she isn't a tracked PRODUCER_ROSTER
 // producer elsewhere on the board (Frank, 2026-09-15: "Amanda needs to be
@@ -7677,12 +7682,13 @@ function wireMatch(deck, repaintAll) {
 }
 
 /* ---- Sales tab -------------------------------------------------------------
-   A same-day, self-reported log producers fill in themselves (Frank,
-   2026-09-12) -- explicitly NOT the official Premium Sold figure, which
-   stays AgencyZoom-derived everywhere else on this board (see
-   site/worker.js's postSalesLog docstring). Reconciliation against real
-   AgencyZoom policies happens offline; this UI only creates/lists/deletes
-   entries and shows whatever reconciliation status R2 already carries.
+   The agency's Sales sheet (Frank, 2026-09-12; the record since 2026-10-20,
+   when the Google sheet was retired): rows producers type and rows AgencyZoom
+   adds, what commission and the folio goal count (see site/worker.js's
+   postSalesLog docstring). The Digest's Premium Sold stays AgencyZoom's own
+   policy figure. Reconciliation against AgencyZoom policies happens in the
+   nightly sync; this UI only creates/lists/deletes entries and shows whatever
+   status R2 already carries.
 
    The log below the form spans the WHOLE current folio, not just today
    (Frank, 2026-09-14: "I want this folios sales sheet to be displayed,
@@ -7755,9 +7761,9 @@ const TRASH_ICON = `<svg viewBox="0 0 24 24" width="15" height="15" fill="none" 
 // Per-producer + team totals for this folio's log, at the top of the Sales
 // tab (Frank, 2026-09-15: "i want totals at the top for everyone and the
 // team total"). Counts every logged entry regardless of Docs Signed/
-// Review Sent state -- this is a tally of what's been SELF-REPORTED this
-// folio, the same "not the official Premium Sold figure" scope as the log
-// itself, not a reconciled/official count.
+// Review Sent state -- this is a tally of every row on the sheet this
+// folio, typed or added from AgencyZoom, the same scope as the log itself
+// (not the Digest's Premium Sold, which is AgencyZoom's policies by day).
 // Clicking a producer's card, legend row or pie slice filters the folio log
 // below to them (Frank, 2026-10-05: "clicking the producers name or color on
 // the chart should filter the list to them"); again, or Team, shows everyone.
@@ -7904,7 +7910,7 @@ function salesPanel(data) {
 
   return `${salesTotalsHtml(entries)}<div class="sect${canLog.length ? "" : " nolog"}">
     <h2>Log a sale</h2>
-    <p class="sd">Same-day list for immediate visibility -- AgencyZoom stays the official Premium Sold number.${
+    <p class="sd">The agency's sales record: a sale AgencyZoom has is added on its own, so log here only what AgencyZoom does not have yet, or a sale you want on the sheet today.${
       isCurrent ? "" : ` Always logs against today, even while you're looking at an older folio below.`}</p>${
     canLog.length ? "" : `<p class="note">Your login cannot log sales. Frank, Amanda and Crystal log for everyone; Coral and Sarahi for each other; every other producer their own.</p>`}
     <div class="controls" style="flex-wrap:wrap;gap:10px;align-items:center">
@@ -8755,7 +8761,7 @@ async function paintTab() {
     v.innerHTML = blueprintPanel(view === "athenamap" ? "athena" : "apollo");
     wireBlueprintPanel();
   } else if (view === "sales") {
-    $("#topsub").textContent = "log today's sales, reference any past folio's sheet, or break it down by source/type/producer -- self-reported, not the official Premium Sold figure";
+    $("#topsub").textContent = "log today's sales, reference any past folio's sheet, or break it down by source/type/producer -- the sales record commission and the folio goal count";
     v.innerHTML = '<div class="empty">Loading…</div>';
     const [data] = await Promise.all([loadSalesLog(salesDay, salesFolioPick), loadLeadSources(), loadSalesOptions()]);
     salesLastData = data;
