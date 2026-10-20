@@ -167,5 +167,50 @@
     "about your home policy!",
     "about your auto insurance!"
   ],
-  "_email_template_subjects": "this account's AgencyZoom automation email subjects, lower-cased, the lead's first name taken off the front (messages.TEMPLATE_SUBJECTS: an email with one of these and no attachment is a drip, never credited to a person; read off 3,191 sent emails, 2026-09-27). Subjects sent to 5+ leads in a night are learned on top."
+  "_email_template_subjects": "this account's AgencyZoom automation email subjects, lower-cased, the lead's first name taken off the front (messages.TEMPLATE_SUBJECTS: an email with one of these and no attachment is a drip, never credited to a person; read off 3,191 sent emails, 2026-09-27). Subjects sent to 5+ leads in a night are learned on top.",
+  "sales_sheet": {
+    "_about": "The Sales sheet's Product and Term dropdowns: per carrier (the short names in `carriers`; Other = any other carrier), the AgencyZoom policy types the agency sells, each offered under the name product_names gives it; `terms` [value, label] as an added row's term reads. See the root agencyzoom.json.",
+    "products": {
+      "Northstar": [
+        "Auto",
+        "Home",
+        "Homeowners",
+        "Renters",
+        "Condo",
+        "Umbrella",
+        "10 year term",
+        "Whole Life"
+      ],
+      "Harbor": [
+        "Auto"
+      ],
+      "Pinecrest": [
+        "Mobile Home",
+        "Landlord",
+        "Home"
+      ]
+    },
+    "terms": [
+      [
+        "6mo",
+        "6 months"
+      ],
+      [
+        "12mo",
+        "12 months"
+      ],
+      [
+        "120mo",
+        "10 years (term life)"
+      ],
+      [
+        "240mo",
+        "20 years (term life)"
+      ],
+      [
+        "360mo",
+        "30 years (term life)"
+      ]
+    ]
+  }
 }
