@@ -136,6 +136,18 @@ def intval(v):
         return None
 
 
+# D1 refuses a statement over 100 KB (SQLITE_TOOBIG): 28 of the 353,000
+# notes in the 2026-10-21 history load were emails bigger than that (whole
+# quoted threads). The CRM keeps the first NOTE_BODY_MAX characters and says
+# so; the fingerprint is over the clipped text, so the row is stable.
+NOTE_BODY_MAX = 60_000
+
+
+def clip_body(body):
+    b = str(body if body is not None else "")
+    return b if len(b) <= NOTE_BODY_MAX else b[:NOTE_BODY_MAX] + "\n[note cut here: the original was longer than the CRM keeps]"
+
+
 def note_id(lead_id, when, ntype, body):
     """A stable id for a note AgencyZoom gives none: 52 bits of a hash over the
     lead, the stamp, the type and the text (fits SQLite's integer and a JS
@@ -639,7 +651,7 @@ def build(rows, days=None):
                 attr = dict(attr, createdByName=str(n["createdBy"]))
             origin = "automation" if attr.get("triggerRuleId") else ("traq" if str(body).lstrip().lower().startswith("traq") else "import")
             rows.insert("notes", {
-                "id": nid, "az_id": None, "lead_id": lid, "type": ntype, "body": str(body),
+                "id": nid, "az_id": None, "lead_id": lid, "type": ntype, "body": clip_body(body),
                 "attr": json.dumps(attr) if attr else None,
                 "attachments": json.dumps(n.get("attachments")) if n.get("attachments") else None,
                 "origin": origin, "created_by": created_by, "create_date": when,
