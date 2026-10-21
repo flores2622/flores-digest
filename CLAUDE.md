@@ -3577,8 +3577,26 @@ on a published day. The rules:
   `crm_import.note_id` makes a stable one from the lead, the stamp, the type
   and the text (`az_id` NULL), and **only the last 30 days' notes go through
   the mirror** (`NOTE_DAYS`; a lead's file is its whole history, ~40 notes,
-  and D1 counts every index entry as a write) -- the history is a one-off
-  backfill once the account is on Workers Paid. The
+  and D1 counts every index entry as a write) -- **the history was loaded
+  once the account was on Workers Paid** (Frank, 2026-10-20: "do them all";
+  finished 2026-10-21): every lead's notes fetched paced from the nightly's
+  host into data/notes/ (`messages._fetch_notes_paced` over the 10-20
+  corpus, 12,571 leads, ~2 hours at ~1 a second), then `CRM_NOTE_DAYS=0
+  CRM_SYNC_MAX_ROWS=5000000 python3 crm_sync.py` -- the CRM holds 373,119
+  notes on 12,581 leads back to 2022-06-28 (303,399 imported, the rest
+  Pantheon's own CALL notes) and 10,337 stage moves. Three things it
+  taught: a session's container sleeps when idle and restarts on its own,
+  and a background task has a 2-hour limit, so a long load runs in
+  resumable pieces (the state keeps what D1 accepted; a restart re-plans
+  only the rest -- the nightly's own sync saving the same state file
+  meanwhile can drop fingerprints, which only resends rows INSERT OR IGNORE
+  skips; a lead whose texts' delivery status moved re-plans the same way,
+  harmlessly); Cloudflare's API answers 429 (code 971) with a Retry-After
+  of minutes when the account's calls add up, so `crm_sync.D1.execute`
+  waits what it asks (capped at 5 min, 8 tries) instead of giving up after
+  6 s; and D1 refuses a statement over 100 KB (SQLITE_TOOBIG -- 28 emails
+  with whole quoted threads), so `crm_import.clip_body` keeps a note's
+  first `NOTE_BODY_MAX` (60,000) characters and says it was cut. The
   real workflow and stage ids come from `data/az_pipelines.json`
   (`/v1/api/pipelines-and-stages` as it came, saved by daily.py beside
   `az_stages.json`) and from the SRs themselves; the SR categories' names
