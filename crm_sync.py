@@ -88,10 +88,20 @@ class D1:
         self.http.headers.update({"Authorization": f"Bearer {tok}", "Content-Type": "application/json"})
 
     def execute(self, sql):
-        for attempt in range(3):
+        # Cloudflare's API answers 429 (code 971, "Please wait and consider
+        # throttling your request speed") with a Retry-After of minutes, not
+        # seconds, when the account's calls add up -- the note-history load
+        # beside the nightly's own D1 writes hit it on 2026-10-21 and a 2 / 4
+        # / 6 s retry gave up on every row. Wait what it asks (capped), then
+        # try again; a 5xx backs off and retries as before.
+        for attempt in range(8):
             r = self.http.post(self.url, json={"sql": sql}, timeout=120)
             if r.status_code == 429 or r.status_code >= 500:
-                time.sleep(2 * (attempt + 1))
+                after = r.headers.get("Retry-After")
+                wait = min(int(after), 300) if after and after.isdigit() else 2 * (attempt + 1)
+                if r.status_code == 429 and attempt == 0:
+                    print(f"  d1: rate limited, waiting {wait}s")
+                time.sleep(wait)
                 continue
             j = r.json()
             if not j.get("success"):
