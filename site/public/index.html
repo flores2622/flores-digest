@@ -1257,6 +1257,9 @@ tbody tr:hover { background: color-mix(in oklab, var(--accent) 8%, transparent);
 .top { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; padding-top: 18px; }
 .greetwrap { flex: 1 1 320px; min-width: 0; }
 .eyebrow { font-size: 11px; letter-spacing: .14em; text-transform: uppercase; color: var(--text-muted); font-weight: 700; }
+/* Demo mode (Frank, 2026-10-20): the chip says the board is showing made-up customers */
+.demochip { display: inline-block; margin-left: 8px; padding: 2px 8px; border-radius: 999px; background: #b45309; color: #fff; font-size: 10px; letter-spacing: .12em; vertical-align: middle; }
+.demonote { font-size: 12px; color: var(--text-secondary); margin: 0; line-height: 1.4; }
 .top h1.greet { margin: 2px 0 0; font: var(--dw) clamp(24px, 2.4vw, 34px)/1.1 var(--display); text-wrap: balance; }
 .search { position: relative; flex: 0 1 380px; }
 .search label { display: flex; align-items: center; gap: 10px; height: 40px; border: 1.5px solid var(--border-strong); border-radius: 12px; padding: 0 12px; background: var(--surface-raised); color: var(--text-muted); }
@@ -1927,11 +1930,15 @@ html[data-theme="phoenix"] .tourcard .tbtns .tback { background: #f4e2cf; border
         </div></div>
       <div class="looks" id="looks"></div>
       <details class="prefs" id="prefs"><summary>Preferences</summary><div class="prefrows" id="prefrows"></div></details>
+      <details class="prefs" id="demofold" hidden><summary>Demo mode</summary><div class="prefrows">
+        <label class="prefchk"><input type="checkbox" id="demochk"> Demo mode</label>
+        <p class="demonote">For showing the board to people outside the agency: every customer becomes a made-up name and number (the figures stay real), and the CRM, Campaigns, Lead Scrub, CRM Hygiene, Minimums &amp; Goal, Commission and Apollo's Doubts are hidden. The Rotation stays. Recordings still play as they were. The page reloads when you switch.</p>
+      </div></details>
     </div>
   </nav>
   <div class="wrap">
     <div class="top">
-      <div class="greetwrap"><div class="eyebrow">Elysium Pro</div><h1 class="greet" id="greet">Welcome back.</h1></div>
+      <div class="greetwrap"><div class="eyebrow">Elysium Pro<span class="demochip" id="demochip" hidden title="Customers are made up and the CRM, audit and scrub pages are hidden. Settings turns it off.">Demo mode</span></div><h1 class="greet" id="greet">Welcome back.</h1></div>
       <div class="search">
         <label for="q"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg>
           <input id="q" type="search" placeholder="Find a lead, producer, page…" autocomplete="off" aria-controls="res"><kbd>Ctrl K</kbd></label>
@@ -2516,7 +2523,32 @@ async function loadMe() {
   const rp = ME.roleplay || {};
   if (rp.producer && !rp.all) { rpProducer = rp.producer; rpFetchHistory().catch(() => {}); }
   if (ME.review) { try { paintCenterBar(); } catch (_) {} }   // Apollo's Doubts joins the menu
+  applyDemo();
 }
+/* Demo mode (Frank, 2026-10-20: "a demo mode for me ... to present this to other agents"): the Worker
+   decides it from a cookie this switch sets (site/demo.js masks every customer and refuses the CRM and
+   ops routes, so those pages never enter the menu). Here: the header chip, the switch in Settings for a
+   login that may use it, and no link into AgencyZoom while it is on. */
+const DEMO_COOKIE = "pantheon_demo";
+function applyDemo() {
+  const on = !!ME.demo;
+  document.documentElement.toggleAttribute("data-demo", on);
+  const chip = $("#demochip"); if (chip) chip.hidden = !on;
+  const fold = $("#demofold"); if (fold) { fold.hidden = !ME.can_demo; if (on) fold.open = true; }
+  const chk = $("#demochk"); if (chk) chk.checked = on;
+}
+document.addEventListener("change", e => {
+  if (e.target.id !== "demochk") return;
+  const on = e.target.checked;
+  document.cookie = `${DEMO_COOKIE}=${on ? "1" : "0"}; path=/; max-age=${on ? 60 * 60 * 24 * 7 : 0}; SameSite=Lax; Secure`;
+  location.reload();
+});
+// A lead's name opens AgencyZoom in a new tab on several lists; in a demo it opens nothing.
+document.addEventListener("click", e => {
+  if (!ME.demo) return;
+  const a = e.target.closest('a[href^="https://app.agencyzoom.com"]');
+  if (a) { e.preventDefault(); e.stopPropagation(); }
+}, true);
 const rpLocked = () => !!((ME.roleplay || {}).producer) && !(ME.roleplay || {}).all;
 function businessDaysUntil(fromIso, toIso) {
   let n = 0;
@@ -8067,7 +8099,7 @@ function salesSubTabsHtml() {
   return `<div class="subtabs">
     <button class="subtab${salesSubTab === "log" ? " sel" : ""}" data-sst="log" type="button">Log</button>
     <button class="subtab${salesSubTab === "breakdown" ? " sel" : ""}" data-sst="breakdown" type="button">Breakdown</button>
-    <button class="subtab${salesSubTab === "commission" ? " sel" : ""}" data-sst="commission" type="button">Commission</button>
+    ${ME.demo ? "" : `<button class="subtab${salesSubTab === "commission" ? " sel" : ""}" data-sst="commission" type="button">Commission</button>`}
   </div>`;
 }
 // Repaints whichever Sales sub-tab is active from the already-loaded data
@@ -11131,6 +11163,7 @@ paintCenterBar();
   if (w) {
     if (w.coachSubTab) coachSubTab = w.coachSubTab;
     if (w.salesSubTab) salesSubTab = w.salesSubTab;
+    if (ME.demo && salesSubTab === "commission") salesSubTab = "log";   // no Commission tab in a demo
     if (w.bpPick) Object.assign(bpPick, w.bpPick);
     if (PRODUCER_ROSTER.includes(w.producerFilter)) producerFilter = w.producerFilter;
   }

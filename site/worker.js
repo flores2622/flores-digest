@@ -65,6 +65,7 @@ import { hygieneGet, hygienePost } from "./hygiene.js";
 import { campaignsGet } from "./campaigns.js";
 import { crm } from "./crm.js";
 import { claimsForViewer } from "./claims_view.js";
+import { demoOn, demoAllowed, blockedInDemo, skipInDemo, demoResponse } from "./demo.js";
 import AZ_DATA from "./agencyzoom_data.js";
 import { PRODUCER_EMAILS, STAFF_FIRST_NAMES, SALES_SHEET_NAMES, SALES_TEAMS, AGENCY, hasBoard, boardEmails, TZ, localDay } from "./staff.js";
 
@@ -86,6 +87,22 @@ export default {
       const gate = await requireAccess(request, env);
       if (gate) return gate;
 
+      // Demo mode (Frank, 2026-10-20; site/demo.js): for a login holding
+      // staff.json's `demo` key with the demo cookie set, the CRM and the
+      // ops pages refuse, and every JSON answer goes out with its customers
+      // made up. Decided here, once, so no route has to know.
+      const demo = demoOn(request, accessEmail(request));
+      if (demo && blockedInDemo(parts)) return json({ error: "not available in demo mode" }, 403);
+      const res = await apiRoute(request, env, ctx, url, parts, demo);
+      return demo && !skipInDemo(parts) ? demoResponse(res) : res;
+    }
+
+    return env.ASSETS.fetch(request);
+  },
+};
+
+/** Every /api route, after the Access gate. */
+async function apiRoute(request, env, ctx, url, parts, demo) {
       if (parts[1] === "days") {
         if (parts.length === 2) return listDays(env);
         if (parts.length === 3) return getDay(env, parts[2]);
@@ -143,7 +160,7 @@ export default {
       }
 
       if (parts[1] === "me" && parts.length === 2) {
-        return whoAmI(request, env);
+        return whoAmI(request, env, demo);
       }
 
       // Each person's own Settings, kept per login (Frank, 2026-10-05: settings 1-4 -- start page and "just
@@ -161,6 +178,7 @@ export default {
         return coeusChat(request, env, ctx, {
           identityOf, rpScope, rpMaySee,
           commercialAllowed: (req, e) => requireCommercial(req, e) === null,
+          demo,   // Apollo's tool reads come back with their customers made up too
         });
       }
       // What Coeus has cost, per person (Frank, 2026-10-02); staff.json's `coeus_usage`.
@@ -292,11 +310,7 @@ export default {
         }
       }
       return json({ error: "not found" }, 404);
-    }
-
-    return env.ASSETS.fetch(request);
-  },
-};
+}
 
 /** GET /api/days -> { days: ["2026-09-04", "2026-09-03", ...] }, newest first.
  *
@@ -1769,9 +1783,15 @@ function identityOf(request, env) {
   // them the way the old /api/me (rpScope) answered.
   return { email, name, producer, canLogFor, all: scope.all, review: mayReview(email, env), roleplay: { producer: scope.producer, all: scope.all } };
 }
-function whoAmI(request, env) {
-  return json(identityOf(request, env));
+/* `can_demo`: this login may switch demo mode on (Settings shows the switch);
+ * `demo`: it is on for this request. In demo mode Apollo's Doubts (`review`)
+ * stay out of the menu like the other audit pages. */
+function whoAmI(request, env, demo) {
+  const me = identityOf(request, env);
+  const can_demo = demoAllowed(me.email);
+  return json({ ...me, review: demo ? false : me.review, can_demo, demo: !!demo });
 }
+const accessEmail = (request) => String((ACCESS_IDENTITY.get(request) || {}).email || "").toLowerCase();
 
 /* A person's Settings: one small file per login, prefs/<email>.json. Only the
  * known keys are kept, each checked, so nothing else can be stored there. */

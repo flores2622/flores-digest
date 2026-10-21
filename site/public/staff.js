@@ -132,7 +132,8 @@ window.STAFF = {
     "commission_all",
     "sales_log_all",
     "crm",
-    "campaigns"
+    "campaigns",
+    "demo"
    ],
    "handle": "frank.full.coverage"
   },
@@ -161,7 +162,8 @@ window.STAFF = {
     "commission_all",
     "sales_log_all",
     "crm",
-    "campaigns"
+    "campaigns",
+    "demo"
    ],
    "handle": "dm.francisco"
   },
@@ -187,7 +189,8 @@ window.STAFF = {
     "commission_all",
     "sales_log_all",
     "crm",
-    "campaigns"
+    "campaigns",
+    "demo"
    ],
    "handle": "vero.vacation.approved"
   },
@@ -223,7 +226,8 @@ window.STAFF = {
     "card_review",
     "roleplay_voices",
     "crm",
-    "campaigns"
+    "campaigns",
+    "demo"
    ],
    "color": "#baffff",
    "handle": "amanda.approves"

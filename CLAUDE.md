@@ -3376,6 +3376,47 @@ repaint clears the list).
   scratchpad, not the repo; `design/flores-board-preview.html` is the
   approved mock-up the restyle followed.
 
+## Demo mode (2026-10-20)
+
+**Settings > Demo mode shows the board to people outside the agency** (Frank,
+2026-10-20: "a demo mode for me? I want to present this to other agents at
+an event ... the coaching and stat tracking aspect of it all, as well as
+service. No agency zoom transitions, workflows, audits, lead scrubs, or that
+stuff, the rotation staying is fine"). `site/demo.js`, decided once in the
+Worker's router after the Access gate from a cookie (`pantheon_demo=1`) the
+switch sets, honoured only for a login holding staff.json's `demo` board key
+(Frank and the ops team). While it is on: **every JSON answer is masked**
+(`demoize`) -- a customer's or lead's name (the `lead` / `name` / `record` /
+`customer` / `client` keys, the "<First> (lead):" speaker labels, the person
+in a "Name @ Company" source) becomes a made-up one by a hash of the real
+name, so the same person reads the same on the Digest, in the transcript, on
+the Service Center, in the lead index and in Apollo's chat (`coeus.js
+runTool` masks every tool read); a bare first name in free text is replaced
+only when it is unmistakably one (`STOP` words: the staff and how transcripts
+mishear them, the agency and carriers, calendar words, English / Spanish
+words that are also names); a business keeps an LLC / Inc ending; a phone
+number keeps its area code and formatting and its last seven digits become
+555-xxxx (keys of maps by number too, so `live_basis` still lines up); an
+email outside the agency becomes demo…@example.com; a row's `last4` is
+rehashed. The staff and every figure are untouched. **The CRM (`/api/crm`),
+Campaigns, the Lead Scrub, CRM Hygiene, Minimums & Goal, Commission,
+Apollo's Doubts (`/api/cardreview`) and Apollo's usage answer 403**
+(`blockedInDemo`), so the page keeps them out of the menu exactly as for a
+login without the key; `/api/me` says `review: false`, and the page hides
+the Sales page's Commission tab and makes every AgencyZoom link inert. Not
+masked (`skipInDemo`): `/api/me`, prefs, training, the lead-source list,
+Role Play (its prospects are made up already) and the sheet's dropdowns;
+recordings are binary and play as they were -- a customer may say their own
+name on the call, and the transcript's words will not match. A name typed
+into a comment or sticky note that is not also on the document served stays
+as typed. The header wears a "Demo mode" chip; the switch reloads the page
+either way; nothing is written or changed anywhere. `node --test
+site/demo.test.mjs`; checked in headless Chromium over 10-19's real documents
+on every page (Digest, Coaching with a card open, Texts & Emails, Sales,
+Service, Renewals, Claims, Editions, Session History, Rotation, Commercial):
+no registered name on screen, no console error, 160-280 ms to mask a day
+document, ~230 ms the 2.3 MB renewals report.
+
 ## The board is Elysium Pro (2026-10-15); its assistant is Apollo
 
 **The board is named Elysium Pro** (Frank, 2026-10-15: "Lets do Elysium

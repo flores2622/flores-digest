@@ -181,7 +181,8 @@
         "commission_all",
         "sales_log_all",
         "crm",
-        "campaigns"
+        "campaigns",
+        "demo"
       ],
       "handle": "frank.full.coverage"
     },
@@ -212,7 +213,8 @@
         "commission_all",
         "sales_log_all",
         "crm",
-        "campaigns"
+        "campaigns",
+        "demo"
       ],
       "handle": "dm.francisco"
     },
@@ -242,7 +244,8 @@
         "commission_all",
         "sales_log_all",
         "crm",
-        "campaigns"
+        "campaigns",
+        "demo"
       ],
       "handle": "vero.vacation.approved"
     },
@@ -282,7 +285,8 @@
         "card_review",
         "roleplay_voices",
         "crm",
-        "campaigns"
+        "campaigns",
+        "demo"
       ],
       "color": "#baffff",
       "email_dot": "cL",
